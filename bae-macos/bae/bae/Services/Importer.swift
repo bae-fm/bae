@@ -45,10 +45,7 @@ private struct ImportOperations: Sendable {
     let cancelAllIdentification: @Sendable () async throws -> Void
     let cancelCandidateIdentification: @Sendable (Data) async throws -> Void
     let cancelAllImports: @Sendable () -> Void
-    let moveCandidatePane: @Sendable (Data, BridgePaneMove) async throws -> Void
     let identifyAutomatically: @Sendable (Data) async throws -> Void
-    let setCandidateSearchForm:
-        @Sendable (Data, BridgeSearchForm) async throws -> Void
     let setCandidateCover:
         @Sendable (Data, BridgeCoverSelection) async throws -> Void
     let setCandidateEditField:
@@ -186,20 +183,8 @@ extension ImportOperations {
             cancelAllImports: {
                 handle.cancelAllImports()
             },
-            moveCandidatePane: {
-                try await handle.moveCandidatePane(
-                    candidateKey: $0,
-                    paneMove: $1
-                )
-            },
             identifyAutomatically: {
                 try await handle.identifyAutomatically(candidateKey: $0)
-            },
-            setCandidateSearchForm: {
-                try await handle.setCandidateSearchForm(
-                    candidateKey: $0,
-                    search: $1
-                )
             },
             setCandidateCover: {
                 try await handle.setCandidateCover(candidateKey: $0, cover: $1)
@@ -364,20 +349,8 @@ final class Importer: Sendable, Observable {
         cancelCandidateIdentification:
             @escaping @Sendable (Data) async throws -> Void = { _ in },
         cancelAllImports: @escaping @Sendable () -> Void = {},
-        moveCandidatePane:
-            @escaping @Sendable (Data, BridgePaneMove) async throws -> Void =
-            {
-                _,
-                _ in
-            },
         identifyAutomatically:
             @escaping @Sendable (Data) async throws -> Void = { _ in },
-        setCandidateSearchForm:
-            @escaping @Sendable (Data, BridgeSearchForm) async throws -> Void =
-            {
-                _,
-                _ in
-            },
         setCandidateCover:
             @escaping @Sendable (Data, BridgeCoverSelection) async throws ->
             Void = { _, _ in },
@@ -456,9 +429,7 @@ final class Importer: Sendable, Observable {
             cancelAllIdentification: cancelAllIdentification,
             cancelCandidateIdentification: cancelCandidateIdentification,
             cancelAllImports: cancelAllImports,
-            moveCandidatePane: moveCandidatePane,
             identifyAutomatically: identifyAutomatically,
-            setCandidateSearchForm: setCandidateSearchForm,
             setCandidateCover: setCandidateCover,
             setCandidateEditField: setCandidateEditField,
             setCandidateLabels: setCandidateLabels,
@@ -671,27 +642,10 @@ extension Importer {
         operations.cancelAllImports()
     }
 
-    /// Move the candidate's pane as the person asked; core moves it by the
-    /// rule it moves every pane by.
-    func moveCandidatePane(
-        _ candidateKey: Data,
-        _ paneMove: BridgePaneMove
-    ) async throws {
-        try await operations.moveCandidatePane(candidateKey, paneMove)
-    }
-
     /// Show identification's results: the stored verdict as it stood when
     /// there is one, a run started when there is none.
     func identifyAutomatically(_ candidateKey: Data) async throws {
         try await operations.identifyAutomatically(candidateKey)
-    }
-
-    /// Record the typed-search form as the person left it.
-    func setCandidateSearchForm(
-        _ candidateKey: Data,
-        _ search: BridgeSearchForm
-    ) async throws {
-        try await operations.setCandidateSearchForm(candidateKey, search)
     }
 
     /// Record the cover this candidate commits with.

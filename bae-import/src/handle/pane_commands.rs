@@ -6,7 +6,7 @@
 //! identification queue are on [`crate::IdentificationHandle`].
 
 use super::ImportServiceHandle;
-use crate::{ImportError, PaneCommand, PaneMove, PaneOutcome};
+use crate::{ImportError, PaneCommand, PaneOutcome};
 use bae_catalogs::SearchQuery;
 use bae_identify::PressingLink;
 
@@ -32,9 +32,7 @@ impl ImportServiceHandle {
         steps: crate::CatalogApplySteps,
     ) -> Result<PaneOutcome, ImportError> {
         self.clear_pane_failure(&candidate_key).await?;
-        self.select_candidate_release(candidate_key.clone(), link, steps).await?;
-        // A pick that landed leaves the draft it read to see.
-        self.move_candidate_pane(&candidate_key, PaneMove::Picked).await?;
+        self.select_candidate_release(candidate_key, link, steps).await?;
         Ok(PaneOutcome::Done)
     }
 
@@ -44,17 +42,12 @@ impl ImportServiceHandle {
         &self,
         candidate_key: crate::CandidateKey,
     ) -> Result<PaneOutcome, ImportError> {
-        let outcome = self
-            .run_pane_command(
-                &candidate_key,
-                PaneCommand::ReadFileTags,
-                self.select_candidate_file_tags(candidate_key.clone()),
-            )
-            .await?;
-        if outcome == PaneOutcome::Done {
-            self.move_candidate_pane(&candidate_key, PaneMove::Picked).await?;
-        }
-        Ok(outcome)
+        self.run_pane_command(
+            &candidate_key,
+            PaneCommand::ReadFileTags,
+            self.select_candidate_file_tags(candidate_key.clone()),
+        )
+        .await
     }
 
     /// Unlink the candidate from its release, leaving its draft as it is.
@@ -70,43 +63,31 @@ impl ImportServiceHandle {
         .await
     }
 
-    /// Keep the candidate's own draft over what its lookup offered, and go
-    /// back to the draft.
+    /// Keep the candidate's own draft over what its lookup offered.
     pub async fn pane_keep_own_draft(
         &self,
         candidate_key: &crate::CandidateKey,
     ) -> Result<PaneOutcome, ImportError> {
-        let outcome = self
-            .run_pane_command(
-                candidate_key,
-                PaneCommand::KeepOwnDraft,
-                self.keep_candidate_draft(candidate_key.clone()),
-            )
-            .await?;
-        if outcome == PaneOutcome::Done {
-            self.move_candidate_pane(candidate_key, PaneMove::Picked).await?;
-        }
-        Ok(outcome)
+        self.run_pane_command(
+            candidate_key,
+            PaneCommand::KeepOwnDraft,
+            self.keep_candidate_draft(candidate_key.clone()),
+        )
+        .await
     }
 
     /// Link the candidate to the album the pressings its lookup offers are
-    /// of, its pressing unknown, taking what they agree on into its draft,
-    /// and go back to the draft.
+    /// of, its pressing unknown, taking what they agree on into its draft.
     pub async fn pane_link_shared_album(
         &self,
         candidate_key: &crate::CandidateKey,
     ) -> Result<PaneOutcome, ImportError> {
-        let outcome = self
-            .run_pane_command(
-                candidate_key,
-                PaneCommand::LinkSharedAlbum,
-                self.link_candidate_shared_album(candidate_key.clone()),
-            )
-            .await?;
-        if outcome == PaneOutcome::Done {
-            self.move_candidate_pane(candidate_key, PaneMove::Picked).await?;
-        }
-        Ok(outcome)
+        self.run_pane_command(
+            candidate_key,
+            PaneCommand::LinkSharedAlbum,
+            self.link_candidate_shared_album(candidate_key.clone()),
+        )
+        .await
     }
 
     /// Submit the candidate's typed search. What it turns up, failures

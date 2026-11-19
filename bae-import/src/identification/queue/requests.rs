@@ -22,7 +22,7 @@ pub(super) async fn request(
             return;
         }
     };
-    admit(context, queue, vec![candidate], Admission::Requested).await;
+    queue.place(context, vec![candidate], Admission::Requested).await;
 }
 
 impl Queue {

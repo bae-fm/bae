@@ -38,7 +38,7 @@ pub(super) async fn admit_found(
         }
     }
     if !admitted.is_empty() {
-        admit(context, queue, admitted, Admission::Automatic).await;
+        queue.place(context, admitted, Admission::Automatic).await;
     }
 }
 

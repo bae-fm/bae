@@ -39,14 +39,13 @@ struct ImportStorePickTests {
 
     @Test("a pick that lands with nothing selected ends without a pane move")
     func landingWithNothingSelectedEnds() async throws {
-        let writes = SessionWriteRecorder()
-        let store = pickingStore(writes: writes)
+        let store = pickingStore()
         let session = try #require(beginPick(on: store))
         store.selectedCandidates.removeValue(forKey: Self.key)
 
         store.metadataApplicationSucceeded(key: Self.key, session: session)
 
-        #expect(writes.paneMoves(forKey: Self.key).isEmpty)
+        #expect(store.candidate(forKey: Self.key) == nil)
         #expect(store.metadataApplicationSession(forKey: Self.key) == nil)
         #expect(store.loadingPick(forKey: Self.key) == nil)
     }
@@ -93,13 +92,8 @@ struct ImportStorePickTests {
         #expect(store.metadataApplicationSession(forKey: Self.key) == nil)
     }
 
-    private func pickingStore(
-        writes: SessionWriteRecorder? = nil
-    ) -> ImportStore {
+    private func pickingStore() -> ImportStore {
         let store = ImportStore()
-        if let writes {
-            store.sessionWriter = .recording { writes.record($0) }
-        }
         store.applyCandidateDetail(key: Self.key, detail: read())
         return store
     }

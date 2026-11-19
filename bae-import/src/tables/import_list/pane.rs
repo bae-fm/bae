@@ -293,7 +293,7 @@ impl CandidateDetailRows {
                     cover,
                     lookup_choices,
                     failure: pane_rows.failure,
-                    session: pane_rows.session,
+                    pane_failure: pane_rows.pane_failure,
                 }))
             }
         };

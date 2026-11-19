@@ -51,6 +51,61 @@ enum CandidateMetadataPresentation: Equatable {
     }
 }
 
+/// Which section of the Find online page is open.
+enum FindOnlineSection: Equatable {
+    /// Identification: the run's ledger and what it matched.
+    case automatic
+    /// The typed search: its form and what it turned up.
+    case search
+}
+
+/// Every way the person, or a command they ran, moves the pane between the
+/// draft and the Find online page.
+enum PaneMove: Equatable {
+    /// Identification's results.
+    case automatic
+    /// The typed search.
+    case search
+    /// One section of the Find online page.
+    case openSection(FindOnlineSection)
+    /// The Find online page, on the section last open.
+    case findOnline
+    /// A source the person picked landed in the draft.
+    case picked
+    /// Back to the draft.
+    case back
+}
+
+/// Where the pane stands: the draft, or the Find online page. The section
+/// of the Find online page stays while the draft shows, so the page opens on
+/// it again.
+struct CandidatePanePosition: Equatable {
+    var presentation: CandidateMetadataPresentation
+    var findOnlineSection: FindOnlineSection
+
+    /// Where `paneMove` puts the pane from here: the one rule every move
+    /// follows.
+    func moved(by paneMove: PaneMove) -> CandidatePanePosition {
+        var next = self
+        switch paneMove {
+        case .automatic:
+            next.presentation = .findOnline
+            next.findOnlineSection = .automatic
+        case .search:
+            next.presentation = .findOnline
+            next.findOnlineSection = .search
+        case .openSection(let section):
+            next.presentation = .findOnline
+            next.findOnlineSection = section
+        case .findOnline:
+            next.presentation = .findOnline
+        case .picked, .back:
+            next.presentation = .draft
+        }
+        return next
+    }
+}
+
 /// What one metadata application reads the draft from: a picked release,
 /// which the candidate is then linked to, or the files' own tags, which leave
 /// the link as it is.
@@ -126,77 +181,19 @@ struct CandidateSearchState: Equatable {
     var searchCatalog: String = ""
     var searchBarcode: String = ""
     var activeTab: SearchTab = .general
-
-    init(
-        searchArtist: String = "",
-        searchAlbum: String = "",
-        searchCatalog: String = "",
-        searchBarcode: String = "",
-        activeTab: SearchTab = .general
-    ) {
-        self.searchArtist = searchArtist
-        self.searchAlbum = searchAlbum
-        self.searchCatalog = searchCatalog
-        self.searchBarcode = searchBarcode
-        self.activeTab = activeTab
-    }
-
-    init(bridge: BridgeSearchForm) {
-        searchArtist = bridge.artist
-        searchAlbum = bridge.album
-        searchCatalog = bridge.catalog
-        searchBarcode = bridge.barcode
-        activeTab =
-            switch bridge.tab {
-            case .general: .general
-            case .catalogNumber: .catalogNumber
-            case .barcode: .barcode
-            }
-    }
-
-    var bridge: BridgeSearchForm {
-        let tab: BridgeSearchTab =
-            switch activeTab {
-            case .general: .general
-            case .catalogNumber: .catalogNumber
-            case .barcode: .barcode
-            }
-        return BridgeSearchForm(
-            tab: tab,
-            artist: searchArtist,
-            album: searchAlbum,
-            catalog: searchCatalog,
-            barcode: searchBarcode
-        )
-    }
 }
 
-// MARK: - CandidateSessionState
+// MARK: - CandidatePaneState
 
-/// Where the pane was when the person last left this candidate: which
-/// surface the metadata slot shows, the typed-search form, and the last
-/// command that failed. Core stores it with the candidate, so clicking away
-/// and a relaunch both come back to the same pane; a re-identify session,
-/// which has no stored candidate, keeps its own in memory.
-struct CandidateSessionState: Equatable {
-    var presentation: CandidateMetadataPresentation = .draft
-    /// The section of the Find online page open when it shows.
-    var findOnlineSection: BridgeFindOnlineSection = .automatic
+/// What the pane holds of a candidate while it shows it: where the person
+/// moved it and what they typed in the search form. Only the screen has this
+/// state, so the pane holds it and no table stores it; showing another
+/// candidate forgets it.
+struct CandidatePaneState: Equatable {
+    /// Where the person moved the pane; `nil` until they move it, while the
+    /// pane stands where core says it opens.
+    var moved: CandidatePanePosition?
     var search = CandidateSearchState()
-    /// The last command this pane ran, when it failed, as core stored it.
-    /// Shown in the banner until the pane's next command clears it.
-    var failure: BridgePaneFailure?
-
-    init() {}
-
-    init(bridge: BridgeCandidateSession) {
-        presentation = CandidateMetadataPresentation(
-            bridge: bridge.presentation
-        )
-        findOnlineSection = bridge.findOnlineSection
-        search = CandidateSearchState(bridge: bridge.search)
-        failure = bridge.error
-    }
 }
 
 extension BridgePaneFailure {
@@ -280,18 +277,29 @@ struct Candidate: Equatable, Identifiable {
     /// What is running for this candidate right now and the commands it
     /// offers with it, read with its detail. `nil` for a re-identify session.
     var live: BridgeCandidateLiveState?
-    /// Where the pane was when the person last left this candidate. A folder
-    /// candidate's comes with its detail; a re-identify session's lives here.
-    var session = CandidateSessionState()
+    /// What the pane holds of this candidate while it shows it.
+    var pane = CandidatePaneState()
+    /// Where the pane stands: where the person moved it, or else where core
+    /// says it opens, Find online opening on its Automatic section.
+    var panePosition: CandidatePanePosition {
+        pane.moved
+            ?? CandidatePanePosition(
+                presentation: draft.map {
+                    CandidateMetadataPresentation(bridge: $0.opensOn)
+                } ?? .draft,
+                findOnlineSection: .automatic
+            )
+    }
     /// The draft, or the Find online page, occupying the metadata slot.
     /// Opening the page never replaces the stored draft; applying a result
     /// does.
     var metadataPresentation: CandidateMetadataPresentation {
-        session.presentation
+        panePosition.presentation
     }
-    var search: CandidateSearchState { session.search }
-    /// The last command this pane ran, when it failed.
-    var error: String? { session.failure?.line }
+    var search: CandidateSearchState { pane.search }
+    /// The last command this pane ran, when it failed, as core stored it.
+    /// Shown in the banner until the pane's next command clears it.
+    var error: String? { draft?.paneFailure?.line }
 
     var id: Data {
         key
@@ -336,9 +344,6 @@ struct Candidate: Equatable, Identifiable {
         placement = detail.placement
         live = detail.live
         self.detail = detail
-        if case .drafting(let draft) = detail.stage {
-            session = CandidateSessionState(bridge: draft.session)
-        }
     }
 
     /// Construct a re-identify candidate. The release already lives in the

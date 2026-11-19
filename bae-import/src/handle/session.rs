@@ -1,74 +1,26 @@
-//! The pane's per-candidate state between visits, written as the person works.
+//! The failure the pane states for its last command, stored as the person
+//! works, and whether asking for identification's results owes a run.
 
 use super::ImportServiceHandle;
-use crate::{CandidateSession, PaneCommand, PaneFailure, PaneMove, PaneOutcome, SearchForm};
+use crate::{PaneCommand, PaneFailure, PaneOutcome};
 
 impl ImportServiceHandle {
-    /// Move this candidate's pane by the one rule every move follows,
-    /// [`CandidateSession::moved`].
-    pub async fn move_candidate_pane(
-        &self,
-        candidate_key: &crate::CandidateKey,
-        pane_move: PaneMove,
-    ) -> Result<(), crate::ImportError> {
-        self.update_candidate_session(candidate_key, move |session| {
-            *session = session.clone().moved(pane_move);
-        })
-        .await
-    }
-
-    /// Open the pane on identification's results for the person, and say
-    /// whether a run is owed: none when a verdict is stored for the
-    /// candidate's current files, which the pane shows as it stood — picked
-    /// row and all — rather than asking again.
-    pub async fn open_automatic(
+    /// Whether showing identification's results for this candidate owes a
+    /// run: none when a verdict is stored for the candidate's current files,
+    /// which the pane shows as it stood, picked row and all, rather than
+    /// asking again. A candidate this device imported holds no pane, so for
+    /// it the answer is that its files are in the library.
+    pub async fn automatic_run_owed(
         &self,
         candidate_key: &crate::CandidateKey,
     ) -> Result<bool, crate::ImportError> {
-        self.move_candidate_pane(candidate_key, PaneMove::Automatic).await?;
-        let stored = self
-            .services
-            .tables
-            .load_import_candidate(candidate_key)
-            .await?
-            .is_some_and(|projection| projection.stored_verdict.is_some());
-        Ok(!stored)
-    }
-
-    /// Move the pane of every candidate whose identification was just
-    /// admitted: to the page its run reports on, so a person who opens the
-    /// candidate while it is being identified, or after, is on the answer.
-    ///
-    /// Under the commit lock like every other session write, so a
-    /// read-modify-write of the rest of a session in flight cannot put the
-    /// draft back over this.
-    pub(crate) async fn move_admitted_panes(
-        &self,
-        content_hashes: Vec<String>,
-    ) -> Result<(), crate::ImportError> {
-        let _commit = self.services.folder_state_commit.lock("open panes on Find online").await;
-        self.services
-            .tables
-            .move_import_candidate_panes(content_hashes, PaneMove::Admitted)
-            .await?;
-        Ok(())
-    }
-
-    /// The typed-search form as the person left it.
-    pub async fn set_candidate_search_form(
-        &self,
-        candidate_key: &crate::CandidateKey,
-        search: SearchForm,
-    ) -> Result<(), crate::ImportError> {
-        self.update_candidate_session(candidate_key, move |session| {
-            session.search = search;
-        })
-        .await
+        let projection = self.drafting_candidate(candidate_key).await?;
+        Ok(projection.stored_verdict.is_none())
     }
 
     /// Clear the failure the pane states for its last command, as its next
-    /// command starts. A key that names no stored candidate — a library
-    /// release being identified again — has no stored pane to clear.
+    /// command starts. A key that names no stored candidate, such as a
+    /// library release being identified again, has no stored pane to clear.
     pub async fn clear_pane_failure(
         &self,
         candidate_key: &crate::CandidateKey,
@@ -76,7 +28,7 @@ impl ImportServiceHandle {
         if self.services.tables.load_import_candidate(candidate_key).await?.is_none() {
             return Ok(());
         }
-        self.update_candidate_session(candidate_key, |session| session.error = None).await
+        self.store_pane_failure(candidate_key, None).await
     }
 
     /// Run `run`, one of the pane's commands for this candidate: the failure
@@ -98,10 +50,7 @@ impl ImportServiceHandle {
             Err(error) => error,
         };
         let failure = PaneFailure { command, error: error.ui_error() };
-        match self
-            .update_candidate_session(candidate_key, move |session| session.error = Some(failure))
-            .await
-        {
+        match self.store_pane_failure(candidate_key, Some(failure)).await {
             Ok(()) => Ok(PaneOutcome::Failed),
             // Imported while the command ran: there is no pane to state its
             // failure on, and the files being in the library is the answer.
@@ -115,48 +64,45 @@ impl ImportServiceHandle {
         }
     }
 
-    /// Read the candidate's session — the stored one, or the one its pane
-    /// opens on — apply `change`, and store the whole. Under the commit lock,
-    /// so two writes in a row cannot lose one another's field.
-    async fn update_candidate_session(
+    /// Store `failure` as the one the pane states for the candidate's last
+    /// command, or none. Under the commit lock, so the write cannot land on a
+    /// candidate an import is committing.
+    async fn store_pane_failure(
         &self,
         candidate_key: &crate::CandidateKey,
-        change: impl FnOnce(&mut CandidateSession) + Send + 'static,
+        failure: Option<PaneFailure>,
     ) -> Result<(), crate::ImportError> {
         let this = self.clone();
         let candidate_key = candidate_key.clone();
-        self.committed(
-            async move { this.update_candidate_session_write(&candidate_key, change).await },
-        )
+        self.committed(async move {
+            let _commit = this.services.folder_state_commit.lock("store a pane failure").await;
+            let projection = this.drafting_candidate(&candidate_key).await?;
+            let content_hash = projection.candidate.files.content_hash();
+            this.services.tables.save_import_pane_failure(&content_hash, failure).await?;
+            Ok(())
+        })
         .await
     }
 
-    async fn update_candidate_session_write(
+    /// The candidate `candidate_key` names, while it holds a draft: an
+    /// imported candidate holds none, and is answered that its files are in
+    /// the library.
+    async fn drafting_candidate(
         &self,
         candidate_key: &crate::CandidateKey,
-        change: impl FnOnce(&mut CandidateSession),
-    ) -> Result<(), crate::ImportError> {
-        let _commit = self.services.folder_state_commit.lock("store a pane session").await;
+    ) -> Result<crate::ImportCandidateDetailProjection, crate::ImportError> {
         let projection =
             self.services.tables.load_import_candidate(candidate_key).await?.ok_or_else(|| {
                 crate::ImportError::Internal {
                     detail: format!("{candidate_key} is not a scanned folder candidate"),
                 }
             })?;
-        let content_hash = projection.candidate.files.content_hash();
-        // An imported candidate holds no draft, so no pane is kept for it.
-        let draft = match &projection.stage {
-            crate::ProjectedStage::Drafting(draft) => draft,
-            crate::ProjectedStage::Imported { release } => {
-                return Err(crate::ImportError::FilesAlreadyImported {
-                    release_id: release.release_id.clone(),
-                })
-            }
-        };
-        let mut session = draft.session_or_initial(projection.stored_verdict.is_some());
-        change(&mut session);
-        self.services.tables.save_import_candidate_session(&content_hash, &session).await?;
-        Ok(())
+        if let crate::ProjectedStage::Imported { release } = &projection.stage {
+            return Err(crate::ImportError::FilesAlreadyImported {
+                release_id: release.release_id.clone(),
+            });
+        }
+        Ok(projection)
     }
 }
 

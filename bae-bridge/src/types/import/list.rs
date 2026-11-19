@@ -322,12 +322,13 @@ pub struct BridgeCandidateDraftPane {
     pub cover: Option<BridgeCoverChoice>,
     /// Why the last import of this candidate failed.
     pub failure: Option<BridgeError>,
-    /// Where the pane was when the person last left this candidate, or where
-    /// it opens for one nobody has touched. Written through
-    /// `move_candidate_pane` and `set_candidate_search_form`, and by
-    /// the pane commands themselves, which store their failure; the next value
-    /// of this carries it back.
-    pub session: BridgeCandidateSession,
+    /// The failure the pane states for its last command, which the pane
+    /// commands store; the pane's next command clears it.
+    pub pane_failure: Option<BridgePaneFailure>,
+    /// Where the pane opens on the candidate: Find online while
+    /// identification runs for it or its answer waits on the person, the
+    /// draft otherwise. The app keeps where the person moves it from there.
+    pub opens_on: BridgeMetadataPresentation,
 }
 
 /// Where the queue places the candidate a pane shows, with what the pane
@@ -357,62 +358,6 @@ pub enum BridgeCandidatePanePlacement {
 pub enum BridgeMetadataPresentation {
     Draft,
     FindOnline,
-}
-
-/// Which section of the Find online page is open. Mirrors
-/// `bae_import::FindOnlineSection`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, uniffi::Enum)]
-pub enum BridgeFindOnlineSection {
-    Automatic,
-    Search,
-}
-
-/// A move of the pane the person asks for. Identification's results are asked
-/// for through `identify_automatically`; the moves core makes on its own —
-/// an admission, a settled pick, a person's pick landing — are core's. Mirrors
-/// the person's `bae_import::PaneMove`s.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgePaneMove {
-    /// The typed search.
-    Search,
-    /// One section of the Find online page.
-    OpenSection { section: BridgeFindOnlineSection },
-    /// The Find online page, on the section last open.
-    FindOnline,
-    /// Back to the draft.
-    Back,
-}
-
-/// Which query the typed-search form is asking. Mirrors
-/// `bae_import::SearchTab`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeSearchTab {
-    General,
-    CatalogNumber,
-    Barcode,
-}
-
-/// The typed-search form as the person left it. Mirrors
-/// `bae_import::SearchForm`.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeSearchForm {
-    pub tab: BridgeSearchTab,
-    pub artist: String,
-    pub album: String,
-    pub catalog: String,
-    pub barcode: String,
-}
-
-/// The pane's per-candidate state between visits. Mirrors
-/// `bae_import::CandidateSession`.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeCandidateSession {
-    pub presentation: BridgeMetadataPresentation,
-    /// The section of the Find online page open when it shows.
-    pub find_online_section: BridgeFindOnlineSection,
-    pub search: BridgeSearchForm,
-    /// The last command the pane ran for this candidate, when it failed.
-    pub error: Option<BridgePaneFailure>,
 }
 
 /// A command the pane runs for its candidate whose failure the pane states.
@@ -487,52 +432,4 @@ mirror_enum! {
     BridgeMetadataPresentation = bae_import::MetadataPresentation,
     from_core: pub(crate) fn,
     variants: { Draft, FindOnline },
-}
-
-mirror_enum! {
-    #[cfg(desktop)]
-    BridgeFindOnlineSection = bae_import::FindOnlineSection,
-    from_core: pub(crate) fn,
-    into_core: pub(crate) fn,
-    variants: { Automatic, Search },
-}
-
-mirror_enum! {
-    #[cfg(desktop)]
-    BridgePaneMove = bae_import::PaneMove,
-    into_core: pub(crate) fn,
-    variants: {
-        Search,
-        OpenSection(section: (BridgeFindOnlineSection)),
-        FindOnline,
-        Back,
-    },
-}
-
-mirror_enum! {
-    #[cfg(desktop)]
-    BridgeSearchTab = bae_import::SearchTab,
-    from_core: fn,
-    into_core: fn,
-    variants: { General, CatalogNumber, Barcode },
-}
-
-mirror_struct! {
-    #[cfg(desktop)]
-    BridgeSearchForm = bae_import::SearchForm,
-    from_core: fn,
-    into_core: pub(crate) fn,
-    fields: { tab: (BridgeSearchTab), artist, album, catalog, barcode },
-}
-
-mirror_struct! {
-    #[cfg(desktop)]
-    BridgeCandidateSession = bae_import::CandidateSession,
-    from_core: pub(crate) fn,
-    fields: {
-        presentation: (BridgeMetadataPresentation),
-        find_online_section: (BridgeFindOnlineSection),
-        search: (BridgeSearchForm),
-        error: (opt BridgePaneFailure),
-    },
 }

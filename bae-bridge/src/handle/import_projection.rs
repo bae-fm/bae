@@ -750,7 +750,8 @@ impl crate::types::BridgeCandidateDraftPane {
             // pane reads it back.
             lookup_choices: _,
             failure,
-            session,
+            pane_failure,
+            opens_on,
         } = draft;
         Self {
             picked_library_status: picked_library_status
@@ -767,7 +768,8 @@ impl crate::types::BridgeCandidateDraftPane {
             cover: cover.map(crate::types::BridgeCoverChoice::from_core),
             failure: failure
                 .map(|failure| crate::types::BridgeError::from_core(failure.reason.ui_error())),
-            session: crate::types::BridgeCandidateSession::from_core(session),
+            pane_failure: pane_failure.map(crate::types::BridgePaneFailure::from_core),
+            opens_on: crate::types::BridgeMetadataPresentation::from_core(opens_on),
         }
     }
 }

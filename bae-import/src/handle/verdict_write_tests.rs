@@ -304,46 +304,34 @@ async fn a_stored_verdict_takes_over_from_the_recorded_runtime_state() {
 }
 
 /// A run that applied its own pick and whose release passed every check
-/// against the folder leaves the draft and its Import as all there is to see, so the stored pane moves to
-/// the draft in the same write — from Find online, where the person was
-/// watching the run.
+/// against the folder leaves the draft and its Import as all there is to see,
+/// so the pane opens on the draft.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_settled_pick_that_asks_nothing_opens_the_pane_on_the_draft() {
     let fixture = Fixture::new("settled-draft").await;
     let dir = fixture.disc_id_candidate("Album");
-    let key = crate::CandidateKey::folder(&dir);
     let probed = fixture.probed_total_ms(&dir);
     fixture.scan(1).await;
     fixture.archive("mb-settled-1", "rg-settled-1", &[probed, 0]).await;
-    fixture.import.move_candidate_pane(&key, crate::PaneMove::FindOnline).await.unwrap();
 
     fixture.store_settled_verdict(&dir, "mb-settled-1", "rg-settled-1").await;
 
     assert_eq!(fixture.judgement_for(&dir).await, (true, None));
     assert_eq!(
-        fixture
-            .pane(&dir)
-            .await
-            .expect("the candidate reads back")
-            .draft()
-            .unwrap()
-            .session
-            .presentation,
+        fixture.pane(&dir).await.expect("the candidate reads back").draft().unwrap().opens_on,
         crate::MetadataPresentation::Draft
     );
 }
 
 /// A picked release that failed a check against the folder — here, it lists
-/// no tracks to count against the folder's — leaves the pane where the person
-/// left it.
+/// no tracks to count against the folder's — is a question, so the pane opens
+/// on Find online.
 #[tokio::test(flavor = "multi_thread")]
-async fn a_settled_pick_that_asks_something_leaves_the_pane_where_it_was() {
+async fn a_settled_pick_that_asks_something_opens_the_pane_on_find_online() {
     let fixture = Fixture::new("settled-asks").await;
     let dir = fixture.disc_id_candidate("Album");
-    let key = crate::CandidateKey::folder(&dir);
     fixture.scan(1).await;
     fixture.archive("mb-settled-2", "rg-settled-2", &[0, 0]).await;
-    fixture.import.move_candidate_pane(&key, crate::PaneMove::FindOnline).await.unwrap();
 
     fixture
         .store_settled_verdict_listing(
@@ -359,14 +347,7 @@ async fn a_settled_pick_that_asks_something_leaves_the_pane_where_it_was() {
         (false, Some(bae_identify::FolderCheck::SourceTracksUnknown))
     );
     assert_eq!(
-        fixture
-            .pane(&dir)
-            .await
-            .expect("the candidate reads back")
-            .draft()
-            .unwrap()
-            .session
-            .presentation,
+        fixture.pane(&dir).await.expect("the candidate reads back").draft().unwrap().opens_on,
         crate::MetadataPresentation::FindOnline
     );
 }

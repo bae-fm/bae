@@ -23,7 +23,7 @@ struct ImportOnlineBrowserTests {
             )
         )
         let candidate = try #require(store.candidate(forKey: key))
-        var moves: [BridgePaneMove] = []
+        var moves: [PaneMove] = []
         let view = ImportMetadataSourceSection(
             candidate: candidate,
             actionable: true,

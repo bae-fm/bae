@@ -40,7 +40,7 @@ extension ImportView {
     }
 
     /// Move the pane as the person asked.
-    func movePane(_ paneMove: BridgePaneMove, for candidate: Candidate) {
+    func movePane(_ paneMove: PaneMove, for candidate: Candidate) {
         ImportMappingFlow.movePane(
             paneMove,
             for: candidate,

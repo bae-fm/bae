@@ -1,57 +1,30 @@
-//! The pane's session: its parts read back as written, a pane command's
-//! failure stored until the next command, and identification's results asked
+//! What core keeps of the pane: a pane command's failure stored until the
+//! next command, where the pane opens, and identification's results asked
 //! for: a stored verdict shown as it stood, else a run owed.
 
 use crate::handle::tests::*;
 use crate::identification::tests::*;
-use crate::{
-    ImportError, MetadataPresentation, PaneCommand, PaneFailure, PaneMove, PaneOutcome, SearchForm,
-    SearchTab,
-};
+use crate::{ImportError, MetadataPresentation, PaneCommand, PaneFailure, PaneOutcome};
 use bae_diagnostics::{UiError, UiErrorCategory};
 
-/// The pane's state comes back with the candidate: each write lands on the
-/// next read, and a write of one part leaves the others where they were.
+/// A picked candidate nobody is identifying opens on its draft.
 #[tokio::test(flavor = "multi_thread")]
-async fn the_pane_s_session_reads_back_part_by_part() {
+async fn a_picked_candidate_opens_on_the_draft() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
-    // A picked candidate opens on the draft until told otherwise.
-    assert_eq!(
-        pane(&handle, &key).await.draft().unwrap().session.presentation,
-        MetadataPresentation::Draft
-    );
-
-    handle.move_candidate_pane(&key, PaneMove::Search).await.unwrap();
-    let form = SearchForm {
-        tab: SearchTab::CatalogNumber,
-        artist: "Artist".to_string(),
-        album: String::new(),
-        catalog: "WPCR-80001".to_string(),
-        barcode: String::new(),
-    };
-    handle.set_candidate_search_form(&key, form.clone()).await.unwrap();
-
-    let session = pane(&handle, &key).await.draft().unwrap().session.clone();
-    assert_eq!(session.presentation, MetadataPresentation::FindOnline);
-    assert_eq!(session.find_online_section, crate::FindOnlineSection::Search);
-    assert_eq!(session.search, form);
-    assert_eq!(session.error, None);
-
-    // Back to the draft keeps the section Find online opens on.
-    handle.move_candidate_pane(&key, PaneMove::Back).await.unwrap();
-    let session = pane(&handle, &key).await.draft().unwrap().session.clone();
-    assert_eq!(session.presentation, MetadataPresentation::Draft);
-    assert_eq!(session.find_online_section, crate::FindOnlineSection::Search);
-
+    assert_eq!(pane(&handle, &key).await.draft().unwrap().opens_on, MetadataPresentation::Draft);
     shut_down(handle).await;
 }
 
-/// A key that names no scanned folder has no session to write.
+/// A key that names no scanned folder has no pane failure to store.
 #[tokio::test(flavor = "multi_thread")]
-async fn a_session_write_for_an_unknown_key_is_refused() {
+async fn a_pane_failure_for_an_unknown_key_is_refused() {
     let (handle, _tmp, _key, _hash) = pane_fixture().await;
     let refused = handle
-        .move_candidate_pane(&crate::CandidateKey::test("/nowhere/at/all"), PaneMove::FindOnline)
+        .run_pane_command(
+            &crate::CandidateKey::test("/nowhere/at/all"),
+            PaneCommand::ReadFileTags,
+            async { Err::<(), _>(ImportError::CandidateImportInProgress) },
+        )
         .await;
     assert!(refused.is_err());
     shut_down(handle).await;
@@ -63,7 +36,6 @@ async fn a_session_write_for_an_unknown_key_is_refused() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_pane_command_s_failure_is_stored_until_the_next_command() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
-    handle.move_candidate_pane(&key, PaneMove::FindOnline).await.unwrap();
 
     let failed = handle
         .run_pane_command(&key, PaneCommand::ReadFileTags, async {
@@ -72,9 +44,8 @@ async fn a_pane_command_s_failure_is_stored_until_the_next_command() {
         .await
         .unwrap();
     assert_eq!(failed, PaneOutcome::Failed);
-    let session = pane(&handle, &key).await.draft().unwrap().session.clone();
     assert_eq!(
-        session.error,
+        pane(&handle, &key).await.draft().unwrap().pane_failure,
         Some(PaneFailure {
             command: PaneCommand::ReadFileTags,
             error: UiError::diagnostic(
@@ -83,18 +54,13 @@ async fn a_pane_command_s_failure_is_stored_until_the_next_command() {
             ),
         })
     );
-    assert_eq!(
-        session.presentation,
-        MetadataPresentation::FindOnline,
-        "a stored failure touches nothing else"
-    );
 
     let done = handle
         .run_pane_command(&key, PaneCommand::Import, async { Ok::<_, ImportError>(()) })
         .await
         .unwrap();
     assert_eq!(done, PaneOutcome::Done);
-    assert_eq!(pane(&handle, &key).await.draft().unwrap().session.error, None);
+    assert_eq!(pane(&handle, &key).await.draft().unwrap().pane_failure, None);
     shut_down(handle).await;
 }
 
@@ -122,15 +88,13 @@ async fn automatic_shows_a_stored_verdict_without_asking_again() {
     fixture.store_settled_verdict(&dir, "mb-automatic-1", "rg-automatic-1").await;
     let asked = fixture.provider.requests().len();
 
-    assert!(!fixture.import.open_automatic(&key).await.unwrap(), "a stored verdict owes no run");
+    assert!(
+        !fixture.import.automatic_run_owed(&key).await.unwrap(),
+        "a stored verdict owes no run"
+    );
 
     assert_eq!(fixture.provider.requests().len(), asked);
     let pane = fixture.pane(&dir).await.expect("the candidate reads back");
-    assert_eq!(pane.draft().unwrap().session.presentation, crate::MetadataPresentation::FindOnline);
-    assert_eq!(
-        pane.draft().unwrap().session.find_online_section,
-        crate::FindOnlineSection::Automatic
-    );
     assert!(
         !matches!(pane.resumed_identify_state, bae_identify::IdentifyStateView::Idle),
         "the stored verdict is what shows"
@@ -153,18 +117,7 @@ async fn automatic_with_no_stored_verdict_owes_a_run() {
     let key = crate::CandidateKey::folder(&dir);
     fixture.scan(1).await;
 
-    assert!(fixture.import.open_automatic(&key).await.unwrap());
-    assert_eq!(
-        fixture
-            .pane(&dir)
-            .await
-            .expect("the candidate reads back")
-            .draft()
-            .unwrap()
-            .session
-            .presentation,
-        crate::MetadataPresentation::FindOnline
-    );
+    assert!(fixture.import.automatic_run_owed(&key).await.unwrap());
 }
 
 /// Import the fixture's candidate, given the artist its draft lacks, and
@@ -202,16 +155,18 @@ fn already_imported<T: std::fmt::Debug>(answer: &Result<T, ImportError>, release
 async fn an_imported_candidate_s_pane_answers_that_its_files_are_imported() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
     let release_id = imported(&handle, &key).await;
-    let sessions = || async {
-        handle.services.store.every_row_for_test().await.unwrap().remove("import_candidate_session")
+    let failures = || async {
+        handle
+            .services
+            .store
+            .every_row_for_test()
+            .await
+            .unwrap()
+            .remove("import_candidate_pane_failure")
     };
-    let before = sessions().await;
+    let before = failures().await;
 
-    let moved = handle.move_candidate_pane(&key, PaneMove::FindOnline).await;
-    assert!(already_imported(&moved, &release_id), "{moved:?}");
-    let searched = handle.set_candidate_search_form(&key, SearchForm::default()).await;
-    assert!(already_imported(&searched, &release_id), "{searched:?}");
-    let automatic = handle.open_automatic(&key).await;
+    let automatic = handle.automatic_run_owed(&key).await;
     assert!(already_imported(&automatic, &release_id), "{automatic:?}");
     let cleared = handle.clear_pane_failure(&key).await;
     assert!(already_imported(&cleared, &release_id), "{cleared:?}");
@@ -234,7 +189,7 @@ async fn an_imported_candidate_s_pane_answers_that_its_files_are_imported() {
     let again = handle.start_import(&key).await;
     assert!(already_imported(&again, &release_id), "{again:?}");
 
-    assert_eq!(sessions().await, before, "nothing stored a pane for the imported candidate");
+    assert_eq!(failures().await, before, "nothing stored a pane for the imported candidate");
     shut_down(handle).await;
 }
 

@@ -464,18 +464,6 @@ forward! {
                 .collect())
         }
 
-        /// Move the candidate's pane as the person asked, by the rule core
-        /// moves every pane by, so clicking away and back lands where it was.
-        fn move_candidate_pane(
-            candidate_key: Vec<u8>,
-            pane_move: crate::types::BridgePaneMove,
-        ) -> () {
-            Ok(this
-                .services
-                .import_move_candidate_pane(&candidate_key.into(), pane_move.into_core())
-                .await?)
-        }
-
         /// Show identification's results for the candidate: its stored verdict
         /// as it stood, picked row and all, when there is one, and a run
         /// started when there is none.
@@ -483,17 +471,6 @@ forward! {
             Ok(this
                 .services
                 .pane_identify_automatically(candidate_key.into())
-                .await?)
-        }
-
-        /// Record the typed-search form as the person left it.
-        fn set_candidate_search_form(
-            candidate_key: Vec<u8>,
-            search: crate::types::BridgeSearchForm,
-        ) -> () {
-            Ok(this
-                .services
-                .import_set_candidate_search_form(&candidate_key.into(), search.into_core())
                 .await?)
         }
 

@@ -109,10 +109,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         )
         let importStore = ImportStore()
         let importer = Importer(handle: appHandle)
-        importStore.sessionWriter = CandidateSessionWriter(
-            importer: importer,
-            reportFailure: { uiStore.showError($0) }
-        )
+        importStore.onFailure = { uiStore.showError($0) }
         self.uiStore = uiStore
         self.importStore = importStore
         libraryNameStore = LibraryNameStore(

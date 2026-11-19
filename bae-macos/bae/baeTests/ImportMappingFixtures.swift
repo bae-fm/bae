@@ -424,7 +424,8 @@ extension MappingFixtures {
                         ),
                     cover: nil,
                     failure: failure,
-                    session: session(presentation: presentation)
+                    paneFailure: nil,
+                    opensOn: presentation
                 )
             )
         )
@@ -449,24 +450,6 @@ extension MappingFixtures {
             ),
             trackCount: 13,
             skipped: false,
-        )
-    }
-
-    /// A pane session with an empty form and no banner, on `presentation`.
-    static func session(
-        presentation: BridgeMetadataPresentation = .draft
-    ) -> BridgeCandidateSession {
-        BridgeCandidateSession(
-            presentation: presentation,
-            findOnlineSection: .automatic,
-            search: BridgeSearchForm(
-                tab: .general,
-                artist: "",
-                album: "",
-                catalog: "",
-                barcode: ""
-            ),
-            error: nil
         )
     }
 

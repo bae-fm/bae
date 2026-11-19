@@ -27,10 +27,9 @@ final class SettingsNavigationTests: XCTestCase {
 @MainActor
 @Suite("ImportSearchFlow metadata application")
 struct ImportSearchFlowMetadataApplicationTests {
-    @Test("the read landing ends the pick; core moves the pane")
+    @Test("the read landing ends the pick and puts the pane on the draft")
     func theReadLandingReturnsToTheDraft() async throws {
-        let writes = SessionWriteRecorder()
-        let store = unsettledStore(writes: writes)
+        let store = unsettledStore()
         let recorder = PickRecorder()
         let importer = Importer(
             applyCandidateExternalMetadata: { _, link, _ in
@@ -51,7 +50,10 @@ struct ImportSearchFlowMetadataApplicationTests {
                 forKey: MappingFixtures.candidateKey
             ) == nil
         }
-        #expect(writes.paneMoves(forKey: MappingFixtures.candidateKey).isEmpty)
+        #expect(
+            store.candidate(forKey: MappingFixtures.candidateKey)?
+                .metadataPresentation == .draft
+        )
 
         #expect(recorder.links == [MappingFixtures.link])
         #expect(
@@ -137,8 +139,8 @@ struct ImportSearchFlowMetadataApplicationTests {
 
     @Test("a failed read keeps its error on the release, not on the pane")
     func failedReadKeepsItsErrorOnTheRelease() async throws {
-        let writes = SessionWriteRecorder()
-        let store = unsettledStore(writes: writes)
+        let failures = FailureRecorder()
+        let store = unsettledStore(failures: failures)
         let importer = Importer(
             applyCandidateExternalMetadata: { _, _, _ in
                 throw StubError.notImplemented
@@ -169,12 +171,8 @@ struct ImportSearchFlowMetadataApplicationTests {
             )?
             .release.key == MappingFixtures.releaseId
         )
-        #expect(
-            writes.reportedFailures().isEmpty
-        )
-        #expect(
-            writes.paneMoves(forKey: MappingFixtures.candidateKey).isEmpty
-        )
+        #expect(failures.reportedFailures().isEmpty)
+        #expect(after.metadataPresentation == .findOnline)
     }
 }
 
@@ -314,12 +312,14 @@ extension ImportSearchFlowMetadataApplicationTests {
         )
     }
 
+    /// A store whose one candidate's pane stands on Find online, where a
+    /// pick is made.
     private func unsettledStore(
-        writes: SessionWriteRecorder? = nil
+        failures: FailureRecorder? = nil
     ) -> ImportStore {
         let store = ImportStore()
-        if let writes {
-            store.sessionWriter = .recording { writes.record($0) }
+        if let failures {
+            store.onFailure = { failures.record($0) }
         }
         store.applyCandidateDetail(
             key: MappingFixtures.candidateKey,
@@ -327,7 +327,8 @@ extension ImportSearchFlowMetadataApplicationTests {
                 mapping: nil,
                 edit: MappingFixtures.blankEdit,
                 metadataProvenance: nil,
-                releaseLink: nil
+                releaseLink: nil,
+                presentation: .findOnline
             )
         )
         return store

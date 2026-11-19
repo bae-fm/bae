@@ -296,10 +296,7 @@ pub use release_reads::ReleaseReads;
 pub use scan_passes::store_scan_item;
 #[cfg(desktop)]
 pub use service::ImportService;
-pub use session::{
-    CandidateSession, FindOnlineSection, MetadataPresentation, PaneCommand, PaneFailure, PaneMove,
-    PaneOutcome, SearchForm, SearchTab,
-};
+pub use session::{MetadataPresentation, PaneCommand, PaneFailure, PaneOutcome};
 #[cfg(desktop)]
 pub use tables::SCHEMA_PARTS;
 #[cfg(desktop)]

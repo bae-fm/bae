@@ -156,15 +156,15 @@ struct ImportMappingPaneTests {
         "restored and arriving match lists appear inline until identity settles"
     )
     func matchListsAppearInlineUntilIdentitySettles() {
-        var browsing = Candidate(
+        let browsing = Candidate(
             detail: MappingFixtures.detail(
                 mapping: MappingFixtures.thirteenFileTable,
                 edit: MappingFixtures.blankEdit,
                 metadataProvenance: nil,
-                releaseLink: nil
+                releaseLink: nil,
+                presentation: .findOnline
             )
         )
-        browsing.session.presentation = .findOnline
         #expect(browsing.metadataPresentation == .findOnline)
         #expect(
             area(runtime: runtime(shown: PreviewData.bridgeDisagreementState))
@@ -328,8 +328,8 @@ extension ImportMappingPaneTests {
         let before = try #require(
             store.selectedCandidates[MappingFixtures.candidateKey]?.detail
         )
-        let writes = SessionWriteRecorder()
-        store.sessionWriter = .recording { writes.record($0) }
+        let failures = FailureRecorder()
+        store.onFailure = { failures.record($0) }
         let recorder = Recorder()
         recorder.pickFailure = StubError.notImplemented
 
@@ -356,9 +356,7 @@ extension ImportMappingPaneTests {
         let candidate = try #require(
             store.selectedCandidates[MappingFixtures.candidateKey]
         )
-        #expect(
-            writes.reportedFailures().isEmpty
-        )
+        #expect(failures.reportedFailures().isEmpty)
         #expect(candidate.error == nil)
         let failure = store.releaseSelectionFailure(
             forKey: MappingFixtures.candidateKey

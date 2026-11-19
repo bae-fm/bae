@@ -14,7 +14,7 @@ extension MacFindOnline {
         state: ImportSearchState,
         searchArtist: String = "",
         searchAlbum: String = "",
-        openSection: BridgeFindOnlineSection = .automatic,
+        openSection: FindOnlineSection = .automatic,
         onRetryFailed: @escaping () -> Void = {},
         showsDiscogsBar: Bool = false,
     ) -> MacFindOnline {

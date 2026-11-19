@@ -28,11 +28,10 @@ struct ImportMappingServices {
 /// leaves behind, what naming a row changes, what assigning a cue to a disc
 /// re-reads — is exercised without a view hierarchy.
 enum ImportMappingFlow {
-    /// Move the pane as the person asked; core moves it by the rule it moves
-    /// every pane by. Moving starts nothing.
+    /// Move the pane as the person asked. Moving starts nothing.
     @MainActor
     static func movePane(
-        _ paneMove: BridgePaneMove,
+        _ paneMove: PaneMove,
         for candidate: Candidate,
         services: ImportMappingServices
     ) {
@@ -48,6 +47,7 @@ enum ImportMappingFlow {
         services: ImportMappingServices
     ) {
         let key = candidate.key
+        services.importStore.movePane(.automatic, forKey: key)
         Task { @MainActor in
             do { try await services.importer.identifyAutomatically(key) }
             catch { services.importStore.reportFailure(error) }

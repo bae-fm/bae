@@ -1,63 +1,13 @@
-//! The pane's per-candidate state between visits: which surface it shows,
-//! the typed-search form, and the last command that failed.
-//! Its table is `session_rows.sql`, which every device's library holds.
+//! The import pane's last command for a candidate, when it failed: which
+//! command, and why. Its table is `pane_failure_rows.sql`, which every
+//! device's library holds.
 
-pub(super) const SQL: &str = include_str!("session_rows.sql");
+pub(super) const SQL: &str = include_str!("pane_failure_rows.sql");
 
 use super::*;
-use crate::{
-    CandidateSession, FindOnlineSection, MetadataPresentation, PaneCommand, PaneFailure, PaneMove,
-    SearchForm, SearchTab,
-};
+use crate::{PaneCommand, PaneFailure};
 use bae_diagnostics::{GroupingBlockReason, UiError, UiErrorCategory};
 use bae_types::edit_validation::EditValidationError;
-
-fn presentation_column(presentation: MetadataPresentation) -> &'static str {
-    match presentation {
-        MetadataPresentation::Draft => "draft",
-        MetadataPresentation::FindOnline => "find_online",
-    }
-}
-
-fn presentation_of(column: &str) -> Result<MetadataPresentation, DbError> {
-    match column {
-        "draft" => Ok(MetadataPresentation::Draft),
-        "find_online" => Ok(MetadataPresentation::FindOnline),
-        other => Err(DbError::unreadable("import_candidate_session.presentation", other)),
-    }
-}
-
-fn section_column(section: FindOnlineSection) -> &'static str {
-    match section {
-        FindOnlineSection::Automatic => "automatic",
-        FindOnlineSection::Search => "search",
-    }
-}
-
-fn section_of(column: &str) -> Result<FindOnlineSection, DbError> {
-    match column {
-        "automatic" => Ok(FindOnlineSection::Automatic),
-        "search" => Ok(FindOnlineSection::Search),
-        other => Err(DbError::unreadable("import_candidate_session.find_online_section", other)),
-    }
-}
-
-fn tab_column(tab: SearchTab) -> &'static str {
-    match tab {
-        SearchTab::General => "general",
-        SearchTab::CatalogNumber => "catalog_number",
-        SearchTab::Barcode => "barcode",
-    }
-}
-
-fn tab_of(column: &str) -> Result<SearchTab, DbError> {
-    match column {
-        "general" => Ok(SearchTab::General),
-        "catalog_number" => Ok(SearchTab::CatalogNumber),
-        "barcode" => Ok(SearchTab::Barcode),
-        other => Err(DbError::unreadable("import_candidate_session.search_tab", other)),
-    }
-}
 
 fn command_column(command: PaneCommand) -> &'static str {
     match command {
@@ -82,7 +32,7 @@ fn command_of(column: &str) -> Result<PaneCommand, DbError> {
         "keep_own_draft" => PaneCommand::KeepOwnDraft,
         "link_shared_album" => PaneCommand::LinkSharedAlbum,
         "unlink" => PaneCommand::Unlink,
-        other => return Err(DbError::unreadable("import_candidate_session.error_command", other)),
+        other => return Err(DbError::unreadable("import_candidate_pane_failure.command", other)),
     })
 }
 
@@ -200,7 +150,7 @@ fn category_of(column: &str) -> Result<UiErrorCategory, DbError> {
     use bae_diagnostics::UiErrorClass as K;
     use GroupingBlockReason as B;
     use UiErrorCategory as C;
-    const WHAT: &str = "import_candidate_session.error_category";
+    const WHAT: &str = "import_candidate_pane_failure.category";
     let unreadable = || DbError::unreadable(WHAT, column);
     let unreadable_because =
         |error: &dyn std::fmt::Display| DbError::unreadable(WHAT, format!("{column}: {error}"));
@@ -294,212 +244,81 @@ fn category_of(column: &str) -> Result<UiErrorCategory, DbError> {
     })
 }
 
-/// The stored session's columns, as one read gives them.
-type SessionRow = (
-    String,
-    String,
-    String,
-    String,
-    String,
-    String,
-    Option<String>,
-    Option<String>,
-    Option<String>,
-    String,
-);
-
-/// The session columns of `import_candidate_session`, which [`session_row`]
-/// reads, for a statement that adds its own `WHERE`.
-const SESSION_COLUMNS: &str = "SELECT presentation, search_tab, search_artist, search_album, \
-            search_catalog, search_barcode, \
-            error_command, error_category, error_detail, find_online_section \
-     FROM import_candidate_session";
-
-fn session_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<SessionRow> {
-    Ok((
-        row.get(0)?,
-        row.get(1)?,
-        row.get(2)?,
-        row.get(3)?,
-        row.get(4)?,
-        row.get(5)?,
-        row.get(6)?,
-        row.get(7)?,
-        row.get(8)?,
-        row.get(9)?,
-    ))
-}
-
-fn session_of(row: SessionRow) -> Result<CandidateSession, DbError> {
-    let (presentation, tab, artist, album, catalog, barcode, command, category, detail, section) =
-        row;
-    let error = match (command, category, detail) {
-        (Some(command), Some(category), Some(detail)) => Some(PaneFailure {
-            command: command_of(&command)?,
-            error: UiError::Diagnostic { category: category_of(&category)?, detail },
-        }),
-        (None, None, None) => None,
-        stored => {
-            return Err(DbError::unreadable("import_candidate_session's pane failure", stored))
-        }
-    };
-    Ok(CandidateSession {
-        presentation: presentation_of(&presentation)?,
-        find_online_section: section_of(&section)?,
-        search: SearchForm { tab: tab_of(&tab)?, artist, album, catalog, barcode },
-        error,
-    })
-}
-
-/// The session the pane left for `candidate`, or `None` before it has
-/// touched the candidate.
-pub(super) fn load_session_on(
+/// The failure the pane states for `candidate`'s last command, or `None`
+/// when that command did not fail.
+pub(super) fn load_pane_failure_on(
     sql: &SqlReadContext<'_>,
     candidate: OneCandidate<'_>,
-) -> Result<Option<CandidateSession>, DbError> {
+) -> Result<Option<PaneFailure>, DbError> {
     let filter = candidate.filter("content_hash");
     sql.query_row(
-        &format!("{SESSION_COLUMNS} {}", filter.clause),
+        &format!(
+            "SELECT command, category, detail FROM import_candidate_pane_failure {}",
+            filter.clause
+        ),
         filter.params().as_slice(),
-        session_row,
+        |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, String>(2)?)),
     )
     .optional()?
-    .map(session_of)
+    .map(|(command, category, detail)| {
+        Ok(PaneFailure {
+            command: command_of(&command)?,
+            error: UiError::Diagnostic { category: category_of(&category)?, detail },
+        })
+    })
     .transpose()
 }
 
-/// Forget where the pane of `content_hash` was.
-pub(super) fn delete_session(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
-    sql.execute("DELETE FROM import_candidate_session WHERE content_hash = ?", [content_hash])?;
-    Ok(())
-}
-
-/// Store `session` whole for `content_hash`, inside the caller's write.
-fn save_session_on(
-    sql: &CovenWrite<'_>,
-    content_hash: &str,
-    session: &CandidateSession,
-) -> Result<(), DbError> {
-    let (error_command, error_category, error_detail) = match &session.error {
-        Some(failure) => {
-            let UiError::Diagnostic { category, detail } = &failure.error;
-            (
-                Some(command_column(failure.command)),
-                Some(category_column(category.clone())),
-                Some(detail.clone()),
-            )
-        }
-        None => (None, None, None),
-    };
-    let affected = sql.execute(
-        "INSERT INTO import_candidate_session (\
-             content_hash, presentation, find_online_section, search_tab, \
-             search_artist, search_album, search_catalog, search_barcode, \
-             error_command, error_category, error_detail) \
-         SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? \
-         WHERE EXISTS (SELECT 1 FROM import_candidate_state WHERE content_hash = ?) \
-         ON CONFLICT (content_hash) DO UPDATE SET \
-             presentation = excluded.presentation, \
-             find_online_section = excluded.find_online_section, \
-             search_tab = excluded.search_tab, \
-             search_artist = excluded.search_artist, \
-             search_album = excluded.search_album, \
-             search_catalog = excluded.search_catalog, \
-             search_barcode = excluded.search_barcode, \
-             error_command = excluded.error_command, \
-             error_category = excluded.error_category, \
-             error_detail = excluded.error_detail",
-        params![
-            content_hash,
-            presentation_column(session.presentation),
-            section_column(session.find_online_section),
-            tab_column(session.search.tab),
-            session.search.artist,
-            session.search.album,
-            session.search.catalog,
-            session.search.barcode,
-            error_command,
-            error_category,
-            error_detail,
-            content_hash,
-        ],
+/// Forget the failure the pane states for `content_hash`'s last command.
+pub(super) fn delete_pane_failure(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
+    sql.execute(
+        "DELETE FROM import_candidate_pane_failure WHERE content_hash = ?",
+        [content_hash],
     )?;
-    // Written under the folder-state lock, after a read under it found the
-    // candidate listed, and a listed candidate holds a state row.
-    assert!(affected == 1, "the pane's session has no candidate state row to hang off");
     Ok(())
-}
-
-/// Move the candidate's pane by the one rule, [`CandidateSession::moved`],
-/// leaving the rest of its session as it is. A candidate with no session yet
-/// gets a fresh one moved the same way; one with no state row gets nothing.
-pub(crate) fn move_pane_on(
-    sql: &CovenWrite<'_>,
-    content_hash: &str,
-    pane_move: PaneMove,
-) -> Result<(), DbError> {
-    let has_state = sql
-        .query_row(
-            "SELECT 1 FROM import_candidate_state WHERE content_hash = ?",
-            [content_hash],
-            |_| Ok(()),
-        )
-        .optional()?
-        .is_some();
-    if !has_state {
-        return Ok(());
-    }
-    // Every move names where the pane goes, so a session nobody has touched
-    // moves the same from any starting surface.
-    let session = sql
-        .query_row(
-            &format!("{SESSION_COLUMNS} WHERE content_hash = ?"),
-            [content_hash],
-            session_row,
-        )
-        .optional()?
-        .map(session_of)
-        .transpose()?
-        .unwrap_or_else(|| CandidateSession::initial(false, false))
-        .moved(pane_move);
-    save_session_on(sql, content_hash, &session)
 }
 
 impl ImportTables {
-    /// Move the pane of every one of these candidates by `pane_move`, in one
-    /// call, so an admission is one act and the pane of a candidate a person
-    /// is looking at follows it in the same read as the rest.
-    pub async fn move_import_candidate_panes(
+    /// Store `failure` as the failure the pane states for `content_hash`'s
+    /// last command, or none.
+    pub async fn save_import_pane_failure(
         &self,
-        content_hashes: Vec<String>,
-        pane_move: PaneMove,
+        content_hash: &str,
+        failure: Option<PaneFailure>,
     ) -> Result<(), DbError> {
-        if content_hashes.is_empty() {
-            return Ok(());
-        }
+        let content_hash = content_hash.to_string();
         self.store
             .call(move |sql| {
-                for content_hash in &content_hashes {
-                    move_pane_on(sql, content_hash, pane_move)?;
-                }
+                let Some(PaneFailure { command, error }) = failure else {
+                    return delete_pane_failure(sql, &content_hash);
+                };
+                let UiError::Diagnostic { category, detail } = error;
+                let affected = sql.execute(
+                    "INSERT INTO import_candidate_pane_failure \
+                         (content_hash, command, category, detail) \
+                     SELECT ?1, ?2, ?3, ?4 \
+                     WHERE EXISTS (SELECT 1 FROM import_candidate_state WHERE content_hash = ?1) \
+                     ON CONFLICT (content_hash) DO UPDATE SET \
+                         command = excluded.command, \
+                         category = excluded.category, \
+                         detail = excluded.detail",
+                    params![
+                        content_hash,
+                        command_column(command),
+                        category_column(category),
+                        detail
+                    ],
+                )?;
+                // Written under the folder-state lock, after a read under it
+                // found the candidate listed, and a listed candidate holds a
+                // state row.
+                assert!(affected == 1, "the pane's failure has no candidate state row to hang off");
                 Ok(())
             })
             .await
     }
-
-    /// Record the pane's state for a candidate, whole: the row is the session,
-    /// and the caller hands over the next value of all of it.
-    pub async fn save_import_candidate_session(
-        &self,
-        content_hash: &str,
-        session: &CandidateSession,
-    ) -> Result<(), DbError> {
-        let content_hash = content_hash.to_string();
-        let session = session.clone();
-        self.store.call(move |sql| save_session_on(sql, &content_hash, &session)).await
-    }
 }
 
 #[cfg(test)]
-#[path = "session_rows_tests.rs"]
+#[path = "pane_failure_rows_tests.rs"]
 mod tests;

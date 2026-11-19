@@ -17,7 +17,7 @@ struct ImportMetadataSourceSection: View {
     let endEditing: @MainActor () async -> Void
     let commit: ImportCommitControls?
     /// Move the pane as the person asked.
-    let onMovePane: (BridgePaneMove) -> Void
+    let onMovePane: (PaneMove) -> Void
     /// Show identification's results for this candidate, as core decides.
     let onIdentify: () -> Void
     /// Open the pane on its typed search, starting nothing.
@@ -93,7 +93,7 @@ struct ImportMetadataSourceSection: View {
 private struct ImportOnlineMetadataBrowser: View {
     let candidateKey: Data
     let endEditing: @MainActor () async -> Void
-    let onMovePane: (BridgePaneMove) -> Void
+    let onMovePane: (PaneMove) -> Void
 
     @Environment(Importer.self)
     private var importer
@@ -116,9 +116,9 @@ private struct ImportOnlineMetadataBrowser: View {
                         candidate: candidate,
                         key: candidateKey,
                         runtime: runtime,
-                        openSection: candidate.session.findOnlineSection,
+                        openSection: candidate.panePosition.findOnlineSection,
                         onOpenSection: {
-                            onMovePane(.openSection(section: $0))
+                            onMovePane(.openSection($0))
                         },
                         onKeepOwnDraft: keepOwnDraft,
                         onLinkSharedAlbum: linkSharedAlbum,
@@ -147,23 +147,30 @@ private struct ImportOnlineMetadataBrowser: View {
         }
     }
 
-    /// Keep the candidate's own draft over what its lookup offered. Its
-    /// failure is stated on the pane, from what core stored.
+    /// Keep the candidate's own draft over what its lookup offered, and go
+    /// back to the draft once core holds it. Its failure is stated on the
+    /// pane, from what core stored.
     private func keepOwnDraft() {
         Task { @MainActor in
             await endEditing()
-            do { _ = try await importer.keepCandidateDraft(candidateKey) }
+            do {
+                if try await importer.keepCandidateDraft(candidateKey) == .done
+                {
+                    onMovePane(.picked)
+                }
+            }
             catch is CancellationError {}
             catch { importStore.reportFailure(error) }
         }
     }
 
-    /// Take the candidate off the identification queue; core puts the pane
-    /// back on the draft, as Back does.
+    /// Take the candidate off the identification queue, and go back to the
+    /// draft once it is off, as Back does.
     private func cancelIdentification() {
         Task { @MainActor in
             do {
                 try await importer.cancelCandidateIdentification(candidateKey)
+                onMovePane(.back)
             }
             catch is CancellationError {}
             catch { importStore.reportFailure(error) }
@@ -171,13 +178,17 @@ private struct ImportOnlineMetadataBrowser: View {
     }
 
     /// Link the candidate to the album the offered pressings are of, its
-    /// pressing unknown. Its failure is stated on the pane, from what core
-    /// stored.
+    /// pressing unknown, and go back to the draft once core holds it. Its
+    /// failure is stated on the pane, from what core stored.
     private func linkSharedAlbum() {
         Task { @MainActor in
             await endEditing()
             do {
-                _ = try await importer.linkCandidateSharedAlbum(candidateKey)
+                if try await importer.linkCandidateSharedAlbum(candidateKey)
+                    == .done
+                {
+                    onMovePane(.picked)
+                }
             }
             catch is CancellationError {}
             catch { importStore.reportFailure(error) }

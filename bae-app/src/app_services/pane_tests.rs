@@ -157,8 +157,7 @@ impl Library {
 }
 
 /// A person cancelling a waiting candidate from its pane takes it off the
-/// queue, stores nothing for it, and puts the pane back on the draft, as its
-/// Back does.
+/// queue and stores nothing for it, so its pane opens on the draft.
 #[tokio::test(flavor = "multi_thread")]
 async fn cancelling_from_the_pane_takes_a_waiting_candidate_off_the_queue() {
     let library = Library::open().await;
@@ -184,7 +183,6 @@ async fn cancelling_from_the_pane_takes_a_waiting_candidate_off_the_queue() {
     }
     let waiting = waiting.expect("one candidate is over the cap and waiting");
     let key = CandidateKey::folder(&waiting);
-    library.import.move_candidate_pane(&key, bae_import::PaneMove::Automatic).await.unwrap();
 
     library.services.pane_cancel_identification(&key).await.unwrap();
 
@@ -201,10 +199,9 @@ async fn cancelling_from_the_pane_takes_a_waiting_candidate_off_the_queue() {
             .expect("the candidate is still listed")
             .draft()
             .unwrap()
-            .session
-            .presentation,
+            .opens_on,
         bae_import::MetadataPresentation::Draft,
-        "the pane is back on the draft"
+        "the pane opens on the draft"
     );
     library.provider.release();
     tokio::time::timeout(HANG_GUARD, library.identification.drained_for_test())

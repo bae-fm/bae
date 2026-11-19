@@ -50,7 +50,7 @@ impl ScannedCandidateKey {
 /// Rows a candidate save carries in its transaction beside the candidate's
 /// own: the scan-side rows that describe the same file shape the save is
 /// checked against, and — for a reset — the lookup choices it clears.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub(crate) struct CandidateSaveExtras {
     /// The file metadata reading the draft was projected from, stored under the
     /// scan stamp the save was prepared against.
@@ -59,7 +59,6 @@ pub(crate) struct CandidateSaveExtras {
     /// the saved file decisions. Their scan rows are rewritten to this shape
     /// and stamped with the saved file revision.
     pub reshaped_files: Option<Vec<(crate::CandidateKey, CategorizedFiles)>>,
-    pub pane: CandidatePaneWrite,
     /// The save is a person's decision about what the candidate is, which
     /// ends its identification in the same write: no read sees the decision
     /// beside the identification it answers.
@@ -69,29 +68,6 @@ pub(crate) struct CandidateSaveExtras {
     /// the same write, and the rest are not (a release is stored only while
     /// something names it).
     pub releases: Vec<bae_catalogs::source_release::SourceRelease>,
-}
-
-/// What this save does to where the candidate's pane stands.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum CandidatePaneWrite {
-    /// The pane stays where the person left it.
-    Keep,
-    /// The pane opens on the draft identification just applied its pick to,
-    /// unless the picked release failed a check against the folder: that is a
-    /// question, and the pane stays where the person left it.
-    OpenOnDraftUnlessCheckFailed,
-}
-
-impl Default for CandidateSaveExtras {
-    fn default() -> Self {
-        Self {
-            file_tag_snapshot: None,
-            reshaped_files: None,
-            pane: CandidatePaneWrite::Keep,
-            ends_identification: false,
-            releases: Vec::new(),
-        }
-    }
 }
 
 /// What a run's verdict save did.
@@ -329,41 +305,6 @@ pub(super) fn save_preparation_on(
         delete_file_edits(sql, content_hash)?;
         insert_file_edits(sql, content_hash, &prep.file_edits)?;
     }
-    match extras.pane {
-        CandidatePaneWrite::Keep => {}
-        CandidatePaneWrite::OpenOnDraftUnlessCheckFailed => {
-            // Only a save that stores an identification asks to open on it.
-            assert!(
-                prep.identification.is_some(),
-                "candidate {content_hash} opens on a result it stores none of"
-            );
-            // This save wrote the verdict's row above, in this transaction,
-            // with what it decides.
-            let (declined, medium_conflict): (Option<String>, Option<String>) = sql.query_row(
-                "SELECT declined, medium_conflict FROM import_candidate_verdict \
-                 WHERE content_hash = ?",
-                [content_hash],
-                |row| Ok((row.get(0)?, row.get(1)?)),
-            )?;
-            let check_failed = match declined {
-                Some(declined) => super::verdict_rows::declined_of(
-                    &declined,
-                    super::verdict_rows::medium_conflict_of(medium_conflict)?,
-                )?
-                .folder_check()
-                .is_some(),
-                None => false,
-            };
-            if !check_failed {
-                super::session_rows::move_pane_on(
-                    sql,
-                    content_hash,
-                    crate::PaneMove::SettledOnPick,
-                )?;
-            }
-        }
-    }
-
     let reshaped = match &extras.reshaped_files {
         None => Vec::new(),
         Some(settled_candidates) => {

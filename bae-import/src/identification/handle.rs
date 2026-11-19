@@ -94,21 +94,19 @@ impl IdentificationHandle {
         &self,
         candidate_key: crate::CandidateKey,
     ) -> Result<(), crate::ImportError> {
-        if self.import.open_automatic(&candidate_key).await? {
+        if self.import.automatic_run_owed(&candidate_key).await? {
             self.rerun_identify(candidate_key);
         }
         Ok(())
     }
 
     /// Stop identifying the candidate — take it off the identification queue,
-    /// ending its run if one started — storing nothing, and go back to the
-    /// draft. The pane stays where it is when the cancel fails.
+    /// ending its run if one started — storing nothing.
     pub async fn pane_cancel_identification(
         &self,
         candidate_key: &crate::CandidateKey,
     ) -> Result<(), crate::ImportError> {
-        self.cancel(vec![candidate_key.clone()]).await?;
-        self.import.move_candidate_pane(candidate_key, crate::PaneMove::Back).await
+        self.cancel(vec![candidate_key.clone()]).await
     }
 
     /// Make one change to what a candidate's identification asks about, and

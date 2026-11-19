@@ -264,7 +264,16 @@ async fn seed_spent_rows(
         .await
         .unwrap();
     tables
-        .save_import_candidate_session(content_hash, &crate::CandidateSession::initial(false, true))
+        .save_import_pane_failure(
+            content_hash,
+            Some(crate::PaneFailure {
+                command: crate::PaneCommand::Unlink,
+                error: bae_diagnostics::UiError::diagnostic(
+                    bae_diagnostics::UiErrorCategory::Internal,
+                    "the unlink failed",
+                ),
+            }),
+        )
         .await
         .unwrap();
     let album = picked_album(test).await;
@@ -297,7 +306,7 @@ async fn spent_row_counts(test: &TestService, content_hash: &str) -> Vec<(&'stat
         "import_candidate_lookup_release",
         "import_candidate_lookup_choices",
         "import_candidate_chosen_catalog",
-        "import_candidate_session",
+        "import_candidate_pane_failure",
         "import_candidate_album_pick",
         "import_candidate_edit",
         "import_candidate_album_artist_assignment",

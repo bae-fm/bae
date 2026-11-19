@@ -193,20 +193,19 @@ impl Queue {
     }
 
     /// Put every candidate on the queue under `admission` and mark them all in
-    /// one change. Returns the content hashes placed.
+    /// one change: the one way onto the queue.
     ///
     /// An automatic job goes to the back and a request goes ahead of every
     /// waiting automatic job. A candidate already held as this identity is
     /// left alone by an automatic admission and restarted by a request; one
     /// held as another identity is taken out first.
-    async fn place(
+    pub(super) async fn place(
         &mut self,
         context: &Context,
         candidates: Vec<FolderCandidate>,
         admission: Admission,
-    ) -> Vec<String> {
+    ) {
         let mut marked = Vec::new();
-        let mut content_hashes = Vec::new();
         for candidate in candidates {
             let key = candidate.key();
             let identity = CandidateFiles::of(&candidate);
@@ -216,7 +215,6 @@ impl Queue {
                 }
                 self.take_out(context, &key).await;
             }
-            content_hashes.push(identity.content_hash.clone());
             let mark = (key, identity.clone());
             let entry = QueuedCandidate { candidate, admission };
             match (self.index_of_identity(&identity), admission) {
@@ -258,7 +256,6 @@ impl Queue {
             "mark the admitted candidates waiting",
             context.import.admit_identification(marked, admission).await,
         );
-        content_hashes
     }
 
     /// Remove `key` from whatever job holds it, ending the run it was
@@ -587,20 +584,6 @@ pub(super) async fn run(
 /// The events on the bus not yet taken off it.
 fn pending(bus: &mut crate::ImportEvents) -> impl Iterator<Item = ImportEvent> + '_ {
     std::iter::from_fn(|| bus.try_recv().ok())
-}
-
-/// The one way onto the queue: place the candidates under `admission`, then
-/// open their panes on Find online, the page their runs report on.
-pub(super) async fn admit(
-    context: &Context,
-    queue: &mut Queue,
-    candidates: Vec<FolderCandidate>,
-    admission: Admission,
-) {
-    let content_hashes = queue.place(context, candidates, admission).await;
-    if let Err(error) = context.import.move_admitted_panes(content_hashes).await {
-        warn!("identification: could not open the admitted candidates' panes on Find online ({error})");
-    }
 }
 
 /// Start what the queue has room for.

@@ -7,9 +7,9 @@ private let importStoreLogger = Logger.bae("ImportStore")
 
 /// Session state for the import flow. Mixed-writer: core drives the list, the
 /// per-candidate reads and shot state through value subscriptions, while
-/// views drive user-set fields (presentation, selected cover) via
-/// `mutateCandidate(forKey:_:)`. The single-writer rule applies per field, not
-/// per store.
+/// views drive the pane's own state (where it stands, the typed search form)
+/// via `mutateCandidate(forKey:_:)`. The single-writer rule applies per field,
+/// not per store.
 ///
 /// `ImportListSlot` holds the list's rows and their order:
 /// `selectedCandidates` holds the whole folder for each row the user
@@ -126,11 +126,11 @@ class ImportStore {
     /// it reads it, by key; the key leaves when the selection moves off it or
     /// its read says the folder no longer fails.
     var selectedInvalidCandidates: [Data: BridgeInvalidCandidateDetail] = [:]
-    /// Where a folder candidate's session writes go: core stores them with
-    /// the candidate and the next detail carries them back. A re-identify
-    /// session has no stored candidate, so its session stays in memory here.
-    /// Inert until the app wires the importer in.
-    var sessionWriter = CandidateSessionWriter.inert
+    /// Where a failure no pane states goes: a pane command whose failure
+    /// core could not store, or a read the pane depends on. Tells no one
+    /// until the app wires in its error surface.
+    @ObservationIgnored
+    var onFailure: @MainActor @Sendable (Error) -> Void = { _ in }
 
     /// Library releases' catalog searches — one per release editor that
     /// opened its search.
@@ -206,7 +206,9 @@ class ImportStore {
         key: Data,
         detail: BridgeImportCandidateDetail
     ) {
-        let incoming = Candidate(detail: detail)
+        var incoming = Candidate(detail: detail)
+        // The pane's own state stays while the pane shows this candidate.
+        incoming.pane = selectedCandidates[key]?.pane ?? CandidatePaneState()
         if let pick = picks[key],
             pick.audioIdentity != incoming.files.fileMetadataIdentity
         {
@@ -268,8 +270,7 @@ class ImportStore {
     }
 
     /// The pick landed: core holds the draft it read, so the pane goes back to
-    /// the draft. Written through core rather than in memory, so the candidate
-    /// is where the pick left it whether or not anyone was watching.
+    /// the draft.
     func metadataApplicationSucceeded(
         key: Data,
         session: CandidateMetadataApplicationSession
@@ -277,8 +278,8 @@ class ImportStore {
         guard metadataApplicationSession(forKey: key) === session else {
             return
         }
-        // Core moved the pane to the draft the pick landed on.
         picks.removeValue(forKey: key)
+        movePane(.picked, forKey: key)
     }
 
     /// End only the session that raised this failure. A replacement choice may
@@ -348,70 +349,24 @@ extension ImportStore {
         }
     }
 
-    /// Move a folder candidate's pane as the person asked. Core moves it by
-    /// the rule it moves every pane by, and the next detail carries it back.
-    /// A re-identify session has no pane to move: the release editor opens
-    /// and leaves its search page itself.
-    func movePane(_ paneMove: BridgePaneMove, forKey key: Data) {
-        guard reIdentifyCandidates[key] == nil else { return }
-        let writer = sessionWriter
-        Task {
-            do {
-                try await writer.movePane(key, paneMove)
-            }
-            catch {
-                importStoreLogger.error(
-                    "pane move for \(bridgeCandidateKeyText(candidateKey: key)) failed: \(String(describing: error))"
-                )
-                await writer.reportFailure(error)
-            }
+    /// Move the candidate's pane as the person, or a command they ran,
+    /// asked. The pane holds where it stands; nothing is written.
+    func movePane(_ paneMove: PaneMove, forKey key: Data) {
+        mutateCandidate(forKey: key) {
+            $0.pane.moved = $0.panePosition.moved(by: paneMove)
         }
     }
 
     /// The typed-search form as the person left it.
     func commitSearchForm(_ form: CandidateSearchState, forKey key: Data) {
-        updateSession(
-            forKey: key,
-            memory: { $0.search = form },
-            stored: { writer in try await writer.setSearchForm(key, form.bridge)
-            }
-        )
+        mutateCandidate(forKey: key) { $0.pane.search = form }
     }
 
     /// Tell the person about a failure no pane states: a pane command whose
     /// failure core could not store, or a read the pane depends on.
     @MainActor
     func reportFailure(_ error: Error) {
-        sessionWriter.reportFailure(error)
-    }
-
-    /// One session change, routed by what the key names: a re-identify
-    /// session is edited in memory, a folder candidate's is written through
-    /// core, which delivers it back on the candidate's next detail. A write
-    /// that fails is told to the person rather than left as a pane state the
-    /// store never saw.
-    private func updateSession(
-        forKey key: Data,
-        memory: @escaping (inout CandidateSessionState) -> Void,
-        stored write:
-            @escaping @Sendable (CandidateSessionWriter) async throws -> Void
-    ) {
-        if reIdentifyCandidates[key] != nil {
-            mutateReIdentifyCandidate(key: key) { memory(&$0.session) }
-            return
-        }
-        let writer = sessionWriter
-        Task {
-            do {
-                try await write(writer)
-            }
-            catch {
-                importStoreLogger.error(
-                    "session write for \(bridgeCandidateKeyText(candidateKey: key)) failed: \(String(describing: error))"
-                )
-                await writer.reportFailure(error)
-            }
-        }
+        onFailure(error)
     }
 }
 

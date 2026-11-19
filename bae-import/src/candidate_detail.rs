@@ -11,7 +11,6 @@ use super::triage::{
 };
 use super::types::{MetadataProvenance, RawReleaseEdit, ReleaseLink};
 use super::{FileEvidence, ImportFailure, ImportedRelease};
-use crate::CandidateSession;
 use crate::TriageTab;
 use bae_identify::signals::Signals;
 use bae_identify::IdentifyStateView;
@@ -98,9 +97,8 @@ pub struct DraftProjection {
     pub lookup_choices: bae_identify::LookupChoices,
     /// The last import of this candidate that failed.
     pub failure: Option<ImportFailure>,
-    /// Where the pane was when the person last left this candidate. `None`
-    /// before the pane has been touched.
-    pub session: Option<CandidateSession>,
+    /// The failure the pane states for its last command, when it failed.
+    pub pane_failure: Option<crate::PaneFailure>,
 }
 
 /// The candidate's files as its pane lists them. The pane's files statement
@@ -163,20 +161,6 @@ pub struct ListedRelease {
     pub standing: Option<crate::PendingStanding>,
 }
 
-impl DraftProjection {
-    /// The pane's session: the stored one, or the one the pane opens on for
-    /// a candidate nobody has touched, `verdict_stored` saying whether a
-    /// lookup answered for it.
-    pub fn session_or_initial(&self, verdict_stored: bool) -> CandidateSession {
-        self.session.clone().unwrap_or_else(|| {
-            CandidateSession::initial(
-                self.metadata_provenance.is_some() || self.release_link.is_some(),
-                verdict_stored,
-            )
-        })
-    }
-}
-
 impl ImportCandidateDetailProjection {
     /// The candidate's draft and what goes with it; `None` once this device
     /// imported its files, when it holds none.
@@ -205,6 +189,7 @@ impl ImportCandidateDetailProjection {
         } = self;
         let import_step = facts.import;
         let importing = facts.importing();
+        let identifying = facts.identifying();
         let file_evidence = signals.as_ref().map(crate::file_evidence).unwrap_or_default();
         let placement = listed.basis.placement;
         let live = CandidateLiveState::of(listed.actions, facts, listed.standing);
@@ -221,7 +206,6 @@ impl ImportCandidateDetailProjection {
                 CandidateStage::Imported { release },
             ),
             ProjectedStage::Drafting(draft) => {
-                let session = draft.session_or_initial(stored_verdict.is_some());
                 let DraftProjection {
                     metadata_provenance,
                     release_link,
@@ -237,7 +221,7 @@ impl ImportCandidateDetailProjection {
                     cover,
                     lookup_choices,
                     failure,
-                    session: _,
+                    pane_failure,
                 } = *draft;
                 let import_status = import_status_of(
                     None,
@@ -248,6 +232,13 @@ impl ImportCandidateDetailProjection {
                 // failure is behind it.
                 let failure = if importing { None } else { failure };
                 let verdict_folder_check = verdict_folder_check.filter(|_| actionable);
+                let opens_on = crate::MetadataPresentation::opening(
+                    identifying,
+                    stored_verdict.is_some(),
+                    metadata_provenance.is_some() || release_link.is_some(),
+                    stated_folder_check(metadata_author, draft_valid, verdict_folder_check.clone())
+                        .is_some(),
+                );
                 // The catalogs the linked release is described in, as the row
                 // names them: only a linked candidate names any.
                 let draft_records = || {
@@ -293,7 +284,8 @@ impl ImportCandidateDetailProjection {
                         cover,
                         lookup_choices,
                         failure,
-                        session,
+                        pane_failure,
+                        opens_on,
                     })),
                 )
             }
@@ -460,7 +452,8 @@ pub struct CandidateDraftPane {
     /// one sends the whole value back, computed from this.
     pub lookup_choices: bae_identify::LookupChoices,
     pub failure: Option<ImportFailure>,
-    /// Where the pane was when the person last left this candidate, or where
-    /// it opens for one nobody has touched.
-    pub session: CandidateSession,
+    /// The failure the pane states for its last command, when it failed.
+    pub pane_failure: Option<crate::PaneFailure>,
+    /// Where the pane opens on the candidate.
+    pub opens_on: crate::MetadataPresentation,
 }

@@ -22,9 +22,9 @@ extension ImportSearchFlow {
         let runtime: BridgeCandidateRuntimeSnapshot?
         /// Which section is open: a folder candidate's as core's session
         /// says, the release editor's own.
-        let openSection: BridgeFindOnlineSection
+        let openSection: FindOnlineSection
         /// Open one section: for a folder candidate, a move core makes.
-        let onOpenSection: (BridgeFindOnlineSection) -> Void
+        let onOpenSection: (FindOnlineSection) -> Void
         /// Keep the folder's own draft over what its lookup offered; `nil`
         /// for a library release, which has no folder draft to keep.
         let onKeepOwnDraft: (() -> Void)?

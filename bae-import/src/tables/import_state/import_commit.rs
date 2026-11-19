@@ -196,7 +196,7 @@ fn delete_what_the_import_spent_on(
             let content_hash = expectation.candidate.content_hash.as_str();
             delete_verdict(sql, content_hash)?;
             super::lookup_choice_rows::delete_lookup_choices(sql, content_hash)?;
-            super::session_rows::delete_session(sql, content_hash)?;
+            super::pane_failure_rows::delete_pane_failure(sql, content_hash)?;
             super::album_pick_rows::delete_album_pick(sql, content_hash)?;
             super::pane_rows::delete_draft(sql, content_hash)?;
             // The cover takes its copies and its fetched bytes.

@@ -619,10 +619,10 @@ async fn turning_automatic_identification_off_finishes_what_is_queued() {
     }
 }
 
-/// Admitting a candidate opens its pane on Find online — the page its run
-/// reports on — whoever admitted it, so a person who clicks into a candidate
-/// while it is being identified is on the run rather than on the draft it
-/// started from.
+/// A candidate waiting on identification or being identified opens its pane on
+/// Find online — the page its run reports on — whoever admitted it, so a
+/// person who clicks into it is on the run rather than on the draft it started
+/// from.
 #[tokio::test(flavor = "multi_thread")]
 async fn an_admitted_candidate_opens_on_find_online() {
     let fixture = Fixture::new("admitted-opens-on-find-online").await;
@@ -631,7 +631,7 @@ async fn an_admitted_candidate_opens_on_find_online() {
     fixture.provider.hold("/discid/");
     fixture.scan(1).await;
     assert_eq!(
-        fixture.pane(&dir).await.expect("scanned").draft().unwrap().session.presentation,
+        fixture.pane(&dir).await.expect("scanned").draft().unwrap().opens_on,
         crate::MetadataPresentation::Draft,
         "a scanned candidate nobody has touched opens on its draft"
     );
@@ -640,9 +640,9 @@ async fn an_admitted_candidate_opens_on_find_online() {
     fixture.provider.wait_for_request("/discid/", 1).await;
 
     assert_eq!(
-        fixture.pane(&dir).await.expect("still scanned").draft().unwrap().session.presentation,
+        fixture.pane(&dir).await.expect("still scanned").draft().unwrap().opens_on,
         crate::MetadataPresentation::FindOnline,
-        "the admission moved the pane to the page its run reports on"
+        "a candidate being identified opens on the page its run reports on"
     );
 
     fixture.identification().shut_down();

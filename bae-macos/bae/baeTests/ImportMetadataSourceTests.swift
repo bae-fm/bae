@@ -121,23 +121,22 @@ extension ImportMetadataSourceTests {
 }
 
 extension ImportMetadataSourceTests {
-    /// Choosing a surface is written to core, not kept in the pane: the
-    /// store records the write, and the next detail is what the pane shows.
-    @Test("moving the pane asks core, and the detail shows where it went")
-    func choosingASurfaceWritesItThrough() async throws {
+    /// Choosing a surface is the pane's own state: the store moves the pane
+    /// at once, writes nothing, and a later read leaves it where it went.
+    @Test("moving the pane keeps it where it went across reads")
+    func choosingASurfaceStaysInThePane() throws {
         let store = MappingFixtures.store(
             mapping: nil,
             metadataProvenance: nil,
             releaseLink: nil,
             edit: MappingFixtures.blankEdit,
         )
-        let writes = SessionWriteRecorder()
-        store.sessionWriter = .recording { writes.record($0) }
 
         store.movePane(.findOnline, forKey: MappingFixtures.candidateKey)
-        try await Wait.until {
-            !writes.paneMoves(forKey: MappingFixtures.candidateKey).isEmpty
-        }
+        #expect(
+            store.candidate(forKey: MappingFixtures.candidateKey)?
+                .metadataPresentation == .findOnline
+        )
 
         store.applyCandidateDetail(
             key: MappingFixtures.candidateKey,
@@ -146,17 +145,13 @@ extension ImportMetadataSourceTests {
                 edit: MappingFixtures.blankEdit,
                 metadataProvenance: nil,
                 releaseLink: nil,
-                presentation: .findOnline
+                presentation: .draft
             )
         )
 
         #expect(
             store.candidate(forKey: MappingFixtures.candidateKey)?
                 .metadataPresentation == .findOnline
-        )
-        #expect(
-            writes.paneMoves(forKey: MappingFixtures.candidateKey)
-                == [.findOnline]
         )
     }
 
@@ -184,11 +179,10 @@ extension ImportMetadataSourceTests {
         #expect(recorder.errors.isEmpty)
     }
 
-    @Test("applying an online result leaves the move to the draft to core")
+    @Test("applying an online result puts the pane on the draft once it lands")
     func onlineApplicationStoresTheDraft() async throws {
         let key = MappingFixtures.candidateKey
-        let writes = SessionWriteRecorder()
-        // The pane is on Find online, as the candidate's stored session says.
+        // The pane opens on Find online, as the candidate's read says.
         let store = MappingFixtures.store(
             mapping: nil,
             metadataProvenance: nil,
@@ -196,7 +190,6 @@ extension ImportMetadataSourceTests {
             edit: MappingFixtures.blankEdit,
             presentation: .findOnline
         )
-        store.sessionWriter = .recording { writes.record($0) }
         let recorder = MetadataSourceRecorder()
 
         ImportSearchFlow.applyMetadata(
@@ -211,41 +204,23 @@ extension ImportMetadataSourceTests {
         }
 
         #expect(recorder.externalApplications.map(\.key) == [key])
-        // Core moves the pane as the pick lands; the store asks for no move.
-        #expect(writes.paneMoves(forKey: key).isEmpty)
-        // What the pane shows is core's answer, so it stays on Find online
-        // until the read the store just made comes back.
-        #expect(
-            store.candidate(forKey: key)?
-                .metadataPresentation == .findOnline
-        )
-
-        store.applyCandidateDetail(
-            key: key,
-            detail: MappingFixtures.detail(
-                mapping: nil,
-                metadataProvenance: MappingFixtures.provenance
-            )
-        )
-
+        // The pick landed, so the pane shows the draft it wrote.
         #expect(
             store.candidate(forKey: key)?.metadataPresentation == .draft
         )
     }
 
-    /// Automatic asks core, which decides what it takes — the stored verdict
-    /// shown as it stood, or a run started — and moves the pane itself: the
-    /// store neither moves the pane nor asks for a run.
-    @Test("Automatic asks core every time and decides nothing here")
+    /// Automatic opens identification's results and asks core, which decides
+    /// what it takes: the stored verdict shown as it stood, or a run started.
+    /// The store asks for no run itself.
+    @Test("Automatic opens the results and asks core every time")
     func automaticAsksCore() async throws {
-        let writes = SessionWriteRecorder()
         let store = MappingFixtures.store(
             mapping: nil,
             metadataProvenance: nil,
             releaseLink: nil,
             edit: MappingFixtures.blankEdit
         )
-        store.sessionWriter = .recording { writes.record($0) }
         let recorder = MetadataSourceRecorder()
         let services = recorder.services(store)
         let candidate = try #require(
@@ -261,21 +236,26 @@ extension ImportMetadataSourceTests {
                 == [MappingFixtures.candidateKey, MappingFixtures.candidateKey]
         )
         #expect(recorder.identifiedKeys.isEmpty)
-        #expect(writes.paneMoves(forKey: MappingFixtures.candidateKey).isEmpty)
+        #expect(
+            store.candidate(forKey: MappingFixtures.candidateKey)?
+                .panePosition
+                == CandidatePanePosition(
+                    presentation: .findOnline,
+                    findOnlineSection: .automatic
+                )
+        )
     }
 
     /// Searching for a release opens the same page and asks for nothing: what
     /// it offers is the typed form, and a run is the other entry's to start.
     @Test("searching for a release opens the page and starts no run")
-    func searchingForAReleaseStartsNoRun() async throws {
-        let writes = SessionWriteRecorder()
+    func searchingForAReleaseStartsNoRun() throws {
         let store = MappingFixtures.store(
             mapping: nil,
             metadataProvenance: nil,
             releaseLink: nil,
             edit: MappingFixtures.blankEdit
         )
-        store.sessionWriter = .recording { writes.record($0) }
         let recorder = MetadataSourceRecorder()
         let candidate = try #require(
             store.candidate(forKey: MappingFixtures.candidateKey)
@@ -286,15 +266,16 @@ extension ImportMetadataSourceTests {
             for: candidate,
             services: recorder.services(store)
         )
-        try await Wait.until {
-            !writes.paneMoves(forKey: MappingFixtures.candidateKey).isEmpty
-        }
 
         #expect(recorder.identifiedKeys.isEmpty)
         #expect(recorder.automaticKeys.isEmpty)
         #expect(
-            writes.paneMoves(forKey: MappingFixtures.candidateKey)
-                == [.search]
+            store.candidate(forKey: MappingFixtures.candidateKey)?
+                .panePosition
+                == CandidatePanePosition(
+                    presentation: .findOnline,
+                    findOnlineSection: .search
+                )
         )
     }
 

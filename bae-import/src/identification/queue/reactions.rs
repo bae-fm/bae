@@ -206,7 +206,7 @@ async fn follow(context: &Context, queue: &mut Queue, key: &crate::CandidateKey)
         }
     };
     if !held.running && CandidateFiles::of(&candidate) != held.identity {
-        admit(context, queue, vec![candidate], held.admission).await;
+        queue.place(context, vec![candidate], held.admission).await;
     }
 }
 

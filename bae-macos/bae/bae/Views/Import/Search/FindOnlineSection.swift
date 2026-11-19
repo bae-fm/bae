@@ -67,7 +67,7 @@ enum FindOnlineSectionGlyph: Equatable {
 /// A section's header: its open-or-closed chevron, name, and status glyph.
 /// Clicking a collapsed header opens that section.
 struct FindOnlineSectionHeader: View {
-    let section: BridgeFindOnlineSection
+    let section: FindOnlineSection
     let isOpen: Bool
     let glyph: FindOnlineSectionGlyph
     let onOpen: () -> Void

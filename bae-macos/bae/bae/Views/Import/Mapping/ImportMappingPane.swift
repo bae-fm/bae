@@ -30,7 +30,7 @@ struct ImportMappingPane: View {
     let commitActions: ImportCommitActions
     let albumActions: DraftAlbumActions
     /// Move the pane as the person asked.
-    let onMovePane: (BridgePaneMove) -> Void
+    let onMovePane: (PaneMove) -> Void
     let onIdentify: () -> Void
     let onSearchForRelease: () -> Void
     let onResetToFileMetadata: () -> Void

@@ -17,7 +17,7 @@ pub(super) const SCHEMA: bae_store::SchemaPart = bae_store::SchemaPart::new(&[
     pane_rows::PROVENANCE_SQL,
     release_link_rows::SQL,
     claim_rows::SQL,
-    session_rows::SQL,
+    pane_failure_rows::SQL,
     standing_rows::SQL,
     run_rows::SQL,
     search_rows::SQL,
@@ -84,6 +84,7 @@ mod lookup_choice_rows;
 mod lookup_failure_columns;
 mod match_record;
 mod match_rows;
+mod pane_failure_rows;
 pub(super) mod pane_rows;
 mod preparation_rows;
 mod release_link_rows;
@@ -91,7 +92,6 @@ mod rows;
 mod run_rows;
 mod search_rows;
 mod seed_rows;
-mod session_rows;
 mod signal_rows;
 mod standing_rows;
 mod verdict_failure_rows;
@@ -113,20 +113,20 @@ pub(crate) use import_commit::{
     CommittingCandidate, ImportCommitGuard, ImportRows, NewAlbum, NewArtistImages,
 };
 pub use import_commit::{ImportCommitError, ImportCommitRefusal};
+use pane_failure_rows::load_pane_failure_on;
 pub use pane_rows::DbCandidatePaneRows;
 pub(super) use pane_rows::CANDIDATE_DRAFT;
 pub(super) use pane_rows::{load_pane_rows_on, track_json_sql, StoredTrack};
 pub(super) use pane_rows::{read_provenance, StoredProvenance, PROVENANCE_COLUMNS};
 pub use preparation_rows::PreparationRefusal;
 pub(crate) use preparation_rows::{
-    CandidatePaneWrite, CandidatePreparationRead, CandidateSaveExpectation, CandidateSaveExtras,
-    CandidateSaved, RunVerdictSaved, ScannedCandidateKey,
+    CandidatePreparationRead, CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved,
+    RunVerdictSaved, ScannedCandidateKey,
 };
 pub(super) use release_link_rows::{read_release_link, StoredReleaseLink, RELEASE_LINK_COLUMNS};
 pub use rows::DbImportCandidateState;
 pub(super) use rows::{load_current_state_on, load_states_on, stored_verdict_view};
 pub(super) use seed_rows::{ensure_candidate_state, forget_at_or_below, restart_state_on};
-use session_rows::load_session_on;
 use signal_rows::{delete_signals, store_signals};
 pub(crate) use standing_rows::ImportClaim;
 #[cfg(test)]

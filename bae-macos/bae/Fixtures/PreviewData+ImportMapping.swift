@@ -333,25 +333,23 @@ extension PreviewData {
         )
     }
 
-    /// A session opened on `presentation`, with Find online on `section`
-    /// and `artist` and `album` typed in its search form.
+    /// A pane the person moved to `presentation`, with Find online on
+    /// `section` and `artist` and `album` typed in its search form.
     static func paneSession(
-        presentation: BridgeMetadataPresentation,
-        section: BridgeFindOnlineSection = .automatic,
+        presentation: CandidateMetadataPresentation,
+        section: FindOnlineSection = .automatic,
         artist: String = "",
         album: String = ""
-    ) -> BridgeCandidateSession {
-        BridgeCandidateSession(
-            presentation: presentation,
-            findOnlineSection: section,
-            search: BridgeSearchForm(
-                tab: .general,
-                artist: artist,
-                album: album,
-                catalog: "",
-                barcode: ""
+    ) -> CandidatePaneState {
+        CandidatePaneState(
+            moved: CandidatePanePosition(
+                presentation: presentation,
+                findOnlineSection: section
             ),
-            error: nil
+            search: CandidateSearchState(
+                searchArtist: artist,
+                searchAlbum: album
+            )
         )
     }
 
@@ -368,7 +366,7 @@ extension PreviewData {
         mapping: BridgeMappingTable,
         cover: BridgeCoverChoice? = nil,
         failure: BridgeError? = nil,
-        session: BridgeCandidateSession = paneSession(presentation: .draft),
+        session: CandidatePaneState = CandidatePaneState(),
         placement: BridgeCandidatePanePlacement = .pending(
             folderCheck: nil,
             records: []
@@ -379,7 +377,7 @@ extension PreviewData {
         album: BridgeDraftAlbum = .new,
         albumArtistStanding: BridgeArtistFieldStanding? = nil
     ) -> Candidate {
-        Candidate(
+        var candidate = Candidate(
             detail: BridgeImportCandidateDetail(
                 candidate: folder,
                 partCount: 0,
@@ -412,11 +410,14 @@ extension PreviewData {
                         mapping: mapping,
                         cover: cover,
                         failure: failure,
-                        session: session
+                        paneFailure: nil,
+                        opensOn: .draft
                     )
                 )
             )
         )
+        candidate.pane = session
+        return candidate
     }
 
     /// A candidate with a release selected: the metadata card states what

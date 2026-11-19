@@ -52,7 +52,7 @@ mod settle;
 
 use admission::*;
 pub use handle::{IdentificationHandle, ShownCandidate};
-use queue::{admit, Queue};
+use queue::Queue;
 use settle::*;
 
 /// How many runs go at once: a cap on local work such as OCR, since the

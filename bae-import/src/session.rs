@@ -1,11 +1,11 @@
-//! What the pane keeps per candidate between visits.
+//! What the import pane shows of a candidate beyond its draft: where it opens,
+//! and the failure of its last command.
 //!
-//! A person works a candidate across several visits: they open Find online,
-//! type half a query, click another candidate, come back. None of that is the
-//! candidate's metadata — it is where the pane was — but it belongs to the
-//! candidate rather than to the window, so it is stored with it and read back
-//! with the rest of the detail. Only what has no meaning past the moment stays
-//! in the view: which field has the keyboard, which popover is open.
+//! Where the pane stands while it is open (the draft or the Find online page,
+//! the section that page shows, the text typed in its search form) exists only
+//! on screen, so the app holds it. Core says where the pane opens, from the
+//! candidate's rows, and stores the failure of the pane's last command, which
+//! the pane states until its next one.
 
 /// Which surface the pane's metadata slot shows: the candidate's draft, or the
 /// Find online page a person opens to identify it.
@@ -15,25 +15,24 @@ pub enum MetadataPresentation {
     FindOnline,
 }
 
-/// Which query the typed-search form is asking.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum SearchTab {
-    #[default]
-    General,
-    CatalogNumber,
-    Barcode,
-}
-
-/// The typed-search form: which query it asks and what is typed into every
-/// field, whichever tab is showing. What a submitted search turned up is not
-/// here — that run lives on the candidate's runtime while it stands.
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct SearchForm {
-    pub tab: SearchTab,
-    pub artist: String,
-    pub album: String,
-    pub catalog: String,
-    pub barcode: String,
+impl MetadataPresentation {
+    /// Where the pane opens on a candidate: Find online while identification
+    /// runs for it or its answer waits on the person, the draft otherwise.
+    /// An answer waits on the person while nothing drafted the candidate from
+    /// anywhere (`answered` false), or while the release its run picked failed
+    /// a check against the folder (`check_failed`).
+    pub fn opening(
+        identifying: bool,
+        verdict_stored: bool,
+        answered: bool,
+        check_failed: bool,
+    ) -> Self {
+        if identifying || (verdict_stored && (!answered || check_failed)) {
+            Self::FindOnline
+        } else {
+            Self::Draft
+        }
+    }
 }
 
 /// A command the pane runs for its candidate whose failure the pane states
@@ -70,92 +69,6 @@ pub struct PaneFailure {
 pub enum PaneOutcome {
     Done,
     Failed,
-}
-
-/// Which section of the Find online page is open.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum FindOnlineSection {
-    /// Identification: the run's ledger and what it matched.
-    #[default]
-    Automatic,
-    /// The typed search: its form and what it turned up.
-    Search,
-}
-
-/// Every way the pane moves between the draft and the Find online page,
-/// automatic or asked for. [`CandidateSession::moved`] is the one rule for
-/// where each puts it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PaneMove {
-    /// Identification was admitted for the candidate: the page its run reports
-    /// on.
-    Admitted,
-    /// A run applied its own pick and the release passed every check against
-    /// the folder: only the draft and its Import are left to see.
-    SettledOnPick,
-    /// The person picked a source for the draft.
-    Picked,
-    /// The person asked for identification's results.
-    Automatic,
-    /// The person asked for the typed search.
-    Search,
-    /// The person opened one section of the Find online page.
-    OpenSection(FindOnlineSection),
-    /// The person asked for Find online without naming a section: it opens on
-    /// the one last open.
-    FindOnline,
-    /// The person went back to the draft.
-    Back,
-}
-
-/// The pane's per-candidate state between visits.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CandidateSession {
-    pub presentation: MetadataPresentation,
-    /// The section of the Find online page open when it shows, kept while the
-    /// draft does.
-    pub find_online_section: FindOnlineSection,
-    pub search: SearchForm,
-    /// The last command the pane ran for this candidate, when it failed —
-    /// shown in the banner until the next command clears it.
-    pub error: Option<PaneFailure>,
-}
-
-impl CandidateSession {
-    /// The pane a candidate opens on before anyone has touched it: the draft,
-    /// which is where the candidate's metadata is; Find online while
-    /// identification has an answer nobody has acted on — no draft read from
-    /// anywhere and no link — since that is where the answer is.
-    pub fn initial(answered: bool, has_verdict: bool) -> Self {
-        let presentation = match (answered, has_verdict) {
-            (false, true) => MetadataPresentation::FindOnline,
-            (true, _) | (false, false) => MetadataPresentation::Draft,
-        };
-        Self {
-            presentation,
-            find_online_section: FindOnlineSection::Automatic,
-            search: SearchForm::default(),
-            error: None,
-        }
-    }
-
-    /// This session after `pane_move`: the one rule for where the pane goes.
-    pub fn moved(mut self, pane_move: PaneMove) -> Self {
-        use FindOnlineSection as S;
-        use MetadataPresentation as P;
-        let (presentation, section) = match pane_move {
-            PaneMove::Admitted | PaneMove::Automatic => (P::FindOnline, Some(S::Automatic)),
-            PaneMove::Search => (P::FindOnline, Some(S::Search)),
-            PaneMove::OpenSection(section) => (P::FindOnline, Some(section)),
-            PaneMove::FindOnline => (P::FindOnline, None),
-            PaneMove::SettledOnPick | PaneMove::Picked | PaneMove::Back => (P::Draft, None),
-        };
-        self.presentation = presentation;
-        if let Some(section) = section {
-            self.find_online_section = section;
-        }
-        self
-    }
 }
 
 #[cfg(test)]

@@ -39,9 +39,9 @@ struct MacFindOnline: View {
     /// pressing unknown; `nil` for a surface with no folder to link.
     let onLinkSharedAlbum: (() -> Void)?
     /// Which section is open, as the candidate's session says.
-    let openSection: BridgeFindOnlineSection
+    let openSection: FindOnlineSection
     /// Open one section.
-    let onOpenSection: (BridgeFindOnlineSection) -> Void
+    let onOpenSection: (FindOnlineSection) -> Void
 
     /// Whether the Discogs bar shows above both sections: while Discogs
     /// can't be asked, until the person puts it away for the session.
@@ -66,8 +66,8 @@ struct MacFindOnline: View {
         onSelect: @escaping (Pressing) -> Void,
         onKeepOwnDraft: (() -> Void)?,
         onLinkSharedAlbum: (() -> Void)?,
-        openSection: BridgeFindOnlineSection,
-        onOpenSection: @escaping (BridgeFindOnlineSection) -> Void,
+        openSection: FindOnlineSection,
+        onOpenSection: @escaping (FindOnlineSection) -> Void,
         showsDiscogsBar: Bool,
         onDismissDiscogsBar: @escaping () -> Void
     ) {

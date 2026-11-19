@@ -228,7 +228,8 @@ fn mapping_file_columns(file: &AudioFile) -> (&str, &str, Option<&str>, Option<i
 }
 
 /// Everything one candidate's pane settled: its cover, its album fields, its
-/// row edits, the failure its last import left, and where the pane was.
+/// row edits, the failure its last import left, and the failure of the
+/// pane's last command.
 pub(crate) fn load_pane_rows_on(
     sql: &SqlReadContext<'_>,
     candidate: OneCandidate<'_>,
@@ -241,7 +242,7 @@ pub(crate) fn load_pane_rows_on(
         draft_blank,
         draft_valid,
         failure: load_failure_on(sql, candidate)?,
-        session: load_session_on(sql, candidate)?,
+        pane_failure: load_pane_failure_on(sql, candidate)?,
     })
 }
 
@@ -534,9 +535,8 @@ pub struct DbCandidatePaneRows {
     pub draft_blank: bool,
     /// Whether the draft would import, as its write stored it.
     pub draft_valid: bool,
-    /// Where the pane was when the person last left this candidate. `None`
-    /// before the pane has been touched.
-    pub session: Option<crate::CandidateSession>,
+    /// The failure the pane states for its last command, when it failed.
+    pub pane_failure: Option<crate::PaneFailure>,
     /// The last import of this candidate that failed.
     pub failure: Option<crate::ImportFailure>,
 }

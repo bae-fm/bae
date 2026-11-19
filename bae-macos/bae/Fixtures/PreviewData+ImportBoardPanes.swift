@@ -510,7 +510,7 @@ extension PreviewData {
     @MainActor
     static func notFoundCandidate(
         _ found: NotFoundFolder,
-        session: BridgeCandidateSession
+        session: CandidatePaneState
     ) -> Candidate {
         let edit = boardEdit(
             title: found.album,

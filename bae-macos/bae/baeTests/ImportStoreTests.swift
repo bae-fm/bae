@@ -123,7 +123,8 @@ private func detail(
                 ),
                 cover: cover,
                 failure: nil,
-                session: MappingFixtures.session(presentation: presentation)
+                paneFailure: nil,
+                opensOn: presentation
             )
         )
     )
@@ -164,7 +165,7 @@ struct ImportStoreCandidateDetailTests {
         )
         store.selectedCandidates[Data("/w1/a".utf8)] = existing
 
-        // Same key, renamed and skipped, and the pane's stored session moved on.
+        // Same key, renamed and skipped, and where the pane opens moved on.
         store.applyCandidateDetail(
             key: Data("/w1/a".utf8),
             detail: detail(
@@ -177,17 +178,17 @@ struct ImportStoreCandidateDetailTests {
         )
 
         let merged = try #require(store.selectedCandidates[Data("/w1/a".utf8)])
-        // The pane's session is the candidate's, so it comes with the read.
+        // A pane nobody moved stands where the read says it opens.
         #expect(merged.metadataPresentation == .findOnline)
         // Scan fields come from the incoming read.
         #expect(merged.displayName == "A-renamed")
         #expect(merged.files.files.isEmpty)
     }
 
-    /// A stored pick that asks nothing moves the open pane from Find online to
-    /// the draft.
+    /// A stored pick that asks nothing moves a pane nobody moved from Find
+    /// online to the draft.
     @MainActor
-    @Test("a read that stores the pane on the draft moves it there")
+    @Test("a read that opens the pane on the draft moves it there")
     func aReadOnTheDraftMovesThePane() throws {
         let store = ImportStore()
         store.applyCandidateDetail(
@@ -218,6 +219,47 @@ struct ImportStoreCandidateDetailTests {
             try #require(store.selectedCandidates[Data("/w1/a".utf8)])
                 .metadataPresentation == .draft
         )
+    }
+
+    /// Once the person moves the pane, it stays where they put it, and the
+    /// text typed in its search form stays, whatever the next read says;
+    /// showing another candidate forgets both.
+    @MainActor
+    @Test("the pane keeps where the person moved it until it shows another")
+    func thePaneKeepsWhereThePersonMovedIt() throws {
+        let store = ImportStore()
+        let key = Data("/w1/a".utf8)
+        let read = {
+            detail(
+                folderPath: key,
+                watchedFolderPath: Data("/w1".utf8),
+                name: "A",
+                presentation: .draft
+            )
+        }
+        store.applyCandidateDetail(key: key, detail: read())
+        store.movePane(.search, forKey: key)
+        var typed = CandidateSearchState()
+        typed.searchArtist = "Artist Name"
+        store.commitSearchForm(typed, forKey: key)
+
+        store.applyCandidateDetail(key: key, detail: read())
+
+        let shown = try #require(store.selectedCandidates[key])
+        #expect(
+            shown.panePosition
+                == CandidatePanePosition(
+                    presentation: .findOnline,
+                    findOnlineSection: .search
+                )
+        )
+        #expect(shown.search == typed)
+
+        store.selectedCandidates.removeValue(forKey: key)
+        store.applyCandidateDetail(key: key, detail: read())
+        let reopened = try #require(store.selectedCandidates[key])
+        #expect(reopened.metadataPresentation == .draft)
+        #expect(reopened.search == CandidateSearchState())
     }
 }
 

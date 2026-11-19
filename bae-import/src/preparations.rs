@@ -20,8 +20,7 @@ pub use preparation::{
 
 use crate::folder_scanner::CandidateFileEdits;
 use crate::tables::{
-    CandidatePaneWrite, CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved,
-    ScannedCandidateKey,
+    CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved, ScannedCandidateKey,
 };
 use crate::tables::{DbCandidateIdentifyResult, ImportTables, NewImportCandidateVerdict};
 use crate::ImportError;
@@ -120,16 +119,7 @@ impl ImportTables {
             prep.metadata = metadata;
             prep.metadata_revision += 1;
         }
-        // A run that applied its own pick and whose release passed every check
-        // against the folder has left only the draft and its Import to see, so
-        // the pane opens there. Otherwise the pane stays where it was.
-        let pane = if verdict.pick.is_some() {
-            CandidatePaneWrite::OpenOnDraftUnlessCheckFailed
-        } else {
-            CandidatePaneWrite::Keep
-        };
         let extras = CandidateSaveExtras {
-            pane,
             releases: verdict.releases.clone(),
             ..CandidateSaveExtras::default()
         };
@@ -489,7 +479,6 @@ impl ImportTables {
         let extras = CandidateSaveExtras {
             file_tag_snapshot,
             reshaped_files: None,
-            pane: CandidatePaneWrite::Keep,
             ends_identification: true,
             releases,
         };

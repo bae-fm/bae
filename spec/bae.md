@@ -1837,10 +1837,14 @@ its writer, with the cover the folder came with, and the write that deletes this
 device's release of the folder (§2.7) writes it again. bae stores each pane
 control's value the moment the person uses it, under the candidate's hash, so
 the person can leave a candidate half done and come back to it, even after a
-restart. Where the pane was, such as a half-typed search, is stored too. A
-folder this device imported holds no draft and no pane state: a control or pane
-command that reaches it after the import finished, such as one clicked on a pane
-still drawing the draft, writes nothing and is answered that this device already
+restart. The pane keeps which part it shows and the text typed in its search
+fields while it is open; a search is stored when the person runs it (§3.5).
+The pane opens on Find online while identification runs for the candidate or
+its answer waits on the person: nothing drafted the candidate from anywhere,
+or the release its run picked failed a check against the folder. Otherwise
+the pane opens on the draft. A folder this device imported holds no draft and
+no pane state: a control or pane command that reaches it after the import
+finished, such as one clicked on a pane still drawing the draft, writes nothing and is answered that this device already
 imported those files, naming the release they became, as a second Import is
 (§2.7). Since each edit is written as it is made, the pane has no reset and no
 undo: to start over, the person applies a source again (a catalog release, or
@@ -1986,7 +1990,7 @@ Ana clicks Import. bae:
    (§2.3).
    The same transaction deletes what the folder's state holds that nothing
    reads once the release is in: the identify verdict with the releases it
-   found, what the person let the lookups use, where the pane was, the
+   found, what the person let the lookups use, the pane's last failure, the
    artist and label decisions it just resolved its credits and labels by,
    the album picked for it, and the draft with its source, its link and its
    cover, since the Imported row and the imported folder's pane read the
@@ -5870,7 +5874,7 @@ Keyed by the candidate's content hash.
 | `import_candidate_draft_provenance` | where the draft was read from |
 | `import_candidate_release_link`, `import_candidate_release_link_partner`, `import_candidate_release_link_album` | the pressing or album the candidate is linked to |
 | `import_candidate_claimed_record`, `import_candidate_offered_cover` | what the link claims (§3.5, §3.7): the records its claimed releases describe it by, merged, or a linked album's albums; and the covers a linked pressing offers the picker, in order. They follow each later store of a claimed release or change to the albums kept for its album, and go with the link |
-| `import_candidate_session` | where the pane was, and its last failure |
+| `import_candidate_pane_failure` | the pane's last command, when it failed, and why |
 | `import_candidate_failure` | why the last import failed |
 
 Beside them, keyed by the candidate's key as the import list names it:

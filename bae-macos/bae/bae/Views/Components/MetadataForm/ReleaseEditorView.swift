@@ -20,7 +20,7 @@ struct ReleaseEditorView: View {
 
     /// The draft, or the catalog search opened on one of its sections.
     @State
-    private var searchSection: BridgeFindOnlineSection?
+    private var searchSection: FindOnlineSection?
     /// The cover picker's lightbox image as it loads.
     @State
     private var coverLightboxLoad = LightboxImageLoad()
@@ -131,7 +131,7 @@ struct ReleaseEditorView: View {
     /// The catalog search under this release's key; picking a pressing
     /// applies it to the session at once and goes back to the draft.
     @ViewBuilder
-    private func search(_ section: BridgeFindOnlineSection) -> some View {
+    private func search(_ section: FindOnlineSection) -> some View {
         if let candidate = importStore.reIdentifyCandidates[searchKey] {
             CandidateRuntimeReader(key: searchKey) { runtime in
                 ImportSearchFlow.buildSearchPane(
@@ -223,7 +223,7 @@ struct ReleaseEditorView: View {
     }
 
     /// Open the search on `section`, starting nothing.
-    private func openSearch(_ section: BridgeFindOnlineSection) {
+    private func openSearch(_ section: FindOnlineSection) {
         if importStore.reIdentifyCandidates[searchKey] == nil {
             importStore.reIdentifyCandidates[searchKey] = Candidate(
                 reIdentifyKey: searchKey,

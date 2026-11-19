@@ -1,44 +1,24 @@
 use super::*;
 
-/// A candidate nobody has touched opens on its draft — pre-filled from the
-/// folder's tags or blank, that is where its metadata is.
+/// A candidate nobody identified opens on its draft, pre-filled from the
+/// folder's tags or blank, since that is where its metadata is; so does one
+/// whose answer someone acted on.
 #[test]
-fn a_fresh_pane_opens_on_the_draft() {
-    assert_eq!(CandidateSession::initial(false, false).presentation, MetadataPresentation::Draft);
-    assert_eq!(CandidateSession::initial(true, false).presentation, MetadataPresentation::Draft);
-    assert_eq!(CandidateSession::initial(true, true).presentation, MetadataPresentation::Draft);
+fn a_pane_with_nothing_to_answer_opens_on_the_draft() {
+    use MetadataPresentation::Draft;
+    assert_eq!(MetadataPresentation::opening(false, false, false, false), Draft);
+    assert_eq!(MetadataPresentation::opening(false, false, true, false), Draft);
+    assert_eq!(MetadataPresentation::opening(false, true, true, false), Draft);
 }
 
-/// A verdict nobody has acted on — several matches, none, a failed run —
-/// opens on Find online: the answer, and the way to act on it, are there.
+/// A run in flight, a verdict nobody acted on (several matches, none, a
+/// failed run) and a picked release that failed a check against the folder
+/// each open on Find online: the answer, and the way to act on it, are there.
 #[test]
-fn an_unanswered_verdict_opens_on_find_online() {
-    assert_eq!(
-        CandidateSession::initial(false, true).presentation,
-        MetadataPresentation::FindOnline
-    );
-}
-
-/// Each move puts the pane where it says; a move to the draft keeps the
-/// section Find online opens on, and naming no section opens the last one.
-#[test]
-fn each_move_puts_the_pane_where_it_says() {
-    let session = CandidateSession::initial(false, false);
-    let searched = session.clone().moved(PaneMove::Search);
-    assert_eq!(searched.presentation, MetadataPresentation::FindOnline);
-    assert_eq!(searched.find_online_section, FindOnlineSection::Search);
-    let back = searched.moved(PaneMove::Back);
-    assert_eq!(back.presentation, MetadataPresentation::Draft);
-    assert_eq!(back.find_online_section, FindOnlineSection::Search);
-    let reopened = back.moved(PaneMove::FindOnline);
-    assert_eq!(reopened.presentation, MetadataPresentation::FindOnline);
-    assert_eq!(reopened.find_online_section, FindOnlineSection::Search);
-    for pane_move in [PaneMove::Admitted, PaneMove::Automatic] {
-        let moved = reopened.clone().moved(pane_move);
-        assert_eq!(moved.presentation, MetadataPresentation::FindOnline);
-        assert_eq!(moved.find_online_section, FindOnlineSection::Automatic);
-    }
-    for pane_move in [PaneMove::SettledOnPick, PaneMove::Picked, PaneMove::Back] {
-        assert_eq!(reopened.clone().moved(pane_move).presentation, MetadataPresentation::Draft);
-    }
+fn a_run_or_an_answer_waiting_on_the_person_opens_on_find_online() {
+    use MetadataPresentation::FindOnline;
+    assert_eq!(MetadataPresentation::opening(true, false, false, false), FindOnline);
+    assert_eq!(MetadataPresentation::opening(true, true, true, false), FindOnline);
+    assert_eq!(MetadataPresentation::opening(false, true, false, false), FindOnline);
+    assert_eq!(MetadataPresentation::opening(false, true, true, true), FindOnline);
 }
