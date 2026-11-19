@@ -119,6 +119,7 @@ extension PreviewData {
                 )
             ),
             records: boardRecords("board-northbound"),
+            hasRecords: true,
             albumArtistStanding: boardLibraryArtistStanding,
             changed: false,
             invalid: nil

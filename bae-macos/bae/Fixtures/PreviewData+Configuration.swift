@@ -123,6 +123,7 @@ extension PreviewData {
                 )
             ),
             records: [],
+            hasRecords: false,
             albumArtistStanding: nil,
             changed: false,
             invalid: nil

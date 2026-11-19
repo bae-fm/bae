@@ -207,6 +207,7 @@ pub(crate) struct ReleaseEditDraftRows {
     has_tracks: bool,
     files: bae_records::DbReleaseFiles,
     records: Vec<bae_catalogs::records::ReleaseRecord>,
+    has_records: bool,
 }
 
 /// One track of a form's draft as its statement returns it: what the
@@ -285,6 +286,16 @@ pub(crate) fn release_edit_draft_rows_on(
             Some(applied) => applied.records.clone(),
             None => bae_records::records::read::get_release_records_on(sql, &params.release)?,
         },
+        has_records: sql.query_row(
+            "SELECT CASE WHEN :applied THEN json_array_length(:records) > 0 \
+                    ELSE EXISTS (SELECT 1 FROM release_records WHERE release_id = :release) END",
+            named_params! {
+                ":applied": params.applied,
+                ":records": params.records,
+                ":release": params.release,
+            },
+            |row| row.get(0),
+        )?,
     }))
 }
 
@@ -382,6 +393,7 @@ impl ReleaseEditDraftRows {
             has_tracks,
             files,
             records,
+            has_records,
         } = self;
         let changed = form.changed();
         let invalid = form.edit.shape().err();
@@ -402,6 +414,7 @@ impl ReleaseEditDraftRows {
                 .then(|| crate::ReleaseEditDisplayContext::carried_files(&files)),
             album,
             records,
+            has_records,
             album_artist_standing,
             changed,
             invalid,

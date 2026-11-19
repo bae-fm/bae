@@ -639,6 +639,8 @@ pub struct BridgeReleaseEditDraft {
     /// The catalogs that describe the release the form holds, the applied
     /// one first.
     pub records: Vec<BridgeReleaseRecord>,
+    /// Whether `records` holds any.
+    pub has_records: bool,
     /// `None` when the form names no album artist.
     pub album_artist_standing: Option<BridgeArtistFieldStanding>,
     pub changed: bool,

@@ -59,7 +59,7 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
                 // The catalogs that describe the release end the card, under
                 // their own divider. Nothing unlinks a library release, so no
                 // Unlink beside them.
-                if !draft.records.isEmpty {
+                if draft.hasRecords {
                     Rectangle()
                         .fill(Theme.hairline)
                         .frame(height: 1)

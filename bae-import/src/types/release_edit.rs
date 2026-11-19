@@ -241,6 +241,8 @@ pub struct ReleaseEditDraft {
     /// The catalogs that describe the release the form holds: the applied
     /// catalog's records, the applied one first, else the release's own.
     pub records: Vec<bae_catalogs::records::ReleaseRecord>,
+    /// Whether `records` holds any.
+    pub has_records: bool,
     /// `None` when the form names no album artist.
     pub album_artist_standing: Option<crate::ArtistFieldStanding>,
     pub changed: bool,

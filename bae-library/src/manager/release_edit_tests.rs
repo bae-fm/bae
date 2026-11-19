@@ -205,7 +205,9 @@ async fn the_draft_lists_the_release_s_records_and_then_the_applied_ones() {
     insert_editable_tracks(manager, &release.id, 3).await;
 
     let form = manager.open_release_edit(&release.id).await.unwrap();
-    assert_eq!(draft_now(manager, &form).await.records, [stored]);
+    let opened = draft_now(manager, &form).await;
+    assert_eq!(opened.records, [stored]);
+    assert!(opened.has_records);
 
     let new_release_id = "draft-records-mb-rel-new";
     seed_musicbrainz(&test, new_release_id, "draft-records-mb-group-new", 3);
@@ -217,7 +219,9 @@ async fn the_draft_lists_the_release_s_records_and_then_the_applied_ones() {
         )
         .await
         .unwrap();
-    let records = draft_now(manager, &applied).await.records;
+    let applied_draft = draft_now(manager, &applied).await;
+    assert!(applied_draft.has_records);
+    let records = applied_draft.records;
     assert_eq!(records.len(), 1);
     assert_eq!(records[0].key(), new_release_id);
 }

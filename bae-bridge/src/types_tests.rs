@@ -549,6 +549,7 @@ mod conversion_roundtrip {
                     },
                 },
                 records: Vec::new(),
+                has_records: false,
                 album_artist_standing: None,
                 changed: true,
                 invalid: Some(bae_import::EditValidationError::NoAlbumArtist),
