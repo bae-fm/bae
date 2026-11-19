@@ -91,7 +91,9 @@
         /// the view.
         @MainActor
         func albumDetailPreviewEnvironment() -> some View {
-            let library = PreviewData.albumDetailLibrary()
+            // The annotation names the type for the missing-environment
+            // audit, which reads a local's type from its annotation alone.
+            let library: Library = PreviewData.albumDetailLibrary()
             return
                 self
                 .environment(ImageStore.stub())
