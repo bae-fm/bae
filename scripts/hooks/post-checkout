@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # post-checkout: fires after `git checkout` and `git worktree add`.
 # On new-worktree creation, run per-worktree setup: build output links, the
-# CLAUDE.md and .claude/rules symlinks, the git merge drivers, shared FFmpeg, xcconfigs, Android
+# CLAUDE.md and .claude/rules symlinks, the git merge drivers, xcconfigs, Android
 # local.properties and the macOS app's resolved SwiftPM versions. It builds nothing: a side worktree
 # builds host Rust only, and app builds stay warm in the app checkouts (one per
 # lane) and main
@@ -53,20 +53,7 @@ if [ -d "$rules_src" ]; then
     done
 fi
 
-# Share the machine's prebuilt FFmpeg from the main checkout. bae-ffmpeg/ holds
-# the libs downloaded from the bae-ffmpeg fork's release -- dist/ (this host's
-# macOS/Linux libs) and ios/ + android/ (the cross-compiled mobile libs), via
-# scripts/setup-ffmpeg.sh and scripts/build-ffmpeg-{ios,android}.sh. They don't
-# come along when git creates a worktree (they're gitignored), so a build here
-# would otherwise re-download them. Symlink the main checkout's directory so
-# every worktree shares one copy; the whole path is gitignored, so the symlink
-# stays out of `git status`.
 main_checkout="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
-if [ "$main_checkout" != "$worktree_root" ] \
-    && [ -d "$main_checkout/bae-ffmpeg" ] && [ ! -e bae-ffmpeg ]; then
-    ln -s "$main_checkout/bae-ffmpeg" bae-ffmpeg
-    echo "Linked bae-ffmpeg -> $main_checkout/bae-ffmpeg"
-fi
 
 # Per-developer local xcconfigs (gitignored): the signing team and the feature
 # set. xcodegen reads them while generating the project, and run.sh signs with

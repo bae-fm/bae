@@ -3,7 +3,8 @@
 # Usage: scripts/check-ffmpeg-dist.sh INSTALLER DIST_DIR...
 #
 # The installers (scripts/setup-ffmpeg.sh, scripts/build-ffmpeg-ios.sh,
-# scripts/build-ffmpeg-android.sh) write the release they installed to
+# scripts/build-ffmpeg-android.sh) install through
+# scripts/install-ffmpeg-dist.sh, which writes the release it installed to
 # DIST_DIR/VERSION after checking it. A dist with no VERSION or another release
 # is one this tree never checked, so a build must not link it; INSTALLER is the
 # command the message tells the developer to run.

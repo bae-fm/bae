@@ -18,28 +18,9 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-VERSION="$(cat "$REPO_ROOT/scripts/bae-ffmpeg-release")"
-BASE_URL="https://github.com/bae-fm/bae-ffmpeg/releases/download/$VERSION"
 OUT="$REPO_ROOT/bae-ffmpeg/ios"
 
-# fork release tarball label -> bae per-target dir.
-download() {
-  local label="$1" dir="$2"
-  local dest="$OUT/$dir"
-  echo "=== downloading ffmpeg-$label ($VERSION) ==="
-  rm -rf "$dest"
-  mkdir -p "$dest"
-  curl -fL "$BASE_URL/ffmpeg-$label.tar.gz" | tar xz -C "$dest"
-  if [ ! -f "$dest/lib/libavcodec.a" ]; then
-    echo "FATAL: libavcodec.a missing in $dest after download" >&2
-    exit 1
-  fi
-  # The release this dir holds, which scripts/check-ffmpeg-dist.sh compares to
-  # the pin before bae-bridge/build-ios.sh links it.
-  printf '%s\n' "$VERSION" > "$dest/VERSION"
-}
-
-download ios-arm64     aarch64-apple-ios
-download ios-sim-arm64 aarch64-apple-ios-sim
-
-echo "=== DONE. FFmpeg installed under $OUT/{aarch64-apple-ios,aarch64-apple-ios-sim} ==="
+# Fork release label -> bae per-target dir. A dir that already holds the
+# pinned release is left as it is.
+"$REPO_ROOT/scripts/install-ffmpeg-dist.sh" ffmpeg-ios-arm64.tar.gz "$OUT/aarch64-apple-ios" ios
+"$REPO_ROOT/scripts/install-ffmpeg-dist.sh" ffmpeg-ios-sim-arm64.tar.gz "$OUT/aarch64-apple-ios-sim" ios

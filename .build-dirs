@@ -64,6 +64,12 @@ bae-avalonia/bae-avalonia.Tests/bin   1G   lane mac
 # into ~/.cache/owner-construction-check; builds deletes the versions no
 # checkout's script names.
 installed owner-construction-check scripts/owner-construction-check.sh
+# scripts/prepare-ffmpeg.sh links the checkout's bae-ffmpeg to the folder of
+# ~/.cache/bae-ffmpeg named for the release scripts/bae-ffmpeg-release pins,
+# and installs the desktop dist there when it is missing; builds deletes the
+# folders of releases no checkout pins.
+installed bae-ffmpeg scripts/bae-ffmpeg-release
+prepare scripts/prepare-ffmpeg.sh
 # The Debian packages a Linux build host needs beyond the ones builds installs
 # for itself: clang and libclang-dev for bindgen (ffmpeg-sys-next and
 # libsqlite3-sys run it), libasound2-dev for cpal's ALSA backend, and python3

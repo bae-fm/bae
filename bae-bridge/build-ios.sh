@@ -62,10 +62,11 @@ IOS_DEPLOYMENT_TARGET=16.0
 
 # ffmpeg-sys-next finds FFmpeg through FFMPEG_DIR and then does not pass the
 # target to bindgen, so these per-arch clang args are what keep its struct
-# layouts from being the host's. The static libs come from scripts/build-ffmpeg-ios.sh.
+# layouts from being the host's. scripts/build-ffmpeg-ios.sh installs the
+# pinned release's static libs when they are missing.
 FFMPEG_DEVICE="$(pwd)/bae-ffmpeg/ios/aarch64-apple-ios"
 FFMPEG_SIM="$(pwd)/bae-ffmpeg/ios/aarch64-apple-ios-sim"
-./scripts/check-ffmpeg-dist.sh scripts/build-ffmpeg-ios.sh "$FFMPEG_DEVICE" "$FFMPEG_SIM"
+./scripts/build-ffmpeg-ios.sh
 
 DEVICE_SDK="$(xcrun --sdk iphoneos --show-sdk-path)"
 SIM_SDK="$(xcrun --sdk iphonesimulator --show-sdk-path)"
