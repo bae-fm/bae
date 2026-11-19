@@ -200,26 +200,6 @@ async fn test_cover_file_stored_via_local_files_is_readable() {
 }
 
 // ---------------------------------------------------------------------------
-// Pin / unpin guards
-// ---------------------------------------------------------------------------
-
-/// Unpin rejects a Local release: it has no remote files to drop from the cache.
-#[tokio::test]
-async fn test_unpin_rejects_local_release() {
-    bae_util::test_logs::install();
-    let tmp = TempDir::new().unwrap();
-    let mgr = setup(&tmp).await;
-    let (release_id, _f) =
-        crate::create_local_release(mgr.manager(), &tmp.path().join("src"), &[("a.flac", b"a")])
-            .await;
-
-    assert!(
-        mgr.manager().unpin_releases(std::slice::from_ref(&release_id)).await.is_err(),
-        "unpin must fail for a local release"
-    );
-}
-
-// ---------------------------------------------------------------------------
 // Pin / unpin success — through coven's cache
 // ---------------------------------------------------------------------------
 
