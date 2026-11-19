@@ -106,10 +106,12 @@ final class ImportListSlot {
     private var surroundings: [any Sendable] = []
     @ObservationIgnored
     private var reloadTask: Task<Void, Never>?
-    /// How many reveals wait for the slot's first list. A test waits on it,
-    /// under observation, to know that a reveal it asked for before the list
-    /// is waiting.
-    private(set) var revealsWaitingForFirstList = 0
+    /// The reveals asked for while the slot reads its first list, which the
+    /// slot resumes once that read ends.
+    private(set) var revealsWaitingForFirstList:
+        [CheckedContinuation<
+            Void, Never
+        >] = []
     /// The last change asked for, which the next one waits on so the changes
     /// reach core in the order they were made.
     @ObservationIgnored
@@ -253,16 +255,24 @@ extension ImportListSlot {
 
     /// The list on screen. A reveal asked for while the slot reads its first
     /// list waits for that read, so the reveal lands once the list does.
-    /// Throws `ImportListSlotError.noList` when no read is running, or the
-    /// read showed no list.
+    /// Throws `ImportListSlotError.noList` when the slot never started a
+    /// read, or its read failed before it showed a list.
     private func firstShown() async throws -> ShownImportList {
-        if current == nil {
-            revealsWaitingForFirstList += 1
-            defer { revealsWaitingForFirstList -= 1 }
-            await reloadTask?.value
+        if current == nil, reloadTask != nil, !sourceFailed {
+            await withCheckedContinuation { reveal in
+                revealsWaitingForFirstList.append(reveal)
+            }
         }
         guard let current else { throw ImportListSlotError.noList }
         return current
+    }
+
+    /// Resume the reveals waiting for the first list: the read that was to
+    /// bring it has ended, with a list or without one.
+    private func resumeRevealsWaitingForFirstList() {
+        let waiting = revealsWaitingForFirstList
+        revealsWaitingForFirstList = []
+        for reveal in waiting { reveal.resume() }
     }
 
     /// Navigate to the candidate's current authoritative placement, even when
@@ -449,6 +459,7 @@ extension ImportListSlot {
         }
         catch {
             fail(error)
+            resumeRevealsWaitingForFirstList()
             return
         }
         guard !Task.isCancelled else { return }
@@ -477,6 +488,7 @@ extension ImportListSlot {
             request: requested
         )
         selection.show(requested)
+        resumeRevealsWaitingForFirstList()
         // A list built anew opens at its top.
         open(at: 0)
         // The list was read under the request asked for when it was built;
