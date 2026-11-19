@@ -485,9 +485,9 @@
     <string name="members_invite_refused">לא ניתן היה להזמין: %1$s</string>
 
     <plurals name="file_size_bytes">
-        <item quantity="one">%1$s בייט</item>
-        <item quantity="two">%1$s בייט</item>
-        <item quantity="other">%1$s בייט</item>
+        <item quantity="one">%1$s B</item>
+        <item quantity="two">%1$s B</item>
+        <item quantity="other">%1$s B</item>
     </plurals>
     <string name="file_size_kilobytes">%1$s kB</string>
     <string name="file_size_megabytes">%1$s MB</string>

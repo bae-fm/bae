@@ -157130,19 +157130,19 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld בייט"
+                  "value" : "%lld B"
                 }
               },
               "two" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld בייט"
+                  "value" : "%lld B"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld בייט"
+                  "value" : "%lld B"
                 }
               }
             }
