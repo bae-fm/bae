@@ -61,7 +61,8 @@ async fn stream_raw_serves_a_cue_track_as_its_own_pcm() {
     assert_eq!(served.content_type, "audio/wav");
     assert!(served.content_length.is_none(), "the stream's length is not known before it ends");
     let wav = bae_audio::parse_streamed_wav(&served.body).expect("a WAV stream");
-    let image = decode_bytes(&bae_util::test_files::read_fixture(cue_fixture("Test Album.flac")));
+    let image =
+        decode_bytes(&bae_util::test_files::read_fixture(cue_fixture("Test Album.flac"))).await;
     assert_eq!(wav.sample_rate, image.sample_rate);
     assert_eq!(wav.channels, image.channels);
     assert_eq!(wav.bits_per_sample, 16, "the image's depth");
@@ -107,7 +108,7 @@ async fn stream_wav_is_the_tracks_pcm_in_an_unsized_wav() {
     assert_eq!(i64::from(wav.bits_per_sample), song["bitDepth"].as_i64().unwrap());
 
     let raw = call(&router, "stream", &authed(&format!("id={song_id}&format=raw"))).await;
-    let stored = decode_bytes(&raw.body);
+    let stored = decode_bytes(&raw.body).await;
     let expected: Vec<u8> =
         stored.samples.iter().flat_map(|&sample| ((sample >> 16) as i16).to_le_bytes()).collect();
     assert_eq!(
@@ -180,7 +181,7 @@ async fn stream_transcode_mp3_is_chunked_and_decodes() {
     let song = call(&router, "getSong", &authed(&format!("f=json&id={song_id}"))).await;
     let expected_channels = song.sub()["song"]["channelCount"].as_i64().unwrap() as u32;
     let source_secs = song.sub()["song"]["duration"].as_i64().unwrap();
-    let decoded = decode_bytes(&resp.body);
+    let decoded = decode_bytes(&resp.body).await;
     assert_eq!(decoded.channels, expected_channels, "transcode preserves channels");
     assert!(!decoded.samples.is_empty());
     let decoded_secs =
@@ -530,18 +531,17 @@ async fn first_song_id(router: &Router, release_id: &str) -> String {
 
 /// Decode encoded audio bytes by writing them to a file, filling a sparse
 /// buffer through the local reader, and running the real decoder.
-fn decode_bytes(bytes: &[u8]) -> bae_audio::DecodedAudio {
+async fn decode_bytes(bytes: &[u8]) -> bae_audio::DecodedAudio {
     use bae_audio::sparse_buffer::create_sparse_buffer;
     use bae_track_audio::data_source::{AudioDataReader, LocalReader};
 
     let folder = TestFolder::new();
     let path = folder.write("audio", bytes);
     let buffer = create_sparse_buffer(bytes.len() as u64);
-    let reader = Box::new(LocalReader::new(
-        path.to_str().unwrap(),
-        bae_diagnostics::Diagnostics::noop(),
-        bae_util::test_files::lease(),
-    ));
+    let opened =
+        bae_util::test_files::open_async_in(bae_util::test_files::lease().place().await, &path)
+            .await;
+    let reader = Box::new(LocalReader::new(opened, &path, bae_diagnostics::Diagnostics::noop()));
     reader.start_reading(buffer.clone(), Box::new(|_| {}));
     bae_audio::decode_audio(buffer, None, None).expect("decode transcoded bytes")
 }

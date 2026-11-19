@@ -602,16 +602,10 @@ pub(super) async fn measure_loudness(
         |track: &MeasuredTrack| {
             track.segments.iter().map(|segment| segment.file_id.clone()).collect()
         },
-        |file_id: &String, lease: &coven::FileLease| {
-            let (path, size) = &sources[file_id];
-            let error_path = path.clone();
-            SourceStream::start(
-                Box::new(LocalReader::new(path, diagnostics.clone(), lease.clone())),
-                *size,
-                Box::new(move |error| {
-                    warn!("loudness: streaming {error_path:?} failed: {error}");
-                }),
-            )
+        |file_id: String, lease: coven::FileLease| {
+            let (path, size) = sources[&file_id].clone();
+            let diagnostics = diagnostics.clone();
+            async move { open_source_stream(path, size, lease, diagnostics).await }
         },
         |track, streams| {
             let progress = progress.clone();
@@ -677,6 +671,30 @@ pub(super) async fn measure_loudness(
         album_peak_linear: album_peak,
         scrub_points: all_scrub_points,
     })
+}
+
+/// Open the source file at `path` in a place of `lease` and start streaming
+/// its `size` bytes. A file that won't open fails the stream's readers like a
+/// failed read of it.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: reads a source file the import holds before coven records it"
+)]
+async fn open_source_stream(
+    path: PathBuf,
+    size: u64,
+    lease: coven::FileLease,
+    diagnostics: bae_diagnostics::Diagnostics,
+) -> SourceStream {
+    let opened = lease.place().await.open_async(&path).await;
+    let error_path = path.clone();
+    SourceStream::start(
+        Box::new(LocalReader::new(opened, path, diagnostics)),
+        size,
+        Box::new(move |error| {
+            warn!("loudness: streaming {error_path:?} failed: {error}");
+        }),
+    )
 }
 
 #[cfg(test)]

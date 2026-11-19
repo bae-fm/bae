@@ -756,14 +756,22 @@ fn unchanged(file: &ScannedFile, what: &str) -> Result<(), FolderScanError> {
 /// The track `file`'s stream as FFmpeg probes it now, and — when it plays and
 /// a `reader` is given — its tags as `reader` reads them, both from the
 /// version the listing found.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: opens a file of the person's folder before coven records it, for the probe"
+)]
 fn probe(
     file: &ScannedFile,
     reader: Option<&dyn FileTagReader>,
     lease: &FileLease,
 ) -> Result<(Playability, Option<Result<FileTagRead, TagReadFailure>>), FolderScanError> {
     unchanged(file, "changed before its audio facts could be read")?;
-    let stream = match bae_audio::probe_audio_from_path(&file.version.path, lease.place_blocking())
-    {
+    let probed = lease
+        .place_blocking()
+        .open(&file.version.path)
+        .map_err(bae_audio::ProbeError::Io)
+        .and_then(|opened| bae_audio::probe_audio(opened, &file.version.path));
+    let stream = match probed {
         // A failed read says nothing of the file's audio: the pass fails, and
         // nothing is stored for the file.
         Err(bae_audio::ProbeError::Io(source)) => {

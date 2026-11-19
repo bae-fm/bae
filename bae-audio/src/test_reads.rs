@@ -30,28 +30,20 @@ pub fn probes(path: &Path) -> u64 {
 }
 
 #[cfg(test)]
-fn landing_search_bytes() -> &'static Mutex<HashMap<PathBuf, u64>> {
-    static BYTES: OnceLock<Mutex<HashMap<PathBuf, u64>>> = OnceLock::new();
-    BYTES.get_or_init(Default::default)
+thread_local! {
+    /// The bytes the landing searches this thread ran have read.
+    static LANDING_SEARCH_BYTES: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
 }
 
-/// Count `bytes` a landing search read from `path`.
+/// Count `bytes` a landing search read. A search runs on the thread that
+/// calls it, so a test counts its own searches.
 #[cfg(test)]
-pub(crate) fn record_landing_search(path: &Path, bytes: u64) {
-    *landing_search_bytes()
-        .lock()
-        .expect("landing search bytes mutex poisoned")
-        .entry(path.to_path_buf())
-        .or_default() += bytes;
+pub(crate) fn record_landing_search(bytes: u64) {
+    LANDING_SEARCH_BYTES.with(|total| total.set(total.get() + bytes));
 }
 
-/// How many bytes landing searches have read from `path`.
+/// How many bytes the landing searches of this thread have read.
 #[cfg(test)]
-pub(crate) fn landing_search(path: &Path) -> u64 {
-    landing_search_bytes()
-        .lock()
-        .expect("landing search bytes mutex poisoned")
-        .get(path)
-        .copied()
-        .unwrap_or(0)
+pub(crate) fn landing_search() -> u64 {
+    LANDING_SEARCH_BYTES.with(std::cell::Cell::get)
 }

@@ -75,6 +75,10 @@ pub(super) fn cue_audio_pregap(
 /// The scan opened and probed every image a sheet names, and admitted only
 /// audio of a usable format, so these offsets can always be read.
 /// An error saying why they couldn't fails the import.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: opens an image the scan read from the person's folder, before coven records it"
+)]
 pub(super) fn cue_file_landing_bytes(
     file: &crate::types::CueAnalyzedAudioFile,
     cue_sheet: &crate::cue_sheet::CueSheet,
@@ -89,15 +93,22 @@ pub(super) fn cue_file_landing_bytes(
         .filter(|index| matches!(index.number, 0 | 1))
         .map(|index| crate::cue_sheet::cue_frames_to_samples(index.frames, sample_rate))
         .collect();
+    let internal = |reason: String| ImportError::Internal {
+        detail: format!(
+            "could not read where each track of the CUE image {} starts: {reason}",
+            file.path.display()
+        ),
+    };
+    // A search over a FLAC reads the file through two openings at once, so
+    // `lease` holds the places of both.
+    let open = || {
+        lease
+            .place_blocking()
+            .open(&file.path)
+            .map_err(|error| internal(format!("cannot open it: {error}")))
+    };
     let landings =
-        bae_audio::seek_landing_bytes(&file.path, &start_samples, lease).map_err(|reason| {
-            ImportError::Internal {
-                detail: format!(
-                    "could not read where each track of the CUE image {} starts: {reason}",
-                    file.path.display()
-                ),
-            }
-        })?;
+        bae_audio::seek_landing_bytes([open()?, open()?], &start_samples).map_err(internal)?;
     Ok(start_samples.into_iter().zip(landings).collect())
 }
 

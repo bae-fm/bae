@@ -16,6 +16,8 @@ pub mod sparse_buffer;
 pub mod stream_wake;
 #[cfg(any(test, feature = "test-utils"))]
 pub mod test_fixtures;
+#[cfg(any(test, feature = "test-utils"))]
+pub mod test_probe;
 #[cfg(any(test, feature = "test-instrumentation"))]
 pub mod test_reads;
 #[cfg(any(test, feature = "test-utils"))]
@@ -46,7 +48,7 @@ pub use encode::encode_i32;
 pub use encode::{EncodeFormat, StreamEncodeFormat, StreamingEncoder, WriteSeek};
 #[cfg(desktop)]
 pub use probe::seek_landing::{seek_landing_bytes, SEEK_LANDING_PLACES};
-pub use probe::{probe_audio_from_path, ProbeError, ProbeResult};
+pub use probe::{probe_audio, ProbeError, ProbeResult};
 pub use resample::Resampler;
 #[cfg(any(test, feature = "test-utils"))]
 pub use wav_read::{parse_streamed_wav, StreamedWav};

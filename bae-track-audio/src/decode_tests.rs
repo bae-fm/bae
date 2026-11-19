@@ -27,8 +27,7 @@ fn verified_window_reads() -> (Vec<u64>, u64, u64) {
     let bytes = bae_util::test_files::read_fixture(&path);
     let start_sample = 20 * 44_100;
     let landing =
-        bae_audio::seek_landing_bytes(&path, &[start_sample], &bae_util::test_files::lease())
-            .expect("landing byte")[0];
+        bae_audio::test_probe::landing_bytes(&path, &[start_sample]).expect("landing byte")[0];
     let buffer = filled_sparse_buffer(&bytes);
     let decode = StreamDecodeParams::new(
         vec![SegmentDecodeParams::new(

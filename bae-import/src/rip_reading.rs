@@ -15,11 +15,25 @@ use coven::{FileLease, LeasePlace};
 use std::path::Path;
 use tracing::{debug, trace, warn};
 
+/// The decoded text of the document at `path` in the person's folder, opened
+/// in `place`: a cue sheet, a log or a report, read before coven records the
+/// folder's files.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: reads a document of the person's folder before coven records it"
+)]
+pub(crate) fn read_document_text(
+    path: &Path,
+    place: LeasePlace,
+) -> std::io::Result<bae_util::text_encoding::DecodedText> {
+    bae_util::text_encoding::read_text_file(place.open(path)?)
+}
+
 /// A document's text, decoded whatever its encoding (an EAC log is UTF-16).
 /// A file that cannot be read is an error, not a document that states
 /// nothing: the evidence it holds is unknown.
 fn read_document(path: &Path, place: LeasePlace) -> Result<String, ImportError> {
-    bae_util::text_encoding::read_text_file(path, place)
+    read_document_text(path, place)
         .map(|read| read.text)
         .map_err(|error| ImportError::DocumentRead { file: path.display().to_string(), error })
 }

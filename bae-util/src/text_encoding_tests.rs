@@ -60,9 +60,8 @@ fn shift_jis_fallback() {
     assert_eq!(result.encoding, "Shift_JIS");
 }
 
-/// read_text_file opens the file through the place it receives and drops the
-/// place when the read ends, so the budget holds no open file, whether or not
-/// the file opened.
+/// read_text_file gives the place of the file it reads back when the read
+/// ends.
 #[test]
 fn reading_a_text_file_gives_its_place_back() {
     let folder = crate::test_files::TestFolder::new();
@@ -71,10 +70,9 @@ fn reading_a_text_file_gives_its_place_back() {
     let watch = budget.watch();
     let lease = budget.lease_blocking(1).unwrap();
 
-    let read = read_text_file(&path, lease.place_blocking()).unwrap();
+    let file = crate::test_files::open_in(lease.place_blocking(), &path).unwrap();
+    assert_eq!(watch.holding(), 1);
+    let read = read_text_file(file).unwrap();
     assert_eq!(read.text, "TITLE \"One\"");
-    assert_eq!(watch.holding(), 0);
-
-    assert!(read_text_file(&folder.join("absent.cue"), lease.place_blocking()).is_err());
     assert_eq!(watch.holding(), 0);
 }

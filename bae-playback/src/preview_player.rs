@@ -254,8 +254,9 @@ impl PreviewPlayer {
         };
 
         let buffer = create_sparse_buffer(source_size);
+        let opened = lease.place().await.open_async(target.path()).await;
         let reader: Box<dyn AudioDataReader> =
-            Box::new(LocalReader::new(target.path(), self.diagnostics.clone(), lease));
+            Box::new(LocalReader::new(opened, target.path(), self.diagnostics.clone()));
         let fill = reader.start_reading(
             buffer.clone(),
             preview_fill_error_handler(self.progress_tx.clone(), self.command_tx.clone()),
@@ -702,10 +703,24 @@ async fn probe_preview_audio(
     let lease = lease.clone();
     let result = diagnostics
         .blocking("probe the file to preview", move || {
-            bae_audio::probe_audio_from_path(&probe_path, lease.place_blocking())
+            probe_preview_file(&probe_path, lease.place_blocking())
         })
         .await;
     resolve_preview_probe(path, result)
+}
+
+/// The probe of the file at `path`, which opens in `place` and closes when
+/// the probe ends.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: probes a local file before its import, before coven records it"
+)]
+fn probe_preview_file(
+    path: &Path,
+    place: coven::LeasePlace,
+) -> Result<bae_audio::ProbeResult, bae_audio::ProbeError> {
+    let file = place.open(path).map_err(bae_audio::ProbeError::Io)?;
+    bae_audio::probe_audio(file, path)
 }
 
 fn resolve_preview_probe(

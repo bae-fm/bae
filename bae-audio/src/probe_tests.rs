@@ -57,13 +57,13 @@ fn probe_reads_the_file_through_its_handle() {
     let dir = bae_util::test_files::TestFolder::new();
     let path = silent_wav_in(&dir, std::ffi::OsStr::new("Track.wav"));
 
-    let probe = probe_audio_from_path(&path, bae_util::test_files::place()).expect("probe");
+    let probe = crate::test_probe::probe_file(&path).expect("probe");
 
     assert_eq!(probe.content_type, ContentType::Pcm);
     assert_eq!((probe.sample_rate.get(), probe.channels.get()), (44_100, 2));
     assert_eq!(probe.duration, std::time::Duration::from_secs(1));
     assert!(matches!(
-        probe_audio_from_path(&dir.path().join("Absent.wav"), bae_util::test_files::place()),
+        crate::test_probe::probe_file(&dir.path().join("Absent.wav")),
         Err(ProbeError::Io(_))
     ));
 }
@@ -76,10 +76,7 @@ fn a_failed_read_is_an_io_error_not_a_file_without_audio() {
     init();
     let dir = bae_util::test_files::TestFolder::new();
 
-    assert!(matches!(
-        probe_audio_from_path(dir.path(), bae_util::test_files::place()),
-        Err(ProbeError::Io(_))
-    ));
+    assert!(matches!(crate::test_probe::probe_file(dir.path()), Err(ProbeError::Io(_))));
 }
 
 /// Bytes that read fine but are no audio are `NotAudio`.
@@ -89,10 +86,7 @@ fn bytes_that_are_no_audio_are_not_audio() {
     let dir = bae_util::test_files::TestFolder::new();
     let path = dir.write("Track.flac", vec![0u8; 4096]);
 
-    assert!(matches!(
-        probe_audio_from_path(&path, bae_util::test_files::place()),
-        Err(ProbeError::NotAudio(_))
-    ));
+    assert!(matches!(crate::test_probe::probe_file(&path), Err(ProbeError::NotAudio(_))));
 }
 
 /// A file whose name isn't UTF-8 probes like any other: FFmpeg is handed the
@@ -106,13 +100,13 @@ fn probe_reads_a_file_whose_name_is_not_utf8() {
     let dir = bae_util::test_files::TestFolder::new();
     let path = silent_wav_in(&dir, std::ffi::OsStr::from_bytes(b"Caf\xE9.wav"));
 
-    let probe = probe_audio_from_path(&path, bae_util::test_files::place()).expect("probe");
+    let probe = crate::test_probe::probe_file(&path).expect("probe");
 
     assert_eq!(probe.duration, std::time::Duration::from_secs(1));
 }
 
 #[test]
-fn probe_audio_from_path_maps_audio_format_fixtures() {
+fn probe_audio_maps_audio_format_fixtures() {
     init();
     let fixture =
         |name: &str| format!("{}/test-fixtures/audio-format/{name}", env!("CARGO_MANIFEST_DIR"));
@@ -128,9 +122,8 @@ fn probe_audio_from_path_maps_audio_format_fixtures() {
         ("placeholder-dsd.dff", ContentType::Dsd, AudioContainer::Dsdiff),
     ] {
         let path = fixture(name);
-        let probe =
-            probe_audio_from_path(std::path::Path::new(&path), bae_util::test_files::place())
-                .unwrap_or_else(|e| panic!("probe {name}: {e}"));
+        let probe = crate::test_probe::probe_file(std::path::Path::new(&path))
+            .unwrap_or_else(|e| panic!("probe {name}: {e}"));
         assert_eq!(probe.content_type, expected, "{name}");
         assert_eq!(probe.container, container, "{name}");
     }
@@ -145,7 +138,7 @@ fn probe_reads_the_container_from_the_bytes() {
     let dir = bae_util::test_files::TestFolder::new();
     let misnamed = dir.copy_fixture(&flac, "track.wav");
 
-    let probe = probe_audio_from_path(&misnamed, bae_util::test_files::place()).expect("probe");
+    let probe = crate::test_probe::probe_file(&misnamed).expect("probe");
 
     assert_eq!(probe.content_type, ContentType::Flac);
     assert_eq!(probe.container, AudioContainer::Flac);
@@ -162,8 +155,8 @@ fn a_count_ffmpeg_states_as_zero_or_less_states_none() {
     assert_eq!(stated_count(44_100).map(std::num::NonZeroU32::get), Some(44_100));
 }
 
-/// A probe opens its file in the place the caller passes it and gives the
-/// place back when it returns, the error path included.
+/// A probe closes the file it reads, which gives the file's place back when
+/// it returns, the error path included.
 #[test]
 fn a_probe_gives_its_place_back_when_it_returns() {
     let path = crate::test_fixtures::cue_flac_dir().join("Test Album.flac");
@@ -171,14 +164,18 @@ fn a_probe_gives_its_place_back_when_it_returns() {
     let watch = budget.watch();
     let lease = budget.lease_blocking(1).unwrap();
 
-    probe_audio_from_path(&path, lease.place_blocking()).expect("probe fixture");
+    let file = bae_util::test_files::open_in(lease.place_blocking(), &path).expect("open fixture");
+    assert_eq!(watch.holding(), 1);
+    probe_audio(file, &path).expect("probe fixture");
     assert_eq!(watch.holding(), 0);
-    assert_eq!(watch.most_holding(), 1);
+
+    let text = bae_util::test_files::TestFolder::new();
+    let not_audio = text.write("notes.txt", "not audio");
+    let file = bae_util::test_files::open_in(lease.place_blocking(), &not_audio).expect("open");
+    assert!(matches!(probe_audio(file, &not_audio), Err(ProbeError::NotAudio(_))));
+    assert_eq!(watch.holding(), 0, "a file that holds no audio gives its place back");
 
     let absent = path.with_file_name("Absent.flac");
-    assert!(matches!(
-        probe_audio_from_path(&absent, lease.place_blocking()),
-        Err(ProbeError::Io(_))
-    ));
+    assert!(bae_util::test_files::open_in(lease.place_blocking(), &absent).is_err());
     assert_eq!(watch.holding(), 0, "a file that would not open gives its place back");
 }

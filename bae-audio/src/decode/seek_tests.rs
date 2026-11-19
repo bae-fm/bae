@@ -1,8 +1,5 @@
 use crate::test_samples::filled_sparse_buffer;
-use crate::{
-    decode_audio, decode_audio_streaming, encode_i32, init, seek_landing_bytes, DecodeStart,
-    EncodeFormat,
-};
+use crate::{decode_audio, decode_audio_streaming, encode_i32, init, DecodeStart, EncodeFormat};
 use std::sync::Arc;
 
 /// A `seek_to_sample` streaming decode (FFmpeg's `avformat_seek_file`, over a
@@ -286,12 +283,9 @@ fn byte_seek_to_landing_is_sample_exact() {
     // the silent track 1. Track 3's landing (20s) is the deliberately wrong byte,
     // well past track 2's target.
     let start = 10 * sample_rate;
-    let landings = seek_landing_bytes(
-        std::path::Path::new(path),
-        &[start, 20 * sample_rate],
-        &bae_util::test_files::lease(),
-    )
-    .expect("landings");
+    let landings =
+        crate::test_probe::landing_bytes(std::path::Path::new(path), &[start, 20 * sample_rate])
+            .expect("landings");
     let landing = landings[0];
     let wrong_landing = landings[1];
 

@@ -293,7 +293,7 @@ impl SaveService {
             files,
             parallelism,
             |(plan, _): &(SaveTrackPlan, PathBuf)| plan.source_files(),
-            open,
+            |file: String, lease: coven::FileLease| std::future::ready(open(&file, &lease)),
             |(plan, output_path), streams| {
                 let cover_image_bytes = cover_image_bytes.clone();
                 let codec = codec.clone();

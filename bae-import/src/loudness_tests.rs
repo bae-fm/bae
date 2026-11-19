@@ -426,8 +426,7 @@ async fn measure_loudness_computes_track_and_album_values() {
         HashMap::from([(path.clone(), bae_util::test_files::read_fixture(&path).len() as u64)]);
     // The whole-file track's stored length is the probe's, as an import
     // measures it: the decode is checked against it.
-    let probe = bae_audio::probe_audio_from_path(&path, bae_util::test_files::place())
-        .expect("fixture probe");
+    let probe = bae_audio::test_probe::probe_file(&path).expect("fixture probe");
     let mut tracks = vec![standalone_track("track-0", &path)];
     tracks[0].db_track.duration_ms =
         u64::try_from(probe.duration.as_millis()).expect("the probe's length fits");
@@ -782,8 +781,7 @@ async fn measure_loudness_accepts_complete_audio_with_an_invalid_terminal_packet
 
     let temp = TestFolder::new();
     let damaged_path = temp.write("damaged.mp3", damaged);
-    let probe = bae_audio::probe_audio_from_path(&damaged_path, bae_util::test_files::place())
-        .expect("damaged MP3 probe");
+    let probe = bae_audio::test_probe::probe_file(&damaged_path).expect("damaged MP3 probe");
     let now = bae_util::timestamp::parse_rfc3339("2024-01-01T00:00:00Z").unwrap();
     // The track's stored length is the probe's, as an import measures it.
     let mut db_track = bae_records::DbTrack::new_test("release-id", "track-id", "Track Title", 1);
@@ -893,8 +891,7 @@ async fn a_seektable_less_cue_image_gets_scrub_points_for_every_track() {
         audio_files: vec![CueAnalyzedAudioFile {
             file_reference: "image.flac".to_string(),
             path: image.clone(),
-            probe: bae_audio::probe_audio_from_path(&image, bae_util::test_files::place())
-                .expect("probe the image"),
+            probe: bae_audio::test_probe::probe_file(&image).expect("probe the image"),
         }],
     });
     let tracks: Vec<TrackFile> = (0..3u32)

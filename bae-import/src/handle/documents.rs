@@ -53,7 +53,7 @@ impl ImportServiceHandle {
         self.services
             .diagnostics
             .blocking("read a candidate's document", move || {
-                bae_util::text_encoding::read_text_file(&path, lease.place_blocking())
+                crate::rip_reading::read_document_text(&path, lease.place_blocking())
                     .map(|decoded| decoded.text)
                     .map_err(|error| crate::ImportError::DocumentRead { file, error })
             })

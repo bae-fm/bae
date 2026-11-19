@@ -47,10 +47,11 @@ struct Run {
     peak_running: usize,
 }
 
-/// A reader of `path` whose fill opens it in a place of `lease`.
-fn local_stream(path: &Path, lease: &FileLease) -> SourceStream {
+/// A reader of `path`, which it opens in a place of `lease`.
+async fn local_stream(path: &Path, lease: &FileLease) -> SourceStream {
+    let opened = bae_util::test_files::open_async_in(lease.place().await, path).await;
     SourceStream::start(
-        Box::new(LocalReader::new(path, bae_diagnostics::Diagnostics::noop(), lease.clone())),
+        Box::new(LocalReader::new(opened, path, bae_diagnostics::Diagnostics::noop())),
         FILE_BYTES as u64,
         Box::new(|_| {}),
     )
@@ -78,9 +79,9 @@ async fn run_within(dir: &Path, tracks: Vec<Track>, parallelism: usize, budget: 
         &budget.clone(),
         NonZeroUsize::new(parallelism).unwrap(),
         |track: &Track| track.files.clone(),
-        |path: &PathBuf, lease: &FileLease| {
+        |path: PathBuf, lease: FileLease| {
             opens.fetch_add(1, Ordering::Relaxed);
-            local_stream(path, lease)
+            async move { local_stream(&path, &lease).await }
         },
         |track, streams| {
             let running = running.clone();
@@ -224,9 +225,9 @@ async fn a_track_reading_more_files_than_the_budget_holds_fails_the_pass_at_once
         &budget.clone(),
         NonZeroUsize::new(4).unwrap(),
         |track: &Track| track.files.clone(),
-        |path: &PathBuf, lease: &FileLease| {
+        |path: PathBuf, lease: FileLease| {
             opened.fetch_add(1, Ordering::Relaxed);
-            local_stream(path, lease)
+            async move { local_stream(&path, &lease).await }
         },
         |_track, _streams| async { Ok(()) },
         |failed| failed.to_string(),
@@ -281,7 +282,7 @@ async fn a_failed_track_stops_the_run_and_closes_every_file() {
         &FileBudget::for_test(),
         NonZeroUsize::new(2).unwrap(),
         |track: &Track| track.files.clone(),
-        |path: &PathBuf, lease: &FileLease| local_stream(path, lease),
+        |path: PathBuf, lease: FileLease| async move { local_stream(&path, &lease).await },
         |track, _streams| {
             let started = started.clone();
             let failed_tx = failed_tx.clone();
@@ -335,7 +336,7 @@ async fn a_dropped_pass_stops_the_streams_its_tracks_read() {
         &leases,
         NonZeroUsize::MIN,
         |track: &Track| track.files.clone(),
-        |path: &PathBuf, lease: &FileLease| local_stream(path, lease),
+        |path: PathBuf, lease: FileLease| async move { local_stream(&path, &lease).await },
         |_track, streams| {
             let (reading_tx, pass_dropped_rx, next_read_tx) =
                 track_ends.lock().unwrap().take().expect("one track runs");
@@ -384,7 +385,7 @@ async fn a_track_that_panics_fails_the_run_and_closes_every_file() {
         &FileBudget::for_test(),
         NonZeroUsize::new(2).unwrap(),
         |track: &Track| track.files.clone(),
-        |path: &PathBuf, lease: &FileLease| local_stream(path, lease),
+        |path: PathBuf, lease: FileLease| async move { local_stream(&path, &lease).await },
         |track, _streams| async move {
             if track.name.starts_with("01") {
                 panic!("{} broke", track.name);

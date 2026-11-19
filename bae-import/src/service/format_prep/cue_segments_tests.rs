@@ -113,8 +113,7 @@ INDEX 01 01:00:00
 
     let cue_sheet = crate::cue_sheet::parse_cue_sheet(&cue_path, bae_util::test_files::place())
         .expect("parse cue");
-    let probe = bae_audio::probe_audio_from_path(&audio_path, bae_util::test_files::place())
-        .expect("analyze ape");
+    let probe = bae_audio::test_probe::probe_file(&audio_path).expect("analyze ape");
     let cue_pair = Arc::new(CueFlacAnalysis {
         cue_sheet,
         audio_files: vec![CueAnalyzedAudioFile {
@@ -269,8 +268,7 @@ INDEX 01 11:01:30
         audio_files: vec![CueAnalyzedAudioFile {
             file_reference: "test.wav".to_string(),
             path: audio_path.clone(),
-            probe: bae_audio::probe_audio_from_path(&audio_path, bae_util::test_files::place())
-                .expect("probe the image"),
+            probe: bae_audio::test_probe::probe_file(&audio_path).expect("probe the image"),
         }],
     });
 
@@ -434,9 +432,7 @@ FILE "second.flac" WAVE
 "#,
     );
 
-    let probe = |path: &std::path::Path| {
-        bae_audio::probe_audio_from_path(path, bae_util::test_files::place()).expect("probe")
-    };
+    let probe = |path: &std::path::Path| bae_audio::test_probe::probe_file(path).expect("probe");
     let cue_pair = Arc::new(CueFlacAnalysis {
         cue_sheet: crate::cue_sheet::parse_cue_sheet(&cue_path, bae_util::test_files::place())
             .expect("parse cue"),
@@ -653,8 +649,7 @@ fn cue_backed_tracks(dir: &str) -> Vec<TrackFile> {
     let cue_path = PathBuf::from(format!("{dir}/Test Album.cue"));
     let cue_sheet = crate::cue_sheet::parse_cue_sheet(&cue_path, bae_util::test_files::place())
         .expect("parse cue");
-    let probe = bae_audio::probe_audio_from_path(&audio_path, bae_util::test_files::place())
-        .expect("analyze ape");
+    let probe = bae_audio::test_probe::probe_file(&audio_path).expect("analyze ape");
     let cue_pair = Arc::new(crate::types::CueFlacAnalysis {
         cue_sheet,
         audio_files: vec![crate::types::CueAnalyzedAudioFile {
@@ -756,8 +751,7 @@ fn cue_image(
              TRACK 02 AUDIO\n    INDEX 01 00:03:00\n"
         ),
     );
-    let probe =
-        bae_audio::probe_audio_from_path(&path, bae_util::test_files::place()).expect("probe");
+    let probe = bae_audio::test_probe::probe_file(&path).expect("probe");
     let cue_pair = Arc::new(CueFlacAnalysis {
         cue_sheet: crate::cue_sheet::parse_cue_sheet(&cue_path, bae_util::test_files::place())
             .expect("parse cue"),

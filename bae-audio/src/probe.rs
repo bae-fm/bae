@@ -1,4 +1,4 @@
-//! Probing and format detection: open a file at a path, inspect its best audio
+//! Probing and format detection: read an open file, inspect its best audio
 //! stream, and report container/codec properties (`ProbeResult`). The desktop
 //! builds also find where a seek to a sample lands (`seek_landing`).
 
@@ -8,7 +8,7 @@ use crate::avio::{
 };
 use bae_util::audio_container::AudioContainer;
 use bae_util::content_type::ContentType;
-use coven::LeasePlace;
+use coven::LeasedFile;
 use std::os::raw::{c_int, c_void};
 use std::path::Path;
 use std::ptr;
@@ -143,22 +143,20 @@ impl Drop for OpenedFile {
     }
 }
 
-/// Open the file at `path` in `place` for FFmpeg to read, and find its best
-/// audio stream. Returns the opened file and the stream index, or why not: a
-/// read of the file failed (`Io`), or its stream info can't be read or it has
-/// no audio stream (`NotAudio`). Closing the file returns its place to the
-/// lease.
+/// Read the open `file` through FFmpeg and find its best audio stream.
+/// Returns the opened file and the stream index, or why not: a read of the
+/// file failed (`Io`), or its stream info can't be read or it has no audio
+/// stream (`NotAudio`). Closing the opened file closes `file` and returns its
+/// place to the lease.
 #[expect(
     clippy::disallowed_methods,
-    reason = "file system: opens a file the scan, the import or the preview names, before coven records it, and FFmpeg over that open file with no URL"
+    reason = "file system: FFmpeg over a file its caller opened, with no URL"
 )]
 unsafe fn open_best_audio_stream(
-    path: &Path,
-    place: LeasePlace,
+    file: LeasedFile<std::fs::File>,
 ) -> Result<(OpenedFile, c_int), ProbeError> {
     use ffmpeg_sys_next::*;
 
-    let file = place.open(path).map_err(ProbeError::Io)?;
     let file = Box::into_raw(Box::new(FileAvioContext::new(file)));
     // FFmpeg takes ownership of this buffer.
     let buffer = av_malloc(super::AVIO_BUFFER_SIZE) as *mut u8;
@@ -250,7 +248,7 @@ unsafe fn probed_duration(
     let duration_us = (*fmt_ctx).duration;
     if duration_us > 0 {
         debug!(
-            "probe_audio_from_path: using container duration for {}; stream duration was unavailable",
+            "probe_audio: using container duration for {}; stream duration was unavailable",
             path.display()
         );
         Some(std::time::Duration::from_micros(duration_us as u64))
@@ -287,13 +285,13 @@ unsafe fn probed_lossy_bitrate_kbps(
 
     let start = crate::sample_clock::stream_origin(stream);
     if av_seek_frame(fmt_ctx, stream_index, start, AVSEEK_FLAG_BACKWARD) < 0 {
-        warn!("probe_audio_from_path: cannot seek {path} to measure audio bitrate");
+        warn!("probe_audio: cannot seek {path} to measure audio bitrate");
         return None;
     }
 
     let mut packet = av_packet_alloc();
     if packet.is_null() {
-        warn!("probe_audio_from_path: cannot allocate packet to measure {path} bitrate");
+        warn!("probe_audio: cannot allocate packet to measure {path} bitrate");
         return None;
     }
     let mut audio_bytes = 0u64;
@@ -306,13 +304,13 @@ unsafe fn probed_lossy_bitrate_kbps(
             let packet_size = (*packet).size;
             if packet_size < 0 {
                 av_packet_unref(packet);
-                warn!("probe_audio_from_path: negative audio packet size in {path}");
+                warn!("probe_audio: negative audio packet size in {path}");
                 av_packet_free(&mut packet);
                 return None;
             }
             let Some(total) = audio_bytes.checked_add(packet_size as u64) else {
                 av_packet_unref(packet);
-                warn!("probe_audio_from_path: audio byte count overflow for {path}");
+                warn!("probe_audio: audio byte count overflow for {path}");
                 av_packet_free(&mut packet);
                 return None;
             };
@@ -323,17 +321,17 @@ unsafe fn probed_lossy_bitrate_kbps(
     av_packet_free(&mut packet);
 
     if read_result != AVERROR_EOF {
-        warn!("probe_audio_from_path: failed while reading audio packets from {path}");
+        warn!("probe_audio: failed while reading audio packets from {path}");
         return None;
     }
     if audio_bytes == 0 {
-        warn!("probe_audio_from_path: no audio packets found while measuring {path}");
+        warn!("probe_audio: no audio packets found while measuring {path}");
         return None;
     }
 
     let bps = u128::from(audio_bytes) * 8 * 1_000_000_000 / duration.as_nanos();
     let Ok(bps) = i64::try_from(bps) else {
-        warn!("probe_audio_from_path: measured bitrate is out of range for {path}");
+        warn!("probe_audio: measured bitrate is out of range for {path}");
         return None;
     };
     kbps_from_bps(bps)
@@ -345,22 +343,26 @@ fn stated_count(value: c_int) -> Option<std::num::NonZeroU32> {
     u32::try_from(value).ok().and_then(std::num::NonZeroU32::new)
 }
 
-/// The audio properties of the file at `path`, read from its current bytes
-/// with the file open in `place`: `NotAudio` when it holds no audio stream
-/// bae can use, `Io` when reading the file failed, which says nothing of what
-/// it holds.
-pub fn probe_audio_from_path(path: &Path, place: LeasePlace) -> Result<ProbeResult, ProbeError> {
-    open_and_probe(path, place)
+/// The audio properties of the open `file`, read from its current bytes:
+/// `NotAudio` when it holds no audio stream bae can use, `Io` when reading the
+/// file failed, which says nothing of what it holds. `path` is the file's
+/// name, which the warnings and the test read counts use, never an open.
+/// Closes `file` when it returns.
+pub fn probe_audio(
+    file: LeasedFile<std::fs::File>,
+    path: &Path,
+) -> Result<ProbeResult, ProbeError> {
+    open_and_probe(file, path)
 }
 
-/// Open the file and read its best audio stream through FFmpeg. `NotAudio`
-/// when it has no audio stream, or states no sample rate, channels or usable
+/// Read the open file's best audio stream through FFmpeg. `NotAudio` when it
+/// has no audio stream, or states no sample rate, channels or usable
 /// duration; `Io` when a read of it failed, wherever FFmpeg met the failure.
-fn open_and_probe(path: &Path, place: LeasePlace) -> Result<ProbeResult, ProbeError> {
+fn open_and_probe(file: LeasedFile<std::fs::File>, path: &Path) -> Result<ProbeResult, ProbeError> {
     #[cfg(feature = "test-instrumentation")]
     crate::test_reads::record_probe(path);
     unsafe {
-        let (mut opened, stream_index) = open_best_audio_stream(path, place)?;
+        let (mut opened, stream_index) = open_best_audio_stream(file)?;
         let fmt_ctx = opened.fmt_ctx;
         let stream = *(*fmt_ctx).streams.add(stream_index as usize);
         let duration = probed_duration(path, fmt_ctx, stream);

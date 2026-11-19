@@ -1,8 +1,8 @@
 use super::*;
 use crate::test_samples::filled_sparse_buffer;
 use crate::{
-    decode_audio, decode_audio_to_sink_with_seek, encode_i32, init, probe_audio_from_path,
-    DecodeStart, DecodedSink, EncodeFormat,
+    decode_audio, decode_audio_to_sink_with_seek, encode_i32, init, DecodeStart, DecodedSink,
+    EncodeFormat,
 };
 use std::sync::Arc;
 
@@ -27,8 +27,7 @@ fn seek_landing_bytes_track_sample_positions() {
 
     // Probe at second boundaries (0, 1s, 2s, 3s).
     let probes: Vec<u64> = (0..seconds as u64).map(|s| s * sample_rate as u64).collect();
-    let offsets = seek_landing_bytes(path, &probes, &bae_util::test_files::lease())
-        .expect("seek_landing_bytes");
+    let offsets = crate::test_probe::landing_bytes(path, &probes).expect("seek_landing_bytes");
     assert_eq!(offsets.len(), probes.len());
 
     // Non-decreasing and within the file.
@@ -63,14 +62,14 @@ fn seek_landing_bytes_follow_content_not_time_when_bitrate_swings() {
         env!("CARGO_MANIFEST_DIR"),
         "/tests/fixtures/cue_flac/Test Album.flac"
     ));
-    let probe = probe_audio_from_path(path, bae_util::test_files::place()).expect("probe fixture");
+    let probe = crate::test_probe::probe_file(path).expect("probe fixture");
     let sr = u64::from(probe.sample_rate.get());
     let total_samples = (probe.duration.as_secs_f64() * sr as f64) as u64;
     let file_size = bae_util::test_files::read_fixture(path).len() as u64;
 
     // Track starts from the CUE: 0s (silence), 10s (white noise), 20s (brown).
     let starts = [0u64, 10 * sr, 20 * sr];
-    let exact = seek_landing_bytes(path, &starts, &bae_util::test_files::lease()).expect("offsets");
+    let exact = crate::test_probe::landing_bytes(path, &starts).expect("offsets");
 
     // Time-proportional estimate -- what we'd get without seeking.
     let proportional: Vec<u64> = starts
@@ -165,10 +164,9 @@ fn seek_landing_bytes_search_a_long_flac_rather_than_read_it() {
     let path = path.as_path();
     let target = frames as u64 / 2 + 123;
 
-    let landing =
-        seek_landing_bytes(path, &[target], &bae_util::test_files::lease()).expect("landing")[0];
+    let landing = crate::test_probe::landing_bytes(path, &[target]).expect("landing")[0];
 
-    let read = crate::test_reads::landing_search(path);
+    let read = crate::test_reads::landing_search();
     assert!(read > 0, "the search's reads are counted");
     assert!(
         read < flac.len() as u64 / 10,
@@ -202,8 +200,7 @@ fn seek_landing_bytes_land_targets_in_a_flacs_final_frames() {
     let third_to_last = last_frame_start - 2 * block;
     let targets = [total - 1, third_to_last + 100];
 
-    let landings =
-        seek_landing_bytes(path, &targets, &bae_util::test_files::lease()).expect("landings");
+    let landings = crate::test_probe::landing_bytes(path, &targets).expect("landings");
 
     let ground =
         decode_audio(filled_sparse_buffer(&flac), None, None).expect("ground-truth decode");
@@ -226,25 +223,17 @@ fn seek_landing_bytes_land_targets_in_a_flacs_final_frames() {
     }
 }
 
-/// A landing search opens a FLAC twice at once, so it needs two places.
-/// seek_landing_bytes refuses a lease of one place before it opens the file,
-/// so it never waits forever for a second place.
+/// A landing search closes both files it takes, which gives both places
+/// back when it returns.
 #[test]
-fn a_landing_search_needs_two_places() {
+fn a_landing_search_gives_its_places_back() {
     let path = crate::test_fixtures::cue_flac_dir().join("Test Album.flac");
     let budget = coven::FileBudget::for_test();
-    let one = budget.lease_blocking(1).unwrap();
     let two = budget.lease_blocking(SEEK_LANDING_PLACES).unwrap();
+    let open = || bae_util::test_files::open_in(two.place_blocking(), &path).expect("open");
 
-    let refused = seek_landing_bytes(&path, &[0], &one).unwrap_err();
-    assert!(refused.contains("needs 2 places"), "{refused}");
-    assert_eq!(budget.watch().most_holding(), 0, "the refused search opened nothing");
-
-    assert_eq!(
-        seek_landing_bytes(&path, &[0], &two)
-            .expect("a lease of two places lets the search run")
-            .len(),
-        1
-    );
+    let files = [open(), open()];
+    assert_eq!(budget.watch().holding(), SEEK_LANDING_PLACES);
+    assert_eq!(seek_landing_bytes(files, &[0]).expect("a search over two files").len(), 1);
     assert_eq!(budget.watch().holding(), 0);
 }

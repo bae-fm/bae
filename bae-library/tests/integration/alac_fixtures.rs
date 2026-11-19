@@ -5,7 +5,7 @@
 //! bae-import's `test-fixtures/alac/`). Nothing is mocked: every assertion
 //! runs through the same code paths production uses.
 
-use bae_audio::{decode_audio, probe_audio_from_path};
+use bae_audio::decode_audio;
 use bae_catalogs::discogs::models::DiscogsRelease;
 use bae_import::cue_sheet::parse_cue_sheet;
 use bae_import::folder_scanner::{
@@ -66,8 +66,7 @@ async fn import_single_m4a_fixture(
 #[test]
 fn probe_alac_returns_content_type_alac() {
     let path = fixture_dir().join("silence-alac.m4a");
-    let probe =
-        probe_audio_from_path(&path, bae_util::test_files::place()).expect("probe ALAC fixture");
+    let probe = bae_audio::test_probe::probe_file(&path).expect("probe ALAC fixture");
 
     assert_eq!(probe.content_type, ContentType::Alac);
     assert_eq!(probe.sample_rate.get(), 44100);
@@ -81,8 +80,7 @@ fn probe_alac_returns_content_type_alac() {
 #[test]
 fn probe_aac_returns_content_type_aac() {
     let path = fixture_dir().join("silence-aac.m4a");
-    let probe =
-        probe_audio_from_path(&path, bae_util::test_files::place()).expect("probe AAC fixture");
+    let probe = bae_audio::test_probe::probe_file(&path).expect("probe AAC fixture");
 
     assert_eq!(probe.content_type, ContentType::Aac);
     assert_eq!(probe.sample_rate.get(), 44100);

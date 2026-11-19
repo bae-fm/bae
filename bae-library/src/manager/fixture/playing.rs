@@ -54,10 +54,9 @@ impl LibraryManager {
             }
             let path = folder.join(&track.file_reference);
             let unplayable = || invalid(format!("{} is no audio bae plays", path.display()));
-            let probe =
-                bae_audio::probe_audio_from_path(&path, lease.place().await).map_err(|error| {
-                    invalid(format!("{} is no audio bae plays: {error}", path.display()))
-                })?;
+            let probe = probe_file(&path, lease.place().await).map_err(|error| {
+                invalid(format!("{} is no audio bae plays: {error}", path.display()))
+            })?;
             scanned_audio
                 .push(bae_import::folder_scanner::scanned_audio(&probe).ok_or_else(unplayable)?);
             audio_files.push(CueAnalyzedAudioFile {
@@ -195,4 +194,18 @@ impl LibraryManager {
         tables.save_playback_state(&row).await.map_err(LibraryError::from)?;
         Ok(())
     }
+}
+
+/// The probe of the audio file at `path`, which opens in `place` and closes
+/// when the probe ends.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: a debug UI test's fixture probes the audio files it wrote, which no library holds"
+)]
+fn probe_file(
+    path: &std::path::Path,
+    place: coven::LeasePlace,
+) -> Result<bae_audio::ProbeResult, bae_audio::ProbeError> {
+    let file = place.open(path).map_err(bae_audio::ProbeError::Io)?;
+    bae_audio::probe_audio(file, path)
 }

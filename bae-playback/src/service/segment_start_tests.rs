@@ -225,9 +225,8 @@ mod scrub_points {
         let dir = bae_util::test_files::TestFolder::new();
         let path = dir.write("album.flac", &flac);
         let start_sample = 12 * u64::from(SAMPLE_RATE) + 1_234;
-        let start_byte =
-            bae_audio::seek_landing_bytes(&path, &[start_sample], &bae_util::test_files::lease())
-                .expect("the track's landing byte")[0];
+        let start_byte = bae_audio::test_probe::landing_bytes(&path, &[start_sample])
+            .expect("the track's landing byte")[0];
         let track = SegmentSpan {
             start_sample,
             end_sample: None,
@@ -251,9 +250,8 @@ mod scrub_points {
         let dir = bae_util::test_files::TestFolder::new();
         let path = dir.write("album.flac", &flac);
         let start_sample = 12 * u64::from(SAMPLE_RATE) + 1_234;
-        let start_byte =
-            bae_audio::seek_landing_bytes(&path, &[start_sample], &bae_util::test_files::lease())
-                .expect("the track's landing byte")[0];
+        let start_byte = bae_audio::test_probe::landing_bytes(&path, &[start_sample])
+            .expect("the track's landing byte")[0];
         let end = start_sample + u64::from(SAMPLE_RATE);
         let track = SegmentSpan {
             start_sample,
@@ -361,10 +359,9 @@ mod image_track_starts {
             .collect();
         let bytes = bae_audio::encode_i32(format, &samples, 44_100, 2).expect("encode the image");
         let path = dir.write(name, &bytes);
-        let landing =
-            bae_audio::seek_landing_bytes(&path, &[TRACK_2_START], &bae_util::test_files::lease())
-                .expect("read where track 2 starts")
-                .pop();
+        let landing = bae_audio::test_probe::landing_bytes(&path, &[TRACK_2_START])
+            .expect("read where track 2 starts")
+            .pop();
         let span = SegmentSpan {
             start_sample: TRACK_2_START,
             end_sample: None,

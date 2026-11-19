@@ -253,7 +253,7 @@ pub fn parse_cue_sheet(
 ) -> Result<CueSheet, CueSheetError> {
     #[cfg(test)]
     crate::tests::reads::record(crate::tests::reads::FileRead::CueParse, cue_path);
-    parse_cue_content(&bae_util::text_encoding::read_text_file(cue_path, place)?.text)
+    parse_cue_content(&crate::rip_reading::read_document_text(cue_path, place)?.text)
 }
 /// Parse CUE sheet content.
 ///

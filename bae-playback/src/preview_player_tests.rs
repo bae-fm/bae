@@ -68,10 +68,7 @@ async fn switching_previews_keeps_the_main_player_resume() {
     let device = CaptureAudioDevice::new(captured);
     let path = bae_audio::test_fixtures::cue_flac_dir().join("Test Album.flac");
     let sample_rate = u64::from(
-        bae_audio::probe_audio_from_path(&path, bae_util::test_files::place())
-            .expect("probe fixture")
-            .sample_rate
-            .get(),
+        bae_audio::test_probe::probe_file(&path).expect("probe fixture").sample_rate.get(),
     );
 
     let first = PreviewTarget::sample_range(path.clone(), 0, Some(sample_rate));
@@ -90,8 +87,7 @@ async fn switching_previews_keeps_the_main_player_resume() {
 async fn preview_plays_only_the_requested_sample_window() {
     let fixture_dir = bae_audio::test_fixtures::cue_flac_dir();
     let path = fixture_dir.join("Test Album.flac");
-    let probe = bae_audio::probe_audio_from_path(&path, bae_util::test_files::place())
-        .expect("probe fixture");
+    let probe = bae_audio::test_probe::probe_file(&path).expect("probe fixture");
     let sample_rate = u64::from(probe.sample_rate.get());
     let target =
         PreviewTarget::sample_range(path.clone(), 10 * sample_rate, Some(11 * sample_rate));
@@ -160,8 +156,7 @@ async fn preview_plays_only_the_requested_sample_window() {
 async fn preview_seek_is_relative_to_the_requested_sample_window() {
     let fixture_dir = bae_audio::test_fixtures::cue_flac_dir();
     let path = fixture_dir.join("Test Album.flac");
-    let probe = bae_audio::probe_audio_from_path(&path, bae_util::test_files::place())
-        .expect("probe fixture");
+    let probe = bae_audio::test_probe::probe_file(&path).expect("probe fixture");
     let sample_rate = u64::from(probe.sample_rate.get());
     let target =
         PreviewTarget::sample_range(path.clone(), 10 * sample_rate, Some(11 * sample_rate));
@@ -239,8 +234,7 @@ async fn preview_seek_is_relative_to_the_requested_sample_window() {
 async fn a_preview_asked_to_pause_twice_stays_paused() {
     let fixture_dir = bae_audio::test_fixtures::cue_flac_dir();
     let path = fixture_dir.join("Test Album.flac");
-    let probe = bae_audio::probe_audio_from_path(&path, bae_util::test_files::place())
-        .expect("probe fixture");
+    let probe = bae_audio::test_probe::probe_file(&path).expect("probe fixture");
     let sample_rate = u64::from(probe.sample_rate.get());
     let target = PreviewTarget::sample_range(path, 10 * sample_rate, Some(11 * sample_rate));
     let (progress_tx, mut progress_rx) = tokio_mpsc::unbounded_channel();
@@ -328,8 +322,7 @@ impl AudioOutput for InvalidatingOutput {
 async fn an_invalidated_preview_starts_again_where_it_got_to() {
     let fixture_dir = bae_audio::test_fixtures::cue_flac_dir();
     let path = fixture_dir.join("Test Album.flac");
-    let probe = bae_audio::probe_audio_from_path(&path, bae_util::test_files::place())
-        .expect("probe fixture");
+    let probe = bae_audio::test_probe::probe_file(&path).expect("probe fixture");
     let sample_rate = u64::from(probe.sample_rate.get());
     let target =
         PreviewTarget::sample_range(path.clone(), 10 * sample_rate, Some(11 * sample_rate));

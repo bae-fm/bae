@@ -14,6 +14,16 @@ use bae_util::test_channels::HANG_GUARD;
 use std::sync::Arc;
 use tokio::time::timeout;
 
+/// A reader of the file at `path`, which the test opens in a place of `lease`.
+async fn local_reader(
+    path: impl AsRef<std::path::Path>,
+    lease: coven::FileLease,
+) -> Box<LocalReader> {
+    let path = path.as_ref();
+    let opened = bae_util::test_files::open_async_in(lease.place().await, path).await;
+    Box::new(LocalReader::new(opened, path, bae_diagnostics::Diagnostics::noop()))
+}
+
 /// The OS error kind and text of a decode that stopped on a source read, or
 /// `None` for any other outcome.
 fn source_read_failure(result: Result<(), DecodeError>) -> Option<(std::io::ErrorKind, String)> {
@@ -86,12 +96,9 @@ async fn i32_decode_streams_from_a_live_fill_and_stays_windowed() {
     let folder = bae_util::test_files::TestFolder::new();
     let path = folder.write("track.wav", &wav);
     let buffer = create_sparse_buffer(wav.len() as u64);
-    Box::new(LocalReader::new(
-        path,
-        bae_diagnostics::Diagnostics::noop(),
-        bae_util::test_files::lease(),
-    ))
-    .start_reading(buffer.clone(), Box::new(|_| {}));
+    local_reader(path, bae_util::test_files::lease())
+        .await
+        .start_reading(buffer.clone(), Box::new(|_| {}));
 
     let streamed = bae_util::test_spawn::on_blocking_pool({
         let buffer = buffer.clone();
@@ -143,12 +150,9 @@ async fn i32_decode_names_the_read_error_when_the_first_read_fails() {
         .expect_err("reading a directory fails")
         .kind();
     let buffer = create_sparse_buffer(64 * 1024);
-    Box::new(LocalReader::new(
-        dir.path(),
-        bae_diagnostics::Diagnostics::noop(),
-        bae_util::test_files::lease(),
-    ))
-    .start_reading(buffer.clone(), Box::new(|_| {}));
+    local_reader(dir.path(), bae_util::test_files::lease())
+        .await
+        .start_reading(buffer.clone(), Box::new(|_| {}));
 
     let result = bae_util::test_spawn::on_blocking_pool(move || {
         decode_audio(buffer, None, None).map(|_| ())
@@ -168,11 +172,7 @@ async fn test_local_file_reader_full_file() {
     let test_data = b"Hello, this is test audio data for streaming!";
     let path = folder.write("track.bin", test_data);
 
-    let reader = Box::new(LocalReader::new(
-        path,
-        bae_diagnostics::Diagnostics::noop(),
-        bae_util::test_files::lease(),
-    ));
+    let reader = local_reader(path, bae_util::test_files::lease()).await;
     let buffer = create_sparse_buffer(test_data.len() as u64);
 
     reader.start_reading(buffer.clone(), Box::new(|_| {}));
@@ -192,11 +192,7 @@ async fn local_seek_into_large_file_serves_target_via_shared_fill() {
     let folder = bae_util::test_files::TestFolder::new();
     let path = folder.write("track.bin", &data);
 
-    let reader = Box::new(LocalReader::new(
-        path,
-        bae_diagnostics::Diagnostics::noop(),
-        bae_util::test_files::lease(),
-    ));
+    let reader = local_reader(path, bae_util::test_files::lease()).await;
     let buffer = create_sparse_buffer(source_size);
 
     // Register the seek demand before the fill loop starts (the seek case).
@@ -231,11 +227,7 @@ async fn test_local_file_reader_nonexistent_file() {
     let path = folder.write("track.bin", test_data);
     folder.remove(&path);
 
-    let reader = Box::new(LocalReader::new(
-        path,
-        bae_diagnostics::Diagnostics::noop(),
-        bae_util::test_files::lease(),
-    ));
+    let reader = local_reader(path, bae_util::test_files::lease()).await;
     let buffer = create_sparse_buffer(test_data.len() as u64);
 
     let (on_error, mut error_rx) = capturing_error_handler();
@@ -258,11 +250,7 @@ async fn test_local_file_reader_nonexistent_file() {
 async fn test_local_file_reader_read_error_reports_error() {
     let dir = bae_util::test_files::TestFolder::new();
 
-    let reader = Box::new(LocalReader::new(
-        dir.path(),
-        bae_diagnostics::Diagnostics::noop(),
-        bae_util::test_files::lease(),
-    ));
+    let reader = local_reader(dir.path(), bae_util::test_files::lease()).await;
     let buffer = create_sparse_buffer(1);
 
     let (on_error, mut error_rx) = capturing_error_handler();
@@ -290,12 +278,9 @@ async fn cancelling_a_local_buffer_closes_its_file_while_the_buffer_lives() {
     let dir = bae_util::test_files::TestFolder::new();
     let path = dir.write("track.flac", vec![7u8; 1024]);
     let buffer = create_sparse_buffer(1024);
-    let fill = Box::new(LocalReader::new(
-        &path,
-        bae_diagnostics::Diagnostics::noop(),
-        bae_util::test_files::lease(),
-    ))
-    .start_reading(buffer.clone(), Box::new(|_| {}));
+    let fill = local_reader(&path, bae_util::test_files::lease())
+        .await
+        .start_reading(buffer.clone(), Box::new(|_| {}));
     // The fill opens the file before it fills, and parks with nothing demanded.
     buffer.wait_until_fill_settled().await;
     assert_eq!(coven::open_files_under(dir.path()).len(), 1, "the parked fill holds its file");
@@ -307,9 +292,8 @@ async fn cancelling_a_local_buffer_closes_its_file_while_the_buffer_lives() {
     drop(buffer);
 }
 
-/// A local reader's fill takes one place of its lease when it opens the file,
-/// holds it while it reads, and gives it back when the fill ends and the file
-/// closes.
+/// A local reader's file holds one place of its lease from the open, through
+/// the fill's reads, until the fill ends and the file closes.
 #[tokio::test]
 async fn a_local_reader_holds_its_place_until_its_fill_ends() {
     let dir = bae_util::test_files::TestFolder::new();
@@ -318,8 +302,8 @@ async fn a_local_reader_holds_its_place_until_its_fill_ends() {
     let budget = coven::FileBudget::for_test();
     let watch = budget.watch();
     let lease = budget.lease(1).await.unwrap();
-    let reader =
-        Box::new(LocalReader::new(&path, bae_diagnostics::Diagnostics::noop(), lease.clone()));
+    let reader = local_reader(&path, lease.clone()).await;
+    assert_eq!(watch.holding(), 1, "the open file holds its place before the fill starts");
     let buffer = create_sparse_buffer(test_data.len() as u64);
 
     let fill = reader.start_reading(buffer.clone(), Box::new(|_| {}));

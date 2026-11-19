@@ -74,7 +74,7 @@ chardetng = { workspace = true }
 encoding_rs = { workspace = true }
 
 [dev-dependencies]
-tokio = { workspace = true, features = ["macros", "net", "io-util", "test-util"] }
+tokio = { workspace = true, features = ["macros", "net", "fs", "io-util", "test-util"] }
 # The budget of open files (`FileBudget::for_test`) the test places come from
 # (src/test_files.rs).
 coven = { workspace = true, features = ["test-utils"] }
@@ -89,7 +89,7 @@ default = []
 # take their places from, and the temporary folder a test's files go in, for
 # the tests of every crate that builds on this one. Dev/test-only: a
 # production build never enables it.
-test-utils = ["tokio/net", "tokio/io-util", "coven/test-utils", "dep:tempfile"]
+test-utils = ["tokio/net", "tokio/fs", "tokio/io-util", "coven/test-utils", "dep:tempfile"]
 
 [lints]
 workspace = true

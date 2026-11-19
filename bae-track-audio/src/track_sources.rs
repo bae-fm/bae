@@ -71,7 +71,8 @@ impl SourceStream {
 /// Run `work` over each of `tracks`, up to `parallelism` at once, handing each
 /// the open streams of the files `files_of` says it reads, keyed as
 /// `files_of` names them. `open` opens a file the first time a running track
-/// needs it, in a place of the lease the pass hands it.
+/// needs it, in a place of the lease the pass hands it, and starts the
+/// stream over it.
 ///
 /// The pass takes its places from `budget` in one wait before it opens
 /// anything: `parallelism` of them, or the budget's size when that is less,
@@ -85,12 +86,12 @@ impl SourceStream {
 /// before this returns either way. A track whose work panics fails the pass
 /// with the error `panicked` makes of it, which is where the caller reports
 /// it.
-pub async fn run_tracks_over_sources<K, T, R, E, Fut>(
+pub async fn run_tracks_over_sources<K, T, R, E, Fut, OpenFut>(
     tracks: Vec<T>,
     budget: &FileBudget,
     parallelism: NonZeroUsize,
     files_of: impl Fn(&T) -> Vec<K>,
-    open: impl Fn(&K, &FileLease) -> SourceStream,
+    open: impl Fn(K, FileLease) -> OpenFut,
     work: impl Fn(T, HashMap<K, SharedSparseBuffer>) -> Fut,
     panicked: impl Fn(TaskFailed) -> E,
     too_wide: impl Fn(LeaseTooLarge) -> E,
@@ -100,6 +101,7 @@ where
     R: Send + 'static,
     E: Send + 'static,
     Fut: Future<Output = Result<R, E>> + Send + 'static,
+    OpenFut: Future<Output = SourceStream> + Send,
 {
     let track_count = tracks.len();
     if track_count == 0 {
@@ -140,8 +142,10 @@ where
             let (index, (track, files)) = waiting.next().expect("peeked above");
             let mut streams = HashMap::with_capacity(files.len());
             for file in &files {
-                let (stream, readers) =
-                    open_files.entry(file.clone()).or_insert_with(|| (open(file, &lease), 0));
+                if !open_files.contains_key(file) {
+                    open_files.insert(file.clone(), (open(file.clone(), lease.clone()).await, 0));
+                }
+                let (stream, readers) = open_files.get_mut(file).expect("opened above");
                 *readers += 1;
                 streams.insert(file.clone(), stream.buffer.0.clone());
             }

@@ -8,7 +8,11 @@ use std::path::{Path, PathBuf};
 /// decodes it.
 fn discid_from_log_file(path: &Path) -> Result<String, std::io::Error> {
     discid_from_log_text(
-        &bae_util::text_encoding::read_text_file(path, bae_util::test_files::place())?.text,
+        &bae_util::text_encoding::read_text_file(bae_util::test_files::open_in(
+            bae_util::test_files::place(),
+            path,
+        )?)?
+        .text,
     )?
     .ok_or_else(|| std::io::Error::other("the log holds no table of contents"))
 }
@@ -52,8 +56,11 @@ fn discid_from_log_rejects_end_sector_that_overflows_leadout_derivation() {
 #[test]
 fn test_extract_leadout_from_log() {
     let log_content = bae_util::text_encoding::read_text_file(
-        &fixture("logs/test_album.log"),
-        bae_util::test_files::place(),
+        bae_util::test_files::open_in(
+            bae_util::test_files::place(),
+            &fixture("logs/test_album.log"),
+        )
+        .expect("LOG fixture should open"),
     )
     .expect("LOG fixture should be readable")
     .text;

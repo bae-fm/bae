@@ -1,43 +1,44 @@
 //! A local file as the source a buffer's fill reads from.
 
 use super::*;
+use coven::LeasedFile;
 
-/// Reads a file the caller names by path: a file being previewed, or an
-/// import's sources before they are the library's. The fill opens the file in
-/// one place of `lease` and holds the place until the fill ends.
+/// Reads a file its caller opened: a file being previewed, or an import's
+/// sources before they are the library's. The fill holds the open file, and
+/// with it its place of the open-files budget, until the fill ends.
 pub struct LocalReader {
+    opened: std::io::Result<LeasedFile<tokio::fs::File>>,
     path: std::path::PathBuf,
     diagnostics: Diagnostics,
-    lease: FileLease,
 }
 
 impl LocalReader {
+    /// A reader of the file at `path`, which the caller opened as `opened`. A
+    /// failed open fails the buffer when the fill starts, like a failed read
+    /// of the file, so the caller hears of it through the fill's error
+    /// handler. `path` names the file in errors and is never opened.
     pub fn new(
+        opened: std::io::Result<LeasedFile<tokio::fs::File>>,
         path: impl Into<std::path::PathBuf>,
         diagnostics: Diagnostics,
-        lease: FileLease,
     ) -> Self {
-        Self { path: path.into(), diagnostics, lease }
+        Self { opened, path: path.into(), diagnostics }
     }
 }
 
 impl AudioDataReader for LocalReader {
-    #[expect(
-        clippy::disallowed_methods,
-        reason = "file system: reads a file the scan, the import or the preview names, before coven records it"
-    )]
     fn start_reading(
         self: Box<Self>,
         buffer: SharedSparseBuffer,
         on_error: FillErrorHandler,
     ) -> FillTask {
-        let LocalReader { path, diagnostics, lease } = *self;
+        let LocalReader { opened, path, diagnostics } = *self;
         let fill_buffer = buffer.clone();
 
         spawn_fill(diagnostics, &buffer, on_error, async move {
             use tokio::io::{AsyncReadExt, AsyncSeekExt};
 
-            let file = lease.place().await.open_async(&path).await.map_err(|e| {
+            let file = opened.map_err(|e| {
                 FillFailure::Open(TrackReadError::io(
                     format!("Failed to open {}", path.display()),
                     e,

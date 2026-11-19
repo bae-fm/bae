@@ -16,7 +16,7 @@
 use std::fs::{File, Metadata, OpenOptions, Permissions};
 use std::path::{Component, Path, PathBuf};
 
-use coven::{FileBudget, FileLease, LeasePlace};
+use coven::{FileBudget, FileLease, LeasePlace, LeasedFile};
 
 /// Creates a test budget and leases all its places.
 pub fn lease() -> FileLease {
@@ -35,6 +35,28 @@ pub fn place() -> LeasePlace {
             .join()
             .expect("the thread that takes a place panicked")
     })
+}
+
+/// Opens the file at `path` in `place`, as the scan, the import or the preview
+/// opens a file before it hands the open file to a reader.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: a test opens the files of its own folder or the repo's fixtures in a place, which no library holds"
+)]
+pub fn open_in(place: LeasePlace, path: &Path) -> std::io::Result<LeasedFile<File>> {
+    place.open(path)
+}
+
+/// [`open_in`] for a reader that takes a file of tokio's.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: a test opens the files of its own folder or the repo's fixtures in a place, which no library holds"
+)]
+pub async fn open_async_in(
+    place: LeasePlace,
+    path: &Path,
+) -> std::io::Result<LeasedFile<tokio::fs::File>> {
+    place.open_async(path).await
 }
 
 /// The resolved path of `path`, a file or folder committed to the repo. Panics

@@ -5,9 +5,8 @@
 
 use super::{content_type_from_codec_id, open_best_audio_stream};
 use bae_util::content_type::ContentType;
-use coven::FileLease;
+use coven::LeasedFile;
 use std::os::raw::c_int;
-use std::path::Path;
 
 /// The timestamps of `samples` in `stream`, counted as a decode from the
 /// stream's start counts them: from its `start_time`, past any encoder delay.
@@ -35,7 +34,8 @@ unsafe fn stream_timestamps(
         .collect()
 }
 
-/// The places of the open-files budget [`seek_landing_bytes`] takes.
+/// The open files [`seek_landing_bytes`] takes, and so the places of the
+/// open-files budget its caller holds for the search.
 pub const SEEK_LANDING_PLACES: usize = 2;
 
 /// The byte of the frame holding each of `samples` -- where a playback seek to
@@ -58,25 +58,18 @@ pub const SEEK_LANDING_PLACES: usize = 2;
 /// byte (FLAC) or sample-seeks and prefetches it (APE). An error, saying why,
 /// only if the file can't be opened or its frames can't be read or seeked.
 ///
-/// The file opens in `lease`'s places. A FLAC is open twice at once (the
-/// searching opening and the one that reads its final frames), so `lease`
-/// holds at least [`SEEK_LANDING_PLACES`] places; a smaller one fails here
-/// instead of waiting forever for a place of its own.
+/// The caller opens the file [`SEEK_LANDING_PLACES`] times: a FLAC is read
+/// twice at once (the searching opening and the one that reads its final
+/// frames), and every other format reads through the first. The search closes
+/// them all when it returns.
 pub fn seek_landing_bytes(
-    path: &Path,
+    files: [LeasedFile<std::fs::File>; SEEK_LANDING_PLACES],
     samples: &[u64],
-    lease: &FileLease,
 ) -> Result<Vec<u64>, String> {
-    if lease.count() < SEEK_LANDING_PLACES {
-        return Err(format!(
-            "finding where each track starts needs {SEEK_LANDING_PLACES} places of the \
-             open-files budget, and its lease holds {}",
-            lease.count()
-        ));
-    }
+    let [searching, final_frames] = files;
     unsafe {
         let (opened, stream_index) =
-            open_best_audio_stream(path, lease.place_blocking()).map_err(|e| e.to_string())?;
+            open_best_audio_stream(searching).map_err(|e| e.to_string())?;
         let fmt_ctx = opened.fmt_ctx;
         let stream = *(*fmt_ctx).streams.add(stream_index as usize);
         let codecpar = (*stream).codecpar;
@@ -84,7 +77,7 @@ pub fn seek_landing_bytes(
             stream_timestamps(stream, samples).and_then(
                 |targets| match content_type_from_codec_id((*codecpar).codec_id) {
                     ContentType::Flac => {
-                        flac_frame_landings(path, lease, fmt_ctx, stream_index, &targets)
+                        flac_frame_landings(final_frames, fmt_ctx, stream_index, &targets)
                     }
                     content_type => {
                         let landing_byte = if content_type == ContentType::Ape {
@@ -103,7 +96,7 @@ pub fn seek_landing_bytes(
             );
 
         #[cfg(test)]
-        crate::test_reads::record_landing_search(path, (*(*fmt_ctx).pb).bytes_read as u64);
+        crate::test_reads::record_landing_search((*(*fmt_ctx).pb).bytes_read as u64);
         drop(opened);
         landings
     }
@@ -140,15 +133,14 @@ const FLAC_TAIL_FRAMES: usize = 11;
 /// target. From the frame before, which the parser dates, the last frame's
 /// timestamp follows.
 unsafe fn flac_frame_landings(
-    path: &Path,
-    lease: &FileLease,
+    final_frames: LeasedFile<std::fs::File>,
     fmt_ctx: *mut ffmpeg_sys_next::AVFormatContext,
     stream_index: c_int,
     targets: &[i64],
 ) -> Result<Vec<u64>, String> {
     use ffmpeg_sys_next::*;
 
-    let tail = flac_final_frames(path, lease)?;
+    let tail = flac_final_frames(final_frames)?;
     let (tail_pts, tail_pos) = tail[0];
     let stream = *(*fmt_ctx).streams.add(stream_index as usize);
     if av_add_index_entry(stream, tail_pos as i64, tail_pts, 0, 0, AVINDEX_KEYFRAME as c_int) < 0 {
@@ -185,12 +177,12 @@ unsafe fn flac_frame_landings(
 /// wrong byte (the parser counts the leftover it passes over from where it
 /// stopped reading, not where that frame begins). The searching opening must
 /// not inherit that entry.
-unsafe fn flac_final_frames(path: &Path, lease: &FileLease) -> Result<Vec<(i64, u64)>, String> {
-    let (opened, stream_index) = open_best_audio_stream(path, lease.place_blocking())
+unsafe fn flac_final_frames(file: LeasedFile<std::fs::File>) -> Result<Vec<(i64, u64)>, String> {
+    let (opened, stream_index) = open_best_audio_stream(file)
         .map_err(|reason| format!("cannot open it to read its final frames: {reason}"))?;
     let frames = flac_final_frames_in(opened.fmt_ctx, stream_index);
     #[cfg(test)]
-    crate::test_reads::record_landing_search(path, (*(*opened.fmt_ctx).pb).bytes_read as u64);
+    crate::test_reads::record_landing_search((*(*opened.fmt_ctx).pb).bytes_read as u64);
     drop(opened);
     frames
 }
