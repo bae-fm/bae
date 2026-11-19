@@ -28,11 +28,15 @@ else
     [ "${#crates[@]}" -gt 0 ] || exit 0
 fi
 
-features=$(
+# The first line says whether the run lints every workspace crate; each line
+# after it names a feature to turn on.
+plan=$(
     cargo metadata --format-version 1 --offline --no-deps | python3 -c '
 import json, sys
 metadata = json.load(sys.stdin)
 wanted = set(sys.argv[1:])
+names = {package["name"] for package in metadata["packages"]}
+print("every" if not wanted or names <= wanted else "some")
 for package in metadata["packages"]:
     name = package["name"]
     if wanted and name not in wanted:
@@ -44,6 +48,8 @@ for package in metadata["packages"]:
             print(f"{name}/{feature}")
 ' "${crates[@]+"${crates[@]}"}"
 )
+lints_every_crate=$(sed -n 1p <<< "$plan")
+features=$(sed 1d <<< "$plan")
 
 args=(clippy --all-targets)
 if [ "$workspace" -eq 1 ]; then
@@ -66,14 +72,19 @@ fi
 # clippy has no lint or flag that makes a clippy.toml entry naming nothing an
 # error: it prints "warning: `<path>` does not refer to a reachable function"
 # (or type, macro, ...), which -D warnings leaves a warning, so a misspelled
-# entry would gate nothing. Fail on that text, naming each entry.
+# entry would gate nothing. Fail on that text, naming each entry, when the run
+# lints every crate: clippy prints it for each linted crate that loads a
+# dependency without the feature that declares the entry's function, such as
+# tokio's `Runtime::new` in a crate with tokio's `rt` alone, so only a run
+# with every crate's features shows that no crate reaches the entry. Every
+# crate is linted when clippy.toml changes ({crates} names every crate then).
 log=$(mktemp)
 trap 'rm -f "$log"' EXIT
 status=0
 RUSTC_WRAPPER="$PWD/scripts/clippy-rustc-wrapper.sh" scripts/cargo.sh "${args[@]}" -- -D warnings 2> >(tee "$log" >&2) || status=$?
 wait
 unreachable=$(sed $'s/\\x1b\\[[0-9;]*m//g' "$log" | grep -E 'does not refer to a reachable' | sort -u || true)
-if [ -n "$unreachable" ]; then
+if [ "$lints_every_crate" = every ] && [ -n "$unreachable" ]; then
     echo "clippy.toml names paths that do not exist (fix or remove these entries):" >&2
     echo "$unreachable" >&2
     exit 1
