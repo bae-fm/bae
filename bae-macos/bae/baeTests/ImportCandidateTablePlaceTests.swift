@@ -225,6 +225,7 @@ struct ImportCandidateTablePlaceTests {
             size: Self.size
         ) { table in
             let coordinator = try Self.coordinator(of: table)
+            try await Self.untilRowsDrawn(table, slot)
             let drawn = coordinator.cellsShown
 
             await source.replaceItems(
@@ -251,6 +252,7 @@ struct ImportCandidateTablePlaceTests {
             size: Self.size
         ) { table in
             let coordinator = try Self.coordinator(of: table)
+            try await Self.untilRowsDrawn(table, slot)
             let drawn = coordinator.cellsShown
             var items = (0..<200).map(Self.candidateItem)
             items[2] = Self.candidateItem(2, folderName: "Renamed")
@@ -410,6 +412,34 @@ extension ImportCandidateTablePlaceTests {
         }
         scrollView.contentView.scroll(to: table.rect(ofRow: row).origin)
         scrollView.reflectScrolledClipView(scrollView.contentView)
+    }
+
+    /// Return once each row the table has made a cell for draws its entry.
+    /// The table opens on the rows of the list's first window and asks for
+    /// the rows it shows, and each delivery that brings one draws its cell:
+    /// a count of the cells drawn is a baseline only after the last of them.
+    @MainActor
+    private static func untilRowsDrawn(
+        _ table: NSTableView,
+        _ slot: ImportListSlot
+    ) async throws {
+        try await Wait.untilLaidOut(table) {
+            let made = table.rows(in: table.preparedContentRect)
+            guard made.length > 0 else { return false }
+            return (made.location..<(made.location + made.length))
+                .allSatisfy { row in
+                    let cell =
+                        table.view(
+                            atColumn: 0,
+                            row: row,
+                            makeIfNecessary: false
+                        ) as? ImportListEntryCell
+                    guard let item = slot.list?.row(at: row) else {
+                        return false
+                    }
+                    return cell?.shownItem == item
+                }
+        }
     }
 
     /// The row under the table's top edge.
