@@ -157028,13 +157028,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld Byte"
+                  "value" : "%lld B"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld Byte"
+                  "value" : "%lld B"
                 }
               }
             }
@@ -157046,13 +157046,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld byte"
+                  "value" : "%lld B"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld byte"
+                  "value" : "%lld B"
                 }
               }
             }
@@ -157154,19 +157154,19 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld bajt"
+                  "value" : "%lld B"
                 }
               },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld bajta"
+                  "value" : "%lld B"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld bajtova"
+                  "value" : "%lld B"
                 }
               }
             }
@@ -157178,13 +157178,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld bájt"
+                  "value" : "%lld B"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld bájt"
+                  "value" : "%lld B"
                 }
               }
             }
@@ -157196,19 +157196,19 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld byte"
+                  "value" : "%lld B"
                 }
               },
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld byte"
+                  "value" : "%lld B"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld byte"
+                  "value" : "%lld B"
                 }
               }
             }
@@ -157220,7 +157220,7 @@
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld byte"
+                  "value" : "%lld B"
                 }
               }
             }
@@ -157232,7 +157232,7 @@
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lldbyte"
+                  "value" : "%lldB"
                 }
               }
             }
@@ -157262,13 +157262,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld byte"
+                  "value" : "%lld B"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld byte"
+                  "value" : "%lld B"
                 }
               }
             }
@@ -157310,19 +157310,19 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld byte"
+                  "value" : "%lld B"
                 }
               },
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld bytes"
+                  "value" : "%lld B"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld bytes"
+                  "value" : "%lld B"
                 }
               }
             }
@@ -157334,19 +157334,19 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld byte"
+                  "value" : "%lld B"
                 }
               },
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld byte"
+                  "value" : "%lld B"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld byte"
+                  "value" : "%lld B"
                 }
               }
             }
@@ -157430,13 +157430,13 @@
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld bayt"
+                  "value" : "%lld B"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld bayt"
+                  "value" : "%lld B"
                 }
               }
             }
@@ -157490,7 +157490,7 @@
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld byte"
+                  "value" : "%lld B"
                 }
               }
             }

@@ -469,7 +469,7 @@
     <string name="members_invite_refused">초대하지 못했습니다: %1$s</string>
 
     <plurals name="file_size_bytes">
-        <item quantity="other">%1$sbyte</item>
+        <item quantity="other">%1$sB</item>
     </plurals>
     <string name="file_size_kilobytes">%1$skB</string>
     <string name="file_size_megabytes">%1$sMB</string>

@@ -475,8 +475,8 @@
     <string name="members_invite_refused">A meghívás nem sikerült: %1$s</string>
 
     <plurals name="file_size_bytes">
-        <item quantity="one">%1$s bájt</item>
-        <item quantity="other">%1$s bájt</item>
+        <item quantity="one">%1$s B</item>
+        <item quantity="other">%1$s B</item>
     </plurals>
     <string name="file_size_kilobytes">%1$s kB</string>
     <string name="file_size_megabytes">%1$s MB</string>

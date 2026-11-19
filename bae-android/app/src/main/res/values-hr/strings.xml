@@ -485,9 +485,9 @@
     <string name="members_invite_refused">Pozivanje nije uspjelo: %1$s</string>
 
     <plurals name="file_size_bytes">
-        <item quantity="one">%1$s bajt</item>
-        <item quantity="few">%1$s bajta</item>
-        <item quantity="other">%1$s bajtova</item>
+        <item quantity="one">%1$s B</item>
+        <item quantity="few">%1$s B</item>
+        <item quantity="other">%1$s B</item>
     </plurals>
     <string name="file_size_kilobytes">%1$s kB</string>
     <string name="file_size_megabytes">%1$s MB</string>
