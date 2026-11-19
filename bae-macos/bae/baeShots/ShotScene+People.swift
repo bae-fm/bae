@@ -50,7 +50,7 @@ extension ShotScene {
             size: CGSize(width: 690, height: 600),
             frame: .window(title: "Settings", titleBar: .hidden)
         ) {
-            peopleStage(invites: [invited], ownPicture: true)
+            peopleStage(ownPicture: true, invites: [invited])
         },
         ShotScene(
             id: "mac.settings.people.invite-waiting",

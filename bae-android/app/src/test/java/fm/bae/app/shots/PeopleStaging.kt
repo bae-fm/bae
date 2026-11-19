@@ -2,6 +2,8 @@ package fm.bae.app.shots
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import fm.bae.app.BugReports
+import fm.bae.app.LocalBugReports
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.data.TestImages
@@ -47,7 +49,7 @@ internal fun PeoplePageScene(
     invites: List<BridgeInvite> = emptyList(),
     refused: List<BridgeRefusedInvite> = emptyList(),
     offline: Boolean = false,
-) = CompositionLocalProvider(LocalImageStore provides avatarStore()) {
+) = CompositionLocalProvider(LocalImageStore provides avatarStore(), LocalBugReports provides BugReports()) {
     AndroidSettingsPeople(
         you = YouActions(NothingFails, {}, {}, {}, {}),
         people = people,
