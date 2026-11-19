@@ -56,22 +56,31 @@ fn search_album_rows(rows: Vec<DbAlbumSearchResult>) -> crate::ListRows {
 /// How many albums a media browser's search lists.
 const LISTED: u64 = crate::SEARCH_RESULT_LIMIT as u64;
 
-/// The order of the albums a search lists: by title, ties going by id.
+/// The order of the albums a search lists: by title, ties going by id, over
+/// the albums' `album_listing` rows as the alias `listing`. The rows hold
+/// each title's sort key, so a read takes the albums in order from the
+/// listing's title index and computes no key.
 fn search_album_order() -> ListOrder {
     ListOrder::new(vec![
-        SortTerm::ascending(crate::sort_key_sql("a.title")),
-        SortTerm::ascending("a.id"),
+        SortTerm::ascending("listing.title_sort_key"),
+        SortTerm::ascending("listing.album_id"),
     ])
 }
 
-/// The albums a search lists, as a FROM clause over the alias `a`: the first
-/// `:cap` albums that hold the search pattern `:pattern`, in
-/// [`search_album_order`].
+/// The albums a search lists, as a FROM clause over the alias `listing`: the
+/// listing rows of the first `:cap` albums that hold the search pattern
+/// `:pattern`, in [`search_album_order`]. The read walks the listing's title
+/// index, tests each album against the albums the search finds, and stops at
+/// the `:cap`th album that holds the pattern. `INDEXED BY` holds it to that
+/// index: left to choose, SQLite reads the albums the search finds by id and
+/// sorts them all. Every album holds a release (§2.1), so every album has a
+/// listing row.
 fn search_album_from() -> String {
     format!(
-        "FROM (SELECT a.id, a.title, a.year FROM albums a WHERE {matches} \
-               ORDER BY {order} LIMIT :cap) a",
-        matches = album_matches_sql("a.id", ":pattern"),
+        "FROM (SELECT listing.album_id, listing.title_sort_key \
+               FROM album_listing listing INDEXED BY idx_album_listing_title \
+               WHERE {matches} ORDER BY {order} LIMIT :cap) listing",
+        matches = album_matches_sql("listing.album_id", ":pattern"),
         order = search_album_order().clause(),
     )
 }
@@ -122,10 +131,11 @@ fn search_album_statement(order: &ListOrder, seek: &Seek) -> String {
                {artist_names} AS artist_name,
                {keys}
         FROM (
-            SELECT a.id, a.title, a.year {from}
+            SELECT listing.album_id, listing.title_sort_key {from}
             WHERE {condition}
             ORDER BY {ordering} {limit}
-        ) a
+        ) listing
+        CROSS JOIN albums a ON a.id = listing.album_id
         ORDER BY {ordering}
         "#,
         primary_release = album_primary_release_sql(),

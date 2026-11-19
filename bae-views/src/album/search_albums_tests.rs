@@ -130,3 +130,34 @@ async fn a_search_counts_its_albums_live() {
     assert_eq!(counted, 4);
     assert_eq!(views.subscribe_search_album_count(None).next_inline().await.unwrap().unwrap(), 0);
 }
+
+/// A search reads its albums in title order from the listing's title index,
+/// so it stops at its cap: neither the first albums library search lists nor
+/// a page of them computes a title's key or sorts albums, at any level of
+/// the statement.
+#[tokio::test]
+async fn a_search_reads_its_albums_in_order_from_the_title_index() {
+    let (db, _tmp) = crate::tests::library().await;
+    let order = search_album_order();
+    let params = vec![
+        (":pattern", rusqlite::types::Value::Text(search_pattern("album 1"))),
+        (":cap", rusqlite::types::Value::Integer(LISTED as i64)),
+    ];
+    let page = order.from_place(2, search_album_statement);
+    for (what, seek) in [("first albums", order.everything()), ("page", page)] {
+        let statement = search_album_statement(&order, &seek);
+        assert!(!statement.contains("bae_name_key"), "{what}: {statement}");
+        let steps = crate::tests::plan(&db, statement, seek.clone(), params.clone()).await;
+        assert!(
+            steps
+                .iter()
+                .any(|step| step.detail.contains("USING COVERING INDEX idx_album_listing_title")),
+            "{what}: {steps:?}"
+        );
+        assert!(
+            !steps.iter().any(|step| step.detail.starts_with("USE TEMP B-TREE FOR")
+                && step.detail.ends_with("ORDER BY")),
+            "{what}: {steps:?}"
+        );
+    }
+}
