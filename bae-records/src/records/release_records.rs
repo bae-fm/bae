@@ -97,6 +97,17 @@ pub struct RecordsChange {
     pub new_album: Option<DbAlbum>,
 }
 
+/// Whether the library holds the album `album_id`, as the write `tx` finds
+/// it.
+#[cfg(desktop)]
+pub(super) fn album_held_on(tx: &CovenWrite<'_>, album_id: &str) -> Result<bool, DbError> {
+    Ok(tx.query_row(
+        "SELECT EXISTS (SELECT 1 FROM albums WHERE id = ?)",
+        params![album_id],
+        |row| row.get(0),
+    )?)
+}
+
 /// Write `change`:
 ///
 /// 1. Write the destination album when `new_album` is `Some` and the library
@@ -136,12 +147,7 @@ pub(super) fn set_records_on(
     //    credits; one the library holds by the time this transaction runs is
     //    left as it is.
     if let Some(album) = new_album {
-        let held: bool = tx.query_row(
-            "SELECT EXISTS (SELECT 1 FROM albums WHERE id = ?)",
-            params![album.id],
-            |row| row.get(0),
-        )?;
-        if !held {
+        if !album_held_on(tx, &album.id)? {
             insert_album_row(tx, album)?;
             let source_artists: Vec<DbAlbumArtist> = tx.query(
                 &format!(

@@ -453,7 +453,7 @@ impl Automation {
             .apply_release_edit_catalog(form, &link, &bae_import::CatalogApplySteps::unread())
             .await?;
         if let Some(album_id) = album_id {
-            form = self.services.pick_release_edit_album(form, album_id).await?;
+            form.album_pick = bae_import::AlbumPick::Album { album_id };
         }
         self.services.save_release_edit(form).await?;
         Ok(())
@@ -467,8 +467,8 @@ impl Automation {
         release_id: String,
         album_id: String,
     ) -> Result<(), AutomationError> {
-        let form = self.services.open_release_edit(&release_id).await?;
-        let form = self.services.pick_release_edit_album(form, album_id).await?;
+        let mut form = self.services.open_release_edit(&release_id).await?;
+        form.album_pick = bae_import::AlbumPick::Album { album_id };
         self.services.save_release_edit(form).await?;
         Ok(())
     }

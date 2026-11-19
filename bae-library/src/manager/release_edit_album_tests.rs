@@ -10,7 +10,8 @@ use bae_records::DbAlbum;
 /// The form's draft says which album a save files the release under: the
 /// one it is in, the one an applied catalog's records name (new where the
 /// library holds none), or the one the person picked, which an apply keeps
-/// and a fresh open drops.
+/// and a fresh open drops. A save refuses a pick of an album the library
+/// does not hold.
 #[tokio::test]
 async fn a_release_edit_form_names_the_album_its_save_files_under() {
     use bae_import::DraftAlbum;
@@ -67,7 +68,14 @@ async fn a_release_edit_form_names_the_album_its_save_files_under() {
     assert_eq!(
         draft_now(manager, &missing).await.album,
         DraftAlbum::New,
-        "a pick of an album the library does not hold is no pick"
+        "the draft shows no pick of an album the library does not hold"
+    );
+    assert!(
+        matches!(
+            manager.save_release_edit(missing).await,
+            Err(super::LibraryError::AlbumMissing { album_id }) if album_id == "no-such-album"
+        ),
+        "a save refuses a pick of an album the library does not hold"
     );
     let mut form = apply(form, "named-new").await;
     assert_eq!(

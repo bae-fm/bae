@@ -35,6 +35,10 @@ pub enum ReleaseEditRefusal {
     /// The library no longer holds the release.
     #[error("the release is gone")]
     Gone,
+    /// The library no longer holds the library album the save moves the
+    /// release into.
+    #[error("album {album_id} is gone")]
+    AlbumGone { album_id: String },
     #[error(transparent)]
     Identity(#[from] IdentityRefusal),
 }
@@ -53,9 +57,10 @@ impl Records {
     /// return that. Before it writes anything, the save refuses a release
     /// that is not as the editor opened on it as
     /// [`ReleaseEditRefusal::Stale`], and one the library no longer holds as
-    /// [`ReleaseEditRefusal::Gone`]; the check runs in the write, so no other
-    /// write lands between it and the rows, and none lands between the rows
-    /// and what `saved` reads.
+    /// [`ReleaseEditRefusal::Gone`], and a move into a library album the
+    /// library no longer holds as [`ReleaseEditRefusal::AlbumGone`]; the
+    /// checks run in the write, so no other write lands between them and the
+    /// rows, and none lands between the rows and what `saved` reads.
     pub async fn save_release_edit_atomic<Saved: Send + 'static>(
         &self,
         change: Option<RecordsChange>,
@@ -87,6 +92,15 @@ impl Records {
         self.store
             .write(move |sql| {
                 still_as_opened(&sql)?.map_err(WriteError::Refused)?;
+                if let Some(change) = &change {
+                    if change.new_album.is_none()
+                        && !super::release_records::album_held_on(&sql, &change.target_album_id)?
+                    {
+                        return Err(WriteError::Refused(ReleaseEditRefusal::AlbumGone {
+                            album_id: change.target_album_id.clone(),
+                        }));
+                    }
+                }
                 let emptiable = Emptiable::of_releases(&sql, &[release_id.as_str()])?
                     .including_album(&sql, &album_id)?;
                 if let Some(change) = &change {

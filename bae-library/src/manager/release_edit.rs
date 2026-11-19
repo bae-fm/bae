@@ -107,38 +107,21 @@ impl LibraryManager {
         Ok(form.applying(applied))
     }
 
-    /// `form` with the library album `album_id` picked to file the release
-    /// under. The method refuses an album the library does not hold, for a
-    /// caller that names the album itself.
-    pub async fn pick_release_edit_album(
-        &self,
-        form: bae_import::ReleaseEditForm,
-        album_id: String,
-    ) -> Result<bae_import::ReleaseEditForm, LibraryError> {
-        if self.records.find_album_by_id(&album_id).await?.is_none() {
-            return Err(LibraryError::AlbumMissing { album_id });
-        }
-        Ok(bae_import::ReleaseEditForm {
-            album_pick: bae_import::AlbumPick::Album { album_id },
-            ..form
-        })
-    }
-
     /// Save `form`: in one write, the form as the person left it, every
     /// value the catalog the person applied gives (its mediums and places,
     /// roles and works), its records, and the album the release lands in:
     /// the one the person picked, else the one the applied records name. A
     /// form where the person applied no catalog writes the fields, and moves
-    /// the release only to an album the person picked. A library album the
-    /// person picked that the library no longer holds is no pick, as the
-    /// editor's draft shows it. The same write reads the release as this save
-    /// wrote it, and the method returns the form opened on that.
+    /// the release only to an album the person picked. The same write reads
+    /// the release as this save wrote it, and the method returns the form
+    /// opened on that.
     ///
     /// Refused with [`LibraryError::ReleaseEditStale`], writing nothing, when
-    /// the library no longer holds the release as the form opened on it.
-    /// The write itself finds that out: it reads the release as it stands and
-    /// compares it with what the form opened on, so no write lands between
-    /// the check and the rows.
+    /// the library no longer holds the release as the form opened on it, and
+    /// with [`LibraryError::AlbumMissing`] when it no longer holds the album
+    /// the save moves the release into. The write itself finds both out: it
+    /// reads the release and the album as they stand, so no write lands
+    /// between the checks and the rows.
     pub async fn save_release_edit(
         &self,
         form: bae_import::ReleaseEditForm,
@@ -147,14 +130,7 @@ impl LibraryManager {
         let release_id = release_id.as_str();
         let edit = form.edit.clone();
         let applied = form.applied.clone();
-        let pick = match form.album_pick.clone() {
-            bae_import::AlbumPick::Album { album_id }
-                if self.records.find_album_by_id(&album_id).await?.is_none() =>
-            {
-                bae_import::AlbumPick::Records
-            }
-            pick => pick,
-        };
+        let pick = form.album_pick.clone();
         let shaped = edit.shape()?;
         shaped.validate()?;
         let (current_album_id, release, current_album, existing_tracks) =
@@ -231,17 +207,11 @@ impl LibraryManager {
                 }
             }
             None => {
-                let album_row = if target_album_id == current_album_id {
-                    current_album
-                } else if let Some(new_album) =
-                    change.as_ref().and_then(|change| change.new_album.clone())
-                {
-                    new_album
-                } else {
-                    self.records.find_album_by_id(&target_album_id).await?.ok_or_else(|| {
-                        LibraryError::AlbumMissing { album_id: target_album_id.clone() }
-                    })?
-                };
+                // The write takes the album's id and the edit's title, year
+                // and credits, and nothing else of the row, so the album the
+                // release is in stands for the one it moves into; the write
+                // checks that the library holds that one.
+                let album_row = bae_records::DbAlbum { id: target_album_id, ..current_album };
                 bae_records::ReleaseEditWrite::Fields(self.release_metadata_rows(
                     album_row,
                     release,
@@ -274,6 +244,7 @@ fn release_edit_save_error(
     LibraryError::of_write(error, &|refusal| match refusal {
         R::Stale => LibraryError::ReleaseEditStale { release_id: release_id.to_string() },
         R::Gone => LibraryError::release_missing(release_id, super::ReleaseWork::Edit),
+        R::AlbumGone { album_id } => LibraryError::AlbumMissing { album_id },
         R::Identity(refusal) => LibraryError::Identity(refusal),
     })
 }
