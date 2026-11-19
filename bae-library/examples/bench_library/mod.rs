@@ -81,9 +81,10 @@ struct BenchComposition {
 /// A library created for the run, open, with sync running.
 struct BenchLibrary {
     handle: coven::CovenHandle,
-    // The store's installation and directory, kept until the store is closed.
+    // The store's installation and app directory, kept until the store is
+    // closed.
     _installation: coven::Coven,
-    _directory: tempfile::TempDir,
+    _app_dir: bae_app_dir::AppDir,
 }
 
 /// Wait until the sync loop has uploaded every write and file the library
@@ -110,9 +111,7 @@ impl BenchLibrary {
         name: &str,
         tracks: usize,
     ) -> Result<Self, String> {
-        let directory = tempfile::tempdir().map_err(|error| error.to_string())?;
-        let app_dir =
-            bae_app_dir::AppDir::under_home(directory.path()).map_err(|error| error.to_string())?;
+        let app_dir = bae_app_dir::AppDir::temporary().map_err(|error| error.to_string())?;
         let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
         let builder = bae_store::store_builder(
             &installation,
@@ -123,7 +122,7 @@ impl BenchLibrary {
             bae_store::test_devices::create_test_store(builder, bae_library::SCHEMA, name, name)
                 .await
                 .map_err(|error| format!("creating the library failed: {error}"))?;
-        let library = Self { handle, _installation: installation, _directory: directory };
+        let library = Self { handle, _installation: installation, _app_dir: app_dir };
         match library.fill(storage, tracks).await {
             Ok(()) => Ok(library),
             Err(error) => match library.close().await {

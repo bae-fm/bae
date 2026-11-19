@@ -89,9 +89,7 @@ async fn restore_runs(
 ) -> Result<(), String> {
     let mut times = Vec::new();
     for run in 1..=runs {
-        let directory = tempfile::tempdir().map_err(|error| error.to_string())?;
-        let new_app_dir =
-            bae_app_dir::AppDir::under_home(directory.path()).map_err(|error| error.to_string())?;
+        let new_app_dir = bae_app_dir::AppDir::temporary().map_err(|error| error.to_string())?;
         let installation = coven::Coven::in_memory(new_app_dir.coven_app_dir());
         let (_cancelling, cancel) = tokio::sync::watch::channel(false);
         let started = Instant::now();
