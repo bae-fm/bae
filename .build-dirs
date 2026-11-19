@@ -64,3 +64,15 @@ bae-avalonia/bae-avalonia.Tests/bin   1G   lane mac
 # into ~/.cache/owner-construction-check; builds deletes the versions no
 # checkout's script names.
 installed owner-construction-check scripts/owner-construction-check.sh
+# The Debian packages a Linux build host needs beyond the ones builds installs
+# for itself: clang and libclang-dev for bindgen (ffmpeg-sys-next and
+# libsqlite3-sys run it), libasound2-dev for cpal's ALSA backend, and python3
+# for scripts/setup-ffmpeg.sh, which checks the FFmpeg download with
+# scripts/check-bundled-libraries.py. aws-lc-sys needs nasm only on Windows.
+linux-package clang libclang-dev libasound2-dev python3
+# The packages whose own code has parts that compile on macOS and not on
+# Linux, so a cargo job for one runs only on a Mac: bae-playback (CoreAudio
+# device formats and output), bae-import (folder times and volumes), bae-util
+# (the open-file ceiling), bae-bridge (the unified log) and bae-audio (the
+# type of FFmpeg's log callback's argument list).
+macos bae-playback bae-import bae-util bae-bridge bae-audio
