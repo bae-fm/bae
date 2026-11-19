@@ -1,6 +1,7 @@
-# bae's policy for coven's structural checker (owner-construction-check),
-# which scripts/owner-construction-check.sh installs at a pinned coven
-# revision and runs on this workspace.
+# bae's policy for coven's structural checker (owner-construction-check) and
+# coven's typed lints, which scripts/owner-construction-check.sh and
+# tools/typed-lints/tool.sh fetch at one pinned coven revision. The typed
+# lints hold the owner rules, whose rows name each type by its path.
 
 # The rule groups bae holds itself to: its crates depend only downward, no
 # struct exists only to be taken apart, each library table is written only
@@ -58,139 +59,121 @@ crate_order = [
 ]
 
 # These are retained service capabilities, not values passed between
-# operations. The checker also follows fields containing them, so an owner made
-# from another owner is covered. Records and configuration values are omitted;
+# operations. The typed lints also follow fields containing them, so an owner
+# made from another owner is covered. Records and configuration values are omitted;
 # shared in-memory state has its own rows below.
 capability_types = [
-    "AbortHandle",
-    "FileBudget",
-    "AirPlaySink",
-    "AirPlayStreamControl",
-    "AppServices",
-    "ArtworkAnalyzer",
-    "ArtworkAnalyzerCallback",
-    "AudioDataReader",
+    "tokio::task::AbortHandle",
+    "coven::FileBudget",
+    "bae_playback::airplay_output::AirPlaySink",
+    "bae_playback::airplay_output::AirPlayStreamControl",
+    "bae_app::app_services::AppServices",
+    "bae_import::extraction::analyzer::ArtworkAnalyzer",
+    "bae_bridge::types::events_and_transfers::ArtworkAnalyzerCallback",
+    "bae_track_audio::data_source::AudioDataReader",
     # An AudioOutputDevice opens a new output for each player that asks. The
     # system device owns what its outputs share: on a Mac, the formats bae's
     # streams set the output devices to, which only one owner of both players'
     # outputs can put back.
-    "AudioOutput",
-    "AudioStream",
-    "CancellationToken",
-    "CandidateRuntime",
-    "CastController",
-    "CoverUrlProvider",
+    "bae_playback::audio_output::AudioOutput",
+    "bae_playback::audio_output::AudioStream",
+    "tokio_util::sync::CancellationToken",
+    "bae_import::candidate_runtime::CandidateRuntime",
+    "bae_cast::CastController",
+    "bae_playback::renderer::media_source::CoverUrlProvider",
     # This app's stores on this device: the keychain and the network watch
     # every store opens with.
-    "Coven",
-    "CovenHandle",
-    "Diagnostics",
-    "DiagnosticsTransport",
-    "DiscogsClient",
-    "DiscogsValidationObserver",
-    "DiskImageCache",
-    "FetchArbiter",
-    "FileStream",
-    "FolderWatcher",
-    "Handle",
-    "IdSource",
-    "IdSourceRef",
-    "IdentifyService",
-    "ImportService",
-    "ImportServiceHandle",
-    "LibraryManager",
-    "LruCache",
-    "McpServerController",
-    "MediaUrlProvider",
-    "MonotonicClock",
-    "PcmSource",
-    "PlaybackQueue",
-    "PlaybackService",
-    "RemoteImageCache",
-    "Renderer",
-    "RendererChannel",
-    "RootRemovalBackend",
-    "RtspConnection",
-    "Runtime",
-    "ServiceDaemon",
-    "SessionCache",
-    "SparseStreamingBuffer",
-    "Store",
-    "SubsonicPasswordProvider",
-    "SubsonicServerController",
-    "TrackStream",
-    "WatchBackend",
-    "Write",
-    "WriteAvioContext",
-    "WriteSeek",
+    "coven::Coven",
+    "coven::CovenHandle",
+    "bae_diagnostics::Diagnostics",
+    "bae_diagnostics::DiagnosticsTransport",
+    "bae_catalogs::discogs::client::DiscogsClient",
+    "bae_catalogs::discogs::client::DiscogsValidationObserver",
+    "bae_catalogs::remote_image::cache::DiskImageCache",
+    "bae_track_audio::data_source::FetchArbiter",
+    "bae_store::file_stream::FileStream",
+    "bae_import::watching::folder_watcher::FolderWatcher",
+    "tokio::runtime::Handle",
+    "coven::IdSource",
+    "coven::IdSourceRef",
+    "bae_import::identify_service::IdentifyService",
+    "bae_import::service::ImportService",
+    "bae_import::handle::ImportServiceHandle",
+    "bae_library::manager::LibraryManager",
+    "lru::LruCache",
+    "bae_mcp::McpServerController",
+    "bae_playback::renderer::media_source::MediaUrlProvider",
+    "bae_cast::airplay::stream::MonotonicClock",
+    "bae_playback::airplay_output::PcmSource",
+    "bae_playback::queue::PlaybackQueue",
+    "bae_playback::service::PlaybackService",
+    "bae_catalogs::remote_image::cache::RemoteImageCache",
+    "bae_playback::service::renderer::Renderer",
+    "bae_playback::renderer::channel::RendererChannel",
+    "bae_import::watching::root_removal::RootRemovalBackend",
+    "bae_cast::airplay::rtsp::RtspConnection",
+    "tokio::runtime::Runtime",
+    "mdns_sd::ServiceDaemon",
+    "bae_util::session_cache::SessionCache",
+    "bae_audio::sparse_buffer::SparseStreamingBuffer",
+    "bae_store::store::Store",
+    "bae_subsonic::controller::SubsonicPasswordProvider",
+    "bae_subsonic::controller::SubsonicServerController",
+    "bae_audio::track_stream::TrackStream",
+    "bae_import::watching::folder_watcher::WatchBackend",
+    "std::io::Write",
+    "bae_audio::avio::WriteAvioContext",
+    "bae_audio::encode::WriteSeek",
 ]
 
 # Shared in-memory state: whoever holds one shares it with the others that
 # do, so an owner shares it on purpose, and it leaves that owner only inside
 # a handle the owner makes.
 shared_state_types = [
-    "AtomicBool",
-    "AtomicU8",
-    "AtomicU32",
-    "AtomicU64",
-    "JoinHandle",
-    "Notify",
-    "OnceCell",
-    "OnceLock",
-    "Receiver",
-    "Semaphore",
-    "Sender",
-    "UnboundedReceiver",
-    "UnboundedSender",
+    "std::sync::atomic::AtomicBool",
+    "std::sync::atomic::AtomicU8",
+    "std::sync::atomic::AtomicU32",
+    "std::sync::atomic::AtomicU64",
+    "std::thread::JoinHandle",
+    "tokio::task::JoinHandle",
+    "tokio::sync::Notify",
+    "tokio::sync::OnceCell",
+    "std::sync::OnceLock",
+    "std::sync::mpsc::Receiver",
+    "tokio::sync::mpsc::Receiver",
+    "tokio::sync::oneshot::Receiver",
+    "tokio::sync::watch::Receiver",
+    "tokio::sync::Semaphore",
+    "std::sync::mpsc::Sender",
+    "tokio::sync::mpsc::Sender",
+    "tokio::sync::oneshot::Sender",
+    "tokio::sync::watch::Sender",
+    "tokio::sync::mpsc::UnboundedReceiver",
+    "tokio::sync::mpsc::UnboundedSender",
 ]
 # Locks an owner keeps to itself while it holds them by value; held through
 # a shared pointer they are shared state.
-private_state_types = ["Condvar", "Mutex"]
+private_state_types = ["std::sync::Condvar", "std::sync::Mutex", "tokio::sync::Mutex"]
 # Every holder of one of these shares what it points at with the others.
-shared_pointer_types = ["Arc", "Weak"]
+shared_pointer_types = ["std::sync::Arc", "std::sync::Weak"]
 
-# Types that bae's dependencies declare: std and tokio's locks, atomics,
-# shared pointers, channels, tasks and runtimes, coven's handle, and the
-# libraries' own services.
+# Types that bae's dependencies declare and the read-shapes rows name bare:
+# std's atomics and locks, and coven's live reads. The owner rules' rows
+# name every type by its path.
 external_types = [
-    "AbortHandle",
-    "Arc",
     "AtomicBool",
     "AtomicU32",
     "AtomicU64",
     "AtomicU8",
-    "CancellationToken",
-    "Condvar",
-    "Coven",
-    "CovenHandle",
-    "FileBudget",
-    "FileLease",
-    "LeasePlace",
-    "LeasedFile",
-    "Handle",
-    "IdSource",
-    "IdSourceRef",
-    "JoinHandle",
     "LiveQuery",
-    "LruCache",
     "Mutex",
-    "Notify",
     "OnceCell",
     "OnceLock",
     "ReconfigurableLiveQuery",
-    "Receiver",
     "RefCell",
-    "Runtime",
-    "Semaphore",
-    "Sender",
-    "ServiceDaemon",
     "SqlRead",
     "SqlReadContext",
     "TransferWatch",
-    "UnboundedReceiver",
-    "UnboundedSender",
-    "Weak",
-    "Write",
 ]
 
 # Values that name a capability or shared state in a field but own no
@@ -199,75 +182,75 @@ external_types = [
 non_owner_types = [
     # Messages to the playback thread and the services' coordinators; they
     # carry reply channels for the one request they hold.
-    "PlaybackCommand",
-    "PlaybackMessage",
-    "Wake",
-    "WatcherCommand",
-    "CoordinatorEvent",
-    "WorkerMessage",
-    "Command",
+    "bae_playback::service::api::PlaybackCommand",
+    "bae_playback::service::thread::PlaybackMessage",
+    "bae_playback::service::thread::Wake",
+    "bae_import::watching::coordinator::WatcherCommand",
+    "bae_import::watching::coordinator::CoordinatorEvent",
+    "bae_diagnostics::WorkerMessage",
+    "bae_import::identification::Command",
     # What one scan pass or one folder reading is asked to do.
-    "RootPass",
-    "FolderReadingRequest",
+    "bae_import::watching::active_roots::RootPass",
+    "bae_import::watching::active_roots::FolderReadingRequest",
     # What one decode is started with.
-    "StreamDecodeParams",
-    "SegmentDecodeParams",
-    "DecoderSetup",
-    "DecodeFailureReport",
-    "PreparedAudioSegment",
-    "PlaybackPreparedTrack",
+    "bae_track_audio::decode::StreamDecodeParams",
+    "bae_track_audio::decode::SegmentDecodeParams",
+    "bae_playback::stream_pipeline::DecoderSetup",
+    "bae_playback::stream_pipeline::DecodeFailureReport",
+    "bae_playback::service::PreparedAudioSegment",
+    "bae_playback::service::PlaybackPreparedTrack",
     # What opening a library hands the app, and what a join hands the
     # bridge: the joined library's handle, with what failed once it was
     # published.
-    "BridgeBootstrapResult",
-    "JoinedLibrary",
+    "bae_bridge::types::bootstrap::BridgeBootstrapResult",
+    "bae_library::bootstrap::JoinedLibrary",
     # What the outbox feed hands the app: the two streams it writes.
-    "BridgeOutboxFeeds",
+    "bae_bridge::keyed_values::BridgeOutboxFeeds",
     # What a call was passed to follow it, if the app shows the call: the
     # app's object, held for the one call, and the call's writer made from it.
-    "ClosingFeed",
-    "SetupFeed",
+    "bae_bridge::screens::closing::ClosingFeed",
+    "bae_bridge::screens::setup::SetupFeed",
     # Plain data the owner that holds it guards with its own lock: the
     # holder is built at its root, the data starts empty inside it.
-    "WorkInFlight",
-    "DiscogsKey",
-    "Queue",
-    "Queued",
+    "bae_import::candidate_runtime::work::WorkInFlight",
+    "bae_import::catalog_sessions::DiscogsKey",
+    "bae_import::identification::queue::Queue",
+    "bae_import::watching::active_roots::Queued",
     # A server controller's state, plain data behind its lock.
-    "ServerState",
+    "bae_util::server::ServerState",
     # What a Cast client holds for the requests it waits on and for the
     # receiver's last word, behind the client's own lock, and what each
     # request waits with.
-    "ClientState",
-    "WaitingRequest",
+    "bae_cast::cast::client::ClientState",
+    "bae_cast::cast::client::WaitingRequest",
     # What the Cast connection's reader and writer share: the one end, the
     # stop signals and the end callback, held by both tasks and the connection.
-    "ConnectionShared",
+    "bae_cast::cast::connection::ConnectionShared",
     # What a Cast connection's writer is told to do.
-    "WriterJob",
+    "bae_cast::cast::connection::WriterJob",
     # What the Cast client gets from a receiver's launch.
-    "Answered",
+    "bae_cast::cast::client::Answered",
     # What a Cast client waits on a request with, and the app it launched.
-    "RequestKind",
-    "App",
+    "bae_cast::cast::client::RequestKind",
+    "bae_cast::cast::client::App",
     # What a play-on command carries to start remote playback.
-    "RemoteConnect",
-    "AirPlayConnect",
+    "bae_playback::service::renderer::RemoteConnect",
+    "bae_playback::service::renderer::AirPlayConnect",
     # What the identification queue holds for a job, and what the folder watcher
     # holds for a root: data under the lock of the owner that holds it.
-    "Job",
-    "JobState",
-    "RootActivity",
-    "RootScanSchedule",
-    "RootRemovalSchedule",
-    "RootWatch",
+    "bae_import::identification::queue::Job",
+    "bae_import::identification::queue::JobState",
+    "bae_import::watching::active_roots::RootActivity",
+    "bae_import::watching::active_roots::RootScanSchedule",
+    "bae_import::watching::active_roots::RootRemovalSchedule",
+    "bae_import::watching::folder_watcher::RootWatch",
     # What the Subsonic router's handlers share, copied into each request: the
     # server's services, credential and diagnostics.
-    "AppState",
+    "bae_subsonic::AppState",
     # The state a session's lock guards: open, removed or ended.
-    "SessionState",
+    "bae_bridge::handle::SessionState",
     # What is left of a session once it begins to end: the runtime to end.
-    "Ending",
+    "bae_bridge::handle::Ending",
 ]
 
 # Values an owner makes for its caller's one operation, view or read and
@@ -276,249 +259,252 @@ non_owner_types = [
 # are still checked.
 task_types = [
     # One read of a file's audio, one output stream, and the stream's control.
-    "AudioDataReader",
+    "bae_track_audio::data_source::AudioDataReader",
     # A place of the open-files budget, taken for one piece of work.
-    "FileLease",
-    "LeasePlace",
-    "LeasedFile",
-    "AudioOutput",
-    "AudioStream",
-    "AirPlayStreamControl",
+    "coven::FileLease",
+    "coven::LeasePlace",
+    "coven::LeasedFile",
+    "bae_playback::audio_output::AudioOutput",
+    "bae_playback::audio_output::AudioStream",
+    "bae_playback::airplay_output::AirPlayStreamControl",
     # One open file's bytes from coven, reporting a bug a read carries.
-    "FileStream",
+    "bae_store::file_stream::FileStream",
     # A client asking Discogs with the library's stored key, for one call.
-    "DiscogsClient",
+    "bae_catalogs::discogs::client::DiscogsClient",
+    # The guard that cancels one call the app may stop when the call's future
+    # drops.
+    "bae_bridge::cancellation::CancelOnDrop",
     # A screen's live read of the library, for as long as the screen shows it,
     # and the bridge's subscription the app holds over each one.
-    "ListView",
-    "LiveListPosition",
-    "LiveListWindow",
-    "LiveAlbumSelection",
-    "LiveLibrarySearch",
-    "LiveReleaseFiles",
-    "LiveStorageSelection",
-    "LiveDetail",
-    "LiveImportCandidate",
-    "LiveValues",
-    "CancellableLiveQuery",
+    "bae_views::list_view::ListView",
+    "bae_views::browse::LiveListPosition",
+    "bae_views::browse::LiveListWindow",
+    "bae_library::album_selection::LiveAlbumSelection",
+    "bae_views::search::LiveLibrarySearch",
+    "bae_app::live_reads::LiveReleaseFiles",
+    "bae_app::live_reads::LiveStorageSelection",
+    "bae_library::detail::LiveDetail",
+    "bae_app::live_reads::import_candidate::LiveImportCandidate",
+    "bae_store::live_query::values::LiveValues",
+    "bae_store::live_query::CancellableLiveQuery",
     # One live query's results for an async reader, for as long as it reads.
-    "LiveResults",
-    "AddDeviceStatusSubscription",
-    "AdminChangesSubscription",
-    "AlbumDetailSubscription",
-    "AlbumPlaceSubscription",
-    "AlbumSectionsSubscription",
-    "AlbumSelectionSubscription",
-    "ArtistDetailSubscription",
-    "CandidateRuntimeSubscription",
-    "CatalogApplyStepSubscription",
-    "CastReceiversSubscription",
-    "ComposerDetailSubscription",
-    "ConfigSubscription",
-    "CoverGallerySubscription",
-    "DeviceStorageSubscription",
-    "DownloadCountsSubscription",
-    "FolderImagesSubscription",
-    "FolderScansSubscription",
-    "ImportCandidateSubscription",
-    "ImportCountsSubscription",
-    "ImportFilterEntriesSubscription",
-    "ImportList",
-    "ImportSelectionSubscription",
-    "ImportSummarySubscription",
-    "InvalidCandidateSubscription",
-    "InvitesSubscription",
-    "LibraryNameSubscription",
-    "LibrarySearchSubscription",
-    "ListCountSubscription",
-    "ListPageSubscription",
-    "ListViewSubscription",
-    "MembersSubscription",
-    "OpenInviteSubscription",
-    "PeopleSubscription",
-    "PersonSubscription",
-    "PlaybackTimelineSubscription",
-    "PlaybackValuesSubscription",
-    "PlaylistDetailSubscription",
-    "PlaylistsSubscription",
-    "QueueSubscription",
-    "SessionUpNextSubscription",
-    "ReleaseDetailSubscription",
-    "ReleaseEditDraftSubscription",
-    "ReleaseFilesSubscription",
-    "SaveChoiceSubscription",
-    "SavePresetSubscription",
-    "ScanningFoldersSubscription",
-    "SetupStatesSubscription",
-    "StorageQueuesSubscription",
-    "StorageSelectionSubscription",
-    "StorageInspectorSubscription",
-    "StorageFileSubscription",
-    "StorageSetupFinishingSubscription",
-    "SubsonicSubscription",
-    "SyncActivitySubscription",
-    "SyncStatusSubscription",
-    "UnmeteredOnlySubscription",
-    "UploadsPausedSubscription",
-    "WorkDetailSubscription",
+    "bae_store::live_results::LiveResults",
+    "bae_bridge::screens::AddDeviceStatusSubscription",
+    "bae_bridge::screens::AdminChangesSubscription",
+    "bae_bridge::screens::detail::AlbumDetailSubscription",
+    "bae_bridge::screens::AlbumPlaceSubscription",
+    "bae_bridge::screens::AlbumSectionsSubscription",
+    "bae_bridge::screens::browse::AlbumSelectionSubscription",
+    "bae_bridge::screens::detail::ArtistDetailSubscription",
+    "bae_bridge::screens::CandidateRuntimeSubscription",
+    "bae_bridge::screens::CatalogApplyStepSubscription",
+    "bae_bridge::screens::CastReceiversSubscription",
+    "bae_bridge::screens::detail::ComposerDetailSubscription",
+    "bae_bridge::screens::ConfigSubscription",
+    "bae_bridge::screens::cover_gallery::CoverGallerySubscription",
+    "bae_bridge::screens::DeviceStorageSubscription",
+    "bae_bridge::screens::DownloadCountsSubscription",
+    "bae_bridge::screens::folder_images::FolderImagesSubscription",
+    "bae_bridge::screens::FolderScansSubscription",
+    "bae_bridge::screens::detail::ImportCandidateSubscription",
+    "bae_bridge::screens::ImportCountsSubscription",
+    "bae_bridge::screens::import_list::ImportFilterEntriesSubscription",
+    "bae_bridge::screens::import_list::ImportList",
+    "bae_bridge::screens::import_list::ImportSelectionSubscription",
+    "bae_bridge::screens::import_list::ImportSummarySubscription",
+    "bae_bridge::screens::detail::InvalidCandidateSubscription",
+    "bae_bridge::screens::InvitesSubscription",
+    "bae_bridge::screens::LibraryNameSubscription",
+    "bae_bridge::screens::search::LibrarySearchSubscription",
+    "bae_bridge::screens::lists::ListCountSubscription",
+    "bae_bridge::screens::lists::ListPageSubscription",
+    "bae_bridge::screens::lists::ListViewSubscription",
+    "bae_bridge::screens::MembersSubscription",
+    "bae_bridge::screens::OpenInviteSubscription",
+    "bae_bridge::screens::PeopleSubscription",
+    "bae_bridge::screens::PersonSubscription",
+    "bae_bridge::screens::PlaybackTimelineSubscription",
+    "bae_bridge::screens::PlaybackValuesSubscription",
+    "bae_bridge::screens::detail::PlaylistDetailSubscription",
+    "bae_bridge::screens::PlaylistsSubscription",
+    "bae_bridge::screens::QueueSubscription",
+    "bae_bridge::screens::SessionUpNextSubscription",
+    "bae_bridge::screens::detail::ReleaseDetailSubscription",
+    "bae_bridge::screens::ReleaseEditDraftSubscription",
+    "bae_bridge::screens::files::ReleaseFilesSubscription",
+    "bae_bridge::screens::SaveChoiceSubscription",
+    "bae_bridge::screens::SavePresetSubscription",
+    "bae_bridge::screens::ScanningFoldersSubscription",
+    "bae_bridge::screens::setup::SetupStatesSubscription",
+    "bae_bridge::screens::storage::StorageQueuesSubscription",
+    "bae_bridge::screens::storage::StorageSelectionSubscription",
+    "bae_bridge::screens::detail::StorageInspectorSubscription",
+    "bae_bridge::screens::detail::StorageFileSubscription",
+    "bae_bridge::screens::setup::StorageSetupFinishingSubscription",
+    "bae_bridge::screens::SubsonicSubscription",
+    "bae_bridge::screens::SyncActivitySubscription",
+    "bae_bridge::screens::SyncStatusSubscription",
+    "bae_bridge::screens::UnmeteredOnlySubscription",
+    "bae_bridge::screens::UploadsPausedSubscription",
+    "bae_bridge::screens::detail::WorkDetailSubscription",
     # One fast-changing value feed a screen pulls from while it is open.
-    "KeyedValueStream",
+    "bae_bridge::keyed_values::KeyedValueStream",
     # One subscriber's watch on the Subsonic server, and on a server's status.
-    "SubsonicWatch",
-    "ServerWatch",
+    "bae_subsonic::status::SubsonicWatch",
+    "bae_util::server::ServerWatch",
     # One subscriber's watch on the outbox's transfers.
-    "OutboxTransfersWatch",
+    "bae_library::outbox_watch::OutboxTransfersWatch",
     # One subscriber's watch on the Activity transfer lines' bars.
-    "ActivityBarsWatch",
+    "bae_library::activity_bars::ActivityBarsWatch",
     # The bridge's object a release editor's form is in, which the app holds.
-    "BridgeReleaseEditForm",
+    "bae_bridge::handle::release_edit::BridgeReleaseEditForm",
     # One apply of a catalog release that a screen shows: where it writes the
     # step it waits on, and the step it started and the step's row while one
     # read runs.
-    "CatalogApplySteps",
-    "StepsWritten",
-    "ShownApply",
-    "StartedStep",
-    "RunningStep",
+    "bae_import::apply_steps::CatalogApplySteps",
+    "bae_import::apply_steps::StepsWritten",
+    "bae_import::apply_steps::ShownApply",
+    "bae_import::apply_steps::StartedStep",
+    "bae_import::apply_steps::RunningStep",
     # One operation's view of the catalogs.
-    "CatalogSession",
+    "bae_catalogs::providers::CatalogSession",
     # One file stream's shared buffer, and the fetch that fills one read.
-    "SharedSparseBuffer",
-    "FillTask",
+    "bae_audio::sparse_buffer::SharedSparseBuffer",
+    "bae_track_audio::data_source::FillTask",
     # One track's decode for a caller outside the library.
-    "TrackDecode",
+    "bae_library::track_decode::TrackDecode",
     # One device reset the app confirms once, or again to finish one that
     # stopped partway.
-    "BridgeDeviceReset",
+    "bae_bridge::host::bootstrap::BridgeDeviceReset",
     # One background task or thread a caller started, reporting its failure.
-    "ReportedTask",
-    "ReportedThread",
+    "bae_diagnostics::background::ReportedTask",
+    "bae_diagnostics::background::ReportedThread",
     # One running pin of a release, and the progress it reports.
-    "RunningOp",
-    "TransferProgressFeed",
+    "bae_transfers::queued_releases::RunningOp",
+    "bae_library::storage::transfer::TransferProgressFeed",
     # One scan pass's file reads, and what one finished removal leaves to
     # announce.
-    "FileReads",
-    "RemovalOutcome",
+    "bae_import::folder_scanner::file_reads::FileReads",
+    "bae_import::watching::active_roots::RemovalOutcome",
     # One encode, and one track's sink and stream with their shared state and
     # ready signal.
-    "StreamingEncoder",
-    "TrackSink",
-    "StreamingState",
-    "ReadyReceiver",
+    "bae_audio::encode::StreamingEncoder",
+    "bae_audio::track_stream::TrackSink",
+    "bae_audio::track_stream::StreamingState",
+    "bae_audio::track_stream::ReadyReceiver",
     # One decode of a sparse buffer: the reader FFmpeg reads the buffer
     # through, the demuxer opened over it, the FFmpeg state the decode loop
     # runs on, and the stage that hands each decoded frame to the decode's
     # sink.
-    "StreamingAvioContext",
-    "BufferInput",
-    "BufferDecodeResources",
-    "SinkOutput",
-    "TrackOutput",
+    "bae_audio::avio::StreamingAvioContext",
+    "bae_audio::decode::BufferInput",
+    "bae_audio::decode::BufferDecodeResources",
+    "bae_audio::decode::output::SinkOutput",
+    "bae_audio::decode::output::TrackOutput",
     # One walk of a release's linked documents, and one waiter's place in a rate
     # limiter's queue.
-    "FetchDocuments",
-    "Ticket",
+    "bae_catalogs::payloads::traversal::FetchDocuments",
+    "bae_catalogs::rate_limiter::Ticket",
     # A live read's resolver, built with the read.
-    "Resolving",
+    "bae_store::live_query::read::Resolving",
     # The track playing in the service, from its load to its stop: the slot it
     # sits in, its decode, its sources and what the next track is preloaded with.
-    "PlaybackSlot",
-    "CurrentTrack",
-    "TrackDecoder",
-    "PlayingBytes",
-    "PreloadedNext",
-    "PreloadedNextSource",
-    "PlaybackSource",
+    "bae_playback::service::slot::PlaybackSlot",
+    "bae_playback::service::CurrentTrack",
+    "bae_playback::service::TrackDecoder",
+    "bae_playback::track_buffered::PlayingBytes",
+    "bae_playback::service::PreloadedNext",
+    "bae_playback::service::PreloadedNextSource",
+    "bae_playback::source::PlaybackSource",
     # One output stream, one output and the drain, writer and wake that feed it,
     # for as long as the output plays; each implementation of an output is one the
     # device opens for one player.
-    "OutputStream",
-    "AudioDrain",
-    "ResamplingDrain",
-    "DeviceWriter",
-    "AudioEventSender",
-    "AudioEventReceiver",
-    "EventRelay",
-    "RelayState",
-    "PcmWake",
-    "DrainSource",
-    "AirPlayAudioStream",
-    "AAudioStreamHandle",
-    "CpalStream",
-    "CpalAudioOutput",
-    "AirPlayOutput",
+    "bae_playback::service::OutputStream",
+    "bae_playback::audio_output::AudioDrain",
+    "bae_playback::resampling_drain::ResamplingDrain",
+    "bae_playback::device_writer::DeviceWriter",
+    "bae_playback::audio_output::AudioEventSender",
+    "bae_playback::audio_output::AudioEventReceiver",
+    "bae_playback::event_relay::EventRelay",
+    "bae_playback::event_relay::RelayState",
+    "bae_playback::airplay_output::PcmWake",
+    "bae_playback::airplay_output::DrainSource",
+    "bae_playback::airplay_output::AirPlayAudioStream",
+    "bae_playback::aaudio_output::AAudioStreamHandle",
+    "bae_playback::cpal_output::CpalStream",
+    "bae_playback::cpal_output::CpalAudioOutput",
+    "bae_playback::airplay_output::AirPlayOutput",
     # One player's output with the state and volume its streams play by, and one
     # pipeline decoding into it.
-    "PlayerOutput",
-    "AudioOutputControls",
-    "StreamPipeline",
+    "bae_playback::audio_output::PlayerOutput",
+    "bae_playback::audio_output::AudioOutputControls",
+    "bae_playback::stream_pipeline::StreamPipeline",
     # One preview: the file read, what it plays and its pipeline; and one file's
     # reader.
-    "PreviewSource",
-    "ActivePreview",
-    "LocalReader",
-    "CovenFileReader",
+    "bae_playback::preview_player::PreviewSource",
+    "bae_playback::preview_player::ActivePreview",
+    "bae_track_audio::data_source::local::LocalReader",
+    "bae_track_audio::data_source::CovenFileReader",
     # One remote playback session, from play-on to hand-back.
-    "RendererSession",
-    "RemoteRenderer",
-    "AirPlayRenderer",
-    "AirPlayControl",
+    "bae_playback::renderer::session::RendererSession",
+    "bae_playback::service::renderer::RemoteRenderer",
+    "bae_playback::service::renderer::AirPlayRenderer",
+    "bae_playback::airplay_output::AirPlayControl",
     # One scan pass: the walk, the root it reads, what stops it and the task
     # running it.
-    "ScanCancellation",
-    "RootScanTask",
-    "Walk",
-    "ScanRoot",
+    "bae_import::folder_scanner::scan::ScanCancellation",
+    "bae_import::scan_passes::RootScanTask",
+    "bae_import::folder_scanner::scan::Walk",
+    "bae_import::folder_scanner::scan::ScanRoot",
     # One extraction in flight, what it consumes and the release it reads; one
     # identification run's driver; one import's artist rows and registration; one
     # loudness pass and its track streams; a test's hold on a sender.
-    "RunningExtraction",
-    "ExtractionInputs",
-    "ExtractionRelease",
-    "Artwork",
-    "Driver",
-    "ArtistRows",
-    "RegisteredImport",
-    "LoudnessProgressSink",
-    "LoudnessProgress",
-    "SourceStream",
+    "bae_import::extraction::service::RunningExtraction",
+    "bae_import::extraction::service::ExtractionInputs",
+    "bae_import::extraction::service::ExtractionRelease",
+    "bae_import::extraction::service::Artwork",
+    "bae_import::identify_service::Driver",
+    "bae_import::assemble::ArtistRows",
+    "bae_import::import_cancel::RegisteredImport",
+    "bae_import::loudness::LoudnessProgressSink",
+    "bae_import::loudness::LoudnessProgress",
+    "bae_track_audio::track_sources::SourceStream",
     # A streamed track's encoded chunks on their way to the response.
-    "ChannelSink",
+    "bae_subsonic::endpoints::media::ChannelSink",
     # One MCP client session's server, built when the session opens.
-    "BaeMcpServer",
+    "bae_mcp::BaeMcpServer",
     # One AirPlay connection to one receiver: its sink, session and the PCM feed
     # it plays, and the media source a cast session fetches from.
-    "RaopSink",
-    "Ap2Sink",
-    "RaopSession",
-    "Ap2Session",
-    "PcmFeed",
-    "RendererMediaSource",
+    "bae_cast::airplay::sink::RaopSink",
+    "bae_cast::airplay::sink::Ap2Sink",
+    "bae_cast::airplay::session::RaopSession",
+    "bae_cast::airplay::ap2_session::Ap2Session",
+    "bae_cast::airplay::stream::PcmFeed",
+    "bae_playback::renderer::media_source::RendererMediaSource",
     # What one call shows the app of its progress: the stream it reports in, its
     # values and writer, the state it says, and the call objects the app makes for
     # each setup, open, close or apply, plus a task the runtime aborts when it is
     # dropped.
-    "ProgressStream",
-    "StreamValues",
-    "StreamWriter",
-    "SetupStateWatch",
-    "SetupStateWriter",
-    "SetupStates",
-    "BridgeLibrarySetup",
-    "BridgeLibraryOpening",
-    "BridgeLibraryClosing",
-    "BridgeCatalogApply",
-    "AbortOnDrop",
+    "bae_bridge::keyed_values::ProgressStream",
+    "bae_bridge::keyed_values::StreamValues",
+    "bae_bridge::keyed_values::StreamWriter",
+    "bae_bridge::screens::setup::SetupStateWatch",
+    "bae_bridge::screens::setup::SetupStateWriter",
+    "bae_bridge::screens::setup::SetupStates",
+    "bae_bridge::screens::setup::BridgeLibrarySetup",
+    "bae_bridge::screens::setup::BridgeLibraryOpening",
+    "bae_bridge::screens::closing::BridgeLibraryClosing",
+    "bae_bridge::screens::applying::BridgeCatalogApply",
+    "bae_bridge::operation_runtime::AbortOnDrop",
     # A guard that stops one save or one setup call's work when its call is
     # dropped, and one pin's transfer.
-    "CancelSaveOnDrop",
-    "CancelSetupOnDrop",
+    "bae_library::save::CancelSaveOnDrop",
+    "bae_library::manager::sync::CancelSetupOnDrop",
     # One standing call on an open library, which holds the library's session
     # open while the call runs, its close waiting for it.
-    "RunningCall",
-    "ReleaseTransfer",
-    "Running",
+    "bae_bridge::host::library_sessions::RunningCall",
+    "bae_library::storage::transfer::ReleaseTransfer",
+    "bae_transfers::queued_releases::Running",
 ]
 
 # Handles (Appendix F.3): what an owner makes from its own state to hand out.
@@ -527,62 +513,62 @@ task_types = [
 [handles]
 # Where one close or removal writes its steps: the send end of the stream
 # the app pulls from the closing it made.
-ClosingSteps = "ClosingFeed"
+"bae_bridge::screens::closing::ClosingSteps" = "bae_bridge::screens::closing::ClosingFeed"
 # Where one setup call writes its steps, the same way.
-SetupSteps = "SetupFeed"
+"bae_bridge::screens::setup::SetupSteps" = "bae_bridge::screens::setup::SetupFeed"
 # Where one call writes how far it has got: the send end of the progress
 # stream the app last took.
-ProgressWriter = "ProgressStream"
+"bae_bridge::keyed_values::ProgressWriter" = "bae_bridge::keyed_values::ProgressStream"
 # One release's progress, listed among every release's transfer of its kind
 # while that transfer runs; dropping it removes the release. And a watch on
 # every release's progress.
-ReleaseTransferReport = "ReleaseTransfers"
-ReleaseTransfersWatch = "ReleaseTransfers"
+"bae_transfers::release_transfers::ReleaseTransferReport" = "bae_transfers::release_transfers::ReleaseTransfers"
+"bae_transfers::release_transfers::ReleaseTransfersWatch" = "bae_transfers::release_transfers::ReleaseTransfers"
 # One read's fetch from storage, counted in the storage fetches while it
 # runs, and a watch on the playing track while one of its reads fetches.
-FetchProgress = "StorageFetches"
-StorageFetchWatch = "StorageFetches"
+"bae_track_audio::storage_fetch::FetchProgress" = "bae_track_audio::storage_fetch::StorageFetches"
+"bae_track_audio::storage_fetch::StorageFetchWatch" = "bae_track_audio::storage_fetch::StorageFetches"
 # Every progress event playback reports, and where playback is.
-PlaybackProgressFeed = "PlaybackProgressHandle"
-PlaybackPositionsWatch = "PlaybackProgressHandle"
+"bae_playback::progress::handle::PlaybackProgressFeed" = "bae_playback::progress::handle::PlaybackProgressHandle"
+"bae_playback::progress::handle::PlaybackPositionsWatch" = "bae_playback::progress::handle::PlaybackProgressHandle"
 # The ranges one sparse buffer holds, and the playing track's held
 # stretches, which the playback handle follows from the bytes the service
 # tells it.
-HeldRangesWatch = "SparseStreamingBuffer"
-TrackBufferedFollow = "PlaybackHandle"
+"bae_audio::sparse_buffer::HeldRangesWatch" = "bae_audio::sparse_buffer::SparseStreamingBuffer"
+"bae_playback::track_buffered::TrackBufferedFollow" = "bae_playback::service::api::PlaybackHandle"
 # A watch on one discovery's device list.
-DeviceListWatch = "PublishedDevices"
+"bae_cast::renderer::published_devices::DeviceListWatch" = "bae_cast::renderer::published_devices::PublishedDevices"
 # A watch on a server's status, and on the Subsonic server with the networks
 # and password it adds.
-ServerWatch = "ServerController"
-SubsonicWatch = "SubsonicServerController"
+"bae_util::server::ServerWatch" = "bae_util::server::ServerController"
+"bae_subsonic::status::SubsonicWatch" = "bae_subsonic::controller::SubsonicServerController"
 # Import events off the bus, the percents of the running imports, and the
 # snapshots of the extraction feeding one identify run.
-ImportEvents = "ImportEventBus"
-ImportPercentsWatch = "CandidateRuntime"
-ExtractionWatch = "ExtractionService"
+"bae_import::event_bus::ImportEvents" = "bae_import::event_bus::ImportEventBus"
+"bae_import::candidate_runtime::snapshots::ImportPercentsWatch" = "bae_import::candidate_runtime::CandidateRuntime"
+"bae_import::extraction::service::ExtractionWatch" = "bae_import::extraction::service::ExtractionService"
 # Where one pane tells the identification queue which candidate it shows,
 # held while the pane's read lives.
-ShownCandidate = "IdentificationHandle"
+"bae_import::identification::handle::ShownCandidate" = "bae_import::identification::handle::IdentificationHandle"
 # The screen's handle on one list's view: the rows on screen it sends the
 # view's task, and the window's rows the task sends back.
-ListViewHandle = "ListView"
+"bae_views::list_view::ListViewHandle" = "bae_views::list_view::ListView"
 # One request a rate limiter let through, settled against the limiter.
-Admitted = "RateLimiter"
+"bae_catalogs::rate_limiter::Admitted" = "bae_catalogs::rate_limiter::RateLimiter"
 # One reader of a sparse buffer, with its own slot in the buffer's demands.
-BufferReader = "SparseStreamingBuffer"
+"bae_audio::sparse_buffer::BufferReader" = "bae_audio::sparse_buffer::SparseStreamingBuffer"
 # One output's lease on the device format, and one stream's format, held
 # while the stream plays.
-FormatLease = "DeviceFormats"
-StreamFormat = "PlayerFormat"
+"bae_playback::device_formats::FormatLease" = "bae_playback::device_formats::DeviceFormats"
+"bae_playback::device_formats::StreamFormat" = "bae_playback::device_formats::PlayerFormat"
 # An open library's place in the host's record, held by its session while it
 # is open, and one close of a store, recorded until it ends; dropping either
 # takes it out of the record.
-OpenRecord = "LibrarySessions"
-CloseUnderWay = "LibrarySessions"
+"bae_bridge::host::library_sessions::OpenRecord" = "bae_bridge::host::library_sessions::LibrarySessions"
+"bae_bridge::host::library_sessions::CloseUnderWay" = "bae_bridge::host::library_sessions::LibrarySessions"
 # The calls running on a library that left the record, which its close waits
 # for before it runs.
-OpenCalls = "LibrarySessions"
+"bae_bridge::host::library_sessions::OpenCalls" = "bae_bridge::host::library_sessions::LibrarySessions"
 
 # Where the app opens: the bootstrap builds the runtime, the clock, the ids,
 # the HTTP client and the library's owners once, and starts the services that
@@ -623,6 +609,10 @@ OpenCalls = "LibrarySessions"
     "BridgeHost::with_test_keyring",
     "BridgeHost::set_oauth_presenter",
     "start_handle",
+    # The app opens a library through these, which hand it the handle the
+    # host's open built.
+    "init_app",
+    "init_app_on_fixture",
     # A released library's store closes on a thread the host records and waits for before the
     # store opens or is removed.
     "BridgeHost::close_released",

@@ -1,12 +1,16 @@
 #!/bin/sh
 # cargo's RUSTC_WRAPPER for scripts/clippy-crates.sh. cargo runs a workspace
-# crate as `<wrapper> <driver> rustc <args>`, where the driver is the typed
-# lints' (tools/typed-lints/built/typed-lints-driver), and sccache, handed
-# that, takes `rustc` for a second input file and caches nothing. Only the
-# crates named with `-p` (cargo marks them CARGO_PRIMARY_PACKAGE) are linted,
-# so they run under the driver; every other crate runs as
-# `<cache> rustc <args>`, a plain check that sccache caches and shares between
-# worktrees. <cache> is ~/.local/bin/builds-rustc when builds installed it, which
+# crate as `<wrapper> <lints> rustc <args>`, where <lints> is the typed
+# lints' wrapper (tools/typed-lints/built/typed-lints-rustc), and sccache,
+# handed that, takes `rustc` for a second input file and caches nothing. Only
+# the crates named with `-p` (cargo marks them CARGO_PRIMARY_PACKAGE) are
+# linted, so they run under the typed lints' wrapper; every other crate runs
+# as `<cache> rustc <args> -Zalways-encode-mir`, a plain check that sccache
+# caches and shares between worktrees. The typed lints read the bodies of
+# the crates before the linted one from their metadata, which holds every
+# body only under `-Zalways-encode-mir`, as the typed lints' wrapper passes
+# it: RUSTC_BOOTSTRAP names only the crate being compiled, which lets that
+# compile take the unstable option. <cache> is ~/.local/bin/builds-rustc when builds installed it, which
 # runs sccache and remaps a filled OUT_DIR so crates such as serde_core give the
 # same bytes in every worktree; without builds (CI) it is sccache.
 #
@@ -32,7 +36,7 @@ if [ -x "$HOME/.local/bin/builds-rustc" ]; then
     cache=$HOME/.local/bin/builds-rustc
 fi
 case "$1" in
-*/typed-lints-driver)
+*/typed-lints-rustc)
     if [ -n "${CARGO_PRIMARY_PACKAGE:-}" ]; then
         out_dir= incremental=
         prev=
@@ -49,7 +53,6 @@ case "$1" in
         exec "$@"
     fi
     shift
-    "$cache" "$@" || exit $?
     out_dir= name=
     prev=
     for arg in "$@"; do
@@ -59,6 +62,11 @@ case "$1" in
         esac
         prev=$arg
     done
+    if [ -n "$name" ]; then
+        RUSTC_BOOTSTRAP=$name "$cache" "$@" -Zalways-encode-mir || exit $?
+    else
+        "$cache" "$@" || exit $?
+    fi
     unit=${out_dir%/out}
     fingerprint="$unit/fingerprint"
     if [ -n "$out_dir" ] && [ -d "$fingerprint" ]; then

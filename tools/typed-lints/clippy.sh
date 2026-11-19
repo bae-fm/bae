@@ -2,9 +2,12 @@
 # Runs clippy, with the typed lints beside clippy's own:
 # `tools/typed-lints/clippy.sh <cargo args> [-- <clippy args>]`, as
 # `cargo clippy` takes them. It does what cargo-clippy does with
-# clippy-driver: runs `cargo check` with the typed lints' driver as the
-# workspace's rustc wrapper and the clippy arguments in CLIPPY_ARGS, which the
-# driver reads. A mark for a typed lint, such as
+# clippy-driver: runs `cargo check` with the typed lints' wrapper
+# (typed-lints-rustc) as the workspace's rustc wrapper and the clippy
+# arguments in CLIPPY_ARGS, which the driver reads. The wrapper runs the
+# driver beside it with `-Zalways-encode-mir`, so each workspace crate's
+# metadata holds the bodies of its functions, which the typed lints read in
+# the crates after it. A mark for a typed lint, such as
 # `#[expect(clippy::reqwest_error_display, reason = "...")]`, is a lint clippy's
 # own driver does not know and warns about. The hook's clippy
 # (scripts/clippy-crates.sh), `builds land`'s compile check (.land-compile) and
@@ -43,6 +46,6 @@ for arg in "$@"; do
 done
 
 BUILDS_CARGO_BEFORE="${BUILDS_CARGO_BEFORE:-tools/typed-lints/driver.sh}" \
-    RUSTC_WORKSPACE_WRAPPER="$top/tools/typed-lints/built/typed-lints-driver$exe" \
+    RUSTC_WORKSPACE_WRAPPER="$top/tools/typed-lints/built/typed-lints-rustc$exe" \
     CLIPPY_ARGS="$clippy_args" \
     exec scripts/cargo.sh check "${cargo_args[@]}"
