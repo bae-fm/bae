@@ -4,8 +4,8 @@ use bae_util::database_failure::{DatabaseFailure, FailedDatabaseCall};
 /// A write while another connection holds the database's write lock, with
 /// no wait: SQLite's own busy refusal.
 fn busy_write() -> rusqlite::Error {
-    let dir = tempfile::tempdir().expect("temporary directory");
-    let path = dir.path().join("library.db");
+    let dir = bae_util::test_files::TestFolder::new();
+    let path = dir.join("library.db");
     let holder = rusqlite::Connection::open(&path).expect("open the holder");
     holder.execute_batch("CREATE TABLE t (x); BEGIN EXCLUSIVE;").expect("hold the write lock");
     let writer = rusqlite::Connection::open(&path).expect("open the writer");
@@ -15,9 +15,8 @@ fn busy_write() -> rusqlite::Error {
 
 /// A read of a file that isn't a database: SQLite's own damage refusal.
 fn damaged_read() -> rusqlite::Error {
-    let dir = tempfile::tempdir().expect("temporary directory");
-    let path = dir.path().join("library.db");
-    std::fs::write(&path, vec![0x5a; 8192]).expect("write a file that isn't a database");
+    let dir = bae_util::test_files::TestFolder::new();
+    let path = dir.write("library.db", vec![0x5a; 8192]);
     let connection = rusqlite::Connection::open(&path).expect("open");
     connection
         .query_row("SELECT count(*) FROM sqlite_master", [], |row| row.get::<_, i64>(0))

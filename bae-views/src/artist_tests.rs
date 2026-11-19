@@ -24,7 +24,7 @@ const ARTIST_WORK_ONLY: &str = "b96d8066-777d-408d-8ae4-ed58c767e40c";
 /// also a junction artist elsewhere, a junction-only artist, the Various
 /// Artists row as a compilation's primary, a work-only composer (no album
 /// links), and a fully unlinked artist.
-async fn seeded_db() -> (Store, tempfile::TempDir) {
+async fn seeded_db() -> (Store, bae_util::test_files::TestFolder) {
     let (db, tmp) = temp_db(crate::TEST_SCHEMA).await;
     let album_a = "a67c03ad-425f-45e9-8279-0144c852aaa5";
     let album_b = "a0231b0b-549b-4e4d-806f-a4b66373e087";

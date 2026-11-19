@@ -19,7 +19,7 @@ pub const COMPOSER_WORK_ID: &str = "eb9cf137-3917-408a-9e4f-670c5f39051d";
 pub const OTHER_COMPOSER_WORK_ID: &str = "9958dcbd-ebac-42b9-9b6e-77bc421ac32b";
 pub const INSERTED_COMPOSER_WORK_ID: &str = "e1aa84de-4495-499c-92f8-9ff6ccdc59f5";
 
-pub async fn live_db(schema: bae_store::Schema) -> (Store, tempfile::TempDir) {
+pub async fn live_db(schema: bae_store::Schema) -> (Store, bae_util::test_files::TestFolder) {
     let (db, temp) = bae_store::test_fixtures::temp_db(schema).await;
     RecordsFixture::new()
         .artist(ARTIST_ID, "Artist Name")

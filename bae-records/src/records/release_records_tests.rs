@@ -9,12 +9,12 @@ use bae_catalogs::catalog::Catalog;
 use bae_catalogs::records::ReleaseRecord;
 use bae_store::test_fixtures::exec_batch;
 use bae_store::test_fixtures::temp_db;
-use tempfile::TempDir;
+use bae_util::test_files::TestFolder;
 use time::UtcDateTime;
 
 /// A store holding a single test artist that the helpers below reference
 /// for inserted albums.
-async fn setup_test_db_with_artist() -> (Records, TempDir) {
+async fn setup_test_db_with_artist() -> (Records, TestFolder) {
     let (db, tmp) = temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     let records = crate::test_fixtures::test_records(&db);
     let artist = DbArtist {
@@ -121,12 +121,12 @@ async fn insert_with_identities(
 }
 
 /// A store holding one album titled `title`, whose single release carries
-/// `identities`. The `TempDir` comes back because dropping it deletes the
+/// `identities`. The `TestFolder` comes back because dropping it deletes the
 /// store.
 async fn album_with(
     title: &str,
     identities: &[ReleaseRecord],
-) -> (Records, TempDir, DbAlbum, DbRelease) {
+) -> (Records, TestFolder, DbAlbum, DbRelease) {
     let (db, tmp) = setup_test_db_with_artist().await;
     let album = make_album(title);
     let release = make_release(&album.id);
@@ -407,7 +407,7 @@ async fn test_check_cross_source_doesnt_leak() {
 
 /// A library holding album X filed under MusicBrainz group `mb-rg-x` and
 /// album Y filed under Discogs master `d-master-y`.
-async fn two_albums() -> (Records, TempDir, DbAlbum, DbAlbum) {
+async fn two_albums() -> (Records, TestFolder, DbAlbum, DbAlbum) {
     let (db, tmp, x, _) = album_with("Album X", &[mb_identity("mb-rg-x", "mb-rel-x")]).await;
     let y = make_album("Album Y");
     let release_y = make_release(&y.id);

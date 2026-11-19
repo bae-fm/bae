@@ -365,7 +365,7 @@ struct StoreDevice {
     store: Store,
     cycles: SyncCycles,
     _installation: coven::Coven,
-    _dir: tempfile::TempDir,
+    _dir: bae_util::test_files::TestFolder,
 }
 
 #[cfg(any(test, feature = "test-utils"))]
@@ -374,7 +374,7 @@ impl StoreDevice {
         handle: coven::CovenHandle,
         sources: &crate::TestSources,
         installation: coven::Coven,
-        dir: tempfile::TempDir,
+        dir: bae_util::test_files::TestFolder,
     ) -> Self {
         let store = sources.store(handle);
         let cycles = SyncCycles::follow(&store);
@@ -415,12 +415,12 @@ impl TwoStores {
         let storage = Arc::new(
             coven::MemoryStorage::builder().clock(sources.clock().clone()).build().unwrap(),
         );
-        let dir = tempfile::TempDir::new().unwrap();
+        let dir = bae_util::test_files::TestFolder::new();
         let installation = sources.installation(dir.path().to_path_buf());
         let handle = create_first_store(schema, &installation, &sources, storage.clone()).await;
         let a = StoreDevice::new(handle, &sources, installation, dir);
         let code = a.store.generate_restore_code().await.unwrap();
-        let dir = tempfile::TempDir::new().unwrap();
+        let dir = bae_util::test_files::TestFolder::new();
         let installation = sources.installation(dir.path().to_path_buf());
         let handle = restore_store(
             schema,

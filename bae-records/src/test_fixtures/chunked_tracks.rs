@@ -4,7 +4,7 @@ use bae_store::query::SQL_MAX_IN_VARS;
 
 pub async fn chunked_track_db(
     schema: bae_store::Schema,
-) -> (bae_store::Store, tempfile::TempDir, Vec<String>) {
+) -> (bae_store::Store, bae_util::test_files::TestFolder, Vec<String>) {
     let (db, tmp) = bae_store::test_fixtures::temp_db(schema).await;
     let track_ids = track_ids(SQL_MAX_IN_VARS * 45);
     let seed_track_ids = track_ids.clone();

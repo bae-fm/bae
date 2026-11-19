@@ -11,7 +11,7 @@ use time::UtcDateTime;
 
 const NOW: &str = "2026-01-01T00:00:00Z";
 
-async fn library() -> (bae_store::Store, tempfile::TempDir) {
+async fn library() -> (bae_store::Store, bae_util::test_files::TestFolder) {
     temp_db(crate::test_fixtures::TEST_SCHEMA).await
 }
 

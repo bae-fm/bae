@@ -11,7 +11,7 @@ const RELEASE_PRIMARY: &str = "2ffa8060-aa00-4147-8ad4-f373ef66c407";
 
 /// One album holds one release; the other holds two, and the queued track is
 /// on the one that is NOT its primary.
-async fn cover_db() -> (Store, tempfile::TempDir) {
+async fn cover_db() -> (Store, bae_util::test_files::TestFolder) {
     let (db, tmp) = temp_db(crate::TEST_SCHEMA).await;
     let records = bae_records::test_fixtures::test_records(&db);
     let artist = bae_records::DbArtist {

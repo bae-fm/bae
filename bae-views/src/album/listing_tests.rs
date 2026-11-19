@@ -337,7 +337,7 @@ async fn write_grouped(records: &bae_records::Records, third: &str) {
     library.write(records).await;
 }
 
-async fn grouped_library() -> (Store, tempfile::TempDir) {
+async fn grouped_library() -> (Store, bae_util::test_files::TestFolder) {
     let (db, dir) = temp_db(crate::TEST_SCHEMA).await;
     write_grouped(&test_records(&db), ARTIST_C).await;
     (db, dir)

@@ -16,7 +16,7 @@ const WINDOW_C: &str = "f3a0e3a4-8c3d-4e6b-9f0b-4a6f3f6a5033";
 
 /// A library with three albums a search for "Window" finds, each with one
 /// release.
-async fn searched_library() -> (LibraryViews, bae_store::Store, tempfile::TempDir) {
+async fn searched_library() -> (LibraryViews, bae_store::Store, bae_util::test_files::TestFolder) {
     let (db, tmp) = temp_db(crate::TEST_SCHEMA).await;
     let mut fixture = RecordsFixture::new().artist(SEARCHED_ARTIST, "Paged Artist");
     for (id, release, title) in [

@@ -92,7 +92,7 @@ mod artists {
 
     /// One hundred artists, "Artist Name 000" to "Artist Name 099", each
     /// with an album and its release.
-    async fn hundred_artists() -> (Store, tempfile::TempDir) {
+    async fn hundred_artists() -> (Store, bae_util::test_files::TestFolder) {
         let (db, dir) = temp_db(crate::TEST_SCHEMA).await;
         let mut library = RecordsFixture::new();
         for at in 0..100 {

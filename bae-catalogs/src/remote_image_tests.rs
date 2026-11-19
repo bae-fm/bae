@@ -15,7 +15,8 @@ pub(super) fn test_png() -> Vec<u8> {
 /// An image cache over a temporary folder that asks hosts through
 /// [`direct_http`], with its rows in a test store of the catalogs' part, which
 /// the returned folder holds and must outlive the cache.
-pub(super) async fn test_cache() -> (crate::remote_image::RemoteImageCache, tempfile::TempDir) {
+pub(super) async fn test_cache(
+) -> (crate::remote_image::RemoteImageCache, bae_util::test_files::TestFolder) {
     let (store, directory) = bae_store::test_fixtures::temp_db(crate::TEST_SCHEMA).await;
     let cache = crate::remote_image::RemoteImageCache::for_test(
         direct_http(),

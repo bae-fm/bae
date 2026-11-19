@@ -9,7 +9,9 @@ use bae_types::pressing::ReleaseLabel;
 pub const RELEASE: &str = "5d1c2c9e-4f0b-4a43-9a51-0e6c1d3b7a10";
 
 /// A database on `schema` holding one album and its release, `RELEASE`.
-pub async fn library(schema: bae_store::Schema) -> (bae_store::Store, tempfile::TempDir) {
+pub async fn library(
+    schema: bae_store::Schema,
+) -> (bae_store::Store, bae_util::test_files::TestFolder) {
     let (db, tmp) = bae_store::test_fixtures::temp_db(schema).await;
     let album = DbAlbum::new_test("Album Title", &coven::UuidIds);
     let release = DbRelease::new_test(&album.id, RELEASE);

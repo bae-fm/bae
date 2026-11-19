@@ -9,7 +9,9 @@ use crate::Neighbors;
 use std::time::Duration;
 
 /// A scanned candidate whose folder holds `images` beside one audio file.
-async fn folder_with(images: &[&str]) -> (ImportTables, tempfile::TempDir, crate::CandidateKey) {
+async fn folder_with(
+    images: &[&str],
+) -> (ImportTables, bae_util::test_files::TestFolder, crate::CandidateKey) {
     let (db, tmp, root) = watched_root().await;
     let tables = ImportTables::new(db);
     let folder = folder_below(&root, "Album");

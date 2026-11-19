@@ -6,8 +6,8 @@ use std::collections::BTreeMap;
 const RELEASE_A: &str = "0252dedb-ee39-4547-8803-438dbeb57a64";
 const RELEASE_B: &str = "64e79a1f-404a-4c34-809a-a3cb44bf1942";
 
-async fn queue() -> (QueuedReleases<DownloadRequest, u8>, tempfile::TempDir) {
-    let tmp = tempfile::TempDir::new().unwrap();
+async fn queue() -> (QueuedReleases<DownloadRequest, u8>, bae_util::test_files::TestFolder) {
+    let tmp = bae_util::test_files::TestFolder::new();
     let db = Store::new_test(crate::TEST_SCHEMA, tmp.path(), Arc::new(coven::SystemClock))
         .await
         .unwrap();

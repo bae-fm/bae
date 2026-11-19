@@ -5,7 +5,8 @@ use bae_records::test_fixtures::live_query::live_db;
 use bae_util::test_channels::HANG_GUARD;
 
 /// The tables of a library watching `/music`, with its root.
-async fn watching_music() -> (crate::tables::ImportTables, std::path::PathBuf, tempfile::TempDir) {
+async fn watching_music(
+) -> (crate::tables::ImportTables, std::path::PathBuf, bae_util::test_files::TestFolder) {
     let (db, temp) = live_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db);
     let root = crate::tables::watched_path::host_root("/music");

@@ -12,7 +12,9 @@ use crate::tables::watched_path::host_root;
 use bae_store::test_fixtures::{empty_db, temp_db};
 
 /// `names` under one watched root, scanned to completion.
-pub(crate) async fn scanned(names: &[&str]) -> (Store, tempfile::TempDir, Vec<FolderCandidate>) {
+pub(crate) async fn scanned(
+    names: &[&str],
+) -> (Store, bae_util::test_files::TestFolder, Vec<FolderCandidate>) {
     let root = host_root("/music");
     scanned_folders(names.iter().map(|name| candidate(&root, name)).collect()).await
 }
@@ -20,7 +22,7 @@ pub(crate) async fn scanned(names: &[&str]) -> (Store, tempfile::TempDir, Vec<Fo
 /// `folders`, under the watched root `/music`, scanned to completion.
 async fn scanned_folders(
     folders: Vec<FolderCandidate>,
-) -> (Store, tempfile::TempDir, Vec<FolderCandidate>) {
+) -> (Store, bae_util::test_files::TestFolder, Vec<FolderCandidate>) {
     let (db, temp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
     let root = host_root("/music");

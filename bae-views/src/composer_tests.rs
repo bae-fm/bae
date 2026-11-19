@@ -787,7 +787,9 @@ fn work_across_albums() -> RecordsFixture {
 }
 
 /// [`work_across_albums`]'s library, written.
-async fn work_across_albums_db(library: RecordsFixture) -> (Store, tempfile::TempDir) {
+async fn work_across_albums_db(
+    library: RecordsFixture,
+) -> (Store, bae_util::test_files::TestFolder) {
     let (db, tmp) = temp_db(crate::TEST_SCHEMA).await;
     library.write(&test_records(&db)).await;
     (db, tmp)

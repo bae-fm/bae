@@ -33,7 +33,7 @@ pub(crate) fn search_result(source: LookupCatalog, release_id: &str) -> Metadata
 }
 
 /// Tables over a library whose scan holds one folder candidate, and its key.
-pub(crate) async fn scanned() -> (ImportTables, CandidateKey, tempfile::TempDir) {
+pub(crate) async fn scanned() -> (ImportTables, CandidateKey, bae_util::test_files::TestFolder) {
     let (db, tmp) = empty_db(crate::TEST_SCHEMA).await;
     stored_pane_candidate(&db).await;
     (ImportTables::new(db), pane_candidate_key(), tmp)

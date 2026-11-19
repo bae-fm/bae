@@ -30,9 +30,8 @@ time = { workspace = true }
 hex = { workspace = true }
 # The select and channels the sync-state follower waits on.
 tokio = { workspace = true, features = ["sync"] }
-# A test store's app directory, and the temporary directory it lives in.
+# A test store's app directory.
 bae-app-dir = { workspace = true, features = ["test-utils"], optional = true }
-tempfile = { workspace = true, optional = true }
 # The schema checks read the triggers' `UPDATE OF` columns.
 regex = { workspace = true, optional = true }
 # KeptSeeds names the kept seeds' folder after a hash of what built them, and
@@ -44,7 +43,6 @@ uuid = { workspace = true, optional = true }
 bae-app-dir = { workspace = true, features = ["test-utils"] }
 bae-util = { workspace = true, features = ["test-utils"] }
 coven = { workspace = true, features = ["test-utils"] }
-tempfile = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread", "time"] }
 # The schema tests read the tables the schema creates.
 regex = { workspace = true }
@@ -64,7 +62,6 @@ oauth-providers = []
 # enables it.
 test-utils = [
     "dep:bae-app-dir",
-    "dep:tempfile",
     "dep:regex",
     "dep:sha2",
     "dep:uuid",

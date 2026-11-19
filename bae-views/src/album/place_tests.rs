@@ -54,7 +54,7 @@ const OTHER_ARTIST: &str = "20000000-0000-4000-8000-000000000002";
 /// second artist, titled in that order: grouped by artist under a title
 /// sort, the grid's cards are album 0 and album 1 in the first artist's
 /// group, then album 1 and album 2 in the second's.
-async fn shared_album_library() -> (Store, tempfile::TempDir) {
+async fn shared_album_library() -> (Store, bae_util::test_files::TestFolder) {
     let (db, dir) = temp_db(crate::TEST_SCHEMA).await;
     let credits: [&[&str]; 3] = [&[ARTIST], &[ARTIST, OTHER_ARTIST], &[OTHER_ARTIST]];
     let mut library =

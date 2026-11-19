@@ -93,7 +93,7 @@ fn track_file(mapping: &TrackMapping) -> &MappingFile {
 /// them, in a library of its own.
 struct StoredFolder {
     _db: bae_store::Store,
-    _tmp: tempfile::TempDir,
+    _tmp: bae_util::test_files::TestFolder,
     tables: crate::tables::ImportTables,
     key: crate::CandidateKey,
     hash: String,

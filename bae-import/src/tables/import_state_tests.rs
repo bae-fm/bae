@@ -441,7 +441,7 @@ pub(crate) async fn stored_and_read(verdict: &TerminalVerdict) -> (TerminalVerdi
 /// library lives in.
 pub(crate) async fn stored_verdict(
     verdict: &TerminalVerdict,
-) -> (Store, String, tempfile::TempDir) {
+) -> (Store, String, bae_util::test_files::TestFolder) {
     let (db, tmp) = empty_db(crate::TEST_SCHEMA).await;
     let candidate =
         track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);

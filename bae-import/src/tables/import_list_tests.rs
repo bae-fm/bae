@@ -66,7 +66,7 @@ impl std::iter::Sum for Write {
 /// each write a test needs as the import makes it.
 pub(crate) struct Library {
     pub(crate) db: bae_store::Store,
-    pub(crate) _tmp: Option<tempfile::TempDir>,
+    pub(crate) _tmp: Option<bae_util::test_files::TestFolder>,
     pub(crate) root: std::path::PathBuf,
 }
 

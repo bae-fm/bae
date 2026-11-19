@@ -15,7 +15,7 @@ const SECOND: &str = "2b8d2a64-7e1f-4a54-8b63-1d4a4b0a1b02";
 const THIRD: &str = "3c9e3b75-8f2a-4b65-9c74-2e5b5c1b2c03";
 const OTHER: &str = "4daf4c86-9a3b-4c76-8d85-3f6c6d2c3d04";
 
-async fn seeded() -> (Store, tempfile::TempDir) {
+async fn seeded() -> (Store, bae_util::test_files::TestFolder) {
     let (db, tmp) = temp_db(crate::TEST_SCHEMA).await;
     RecordsFixture::new()
         .artist(FIRST, "Artist Name A")

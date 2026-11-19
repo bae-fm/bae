@@ -16,7 +16,9 @@ pub(super) async fn queue_items(db: &Store, track_ids: &[&str]) -> Vec<crate::Qu
 }
 
 /// `RELEASE_A` holding `count` tracks, in order, and their ids.
-pub(super) async fn release_db(count: usize) -> (Store, tempfile::TempDir, Vec<String>) {
+pub(super) async fn release_db(
+    count: usize,
+) -> (Store, bae_util::test_files::TestFolder, Vec<String>) {
     let (db, tmp) = temp_db(crate::TEST_SCHEMA).await;
     seed_artist_album_release(&db).await;
     let records = test_records(&db);
@@ -37,7 +39,7 @@ pub(super) async fn release_db(count: usize) -> (Store, tempfile::TempDir, Vec<S
 /// order, and their ids: a test deletes one track by deleting its release.
 pub(super) async fn single_track_releases_db(
     count: usize,
-) -> (Store, tempfile::TempDir, Vec<String>) {
+) -> (Store, bae_util::test_files::TestFolder, Vec<String>) {
     let (db, tmp) = temp_db(crate::TEST_SCHEMA).await;
     seed_artist_album_release(&db).await;
     let records = test_records(&db);

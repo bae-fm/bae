@@ -120,7 +120,8 @@ pub(crate) fn the_reported_bug(
 }
 
 /// `empty_db` plus a watched-folder root that exists on disk.
-pub(crate) async fn watched_root() -> (Store, tempfile::TempDir, std::path::PathBuf) {
+pub(crate) async fn watched_root() -> (Store, bae_util::test_files::TestFolder, std::path::PathBuf)
+{
     let (db, tmp) = empty_db(crate::TEST_SCHEMA).await;
     let root = tmp.path().join("watched");
     std::fs::create_dir_all(&root).unwrap();

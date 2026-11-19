@@ -25,7 +25,7 @@ const ALBUM_VARIOUS: &str = "5a7c2e10-91b3-4f6d-8e2a-1c0b9d8e7f04";
 /// sort the albums the way their credits do), and a compilation credited to
 /// Various Artists whose one track carries its own credit, C, and whose other
 /// track has none. Each album holds one release.
-async fn credited_library() -> (Store, tempfile::TempDir) {
+async fn credited_library() -> (Store, bae_util::test_files::TestFolder) {
     let (db, dir) = temp_db(crate::TEST_SCHEMA).await;
     let compilation_release = "9e2d4c6b-8a0f-4e1d-b3c5-7a9b1d3f5e04";
     let track_credited = "d4b6f8a0-1c3e-4a5c-9e1a-3c5e7a9c1e01";
@@ -210,7 +210,7 @@ pub(super) async fn assert_seeks_search(
 
 /// A library of 300 albums, each with an artist, a release, files and a
 /// work, every release queued to download and every track in the lane.
-pub(super) async fn library() -> (Store, tempfile::TempDir) {
+pub(super) async fn library() -> (Store, bae_util::test_files::TestFolder) {
     let (db, tmp) = temp_db(crate::TEST_SCHEMA).await;
     window_cost::seed(&db, &tmp.path().join("originals"), 0, 300).await;
     (db, tmp)
@@ -405,7 +405,7 @@ mod window_cost {
         seed: |store, originals, start, end| Box::pin(seed(store, originals, start, end)),
     };
 
-    async fn seeded_copy(n: u64) -> (Store, tempfile::TempDir) {
+    async fn seeded_copy(n: u64) -> (Store, bae_util::test_files::TestFolder) {
         SEEDS.seeded_copy(n).await
     }
 

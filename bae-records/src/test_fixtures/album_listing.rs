@@ -34,7 +34,9 @@ pub async fn write_listed(records: &crate::Records) {
 }
 
 /// [`write_listed`]'s library on `schema`.
-pub async fn listed_db(schema: bae_store::Schema) -> (bae_store::Store, tempfile::TempDir) {
+pub async fn listed_db(
+    schema: bae_store::Schema,
+) -> (bae_store::Store, bae_util::test_files::TestFolder) {
     let (db, tmp) = bae_store::test_fixtures::temp_db(schema).await;
     write_listed(&super::test_records(&db)).await;
     (db, tmp)

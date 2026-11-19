@@ -634,7 +634,7 @@ mod playback_queue_bench {
     }
 
     /// `RELEASE_A` holding `TRACKS` tracks with random ids, as a library's are.
-    async fn library_db() -> (Store, tempfile::TempDir, std::path::PathBuf) {
+    async fn library_db() -> (Store, bae_util::test_files::TestFolder, std::path::PathBuf) {
         let (db, tmp) = temp_db(crate::TEST_SCHEMA).await;
         seed_artist_album_release(&db).await;
         test_records(&db)

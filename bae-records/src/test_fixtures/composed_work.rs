@@ -14,7 +14,9 @@ pub const WORK_PARENT_A: &str = "6b05af7a-ee0c-4f12-8938-1d5536697271";
 /// An album artist's album on one release with one track, which performs a
 /// work part whose composer is credited on it, and the work it is part of, on
 /// `schema`.
-pub async fn composed_work_db(schema: bae_store::Schema) -> (bae_store::Store, tempfile::TempDir) {
+pub async fn composed_work_db(
+    schema: bae_store::Schema,
+) -> (bae_store::Store, bae_util::test_files::TestFolder) {
     let (db, tmp) = bae_store::test_fixtures::temp_db(schema).await;
     RecordsFixture::new()
         .artist(ARTIST_ALBUM, "Album Artist A")

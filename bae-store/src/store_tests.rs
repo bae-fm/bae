@@ -39,7 +39,7 @@ async fn processing_runs_off_the_runtime_and_preserves_database_errors() {
 #[tokio::test]
 async fn a_call_that_panics_is_reported_once_by_the_store() {
     use bae_util::task_failure::ReportedBug;
-    let tmp = tempfile::TempDir::new().unwrap();
+    let tmp = bae_util::test_files::TestFolder::new();
     let installation =
         coven::Coven::in_memory(bae_app_dir::AppDir::at(tmp.path()).unwrap().coven_app_dir());
     let clock: coven::ClockRef = std::sync::Arc::new(coven::SystemClock);

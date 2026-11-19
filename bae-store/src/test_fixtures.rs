@@ -2,9 +2,9 @@
 //! this crate and every crate that builds on it.
 
 /// A store on `schema` in a fresh temp directory, under the real clock.
-/// The `TempDir` owns the file, so it must outlive the handle.
-pub async fn temp_db(schema: crate::Schema) -> (crate::Store, tempfile::TempDir) {
-    let tmp = tempfile::TempDir::new().unwrap();
+/// The `TestFolder` owns the file, so it must outlive the handle.
+pub async fn temp_db(schema: crate::Schema) -> (crate::Store, bae_util::test_files::TestFolder) {
+    let tmp = bae_util::test_files::TestFolder::new();
     let db = crate::Store::new_test(schema, tmp.path(), std::sync::Arc::new(coven::SystemClock))
         .await
         .unwrap();
@@ -15,8 +15,8 @@ pub async fn temp_db(schema: crate::Schema) -> (crate::Store, tempfile::TempDir)
 /// for a test that takes them.
 pub async fn temp_db_hearing_bugs(
     schema: crate::Schema,
-) -> (crate::Store, tempfile::TempDir, std::sync::Arc<coven::task::HeardBugs>) {
-    let tmp = tempfile::TempDir::new().unwrap();
+) -> (crate::Store, bae_util::test_files::TestFolder, std::sync::Arc<coven::task::HeardBugs>) {
+    let tmp = bae_util::test_files::TestFolder::new();
     let heard = coven::task::HeardBugs::shared();
     let db = crate::Store::new_test_reporting_to(
         schema,
@@ -35,8 +35,8 @@ pub fn fixed_now() -> time::UtcDateTime {
 }
 
 /// `temp_db` under that pinned clock instead of the system one.
-pub async fn empty_db(schema: crate::Schema) -> (crate::Store, tempfile::TempDir) {
-    let tmp = tempfile::TempDir::new().unwrap();
+pub async fn empty_db(schema: crate::Schema) -> (crate::Store, bae_util::test_files::TestFolder) {
+    let tmp = bae_util::test_files::TestFolder::new();
     let db = crate::Store::new_test(
         schema,
         tmp.path(),

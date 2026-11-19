@@ -17,7 +17,7 @@ const SECOND: &str = "6d1f0b3a-2c4e-4f7a-9b1d-5e8c7a6b4c55";
 const THIRD: &str = "6d1f0b3a-2c4e-4f7a-9b1d-5e8c7a6b4c56";
 
 /// An album with three tracks on its main release and one on another.
-async fn paged_album() -> (LibraryViews, bae_store::Store, tempfile::TempDir) {
+async fn paged_album() -> (LibraryViews, bae_store::Store, bae_util::test_files::TestFolder) {
     let (db, tmp) = temp_db(crate::TEST_SCHEMA).await;
     RecordsFixture::new()
         .artist(COMPOSER, "Composer Name")

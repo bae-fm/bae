@@ -270,7 +270,7 @@ async fn offered(db: &Store, content_hash: &str) -> Vec<(String, CoverStanding)>
 async fn picked(
     primary_covers: (Vec<RemoteCover>, Vec<RemoteCover>),
     partner_covers: (Vec<RemoteCover>, Vec<RemoteCover>),
-) -> (Store, tempfile::TempDir, crate::folder_scanner::FolderCandidate) {
+) -> (Store, bae_util::test_files::TestFolder, crate::folder_scanner::FolderCandidate) {
     let (db, tmp, root) = watched_root().await;
     let primary = LookupRef::new(LookupCatalog::MusicBrainz, "mb-release");
     let candidate = linked(

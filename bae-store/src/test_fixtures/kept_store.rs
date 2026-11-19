@@ -149,9 +149,9 @@ impl KeptSeeds {
         previous.expect("sizes holds n").1
     }
 
-    /// A copy of the kept seed of size `n`, opened. The `TempDir` owns the
+    /// A copy of the kept seed of size `n`, opened. The `TestFolder` owns the
     /// copy, so it must outlive the store.
-    pub async fn seeded_copy(&self, n: u64) -> (Store, tempfile::TempDir) {
+    pub async fn seeded_copy(&self, n: u64) -> (Store, bae_util::test_files::TestFolder) {
         self.seeded_copy_planted(n, |_| ()).await
     }
 
@@ -162,9 +162,9 @@ impl KeptSeeds {
         &self,
         n: u64,
         plant: impl FnOnce(&Path),
-    ) -> (Store, tempfile::TempDir) {
+    ) -> (Store, bae_util::test_files::TestFolder) {
         let seed = self.kept(n).await;
-        let tmp = tempfile::TempDir::new().expect("create the copy's folder");
+        let tmp = bae_util::test_files::TestFolder::new();
         let app = tmp.path().join("app");
         let keychain = tmp.path().join("keychain");
         crate::test_devices::copy_folder(&seed.join("app"), &app);

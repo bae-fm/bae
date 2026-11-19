@@ -13,7 +13,8 @@ use std::collections::BTreeMap;
 
 /// Tables over a library whose scan holds one folder candidate, its key and
 /// the files it is identified as.
-async fn scanned() -> (ImportTables, CandidateKey, CandidateFiles, tempfile::TempDir) {
+async fn scanned() -> (ImportTables, CandidateKey, CandidateFiles, bae_util::test_files::TestFolder)
+{
     let (db, tmp) = empty_db(crate::TEST_SCHEMA).await;
     let (_, content_hash) = stored_pane_candidate(&db).await;
     let files = CandidateFiles { content_hash, file_edit_revision: 0 };
@@ -21,7 +22,7 @@ async fn scanned() -> (ImportTables, CandidateKey, CandidateFiles, tempfile::Tem
 }
 
 /// Tables over an empty library.
-async fn library() -> (ImportTables, tempfile::TempDir) {
+async fn library() -> (ImportTables, bae_util::test_files::TestFolder) {
     let (db, tmp) = empty_db(crate::TEST_SCHEMA).await;
     (ImportTables::new(db), tmp)
 }
