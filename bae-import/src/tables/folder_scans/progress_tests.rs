@@ -251,7 +251,7 @@ async fn a_tree_read_but_not_watched_is_its_own_status() {
 /// Why `/music/a` could not be watched, for `message`.
 fn unwatched(message: &str) -> crate::UnwatchedReason {
     crate::UnwatchedReason {
-        below: std::path::PathBuf::from("a"),
+        directory: std::path::PathBuf::from("/music/a"),
         cause: crate::UnwatchedCause::LimitReached,
         message: message.to_string(),
     }

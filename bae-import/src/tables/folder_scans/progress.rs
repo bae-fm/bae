@@ -19,7 +19,7 @@ use crate::folder_scan_status::{
 /// Each watched folder's status, in the order the folders are listed (their
 /// `position`, by its index).
 const FOLDER_SCAN_STATUSES: &str = "SELECT watched_folder_path, status, detail, \
-            unwatched_below, unwatched_cause, volume \
+            unwatched_directory, unwatched_cause, volume \
      FROM folder_scan_status ORDER BY position";
 
 /// Whether any folder's scan failed or left it not watched, and whether any
@@ -32,7 +32,7 @@ const FOLDER_SCAN_FLAGS: &str = "SELECT \
 /// JSON array of each one's folder path in hex, kind and detail, in the order
 /// the folders are listed.
 const OWED_FOLDER_SCAN_ALERTS: &str = "SELECT folder.watched_folder_path, folder.status, \
-            folder.detail, folder.unwatched_below, folder.unwatched_cause, folder.volume \
+            folder.detail, folder.unwatched_directory, folder.unwatched_cause, folder.volume \
      FROM folder_scan_status AS folder \
      WHERE folder.status IN ('failed', 'unwatched') \
        AND (folder.watched_folder_path, folder.status, folder.detail) NOT IN \
@@ -106,7 +106,7 @@ fn load_folder_scan_statuses_on(
 }
 
 /// A watched folder's status from a row of `folder_scan_status`:
-/// `watched_folder_path`, `status`, `detail`, `unwatched_below`,
+/// `watched_folder_path`, `status`, `detail`, `unwatched_directory`,
 /// `unwatched_cause` and `volume`.
 fn read_folder_scan_status(
     row: &rusqlite::Row<'_>,
@@ -218,7 +218,7 @@ fn load_held_root_scans_on(sql: &SqlReadContext<'_>) -> Result<HeldRootScans, Db
 /// root. `volume` is never NULL on a root, so a NULL one is a folder with
 /// none.
 const FOLDER_SCAN_PROGRESS: &str = "SELECT watched.path, roots.status, \
-            roots.detail, roots.unwatched_below, roots.unwatched_cause, roots.volume \
+            roots.detail, roots.unwatched_directory, roots.unwatched_cause, roots.volume \
      FROM watched_import_folders AS watched \
      LEFT JOIN folder_scan_roots AS roots ON roots.watched_folder_path = watched.path \
      ORDER BY watched.position";

@@ -35,8 +35,8 @@ impl crate::types::BridgeUnwatchedReason {
     /// `reason` of a directory in `folder`.
     fn from_core(reason: bae_import::UnwatchedReason, folder: &bae_import::WatchedFolder) -> Self {
         Self {
-            shown_directory: reason.shown_directory(&folder.name),
-            below: coven::path_bytes(&reason.below),
+            shown_directory: reason.shown_directory(folder),
+            directory: coven::path_bytes(&reason.directory),
             cause: crate::types::BridgeUnwatchedCause::from_core(reason.cause),
             message: reason.message,
         }
@@ -45,9 +45,9 @@ impl crate::types::BridgeUnwatchedReason {
     /// The reason as core names it; a path that is no path is the app's
     /// mistake.
     fn into_core(self) -> Result<bae_import::UnwatchedReason, crate::types::BridgeError> {
-        let Self { below, shown_directory: _, cause, message } = self;
+        let Self { directory, shown_directory: _, cause, message } = self;
         Ok(bae_import::UnwatchedReason {
-            below: crate::from_app::path(below)?,
+            directory: crate::from_app::path(directory)?,
             cause: cause.into_core(),
             message,
         })

@@ -52,8 +52,8 @@ SELECT
     END AS detail,
     CASE
         WHEN held.state = 'failed' THEN NULL
-        WHEN roots.status IS 'unwatched' THEN roots.unwatched_below
-    END AS unwatched_below,
+        WHEN roots.status IS 'unwatched' THEN roots.unwatched_directory
+    END AS unwatched_directory,
     CASE
         WHEN held.state = 'failed' THEN NULL
         WHEN roots.status IS 'unwatched' THEN roots.unwatched_cause

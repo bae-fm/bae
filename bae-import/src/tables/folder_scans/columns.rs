@@ -43,13 +43,13 @@ fn unwatched_cause_of(stored: &str) -> Result<crate::UnwatchedCause, DbError> {
 }
 
 /// The reason a root is not watched, from its row's `detail`,
-/// `unwatched_below` and `unwatched_cause`.
+/// `unwatched_directory` and `unwatched_cause`.
 pub(super) fn unwatched_reason_of(
     message: String,
-    below: std::path::PathBuf,
+    directory: std::path::PathBuf,
     cause: &str,
 ) -> Result<crate::UnwatchedReason, DbError> {
-    Ok(crate::UnwatchedReason { below, cause: unwatched_cause_of(cause)?, message })
+    Ok(crate::UnwatchedReason { directory, cause: unwatched_cause_of(cause)?, message })
 }
 
 /// The ripper a stored track sheet names.

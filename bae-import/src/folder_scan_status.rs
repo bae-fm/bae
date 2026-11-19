@@ -58,28 +58,31 @@ pub enum FolderScanStatus {
 /// Why bae could not watch a directory in a folder it read in full.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct UnwatchedReason {
-    /// The first directory that could not be watched, as the path below the
-    /// watched folder; empty when it is the folder itself.
-    pub below: PathBuf,
+    /// The first directory that could not be watched, by its absolute path.
+    pub directory: PathBuf,
     pub cause: UnwatchedCause,
     /// What the system said, untranslated.
     pub message: String,
 }
 
 impl UnwatchedReason {
-    /// The directory as the person reads it: the name of the watched folder,
-    /// then the path below it, such as `Downloads/Albums/2024`.
-    pub fn shown_directory(&self, folder_name: &str) -> String {
-        std::iter::once(folder_name.to_string())
-            .chain(self.below.components().map(|part| coven::path_text(part.as_ref())))
-            .collect::<Vec<_>>()
-            .join("/")
+    /// The directory as the person reads it: the name of the watched
+    /// `folder`, then the path below it, such as `Downloads/Albums/2024`. A
+    /// directory outside the folder shows as its whole path.
+    pub fn shown_directory(&self, folder: &crate::WatchedFolder) -> String {
+        match self.directory.strip_prefix(&folder.path) {
+            Ok(below) => std::iter::once(folder.name.clone())
+                .chain(below.components().map(|part| coven::path_text(part.as_ref())))
+                .collect::<Vec<_>>()
+                .join("/"),
+            Err(_) => coven::path_text(&self.directory),
+        }
     }
 }
 
 impl std::fmt::Display for UnwatchedReason {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "failed to watch {}: {}", self.below.display(), self.message)
+        write!(f, "failed to watch {}: {}", self.directory.display(), self.message)
     }
 }
 

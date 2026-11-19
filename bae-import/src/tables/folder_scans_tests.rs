@@ -26,7 +26,7 @@ fn load_folder_scan_snapshots_on(
 ) -> Result<impl FnOnce() -> Result<Vec<DbFolderScanSnapshot>, DbError> + Send + 'static, DbError> {
     let roots = sql.query(
         "SELECT watched_folder_path, generation, status, detail, \
-                unwatched_below, unwatched_cause \
+                unwatched_directory, unwatched_cause \
          FROM folder_scan_roots \
          ORDER BY watched_folder_path",
         [],

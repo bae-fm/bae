@@ -35,8 +35,7 @@ VALUES (1, 0);
 -- `status` is how the current generation's scan ended, NULL until it stores
 -- that, with `detail` saying why a failed scan failed or what the system said
 -- of the directory an unwatched folder could not watch, which
--- `unwatched_below` names, as its path below the folder, and
--- `unwatched_cause` classifies. The folder
+-- `unwatched_directory` names and `unwatched_cause` classifies. The folder
 -- scan coordinator records whether a scan
 -- is reading the folder, in `folder_scan_held` (`folder_scans/progress.sql`).
 CREATE TABLE IF NOT EXISTS folder_scan_roots (
@@ -44,13 +43,13 @@ CREATE TABLE IF NOT EXISTS folder_scan_roots (
     generation          INTEGER NOT NULL CHECK (generation >= 0),
     status              TEXT CHECK (status IN ('complete', 'failed', 'unwatched')),
     detail              TEXT,
-    unwatched_below BLOB,
+    unwatched_directory BLOB,
     unwatched_cause     TEXT CHECK (unwatched_cause IN ('limit_reached', 'refused')),
     -- The volume the folder was on when the scan began, asked once per scan so
     -- reading scan state never waits on a mount.
     volume              TEXT NOT NULL CHECK (volume IN ('local', 'network')),
     CHECK ((status IN ('failed', 'unwatched')) = (detail IS NOT NULL)),
-    CHECK ((status IS 'unwatched') = (unwatched_below IS NOT NULL)),
+    CHECK ((status IS 'unwatched') = (unwatched_directory IS NOT NULL)),
     CHECK ((status IS 'unwatched') = (unwatched_cause IS NOT NULL)),
     FOREIGN KEY (watched_folder_path)
         REFERENCES watched_import_folders (path)
