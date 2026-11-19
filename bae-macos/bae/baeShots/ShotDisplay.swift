@@ -79,9 +79,12 @@ final class ShotDisplay {
         // the same size at 2.
         let options =
             [kCGDisplayShowDuplicateLowResolutionModes: true] as CFDictionary
-        let modes =
-            (CGDisplayCopyAllDisplayModes(id, options) as? [CGDisplayMode])
-            ?? []
+        guard
+            let modes = CGDisplayCopyAllDisplayModes(id, options)
+                as? [CGDisplayMode]
+        else {
+            throw ShotError.noShotDisplay("CoreGraphics lists no modes for it")
+        }
         guard
             let mode = modes.first(where: {
                 $0.width == width && $0.height == height
