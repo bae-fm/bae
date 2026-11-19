@@ -195,18 +195,20 @@
       props.options ? h(MacMoreMenu, { label: props.optionsLabel || 'Options', items: props.options, open: props.optionsOpen, highlighted: props.highlighted }) : null);
   }
 
-  // A playlist's page inside the side pane's Playlists tab, whose head shows the back button to the list (`MacQueuePanel`'s `back`): the app's header, its picture beside the name (up to two lines) and the line of owner, count, length and who sees it; then Play, Shuffle and the owner's ⋯ (`options`; `optionsOpen` draws its menu open, `highlighted` the item under the pointer), which the pane's width moves under the header. Its tracks follow as children, `MacListRow`s.
+  // A playlist's page inside the side pane's Playlists tab, whose head shows the back button to the list (`MacQueuePanel`'s `back`). Its header is laid out as the album page's: the picture beside a column of the name (up to two lines), the owner on a line of their own, the facts line (count and length), then Play, Shuffle and the owner's ⋯ (`options`; `optionsOpen` draws its menu open, `highlighted` the item under the pointer) under the text, at its start. `sharing`: on the person's own playlist, who sees it, as a lock (Only me) or people (Everyone) glyph at the facts line's end; a playlist someone else shared shows nothing about sharing. Its tracks follow as children, `MacListRow`s.
   function MacPlaylistPage(props) {
+    var shared = props.sharing ? h('span', { className: 'bae-m-plpage-sharing', role: 'img', 'aria-label': props.sharing, title: props.sharing }, h(Glyph, { set: 'mac', name: props.sharing === 'Everyone' ? 'people' : 'lock', size: 12 })) : null;
     return h('section', { className: 'bae-m-plpage' },
       h('div', { className: 'bae-m-plpage-head' },
         h(PlaylistPicture, { covers: props.covers, size: 72, radius: 10 }),
         h('div', { className: 'bae-m-plpage-text' },
           h('h1', { className: 'bae-m-plpage-name' }, props.name),
-          h('div', { className: 'bae-m-plpage-line' }, h(Avatar, { name: props.owner, size: 16 }), [props.owner, props.count, props.length].join(' · ') + ' · ', h(StatusChip, null, props.sharing || 'Only me')))),
-      h('div', { className: 'bae-m-plpage-actions' },
-        h(MacButton, { kind: 'primary' }, 'Play'),
-        h(MacButton, null, 'Shuffle'),
-        props.options ? h(MacMoreMenu, { label: 'Playlist options', items: props.options, open: props.optionsOpen, highlighted: props.highlighted }) : null),
+          h('div', { className: 'bae-m-plpage-owner' }, h(Avatar, { name: props.owner, size: 16 }), props.owner),
+          h('div', { className: 'bae-m-plpage-facts' }, [props.count, props.length].join(' · '), shared),
+          h('div', { className: 'bae-m-plpage-actions' },
+            h(MacButton, { kind: 'primary' }, 'Play'),
+            h(MacButton, null, 'Shuffle'),
+            props.options ? h(MacMoreMenu, { label: 'Playlist options', items: props.options, open: props.optionsOpen, highlighted: props.highlighted }) : null))),
       h('div', { className: 'bae-m-plpage-tracks' }, props.children));
   }
 
@@ -272,6 +274,9 @@
       props.full ? null : h('span', { className: 'bae-m-sortadd', 'aria-label': 'Add sort criterion' }, h(Glyph, { set: 'mac', name: 'add', size: 13 })));
   }
   SF.add = 'M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z';
+  // Who sees a playlist of the person's own: a lock for Only me, two people for Everyone.
+  SF.lock = 'M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z';
+  SF.people = 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z';
 
   function MacCheckbox(props) {
     return h('label', { className: 'bae-m-checkbox' }, h('span', { className: cx('bae-m-checkbox-box', props.on && 'bae-m-checkbox-on') }, props.on ? h(CheckGlyph) : null), props.label);

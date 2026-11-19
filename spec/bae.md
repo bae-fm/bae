@@ -3069,7 +3069,7 @@ its track count and who sees it. The picture is the covers of the first four
 different releases its entries are on, as a 2×2 square; a playlist on fewer
 than four releases shows its first entry's cover, and one with no entries
 shows the missing-art tile. A playlist's page shows its owner, count, length
-and who sees it, then its tracks in order, each with its credit line (§2.3),
+and who sees it (on a Mac, only on the person's own playlist), then its tracks in order, each with its credit line (§2.3),
 album and release cover. On macOS each track also shows its number in the
 playlist, from 1; while a move's write runs, the rows show no number. The Add to playlist menu offers only the person's own
 playlists, and a playlist can be made only once the person has a profile.
@@ -3083,11 +3083,14 @@ opens the sheet for a new one; clicking a playlist
 opens its page inside the pane, as the playlist made opens, and the window
 keeps the library's view. While a playlist is open, a back button (*Back to
 Playlists* to screen readers) takes the place of the + at the start of the
-pane's top and returns to the list. The page starts with the playlist's
-picture beside its name, on up to two lines, over its owner,
-count, length and who sees it; Play, Shuffle and the owner's ⋯ follow on a
-row of their own, since the pane is too narrow for them beside the name; then
-its tracks. The pane's tabs stay switchable while a playlist is open, and the
+pane's top and returns to the list. The page's header is laid out as an
+album page's: the playlist's picture beside its name, on up to two lines, then
+its owner on a line of their own, then its count and length, then Play,
+Shuffle and the owner's ⋯ under them, at the start of the line; then its
+tracks. On the person's own playlist the count and length end in who sees it,
+a lock for *Only me* or two people for *Everyone*, which screen readers name;
+a playlist someone else shared says nothing about sharing, since it is shared
+to be seen at all. The pane's tabs stay switchable while a playlist is open, and the
 Playlists tab shows the open playlist again when the person comes back to
 it, whether after switching tabs, after closing and reopening the pane, or
 from *Playlists* in the person's menu. Deleting the open playlist returns the pane to the list.
