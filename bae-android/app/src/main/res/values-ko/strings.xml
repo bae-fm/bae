@@ -197,6 +197,7 @@
     <string name="people_role">역할</string>
     <string name="people_picture">사진</string>
     <string name="people_picture_remove">사진 제거</string>
+    <string name="people_picture_unreadable">이 사진을 읽을 수 없습니다.</string>
     <string name="people_devices">기기</string>
     <string name="people_your_devices">내 기기</string>
     <!-- A person's row in People: their role, then how many devices they have. -->

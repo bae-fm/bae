@@ -237,6 +237,7 @@
     <string name="people_role">Role</string>
     <string name="people_picture">Picture</string>
     <string name="people_picture_remove">Remove picture</string>
+    <string name="people_picture_unreadable">Could not read that picture.</string>
     <string name="people_devices">Devices</string>
     <string name="people_your_devices">Your devices</string>
     <!-- A person's row in People: their role, then how many devices they have. -->

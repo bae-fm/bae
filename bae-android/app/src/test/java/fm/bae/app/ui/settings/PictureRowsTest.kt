@@ -43,12 +43,12 @@ class PictureRowsTest {
 
     private fun show(
         profile: BridgePersonProfile,
-        setAvatar: suspend (suspend () -> ByteArray?) -> Unit,
+        setAvatar: suspend (ByteArray?) -> Unit,
     ) {
         compose.setContent {
             TestTheme {
                 CompositionLocalProvider(LocalBugReports provides BugReports(), LocalImageStore provides ImageStore.unresolved()) {
-                    PictureRows(you = YouActions(NoErrorDisplays, {}, setAvatar, {}), profile = profile)
+                    PictureRows(you = YouActions(NoErrorDisplays, {}, setAvatar, {}, {}), profile = profile)
                 }
             }
         }
@@ -65,8 +65,8 @@ class PictureRowsTest {
     fun removingThePictureClearsItAndTheRowsWaitUntilTheWriteReturns() {
         val written = CompletableDeferred<Unit>()
         val cleared = mutableListOf<ByteArray?>()
-        show(profile(avatarVersion = "1")) { read ->
-            cleared += read()
+        show(profile(avatarVersion = "1")) { bytes ->
+            cleared += bytes
             written.await()
         }
 

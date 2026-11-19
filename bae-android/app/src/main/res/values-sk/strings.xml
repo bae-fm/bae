@@ -215,6 +215,7 @@
     <string name="people_role">Rola</string>
     <string name="people_picture">Obrázok</string>
     <string name="people_picture_remove">Odstrániť obrázok</string>
+    <string name="people_picture_unreadable">Tento obrázok sa nepodarilo prečítať.</string>
     <string name="people_devices">Zariadenia</string>
     <string name="people_your_devices">Vaše zariadenia</string>
     <!-- A person's row in People: their role, then how many devices they have. -->

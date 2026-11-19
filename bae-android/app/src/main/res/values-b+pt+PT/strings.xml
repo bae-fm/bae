@@ -205,6 +205,7 @@
     <string name="people_role">Função</string>
     <string name="people_picture">Imagem</string>
     <string name="people_picture_remove">Remover imagem</string>
+    <string name="people_picture_unreadable">Não foi possível ler essa imagem.</string>
     <string name="people_devices">Dispositivos</string>
     <string name="people_your_devices">Os seus dispositivos</string>
     <!-- A person's row in People: their role, then how many devices they have. -->

@@ -12,6 +12,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.RowIcon
@@ -34,13 +35,22 @@ internal fun PictureRows(
 ) {
     val scope = rememberScreenScope()
     val context = LocalContext.current
+    val unreadable = stringResource(R.string.people_picture_unreadable)
     var saving by remember { mutableStateOf(false) }
 
     fun save(read: suspend () -> ByteArray?) {
         saving = true
         scope.launch {
             try {
-                you.setAvatar(read)
+                // A picked file that cannot be read is the person's to hear of, not a bug.
+                val bytes =
+                    try {
+                        read()
+                    } catch (e: IOException) {
+                        you.show(DisplayError(line = unreadable, detail = e.message))
+                        return@launch
+                    }
+                you.setAvatar(bytes)
             } finally {
                 saving = false
             }

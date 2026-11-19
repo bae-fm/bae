@@ -60,13 +60,15 @@ internal fun peoplePage(key: String): PeoplePage =
 
 /**
  * What this person can do to themselves on the first page: rename, set or clear their picture, and choose who sees
- * their plays. [setAvatar] reads the picture's bytes inside its action, so a failed read shows as a failed write
- * does; null clears the picture. It returns once the write has, and shows its failure.
+ * their plays. [setAvatar] sets the picture to the image in the bytes, or clears it with null; it returns once
+ * the write has, and shows its failure. [show] shows a failure of the page itself, such as a picked image that
+ * cannot be read.
  */
 internal class YouActions(
     val errors: ErrorDisplays,
     val rename: suspend (String) -> Unit,
-    val setAvatar: suspend (read: suspend () -> ByteArray?) -> Unit,
+    val setAvatar: suspend (ByteArray?) -> Unit,
+    val show: (DisplayError) -> Unit,
     val setHistory: (BridgeHistorySharing) -> Unit,
 )
 

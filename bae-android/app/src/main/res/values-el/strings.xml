@@ -205,6 +205,7 @@
     <string name="people_role">Ρόλος</string>
     <string name="people_picture">Εικόνα</string>
     <string name="people_picture_remove">Αφαίρεση εικόνας</string>
+    <string name="people_picture_unreadable">Δεν ήταν δυνατή η ανάγνωση αυτής της εικόνας.</string>
     <string name="people_devices">Συσκευές</string>
     <string name="people_your_devices">Οι συσκευές σας</string>
     <!-- A person's row in People: their role, then how many devices they have. -->

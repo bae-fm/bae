@@ -217,6 +217,7 @@
     <string name="people_role">الدور</string>
     <string name="people_picture">الصورة</string>
     <string name="people_picture_remove">إزالة الصورة</string>
+    <string name="people_picture_unreadable">تعذّرت قراءة هذه الصورة.</string>
     <string name="people_devices">الأجهزة</string>
     <string name="people_your_devices">أجهزتك</string>
     <!-- A person's row in People: their role, then how many devices they have. -->

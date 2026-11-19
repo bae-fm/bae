@@ -205,6 +205,7 @@
     <string name="people_role">Roll</string>
     <string name="people_picture">Bild</string>
     <string name="people_picture_remove">Ta bort bild</string>
+    <string name="people_picture_unreadable">Bilden kunde inte läsas.</string>
     <string name="people_devices">Enheter</string>
     <string name="people_your_devices">Dina enheter</string>
     <!-- A person's row in People: their role, then how many devices they have. -->

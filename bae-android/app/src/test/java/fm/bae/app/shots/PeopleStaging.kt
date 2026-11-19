@@ -49,7 +49,7 @@ internal fun PeoplePageScene(
     offline: Boolean = false,
 ) = CompositionLocalProvider(LocalImageStore provides avatarStore()) {
     AndroidSettingsPeople(
-        you = YouActions(NothingFails, {}, {}, {}),
+        you = YouActions(NothingFails, {}, {}, {}, {}),
         people = people,
         selfIsAdmin = selfIsAdmin,
         invites = invites.map { BridgeInviteEntry.Open(it) } + refused.map { BridgeInviteEntry.Refused(it) },
