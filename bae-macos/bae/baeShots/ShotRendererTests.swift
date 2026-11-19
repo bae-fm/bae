@@ -37,4 +37,29 @@ struct ShotRendererTests {
             return
         }
     }
+
+    /// A scene that fails to place its window takes down the window and the
+    /// alert its view raised: the next scene lists only its own alert.
+    @Test
+    func aWindowThatFailsToPlaceLeavesNoAlertUp() async throws {
+        let tooWide = Self.tooWide(
+            OverWindow.alert(
+                DeleteFormatConfirmation.alert(named: "MP3") {},
+                over: Color.clear
+            )
+        )
+        await #expect(throws: ShotError.self) {
+            try await ShotRenderer.render(tooWide)
+        }
+
+        let next = try #require(
+            ShotScene.all.first { $0.id == "mac.welcome.remove.failed" }
+        )
+        let list = try await ShotRenderer.render(next).elements
+        let json = try #require(String(bytes: try list.json(), encoding: .utf8))
+        #expect(
+            !list.elements.contains { $0.label == "Delete the MP3 format?" },
+            "\(json)"
+        )
+    }
 }

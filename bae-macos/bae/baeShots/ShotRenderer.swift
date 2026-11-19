@@ -53,6 +53,15 @@ enum ShotRenderer {
             named: mode == .dark ? .darkAqua : .aqua
         )
         window.isReleasedWhenClosed = false
+        // Close the window however the render ends, a failure to place it
+        // among them: the scene's view raises its alerts once it is in the
+        // window, shown or not, and an alert left up is listed and captured
+        // with every scene after it.
+        defer {
+            window.contentViewController = nil
+            window.contentView = nil
+            window.close()
+        }
         switch scene.frame {
         case .content:
             // The renderer makes the window key without activating the app.
@@ -65,11 +74,6 @@ enum ShotRenderer {
             NSApp.activate(ignoringOtherApps: true)
             window.makeKeyAndOrderFront(nil)
             window.makeMain()
-        }
-        defer {
-            window.contentViewController = nil
-            window.contentView = nil
-            window.close()
         }
 
         try await settle(
