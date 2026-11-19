@@ -33,14 +33,13 @@ pub fn place() -> LeasePlace {
     })
 }
 
-/// The bytes of `path`, a file committed to the repo. Panics naming the file,
-/// and how to get it back, when the checkout lacks it, and panics when `path`
-/// is outside the repo.
-pub fn read_fixture(path: impl AsRef<Path>) -> Vec<u8> {
-    let path = path.as_ref();
+/// The resolved path of `path`, a file or folder committed to the repo. Panics
+/// naming the path, and how to get it back, when the checkout lacks it, and
+/// panics when `path` is outside the repo.
+fn committed_path(path: &Path) -> PathBuf {
     let repo = std::fs::canonicalize(concat!(env!("CARGO_MANIFEST_DIR"), "/.."))
         .expect("the repo's folder resolves");
-    let file = std::fs::canonicalize(path).unwrap_or_else(|error| {
+    let resolved = std::fs::canonicalize(path).unwrap_or_else(|error| {
         panic!(
             "test fixture {} could not be found ({error}); it is committed, so \
              restore it with `git checkout -- {}`",
@@ -48,8 +47,29 @@ pub fn read_fixture(path: impl AsRef<Path>) -> Vec<u8> {
             path.display()
         )
     });
-    assert!(file.starts_with(&repo), "{} is not a file in the repo", path.display());
-    std::fs::read(&file).unwrap_or_else(|error| {
+    assert!(resolved.starts_with(&repo), "{} is not in the repo", path.display());
+    resolved
+}
+
+/// The names of the files and folders in the folder at `path`, sorted.
+fn sorted_entries(path: &Path) -> Vec<String> {
+    let mut names: Vec<String> = std::fs::read_dir(path)
+        .unwrap_or_else(|error| panic!("list {}: {error}", path.display()))
+        .map(|entry| {
+            let entry = entry.unwrap_or_else(|error| panic!("list {}: {error}", path.display()));
+            entry.file_name().to_string_lossy().into_owned()
+        })
+        .collect();
+    names.sort();
+    names
+}
+
+/// The bytes of `path`, a file committed to the repo. Panics naming the file,
+/// and how to get it back, when the checkout lacks it, and panics when `path`
+/// is outside the repo.
+pub fn read_fixture(path: impl AsRef<Path>) -> Vec<u8> {
+    let path = path.as_ref();
+    std::fs::read(committed_path(path)).unwrap_or_else(|error| {
         panic!("test fixture {} could not be read: {error}", path.display())
     })
 }
@@ -57,21 +77,7 @@ pub fn read_fixture(path: impl AsRef<Path>) -> Vec<u8> {
 /// The names of the files and folders in `folder`, a folder committed to the
 /// repo, sorted. Panics when `folder` is outside the repo or can't be listed.
 pub fn fixture_entries(folder: impl AsRef<Path>) -> Vec<String> {
-    let folder = folder.as_ref();
-    let repo = std::fs::canonicalize(concat!(env!("CARGO_MANIFEST_DIR"), "/.."))
-        .expect("the repo's folder resolves");
-    let resolved = std::fs::canonicalize(folder)
-        .unwrap_or_else(|error| panic!("fixture folder {}: {error}", folder.display()));
-    assert!(resolved.starts_with(&repo), "{} is not a folder in the repo", folder.display());
-    let mut names: Vec<String> = std::fs::read_dir(&resolved)
-        .unwrap_or_else(|error| panic!("list {}: {error}", folder.display()))
-        .map(|entry| {
-            let entry = entry.unwrap_or_else(|error| panic!("list {}: {error}", folder.display()));
-            entry.file_name().to_string_lossy().into_owned()
-        })
-        .collect();
-    names.sort();
-    names
+    sorted_entries(&committed_path(folder.as_ref()))
 }
 
 /// A fresh folder in the system's temporary directory that a test owns,
@@ -196,17 +202,7 @@ impl TestFolder {
 
     /// The names of the files and folders in the folder at `path`, sorted.
     pub fn entries(&self, path: impl AsRef<Path>) -> Vec<String> {
-        let path = self.join(path);
-        let mut names: Vec<String> = std::fs::read_dir(&path)
-            .unwrap_or_else(|error| panic!("list {}: {error}", path.display()))
-            .map(|entry| {
-                let entry =
-                    entry.unwrap_or_else(|error| panic!("list {}: {error}", path.display()));
-                entry.file_name().to_string_lossy().into_owned()
-            })
-            .collect();
-        names.sort();
-        names
+        sorted_entries(&self.join(path))
     }
 
     /// The metadata of the file or folder at `path`, following a link.
