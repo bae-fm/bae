@@ -455,61 +455,7 @@ async fn read_credit(
         musicbrainz_artist_id: None,
         discogs_artist_id: discogs_artist_id.map(str::to_string),
     };
-    db.read(move |sql| rule_artists_on(&sql, &credit)).await.unwrap()
-}
-
-/// The library artists [`credit_artist_clauses`] names for `credit`, in
-/// order, after checking that a write committing the credit alone decides
-/// as they say: it links the one artist they name, and makes a new artist
-/// when they name none or several.
-fn rule_artists_on(
-    sql: &impl coven::SqlRead,
-    credit: &bae_catalogs::credits::ArtistCredit,
-) -> Result<Vec<crate::ExistingArtist>, DbError> {
-    let named = sql.query(
-        &format!(
-            "WITH credit_under_test (name_key, musicbrainz_artist_id, discogs_artist_id) AS \
-                 (SELECT bae_artist_name_key(?1), ?2, ?3), \
-             {} \
-             SELECT artist_id, name, sort_name, artist_musicbrainz_id, artist_discogs_id \
-             FROM credit_artist ORDER BY position",
-            credit_artist_clauses("credit_under_test")
-        ),
-        params![credit.name, credit.musicbrainz_artist_id, credit.discogs_artist_id],
-        |row| {
-            Ok(crate::ExistingArtist {
-                artist_id: row.get(0)?,
-                name: row.get(1)?,
-                sort_name: row.get(2)?,
-                musicbrainz_artist_id: row.get(3)?,
-                discogs_artist_id: row.get(4)?,
-            })
-        },
-    )?;
-    let written = DbArtist {
-        id: "credit-under-test".to_string(),
-        name: credit.name.clone(),
-        sort_name: credit.sort_name.clone(),
-        discogs_artist_id: credit.discogs_artist_id.clone(),
-        musicbrainz_artist_id: credit.musicbrainz_artist_id.clone(),
-        created_at: UtcDateTime::MIN,
-    };
-    let resolved = resolve_artists_on(sql, &[written], &HashSet::new())
-        .expect("a credit alone resolves against the library");
-    match named.as_slice() {
-        [one] => assert_eq!(
-            (resolved.ids.as_slice(), resolved.inserts.len()),
-            ([one.artist_id.clone()].as_slice(), 0),
-            "the write links the one artist the rule's SQL names for {credit:?}"
-        ),
-        _ => assert_eq!(
-            resolved.inserts.iter().map(|new| &new.id).collect::<Vec<_>>(),
-            resolved.ids.iter().collect::<Vec<_>>(),
-            "the write makes a new artist where the rule's SQL names {} for {credit:?}",
-            named.len()
-        ),
-    }
-    Ok(named)
+    db.read(move |sql| credit_artists_checked_on(&sql, &credit)).await.unwrap()
 }
 
 fn artist_ids(artists: &[crate::ExistingArtist]) -> Vec<&str> {
@@ -560,7 +506,7 @@ async fn a_read_credit_whose_ids_name_two_artists_is_the_musicbrainz_one() {
         musicbrainz_artist_id: Some("mb-1".to_string()),
         discogs_artist_id: Some("discogs-1".to_string()),
     };
-    let named = db.read(move |sql| rule_artists_on(&sql, &credit)).await.unwrap();
+    let named = db.read(move |sql| credit_artists_checked_on(&sql, &credit)).await.unwrap();
 
     assert_eq!(artist_ids(&named), ["by-musicbrainz"], "the MusicBrainz id names the artist");
 }
@@ -592,7 +538,7 @@ async fn a_read_credit_whose_ids_disagree_goes_by_its_musicbrainz_id_then_its_na
         discogs_artist_id: Some("discogs-1".to_string()),
         ..bae_catalogs::credits::ArtistCredit::named("Artist Name")
     };
-    let named = db.read(move |sql| rule_artists_on(&sql, &credit)).await.unwrap();
+    let named = db.read(move |sql| credit_artists_checked_on(&sql, &credit)).await.unwrap();
 
     assert_eq!(
         artist_ids(&named),
@@ -946,7 +892,7 @@ async fn check_two_devices_give_one_artist_id(devices: &bae_store::test_devices:
     };
     for device in [devices.a(), devices.b()] {
         let read = read.clone();
-        let named = device.read(move |sql| rule_artists_on(&sql, &read)).await.unwrap();
+        let named = device.read(move |sql| credit_artists_checked_on(&sql, &read)).await.unwrap();
         assert_eq!(artist_ids(&named), ["artist-a"], "the id names one artist");
     }
 }

@@ -255,6 +255,61 @@ pub async fn resolved_in_an_empty_library(credits: &[DbArtist]) -> Vec<String> {
         .ids
 }
 
+/// The library artists [`super::credit_artist_clauses`] names for `credit`,
+/// in order, after checking that a write committing the credit alone decides
+/// as they say: it links the one artist they name, and makes a new artist
+/// when they name none or several. Tests read the rule's answers through it.
+#[cfg(any(test, feature = "test-utils"))]
+pub fn credit_artists_checked_on(
+    sql: &impl coven::SqlRead,
+    credit: &bae_catalogs::credits::ArtistCredit,
+) -> Result<Vec<crate::ExistingArtist>, DbError> {
+    let named = sql.query(
+        &format!(
+            "WITH credit_under_test (name_key, musicbrainz_artist_id, discogs_artist_id) AS \
+                 (SELECT bae_artist_name_key(?1), ?2, ?3), \
+             {} \
+             SELECT artist_id, name, sort_name, artist_musicbrainz_id, artist_discogs_id \
+             FROM credit_artist ORDER BY position",
+            credit_artist_clauses("credit_under_test")
+        ),
+        params![credit.name, credit.musicbrainz_artist_id, credit.discogs_artist_id],
+        |row| {
+            Ok(crate::ExistingArtist {
+                artist_id: row.get(0)?,
+                name: row.get(1)?,
+                sort_name: row.get(2)?,
+                musicbrainz_artist_id: row.get(3)?,
+                discogs_artist_id: row.get(4)?,
+            })
+        },
+    )?;
+    let written = DbArtist {
+        id: "credit-under-test".to_string(),
+        name: credit.name.clone(),
+        sort_name: credit.sort_name.clone(),
+        discogs_artist_id: credit.discogs_artist_id.clone(),
+        musicbrainz_artist_id: credit.musicbrainz_artist_id.clone(),
+        created_at: time::UtcDateTime::MIN,
+    };
+    let resolved = resolve_artists_on(sql, &[written], &HashSet::new())
+        .expect("a credit alone resolves against the library");
+    match named.as_slice() {
+        [one] => assert_eq!(
+            (resolved.ids.as_slice(), resolved.inserts.len()),
+            ([one.artist_id.clone()].as_slice(), 0),
+            "the write links the one artist the rule's SQL names for {credit:?}"
+        ),
+        _ => assert_eq!(
+            resolved.inserts.iter().map(|new| &new.id).collect::<Vec<_>>(),
+            resolved.ids.iter().collect::<Vec<_>>(),
+            "the write makes a new artist where the rule's SQL names {} for {credit:?}",
+            named.len()
+        ),
+    }
+    Ok(named)
+}
+
 /// The name step for a credit no catalog id placed: the one new artist of
 /// this write it names, else the one library artist, else a new artist.
 fn resolve_by_name_on<Q: coven::SqlRead>(
