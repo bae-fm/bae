@@ -589,6 +589,8 @@ impl ImportService {
                 ),
             )
             .await?;
+        #[cfg(test)]
+        self.import_cancels.pass(crate::import_cancel::HoldPoint::Write).await;
 
         let commit_guard = crate::tables::ImportCommitGuard::Candidate {
             candidate_key: candidate_key.clone(),

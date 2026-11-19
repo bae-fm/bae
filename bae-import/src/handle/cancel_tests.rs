@@ -91,13 +91,13 @@ async fn album_count(handle: &ImportServiceHandle) -> usize {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_running_import_cancelled_writes_nothing() {
     let (handle, _tmp, key, _) = two_importable().await;
-    handle.services.import_cancels.hold_runs();
+    let runs = handle.hold_imports(crate::import_cancel::HoldPoint::Run);
     let mut events = handle.every_event();
     let import_id = handle.start_import(&key).await.unwrap().expect_queued();
 
     handle.cancel_import(&key).await.unwrap();
     await_cancelled(&mut events, &[&import_id]).await;
-    handle.services.import_cancels.release_runs();
+    runs.release();
 
     assert_eq!(album_count(&handle).await, 0, "no release was written");
     assert_left_as_it_stood(&handle, &key).await;
@@ -110,7 +110,7 @@ async fn a_running_import_cancelled_writes_nothing() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_waiting_import_cancelled_ends_at_once_and_never_runs() {
     let (handle, _tmp, running, waiting) = two_importable().await;
-    handle.services.import_cancels.hold_runs();
+    let runs = handle.hold_imports(crate::import_cancel::HoldPoint::Run);
     let mut events = handle.every_event();
     let running_id = handle.start_import(&running).await.unwrap().expect_queued();
     let waiting_id = handle.start_import(&waiting).await.unwrap().expect_queued();
@@ -120,7 +120,7 @@ async fn a_waiting_import_cancelled_ends_at_once_and_never_runs() {
     assert_left_as_it_stood(&handle, &waiting).await;
     handle.cancel_import(&running).await.unwrap();
     await_cancelled(&mut events, &[&running_id]).await;
-    handle.services.import_cancels.release_runs();
+    runs.release();
 
     assert_eq!(album_count(&handle).await, 0, "neither import wrote a release");
     assert_imports_again(&handle, &waiting).await;
@@ -130,14 +130,14 @@ async fn a_waiting_import_cancelled_ends_at_once_and_never_runs() {
 #[tokio::test(flavor = "multi_thread")]
 async fn cancelling_every_import_ends_the_running_and_the_waiting() {
     let (handle, _tmp, running, waiting) = two_importable().await;
-    handle.services.import_cancels.hold_runs();
+    let runs = handle.hold_imports(crate::import_cancel::HoldPoint::Run);
     let mut events = handle.every_event();
     let running_id = handle.start_import(&running).await.unwrap().expect_queued();
     let waiting_id = handle.start_import(&waiting).await.unwrap().expect_queued();
 
     handle.cancel_all_imports().await.unwrap();
     await_cancelled(&mut events, &[&running_id, &waiting_id]).await;
-    handle.services.import_cancels.release_runs();
+    runs.release();
 
     assert_eq!(album_count(&handle).await, 0, "no release was written");
     for key in [&running, &waiting] {
@@ -397,11 +397,11 @@ async fn a_cancelled_retry_leaves_the_failure_it_retried() {
     drop(blocked);
     let before = store_state(&handle, &library_dir).await;
 
-    handle.services.import_cancels.hold_runs();
+    let runs = handle.hold_imports(crate::import_cancel::HoldPoint::Run);
     let retry = handle.start_import(&key).await.unwrap().expect_queued();
     handle.cancel_import(&key).await.unwrap();
     await_cancelled(&mut events, &[&retry]).await;
-    handle.services.import_cancels.release_runs();
+    runs.release();
 
     assert_eq!(
         store_state(&handle, &library_dir).await,
@@ -423,7 +423,7 @@ async fn a_cancelled_retry_leaves_the_failure_it_retried() {
 #[tokio::test(flavor = "multi_thread")]
 async fn an_import_asked_for_again_after_a_waiting_cancel_is_the_one_that_runs() {
     let (handle, _tmp, running, waiting) = two_importable().await;
-    handle.services.import_cancels.hold_runs();
+    let runs = handle.hold_imports(crate::import_cancel::HoldPoint::Run);
     let mut events = handle.every_event();
     let running_id = handle.start_import(&running).await.unwrap().expect_queued();
     let cancelled_id = handle.start_import(&waiting).await.unwrap().expect_queued();
@@ -435,7 +435,7 @@ async fn an_import_asked_for_again_after_a_waiting_cancel_is_the_one_that_runs()
         .await
         .expect("the cancelled candidate is asked for again")
         .expect_queued();
-    handle.services.import_cancels.release_runs();
+    runs.release();
 
     let mut outcomes = std::collections::HashMap::new();
     while !(outcomes.contains_key(&running_id) && outcomes.contains_key(&again_id)) {

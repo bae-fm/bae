@@ -52,6 +52,16 @@ impl ImportServiceHandle {
         );
     }
 
+    /// Hold every import that reaches `point` from now on, until the returned
+    /// hold is released.
+    #[cfg(test)]
+    pub(crate) fn hold_imports(
+        &self,
+        point: crate::import_cancel::HoldPoint,
+    ) -> crate::import_cancel::HeldImports {
+        self.services.import_cancels.hold(point)
+    }
+
     /// End an import cancelled while it waited, and announce it: the worker
     /// skips it, so it never will.
     async fn end_cancelled_import(

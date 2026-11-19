@@ -439,9 +439,11 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
     assert_eq!(track_role_count, 1);
 }
 
-/// An import reads as importing in every delivery until the one in which its
-/// release takes the row to Done: no delivery shows the row on Found with its
-/// import ended, gone from Found with no release, or on Done still importing.
+/// An import reads as importing from its start until the write of its
+/// release, which takes the row to Done: the import is held with every step
+/// but that write done, and the list reads it as importing from the start to
+/// the hold. No delivery after shows the row on Found with its import ended,
+/// gone from Found with no release, or on Done still importing.
 #[tokio::test(flavor = "multi_thread")]
 async fn an_import_reads_as_importing_until_its_release_is_written() {
     let fixture = Fixture::importing("standing-import-to-done").await;
@@ -475,18 +477,33 @@ async fn an_import_reads_as_importing_until_its_release_is_written() {
         }
     });
 
+    let writes = fixture.import.hold_imports(crate::import_cancel::HoldPoint::Write);
     fixture.import.start_import(&key).await.unwrap();
-    let mut importing = 0;
+    let started =
+        fixture.import.read_list_for_test(list.request().clone(), Vec::new()).await.unwrap();
+    assert!(
+        page_rows(&started)[&key].1.facts.importing(),
+        "the row reads as importing once the import starts"
+    );
+    tokio::time::timeout(HANG_GUARD, writes.reached())
+        .await
+        .expect("the import reaches the write of its release");
+    let held = next_page(&fixture, &list).await;
+    assert!(
+        page_rows(&held)[&key].1.facts.importing(),
+        "the list reads the row as importing while its release is not written"
+    );
+    assert_eq!(tables.load_tab_counts().await.unwrap().done, 0);
+
+    writes.release();
     loop {
         let snapshot = next_page(&fixture, &list).await;
         match page_rows(&snapshot).remove(&key) {
-            Some((_, live)) if live.facts.importing() => importing += 1,
-            Some((_, live)) => assert_eq!(
-                importing, 0,
+            Some((_, live)) => assert!(
+                live.facts.importing(),
                 "a delivery shows the row on Found with its import ended: {live:?}"
             ),
             None => {
-                assert!(importing > 0, "the import read as importing");
                 assert_eq!(
                     tables.load_tab_counts().await.unwrap().done,
                     1,

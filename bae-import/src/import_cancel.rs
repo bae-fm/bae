@@ -90,10 +90,10 @@ pub(crate) enum ImportRunEnd<T> {
 #[derive(Clone)]
 pub(crate) struct ImportCancels {
     entries: Arc<Mutex<HashMap<crate::CandidateKey, RegisteredImport>>>,
-    /// Holds every run after it starts, until a test lets it through — so a
-    /// test cancels an import that is genuinely running.
+    /// Where a test holds every import that reaches a point of its run, until
+    /// it lets them through.
     #[cfg(test)]
-    running_gate: Arc<Mutex<Option<Arc<tokio::sync::Semaphore>>>>,
+    holds: Arc<Mutex<HashMap<HoldPoint, Hold>>>,
 }
 
 impl ImportCancels {
@@ -101,7 +101,7 @@ impl ImportCancels {
         Self {
             entries: Arc::new(Mutex::new(HashMap::new())),
             #[cfg(test)]
-            running_gate: Arc::new(Mutex::new(None)),
+            holds: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -146,18 +146,9 @@ impl ImportCancels {
             }
         };
         #[cfg(test)]
-        let work = {
-            let gate = self.running_gate.lock().expect("running gate lock poisoned").clone();
-            async move {
-                if let Some(gate) = gate {
-                    #[expect(
-                        clippy::let_underscore_must_use,
-                        reason = "the gate opens by closing, which ends this wait without a permit"
-                    )]
-                    let _ = gate.acquire().await;
-                }
-                work.await
-            }
+        let work = async move {
+            self.pass(HoldPoint::Run).await;
+            work.await
         };
         let end = tokio::select! {
             biased;
@@ -224,18 +215,81 @@ impl ImportCancels {
             .collect()
     }
 
-    /// Hold every run that starts from now on until [`Self::release_runs`].
+    /// Hold every import that reaches `point` from now on, until the returned
+    /// hold is released.
     #[cfg(test)]
-    pub(crate) fn hold_runs(&self) {
-        *self.running_gate.lock().expect("running gate lock poisoned") =
-            Some(Arc::new(tokio::sync::Semaphore::new(0)));
+    pub(crate) fn hold(&self, point: HoldPoint) -> HeldImports {
+        let hold = Hold {
+            gate: Arc::new(tokio::sync::Semaphore::new(0)),
+            reached: tokio::sync::watch::Sender::new(false),
+        };
+        self.holds.lock().expect("holds lock poisoned").insert(point, hold.clone());
+        HeldImports(hold)
     }
 
+    /// Wait at `point` while a test holds imports there.
     #[cfg(test)]
-    pub(crate) fn release_runs(&self) {
-        if let Some(gate) = self.running_gate.lock().expect("running gate lock poisoned").take() {
-            gate.close();
+    pub(crate) async fn pass(&self, point: HoldPoint) {
+        let hold = self.holds.lock().expect("holds lock poisoned").get(&point).cloned();
+        if let Some(hold) = hold {
+            hold.reached.send_replace(true);
+            #[expect(
+                clippy::let_underscore_must_use,
+                reason = "the gate opens by closing, which ends this wait without a permit"
+            )]
+            let _ = hold.gate.acquire().await;
         }
+    }
+}
+
+/// A point in an import's run where a test can hold it.
+#[cfg(test)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) enum HoldPoint {
+    /// The worker has taken the import up and done none of its work, so a
+    /// cancel finds it running.
+    Run,
+    /// The import has done every step but its release's write, and its
+    /// standing says it is finalizing.
+    Write,
+}
+
+/// One point's gate, and whether an import has reached it.
+#[cfg(test)]
+#[derive(Clone)]
+struct Hold {
+    gate: Arc<tokio::sync::Semaphore>,
+    reached: tokio::sync::watch::Sender<bool>,
+}
+
+/// Every import held at one point. Dropping it lets them through, so a test
+/// that fails first never leaves the worker held.
+#[cfg(test)]
+pub(crate) struct HeldImports(Hold);
+
+#[cfg(test)]
+impl HeldImports {
+    /// Wait until an import reaches the point.
+    pub(crate) async fn reached(&self) {
+        self.0
+            .reached
+            .subscribe()
+            .wait_for(|reached| *reached)
+            .await
+            .expect("the hold keeps its sender");
+    }
+
+    /// Let every import held at the point through, and each that reaches it
+    /// later.
+    pub(crate) fn release(self) {
+        drop(self);
+    }
+}
+
+#[cfg(test)]
+impl Drop for HeldImports {
+    fn drop(&mut self) {
+        self.0.gate.close();
     }
 }
 

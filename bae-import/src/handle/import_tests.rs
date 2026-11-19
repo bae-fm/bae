@@ -338,10 +338,10 @@ async fn two_imports_of_the_same_files_asked_before_either_runs_make_one_release
         .unwrap();
     let mut events = handle.every_event();
 
-    handle.services.import_cancels.hold_runs();
+    let runs = handle.hold_imports(crate::import_cancel::HoldPoint::Run);
     let first = handle.start_import(&original_key).await.unwrap().expect_queued();
     let second = handle.start_import(&copy_key).await.unwrap().expect_queued();
-    handle.services.import_cancels.release_runs();
+    runs.release();
 
     let (release_id, _) = await_import_outcome(&mut events, &first)
         .await
