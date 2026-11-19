@@ -293,7 +293,7 @@ pub struct RemoteImageCache {
     in_flight: Arc<Mutex<InFlightImages>>,
     disk: Arc<DiskImageCache>,
     #[cfg(any(test, feature = "test-utils"))]
-    _owned_dir: Option<Arc<tempfile::TempDir>>,
+    _owned_dir: Option<Arc<bae_util::test_files::TestFolder>>,
 }
 
 impl RemoteImageCache {
@@ -316,8 +316,7 @@ impl RemoteImageCache {
     /// A cache over a temporary folder, whose rows `store` holds.
     #[cfg(any(test, feature = "test-utils"))]
     pub fn for_test(http: Http, store: Store, diagnostics: Diagnostics) -> Self {
-        let directory =
-            tempfile::TempDir::new().expect("a temp directory for the remote image cache");
+        let directory = bae_util::test_files::TestFolder::new();
         let mut cache = Self::in_dir(
             http,
             store,
