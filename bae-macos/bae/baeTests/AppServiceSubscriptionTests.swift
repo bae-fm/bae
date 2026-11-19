@@ -581,6 +581,10 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
         syncStatus
     }
 
+    override func importList() -> ImportList {
+        UntouchedImportList()
+    }
+
     override func feedDownloadTransfers() -> KeyedValueStream {
         NoopKeyedValueStream()
     }

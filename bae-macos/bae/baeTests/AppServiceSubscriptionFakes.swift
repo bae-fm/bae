@@ -397,3 +397,16 @@ final class NoopKeyedValueStream: KeyedValueStream,
         keys.cancel()
     }
 }
+
+/// The import tab's list, which the app service hands to the import
+/// selection when it is built. The tests that build the service never act
+/// on the selection, so no call reaches it.
+final class UntouchedImportList: ImportList, @unchecked Sendable {
+    init() {
+        super.init(noHandle: ImportList.NoHandle())
+    }
+
+    required init(unsafeFromHandle handle: UInt64) {
+        super.init(unsafeFromHandle: handle)
+    }
+}
