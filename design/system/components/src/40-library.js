@@ -195,10 +195,9 @@
       props.options ? h(MacMoreMenu, { label: props.optionsLabel || 'Options', items: props.options, open: props.optionsOpen, highlighted: props.highlighted }) : null);
   }
 
-  // A playlist's page inside the side pane's Playlists tab: the back button to the list over the app's header, its picture beside the name (up to two lines) and the line of owner, count, length and who sees it; then Play, Shuffle and the owner's ⋯ (`options`; `optionsOpen` draws its menu open, `highlighted` the item under the pointer), which the pane's width moves under the header. Its tracks follow as children, compact `MacListRow`s.
+  // A playlist's page inside the side pane's Playlists tab, whose head shows the back button to the list (`MacQueuePanel`'s `back`): the app's header, its picture beside the name (up to two lines) and the line of owner, count, length and who sees it; then Play, Shuffle and the owner's ⋯ (`options`; `optionsOpen` draws its menu open, `highlighted` the item under the pointer), which the pane's width moves under the header. Its tracks follow as children, `MacListRow`s.
   function MacPlaylistPage(props) {
     return h('section', { className: 'bae-m-plpage' },
-      h('div', null, h(MacBackButton, { to: 'Playlists' })),
       h('div', { className: 'bae-m-plpage-head' },
         h(PlaylistPicture, { covers: props.covers, size: 72, radius: 10 }),
         h('div', { className: 'bae-m-plpage-text' },

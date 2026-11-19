@@ -32,9 +32,9 @@
   // The side pane: Queue, Playlists or History (`tab`), switched by its tabs. Playlists lists the playlists, each a place to drop tracks, or shows the one open (`MacPlaylistPage` as its child); History lists plays, newest first, filtered by whose. Only the queue shows what's playing.
   function MacQueuePanel(props) {
     var tab = props.tab || 'Queue';
-    // The head: the tabs centred, close at the end; on Playlists, + at the start makes a new playlist.
+    // The head: the tabs centred, close at the end; on Playlists, + at the start makes a new playlist, and while a playlist is open (`back`, where the button goes back to) the back button takes its place.
     var head = h('div', { className: 'bae-m-queue-head bae-m-pane-head' },
-      tab === 'Playlists' ? h('span', { className: 'bae-m-pane-new' }, h(MacIconButton, { icon: 'add', label: 'New playlist…' })) : h('span'),
+      tab === 'Playlists' ? h('span', { className: 'bae-m-pane-new' }, props.back ? h(MacBackButton, { to: props.back }) : h(MacIconButton, { icon: 'add', label: 'New playlist…' })) : h('span'),
       h(MacSegmentedControl, { options: 'Queue,Playlists,History', selected: tab }), h('span', { className: 'bae-m-pane-close' }, h(MacCloseButton)));
     if (tab !== 'Queue') return h('aside', { className: 'bae-m-queue' }, head, h('div', { className: 'bae-m-queue-body' }, props.children));
     return h('aside', { className: 'bae-m-queue' },

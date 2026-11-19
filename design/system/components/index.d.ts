@@ -236,7 +236,7 @@ export declare function MacTrackRow(props: MacTrackRowProps): React.ReactElement
 export declare function MacEyebrow(props: { children?: React.ReactNode }): React.ReactElement;
 export interface MacDetailHeaderProps { name: string; count?: string; noImage?: boolean }
 export declare function MacDetailHeader(props: MacDetailHeaderProps): React.ReactElement;
-/** A playlist's page inside the side pane's Playlists tab: the back button to the list, then the app's header, the picture beside the name (two lines at most) and owner, count, length and who sees it; Play, Shuffle and the owner's ⋯ (options) under it, where the pane's width moves them. Its tracks (compact MacListRow) are its children. */
+/** A playlist's page inside the side pane's Playlists tab (the pane's back button returns to the list): the picture beside the name (two lines at most) and owner, count, length and who sees it; Play, Shuffle and the owner's ⋯ (options) on a row under it, where the pane's width moves them. Its tracks (MacListRow) are its children. */
 export interface MacPlaylistPageProps { name: string; covers?: string; owner: string; count: string; length: string; sharing?: 'Only me' | 'Everyone'; options?: string; optionsOpen?: boolean; highlighted?: string; children?: React.ReactNode }
 export declare function MacPlaylistPage(props: MacPlaylistPageProps): React.ReactElement;
 /** The round back button before a page's heading, named Back to and where it goes (to). */
@@ -300,7 +300,7 @@ export declare function AndroidSearchSection(props: { title: string }): React.Re
 /** One row of a library list: Search's results, the artist and composer lists, the composer and work pages' rows. */
 export interface AndroidLibraryRowProps { title: string; subtitle?: string; trailing?: string; art?: string; noArt?: boolean; missing?: boolean; part?: boolean; inset?: boolean }
 export declare function AndroidLibraryRow(props: AndroidLibraryRowProps): React.ReactElement;
-export interface MacQueuePanelProps { tab?: 'Queue' | 'Playlists' | 'History'; title?: string; artist?: string; album?: string; playing?: boolean; position?: number; elapsed?: string; empty?: boolean; children?: React.ReactNode }
+export interface MacQueuePanelProps { tab?: 'Queue' | 'Playlists' | 'History'; back?: string; title?: string; artist?: string; album?: string; playing?: boolean; position?: number; elapsed?: string; empty?: boolean; children?: React.ReactNode }
 export declare function MacQueuePanel(props: MacQueuePanelProps): React.ReactElement;
 export interface MacQueueSectionProps { title: string; clear?: boolean; shuffle?: boolean }
 export declare function MacQueueSection(props: MacQueueSectionProps): React.ReactElement;
@@ -381,7 +381,7 @@ export declare function MacLightbox(props: { title?: string; label?: string; sou
 export declare function MacStorageBand(props: { state?: 'local' | 'pinned' | 'cloud' | 'uploading' | 'waiting'; missing?: string; download?: 'queued' | 'downloading' | 'failed'; moveToThisDevice?: 'queued' | 'moving' | 'failed'; progress?: number; why?: string; actions?: string }): React.ReactElement;
 export declare function Stars(props: { value?: number; size?: number; who?: string }): React.ReactElement;
 export declare function Avatar(props: { name: string; image?: string; size?: number }): React.ReactElement;
-export declare function MacListRow(props: { lead?: string; title: string; sub?: string; album?: string; who?: string; stars?: number; duration?: string; selected?: boolean; wide?: boolean; compact?: boolean; lifted?: boolean; dragging?: boolean }): React.ReactElement;
+export declare function MacListRow(props: { lead?: string; title: string; sub?: string; album?: string; who?: string; stars?: number; duration?: string; selected?: boolean; wide?: boolean; lifted?: boolean; dragging?: boolean }): React.ReactElement;
 export declare function AndroidListRow(props: { title: string; sub?: string; album?: string; who?: string; trailing?: string; selected?: boolean }): React.ReactElement;
 
 // ---- Logo and app icons ----
