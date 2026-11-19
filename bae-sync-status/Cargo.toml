@@ -14,9 +14,9 @@ path = "src/lib.rs"
 # The error categories a person is shown for a failed sync start.
 bae-diagnostics = { workspace = true }
 # The records' schema, which the test fixtures build on.
-bae-records = { workspace = true }
+bae-records = { workspace = true, optional = true }
 # The people's schema, which the test fixtures build on.
-bae-people = { workspace = true }
+bae-people = { workspace = true, optional = true }
 # The store every read and write runs through.
 bae-store = { workspace = true }
 # The counts the copy reset notice names.
@@ -44,7 +44,9 @@ default = []
 # builds on this one. Dev/test-only: a production build never enables it.
 test-utils = [
     "bae-store/test-utils",
+    "dep:bae-records",
     "bae-records/test-utils",
+    "dep:bae-people",
     "bae-people/test-utils",
     "coven/test-utils",
 ]
