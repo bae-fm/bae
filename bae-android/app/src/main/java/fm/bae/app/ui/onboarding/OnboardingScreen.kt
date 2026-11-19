@@ -30,7 +30,6 @@ import androidx.lifecycle.compose.LifecycleStartEffect
 import fm.bae.app.BaeApp
 import fm.bae.app.DisplayError
 import fm.bae.app.R
-import fm.bae.app.coreString
 import fm.bae.app.data.LibraryOpenProgress
 import fm.bae.app.data.LibrarySetupStatus
 import fm.bae.app.displayError
@@ -371,11 +370,8 @@ internal fun RunningLines(
     var stepping by remember(step.openSteps) { mutableStateOf(false) }
     // A counted step's own bar stands in for the spinner.
     var counting by remember(step.steps) { mutableStateOf(false) }
-    val context = LocalContext.current
     AndroidProgress(
         steps = step.openSteps,
-        title = { context.coreString(it.key) },
-        fraction = { it.fraction },
         modifier = Modifier.widthIn(max = STEP_LINE_MAX_WIDTH),
         onStepping = { stepping = it },
     ) {

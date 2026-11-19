@@ -278,8 +278,6 @@ private fun RunningLibraryRow(
             ) {
                 AndroidProgress(
                     steps = running.opening,
-                    title = { context.coreString(it.key) },
-                    fraction = { it.fraction },
                     modifier = Modifier.fillMaxWidth(),
                     bar = false,
                 ) {

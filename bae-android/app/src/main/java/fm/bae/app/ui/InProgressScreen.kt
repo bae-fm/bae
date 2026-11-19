@@ -69,11 +69,8 @@ private fun LoadingScreen(
     @StringRes title: Int,
 ) {
     Box(modifier = Modifier.fillMaxSize().padding(ThemeSpace.page), contentAlignment = Alignment.Center) {
-        val context = LocalContext.current
         AndroidProgress(
             steps = steps,
-            title = { context.coreString(it.key) },
-            fraction = { it.fraction },
             modifier = Modifier.widthIn(max = OPEN_PROGRESS_MAX_WIDTH),
         ) {
             AndroidSpinner(text = stringResource(title))

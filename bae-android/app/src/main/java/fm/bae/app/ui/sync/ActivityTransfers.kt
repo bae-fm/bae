@@ -42,8 +42,7 @@ internal fun LazyListScope.transferRows(
         item {
             AndroidTransferLine(
                 title = LocalContext.current.coreString("core.activity.syncing"),
-                count = null,
-                share = null,
+                batch = null,
             )
         }
     }
@@ -52,8 +51,11 @@ internal fun LazyListScope.transferRows(
             val context = LocalContext.current
             AndroidTransferLine(
                 title = context.coreString("core.activity.uploading"),
-                count = words.uploadsWait ?: context.releasesDoneText(uploads.batch),
-                share = bar(BridgeActivityLine.UPLOADS),
+                batch =
+                    TransferBatch(
+                        count = words.uploadsWait ?: context.releasesDoneText(uploads.batch),
+                        share = bar(BridgeActivityLine.UPLOADS),
+                    ),
             )
         }
     }
@@ -63,8 +65,11 @@ internal fun LazyListScope.transferRows(
             val paused = pins.paused
             AndroidTransferLine(
                 title = context.coreString("core.activity.pinning"),
-                count = words.pinsWait ?: context.releasesDoneText(pins.batch),
-                share = bar(BridgeActivityLine.PINS),
+                batch =
+                    TransferBatch(
+                        count = words.pinsWait ?: context.releasesDoneText(pins.batch),
+                        share = bar(BridgeActivityLine.PINS),
+                    ),
                 modifier = Modifier.clickable(onClick = onOpenDownloads),
                 end = { PausePinning(paused = paused, onClick = { onSetDownloadsPaused(!paused) }) },
             )
@@ -73,15 +78,22 @@ internal fun LazyListScope.transferRows(
 }
 
 /**
- * A transfer's line: its words, and at the end how many of its releases are done, or what holds its
- * queue back, then [end], and under them its bar, which is [share] of the batch's bytes, or moving
- * when there is none.
+ * A transfer that moves a batch of releases: how many of them are done, or what holds its queue back, and
+ * its [share] of the batch's bytes.
+ */
+internal class TransferBatch(
+    val count: String,
+    val share: LatestSource<Double>,
+)
+
+/**
+ * A transfer's line: its words, and at the end its [batch]'s count, then [end], and under them a bar of
+ * the batch's share, or a moving bar for a transfer with no batch, such as syncing changes.
  */
 @Composable
 internal fun AndroidTransferLine(
     title: String,
-    count: String?,
-    share: LatestSource<Double>?,
+    batch: TransferBatch?,
     modifier: Modifier = Modifier,
     end: (@Composable () -> Unit)? = null,
 ) {
@@ -95,12 +107,12 @@ internal fun AndroidTransferLine(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(text = title, style = ThemeText.body.style, modifier = Modifier.weight(1f))
-            count?.let {
-                Text(text = it, style = ThemeText.body.style, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            batch?.let {
+                Text(text = it.count, style = ThemeText.body.style, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             end?.invoke()
         }
-        ShareBar(share, description = title)
+        ShareBar(batch?.share, description = title)
     }
 }
 

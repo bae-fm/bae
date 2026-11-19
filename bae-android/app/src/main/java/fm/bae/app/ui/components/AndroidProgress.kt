@@ -19,7 +19,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
+import fm.bae.app.coreString
 import fm.bae.app.ui.appearance.ThemeOpacity
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
@@ -27,6 +29,7 @@ import fm.bae.app.ui.sync.MovingBar
 import fm.bae.app.ui.sync.ShareBarView
 import fm.bae.fastvalues.FrameFollowing
 import fm.bae.fastvalues.LatestSource
+import uniffi.bae_bridge.BridgeOpenProgress
 
 /**
  * What shows while a long call runs: [idle] until the call runs a step, then
@@ -75,6 +78,27 @@ internal fun <Step : Any> AndroidProgress(
             )
         }
     }
+}
+
+/** A library open's [steps], each named as core words its key, over a bar of its share done; the rest as above. */
+@Composable
+internal fun AndroidProgress(
+    steps: LatestSource<BridgeOpenProgress>?,
+    modifier: Modifier = Modifier,
+    bar: Boolean = true,
+    onStepping: (Boolean) -> Unit = {},
+    idle: @Composable () -> Unit,
+) {
+    val context = LocalContext.current
+    AndroidProgress(
+        steps = steps,
+        title = { context.coreString(it.key) },
+        fraction = { it.fraction },
+        modifier = modifier,
+        bar = bar,
+        onStepping = onStepping,
+        idle = idle,
+    )
 }
 
 /**

@@ -49,9 +49,11 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidContentUnavailable
 import fm.bae.app.ui.components.AndroidNotice
+import fm.bae.app.ui.components.AndroidPageActions
 import fm.bae.app.ui.components.Artwork
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.PageDeletionShown
+import fm.bae.app.ui.components.QueueActions
 import fm.bae.app.ui.components.StatusChip
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.rememberPageDeletion
@@ -338,8 +340,7 @@ internal fun AlbumDetailContent(
             AndroidPageActions(
                 onPlay = callbacks.onPlayRelease,
                 onShuffle = callbacks.onShuffleRelease,
-                onPlayNext = callbacks.onPlayReleaseNext,
-                onAddToQueue = callbacks.onAddReleaseToQueue,
+                queue = QueueActions(callbacks.onPlayReleaseNext, callbacks.onAddReleaseToQueue),
             )
         }
         albumTrackGroups(shown, positionColumnWidth, playback, callbacks, context)
