@@ -104,8 +104,6 @@ fn handshake_drives_the_7_1_sequence_in_order() {
         &sdp,
         6100,
         6200,
-        0,
-        0,
         bae_playback::Volume::new(0.5).unwrap(),
     )
     .unwrap();

@@ -77,7 +77,8 @@ fn setup_sequence_runs_over_the_encrypted_channel() {
         let mut saw_peers = false;
 
         for step in 0..4 {
-            let (method, cseq, body, _) = read_encrypted_request(&mut reader, &mut channel);
+            let ReadRequest { method, cseq, body, .. } =
+                read_encrypted_request(&mut reader, &mut channel);
             match method.as_str() {
                 "SETUP" if body.get("streams").is_some() => {
                     let stream = match body.get("streams").unwrap() {
@@ -135,13 +136,19 @@ fn setup_sequence_runs_over_the_encrypted_channel() {
     assert!(saw_peers, "SETPEERS carried an IP array");
 }
 
+/// One RTSP request as the fake receiver reads it.
+struct ReadRequest {
+    method: String,
+    cseq: String,
+    /// The decoded plist body (empty dict when there's no body).
+    body: Plist,
+    authorization: Option<String>,
+    rtp_info: Option<String>,
+}
+
 /// Read one encrypted RTSP request from the fake receiver's socket: decrypt
-/// blocks until a full request is parsed, returning method, CSeq, and the
-/// decoded plist body (empty dict when there's no body).
-fn read_encrypted_request(
-    reader: &mut impl Read,
-    channel: &mut HapChannel,
-) -> (String, String, Plist, Option<String>) {
+/// blocks until a full request is parsed.
+fn read_encrypted_request(reader: &mut impl Read, channel: &mut HapChannel) -> ReadRequest {
     let mut plaintext = Vec::new();
     let mut chunk = [0u8; 4096];
     loop {
@@ -157,9 +164,8 @@ fn read_encrypted_request(
     }
 }
 
-/// Parse an RTSP request from decrypted plaintext, or `None` if incomplete:
-/// its method, CSeq, body and `Authorization` header.
-fn try_parse_request(bytes: &[u8]) -> Option<(String, String, Plist, Option<String>)> {
+/// Parse an RTSP request from decrypted plaintext, or `None` if incomplete.
+fn try_parse_request(bytes: &[u8]) -> Option<ReadRequest> {
     let mut cursor = std::io::Cursor::new(bytes);
     let mut line = String::new();
     if cursor.read_line(&mut line).ok()? == 0 || !line.ends_with('\n') {
@@ -168,6 +174,7 @@ fn try_parse_request(bytes: &[u8]) -> Option<(String, String, Plist, Option<Stri
     let method = line.split(' ').next()?.to_string();
     let mut cseq = String::new();
     let mut authorization = None;
+    let mut rtp_info = None;
     let mut content_length = 0usize;
     loop {
         let mut header = String::new();
@@ -182,6 +189,7 @@ fn try_parse_request(bytes: &[u8]) -> Option<(String, String, Plist, Option<Stri
             match k.trim().to_ascii_lowercase().as_str() {
                 "cseq" => cseq = v.trim().to_string(),
                 "authorization" => authorization = Some(v.trim().to_string()),
+                "rtp-info" => rtp_info = Some(v.trim().to_string()),
                 "content-length" => {
                     content_length = v.trim().parse().expect("valid content-length")
                 }
@@ -199,7 +207,7 @@ fn try_parse_request(bytes: &[u8]) -> Option<(String, String, Plist, Option<Stri
     } else {
         bplist::decode(body_bytes).unwrap()
     };
-    Some((method, cseq, body, authorization))
+    Some(ReadRequest { method, cseq, body, authorization, rtp_info })
 }
 
 fn build_response(cseq: &str, body: &[u8]) -> Vec<u8> {
@@ -365,7 +373,8 @@ fn run_ap2_session(
         let mut timing_protocol = String::new();
         let mut timing_port = None;
         for step in 0..4 {
-            let (method, cseq, body, _) = read_encrypted_request(&mut reader, &mut channel);
+            let ReadRequest { method, cseq, body, .. } =
+                read_encrypted_request(&mut reader, &mut channel);
             if method == "SETUP" && body.get("streams").is_some() {
                 if let Plist::Array(items) = body.get("streams").unwrap() {
                     saw_shk = items[0].get("shk") == Some(&Plist::Data(shk.to_vec()));
@@ -574,7 +583,7 @@ fn serve_digest_receiver(
         let mut channel = HapChannel::from_keys(&read, &write);
         let mut seen = Vec::new();
         for _ in 0..requests {
-            let (method, cseq, _, authorization) =
+            let ReadRequest { method, cseq, authorization, .. } =
                 read_encrypted_request(&mut reader, &mut channel);
             let took = authorization.is_some() && authorization == accepted_digest(&method);
             let response = if took {
@@ -609,7 +618,7 @@ fn a_digest_challenge_is_answered_with_the_password_on_every_later_request() {
     let mut control =
         Ap2Control::new(stream, &shared, "rtsp://x/1", "bae/test", Some("hunter2".to_string()))
             .unwrap();
-    control.flush().unwrap();
+    control.flush(RtpPosition::START).unwrap();
     control.teardown().unwrap();
 
     assert_eq!(
@@ -631,7 +640,7 @@ fn a_refused_password_is_the_pairing_lost() {
     let mut control =
         Ap2Control::new(stream, &shared, "rtsp://x/1", "bae/test", Some("old".to_string()))
             .unwrap();
-    let refused = control.flush().unwrap_err();
+    let refused = control.flush(RtpPosition::START).unwrap_err();
     assert!(matches!(refused, Ap2Error::Pairing(PairingError::PairingLost)), "{refused:?}");
     assert_eq!(server.join().unwrap().len(), 2);
 }
@@ -646,7 +655,45 @@ fn a_401_without_a_password_is_the_request_refused() {
 
     let stream = TcpStream::connect(addr).unwrap();
     let mut control = Ap2Control::new(stream, &shared, "rtsp://x/1", "bae/test", None).unwrap();
-    let refused = control.flush().unwrap_err();
+    let refused = control.flush(RtpPosition::START).unwrap_err();
     assert!(matches!(refused, Ap2Error::Rejected { status: 401, .. }), "{refused:?}");
     server.join().unwrap();
+}
+
+/// A FLUSH names the packet the sender sends next in its `RTP-Info`, which a
+/// Mac's AirPlay Receiver requires: it answers 400 to a FLUSH without one.
+/// Sabotage: drop the header, and the receiver refuses the pause.
+#[test]
+fn a_flush_names_the_packet_the_sender_sends_next() {
+    let shared = [0x33u8; 32];
+    let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+    let addr = listener.local_addr().unwrap();
+    let server = bae_util::test_spawn::thread(move || {
+        let (stream, _) = listener.accept().unwrap();
+        let mut reader = std::io::BufReader::new(stream.try_clone().unwrap());
+        let mut writer = stream;
+        let (write, read) = control_keys(&shared);
+        let mut channel = HapChannel::from_keys(&read, &write);
+        let request = read_encrypted_request(&mut reader, &mut channel);
+        let response = match request.rtp_info {
+            Some(_) => build_response(&request.cseq, &[]),
+            None => format!(
+                "RTSP/1.0 400 Bad Request\r\nCSeq: {}\r\nContent-Length: 0\r\n\r\n",
+                request.cseq
+            )
+            .into_bytes(),
+        };
+        writer.write_all(&channel.seal(&response)).unwrap();
+        writer.flush().unwrap();
+        (request.method, request.rtp_info)
+    });
+
+    let stream = TcpStream::connect(addr).unwrap();
+    let mut control = Ap2Control::new(stream, &shared, "rtsp://x/1", "bae/test", None).unwrap();
+    control.flush(RtpPosition { sequence: 250, timestamp: 88_000 }).unwrap();
+
+    assert_eq!(
+        server.join().unwrap(),
+        ("FLUSH".to_string(), Some("seq=250;rtptime=88000".to_string()))
+    );
 }

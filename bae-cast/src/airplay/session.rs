@@ -25,7 +25,7 @@ use super::rtp::NtpTime;
 use super::rtsp::{Method, RtspConnection, RtspRequest, RtspResponse, UNAUTHORIZED};
 use super::stream::{
     poisoned_connection, MonotonicClock, PayloadCrypto, PcmFeed, RaopStream, RaopStreamControl,
-    RtpAudio, StreamEndpoints, StreamFailure, StreamSockets, DEFAULT_LATENCY_FRAMES,
+    RtpAudio, RtpPosition, StreamEndpoints, StreamFailure, StreamSockets, DEFAULT_LATENCY_FRAMES,
     FRAMES_PER_PACKET,
 };
 
@@ -226,8 +226,6 @@ pub(crate) fn perform_handshake(
     sdp: &str,
     local_control_port: u16,
     local_timing_port: u16,
-    initial_sequence: u16,
-    initial_timestamp: u32,
     volume: bae_playback::Volume,
 ) -> Result<(NegotiatedTransport, Option<u32>), RaopError> {
     let options = conn.request(&RtspRequest::new(Method::Options, "*"))?;
@@ -254,7 +252,7 @@ pub(crate) fn perform_handshake(
     let record = conn.request(
         &RtspRequest::new(Method::Record, uri)
             .header("Range", "npt=0-")
-            .header("RTP-Info", format!("seq={initial_sequence};rtptime={initial_timestamp}")),
+            .header("RTP-Info", RtpPosition::START.rtp_info()),
     )?;
     expect_success("RECORD", &record)?;
     // The receiver reports its audio latency on SETUP or RECORD; RECORD wins.
@@ -349,15 +347,12 @@ impl RaopSession {
         let uri = format!("rtsp://{local_ip}/{session_id}");
         let sdp = build_announce_sdp(session_id, local_ip, receiver, &cipher);
 
-        let initial_timestamp = 0u32;
         let (negotiated, reported_latency) = perform_handshake(
             &mut conn,
             &uri,
             &sdp,
             local_control_port,
             local_timing_port,
-            0,
-            initial_timestamp,
             volume,
         )?;
 
@@ -374,12 +369,7 @@ impl RaopSession {
             feed,
             PayloadCrypto::Raop(cipher),
             endpoints,
-            RtpAudio {
-                ssrc,
-                sample_rate: PCM_SAMPLE_RATE,
-                channels: PCM_CHANNELS,
-                initial_timestamp,
-            },
+            RtpAudio { ssrc, sample_rate: PCM_SAMPLE_RATE, channels: PCM_CHANNELS },
             sockets,
             clock,
             stream_control.clone(),

@@ -213,14 +213,13 @@ fn a_sync_packet_puts_the_next_frame_a_latency_ahead_of_the_one_playing() {
     let receiver = UdpSocket::bind(("127.0.0.1", 0)).unwrap();
     receiver.set_read_timeout(Some(bae_util::test_channels::HANG_GUARD)).unwrap();
     let control = RaopStreamControl::new(88_200, StreamFailure::new(AirPlayFailed::ignored()));
-    // The sender has sent 300 packets of a stream that started at 1000.
+    // The sender has sent 300 packets.
     control.record_frames(300 * u64::from(FRAMES_PER_PACKET));
     let (stop, stopped) = std::sync::mpsc::channel();
     let sender = spawn_sync_thread(
         &Diagnostics::noop(),
         UdpSocket::bind(("127.0.0.1", 0)).unwrap(),
         receiver.local_addr().unwrap(),
-        1000,
         control,
         stopped,
     )
@@ -234,8 +233,24 @@ fn a_sync_packet_puts_the_next_frame_a_latency_ahead_of_the_one_playing() {
     assert_eq!(len, 20);
     let playing = u32::from_be_bytes(packet[4..8].try_into().unwrap());
     let next = u32::from_be_bytes(packet[16..20].try_into().unwrap());
-    assert_eq!(next, 1000 + 300 * FRAMES_PER_PACKET, "the frame the sender sends next");
+    assert_eq!(next, 300 * FRAMES_PER_PACKET, "the frame the sender sends next");
     assert_eq!(playing, next - 88_200, "the frame playing now, a latency before it");
+}
+
+/// The packet the sender sends next follows every whole packet it sent, and
+/// its sequence number wraps as the packets' do.
+#[test]
+fn the_next_packet_follows_the_packets_sent() {
+    let control = RaopStreamControl::new(88_200, StreamFailure::new(AirPlayFailed::ignored()));
+    assert_eq!(control.next_packet(), RtpPosition::START);
+    assert_eq!(RtpPosition::START.rtp_info(), "seq=0;rtptime=0");
+
+    control.record_frames(300 * u64::from(FRAMES_PER_PACKET));
+    assert_eq!(control.next_packet(), RtpPosition { sequence: 300, timestamp: 105_600 });
+    assert_eq!(control.next_packet().rtp_info(), "seq=300;rtptime=105600");
+
+    control.record_frames(65_536 * u64::from(FRAMES_PER_PACKET));
+    assert_eq!(control.next_packet().sequence, 300, "the sequence number wraps at 65536");
 }
 
 /// A source whose pull panics: a bug in the samples' way to the sender.
@@ -355,7 +370,7 @@ fn dropping_the_stream_stops_every_thread() {
         PcmFeed::new(Box::new(source), PcmWake::unattached()),
         PayloadCrypto::Raop(RaopCipher::none()),
         StreamEndpoints { receiver: IpAddr::from([127, 0, 0, 1]), audio_port: 9, control_port: 9 },
-        RtpAudio { ssrc: 1, sample_rate: 44_100, channels: 2, initial_timestamp: 0 },
+        RtpAudio { ssrc: 1, sample_rate: 44_100, channels: 2 },
         StreamSockets::open(&Diagnostics::noop(), &failure).unwrap(),
         Arc::new(FarAheadClock),
         RaopStreamControl::new(88_200, failure),

@@ -36,7 +36,7 @@ use super::pairing_keys::KeptPairing;
 use super::rtsp::{Method, RtspConnection, RtspRequest, RtspResponse, UNAUTHORIZED};
 use super::stream::{
     poisoned_connection, MonotonicClock, PayloadCrypto, PcmFeed, RaopStream, RaopStreamControl,
-    RtpAudio, StreamEndpoints, StreamFailure, StreamSockets, DEFAULT_LATENCY_FRAMES,
+    RtpAudio, RtpPosition, StreamEndpoints, StreamFailure, StreamSockets, DEFAULT_LATENCY_FRAMES,
 };
 
 const BPLIST_CONTENT_TYPE: &str = "application/x-apple-binary-plist";
@@ -262,10 +262,14 @@ impl Ap2Control {
         Ok(ports)
     }
 
-    /// FLUSH the receiver's buffer (pause / pre-seek), as OwnTone pauses an
-    /// AirPlay 2 receiver.
-    pub(crate) fn flush(&mut self) -> Result<(), Ap2Error> {
-        self.request_expecting(&RtspRequest::new(Method::Flush, self.uri.clone()), "FLUSH")?;
+    /// FLUSH the receiver's buffer (pause / pre-seek) up to `next`, the
+    /// packet the sender sends next, as OwnTone pauses an AirPlay 2 receiver.
+    /// A Mac's AirPlay Receiver refuses a FLUSH whose `RTP-Info` names none.
+    pub(crate) fn flush(&mut self, next: RtpPosition) -> Result<(), Ap2Error> {
+        self.request_expecting(
+            &RtspRequest::new(Method::Flush, self.uri.clone()).header("RTP-Info", next.rtp_info()),
+            "FLUSH",
+        )?;
         Ok(())
     }
 
@@ -408,9 +412,11 @@ struct Ap2SessionControl {
 }
 
 impl Ap2SessionControl {
-    /// FLUSH the receiver's buffer (pause / pre-seek).
+    /// FLUSH the receiver's buffer (pause / pre-seek) up to the packet the
+    /// stream sends next.
     fn flush(&self) -> Result<(), Ap2Error> {
-        self.connection()?.flush()
+        let next = self.stream.next_packet();
+        self.connection()?.flush(next)
     }
 
     /// Re-anchor the sender's pacing (resume / post-seek): the audio thread
@@ -503,7 +509,6 @@ impl Ap2Session {
                 ssrc: rand::random::<u32>(),
                 sample_rate: PCM_SAMPLE_RATE,
                 channels: PCM_CHANNELS,
-                initial_timestamp: 0,
             },
             sockets,
             clock,

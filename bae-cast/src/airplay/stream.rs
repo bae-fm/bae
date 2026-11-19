@@ -187,13 +187,39 @@ pub(crate) struct StreamEndpoints {
 }
 
 /// The RTP audio flow a session hands the stream: the synchronization source id
-/// its packets are tagged with, the PCM format they carry, and the RECORD
-/// timestamp its timeline starts at.
+/// its packets are tagged with and the PCM format they carry. Its timeline
+/// starts at [`RtpPosition::START`].
 pub(super) struct RtpAudio {
     pub(super) ssrc: u32,
     pub(super) sample_rate: u32,
     pub(super) channels: u32,
-    pub(super) initial_timestamp: u32,
+}
+
+/// A packet's place on a stream's RTP timeline: its sequence number and
+/// timestamp, which RECORD and FLUSH name in their `RTP-Info` header.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct RtpPosition {
+    pub(crate) sequence: u16,
+    pub(crate) timestamp: u32,
+}
+
+impl RtpPosition {
+    /// The first packet of every stream bae sends.
+    pub(crate) const START: RtpPosition = RtpPosition { sequence: 0, timestamp: 0 };
+
+    /// The `RTP-Info` header value that names this packet.
+    pub(crate) fn rtp_info(&self) -> String {
+        format!("seq={};rtptime={}", self.sequence, self.timestamp)
+    }
+
+    /// The packet `frames` frames after this one. Every packet carries
+    /// [`FRAMES_PER_PACKET`] frames, since the sender pads the last.
+    fn after(self, frames: u64) -> Self {
+        RtpPosition {
+            sequence: self.sequence.wrapping_add((frames / u64::from(FRAMES_PER_PACKET)) as u16),
+            timestamp: self.timestamp.wrapping_add(frames as u32),
+        }
+    }
 }
 
 /// The sockets a session opens before SETUP so it can announce their ports:
@@ -386,6 +412,11 @@ impl RaopStreamControl {
         self.frames_sent.load(Ordering::Relaxed)
     }
 
+    /// The packet the sender sends next.
+    pub(super) fn next_packet(&self) -> RtpPosition {
+        RtpPosition::START.after(self.frames_sent())
+    }
+
     pub(super) fn reanchor(&self) {
         self.reanchor.fetch_add(1, Ordering::Release);
     }
@@ -472,8 +503,8 @@ impl RaopStream {
                     audio.ssrc,
                     crypto,
                     audio.channels,
-                    0,
-                    audio.initial_timestamp,
+                    RtpPosition::START.sequence,
+                    RtpPosition::START.timestamp,
                 ),
                 pacer: Pacer::new(audio.sample_rate, control.latency_frames()),
                 sample_rate: audio.sample_rate,
@@ -488,7 +519,6 @@ impl RaopStream {
             diagnostics,
             control_socket,
             control_dst,
-            audio.initial_timestamp,
             control,
             sync_stopped,
         )?);
@@ -617,7 +647,6 @@ fn spawn_sync_thread(
     diagnostics: &Diagnostics,
     socket: UdpSocket,
     dst: SocketAddr,
-    initial_timestamp: u32,
     control: RaopStreamControl,
     stopped: mpsc::Receiver<()>,
 ) -> std::io::Result<ReportedThread> {
@@ -630,7 +659,7 @@ fn spawn_sync_thread(
             loop {
                 // The sender runs the latency ahead of what the receiver
                 // plays: the next frame it sends plays a latency from now.
-                let now_ts = initial_timestamp.wrapping_add(control.frames_sent() as u32);
+                let now_ts = control.next_packet().timestamp;
                 let played = now_ts.wrapping_sub(latency_frames);
                 let packet = rtp::sync_packet(first, played, NtpTime::now(), now_ts);
                 if let Err(e) = socket.send_to(&packet, dst) {
