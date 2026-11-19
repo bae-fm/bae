@@ -221,7 +221,11 @@ struct ImportListSlotTests {
                 .stub(
                     items: (0..<80).map(candidateItem),
                     revealCandidate: { request, _ in
-                        revealed(request, on: .pending, at: 61)
+                        BridgeImportListReveal.fixed(
+                            from: request,
+                            on: .pending,
+                            at: 61
+                        )
                     },
                     firstIdentifyingCandidate: { _ in target }
                 )
@@ -514,20 +518,6 @@ struct ImportListSlotViewChangeTests {
     }
 }
 
-/// What core says revealing a candidate in no group from `request` shows: the
-/// request on `tab` with the filters cleared, the candidate at `position`.
-private func revealed(
-    _ request: BridgeImportListRequest,
-    on tab: BridgeTriageTab,
-    at position: UInt64
-) -> BridgeImportListReveal {
-    var revealed = request
-    revealed.view.tab = tab
-    revealed.view.filterText = ""
-    revealed.view.pendingFilter = .all
-    return BridgeImportListReveal(request: revealed, position: position)
-}
-
 final class CandidatePlacementNavigationTests: XCTestCase {
     /// The slot asks core to reveal the candidate from the list it shows,
     /// and shows the request core answers with: the candidate's tab, the
@@ -548,7 +538,11 @@ final class CandidatePlacementNavigationTests: XCTestCase {
                     items: (0..<80).map(candidateItem),
                     revealCandidate: { request, _ in
                         await delivery.wait(for: request.view)
-                        return revealed(request, on: .done, at: 61)
+                        return BridgeImportListReveal.fixed(
+                            from: request,
+                            on: .done,
+                            at: 61
+                        )
                     }
                 )
             }
@@ -619,7 +613,11 @@ extension CandidatePlacementNavigationTests {
                     items: (0..<80).map(candidateItem),
                     revealCandidate: { request, _ in
                         await delivery.wait(for: request.view)
-                        return revealed(request, on: .done, at: 61)
+                        return BridgeImportListReveal.fixed(
+                            from: request,
+                            on: .done,
+                            at: 61
+                        )
                     }
                 )
             }

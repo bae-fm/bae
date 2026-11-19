@@ -100,13 +100,10 @@ final class MutableImportList: @unchecked Sendable {
             revealCandidate: { [self] request, key in
                 position(of: key)
                     .map { position in
-                        var revealed = request
-                        revealed.view.tab = .pending
-                        revealed.view.filterText = ""
-                        revealed.view.pendingFilter = .all
-                        return BridgeImportListReveal(
-                            request: revealed,
-                            position: UInt64(position)
+                        BridgeImportListReveal.fixed(
+                            from: request,
+                            on: .pending,
+                            at: UInt64(position)
                         )
                     }
             },
