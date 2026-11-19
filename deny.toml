@@ -3,6 +3,10 @@
 unused-ignored-advisory = "deny"
 # A yanked release fails the check; update the crate.
 yanked = "deny"
+# An unmaintained crate anywhere in the dependency tree fails the check, not
+# only one the workspace depends on directly, so each one below is a choice
+# with its reason.
+unmaintained = "all"
 ignore = [
     # rsa: phantom dep from sqlx-macros-core optional mysql backend, never compiled.
     # https://github.com/rust-lang/cargo/issues/10801
