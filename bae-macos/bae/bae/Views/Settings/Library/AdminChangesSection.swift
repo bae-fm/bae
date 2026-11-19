@@ -23,7 +23,7 @@ struct AdminChangesSection: View {
 
     var body: some View {
         if let changes = store.adminChanges(at: place), changes.any {
-            Section("Changes from this Mac") {
+            MacSection("Changes from this Mac") {
                 ForEach(changes.changes, id: \.operation) { change in
                     AdminChangeRow(
                         change: change,

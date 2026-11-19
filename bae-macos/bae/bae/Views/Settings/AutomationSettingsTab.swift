@@ -95,14 +95,16 @@ struct AutomationSettingsContent: View {
 
     private var form: some View {
         Form {
-            Section {
-                Toggle(
-                    "Enable MCP server",
-                    isOn: Binding(
-                        get: { enabled },
-                        set: { setEnabled($0) }
+            MacSection {
+                MacRow("Enable MCP server") {
+                    MacSwitch(
+                        "Enable MCP server",
+                        isOn: Binding(
+                            get: { enabled },
+                            set: { setEnabled($0) }
+                        )
                     )
-                )
+                }
                 MacFieldRow("Port") {
                     TextField("Port", text: $portText)
                         .labelsHidden()
@@ -139,7 +141,7 @@ struct AutomationSettingsContent: View {
                     EmptyView()
                 }
             }
-            Section {
+            MacSection {
                 HStack(spacing: ThemeSpace.related) {
                     Button("Copy token", action: copyToken)
                     Button("Rotate token", action: rotateToken)
@@ -323,7 +325,7 @@ extension AutomationSettingsContent {
 extension AutomationSettingsContent {
     @ViewBuilder
     private var statusRow: some View {
-        LabeledContent("Status") {
+        MacRow("Status") {
             HStack(spacing: ThemeSpace.group) {
                 switch status {
                 case .disabled:

@@ -71,9 +71,12 @@ struct FindOnlineAutomaticSection: View {
                 else {
                     Text("No source to search")
                         .foregroundStyle(.secondary)
-                    Button("Open settings", action: onOpenSettings)
-                        .buttonStyle(PrimaryButtonStyle())
-                        .controlSize(.small)
+                    MacButton(
+                        "Open settings",
+                        kind: .primary,
+                        action: onOpenSettings
+                    )
+                    .controlSize(.small)
                 }
             }
         case .queued:
@@ -104,8 +107,7 @@ struct FindOnlineAutomaticSection: View {
                     .foregroundStyle(Theme.warning)
                     .multilineTextAlignment(.center)
                     .textSelection(.enabled)
-                Button("Retry", action: onRetryFailed)
-                    .buttonStyle(PrimaryButtonStyle())
+                MacButton("Retry", kind: .primary, action: onRetryFailed)
                     .controlSize(.small)
             }
         case .identifying, .groups, .nothingFound, .awaitingCatalog,

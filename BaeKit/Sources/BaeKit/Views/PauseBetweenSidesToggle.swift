@@ -19,7 +19,9 @@ public struct PauseBetweenSidesToggle: View {
     }
 
     public var body: some View {
-        Toggle("Pause between sides and discs", isOn: binding)
+        MacRow("Pause between sides and discs") {
+            MacSwitch("Pause between sides and discs", isOn: binding)
+        }
     }
 
     private var binding: Binding<Bool> {

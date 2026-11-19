@@ -53,9 +53,7 @@ struct ComposerDetailPane: View {
                         }
                     }
                     if let loadedWorkDetail {
-                        Rectangle()
-                            .fill(Theme.hairline)
-                            .frame(height: 1)
+                        MacHairline()
                         MacWorkDetail(
                             detail: loadedWorkDetail,
                             openWork: { workId in

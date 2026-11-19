@@ -21,10 +21,8 @@ struct StorageInspector: View {
                 )
             }
             else {
-                ContentUnavailableView {
-                    Text("Select a release")
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                MacContentUnavailable(title: "Select a release")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .frame(

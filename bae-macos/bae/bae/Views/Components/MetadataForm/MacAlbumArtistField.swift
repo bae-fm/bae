@@ -120,8 +120,11 @@ private struct ArtistAssignmentsEditor: View {
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
             if let onUseAlbumArtists {
-                Button("Album artist", action: onUseAlbumArtists)
-                    .buttonStyle(.accentBorderless)
+                MacButton(
+                    "Album artist",
+                    kind: .borderless,
+                    action: onUseAlbumArtists
+                )
             }
             ForEach(Array(rows.enumerated()), id: \.offset) {
                 index,

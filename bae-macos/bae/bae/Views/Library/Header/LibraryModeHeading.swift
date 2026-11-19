@@ -19,11 +19,15 @@ struct LibraryModeHeading: View {
     private var uiStore
 
     var body: some View {
-        MacMenuButton {
-            LibraryModeButtons(selected: uiStore.libraryBrowserMode) { mode in
-                uiStore.setLibraryBrowserMode(mode)
+        MacButton(
+            kind: .plain,
+            menu: {
+                LibraryModeButtons(selected: uiStore.libraryBrowserMode) {
+                    mode in
+                    uiStore.setLibraryBrowserMode(mode)
+                }
             }
-        } label: {
+        ) {
             let size = between(\.macOSSize)
             // The chevron is part of the heading's text, so it scales with it
             // and follows the word in either reading direction.

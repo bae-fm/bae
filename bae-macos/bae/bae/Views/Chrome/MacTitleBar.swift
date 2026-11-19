@@ -65,18 +65,9 @@ struct MacTitleBar: View {
 
                 MacActivityButton()
 
-                Button(action: { openSettings() }) {
-                    Image(systemName: "gearshape")
-                        .themeIcon(.large)
-                        .frame(
-                            width: ThemeSize.hitTarget,
-                            height: ThemeSize.hitTarget
-                        )
-                        .contentShape(Rectangle())
+                MacIconButton(symbol: "gearshape", label: "Settings") {
+                    openSettings()
                 }
-                .buttonStyle(IconHoverButtonStyle().accentFocus())
-                .help("Settings")
-                .accessibilityLabel("Settings")
             }
         }
         .padding(.leading, titleBarLeadingPadding)
@@ -88,9 +79,7 @@ struct MacTitleBar: View {
         .background {
             Rectangle().fill(Theme.background)
                 .overlay(alignment: .bottom) {
-                    Rectangle()
-                        .fill(Theme.hairline)
-                        .frame(height: 1)
+                    MacHairline()
                 }
         }
         .onChange(of: searchText, initial: true) { _, newValue in

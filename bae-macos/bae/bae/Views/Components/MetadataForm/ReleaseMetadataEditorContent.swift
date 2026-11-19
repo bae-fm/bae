@@ -60,9 +60,7 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
                 // their own divider. Nothing unlinks a library release, so no
                 // Unlink beside them.
                 if draft.hasRecords {
-                    Rectangle()
-                        .fill(Theme.hairline)
-                        .frame(height: 1)
+                    MacHairline()
                     MacRecordLinks(records: draft.records)
                 }
             }
@@ -224,7 +222,7 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
         .padding(.vertical, ThemeSpace.compact)
         .frame(minHeight: 40)
         .overlay(alignment: .top) {
-            Rectangle().fill(Theme.hairline).frame(height: 1)
+            MacHairline()
         }
     }
 

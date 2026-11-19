@@ -44,8 +44,7 @@ struct RenameLibrarySheet: View {
             MacSheetFooter {
                 Button("Cancel") { onCancel() }
                     .keyboardShortcut(.cancelAction)
-                Button("Rename") { onCommit(state.newName) }
-                    .buttonStyle(PrimaryButtonStyle())
+                MacButton("Rename", kind: .primary) { onCommit(state.newName) }
                     .keyboardShortcut(.defaultAction)
                     .disabled(
                         state.newName

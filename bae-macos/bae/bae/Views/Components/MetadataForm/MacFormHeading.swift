@@ -13,9 +13,7 @@ struct MacFormHeading: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.bottom, ThemeSpace.inline)
             .overlay(alignment: .bottom) {
-                Rectangle()
-                    .fill(Theme.hairline)
-                    .frame(height: ThemeSpace.hairline)
+                MacHairline()
             }
     }
 }

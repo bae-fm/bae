@@ -13,13 +13,18 @@ struct ImportCombinedSourceView: View {
             Label("Combined folders", systemImage: "square.stack.3d.up")
                 .themeText(.heading)
             Spacer()
-            MacMenuButton(bordered: true) {
-                for part in parts {
-                    MacMenuItem(verbatim: part.name) {
-                        SystemActions.revealInFinder(folder: part.folderPath)
+            MacButton(
+                kind: .secondary,
+                menu: {
+                    for part in parts {
+                        MacMenuItem(verbatim: part.name) {
+                            SystemActions.revealInFinder(
+                                folder: part.folderPath
+                            )
+                        }
                     }
                 }
-            } label: {
+            ) {
                 Text("Source folders")
             }
             .fixedSize()

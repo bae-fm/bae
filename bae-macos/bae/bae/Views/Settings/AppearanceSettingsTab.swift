@@ -5,7 +5,7 @@ struct AppearanceSettingsTab: View {
     var body: some View {
         SettingsPane(.appearance) {
             Form {
-                Section {
+                MacSection {
                     AppearanceControls()
                 }
             }

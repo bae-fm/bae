@@ -53,7 +53,7 @@ struct MacImportRow: View {
             .macContextMenu {
                 if let onShowInLibrary {
                     MacMenuItem("Show in library", action: onShowInLibrary)
-                    MacMenuDivider()
+                    MacMenuItem.divider
                 }
                 CandidateActionMenuItems(
                     menu: menuOffers,

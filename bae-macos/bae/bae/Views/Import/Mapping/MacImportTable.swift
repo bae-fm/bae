@@ -102,9 +102,7 @@ struct MacImportTable: View {
     /// The sheet's caption under a hairline.
     private func sheetCaption(_ sheet: BridgeSheetGroup) -> some View {
         VStack(spacing: 0) {
-            Rectangle()
-                .fill(Theme.hairline)
-                .frame(height: 1)
+            MacHairline()
             sheetCaptionRow(sheet)
                 .padding(.horizontal, ImportMappingColumns.rowPadding)
                 .padding(.vertical, ThemeSpace.related)
@@ -189,9 +187,7 @@ extension View {
             .frame(minHeight: 40)
             .background(background)
             .overlay(alignment: .top) {
-                Rectangle()
-                    .fill(Theme.hairline)
-                    .frame(height: 1)
+                MacHairline()
             }
     }
 }

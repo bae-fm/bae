@@ -70,7 +70,7 @@
             @Bindable
             var browser = browser
             let words = browser.provider.words
-            Section {
+            MacSection {
                 Text(words.heading)
                     .themeText(.body)
                     .foregroundStyle(.secondary)
@@ -88,14 +88,15 @@
                         .themeText(.body)
                         Spacer()
                         if browser.canOpenParent {
-                            Button("Up") { browser.openParent() }
-                                .buttonStyle(.accentBorderless)
-                                .disabled(browser.isWorking)
+                            MacButton("Up", kind: .borderless) {
+                                browser.openParent()
+                            }
+                            .disabled(browser.isWorking)
                         }
                     }
                 }
             }
-            Section {
+            MacSection {
                 if let listing = browser.listing {
                     if listing.folders.isEmpty && !browser.isNaming {
                         Text(words.empty)
@@ -119,7 +120,7 @@
                 }
             }
             if browser.takenName != nil {
-                Section {
+                MacSection {
                     MacNotice(
                         title: String(localized: words.nameTaken),
                         advice: nil,
@@ -128,7 +129,7 @@
                 }
             }
             if browser.notEmpty != nil {
-                Section {
+                MacSection {
                     MacNotice(
                         title: String(
                             localized:

@@ -29,9 +29,9 @@ struct MacTransport: View {
         HStack(spacing: ThemeSpace.section) {
             shuffleButton
 
-            navButton(
-                "backward.fill",
-                help: "Previous",
+            MacIconButton(
+                symbol: "backward.fill",
+                label: "Previous",
                 action: onPrevious
             )
 
@@ -41,9 +41,9 @@ struct MacTransport: View {
                 onToggle: onPlayPause
             )
 
-            navButton(
-                "forward.fill",
-                help: "Next",
+            MacIconButton(
+                symbol: "forward.fill",
+                label: "Next",
                 action: onNext
             )
 
@@ -57,53 +57,25 @@ struct MacTransport: View {
     }
 
     private var shuffleButton: some View {
-        Button {
+        MacIconButton(
+            symbol: "shuffle",
+            label: shuffled ? "Turn off shuffle" : "Shuffle",
+            active: shuffled
+        ) {
             onSetShuffle(!shuffled)
-        } label: {
-            toggleLabel("shuffle")
         }
-        .buttonStyle(IconHoverButtonStyle(isOn: shuffled).accentFocus())
-        .help(shuffled ? "Turn off shuffle" : "Shuffle")
-        .accessibilityLabel(shuffled ? "Turn off shuffle" : "Shuffle")
     }
 
     private func repeatButton(_ repeatMode: BridgeRepeatMode) -> some View {
-        let active = repeatMode != .off
-        let glyph = repeatMode == .track ? "repeat.1" : "repeat"
-        return Button {
+        MacIconButton(
+            symbol: repeatMode == .track ? "repeat.1" : "repeat",
+            label: "Repeat",
+            help: Self.repeatHelp(repeatMode),
+            active: repeatMode != .off
+        ) {
             onSetRepeatMode(bridgeNextRepeatMode(mode: repeatMode))
-        } label: {
-            toggleLabel(glyph)
         }
-        .buttonStyle(IconHoverButtonStyle(isOn: active).accentFocus())
-        .help(Self.repeatHelp(repeatMode))
-        .accessibilityLabel("Repeat")
         .accessibilityValue(Self.repeatValue(repeatMode))
-    }
-
-    /// The slot shuffle and repeat share; `IconHoverButtonStyle` draws it
-    /// accent on an accent tint when the button is on.
-    private func toggleLabel(_ systemName: String) -> some View {
-        Image(systemName: systemName)
-            .themeIcon(.large)
-            .frame(width: ThemeSize.hitTarget, height: ThemeSize.hitTarget)
-            .contentShape(Rectangle())
-    }
-
-    private func navButton(
-        _ systemName: String,
-        help: LocalizedStringKey,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            Image(systemName: systemName)
-                .themeIcon(.large)
-                .frame(width: ThemeSize.hitTarget, height: ThemeSize.hitTarget)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(IconHoverButtonStyle().accentFocus())
-        .help(help)
-        .accessibilityLabel(help)
     }
 
     /// The repeat button's tooltip: one whole string per mode, so each

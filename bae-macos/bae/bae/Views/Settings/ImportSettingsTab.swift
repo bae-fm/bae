@@ -19,7 +19,7 @@ struct ImportSettingsTab: View {
     var body: some View {
         SettingsPane(.importing) {
             Form {
-                Section {
+                MacSection {
                     SettingToggleRow(
                         title: "Identify automatically",
                         note:
@@ -32,8 +32,9 @@ struct ImportSettingsTab: View {
                     }
                     if let discogs = sourceSwitches.discogs {
                         // The key belongs to the Discogs switch above it.
-                        DiscogsKeySection(isEnabled: isOn(discogs))
-                            .joiningRowAbove()
+                        MacNested {
+                            DiscogsKeySection(isEnabled: isOn(discogs))
+                        }
                     }
                     ForEach(sourceSwitches.afterKey, id: \.catalog) { setting in
                         sourceToggle(setting)
@@ -44,7 +45,7 @@ struct ImportSettingsTab: View {
                     )
                 }
 
-                Section {
+                MacSection {
                     SettingToggleRow(
                         title: "Import automatically when identified",
                         note:
@@ -53,10 +54,13 @@ struct ImportSettingsTab: View {
                     )
                     if configStore.syncs {
                         // Where an import goes belongs to the switch above it.
-                        LabeledContent("Import to") {
-                            MacImportDestination(destination: importDestination)
+                        MacNested {
+                            MacRow("Import to") {
+                                MacImportDestination(
+                                    destination: importDestination
+                                )
+                            }
                         }
-                        .joiningRowAbove()
                         .disabled(!configStore.config.importWhenIdentified)
                     }
                 }

@@ -327,9 +327,7 @@ struct LookupReleasesPopover: View {
                     index,
                     group in
                     if index > 0 {
-                        Rectangle()
-                            .fill(Theme.hairline)
-                            .frame(height: 1)
+                        MacHairline()
                             .padding(.horizontal, ThemeSpace.line)
                             .padding(.vertical, ThemeSpace.inline)
                     }

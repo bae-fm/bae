@@ -325,11 +325,9 @@ private struct ImportCandidateListSwitch<Table: View>: View {
                 table()
             }
             else if list.count != nil {
-                ContentUnavailableView {
-                    Text(
-                        list.isNarrowed ? "No matches" : "Nothing here yet"
-                    )
-                }
+                MacContentUnavailable(
+                    title: list.isNarrowed ? "No matches" : "Nothing here yet"
+                )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Theme.surface)
             }

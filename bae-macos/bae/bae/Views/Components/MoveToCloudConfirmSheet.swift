@@ -13,8 +13,7 @@ struct MoveToCloudConfirmSheet: View {
             MacSheetFooter {
                 Button("Cancel") { onCancel() }
                     .keyboardShortcut(.cancelAction)
-                Button("Move to cloud") { onConfirm() }
-                    .buttonStyle(PrimaryButtonStyle())
+                MacButton("Move to cloud", kind: .primary) { onConfirm() }
                     .keyboardShortcut(.defaultAction)
             }
         }

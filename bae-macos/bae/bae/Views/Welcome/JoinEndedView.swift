@@ -15,8 +15,7 @@ struct JoinEndedView: View {
             text: String(localized: "Ask \(inviter) for a new one.")
         ) {
             MacStepActions {
-                Button("OK", action: onOK)
-                    .buttonStyle(PrimaryButtonStyle())
+                MacButton("OK", kind: .primary, action: onOK)
                     .keyboardShortcut(.defaultAction)
             }
         }

@@ -15,7 +15,7 @@ enum RowMetrics {
 
 extension ContainerValues {
     /// Whether the row belongs to the row above it, as Resume automatically
-    /// belongs to the switch above it: set with `joiningRowAbove()`.
+    /// belongs to the switch above it: set by `MacNested`.
     @Entry
     var joinsRowAbove = false
 
@@ -23,15 +23,6 @@ extension ContainerValues {
     /// as tall as its field, so it takes less than a row of text.
     @Entry
     var rowVerticalInset: CGFloat = RowMetrics.padding
-}
-
-extension View {
-    /// Makes this row part of the row above it in a settings box: no line
-    /// between them and none of the space a row of its own has above it, so
-    /// the two read as one setting with a second line.
-    func joiningRowAbove() -> some View {
-        containerValue(\.joinsRowAbove, true)
-    }
 }
 
 extension View {
@@ -115,9 +106,7 @@ struct MacBoxRows: View {
                 // The first row has none above it to join.
                 let joins = index > 0 && row.containerValues.joinsRowAbove
                 if index > 0, !joins {
-                    Rectangle()
-                        .fill(Theme.hairline)
-                        .frame(height: ThemeSpace.hairline)
+                    MacHairline()
                         .padding(.horizontal, RowMetrics.inset)
                 }
                 row

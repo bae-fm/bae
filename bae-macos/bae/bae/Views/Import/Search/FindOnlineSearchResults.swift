@@ -107,8 +107,7 @@ struct FindOnlineSearchResults: View {
             Text(name)
                 .foregroundStyle(.tertiary)
                 .help(reason)
-            Button("Retry", action: onRetry)
-                .buttonStyle(.accentBorderless)
+            MacButton("Retry", kind: .borderless, action: onRetry)
         }
     }
 }

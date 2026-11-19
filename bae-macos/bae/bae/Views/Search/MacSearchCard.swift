@@ -20,7 +20,7 @@ struct MacSearchCard: View {
         Group {
             if let results {
                 if showsEmptyState {
-                    ContentUnavailableView { Text("No matches") }
+                    MacContentUnavailable(title: "No matches")
                         .frame(height: 240)
                 }
                 else {

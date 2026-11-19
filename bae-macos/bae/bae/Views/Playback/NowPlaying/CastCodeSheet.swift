@@ -54,8 +54,7 @@ struct CastCodeSheet: View {
             MacSheetFooter {
                 Button("Cancel") { onCancel() }
                     .keyboardShortcut(.cancelAction)
-                Button("Pair") { onPair(code) }
-                    .buttonStyle(PrimaryButtonStyle())
+                MacButton("Pair", kind: .primary) { onPair(code) }
                     .keyboardShortcut(.defaultAction)
                     .disabled(!canPair)
             }

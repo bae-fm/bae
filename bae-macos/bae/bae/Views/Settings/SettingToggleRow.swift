@@ -41,8 +41,7 @@ struct SettingToggleRow<Help: View>: View {
                 }
             }
             Spacer(minLength: 0)
-            Toggle(isOn: $isOn) { Text(title) }
-                .labelsHidden()
+            MacSwitch(title, isOn: $isOn)
                 .disabled(!canChange)
         }
     }

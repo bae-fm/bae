@@ -113,10 +113,9 @@ struct ReleaseEditorView: View {
                     .opacity(session.draft?.changed == true ? 1 : 0)
                     .allowsHitTesting(session.draft?.changed == true)
                     .disabled(session.isBusy)
-                    Button("Save") {
+                    MacButton("Save", kind: .primary) {
                         session.save(onSuccess: onSaved)
                     }
-                    .buttonStyle(PrimaryButtonStyle())
                     .keyboardShortcut(.defaultAction)
                     .disabled(session.isBusy)
                 }

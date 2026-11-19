@@ -173,9 +173,7 @@ struct MacImportDraft: View {
                 // The catalogs that describe the linked release end the card,
                 // under their own divider, beside the way to unlink it.
                 if !records.isEmpty {
-                    Rectangle()
-                        .fill(Theme.hairline)
-                        .frame(height: 1)
+                    MacHairline()
                     HStack(alignment: .firstTextBaseline) {
                         MacRecordLinks(records: records)
                         if case .album = releaseLink {
@@ -185,10 +183,9 @@ struct MacImportDraft: View {
                                 .fixedSize()
                         }
                         Spacer(minLength: ThemeSpace.group)
-                        Button("Unlink") {
+                        MacButton("Unlink", kind: .borderless) {
                             sourceActions.unlink()
                         }
-                        .buttonStyle(.accentBorderless)
                         .help(
                             "Stop treating the folder as this release. The metadata stays as it is."
                         )

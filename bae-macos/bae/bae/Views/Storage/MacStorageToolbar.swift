@@ -13,7 +13,6 @@ struct MacStorageToolbar: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .filterField(search, off: off)
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     MacSegmentedControl(
@@ -40,10 +39,9 @@ struct MacStorageToolbar: ViewModifier {
                         off: off
                     )
                 }
-                if off {
-                    ToolbarItem(placement: .primaryAction) {
-                        OffFilterField()
-                    }
+                ToolbarItem(placement: .primaryAction) {
+                    StorageFilterField(text: search)
+                        .disabled(off)
                 }
                 ToolbarItem(placement: .primaryAction) {
                     Button {
@@ -70,46 +68,22 @@ struct MacStorageToolbar: ViewModifier {
     }
 }
 
-extension View {
-    /// The Filter field in the toolbar. With no library open the field is
-    /// off, which the toolbar draws as the words "Filter" (`OffFilterField`)
-    /// in place of a field that takes no text.
-    @ViewBuilder
-    fileprivate func filterField(_ search: Binding<String>, off: Bool)
-        -> some View
-    {
-        if off {
-            self
-        }
-        else {
-            searchable(
-                text: search,
-                placement: .toolbar,
-                prompt: Text("Filter")
-            )
-        }
-    }
-}
+/// The Filter field in the toolbar; while the window is off it is dimmed
+/// and takes no text.
+private struct StorageFilterField: View {
+    @Binding
+    var text: String
+    @FocusState
+    private var focused: Bool
 
-/// The Filter field while it is off: its magnifier and the word Filter on
-/// the field's fill, dimmed.
-private struct OffFilterField: View {
     var body: some View {
-        HStack(spacing: ThemeSpace.related) {
-            Image(systemName: "magnifyingglass")
-                .themeIcon(.small)
-                .accessibilityHidden(true)
-            Text("Filter")
-                .themeText(.body)
-        }
-        .foregroundStyle(.secondary)
-        .padding(.horizontal, ThemeSpace.related)
-        .frame(width: 160, height: 24, alignment: .leading)
-        .background(
-            Theme.field,
-            in: RoundedRectangle(cornerRadius: ThemeRadius.field)
+        MacSearchField(
+            kind: .filter,
+            text: $text,
+            prompt: "Filter",
+            focused: $focused,
+            onEscape: { focused = false }
         )
-        .opacity(ThemeOpacity.off)
     }
 }
 

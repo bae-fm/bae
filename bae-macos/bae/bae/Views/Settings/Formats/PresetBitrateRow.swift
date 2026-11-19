@@ -10,7 +10,7 @@ struct PresetBitrateRow: View {
     let update: (BridgeSavePreset) -> Void
 
     var body: some View {
-        LabeledContent("Bitrate") {
+        MacRow("Bitrate") {
             MacPopUpButton(
                 "Bitrate",
                 selection: Binding(

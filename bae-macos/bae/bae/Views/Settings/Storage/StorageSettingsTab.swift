@@ -84,11 +84,11 @@ struct StorageSettingsForm: View {
     private var form: some View {
         Form {
             if let storage {
-                Section {
+                MacSection {
                     MacStorageUsage(usage: StorageUsage(storage))
                 }
-                Section("Cache") {
-                    LabeledContent {
+                MacSection("Cache") {
+                    MacRow {
                         Button("Clear cache", action: onClearCache)
                             .disabled(!storage.canClearCache)
                     } label: {
@@ -98,7 +98,7 @@ struct StorageSettingsForm: View {
                                 "bae keeps tracks you played from the cloud, covers and pictures here, and downloads them again when you play or open them."
                         )
                     }
-                    LabeledContent("Keep up to") {
+                    MacRow("Keep up to") {
                         MacPopUpButton(
                             "Keep up to",
                             selection: cacheLimit(storage)
@@ -113,7 +113,7 @@ struct StorageSettingsForm: View {
                     }
                 }
             }
-            Section {
+            MacSection {
                 SettingToggleRow(
                     title: "Ask before unpinning",
                     note:
@@ -131,8 +131,8 @@ struct StorageSettingsForm: View {
                 }
             }
             if let beforeReset = storage?.beforeReset {
-                Section {
-                    LabeledContent {
+                MacSection {
+                    MacRow {
                         Button(
                             "Delete…",
                             role: .destructive,

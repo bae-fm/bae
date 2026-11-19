@@ -14,20 +14,20 @@ public struct MacCloudHome: View {
     }
 
     public var body: some View {
-        LabeledContent("Provider", value: location.displayName)
+        MacRow("Provider", value: location.displayName)
         switch location {
         case .s3(let bucket, let region, let endpoint, _):
             if let endpoint {
-                LabeledContent("Endpoint", value: endpoint)
+                MacRow("Endpoint", value: endpoint)
             }
-            LabeledContent("Region", value: region)
-            LabeledContent("Bucket", value: bucket)
+            MacRow("Region", value: region)
+            MacRow("Bucket", value: bucket)
         case .dropbox, .oneDrive:
             if let account = location.accountLabel {
-                LabeledContent("Account", value: account)
+                MacRow("Account", value: account)
             }
             if let folder = location.folderLabel {
-                LabeledContent("Folder", value: folder.name)
+                MacRow("Folder", value: folder.name)
             }
         case .cloudKit:
             EmptyView()

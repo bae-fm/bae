@@ -6,28 +6,13 @@ import SwiftUI
 struct MacAlbumCredits: View {
     let credits: [BridgeCreditRow]
 
-    /// The width of the role column.
-    private static let roleWidth: CGFloat = 140
-
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             MacFormHeading(title: String(localized: "Credits"))
-            Grid(
-                alignment: .topLeading,
-                horizontalSpacing: ThemeSpace.group,
-                verticalSpacing: ThemeSpace.inline
-            ) {
+            MacFactsGrid(wide: true) {
                 ForEach(Array(credits.enumerated()), id: \.offset) { _, row in
-                    GridRow {
-                        Text(verbatim: row.role.text)
-                            .themeText(.detail)
-                            .foregroundStyle(.secondary)
-                            .frame(
-                                width: Self.roleWidth,
-                                alignment: .leading
-                            )
+                    MacFact(verbatim: row.role.text) {
                         Text(verbatim: row.text)
-                            .themeText(.body)
                     }
                 }
             }

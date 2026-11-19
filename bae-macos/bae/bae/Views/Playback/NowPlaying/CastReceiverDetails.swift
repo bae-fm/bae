@@ -14,14 +14,14 @@ struct CastReceiverDetails: View {
                 .padding(.horizontal, ThemeSpace.inline)
                 .themeText(.strong)
             MacBox {
-                LabeledContent(
+                MacRow(
                     "Type",
                     value: receiver.kind.productName
                 )
                 if let model = receiver.model {
-                    LabeledContent("Model", value: model)
+                    MacRow("Model", value: model)
                 }
-                LabeledContent("Address", value: receiver.address)
+                MacRow("Address", value: receiver.address)
             }
         }
         // The popover's own inset, as the boards draw it: 14 at the sides and

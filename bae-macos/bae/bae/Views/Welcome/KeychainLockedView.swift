@@ -17,8 +17,7 @@ struct KeychainLockedView: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: WelcomeLayout.columnWidth)
-            Button("Try again", action: onRetry)
-                .buttonStyle(PrimaryButtonStyle())
+            MacButton("Try again", kind: .primary, action: onRetry)
                 .keyboardShortcut(.defaultAction)
             Spacer()
         }

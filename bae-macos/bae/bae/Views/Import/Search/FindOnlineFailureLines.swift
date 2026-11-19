@@ -18,8 +18,7 @@ struct FindOnlineFailureLines: View {
                     Spacer(minLength: 0)
                 }
             }
-            Button("Retry", action: onRetry)
-                .buttonStyle(.accentBorderless)
+            MacButton("Retry", kind: .borderless, action: onRetry)
         }
         .themeText(.body)
         .padding(.horizontal, ThemeSpace.edge)

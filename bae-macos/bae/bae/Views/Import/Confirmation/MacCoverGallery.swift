@@ -52,7 +52,7 @@ struct MacCoverGallery: View {
             HStack(spacing: 0) {
                 ScrollView {
                     VStack(alignment: .leading, spacing: ThemeSpace.section) {
-                        LabeledContent("Source") {
+                        MacRow("Source") {
                             MacPopUpButton(
                                 "Source",
                                 selection: $filter
@@ -130,12 +130,11 @@ struct MacCoverGallery: View {
                 )
                 .opacity(isSaving ? 1 : 0)
                 .accessibilityHidden(!isSaving)
-                Button("Use this cover") {
+                MacButton("Use this cover", kind: .primary) {
                     if let focus = content.focus {
                         onSelect(CoverItem(gallery: focus.cover))
                     }
                 }
-                .buttonStyle(PrimaryButtonStyle())
                 .keyboardShortcut(.defaultAction)
                 .disabled(
                     content.focus?.cover.selection == nil
@@ -206,9 +205,7 @@ struct MacCoverGallery: View {
                             )
                     }
                     else {
-                        ContentUnavailableView {
-                            Text("No cover art available")
-                        }
+                        MacContentUnavailable(title: "No cover art available")
                     }
                     Button("Browse all images", action: showGrid)
                     Button("Done", action: onDone)

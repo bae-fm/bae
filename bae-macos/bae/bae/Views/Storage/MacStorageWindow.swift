@@ -171,9 +171,7 @@ struct MacStorageWindow: View {
                         if storageManagerStore.searching == true,
                             list.count?.rows == 0
                         {
-                            ContentUnavailableView {
-                                Text("No matches")
-                            }
+                            MacContentUnavailable(title: "No matches")
                         }
                     }
                     Divider()

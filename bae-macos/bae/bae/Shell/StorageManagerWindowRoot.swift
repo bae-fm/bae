@@ -25,11 +25,10 @@ struct StorageManagerWindowRoot: View {
 /// each off, over the message that says why.
 struct StorageManagerNoLibrary: View {
     var body: some View {
-        ContentUnavailableView {
-            Text("No library loaded")
-        } description: {
-            Text("Open a library first")
-        }
+        MacContentUnavailable(
+            title: "No library loaded",
+            description: "Open a library first"
+        )
         .frame(
             minWidth: MacStorageWindow.minimumWidth,
             maxWidth: .infinity,

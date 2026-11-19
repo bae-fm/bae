@@ -37,8 +37,7 @@ struct EditPlaylistSheet: View {
             MacSheetFooter {
                 Button("Cancel") { onCancel() }
                     .keyboardShortcut(.cancelAction)
-                Button("Save") { onSave(state) }
-                    .buttonStyle(PrimaryButtonStyle())
+                MacButton("Save", kind: .primary) { onSave(state) }
                     .keyboardShortcut(.defaultAction)
                     .disabled(enteredNameIsBlank(text: state.name))
             }

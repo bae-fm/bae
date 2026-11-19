@@ -33,14 +33,14 @@ struct TrackMenu: MacMenuPart {
             }
             MacMenuItem("Play next") { picking.onAddNext(targets) }
             MacMenuItem("Add to queue") { picking.onAddToQueue(targets) }
-            MacMenuDivider()
+            MacMenuItem.divider
             playlistMenu
         }
         else {
             MacMenuItem("Play") { onPlay() }
             MacMenuItem("Play next") { onAddNext(track.id) }
             MacMenuItem("Add to queue") { onAddToQueue(track.id) }
-            MacMenuDivider()
+            MacMenuItem.divider
             TrackRateMenu(stars: track.myStars, onRate: onRate)
             playlistMenu
             MacMenuItem("Save as…") { onExportTrack(track.id) }

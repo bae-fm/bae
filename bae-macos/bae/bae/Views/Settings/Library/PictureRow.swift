@@ -19,7 +19,7 @@ struct PictureRow: View {
     private var sync
 
     var body: some View {
-        LabeledContent {
+        MacRow {
             HStack(spacing: ThemeSpace.related) {
                 if profile.avatarVersion != nil {
                     Button("Remove") {

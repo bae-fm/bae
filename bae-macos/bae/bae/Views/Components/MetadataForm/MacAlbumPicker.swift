@@ -76,7 +76,7 @@ struct MacAlbumPicker: View {
                 value: Choice.releasesAlbum
             )
         }
-        MacMenuDivider()
+        MacMenuItem.divider
         MacPopUpOption("Choose another album…", value: Choice.searchLibrary)
     }
 

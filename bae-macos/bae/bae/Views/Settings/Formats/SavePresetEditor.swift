@@ -43,8 +43,7 @@ struct SavePresetEditor: View {
                 qualityRow
             }
             MacSheetFooter {
-                Button("Done") { dismiss() }
-                    .buttonStyle(PrimaryButtonStyle())
+                MacButton("Done", kind: .primary) { dismiss() }
                     .keyboardShortcut(.defaultAction)
                     .disabled(!nameValid)
             }
@@ -143,7 +142,7 @@ struct SavePresetEditor: View {
         let groups = bridgeSaveFormatGroups()
         for group in groups.indices {
             if group > 0 {
-                MacMenuDivider()
+                MacMenuItem.divider
             }
             for format in groups[group] {
                 MacPopUpOption(verbatim: format.label, value: format)
@@ -152,7 +151,7 @@ struct SavePresetEditor: View {
     }
 
     private var formatRow: some View {
-        LabeledContent("Format") {
+        MacRow("Format") {
             formatPicker
         }
     }

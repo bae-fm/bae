@@ -245,7 +245,7 @@ final class CandidateListMenuController {
             MacMenuItem("Reveal in Finder") {
                 SystemActions.revealInFinder(folder: folder.folder.path)
             }
-            MacMenuDivider()
+            MacMenuItem.divider
             MacMenuItem("Remove folder") { [weak self] in
                 self?.actions.onRemoveFolder(folder.folder.path)
             }

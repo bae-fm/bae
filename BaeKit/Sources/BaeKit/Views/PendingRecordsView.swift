@@ -48,9 +48,10 @@ private struct PendingRecordRow: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             #if canImport(AppKit)
                 if let details = ErrorDetails(error: reason) {
-                    Button("Details") { showErrorDetails(details) }
-                        .buttonStyle(.accentBorderless)
-                        .fixedSize()
+                    MacButton("Details", kind: .borderless) {
+                        showErrorDetails(details)
+                    }
+                    .fixedSize()
                 }
             #endif
         }

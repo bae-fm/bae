@@ -40,8 +40,7 @@ struct RestoreFileSheet: View {
             MacSheetFooter {
                 Button("Cancel", action: onDismiss)
                     .keyboardShortcut(.cancelAction)
-                Button("Retry") { retry() }
-                    .buttonStyle(PrimaryButtonStyle())
+                MacButton("Retry", kind: .primary) { retry() }
                     .keyboardShortcut(.defaultAction)
                     .disabled(task != nil)
             }

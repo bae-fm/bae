@@ -18,15 +18,14 @@ struct CastButton: View {
         let castingName = castStore.castingDeviceName
         let active = castingName != nil
         let connectingName = start.connecting?.name
-        return Button(action: { showPicker.toggle() }) {
-            Image(systemName: active ? "hifispeaker.fill" : "hifispeaker")
-                .themeIcon(.large)
-                .frame(width: ThemeSize.hitTarget, height: ThemeSize.hitTarget)
-                .contentShape(Rectangle())
+        return MacIconButton(
+            symbol: active ? "hifispeaker.fill" : "hifispeaker",
+            label: "Cast",
+            help: help(casting: castingName, connecting: connectingName),
+            active: active
+        ) {
+            showPicker.toggle()
         }
-        .buttonStyle(IconHoverButtonStyle(isOn: active).accentFocus())
-        .help(help(casting: castingName, connecting: connectingName))
-        .accessibilityLabel("Cast")
         .macPopover(isPresented: $showPicker, arrowEdge: .top) {
             MacCastPopover(
                 receivers: castStore.receivers,

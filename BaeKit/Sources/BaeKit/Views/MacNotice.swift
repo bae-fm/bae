@@ -438,10 +438,12 @@ extension MacNotice {
                 )
             }
             else {
-                colouredButton(
-                    Button("Details") { showErrorDetails(details) }
-                        .buttonStyle(.accentBorderless),
-                    borderless: true
+                MacButton("Details", kind: .borderless) {
+                    showErrorDetails(details)
+                }
+                .muted(
+                    isMuted(borderless: true),
+                    onStage: look == .centeredOnStage
                 )
             }
         #endif
@@ -451,29 +453,35 @@ extension MacNotice {
     private func actionButton(_ action: ErrorAction) -> some View {
         switch action.kind {
         case .button(let perform):
-            colouredButton(
-                Button(action: perform) { actionLabel(action) }
-                    .buttonStyle(SecondaryButtonStyle().accentFocus()),
-                borderless: false
+            MacButton(kind: .secondary, action: perform) {
+                actionLabel(action)
+            }
+            .muted(
+                isMuted(borderless: false),
+                onStage: look == .centeredOnStage
             )
             .disabled(action.isDisabled)
             .keyboardShortcut(action.shortcut)
         case .menu(let choices):
             #if os(macOS)
-                colouredButton(
-                    MacMenuButton(bordered: true) {
+                MacButton(
+                    kind: .secondary,
+                    menu: {
                         for choice in choices {
                             MacMenuItem(
                                 verbatim: choice.title,
                                 action: choice.perform
                             )
                         }
-                    } label: {
-                        action.title
                     }
-                    .fixedSize(),
-                    borderless: false
+                ) {
+                    action.title
+                }
+                .muted(
+                    isMuted(borderless: false),
+                    onStage: look == .centeredOnStage
                 )
+                .fixedSize()
                 .disabled(action.isDisabled)
             #else
                 colouredButton(
@@ -525,12 +533,20 @@ extension MacNotice {
     /// the plain button look, white on the control grey, with no tint. In a
     /// failed view's centred notice Retry takes the grey of the words beside
     /// it; on a stage both take the stage's secondary text.
+    /// Whether a notice's button reads in the grey of the words beside it: a
+    /// centred notice's Retry, and its borderless Details on a stage.
+    private func isMuted(borderless: Bool) -> Bool {
+        centeredSecondary != nil && (look == .centeredOnStage || !borderless)
+    }
+
+    /// A button that is not a component, in the colour a centred notice's
+    /// words take.
     @ViewBuilder
     private func colouredButton(_ button: some View, borderless: Bool)
         -> some View
     {
-        if let centeredSecondary, look == .centeredOnStage || !borderless {
-            button.foregroundStyle(centeredSecondary).tint(centeredSecondary)
+        if let tone = centeredSecondary, isMuted(borderless: borderless) {
+            button.foregroundStyle(tone).tint(tone)
         }
         else if borderless {
             button.foregroundStyle(Theme.accent).tint(Theme.accent)

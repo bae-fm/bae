@@ -47,15 +47,13 @@ struct CreateNameView: View {
                         .frame(maxWidth: WelcomeLayout.columnWidth)
                 }
                 MacStepActions {
-                    Button("Cancel") {
+                    MacButton("Cancel", kind: .borderless) {
                         form.cancel()
                         onCancel()
                     }
-                    .buttonStyle(.accentBorderless)
-                    .foregroundStyle(Theme.textPrimary)
+                    .neutral()
                     .keyboardShortcut(.cancelAction)
-                    Button("Create") { form.create() }
-                        .buttonStyle(PrimaryButtonStyle())
+                    MacButton("Create", kind: .primary) { form.create() }
                         .keyboardShortcut(.defaultAction)
                         .disabled(!form.canCreate)
                 }

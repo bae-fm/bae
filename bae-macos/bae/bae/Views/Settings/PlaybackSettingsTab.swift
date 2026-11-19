@@ -15,7 +15,7 @@ struct PlaybackSettingsTab: View {
     var body: some View {
         SettingsPane(.playback) {
             Form {
-                Section {
+                MacSection {
                     PauseBetweenSidesToggle(
                         configStore: configStore,
                         setEnabled: playback.setPauseBetweenSides,
@@ -24,15 +24,18 @@ struct PlaybackSettingsTab: View {
                         }
                     )
                     // Resume automatically belongs to the pause above it.
-                    SidePauseCountdownPicker(
-                        configStore: configStore,
-                        setCountdown: playback.setSidePauseCountdown,
-                        showError: { @MainActor error in
-                            uiStore.showError(error)
-                        }
-                    )
-                    .joiningRowAbove()
-                    Toggle("Restore on launch", isOn: $persistPlayback)
+                    MacNested {
+                        SidePauseCountdownPicker(
+                            configStore: configStore,
+                            setCountdown: playback.setSidePauseCountdown,
+                            showError: { @MainActor error in
+                                uiStore.showError(error)
+                            }
+                        )
+                    }
+                    MacRow("Restore on launch") {
+                        MacSwitch("Restore on launch", isOn: $persistPlayback)
+                    }
                 } footer: {
                     Text(
                         "Restores the last session’s track, position, queue and volume when the app opens."

@@ -11,7 +11,7 @@ struct MacMenuTests {
         let off = false
         let entries = menu {
             MacMenuItem(verbatim: "Play") {}
-            MacMenuDivider()
+            MacMenuItem.divider
             MacMenuSection(verbatim: "Queue") {
                 for name in ["Next", "Last"] {
                     MacMenuItem(verbatim: name) {}
@@ -52,7 +52,7 @@ struct MacMenuTests {
     func popUpBuilderListsOptionsAndDividersInOrder() {
         let entries = popUp {
             MacPopUpOption(verbatim: "FLAC", value: 1)
-            MacMenuDivider()
+            MacMenuItem.divider
             for n in 2...3 {
                 MacPopUpOption(verbatim: "n\(n)", value: n)
             }

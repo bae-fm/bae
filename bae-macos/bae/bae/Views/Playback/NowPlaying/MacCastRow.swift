@@ -112,11 +112,13 @@ struct MacCastRow: View {
             switch place {
             case .picker:
                 if case .casting(let onDisconnect) = role {
-                    Button("Disconnect", action: onDisconnect)
-                        .buttonStyle(.accentBorderless)
-                        .controlSize(.small)
-                        .foregroundStyle(.primary)
-                        .tint(.primary)
+                    MacButton(
+                        "Disconnect",
+                        kind: .borderless,
+                        action: onDisconnect
+                    )
+                    .neutral()
+                    .small()
                 }
             case .page:
                 MacMoreMenu {

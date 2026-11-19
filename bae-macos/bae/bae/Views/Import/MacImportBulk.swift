@@ -91,9 +91,7 @@ struct ImportCandidateBulkSelectionCard: View {
         return VStack(spacing: 0) {
             ForEach(groups) { group in
                 if group != groups.first {
-                    Rectangle()
-                        .fill(Theme.hairline)
-                        .frame(height: 1)
+                    MacHairline()
                 }
                 if let title = group.title {
                     MacEyebrow(title)

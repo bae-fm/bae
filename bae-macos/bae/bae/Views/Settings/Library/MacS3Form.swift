@@ -43,13 +43,13 @@ struct MacS3Form: View {
                     }
             },
             fields: {
-                Section("Location") {
+                MacSection("Location") {
                     TextField("Endpoint", text: $fields.endpoint)
                         .textContentType(.URL)
                     field("Region", text: $fields.region, under: .region)
                     field("Bucket", text: $fields.bucket, under: .bucket)
                 }
-                Section("Key") {
+                MacSection("Key") {
                     TextField("Access key ID", text: $fields.accessKey)
                     SecureField("Secret access key", text: $fields.secretKey)
                 }
@@ -64,7 +64,7 @@ struct MacS3Form: View {
         text: Binding<String>,
         under field: S3SetupFields.Field
     ) -> some View {
-        LabeledContent(title) {
+        MacRow(title) {
             VStack(alignment: .trailing, spacing: ThemeSpace.line) {
                 TextField(title, text: text)
                     .labelsHidden()

@@ -112,9 +112,15 @@
         public var entries: [MacMenuEntry] { [.item(self)] }
     }
 
-    /// A line between groups of items.
+    extension MacMenuItem {
+        /// The line between groups of items: `MacMenuItem.divider` stands
+        /// among the items.
+        public static var divider: MacMenuDivider { MacMenuDivider() }
+    }
+
+    /// A line between groups of items; `MacMenuItem.divider` makes one.
     public struct MacMenuDivider: MacMenuPart {
-        public init() {}
+        fileprivate init() {}
 
         public var entries: [MacMenuEntry] { [.divider] }
     }

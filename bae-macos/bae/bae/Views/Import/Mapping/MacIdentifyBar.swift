@@ -40,13 +40,16 @@ struct MacIdentifyBar<Trailing: View>: View {
     private func metadataMenu(
         _ run: @escaping (ImportDraftCommand) -> Void
     ) -> some View {
-        MacMenuButton(bordered: true) {
-            for command in ImportDraftCommand.allCases {
-                MacMenuItem(verbatim: command.title) {
-                    run(command)
+        MacButton(
+            kind: .secondary,
+            menu: {
+                for command in ImportDraftCommand.allCases {
+                    MacMenuItem(verbatim: command.title) {
+                        run(command)
+                    }
                 }
             }
-        } label: {
+        ) {
             Image(systemName: "ellipsis")
         }
         .accessibilityLabel(Text("Metadata"))

@@ -106,9 +106,12 @@ struct MacMenuAccessibilityTests {
     func aMenuButtonIsAPopUpThatPressOpens() async throws {
         let size = NSSize(width: 120, height: 44)
         try await SnapshotTestSupport.withHostedWindow(
-            MacMenuButton {
-                MacMenuItem(verbatim: "First") {}
-            } label: {
+            MacButton(
+                kind: .plain,
+                menu: {
+                    MacMenuItem(verbatim: "First") {}
+                }
+            ) {
                 Text(verbatim: "Choose")
             },
             size: size

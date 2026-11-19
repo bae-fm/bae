@@ -69,7 +69,7 @@ struct MacNowPlayingBar: View {
         // chrome, a hairline along its top edge.
         .background(Theme.surface)
         .overlay(alignment: .top) {
-            Theme.hairline.frame(height: ThemeSpace.hairline)
+            MacHairline()
         }
     }
 
@@ -187,15 +187,10 @@ extension MacNowPlayingBar {
     }
 
     fileprivate var queueButton: some View {
-        Button(action: { onSetQueuePresented(!showQueue) }) {
-            Image(systemName: "list.bullet")
-                .themeIcon(.large)
-                .frame(width: ThemeSize.hitTarget, height: ThemeSize.hitTarget)
-                .contentShape(Rectangle())
+        MacIconButton(symbol: "list.bullet", label: "Queue", active: showQueue)
+        {
+            onSetQueuePresented(!showQueue)
         }
-        .buttonStyle(IconHoverButtonStyle(isOn: showQueue).accentFocus())
-        .help("Queue")
-        .accessibilityLabel("Queue")
         .background(
             RoundedRectangle(cornerRadius: ThemeRadius.control)
                 .fill(
@@ -257,17 +252,12 @@ extension MacNowPlayingBar {
 
     fileprivate func muteButton(_ settings: PlaybackSettings) -> some View {
         let isMuted = settings.isMuted
-        return Button {
+        return MacIconButton(
+            symbol: Self.muteIconName(settings),
+            label: isMuted ? "Unmute" : "Mute"
+        ) {
             onSetMuted(!isMuted)
-        } label: {
-            Image(systemName: Self.muteIconName(settings))
-                .themeIcon(.large)
-                .frame(width: ThemeSize.hitTarget, height: ThemeSize.hitTarget)
-                .contentShape(Rectangle())
         }
-        .buttonStyle(IconHoverButtonStyle().accentFocus())
-        .help(isMuted ? "Unmute" : "Mute")
-        .accessibilityLabel(isMuted ? "Unmute" : "Mute")
     }
 
     /// The speaker glyph for the volume: silenced when muted or at zero, one

@@ -9,7 +9,7 @@ struct PlaylistOptionsMenu: MacMenuPart {
     @MacMenuBuilder
     var entries: [MacMenuEntry] {
         MacMenuItem("Edit playlist…") { onEdit() }
-        MacMenuDivider()
+        MacMenuItem.divider
         MacMenuItem("Delete playlist…") { onDelete() }
     }
 }

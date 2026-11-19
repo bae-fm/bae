@@ -32,7 +32,7 @@ public struct CastTranscodeFormatPicker: View {
     public var body: some View {
         if Self.isShown(for: configStore.config) {
             #if os(macOS)
-                LabeledContent("Convert to") {
+                MacRow("Convert to") {
                     MacPopUpButton("Convert to", selection: binding) {
                         MacPopUpOption(
                             verbatim: "MP3",

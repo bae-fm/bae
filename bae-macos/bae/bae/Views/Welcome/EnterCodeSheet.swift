@@ -31,7 +31,7 @@ struct EnterCodeSheet: View {
         ) {
             VStack(alignment: .leading, spacing: ThemeSpace.related) {
                 if let resumedJoin {
-                    LabeledContent("Library", value: resumedJoin.libraryName)
+                    MacRow("Library", value: resumedJoin.libraryName)
                 }
                 CodeField(form: form)
                 if let decodeError = form.decodeError {
@@ -46,15 +46,15 @@ struct EnterCodeSheet: View {
                 Button("Cancel", action: onCancel)
                     .keyboardShortcut(.cancelAction)
                 if resumedJoin != nil {
-                    Button("Join") { form.start() }
-                        .buttonStyle(PrimaryButtonStyle())
+                    MacButton("Join", kind: .primary) { form.start() }
                         .keyboardShortcut(.defaultAction)
                 }
                 else {
-                    Button("Continue") { form.acceptCode(form.codeInput) }
-                        .buttonStyle(PrimaryButtonStyle())
-                        .keyboardShortcut(.defaultAction)
-                        .disabled(isEmpty)
+                    MacButton("Continue", kind: .primary) {
+                        form.acceptCode(form.codeInput)
+                    }
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(isEmpty)
                 }
             }
         }

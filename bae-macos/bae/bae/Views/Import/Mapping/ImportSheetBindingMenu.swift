@@ -12,24 +12,27 @@ struct ImportSheetUnboundMenu: View {
     private var hovering = false
 
     var body: some View {
-        MacMenuButton {
-            if let only = references.first, references.count == 1 {
-                ImportSheetBindingItems(
-                    reference: only,
-                    onBind: { onBind(only, $0) }
-                )
-            }
-            else {
-                for reference in references {
-                    MacMenuSubmenu(verbatim: reference.fileReference) {
-                        ImportSheetBindingItems(
-                            reference: reference,
-                            onBind: { onBind(reference, $0) }
-                        )
+        MacButton(
+            kind: .plain,
+            menu: {
+                if let only = references.first, references.count == 1 {
+                    ImportSheetBindingItems(
+                        reference: only,
+                        onBind: { onBind(only, $0) }
+                    )
+                }
+                else {
+                    for reference in references {
+                        MacMenuSubmenu(verbatim: reference.fileReference) {
+                            ImportSheetBindingItems(
+                                reference: reference,
+                                onBind: { onBind(reference, $0) }
+                            )
+                        }
                     }
                 }
             }
-        } label: {
+        ) {
             Text(localizedCoreString("ui.import.sheet.choose_audio"))
                 .themeText(.mono)
                 .foregroundStyle(Theme.warning)

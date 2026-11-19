@@ -16,9 +16,7 @@ struct MacBrowseSplit<ListPane: View, Detail: View>: View {
             list
                 .frame(width: Self.listWidth)
                 .overlay(alignment: .trailing) {
-                    Rectangle()
-                        .fill(Theme.hairline)
-                        .frame(width: 1)
+                    MacHairline(axis: .vertical)
                 }
             detail
                 .frame(maxWidth: .infinity)

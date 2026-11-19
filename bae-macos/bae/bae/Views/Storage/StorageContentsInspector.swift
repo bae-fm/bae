@@ -87,7 +87,7 @@ struct StorageContentsInspector: View {
     private func fileList(_ rows: [BridgeStorageInspectorFile]) -> some View {
         Group {
             if rows.isEmpty {
-                ContentUnavailableView { Text("No files") }
+                MacContentUnavailable(title: "No files")
             }
             else {
                 AccentSelectionList(

@@ -24,8 +24,10 @@ struct CastingSettingsTab: View {
     var body: some View {
         SettingsPane(.casting) {
             Form {
-                Section {
-                    Toggle("Enable casting", isOn: enabledBinding)
+                MacSection {
+                    MacRow("Enable casting") {
+                        MacSwitch("Enable casting", isOn: enabledBinding)
+                    }
                 } footer: {
                     Text(
                         "Scan for Cast, AirPlay, and UPnP receivers on your network."
@@ -42,7 +44,7 @@ struct CastingSettingsTab: View {
                     )
                 }
                 if CastTranscodeFormatPicker.isShown(for: configStore.config) {
-                    Section {
+                    MacSection {
                         CastTranscodeFormatPicker(
                             configStore: configStore,
                             setFormat: cast.setTranscodeFormat,
@@ -117,7 +119,7 @@ private struct CastReceiversSection: View {
     let onDisconnect: () -> Void
 
     var body: some View {
-        Section {
+        MacSection {
             if let connectingName {
                 MacCastConnectingLine(name: connectingName)
             }

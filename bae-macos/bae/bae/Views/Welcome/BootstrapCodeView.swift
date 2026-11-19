@@ -94,8 +94,7 @@ struct BootstrapCodeView: View {
                     }
                 }
                 .buttonStyle(.accentBordered)
-                Button(primaryTitle) { form.submit() }
-                    .buttonStyle(PrimaryButtonStyle())
+                MacButton(primaryTitle, kind: .primary) { form.submit() }
                     .disabled(!form.canContinue)
                     .keyboardShortcut(.defaultAction)
             }
@@ -145,12 +144,12 @@ struct BootstrapCodeView: View {
     @ViewBuilder
     private var codeSection: some View {
         if let saved = form.saved {
-            Section("Saved restore code") {
-                LabeledContent("Library", value: saved.info.name)
+            MacSection("Saved restore code") {
+                MacRow("Library", value: saved.info.name)
             }
         }
         else {
-            Section("Code") {
+            MacSection("Code") {
                 CodeField(form: form)
                 Button("Scan") { showScanner = true }
                 if let decodeError = form.decodeError {
@@ -171,7 +170,7 @@ private struct AttemptDetailsSection: View {
     var secretKey: String
 
     var body: some View {
-        Section {
+        MacSection {
             switch attempt {
             case .restoreSaved:
                 EmptyView()
@@ -183,7 +182,7 @@ private struct AttemptDetailsSection: View {
                         .foregroundStyle(.secondary)
                 }
             case .join(_, let invite), .resume(_, let invite):
-                LabeledContent("Library", value: invite.libraryName)
+                MacRow("Library", value: invite.libraryName)
                 signInNote(invite.metadata)
             }
             if attempt.needsS3Key {

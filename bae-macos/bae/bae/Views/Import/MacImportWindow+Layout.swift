@@ -67,11 +67,11 @@ extension MacImportWindow {
                     )
             }
             else {
-                ContentUnavailableView {
-                    Text("Select a folder")
-                } description: {
-                    Text("Choose a scanned folder to search for metadata")
-                }
+                MacContentUnavailable(
+                    title: "Select a folder",
+                    description:
+                        "Choose a scanned folder to search for metadata"
+                )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }

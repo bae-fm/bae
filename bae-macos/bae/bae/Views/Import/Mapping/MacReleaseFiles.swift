@@ -27,9 +27,7 @@ struct MacReleaseFiles: View {
                         .padding(.horizontal, ThemeSpace.line)
                         .padding(.vertical, ThemeSpace.related)
                         .overlay(alignment: .top) {
-                            Rectangle()
-                                .fill(Theme.hairline)
-                                .frame(height: 1)
+                            MacHairline()
                                 .opacity(index > 0 ? 1 : 0)
                         }
                 }

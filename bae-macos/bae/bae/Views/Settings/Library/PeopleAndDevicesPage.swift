@@ -169,10 +169,10 @@ struct PeopleAndDevicesPage: View {
             )
             Form {
                 if let error = store.error {
-                    Section { MacNotice(error: error) }
+                    MacSection { MacNotice(error: error) }
                 }
                 if let actionError {
-                    Section { MacNotice(error: actionError) }
+                    MacSection { MacNotice(error: actionError) }
                 }
                 switch shown {
                 case .people:
@@ -370,10 +370,10 @@ extension PeopleAndDevicesPage {
     // MARK: - You
 
     private var youSection: some View {
-        Section {
+        MacSection {
             if let profile = store.selfProfile {
                 PictureRow(profile: profile, busy: task != nil, run: run)
-                LabeledContent("Name") {
+                MacRow("Name") {
                     HStack(spacing: ThemeSpace.related) {
                         Text(verbatim: profile.name)
                             .foregroundStyle(.secondary)
@@ -382,10 +382,10 @@ extension PeopleAndDevicesPage {
                 }
             }
             if let me = selfPerson {
-                LabeledContent("Role", value: me.membership.role.label)
+                MacRow("Role", value: me.membership.role.label)
             }
             if let profile = store.selfProfile {
-                LabeledContent("Listening history") {
+                MacRow("Listening history") {
                     MacPopUpButton(
                         "Listening history",
                         selection: Binding(
@@ -423,7 +423,7 @@ extension PeopleAndDevicesPage {
     // MARK: - People
 
     private var peopleSection: some View {
-        Section {
+        MacSection {
             ForEach(others, id: \.membership.id) { person in
                 let member = person.membership
                 // Only an admin has anything to do on a person's page.
@@ -489,8 +489,8 @@ extension PeopleAndDevicesPage {
     private func personSections(_ person: BridgePerson) -> some View {
         let member = person.membership
         AdminChangesSection(place: .person(member: String(member.id)))
-        Section {
-            LabeledContent("Role") {
+        MacSection {
+            MacRow("Role") {
                 HStack(spacing: ThemeSpace.related) {
                     Text(verbatim: member.role.label)
                         .foregroundStyle(.secondary)
@@ -531,9 +531,9 @@ extension PeopleAndDevicesPage {
     @ViewBuilder
     private func devicesSections(_ person: BridgePerson) -> some View {
         let member = person.membership
-        Section {
+        MacSection {
             ForEach(member.activeDevices, id: \.id) { device in
-                LabeledContent {
+                MacRow {
                     if device.canRemove {
                         MacMoreMenu {
                             MacMenuItem("Remove…") {
@@ -826,8 +826,7 @@ private struct RenameProfileSheet: View {
             MacSheetFooter {
                 Button("Cancel", action: onDismiss)
                     .keyboardShortcut(.cancelAction)
-                Button("Save", action: save)
-                    .buttonStyle(PrimaryButtonStyle())
+                MacButton("Save", kind: .primary, action: save)
                     .keyboardShortcut(.defaultAction)
                     .disabled(task != nil || trimmed.isEmpty)
             }
@@ -877,8 +876,7 @@ private struct RefusedInviteRow: View {
                 )
             }
             Spacer()
-            Button("Dismiss", action: onDismiss)
-                .buttonStyle(.accentBorderless)
+            MacButton("Dismiss", kind: .borderless, action: onDismiss)
         }
         .padding(.vertical, ThemeSpace.line)
     }
@@ -966,8 +964,7 @@ struct JoinRequestSheet: View {
                 trailing: {
                     Button("Decline", action: onDecline)
                         .disabled(busy)
-                    Button("Approve", action: onApprove)
-                        .buttonStyle(PrimaryButtonStyle())
+                    MacButton("Approve", kind: .primary, action: onApprove)
                         .disabled(busy)
                 }
             )

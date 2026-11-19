@@ -66,9 +66,10 @@
                 MacSheetFooter {
                     Button("Cancel") { leave() }
                     if !browser.isWorking {
-                        Button("Sign in…") { browser.signIn() }
-                            .buttonStyle(PrimaryButtonStyle())
-                            .keyboardShortcut(.defaultAction)
+                        MacButton("Sign in…", kind: .primary) {
+                            browser.signIn()
+                        }
+                        .keyboardShortcut(.defaultAction)
                     }
                 }
                 .padding(.horizontal)
@@ -108,7 +109,7 @@
                 fields: {
                     MacFolderPicker(browser: browser)
                     if let work = browser.working {
-                        Section {
+                        MacSection {
                             FolderBrowserWorkLine(
                                 work: work,
                                 provider: browser.provider
@@ -116,7 +117,7 @@
                         }
                     }
                     if let error = browser.error {
-                        Section {
+                        MacSection {
                             MacNotice(error: error)
                         }
                     }

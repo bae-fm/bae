@@ -36,7 +36,7 @@ public struct MacRestoreCode: View {
     }
 
     public var body: some View {
-        Section("Restore code") {
+        MacSection("Restore code") {
             switch reveal.state {
             case .closed:
                 EmptyView()
@@ -86,7 +86,7 @@ public struct MacRestoreCode: View {
             }
             // Borderless, so a list row holding the buttons sends each tap to
             // the button under it.
-            Button(shown ? "Hide" : "Show") {
+            MacButton(shown ? "Hide" : "Show", kind: .borderless) {
                 if shown {
                     reveal.hide()
                 }
@@ -95,9 +95,9 @@ public struct MacRestoreCode: View {
                 }
             }
             if let onPrint {
-                Button("Print…") { onPrint(share.code) }
+                MacButton("Print…", kind: .borderless) { onPrint(share.code) }
             }
-            Button {
+            MacButton(kind: .borderless) {
                 Pasteboard.copy(share.code)
                 copied = true
             } label: {
@@ -106,7 +106,6 @@ public struct MacRestoreCode: View {
             .accessibilityLabel(copied ? "Copied" : "Copy")
             .help(copied ? "Copied" : "Copy")
         }
-        .buttonStyle(.accentBorderless)
     }
 
     private var caption: some View {

@@ -58,8 +58,7 @@ struct InvitePersonForm: View {
                 trailing: {
                     Button("Cancel", action: onCancel)
                         .keyboardShortcut(.cancelAction)
-                    Button("Create invite", action: onCreate)
-                        .buttonStyle(PrimaryButtonStyle())
+                    MacButton("Create invite", kind: .primary, action: onCreate)
                         .keyboardShortcut(.defaultAction)
                         .disabled(!canCreate)
                 }

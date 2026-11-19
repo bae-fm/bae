@@ -12,34 +12,10 @@ private enum WizardStep: Equatable {
     case restoreCode(BridgeCloudProvider)
 }
 
-// MARK: - Provider Row
+// MARK: - Providers
 
 /// The providers this build offers, in the bridge's display order.
 private let providerOptions: [BridgeCloudProvider] = availableCloudProviders()
-
-/// A provider in the wizard's list: its radio, name and what it is.
-private struct ProviderRow: View {
-    let provider: BridgeCloudProvider
-    let chosen: Bool
-
-    var body: some View {
-        HStack(alignment: .top, spacing: ThemeSpace.group) {
-            Image(systemName: chosen ? "largecircle.fill.circle" : "circle")
-                .foregroundStyle(chosen ? Color.accentColor : .secondary)
-
-            VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                Text(provider.displayName)
-                    .themeText(.rowTitle)
-                Text(provider.setupSummary)
-                    .themeText(.detail)
-                    .foregroundStyle(.secondary)
-            }
-
-            Spacer()
-        }
-        .contentShape(Rectangle())
-    }
-}
 
 // MARK: - SyncSetupWizard
 
@@ -137,14 +113,15 @@ struct SyncSetupWizard: View {
     private var providerList: some View {
         VStack(spacing: 0) {
             Form {
-                Section {
+                MacSection {
                     ForEach(providerOptions, id: \.self) { provider in
                         Button {
                             choice = provider
                         } label: {
-                            ProviderRow(
-                                provider: provider,
-                                chosen: provider == choice
+                            MacRadio(
+                                title: Text(provider.displayName),
+                                note: Text(provider.setupSummary),
+                                checked: provider == choice
                             )
                         }
                         .buttonStyle(.accentPlain)
@@ -158,12 +135,11 @@ struct SyncSetupWizard: View {
 
             MacSheetFooter {
                 Button("Cancel") { onDone() }
-                Button("Continue") {
+                MacButton("Continue", kind: .primary) {
                     withAnimation(.easeInOut(duration: 0.15)) {
                         step = .configure(choice)
                     }
                 }
-                .buttonStyle(PrimaryButtonStyle())
                 .keyboardShortcut(.defaultAction)
             }
             .padding(.horizontal)
@@ -269,8 +245,7 @@ private struct RestoreCodeStep: View {
             .formStyle(.grouped)
 
             MacSheetFooter {
-                Button("Done") { onDone() }
-                    .buttonStyle(PrimaryButtonStyle())
+                MacButton("Done", kind: .primary) { onDone() }
                     .keyboardShortcut(.defaultAction)
             }
             .padding(.horizontal)
@@ -396,10 +371,9 @@ struct SetupStep<Fields: View, Leading: View>: View {
                             .disabled(run.isCancelling)
                     }
                     if !run.isRunning {
-                        Button("Set up") {
+                        MacButton("Set up", kind: .primary) {
                             connect()
                         }
-                        .buttonStyle(PrimaryButtonStyle())
                         .keyboardShortcut(.defaultAction)
                         .disabled(!ready)
                     }

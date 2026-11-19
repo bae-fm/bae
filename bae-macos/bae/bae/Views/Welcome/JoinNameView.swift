@@ -40,12 +40,10 @@ struct JoinNameView: View {
                         .frame(maxWidth: WelcomeLayout.columnWidth)
                 }
                 MacStepActions {
-                    Button("Cancel", action: onCancel)
-                        .buttonStyle(.accentBorderless)
-                        .foregroundStyle(Theme.textPrimary)
+                    MacButton("Cancel", kind: .borderless, action: onCancel)
+                        .neutral()
                         .keyboardShortcut(.cancelAction)
-                    Button("Join", action: onJoin)
-                        .buttonStyle(PrimaryButtonStyle())
+                    MacButton("Join", kind: .primary, action: onJoin)
                         .keyboardShortcut(.defaultAction)
                         .disabled(!canJoin)
                 }

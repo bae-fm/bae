@@ -16,7 +16,7 @@ struct PlaylistEntryMenu: MacMenuPart {
         MacMenuItem("Play next") { playNext() }
         MacMenuItem("Add to queue") { addToQueue() }
         if let remove {
-            MacMenuDivider()
+            MacMenuItem.divider
             MacMenuItem("Remove from playlist") { remove() }
         }
     }

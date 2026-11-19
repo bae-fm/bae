@@ -35,7 +35,7 @@ struct MacSyncStatus: View {
 
     var body: some View {
         if status.unreadable {
-            LabeledContent("Status") {
+            MacRow("Status") {
                 ToneDotValue(
                     text: String(localized: "Could not read sync status"),
                     tone: .danger
@@ -50,7 +50,7 @@ struct MacSyncStatus: View {
                 alignment: .leading,
                 spacing: ThemeSpace.related + ThemeSpace.line
             ) {
-                LabeledContent("Status") {
+                MacRow("Status") {
                     ToneDotValue(
                         text: shown.statusLine,
                         tone: shown.statusTone
@@ -77,7 +77,7 @@ struct MacSyncStatus: View {
                 }
             }
             if let lastSynced = shown.lastSyncedLine {
-                LabeledContent("Last synced", value: lastSynced)
+                MacRow("Last synced", value: lastSynced)
             }
         }
     }
@@ -117,8 +117,7 @@ struct SyncFixButton: View {
     private var error: DisplayError?
 
     var body: some View {
-        Button(title, action: run)
-            .buttonStyle(PrimaryButtonStyle())
+        MacButton(title, kind: .primary, action: run)
             .disabled(reconnection.isRunning)
             .onDisappear { reconnection.cancel() }
         if let steps = reconnection.steps {

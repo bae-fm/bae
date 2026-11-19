@@ -14,22 +14,20 @@ struct MacWelcomeActions: View {
 
     var body: some View {
         VStack(spacing: ThemeSpace.related + ThemeSpace.line) {
-            Button(action: onCreate) {
+            MacButton(kind: .primary, action: onCreate) {
                 Text("Create new library…")
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(PrimaryButtonStyle())
             .disabled(disabled)
             .keyboardShortcut(.defaultAction)
             HStack(spacing: ThemeSpace.related) {
-                Button(action: onScanCode) {
+                MacButton(action: onScanCode) {
                     Text("Scan code").frame(maxWidth: .infinity)
                 }
-                Button(action: onEnterCode) {
+                MacButton(action: onEnterCode) {
                     Text("Enter code").frame(maxWidth: .infinity)
                 }
             }
-            .buttonStyle(SecondaryButtonStyle().accentFocus())
             .disabled(disabled)
         }
         .controlSize(.large)

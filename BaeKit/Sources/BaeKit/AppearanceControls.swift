@@ -16,7 +16,7 @@ public struct AppearanceControls: View {
 
     public var body: some View {
         #if os(macOS)
-            LabeledContent {
+            MacRow {
                 MacPopUpButton(
                     label: themeLabel,
                     selection: preferences.$mode
@@ -29,7 +29,7 @@ public struct AppearanceControls: View {
                 themeLabel
             }
 
-            LabeledContent {
+            MacRow {
                 MacPopUpButton(
                     label: toneLabel,
                     selection: preferences.$tone

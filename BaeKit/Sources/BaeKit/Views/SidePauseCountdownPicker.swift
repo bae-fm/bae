@@ -31,7 +31,7 @@ public struct SidePauseCountdownPicker: View {
 
     public var body: some View {
         #if os(macOS)
-            LabeledContent("Resume automatically") {
+            MacRow("Resume automatically") {
                 MacPopUpButton("Resume automatically", selection: binding) {
                     for choice in BridgeSidePauseCountdown.offered {
                         MacPopUpOption(

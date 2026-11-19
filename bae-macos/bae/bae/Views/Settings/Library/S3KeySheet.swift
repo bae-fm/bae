@@ -235,14 +235,13 @@ struct S3KeySheet: View {
                 Button("Cancel") { replacement.cancel() }
                     .keyboardShortcut(.cancelAction)
                 if replacement.sheet != .checking {
-                    Button("Save") {
+                    MacButton("Save", kind: .primary) {
                         replacement.save(
                             accessKey: accessKey,
                             secretKey: secretKey,
                             sync: sync
                         )
                     }
-                    .buttonStyle(PrimaryButtonStyle())
                     .keyboardShortcut(.defaultAction)
                     .disabled(accessKey.isEmpty || secretKey.isEmpty)
                 }
@@ -250,7 +249,8 @@ struct S3KeySheet: View {
         }
     }
 
-    private func failureNotice(_ failure: S3KeyReplacement.Failure) -> MacNotice {
+    private func failureNotice(_ failure: S3KeyReplacement.Failure) -> MacNotice
+    {
         let title = String(localized: "Could not use this key")
         switch failure {
         case .refused:

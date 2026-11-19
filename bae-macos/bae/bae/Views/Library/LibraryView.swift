@@ -185,14 +185,13 @@ extension LibraryView {
         ) {
             switch uiStore.libraryBrowserMode {
             case .albums:
-                Toggle(
+                MacCheckbox(
                     "Group by artist",
                     isOn: Binding(
                         get: { session.albumGrouping.byArtist },
                         set: { session.setGroupAlbumsByArtist($0) }
                     )
                 )
-                .toggleStyle(.accentCheckbox)
                 sortControls(session.albums)
             case .composers:
                 sortControls(session.composers)

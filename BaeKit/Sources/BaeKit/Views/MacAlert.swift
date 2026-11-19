@@ -129,8 +129,7 @@
                     )
                 }
                 if let suppression = words.suppression {
-                    Toggle(isOn: suppression.isOn) { suppression.label }
-                        .toggleStyle(.accentCheckbox)
+                    MacCheckbox(isOn: suppression.isOn) { suppression.label }
                         .themeText(.detail)
                 }
                 buttonRow

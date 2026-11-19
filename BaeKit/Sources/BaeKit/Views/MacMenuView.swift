@@ -116,9 +116,7 @@
         private func line(_ index: Int) -> some View {
             switch level.entries[index] {
             case .divider:
-                Rectangle()
-                    .fill(Theme.hairline)
-                    .frame(height: 1)
+                MacHairline()
                     .padding(.horizontal, 7)
                     .frame(height: MacMenuMetrics.dividerHeight)
             case .header(let title):

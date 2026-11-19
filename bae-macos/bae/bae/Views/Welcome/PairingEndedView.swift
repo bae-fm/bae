@@ -15,8 +15,7 @@ struct PairingEndedView: View {
             )
         ) {
             MacStepActions {
-                Button("OK", action: onOK)
-                    .buttonStyle(PrimaryButtonStyle())
+                MacButton("OK", kind: .primary, action: onOK)
                     .keyboardShortcut(.defaultAction)
             }
         }

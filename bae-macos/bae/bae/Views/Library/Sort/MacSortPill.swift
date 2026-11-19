@@ -52,15 +52,18 @@ struct MacSortPill<Criterion: SortCriterionRepresentable>: View {
 
     /// Every field, the current one checked; picking it again is a no-op.
     private var fieldMenu: some View {
-        MacMenuButton {
-            for field in Criterion.Field.allCases {
-                MacMenuItem(
-                    field.displayName,
-                    checked: field == criterion.field,
-                    disabled: takenFields.contains(field)
-                ) { onSetField(field) }
+        MacButton(
+            kind: .plain,
+            menu: {
+                for field in Criterion.Field.allCases {
+                    MacMenuItem(
+                        field.displayName,
+                        checked: field == criterion.field,
+                        disabled: takenFields.contains(field)
+                    ) { onSetField(field) }
+                }
             }
-        } label: {
+        ) {
             // One run of text, since a menu label puts its image before the
             // title and the chevron belongs after it.
             Text(criterion.field.displayName)

@@ -43,8 +43,9 @@ struct MacPlaylistHeader: View {
                 .foregroundStyle(.secondary)
             }
             Spacer(minLength: ThemeSpace.related)
-            Button("Play") { playback.playPlaylist(summary.id, nil, false) }
-                .buttonStyle(PrimaryButtonStyle())
+            MacButton("Play", kind: .primary) {
+                playback.playPlaylist(summary.id, nil, false)
+            }
             Button("Shuffle") { playback.playPlaylist(summary.id, nil, true) }
             if summary.yours {
                 MacMoreMenu {

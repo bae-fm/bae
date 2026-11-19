@@ -109,19 +109,18 @@ struct MacStorageBand: View {
         FlowLayout(spacing: ThemeSpace.related) {
             ForEach(release.storageActions, id: \.self) { action in
                 if action == .pin && pinQueued {
-                    Button(
+                    MacButton(
                         BridgeReleaseStorageAction.cancelPinningLabel,
                         action: onCancelPin
                     )
                 }
                 else {
-                    Button(action.label) { onAction(action) }
+                    MacButton(action.label) { onAction(action) }
                 }
             }
             // Export and Save As change no state, so every release offers them.
-            Button("Export…", action: onExport)
-            Button("Save as…", action: onSaveAs)
+            MacButton("Export…", action: onExport)
+            MacButton("Save as…", action: onSaveAs)
         }
-        .buttonStyle(SecondaryButtonStyle().accentFocus())
     }
 }

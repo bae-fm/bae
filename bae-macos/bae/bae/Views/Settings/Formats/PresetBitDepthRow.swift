@@ -8,7 +8,7 @@ struct PresetBitDepthRow: View {
     let update: (BridgeSavePreset) -> Void
 
     var body: some View {
-        LabeledContent("Bit depth") {
+        MacRow("Bit depth") {
             MacPopUpButton(
                 "Bit depth",
                 selection: Binding(

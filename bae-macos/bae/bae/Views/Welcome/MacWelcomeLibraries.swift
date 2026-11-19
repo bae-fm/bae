@@ -87,11 +87,14 @@ struct MacWelcomeLibraries: View {
             }
             .card()
             MacSheetFooter {
-                MacMenuButton(bordered: true) {
-                    MacMenuItem("Create new library…", action: onCreate)
-                    MacMenuItem("Scan code…", action: onScanCode)
-                    MacMenuItem("Enter code…", action: onEnterCode)
-                } label: {
+                MacButton(
+                    kind: .secondary,
+                    menu: {
+                        MacMenuItem("Create new library…", action: onCreate)
+                        MacMenuItem("Scan code…", action: onScanCode)
+                        MacMenuItem("Enter code…", action: onEnterCode)
+                    }
+                ) {
                     Text("Add library…")
                 }
                 .fixedSize()

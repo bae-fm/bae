@@ -44,8 +44,8 @@ struct LibrarySettingsTab: View {
     var body: some View {
         NavigationStack(path: $path) {
             Form {
-                Section {
-                    LabeledContent("Name") {
+                MacSection {
+                    MacRow("Name") {
                         HStack {
                             Text(libraryName.name ?? "")
                                 .foregroundStyle(.secondary)
@@ -54,7 +54,7 @@ struct LibrarySettingsTab: View {
                             }
                         }
                     }
-                    LabeledContent("Library folder") {
+                    MacRow("Library folder") {
                         Button("Show in Finder") {
                             SystemActions.revealInFinder(
                                 path: configStore.config.libraryPath
@@ -65,11 +65,11 @@ struct LibrarySettingsTab: View {
 
                 AdminChangesSection(place: .library)
 
-                Section {
+                MacSection {
                     syncRow
                     if configStore.syncs {
                         NavigationLink(value: Page.people) {
-                            LabeledContent("People and devices") {
+                            MacRow("People and devices") {
                                 if let count = peopleAndDevices {
                                     Text(count)
                                 }
@@ -153,7 +153,7 @@ struct LibrarySettingsTab: View {
     private var syncRow: some View {
         if configStore.syncs || setupRunning {
             NavigationLink(value: Page.sync) {
-                LabeledContent("Sync") {
+                MacRow("Sync") {
                     if let shown = syncStatus.shown {
                         ToneDotValue(
                             text: shown.statusLine,
@@ -165,7 +165,7 @@ struct LibrarySettingsTab: View {
         }
         else {
             NavigationLink(value: Page.sync) {
-                LabeledContent("Sync") {
+                MacRow("Sync") {
                     HStack {
                         Text("Not synced")
                             .foregroundStyle(.secondary)
@@ -246,7 +246,7 @@ private struct SyncSettingsPage: View {
 
     private var form: some View {
         Form {
-            Section {
+            MacSection {
                 UndoneSetupLine()
                 MacSyncStatus(
                     location: configStore.storage,
@@ -260,13 +260,13 @@ private struct SyncSettingsPage: View {
                 )
             }
             if let location = configStore.storage {
-                Section {
+                MacSection {
                     MacCloudHome(location: location)
                     if case .s3 = location,
                         case .s3AccessKey(let keyId) = configStore.config
                             .storageAccess
                     {
-                        LabeledContent("Access key ID") {
+                        MacRow("Access key ID") {
                             HStack {
                                 Text(verbatim: keyId)
                                     .foregroundStyle(.secondary)

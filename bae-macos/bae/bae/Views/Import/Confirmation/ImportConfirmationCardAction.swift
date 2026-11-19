@@ -13,8 +13,9 @@ struct ImportConfirmationCardAction: View {
     let onConfirmImport: () -> Void
 
     var body: some View {
-        Button(Self.title(importStatus)) { onConfirmImport() }
-            .buttonStyle(PrimaryButtonStyle())
+        MacButton(Self.title(importStatus), kind: .primary) {
+            onConfirmImport()
+        }
     }
 
     /// The action's words: Retry import once an attempt failed, else Import.

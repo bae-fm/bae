@@ -253,10 +253,9 @@ struct ArtistSearchResultRow: View {
                     .buttonStyle(.accentPlain)
                     .padding(.leading, ThemeSpace.group)
                 }
-                Button("View in library") {
+                MacButton("View in library", kind: .borderless) {
                     onViewArtist(result.artist.artistId)
                 }
-                .buttonStyle(.accentBorderless)
                 .themeText(.detail)
             }
             .frame(maxWidth: .infinity, alignment: .leading)

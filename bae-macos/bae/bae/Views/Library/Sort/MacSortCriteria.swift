@@ -44,15 +44,21 @@ struct MacSortCriteria<Criterion: SortCriterionRepresentable>: View {
                 !usedFields.contains($0)
             }
             if !unused.isEmpty {
-                MacMenuButton {
-                    for field in unused {
-                        MacMenuItem(field.displayName) {
-                            criteria.append(
-                                Criterion(field: field, direction: .ascending)
-                            )
+                MacButton(
+                    kind: .plain,
+                    menu: {
+                        for field in unused {
+                            MacMenuItem(field.displayName) {
+                                criteria.append(
+                                    Criterion(
+                                        field: field,
+                                        direction: .ascending
+                                    )
+                                )
+                            }
                         }
                     }
-                } label: {
+                ) {
                     Image(systemName: "plus")
                         .themeIcon(.medium)
                         .foregroundStyle(.secondary)

@@ -17,8 +17,10 @@ struct MacAlbumTile: View {
 
     @State
     private var isHovered = false
+    /// Whether the ⋯ menu is open, which keeps the ⋯ shown after the pointer
+    /// leaves the cover for the menu.
     @State
-    private var showMenu = false
+    private var menuOpen = false
 
     /// How far the expanded ring sits outside the cover's edge.
     private static let ringOutset: CGFloat = 4.5
@@ -43,10 +45,31 @@ struct MacAlbumTile: View {
                     )
                 )
                 .overlay(alignment: .topTrailing) {
-                    CardMenuButton(menu: menu, showMenu: $showMenu)
-                        .padding(ThemeSpace.compact)
-                        .opacity(isHovered || showMenu ? 1 : 0)
-                        .allowsHitTesting(isHovered || showMenu)
+                    MacMoreMenu(overlay: true, isOpen: $menuOpen) {
+                        MacMenuItem(
+                            verbatim: menu.playLabel,
+                            action: menu.onPlay
+                        )
+                        MacMenuItem.divider
+                        MacMenuItem(
+                            verbatim: menu.addToQueueLabel,
+                            action: menu.onAddToQueue
+                        )
+                        MacMenuItem(
+                            verbatim: menu.addNextLabel,
+                            action: menu.onAddNext
+                        )
+                        if let onDelete = menu.onDelete {
+                            MacMenuItem.divider
+                            MacMenuItem(
+                                verbatim: menu.deleteLabel,
+                                action: onDelete
+                            )
+                        }
+                    }
+                    .padding(ThemeSpace.compact)
+                    .opacity(isHovered || menuOpen ? 1 : 0)
+                    .allowsHitTesting(isHovered || menuOpen)
                 }
                 .onHover { isHovered = $0 }
         }

@@ -66,9 +66,7 @@ struct MacCoverPreview: View {
             }
         }
         else {
-            ContentUnavailableView {
-                Text("No cover art available")
-            }
+            MacContentUnavailable(title: "No cover art available")
         }
     }
 }

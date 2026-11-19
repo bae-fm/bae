@@ -34,7 +34,7 @@ public struct TransferConcurrencyPicker: View {
 
     public var body: some View {
         #if os(macOS)
-            LabeledContent(title) {
+            MacRow(title) {
                 MacPopUpButton(title, selection: binding) {
                     for n in 1...limit {
                         MacPopUpOption(verbatim: n.formatted(), value: n)

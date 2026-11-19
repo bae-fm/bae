@@ -68,12 +68,9 @@ private struct SidePausePromptCard: View {
                 SidePauseCountdownLine(countdown: countdown)
             }
 
-            Toggle(isOn: $keepPausing) {
+            MacCheckbox(isOn: $keepPausing) {
                 Text(verbatim: prompt.keepPausingLabel())
             }
-            #if os(macOS)
-                .toggleStyle(.accentCheckbox)
-            #endif
             // Unchecking turns the setting off, which also ends these
             // prompts, so the card says where to turn it back on.
             if !keepPausing {
@@ -89,8 +86,7 @@ private struct SidePausePromptCard: View {
                     .buttonStyle(.accentBordered)
                     .keyboardShortcut(.cancelAction)
 
-                Button("Play") { answer(play: true) }
-                    .buttonStyle(PrimaryButtonStyle())
+                MacButton("Play", kind: .primary) { answer(play: true) }
                     .keyboardShortcut(.defaultAction)
             }
             .padding(.top, ThemeSpace.related)

@@ -63,11 +63,14 @@
         }
     }
 
-    /// A button that opens bae's menu under itself. The label is whatever the
-    /// caller draws; `bordered` draws it in the secondary button.
-    public struct MacMenuButton<Label: View>: View {
-        let bordered: Bool
+    /// What a `MacButton` with a menu draws: the button of its kind, and bae's
+    /// menu opening under it.
+    struct MacMenuOpener<Label: View>: View {
+        let kind: MacButtonKind
         let content: () -> [MacMenuEntry]
+        /// True while the menu is open, for a caller that draws the button
+        /// differently then.
+        let isOpen: Binding<Bool>?
         let label: Label
 
         @State
@@ -78,48 +81,47 @@
             accent: .standard
         )
 
-        public init(
-            bordered: Bool = false,
-            @MacMenuBuilder content: @escaping () -> [MacMenuEntry],
-            @ViewBuilder label: () -> Label
+        init(
+            kind: MacButtonKind,
+            content: @escaping () -> [MacMenuEntry],
+            isOpen: Binding<Bool>?,
+            label: Label
         ) {
-            self.bordered = bordered
+            self.kind = kind
             self.content = content
-            self.label = label()
+            self.isOpen = isOpen
+            self.label = label
         }
 
-        public var body: some View {
-            Group {
-                if bordered {
-                    Button(action: open) { label }
-                        .buttonStyle(SecondaryButtonStyle().accentFocus())
+        var body: some View {
+            Button(action: open) { label }
+                .macButtonStyle(kind)
+                .background(MacMenuAnchorView(anchor: anchor))
+                .tracksMenuAppearance($appearance)
+                .accessibilityRepresentation {
+                    Menu {
+                    } label: {
+                        label
+                    }
+                    .accessibilityAction(.default, open)
                 }
-                else {
-                    Button(action: open) { label }
-                        .buttonStyle(.accentPlain)
-                }
-            }
-            .background(MacMenuAnchorView(anchor: anchor))
-            .tracksMenuAppearance($appearance)
-            .accessibilityRepresentation {
-                Menu {
-                } label: {
-                    label
-                }
-                .accessibilityAction(.default, open)
-            }
         }
 
         private func open() {
             guard let window = anchor.window, let frame = anchor.screenFrame
             else { return }
-            MacMenuSession.present(
+            let session = MacMenuSession.present(
                 content(),
                 over: window,
                 placement: .below(anchor: frame),
                 appearance: appearance,
                 isPopUp: false
-            )
+            ) { [isOpen] in
+                isOpen?.wrappedValue = false
+            }
+            if session != nil {
+                isOpen?.wrappedValue = true
+            }
         }
     }
 

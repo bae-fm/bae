@@ -77,9 +77,8 @@ struct MacAlbumHeader: View {
                     .foregroundStyle(.secondary)
             }
             HStack(spacing: ThemeSpace.related) {
-                Button("Play", action: onPlay)
-                    .buttonStyle(PrimaryButtonStyle())
-                MacMenuButton(content: menu) {
+                MacButton("Play", kind: .primary, action: onPlay)
+                MacButton(kind: .plain, menu: menu) {
                     Image(systemName: "ellipsis")
                         .themeIcon(.medium)
                         .foregroundStyle(.secondary)

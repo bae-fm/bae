@@ -62,12 +62,11 @@ struct MacLibraryRow: View {
     @ViewBuilder
     private var cover: some View {
         if loading {
-            RoundedRectangle(cornerRadius: ThemeRadius.artwork)
-                .fill(Theme.placeholder)
-                .frame(
-                    width: ThemeSize.rowArtwork,
-                    height: ThemeSize.rowArtwork
-                )
+            MacPlaceholderLine(
+                width: ThemeSize.rowArtwork,
+                height: ThemeSize.rowArtwork,
+                radius: ThemeRadius.artwork
+            )
         }
         else if let playlistCover {
             PlaylistPicture(cover: playlistCover, size: ThemeSize.rowArtwork)

@@ -46,7 +46,7 @@ struct FormatsSettingsTab: View {
     }
 
     private var namesSection: some View {
-        Section {
+        MacSection {
             MacFileNameField(
                 title: "File name",
                 pieces: configStore.config.filenamePieces,
@@ -68,7 +68,7 @@ struct FormatsSettingsTab: View {
     }
 
     private var extrasSection: some View {
-        Section {
+        MacSection {
             extraRow(
                 "Embed cover art",
                 isOn: configStore.config.saveExtras.embedCover,
@@ -111,7 +111,7 @@ struct FormatsSettingsTab: View {
     }
 
     private var formatsSection: some View {
-        Section {
+        MacSection {
             ForEach(configStore.config.savePresets, id: \.id) { preset in
                 PresetRow(
                     preset: preset,

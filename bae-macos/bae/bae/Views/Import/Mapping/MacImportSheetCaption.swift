@@ -93,7 +93,7 @@ struct MacImportSheetCaption: View {
     private func boundMenu(
         @MacMenuBuilder _ items: @escaping () -> [MacMenuEntry]
     ) -> some View {
-        MacMenuButton(content: items) {
+        MacButton(kind: .plain, menu: items) {
             boundText
                 .padding(.horizontal, ThemeSpace.compact)
                 .padding(.vertical, ThemeSpace.line)
@@ -187,22 +187,25 @@ struct ImportSheetDiscMenu: View {
     private var hovering = false
 
     var body: some View {
-        MacMenuButton {
-            for number in sheet.discOptions {
+        MacButton(
+            kind: .plain,
+            menu: {
+                for number in sheet.discOptions {
+                    MacMenuItem(
+                        verbatim: localizedCoreString(
+                            "ui.import.sheet.disc",
+                            Int(number)
+                        ),
+                        checked: sheet.assignment == .disc(number: number)
+                    ) { onAssign(.disc(number: number)) }
+                }
+                MacMenuItem.divider
                 MacMenuItem(
-                    verbatim: localizedCoreString(
-                        "ui.import.sheet.disc",
-                        Int(number)
-                    ),
-                    checked: sheet.assignment == .disc(number: number)
-                ) { onAssign(.disc(number: number)) }
+                    verbatim: localizedCoreString("ui.import.sheet.ignored"),
+                    checked: sheet.assignment == .ignored
+                ) { onAssign(.ignored) }
             }
-            MacMenuDivider()
-            MacMenuItem(
-                verbatim: localizedCoreString("ui.import.sheet.ignored"),
-                checked: sheet.assignment == .ignored
-            ) { onAssign(.ignored) }
-        } label: {
+        ) {
             HStack(spacing: ThemeSpace.inline) {
                 Text(assignmentText)
                     .themeText(.strong)

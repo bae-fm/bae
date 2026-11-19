@@ -109,11 +109,10 @@ struct MacQueuePanel: View {
             }
 
             if isEmpty {
-                ContentUnavailableView {
-                    Text("Queue is empty")
-                } description: {
-                    Text("Drag tracks here or play an album")
-                }
+                MacContentUnavailable(
+                    title: "Queue is empty",
+                    description: "Drag tracks here or play an album"
+                )
                 .frame(maxHeight: .infinity)
                 .dropDestination(for: String.self) { dropped, _ in
                     guard !dropped.isEmpty else {
@@ -215,9 +214,7 @@ struct MacQueuePanel: View {
         // a hairline on the docked edge.
         .background(Theme.surface)
         .overlay(alignment: .leading) {
-            Rectangle()
-                .fill(Theme.hairline)
-                .frame(width: 1)
+            MacHairline(axis: .vertical)
         }
     }
 

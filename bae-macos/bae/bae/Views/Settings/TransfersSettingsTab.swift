@@ -54,30 +54,34 @@ struct TransfersSettingsTab: View {
     var body: some View {
         SettingsPane(.transfers) {
             Form {
-                Section {
-                    Toggle(
-                        "Pause uploads",
-                        isOn: pauseBinding(
-                            paused: outboxStore.uploadsPaused,
-                            set: sync.setSyncPaused,
-                            failure: "upload pause"
+                MacSection {
+                    MacRow("Pause uploads") {
+                        MacSwitch(
+                            "Pause uploads",
+                            isOn: pauseBinding(
+                                paused: outboxStore.uploadsPaused,
+                                set: sync.setSyncPaused,
+                                failure: "upload pause"
+                            )
                         )
-                    )
-                    Toggle(
-                        "Pause downloads",
-                        isOn: pauseBinding(
-                            paused: downloadStore.downloadsPaused,
-                            set: downloads.setDownloadsPaused,
-                            failure: "download pause"
+                    }
+                    MacRow("Pause downloads") {
+                        MacSwitch(
+                            "Pause downloads",
+                            isOn: pauseBinding(
+                                paused: downloadStore.downloadsPaused,
+                                set: downloads.setDownloadsPaused,
+                                failure: "download pause"
+                            )
                         )
-                    )
+                    }
                 } footer: {
                     Text(
                         "Paused files keep their place and continue when you resume. Changes to the library still sync."
                     )
                 }
 
-                Section {
+                MacSection {
                     control(
                         label: "Uploads at once",
                         value: configStore.config.maxConcurrentUploads,

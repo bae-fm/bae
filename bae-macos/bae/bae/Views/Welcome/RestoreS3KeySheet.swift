@@ -25,8 +25,7 @@ struct RestoreS3KeySheet: View {
             MacSheetFooter {
                 Button("Back") { form.clearReading() }
                     .keyboardShortcut(.cancelAction)
-                Button("Add") { form.start() }
-                    .buttonStyle(PrimaryButtonStyle())
+                MacButton("Add", kind: .primary) { form.start() }
                     .keyboardShortcut(.defaultAction)
                     .disabled(!form.ready)
             }

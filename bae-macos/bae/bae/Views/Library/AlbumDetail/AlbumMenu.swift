@@ -24,19 +24,19 @@ struct AlbumMenu: MacMenuPart {
     var entries: [MacMenuEntry] {
         MacMenuItem("Play", action: onPlay)
         MacMenuItem("Shuffle", action: onShuffle)
-        MacMenuDivider()
+        MacMenuItem.divider
         MacMenuItem("Play next", action: onAddNext)
         MacMenuItem("Add to queue", action: onAddToQueue)
-        MacMenuDivider()
+        MacMenuItem.divider
         MacMenuItem("Edit…", action: onEdit)
         MacMenuItem("Manage storage…", action: onOpenStorage)
         MacMenuItem("Export…", action: onExport)
         MacMenuItem("Save as…", action: onSaveAs)
         if offersSetAsPrimary {
-            MacMenuDivider()
+            MacMenuItem.divider
             MacMenuItem("Set as primary release", action: onSetPrimaryRelease)
         }
-        MacMenuDivider()
+        MacMenuItem.divider
         MacMenuItem("Delete release", action: onDeleteRelease)
         MacMenuItem("Delete album…", action: onDeleteAlbum)
     }

@@ -64,7 +64,7 @@ struct SubsonicSettingsContent: View {
 
     private var form: some View {
         Form {
-            Section {
+            MacSection {
                 SettingToggleRow(
                     title: "Subsonic server",
                     note: serverNote,
@@ -76,25 +76,27 @@ struct SubsonicSettingsContent: View {
                     )
                 )
                 if let detail = failureDetail {
-                    MacNotice(
-                        title: String(
-                            localized: "Subsonic server could not start"
-                        ),
-                        advice: nil,
-                        error: DisplayError(
-                            line: String(
+                    MacNested {
+                        MacNotice(
+                            title: String(
                                 localized: "Subsonic server could not start"
                             ),
-                            detail: detail
+                            advice: nil,
+                            error: DisplayError(
+                                line: String(
+                                    localized:
+                                        "Subsonic server could not start"
+                                ),
+                                detail: detail
+                            )
                         )
-                    )
-                    .joiningRowAbove()
+                    }
                     .settingsNoticeRow()
                 }
                 networkRow
                 portRow
             }
-            Section {
+            MacSection {
                 usernameRow
                 passwordRow
             } header: {
@@ -290,7 +292,7 @@ extension SubsonicSettingsContent {
                     value: NetworkChoice.thisMachine
                 )
                 if !view.networks.isEmpty {
-                    MacMenuDivider()
+                    MacMenuItem.divider
                     for network in view.networks {
                         let name = names.name(of: network.interface)
                         MacPopUpOption(
@@ -300,7 +302,7 @@ extension SubsonicSettingsContent {
                         )
                     }
                 }
-                MacMenuDivider()
+                MacMenuItem.divider
                 MacPopUpOption("Every network", value: NetworkChoice.every)
             }
             .fixedSize()
