@@ -270,3 +270,50 @@ fn a_release_names_the_device_that_holds_one_of_its_audio_files_only() {
         );
     });
 }
+
+/// The release detail fails to read, and names the device, when the release's
+/// storage row names a device that coven doesn't register or names this
+/// device, instead of reading as a release that plays here.
+#[tokio::test]
+async fn a_stored_device_coven_does_not_register_or_this_device_fails_the_read() {
+    use crate::test_fixtures::*;
+    let (store, dir) = bae_store::test_fixtures::temp_db(TEST_SCHEMA).await;
+    library::RecordsFixture::new()
+        .album(ALBUM_A, "Album Title", None, &[])
+        .release(ALBUM_A, RELEASE_A)
+        .write(&test_records(&store))
+        .await;
+    let detail_error = || async {
+        store
+            .read(|sql| release_detail_rows_on(&sql, RELEASE_A, NO_STARS, "", |_| Ok(())))
+            .await
+            .err()
+            .expect("the read fails")
+            .to_string()
+    };
+
+    let unregistered = [0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef];
+    crate::release_storage::plant_audio_elsewhere_device_for_test(
+        dir.path(),
+        RELEASE_A,
+        &unregistered,
+    );
+    let error = detail_error().await;
+    assert!(error.contains("0123456789ABCDEF, which coven doesn't register"), "{error}");
+
+    let this_device: Vec<u8> = store
+        .read(|sql| {
+            Ok(sql.query_row("SELECT device FROM coven_devices WHERE is_self", [], |row| {
+                row.get(0)
+            })?)
+        })
+        .await
+        .unwrap();
+    crate::release_storage::plant_audio_elsewhere_device_for_test(
+        dir.path(),
+        RELEASE_A,
+        &this_device,
+    );
+    let error = detail_error().await;
+    assert!(error.contains("names this device"), "{error}");
+}

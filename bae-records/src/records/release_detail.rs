@@ -294,24 +294,43 @@ fn release_files_column(row: &Row<'_>, column: &str) -> rusqlite::Result<DbRelea
     })
 }
 
-/// A JSON array of the name and state of the device that the release's
-/// storage row `storage` names as alone holding one of its audio files, as
-/// coven registers that device, and whether a member removed that device's
-/// person from the library. The column holds the JSON text `null` when no
-/// other device alone holds an audio file of the release.
-const ELSEWHERE_OF_RELEASE: &str = "COALESCE((SELECT json_array(d.name, d.state, m.removed) \
-     FROM coven_devices d JOIN coven_members m ON m.member = d.member \
-     WHERE d.device = storage.audio_elsewhere_device), 'null')";
+/// The JSON text `null` when no other device alone holds an audio file of
+/// the release, and otherwise a JSON array of the device that the release's
+/// storage row `storage` names as holding one, in hex, and coven's
+/// registration of it: its name, its state, whether a member removed its
+/// person from the library and whether it is this device, or `null` when
+/// coven registers no such device.
+const ELSEWHERE_OF_RELEASE: &str = "CASE WHEN storage.audio_elsewhere_device IS NULL \
+     THEN 'null' ELSE json_array(hex(storage.audio_elsewhere_device), \
+     json((SELECT json_array(d.name, d.state, m.removed, d.is_self) \
+           FROM coven_devices d JOIN coven_members m ON m.member = d.member \
+           WHERE d.device = storage.audio_elsewhere_device))) END";
 
 /// The other device a release's audio is on, from `column` of a row that
 /// holds [`ELSEWHERE_OF_RELEASE`]. `elsewhere_in_row` returns `None` when no
-/// other device alone holds an audio file of the release.
+/// other device alone holds an audio file of the release. A device that coven
+/// doesn't register, or that is this device, fails the read: the release's
+/// storage row names only a device that coven's record of a file names, and
+/// never this one, so either is a bug.
 fn elsewhere_in_row(row: &Row<'_>, column: &str) -> rusqlite::Result<Option<OtherDevice>> {
-    let Some((name, state, member_removed)) =
-        bae_store::read::json_column::<Option<(String, String, i64)>, _>(row, column)?
+    type Registration = (String, String, i64, i64);
+    let Some((device, registration)) =
+        bae_store::read::json_column::<Option<(String, Option<Registration>)>, _>(row, column)?
     else {
         return Ok(None);
     };
+    let fail = |cause: String| bae_store::read::column_conversion_error(row, column, cause);
+    let Some((name, state, member_removed, is_self)) = registration else {
+        return Err(fail(format!(
+            "the release's storage row names the device {device}, which coven doesn't register"
+        )));
+    };
+    if is_self != 0 {
+        return Err(fail(format!(
+            "the release's storage row names this device, {device}, as the other device \
+             that alone holds one of its audio files"
+        )));
+    }
     let state = state
         .parse()
         .map_err(|error| bae_store::read::column_conversion_error(row, column, error))?;
