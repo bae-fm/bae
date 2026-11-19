@@ -373,6 +373,7 @@ extension PeopleAndDevicesPage {
     private var youSection: some View {
         Section {
             if let profile = store.selfProfile {
+                PictureRow(profile: profile, busy: task != nil, run: run)
                 LabeledContent("Name") {
                     HStack(spacing: ThemeSpace.related) {
                         Text(verbatim: profile.name)
@@ -429,6 +430,13 @@ extension PeopleAndDevicesPage {
                 // Only an admin has anything to do on a person's page.
                 PageLinkRow(
                     title: displayName(person),
+                    avatar: Avatar(
+                        name: displayName(person),
+                        picture: person.profile.flatMap { profile in
+                            profile.avatarVersion.map { (profile.id, $0) }
+                        },
+                        size: 28
+                    ),
                     tag: member.role.label,
                     value: deviceCount(member),
                     opens: store.selfIsAdmin,
@@ -698,6 +706,9 @@ extension PeopleAndDevicesPage {
 private struct PageLinkRow: View {
     let title: LocalizedStringKey?
     let verbatimTitle: String?
+    /// The person's picture or initials before the title, when the row is a
+    /// person's.
+    var avatar: Avatar?
     var tag: String?
     let value: String
     var opens = true
@@ -716,6 +727,7 @@ private struct PageLinkRow: View {
 
     init(
         title: String,
+        avatar: Avatar,
         tag: String,
         value: String,
         opens: Bool,
@@ -723,6 +735,7 @@ private struct PageLinkRow: View {
     ) {
         self.title = nil
         verbatimTitle = title
+        self.avatar = avatar
         self.tag = tag
         self.value = value
         self.opens = opens
@@ -741,6 +754,9 @@ private struct PageLinkRow: View {
 
     private var row: some View {
         HStack(spacing: ThemeSpace.related) {
+            if let avatar {
+                avatar
+            }
             if let title {
                 Text(title)
             }
@@ -890,6 +906,7 @@ private struct InviteRow: View {
             if case .code(_, .joining(let name)) = invite.shown {
                 PageLinkRow(
                     title: name,
+                    avatar: Avatar(name: name, size: 28),
                     tag: String(localized: "Joining"),
                     value: invite.label,
                     opens: false,
@@ -899,6 +916,7 @@ private struct InviteRow: View {
             else {
                 PageLinkRow(
                     title: invite.label,
+                    avatar: Avatar(name: invite.label, size: 28),
                     tag: String(localized: "Invited"),
                     value: waitsForSharing
                         ? String(localized: "Shares access once online") : "",

@@ -46,6 +46,13 @@ extension ShotScene {
             peopleStage(invites: [invited])
         },
         ShotScene(
+            id: "mac.settings.people.picture",
+            size: CGSize(width: 690, height: 600),
+            frame: .window(title: "Settings", titleBar: .hidden)
+        ) {
+            peopleStage(invites: [invited], ownPicture: true)
+        },
+        ShotScene(
             id: "mac.settings.people.invite-waiting",
             size: CGSize(width: 690, height: 600),
             frame: .window(title: "Settings", titleBar: .hidden)
@@ -312,16 +319,23 @@ extension ShotScene {
 
     /// The shot people with the other person named Ben, who has a tablet
     /// and no removed devices.
-    private static func peopleWithBen(role: BridgeMemberRole) -> BridgePeople {
+    private static func peopleWithBen(
+        role: BridgeMemberRole,
+        ownPicture: Bool = false
+    ) -> BridgePeople {
         var people = PreviewData.members(
             reaching: PreviewData.previewDropboxStorage
         )
+        if ownPicture {
+            people.own?.profile?.avatarVersion = "1"
+        }
         people.others = people.others.map { person in
             guard person.membership.id == otherMemberId else {
                 return person
             }
             var ben = person
             ben.profile?.name = "Ben"
+            ben.profile?.avatarVersion = "1"
             ben.membership.role = role
             ben.membership.activeDevices = [
                 BridgeActiveDevice(
@@ -430,6 +444,7 @@ extension ShotScene {
     private static func peopleStage(
         subpage: PeopleAndDevicesPage.Subpage = .people,
         asAdmin: Bool = true,
+        ownPicture: Bool = false,
         invites: [BridgeInvite] = [],
         refusedInvites: [BridgeRefusedInvite] = [],
         shown: BridgeSyncShown = .fixtureSynced,
@@ -437,7 +452,7 @@ extension ShotScene {
         menu: (@MainActor () -> AnyView)? = nil
     ) -> ShotStage {
         let membership = MembershipStore.stub(
-            people: peopleWithBen(role: .member),
+            people: peopleWithBen(role: .member, ownPicture: ownPicture),
             selfIsAdmin: asAdmin,
             invites: invites,
             refusedInvites: refusedInvites
@@ -454,6 +469,11 @@ extension ShotScene {
                     )
                 )
                 .environment(membership)
+                .environment(
+                    ImageStore(fetchAvatarBytes: {
+                        PreviewData.previewArtData($0)
+                    })
+                )
         )
         let framed =
             sheet.map { AnyView(OverWindow.sheet($0(), over: window)) }

@@ -58,6 +58,9 @@ public final class Sync: Sendable, Observable {
     /// Rename this device's person's profile, which everyone in the library
     /// sees.
     public let renameProfile: @Sendable (String) async throws -> Void
+    /// Set this device's person's avatar to the image in the bytes, or clear
+    /// it with nil. Everyone in the library sees the new avatar.
+    public let setAvatar: @Sendable (Data?) async throws -> Void
     public let retryOutbox: @Sendable () async throws -> Void
     public let renameLibrary: @Sendable (String) async throws -> Void
     public let cancelReleaseTransition: @Sendable (String) async throws -> Void
@@ -138,6 +141,9 @@ public final class Sync: Sendable, Observable {
         renameProfile: @escaping @Sendable (String) async throws -> Void = {
             _ in throw StubError.notImplemented
         },
+        setAvatar: @escaping @Sendable (Data?) async throws -> Void = { _ in
+            throw StubError.notImplemented
+        },
         retryOutbox: @escaping @Sendable () async throws -> Void = {
             throw StubError.notImplemented
         },
@@ -179,6 +185,7 @@ public final class Sync: Sendable, Observable {
         self.cancelInvite = cancelInvite
         self.setHistorySharing = setHistorySharing
         self.renameProfile = renameProfile
+        self.setAvatar = setAvatar
         self.retryOutbox = retryOutbox
         self.renameLibrary = renameLibrary
         self.cancelReleaseTransition = cancelReleaseTransition
@@ -242,6 +249,7 @@ public final class Sync: Sendable, Observable {
                 try await handle.setHistorySharing(sharing: $0)
             },
             renameProfile: { try await handle.renameProfile(name: $0) },
+            setAvatar: { try await handle.setAvatar(bytes: $0) },
             retryOutbox: { try await handle.retryOutbox() },
             renameLibrary: { try await handle.renameLibrary(name: $0) },
             cancelReleaseTransition: {
