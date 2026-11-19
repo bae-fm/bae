@@ -4,7 +4,7 @@
 use super::*;
 use bae_diagnostics::UiError;
 use bae_records::records::query::RELEASE_STORAGE_PINNED;
-use bae_records::records::queued_uploads::{upload_queue_wait_in_row, UPLOAD_QUEUE_WAIT};
+use bae_records::records::queued_uploads::{upload_queue_wait_in_row, UPLOAD_QUEUE_HOLD};
 use bae_sync_status::SyncStatusSnapshot;
 use bae_transfers::{QueueWait, ReleaseQueueCounts};
 
@@ -60,6 +60,10 @@ pub struct UploadQueueActivity {
     pub batch: TransferBatch,
     /// What holds the upload queue back, shown in place of the count.
     pub wait: Option<bae_records::UploadQueueWait>,
+    /// The person paused the upload queue: its line ends in Resume, not
+    /// Pause. `wait` reads Paused then too, and also while sync isn't
+    /// running, which Resume doesn't change.
+    pub paused: bool,
 }
 
 /// The Pinning or the Moving to this device line: the releases queued as that kind
@@ -75,13 +79,6 @@ pub struct DownloadQueueActivity {
     pub wait: Option<QueueWait>,
 }
 
-impl UploadQueueActivity {
-    /// The person paused the upload queue: its line ends in Resume, not Pause.
-    pub fn paused(&self) -> bool {
-        self.wait == Some(bae_records::UploadQueueWait::Paused)
-    }
-}
-
 impl DownloadQueueActivity {
     /// The person paused the download queue: the line ends in Resume, not
     /// Pause. Pins and moves-to-this-device share the queue, so both lines say so.
@@ -91,13 +88,14 @@ impl DownloadQueueActivity {
 }
 
 /// What the activity reads of the upload queue in one query: the Uploading
-/// line's batch, how many files this process is sending now, and what holds
-/// the queue back.
+/// line's batch, how many files this process is sending now, what holds the
+/// queue back, and whether the person paused it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UploadQueueCounts {
     pub batch: TransferBatch,
     pub sending: u32,
     pub wait: Option<bae_records::UploadQueueWait>,
+    pub paused: bool,
 }
 
 /// What the activity reads of the download queue: the Pinning and Making
@@ -124,10 +122,11 @@ impl SyncActivity {
             failure: status.failure(),
             syncing: status.syncing(),
             moving: uploads.sending > 0 || downloads.queue.total.active > 0,
-            uploads: uploads
-                .batch
-                .holding()
-                .map(|batch| UploadQueueActivity { batch, wait: uploads.wait.clone() }),
+            uploads: uploads.batch.holding().map(|batch| UploadQueueActivity {
+                batch,
+                wait: uploads.wait.clone(),
+                paused: uploads.paused,
+            }),
             pins: download_line(downloads.pins),
             moving_to_this_device: download_line(downloads.moving_to_this_device),
         }
@@ -166,7 +165,7 @@ fn sync_activity_on(sql: &coven::SqlReadContext<'_>) -> Result<SyncActivity, bae
 pub(super) const SQL: &str = include_str!("sync_activity.sql");
 
 /// The Uploading line's batch, how many files this process is sending now,
-/// and what holds the queue back. The bytes the files move are not read, so
+/// what holds the queue back, and whether the person paused it. The bytes the files move are not read, so
 /// a confirmed part reruns nothing.
 fn upload_queue_counts_on(
     sql: &coven::SqlReadContext<'_>,
@@ -178,8 +177,8 @@ fn upload_queue_counts_on(
                   JOIN release_storage AS storage ON storage.release_id = batch.release_id \
                   WHERE storage.stored = 1 AND storage.queued_count = 0) AS batch_done, \
                  (SELECT COUNT(*) FROM coven_sending) AS uploads_sending, \
-                 hold.upload_wait, hold.upload_wait_at \
-             FROM ({UPLOAD_QUEUE_WAIT}) AS hold"
+                 hold.upload_wait, hold.upload_wait_at, hold.uploads_paused \
+             FROM ({UPLOAD_QUEUE_HOLD}) AS hold"
         ),
         [],
         |row| {
@@ -187,6 +186,7 @@ fn upload_queue_counts_on(
                 batch: transfer_batch_in_row(row)?,
                 sending: bae_store::read::count_column(row, "uploads_sending")?,
                 wait: upload_queue_wait_in_row(row)?,
+                paused: row.get("uploads_paused")?,
             })
         },
     )?)

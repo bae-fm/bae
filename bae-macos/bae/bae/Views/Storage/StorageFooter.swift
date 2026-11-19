@@ -30,7 +30,7 @@ struct StorageFooter: View {
             if let uploads = queues?.uploads {
                 StorageQueueControl(
                     queue: .uploads,
-                    paused: uploads.wait == .paused,
+                    paused: uploads.paused,
                     hold: uploads.wait?.text
                 ) {
                     StorageUploadRate()

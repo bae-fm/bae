@@ -10,7 +10,7 @@ fn batch(done: u32, total: u32) -> TransferBatch {
 
 /// An empty, running upload queue.
 fn idle_uploads() -> UploadQueueCounts {
-    UploadQueueCounts { batch: batch(0, 0), sending: 0, wait: None }
+    UploadQueueCounts { batch: batch(0, 0), sending: 0, wait: None, paused: false }
 }
 
 /// An empty, running download queue.
@@ -61,17 +61,17 @@ fn a_pass_alone_is_not_movement() {
 /// release's file does with its line.
 #[test]
 fn a_file_being_sent_moves_with_or_without_a_line() {
-    let cover = UploadQueueCounts { batch: batch(0, 0), sending: 1, wait: None };
+    let cover = UploadQueueCounts { batch: batch(0, 0), sending: 1, wait: None, paused: false };
     let sending_cover = SyncActivity::new(&status(), &cover, &idle_downloads());
     assert!(sending_cover.moving);
     assert_eq!(sending_cover.uploads, None);
 
-    let release = UploadQueueCounts { batch: batch(1, 2), sending: 1, wait: None };
+    let release = UploadQueueCounts { batch: batch(1, 2), sending: 1, wait: None, paused: false };
     let sending_release = SyncActivity::new(&status(), &release, &idle_downloads());
     assert!(sending_release.moving);
     assert_eq!(
         sending_release.uploads,
-        Some(UploadQueueActivity { batch: batch(1, 2), wait: None })
+        Some(UploadQueueActivity { batch: batch(1, 2), wait: None, paused: false })
     );
 }
 
@@ -114,6 +114,7 @@ fn a_held_line_keeps_its_count() {
         batch: batch(1, 3),
         sending: 0,
         wait: Some(bae_records::UploadQueueWait::Paused),
+        paused: true,
     };
     let downloads = DownloadQueueCounts {
         pins: batch(0, 2),
@@ -131,7 +132,8 @@ fn a_held_line_keeps_its_count() {
         activity.uploads,
         Some(UploadQueueActivity {
             batch: batch(1, 3),
-            wait: Some(bae_records::UploadQueueWait::Paused)
+            wait: Some(bae_records::UploadQueueWait::Paused),
+            paused: true,
         })
     );
     assert_eq!(
@@ -143,25 +145,24 @@ fn a_held_line_keeps_its_count() {
     );
 }
 
-/// A line ends in Resume only while the person paused its queue: not while
-/// the network, a metered network or a retry's time holds it, nor while
-/// nothing does. Pins and moves-to-this-device share one queue, so both lines say so.
+/// A line ends in Resume only while the person paused its queue: the
+/// upload line carries the person's pause as the query read it, whatever
+/// holds the queue, so a queue that reads Paused because sync isn't running
+/// still ends in Pause. Pins and moves-to-this-device share one queue, so
+/// both lines say so.
 #[test]
 fn a_line_is_paused_only_by_the_person() {
-    use bae_records::UploadQueueWait;
-    let uploads = |wait| {
-        let uploads = UploadQueueCounts { batch: batch(1, 3), sending: 0, wait };
-        SyncActivity::new(&status(), &uploads, &idle_downloads()).uploads.unwrap().paused()
+    let paused_line = |paused| {
+        let uploads = UploadQueueCounts {
+            batch: batch(1, 3),
+            sending: 0,
+            wait: Some(bae_records::UploadQueueWait::Paused),
+            paused,
+        };
+        SyncActivity::new(&status(), &uploads, &idle_downloads()).uploads.unwrap().paused
     };
-    assert!(uploads(Some(UploadQueueWait::Paused)));
-    for wait in [
-        None,
-        Some(UploadQueueWait::Offline),
-        Some(UploadQueueWait::Metered),
-        Some(UploadQueueWait::Retrying { at_ms: 1_700_000_000_000 }),
-    ] {
-        assert!(!uploads(wait.clone()), "{wait:?}");
-    }
+    assert!(paused_line(true));
+    assert!(!paused_line(false), "sync isn't running");
 
     let downloads = |wait| {
         let downloads = DownloadQueueCounts {
@@ -196,7 +197,8 @@ fn a_held_line_with_nothing_moving_holds_the_indicator() {
         UploadQueueWait::Retrying { at_ms: 1_700_000_000_000 },
     ];
     for wait in upload_waits {
-        let uploads = UploadQueueCounts { batch: batch(1, 3), sending: 0, wait: Some(wait) };
+        let uploads =
+            UploadQueueCounts { batch: batch(1, 3), sending: 0, wait: Some(wait), paused: false };
         let activity = SyncActivity::new(&status(), &uploads, &idle_downloads());
         assert!(activity.held(), "{:?}", activity.uploads);
     }
@@ -230,13 +232,14 @@ fn a_held_line_with_nothing_moving_holds_the_indicator() {
 /// uploads are paused.
 #[test]
 fn bytes_moving_are_not_held() {
-    let paused = Some(bae_records::UploadQueueWait::Paused);
-    let sending_cover = UploadQueueCounts { batch: batch(0, 2), sending: 1, wait: paused.clone() };
+    let wait = Some(bae_records::UploadQueueWait::Paused);
+    let sending_cover =
+        UploadQueueCounts { batch: batch(0, 2), sending: 1, wait: wait.clone(), paused: true };
     let activity = SyncActivity::new(&status(), &sending_cover, &idle_downloads());
     assert!(activity.moving);
     assert!(!activity.held());
 
-    let uploads = UploadQueueCounts { batch: batch(0, 2), sending: 0, wait: paused };
+    let uploads = UploadQueueCounts { batch: batch(0, 2), sending: 0, wait, paused: true };
     let downloading = DownloadQueueCounts {
         pins: batch(0, 1),
         queue: ReleaseQueueCounts {
@@ -261,6 +264,7 @@ fn a_hold_without_its_line_or_a_line_without_a_hold_is_not_held() {
         batch: batch(0, 0),
         sending: 0,
         wait: Some(bae_records::UploadQueueWait::Paused),
+        paused: true,
     };
     let downloads_paused_empty = DownloadQueueCounts {
         queue: ReleaseQueueCounts {
@@ -271,7 +275,7 @@ fn a_hold_without_its_line_or_a_line_without_a_hold_is_not_held() {
     };
     assert!(!SyncActivity::new(&status(), &paused_empty, &downloads_paused_empty).held());
 
-    let waiting = UploadQueueCounts { batch: batch(0, 2), sending: 0, wait: None };
+    let waiting = UploadQueueCounts { batch: batch(0, 2), sending: 0, wait: None, paused: false };
     let pins_waiting = DownloadQueueCounts { pins: batch(0, 1), ..idle_downloads() };
     assert!(!SyncActivity::new(&status(), &waiting, &pins_waiting).held());
 }

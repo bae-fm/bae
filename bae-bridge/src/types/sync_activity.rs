@@ -99,7 +99,7 @@ impl BridgeUploadQueueActivity {
     fn from_core(uploads: bae_views::UploadQueueActivity) -> Self {
         Self {
             batch: BridgeTransferBatch::from_core(uploads.batch),
-            paused: uploads.paused(),
+            paused: uploads.paused,
             wait: uploads.wait.map(super::BridgeUploadQueueWait::from_core),
         }
     }

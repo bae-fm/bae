@@ -44,6 +44,9 @@ pub struct BridgeStorageQueues {
 pub struct BridgeUploadQueueRun {
     /// What holds the queue back.
     pub wait: Option<crate::types::BridgeUploadQueueWait>,
+    /// The person paused uploads: the queue's control offers Resume, not
+    /// Pause.
+    pub paused: bool,
 }
 
 /// A one-release-at-a-time queue while it holds work. Mirrors
@@ -64,6 +67,7 @@ impl BridgeStorageQueues {
         Self {
             uploads: queues.uploads.map(|run| BridgeUploadQueueRun {
                 wait: run.wait.map(crate::types::BridgeUploadQueueWait::from_core),
+                paused: run.paused,
             }),
             downloads: queues.downloads.map(release),
             outputs: queues.outputs.map(release),

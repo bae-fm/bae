@@ -343,6 +343,7 @@ async fn the_sync_activity_follows_a_send_as_it_starts_and_ends() {
         Some(bae_views::UploadQueueActivity {
             batch: bae_views::TransferBatch { done: 0, total: 1 },
             wait: Some(bae_records::UploadQueueWait::Paused),
+            paused: true,
         }),
         "the helper queues the file with uploads paused"
     );
@@ -364,7 +365,8 @@ async fn the_sync_activity_follows_a_send_as_it_starts_and_ends() {
         sending.uploads,
         Some(bae_views::UploadQueueActivity {
             batch: bae_views::TransferBatch { done: 0, total: 1 },
-            wait: None
+            wait: None,
+            paused: false,
         })
     );
     created.await.unwrap();

@@ -4,6 +4,7 @@
 use super::*;
 use crate::manager::tests::*;
 use bae_records::UploadQueueWait;
+use bae_views::UploadQueueRun;
 
 /// The name of the file whose missing original the move of `release_id`
 /// waits for, as the release's Storage Manager row says.
@@ -56,26 +57,28 @@ async fn the_upload_queue_says_it_is_paused() {
     );
 }
 
-/// The first value the Storage Manager's list gives for what holds the
-/// upload queue back that `accept` takes, once the Activity panel's
-/// Uploading line says it too.
-async fn upload_wait_until(
+/// The first upload queue the Storage Manager's list gives that `accept`
+/// takes, once the Activity panel's Uploading line says the same wait and
+/// pause.
+async fn upload_queue_until(
     manager: &LibraryManager,
-    accept: impl Fn(&Option<UploadQueueWait>) -> bool,
-) -> Option<UploadQueueWait> {
+    accept: impl Fn(&UploadQueueRun) -> bool,
+) -> UploadQueueRun {
     let mut queues = views(manager).subscribe_storage_queues();
-    let wait = crate::followed::query_matching(&mut queues, |queues| {
-        queues.uploads.as_ref().is_some_and(|uploads| accept(&uploads.wait))
+    let run = crate::followed::query_matching(&mut queues, |queues| {
+        queues.uploads.as_ref().is_some_and(&accept)
     })
     .await
     .uploads
-    .expect("a file is queued")
-    .wait;
+    .expect("a file is queued");
     crate::followed::value_matching(&mut views(manager).subscribe_sync_activity(), |activity| {
-        activity.uploads.as_ref().is_some_and(|uploads| uploads.wait == wait)
+        activity
+            .uploads
+            .as_ref()
+            .is_some_and(|uploads| uploads.wait == run.wait && uploads.paused == run.paused)
     })
     .await;
-    wait
+    run
 }
 
 /// The earliest time coven gives a queued file's retry to end, in
@@ -92,10 +95,12 @@ async fn earliest_retry_ms(manager: &LibraryManager) -> i64 {
 
 /// The upload queue names the first of coven's waits that holds: the pause,
 /// then the network, then a metered network, then a file's retry at the
-/// earliest time coven gives. Sync that isn't running reads as paused.
+/// earliest time coven gives. Sync that isn't running reads as paused, and
+/// the queue's control still offers Pause, since the person didn't pause it.
 #[tokio::test]
 async fn the_upload_queue_names_the_first_wait_that_holds() {
     use UploadQueueWait::*;
+    let held = |wait| UploadQueueRun { wait: Some(wait), paused: false };
     let (test, temp_dir, _clock) = library_on_a_stopped_clock().await;
     let manager = test.library.manager();
     manager.store.set_uploads_paused(true).await.unwrap();
@@ -115,44 +120,42 @@ async fn the_upload_queue_names_the_first_wait_that_holds() {
         })
         .await;
     manager.store.set_uploads_paused(false).await.unwrap();
-    let retrying = upload_wait_until(manager, |wait| matches!(wait, Some(Retrying { .. }))).await;
-    assert_eq!(retrying, Some(Retrying { at_ms: earliest_retry_ms(manager).await }));
+    let retrying =
+        upload_queue_until(manager, |run| matches!(run.wait, Some(Retrying { .. }))).await;
+    assert_eq!(retrying, held(Retrying { at_ms: earliest_retry_ms(manager).await }));
 
     manager.store.set_unmetered_only(true).await.unwrap();
     test.installation.set_network_metered(true);
     assert_eq!(
-        upload_wait_until(manager, |wait| wait != &retrying).await,
-        Some(Metered),
+        upload_queue_until(manager, |run| run != &retrying).await,
+        held(Metered),
         "a metered network outranks the retry"
     );
 
     test.installation.lose_network();
     assert_eq!(
-        upload_wait_until(manager, |wait| wait != &Some(Metered)).await,
-        Some(Offline),
+        upload_queue_until(manager, |run| run != &held(Metered)).await,
+        held(Offline),
         "the network outranks the retry"
     );
 
     test.installation.join_network(false);
-    assert!(matches!(
-        upload_wait_until(manager, |wait| wait != &Some(Offline)).await,
-        Some(Retrying { .. })
-    ));
+    let retrying_again = upload_queue_until(manager, |run| run != &held(Offline)).await;
+    assert!(matches!(retrying_again.wait, Some(Retrying { .. })), "{retrying_again:?}");
     manager.store.set_uploads_paused(true).await.unwrap();
     assert_eq!(
-        upload_wait_until(manager, |_| true).await,
-        Some(Paused),
+        upload_queue_until(manager, |_| true).await,
+        UploadQueueRun { wait: Some(Paused), paused: true },
         "the pause outranks the retry"
     );
 
     manager.store.set_uploads_paused(false).await.unwrap();
     manager.stop_sync().await.unwrap();
     assert_eq!(
-        upload_wait_until(manager, |_| true).await,
-        Some(Paused),
-        "the queue reads as paused while sync isn't running"
+        upload_queue_until(manager, |_| true).await,
+        held(Paused),
+        "the queue reads as paused while sync isn't running, which the person didn't pause"
     );
-    assert!(!manager.store.uploads_paused().await.unwrap(), "the person didn't pause it");
     manager.close().await.unwrap();
 }
 

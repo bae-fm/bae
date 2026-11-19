@@ -58,28 +58,29 @@ pub const RELEASE_UPLOAD_COLUMNS: &str =
     concat!(release_upload_count_columns!(), ", storage.missing_original_file");
 
 /// What holds the upload queue back, as one row: `upload_wait` names the
-/// line ([`upload_queue_wait_in_row`] maps it) and `upload_wait_at` is the
-/// earliest time coven gives a file's wait to end. Each file's wait is
+/// line ([`upload_queue_wait_in_row`] maps it), `upload_wait_at` is the
+/// earliest time coven gives a file's wait to end, and `uploads_paused` is
+/// whether the person paused uploads. Each file's wait is
 /// coven's, as `coven_upload_phases` gives it, read once. The first that
 /// holds names the line: `paused` while the person paused uploads or sync
 /// isn't running; nothing while a file is being sent; `offline` while coven
 /// says the device has no usable network; `metered` while a file waits for
 /// an unmetered network; `retrying` while a file waits for its retry or a
 /// provider's cooldown to end. NULL when nothing holds the queue.
-pub const UPLOAD_QUEUE_WAIT: &str = "SELECT CASE \
-         WHEN (SELECT paused FROM coven_upload_pause) OR phases.not_syncing THEN 'paused' \
+pub const UPLOAD_QUEUE_HOLD: &str = "SELECT CASE \
+         WHEN pause.paused OR phases.not_syncing THEN 'paused' \
          WHEN phases.sending THEN NULL \
          WHEN (SELECT usable FROM coven_network) IS 0 THEN 'offline' \
          WHEN phases.metered THEN 'metered' \
          WHEN phases.wait_at IS NOT NULL THEN 'retrying' \
-     END AS upload_wait, phases.wait_at AS upload_wait_at \
-     FROM (SELECT MAX(wait = 'not_syncing') AS not_syncing, \
+     END AS upload_wait, phases.wait_at AS upload_wait_at, pause.paused AS uploads_paused \
+     FROM coven_upload_pause AS pause, (SELECT MAX(wait = 'not_syncing') AS not_syncing, \
              MAX(phase = 'uploading') AS sending, \
              MAX(wait = 'metered') AS metered, \
              MIN(at) AS wait_at \
          FROM coven_upload_phases) AS phases";
 
-/// What holds the upload queue back, as [`UPLOAD_QUEUE_WAIT`] names it.
+/// What holds the upload queue back, as [`UPLOAD_QUEUE_HOLD`] names it.
 pub fn upload_queue_wait_in_row(row: &Row<'_>) -> rusqlite::Result<Option<UploadQueueWait>> {
     let Some(wait) = row.get::<_, Option<String>>("upload_wait")? else {
         return Ok(None);

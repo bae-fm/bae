@@ -7,7 +7,7 @@ use super::*;
 use crate::album_detail::{StoragePage, StorageRow};
 use crate::storage_actions::{selection_action_columns, storage_action_columns};
 use bae_records::records::queued_uploads::{
-    upload_queue_wait_in_row, RELEASES_SENDING, RELEASE_UPLOAD_COLUMNS, UPLOAD_QUEUE_WAIT,
+    upload_queue_wait_in_row, RELEASES_SENDING, RELEASE_UPLOAD_COLUMNS, UPLOAD_QUEUE_HOLD,
 };
 
 /// The SQL creating this part's tables and triggers.
@@ -273,13 +273,16 @@ fn storage_queues_on(sql: &SqlReadContext<'_>) -> Result<crate::StorageQueues, D
     let uploads = sql.query_row(
         &format!(
             "SELECT EXISTS (SELECT 1 FROM coven_upload_queue), \
-                 hold.upload_wait, hold.upload_wait_at \
-             FROM ({UPLOAD_QUEUE_WAIT}) AS hold"
+                 hold.upload_wait, hold.upload_wait_at, hold.uploads_paused \
+             FROM ({UPLOAD_QUEUE_HOLD}) AS hold"
         ),
         [],
         |row| {
             Ok(if row.get::<_, bool>(0)? {
-                Some(crate::UploadQueueRun { wait: upload_queue_wait_in_row(row)? })
+                Some(crate::UploadQueueRun {
+                    wait: upload_queue_wait_in_row(row)?,
+                    paused: row.get("uploads_paused")?,
+                })
             } else {
                 None
             })

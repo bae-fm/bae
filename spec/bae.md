@@ -2546,7 +2546,11 @@ holding files waiting or on the move shows while it does: uploads, pins
 place what holds the whole queue back (Paused, Waiting for network, Waiting for
 Wi-Fi, Retrying at the earliest retry's time, the first that holds), an export
 with how far its release has been written, and a control that pauses or
-resumes the whole queue. A queue holding only failed entries shows nothing.
+resumes the whole queue. The upload queue shows Paused while the person paused
+it and also while sync isn't running, and its control offers Resume only while
+the person paused it. The upload queue shows Retrying at the earliest time
+coven gives a file's retry or a provider's cooldown to end. A queue holding
+only failed entries shows nothing.
 
 ### 4.3 Pinning and the cache
 
@@ -4009,9 +4013,11 @@ queued to upload; a cover or picture on its way counts in no line. A release
 that leaves its batch without finishing, cancelled, failed or removed from the
 library, stays in the count and never counts as done. A queue's hold (Paused,
 Waiting for network, and for uploads Waiting for Wi-Fi or Retrying at its time)
-stands in place of its count. On the desktop each queue's line ends in Pause, or
-Resume while that queue is paused; pinning and moving to This Mac are one queue,
-as in Transfers settings, so their lines pause and resume together. Under the
+stands in place of its count, as on the Storage manager's list (§4.2): the
+upload line shows Paused while sync isn't running too. On the desktop each
+queue's line ends in Pause, or Resume while the person paused that queue;
+pinning and moving to This Mac are one queue, as in Transfers settings, so
+their lines pause and resume together. Under the
 lines, *Open Storage Manager* opens the Storage manager. On the phones the
 Pinning line ends in Pause or Resume too, and opens the Pinning screen. With
 nothing to show it says everything is up to date. The panel doesn't offer *Retry

@@ -584,7 +584,7 @@ extension PreviewData {
     ) -> BridgeStorageQueues {
         BridgeStorageQueues(
             uploads: uploads.isEmpty
-                ? nil : BridgeUploadQueueRun(wait: nil),
+                ? nil : BridgeUploadQueueRun(wait: nil, paused: false),
             downloads: downloads.isEmpty
                 ? nil
                 : BridgeReleaseQueueRun(
