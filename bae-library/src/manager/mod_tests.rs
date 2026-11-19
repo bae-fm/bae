@@ -214,6 +214,18 @@ pub(super) async fn connect_test_cloud_uploading(manager: &TestManager) -> Arc<M
     manager.storage.clone()
 }
 
+/// A syncing library on a clock that never moves, so no backoff ends by
+/// itself: a pass after a failed one runs only because a retry ended its
+/// wait.
+pub(super) async fn library_on_a_stopped_clock() -> (TestManager, TempDir, Arc<coven::FixedClock>) {
+    let clock = Arc::new(coven::FixedClock::new(std::time::UNIX_EPOCH));
+    let (test, temp_dir) = setup_test_manager_with_clock(clock.clone()).await;
+    let manager = test.library.manager();
+    connect_test_cloud_uploading(&test).await;
+    manager.start().unwrap();
+    (test, temp_dir, clock)
+}
+
 /// An attached release whose files are queued in coven and have not uploaded.
 /// The releases uploading and each release's upload read this committed queue.
 /// The manager must already be connected via [`connect_test_cloud`].

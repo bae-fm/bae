@@ -246,42 +246,16 @@ pub struct DbReleaseUpload {
 }
 
 /// What keeps the upload queue from sending its waiting files, as coven says
-/// it of the uploads and the network.
+/// it of each file's upload and of the network.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UploadQueueWait {
-    /// The person paused uploads.
+    /// The person paused uploads, or sync isn't running.
     Paused,
     /// The device has no usable network.
     Offline,
     /// Files move only on unmetered networks, and this one is metered.
     Metered,
-    /// A failed attempt is held until `at_ms`, in milliseconds since the
-    /// epoch.
+    /// A file waits for its retry after a failed attempt, or for a
+    /// provider's cooldown, until `at_ms`, in milliseconds since the epoch.
     Retrying { at_ms: i64 },
-}
-
-impl UploadQueueWait {
-    /// What holds the queue, when several things do: the pause first, then
-    /// the network, which makes the rest moot, then the metered network and
-    /// last the retry time. Nothing holds a queue that is sending a file
-    /// (`sending > 0`), except the pause.
-    pub fn pick(
-        paused: bool,
-        sending: u32,
-        network_usable: Option<bool>,
-        metered: bool,
-        retry_at_ms: Option<i64>,
-    ) -> Option<Self> {
-        if paused {
-            Some(Self::Paused)
-        } else if sending > 0 {
-            None
-        } else if network_usable == Some(false) {
-            Some(Self::Offline)
-        } else if metered {
-            Some(Self::Metered)
-        } else {
-            retry_at_ms.map(|at_ms| Self::Retrying { at_ms })
-        }
-    }
 }

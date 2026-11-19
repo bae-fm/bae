@@ -300,18 +300,6 @@ async fn a_start_whose_pass_ends_as_the_last_did_ends_the_failed_start() {
 // a pass when retried; each failure only the person can clear, and a
 // provider's cooldown, runs none, since coven answers the retry at once.
 
-/// A syncing library on a clock that never moves, so no backoff ends by
-/// itself: a pass after a failed one runs only because a retry ended its
-/// wait.
-async fn library_on_a_stopped_clock() -> (TestManager, TempDir, Arc<coven::FixedClock>) {
-    let clock = Arc::new(coven::FixedClock::new(std::time::UNIX_EPOCH));
-    let (test, temp_dir) = setup_test_manager_with_clock(clock.clone()).await;
-    let manager = test.library.manager();
-    connect_test_cloud_uploading(&test).await;
-    manager.start().unwrap();
-    (test, temp_dir, clock)
-}
-
 /// Follow the status until `accept` takes it.
 async fn status_until(
     manager: &TestManager,

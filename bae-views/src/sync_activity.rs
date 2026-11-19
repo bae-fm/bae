@@ -4,7 +4,7 @@
 use super::*;
 use bae_diagnostics::UiError;
 use bae_records::records::query::RELEASE_STORAGE_PINNED;
-use bae_records::records::queued_uploads::{upload_queue_wait_in_row, UPLOAD_QUEUE_WAIT_COLUMNS};
+use bae_records::records::queued_uploads::{upload_queue_wait_in_row, UPLOAD_QUEUE_WAIT};
 use bae_sync_status::SyncStatusSnapshot;
 use bae_transfers::{QueueWait, ReleaseQueueCounts};
 
@@ -177,7 +177,9 @@ fn upload_queue_counts_on(
                  (SELECT COUNT(*) FROM upload_batch AS batch \
                   JOIN release_storage AS storage ON storage.release_id = batch.release_id \
                   WHERE storage.stored = 1 AND storage.queued_count = 0) AS batch_done, \
-                 {UPLOAD_QUEUE_WAIT_COLUMNS}"
+                 (SELECT COUNT(*) FROM coven_sending) AS uploads_sending, \
+                 hold.upload_wait, hold.upload_wait_at \
+             FROM ({UPLOAD_QUEUE_WAIT}) AS hold"
         ),
         [],
         |row| {

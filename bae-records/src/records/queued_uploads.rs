@@ -57,27 +57,46 @@ pub const RELEASE_UPLOAD_COUNT_COLUMNS: &str = release_upload_count_columns!();
 pub const RELEASE_UPLOAD_COLUMNS: &str =
     concat!(release_upload_count_columns!(), ", storage.missing_original_file");
 
-/// The columns the upload queue's hold reads: whether uploads are paused, how
-/// many files are being sent, whether coven says the network is usable (NULL
-/// when it cannot tell), whether any upload waits for an unmetered network,
-/// and the earliest retry time. [`upload_queue_wait_in_row`] maps them.
-pub const UPLOAD_QUEUE_WAIT_COLUMNS: &str =
-    "(SELECT paused FROM coven_upload_pause) AS uploads_paused, \
-     (SELECT COUNT(*) FROM coven_sending) AS uploads_sending, \
-     (SELECT usable FROM coven_network) AS upload_network_usable, \
-     (SELECT MAX(metered) FROM coven_uploads) AS uploads_metered, \
-     (SELECT MIN(retry_at) FROM coven_uploads) AS uploads_retry_at";
+/// What holds the upload queue back, as one row: `upload_wait` names the
+/// line ([`upload_queue_wait_in_row`] maps it) and `upload_wait_at` is the
+/// earliest time coven gives a file's wait to end. Each file's wait is
+/// coven's, as `coven_upload_phases` gives it, read once. The first that
+/// holds names the line: `paused` while the person paused uploads or sync
+/// isn't running; nothing while a file is being sent; `offline` while coven
+/// says the device has no usable network; `metered` while a file waits for
+/// an unmetered network; `retrying` while a file waits for its retry or a
+/// provider's cooldown to end. NULL when nothing holds the queue.
+pub const UPLOAD_QUEUE_WAIT: &str = "SELECT CASE \
+         WHEN (SELECT paused FROM coven_upload_pause) OR phases.not_syncing THEN 'paused' \
+         WHEN phases.sending THEN NULL \
+         WHEN (SELECT usable FROM coven_network) IS 0 THEN 'offline' \
+         WHEN phases.metered THEN 'metered' \
+         WHEN phases.wait_at IS NOT NULL THEN 'retrying' \
+     END AS upload_wait, phases.wait_at AS upload_wait_at \
+     FROM (SELECT MAX(wait = 'not_syncing') AS not_syncing, \
+             MAX(phase = 'uploading') AS sending, \
+             MAX(wait = 'metered') AS metered, \
+             MIN(at) AS wait_at \
+         FROM coven_upload_phases) AS phases";
 
-/// What holds the upload queue back, as [`UPLOAD_QUEUE_WAIT_COLUMNS`] read
-/// it.
+/// What holds the upload queue back, as [`UPLOAD_QUEUE_WAIT`] names it.
 pub fn upload_queue_wait_in_row(row: &Row<'_>) -> rusqlite::Result<Option<UploadQueueWait>> {
-    Ok(UploadQueueWait::pick(
-        row.get("uploads_paused")?,
-        bae_store::read::count_column(row, "uploads_sending")?,
-        row.get("upload_network_usable")?,
-        row.get::<_, Option<bool>>("uploads_metered")?.unwrap_or(false),
-        row.get("uploads_retry_at")?,
-    ))
+    let Some(wait) = row.get::<_, Option<String>>("upload_wait")? else {
+        return Ok(None);
+    };
+    Ok(Some(match wait.as_str() {
+        "paused" => UploadQueueWait::Paused,
+        "offline" => UploadQueueWait::Offline,
+        "metered" => UploadQueueWait::Metered,
+        "retrying" => UploadQueueWait::Retrying { at_ms: row.get("upload_wait_at")? },
+        _ => {
+            return Err(bae_store::read::column_conversion_error(
+                row,
+                "upload_wait",
+                format!("{wait:?} names no upload queue wait"),
+            ))
+        }
+    }))
 }
 
 /// How many of a release's files wait, are being sent and are stored, as
