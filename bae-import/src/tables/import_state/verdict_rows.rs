@@ -566,6 +566,12 @@ pub(super) fn outcome_of(
         }
         findings
     };
+    #[expect(
+        clippy::read_pick,
+        clippy::read_filter,
+        clippy::read_aggregate,
+        reason = "refuses a verdict whose stored matches list a release it found none of: checks what one statement returned for damage, and no screen shows it"
+    )]
     let no_findings = |found: &StoredMatches| {
         if found.rows.iter().all(|row| matches!(row.listing, Listing::Unlisted)) {
             return Ok(());

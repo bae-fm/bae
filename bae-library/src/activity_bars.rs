@@ -52,6 +52,10 @@ impl ActivityBars {
 
 /// `rows`' share done plus each moving key's share times the fraction
 /// `fraction` gives it, or nothing when it gives none.
+#[expect(
+    clippy::read_aggregate,
+    reason = "adds each moving file's or release's share times how far its transfer has got; the fractions are in-memory transfer progress, which SQL cannot read"
+)]
 fn bar<Key>(rows: &BatchBar<Key>, fraction: impl Fn(&Key) -> Option<f64>) -> f64 {
     rows.done
         + rows
@@ -97,6 +101,10 @@ impl ActivityBarsWatch {
     /// read for the first time, and returns the bars, or the failure that
     /// kept the query from reading. Returns `None` once the query or a
     /// transfer watch stops because its store closed.
+    #[expect(
+        clippy::read_kept_state,
+        reason = "keeps the bar rows' query's latest result and the download queue's latest progress, to add the two each time either changes; the latest value of each input, not a copy of what it sent"
+    )]
     pub async fn next(&mut self) -> Option<Result<ActivityBars, DbError>> {
         loop {
             tokio::select! {

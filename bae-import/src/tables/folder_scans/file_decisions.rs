@@ -87,6 +87,10 @@ impl ImportTables {
     /// Every release a scan stored reading the files `content_hash` names at
     /// file decision revision `file_edit_revision`, under whichever root, with
     /// those files in key order: what a file decision settles together.
+    #[expect(
+        clippy::read_query_per_row,
+        reason = "kept finding: reads each release's items with a statement of its own, keyed by the release keys the first statement returned"
+    )]
     pub async fn load_releases_reading(
         &self,
         content_hash: &str,

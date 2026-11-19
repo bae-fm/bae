@@ -274,6 +274,10 @@ pub(super) fn load_stored_file_tag_reading_on(
                         .iter()
                         .any(|file| FileObservation::scanned(file) == fact.observation)
                 });
+            #[expect(
+                clippy::read_keyed_statement,
+                reason = "kept finding: reads the embedded cover keyed by the cover source the snapshot's head returned"
+            )]
             if unchanged {
                 StoredCover::Picture(load_embedded_cover(sql, candidate_path, source)?)
             } else {
@@ -300,6 +304,10 @@ pub(crate) fn load_candidate_file_tag_snapshot(
     // A blocked candidate still displays its stored artwork and metadata.
     // Operations enforce actionability before reading or changing source files.
     let candidate = stored_candidate.candidate;
+    #[expect(
+        clippy::read_keyed_statement,
+        reason = "kept finding: reads the file's tag snapshot keyed by the candidate the first statement returned"
+    )]
     let snapshot = load_file_tag_snapshot(sql, &candidate.watched_folder_path, candidate_path)?;
 
     Ok(Some(DbCandidateFileTagSnapshot {
@@ -319,6 +327,10 @@ pub(crate) fn load_file_tag_snapshot(
     let Some(head) = load_file_tag_snapshot_head(sql, watched_folder_path, candidate_path)? else {
         return Ok(None);
     };
+    #[expect(
+        clippy::read_keyed_statement,
+        reason = "kept finding: reads the embedded cover keyed by the cover source the snapshot's head returned"
+    )]
     let embedded_cover =
         head.cover.map(|source| load_embedded_cover(sql, candidate_path, source)).transpose()?;
     Ok(Some(FileTagSnapshot {

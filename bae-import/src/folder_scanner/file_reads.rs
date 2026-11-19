@@ -86,7 +86,6 @@ enum FileRead {
     Sheet(Option<CueSheet>),
 }
 
-#[derive(Default)]
 struct Known {
     files: HashMap<FileVersion, FileRead>,
     /// What the tags of a folder that can't be imported call the release, by
@@ -96,6 +95,23 @@ struct Known {
     /// The tracks whose pictures are held, in the order they were read.
     held: VecDeque<FileVersion>,
     held_bytes: usize,
+}
+
+// Written out rather than derived: a derived impl takes no mark, and the
+// read rule finds its empty maps.
+impl Default for Known {
+    #[expect(
+        clippy::read_group,
+        reason = "kept finding: starts the empty maps of the file reads and skipped tags a pass learns from the stored scan"
+    )]
+    fn default() -> Self {
+        Self {
+            files: HashMap::new(),
+            skipped_tags: HashMap::new(),
+            held: VecDeque::new(),
+            held_bytes: 0,
+        }
+    }
 }
 
 /// Every file a pass knows it has read, by its [`FileVersion`], and what
@@ -683,6 +699,10 @@ impl Known {
         tags: Option<SkippedTags>,
     ) -> Result<(), FolderScanError> {
         use std::collections::hash_map::Entry;
+        #[expect(
+            clippy::read_group,
+            reason = "kept finding: keeps what the tags of each folder that can't be imported call the release, by the folder's playable tracks"
+        )]
         match self.skipped_tags.entry(playable) {
             Entry::Vacant(entry) => {
                 entry.insert(tags);

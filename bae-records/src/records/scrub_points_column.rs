@@ -102,6 +102,10 @@ impl Varints<'_> {
         for (index, &byte) in self.0.iter().enumerate() {
             let shift = 7 * index as u32;
             let bits = u64::from(byte & 0x7f);
+            #[expect(
+                clippy::read_cutoff,
+                reason = "decodes the varints of one blob column: 64 bits is a u64's width, a limit of the encoding, not a cutoff between two reads"
+            )]
             if shift >= 64 || (bits << shift) >> shift != bits {
                 return None;
             }

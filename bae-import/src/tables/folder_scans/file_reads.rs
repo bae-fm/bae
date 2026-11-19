@@ -46,6 +46,10 @@ impl ImportTables {
     /// in one read. An item stored at a key in `moved` is read for its seed
     /// whatever its entry says: that entry changed after a read found it
     /// unchanged.
+    #[expect(
+        clippy::read_query_per_row,
+        reason = "kept finding: reads each scan item's seed with statements of its own"
+    )]
     pub(crate) async fn load_scan_batch_readings(
         &self,
         items: &[ScanItem],

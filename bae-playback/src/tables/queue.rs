@@ -288,6 +288,10 @@ impl PlaybackQueueTables {
 
     /// The track that plays next: Up Next's first, or else the context lane's
     /// track after the playing one.
+    #[expect(
+        clippy::read_keyed_statement,
+        reason = "kept finding: reads the next context track keyed by the queue row the first statement returned"
+    )]
     pub async fn front(&self) -> Result<Option<String>, DbError> {
         self.store
             .read(|sql| {

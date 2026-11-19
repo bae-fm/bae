@@ -570,6 +570,10 @@ impl StoredLedger {
         let (Some(disc_id), Some(barcode), Some(catalog), Some(isrc), Some(search)) =
             (disc_id, barcode, catalog, isrc, search)
         else {
+            #[expect(
+                clippy::read_pick,
+                reason = "refuses a ledger with stored rows whose verdict records no ledger: checks what the statements returned for damage, and no screen shows it"
+            )]
             if !providers.is_empty()
                 || !isrcs.is_empty()
                 || !offered.is_empty()

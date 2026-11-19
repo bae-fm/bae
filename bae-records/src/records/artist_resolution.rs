@@ -255,6 +255,10 @@ pub(crate) fn resolve_artists_on<Q: coven::SqlRead>(
     picked: &HashSet<String>,
     gone: GonePicked,
 ) -> Result<ResolvedArtists, IdentityWriteError> {
+    #[expect(
+        clippy::read_aggregate,
+        reason = "sizes the list of ids for the credits it resolves; no screen shows the count"
+    )]
     let mut ids = Vec::with_capacity(credits.len());
     let mut inserts: Vec<DbArtist> = Vec::new();
     let mut external_id_updates: Vec<DbArtist> = Vec::new();
@@ -263,6 +267,10 @@ pub(crate) fn resolve_artists_on<Q: coven::SqlRead>(
 
     for credit in credits {
         if picked.contains(&credit.id) {
+            #[expect(
+                clippy::read_query_per_row,
+                reason = "kept finding: looks up each picked credit's artist with a statement of its own"
+            )]
             if artist_by_id_on(sql, &credit.id)?.is_some() {
                 ids.push(credit.id.clone());
                 continue;
@@ -274,7 +282,15 @@ pub(crate) fn resolve_artists_on<Q: coven::SqlRead>(
         }
 
         let so_far = WriteSoFar { inserts: &inserts, staged: &external_id_updates };
+        #[expect(
+            clippy::read_query_per_row,
+            reason = "kept finding: matches each credit by its catalog ids with statements of its own"
+        )]
         let (credit, matched) = settled_catalog_match_on(sql, credit, so_far)?;
+        #[expect(
+            clippy::read_query_per_row,
+            reason = "kept finding: matches each credit no catalog id placed by its name with statements of its own"
+        )]
         let resolved_id = match matched {
             Some(CatalogFound { holder, folded }) => {
                 let id = match holder {
@@ -292,6 +308,10 @@ pub(crate) fn resolve_artists_on<Q: coven::SqlRead>(
                         id
                     }
                     Holder::New(pending) => {
+                        #[expect(
+                            clippy::read_pick,
+                            reason = "kept finding: finds the new artist the catalog step names among the artists this write makes"
+                        )]
                         let new = inserts
                             .iter_mut()
                             .find(|new| new.id == pending.id)
@@ -399,6 +419,10 @@ fn resolve_by_name_on<Q: coven::SqlRead>(
     external_id_updates: &mut Vec<DbArtist>,
     merges: &[ArtistIdMerge],
 ) -> Result<String, DbError> {
+    #[expect(
+        clippy::read_filter,
+        reason = "kept finding: keeps the new artists of this write whose name and catalog ids match the credit"
+    )]
     let pending: Vec<usize> = inserts
         .iter()
         .enumerate()
@@ -416,6 +440,10 @@ fn resolve_by_name_on<Q: coven::SqlRead>(
         // An artist this write merges into another is that one.
         let mut named = name_matches_on(sql, credit, external_id_updates)?;
         named.retain(|artist| !merges.iter().any(|merge| merge.absorbed.id == artist.id));
+        #[expect(
+            clippy::read_length_branch,
+            reason = "kept finding: links the credit to the library artist its name matches only when exactly one matches"
+        )]
         if let [only] = named.as_slice() {
             let mut linked = only.clone();
             linked.fill_missing(credit);
@@ -492,6 +520,10 @@ fn with_both_various_artists_ids(credit: &DbArtist) -> Option<DbArtist> {
 /// The credit as the catalog-id step settles it ([`settled_on`]), and the
 /// artist its ids name. A credit naming Various Artists by one catalog's id,
 /// which no artist holds, goes by both catalogs' Various Artists ids.
+#[expect(
+    clippy::read_keyed_statement,
+    reason = "kept finding: settles the catalog match with statements keyed by the match the first statements returned"
+)]
 fn settled_catalog_match_on<Q: coven::SqlRead>(
     sql: &Q,
     credit: &DbArtist,
@@ -514,6 +546,11 @@ fn settled_catalog_match_on<Q: coven::SqlRead>(
 /// catalog ids — as this write's own fills leave them — agree with the
 /// credit's. Absorbed artists are left out: a merge shows them as their
 /// survivor, which is matched on its own name.
+#[expect(
+    clippy::read_filter,
+    clippy::read_pick,
+    reason = "kept finding: puts this write's staged fills over the artists the name matched, and keeps those whose catalog ids agree with the credit's"
+)]
 pub(super) fn name_matches_on<Q: coven::SqlRead>(
     sql: &Q,
     credit: &DbArtist,
@@ -639,6 +676,10 @@ fn merge_into(
     }
 }
 
+#[expect(
+    clippy::read_pick,
+    reason = "kept finding: finds the staged update of the artist among this write's staged updates"
+)]
 fn stage_artist_update(staged_updates: &mut Vec<DbArtist>, artist: DbArtist) {
     match staged_updates.iter_mut().find(|staged| staged.id == artist.id) {
         Some(staged) => *staged = artist,

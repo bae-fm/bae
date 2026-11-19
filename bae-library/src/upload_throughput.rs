@@ -34,6 +34,10 @@ impl UploadThroughput {
             self.files.clear();
             return;
         }
+        #[expect(
+            clippy::read_filter,
+            reason = "kept finding: keeps the files coven is uploading that have progress"
+        )]
         let measured = || {
             sending.files.iter().filter_map(|file| {
                 progress
@@ -41,6 +45,10 @@ impl UploadThroughput {
                     .map(|moved| (file.file, moved.bytes_transferred, moved.bytes_total))
             })
         };
+        #[expect(
+            clippy::read_pick,
+            reason = "kept finding: tests each kept sample against the files coven is uploading"
+        )]
         self.files.retain(|id, _| measured().any(|(file, _, _)| file == *id));
         for (file, transferred, total) in measured() {
             self.record(file, transferred, total, now);

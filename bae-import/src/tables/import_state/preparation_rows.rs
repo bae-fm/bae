@@ -128,6 +128,10 @@ pub(super) fn load_preparation_on(
         return Ok(Some(CandidatePreparationRead::Imported { release_id }));
     }
     let (draft, cover) = pane_rows::load_draft_and_cover_on(sql, OneCandidate::Hash(content_hash))?;
+    #[expect(
+        clippy::read_keyed_statement,
+        reason = "kept finding: reads the prepared cover keyed by the cover the first statement returned"
+    )]
     let cover = cover_rows::load_prepared_cover_on(sql, content_hash, cover)?;
     Ok(Some(CandidatePreparationRead::Stored(CandidatePreparation {
         content_hash: state.content_hash,

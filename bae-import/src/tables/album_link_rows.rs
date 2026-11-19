@@ -95,6 +95,10 @@ pub(super) fn group_albums_of_on<S: coven::SqlRead>(
             albums.len() - 1
         });
     }
+    #[expect(
+        clippy::read_aggregate,
+        reason = "kept finding: counts the wanted releases to give each an empty group when none names an album"
+    )]
     if albums.is_empty() {
         return Ok(vec![Vec::new(); wanted.len()]);
     }
@@ -153,6 +157,10 @@ pub(super) struct ReleaseAlbums<'a> {
 
 impl ReleaseAlbums<'_> {
     /// The release's own albums: its group, and the albums its records name.
+    #[expect(
+        clippy::read_filter,
+        reason = "kept finding: keeps the release records that name an album"
+    )]
     fn albums(&self) -> Vec<MetadataRef> {
         self.source_group_id
             .map(|group| MetadataRef::new(self.catalog, group))
@@ -170,6 +178,10 @@ impl ReleaseAlbums<'_> {
                 let Some(other) = group_album.other_than(album) else {
                     continue;
                 };
+                #[expect(
+                    clippy::read_pick,
+                    reason = "kept finding: tests whether one of the release's records or an album it already joined reaches the other album's catalog"
+                )]
                 let reached = other.catalog == self.catalog
                     || self.records.iter().any(|record| record.catalog() == other.catalog)
                     || joined.iter().any(|named| named.catalog == other.catalog);

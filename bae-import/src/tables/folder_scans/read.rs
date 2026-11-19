@@ -180,6 +180,10 @@ pub(crate) fn load_item_by_key_rows(
         ));
     }
     if let Some(root) = roots.into_iter().next() {
+        #[expect(
+            clippy::read_keyed_statement,
+            reason = "kept finding: reads the candidate's items keyed by the root the first statement returned"
+        )]
         let items = load_candidate_items_rows(
             sql,
             EntryRows::Entry { root: &root, key: entry_key },
@@ -268,6 +272,10 @@ pub(crate) fn entries_reading(
         })?;
     // Sorted here: an `ORDER BY` has SQLite read each part in key order, a
     // pass over every entry under the root.
+    #[expect(
+        clippy::read_sort,
+        reason = "kept finding: sorts the entry keys in Rust, since an ORDER BY makes SQLite read every entry under the root"
+    )]
     keys.sort();
     Ok(keys)
 }

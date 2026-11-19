@@ -88,11 +88,19 @@ pub(super) fn load_candidate_on(
     let Some((candidate, settled)) = release_of_stored(&root, stored)? else {
         return Ok(None);
     };
+    #[expect(
+        clippy::read_keyed_statement,
+        reason = "kept finding: reads whether a grouping took the candidate in, keyed by the candidate key the first statement returned"
+    )]
     let taken_in = sql.query_row(
         "SELECT EXISTS(SELECT 1 FROM release_grouping_member WHERE member_key = ?)",
         [&key],
         |row| row.get::<_, bool>(0),
     )?;
+    #[expect(
+        clippy::read_keyed_statement,
+        reason = "kept finding: reads the grouping's block keyed by the grouping the first statement returned"
+    )]
     let error = match &candidate.grouping {
         Some(grouping) => load_block_on(sql, grouping)?,
         None => None,
@@ -660,6 +668,10 @@ impl ImportTables {
     }
 
     /// How the grouping `key` reads, or `None` when no grouping has that key.
+    #[expect(
+        clippy::read_keyed_statement,
+        reason = "kept finding: reads the anchored folder keyed by the anchor the first statement returned"
+    )]
     pub(crate) async fn load_grouping(
         &self,
         key: &CandidateKey,

@@ -12,6 +12,10 @@ use bae_store::live_query::LiveQueryError;
 pub struct LiveImportCandidate {
     read: LiveDetail<ImportCandidateDetail, CandidateKey, ImportError>,
     /// Gone once the read is cancelled, which says the pane shows nothing.
+    #[expect(
+        clippy::read_kept_state,
+        reason = "kept finding: keeps the candidate the pane shows in a Mutex beside its live query"
+    )]
     shown: std::sync::Mutex<Option<ShownCandidate>>,
 }
 

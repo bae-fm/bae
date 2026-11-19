@@ -166,6 +166,10 @@ fn find_artist_detail_on(
         return Ok(None);
     };
     let albums = sql.query(&artist_albums_query(), params![artist_id], AlbumSummaryRow::read)?;
+    #[expect(
+        clippy::read_keyed_statement,
+        reason = "kept finding: reads the artist's credit names keyed by the artist the first statement returned"
+    )]
     let credit_names = bae_records::records::artist_credit_names::credit_names_of_on(
         sql,
         &artist.artist.id,

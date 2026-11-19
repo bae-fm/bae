@@ -723,6 +723,10 @@ fn with_joined_albums_on<S: coven::SqlRead>(
 
 /// The stored release `release` names, as import surfaces read it, or
 /// `None` when no row names it.
+#[expect(
+    clippy::read_keyed_statement,
+    reason = "kept finding: reads the release's joined albums keyed by the release rows the first statement returned"
+)]
 pub(crate) fn load_source_release_on<S: coven::SqlRead>(
     sql: &S,
     release: &bae_catalogs::records::LookupRef,
@@ -802,6 +806,10 @@ impl ImportTables {
 
     /// The stored release `release` names, as its rows hold it beside how
     /// import surfaces read it, or `None` when no row names it.
+    #[expect(
+        clippy::read_keyed_statement,
+        reason = "kept finding: reads the release's joined albums keyed by the release rows the first statement returned"
+    )]
     pub(crate) async fn load_prepared_release(
         &self,
         release: &bae_catalogs::records::LookupRef,

@@ -90,7 +90,7 @@ pub(crate) fn assemble(component: &str, html: &str) -> Result<String, PreviewErr
 }
 
 #[derive(Deserialize)]
-struct Cell {
+struct CellRect {
     x: f64,
     y: f64,
     width: f64,
@@ -139,7 +139,7 @@ pub(crate) async fn render_row(
         })?;
         format!("document.querySelectorAll('.bae-preview-row')[{index}].querySelector('.bae-preview-cell')")
     };
-    let rect: Cell = page
+    let rect: CellRect = page
         .evaluate(format!(
             "(() => {{ const r = {cell}.getBoundingClientRect(); \
              return {{x: r.x + scrollX, y: r.y + scrollY, width: r.width, height: r.height}}; }})()"

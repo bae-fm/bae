@@ -12,7 +12,7 @@
 # lists (capability-boundaries). Work that runs on after its caller returns
 # (the [[background_starts]] below, and clippy.toml) starts only at a listed
 # root.
-rules = ["capability-boundaries", "capability-construction", "component-bundles", "crate-dependencies", "database-boundary", "owner-dependencies", "read-shapes"]
+rules = ["capability-boundaries", "capability-construction", "component-bundles", "crate-dependencies", "database-boundary", "owner-dependencies"]
 
 # The code generator for the bindings answers only to the conventions.
 tools = ["bae-uniffi-bindgen"]
@@ -156,25 +156,6 @@ shared_state_types = [
 private_state_types = ["std::sync::Condvar", "std::sync::Mutex", "tokio::sync::Mutex"]
 # Every holder of one of these shares what it points at with the others.
 shared_pointer_types = ["std::sync::Arc", "std::sync::Weak"]
-
-# Types that bae's dependencies declare and the read-shapes rows name bare:
-# std's atomics and locks, and coven's live reads. The owner rules' rows
-# name every type by its path.
-external_types = [
-    "AtomicBool",
-    "AtomicU32",
-    "AtomicU64",
-    "AtomicU8",
-    "LiveQuery",
-    "Mutex",
-    "OnceCell",
-    "OnceLock",
-    "ReconfigurableLiveQuery",
-    "RefCell",
-    "SqlRead",
-    "SqlReadContext",
-    "TransferWatch",
-]
 
 # Values that name a capability or shared state in a field but own no
 # lifetime of it: a message sent to a thread or task, the parameters one
@@ -1017,16 +998,22 @@ runs = [
 # file creates is in one domain.
 [database]
 capability = "SQLite"
+# Each scan of a watched folder takes the next number, which keys the rows it
+# writes, so finishing it can prune the rows of every other scan and a late
+# write of an older scan is refused.
+counters = [
+    { column = "folder_scan_generation_sequence.last_generation", reason = "numbers the scans of watched folders" },
+]
 
 [[database.domains]]
 name = "catalog image cache"
-owner = "DiskImageCache"
+owner = "bae_catalogs::remote_image::cache::DiskImageCache"
 homes = ["bae-catalogs/src/remote_image/cache.rs", "bae-catalogs/src/remote_image/cache.sql"]
 tables = ["cached_image"]
 
 [[database.domains]]
 name = "records"
-owner = "Records"
+owner = "bae_records::records::Records"
 homes = [
     "bae-records/src/records.rs",
     "bae-records/src/records.sql",
@@ -1069,13 +1056,13 @@ tables = [
 
 [[database.domains]]
 name = "release storage"
-owner = "Records"
+owner = "bae_records::records::Records"
 homes = ["bae-records/src/release_storage.rs", "bae-records/src/release_storage.sql"]
 tables = ["release_storage"]
 
 [[database.domains]]
 name = "people"
-owner = "People"
+owner = "bae_people::people::People"
 homes = ["bae-people/src/people.rs", "bae-people/src/people.sql", "bae-people/src/people/"]
 tables = [
     "people",
@@ -1087,7 +1074,7 @@ tables = [
 
 [[database.domains]]
 name = "membership"
-owner = "Membership"
+owner = "bae_people::membership::Membership"
 homes = [
     "bae-people/src/membership.rs",
     "bae-people/src/membership.sql",
@@ -1097,7 +1084,7 @@ tables = ["admin_operations"]
 
 [[database.domains]]
 name = "sync"
-owner = "SyncStatus"
+owner = "bae_sync_status::sync_status::SyncStatus"
 homes = [
     "bae-sync-status/src/sync_status.rs",
     "bae-sync-status/src/sync_status.sql",
@@ -1107,13 +1094,13 @@ tables = ["sync_start_failure"]
 
 [[database.domains]]
 name = "preferences"
-owner = "Store"
+owner = "bae_store::store::Store"
 homes = ["bae-preferences/src/row.rs", "bae-preferences/src/row.sql"]
 tables = ["preferences", "save_preset", "save_filename_token", "save_folder_token"]
 
 [[database.domains]]
 name = "playback queue"
-owner = "PlaybackQueueTables"
+owner = "bae_playback::tables::queue::PlaybackQueueTables"
 homes = [
     "bae-playback/src/tables/queue.rs",
     "bae-playback/src/tables/queue.sql",
@@ -1124,25 +1111,25 @@ tables = ["playback_queue", "playback_manual", "playback_context", "playback_sta
 
 [[database.domains]]
 name = "playback now"
-owner = "PlaybackNowRow"
+owner = "bae_playback::tables::now::PlaybackNowRow"
 homes = ["bae-playback/src/tables/now.rs", "bae-playback/src/tables/now.sql"]
 tables = ["playback_now"]
 
 [[database.domains]]
 name = "playback timeline"
-owner = "PlaybackTimelineRow"
+owner = "bae_playback::tables::timeline::PlaybackTimelineRow"
 homes = ["bae-playback/src/tables/timeline.rs", "bae-playback/src/tables/timeline.sql"]
 tables = ["playback_timeline"]
 
 [[database.domains]]
 name = "cast picker"
-owner = "CastPicker"
+owner = "bae_playback::renderer::picker::CastPicker"
 homes = ["bae-playback/src/renderer/picker.rs", "bae-playback/src/renderer/picker.sql"]
 tables = ["cast_receiver"]
 
 [[database.domains]]
 name = "watched folders"
-owner = "ImportTables"
+owner = "bae_import::tables::ImportTables"
 homes = [
     "bae-import/src/tables/watched_folders.rs",
     "bae-import/src/tables/watched_folders.sql",
@@ -1152,7 +1139,7 @@ tables = ["watched_import_folders"]
 
 [[database.domains]]
 name = "skipped candidates"
-owner = "ImportTables"
+owner = "bae_import::tables::ImportTables"
 homes = [
     "bae-import/src/tables/skipped_candidates.rs",
     "bae-import/src/tables/skipped_candidates.sql",
@@ -1161,7 +1148,7 @@ tables = ["skipped_import_candidates"]
 
 [[database.domains]]
 name = "folder scans"
-owner = "ImportTables"
+owner = "bae_import::tables::ImportTables"
 homes = [
     "bae-import/src/tables/folder_scans.rs",
     "bae-import/src/tables/folder_scans.sql",
@@ -1192,7 +1179,7 @@ tables = [
 
 [[database.domains]]
 name = "release groupings"
-owner = "ImportTables"
+owner = "bae_import::tables::ImportTables"
 homes = [
     "bae-import/src/tables/release_groupings.rs",
     "bae-import/src/tables/release_groupings.sql",
@@ -1202,7 +1189,7 @@ tables = ["release_grouping", "release_grouping_member"]
 
 [[database.domains]]
 name = "candidate state"
-owner = "ImportTables"
+owner = "bae_import::tables::ImportTables"
 homes = ["bae-import/src/tables/import_state.rs", "bae-import/src/tables/import_state/"]
 tables = [
     "import_candidate_state",
@@ -1271,7 +1258,7 @@ tables = [
 
 [[database.domains]]
 name = "source releases"
-owner = "ImportTables"
+owner = "bae_import::tables::ImportTables"
 homes = [
     "bae-import/src/tables/source_releases.rs",
     "bae-import/src/tables/source_releases.sql",
@@ -1305,7 +1292,7 @@ tables = [
 
 [[database.domains]]
 name = "cover gallery"
-owner = "ImportTables"
+owner = "bae_import::tables::ImportTables"
 homes = [
     "bae-import/src/tables/cover_gallery.rs",
     "bae-import/src/tables/cover_gallery.sql",
@@ -1320,7 +1307,7 @@ tables = [
 
 [[database.domains]]
 name = "catalog apply steps"
-owner = "ImportTables"
+owner = "bae_import::tables::ImportTables"
 homes = [
     "bae-import/src/tables/catalog_apply_steps.rs",
     "bae-import/src/tables/catalog_apply_steps.sql",
@@ -1329,7 +1316,7 @@ tables = ["import_catalog_apply_step"]
 
 [[database.domains]]
 name = "credit resolutions"
-owner = "ImportTables"
+owner = "bae_import::tables::ImportTables"
 homes = [
     "bae-import/src/tables/credit_resolutions.rs",
     "bae-import/src/tables/credit_resolutions.sql",
@@ -1342,13 +1329,13 @@ tables = [
 
 [[database.domains]]
 name = "import origin"
-owner = "ImportTables"
+owner = "bae_import::tables::ImportTables"
 homes = ["bae-import/src/tables/import_origin.rs", "bae-import/src/tables/import_origin.sql"]
 tables = ["local_release_origin"]
 
 [[database.domains]]
 name = "release sheet decisions"
-owner = "ImportTables"
+owner = "bae_import::tables::ImportTables"
 homes = [
     "bae-import/src/tables/release_sheet_decisions.rs",
     "bae-import/src/tables/release_sheet_decisions.sql",
@@ -1357,7 +1344,7 @@ tables = ["release_sheet_bindings", "release_sheet_discs"]
 
 [[database.domains]]
 name = "import list"
-owner = "ImportTables"
+owner = "bae_import::tables::ImportTables"
 homes = ["bae-import/src/tables/import_list.rs", "bae-import/src/tables/import_list/"]
 tables = [
     "import_list_placement",
@@ -1368,7 +1355,7 @@ tables = [
 
 [[database.domains]]
 name = "transfers"
-owner = "QueuedReleases"
+owner = "bae_transfers::queued_releases::QueuedReleases"
 homes = [
     "bae-transfers/src/queued_releases.rs",
     "bae-transfers/src/queued_releases/",
@@ -1382,7 +1369,7 @@ tables = [
 
 [[database.domains]]
 name = "library views"
-owner = "LibraryViews"
+owner = "bae_views::LibraryViews"
 homes = ["bae-views/src/"]
 tables = [
     "upload_batch",
@@ -1412,18 +1399,24 @@ tables = [
 [library_names]
 "coreaudio-rs" = "coreaudio"
 
-# This table tells the read-shapes rule what a read is, which types keep memory
-# or run a live query, and which store files run every live query and are not
-# themselves read code. A read returns what the screen shows; the lists below
-# hold the findings the rule finds today (frozen: they only shrink) and, in
-# `allowed`, the matches whose values are not a read's rows.
+# The read rule, which coven's typed lints hold (clippy::read_sort and the
+# rest): a read does no work its SQL can do and keeps no memory between reads.
+# These rows tell the lints what a read is, by each type's path: the types a
+# read receives, the live queries, the row a statement hands its row mapper,
+# the traits of one column's value, the live queries asked with a request,
+# the keyed latest-value streams a holder of a live query may hold beside it,
+# and the types that keep memory. The plumbing files run every live query and
+# are no read code. Each finding bae keeps is an `#[expect]` on its item,
+# with its reason.
 [read_shapes]
 rule = "projects/bae-rules/screen-reads/reactive-screens-read-plain-live-queries.md in agent-instructions"
-read_types = ["SqlRead", "SqlReadContext", "ReadFor", "StoreRead", "LiveQuery", "ReconfigurableLiveQuery"]
-live_query_types = ["LiveQuery", "ReconfigurableLiveQuery", "LiveResults", "CancellableLiveQuery", "LiveRead", "LiveValues"]
-request_query_types = ["ReconfigurableLiveQuery", "CancellableLiveQuery", "LiveRead"]
-value_stream_types = ["TransferWatch", "ReleaseTransfersWatch", "KeyedValueStream"]
-kept_state_types = ["Mutex", "RefCell", "Cell", "OnceLock", "OnceCell", "AtomicBool", "AtomicU8", "AtomicU32", "AtomicU64"]
+read_types = ["coven::SqlRead", "coven::SqlReadContext", "bae_store::live_query::read::ReadFor", "bae_store::store_read::StoreRead", "coven::LiveQuery", "coven::ReconfigurableLiveQuery"]
+live_query_types = ["coven::LiveQuery", "coven::ReconfigurableLiveQuery", "bae_store::live_results::LiveResults", "bae_store::live_query::CancellableLiveQuery", "bae_store::live_query::read::LiveRead", "bae_store::live_query::values::LiveValues"]
+statement_rows = ["coven::Row"]
+column_values = ["coven::types::FromSql"]
+request_query_types = ["coven::ReconfigurableLiveQuery", "bae_store::live_query::CancellableLiveQuery", "bae_store::live_query::read::LiveRead"]
+value_stream_types = ["coven::TransferWatch", "bae_transfers::release_transfers::ReleaseTransfersWatch", "bae_bridge::keyed_values::KeyedValueStream"]
+kept_state_types = ["std::sync::Mutex", "tokio::sync::Mutex", "std::cell::RefCell", "std::cell::Cell", "std::sync::OnceLock", "std::cell::OnceCell", "std::sync::atomic::AtomicBool", "std::sync::atomic::AtomicU8", "std::sync::atomic::AtomicU32", "std::sync::atomic::AtomicU64"]
 plumbing = [
     "bae-store/src/live_query.rs",
     "bae-store/src/live_query/",
@@ -1431,229 +1424,4 @@ plumbing = [
     "bae-store/src/store.rs",
     "bae-store/src/store_read.rs",
     "bae-store/src/store/coven_capabilities.rs",
-]
-frozen = [
-    { path = "bae-app/src/live_reads/import_candidate.rs", item = "LiveImportCandidate", shape = "kept-state", count = 1, finding = "`LiveImportCandidate` keeps `shown`, which holds `Mutex` state, beside its live query (found by the check)" },
-    { path = "bae-bridge/src/screens/detail.rs", item = "ImportCandidateSubscription::cancel", shape = "kept-state", count = 1, finding = "reads through `inner`, the `LiveImportCandidate` that keeps the candidate it last showed in a `Mutex` between reads" },
-    { path = "bae-bridge/src/screens/detail.rs", item = "ImportCandidateSubscription::next", shape = "kept-state", count = 1, finding = "reads through `inner`, the `LiveImportCandidate` that keeps the candidate it last showed in a `Mutex` between reads" },
-    { path = "bae-catalogs/src/remote_image/covers.rs", item = "RemoteImageSet::with_copies", shape = "filter", count = 1, finding = "`RemoteImageSet::with_copies` filters with `dedup_by_key` (found by the check)" },
-    { path = "bae-catalogs/src/remote_image/covers.rs", item = "RemoteImageSet::with_copies", shape = "sort", count = 1, finding = "`RemoteImageSet::with_copies` sorts with `sort_by_key` (found by the check)" },
-    { path = "bae-catalogs/src/remote_image/covers.rs", item = "push_unique_cover", shape = "pick", count = 1, finding = "`push_unique_cover` picks with `find` (found by the check)" },
-    { path = "bae-identify/src/release_group/labels.rs", item = "Pressing::document_failure", shape = "pick", count = 1, finding = "picks the first document failure among a pressing's catalog releases with `find_map`" },
-    { path = "bae-identify/src/release_group/pressing.rs", item = "Pressing::claims", shape = "pick", count = 1, finding = "tests whether a partner pressing's releases share a catalog with `any`" },
-    { path = "bae-identify/src/release_group/pressing.rs", item = "Pressing::sources", shape = "filter", count = 1, finding = "keeps the catalogs some release of the pressing comes from (`filter`)" },
-    { path = "bae-identify/src/release_group/pressing.rs", item = "Pressing::sources", shape = "pick", count = 1, finding = "tests each catalog against the pressing's releases with `any`" },
-    { path = "bae-identify/src/shared_album.rs", item = "AlbumLink::new", shape = "length-branch", count = 1, finding = "makes no album link when a release's album rows are empty (`is_empty`)" },
-    { path = "bae-identify/src/shared_album.rs", item = "AlbumLink::new", shape = "pick", count = 1, finding = "tests that the album rows are in catalog rank order with `all` over `windows(2)`" },
-    { path = "bae-import/src/file_evidence.rs", item = "file_evidence", shape = "filter", count = 2, finding = "keeps the Disc ID and barcode signals that name a file of the candidate (`filter_map`)" },
-    { path = "bae-import/src/folder_scanner/file_reads.rs", item = "FileReads::stored", shape = "filter", count = 1, finding = "`FileReads::stored` filters with `filter` (found by the check)" },
-    { path = "bae-import/src/folder_scanner/file_reads.rs", item = "FileReads::stored", shape = "kept-state", count = 1, finding = "`FileReads::stored` reads through `FileReads`, which keeps `Mutex` state (found by the check)" },
-    { path = "bae-import/src/folder_scanner/file_reads.rs", item = "FileReads::stored", shape = "length-branch", count = 1, finding = "learns a candidate's skipped tags only when its files include audio (`is_empty`)" },
-    { path = "bae-import/src/folder_scanner/file_reads.rs", item = "Known::learn_skipped_tags", shape = "group", count = 1, finding = "`Known::learn_skipped_tags` groups with `entry` (found by the check)" },
-    { path = "bae-import/src/folder_scanner/file_reads.rs", item = "Known::learn", shape = "group", count = 1, finding = "`Known::learn` groups with `entry` (found by the check)" },
-    { path = "bae-import/src/tables/album_link_rows.rs", item = "ReleaseAlbums::albums", shape = "filter", count = 1, finding = "keeps the release records that name an album (`filter_map`)" },
-    { path = "bae-import/src/tables/album_link_rows.rs", item = "group_albums_of_on", shape = "aggregate", count = 3, finding = "counts the album rows and the wanted releases with `len` to size and index the groups it builds" },
-    { path = "bae-import/src/tables/album_link_rows.rs", item = "group_albums_of_on", shape = "group", count = 2, finding = "`group_albums_of_on` groups into a `HashMap` (found by the check)" },
-    { path = "bae-import/src/tables/album_link_rows.rs", item = "group_albums_of_on", shape = "length-branch", count = 1, finding = "returns empty groups when the statement returned no albums (`is_empty`)" },
-    { path = "bae-import/src/tables/folder_scans.rs", item = "folder_scan_generation_sequence.last_generation", shape = "counter", count = 1, finding = "`folder_scan_generation_sequence.last_generation` is only ever counted up, never set to another value (found by the check)" },
-    { path = "bae-import/src/tables/folder_scans.rs", item = "misplaced", shape = "pick", count = 1, finding = "`misplaced` picks with `any` (found by the check)" },
-    { path = "bae-import/src/tables/folder_scans/file_decisions.rs", item = "ImportTables::load_releases_reading", shape = "query-per-row", count = 1, finding = "runs `load_item_by_key_rows` once for each release key it reads" },
-    { path = "bae-import/src/tables/folder_scans/file_reads.rs", item = "ImportTables::load_scan_batch_readings", shape = "filter", count = 1, finding = "`ImportTables::load_scan_batch_readings` filters with `filter_map` (found by the check)" },
-    { path = "bae-import/src/tables/folder_scans/file_reads.rs", item = "ReadingsWanted::load", shape = "join", count = 1, finding = "`ReadingsWanted::load` joins by a key or place with `get` (found by the check)" },
-    { path = "bae-import/src/tables/folder_scans/file_reads.rs", item = "ReadingsWanted::load", shape = "length-branch", count = 1, finding = "tests whether a settled entry reads a tentative item by whether `entries_reading` returns rows (`is_empty`)" },
-    { path = "bae-import/src/tables/folder_scans/read.rs", item = "check_sheet_bindings_name_audio", shape = "filter", count = 1, finding = "`check_sheet_bindings_name_audio` filters with `filter` (found by the check)" },
-    { path = "bae-import/src/tables/folder_scans/read.rs", item = "check_sheet_bindings_name_audio", shape = "group", count = 1, finding = "`check_sheet_bindings_name_audio` groups into a `HashSet` (found by the check)" },
-    { path = "bae-import/src/tables/folder_scans/read.rs", item = "entries_reading", shape = "filter", count = 1, finding = "`entries_reading` filters with `take_while` (found by the check)" },
-    { path = "bae-import/src/tables/folder_scans/read.rs", item = "entries_reading", shape = "sort", count = 1, finding = "`entries_reading` sorts with `sort` (found by the check)" },
-    { path = "bae-import/src/tables/folder_scans/read.rs", item = "load_item_by_key_rows", shape = "keyed-statement", count = 1, finding = "reads the candidate's items with `load_candidate_items_rows` keyed by the root the first statement returned" },
-    { path = "bae-import/src/tables/folder_scans/read.rs", item = "load_item_by_key_rows", shape = "length-branch", count = 1, finding = "`load_item_by_key_rows` branches on how many rows there are (found by the check)" },
-    { path = "bae-import/src/tables/folder_scans/read.rs", item = "load_items_by_keys", shape = "group", count = 2, finding = "`load_items_by_keys` returns a `HashMap` (found by the check)" },
-    { path = "bae-import/src/tables/folder_scans/tag_snapshot.rs", item = "load_candidate_file_tag_snapshot", shape = "keyed-statement", count = 1, finding = "reads the file's tag snapshot keyed by the candidate the first statement returned" },
-    { path = "bae-import/src/tables/folder_scans/tag_snapshot.rs", item = "load_file_tag_snapshot_head", shape = "query-per-row", count = 1, finding = "reads the file's tag facts with `load_file_tag_facts`, a statement of its own, beside the snapshot's head" },
-    { path = "bae-import/src/tables/folder_scans/tag_snapshot.rs", item = "load_file_tag_snapshot", shape = "query-per-row", count = 1, finding = "reads the embedded cover with `load_embedded_cover`, a statement of its own, for the snapshot's cover" },
-    { path = "bae-import/src/tables/folder_scans/tag_snapshot.rs", item = "load_stored_file_tag_reading_on", shape = "filter", count = 1, finding = "`load_stored_file_tag_reading_on` filters with `filter` (found by the check)" },
-    { path = "bae-import/src/tables/folder_scans/tag_snapshot.rs", item = "load_stored_file_tag_reading_on", shape = "keyed-statement", count = 1, finding = "reads the embedded cover with `load_embedded_cover`, keyed by the cover source the snapshot head returned" },
-    { path = "bae-import/src/tables/folder_scans/tag_snapshot.rs", item = "load_stored_file_tag_reading_on", shape = "pick", count = 2, finding = "`load_stored_file_tag_reading_on` picks with `any` (found by the check)" },
-    { path = "bae-import/src/tables/import_list/order.rs", item = "Items::bound", shape = "filter", count = 1, finding = "`Items::bound` filters with `filter` (found by the check)" },
-    { path = "bae-import/src/tables/import_list/order.rs", item = "Items::unled", shape = "join", count = 1, finding = "`Items::unled` joins by a key or place with `get` (found by the check)" },
-    { path = "bae-import/src/tables/import_list/order.rs", item = "names", shape = "pick", count = 1, finding = "`names` picks with `any` (found by the check)" },
-    { path = "bae-import/src/tables/import_state/cards_read.rs", item = "statements_of", shape = "length-branch", count = 1, finding = "`statements_of` branches on how many rows there are (found by the check)" },
-    { path = "bae-import/src/tables/import_state/file_decision_rows.rs", item = "ImportTables::load_candidate_file_edits_of", shape = "group", count = 1, finding = "`ImportTables::load_candidate_file_edits_of` groups with `collect::<HashMap>` (found by the check)" },
-    { path = "bae-import/src/tables/import_state/file_decision_rows.rs", item = "load_stored_candidate_edits_on", shape = "group", count = 1, finding = "`load_stored_candidate_edits_on` groups with `collect::<HashMap>` (found by the check)" },
-    { path = "bae-import/src/tables/import_state/pane_rows.rs", item = "load_drafts_on", shape = "group", count = 2, finding = "`load_drafts_on` returns a `HashMap` (found by the check)" },
-    { path = "bae-import/src/tables/import_state/preparation_rows.rs", item = "load_preparation_on", shape = "keyed-statement", count = 1, finding = "reads the prepared cover with `load_prepared_cover_on`, keyed by the cover the first statement returned" },
-    { path = "bae-import/src/tables/import_state/rows.rs", item = "load_states_on", shape = "group", count = 1, finding = "`load_states_on` returns a `HashMap` (found by the check)" },
-    { path = "bae-import/src/tables/import_state/verdict_rows.rs", item = "outcome_of", shape = "aggregate", count = 1, finding = "`outcome_of` aggregates with `count` (found by the check)" },
-    { path = "bae-import/src/tables/import_state/verdict_rows.rs", item = "outcome_of", shape = "filter", count = 1, finding = "`outcome_of` filters with `filter` (found by the check)" },
-    { path = "bae-import/src/tables/import_state/verdict_rows.rs", item = "outcome_of", shape = "pick", count = 1, finding = "`outcome_of` picks with `find` (found by the check)" },
-    { path = "bae-import/src/tables/release_groupings.rs", item = "ImportTables::load_grouping", shape = "keyed-statement", count = 1, finding = "reads the anchored folder with `anchored_at`, keyed by the anchor the first statement returned" },
-    { path = "bae-import/src/tables/release_groupings.rs", item = "load_candidate_on", shape = "keyed-statement", count = 2, finding = "reads whether a grouping took the candidate in, and its grouping's block, keyed by the candidate key and the grouping the first statement returned" },
-    { path = "bae-import/src/tables/release_groupings/folder_readings.rs", item = "ImportTables::load_folder_release_decisions", shape = "group", count = 1, finding = "`ImportTables::load_folder_release_decisions` groups with `HashMap::new` (found by the check)" },
-    { path = "bae-import/src/tables/source_releases.rs", item = "load_source_release_rows_on", shape = "group", count = 1, finding = "`load_source_release_rows_on` groups with `counts` (found by the check)" },
-    { path = "bae-import/src/tables/source_releases.rs", item = "load_source_release_rows_on", shape = "length-branch", count = 1, finding = "marks a release's media as undescribed when its format rows are empty (`is_empty`)" },
-    { path = "bae-import/src/tables/source_releases.rs", item = "with_joined_albums_on", shape = "filter", count = 1, finding = "`with_joined_albums_on` filters with `filter` (found by the check)" },
-    { path = "bae-import/src/tables/source_releases.rs", item = "with_joined_records", shape = "sort", count = 1, finding = "`with_joined_records` sorts with `sort_by_key` (found by the check)" },
-    { path = "bae-import/src/tables/source_releases/tracklist.rs", item = "load_mediums", shape = "aggregate", count = 6, finding = "counts the tracklist entries with `len` to size and index the tree of media it builds from them, and to go through that tree" },
-    { path = "bae-import/src/tables/source_releases/tracklist.rs", item = "load_mediums", shape = "group", count = 1, finding = "`load_mediums` groups into a `HashMap` (found by the check)" },
-    { path = "bae-import/src/tables/source_releases/tracklist.rs", item = "load_mediums", shape = "join", count = 1, finding = "`load_mediums` joins by a key or place with `get` (found by the check)" },
-    { path = "bae-import/src/tables/source_releases/tracklist.rs", item = "load_works", shape = "aggregate", count = 3, finding = "counts the work rows with `len` to size and index the tree of works it builds from them, and to go through that tree" },
-    { path = "bae-import/src/tables/source_releases/tracklist.rs", item = "load_works", shape = "group", count = 1, finding = "`load_works` groups into a `HashMap` (found by the check)" },
-    { path = "bae-import/src/tables/source_releases/tracklist.rs", item = "load_works", shape = "join", count = 1, finding = "`load_works` joins by a key or place with `get` (found by the check)" },
-    { path = "bae-import/src/tables/source_releases/tracklist.rs", item = "load_works", shape = "pick", count = 1, finding = "`load_works` picks with `position` (found by the check)" },
-    { path = "bae-import/src/tables/source_releases/tracklist.rs", item = "load_works", shape = "sort", count = 1, finding = "reverses the performed works it collected on its way up the tree (`reverse`)" },
-    { path = "bae-import/src/tables/watched_folders/watched_path.rs", item = "canonical_absolute_root", shape = "pick", count = 1, finding = "`canonical_absolute_root` picks with `any` (found by the check)" },
-    { path = "bae-library/src/outbox_watch.rs", item = "OutboxTransfers::of", shape = "group", count = 1, finding = "groups the files coven is uploading by release in a `BTreeMap`" },
-    { path = "bae-library/src/outbox_watch.rs", item = "OutboxTransfers::of", shape = "join", count = 2, finding = "joins each file coven is uploading to its rate and progress by file id (`get`)" },
-    { path = "bae-library/src/outbox_watch.rs", item = "OutboxTransfers::of", shape = "length-branch", count = 1, finding = "shows no upload bar when coven uploads no file (`is_empty`)" },
-    { path = "bae-library/src/outbox_watch.rs", item = "OutboxTransfersWatch::next", shape = "kept-state", count = 3, finding = "keeps the last read of the files coven is uploading (`read`) and a per-file rate sample window (`throughput`) between deliveries" },
-    { path = "bae-library/src/upload_throughput.rs", item = "UploadThroughput::observe", shape = "filter", count = 2, finding = "keeps the files coven is uploading that have progress (`filter_map`) and drops the kept samples of files coven no longer uploads (`retain`)" },
-    { path = "bae-library/src/upload_throughput.rs", item = "UploadThroughput::observe", shape = "pick", count = 1, finding = "tests each kept sample against the files coven is uploading with `any`" },
-    { path = "bae-library/src/upload_throughput.rs", item = "UploadThroughput::rates", shape = "group", count = 1, finding = "returns each file's rate from the samples it kept, in a `HashMap`" },
-    { path = "bae-library/src/upload_throughput.rs", item = "UploadThroughput::record", shape = "group", count = 1, finding = "keeps a sample window for each file coven is uploading (`entry`)" },
-    { path = "bae-playback/src/tables/queue.rs", item = "PlaybackQueueTables::front", shape = "keyed-statement", count = 1, finding = "reads the next context track keyed by the queue row the first statement returned" },
-    { path = "bae-records/src/models.rs", item = "LibraryStatus::album_in_library", shape = "length-branch", count = 1, finding = "tests whether the library holds the release's album by whether its album rows are empty (`is_empty`)" },
-    { path = "bae-records/src/models.rs", item = "LibraryStatus::release_in_library", shape = "pick", count = 1, finding = "tests whether some album row holds the release with `any`" },
-    { path = "bae-records/src/records/artist_resolution.rs", item = "ArtistCredits::resolve_on", shape = "group", count = 1, finding = "`ArtistCredits::resolve_on` groups into a `HashSet` (found by the check)" },
-    { path = "bae-records/src/records/artist_resolution.rs", item = "merge_into", shape = "filter", count = 1, finding = "`merge_into` filters with `filter` (found by the check)" },
-    { path = "bae-records/src/records/artist_resolution.rs", item = "merge_into", shape = "pick", count = 1, finding = "`merge_into` picks with `any` (found by the check)" },
-    { path = "bae-records/src/records/artist_resolution.rs", item = "name_matches_on", shape = "filter", count = 1, finding = "`name_matches_on` filters with `filter` (found by the check)" },
-    { path = "bae-records/src/records/artist_resolution.rs", item = "name_matches_on", shape = "pick", count = 1, finding = "`name_matches_on` picks with `find` (found by the check)" },
-    { path = "bae-records/src/records/artist_resolution.rs", item = "remove_pending_artists", shape = "filter", count = 1, finding = "`remove_pending_artists` filters with `retain` (found by the check)" },
-    { path = "bae-records/src/records/artist_resolution.rs", item = "remove_pending_artists", shape = "group", count = 1, finding = "`remove_pending_artists` groups with `collect::<HashSet>` (found by the check)" },
-    { path = "bae-records/src/records/artist_resolution.rs", item = "resolve_artists_on", shape = "pick", count = 1, finding = "`resolve_artists_on` picks with `find` (found by the check)" },
-    { path = "bae-records/src/records/artist_resolution.rs", item = "resolve_by_name_on", shape = "filter", count = 2, finding = "`resolve_by_name_on` filters with `filter` (found by the check)" },
-    { path = "bae-records/src/records/artist_resolution.rs", item = "resolve_by_name_on", shape = "length-branch", count = 3, finding = "`resolve_by_name_on` branches on how many rows there are, and on whether any name matched with `is_empty` (found by the check)" },
-    { path = "bae-records/src/records/artist_resolution.rs", item = "resolve_by_name_on", shape = "pick", count = 1, finding = "`resolve_by_name_on` picks with `any` (found by the check)" },
-    { path = "bae-records/src/records/artist_resolution.rs", item = "stage_artist_update", shape = "pick", count = 1, finding = "`stage_artist_update` picks with `find` (found by the check)" },
-    { path = "bae-records/src/records/catalog_match.rs", item = "exact_holder", shape = "pick", count = 2, finding = "`exact_holder` picks with `find` (found by the check)" },
-    { path = "bae-records/src/records/catalog_match.rs", item = "exact_holder", shape = "sort", count = 1, finding = "`exact_holder` sorts with `sort_by` (found by the check)" },
-    { path = "bae-records/src/records/catalog_match.rs", item = "holder_on", shape = "pick", count = 1, finding = "`holder_on` picks with `find` (found by the check)" },
-    { path = "bae-records/src/records/catalog_match.rs", item = "identify_new_rows", shape = "filter", count = 1, finding = "`identify_new_rows` filters with `filter_map` (found by the check)" },
-    { path = "bae-records/src/records/catalog_match.rs", item = "identify_new_rows", shape = "pick", count = 1, finding = "`identify_new_rows` picks with `find` (found by the check)" },
-    { path = "bae-records/src/records/catalog_match.rs", item = "ids_agree", shape = "pick", count = 1, finding = "`ids_agree` picks with `all` (found by the check)" },
-    { path = "bae-records/src/records/files.rs", item = "release_files_kept_on", shape = "group", count = 1, finding = "`release_files_kept_on` returns a `BTreeMap` (found by the check)" },
-    { path = "bae-records/src/records/track.rs", item = "Records::filter_existing_track_ids", shape = "query-per-row", count = 1, finding = "`Records::filter_existing_track_ids` runs SQL with `query` once for each row (found by the check)" },
-    { path = "bae-store/src/list_windows.rs", item = "from_seeks", shape = "aggregate", count = 1, finding = "counts the rows the earlier seeks read (`len`) to ask the next seek for the rest of the limit" },
-    { path = "bae-types/src/pressing/label_lines.rs", item = "label_lines", shape = "length-branch", count = 3, finding = "merges two label lines only when both state names and catalog numbers (`is_empty`)" },
-    { path = "bae-types/src/pressing/label_lines.rs", item = "label_lines", shape = "pick", count = 2, finding = "groups a release's label rows into lines, finding each row's line by name or catalog numbers with `find`" },
-    { path = "bae-types/src/pressing/label_lines.rs", item = "same_numbers", shape = "filter", count = 1, finding = "keeps the catalog numbers of a label line that have a key (`filter_map`)" },
-    { path = "bae-types/src/pressing/label_lines.rs", item = "same_numbers", shape = "sort", count = 1, finding = "sorts a label line's catalog keys with `sort` to compare two lines" },
-    { path = "bae-types/src/pressing/mod.rs", item = "MediaCount::tally", shape = "pick", count = 1, finding = "counts a release's media by carrier, finding each carrier's tally with `find`" },
-    { path = "bae-types/src/pressing/stated_media.rs", item = "StatedMedia::any", shape = "filter", count = 1, finding = "`StatedMedia::any` filters with `filter_map` (found by the check)" },
-    { path = "bae-types/src/pressing/stated_media.rs", item = "StatedMedia::any", shape = "pick", count = 1, finding = "`StatedMedia::any` picks with `any` (found by the check)" },
-    { path = "bae-types/src/pressing/stated_media.rs", item = "StatedMedia::counts", shape = "filter", count = 1, finding = "keeps the format rows that state a medium (`filter_map`)" },
-    { path = "bae-views/src/album.rs", item = "find_album_detail_on", shape = "length-branch", count = 1, finding = "returns no album when its release rows are empty (`is_empty`)" },
-    { path = "bae-views/src/album_detail/mod.rs", item = "ReleaseName::of", shape = "length-branch", count = 1, finding = "describes an unnamed release by its year and media only when its media counts are not empty (`is_empty`)" },
-    { path = "bae-views/src/album_detail/release.rs", item = "ReleaseDetail::from_raw", shape = "filter", count = 1, finding = "drops the pressing year when it equals the album's (`filter`)" },
-    { path = "bae-views/src/artist.rs", item = "find_artist_detail_on", shape = "keyed-statement", count = 1, finding = "reads the artist's credit names with `credit_names_of_on`, keyed by the artist the first statement returned" },
-]
-allowed = [
-    { path = "bae-records/src/cache_limit.rs", item = "CacheLimit::from_bytes", shape = "pick", count = 1, reason = "a lookup in a constant table of enum variants or codes; the values are not rows" },
-    { path = "bae-views/src/list_view.rs", item = "State::take", shape = "kept-state", count = 4, reason = "keeps the latest answer of the window's live query and of its position's, when each answers the window last requested, which a long list's view may hold" },
-    { path = "bae-views/src/list_view.rs", item = "State::take_fresh", shape = "kept-state", count = 1, reason = "marks the latest answers of the window's and its position's live queries as sent; a flag over the answers a long list's view may hold, not rows" },
-    { path = "bae-views/src/list_view.rs", item = "State::request", shape = "kept-state", count = 5, reason = "replaces the window the view asks for and drops the answers to the window before; the view holds only the latest answer of its window's and its position's live queries, which a long list's view may hold" },
-    { path = "bae-views/src/list_view.rs", item = "wanted", shape = "aggregate", count = 1, reason = "counts the rows of the window's latest answer to find its last row and to tell a full window from one that reaches the list's end, which decides where core moves it; no count the screen shows" },
-    { path = "bae-views/src/list_view.rs", item = "start_at", shape = "join", count = 1, reason = "takes the sort values of the row at one place in the window's latest answer, where the next window starts; one key of the window's own result, not a join of two reads" },
-    { path = "bae-catalogs/src/rip.rs", item = "CdProof::from_key", shape = "pick", count = 1, reason = "names the rip proof a stored key text stands for among the three proofs; the enum's variants, not rows" },
-    { path = "bae-catalogs/src/rip.rs", item = "StoreMarker::from_key", shape = "pick", count = 1, reason = "names the store marker a stored key text stands for among its variants; the enum's variants, not rows" },
-    { path = "bae-import/src/tables/import_state/column_list.rs", item = "JsonColumns::get", shape = "join", count = 1, reason = "reads one named column out of the JSON object a statement nested for a row; the object's fields, not rows" },
-    { path = "bae-import/src/tables/import_list/order.rs", item = "Items::unled", shape = "length-branch", count = 1, reason = "checks a key's term count against the part's order; the value is the key's term count, not a row" },
-    { path = "bae-library/src/activity_bars.rs", item = "ActivityBarsWatch::next", shape = "kept-state", count = 2, reason = "keeps the bar rows' query's latest result and the download queue's latest progress, to add the two each time either changes; the latest value of each input, not a copy of what it sent" },
-    { path = "bae-library/src/activity_bars.rs", item = "ActivityBarsWatch::of", shape = "group", count = 2, reason = "starts the empty maps of upload and download progress that the transfer watches fill; the watches' progress, not rows" },
-    { path = "bae-library/src/activity_bars.rs", item = "bar", shape = "aggregate", count = 1, reason = "adds each moving file's or release's share times how far its transfer has got; the fractions are in-memory transfer progress, which SQL cannot read" },
-    { path = "bae-library/src/outbox_watch.rs", item = "OutboxTransfersWatch::of", shape = "group", count = 1, reason = "starts the empty map of how far each file being sent has got, which coven's upload watch fills; the watch's progress, not rows" },
-    { path = "bae-import/src/tables/import_list/order.rs", item = "Items::range_plan", shape = "filter", count = 1, reason = "keeps a range's bound only for the part the loop is at; the values are the range's two bounds, not rows" },
-    { path = "bae-import/src/tables/import_list/order.rs", item = "Items::key_width", shape = "aggregate", count = 1, reason = "takes the widest of the tab's parts' order term counts; the values are term counts, not rows" },
-    { path = "bae-store/src/list_windows.rs", item = "ListOrder::key_columns_padded", shape = "length-branch", count = 1, reason = "compares a column's place with the order's term count to pad the arms of a compound statement; term counts, not rows" },
-    { path = "bae-catalogs/src/catalog.rs", item = "Catalog::from_str", shape = "pick", count = 1, reason = "a lookup in a constant table of enum variants or codes; the values are not rows" },
-    { path = "bae-catalogs/src/catalog.rs", item = "Catalog::lookup", shape = "pick", count = 1, reason = "a lookup in a constant table of enum variants or codes; the values are not rows" },
-    { path = "bae-catalogs/src/catalog.rs", item = "Catalog::rank", shape = "pick", count = 1, reason = "a lookup in a constant table of enum variants or codes; the values are not rows" },
-    { path = "bae-records/src/records/release_tracks.rs", item = "sided_media_sql", shape = "filter", count = 1, reason = "a lookup in a constant table of enum variants or codes; the values are not rows" },
-    { path = "bae-types/src/credit_role/part.rs", item = "by_id", shape = "pick", count = 1, reason = "a lookup in a constant table of enum variants or codes; the values are not rows" },
-    { path = "bae-types/src/pressing/country.rs", item = "Country::from_code", shape = "pick", count = 1, reason = "a lookup in a constant table of enum variants or codes; the values are not rows" },
-    { path = "bae-types/src/text_match/fold.rs", item = "folded", shape = "filter", count = 1, reason = "works on the characters or words of one name, title or barcode string; the values are not a read's rows" },
-    { path = "bae-types/src/text_match/fold.rs", item = "squash", shape = "filter", count = 1, reason = "works on the characters or words of one name, title or barcode string; the values are not a read's rows" },
-    { path = "bae-bridge/src/types/pressing.rs", item = "bridge_pressing_details", shape = "filter", count = 1, reason = "drops one pressing's optional status when it is the official one; one value, not rows" },
-    { path = "bae-diagnostics/src/ui_error/class.rs", item = "UiErrorClass::named", shape = "pick", count = 1, reason = "a lookup in a constant table of enum variants or codes; the values are not rows" },
-    { path = "bae-identify/src/release_group/pressing.rs", item = "Pressing::stored", shape = "length-branch", count = 1, reason = "asserts a pressing is built from at least one release; a check on its input, and no screen shows the count" },
-    { path = "bae-import/src/candidate_detail.rs", item = "ImportCandidateDetailProjection::resolve", shape = "filter", count = 2, reason = "keeps the verdict's folder check and the release link, two optional values, only while the candidate is actionable; not rows" },
-    { path = "bae-import/src/tables/album_link_rows.rs", item = "album_links_of", shape = "aggregate", count = 1, reason = "refuses stored rows that break their column's stated state: it checks what one statement returned for damage, and no screen shows the count" },
-    { path = "bae-import/src/tables/album_link_rows.rs", item = "album_links_of", shape = "length-branch", count = 1, reason = "refuses stored rows that break their column's stated state: it checks what one statement returned for damage, and no screen shows the count" },
-    { path = "bae-import/src/tables/folder_scans/columns.rs", item = "sheet_binding_of", shape = "length-branch", count = 2, reason = "refuses stored rows that break their column's stated state: it checks what one statement returned for damage, and no screen shows the count" },
-    { path = "bae-import/src/tables/folder_scans/read.rs", item = "load_candidate_items_rows", shape = "aggregate", count = 1, reason = "sizes a vector or map for the rows it builds; no screen shows the count" },
-    { path = "bae-import/src/tables/folder_scans/read.rs", item = "load_items_by_keys", shape = "length-branch", count = 1, reason = "returns early when the request asks for nothing; the request's ids or keys, not rows" },
-    { path = "bae-import/src/tables/folder_scans/sidecar.rs", item = "StoredSidecar::sidecar", shape = "aggregate", count = 1, reason = "refuses stored rows that break their column's stated state: it checks what one statement returned for damage, and no screen shows the count" },
-    { path = "bae-import/src/tables/folder_scans/sidecar.rs", item = "StoredSidecar::sidecar", shape = "length-branch", count = 1, reason = "refuses stored rows that break their column's stated state: it checks what one statement returned for damage, and no screen shows the count" },
-    { path = "bae-import/src/tables/import_list/order.rs", item = "Items::range_statement", shape = "length-branch", count = 1, reason = "works on the terms of a list's order, which the screen sends back as keys; the values are not rows" },
-    { path = "bae-import/src/tables/import_list/order.rs", item = "names", shape = "aggregate", count = 1, reason = "works on the characters of one text value; the values are not rows" },
-    { path = "bae-import/src/tables/import_list/summary.rs", item = "filter_entries_sql", shape = "filter", count = 1, reason = "writes the filter menu's entries into the statement from the constant list of enum variants; the values are not rows" },
-    { path = "bae-import/src/tables/import_state/match_rows.rs", item = "match_of", shape = "aggregate", count = 1, reason = "refuses stored rows that break their column's stated state: it checks what one statement returned for damage, and no screen shows the count" },
-    { path = "bae-import/src/tables/import_state/match_rows.rs", item = "match_of", shape = "length-branch", count = 1, reason = "refuses stored rows that break their column's stated state: it checks what one statement returned for damage, and no screen shows the count" },
-    { path = "bae-import/src/tables/import_state/pane_rows.rs", item = "load_drafts_on", shape = "aggregate", count = 1, reason = "sizes a vector or map for the rows it builds; no screen shows the count" },
-    { path = "bae-import/src/tables/import_state/pane_failure_rows.rs", item = "category_of", shape = "pick", count = 2, reason = "a lookup in a constant table of enum variants or codes; the values are not rows" },
-    { path = "bae-import/src/tables/import_state/signal_rows.rs", item = "StoredSignals::signals", shape = "aggregate", count = 1, reason = "refuses stored rows that break their column's stated state: it checks what one statement returned for damage, and no screen shows the count" },
-    { path = "bae-import/src/tables/import_state/signal_rows.rs", item = "StoredSignals::signals", shape = "length-branch", count = 1, reason = "refuses stored rows that break their column's stated state: it checks what one statement returned for damage, and no screen shows the count" },
-    { path = "bae-import/src/tables/import_state/verdict_rows.rs", item = "outcome_of", shape = "length-branch", count = 1, reason = "refuses stored rows that break their column's stated state: it checks what one statement returned for damage, and no screen shows the count" },
-    { path = "bae-import/src/tables/source_releases.rs", item = "own_records_of_on", shape = "aggregate", count = 1, reason = "sizes a vector or map for the rows it builds; no screen shows the count" },
-    { path = "bae-import/src/tables/source_releases/tracklist.rs", item = "load_mediums", shape = "length-branch", count = 1, reason = "works on the characters of one text value; the values are not rows" },
-    { path = "bae-import/src/tables/release_edit/seed.rs", item = "release_edit_seed", shape = "length-branch", count = 1, reason = "tests whether one track of a release has artists of its own, to say whether its form row takes the album's; one row's values, and it chooses no rows" },
-    { path = "bae-types/src/credits.rs", item = "CreditLine::is_empty", shape = "length-branch", count = 1, reason = "tests whether one credit line names anyone; the names of one value, not a read's rows" },
-    { path = "bae-import/src/types/raw_release_edit.rs", item = "RawLabelEdit::is_blank", shape = "length-branch", count = 2, reason = "tests whether the release editor's draft is blank; text the person typed, which the view owns, not rows" },
-    { path = "bae-import/src/types/raw_release_edit.rs", item = "RawReleaseEdit::is_blank", shape = "length-branch", count = 6, reason = "tests whether the release editor's draft is blank; text the person typed, which the view owns, not rows" },
-    { path = "bae-import/src/types/raw_release_edit.rs", item = "RawReleaseEdit::is_blank", shape = "pick", count = 3, reason = "tests whether the release editor's draft is blank; text the person typed, which the view owns, not rows" },
-    { path = "bae-preferences/src/catalog_availability.rs", item = "asked_sources", shape = "filter", count = 1, reason = "lists the catalogs one preferences value turns on; one setting's fixed list of catalogs, not rows" },
-    { path = "bae-preferences/src/catalog_availability.rs", item = "asks_a_source", shape = "pick", count = 1, reason = "tests whether one preferences value turns any catalog on; one setting's fixed list of catalogs, not rows" },
-    { path = "bae-preferences/src/name_pattern.rs", item = "NamePattern::validate", shape = "length-branch", count = 1, reason = "works on the characters of one text value; the values are not rows" },
-    { path = "bae-preferences/src/name_pattern.rs", item = "NamePattern::validate", shape = "pick", count = 1, reason = "works on the characters of one text value; the values are not rows" },
-    { path = "bae-records/src/records/artist_resolution.rs", item = "name_matches_on", shape = "length-branch", count = 1, reason = "works on the characters of one text value; the values are not rows" },
-    { path = "bae-records/src/records/artist_resolution.rs", item = "resolve_artists_on", shape = "aggregate", count = 1, reason = "sizes a vector or map for the rows it builds; no screen shows the count" },
-    { path = "bae-records/src/records/read.rs", item = "track_bit_depth_column", shape = "filter", count = 1, reason = "keeps or drops one optional value; the value is not rows" },
-    { path = "bae-records/src/records/release_detail.rs", item = "release_details_on", shape = "length-branch", count = 1, reason = "tests whether the statement's extra columns text is empty; one text, not rows" },
-    { path = "bae-records/src/records/release_records.rs", item = "check_releases_in_library_on", shape = "length-branch", count = 1, reason = "returns early when the request asks for nothing; the request's ids or keys, not rows" },
-    { path = "bae-records/src/records/scrub_points_column.rs", item = "decode", shape = "aggregate", count = 1, reason = "decodes the points one blob column holds; the bytes of one value, not rows" },
-    { path = "bae-records/src/records/scrub_points_column.rs", item = "decode", shape = "length-branch", count = 2, reason = "decodes the points one blob column holds; the bytes of one value, not rows" },
-    { path = "bae-records/src/records/track.rs", item = "Records::filter_existing_track_ids", shape = "aggregate", count = 1, reason = "counts the ids of one chunk of the request to write its placeholders; the request's ids, not rows" },
-    { path = "bae-store/src/list_windows.rs", item = "ListOrder::column_ordering", shape = "aggregate", count = 1, reason = "works on the terms of a list's order, which the screen sends back as keys; the values are not rows" },
-    { path = "bae-store/src/list_windows.rs", item = "ListOrder::condition", shape = "length-branch", count = 1, reason = "works on the terms of a list's order, which the screen sends back as keys; the values are not rows" },
-    { path = "bae-store/src/list_windows.rs", item = "ListOrder::key_of", shape = "aggregate", count = 1, reason = "works on the terms of a list's order, which the screen sends back as keys; the values are not rows" },
-    { path = "bae-store/src/list_windows.rs", item = "ListOrder::page_condition", shape = "aggregate", count = 1, reason = "works on the terms of a list's order to write a page's condition; the values are term counts, not rows" },
-    { path = "bae-store/src/list_windows.rs", item = "ListOrder::seeks_from", shape = "aggregate", count = 2, reason = "works on the terms of a list's order, which the screen sends back as keys; the values are not rows" },
-    { path = "bae-store/src/list_windows.rs", item = "Seek::params", shape = "filter", count = 1, reason = "keeps the key values a seek binds as parameters, not those its statement reads itself; a key's values, not rows" },
-    { path = "bae-store/src/list_windows.rs", item = "ListOrder::term_count", shape = "aggregate", count = 1, reason = "works on the terms of a list's order, which the screen sends back as keys; the values are not rows" },
-    { path = "bae-transfers/src/queued_releases/tables.rs", item = "queue_row", shape = "aggregate", count = 1, reason = "counts a row type's constant column list (`COLUMNS.len()`) to find where its columns start; not rows" },
-    { path = "bae-transfers/src/release_queue.rs", item = "transfer_summary", shape = "filter", count = 1, reason = "drops the zero counts from a transfer's fixed list of count kinds; not rows" },
-    { path = "bae-transfers/src/release_transfers.rs", item = "ReleaseTransfersWatch::next", shape = "group", count = 1, reason = "returns the watch channel's map of each release's in-memory transfer progress, as the transfers hold it; not rows" },
-    { path = "bae-types/src/barcode.rs", item = "comparison_key", shape = "cutoff", count = 1, reason = "works on the characters of one text value; the values are not rows" },
-    { path = "bae-types/src/barcode.rs", item = "comparison_key", shape = "length-branch", count = 1, reason = "works on the characters of one text value; the values are not rows" },
-    { path = "bae-types/src/barcode.rs", item = "is_placeholder", shape = "pick", count = 1, reason = "works on the characters of one text value; the values are not rows" },
-    { path = "bae-types/src/barcode.rs", item = "is_store_internal", shape = "length-branch", count = 1, reason = "works on the characters of one text value; the values are not rows" },
-    { path = "bae-types/src/barcode.rs", item = "widened", shape = "length-branch", count = 1, reason = "works on the characters of one text value; the values are not rows" },
-    { path = "bae-types/src/barcode.rs", item = "written_digits", shape = "filter", count = 1, reason = "works on the characters of one text value; the values are not rows" },
-    { path = "bae-types/src/barcode.rs", item = "written_digits", shape = "length-branch", count = 2, reason = "works on the characters of one text value; the values are not rows" },
-    { path = "bae-types/src/barcode.rs", item = "written_digits", shape = "pick", count = 1, reason = "works on the characters of one text value; the values are not rows" },
-    { path = "bae-types/src/credits.rs", item = "CreditJoin::from_stored", shape = "length-branch", count = 1, reason = "works on the characters of one text value; the values are not rows" },
-    { path = "bae-types/src/pressing/mod.rs", item = "ReleaseLabel::new", shape = "length-branch", count = 1, reason = "works on the characters of one text value; the values are not rows" },
-    { path = "bae-types/src/pressing/mod.rs", item = "ReleaseLabel::with_ids", shape = "length-branch", count = 1, reason = "works on the characters of one text value; the values are not rows" },
-    { path = "bae-types/src/text_match/artist.rs", item = "same_artist_name", shape = "length-branch", count = 1, reason = "works on the characters of one text value; the values are not rows" },
-    { path = "bae-types/src/text_match/catalog_number.rs", item = "catalog_key", shape = "length-branch", count = 1, reason = "works on the characters of one text value; the values are not rows" },
-    { path = "bae-types/src/text_match/fold.rs", item = "normalize", shape = "aggregate", count = 1, reason = "works on the characters of one text value; the values are not rows" },
-    { path = "bae-types/src/text_match/fold.rs", item = "words", shape = "filter", count = 1, reason = "works on the characters of one text value; the values are not rows" },
-    { path = "bae-types/src/text_match/fold.rs", item = "words", shape = "length-branch", count = 1, reason = "works on the characters of one text value; the values are not rows" },
-    { path = "bae-types/src/text_match/fold.rs", item = "written_words", shape = "filter", count = 1, reason = "works on the characters of one text value; the values are not rows" },
-    { path = "bae-types/src/text_match/fold.rs", item = "written_words", shape = "length-branch", count = 1, reason = "works on the characters of one text value; the values are not rows" },
-    { path = "bae-types/src/text_match/label.rs", item = "LabelName::of", shape = "aggregate", count = 1, reason = "works on the characters of one text value; the values are not rows" },
-    { path = "bae-types/src/text_match/label.rs", item = "LabelName::of", shape = "filter", count = 2, reason = "works on the characters of one text value; the values are not rows" },
-    { path = "bae-types/src/text_match/label.rs", item = "LabelName::of", shape = "length-branch", count = 1, reason = "works on the characters of one text value; the values are not rows" },
-    { path = "bae-types/src/text_match/label.rs", item = "tails", shape = "filter", count = 1, reason = "builds a constant list of the words that end a label's trade name; the values are not rows" },
-    { path = "bae-types/src/text_match/label.rs", item = "tails", shape = "kept-state", count = 1, reason = "builds a constant list of the words that end a label's trade name once, in a `OnceLock`; no read changes it, and it holds no rows" },
-    { path = "bae-types/src/text_match/label.rs", item = "tails", shape = "length-branch", count = 1, reason = "builds a constant list of the words that end a label's trade name; the values are not rows" },
-    { path = "bae-types/src/text_match/label.rs", item = "without_trade_words", shape = "aggregate", count = 2, reason = "works on the characters of one text value; the values are not rows" },
-    { path = "bae-types/src/text_match/label.rs", item = "without_trade_words", shape = "pick", count = 1, reason = "works on the characters of one text value; the values are not rows" },
-    { path = "bae-types/src/text_match/label.rs", item = "written_initials", shape = "aggregate", count = 3, reason = "works on the characters of one text value; the values are not rows" },
-    { path = "bae-types/src/text_match/label.rs", item = "written_initials", shape = "length-branch", count = 1, reason = "works on the characters of one text value; the values are not rows" },
-    { path = "bae-types/src/text_match/label.rs", item = "written_initials", shape = "pick", count = 2, reason = "works on the characters of one text value; the values are not rows" },
-    { path = "bae-views/src/album.rs", item = "resolve_album_detail", shape = "aggregate", count = 1, reason = "sizes a vector or map for the rows it builds; no screen shows the count" },
-    { path = "bae-views/src/search.rs", item = "LibrarySearchQuery::parse", shape = "length-branch", count = 1, reason = "tests whether the search text is blank; text the person typed, not rows" },
-    { path = "bae-views/src/storage.rs", item = "storage_selected_on", shape = "length-branch", count = 1, reason = "returns early when the request asks for nothing; the request's ids or keys, not rows" },
-    { path = "bae-views/src/storage_actions.rs", item = "DbStorageActionFlags::list", shape = "filter", count = 1, reason = "lists the storage actions a release offers from its four flags; a fixed list of actions, not rows" },
 ]

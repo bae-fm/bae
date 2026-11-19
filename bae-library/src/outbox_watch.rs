@@ -148,6 +148,10 @@ impl OutboxTransfersWatch {
     /// Every release's transfer and the total, once the query next reads or
     /// the watch next moves, or the failure that kept the query from
     /// reading; `None` once either has ended with its store.
+    #[expect(
+        clippy::read_kept_state,
+        reason = "kept finding: keeps the last read of the files coven is uploading and a window of rate samples for each file between deliveries"
+    )]
     pub async fn next(&mut self) -> Option<Result<OutboxTransfers, bae_store::DbError>> {
         loop {
             tokio::select! {

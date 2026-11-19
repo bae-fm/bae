@@ -284,6 +284,10 @@ pub(super) fn identify_new_rows<'p, R: CatalogRow>(
         })
         .collect();
     for place in places {
+        #[expect(
+            clippy::read_pick,
+            reason = "kept finding: finds the catalog id each new row's placeholder id became"
+        )]
         if let Some((_, id)) = renamed.iter().find(|(made_as, _)| made_as == place) {
             place.clone_from(id);
         }

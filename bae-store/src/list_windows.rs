@@ -617,6 +617,10 @@ fn from_seeks<R, E>(
 ) -> Result<Vec<Keyed<R>>, E> {
     let mut rows = Vec::new();
     for seek in seeks {
+        #[expect(
+            clippy::read_aggregate,
+            reason = "kept finding: counts the rows the earlier seeks read to ask the next seek for the rest of the limit"
+        )]
         let wanted = limit - rows.len() as u64;
         if wanted == 0 {
             break;

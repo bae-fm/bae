@@ -230,6 +230,10 @@ impl ImportTables {
     /// The keys of the scanned releases read from `folder` or a folder below
     /// it under the watched folder `watched_folder_path`, by the candidates'
     /// folder index.
+    #[expect(
+        clippy::read_group,
+        reason = "kept finding: collects the release keys the statement returned into a set"
+    )]
     pub async fn scanned_release_keys_at_or_below(
         &self,
         watched_folder_path: &Path,

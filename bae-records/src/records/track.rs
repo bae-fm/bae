@@ -182,6 +182,10 @@ impl Records {
                 for chunk in track_ids.chunks(SQL_MAX_IN_VARS) {
                     let placeholders = in_clause_placeholders(chunk.len());
                     let query = format!("SELECT id FROM tracks WHERE id IN ({placeholders})");
+                    #[expect(
+                        clippy::read_query_per_row,
+                        reason = "kept finding: runs one statement for each chunk of the requested ids, as many as SQLite binds in one statement"
+                    )]
                     existing.extend(sql.query(
                         &query,
                         rusqlite::params_from_iter(chunk.iter()),
