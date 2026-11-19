@@ -144,8 +144,8 @@ pub trait AirPlayStreamControl: Send + Sync {
     /// error means the receiver didn't take it, so it may play on.
     fn flush(&self) -> Result<(), AirPlayControlError>;
     /// Re-anchor the pacing after a FLUSH (resume / post-seek). The sender
-    /// sends a new burst, and its next sync packet anchors the receiver
-    /// again: nothing asks the receiver, so nothing can be refused.
+    /// sends a new burst, and a sync packet right after it anchors the
+    /// receiver again: nothing asks the receiver, so nothing can be refused.
     fn reanchor(&self);
     /// Why the audio flow to the receiver failed for good (a dead receiver),
     /// when it has, so the service should end AirPlay.
@@ -157,8 +157,9 @@ pub trait AirPlayStreamControl: Send + Sync {
     /// The audio the stream has sent that the receiver has not played yet:
     /// the latency, except after the stream starts or resumes, when the
     /// receiver plays nothing until it has the latency's worth, and this is
-    /// what the stream has sent since. Playback holds the position and the
-    /// play it records back by it.
+    /// what the stream has sent since, and after the source ran dry, when
+    /// the receiver plays silence where the stream sent no audio. Playback
+    /// holds the position and the play it records back by it.
     fn unheard(&self) -> Duration;
 }
 

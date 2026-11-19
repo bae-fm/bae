@@ -277,7 +277,7 @@ struct Captured {
 /// The latency a session settled on: the frames it paces by, and the time it
 /// tells playback through [`AirPlayStreamControl::latency`].
 struct SessionLatency {
-    paced_frames: u32,
+    paced_frames: u64,
     told: Duration,
 }
 

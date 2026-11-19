@@ -381,15 +381,14 @@ impl RaopSession {
             audio_port: negotiated.server_port,
             control_port: negotiated.control_port,
         };
-        let stream_control = RaopStreamControl::new(latency, failure);
+        let stream_control = RaopStreamControl::new(latency, clock, failure);
         let stream = RaopStream::spawn(
             diagnostics,
             feed,
             PayloadCrypto::Raop(cipher),
             endpoints,
-            RtpAudio { ssrc, sample_rate: PCM_SAMPLE_RATE, channels: PCM_CHANNELS },
+            RtpAudio { ssrc, channels: PCM_CHANNELS },
             sockets,
-            clock,
             stream_control.clone(),
         )?;
 

@@ -10,11 +10,14 @@
 //!
 //! Three concerns, each isolated so the timing logic is tested without a socket
 //! or a real clock: [`Packetizer`] turns one packet's PCM into wire bytes
-//! (deterministic — golden fixtures); [`Pacer`] decides how many packets are due
-//! by a given elapsed time (driven by an injectable clock, so tests never sleep);
+//! (deterministic — golden fixtures); [`Pacer`] runs the stream's timeline,
+//! deciding which packets are due and which frames stay silent by a given
+//! elapsed time (driven by an injectable clock, so tests never sleep);
 //! and [`RaopStream`] is the thin runtime that owns the sockets and threads.
 
+use std::collections::VecDeque;
 use std::net::{IpAddr, SocketAddr, UdpSocket};
+use std::ops::Range;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{mpsc, Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
@@ -30,10 +33,11 @@ use super::rtp::{self, NtpTime};
 /// Frames of audio per RTP packet — the RAOP constant echoed in the SDP fmtp.
 pub(crate) const FRAMES_PER_PACKET: u32 = 352;
 
-/// The most packets the sender sends at once, when a stream starts or
-/// resumes. A Mac's AirPlay Receiver keeps about 90 packets of a burst and
-/// drops the rest, so the burst stays under that with room for a receiver
-/// that keeps fewer. After it the sender keeps pace with the clock.
+/// The most packets the sender sends at once: when a stream starts or
+/// resumes, and when frames come back after the source ran dry. A Mac's
+/// AirPlay Receiver keeps about 90 packets of a burst and drops the rest, so
+/// the burst stays under that with room for a receiver that keeps fewer.
+/// After it the sender keeps pace with the clock.
 pub(crate) const BURST_PACKETS: u64 = 64;
 
 /// How a packet's PCM payload is encrypted — the one thing the two dialects
@@ -104,50 +108,120 @@ impl Packetizer {
     pub(crate) fn reanchor(&mut self) {
         self.first = true;
     }
+
+    /// Move the next packet `frames` later on the timeline, past frames left
+    /// silent: its timestamp moves on and its sequence number does not, so
+    /// the receiver sees no packet lost. RTP timestamps wrap at 2^32, so only
+    /// the low 32 bits of `frames` count.
+    pub(crate) fn skip(&mut self, frames: u64) {
+        self.next.timestamp = self.next.timestamp.wrapping_add(frames as u32);
+    }
 }
 
-/// Decides how many packets are due by a moment in the stream: at the anchor
-/// (the stream's start, or a resume) a burst the receiver keeps, then one
-/// packet for each packet of audio the clock plays. Timing only — no I/O — so
-/// a test drives it with virtual elapsed durations.
+/// The stream's timeline from its anchor (the stream's start, or a resume),
+/// which the clock runs: at the anchor a burst the receiver keeps is due,
+/// then one packet for each packet of audio the clock plays. The sync packets
+/// tell the receiver this timeline, so it goes on while the source has no
+/// frames, and the frames the sender falls more than a burst behind on stay
+/// silent. Timing only — no I/O — so a
+/// test drives it with virtual elapsed durations. Frames count from the
+/// anchor.
 pub(crate) struct Pacer {
     sample_rate: u32,
-    /// The frames sent at the anchor: what the receiver keeps of a burst, and
+    /// The receiver's audio latency: it plays the frame this far behind the
+    /// frame due.
+    latency_frames: u64,
+    /// The frames due at the anchor: what the receiver keeps of a burst, and
     /// never more than its latency, which is all it buffers before it plays.
     burst_frames: u64,
-    frames_sent: u64,
+    /// The frames of the timeline the sender has passed: sent, or left
+    /// silent.
+    passed: u64,
+    /// The stretches the sender left silent, oldest first, while the receiver
+    /// may not have played them yet.
+    silences: VecDeque<Range<u64>>,
 }
 
 impl Pacer {
     /// `latency_frames` is the receiver's audio latency (its reported value,
     /// ~2 s by default): the sync packets tell the receiver to play the frame
-    /// a latency behind the next one sent, so a burst longer than the latency
+    /// a latency behind the one due, so a burst longer than the latency
     /// would start the receiver partway into it.
     pub(crate) fn new(sample_rate: u32, latency_frames: u32) -> Self {
-        let burst_frames =
-            u64::from(latency_frames).min(BURST_PACKETS * u64::from(FRAMES_PER_PACKET));
-        Pacer { sample_rate, burst_frames, frames_sent: 0 }
+        let latency_frames = u64::from(latency_frames);
+        Pacer {
+            sample_rate,
+            latency_frames,
+            burst_frames: latency_frames.min(BURST_PACKETS * u64::from(FRAMES_PER_PACKET)),
+            passed: 0,
+            silences: VecDeque::new(),
+        }
     }
 
-    /// Whole packets still owed at `elapsed` since the anchor: the target is the
-    /// burst plus the frames the playback clock has reached, minus what's
-    /// already been sent.
-    pub(crate) fn packets_due(&self, elapsed: Duration) -> u64 {
-        let played = bae_util::sample_time::frame_at(elapsed, self.sample_rate);
-        let target = self.burst_frames + played;
-        target.saturating_sub(self.frames_sent) / u64::from(FRAMES_PER_PACKET)
+    /// The frames of the timeline due by `elapsed` since the anchor: the
+    /// burst, then what the clock has played.
+    pub(crate) fn due(&self, elapsed: Duration) -> u64 {
+        self.burst_frames + bae_util::sample_time::frame_at(elapsed, self.sample_rate)
+    }
+
+    /// What the sender does at `elapsed` since the anchor. It never owes more
+    /// than a burst, since a receiver keeps no more of one at once: when the
+    /// source ran dry and left the sender further behind the timeline than
+    /// that, the sender leaves the frames past the burst silent and sends
+    /// from there.
+    pub(crate) fn step(&mut self, elapsed: Duration) -> Step {
+        let due = self.due(elapsed);
+        let silent_frames = due.saturating_sub(self.passed).saturating_sub(self.burst_frames);
+        if silent_frames > 0 {
+            self.silences.push_back(self.passed..self.passed + silent_frames);
+            self.passed += silent_frames;
+        }
+        let playing = due.saturating_sub(self.latency_frames);
+        while self.silences.front().is_some_and(|silence| silence.end <= playing) {
+            self.silences.pop_front();
+        }
+        Step { silent_frames, packets: (due - self.passed) / u64::from(FRAMES_PER_PACKET) }
     }
 
     /// Account for one packet just sent.
     pub(crate) fn record_packet(&mut self) {
-        self.frames_sent += u64::from(FRAMES_PER_PACKET);
+        self.passed += u64::from(FRAMES_PER_PACKET);
     }
 
-    /// Total frames handed to the receiver so far.
-    #[cfg(test)]
-    pub(crate) fn frames_sent(&self) -> u64 {
-        self.frames_sent
+    /// The frames sent that the receiver has not played at `elapsed` since
+    /// the anchor: those from the frame it plays, a latency behind the one
+    /// due, to the frame the sender is at, less the stretches left silent.
+    /// The receiver plays nothing sent before the anchor.
+    pub(crate) fn unplayed(&self, elapsed: Duration) -> u64 {
+        let playing = self.due(elapsed).saturating_sub(self.latency_frames);
+        let ahead = self.passed.saturating_sub(playing);
+        let silent: u64 = self
+            .silences
+            .iter()
+            .map(|silence| silence.end.saturating_sub(silence.start.max(playing)))
+            .sum();
+        ahead - silent
     }
+
+    /// The frames of the timeline the sender has passed since the anchor.
+    #[cfg(test)]
+    pub(crate) fn passed(&self) -> u64 {
+        self.passed
+    }
+
+    /// Start the timeline again at a new anchor.
+    fn restart(&mut self) {
+        self.passed = 0;
+        self.silences.clear();
+    }
+}
+
+/// What the sender does at a moment: leave `silent_frames` of the timeline
+/// silent, then send `packets` packets.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Step {
+    pub(crate) silent_frames: u64,
+    pub(crate) packets: u64,
 }
 
 /// A monotonic clock the pacing loop reads elapsed time from, and re-anchors on a
@@ -190,11 +264,10 @@ pub(crate) struct StreamEndpoints {
 }
 
 /// The RTP audio flow a session hands the stream: the synchronization source id
-/// its packets are tagged with and the PCM format they carry. Its timeline
-/// starts at [`RtpPosition::START`].
+/// its packets are tagged with and the channels of the PCM they carry, at
+/// [`PCM_SAMPLE_RATE`]. Its timeline starts at [`RtpPosition::START`].
 pub(super) struct RtpAudio {
     pub(super) ssrc: u32,
-    pub(super) sample_rate: u32,
     pub(super) channels: u32,
 }
 
@@ -341,8 +414,6 @@ pub(crate) struct RaopStream {
     /// What the audio sender waits on for frames: woken after `stop` is set,
     /// so a waiting sender sees it.
     wake: PcmWake,
-    /// Dropped to end the sync sender's wait between packets.
-    sync_stop: Option<mpsc::Sender<()>>,
     threads: Vec<ReportedThread>,
     /// Stopped after the other threads, when the stream's fields drop.
     _timing: TimingResponder,
@@ -385,21 +456,34 @@ impl StreamFailure {
     }
 }
 
-/// How far the sender has got: the packet it sends next, and the timestamp of
-/// the first packet it sent after the stream last started or resumed.
-#[derive(Debug, Clone, Copy)]
-struct Sent {
+/// The stream's timeline as the sender runs it: the packet it sends next, the
+/// timestamp of the anchor (where the stream last started or resumed), and
+/// the pacer that runs the timeline from there.
+struct Timeline {
     next: RtpPosition,
     anchor: u32,
+    pacer: Pacer,
 }
 
-/// The shared state a running stream is observed and steered through: how far
-/// the sender has got, the re-anchor request, why the audio flow died if it
-/// has, and the negotiated receiver latency the pacing and the audible position
-/// both use. A session keeps one and hands a clone to the threads.
+/// Where a sync packet says the stream stands: the frame the receiver should
+/// be playing now, and the frame due to be sent, a latency ahead of it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct SyncPoint {
+    pub(crate) playing: u32,
+    pub(crate) next: u32,
+}
+
+/// The shared state a running stream is observed and steered through: its
+/// timeline and the clock that runs it, the re-anchor request, why the audio
+/// flow died if it has, and the negotiated receiver latency the pacing and the
+/// audible position both use. A session keeps one and hands a clone to the
+/// threads.
 #[derive(Clone)]
 pub(super) struct RaopStreamControl {
-    sent: Arc<Mutex<Sent>>,
+    /// Read together with the clock, which the sender resets only while it
+    /// holds the timeline.
+    timeline: Arc<Mutex<Timeline>>,
+    clock: Arc<dyn MonotonicClock>,
     reanchor: Arc<AtomicU64>,
     failure: StreamFailure,
     latency_frames: u32,
@@ -407,14 +491,20 @@ pub(super) struct RaopStreamControl {
 
 impl RaopStreamControl {
     /// `latency_frames` is the receiver's audio latency (its reported value, else
-    /// the dialect's ~2 s default); `failure` is where the stream says it
-    /// failed.
-    pub(super) fn new(latency_frames: u32, failure: StreamFailure) -> Self {
+    /// the dialect's ~2 s default); `clock` runs the timeline; `failure` is
+    /// where the stream says it failed.
+    pub(super) fn new(
+        latency_frames: u32,
+        clock: Arc<dyn MonotonicClock>,
+        failure: StreamFailure,
+    ) -> Self {
         Self {
-            sent: Arc::new(Mutex::new(Sent {
+            timeline: Arc::new(Mutex::new(Timeline {
                 next: RtpPosition::START,
                 anchor: RtpPosition::START.timestamp,
+                pacer: Pacer::new(PCM_SAMPLE_RATE, latency_frames),
             })),
+            clock,
             reanchor: Arc::new(AtomicU64::new(0)),
             failure,
             latency_frames,
@@ -423,7 +513,7 @@ impl RaopStreamControl {
 
     /// The packet the sender sends next, as its packetizer numbers it.
     pub(super) fn next_packet(&self) -> RtpPosition {
-        self.sent.lock().unwrap().next
+        self.timeline.lock().unwrap().next
     }
 
     pub(super) fn reanchor(&self) {
@@ -435,10 +525,12 @@ impl RaopStreamControl {
         self.failure.cause.get().cloned()
     }
 
-    /// The receiver's audio latency in frames: the sync packets tell the
-    /// receiver to play the frame this far behind the next one sent.
-    pub(super) fn latency_frames(&self) -> u32 {
-        self.latency_frames
+    /// The receiver's audio latency in frames that the pacer runs the
+    /// timeline by: the sync packets tell the receiver to play the frame this
+    /// far behind the one due.
+    #[cfg(test)]
+    pub(super) fn latency_frames(&self) -> u64 {
+        self.timeline.lock().unwrap().pacer.latency_frames
     }
 
     /// [`latency_frames`](Self::latency_frames) as time, at the rate the
@@ -449,17 +541,22 @@ impl RaopStreamControl {
     }
 
     /// The audio the sender has sent that the receiver has not played yet,
-    /// as time at the rate the stream carries PCM. The sync packets tell the
-    /// receiver to play the frame a latency behind the next one sent, and it
-    /// plays nothing sent before the stream last started or resumed: so this
-    /// is what the sender has sent since then, up to the latency.
+    /// as time at the rate the stream carries PCM: see [`Pacer::unplayed`].
     pub(super) fn unheard(&self) -> Duration {
-        let sent = *self.sent.lock().unwrap();
-        let since_anchor = sent.next.timestamp.wrapping_sub(sent.anchor);
-        bae_util::sample_time::frame_start(
-            u64::from(since_anchor.min(self.latency_frames)),
-            PCM_SAMPLE_RATE,
-        )
+        let timeline = self.timeline.lock().unwrap();
+        let frames = timeline.pacer.unplayed(self.clock.elapsed());
+        bae_util::sample_time::frame_start(frames, PCM_SAMPLE_RATE)
+    }
+
+    /// Where the stream stands now on the pacer's timeline, which the clock
+    /// runs: so it moves on while the source has no frames, rather than
+    /// waiting on the frames sent.
+    pub(crate) fn sync_point(&self) -> SyncPoint {
+        let timeline = self.timeline.lock().unwrap();
+        // RTP timestamps wrap at 2^32.
+        let due = timeline.pacer.due(self.clock.elapsed()) as u32;
+        let next = timeline.anchor.wrapping_add(due);
+        SyncPoint { playing: next.wrapping_sub(self.latency_frames), next }
     }
 
     /// The re-anchor counter the audio thread watches: a change means restart the
@@ -468,16 +565,46 @@ impl RaopStreamControl {
         self.reanchor.load(Ordering::Acquire)
     }
 
-    /// Account for a packet just handed to the receiver: `next` follows it.
-    fn record_sent(&self, next: RtpPosition) {
-        self.sent.lock().unwrap().next = next;
+    /// Start the timeline at the first packet, from now: a receiver can hold
+    /// SETUP for seconds while its owner allows the sender, and the time
+    /// before the stream started is owed no audio.
+    fn start(&self) {
+        let _timeline = self.timeline.lock().unwrap();
+        self.clock.reset();
     }
 
-    /// The stream starts again from the packet the sender sends next: the
-    /// receiver plays nothing it was sent before.
-    fn record_anchor(&self) {
-        let mut sent = self.sent.lock().unwrap();
-        sent.anchor = sent.next.timestamp;
+    /// Start the timeline again from now, at the frame due on the old one:
+    /// the timeline never runs back, so the frame the receiver plays never
+    /// moves back from where the sync packets put it before. The frames the sender
+    /// had not reached stay silent, and the packetizer moves past them and
+    /// re-marks the stream. The receiver plays nothing sent before.
+    fn anchor(&self, packetizer: &mut Packetizer) {
+        let mut timeline = self.timeline.lock().unwrap();
+        let due = timeline.pacer.due(self.clock.elapsed());
+        packetizer.skip(due.saturating_sub(timeline.pacer.passed));
+        packetizer.reanchor();
+        self.clock.reset();
+        timeline.next = packetizer.next();
+        timeline.anchor = timeline.next.timestamp;
+        timeline.pacer.restart();
+    }
+
+    /// Whole packets the sender sends now, after the packetizer moves past
+    /// any frames the pacer leaves silent ([`Pacer::step`]).
+    fn step(&self, packetizer: &mut Packetizer) -> u64 {
+        let mut timeline = self.timeline.lock().unwrap();
+        let step = timeline.pacer.step(self.clock.elapsed());
+        packetizer.skip(step.silent_frames);
+        timeline.next = packetizer.next();
+        step.packets
+    }
+
+    /// Account for a packet just handed to the receiver: the packetizer's
+    /// next packet follows it.
+    fn record_packet(&self, packetizer: &Packetizer) {
+        let mut timeline = self.timeline.lock().unwrap();
+        timeline.pacer.record_packet();
+        timeline.next = packetizer.next();
     }
 
     /// The audio flow has failed persistently; see [`StreamFailure`].
@@ -504,7 +631,6 @@ impl RaopStream {
         endpoints: StreamEndpoints,
         audio: RtpAudio,
         sockets: StreamSockets,
-        clock: Arc<dyn MonotonicClock>,
         control: RaopStreamControl,
     ) -> std::io::Result<Self> {
         let audio_socket = UdpSocket::bind((IpAddr::from([0, 0, 0, 0]), 0))?;
@@ -513,13 +639,12 @@ impl RaopStream {
 
         let PcmFeed { source, wake } = feed;
         let StreamSockets { timing, control: control_socket } = sockets;
-        let (sync_stop, sync_stopped) = mpsc::channel();
+        let (anchored, anchors) = mpsc::channel();
         // Built before any thread starts, so a thread that fails to start
         // drops it, which stops the ones already running.
         let mut stream = RaopStream {
             stop: Arc::new(AtomicBool::new(false)),
             wake: wake.clone(),
-            sync_stop: Some(sync_stop),
             threads: Vec::new(),
             _timing: timing,
         };
@@ -530,13 +655,11 @@ impl RaopStream {
                 source,
                 wake: wake.clone(),
                 packetizer: Packetizer::new(audio.ssrc, crypto, audio.channels, RtpPosition::START),
-                pacer: Pacer::new(audio.sample_rate, control.latency_frames()),
-                sample_rate: audio.sample_rate,
                 socket: audio_socket,
                 dst: audio_dst,
-                clock: clock.clone(),
                 stop: stop.clone(),
                 control: control.clone(),
+                anchored,
             },
         )?);
         stream.threads.push(spawn_sync_thread(
@@ -544,7 +667,7 @@ impl RaopStream {
             control_socket,
             control_dst,
             control,
-            sync_stopped,
+            anchors,
         )?);
 
         Ok(stream)
@@ -553,12 +676,12 @@ impl RaopStream {
 
 impl Drop for RaopStream {
     /// Stop the audio and sync threads and wait for each: the audio sender
-    /// by its wake, the sync sender by its channel closing. The timing
-    /// responder stops when its field drops.
+    /// by its wake, and the sync sender by the audio sender's end, which
+    /// closes the channel the sync sender waits on. The timing responder
+    /// stops when its field drops.
     fn drop(&mut self) {
         self.stop.store(true, Ordering::Release);
         self.wake.wake();
-        self.sync_stop.take();
         for thread in self.threads.drain(..) {
             thread.join();
         }
@@ -570,22 +693,24 @@ struct AudioThread {
     source: Box<dyn PcmSource>,
     wake: PcmWake,
     packetizer: Packetizer,
-    pacer: Pacer,
-    sample_rate: u32,
     socket: UdpSocket,
     dst: SocketAddr,
-    clock: Arc<dyn MonotonicClock>,
     stop: Arc<AtomicBool>,
     control: RaopStreamControl,
+    /// Told the sync sender once the burst after each start or resume is
+    /// out.
+    anchored: mpsc::Sender<()>,
 }
 
-/// Pull PCM one packet at a time, pace by the clock, and send. Persistent: a
-/// source with nothing to give (paused, starved, between tracks) yields no
+/// Pull PCM one packet at a time, pace by the timeline, and send. Persistent:
+/// a source with nothing to give (paused, starved, between tracks) yields no
 /// packet but the thread lives on, waiting on the feed's wake until the source
 /// may have frames again — only [`RaopStream`] being dropped (the stop flag)
 /// ends it, so pause and gapless track swaps don't tear the stream down. The
-/// pacing clock starts with the thread. A re-anchor resets the pacing and its
-/// clock, so the sender sends a new burst, and re-marks the next packet.
+/// timeline starts with the thread. A re-anchor starts it again, so the sender
+/// sends a new burst, and re-marks the next packet. After the burst that
+/// starts or restarts the timeline, the sync sender sends a sync packet at
+/// once, so the receiver knows where that audio plays before it plays it.
 fn spawn_audio_thread(
     diagnostics: &Diagnostics,
     mut t: AudioThread,
@@ -598,13 +723,10 @@ fn spawn_audio_thread(
     diagnostics.spawn_thread_reported(
         "airplay audio sender",
         move || {
-            // The pacing counts from now, when the audio starts, not from
-            // when the session began its setup: a receiver can hold SETUP
-            // for seconds while its owner allows the sender, and the time
-            // before the stream started is owed no audio.
-            t.clock.reset();
             let mut buf = vec![0i16; FRAMES_PER_PACKET as usize * channels];
             let mut seen_reanchor = t.control.reanchor_epoch();
+            t.control.start();
+            let mut sync_owed = true;
             let mut consecutive_failures = 0u32;
             loop {
                 // Read before the stop flag and the pulls, so a stop or new
@@ -615,14 +737,12 @@ fn spawn_audio_thread(
                 }
                 let epoch = t.control.reanchor_epoch();
                 if epoch != seen_reanchor {
-                    t.pacer = Pacer::new(t.sample_rate, t.control.latency_frames());
-                    t.clock.reset();
-                    t.packetizer.reanchor();
-                    t.control.record_anchor();
+                    t.control.anchor(&mut t.packetizer);
                     seen_reanchor = epoch;
+                    sync_owed = true;
                 }
 
-                let due = t.pacer.packets_due(t.clock.elapsed());
+                let due = t.control.step(&mut t.packetizer);
                 let mut starved = false;
                 for _ in 0..due {
                     if t.stop.load(Ordering::Acquire) {
@@ -649,8 +769,13 @@ fn spawn_audio_thread(
                             }
                         }
                     }
-                    t.pacer.record_packet();
-                    t.control.record_sent(t.packetizer.next());
+                    t.control.record_packet(&t.packetizer);
+                }
+                if sync_owed {
+                    // The sync sender ends before this thread only by
+                    // panicking, which has failed the stream already.
+                    t.anchored.send(()).ok();
+                    sync_owed = false;
                 }
                 if starved {
                     t.wake.wait_past(seen);
@@ -665,35 +790,36 @@ fn spawn_audio_thread(
     )
 }
 
-/// Send a sync packet immediately (extension bit set) and then every second, so
-/// the receiver keeps its clock anchored to ours, until `stopped`'s sender is
-/// dropped.
+/// Send a sync packet as each burst that starts or resumes the stream goes
+/// out (extension bit set, as on the first after RECORD or FLUSH), and one
+/// every second after, so the receiver keeps its clock anchored to the
+/// timeline, until the audio sender ends and drops the sender of `anchors`.
 fn spawn_sync_thread(
     diagnostics: &Diagnostics,
     socket: UdpSocket,
     dst: SocketAddr,
     control: RaopStreamControl,
-    stopped: mpsc::Receiver<()>,
+    anchors: mpsc::Receiver<()>,
 ) -> std::io::Result<ReportedThread> {
     let on_panic = control.clone();
     diagnostics.spawn_thread_reported(
         "airplay sync sender",
         move || {
-            let latency_frames = control.latency_frames();
+            // The timeline starts with the first burst.
+            if anchors.recv().is_err() {
+                return;
+            }
             let mut first = true;
             loop {
-                // The sender runs the latency ahead of what the receiver
-                // plays: the next frame it sends plays a latency from now.
-                let now_ts = control.next_packet().timestamp;
-                let played = now_ts.wrapping_sub(latency_frames);
-                let packet = rtp::sync_packet(first, played, NtpTime::now(), now_ts);
+                let SyncPoint { playing, next } = control.sync_point();
+                let packet = rtp::sync_packet(first, playing, NtpTime::now(), next);
                 if let Err(e) = socket.send_to(&packet, dst) {
                     debug!("airplay sync send failed: {e}");
                 }
-                first = false;
-                match stopped.recv_timeout(SYNC_INTERVAL) {
-                    Err(mpsc::RecvTimeoutError::Timeout) => {}
-                    Ok(()) | Err(mpsc::RecvTimeoutError::Disconnected) => break,
+                match anchors.recv_timeout(SYNC_INTERVAL) {
+                    Ok(()) => first = true,
+                    Err(mpsc::RecvTimeoutError::Timeout) => first = false,
+                    Err(mpsc::RecvTimeoutError::Disconnected) => break,
                 }
             }
         },

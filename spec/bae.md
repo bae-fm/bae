@@ -5042,11 +5042,17 @@ When the stream starts or resumes, bae sends at most 64 packets of audio
 (about half a second, and never more than the delay) at once, because a Mac's
 AirPlay Receiver drops the packets of a burst past about the 90th. From then
 on bae sends audio at the pace the receiver plays it, so the receiver starts
-playing that half second less than the delay after the start or resume. The
-position shown and the play recorded in history follow what the receiver is
-playing: until the receiver starts playing, the position stays where the
-stream started or resumed, and after that it is the delay behind the audio bae
-has sent. Each track ends the delay after bae sends the track's last audio.
+playing that half second less than the delay after the start or resume. When
+the audio runs out partway through the stream, the stream's time goes on at
+that pace and the receiver plays silence. When the audio comes back, bae sends
+at most 64 packets of it at once again, leaves silent the rest of the time it
+fell behind, and the receiver plays the audio that came back that half second
+less than the delay later. The position shown and the play
+recorded in history follow what the receiver is playing: until the receiver
+starts playing, the position stays where the stream started or resumed, and
+after that it is behind the audio bae has sent by the audio the receiver has
+not played yet, which is the delay less any silence in it. Each track ends the
+delay after bae sends the track's last audio.
 
 The stream bae opens to a receiver, AirPlay's realtime one, carries 44.1 kHz
 stereo, so bae converts every other track on the way out. (AirPlay's buffered
@@ -5059,8 +5065,11 @@ is reported as a bug; no audio is skipped silently.
 bae keeps every AirPlay receiver's clock in step with its own over NTP: it
 answers the receiver's timing requests from the moment it starts setting up
 the session, since a receiver such as a Mac's AirPlay Receiver syncs its clock
-before it accepts the stream, and it marks where the stream's audio falls in
-time with a sync packet as the stream starts and one each second after. bae runs no
+before it accepts the stream. bae marks where the stream's audio falls in
+time with a sync packet right after the burst that starts or resumes the
+stream, and one each second after. Each sync packet counts the stream's time
+from the clock, not from the audio bae has sent, so the receiver keeps the
+stream's time while the audio runs out. bae runs no
 PTP clock, so it asks no receiver for PTP timing, even one that advertises PTP.
 
 How to connect is read from what the receiver advertises, never guessed. An
@@ -5141,8 +5150,8 @@ request, or hear back — so a receiver that stops answering without closing it
 can't hold up ending the session.
 A receiver that refuses a pause ends the session the same way, rather than
 the app showing Paused while it plays on. A resume asks nothing of the
-receiver: bae sends audio again, and its next sync packet tells the receiver
-where that audio plays.
+receiver: bae sends audio again, and the sync packet it sends right after the
+first burst tells the receiver where that audio plays.
 
 **This device.** On every platform, playback and a preview follow a change of
 the default output device: they move to the new one at the same position. On

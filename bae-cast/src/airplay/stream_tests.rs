@@ -56,15 +56,15 @@ fn packetizer_encrypts_payload_only() {
 fn pacer_sends_its_burst_then_tracks_the_clock() {
     // 44.1 kHz, ~2 s latency: the burst is shorter than the latency.
     let mut pacer = Pacer::new(44_100, 88_200);
-    assert_eq!(pacer.packets_due(Duration::ZERO), BURST_PACKETS);
+    assert_eq!(pacer.step(Duration::ZERO), Step { silent_frames: 0, packets: BURST_PACKETS });
     for _ in 0..BURST_PACKETS {
         pacer.record_packet();
     }
     // Nothing more is due until the playback clock advances.
-    assert_eq!(pacer.packets_due(Duration::ZERO), 0);
-    // After 1 s, 44100 more frames are due: 44100 / 352 = 125 packets.
-    assert_eq!(pacer.packets_due(Duration::from_secs(1)), 125);
-    assert_eq!(pacer.frames_sent(), BURST_PACKETS * u64::from(FRAMES_PER_PACKET));
+    assert_eq!(pacer.step(Duration::ZERO).packets, 0);
+    // After 0.25 s, 11025 more frames are due: 11025 / 352 = 31 packets.
+    assert_eq!(pacer.step(Duration::from_millis(250)), Step { silent_frames: 0, packets: 31 });
+    assert_eq!(pacer.passed(), BURST_PACKETS * u64::from(FRAMES_PER_PACKET));
 }
 
 /// A receiver whose latency is shorter than the burst gets only its latency
@@ -72,9 +72,59 @@ fn pacer_sends_its_burst_then_tracks_the_clock() {
 /// the receiver partway into it.
 #[test]
 fn pacer_sends_no_more_than_the_latency_at_the_anchor() {
-    let pacer = Pacer::new(44_100, 11_025);
+    let mut pacer = Pacer::new(44_100, 11_025);
     // 11025 / 352 = 31 whole packets.
-    assert_eq!(pacer.packets_due(Duration::ZERO), 31);
+    assert_eq!(pacer.step(Duration::ZERO).packets, 31);
+}
+
+/// The packets a source has at each moment of a test: none in `dry`, and
+/// every packet asked for otherwise.
+struct DrySpell {
+    dry: std::ops::Range<Duration>,
+}
+
+impl DrySpell {
+    fn has_frames_at(&self, at: Duration) -> bool {
+        !self.dry.contains(&at)
+    }
+}
+
+/// Drive `pacer` as the audio sender does, waking every 5 ms until `until`,
+/// with a source that is dry in `spell.dry`. A sender that finds the source
+/// dry waits until it has frames again, and each packet reaches `intake` as
+/// it is sent. Each packet must land on the timeline ahead of the frame the
+/// receiver plays as it arrives, or the receiver would never play it.
+fn pace_through(
+    pacer: &mut Pacer,
+    intake: &mut AudioIntake,
+    spell: &DrySpell,
+    until: Duration,
+) -> u16 {
+    let mut sequence = 0u16;
+    let mut waiting = false;
+    let mut at = Duration::ZERO;
+    while at <= until {
+        if !(waiting && !spell.has_frames_at(at)) {
+            waiting = false;
+            for _ in 0..pacer.step(at).packets {
+                if !spell.has_frames_at(at) {
+                    waiting = true;
+                    break;
+                }
+                let playing = pacer.due(at).saturating_sub(88_200);
+                assert!(
+                    pacer.passed() >= playing,
+                    "a packet sent at {at:?} lands {} frames behind the frame playing",
+                    playing - pacer.passed()
+                );
+                intake.arrive(at, sequence);
+                sequence = sequence.wrapping_add(1);
+                pacer.record_packet();
+            }
+        }
+        at += Duration::from_millis(5);
+    }
+    sequence
 }
 
 /// A stream's start sends a Mac's AirPlay Receiver no more at once than it
@@ -85,21 +135,84 @@ fn pacer_sends_no_more_than_the_latency_at_the_anchor() {
 fn a_stream_start_sends_no_more_than_a_mac_receiver_keeps() {
     let mut intake = AudioIntake::mac();
     let mut pacer = Pacer::new(44_100, 88_200);
-    let mut sequence = 0u16;
+    let never_dry = DrySpell { dry: Duration::ZERO..Duration::ZERO };
 
-    // The audio sender wakes every 5 ms; 3 s of stream.
-    for wake in 0..=600 {
-        let at = Duration::from_millis(5 * wake);
-        for _ in 0..pacer.packets_due(at) {
-            intake.arrive(at, sequence);
-            sequence = sequence.wrapping_add(1);
-            pacer.record_packet();
-        }
-    }
+    // 3 s of stream.
+    pace_through(&mut pacer, &mut intake, &never_dry, Duration::from_secs(3));
 
     assert_eq!(intake.dropped(), &[] as &[u16]);
     // The burst, then 3 s of audio: 132300 / 352 = 375 whole packets.
-    assert_eq!(pacer.frames_sent(), (BURST_PACKETS + 375) * u64::from(FRAMES_PER_PACKET));
+    assert_eq!(pacer.passed(), (BURST_PACKETS + 375) * u64::from(FRAMES_PER_PACKET));
+}
+
+/// A source that runs dry partway and then has frames again leaves the
+/// frames the timeline ran past silent: the sender sends no more at once than
+/// a Mac's AirPlay Receiver keeps, and lands the audio that came back where
+/// the receiver has not played yet. Sabotage: drop the cap on what the pacer
+/// owes, and it sends the 3 s it fell behind at once, so the receiver drops
+/// all but 90 of them and the first lands long after its frame played.
+#[test]
+fn a_source_that_runs_dry_and_returns_sends_no_more_than_a_mac_receiver_keeps() {
+    let mut intake = AudioIntake::mac();
+    let mut pacer = Pacer::new(44_100, 88_200);
+    let spell = DrySpell { dry: Duration::from_secs(1)..Duration::from_secs(4) };
+
+    let sent = pace_through(&mut pacer, &mut intake, &spell, Duration::from_secs(6));
+
+    assert_eq!(intake.dropped(), &[] as &[u16]);
+    // The start's burst and 1 s of audio, then the burst after the source
+    // came back and 2 s of audio: everything but the 3 s left silent.
+    let packets = |frames: u64| frames / u64::from(FRAMES_PER_PACKET);
+    assert!(
+        u64::from(sent).abs_diff(2 * BURST_PACKETS + packets(3 * 44_100)) <= 2,
+        "sent {sent} packets"
+    );
+}
+
+/// Once the sender has sent more than the latency since the stream started,
+/// the receiver has played all but the latency of it. Sabotage: count every
+/// frame sent as not played, and the position falls further behind with
+/// each packet.
+#[test]
+fn the_audio_not_played_stops_at_the_latency() {
+    let mut intake = AudioIntake::mac();
+    let mut pacer = Pacer::new(44_100, 88_200);
+    let never_dry = DrySpell { dry: Duration::ZERO..Duration::ZERO };
+    // A moment the clock reaches a whole packet: 375 packets in.
+    let whole = bae_util::sample_time::frame_start(375 * u64::from(FRAMES_PER_PACKET), 44_100);
+
+    pace_through(&mut pacer, &mut intake, &never_dry, whole);
+    for _ in 0..pacer.step(whole).packets {
+        pacer.record_packet();
+    }
+
+    assert_eq!(pacer.unplayed(whole), 88_200);
+}
+
+/// After the source comes back from running dry, the audio not played is the
+/// audio sent before the source ran dry that the receiver has not reached,
+/// and the burst sent after: the frames left silent between them don't count.
+/// Sabotage: count the silent frames as audio, and the position shown falls
+/// behind by them.
+#[test]
+fn the_audio_not_played_leaves_out_the_silence_while_the_source_was_dry() {
+    let mut intake = AudioIntake::mac();
+    let mut pacer = Pacer::new(44_100, 88_200);
+    let back = Duration::from_millis(3800);
+    let spell = DrySpell { dry: Duration::from_secs(3)..back };
+
+    pace_through(&mut pacer, &mut intake, &spell, back - Duration::from_millis(5));
+    let sent_before = pacer.passed();
+    let step = pacer.step(back);
+    assert!(step.silent_frames > 0, "the sender fell more than a burst behind");
+    for _ in 0..step.packets {
+        pacer.record_packet();
+    }
+
+    let playing = pacer.due(back) - 88_200;
+    let burst = BURST_PACKETS * u64::from(FRAMES_PER_PACKET);
+    assert_eq!(step.packets, BURST_PACKETS, "the sender sends one burst");
+    assert_eq!(pacer.unplayed(back), sent_before - playing + burst);
 }
 
 /// A source that yields the packets a test gives it, then reports nothing,
@@ -131,11 +244,21 @@ impl PcmSource for FixedSource {
     }
 }
 
-/// A clock pinned far ahead so every packet is immediately due.
-struct FarAheadClock;
-impl MonotonicClock for FarAheadClock {
+/// A clock that stands at the anchor, so the burst is due at once and
+/// nothing after it.
+struct StandingClock;
+impl MonotonicClock for StandingClock {
     fn elapsed(&self) -> Duration {
-        Duration::from_secs(3600)
+        Duration::ZERO
+    }
+    fn reset(&self) {}
+}
+
+/// A clock that stands a fixed time past the anchor.
+struct FixedClock(Duration);
+impl MonotonicClock for FixedClock {
+    fn elapsed(&self) -> Duration {
+        self.0
     }
     fn reset(&self) {}
 }
@@ -156,7 +279,7 @@ fn audio_thread_reporting(
     wake: PcmWake,
     failed: AirPlayFailed,
 ) -> (ReportedThread, RaopStreamControl) {
-    audio_thread_pacing_by(diagnostics, source, stop, wake, failed, Arc::new(FarAheadClock))
+    audio_thread_pacing_by(diagnostics, source, stop, wake, failed, Arc::new(StandingClock))
 }
 
 fn audio_thread_pacing_by(
@@ -167,7 +290,9 @@ fn audio_thread_pacing_by(
     failed: AirPlayFailed,
     clock: Arc<dyn MonotonicClock>,
 ) -> (ReportedThread, RaopStreamControl) {
-    let control = RaopStreamControl::new(88_200, StreamFailure::new(failed));
+    let control = RaopStreamControl::new(88_200, clock, StreamFailure::new(failed));
+    // No sync sender listens.
+    let (anchored, _) = std::sync::mpsc::channel();
     let handle = spawn_audio_thread(
         diagnostics,
         AudioThread {
@@ -179,13 +304,11 @@ fn audio_thread_pacing_by(
                 2,
                 RtpPosition::START,
             ),
-            pacer: Pacer::new(44_100, 88_200),
-            sample_rate: 44_100,
             socket: UdpSocket::bind(("127.0.0.1", 0)).unwrap(),
             dst: "127.0.0.1:9".parse().unwrap(),
-            clock,
             stop,
             control: control.clone(),
+            anchored,
         },
     )
     .expect("spawn the audio sender");
@@ -215,9 +338,10 @@ impl MonotonicClock for StartedBeforeSetupClock {
 }
 
 /// The sender paces from when the audio starts, so the seconds a receiver
-/// held SETUP are owed no audio: at the start it sends its burst and nothing
-/// more. Sabotage: drop the clock's reset at the thread's start, and the
-/// sender sends the setup's ten seconds of audio with the burst at once.
+/// held SETUP are owed no audio: at the start it sends its burst from the
+/// first packet, which RECORD named, and nothing more. Sabotage: drop the
+/// clock's reset at the thread's start, and the sender leaves the setup's
+/// ten seconds silent and sends its burst after them.
 #[test]
 fn the_sender_owes_no_audio_for_the_time_setup_took() {
     let stop = Arc::new(AtomicBool::new(false));
@@ -254,38 +378,104 @@ fn the_sender_owes_no_audio_for_the_time_setup_took() {
     );
 }
 
-/// A sync packet tells the receiver which frame it should be playing now and
-/// which frame the sender sends next: the sender runs the latency ahead, so
-/// the frame it sends next plays a latency from now. Sabotage: count the
-/// latency onto the next frame, and the receiver plays each frame as it
-/// arrives and runs out.
+/// Read sync packets from `receiver` until one carries the extension bit,
+/// which marks the first after the stream starts or resumes, and give its
+/// playing and next frames.
+fn first_sync_packet(receiver: &UdpSocket) -> SyncPoint {
+    loop {
+        let mut packet = [0u8; 64];
+        let (len, _) = receiver.recv_from(&mut packet).expect("the sender sends a sync packet");
+        assert_eq!(len, 20);
+        assert_eq!(packet[1], 0xD4, "a sync packet");
+        if packet[0] == 0x90 {
+            return SyncPoint {
+                playing: u32::from_be_bytes(packet[4..8].try_into().unwrap()),
+                next: u32::from_be_bytes(packet[16..20].try_into().unwrap()),
+            };
+        }
+    }
+}
+
+/// A sync packet tells the receiver the frame due on the pacer's timeline,
+/// which the clock runs, and the frame it should be playing now, a latency
+/// behind: so the timeline moves on while the source has sent nothing.
+/// Sabotage: count from the frames sent, and the timeline stands at the
+/// start; count the latency onto the next frame, and the receiver plays each
+/// frame as it arrives and runs out.
 #[test]
-fn a_sync_packet_puts_the_next_frame_a_latency_ahead_of_the_one_playing() {
+fn a_sync_packet_puts_the_frame_due_a_latency_ahead_of_the_one_playing() {
     let receiver = UdpSocket::bind(("127.0.0.1", 0)).unwrap();
     receiver.set_read_timeout(Some(bae_util::test_channels::HANG_GUARD)).unwrap();
-    let control = RaopStreamControl::new(88_200, StreamFailure::new(AirPlayFailed::ignored()));
-    // The sender has sent 300 packets.
-    control.record_sent(RtpPosition { sequence: 300, timestamp: 300 * FRAMES_PER_PACKET });
-    let (stop, stopped) = std::sync::mpsc::channel();
+    // 3 s past the start, with nothing sent.
+    let control = RaopStreamControl::new(
+        88_200,
+        Arc::new(FixedClock(Duration::from_secs(3))),
+        StreamFailure::new(AirPlayFailed::ignored()),
+    );
+    let (anchored, anchors) = std::sync::mpsc::channel();
     let sender = spawn_sync_thread(
         &Diagnostics::noop(),
         UdpSocket::bind(("127.0.0.1", 0)).unwrap(),
         receiver.local_addr().unwrap(),
         control,
-        stopped,
+        anchors,
     )
     .expect("spawn the sync sender");
 
-    let mut packet = [0u8; 64];
-    let (len, _) = receiver.recv_from(&mut packet).expect("the sender sends a sync packet");
-    drop(stop);
+    anchored.send(()).unwrap();
+    let sync = first_sync_packet(&receiver);
+    drop(anchored);
     sender.join();
 
-    assert_eq!(len, 20);
-    let playing = u32::from_be_bytes(packet[4..8].try_into().unwrap());
-    let next = u32::from_be_bytes(packet[16..20].try_into().unwrap());
-    assert_eq!(next, 300 * FRAMES_PER_PACKET, "the frame the sender sends next");
-    assert_eq!(playing, next - 88_200, "the frame playing now, a latency before it");
+    let due = BURST_PACKETS as u32 * FRAMES_PER_PACKET + 3 * 44_100;
+    assert_eq!(sync.next, due, "the frame due 3 s past the start");
+    assert_eq!(sync.playing, due - 88_200, "the frame playing now, a latency before it");
+}
+
+/// A resume sends a sync packet right after its burst, marked as the first
+/// after a FLUSH, so the receiver knows where the resumed audio plays before
+/// it plays it: the clock stands at the resume, and the packet puts the
+/// resumed audio's first frame ahead of the frame playing. Sabotage: send
+/// sync packets only each second, and none after the resume carries the
+/// extension bit.
+#[test]
+fn a_resume_sends_a_sync_packet_before_its_audio_plays() {
+    let receiver = UdpSocket::bind(("127.0.0.1", 0)).unwrap();
+    receiver.set_read_timeout(Some(bae_util::test_channels::HANG_GUARD)).unwrap();
+    let (source, _packets, _drained) = FixedSource::holding(2000);
+    let failure = StreamFailure::new(AirPlayFailed::ignored());
+    let control = RaopStreamControl::new(88_200, Arc::new(StandingClock), failure.clone());
+    let stream = RaopStream::spawn(
+        &Diagnostics::noop(),
+        PcmFeed::new(Box::new(source), PcmWake::unattached()),
+        PayloadCrypto::Raop(RaopCipher::none()),
+        StreamEndpoints {
+            receiver: IpAddr::from([127, 0, 0, 1]),
+            audio_port: 9,
+            control_port: receiver.local_addr().unwrap().port(),
+        },
+        RtpAudio { ssrc: 1, channels: 2 },
+        StreamSockets::open(&Diagnostics::noop(), &failure).unwrap(),
+        control.clone(),
+    )
+    .expect("the stream starts");
+    let burst = BURST_PACKETS as u32 * FRAMES_PER_PACKET;
+
+    let start = first_sync_packet(&receiver);
+    assert_eq!(start.next, burst, "the start's sync packet follows its burst");
+
+    control.reanchor();
+    let resume = first_sync_packet(&receiver);
+    let resumed_at = control.next_packet().timestamp - burst;
+    drop(stream);
+
+    assert_eq!(resumed_at, burst, "the resume starts where the start's timeline stood");
+    assert_eq!(resume.next, resumed_at + burst, "the sync packet follows the resume's burst");
+    assert_eq!(
+        resumed_at.wrapping_sub(resume.playing),
+        88_200 - burst,
+        "the resumed audio plays the latency less its burst after the resume"
+    );
 }
 
 /// After each packet the packetizer's next packet has the next sequence
@@ -385,27 +575,6 @@ fn a_reanchor_sends_one_burst_again() {
 
     assert_eq!(control.next_packet().sequence, 2 * burst, "the re-anchor sends one burst more");
     assert_eq!(control.unheard(), burst_time, "the receiver plays nothing sent before the resume");
-}
-
-/// Once the sender has sent more than the latency since the stream started,
-/// the receiver has played all but the latency of it. Sabotage: count every
-/// frame sent as not played, and the position falls further behind with
-/// each packet.
-#[test]
-fn the_audio_not_played_stops_at_the_latency() {
-    let stop = Arc::new(AtomicBool::new(false));
-    let wake = PcmWake::unattached();
-    // 300 packets, more than the 250 of the 2 s latency.
-    let (source, _packets, drained) = FixedSource::holding(300);
-    let (handle, control) =
-        audio_thread(&Diagnostics::noop(), Box::new(source), stop.clone(), wake.clone());
-
-    drained.recv_timeout(bae_util::test_channels::HANG_GUARD).expect("the sender sends them all");
-    stop.store(true, Ordering::Release);
-    wake.wake();
-    handle.join();
-
-    assert_eq!(control.unheard(), Duration::from_secs(2));
 }
 
 /// A source whose pull panics: a bug in the samples' way to the sender.
@@ -521,7 +690,8 @@ fn reanchor_re_marks_the_next_packet() {
 /// Dropping a running stream stops all three threads: the sender waiting on
 /// an empty source, the sync sender between packets and the timing responder
 /// in its read. Sabotage: leave out the datagram to the timing socket, or
-/// keep the sync channel open, and the drop waits forever.
+/// keep a sender of the sync sender's channel outside the audio sender, and
+/// the drop waits forever.
 #[test]
 fn dropping_the_stream_stops_every_thread() {
     let (source, _packets, _drained) = FixedSource::holding(0);
@@ -531,10 +701,9 @@ fn dropping_the_stream_stops_every_thread() {
         PcmFeed::new(Box::new(source), PcmWake::unattached()),
         PayloadCrypto::Raop(RaopCipher::none()),
         StreamEndpoints { receiver: IpAddr::from([127, 0, 0, 1]), audio_port: 9, control_port: 9 },
-        RtpAudio { ssrc: 1, sample_rate: 44_100, channels: 2 },
+        RtpAudio { ssrc: 1, channels: 2 },
         StreamSockets::open(&Diagnostics::noop(), &failure).unwrap(),
-        Arc::new(FarAheadClock),
-        RaopStreamControl::new(88_200, failure),
+        RaopStreamControl::new(88_200, Arc::new(StandingClock), failure),
     )
     .expect("the stream starts");
 

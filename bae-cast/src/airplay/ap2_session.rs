@@ -23,7 +23,7 @@ use std::net::{IpAddr, TcpStream};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use bae_playback::airplay_output::{AirPlayFailed, PCM_CHANNELS, PCM_SAMPLE_RATE};
+use bae_playback::airplay_output::{AirPlayFailed, PCM_CHANNELS};
 use tracing::warn;
 
 use super::airplay2::Ap2AudioCipher;
@@ -429,8 +429,8 @@ impl Ap2SessionControl {
     }
 
     /// Re-anchor the sender's pacing (resume / post-seek): the audio thread
-    /// restarts its burst and re-marks the stream, and the next sync packet
-    /// anchors the receiver again.
+    /// restarts its burst and re-marks the stream, and the sync packet right
+    /// after the burst anchors the receiver again.
     fn reanchor(&self) {
         self.stream.reanchor();
     }
@@ -509,19 +509,14 @@ impl Ap2Session {
             control_port: ports.control_port,
         };
         let cipher = Ap2AudioCipher::from_shared_secret(&shared);
-        let stream_control = RaopStreamControl::new(latency, failure);
+        let stream_control = RaopStreamControl::new(latency, clock, failure);
         let stream = RaopStream::spawn(
             diagnostics,
             feed,
             PayloadCrypto::Ap2(cipher),
             endpoints,
-            RtpAudio {
-                ssrc: rand::random::<u32>(),
-                sample_rate: PCM_SAMPLE_RATE,
-                channels: PCM_CHANNELS,
-            },
+            RtpAudio { ssrc: rand::random::<u32>(), channels: PCM_CHANNELS },
             sockets,
-            clock,
             stream_control.clone(),
         )?;
 
