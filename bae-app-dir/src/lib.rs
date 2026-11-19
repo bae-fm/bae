@@ -4,6 +4,12 @@
 //! namespace, and the transfer limits a library runs under before its
 //! preferences can be read.
 
+mod removals;
+
+#[cfg(any(test, feature = "test-utils"))]
+pub use removals::removal_lock_waits;
+pub use removals::RemovalLock;
+
 use std::num::{NonZeroU32, NonZeroUsize};
 use std::path::{Path, PathBuf};
 
@@ -114,14 +120,26 @@ impl AppDir {
 
     /// The directory of removal records: one file per library whose removal
     /// from this device has started and not finished, named by its id.
-    pub fn removal_records(&self) -> PathBuf {
+    fn removal_records(&self) -> PathBuf {
         self.path.join("removals")
     }
 
     /// The file a removal, or a lookup of unfinished removals, holds locked
     /// for its whole run, in every process using this directory.
-    pub fn removal_lock(&self) -> PathBuf {
+    fn removal_lock(&self) -> PathBuf {
         self.path.join("removals.lock")
+    }
+
+    /// Where a test that damages or watches the removal records finds them.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn test_removal_records(&self) -> PathBuf {
+        self.removal_records()
+    }
+
+    /// Where a test that watches the removal lock finds it.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn test_removal_lock(&self) -> PathBuf {
+        self.removal_lock()
     }
 
     /// This device's libraries as coven keeps them: each library's store in
@@ -184,7 +202,7 @@ impl AppDir {
             .map_err(|error| bae_util::fs::io_error_at(staged.path(), error))?;
         match staged.persist_noclobber(&path) {
             Ok(_) => {
-                bae_util::fs::sync_directory(&self.path)
+                removals::sync_directory(&self.path)
                     .map_err(|error| bae_util::fs::io_error_at(&self.path, error))?;
                 Ok(id)
             }

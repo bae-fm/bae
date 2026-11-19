@@ -10,10 +10,10 @@
 //! a lookup never sees a removal that is still waiting on coven.
 
 use crate::LibraryError;
-use bae_app_dir::{AppDir, AppDirError};
+use bae_app_dir::{AppDir, AppDirError, RemovalLock};
 use bae_diagnostics::Diagnostics;
 use std::collections::{BTreeSet, HashSet};
-use tracing::{debug, warn};
+use tracing::warn;
 
 #[derive(Debug, thiserror::Error)]
 pub enum LibraryRemovalError {
@@ -111,7 +111,7 @@ impl UnfinishedRemoval {
         coven: &coven::Coven,
         diagnostics: &Diagnostics,
     ) -> Result<Option<Self>, LibraryError> {
-        let _lock = RemovalLock::acquire(app_dir, diagnostics).await?;
+        let _lock = lock_removals(app_dir, diagnostics).await?;
         let records = removal_records(app_dir, diagnostics).await?;
         if records.is_empty() {
             return Ok(None);
@@ -146,7 +146,7 @@ pub async fn finish_removals(
     diagnostics: &Diagnostics,
     finished: &(dyn Fn(u64, u64) + Send + Sync),
 ) -> Result<(), LibraryError> {
-    let _lock = RemovalLock::acquire(app_dir, diagnostics).await?;
+    let _lock = lock_removals(app_dir, diagnostics).await?;
     let records = removal_records(app_dir, diagnostics).await?;
     if records.is_empty() {
         return Ok(());
@@ -255,8 +255,7 @@ pub(crate) async fn remove_recorded(
     delete_store: impl std::future::Future<Output = Result<(), coven::StoreDeletionError>>,
     steps: &(dyn Fn(super::ClosingStep) + Send + Sync),
 ) -> Result<(), LibraryRemovalError> {
-    let _lock =
-        RemovalLock::acquire(app_dir, diagnostics).await.map_err(LibraryRemovalError::Record)?;
+    let _lock = lock_removals(app_dir, diagnostics).await.map_err(LibraryRemovalError::Record)?;
     write_record(app_dir, diagnostics, store_id).await.map_err(LibraryRemovalError::Record)?;
     steps(super::ClosingStep::LeavingLibrary);
     let deleted = match delete_store
@@ -344,78 +343,6 @@ async fn files_held_open(_: &Diagnostics, _: std::path::PathBuf) -> Vec<std::pat
     Vec::new()
 }
 
-/// The removal lock: an exclusive OS lock on one file in the app directory,
-/// released when dropped. Separate opens of the file exclude each other, so
-/// it orders removals and lookups within this process and across processes.
-struct RemovalLock {
-    _file: coven::FileLock,
-}
-
-impl RemovalLock {
-    /// Wait for the lock: take it at once if no one holds it, else block
-    /// until its holder lets it go.
-    #[expect(
-        clippy::disallowed_methods,
-        reason = "file system: bae's own directory, which coven does not own"
-    )]
-    async fn acquire(app_dir: &AppDir, diagnostics: &Diagnostics) -> Result<Self, LibraryError> {
-        let path = app_dir.removal_lock();
-        file_work(diagnostics, "take the removal lock", move || {
-            let file = std::fs::OpenOptions::new()
-                .create(true)
-                .truncate(false)
-                .write(true)
-                .open(&path)
-                .map_err(|error| io_at(&path, error))?;
-            let attempt = file.try_clone().map_err(|error| io_at(&path, error))?;
-            match coven::FileLock::try_lock(attempt, coven::LockMode::Exclusive) {
-                Ok(file) => return Ok(Self { _file: file }),
-                Err(std::fs::TryLockError::WouldBlock) => {
-                    #[cfg(test)]
-                    removal_lock_waits::waiting(&path);
-                }
-                Err(std::fs::TryLockError::Error(error)) => return Err(io_at(&path, error)),
-            }
-            let file = coven::FileLock::lock(file, coven::LockMode::Exclusive)
-                .map_err(|error| io_at(&path, error))?;
-            Ok(Self { _file: file })
-        })
-        .await
-    }
-}
-
-/// Where a test hears that a call found the removal lock held and is about
-/// to wait for it.
-#[cfg(test)]
-pub(crate) mod removal_lock_waits {
-    use std::path::{Path, PathBuf};
-    use std::sync::Mutex;
-
-    static WATCHED: Mutex<Vec<(PathBuf, tokio::sync::oneshot::Sender<()>)>> =
-        Mutex::new(Vec::new());
-
-    /// Told once a call finds the lock at `path` held.
-    pub(crate) fn when_waiting(path: PathBuf) -> tokio::sync::oneshot::Receiver<()> {
-        let (told, telling) = tokio::sync::oneshot::channel();
-        WATCHED.lock().unwrap().push((path, told));
-        telling
-    }
-
-    pub(super) fn waiting(path: &Path) {
-        let mut watched = WATCHED.lock().unwrap();
-        let (found, rest): (Vec<_>, Vec<_>) =
-            std::mem::take(&mut *watched).into_iter().partition(|(watched, _)| watched == path);
-        *watched = rest;
-        for (_, told) in found {
-            #[expect(
-                clippy::let_underscore_must_use,
-                reason = "a test that stopped listening has no use for it"
-            )]
-            let _ = told.send(());
-        }
-    }
-}
-
 async fn listed_stores(
     coven: &coven::Coven,
     diagnostics: &Diagnostics,
@@ -429,94 +356,46 @@ async fn listed_stores(
         .collect())
 }
 
-/// Write the record, synced along with the directories naming it.
-#[expect(
-    clippy::disallowed_methods,
-    reason = "file system: bae's own directory, which coven does not own"
-)]
+/// Take the removal lock, held until the guard drops.
+async fn lock_removals(
+    app_dir: &AppDir,
+    diagnostics: &Diagnostics,
+) -> Result<RemovalLock, LibraryError> {
+    let app_dir = app_dir.clone();
+    file_work(diagnostics, "take the removal lock", move || Ok(app_dir.lock_removals()?)).await
+}
+
 async fn write_record(
     app_dir: &AppDir,
     diagnostics: &Diagnostics,
     store_id: coven::StoreId,
 ) -> Result<(), LibraryError> {
-    let records = app_dir.removal_records();
-    file_work(diagnostics, "write a removal record", move || {
-        std::fs::create_dir_all(&records).map_err(|error| io_at(&records, error))?;
-        let parent = records.parent().expect("the records directory has a parent");
-        bae_util::fs::sync_directory(parent).map_err(|error| io_at(parent, error))?;
-        let id = store_id.to_string();
-        coven::write_atomic(&records.join(&id), id.as_bytes()).map_err(AppDirError::from)?;
-        Ok(())
-    })
-    .await
+    let app_dir = app_dir.clone();
+    file_work(diagnostics, "write a removal record", move || Ok(app_dir.record_removal(store_id)?))
+        .await
 }
 
-#[expect(
-    clippy::disallowed_methods,
-    reason = "file system: bae's own directory, which coven does not own"
-)]
 async fn delete_record(
     app_dir: &AppDir,
     diagnostics: &Diagnostics,
     store_id: coven::StoreId,
 ) -> Result<(), LibraryError> {
-    let record = app_dir.removal_records().join(store_id.to_string());
-    file_work(diagnostics, "delete a removal record", move || match std::fs::remove_file(&record) {
-        Ok(()) => Ok(()),
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
-        Err(error) => Err(io_at(&record, error)),
+    let app_dir = app_dir.clone();
+    file_work(diagnostics, "delete a removal record", move || {
+        Ok(app_dir.clear_removal_record(store_id)?)
     })
     .await
 }
 
-/// The ids of the recorded removals. Anything else in the records directory
-/// (a temporary file an interrupted write left) is passed over.
-#[expect(
-    clippy::disallowed_methods,
-    reason = "file system: bae's own directory, which coven does not own"
-)]
 async fn removal_records(
     app_dir: &AppDir,
     diagnostics: &Diagnostics,
 ) -> Result<BTreeSet<coven::StoreId>, LibraryError> {
-    let root = app_dir.removal_records();
-    file_work(diagnostics, "list the removal records", move || {
-        let entries = match std::fs::read_dir(&root) {
-            Ok(entries) => entries,
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-                return Ok(BTreeSet::new())
-            }
-            Err(error) => return Err(io_at(&root, error)),
-        };
-        let mut records = BTreeSet::new();
-        for entry in entries {
-            let entry = entry.map_err(|error| io_at(&root, error))?;
-            let path = entry.path();
-            let is_file = entry.file_type().map_err(|error| io_at(&path, error))?.is_file();
-            match entry.file_name().to_str().and_then(parse_library_id) {
-                Some(id) if is_file => {
-                    records.insert(id);
-                }
-                _ => debug!(path = %path.display(), "not a removal record"),
-            }
-        }
-        Ok(records)
-    })
-    .await
+    let app_dir = app_dir.clone();
+    file_work(diagnostics, "list the removal records", move || Ok(app_dir.recorded_removals()?))
+        .await
 }
 
-/// A library id exactly as bae writes it: a canonical UUID.
-fn parse_library_id(name: &str) -> Option<coven::StoreId> {
-    let id = uuid::Uuid::parse_str(name).ok()?;
-    (id.to_string() == name).then_some(coven::StoreId(id))
-}
-
-/// Clear the pointer if it names `store_id`, then delete the library's
-/// directory.
-#[expect(
-    clippy::disallowed_methods,
-    reason = "file system: bae's own directory, which coven does not own"
-)]
 async fn delete_library_files(
     app_dir: &AppDir,
     diagnostics: &Diagnostics,
@@ -524,22 +403,7 @@ async fn delete_library_files(
 ) -> Result<(), LibraryError> {
     let app_dir = app_dir.clone();
     file_work(diagnostics, "delete a removed library's files", move || {
-        let id = store_id.to_string();
-        let pointer = app_dir.active_library_pointer();
-        match std::fs::read_to_string(&pointer) {
-            Ok(current) if current.trim() == id => {
-                std::fs::remove_file(&pointer).map_err(|error| io_at(&pointer, error))?
-            }
-            Ok(_) => {}
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-            Err(error) => return Err(io_at(&pointer, error)),
-        }
-        let directory = app_dir.registered_library(&id);
-        match std::fs::remove_dir_all(&directory) {
-            Ok(()) => Ok(()),
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
-            Err(error) => Err(io_at(&directory, error)),
-        }
+        Ok(app_dir.delete_library_files(store_id)?)
     })
     .await
 }
@@ -552,11 +416,6 @@ async fn file_work<T: Send + 'static>(
     work: impl FnOnce() -> Result<T, LibraryError> + Send + 'static,
 ) -> Result<T, LibraryError> {
     diagnostics.blocking(operation, work).await?
-}
-
-/// Keep the path in the error: a bare "Permission denied" names no file.
-fn io_at(path: &std::path::Path, error: std::io::Error) -> LibraryError {
-    LibraryError::Io(bae_util::fs::io_error_at(path, error))
 }
 
 #[cfg(test)]

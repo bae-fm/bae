@@ -235,3 +235,64 @@ fn no_neighbor_is_named_without_another_library_that_opens() {
         assert_eq!(LibraryListing::of(libraries).active_neighbors, None);
     }
 }
+
+#[test]
+fn removal_records_are_listed_until_cleared_and_clearing_twice_succeeds() {
+    let tmp = TestFolder::new();
+    let app_dir = AppDir::at(tmp.path()).unwrap();
+    let first = coven::StoreId(uuid::Uuid::from_u128(1));
+    let second = coven::StoreId(uuid::Uuid::from_u128(2));
+    assert!(app_dir.recorded_removals().unwrap().is_empty());
+    app_dir.record_removal(first).unwrap();
+    app_dir.record_removal(second).unwrap();
+    app_dir.record_removal(second).unwrap();
+    assert_eq!(app_dir.recorded_removals().unwrap(), [first, second].into());
+    app_dir.clear_removal_record(first).unwrap();
+    app_dir.clear_removal_record(first).unwrap();
+    assert_eq!(app_dir.recorded_removals().unwrap(), [second].into());
+}
+
+#[test]
+fn recorded_removals_pass_over_files_that_are_not_records() {
+    let tmp = TestFolder::new();
+    let app_dir = AppDir::at(tmp.path()).unwrap();
+    let id = coven::StoreId(uuid::Uuid::from_u128(1));
+    app_dir.record_removal(id).unwrap();
+    let records = app_dir.test_removal_records();
+    tmp.write(records.join("not-an-id"), "x");
+    tmp.write(records.join(id.to_string().to_uppercase()), "x");
+    tmp.create_folder(records.join(coven::StoreId(uuid::Uuid::from_u128(3)).to_string()));
+    assert_eq!(app_dir.recorded_removals().unwrap(), [id].into());
+}
+
+#[test]
+fn deleting_a_library_clears_the_pointer_only_when_it_names_that_library() {
+    let tmp = TestFolder::new();
+    let app_dir = AppDir::at(tmp.path()).unwrap();
+    let removed = coven::StoreId(uuid::Uuid::from_u128(1));
+    let kept = coven::StoreId(uuid::Uuid::from_u128(2));
+    tmp.create_folder(app_dir.registered_library(&removed.to_string()).join("cache"));
+    app_dir.save_active_library(kept).unwrap();
+    app_dir.delete_library_files(removed).unwrap();
+    assert!(!tmp.exists(app_dir.registered_library(&removed.to_string())));
+    assert_eq!(app_dir.active_library_id().unwrap(), Some(kept.to_string()));
+    app_dir.delete_library_files(kept).unwrap();
+    assert_eq!(app_dir.active_library_id().unwrap(), None);
+    app_dir.delete_library_files(kept).unwrap();
+}
+
+#[test]
+fn the_removal_lock_excludes_another_holder_until_released() {
+    let tmp = TestFolder::new();
+    let app_dir = AppDir::at(tmp.path()).unwrap();
+    let waiting = removal_lock_waits::when_waiting(app_dir.test_removal_lock());
+    let held = app_dir.lock_removals().unwrap();
+    let second = bae_util::test_spawn::thread({
+        let app_dir = app_dir.clone();
+        move || drop(app_dir.lock_removals().unwrap())
+    });
+    waiting.blocking_recv().unwrap();
+    assert!(!second.is_finished());
+    drop(held);
+    second.join().unwrap();
+}

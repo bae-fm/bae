@@ -13,7 +13,7 @@ path = "src/lib.rs"
 [dependencies]
 # How a library whose settings can't be read is shown to the person.
 bae-diagnostics = { workspace = true }
-# The directory sync the installation id is published with.
+# Errors that name the path they happened at.
 bae-util = { workspace = true }
 # This device's installation of bae's stores (under bae's keyring
 # namespace), its stores and their storage settings, and the transfer limits
@@ -25,12 +25,14 @@ tracing = { workspace = true }
 uuid = { workspace = true }
 # The installation id is staged in a temporary file before an atomic persist.
 tempfile = { workspace = true }
+# The removal lock's test hook tells a waiting test through a oneshot channel.
+tokio = { workspace = true, features = ["sync"], optional = true }
 
 [dev-dependencies]
 bae-util = { workspace = true, features = ["test-utils"] }
 # The in-memory installation and the stores the discovery tests create.
 coven = { workspace = true, features = ["test-utils"] }
-tokio = { workspace = true, features = ["macros", "rt"] }
+tokio = { workspace = true, features = ["macros", "rt", "sync"] }
 uuid = { workspace = true, features = ["v4"] }
 
 [features]
@@ -38,7 +40,7 @@ default = []
 # An app directory at a path a test picks, and where a test stages the
 # originals of the release files it seeds. Dev/test-only: a production build
 # never enables it.
-test-utils = []
+test-utils = ["dep:tokio"]
 # A debug app's dev reset, which empties the app directory.
 dev-reset = []
 

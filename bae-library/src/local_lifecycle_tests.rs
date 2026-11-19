@@ -131,7 +131,7 @@ impl Home {
     }
 
     fn record(&self, id: coven::StoreId) -> std::path::PathBuf {
-        self.app_dir.removal_records().join(id.to_string())
+        self.app_dir.test_removal_records().join(id.to_string())
     }
 
     /// Run a removal and stop it, as the app quitting would, once `delete`
@@ -368,7 +368,7 @@ async fn a_removal_that_cannot_be_recorded_removes_nothing() {
     let handle = home.library("Library").await;
     let id = handle.store_id();
     home.point_at(id);
-    std::fs::write(home.app_dir.removal_records(), b"").unwrap();
+    std::fs::write(home.app_dir.test_removal_records(), b"").unwrap();
     let error = home.remove(&handle).await.unwrap_err();
     assert!(matches!(error, LibraryRemovalError::Record(_)), "{error}");
     assert_eq!(handle.store_name().await.unwrap(), "Library");
@@ -464,7 +464,7 @@ async fn a_pointer_that_cannot_be_cleared_leaves_the_removal_to_retry() {
     let error = home.remove(&handle).await.unwrap_err();
     assert!(matches!(error, LibraryRemovalError::Unfinished(_)), "{error}");
     assert!(error.to_string().contains("store was removed"), "{error}");
-    assert_eq!(error.category(), bae_diagnostics::UiErrorCategory::Internal);
+    assert_eq!(error.category(), bae_diagnostics::UiErrorCategory::Config);
     assert_eq!(home.stores().await, 0);
     assert!(home.directory(id).exists());
     assert!(home.record(id).exists());
@@ -584,7 +584,7 @@ async fn a_lookup_during_a_removal_waits_for_it() {
     deleting.notified().await;
     assert!(home.record(id).exists());
 
-    let waiting = super::removal_lock_waits::when_waiting(home.app_dir.removal_lock());
+    let waiting = bae_app_dir::removal_lock_waits::when_waiting(home.app_dir.test_removal_lock());
     let lookup = bae_util::test_spawn::task({
         let home = home.clone();
         async move { home.unfinished().await }
