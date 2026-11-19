@@ -70,8 +70,6 @@ const OCTETS: &str = "application/octet-stream";
 const KEY_LEN: usize = 32;
 /// The bytes the receiver sends after its ephemeral key in pair-verify.
 const RECEIVER_PROOF_LEN: usize = 64;
-/// The receiver's SRP proof: a SHA-1 digest.
-const SERVER_PROOF_LEN: usize = 20;
 /// The AES-128 key and IV, and the GCM tag, in bytes.
 const AES_LEN: usize = 16;
 
@@ -250,11 +248,7 @@ impl<'k> PinPairing<'k> {
     /// public key, sealed under the SRP key.
     fn answer_proof(&self, reply: &[u8], client: &SrpClient) -> Result<Vec<u8>, VerificationError> {
         let reply = read_plist(SETUP_PROOF, reply)?;
-        let proof = data_field(&reply, SETUP_PROOF, "proof")?;
-        if proof.len() != SERVER_PROOF_LEN {
-            return Err(VerificationError::BadReply { step: SETUP_PROOF, field: "proof" });
-        }
-        client.verify_m2(proof)?;
+        client.verify_m2(data_field(&reply, SETUP_PROOF, "proof")?)?;
 
         let srp_key = client.shared_key()?;
         let aes_key = labelled_hash(b"Pair-Setup-AES-Key", srp_key);

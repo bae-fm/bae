@@ -19,7 +19,7 @@ use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use sha2::{Digest, Sha512};
 
 use super::bplist::{self, Plist};
-use super::fake_receiver::{respond, SrpServer};
+use super::fake_receiver::{respond_with_headers, SrpServer};
 use super::rtsp::{read_request, Method, ParsedRequest};
 
 /// A RAOP receiver that verifies the device: the PINs it shows, the devices
@@ -138,7 +138,7 @@ impl VerificationReceiver {
                 ) => ("200 OK", String::new(), Vec::new()),
                 (method, uri) => panic!("unexpected request {} {uri}", method.as_str()),
             };
-            respond_with(writer, status, &cseq, &extra, &body);
+            respond_with_headers(writer, status, &cseq, &extra, &body);
         }
     }
 
@@ -242,22 +242,6 @@ fn plist(entries: &[(&str, Vec<u8>)]) -> Vec<u8> {
     bplist::encode(&Plist::Dict(
         entries.iter().map(|(key, value)| (key.to_string(), Plist::Data(value.clone()))).collect(),
     ))
-}
-
-/// Write one RTSP reply with `extra` headers, or `respond`'s when there are
-/// none.
-fn respond_with(writer: &mut TcpStream, status: &str, cseq: &str, extra: &str, body: &[u8]) {
-    if extra.is_empty() {
-        respond(writer, status, cseq, body);
-        return;
-    }
-    use std::io::Write;
-    let head = format!(
-        "RTSP/1.0 {status}\r\nCSeq: {cseq}\r\n{extra}Content-Length: {}\r\n\r\n",
-        body.len()
-    );
-    writer.write_all(&[head.as_bytes(), body].concat()).unwrap();
-    writer.flush().unwrap();
 }
 
 /// Listen on a loopback port and serve every connection a sender opens with

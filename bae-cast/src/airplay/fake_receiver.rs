@@ -54,16 +54,9 @@ pub(crate) struct SrpServer {
     session: Option<(Vec<u8>, Vec<u8>, BigUint)>, // (K, M1, A)
 }
 
-fn h(parts: &[&[u8]]) -> Vec<u8> {
-    let mut d = Sha512::new();
-    for p in parts {
-        d.update(p);
-    }
-    d.finalize().to_vec()
-}
-
-fn h_sha1(parts: &[&[u8]]) -> Vec<u8> {
-    let mut d = sha1::Sha1::new();
+/// The `D` digest of `parts`, one after another.
+fn hash_parts<D: Digest>(parts: &[&[u8]]) -> Vec<u8> {
+    let mut d = D::new();
     for p in parts {
         d.update(p);
     }
@@ -86,14 +79,14 @@ impl SrpServer {
     /// The server of a pair-setup over `password`, a PIN's digits or a
     /// password.
     pub(crate) fn with_password(password: &[u8]) -> Self {
-        Self::over(SrpGroup::rfc5054_3072(), h, USERNAME, false, password)
+        Self::over(SrpGroup::rfc5054_3072(), hash_parts::<Sha512>, USERNAME, false, password)
     }
 
     /// The server of AirPlay 1 device verification for the sender that names
     /// itself `username`, over the PIN `pin`: the 2048-bit group, SHA-1 and
     /// the two-hash `K` (OwnTone `pair_fruit.c`).
     pub(crate) fn airplay1(username: &[u8], pin: &[u8]) -> Self {
-        Self::over(SrpGroup::rfc5054_2048(), h_sha1, username, true, pin)
+        Self::over(SrpGroup::rfc5054_2048(), hash_parts::<sha1::Sha1>, username, true, pin)
     }
 
     fn over(
@@ -223,9 +216,23 @@ fn refuse_unless_airplay_sender(
 
 /// Write one RTSP reply with `status_line` (`200 OK`) and `body`.
 pub(crate) fn respond(writer: &mut TcpStream, status_line: &str, cseq: &str, body: &[u8]) {
-    let mut out =
-        format!("RTSP/1.0 {status_line}\r\nCSeq: {cseq}\r\nContent-Length: {}\r\n\r\n", body.len())
-            .into_bytes();
+    respond_with_headers(writer, status_line, cseq, "", body);
+}
+
+/// Write one RTSP reply with `status_line`, the header lines `headers` (each
+/// ending in CRLF) and `body`.
+pub(crate) fn respond_with_headers(
+    writer: &mut TcpStream,
+    status_line: &str,
+    cseq: &str,
+    headers: &str,
+    body: &[u8],
+) {
+    let mut out = format!(
+        "RTSP/1.0 {status_line}\r\nCSeq: {cseq}\r\n{headers}Content-Length: {}\r\n\r\n",
+        body.len()
+    )
+    .into_bytes();
     out.extend_from_slice(body);
     writer.write_all(&out).unwrap();
     writer.flush().unwrap();
