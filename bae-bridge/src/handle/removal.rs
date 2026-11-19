@@ -32,13 +32,9 @@ impl BridgeLibraryRemoval {
             Err(error @ E::Unfinished(_)) => Ok(Self::Unfinished {
                 removal: BridgeUnfinishedRemoval::new(error.category(), &error, true),
             }),
-            Err(
-                error @ (E::Stop(_)
-                | E::Record(_)
-                | E::Store(_)
-                | E::StoreFilesHeld { .. }
-                | E::Closing { .. }),
-            ) => Err(BridgeError::categorized(error.category(), &error)),
+            Err(error @ (E::Stop(_) | E::Record(_) | E::Store(_) | E::Closing { .. })) => {
+                Err(BridgeError::categorized(error.category(), &error))
+            }
         }
     }
 }
