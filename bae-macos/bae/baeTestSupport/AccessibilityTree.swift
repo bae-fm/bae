@@ -14,30 +14,6 @@ import Foundation
 /// SwiftUI evaluates view bodies (a body that is main-actor isolated traps
 /// when evaluated anywhere else).
 struct AccessibilityTree: Sendable {
-    /// Why a tree could not be read; `subject` names what it was read for.
-    enum ReadError: Error, CustomStringConvertible {
-        case noScreen(String)
-        case unavailable(String, Int32)
-        case listsNoWindow(String)
-        case windowNotListed(String, wanted: CGRect, listed: [CGRect])
-
-        var description: String {
-            switch self {
-            case .noScreen(let subject):
-                "no display to place \(subject)'s window against"
-            case .unavailable(let subject, let status):
-                "the accessibility API listed no windows of this process for "
-                    + "\(subject) (error \(status))"
-            case .listsNoWindow(let subject):
-                "the accessibility API lists no window of this process for "
-                    + "\(subject); it lists none while the screen is locked"
-            case .windowNotListed(let subject, let wanted, let listed):
-                "the accessibility tree has no window where \(subject)'s is, "
-                    + "at \(wanted); it lists \(listed)"
-            }
-        }
-    }
-
     /// The words' look as the tree gives it: the font's name (whose last part
     /// is the weight), its size in points and the colour as sRGB, 0 to 1.
     struct TextStyle: Sendable {
@@ -82,8 +58,11 @@ struct AccessibilityTree: Sendable {
     @MainActor
     static func read(of window: NSWindow, subject: String) throws -> Self {
         let listed = try listedWindow(window, subject: subject)
-        var reader = Reader(origin: listed.origin)
-        reader.add(children: Reader.children(of: listed.element), parent: nil)
+        var reader = Reader(origin: listed.origin, subject: subject)
+        try reader.add(
+            children: Reader.children(of: listed.element, subject: subject),
+            parent: nil
+        )
         return Self(nodes: reader.nodes)
     }
 
@@ -125,7 +104,9 @@ struct AccessibilityTree: Sendable {
                 && abs(frame.width - size.width) <= 1
                 && abs(frame.height - size.height) <= 1
         }
-        let holding = there.first { !Reader.children(of: $0).isEmpty }
+        let holding = try there.first {
+            try !Reader.children(of: $0, subject: subject).isEmpty
+        }
         guard let element = holding ?? there.first else {
             throw ReadError.windowNotListed(
                 subject,
@@ -136,17 +117,22 @@ struct AccessibilityTree: Sendable {
         return (element, origin)
     }
 
-    private struct Reader {
+    fileprivate struct Reader {
         let origin: CGPoint
+        /// What the tree is read for, which an error names.
+        let subject: String
         var nodes: [Node] = []
 
-        mutating func add(children: [AXUIElement], parent: Int?) {
+        mutating func add(children: [AXUIElement], parent: Int?) throws {
             for child in children {
                 // An element the tree gives an infinite position has no box
                 // to list, and JSON has no infinity to write one as.
                 // The elements it holds are listed under its parent.
                 if let frame = Self.frame(of: child), !frame.isFinite {
-                    add(children: Self.children(of: child), parent: parent)
+                    try add(
+                        children: Self.children(of: child, subject: subject),
+                        parent: parent
+                    )
                     continue
                 }
                 let index = nodes.count
@@ -154,7 +140,10 @@ struct AccessibilityTree: Sendable {
                     continue
                 }
                 nodes.append(node)
-                add(children: Self.children(of: child), parent: index)
+                try add(
+                    children: Self.children(of: child, subject: subject),
+                    parent: index
+                )
             }
         }
 
@@ -180,19 +169,6 @@ struct AccessibilityTree: Sendable {
                 style: Self.style(of: element, value: value, role: role),
                 parent: parent
             )
-        }
-
-        /// The elements `element` holds, in the order VoiceOver reads them:
-        /// the navigation order where the element gives one, which differs
-        /// from the plain list of children for a titled window. A window lists
-        /// its content first and its title bar's buttons, toolbar and title
-        /// after it, and reads them title bar first.
-        static func children(of element: AXUIElement) -> [AXUIElement] {
-            let navigation = NSAccessibility.Attribute
-                .childrenInNavigationOrderAttribute.rawValue
-            return attribute(element, navigation) as? [AXUIElement]
-                ?? attribute(element, kAXChildrenAttribute) as? [AXUIElement]
-                ?? []
         }
 
         static func frame(of element: AXUIElement) -> CGRect? {
@@ -307,6 +283,102 @@ struct AccessibilityTree: Sendable {
 }
 
 extension AccessibilityTree {
+    /// Why a tree could not be read; `subject` names what it was read for.
+    enum ReadError: Error, CustomStringConvertible {
+        case noScreen(String)
+        case unavailable(String, Int32)
+        case listsNoWindow(String)
+        case windowNotListed(String, wanted: CGRect, listed: [CGRect])
+        case attributeFailed(
+            String,
+            element: String,
+            attribute: String,
+            status: Int32
+        )
+
+        var description: String {
+            switch self {
+            case .noScreen(let subject):
+                "no display to place \(subject)'s window against"
+            case .unavailable(let subject, let status):
+                "the accessibility API listed no windows of this process for "
+                    + "\(subject) (error \(status))"
+            case .listsNoWindow(let subject):
+                "the accessibility API lists no window of this process for "
+                    + "\(subject); it lists none while the screen is locked"
+            case .windowNotListed(let subject, let wanted, let listed):
+                "the accessibility tree has no window where \(subject)'s is, "
+                    + "at \(wanted); it lists \(listed)"
+            case .attributeFailed(
+                let subject,
+                let element,
+                let attribute,
+                let status
+            ):
+                "the accessibility API failed to give \(attribute) of "
+                    + "\(element) in \(subject)'s window (error \(status))"
+            }
+        }
+    }
+}
+
+extension AccessibilityTree.Reader {
+    /// The elements `element` holds, in the order VoiceOver reads them:
+    /// the navigation order where the element gives one, which differs
+    /// from the plain list of children for a titled window. A window lists
+    /// its content first and its title bar's buttons, toolbar and title
+    /// after it, and reads them title bar first. An element that has
+    /// neither list holds nothing; any other failure to read one throws.
+    static func children(
+        of element: AXUIElement,
+        subject: String
+    ) throws -> [AXUIElement] {
+        let navigation = NSAccessibility.Attribute
+            .childrenInNavigationOrderAttribute.rawValue
+        return try elementList(element, navigation, subject: subject)
+            ?? elementList(element, kAXChildrenAttribute, subject: subject)
+            ?? []
+    }
+
+    /// The elements `element`'s attribute `name` lists, or nil when the
+    /// element has no such attribute or it holds no value. Any other
+    /// failure, or a value that is not a list of elements, throws.
+    private static func elementList(
+        _ element: AXUIElement,
+        _ name: String,
+        subject: String
+    ) throws -> [AXUIElement]? {
+        var result: CFTypeRef?
+        let status = AXUIElementCopyAttributeValue(
+            element,
+            name as CFString,
+            &result
+        )
+        switch status {
+        case .success:
+            if let list = result as? [AXUIElement] { return list }
+        case .attributeUnsupported, .noValue:
+            return nil
+        default:
+            break
+        }
+        throw AccessibilityTree.ReadError.attributeFailed(
+            subject,
+            element: described(element),
+            attribute: name,
+            status: status.rawValue
+        )
+    }
+
+    /// The element as an error names it: its role and its box.
+    private static func described(_ element: AXUIElement) -> String {
+        let role = string(element, kAXRoleAttribute) ?? "an element"
+        guard let frame = frame(of: element) else { return role }
+        return "\(role) at \(frame)"
+    }
+}
+
+extension AccessibilityTree {
     /// The elements of `window`'s tree whose role is one of `roles`, each
     /// before the ones it holds: what a test presses or sets through the
     /// accessibility API, as an assistive client does.
@@ -316,13 +388,15 @@ extension AccessibilityTree {
         roles: Set<String>,
         subject: String
     ) throws -> [AXUIElement] {
-        func walk(_ element: AXUIElement) -> [AXUIElement] {
+        func walk(_ element: AXUIElement) throws -> [AXUIElement] {
             let role = Reader.string(element, kAXRoleAttribute)
             let own = role.map(roles.contains) == true ? [element] : []
-            return own + Reader.children(of: element).flatMap(walk)
+            return try own
+                + Reader.children(of: element, subject: subject).flatMap(walk)
         }
         let listed = try listedWindow(window, subject: subject)
-        return Reader.children(of: listed.element).flatMap(walk)
+        return try Reader.children(of: listed.element, subject: subject)
+            .flatMap(walk)
     }
 }
 
