@@ -11,6 +11,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.downloads.AndroidPinningBar
 import fm.bae.app.ui.downloads.AndroidPinningRow
 import org.junit.Test
+import uniffi.bae_bridge.BridgeDownloadOp
 import uniffi.bae_bridge.BridgeDownloadState
 import uniffi.bae_bridge.BridgeMessage
 import uniffi.bae_bridge.BridgeMessageArg
@@ -49,31 +50,56 @@ class DownloadComponentShots : BoardShot() {
         }
 
     @Test
-    fun androidComponentPinningRowPinning() =
-        component("android.component.pinning-row.pinning", wide = true) {
-            val downloads = PreviewData.downloadStore(downloadingReleaseId = "rel-2")
-            Column {
-                listOf(
-                    previewDownload("rel-2", "Late Arrivals", 10UL, 344_000_000UL, BridgeDownloadState.Active),
-                    previewDownload("rel-1", "Winter Kitchen", 10UL, 331_000_000UL, BridgeDownloadState.Queued),
-                    previewDownload("rel-3", "Glass Harbor", 9UL, 356_000_000UL, BridgeDownloadState.Failed("Network unreachable")),
-                ).forEach { op ->
-                    AndroidPinningRow(op, downloads.latestProgress(op.releaseId), onCancel = {}, onRetry = {})
-                }
-            }
+    fun androidComponentPinningRowQueued() =
+        component("android.component.pinning-row.queued", wide = true) {
+            PinningRow(previewDownload("rel-1", "Winter Kitchen", 10UL, 331_000_000UL, BridgeDownloadState.Queued))
         }
 
     @Test
-    fun androidComponentPinningBarFailed() =
-        component("android.component.pinning-bar.failed", wide = true) {
-            AndroidPinningBar(
-                paused = false,
-                hasDownloads = true,
-                hasFailures = true,
-                onBack = {},
-                onPauseToggle = {},
-                onRetry = {},
+    fun androidComponentPinningRowPinning() =
+        component("android.component.pinning-row.pinning", wide = true) {
+            PinningRow(previewDownload("rel-2", "Late Arrivals", 10UL, 344_000_000UL, BridgeDownloadState.Active))
+        }
+
+    @Test
+    fun androidComponentPinningRowFailed() =
+        component("android.component.pinning-row.failed", wide = true) {
+            PinningRow(
+                previewDownload("rel-3", "Glass Harbor", 9UL, 356_000_000UL, BridgeDownloadState.Failed("Network unreachable")),
             )
+        }
+
+    @Test
+    fun androidComponentPinningRowReleaseRemoved() =
+        component("android.component.pinning-row.release-removed", wide = true) {
+            PinningRow(previewDownload("rel-4", null, 9UL, 356_000_000UL, BridgeDownloadState.Queued))
+        }
+
+    @Test
+    fun androidComponentPinningBarPinning() =
+        component(
+            "android.component.pinning-bar.pinning",
+            wide = true,
+        ) { PinningBar(paused = false, hasDownloads = true, hasFailures = false) }
+
+    @Test
+    fun androidComponentPinningBarFailed() =
+        component(
+            "android.component.pinning-bar.failed",
+            wide = true,
+        ) { PinningBar(paused = false, hasDownloads = true, hasFailures = true) }
+
+    @Test
+    fun androidComponentPinningBarPaused() =
+        component(
+            "android.component.pinning-bar.paused",
+            wide = true,
+        ) { PinningBar(paused = true, hasDownloads = true, hasFailures = false) }
+
+    @Test
+    fun androidComponentPinningBarNothingToPin() =
+        component("android.component.pinning-bar.nothing-to-pin", wide = true) {
+            PinningBar(paused = false, hasDownloads = false, hasFailures = false)
         }
 
     @Test
@@ -91,7 +117,7 @@ class DownloadComponentShots : BoardShot() {
 
 private fun previewDownload(
     releaseId: String,
-    title: String,
+    title: String?,
     files: ULong,
     bytes: ULong,
     state: BridgeDownloadState,
@@ -111,3 +137,26 @@ private fun Control(status: BridgeReleaseDownloadStatus) =
             onUnpin = {},
         )
     }
+
+@Composable
+private fun PinningRow(op: BridgeDownloadOp) =
+    AndroidPinningRow(
+        op,
+        PreviewData.downloadStore(downloadingReleaseId = op.releaseId).latestProgress(op.releaseId),
+        onCancel = {},
+        onRetry = {},
+    )
+
+@Composable
+private fun PinningBar(
+    paused: Boolean,
+    hasDownloads: Boolean,
+    hasFailures: Boolean,
+) = AndroidPinningBar(
+    paused = paused,
+    hasDownloads = hasDownloads,
+    hasFailures = hasFailures,
+    onBack = {},
+    onPauseToggle = {},
+    onRetry = {},
+)
