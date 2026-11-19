@@ -9,7 +9,7 @@ import SwiftUI
 /// view alone from a window past the edge of every display into a manually
 /// sized bitmap, without the app ever taking the focus; a scene shown in its
 /// window through the window server, which draws the toolbar's glass, from a
-/// window brought to the front of the active app.
+/// window brought to the front of the active app on the `ShotDisplay`.
 @MainActor
 enum ShotRenderer {
     /// Backing-store scale for every capture. Fixed rather than read from the
@@ -48,7 +48,7 @@ enum ShotRenderer {
                 $0.animation = nil
                 $0.disablesAnimations = true
             }
-        let (window, captured) = hostWindow(rootView, for: scene)
+        let (window, captured) = try await hostWindow(rootView, for: scene)
         window.appearance = NSAppearance(
             named: mode == .dark ? .darkAqua : .aqua
         )
@@ -70,7 +70,7 @@ enum ShotRenderer {
             window.orderFront(nil)
             window.makeKey()
         case .window:
-            try place(window, scene: scene)
+            try place(window, on: try await ShotDisplay.shared(), scene: scene)
             NSApp.activate(ignoringOtherApps: true)
             window.makeKeyAndOrderFront(nil)
             window.makeMain()
@@ -108,6 +108,7 @@ enum ShotRenderer {
             pixels = try await windowPNG(
                 CGWindowID(window.windowNumber),
                 alerts: alerts,
+                on: try await ShotDisplay.shared().id,
                 sceneId: scene.id
             )
         }
@@ -124,7 +125,7 @@ enum ShotRenderer {
         )
     }
 
-    /// Put `window` wholly on the display with the most room, at its top left:
+    /// Put `window` wholly on `display`, at the top left of its free area:
     /// the screen capture takes only what is on a display, and would cut off
     /// or refuse a window past a display's edge, or a title bar under the
     /// menu bar.
@@ -133,13 +134,12 @@ enum ShotRenderer {
     /// as it sizes it, so a window whose content is no longer the
     /// scene's size did not fit either, and its capture would draw the scene
     /// at a size its board never has.
-    private static func place(_ window: NSWindow, scene: ShotScene) throws {
-        guard
-            let room = NSScreen.screens.map(\.visibleFrame)
-                .max(by: {
-                    $0.height * $0.width < $1.height * $1.width
-                })
-        else { throw ShotError.noScreen(scene.id) }
+    private static func place(
+        _ window: NSWindow,
+        on display: ShotDisplay,
+        scene: ShotScene
+    ) throws {
+        let room = try display.screen().visibleFrame
         guard
             window.contentView?.frame.size == scene.size,
             window.frame.width <= room.width,
@@ -148,6 +148,8 @@ enum ShotRenderer {
             throw ShotError.windowTooLarge(
                 scene.id,
                 content: scene.size,
+                window: window.frame.size,
+                shown: window.contentView?.frame.size ?? .zero,
                 room: room.size
             )
         }
@@ -198,7 +200,7 @@ enum ShotRenderer {
     private static func hostWindow(
         _ rootView: some View,
         for scene: ShotScene
-    ) -> (NSWindow, NSView) {
+    ) async throws -> (NSWindow, NSView) {
         let bounds = NSRect(origin: .zero, size: scene.size)
         switch scene.frame {
         case .content:
@@ -229,8 +231,12 @@ enum ShotRenderer {
                 titleBar == .shown ? .toolbars : []
             // The window's size is the scene's, whatever the content asks for.
             hosting.sizingOptions = []
+            // Made on the shot display, so AppKit sizes it against that
+            // display rather than the Mac's own.
+            let origin = try await ShotDisplay.shared().screen().visibleFrame
+                .origin
             let window = ShotWindow(
-                contentRect: bounds,
+                contentRect: NSRect(origin: origin, size: scene.size),
                 styleMask: [.titled, .closable, .miniaturizable, .resizable],
                 backing: .buffered,
                 defer: false
@@ -356,7 +362,14 @@ enum ShotError: Error, CustomStringConvertible {
     case windowNotDrawn(String, CGRect)
     case windowNotKey(String)
     case noScreen(String)
-    case windowTooLarge(String, content: CGSize, room: CGSize)
+    case noShotDisplay(String)
+    case windowTooLarge(
+        String,
+        content: CGSize,
+        window: CGSize,
+        shown: CGSize,
+        room: CGSize
+    )
     case unknownSelection(String, String)
 
     var description: String {
@@ -376,11 +389,20 @@ enum ShotError: Error, CustomStringConvertible {
         case .windowNotKey(let id):
             "another app kept the focus, so scene \(id) would draw inactive"
         case .noScreen(let id):
-            "no display to place scene \(id)'s window against"
-        case .windowTooLarge(let id, let content, let room):
-            "scene \(id)'s window, with \(content) points of content and its "
-                + "title bar, fits no display's free area: the largest is "
-                + "\(room) points"
+            "ScreenCaptureKit shares no shot display for scene \(id)'s window"
+        case .noShotDisplay(let why):
+            "the renderer has no shot display for the scenes shown in their "
+                + "windows: \(why)"
+        case .windowTooLarge(
+            let id,
+            let content,
+            let window,
+            let shown,
+            let room
+        ):
+            "scene \(id) asks for \(content) points of content, and its "
+                + "window of \(window) points shows \(shown) of it, on a shot "
+                + "display with a free area of \(room) points"
         case .unknownSelection(let kind, let name):
             "no \(kind) matches \(name)"
         }
@@ -390,4 +412,13 @@ enum ShotError: Error, CustomStringConvertible {
 private final class ShotWindow: NSWindow {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
+
+    /// The window keeps the size the scene gives it. AppKit fits a window to
+    /// a display as it sizes it and orders it in, and can fit it to the Mac's
+    /// own display rather than the shot display the window is on; `place`
+    /// refuses a window that does not fit the shot display instead.
+    override func constrainFrameRect(
+        _ frameRect: NSRect,
+        to screen: NSScreen?
+    ) -> NSRect { frameRect }
 }

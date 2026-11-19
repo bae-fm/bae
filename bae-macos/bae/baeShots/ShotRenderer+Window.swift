@@ -52,6 +52,7 @@ extension ShotRenderer {
     nonisolated static func windowPNG(
         _ windowID: CGWindowID,
         alerts: [CGWindowID],
+        on displayID: CGDirectDisplayID,
         sceneId: String
     ) async throws -> Data {
         let content = try await SCShareableContent.currentProcess
@@ -70,7 +71,7 @@ extension ShotRenderer {
         }
         guard
             let display = content.displays.first(where: {
-                $0.frame.intersects(parent.frame)
+                $0.displayID == displayID
             })
         else { throw ShotError.noScreen(sceneId) }
         let filter = SCContentFilter(display: display, including: held)

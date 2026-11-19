@@ -5,28 +5,46 @@ import Testing
 
 @testable import bae
 
-/// How the renderer treats a scene shown in its window that no display has
-/// room for.
+/// How the renderer draws a scene shown in its window, whatever displays the
+/// Mac has.
 @MainActor
 struct ShotRendererTests {
-    /// A scene shown in a window 100 points wider than every display.
+    /// A scene shown in a window 100 points wider than the shot display.
     private static func tooWide(
         _ view: some View = Color.clear
     ) -> ShotScene {
-        let widest = NSScreen.screens.map(\.frame.width).max() ?? 0
-        return ShotScene(
-            id: "a window too wide for every display",
-            size: CGSize(width: widest + 100, height: 300),
+        ShotScene(
+            id: "a window too wide for the shot display",
+            size: CGSize(width: ShotDisplay.size.width + 100, height: 300),
             frame: .window(title: "bae", titleBar: .hidden)
         ) {
             ShotStage(view)
         }
     }
 
-    /// AppKit shrinks the window to the display's width; the render fails
-    /// instead of capturing the scene narrower than it is.
+    /// A scene shown in a window at its full size: the library window with
+    /// an alert over it, 1200 by 1000 points, taller than the free area of a
+    /// 1728 by 1117 laptop display and wider than the CI runner's.
     @Test
-    func aWindowWiderThanEveryDisplayFails() async throws {
+    func aWindowLargerThanTheMacsDisplayRendersWhole() async throws {
+        let scene = try #require(
+            ShotScene.all.first { $0.id == "mac.album.delete-album" }
+        )
+        let capture = try await ShotRenderer.render(scene)
+        let image = try #require(NSBitmapImageRep(data: capture.png))
+        #expect(image.pixelsWide == 2_400)
+        #expect(image.pixelsHigh == 2_000)
+        #expect(capture.elements.size.width == 1_200)
+        #expect(capture.elements.size.height == 1_000)
+        #expect(
+            capture.elements.elements.contains { $0.label == "Delete album" }
+        )
+    }
+
+    /// AppKit would shrink the window to fit the shot display; the render
+    /// fails instead of capturing the scene narrower than it is.
+    @Test
+    func aWindowWiderThanTheShotDisplayFails() async throws {
         let error = await #expect(throws: ShotError.self) {
             try await ShotRenderer.render(Self.tooWide())
         }
