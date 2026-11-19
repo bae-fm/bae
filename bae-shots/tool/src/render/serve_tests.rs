@@ -1,22 +1,15 @@
 use super::*;
 
-fn write(root: &Path, path: &str, text: &str) {
-    let path = root.join(path);
-    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-    std::fs::write(path, text).unwrap();
-}
-
-fn tree() -> tempfile::TempDir {
-    let root = tempfile::tempdir().unwrap();
-    let r = root.path();
-    write(r, "bae-shots/canvas/dc-runtime.js", "runtime");
-    write(r, TOKENS, "tokens");
-    write(r, BUNDLE_CSS, "css");
-    write(r, BUNDLE_JS, "js");
-    write(r, "design/mocks/mac.a.b.dc.html", "<x-dc>board</x-dc>");
-    write(r, "bae-shots/canvas/react.production.min.js", "react");
-    write(r, "design/system/components/MacRow/preview.html", "<head></head><script>row</script>");
-    write(r, "secret.txt", "secret");
+fn tree() -> bae_util::test_files::TestFolder {
+    let root = bae_util::test_files::TestFolder::new();
+    root.write("bae-shots/canvas/dc-runtime.js", "runtime");
+    root.write(TOKENS, "tokens");
+    root.write(BUNDLE_CSS, "css");
+    root.write(BUNDLE_JS, "js");
+    root.write("design/mocks/mac.a.b.dc.html", "<x-dc>board</x-dc>");
+    root.write("bae-shots/canvas/react.production.min.js", "react");
+    root.write("design/system/components/MacRow/preview.html", "<head></head><script>row</script>");
+    root.write("secret.txt", "secret");
     root
 }
 

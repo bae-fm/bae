@@ -1,33 +1,22 @@
 use super::*;
 
-fn write(root: &Path, path: &str, text: &str) {
-    let path = root.join(path);
-    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-    std::fs::write(path, text).unwrap();
-}
-
 /// A design tree with a board that mounts a part that mounts another part.
-fn tree() -> tempfile::TempDir {
-    let root = tempfile::tempdir().unwrap();
-    let r = root.path();
-    write(
-        r,
+fn tree() -> bae_util::test_files::TestFolder {
+    let root = bae_util::test_files::TestFolder::new();
+    root.write(
         "design/mocks/mac.a.b.dc.html",
         r#"<x-dc><dc-import name="mac.parts.one" hint-size="1,2"></dc-import></x-dc>"#,
     );
-    write(
-        r,
+    root.write(
         "design/mocks/mac.parts.one.dc.html",
         r#"<x-dc><dc-import hint="x" name="mac.parts.two"></dc-import></x-dc>"#,
     );
-    write(r, "design/mocks/mac.parts.two.dc.html", "<x-dc>two</x-dc>");
-    write(r, "design/mocks/mac.parts.other.dc.html", "<x-dc>other</x-dc>");
-    write(r, TOKENS, "tokens");
-    write(r, BUNDLE_CSS, "css");
-    write(r, BUNDLE_JS, "js");
-    write(
-        r,
-        "design/mocks/canvas.json",
+    root.write("design/mocks/mac.parts.two.dc.html", "<x-dc>two</x-dc>");
+    root.write("design/mocks/mac.parts.other.dc.html", "<x-dc>other</x-dc>");
+    root.write(TOKENS, "tokens");
+    root.write(BUNDLE_CSS, "css");
+    root.write(BUNDLE_JS, "js");
+    root.write("design/mocks/canvas.json",
         r#"{"v":3,"boards":{"mac.a.b.dc.html":{"w":690,"h":600,"x":0,"y":0,"title":"t","page":"p"}}}"#,
     );
     root
@@ -54,7 +43,7 @@ fn parts_are_reached_through_parts() {
 #[test]
 fn a_part_that_is_missing_is_named() {
     let root = tree();
-    std::fs::remove_file(root.path().join("design/mocks/mac.parts.two.dc.html")).unwrap();
+    root.remove("design/mocks/mac.parts.two.dc.html");
     let error = board_hash(root.path(), "mac.a.b", "r", "c").unwrap_err().to_string();
     assert!(error.contains("mac.parts.one imports mac.parts.two"), "{error}");
 }
@@ -64,9 +53,9 @@ fn the_hash_changes_with_a_mounted_part_and_not_with_an_unmounted_one() {
     let root = tree();
     let before = hash(root.path());
     assert_eq!(before, hash(root.path()));
-    write(root.path(), "design/mocks/mac.parts.other.dc.html", "<x-dc>changed</x-dc>");
+    root.write("design/mocks/mac.parts.other.dc.html", "<x-dc>changed</x-dc>");
     assert_eq!(before, hash(root.path()));
-    write(root.path(), "design/mocks/mac.parts.two.dc.html", "<x-dc>changed</x-dc>");
+    root.write("design/mocks/mac.parts.two.dc.html", "<x-dc>changed</x-dc>");
     assert_ne!(before, hash(root.path()));
 }
 
@@ -75,10 +64,9 @@ fn the_hash_changes_with_each_built_file_the_runtime_and_the_browser() {
     let root = tree();
     let before = hash(root.path());
     for built in [TOKENS, BUNDLE_CSS, BUNDLE_JS] {
-        write(root.path(), built, "changed");
+        root.write(built, "changed");
         assert_ne!(before, hash(root.path()), "{built}");
-        write(
-            root.path(),
+        root.write(
             built,
             if built == TOKENS {
                 "tokens"
@@ -97,6 +85,6 @@ fn the_hash_changes_with_each_built_file_the_runtime_and_the_browser() {
 #[test]
 fn the_ready_boards_are_the_lines_of_shots_txt() {
     let root = tree();
-    write(root.path(), "design/mocks/shots.txt", "# ready\nmac.a.b\n\n  mac.c.d \n");
+    root.write("design/mocks/shots.txt", "# ready\nmac.a.b\n\n  mac.c.d \n");
     assert_eq!(ready_boards(root.path()).unwrap(), ["mac.a.b", "mac.c.d"]);
 }

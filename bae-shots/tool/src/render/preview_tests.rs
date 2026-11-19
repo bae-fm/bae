@@ -33,10 +33,9 @@ fn the_vendored_copies_of_react_are_the_pinned_files() {
 
 #[test]
 fn another_copy_of_react_is_refused_naming_both_hashes() {
-    let root = tempfile::tempdir().unwrap();
-    std::fs::create_dir_all(root.path().join("bae-shots/canvas")).unwrap();
-    std::fs::write(root.path().join(REACT), "other").unwrap();
-    std::fs::write(root.path().join(REACT_DOM), "other").unwrap();
+    let root = bae_util::test_files::TestFolder::new();
+    root.write(REACT, "other");
+    root.write(REACT_DOM, "other");
     let message = check_react(root.path()).unwrap_err().to_string();
     assert!(message.contains(REACT_SHA256), "{message}");
     assert!(message.contains(&hex(b"other")), "{message}");

@@ -1,7 +1,7 @@
 use super::*;
 use crate::render::fixture;
 
-fn tree() -> tempfile::TempDir {
+fn tree() -> bae_util::test_files::TestFolder {
     fixture::tree(&[
         (
             "fixture.wrapped",

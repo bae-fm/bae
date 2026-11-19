@@ -2,12 +2,6 @@ use super::*;
 
 const SCRIPT: &[u8] = b"window.__dcHostRuntime = true;";
 
-fn write(root: &Path, path: &str, text: &str) {
-    let path = root.join(path);
-    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-    std::fs::write(path, text).unwrap();
-}
-
 fn copy_record(sha256: &str) -> String {
     format!(
         "sha256 = \"{sha256}\"\nversion = \"v1\"\nsource = \"https://example.test/copy\"\nread_at = \"2026-11-11T00:00:00Z\"\n"
@@ -21,11 +15,10 @@ fn live_record(sha256: &str) -> String {
 }
 
 /// A root whose copy matches its record.
-fn root() -> tempfile::TempDir {
-    let root = tempfile::tempdir().unwrap();
-    std::fs::create_dir_all(root.path().join("bae-shots/canvas")).unwrap();
-    std::fs::write(copy_path(root.path()), SCRIPT).unwrap();
-    write(root.path(), COPY_RECORD, &copy_record(&sha256(SCRIPT)));
+fn root() -> bae_util::test_files::TestFolder {
+    let root = bae_util::test_files::TestFolder::new();
+    root.write(copy_path(root.path()), SCRIPT);
+    root.write(COPY_RECORD, copy_record(&sha256(SCRIPT)));
     root
 }
 
@@ -37,7 +30,7 @@ fn sha256_is_the_hex_digest() {
 #[test]
 fn equal_hashes_pass() {
     let root = root();
-    write(root.path(), LIVE_RECORD, &live_record(&sha256(SCRIPT)));
+    root.write(LIVE_RECORD, live_record(&sha256(SCRIPT)));
     let checked = check(root.path()).unwrap();
     assert_eq!(checked.sha256, sha256(SCRIPT));
     assert_eq!(checked.version, "v1");
@@ -47,8 +40,8 @@ fn equal_hashes_pass() {
 #[test]
 fn a_changed_copy_fails_naming_both_hashes() {
     let root = root();
-    write(root.path(), LIVE_RECORD, &live_record(&sha256(SCRIPT)));
-    std::fs::write(copy_path(root.path()), b"edited").unwrap();
+    root.write(LIVE_RECORD, live_record(&sha256(SCRIPT)));
+    root.write(copy_path(root.path()), b"edited");
     let error = check(root.path()).unwrap_err();
     let message = error.to_string();
     assert!(matches!(error, RuntimeError::CopyChanged { .. }));
@@ -61,7 +54,7 @@ fn a_changed_copy_fails_naming_both_hashes() {
 #[test]
 fn a_changed_live_record_fails_with_both_hashes_and_when_it_was_published() {
     let root = root();
-    write(root.path(), LIVE_RECORD, &live_record("f".repeat(64).as_str()));
+    root.write(LIVE_RECORD, live_record("f".repeat(64).as_str()));
     let error = check(root.path()).unwrap_err();
     let message = error.to_string();
     assert!(matches!(error, RuntimeError::LiveChanged(_)));
@@ -86,16 +79,15 @@ fn a_missing_live_record_fails_loudly() {
 
 #[test]
 fn a_missing_copy_or_copy_record_is_unreadable() {
-    let root = tempfile::tempdir().unwrap();
+    let root = bae_util::test_files::TestFolder::new();
     assert!(matches!(check(root.path()), Err(RuntimeError::Unreadable { .. })));
-    std::fs::create_dir_all(root.path().join("bae-shots/canvas")).unwrap();
-    std::fs::write(copy_path(root.path()), SCRIPT).unwrap();
+    root.write(copy_path(root.path()), SCRIPT);
     assert!(matches!(check(root.path()), Err(RuntimeError::Unreadable { .. })));
 }
 
 #[test]
 fn a_record_with_an_unknown_key_is_refused() {
     let root = root();
-    write(root.path(), LIVE_RECORD, &format!("{}extra = 1\n", live_record(&sha256(SCRIPT))));
+    root.write(LIVE_RECORD, format!("{}extra = 1\n", live_record(&sha256(SCRIPT))));
     assert!(matches!(check(root.path()), Err(RuntimeError::BadRecord { .. })));
 }

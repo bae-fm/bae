@@ -1,5 +1,4 @@
 use super::*;
-use std::path::Path;
 
 /// A list in the shape both harnesses write: a field with its placeholder, a
 /// button that is not enabled, text with a style, and a nested group.
@@ -55,9 +54,15 @@ pub(crate) fn png(width: u32, height: u32) -> Vec<u8> {
 }
 
 /// Writes `name`'s PNG, `width` by `height` pixels, and its element list.
-pub(crate) fn write_pair(dir: &Path, name: &Name, list: &str, width: u32, height: u32) {
-    std::fs::write(dir.join(name.file_name("json")), list).unwrap();
-    std::fs::write(dir.join(name.file_name("png")), png(width, height)).unwrap();
+pub(crate) fn write_pair(
+    dir: &bae_util::test_files::TestFolder,
+    name: &Name,
+    list: &str,
+    width: u32,
+    height: u32,
+) {
+    dir.write(name.file_name("json"), list);
+    dir.write(name.file_name("png"), png(width, height));
 }
 
 #[test]
@@ -129,9 +134,9 @@ fn an_unknown_role_or_platform_is_refused() {
 
 #[test]
 fn a_shot_loads_its_list_and_its_picture() {
-    let dir = tempfile::tempdir().unwrap();
+    let dir = bae_util::test_files::TestFolder::new();
     let name = Name::parse("mac.welcome.a").unwrap();
-    write_pair(dir.path(), &name, LIST, 800, 380);
+    write_pair(&dir, &name, LIST, 800, 380);
     let shot = Shot::load(dir.path(), &name).unwrap();
     assert_eq!((shot.picture.width, shot.picture.height), (800, 380));
     assert_eq!(shot.picture.pixels.len(), 800 * 380 * 4);
@@ -141,10 +146,10 @@ fn a_shot_loads_its_list_and_its_picture() {
 
 #[test]
 fn a_shot_whose_files_disagree_is_inconsistent() {
-    let dir = tempfile::tempdir().unwrap();
+    let dir = bae_util::test_files::TestFolder::new();
     let name = Name::parse("mac.welcome.b").unwrap();
     let list = LIST.replacen("\"parent\": 1", "\"parent\": 2", 1);
-    write_pair(dir.path(), &name, &list, 640, 380);
+    write_pair(&dir, &name, &list, 640, 380);
     let problems = Shot::load(dir.path(), &name).unwrap().problems(&name);
     assert_eq!(problems.len(), 3, "{problems:?}");
     assert!(problems[0].contains("names the board mac.welcome.a"));
@@ -154,21 +159,21 @@ fn a_shot_whose_files_disagree_is_inconsistent() {
 
 #[test]
 fn a_picture_within_a_pixel_of_the_list_size_agrees() {
-    let dir = tempfile::tempdir().unwrap();
+    let dir = bae_util::test_files::TestFolder::new();
     let name = Name::parse("mac.welcome.a").unwrap();
-    write_pair(dir.path(), &name, LIST, 799, 381);
+    write_pair(&dir, &name, LIST, 799, 381);
     assert!(Shot::load(dir.path(), &name).unwrap().problems(&name).is_empty());
 }
 
 #[test]
 fn unreadable_files_fail_to_load() {
-    let dir = tempfile::tempdir().unwrap();
+    let dir = bae_util::test_files::TestFolder::new();
     let name = Name::parse("mac.welcome.a").unwrap();
     assert!(matches!(Shot::load(dir.path(), &name), Err(ShotError::Read(..))));
-    write_pair(dir.path(), &name, "{}", 800, 380);
+    write_pair(&dir, &name, "{}", 800, 380);
     assert!(matches!(Shot::load(dir.path(), &name), Err(ShotError::List(..))));
-    write_pair(dir.path(), &name, LIST, 800, 380);
-    std::fs::write(dir.path().join(name.file_name("png")), "not a png").unwrap();
+    write_pair(&dir, &name, LIST, 800, 380);
+    dir.write(name.file_name("png"), "not a png");
     assert!(matches!(Shot::load(dir.path(), &name), Err(ShotError::Picture(..))));
 }
 
@@ -180,15 +185,15 @@ fn words_are_composed_collapsed_and_trimmed_and_nothing_else() {
 
 #[test]
 fn a_shots_hash_follows_its_list_and_its_pixels() {
-    let dir = tempfile::tempdir().unwrap();
+    let dir = bae_util::test_files::TestFolder::new();
     let name = Name::parse("mac.welcome.a").unwrap();
-    write_pair(dir.path(), &name, LIST, 800, 380);
+    write_pair(&dir, &name, LIST, 800, 380);
     let first = Shot::load(dir.path(), &name).unwrap().hash;
     assert_eq!(Shot::load(dir.path(), &name).unwrap().hash, first);
-    write_pair(dir.path(), &name, &LIST.replace("Continue", "Go on"), 800, 380);
+    write_pair(&dir, &name, &LIST.replace("Continue", "Go on"), 800, 380);
     let list_changed = Shot::load(dir.path(), &name).unwrap().hash;
     assert_ne!(list_changed, first);
-    write_pair(dir.path(), &name, LIST, 801, 380);
+    write_pair(&dir, &name, LIST, 801, 380);
     let size_changed = Shot::load(dir.path(), &name).unwrap().hash;
     assert!(size_changed != first && size_changed != list_changed);
 }

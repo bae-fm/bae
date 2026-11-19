@@ -25,18 +25,16 @@ fn an_unpublished_platform_has_none() {
 
 #[test]
 fn an_archive_with_the_pinned_hash_passes() {
-    let dir = tempfile::tempdir().unwrap();
-    let archive = dir.path().join("chrome.zip");
-    std::fs::write(&archive, b"abc").unwrap();
+    let dir = bae_util::test_files::TestFolder::new();
+    let archive = dir.write("chrome.zip", b"abc");
     verify(&archive, "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad").unwrap();
-    assert!(archive.exists());
+    assert!(dir.exists(&archive));
 }
 
 #[test]
 fn an_archive_with_another_hash_fails_naming_both() {
-    let dir = tempfile::tempdir().unwrap();
-    let archive = dir.path().join("chrome.zip");
-    std::fs::write(&archive, b"abc").unwrap();
+    let dir = bae_util::test_files::TestFolder::new();
+    let archive = dir.write("chrome.zip", b"abc");
     let wrong = "0".repeat(64);
     let message = verify(&archive, &wrong).unwrap_err().to_string();
     assert!(message.contains(&wrong), "{message}");

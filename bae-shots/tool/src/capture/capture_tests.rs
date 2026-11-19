@@ -37,30 +37,30 @@ fn a_platform_with_no_selected_shot_fails() {
 }
 
 /// A shot's valid pair of files, drawn at 2 pixels to the point.
-fn write_shot(dir: &Path, name: &str) {
+fn write_shot(dir: &bae_util::test_files::TestFolder, name: &str) {
     let name = Name::parse(name).unwrap();
     let list = crate::shots::tests::LIST.replace("mac.welcome.a", &name.to_string());
     crate::shots::tests::write_pair(dir, &name, &list, 800, 380);
 }
 
-fn write(dir: &Path, files: &[&str]) {
+fn write(dir: &bae_util::test_files::TestFolder, files: &[&str]) {
     for file in files {
-        std::fs::write(dir.join(file), "x").unwrap();
+        dir.write(file, "x");
     }
 }
 
 #[test]
 fn a_capture_is_complete_when_every_selected_shot_wrote_both_files() {
-    let out = tempfile::tempdir().unwrap();
-    write_shot(out.path(), "mac.welcome.a");
+    let out = bae_util::test_files::TestFolder::new();
+    write_shot(&out, "mac.welcome.a");
     let declared = names(&["mac.welcome.a", "mac.welcome.b"]);
     check_complete(out.path(), Platform::Mac, &declared[..1], &declared).unwrap();
 }
 
 #[test]
 fn a_selected_shot_with_a_file_missing_fails() {
-    let out = tempfile::tempdir().unwrap();
-    write(out.path(), &["mac.welcome.a@macos.png"]);
+    let out = bae_util::test_files::TestFolder::new();
+    write(&out, &["mac.welcome.a@macos.png"]);
     let declared = names(&["mac.welcome.a"]);
     let CaptureError::Incomplete(problems) =
         check_complete(out.path(), Platform::Mac, &declared, &declared).unwrap_err()
@@ -72,10 +72,10 @@ fn a_selected_shot_with_a_file_missing_fails() {
 
 #[test]
 fn a_shot_file_no_harness_declares_fails() {
-    let out = tempfile::tempdir().unwrap();
-    write_shot(out.path(), "mac.welcome.a");
+    let out = bae_util::test_files::TestFolder::new();
+    write_shot(&out, "mac.welcome.a");
     write(
-        out.path(),
+        &out,
         &[
             "mac.welcome.old@macos.png",
             "Not A Name@macos.json",
@@ -100,9 +100,9 @@ fn a_shot_file_no_harness_declares_fails() {
 
 #[test]
 fn clearing_empties_the_platforms_shot_files_and_leaves_other_files() {
-    let out = tempfile::tempdir().unwrap();
+    let out = bae_util::test_files::TestFolder::new();
     write(
-        out.path(),
+        &out,
         &[
             "mac.welcome.a@macos.png",
             "mac.welcome.a@macos.json",
@@ -113,30 +113,26 @@ fn clearing_empties_the_platforms_shot_files_and_leaves_other_files() {
         ],
     );
     clear(out.path(), Platform::Mac).unwrap();
-    let mut left: Vec<String> = std::fs::read_dir(out.path())
-        .unwrap()
-        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
-        .collect();
-    left.sort();
+    let left = out.entries("");
     assert_eq!(left, ["android.welcome.a@android.png", "notes.txt"]);
 }
 
 #[test]
 fn a_shot_another_branch_left_behind_is_not_undeclared_after_clearing() {
-    let out = tempfile::tempdir().unwrap();
-    write_shot(out.path(), "mac.welcome.old");
+    let out = bae_util::test_files::TestFolder::new();
+    write_shot(&out, "mac.welcome.old");
     clear(out.path(), Platform::Mac).unwrap();
-    write_shot(out.path(), "mac.welcome.a");
+    write_shot(&out, "mac.welcome.a");
     let declared = names(&["mac.welcome.a"]);
     check_complete(out.path(), Platform::Mac, &declared, &declared).unwrap();
 }
 
 #[test]
 fn a_shot_that_does_not_read_back_fails() {
-    let out = tempfile::tempdir().unwrap();
-    write_shot(out.path(), "mac.welcome.a");
-    write_shot(out.path(), "mac.welcome.b");
-    std::fs::write(out.path().join("mac.welcome.b@macos.json"), "{").unwrap();
+    let out = bae_util::test_files::TestFolder::new();
+    write_shot(&out, "mac.welcome.a");
+    write_shot(&out, "mac.welcome.b");
+    out.write("mac.welcome.b@macos.json", "{");
     let declared = names(&["mac.welcome.a", "mac.welcome.b"]);
     let CaptureError::Incomplete(problems) =
         check_complete(out.path(), Platform::Mac, &declared, &declared).unwrap_err()
@@ -149,11 +145,10 @@ fn a_shot_that_does_not_read_back_fails() {
 
 #[test]
 fn a_shot_whose_files_disagree_fails() {
-    let out = tempfile::tempdir().unwrap();
-    write_shot(out.path(), "mac.welcome.a");
+    let out = bae_util::test_files::TestFolder::new();
+    write_shot(&out, "mac.welcome.a");
     let name = Name::parse("mac.welcome.a").unwrap();
-    std::fs::write(out.path().join(name.file_name("png")), crate::shots::tests::png(100, 100))
-        .unwrap();
+    out.write(name.file_name("png"), crate::shots::tests::png(100, 100));
     let declared = names(&["mac.welcome.a"]);
     let CaptureError::Incomplete(problems) =
         check_complete(out.path(), Platform::Mac, &declared, &declared).unwrap_err()
@@ -196,8 +191,8 @@ fn a_selection_of_only_window_shots_is_all_not_taken_without_windows() {
 
 #[test]
 fn the_completeness_check_passes_without_a_window_shot_when_it_was_not_taken() {
-    let out = tempfile::tempdir().unwrap();
-    write_shot(out.path(), "mac.welcome.a");
+    let out = bae_util::test_files::TestFolder::new();
+    write_shot(&out, "mac.welcome.a");
     let all = declared(&[("mac.welcome.a", false), ("mac.settings.toolbar", true)]);
     let chosen = taken(&all, Platform::Mac, &[], false).unwrap();
     let declared: Vec<Name> = all.iter().map(|d| d.name.clone()).collect();
@@ -206,8 +201,8 @@ fn the_completeness_check_passes_without_a_window_shot_when_it_was_not_taken() {
 
 #[test]
 fn the_completeness_check_reports_a_window_shot_missing_when_windows_were_given() {
-    let out = tempfile::tempdir().unwrap();
-    write_shot(out.path(), "mac.welcome.a");
+    let out = bae_util::test_files::TestFolder::new();
+    write_shot(&out, "mac.welcome.a");
     let all = declared(&[("mac.welcome.a", false), ("mac.settings.toolbar", true)]);
     let chosen = taken(&all, Platform::Mac, &[], true).unwrap();
     let declared: Vec<Name> = all.iter().map(|d| d.name.clone()).collect();

@@ -26,5 +26,8 @@ tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net", "io-
 toml = { workspace = true }
 unicode-normalization = { workspace = true }
 
+[dev-dependencies]
+bae-util = { workspace = true, features = ["test-utils"] }
+
 [lints]
 workspace = true

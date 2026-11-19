@@ -9,12 +9,6 @@ fn declared(name: &str) -> Declared {
     }
 }
 
-fn write(root: &Path, path: &str, text: &str) {
-    let path = root.join(path);
-    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-    std::fs::write(path, text).unwrap();
-}
-
 fn sentences(root: &Path, shots: &[Declared]) -> Vec<String> {
     problems(root, shots, &Record::default()).into_iter().map(|p| p.sentence).collect()
 }
@@ -27,13 +21,12 @@ fn preview_rows_are_read_as_state_ids() {
 
 #[test]
 fn a_component_shot_needs_a_row_of_that_name() {
-    let root = tempfile::tempdir().unwrap();
-    write(
-        root.path(),
+    let root = bae_util::test_files::TestFolder::new();
+    root.write(
         "design/system/components/MacRow/preview.html",
         "W('Label', a), W('Nested, off', b)",
     );
-    write(root.path(), "design/system/components/AndroidCastRow/preview.html", "<p>no rows</p>");
+    root.write("design/system/components/AndroidCastRow/preview.html", "<p>no rows</p>");
     let shots = [
         declared("mac.component.row.label"),
         declared("mac.component.row.nested-off"),
@@ -53,8 +46,8 @@ fn a_component_shot_needs_a_row_of_that_name() {
 
 #[test]
 fn a_screen_shot_needs_its_board_file() {
-    let root = tempfile::tempdir().unwrap();
-    write(root.path(), "design/mocks/mac.welcome.libraries.dc.html", "<x-dc></x-dc>");
+    let root = bae_util::test_files::TestFolder::new();
+    root.write("design/mocks/mac.welcome.libraries.dc.html", "<x-dc></x-dc>");
     let shots = [declared("mac.welcome.libraries"), declared("mac.welcome.create-name")];
     let problems = sentences(root.path(), &shots);
     assert_eq!(problems.len(), 1, "{problems:?}");
@@ -63,8 +56,8 @@ fn a_screen_shot_needs_its_board_file() {
 
 #[test]
 fn a_record_entry_needs_its_board_too() {
-    let root = tempfile::tempdir().unwrap();
-    write(root.path(), "design/mocks/mac.welcome.libraries.dc.html", "<x-dc></x-dc>");
+    let root = bae_util::test_files::TestFolder::new();
+    root.write("design/mocks/mac.welcome.libraries.dc.html", "<x-dc></x-dc>");
     let mut record = Record::default();
     let entry = || crate::record::Entry {
         board: "b".to_string(),

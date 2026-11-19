@@ -11,29 +11,21 @@ pub(crate) const HEAD: &str = r#"<!doctype html><html><head><meta charset="utf-8
 <link rel="stylesheet" href="ds/bae/components/bundle.css">
 <script src="ds/bae/components/bundle.js"></script></head><body>"#;
 
-pub(crate) fn write(root: &Path, path: &str, text: &str) {
-    let path = root.join(path);
-    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-    std::fs::write(path, text).unwrap();
-}
-
 /// A tree holding the runtime and the design system, and each of `boards`
 /// (name, the page after the shared head).
-pub(crate) fn tree(boards: &[(&str, &str)]) -> tempfile::TempDir {
-    let root = tempfile::tempdir().unwrap();
-    let r = root.path();
+pub(crate) fn tree(boards: &[(&str, &str)]) -> bae_util::test_files::TestFolder {
+    let root = bae_util::test_files::TestFolder::new();
     let runtime =
         Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().join("canvas/dc-runtime.js");
-    write(r, "bae-shots/canvas/dc-runtime.js", &std::fs::read_to_string(runtime).unwrap());
-    write(r, "design/system/tokens.css", ":root{--text-primary:#fff}");
-    write(r, "design/system/components/bundle.css", "");
-    write(
-        r,
+    root.write("bae-shots/canvas/dc-runtime.js", bae_util::test_files::read_fixture(runtime));
+    root.write("design/system/tokens.css", ":root{--text-primary:#fff}");
+    root.write("design/system/components/bundle.css", "");
+    root.write(
         "design/system/components/bundle.js",
         "window.Bae={Box:function(){return React.createElement('div',{id:'inner'},'hello')}};",
     );
     for (name, page) in boards {
-        write(r, &format!("design/mocks/{name}.dc.html"), &format!("{HEAD}{page}</body></html>"));
+        root.write(format!("design/mocks/{name}.dc.html"), format!("{HEAD}{page}</body></html>"));
     }
     root
 }

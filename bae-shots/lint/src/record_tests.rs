@@ -29,7 +29,7 @@ fn an_unknown_key_in_an_entry_is_refused() {
 
 #[test]
 fn a_missing_file_is_an_empty_record() {
-    let dir = tempfile::tempdir().unwrap();
+    let dir = bae_util::test_files::TestFolder::new();
     assert_eq!(Record::load(&dir.path().join("shots.toml")).unwrap(), Record::default());
 }
 
@@ -65,7 +65,7 @@ fn git(root: &Path, args: &[&str]) {
 
 #[test]
 fn the_base_branchs_record_is_read_from_git() {
-    let dir = tempfile::tempdir().unwrap();
+    let dir = bae_util::test_files::TestFolder::new();
     let root = dir.path();
     git(root, &["init", "-q", "-b", "main"]);
     git(root, &["commit", "-q", "--allow-empty", "-m", "empty"]);
@@ -73,7 +73,7 @@ fn the_base_branchs_record_is_read_from_git() {
     assert_eq!(Record::at(root, "main").unwrap(), Record::default());
     let mut record = Record::default();
     record.set("a.b.c", entry("b", "s"));
-    std::fs::create_dir_all(root.join("design")).unwrap();
+    dir.create_folder("design");
     record.save(&root.join(FILE)).unwrap();
     git(root, &["add", FILE]);
     git(root, &["commit", "-q", "-m", "record"]);
@@ -85,15 +85,15 @@ fn the_base_branchs_record_is_read_from_git() {
 
 #[test]
 fn promoting_results_writes_the_repository_record_and_nothing_else_does() {
-    let root = tempfile::tempdir().unwrap();
-    std::fs::create_dir_all(root.path().join("design")).unwrap();
+    let root = bae_util::test_files::TestFolder::new();
+    root.create_folder("design");
     let results = root.path().join(RESULTS);
     assert!(Record::promote(&results, root.path()).is_err());
-    assert!(!root.path().join(FILE).exists());
+    assert!(!root.exists(FILE));
     let mut record = Record::default();
     record.set("mac.welcome.a", entry("b", "s"));
     record.save(&results).unwrap();
-    assert!(!root.path().join(FILE).exists(), "saving results leaves the checkout clean");
+    assert!(!root.exists(FILE), "saving results leaves the checkout clean");
     Record::promote(&results, root.path()).unwrap();
     assert_eq!(Record::load(&root.path().join(FILE)).unwrap(), record);
 }

@@ -25,13 +25,13 @@ test_support_features = ["test-utils"]
 # library's tests read the views.
 crate_order = [
     "bae-desktop-cfg",
-    "bae-shots-lint",
-    "bae-shots",
     "bae-loc",
     "bae-mirror",
     "bae-theme",
     "bae-types",
     "bae-util",
+    "bae-shots-lint",
+    "bae-shots",
     "bae-audio",
     "bae-diagnostics",
     "bae-app-dir",

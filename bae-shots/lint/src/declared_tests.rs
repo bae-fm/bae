@@ -60,34 +60,24 @@ fn swift_marks_the_scenes_framed_in_a_window() {
     assert_eq!(window_frames(source), 1);
 }
 
-fn write(root: &Path, path: &str, text: &str) {
-    let path = root.join(path);
-    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-    std::fs::write(path, text).unwrap();
-}
-
 #[test]
 fn read_joins_both_harnesses_and_leaves_the_tests_out() {
-    let root = tempfile::tempdir().unwrap();
-    write(
-        root.path(),
-        &format!("{KOTLIN_DIRECTORY}/WelcomeShots.kt"),
+    let root = bae_util::test_files::TestFolder::new();
+    root.write(
+        format!("{KOTLIN_DIRECTORY}/WelcomeShots.kt"),
         r#"fun a() = shot("android.welcome.libraries") {}"#,
     );
-    write(
-        root.path(),
-        &format!("{KOTLIN_DIRECTORY}/ElementListTest.kt"),
+    root.write(
+        format!("{KOTLIN_DIRECTORY}/ElementListTest.kt"),
         r#"fun a() = shot("android.test.known") {}"#,
     );
-    write(
-        root.path(),
-        &format!("{SWIFT_DIRECTORY}/ShotScene+Welcome.swift"),
+    root.write(
+        format!("{SWIFT_DIRECTORY}/ShotScene+Welcome.swift"),
         r#"ShotScene(id: "mac.welcome.create-name")
            ShotScene(id: "mac.welcome.create-name")"#,
     );
-    write(
-        root.path(),
-        &format!("{SWIFT_DIRECTORY}/ShotElementListTests.swift"),
+    root.write(
+        format!("{SWIFT_DIRECTORY}/ShotElementListTests.swift"),
         r#"list("mac.welcome.add-code.entering")"#,
     );
     let names: Vec<String> =
@@ -97,11 +87,10 @@ fn read_joins_both_harnesses_and_leaves_the_tests_out() {
 
 #[test]
 fn read_carries_the_window_marker_and_refuses_a_frame_it_cannot_tie_to_an_id() {
-    let root = tempfile::tempdir().unwrap();
-    write(root.path(), &format!("{KOTLIN_DIRECTORY}/WelcomeShots.kt"), "");
-    write(
-        root.path(),
-        &format!("{SWIFT_DIRECTORY}/ShotScene+Settings.swift"),
+    let root = bae_util::test_files::TestFolder::new();
+    root.write(format!("{KOTLIN_DIRECTORY}/WelcomeShots.kt"), "");
+    root.write(
+        format!("{SWIFT_DIRECTORY}/ShotScene+Settings.swift"),
         r#"ShotScene(id: "mac.settings.toolbar", size: size, frame: .window(title: "S")) { x }
            ShotScene(id: "mac.settings.plain", size: size) { y }"#,
     );
@@ -113,16 +102,13 @@ fn read_carries_the_window_marker_and_refuses_a_frame_it_cannot_tie_to_an_id() {
         [("mac.settings.plain".to_string(), false), ("mac.settings.toolbar".to_string(), true)]
     );
 
-    write(
-        root.path(),
-        &format!("{SWIFT_DIRECTORY}/ShotScene.swift"),
+    root.write(format!("{SWIFT_DIRECTORY}/ShotScene.swift"),
         "/// A scene is written `ShotScene(id: \"mac.x\", frame: .window(title: t))`.\n// frame: .window(\n",
     );
     assert_eq!(read(root.path()).unwrap().len(), 2);
 
-    write(
-        root.path(),
-        &format!("{SWIFT_DIRECTORY}/ShotScene+Other.swift"),
+    root.write(
+        format!("{SWIFT_DIRECTORY}/ShotScene+Other.swift"),
         r#"ShotScene(id: id, size: size, frame: .window(title: "S")) { x }"#,
     );
     assert!(matches!(read(root.path()), Err(DeclaredError::WindowScene(_))));
@@ -130,12 +116,11 @@ fn read_carries_the_window_marker_and_refuses_a_frame_it_cannot_tie_to_an_id() {
 
 #[test]
 fn a_literal_that_is_not_a_board_name_fails_the_read() {
-    let root = tempfile::tempdir().unwrap();
-    write(
-        root.path(),
-        &format!("{KOTLIN_DIRECTORY}/WelcomeShots.kt"),
+    let root = bae_util::test_files::TestFolder::new();
+    root.write(
+        format!("{KOTLIN_DIRECTORY}/WelcomeShots.kt"),
         r#"fun a() = shot("android.welcome") {}"#,
     );
-    write(root.path(), &format!("{SWIFT_DIRECTORY}/ShotScene.swift"), "");
+    root.write(format!("{SWIFT_DIRECTORY}/ShotScene.swift"), "");
     assert!(matches!(read(root.path()), Err(DeclaredError::Name(..))));
 }
