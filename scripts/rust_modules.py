@@ -26,6 +26,13 @@ def cfg_value(tokens: list[Token], start: int, end: int) -> bool | None:
 
     def predicate() -> bool | None:
         nonlocal position
+        if tokens[position].text == "$":
+            # A macro's metavariable, such as `$cfg` or `$cfg:meta` in a
+            # `macro_rules!`: each invocation names the predicate.
+            position += 2
+            if position < end and tokens[position].text == ":":
+                position += 2
+            return None
         name = tokens[position].text
         position += 1
         if position < end and tokens[position].text == "=":
