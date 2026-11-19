@@ -376,6 +376,7 @@ extension PreviewData {
         live: BridgeCandidateLiveState? = nil,
         importStatus: BridgeCandidateImportStatus? = nil,
         libraryStatus: BridgeLibraryStatus? = nil,
+        album: BridgeDraftAlbum = .new,
         albumArtistStanding: BridgeArtistFieldStanding? = nil
     ) -> Candidate {
         Candidate(
@@ -402,7 +403,7 @@ extension PreviewData {
                 stage: .drafting(
                     draft: BridgeCandidateDraftPane(
                         pickedLibraryStatus: libraryStatus,
-                        album: .new,
+                        album: album,
                         metadataDraft: edit,
                         albumArtistStanding: albumArtistStanding,
                         metadataDraftIsBlank: edit.albumTitle.isEmpty,

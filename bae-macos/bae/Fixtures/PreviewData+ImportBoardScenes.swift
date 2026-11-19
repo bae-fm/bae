@@ -14,7 +14,7 @@ extension PreviewData {
         case found(northbound: NorthboundStanding, opening: FoundPane?)
         /// The Imported tab, Northbound opened.
         case imported
-        /// The Skipped tab, the folder with no audio opened.
+        /// The Skipped tab, Harbor Waltz opened.
         case skipped
 
         var tab: BridgeTriageTab {
@@ -193,7 +193,7 @@ extension PreviewData {
                 offers: opened.live?.offers ?? []
             )
         case .skipped:
-            let opened = boardEmptyFolderDetail
+            let opened = boardHarborWaltzDetail
             let key = opened.candidate.candidateKey
             store.selectedInvalidCandidates[key] = opened
             return boardSelection(

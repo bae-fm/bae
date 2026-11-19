@@ -157,6 +157,17 @@ extension PreviewData {
         mappingImage(previewFile(name: name, size: 1_100_000, role: .artwork))
     }
 
+    /// The folder's image file `name`, drawn as the artwork `art`.
+    static func boardImage(_ name: String, art: String) -> BridgeMappingImage {
+        BridgeMappingImage(fileId: name, name: name, file: previewArtFile(art))
+    }
+
+    /// Northbound's folder images: its front cover and its back.
+    static let northboundImages = [
+        boardImage("cover.jpg", art: "Northbound"),
+        boardImage("back.jpg", art: "Northbound back"),
+    ]
+
     static func boardCover(_ name: String) -> BridgeCoverChoice {
         BridgeCoverChoice(
             selection: .releaseImage(fileId: "\(name).jpg"),
@@ -280,10 +291,7 @@ extension PreviewData {
     /// two images and the files carried alongside.
     static func northboundMapping() -> BridgeMappingTable {
         BridgeMappingTable(
-            images: [
-                boardImage("Northbound.jpg"),
-                boardImage("Northbound back.jpg"),
-            ],
+            images: northboundImages,
             trackSides: boardTrackSides(
                 northboundTracks,
                 edit: northboundEdit()
@@ -294,7 +302,7 @@ extension PreviewData {
     }
 
     /// The files a board release carries that no track plays: its rip log
-    /// and a cover image.
+    /// and its two images.
     static let carriedBoardFiles: [BridgeMappingFile] = [
         mappingFile(
             previewFile(name: "rip.log", size: 4_000, role: .document),
@@ -302,6 +310,10 @@ extension PreviewData {
         ),
         mappingFile(
             previewFile(name: "cover.jpg", size: 1_100_000, role: .artwork),
+            role: .image
+        ),
+        mappingFile(
+            previewFile(name: "back.jpg", size: 900_000, role: .artwork),
             role: .image
         ),
     ]

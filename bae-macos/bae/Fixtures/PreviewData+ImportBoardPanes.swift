@@ -13,7 +13,7 @@ extension PreviewData {
             .northbound,
             files: boardFolderFiles(
                 tracks: northboundTracks,
-                images: ["Northbound", "Northbound back"]
+                images: ["cover", "back"]
             )
         )
     }
@@ -61,13 +61,7 @@ extension PreviewData {
                 live: triageLive([.revealFolder]),
                 importStatus: .complete(release: release),
                 signals: nil,
-                stage: .imported(
-                    release: release,
-                    images: [
-                        boardImage("Northbound.jpg"),
-                        boardImage("Northbound back.jpg"),
-                    ]
-                )
+                stage: .imported(release: release, images: northboundImages)
             )
         )
     }
@@ -149,6 +143,21 @@ extension PreviewData {
             title: "Low Tide Hours",
             artist: "Mara Quill",
             year: "1992",
+            pressing: BridgeRawPressingEdit(
+                year: "1992",
+                labels: [
+                    BridgeRawLabelEdit(
+                        name: "Harbor Records",
+                        catalogNumber: "HR-1042"
+                    )
+                ],
+                barcodes: ["0 41234 56789 2"],
+                facts: pressingFacts(
+                    country: "US",
+                    media: media(.cd),
+                    status: .official
+                )
+            ),
             tracks: lowTideHoursTracks.enumerated()
                 .map {
                     BoardTrackRow(
@@ -214,6 +223,13 @@ extension PreviewData {
             placement: .pending(folderCheck: nil, records: records),
             live: needsYou(.matches(count: 3)),
             libraryStatus: lowTideHoursInLibrary,
+            album: .named(
+                albumId: "board-0",
+                line: .titleAndArtists(
+                    title: "Low Tide Hours",
+                    artistLine: .named("Mara Quill")
+                )
+            ),
             albumArtistStanding: boardLibraryArtistStanding
         )
     }
@@ -664,10 +680,44 @@ extension PreviewData {
 
     // MARK: - Skipped
 
-    /// The empty folder as its read answers it: no images, no files.
-    static let boardEmptyFolderDetail = BridgeInvalidCandidateDetail(
-        candidate: boardEmptyFolder,
-        images: [],
-        files: []
+    /// Harbor Waltz as its read answers it: its one image, then its other
+    /// files, two of its audio files damaged.
+    static let boardHarborWaltzDetail = BridgeInvalidCandidateDetail(
+        candidate: boardHarborWaltz,
+        images: [boardImage("folder.jpg", art: "Glass Harbor")],
+        files: [
+            mappingFile(
+                previewFile(
+                    name: "01 Harbor Waltz.flac",
+                    size: 28_400_000,
+                    role: .audio
+                ),
+                role: .audio
+            ),
+            mappingFile(
+                previewFile(name: "02 Night Shift.flac", size: 0, role: .audio),
+                role: .damagedAudio(damage: .empty)
+            ),
+            mappingFile(
+                previewFile(
+                    name: "03 Tide Table.flac",
+                    size: 31_200_000,
+                    role: .audio
+                ),
+                role: .damagedAudio(damage: .unreadable)
+            ),
+            mappingFile(
+                previewFile(
+                    name: "04 Last Ferry.flac",
+                    size: 26_900_000,
+                    role: .audio
+                ),
+                role: .audio
+            ),
+            mappingFile(
+                previewFile(name: "notes.txt", size: 2_000, role: .document),
+                role: .document
+            ),
+        ]
     )
 }
