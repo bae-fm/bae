@@ -10,8 +10,8 @@
   }
   // A row of a history or playlist list: when or position, cover, title, artist · album, who, length.
   function MacListRow(props) {
-    // `wide`: more room at the end, for a row that ends in a person (History). `cover`: the cover's size, 32pt unless given (40 on a playlist's page in the side pane). While the owner drags a playlist's row, `lifted` is the row left in its place, faded, and `dragging` the copy under the pointer, raised over the rows.
-    return h('div', { className: cx('bae-m-lrow', props.selected && 'bae-m-lrow-selected', props.wide && 'bae-m-lrow-wide', props.lifted && 'bae-m-lrow-lifted', props.dragging && 'bae-m-lrow-dragging') },
+    // `wide`: more room at the end, for a row that ends in a person (History). `cover`: the cover's size, 32pt unless given (40 on a playlist's page in the side pane). While the owner drags a playlist's row, `lifted` is the row left in its place, faded, and `dragging` the copy under the pointer, raised over the rows. `hanging`: the number hangs in the margin left of the row, 20pt wide and right-aligned, so the covers start at the list's edge, and the credit line sits 3pt under the title (a playlist's page in the side pane).
+    return h('div', { className: cx('bae-m-lrow', props.selected && 'bae-m-lrow-selected', props.wide && 'bae-m-lrow-wide', props.hanging && 'bae-m-lrow-hanging', props.lifted && 'bae-m-lrow-lifted', props.dragging && 'bae-m-lrow-dragging') },
       props.lead ? h('span', { className: 'bae-muted bae-num bae-m-lrow-lead' }, props.lead) : null,
       h(Artwork, { title: props.album || props.title, size: props.cover ? Number(props.cover) : 32, radius: props.cover ? 6 : 4 }),
       h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { className: 'bae-ellipsis', style: { fontWeight: 500 } }, props.title), h('div', { className: 'bae-muted bae-ellipsis bae-m-lrow-sub', style: { fontSize: 11.5 } }, props.sub)),
