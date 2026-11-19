@@ -39,41 +39,33 @@ pub(crate) enum PayloadCrypto {
     Ap2(super::airplay2::Ap2AudioCipher),
 }
 
-/// Turns each packet's PCM into RTP audio bytes, advancing the sequence and
-/// timestamp and encrypting the payload. Pure and deterministic.
+/// Turns each packet's PCM into RTP audio bytes, advancing the packet's place
+/// on the timeline and encrypting the payload. Pure and deterministic.
 pub(crate) struct Packetizer {
     ssrc: u32,
     crypto: PayloadCrypto,
     channels: u32,
-    sequence: u16,
-    timestamp: u32,
+    /// The packet it makes next.
+    next: RtpPosition,
     first: bool,
 }
 
 impl Packetizer {
-    /// Start at `initial_timestamp` (the RECORD anchor). `first` marks the first
-    /// packet after RECORD/FLUSH, which carries the RTP marker bit.
-    pub(crate) fn new(
-        ssrc: u32,
-        crypto: PayloadCrypto,
-        channels: u32,
-        initial_sequence: u16,
-        initial_timestamp: u32,
-    ) -> Self {
-        Packetizer {
-            ssrc,
-            crypto,
-            channels,
-            sequence: initial_sequence,
-            timestamp: initial_timestamp,
-            first: true,
-        }
+    /// Start at `start` (the RECORD anchor). `first` marks the first packet
+    /// after RECORD/FLUSH, which carries the RTP marker bit.
+    pub(crate) fn new(ssrc: u32, crypto: PayloadCrypto, channels: u32, start: RtpPosition) -> Self {
+        Packetizer { ssrc, crypto, channels, next: start, first: true }
+    }
+
+    /// The packet it makes next.
+    pub(crate) fn next(&self) -> RtpPosition {
+        self.next
     }
 
     /// Serialize one packet from `frames` interleaved i16 samples (already
-    /// zero-padded to a whole packet). Advances the sequence (wrapping) and the
-    /// timestamp by the frame count.
+    /// zero-padded to a whole packet), and move on to the packet after it.
     pub(crate) fn packet(&mut self, frames: &[i16]) -> Vec<u8> {
+        let RtpPosition { sequence, timestamp } = self.next;
         let mut payload = Vec::with_capacity(frames.len() * 2);
         for sample in frames {
             payload.extend_from_slice(&sample.to_le_bytes());
@@ -82,14 +74,13 @@ impl Packetizer {
         let packet = match &mut self.crypto {
             PayloadCrypto::Raop(cipher) => {
                 cipher.encrypt_packet(&mut payload);
-                rtp::audio_packet(self.first, self.sequence, self.timestamp, self.ssrc, &payload)
+                rtp::audio_packet(self.first, sequence, timestamp, self.ssrc, &payload)
             }
             PayloadCrypto::Ap2(cipher) => {
                 // The AAD is the header's timestamp+SSRC (bytes 4..12); build the
                 // header first, seal against it, then append the sealed payload
                 // (ciphertext+tag+8-byte nonce).
-                let mut packet =
-                    rtp::audio_packet(self.first, self.sequence, self.timestamp, self.ssrc, &[]);
+                let mut packet = rtp::audio_packet(self.first, sequence, timestamp, self.ssrc, &[]);
                 let sealed = cipher.seal(&packet[4..12], &payload);
                 packet.extend_from_slice(&sealed);
                 packet
@@ -97,8 +88,7 @@ impl Packetizer {
         };
 
         self.first = false;
-        self.sequence = self.sequence.wrapping_add(1);
-        self.timestamp = self.timestamp.wrapping_add(frames.len() as u32 / self.channels.max(1));
+        self.next = self.next.following(frames.len() as u32 / self.channels.max(1));
         packet
     }
 
@@ -212,12 +202,11 @@ impl RtpPosition {
         format!("seq={};rtptime={}", self.sequence, self.timestamp)
     }
 
-    /// The packet `frames` frames after this one. Every packet carries
-    /// [`FRAMES_PER_PACKET`] frames, since the sender pads the last.
-    fn after(self, frames: u64) -> Self {
+    /// The packet after this one, which carries `frames` frames.
+    fn following(self, frames: u32) -> Self {
         RtpPosition {
-            sequence: self.sequence.wrapping_add((frames / u64::from(FRAMES_PER_PACKET)) as u16),
-            timestamp: self.timestamp.wrapping_add(frames as u32),
+            sequence: self.sequence.wrapping_add(1),
+            timestamp: self.timestamp.wrapping_add(frames),
         }
     }
 }
@@ -383,13 +372,13 @@ impl StreamFailure {
     }
 }
 
-/// The shared state a running stream is observed and steered through: how far the
-/// send has got, the re-anchor request, why the audio flow died if it has, and
+/// The shared state a running stream is observed and steered through: the
+/// packet the sender sends next, the re-anchor request, why the audio flow died if it has, and
 /// the negotiated receiver latency the pacing lead and the audible position both
 /// use. A session keeps one and hands a clone to the threads.
 #[derive(Clone)]
 pub(super) struct RaopStreamControl {
-    frames_sent: Arc<AtomicU64>,
+    next_packet: Arc<Mutex<RtpPosition>>,
     reanchor: Arc<AtomicU64>,
     failure: StreamFailure,
     latency_frames: u32,
@@ -401,20 +390,16 @@ impl RaopStreamControl {
     /// failed.
     pub(super) fn new(latency_frames: u32, failure: StreamFailure) -> Self {
         Self {
-            frames_sent: Arc::new(AtomicU64::new(0)),
+            next_packet: Arc::new(Mutex::new(RtpPosition::START)),
             reanchor: Arc::new(AtomicU64::new(0)),
             failure,
             latency_frames,
         }
     }
 
-    pub(super) fn frames_sent(&self) -> u64 {
-        self.frames_sent.load(Ordering::Relaxed)
-    }
-
-    /// The packet the sender sends next.
+    /// The packet the sender sends next, as its packetizer numbers it.
     pub(super) fn next_packet(&self) -> RtpPosition {
-        RtpPosition::START.after(self.frames_sent())
+        *self.next_packet.lock().unwrap()
     }
 
     pub(super) fn reanchor(&self) {
@@ -445,9 +430,9 @@ impl RaopStreamControl {
         self.reanchor.load(Ordering::Acquire)
     }
 
-    /// Account for frames just handed to the receiver.
-    fn record_frames(&self, frames: u64) {
-        self.frames_sent.fetch_add(frames, Ordering::Relaxed);
+    /// Account for a packet just handed to the receiver: `next` follows it.
+    fn record_sent(&self, next: RtpPosition) {
+        *self.next_packet.lock().unwrap() = next;
     }
 
     /// The audio flow has failed persistently; see [`StreamFailure`].
@@ -499,13 +484,7 @@ impl RaopStream {
             AudioThread {
                 source,
                 wake: wake.clone(),
-                packetizer: Packetizer::new(
-                    audio.ssrc,
-                    crypto,
-                    audio.channels,
-                    RtpPosition::START.sequence,
-                    RtpPosition::START.timestamp,
-                ),
+                packetizer: Packetizer::new(audio.ssrc, crypto, audio.channels, RtpPosition::START),
                 pacer: Pacer::new(audio.sample_rate, control.latency_frames()),
                 sample_rate: audio.sample_rate,
                 socket: audio_socket,
@@ -625,7 +604,7 @@ fn spawn_audio_thread(
                         }
                     }
                     t.pacer.record_packet();
-                    t.control.record_frames(u64::from(FRAMES_PER_PACKET));
+                    t.control.record_sent(t.packetizer.next());
                 }
                 if starved {
                     t.wake.wait_past(seen);

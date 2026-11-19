@@ -4,7 +4,12 @@ use super::*;
 /// advancing sequence and timestamp per packet — a golden fixture.
 #[test]
 fn packetizer_is_golden_unencrypted() {
-    let mut p = Packetizer::new(0xDEAD_BEEF, PayloadCrypto::Raop(RaopCipher::none()), 2, 100, 1000);
+    let mut p = Packetizer::new(
+        0xDEAD_BEEF,
+        PayloadCrypto::Raop(RaopCipher::none()),
+        2,
+        RtpPosition { sequence: 100, timestamp: 1000 },
+    );
     // One "packet" of two stereo frames: L,R,L,R.
     let pkt = p.packet(&[0x0102, 0x0304, 0x0506, 0x0708]);
     assert_eq!(
@@ -33,8 +38,9 @@ fn packetizer_is_golden_unencrypted() {
 fn packetizer_encrypts_payload_only() {
     use crate::airplay::crypto::apple_public_key;
     let cipher = RaopCipher::from_key_iv(&apple_public_key(), [0x11; 16], [0x22; 16]).unwrap();
-    let mut enc = Packetizer::new(1, PayloadCrypto::Raop(cipher), 2, 0, 0);
-    let mut plain = Packetizer::new(1, PayloadCrypto::Raop(RaopCipher::none()), 2, 0, 0);
+    let mut enc = Packetizer::new(1, PayloadCrypto::Raop(cipher), 2, RtpPosition::START);
+    let mut plain =
+        Packetizer::new(1, PayloadCrypto::Raop(RaopCipher::none()), 2, RtpPosition::START);
     // 16 stereo frames = 64 bytes payload = four whole AES blocks.
     let pcm: Vec<i16> = (0..32).collect();
     let e = enc.packet(&pcm);
@@ -132,7 +138,12 @@ fn audio_thread_pacing_by(
         AudioThread {
             source,
             wake,
-            packetizer: Packetizer::new(1, PayloadCrypto::Raop(RaopCipher::none()), 2, 0, 0),
+            packetizer: Packetizer::new(
+                1,
+                PayloadCrypto::Raop(RaopCipher::none()),
+                2,
+                RtpPosition::START,
+            ),
             pacer: Pacer::new(44_100, 88_200),
             sample_rate: 44_100,
             socket: UdpSocket::bind(("127.0.0.1", 0)).unwrap(),
@@ -200,7 +211,7 @@ fn the_sender_owes_no_audio_for_the_time_setup_took() {
     wake.wake();
     handle.join();
     // 88200 frames of latency lead is 250 whole packets.
-    assert_eq!(control.frames_sent(), 250 * u64::from(FRAMES_PER_PACKET));
+    assert_eq!(control.next_packet(), RtpPosition { sequence: 250, timestamp: 88_000 });
 }
 
 /// A sync packet tells the receiver which frame it should be playing now and
@@ -214,7 +225,7 @@ fn a_sync_packet_puts_the_next_frame_a_latency_ahead_of_the_one_playing() {
     receiver.set_read_timeout(Some(bae_util::test_channels::HANG_GUARD)).unwrap();
     let control = RaopStreamControl::new(88_200, StreamFailure::new(AirPlayFailed::ignored()));
     // The sender has sent 300 packets.
-    control.record_frames(300 * u64::from(FRAMES_PER_PACKET));
+    control.record_sent(RtpPosition { sequence: 300, timestamp: 300 * FRAMES_PER_PACKET });
     let (stop, stopped) = std::sync::mpsc::channel();
     let sender = spawn_sync_thread(
         &Diagnostics::noop(),
@@ -237,20 +248,20 @@ fn a_sync_packet_puts_the_next_frame_a_latency_ahead_of_the_one_playing() {
     assert_eq!(playing, next - 88_200, "the frame playing now, a latency before it");
 }
 
-/// The packet the sender sends next follows every whole packet it sent, and
-/// its sequence number wraps as the packets' do.
+/// After each packet the packetizer's next packet has the next sequence
+/// number, wrapping at 65536, and a timestamp the packet's frames later; its
+/// `RTP-Info` names both.
 #[test]
-fn the_next_packet_follows_the_packets_sent() {
-    let control = RaopStreamControl::new(88_200, StreamFailure::new(AirPlayFailed::ignored()));
-    assert_eq!(control.next_packet(), RtpPosition::START);
-    assert_eq!(RtpPosition::START.rtp_info(), "seq=0;rtptime=0");
+fn the_next_packet_follows_the_packet_made() {
+    let start = RtpPosition { sequence: 65_535, timestamp: 1000 };
+    let mut p = Packetizer::new(1, PayloadCrypto::Raop(RaopCipher::none()), 2, start);
+    assert_eq!(p.next(), start);
+    assert_eq!(p.next().rtp_info(), "seq=65535;rtptime=1000");
 
-    control.record_frames(300 * u64::from(FRAMES_PER_PACKET));
-    assert_eq!(control.next_packet(), RtpPosition { sequence: 300, timestamp: 105_600 });
-    assert_eq!(control.next_packet().rtp_info(), "seq=300;rtptime=105600");
-
-    control.record_frames(65_536 * u64::from(FRAMES_PER_PACKET));
-    assert_eq!(control.next_packet().sequence, 300, "the sequence number wraps at 65536");
+    // Two stereo frames.
+    p.packet(&[0, 0, 0, 0]);
+    assert_eq!(p.next(), RtpPosition { sequence: 0, timestamp: 1002 });
+    assert_eq!(p.next().rtp_info(), "seq=0;rtptime=1002");
 }
 
 /// A source whose pull panics: a bug in the samples' way to the sender.
@@ -313,7 +324,10 @@ fn audio_thread_is_persistent_across_a_drained_source() {
     stop.store(true, Ordering::Release);
     wake.wake();
     handle.join();
-    assert_eq!(control.frames_sent(), 3 * u64::from(FRAMES_PER_PACKET));
+    assert_eq!(
+        control.next_packet(),
+        RtpPosition { sequence: 3, timestamp: 3 * FRAMES_PER_PACKET }
+    );
 }
 
 /// A sender waiting on a drained source sends what the source has once the
@@ -337,7 +351,10 @@ fn a_waiting_sender_sends_once_woken() {
     drained_rx
         .recv_timeout(bae_util::test_channels::HANG_GUARD)
         .expect("the woken sender sends the packets and asks again");
-    assert_eq!(control.frames_sent(), 2 * u64::from(FRAMES_PER_PACKET));
+    assert_eq!(
+        control.next_packet(),
+        RtpPosition { sequence: 2, timestamp: 2 * FRAMES_PER_PACKET }
+    );
     stop.store(true, Ordering::Release);
     wake.wake();
     handle.join();
@@ -347,7 +364,7 @@ fn a_waiting_sender_sends_once_woken() {
 /// marker bit again.
 #[test]
 fn reanchor_re_marks_the_next_packet() {
-    let mut p = Packetizer::new(1, PayloadCrypto::Raop(RaopCipher::none()), 2, 0, 0);
+    let mut p = Packetizer::new(1, PayloadCrypto::Raop(RaopCipher::none()), 2, RtpPosition::START);
     let first = p.packet(&[0, 0, 0, 0]);
     assert_eq!(first[1], 0xE0, "first packet is marked");
     let second = p.packet(&[0, 0, 0, 0]);
