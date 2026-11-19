@@ -18,15 +18,17 @@ check rust-visibility *.rs scripts/check-rust-visibility.sh {files}
 whole rust-visibility-all scripts/check-rust-visibility.sh scripts/check-rust-visibility.sh
 check whole-file-marks *.rs python3 scripts/check-whole-file-marks.py {files}
 whole whole-file-marks-all scripts/check-whole-file-marks.py,scripts/source_tokens.py python3 scripts/check-whole-file-marks.py
-check reqwest-errors *.rs scripts/check-reqwest-error-display.py {files}
-whole reqwest-errors-all scripts/check-reqwest-error-display.py scripts/check-reqwest-error-display.py
 check rust-files-compiled *.rs,Cargo.toml scripts/check-rust-files-compiled.py {crates}
 whole rust-files-compiled-all scripts/check-rust-files-compiled.py,scripts/rust_modules.py,scripts/source_tokens.py python3 scripts/check-rust-files-compiled.py
 whole ownership *.rs,*.sql,Cargo.toml,Cargo.lock,owner-construction-check.toml,scripts/owner-construction-check.sh scripts/owner-construction-check.sh
 whole frozen-shrinks owner-construction-check.toml,scripts/check-frozen-shrinks.py python3 scripts/check-frozen-shrinks.py
 check machete *.rs,Cargo.toml cargo machete
 check deny Cargo.toml,Cargo.lock,deny.toml cargo deny check
+# clippy's lints and the typed lints, in one compile (scripts/clippy-crates.sh).
 check clippy *.rs,Cargo.toml,Cargo.lock,clippy.toml scripts/clippy-crates.sh {crates}
+# Every crate's lints change with the typed lints' coven revision and with the
+# toolchain, which the driver is built for.
+check clippy-all tools/typed-lints/tool.sh,rust-toolchain.toml scripts/clippy-crates.sh --workspace
 
 # The apps' sources and the bridge they call
 whole uniffi-boundary bae-bridge/src/**/*.rs,BaeKit/Sources/**/*.swift,bae-macos/**/*.swift,bae-ios/**/*.swift,bae-android/app/src/main/**/*.kt,bae-avalonia/BaeLogger.cs,scripts/check-uniffi-runtime-boundary.py python3 scripts/check-uniffi-runtime-boundary.py

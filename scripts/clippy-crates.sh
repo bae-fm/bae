@@ -1,15 +1,17 @@
 #!/bin/bash
-# Clippy over the workspace crates named as `-p <crate>` arguments: every
-# target, warnings as errors, with the test features each crate declares
-# (`test-utils`, `test-instrumentation`) and every feature bae-bridge declares
-# (the set the macOS Debug app builds it with, bae-bridge/build-macos.sh), so
-# the tests and the desktop code are compiled. Runs as the pre-commit hook's
-# compile check. `--workspace` checks every workspace crate in one run, with the
-# features of all of them (one feature resolution), as CI does.
+# Clippy, with the typed lints beside clippy's own, over the workspace crates
+# named as `-p <crate>` arguments: every target, warnings as errors, with the
+# test features each crate declares (`test-utils`, `test-instrumentation`) and
+# every feature bae-bridge declares (the set the macOS Debug app builds it
+# with, bae-bridge/build-macos.sh), so the tests and the desktop code are
+# compiled. Runs as the pre-commit hook's compile check. `--workspace` checks
+# every workspace crate in one run, with the features of all of them (one
+# feature resolution), as CI does. tools/typed-lints/clippy.sh runs clippy, so
+# each crate compiles once for clippy's lints and the typed lints.
 #
 # Only the named crates are linted. The workspace crates they depend on are
-# compiled by scripts/clippy-rustc-wrapper.sh through sccache: under
-# clippy-driver sccache caches nothing, so each new set of crates (a new
+# compiled by scripts/clippy-rustc-wrapper.sh through sccache: under the
+# typed lints' driver sccache caches nothing, so each new set of crates (a new
 # feature resolution) would recheck every workspace crate below them. They were
 # linted when a commit changed them.
 set -euo pipefail
@@ -51,7 +53,7 @@ for package in metadata["packages"]:
 lints_every_crate=$(sed -n 1p <<< "$plan")
 features=$(sed 1d <<< "$plan")
 
-args=(clippy --all-targets)
+args=(--all-targets)
 if [ "$workspace" -eq 1 ]; then
     args+=(--workspace)
 fi
@@ -61,14 +63,13 @@ done
 while IFS= read -r feature; do
     [ -n "$feature" ] && args+=(--features "$feature")
 done <<< "$features"
-# A crate scripts/clippy-rustc-wrapper.sh compiled without lints is fresh to
-# cargo, which would then never lint it; scripts/clippy-stale-units.sh makes
-# each crate named here stale. builds runs scripts/clippy-stale-units.sh before
-# cargo on whichever machine runs cargo (`builds cargo` sends clippy to the host
-# with the most free cores), through BUILDS_CARGO_BEFORE.
-if [ "${#crates[@]}" -gt 0 ]; then
-    export BUILDS_CARGO_BEFORE="scripts/clippy-stale-units.sh ${crates[*]}"
-fi
+# On whichever machine runs cargo (`builds cargo` sends the check to the host
+# with the most free cores), builds runs scripts/clippy-before.sh first,
+# through BUILDS_CARGO_BEFORE: it points tools/typed-lints/built at the driver
+# there, and makes each crate named here stale, since a crate
+# scripts/clippy-rustc-wrapper.sh compiled without lints is fresh to cargo,
+# which would then never lint it.
+export BUILDS_CARGO_BEFORE="scripts/clippy-before.sh ${crates[*]+"${crates[*]}"}"
 # clippy has no lint or flag that makes a clippy.toml entry naming nothing an
 # error: it prints "warning: `<path>` does not refer to a reachable function"
 # (or type, macro, ...), which -D warnings leaves a warning, so a misspelled
@@ -81,7 +82,8 @@ fi
 log=$(mktemp)
 trap 'rm -f "$log"' EXIT
 status=0
-RUSTC_WRAPPER="$PWD/scripts/clippy-rustc-wrapper.sh" scripts/cargo.sh "${args[@]}" -- -D warnings 2> >(tee "$log" >&2) || status=$?
+RUSTC_WRAPPER="$PWD/scripts/clippy-rustc-wrapper.sh" \
+    tools/typed-lints/clippy.sh "${args[@]}" -- -D warnings 2> >(tee "$log" >&2) || status=$?
 wait
 unreachable=$(sed $'s/\\x1b\\[[0-9;]*m//g' "$log" | grep -E 'does not refer to a reachable' | sort -u || true)
 if [ "$lints_every_crate" = every ] && [ -n "$unreachable" ]; then

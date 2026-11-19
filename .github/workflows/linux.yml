@@ -50,9 +50,6 @@ jobs:
     - name: Check restricted-path Rust visibility
       run: scripts/check-rust-visibility.sh
 
-    - name: Check reqwest error causes
-      run: scripts/check-reqwest-error-display.py
-
     - name: Check owner dependency boundaries
       run: scripts/owner-construction-check.sh
 
@@ -97,27 +94,27 @@ jobs:
 
     - name: Run Clippy
       run: |
-        cargo clippy --workspace -- -D warnings
-        cargo clippy -p bae-library --tests --features bae-library/test-utils -- -D warnings
-        cargo clippy -p bae-util --tests --features bae-util/test-utils -- -D warnings
-        cargo clippy -p bae-audio --tests --features test-utils,test-instrumentation -- -D warnings
-        cargo clippy -p bae-types --tests --features bae-types/test-utils -- -D warnings
-        cargo clippy -p bae-catalogs --tests --features test-utils,test-instrumentation -- -D warnings
-        cargo clippy -p bae-diagnostics --tests --features bae-diagnostics/test-utils -- -D warnings
-        cargo clippy -p bae-app-dir --tests --features bae-app-dir/test-utils -- -D warnings
-        cargo clippy -p bae-store --tests --features bae-store/test-utils -- -D warnings
-        cargo clippy -p bae-records --tests --features bae-records/test-utils -- -D warnings
-        cargo clippy -p bae-people --tests --features bae-people/test-utils -- -D warnings
-        cargo clippy -p bae-sync-status --tests --features bae-sync-status/test-utils -- -D warnings
-        cargo clippy -p bae-preferences --tests --features bae-preferences/test-utils -- -D warnings
-        cargo clippy -p bae-track-audio --tests --features bae-track-audio/test-utils -- -D warnings
-        cargo clippy -p bae-transfers --tests --features bae-transfers/test-utils -- -D warnings
-        cargo clippy -p bae-views --tests --features bae-views/test-utils -- -D warnings
-        cargo clippy -p bae-identify --tests --features bae-identify/test-utils -- -D warnings
-        cargo clippy -p bae-playback --tests --features bae-playback/test-utils -- -D warnings
-        cargo clippy -p bae-import --tests --features bae-import/test-utils -- -D warnings
-        cargo clippy -p bae-app --tests --features bae-app/test-utils -- -D warnings
-        cargo clippy -p bae-bridge -- -D warnings
+        tools/typed-lints/clippy.sh --workspace -- -D warnings
+        tools/typed-lints/clippy.sh -p bae-library --tests --features bae-library/test-utils -- -D warnings
+        tools/typed-lints/clippy.sh -p bae-util --tests --features bae-util/test-utils -- -D warnings
+        tools/typed-lints/clippy.sh -p bae-audio --tests --features test-utils,test-instrumentation -- -D warnings
+        tools/typed-lints/clippy.sh -p bae-types --tests --features bae-types/test-utils -- -D warnings
+        tools/typed-lints/clippy.sh -p bae-catalogs --tests --features test-utils,test-instrumentation -- -D warnings
+        tools/typed-lints/clippy.sh -p bae-diagnostics --tests --features bae-diagnostics/test-utils -- -D warnings
+        tools/typed-lints/clippy.sh -p bae-app-dir --tests --features bae-app-dir/test-utils -- -D warnings
+        tools/typed-lints/clippy.sh -p bae-store --tests --features bae-store/test-utils -- -D warnings
+        tools/typed-lints/clippy.sh -p bae-records --tests --features bae-records/test-utils -- -D warnings
+        tools/typed-lints/clippy.sh -p bae-people --tests --features bae-people/test-utils -- -D warnings
+        tools/typed-lints/clippy.sh -p bae-sync-status --tests --features bae-sync-status/test-utils -- -D warnings
+        tools/typed-lints/clippy.sh -p bae-preferences --tests --features bae-preferences/test-utils -- -D warnings
+        tools/typed-lints/clippy.sh -p bae-track-audio --tests --features bae-track-audio/test-utils -- -D warnings
+        tools/typed-lints/clippy.sh -p bae-transfers --tests --features bae-transfers/test-utils -- -D warnings
+        tools/typed-lints/clippy.sh -p bae-views --tests --features bae-views/test-utils -- -D warnings
+        tools/typed-lints/clippy.sh -p bae-identify --tests --features bae-identify/test-utils -- -D warnings
+        tools/typed-lints/clippy.sh -p bae-playback --tests --features bae-playback/test-utils -- -D warnings
+        tools/typed-lints/clippy.sh -p bae-import --tests --features bae-import/test-utils -- -D warnings
+        tools/typed-lints/clippy.sh -p bae-app --tests --features bae-app/test-utils -- -D warnings
+        tools/typed-lints/clippy.sh -p bae-bridge -- -D warnings
 
     - name: Run Clippy on every target of every crate
       # The crates a change reaches are the crates that depend on it, tests

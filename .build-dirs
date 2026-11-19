@@ -82,3 +82,11 @@ linux-package clang libclang-dev libasound2-dev python3
 # (the open-file ceiling), bae-bridge (the unified log) and bae-audio (the
 # type of FFmpeg's log callback's argument list).
 macos bae-playback bae-import bae-util bae-bridge bae-audio
+# The typed lints: coven's, at the revision tools/typed-lints/tool.sh names.
+# builds keeps one build of their driver per key on each machine and points
+# tools/typed-lints/built at it. The build installs the toolchain's compiler
+# crates and fetches clippy's source for the toolchain once per machine into
+# ~/.cache/typed-lints/<toolchain>, which builds deletes once no checkout's
+# rust-toolchain.toml names it.
+installed typed-lints rust-toolchain.toml
+tool typed-lints tools/typed-lints/tool.sh tools/typed-lints/built

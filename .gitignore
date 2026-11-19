@@ -17,6 +17,8 @@ target-android
 target-windows/
 target-iso/
 **/*.rs.bk
+# The typed lints' driver, a link builds points (tools/typed-lints/driver.sh).
+/tools/typed-lints/built
 
 # IDE specific files
 .idea/

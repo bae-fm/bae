@@ -5,9 +5,9 @@
 //! actually went wrong, and each URL in it is cut to its scheme and host, so a
 //! query string or a path never prints.
 //!
-//! Every bae error variant that holds a `reqwest::Error` prints it through
-//! [`CauseChain`]; `scripts/check-reqwest-error-display.py` fails the build
-//! when one prints it any other way.
+//! bae prints every `reqwest::Error` through [`CauseChain`]; the typed lint
+//! `clippy::reqwest_error_display` (tools/typed-lints) fails the hook's clippy
+//! wherever one prints with `Display` or `Debug` any other way.
 
 use std::error::Error;
 use std::fmt;

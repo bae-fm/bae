@@ -50,6 +50,10 @@ fn text_that_is_not_a_url_is_kept_and_a_malformed_one_is_hidden() {
 /// A request to a host no resolver knows names the DNS failure, which
 /// reqwest's own text leaves to a cause below it.
 #[tokio::test]
+#[expect(
+    clippy::reqwest_error_display,
+    reason = "reqwest_error_display: the test shows that reqwest's own text leaves out the DNS failure the cause chain prints"
+)]
 async fn an_unresolvable_host_prints_its_dns_failure() {
     let error = reqwest::Client::new()
         .get("http://bae-test.invalid/path?secret=1")

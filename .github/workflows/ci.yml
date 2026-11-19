@@ -157,9 +157,9 @@ jobs:
 
     - name: Clippy (full feature set)
       run: |
-        cargo clippy -p bae-library --features oauth-providers -- -D warnings
-        cargo clippy -p bae-app --features oauth-providers -- -D warnings
-        cargo clippy -p bae-bridge --features oauth-providers,cloudkit -- -D warnings
+        tools/typed-lints/clippy.sh -p bae-library --features oauth-providers -- -D warnings
+        tools/typed-lints/clippy.sh -p bae-app --features oauth-providers -- -D warnings
+        tools/typed-lints/clippy.sh -p bae-bridge --features oauth-providers,cloudkit -- -D warnings
 
     - name: Build macOS app (baeium, S3-only)
       env:

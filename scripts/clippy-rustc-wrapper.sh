@@ -1,15 +1,16 @@
 #!/bin/sh
 # cargo's RUSTC_WRAPPER for scripts/clippy-crates.sh. cargo runs a workspace
-# crate as `<wrapper> clippy-driver rustc <args>`, and sccache, handed that,
-# takes `rustc` for a second input file and caches nothing. Only the crates
-# named with `-p` (cargo marks them CARGO_PRIMARY_PACKAGE) are linted, so they
-# run under clippy-driver as before; every other crate runs as
+# crate as `<wrapper> <driver> rustc <args>`, where the driver is the typed
+# lints' (tools/typed-lints/built/typed-lints-driver), and sccache, handed
+# that, takes `rustc` for a second input file and caches nothing. Only the
+# crates named with `-p` (cargo marks them CARGO_PRIMARY_PACKAGE) are linted,
+# so they run under the driver; every other crate runs as
 # `sccache rustc <args>`, a plain check that sccache caches and shares between
 # worktrees.
 #
 # cargo keeps each unit in <profile dir>/build/<package>/<unit hash>/, and
 # passes that folder's `out` as --out-dir; its fingerprint folder is beside
-# `out`. cargo files a workspace crate's build under clippy's fingerprint
+# `out`. cargo files a workspace crate's build under the driver's fingerprint
 # whatever ran here, so a crate checked without lints would be fresh when a
 # later run names it with -p, and its lints would never run. After such a check
 # this records the unit in
@@ -21,11 +22,11 @@
 # The linted crates compile incrementally, so a lint after an edit recompiles
 # only what the edit changed. `builds cargo` turns incremental compilation off
 # outside main, since sccache refuses an incremental compile, but sccache
-# caches nothing clippy-driver runs anyway. When cargo passes no
+# caches nothing the driver runs anyway. When cargo passes no
 # `-C incremental`, the wrapper passes
 # `-C incremental=<profile dir>/incremental`, which builds keeps.
 case "$1" in
-*/clippy-driver)
+*/typed-lints-driver)
     if [ -n "${CARGO_PRIMARY_PACKAGE:-}" ]; then
         out_dir= incremental=
         prev=
