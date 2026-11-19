@@ -140,6 +140,10 @@ pub(crate) struct AirPlayBrowse {
 }
 
 impl Browse for AirPlayBrowse {
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "this is the browse of the real network, which no test builds: tests report receivers through RendererDiscovery::reported"
+    )]
     fn start(devices: &PublishedDevices, diagnostics: &Diagnostics) -> Option<Self> {
         let daemon = match ServiceDaemon::new() {
             Ok(daemon) => daemon,

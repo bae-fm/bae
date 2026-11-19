@@ -87,4 +87,10 @@ disallowed-methods = [
     # else gets a stream from those.
     { path = "bae_bridge::keyed_values::KeyedValueStream::new", reason = "build a stream in the bridge's screens module or in keyed_values.rs, beside its writer" },
     { path = "bae_bridge::keyed_values::StreamValues::new", reason = "build a stream's values in the bridge's screens module or in keyed_values.rs, beside its writer" },
+    # A Mac asks its owner whether to accept an AirPlay connection whenever
+    # something connects to its AirPlay receiver, and the mDNS browse is what
+    # leads a test to one. Only bae-cast's Cast and AirPlay discoveries make
+    # the daemon; tests list receivers through RendererDiscovery::reported and
+    # the fake receivers on 127.0.0.1.
+    { path = "mdns_sd::ServiceDaemon::new", reason = "only bae-cast's Cast and AirPlay discoveries browse mDNS; tests list receivers through RendererDiscovery::reported and the fakes on 127.0.0.1" },
 ]
