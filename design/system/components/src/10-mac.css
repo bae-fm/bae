@@ -161,7 +161,6 @@
 .bae-m-popupbutton-open { position: relative; display: inline-flex; }
 .bae-m-popupbutton-menu { position: absolute; left: -31px; z-index: 6; }
 .bae-m-box:has(.bae-m-popupbutton-open) { overflow: visible; }
-.bae-m-popupbutton-menu .bae-m-menu { min-width: 0; white-space: nowrap; }
 .bae-m-popupbutton-menu .bae-m-menu-item { padding-right: 16px; }
 /* A button that draws nothing of its own: its component's classes give it its look. */
 .bae-plainbtn { margin: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: inherit; cursor: pointer; }
