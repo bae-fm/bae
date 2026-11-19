@@ -1,6 +1,6 @@
 # AndroidNotice
 
-Android's notice: a tinted box in its tone, the tone's glyph at the top left. It says something about part of a screen: an error, a warning, information, a success. A title says it; a subtitle, when there is one, says what to do, and then the title is bold. A notice never shows the error itself: no Details, ever. When there is an error behind it, the notice's secondary button is Details, which opens an `AndroidDialog` holding `AndroidErrorDetails`, with the explanation and the causes: errors and technical words stay off the app's main screens. A view that failed whole is a notice too, in the centred layout.
+Android's notice: a tinted box in its tone, the tone's glyph at the top left. It says something about part of a screen: an error, a warning, information, a success. A title says it; a subtitle, when there is one, says what to do, and then the title is bold. When there is an error behind it, the notice's secondary button is Details, which opens an `AndroidDialog` holding `AndroidErrorDetails`, with the explanation and the causes. A view that failed whole is a notice too, in the centred layout.
 
 | Prop | |
 | --- | --- |

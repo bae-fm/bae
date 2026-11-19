@@ -3,10 +3,10 @@ import SwiftUI
 
 /// The sheep over the word "bae". With `glow` a soft pink and purple glow sits
 /// behind the sheep and a pool of light under it, both still; with `bob` the
-/// sheep and the word each float and tilt (unless motion is reduced). The
-/// README's Logo section
-/// (`design/system/README.md`) is the source of every proportion and timing
-/// here; the colours are `Theme`'s `logoGlow…`, `logoPool…` and `logoWord…`.
+/// sheep and the word each float and tilt (unless motion is reduced). The logo
+/// guideline (`the-sheep-logo-and-its-forms.md`, which
+/// `design/system/README.md` lists) is the source of every proportion and
+/// timing here; the colours are `Theme`'s `logoGlow…`, `logoPool…` and `logoWord…`.
 struct Logo: View {
     /// The sheep's width; the word and the glow scale with it.
     let size: CGFloat

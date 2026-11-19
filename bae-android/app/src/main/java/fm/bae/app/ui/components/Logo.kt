@@ -38,8 +38,9 @@ import kotlin.math.cos
 import kotlin.math.sqrt
 
 /**
- * Every proportion is a fraction of the sheep's width, as the README's Logo
- * section (`design/system/README.md`) gives them.
+ * Every proportion is a fraction of the sheep's width, as the logo guideline
+ * (`the-sheep-logo-and-its-forms.md`, which `design/system/README.md` lists)
+ * gives them.
  */
 private object Proportion {
     const val SHEEP_HEIGHT = 545f / 584f

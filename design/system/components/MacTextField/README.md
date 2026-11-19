@@ -1,6 +1,6 @@
 # MacTextField
 
-A placeholder never repeats the label and never ends in an ellipsis. With a visible label, leave the empty field blank, unless the placeholder says what the field is for that the label can't: “Appears on your profile, ratings and playlists” under the label “Your name”. It has to fit the box on one line.
+A macOS text field in its box, with an optional label, placeholder and note.
 
 `code` is the field for a restore code or an invite, typed or pasted: several lines tall and monospaced, showing the code in groups of four with a space between, as Settings shows a restore code, whether it was typed in groups or run together.
 
