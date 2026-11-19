@@ -905,8 +905,8 @@ async fn a_mute_made_on_airplay_holds_after_airplay_ends() {
     assert_eq!(service.audio_output.get_volume(), 0.4, "unmute puts back the level set");
 }
 
-/// A receiver that doesn't take a pause (or a resume) is told to the person as a
-/// lost speaker, rather than the app showing Paused while it plays on. The
+/// A receiver that doesn't take a pause is told to the person as a lost
+/// speaker, rather than the app showing Paused while it plays on. The
 /// control's failure goes through the commands the service sends itself.
 /// Sabotage: drop the failed control's result, and AirPlay stays up.
 #[tokio::test]
@@ -917,7 +917,7 @@ async fn a_receiver_that_refuses_a_pause_ends_airplay() {
     service.slot =
         active_slot(test_prepared_track(TRACK_T, create_sparse_buffer(1_024)), TrackPhase::Playing);
     let airplay = install_airplay(&mut service, std::time::Duration::from_secs(2));
-    airplay.state.refuses_controls.set("the receiver went quiet".to_string()).unwrap();
+    airplay.state.refuses_flush.set("the receiver went quiet".to_string()).unwrap();
     while progress_rx.try_recv().is_ok() {}
 
     service.pause();

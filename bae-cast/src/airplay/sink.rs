@@ -115,9 +115,8 @@ impl AirPlayStreamControl for RaopSession {
         self.flush().map_err(|e| AirPlayControlError::new(format!("FLUSH failed: {e}")))
     }
 
-    fn reanchor(&self) -> Result<(), AirPlayControlError> {
+    fn reanchor(&self) {
         self.reanchor();
-        Ok(())
     }
 
     fn failure(&self) -> Option<String> {
@@ -200,9 +199,8 @@ impl AirPlayStreamControl for Ap2Session {
         self.flush().map_err(|e| AirPlayControlError::new(format!("FLUSH failed: {e}")))
     }
 
-    fn reanchor(&self) -> Result<(), AirPlayControlError> {
+    fn reanchor(&self) {
         self.reanchor();
-        Ok(())
     }
 
     fn failure(&self) -> Option<String> {

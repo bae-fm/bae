@@ -746,8 +746,8 @@ pub(super) struct FakeAirPlayControlState {
     pub(super) flushed: std::sync::atomic::AtomicU64,
     pub(super) reanchored: std::sync::atomic::AtomicU64,
     pub(super) failure: std::sync::OnceLock<String>,
-    /// Set: the receiver doesn't take a flush or a re-anchor, for this reason.
-    pub(super) refuses_controls: std::sync::OnceLock<String>,
+    /// Set: the receiver doesn't take a flush, for this reason.
+    pub(super) refuses_flush: std::sync::OnceLock<String>,
 }
 
 pub(super) struct FakeAirPlayControl {
@@ -758,26 +758,19 @@ pub(super) struct FakeAirPlayControl {
 impl crate::airplay_output::AirPlayStreamControl for FakeAirPlayControl {
     fn flush(&self) -> Result<(), crate::airplay_output::AirPlayControlError> {
         self.state.flushed.fetch_add(1, std::sync::atomic::Ordering::Release);
-        self.refusal()
+        match self.state.refuses_flush.get() {
+            Some(why) => Err(crate::airplay_output::AirPlayControlError::new(why)),
+            None => Ok(()),
+        }
     }
-    fn reanchor(&self) -> Result<(), crate::airplay_output::AirPlayControlError> {
+    fn reanchor(&self) {
         self.state.reanchored.fetch_add(1, std::sync::atomic::Ordering::Release);
-        self.refusal()
     }
     fn failure(&self) -> Option<String> {
         self.state.failure.get().cloned()
     }
     fn latency(&self) -> std::time::Duration {
         self.latency
-    }
-}
-
-impl FakeAirPlayControl {
-    fn refusal(&self) -> Result<(), crate::airplay_output::AirPlayControlError> {
-        match self.state.refuses_controls.get() {
-            Some(why) => Err(crate::airplay_output::AirPlayControlError::new(why)),
-            None => Ok(()),
-        }
     }
 }
 

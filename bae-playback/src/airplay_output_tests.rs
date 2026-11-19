@@ -44,9 +44,8 @@ impl AirPlayStreamControl for FakeSession {
             None => Ok(()),
         }
     }
-    fn reanchor(&self) -> Result<(), AirPlayControlError> {
+    fn reanchor(&self) {
         self.0.reanchored.store(true, Ordering::Release);
-        Ok(())
     }
     fn failure(&self) -> Option<String> {
         None

@@ -142,9 +142,10 @@ pub trait AirPlayStreamControl: Send + Sync {
     /// Stop sending and drop the receiver's buffer (pause / pre-seek). An
     /// error means the receiver didn't take it, so it may play on.
     fn flush(&self) -> Result<(), AirPlayControlError>;
-    /// Re-anchor the pacing after a FLUSH (resume / post-seek). An error means
-    /// the receiver didn't take it, so it may stay silent.
-    fn reanchor(&self) -> Result<(), AirPlayControlError>;
+    /// Re-anchor the pacing after a FLUSH (resume / post-seek). The sender
+    /// restarts its lead, and its next sync packet anchors the receiver
+    /// again: nothing asks the receiver, so nothing can be refused.
+    fn reanchor(&self);
     /// Why the audio flow to the receiver failed for good (a dead receiver),
     /// when it has, so the service should end AirPlay.
     fn failure(&self) -> Option<String>;
@@ -174,21 +175,21 @@ pub trait AirPlaySink: Send {
 /// (and owns it, so dropping the stream tears it down), and binds it here.
 pub(crate) struct AirPlayControl {
     session: Mutex<Option<std::sync::Weak<dyn AirPlayStreamControl>>>,
-    /// Why a control the live session didn't take failed it for good; cleared
+    /// Why a FLUSH the live session didn't take failed it for good; cleared
     /// as the next session is bound.
-    control_failure: Mutex<Option<String>>,
-    /// Told when a control fails, so playback ends AirPlay.
+    flush_failure: Mutex<Option<String>>,
+    /// Told when a FLUSH fails, so playback ends AirPlay.
     failed: AirPlayFailed,
 }
 
 impl AirPlayControl {
     pub(crate) fn new(failed: AirPlayFailed) -> Self {
-        Self { session: Mutex::new(None), control_failure: Mutex::new(None), failed }
+        Self { session: Mutex::new(None), flush_failure: Mutex::new(None), failed }
     }
 
     /// Make `session` the live one. The stream that opened it holds it.
     pub(crate) fn bind(&self, session: &Arc<dyn AirPlayStreamControl>) {
-        *self.control_failure.lock().unwrap() = None;
+        *self.flush_failure.lock().unwrap() = None;
         *self.session.lock().unwrap() = Some(Arc::downgrade(session));
     }
 
@@ -201,37 +202,28 @@ impl AirPlayControl {
             .map(|session| run(session.as_ref()))
     }
 
-    /// Run a control on the live session. A receiver that doesn't take it has
-    /// the app show Paused while it plays on, or Playing while it is silent,
-    /// so the failure is kept (the first stays) and playback is told, which
-    /// ends AirPlay.
-    fn control(
-        &self,
-        what: &str,
-        run: impl FnOnce(&dyn AirPlayStreamControl) -> Result<(), AirPlayControlError>,
-    ) {
-        if let Some(Err(error)) = self.with_session(run) {
-            warn!("airplay {what} failed: {error}");
-            self.control_failure.lock().unwrap().get_or_insert_with(|| error.to_string());
+    /// FLUSH the live session (pause / pre-seek). A receiver that doesn't
+    /// take it has the app show Paused while it plays on, so the failure is
+    /// kept (the first stays) and playback is told, which ends AirPlay.
+    pub(crate) fn flush(&self) {
+        if let Some(Err(error)) = self.with_session(|session| session.flush()) {
+            warn!("airplay flush failed: {error}");
+            self.flush_failure.lock().unwrap().get_or_insert_with(|| error.to_string());
             self.failed.report();
         }
     }
 
-    pub(crate) fn flush(&self) {
-        self.control("flush", |session| session.flush());
-    }
-
     pub(crate) fn reanchor(&self) {
-        self.control("re-anchor", |session| session.reanchor());
+        self.with_session(|session| session.reanchor());
     }
 
-    /// Why the stream failed for good: a control the receiver didn't take, or
+    /// Why the stream failed for good: a FLUSH the receiver didn't take, or
     /// the session's own failure.
     pub(crate) fn failure(&self) -> Option<String> {
         // No session bound has nothing to fail.
         self.with_session(|session| session.failure())
             .flatten()
-            .or_else(|| self.control_failure.lock().unwrap().clone())
+            .or_else(|| self.flush_failure.lock().unwrap().clone())
     }
 
     /// The live session's receiver latency. With no session live, no audio is
