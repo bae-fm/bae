@@ -58,15 +58,12 @@ pub(super) fn album_appearance_count_on(sql: &SqlReadContext<'_>) -> Result<u64,
     .map_err(DbError::from)
 }
 
-/// The tables holding every term of the album list's order, flat or grouped
-/// by artist: the albums' listing rows, or the artists' with each one's links
-/// after it. CROSS JOIN keeps the artists in their index's order and each
-/// artist's albums after it in the link's index for the order's album sort,
-/// so nothing is sorted.
+/// The table holding every term of the album list's order, flat or grouped
+/// by artist: the albums' listing rows, or their links to each artist their
+/// credits show.
 fn album_order_tables(group_by_artist: bool) -> &'static str {
     if group_by_artist {
-        "FROM artist_listing artist \
-         CROSS JOIN album_artist_link link ON link.artist_id = artist.artist_id"
+        "FROM album_artist_link link"
     } else {
         "FROM album_listing listing"
     }
@@ -76,11 +73,11 @@ fn album_order_tables(group_by_artist: bool) -> &'static str {
 /// artist or not) in `order`, at most `:limit`, each with the artist whose
 /// group lists it and its key.
 ///
-/// A window's statement is one SELECT over the tables holding the order's
+/// A window's statement is one SELECT over the table holding the order's
 /// terms, joined to each row's album, returning the order's terms as its key
 /// columns, so coven reruns it for a write at or before its last row alone.
 /// A read by offset picks its rows in an inner statement that reads only the
-/// ids of its rows from the tables holding the order's terms, so a row
+/// ids of its rows from the table holding the order's terms, so a row
 /// `:offset` skips costs its place in the order's indexes and nothing else:
 /// every link has its listing row and every listing row its album, as their
 /// foreign keys hold. Its outer statement reads the columns of just the
@@ -113,9 +110,8 @@ pub(crate) fn album_window_statement(
     }
     let (picked, picked_ids) = if group_by_artist {
         (
-            "artist.artist_id AS picked_artist_id, link.album_id AS picked_album_id",
-            "CROSS JOIN artist_listing artist ON artist.artist_id = picked.picked_artist_id \
-             CROSS JOIN album_artist_link link ON link.artist_id = picked.picked_artist_id \
+            "link.artist_id AS picked_artist_id, link.album_id AS picked_album_id",
+            "CROSS JOIN album_artist_link link ON link.artist_id = picked.picked_artist_id \
                  AND link.album_id = picked.picked_album_id \
              CROSS JOIN album_listing listing ON listing.album_id = picked.picked_album_id",
         )
@@ -187,8 +183,8 @@ enum AlbumRows {
     /// the album's whole credit list (the listing's credit keys).
     Flat,
     /// One row per album under each artist its credits show (the browse
-    /// grouped by artist), `album_artist_link link` under `artist_listing
-    /// artist`: its Artist sort compares the artist the row is listed under,
+    /// grouped by artist), `album_artist_link link`: its Artist sort compares
+    /// the link's copy of the sort key of the artist the row is listed under,
     /// and the album's other sorts compare the link's copies of the album's
     /// values, which its indexes hold.
     ByArtist,
@@ -272,7 +268,7 @@ pub(super) fn album_browse_sections_query(direction: SortDirection) -> String {
 /// every row of the flat grid.
 fn album_credits_beside_sql(group_by_artist: bool) -> String {
     if group_by_artist {
-        bae_records::records::query::album_credits_beside_json_sql("artist.artist_id")
+        bae_records::records::query::album_credits_beside_json_sql("link.artist_id")
     } else {
         "NULL".to_string()
     }
@@ -287,9 +283,8 @@ fn sort_direction_sql(direction: SortDirection) -> &'static str {
 
 /// The order of an album listing over `rows`. With no criteria the newest
 /// albums come first. An index of `album_listing` serves each one-field sort
-/// of the flat grid; grouped by artist, `artist_listing`'s index orders the
-/// artists and an index of `album_artist_link` each artist's albums in the
-/// field after Artist.
+/// of the flat grid, and an index of `album_artist_link` each way of the
+/// artists with each way of the field after Artist grouped by artist.
 fn album_order(sort: &[AlbumSortCriterion], rows: AlbumRows) -> ListOrder {
     let values = rows.album_values();
     // Every order ends with the album id, a total order over albums. Without
@@ -318,14 +313,14 @@ fn album_order(sort: &[AlbumSortCriterion], rows: AlbumRows) -> ListOrder {
                         SortTerm::running("listing.credit_artist_ids", dir).nullable(),
                     ],
                     AlbumRows::ByArtist => vec![
-                        SortTerm::running("artist.sort_name_sort_key", dir),
-                        SortTerm::running("artist.artist_id", dir),
+                        SortTerm::running("link.artist_sort_key", dir),
+                        SortTerm::running("link.artist_id", dir),
                     ],
                 },
                 // An unknown year sorts as above every year: last ascending,
                 // first descending.
                 AlbumSortField::Year => vec![
-                    SortTerm::running(format!("{values}.year IS NULL"), dir),
+                    SortTerm::running(format!("{values}.year_missing"), dir),
                     SortTerm::running(format!("{values}.year"), dir).nullable(),
                 ],
                 AlbumSortField::DateAdded => {

@@ -1,10 +1,11 @@
 -- The artist list counts each artist's albums (§2.3). `artist_listing` holds what
--- it sorts and the grid grouped by artist groups by, kept by the triggers below
--- and by `album_artist_link`'s (`album/listing.sql`).
+-- it sorts and what the sections of the grid grouped by artist show, kept by the
+-- triggers below and by `album_artist_link`'s (`album/listing.sql`).
 
 -- Each artist the artist list shows: one an album the library shows credits,
 -- with its name and that name's sort key (`name_sort`) for the list's order,
--- the sort key of its sort name (else name) for the grid grouped by artist,
+-- the sort key of its sort name (else name), which orders the grid grouped by
+-- artist and which each of its `album_artist_link` rows copies,
 -- and how many of those albums credit it.
 CREATE TABLE IF NOT EXISTS artist_listing (
     artist_id TEXT PRIMARY KEY REFERENCES artists (id) ON DELETE CASCADE,
@@ -22,10 +23,8 @@ CREATE INDEX IF NOT EXISTS idx_artist_listing_album_count ON artist_listing (alb
 
 CREATE INDEX IF NOT EXISTS idx_artist_listing_album_count_desc ON artist_listing (album_count DESC, name_sort_key, artist_id);
 
--- Both columns run one way, so the index serves the grid grouped by artist in
--- either direction. It is unique, as the artist id makes it, so SQLite knows
--- each of its entries is one artist and reads each artist's albums from
--- `album_artist_link`'s index in the grid's sort instead of sorting them.
+-- Both columns run one way, so the index serves the grid grouped by artist's
+-- sections in either direction.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_artist_listing_sort_name_key ON artist_listing (sort_name_sort_key DESC, artist_id DESC);
 
 -- Each link added to or removed from `album_artist_link` counts in or out of
@@ -42,6 +41,14 @@ CREATE TRIGGER IF NOT EXISTS album_artist_link_removed AFTER DELETE ON album_art
 BEGIN
     DELETE FROM artist_listing WHERE artist_id = OLD.artist_id AND album_count = 1;
     UPDATE artist_listing SET album_count = album_count - 1 WHERE artist_id = OLD.artist_id;
+END;
+
+-- An artist's new sort key moves its albums in the grid grouped by artist,
+-- whose order reads the key from each album's link.
+CREATE TRIGGER IF NOT EXISTS artist_listing_sort_key_changed AFTER UPDATE OF sort_name_sort_key ON artist_listing
+WHEN OLD.sort_name_sort_key IS NOT NEW.sort_name_sort_key
+BEGIN
+    UPDATE album_artist_link SET artist_sort_key = NEW.sort_name_sort_key WHERE artist_id = NEW.artist_id;
 END;
 
 -- A renamed artist moves in the artist list.

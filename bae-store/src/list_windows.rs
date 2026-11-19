@@ -365,10 +365,9 @@ impl ListOrder {
     /// The condition `seek` holds this order's rows to. A term held to its
     /// row's value is compared with `=`, and with `IS` only when that value
     /// is NULL, which `=` never matches. SQLite takes a column held with `IS`
-    /// to repeat, so a read whose order goes on from one table into another,
-    /// as the album grid grouped by artist goes from the artists into each
-    /// one's albums, would sort the second table's rows instead of reading
-    /// them in its index's order.
+    /// to repeat, so a read whose order goes on from one table into another
+    /// would sort the second table's rows instead of reading them in its
+    /// index's order.
     pub fn condition(&self, seek: &Seek) -> String {
         if let SeekRead::Page { row, .. } = &seek.read {
             return self.page_condition(row);

@@ -109,6 +109,7 @@ async fn keys_written_with_other_collation_data_are_written_again_when_a_library
             "UPDATE artist_listing SET name_sort_key = x'01', sort_name_sort_key = x'01'",
             [],
         )?;
+        sql.execute("UPDATE album_artist_link SET artist_sort_key = x'01'", [])?;
         Ok(())
     })
     .await
@@ -116,7 +117,7 @@ async fn keys_written_with_other_collation_data_are_written_again_when_a_library
 
     records.settle_name_keys().await.unwrap();
 
-    let (stale_titles, stale_names, version): (i64, i64, i64) = db
+    let (stale_titles, stale_names, stale_links, version): (i64, i64, i64, i64) = db
         .read(|sql| {
             Ok(sql.query_row(
                 "SELECT (SELECT COUNT(*) FROM album_listing l JOIN albums a ON a.id = l.album_id
@@ -125,14 +126,18 @@ async fn keys_written_with_other_collation_data_are_written_again_when_a_library
                          WHERE l.name_sort_key IS NOT bae_name_key(a.name, 'und')
                             OR l.sort_name_sort_key
                                IS NOT bae_name_key(COALESCE(a.sort_name, a.name), 'und')),
+                        (SELECT COUNT(*) FROM album_artist_link l JOIN artists a ON a.id = l.artist_id
+                         WHERE l.artist_sort_key
+                               IS NOT bae_name_key(COALESCE(a.sort_name, a.name), 'und')),
                         (SELECT data_version FROM name_sort)",
                 [],
-                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
             )?)
         })
         .await
         .unwrap();
     assert_eq!(stale_titles, 0, "every title key is the current data's");
     assert_eq!(stale_names, 0, "every artist name key is the current data's");
+    assert_eq!(stale_links, 0, "every album link's artist key is the current data's");
     assert_eq!(version, i64::from(bae_util::name_key::DATA_VERSION));
 }
