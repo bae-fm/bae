@@ -32,7 +32,7 @@ extension ShotScene {
         ),
         importPaneScene(
             "mac.import.folder.already-in-library",
-            height: 900,
+            height: 1_260,
             .found(northbound: .importing, opening: .lowTideHours)
         ),
         importPaneScene(
@@ -42,7 +42,7 @@ extension ShotScene {
         ),
         importPaneScene(
             "mac.import.folder.cue-sheets",
-            height: 900,
+            height: 1_100,
             .found(northbound: .importing, opening: .fieldRecordings)
         ),
         ShotScene(

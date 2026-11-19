@@ -636,6 +636,9 @@ pub struct BridgeReleaseEditDraft {
     /// `None` when it carries none.
     pub files: Option<Vec<BridgeMappingFile>>,
     pub album: BridgeDraftAlbum,
+    /// The catalogs that describe the release the form holds, the applied
+    /// one first.
+    pub records: Vec<BridgeReleaseRecord>,
     /// `None` when the form names no album artist.
     pub album_artist_standing: Option<BridgeArtistFieldStanding>,
     pub changed: bool,

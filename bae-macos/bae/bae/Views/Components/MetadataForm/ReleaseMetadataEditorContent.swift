@@ -56,6 +56,15 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
                         )
                     }
                 )
+                // The catalogs that describe the release end the card, under
+                // their own divider. Nothing unlinks a library release, so no
+                // Unlink beside them.
+                if !draft.records.isEmpty {
+                    Rectangle()
+                        .fill(Theme.hairline)
+                        .frame(height: 1)
+                    MacRecordLinks(records: draft.records)
+                }
             }
             .padding(.vertical, ThemeSpace.edge)
             .padding(.horizontal, ThemeSpace.section)

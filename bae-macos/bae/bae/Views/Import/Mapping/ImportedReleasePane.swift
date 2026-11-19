@@ -141,7 +141,7 @@ struct ImportingCandidatePane: View {
                 switch step {
                 case .preparing(step: .queued):
                     Label(
-                        String(localized: "Waiting to import"),
+                        String(localized: "Queued to import"),
                         systemImage: "clock"
                     )
                     .foregroundStyle(.secondary)

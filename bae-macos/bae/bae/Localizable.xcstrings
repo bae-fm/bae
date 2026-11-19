@@ -83981,7 +83981,7 @@
         }
       }
     },
-    "Waiting to be identified" : {
+    "Queued to identify" : {
       "comment" : "Still-identifying row (queued phase): the sweep hasn't reached this candidate yet.",
       "localizations" : {
         "ar" : {
@@ -84011,7 +84011,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Waiting to be identified"
+            "value" : "Queued to identify"
           }
         },
         "de" : {
@@ -84154,7 +84154,7 @@
         }
       }
     },
-    "Waiting to import" : {
+    "Queued to import" : {
       "comment" : "Import row trailing clock's tooltip: an import is queued and waiting for the worker to take it up.",
       "localizations" : {
         "ar" : {
@@ -84184,7 +84184,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Waiting to import"
+            "value" : "Queued to import"
           }
         },
         "de" : {

@@ -118,6 +118,7 @@ extension PreviewData {
                     artistLine: .named("Mara Quill")
                 )
             ),
+            records: boardRecords("board-northbound"),
             albumArtistStanding: boardLibraryArtistStanding,
             changed: false,
             invalid: nil
@@ -127,17 +128,32 @@ extension PreviewData {
 
     // MARK: - Low Tide Hours
 
-    /// Low Tide Hours' two files.
+    /// Low Tide Hours' five files.
     static let lowTideHoursTracks = [
         BoardTrack(
-            file: "01 Low Tide Hours.flac",
+            file: "01 Harbor Lights.flac",
+            title: "Harbor Lights",
+            seconds: 272
+        ),
+        BoardTrack(
+            file: "02 The Long Way Home.flac",
+            title: "The Long Way Home",
+            seconds: 312
+        ),
+        BoardTrack(
+            file: "03 Second Floor.flac",
+            title: "Second Floor",
+            seconds: 225
+        ),
+        BoardTrack(
+            file: "04 Low Tide Hours.flac",
             title: "Low Tide Hours",
             seconds: 303
         ),
         BoardTrack(
-            file: "02 Shoreline.flac",
-            title: "Shoreline",
-            seconds: 251
+            file: "05 Tin Roof.flac",
+            title: "Tin Roof",
+            seconds: 341
         ),
     ]
 
@@ -188,6 +204,18 @@ extension PreviewData {
         ]
     )
 
+    /// The files no track plays from: the rip log and the front cover.
+    static let lowTideHoursFiles = [
+        mappingFile(
+            previewFile(name: "rip.log", size: 4_000, role: .document),
+            role: .document
+        ),
+        mappingFile(
+            previewFile(name: "cover.jpg", size: 1_200_000, role: .artwork),
+            role: .image
+        ),
+    ]
+
     /// Low Tide Hours' draft, a release the library already holds: its
     /// pick read from MusicBrainz and Discogs, its artist in the library.
     @MainActor
@@ -218,9 +246,9 @@ extension PreviewData {
             releaseLink: boardLink("board-low-tide-hours"),
             edit: edit,
             mapping: BridgeMappingTable(
-                images: [boardImage("Low Tide Hours.jpg")],
+                images: [boardImage("cover.jpg", art: "Low Tide Hours")],
                 trackSides: boardTrackSides(tracks, edit: edit),
-                files: [],
+                files: lowTideHoursFiles.map { .file(file: $0) },
                 untitledTrackCount: 0
             ),
             cover: boardCover("Low Tide Hours"),
@@ -433,8 +461,17 @@ extension PreviewData {
             bound: .unresolved(requested: ["Field Recordings CD2.flac"])
         )
         let edit = fieldRecordingsEdit()
+        // The folder's audio is the two discs' images, which one format
+        // describes.
+        var files = boardFolderFiles(tracks: [], images: [], log: false)
+        files.sourceAudio = .uniform(
+            descriptor: BridgeSourceAudioDescriptor(
+                layout: .cue,
+                format: previewSourceAudioFormat
+            )
+        )
         return paneCandidate(
-            folder: boardFolder(.fieldRecordings),
+            folder: boardFolder(.fieldRecordings, files: files),
             metadataProvenance: .externalRelease(
                 record: BridgeLookupRef(
                     catalog: .musicBrainz,

@@ -195,7 +195,8 @@ fn release_edit_album_on(
 /// The rows bae reads a form's draft from: the form, how its album artists
 /// stand to the library, the album a save files it under, the release's
 /// cover, its tracks with their audio, each with its form row, whether the
-/// release has tracks, and the release's files.
+/// release has tracks, the release's files, and its records: the applied
+/// catalog's while the form holds one, else the release's own.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct ReleaseEditDraftRows {
     form: ReleaseEditForm,
@@ -205,6 +206,7 @@ pub(crate) struct ReleaseEditDraftRows {
     tracks: Vec<DraftTrackRow>,
     has_tracks: bool,
     files: bae_records::DbReleaseFiles,
+    records: Vec<bae_catalogs::records::ReleaseRecord>,
 }
 
 /// One track of a form's draft as its statement returns it: what the
@@ -279,6 +281,10 @@ pub(crate) fn release_edit_draft_rows_on(
             |row| row.get(0),
         )?,
         files: bae_records::records::release_files_on(sql, ":release", release)?,
+        records: match &form.applied {
+            Some(applied) => applied.records.clone(),
+            None => bae_records::records::read::get_release_records_on(sql, &params.release)?,
+        },
     }))
 }
 
@@ -367,8 +373,16 @@ impl ReleaseEditDraftRows {
     /// sides, whether a save would write anything the editor did not open
     /// on, and why the editor can't save the form, when it can't.
     pub(crate) fn draft(self) -> Result<ReleaseEditDraft, DbError> {
-        let Self { form, album_artist_standing, album, cover_version, tracks, has_tracks, files } =
-            self;
+        let Self {
+            form,
+            album_artist_standing,
+            album,
+            cover_version,
+            tracks,
+            has_tracks,
+            files,
+            records,
+        } = self;
         let changed = form.changed();
         let invalid = form.edit.shape().err();
         let release_id = form.release_id;
@@ -387,6 +401,7 @@ impl ReleaseEditDraftRows {
                 .has_others
                 .then(|| crate::ReleaseEditDisplayContext::carried_files(&files)),
             album,
+            records,
             album_artist_standing,
             changed,
             invalid,

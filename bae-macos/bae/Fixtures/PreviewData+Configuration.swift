@@ -122,6 +122,7 @@ extension PreviewData {
                     artistLine: .named("Preview Artist")
                 )
             ),
+            records: [],
             albumArtistStanding: nil,
             changed: false,
             invalid: nil

@@ -5,7 +5,7 @@ import SwiftUI
 /// progress to draw yet.
 struct QueuedImportIcon: View {
     var body: some View {
-        let waiting = String(localized: "Waiting to import")
+        let waiting = String(localized: "Queued to import")
         Image(systemName: "clock")
             .themeIcon(.small)
             .foregroundStyle(.secondary)

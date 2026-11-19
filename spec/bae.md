@@ -2181,7 +2181,10 @@ place until a pick applies one, or *Back* returns to it. *Save* writes the
 form; *Cancel*, shown once something changed, discards its changes. While an apply
 reads a release from its catalog, the editor names the catalog it reads from,
 as an import's pick does (§3.5); saving, cancelling and picking an album are
-local and show no spinner, their controls disabled until they end.
+local and show no spinner, their controls disabled until they end. The card ends
+with the release's catalog records, the applied catalog's first while the form
+holds one, as the import pane's draft ends with its own, but with no *Unlink*:
+nothing unlinks a library release.
 
 The editor opens with a *form* that holds the release's values as the
 library holds them, and the editor holds its form: bae stores none of the

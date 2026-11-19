@@ -217,7 +217,7 @@ extension MacImportRow {
     ) -> some View {
         switch step {
         case .queued:
-            let waiting = String(localized: "Waiting to be identified")
+            let waiting = String(localized: "Queued to identify")
             trailingIcon("clock", tint: .secondary)
                 .help(waiting)
                 .accessibilityLabel(waiting)

@@ -238,6 +238,9 @@ pub struct ReleaseEditDraft {
     /// release's file order; `None` when it carries none.
     pub files: Option<Vec<crate::MappingFile>>,
     pub album: DraftAlbum,
+    /// The catalogs that describe the release the form holds: the applied
+    /// catalog's records, the applied one first, else the release's own.
+    pub records: Vec<bae_catalogs::records::ReleaseRecord>,
     /// `None` when the form names no album artist.
     pub album_artist_standing: Option<crate::ArtistFieldStanding>,
     pub changed: bool,

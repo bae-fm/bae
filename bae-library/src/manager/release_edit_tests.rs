@@ -186,6 +186,42 @@ async fn a_saved_reidentify_writes_the_picked_release_s_records_and_values() {
     );
 }
 
+/// The draft lists the records the library holds for the release, and the
+/// applied catalog's records once the form holds one.
+#[tokio::test]
+async fn the_draft_lists_the_release_s_records_and_then_the_applied_ones() {
+    let (test, _temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let album = create_test_album();
+    let release = create_test_release(&album.id);
+    manager.records.insert_album(&album).await.unwrap();
+    insert_release(manager, &release).await;
+    let stored = mb_identity("g-old", "mb-rel-old");
+    manager
+        .records
+        .insert_release_records(&release.id, std::slice::from_ref(&stored))
+        .await
+        .unwrap();
+    insert_editable_tracks(manager, &release.id, 3).await;
+
+    let form = manager.open_release_edit(&release.id).await.unwrap();
+    assert_eq!(draft_now(manager, &form).await.records, [stored]);
+
+    let new_release_id = "draft-records-mb-rel-new";
+    seed_musicbrainz(&test, new_release_id, "draft-records-mb-group-new", 3);
+    let applied = manager
+        .apply_release_edit_catalog(
+            form,
+            &musicbrainz_link(new_release_id),
+            &bae_import::CatalogApplySteps::unread(),
+        )
+        .await
+        .unwrap();
+    let records = draft_now(manager, &applied).await.records;
+    assert_eq!(records.len(), 1);
+    assert_eq!(records[0].key(), new_release_id);
+}
+
 /// A release whose tracks the picked release cannot lay out is refused with
 /// both counts, before anything is held or written.
 #[tokio::test]
