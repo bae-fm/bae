@@ -21,7 +21,7 @@ pub async fn saved_restore_codes(
             tracing::info!("this device keeps no saved restore codes: it has no Block Store");
             Vec::new()
         }
-        listed => listed?,
+        listed => listed.map_err(Box::new)?,
     };
     restorable_codes(codes, coven, diagnostics).await
 }
@@ -29,9 +29,9 @@ pub async fn saved_restore_codes(
 #[derive(Debug, thiserror::Error)]
 pub enum SavedRestoreCodesError {
     #[error(transparent)]
-    Keychain(#[from] coven::BootstrapError),
+    Keychain(#[from] Box<coven::BootstrapError>),
     #[error(transparent)]
-    Stores(#[from] coven::StoreListError),
+    Stores(#[from] Box<coven::StoreListError>),
 }
 
 impl SavedRestoreCodesError {
@@ -58,7 +58,7 @@ async fn restorable_codes(
     let here: std::collections::HashSet<_> = coven
         .stores()
         .await
-        .map_err(|error| coven::task::reported(diagnostics, error))?
+        .map_err(|error| Box::new(coven::task::reported(diagnostics, error)))?
         .into_iter()
         .map(|store| store.id())
         .collect();

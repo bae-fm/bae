@@ -87,7 +87,7 @@ impl ImportServiceHandle {
                         crate::ImportError::from(error).failure(&format!(
                             "asking {} a search for {:?}",
                             source.as_str(),
-                            &query
+                            query
                         ))
                     })?;
                     bae_catalogs::search::search_source(

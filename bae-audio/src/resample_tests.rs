@@ -27,8 +27,8 @@ fn upmixes_mono_to_stereo() {
     assert_eq!(out.len() / 2, 100, "frame count preserved at the same rate");
     // The upmix may apply a downmix gain, but the two channels are equal and
     // non-zero.
-    for frame in out.chunks_exact(2) {
-        assert!((frame[0] - frame[1]).abs() < 1e-4, "channels are equal");
-        assert!(frame[0] > 0.0, "the mono signal reaches both channels");
+    for [left, right] in out.as_chunks::<2>().0 {
+        assert!((left - right).abs() < 1e-4, "channels are equal");
+        assert!(*left > 0.0, "the mono signal reaches both channels");
     }
 }

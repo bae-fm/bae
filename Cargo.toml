@@ -126,7 +126,6 @@ chromiumoxide = "0.9"
 clap = { version = "4", features = ["derive"] }
 coreaudio-rs = { version = "0.14", default-features = false }
 cpal = "0.18.2"
-dirs = "5.0"
 ebur128 = "0.1.10"
 ed25519-dalek = { version = "3.0.0", default-features = false }
 encoding_rs = "0.8"

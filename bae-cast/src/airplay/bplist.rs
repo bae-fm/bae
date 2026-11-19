@@ -342,8 +342,10 @@ impl DecodeCtx<'_> {
                 let byte_len = count.checked_mul(2).ok_or(BplistError::Truncated)?;
                 let units: Vec<u16> = self
                     .span(data_at, byte_len)?
-                    .chunks_exact(2)
-                    .map(|pair| u16::from_be_bytes([pair[0], pair[1]]))
+                    .as_chunks::<2>()
+                    .0
+                    .iter()
+                    .map(|&pair| u16::from_be_bytes(pair))
                     .collect();
                 Ok(Plist::String(String::from_utf16_lossy(&units)))
             }

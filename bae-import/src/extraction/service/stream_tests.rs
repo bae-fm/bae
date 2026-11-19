@@ -3,7 +3,6 @@
 //! `IMAGES_IN_FLIGHT` reads at once across every pass, and a pass that a
 //! failed read or a cancel stops.
 
-use super::*;
 use crate::extraction::service::tests::*;
 use crate::extraction::service::*;
 use crate::extraction::{ArtworkAnalysis, ArtworkAnalyzer, ArtworkUnreadable};

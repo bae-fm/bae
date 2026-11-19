@@ -249,8 +249,9 @@ async fn a_close_failing_after_leaving_whose_discard_fails_keeps_the_files_and_s
     .expect_err("the store is still open");
     assert!(
         matches!(
-            error,
-            LibraryRemovalError::Closing { discard: coven::StoreDeletionError::Lock(_), .. }
+            &error,
+            LibraryRemovalError::Closing { discard, .. }
+                if matches!(**discard, coven::StoreDeletionError::Lock(_))
         ),
         "{error}"
     );
@@ -685,7 +686,11 @@ async fn a_removal_stopped_after_leaving_is_listed_and_finished() {
     let error = home.remove(&handle).await.expect_err("storage refused the leaving's answer");
     storage.set_faults(coven::Faults::none()).await;
     assert!(
-        matches!(error, LibraryRemovalError::Store(coven::StoreDeletionError::Unfinished(_))),
+        matches!(
+            &error,
+            LibraryRemovalError::Store(store)
+                if matches!(**store, coven::StoreDeletionError::Unfinished(_))
+        ),
         "{error}"
     );
     drop(handle);
@@ -763,10 +768,9 @@ async fn removing_a_signed_out_library_asks_for_the_sign_in() {
     let error = home.remove(&reopened).await.expect_err("no credentials to publish the leaving");
     assert!(
         matches!(
-            error,
-            LibraryRemovalError::Store(coven::StoreDeletionError::SignInRequired(
-                coven::CloudProvider::S3
-            ))
+            &error,
+            LibraryRemovalError::Store(store)
+                if matches!(**store, coven::StoreDeletionError::SignInRequired(coven::CloudProvider::S3))
         ),
         "{error}"
     );

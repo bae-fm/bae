@@ -62,7 +62,7 @@ fn a_rate_of_no_family_uses_every_rate() {
 #[test]
 fn a_continuous_range_offers_its_standard_rates() {
     // The track's rate inside the range is kept.
-    let device = vec![8_000..=96_000];
+    let device = vec![RangeInclusive::new(8_000, 96_000)];
     assert_eq!(output_rate(37_800, &device), Some(37_800));
     // Above the range: the family's highest standard rate inside it.
     assert_eq!(output_rate(176_400, &device), Some(88_200));

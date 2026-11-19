@@ -25,7 +25,7 @@ pub enum LibraryRemovalError {
     Record(#[source] LibraryError),
     /// coven didn't delete the store; bae's files for it are untouched.
     #[error(transparent)]
-    Store(coven::StoreDeletionError),
+    Store(Box<coven::StoreDeletionError>),
     /// coven didn't delete the store because files in its directory are open,
     /// which Windows refuses to move; bae's files for it are untouched.
     #[error(
@@ -34,7 +34,7 @@ pub enum LibraryRemovalError {
     )]
     StoreFilesHeld {
         #[source]
-        source: coven::StoreDeletionError,
+        source: Box<coven::StoreDeletionError>,
         held: Vec<std::path::PathBuf>,
     },
     /// This device left the library, but closing its store failed and
@@ -44,9 +44,9 @@ pub enum LibraryRemovalError {
         "this device left the library, but closing its store failed ({closing}) and discarding it failed, so its files are still on this device: {discard}"
     )]
     Closing {
-        closing: coven::SyncError,
+        closing: Box<coven::SyncError>,
         #[source]
-        discard: coven::StoreDeletionError,
+        discard: Box<coven::StoreDeletionError>,
     },
     /// coven deleted the store, but deleting bae's files for it or its record
     /// failed. The record keeps it an [`UnfinishedRemoval`] until
@@ -267,8 +267,8 @@ pub(crate) async fn remove_recorded(
             warn!(%store_id, %closing, "closing the store failed after this device left it; discarding the closed store");
             coven.discard_store(&coven.store_dir(&store_id)).await.map_err(|discard| {
                 LibraryRemovalError::Closing {
-                    closing,
-                    discard: coven::task::reported(diagnostics, discard),
+                    closing: Box::new(closing),
+                    discard: Box::new(coven::task::reported(diagnostics, discard)),
                 }
             })
         }
@@ -281,9 +281,9 @@ pub(crate) async fn remove_recorded(
                 _ => Vec::new(),
             };
             if held.is_empty() {
-                Err(LibraryRemovalError::Store(error))
+                Err(LibraryRemovalError::Store(Box::new(error)))
             } else {
-                Err(LibraryRemovalError::StoreFilesHeld { source: error, held })
+                Err(LibraryRemovalError::StoreFilesHeld { source: Box::new(error), held })
             }
         }
         Ok(()) => Ok(()),

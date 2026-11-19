@@ -16,7 +16,7 @@ fn artist(id: &str, name: &str, discogs: Option<&str>, musicbrainz: Option<&str>
     DbArtist {
         id: id.to_string(),
         name: name.to_string(),
-        sort_name: Some(format!("{name}, sorted")).filter(|_| id.len().is_multiple_of(2)),
+        sort_name: id.len().is_multiple_of(2).then_some(format!("{name}, sorted")),
         discogs_artist_id: discogs.map(str::to_string),
         musicbrainz_artist_id: musicbrainz.map(str::to_string),
         created_at: fixed_now(),
@@ -418,9 +418,7 @@ async fn each_field_counts_how_its_artists_stand() {
             .map(|id| ExistingArtist {
                 artist_id: id.to_string(),
                 name: "Shared Name".to_string(),
-                sort_name: Some("Shared Name, sorted")
-                    .filter(|_| id.len().is_multiple_of(2))
-                    .map(str::to_string),
+                sort_name: id.len().is_multiple_of(2).then_some("Shared Name, sorted".to_string()),
                 musicbrainz_artist_id: None,
                 discogs_artist_id: None,
             })

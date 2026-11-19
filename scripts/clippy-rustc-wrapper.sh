@@ -7,54 +7,57 @@
 # `sccache rustc <args>`, a plain check that sccache caches and shares between
 # worktrees.
 #
-# cargo files a workspace crate's build under clippy's fingerprint whatever ran
-# here, so a crate checked without lints would be fresh when a later run names
-# it with -p, and its lints would never run. After such a check this records
-# the unit in <profile dir>/clippy-unlinted/<package>__<unit>, holding the path
-# of the unit's folder in .fingerprint; scripts/clippy-crates.sh makes the units
-# of the crates it names stale from those records, so they are rebuilt, and
-# linted.
+# cargo keeps each unit in <profile dir>/build/<package>/<unit hash>/, and
+# passes that folder's `out` as --out-dir; its fingerprint folder is beside
+# `out`. cargo files a workspace crate's build under clippy's fingerprint
+# whatever ran here, so a crate checked without lints would be fresh when a
+# later run names it with -p, and its lints would never run. After such a check
+# this records the unit in
+# <profile dir>/clippy-unlinted/<package>__<crate>-<unit hash>,
+# holding the path of the unit's fingerprint folder; scripts/clippy-crates.sh
+# makes the units of the crates it names stale from those records, so they are
+# rebuilt, and linted.
 #
 # The linted crates compile incrementally, so a lint after an edit recompiles
 # only what the edit changed. `builds cargo` turns incremental compilation off
 # outside main, since sccache refuses an incremental compile, but sccache
 # caches nothing clippy-driver runs anyway. When cargo passes no
-# `-C incremental`, the wrapper passes `-C incremental=<profile dir>/incremental`,
-# the folder cargo itself uses, which builds keeps.
+# `-C incremental`, the wrapper passes
+# `-C incremental=<profile dir>/incremental`, which builds keeps.
 case "$1" in
 */clippy-driver)
     if [ -n "${CARGO_PRIMARY_PACKAGE:-}" ]; then
-        deps= incremental=
+        out_dir= incremental=
         prev=
         for arg in "$@"; do
             case "$prev" in
-            -L) case "$arg" in dependency=*) deps=${arg#dependency=} ;; esac ;;
+            --out-dir) out_dir=$arg ;;
             -C) case "$arg" in incremental=*) incremental=$arg ;; esac ;;
             esac
             prev=$arg
         done
-        if [ -z "$incremental" ] && [ -n "$deps" ]; then
-            set -- "$@" -C "incremental=$deps/../incremental"
+        if [ -z "$incremental" ] && [ -n "$out_dir" ]; then
+            set -- "$@" -C "incremental=$out_dir/../../../../incremental"
         fi
         exec "$@"
     fi
     shift
     sccache "$@" || exit $?
-    out_dir= name= extra=
+    out_dir= name=
     prev=
     for arg in "$@"; do
         case "$prev" in
         --out-dir) out_dir=$arg ;;
         --crate-name) name=$arg ;;
-        -C) case "$arg" in extra-filename=*) extra=${arg#extra-filename=} ;; esac ;;
         esac
         prev=$arg
     done
-    fingerprint="$out_dir/../.fingerprint/${CARGO_PKG_NAME}$extra"
+    unit=${out_dir%/out}
+    fingerprint="$unit/fingerprint"
     if [ -n "$out_dir" ] && [ -d "$fingerprint" ]; then
-        records="$out_dir/../clippy-unlinted"
+        records="$unit/../../../clippy-unlinted"
         mkdir -p "$records"
-        printf '%s\n' "$fingerprint" > "$records/${CARGO_PKG_NAME}__$name$extra"
+        printf '%s\n' "$fingerprint" > "$records/${CARGO_PKG_NAME}__$name-${unit##*/}"
     fi
     ;;
 *)

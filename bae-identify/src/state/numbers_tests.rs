@@ -1,7 +1,6 @@
 //! Which catalog numbers a run searches, under which artists, and when it
 //! stops.
 
-use super::*;
 use crate::documents::ReleaseDocument;
 use crate::signals::DiscIdSignal;
 use crate::state::tests::step;

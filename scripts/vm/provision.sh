@@ -17,7 +17,7 @@ echo "== VS Build Tools (the long one) =="
 $SSH 'winget install --id Microsoft.VisualStudio.2022.BuildTools --source winget -e --accept-package-agreements --silent --override "--quiet --wait --nocache --add Microsoft.VisualStudio.Workload.VCTools --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 --add Microsoft.VisualStudio.Component.VC.Tools.ARM64 --add Microsoft.VisualStudio.Component.Windows11SDK.22621 --add Microsoft.VisualStudio.ComponentGroup.UWP.BuildTools"'
 
 echo "== rust toolchain =="
-$SSH '"%USERPROFILE%\.cargo\bin\rustup" toolchain install 1.95.0 --profile minimal && "%USERPROFILE%\.cargo\bin\rustup" default 1.95.0'
+$SSH '"%USERPROFILE%\.cargo\bin\rustup" toolchain install 1.100.0 --profile minimal && "%USERPROFILE%\.cargo\bin\rustup" default 1.100.0'
 
 echo "== repo clone (branch: ${BRANCH}) =="
 $SSH "\"%ProgramFiles%\\Git\\cmd\\git.exe\" clone --branch ${BRANCH} https://github.com/bae-fm/bae.git C:\\bae 2>nul || (cd /d C:\\bae && \"%ProgramFiles%\\Git\\cmd\\git.exe\" fetch origin ${BRANCH} && \"%ProgramFiles%\\Git\\cmd\\git.exe\" reset --hard FETCH_HEAD)"

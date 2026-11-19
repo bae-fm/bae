@@ -124,7 +124,7 @@ pub(super) fn dispatch_effect(
                         crate::ImportError::from(error).failure(&format!(
                             "asking {} a search for {:?}",
                             source.as_str(),
-                            &query
+                            query
                         ))
                     })?;
                     bae_catalogs::search::search_source(&session, source, &query, class).await
@@ -154,7 +154,7 @@ pub(super) fn dispatch_effect(
                         crate::ImportError::from(error).failure(&format!(
                             "asking {} a search for {:?}",
                             source.as_str(),
-                            &search
+                            search
                         ))
                     })?;
                     bae_catalogs::search::search_source(&session, source, &search, class).await
@@ -224,7 +224,7 @@ pub(super) fn dispatch_effect(
                                     crate::ImportError::from(error).failure(&format!(
                                         "asking {} a search for {:?}",
                                         source.as_str(),
-                                        &query
+                                        query
                                     ))
                                 })?;
                             bae_catalogs::search::search_source(&session, source, &query, class)
@@ -244,7 +244,7 @@ pub(super) fn dispatch_effect(
                                     crate::ImportError::from(error).failure(&format!(
                                         "asking {} a search for {:?}",
                                         source.as_str(),
-                                        &query
+                                        query
                                     ))
                                 })?;
                             bae_catalogs::search::search_source(&session, source, &query, class)
@@ -285,7 +285,7 @@ pub(super) fn dispatch_effect(
                         crate::ImportError::from(error).failure(&format!(
                             "asking {} a search for {:?}",
                             source.as_str(),
-                            &query
+                            query
                         ))
                     })?;
                     bae_catalogs::search::search_source(&session, source, &query, class).await

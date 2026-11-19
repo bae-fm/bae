@@ -85,11 +85,13 @@ fn decode_jpeg_scaled(data: &[u8]) -> Result<image::DynamicImage, String> {
             .ok_or_else(bad_buffer),
         jpeg_decoder::PixelFormat::CMYK32 => {
             let rgb = pixels
-                .chunks_exact(4)
-                .flat_map(|cmyk| {
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .flat_map(|&[cyan, magenta, yellow, black]| {
                     // The decoder reports ink amounts, 255 being full ink.
-                    let light = 255 - u32::from(cmyk[3]);
-                    [0, 1, 2].map(|i| ((255 - u32::from(cmyk[i])) * light / 255) as u8)
+                    let light = 255 - u32::from(black);
+                    [cyan, magenta, yellow].map(|ink| ((255 - u32::from(ink)) * light / 255) as u8)
                 })
                 .collect();
             image::RgbImage::from_raw(width, height, rgb)
