@@ -6,7 +6,7 @@ use super::super::tests::pull_until;
 /// among them from the library's creation.
 #[test]
 fn each_pull_answers_at_once_with_the_creator_s_profile() {
-    let root = tempfile::tempdir().unwrap();
+    let root = bae_util::test_files::TestFolder::new();
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(2)
         .thread_stack_size(16 * 1024 * 1024)
@@ -97,7 +97,7 @@ fn each_pull_answers_at_once_with_the_creator_s_profile() {
 /// and follows storage being set up from coven's sync status table.
 #[test]
 fn the_sync_status_follows_storage_being_set_up() {
-    let root = tempfile::tempdir().unwrap();
+    let root = bae_util::test_files::TestFolder::new();
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(2)
         .thread_stack_size(16 * 1024 * 1024)

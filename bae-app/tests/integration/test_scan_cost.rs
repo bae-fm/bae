@@ -18,6 +18,7 @@
 use bae_app::AppServices;
 use bae_import::{ImportListView, ScanEvent};
 use bae_store::ListWindow;
+use bae_util::test_files::TestFolder;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
@@ -55,16 +56,15 @@ impl Shape {
     }
 }
 
-/// `count` one-track release folders under `root`, each track its own name so
-/// no two folders hold the same files.
-fn write_folders(root: &Path, shape: Shape, count: usize) {
+/// `count` one-track release folders under `root` in `temp`, each track its
+/// own name so no two folders hold the same files.
+fn write_folders(temp: &TestFolder, root: &Path, shape: Shape, count: usize) {
     let source = root.with_extension("source.flac");
-    std::fs::copy(bae_import::test_fixtures::flac_dir().join("01 Test Track 1.flac"), &source)
-        .expect("copy the FLAC fixture");
+    temp.copy_fixture(bae_import::test_fixtures::flac_dir().join("01 Test Track 1.flac"), &source);
     for n in 0..count {
         let folder = shape.folder(root, n);
-        std::fs::create_dir_all(&folder).unwrap();
-        std::fs::hard_link(&source, folder.join(format!("01 Track {n}.flac"))).unwrap();
+        temp.create_folder(&folder);
+        temp.hard_link(&source, folder.join(format!("01 Track {n}.flac")));
     }
 }
 
@@ -98,12 +98,10 @@ async fn scan(
 /// Scan `count` folders laid out as `shape` into a fresh library and print
 /// what it cost, optionally with an import list open over the scan.
 async fn measure(shape: Shape, count: usize, list_open: bool) {
-    let temp = tempfile::TempDir::new().unwrap();
-    let root = temp.path().join("watched");
-    std::fs::create_dir_all(&root).unwrap();
-    write_folders(&root, shape, count);
-    let library = temp.path().join("library");
-    std::fs::create_dir_all(&library).unwrap();
+    let temp = TestFolder::new();
+    let root = temp.create_folder("watched");
+    write_folders(&temp, &root, shape, count);
+    let library = temp.create_folder("library");
     let test_library = bae_library::test_libraries::open_test_library(&library).await;
     test_library.manager().set_identify_automatically(false).await.unwrap();
     let services = bae_app::test_services::start_services(&test_library)

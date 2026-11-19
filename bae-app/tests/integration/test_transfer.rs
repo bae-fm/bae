@@ -6,20 +6,20 @@ use bae_library::storage::transfer::TransferProgress;
 use bae_library::LibraryManager;
 use bae_records::GallerySource;
 use bae_util::test_channels::HANG_GUARD;
+use bae_util::test_files::TestFolder;
 use bae_views::album_detail::ReleaseStorageState;
 use bae_views::StorageFilter;
 use std::path::Path;
-use tempfile::TempDir;
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-async fn setup(tmp: &TempDir) -> bae_library::test_libraries::TestLibrary {
+async fn setup(tmp: &TestFolder) -> bae_library::test_libraries::TestLibrary {
     bae_library::test_libraries::open_test_library(tmp.path()).await
 }
 
-async fn setup_with_cloud(tmp: &TempDir) -> bae_library::test_libraries::TestLibrary {
+async fn setup_with_cloud(tmp: &TestFolder) -> bae_library::test_libraries::TestLibrary {
     let (library, storage) = bae_library::test_libraries::storage_library(
         tmp.path(),
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
@@ -36,10 +36,11 @@ async fn setup_with_cloud(tmp: &TempDir) -> bae_library::test_libraries::TestLib
 async fn create_remote_release(
     mgr: &LibraryManager,
     db: &bae_store::Store,
+    folder: &TestFolder,
     source_dir: &Path,
     files: &[(&str, &[u8])],
 ) -> String {
-    let (release_id, named) = crate::create_local_release(mgr, source_dir, files).await;
+    let (release_id, named) = crate::create_local_release(mgr, folder, source_dir, files).await;
     mgr.upload_release(&release_id).await.unwrap();
     let count = mgr.drain_uploads_expecting_work().await.unwrap();
     assert_eq!(count, named.len(), "all files uploaded");
@@ -133,11 +134,12 @@ async fn expect_storage_state(
 #[tokio::test]
 async fn uploads_are_counted_before_drain() {
     bae_util::test_logs::install();
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let mgr = setup_with_cloud(&tmp).await;
     let source = tmp.path().join("src");
     let (release_id, named) = crate::create_local_release(
         mgr.manager(),
+        &tmp,
         &source,
         &[("01.flac", b"aaaaaaaa"), ("02.flac", b"bbbbbbbbbbbb")],
     )
@@ -164,10 +166,10 @@ async fn uploads_are_counted_before_drain() {
 #[tokio::test]
 async fn test_cover_file_stored_via_local_files_is_readable() {
     bae_util::test_logs::install();
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let mgr = setup(&tmp).await;
     let (release_id, _f) =
-        crate::create_local_release(mgr.manager(), &tmp.path().join("src"), &[]).await;
+        crate::create_local_release(mgr.manager(), &tmp, &tmp.path().join("src"), &[]).await;
 
     // No cover row yet → no bytes.
     assert!(
@@ -209,12 +211,13 @@ async fn test_cover_file_stored_via_local_files_is_readable() {
 async fn a_release_detail_says_where_its_download_stands() {
     use bae_views::album_detail::ReleaseDownloadStatus;
     bae_util::test_logs::install();
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let mgr = setup_with_cloud(&tmp).await;
     let db = mgr.store().clone();
     let release_id = create_remote_release(
         mgr.manager(),
         &db,
+        &tmp,
         &tmp.path().join("src"),
         &[("a.flac", b"bytes-a")],
     )
@@ -246,12 +249,13 @@ async fn a_release_detail_says_where_its_download_stands() {
 #[tokio::test]
 async fn test_pin_remote_fetches_into_pinned_cache() {
     bae_util::test_logs::install();
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let mgr = setup_with_cloud(&tmp).await;
     let db = mgr.store().clone();
     let release_id = create_remote_release(
         mgr.manager(),
         &db,
+        &tmp,
         &tmp.path().join("src"),
         &[("a.flac", b"pin-bytes-a"), ("b.flac", b"pin-bytes-b")],
     )
@@ -293,11 +297,12 @@ async fn test_pin_remote_fetches_into_pinned_cache() {
 #[tokio::test]
 async fn the_detail_views_follow_a_releases_pin() {
     bae_util::test_logs::install();
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let mgr = setup_with_cloud(&tmp).await;
     let release_id = create_remote_release(
         mgr.manager(),
         mgr.store(),
+        &tmp,
         &tmp.path().join("src"),
         &[("a.flac", b"follow-bytes")],
     )
@@ -354,12 +359,13 @@ async fn the_detail_views_follow_a_releases_pin() {
 #[tokio::test]
 async fn test_unpin_remote_drops_from_pinned_cache() {
     bae_util::test_logs::install();
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let mgr = setup_with_cloud(&tmp).await;
     let db = mgr.store().clone();
     let release_id = create_remote_release(
         mgr.manager(),
         &db,
+        &tmp,
         &tmp.path().join("src"),
         &[("a.flac", b"unpin-bytes")],
     )
@@ -386,16 +392,17 @@ async fn test_unpin_remote_drops_from_pinned_cache() {
 #[tokio::test]
 async fn test_missing_external_source_maps_to_error() {
     bae_util::test_logs::install();
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let mgr = setup(&tmp).await;
     let source_dir = tmp.path().join("src");
     let (release_id, _f) =
-        crate::create_local_release(mgr.manager(), &source_dir, &[("a.flac", b"present")]).await;
+        crate::create_local_release(mgr.manager(), &tmp, &source_dir, &[("a.flac", b"present")])
+            .await;
     let file =
         mgr.manager().get_files_for_release(&release_id).await.unwrap().into_iter().next().unwrap();
 
     // The user moved or deleted their original file.
-    tokio::fs::remove_file(source_dir.join("a.flac")).await.unwrap();
+    tmp.remove(source_dir.join("a.flac"));
 
     let result = mgr
         .manager()
@@ -413,12 +420,16 @@ async fn test_missing_external_source_maps_to_error() {
 #[tokio::test]
 async fn transition_completions_deliver_storage_values() {
     bae_util::test_logs::install();
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let mgr = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("src");
-    let (release_id, _named) =
-        crate::create_local_release(mgr.manager(), &source_dir, &[("a.flac", b"round-trip-bytes")])
-            .await;
+    let (release_id, _named) = crate::create_local_release(
+        mgr.manager(),
+        &tmp,
+        &source_dir,
+        &[("a.flac", b"round-trip-bytes")],
+    )
+    .await;
     let views = bae_views::LibraryViews::new(mgr.store().clone());
     let values = crate::storage_list::storage_top(
         mgr.manager(),
@@ -434,8 +445,7 @@ async fn transition_completions_deliver_storage_values() {
     expect_storage_state(&values, &release_id, ReleaseStorageState::InStorage { pinned: false })
         .await;
 
-    let dest = tmp.path().join("brought-back");
-    std::fs::create_dir(&dest).unwrap();
+    let dest = tmp.create_folder("brought-back");
     mgr.manager().move_releases_to_this_device(vec![release_id.clone()], &dest).await.unwrap();
     expect_storage_state(&values, &release_id, ReleaseStorageState::OnOneDevice).await;
 }
@@ -448,16 +458,18 @@ async fn transition_completions_deliver_storage_values() {
 #[tokio::test]
 async fn selected_releases_leave_the_local_list_with_their_upload() {
     bae_util::test_logs::install();
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let mgr = setup_with_cloud(&tmp).await;
     let (first, _) = crate::create_local_release(
         mgr.manager(),
+        &tmp,
         &tmp.path().join("first"),
         &[("a.flac", b"first")],
     )
     .await;
     let (second, _) = crate::create_local_release(
         mgr.manager(),
+        &tmp,
         &tmp.path().join("second"),
         &[("b.flac", b"second")],
     )
@@ -549,11 +561,12 @@ async fn next_selection_with(
 #[tokio::test]
 async fn a_selection_is_offered_the_actions_all_its_releases_allow() {
     bae_util::test_logs::install();
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let mgr = setup_with_cloud(&tmp).await;
     let pinned = create_remote_release(
         mgr.manager(),
         mgr.store(),
+        &tmp,
         &tmp.path().join("pinned"),
         &[("a.flac", b"pinned")],
     )
@@ -561,6 +574,7 @@ async fn a_selection_is_offered_the_actions_all_its_releases_allow() {
     let unpinned = create_remote_release(
         mgr.manager(),
         mgr.store(),
+        &tmp,
         &tmp.path().join("unpinned"),
         &[("b.flac", b"unpinned")],
     )

@@ -5,10 +5,9 @@ use std::sync::Arc;
 /// A handle over a fresh library holding `fixture`, built the way the app
 /// builds one.
 fn bridge_handle_holding(
-    test_name: &str,
     fixture: &bae_library::LibraryFixture,
 ) -> crate::handle::tests::TestHandle {
-    let (runtime, library, root) = crate::handle::tests::fresh_test_library(test_name);
+    let (runtime, library, root) = crate::handle::tests::fresh_test_library();
     runtime.block_on(library.manager().write_fixture(fixture)).expect("write the library fixture");
     crate::handle::tests::start_test_handle(runtime, library, root)
 }
@@ -24,14 +23,11 @@ fn delete_album_takes_the_album_out_of_the_grid() {
         tracks: vec!["Track Title".to_string()],
         cover: None,
     };
-    let handle = bridge_handle_holding(
-        "delete-album",
-        &bae_library::LibraryFixture {
-            albums: vec![album("Deleted Album"), album("Kept Album")],
-            watched_folders: Vec::new(),
-            playing: None,
-        },
-    );
+    let handle = bridge_handle_holding(&bae_library::LibraryFixture {
+        albums: vec![album("Deleted Album"), album("Kept Album")],
+        watched_folders: Vec::new(),
+        playing: None,
+    });
     let list = crate::types::BridgeList::AlbumGrid { sort: Vec::new(), group_by_artist: false };
     let subscription = handle.handle().subscribe_list_view(list.clone(), 0, 9);
     let counts = handle.handle().subscribe_list_count(list);
@@ -77,14 +73,11 @@ fn delete_album_takes_the_album_out_of_the_grid() {
 /// view's rows come as queue entries.
 #[test]
 fn the_upcoming_list_of_an_idle_queue_is_empty() {
-    let handle = bridge_handle_holding(
-        "upcoming-list",
-        &bae_library::LibraryFixture {
-            albums: Vec::new(),
-            watched_folders: Vec::new(),
-            playing: None,
-        },
-    );
+    let handle = bridge_handle_holding(&bae_library::LibraryFixture {
+        albums: Vec::new(),
+        watched_folders: Vec::new(),
+        playing: None,
+    });
     let list = crate::types::BridgeList::Upcoming { shuffled: false };
     let window = handle.handle().subscribe_list_view(list.clone(), 0, 9);
     let counts = handle.handle().subscribe_list_count(list);
@@ -103,7 +96,7 @@ fn the_upcoming_list_of_an_idle_queue_is_empty() {
 /// stream holds nothing once the setup ends.
 #[test]
 fn setting_up_s3_storage_writes_its_steps() {
-    let root = tempfile::tempdir().unwrap();
+    let root = bae_util::test_files::TestFolder::new();
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(2)
         .thread_stack_size(16 * 1024 * 1024)

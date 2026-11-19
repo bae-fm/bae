@@ -5,7 +5,7 @@ use super::*;
     reason = "test code: the runtime it builds ends with the test"
 )]
 fn an_opened_store_keeps_its_original_custody() {
-    let root = tempfile::tempdir().unwrap();
+    let root = bae_util::test_files::TestFolder::new();
     let host = crate::handle::tests::test_host(root.path());
     let caller = tokio::runtime::Runtime::new().unwrap();
     let opened = crate::handle::tests::create_opened_library(&host, &caller, "Session Library");
@@ -136,7 +136,7 @@ fn an_unfinished_deletion_crosses_as_its_own_category() {
 /// failure: the app resumes it, as at launch.
 #[test]
 fn another_call_under_way_crosses_as_that_call() {
-    let home = tempfile::tempdir().unwrap();
+    let home = bae_util::test_files::TestFolder::new();
     let store = coven::StoreId("00000000-0000-4000-8000-000000000001".parse().unwrap());
     let refused =
         bae_library::RestoreFromCodeError::Restore(Box::new(coven::BootstrapError::Directory(
@@ -157,7 +157,7 @@ fn a_new_save_preset_is_cores_flac_preset_with_its_own_id() {
     use crate::types::{
         bridge_save_format_default_codec, bridge_save_format_name, BridgeSaveFormat,
     };
-    let root = tempfile::tempdir().unwrap();
+    let root = bae_util::test_files::TestFolder::new();
     let host = crate::handle::tests::test_host(root.path());
     let preset = host.new_save_preset(Vec::new(), "0".to_string()).unwrap();
     assert_eq!(preset.name, bridge_save_format_name(BridgeSaveFormat::Flac));
@@ -180,7 +180,7 @@ fn a_new_save_preset_is_cores_flac_preset_with_its_own_id() {
     reason = "test code: the runtime it builds ends with the test"
 )]
 fn an_open_library_stands_by_its_open_session() {
-    let root = tempfile::tempdir().unwrap();
+    let root = bae_util::test_files::TestFolder::new();
     let host = crate::handle::tests::test_host(root.path());
     let caller = tokio::runtime::Runtime::new().unwrap();
     let opened = crate::handle::tests::create_opened_library(&host, &caller, "Open Library");
@@ -215,7 +215,7 @@ fn an_open_library_stands_by_its_open_session() {
     reason = "test code: the runtime it builds ends with the test"
 )]
 fn a_closed_library_whose_handle_is_still_held_is_read_closed() {
-    let root = tempfile::tempdir().unwrap();
+    let root = bae_util::test_files::TestFolder::new();
     let host = crate::handle::tests::test_host(root.path());
     let caller = tokio::runtime::Runtime::new().unwrap();
     let opened = crate::handle::tests::create_opened_library(&host, &caller, "Closed Library");
@@ -243,7 +243,7 @@ fn a_closed_library_whose_handle_is_still_held_is_read_closed() {
     reason = "test code: the runtime it builds ends with the test"
 )]
 fn a_standing_asked_during_a_close_waits_for_it_then_reads_the_closed_store() {
-    let root = tempfile::tempdir().unwrap();
+    let root = bae_util::test_files::TestFolder::new();
     let host = crate::handle::tests::test_host(root.path());
     let caller = tokio::runtime::Runtime::new().unwrap();
     let opened = crate::handle::tests::create_opened_library(&host, &caller, "Closing Library");
@@ -287,7 +287,7 @@ fn a_standing_running_as_its_library_closes_answers_before_the_close_runs() {
         CloseWaits,
         CloseEnded(Result<(), crate::BridgeError>),
     }
-    let root = tempfile::tempdir().unwrap();
+    let root = bae_util::test_files::TestFolder::new();
     let host = crate::handle::tests::test_host(root.path());
     let caller = tokio::runtime::Runtime::new().unwrap();
     let opened = crate::handle::tests::create_opened_library(&host, &caller, "Busy Library");
@@ -344,7 +344,7 @@ fn a_standing_running_as_its_library_closes_answers_before_the_close_runs() {
     reason = "test code: the runtime it builds ends with the test"
 )]
 fn discarding_an_installation_that_is_not_there_is_refused() {
-    let root = tempfile::tempdir().unwrap();
+    let root = bae_util::test_files::TestFolder::new();
     let host = crate::handle::tests::test_host(root.path());
     let caller = tokio::runtime::Runtime::new().unwrap();
     let store = coven::StoreId("00000000-0000-4000-8000-000000000001".parse().unwrap());
@@ -418,7 +418,7 @@ fn a_failed_open_names_what_the_app_offers_next() {
     reason = "test code: the runtime it builds ends with the test"
 )]
 fn a_damaged_library_kept_on_this_device_only_offers_no_recovery() {
-    let root = tempfile::tempdir().unwrap();
+    let root = bae_util::test_files::TestFolder::new();
     let host = crate::handle::tests::test_host(root.path());
     let caller = tokio::runtime::Runtime::new().unwrap();
     let opened = crate::handle::tests::create_opened_library(&host, &caller, "Kept Here");

@@ -115,7 +115,7 @@ struct Library {
     cue_release: String,
     _temps: Vec<TestFolder>,
     /// The folder the per-track release was imported from.
-    _per_track_folder: bae_util::test_files::TestFolder,
+    per_track_folder: bae_util::test_files::TestFolder,
 }
 
 /// Import a two-track file-per-track release (with a folder cover) and a
@@ -181,10 +181,9 @@ async fn seed_library() -> Library {
     // CUE-image release, imported against a seeded Discogs release (cached, no
     // network) so it exercises the single-file-with-CUE track windows.
     let cue_temp = TestFolder::new();
-    let cue_dir = cue_temp.path().join("cue album");
-    std::fs::create_dir_all(&cue_dir).unwrap();
-    std::fs::copy(cue_fixture("Test Album.flac"), cue_dir.join("Test Album.flac")).unwrap();
-    std::fs::copy(cue_fixture("Test Album.cue"), cue_dir.join("Test Album.cue")).unwrap();
+    let cue_dir = cue_temp.create_folder("cue album");
+    cue_temp.copy_fixture(cue_fixture("Test Album.flac"), cue_dir.join("Test Album.flac"));
+    cue_temp.copy_fixture(cue_fixture("Test Album.cue"), cue_dir.join("Test Album.cue"));
     let discogs_key = fakes.seed_discogs_test_release(cue_discogs_release());
     let cue_import = library.start_discogs_import().await;
     let cue_id = "cue".to_string();
@@ -225,7 +224,7 @@ async fn seed_library() -> Library {
         per_track_source: pt_dir,
         cue_release,
         _temps: vec![db_temp, cue_temp],
-        _per_track_folder: pt_temp,
+        per_track_folder: pt_temp,
     }
 }
 

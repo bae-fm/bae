@@ -36,16 +36,18 @@ pub(crate) async fn release_storage(
 }
 
 /// Insert an artist + album + a Local release, write its originals under
-/// `source_dir`, register the `DbFile` rows and bae's device-local paths. No uploads
+/// `source_dir` inside `folder`, register the `DbFile` rows and bae's device-local paths. No uploads
 /// queued — the test drives the transition itself. Returns (release_id, files).
 pub(crate) async fn create_local_release(
     mgr: &bae_library::LibraryManager,
+    folder: &bae_util::test_files::TestFolder,
     source_dir: &std::path::Path,
     files: &[(&str, &[u8])],
 ) -> (String, Vec<(String, Vec<u8>)>) {
     create_local_release_in_folder(
         mgr,
         bae_library::test_libraries::TEST_RELEASE_FOLDER,
+        folder,
         source_dir,
         files,
     )
@@ -57,6 +59,7 @@ pub(crate) async fn create_local_release(
 pub(crate) async fn create_local_release_in_folder(
     mgr: &bae_library::LibraryManager,
     folder_name: &str,
+    folder: &bae_util::test_files::TestFolder,
     source_dir: &std::path::Path,
     files: &[(&str, &[u8])],
 ) -> (String, Vec<(String, Vec<u8>)>) {
@@ -90,11 +93,11 @@ pub(crate) async fn create_local_release_in_folder(
         .await
         .unwrap();
 
-    tokio::fs::create_dir_all(source_dir).await.unwrap();
+    folder.create_folder(source_dir);
     let mut result = Vec::new();
     for (name, data) in files {
         let path = source_dir.join(name);
-        tokio::fs::write(&path, data).await.unwrap();
+        folder.write(&path, data);
         let db_file = bae_records::NewReleaseFile::new(
             &release_id,
             name,

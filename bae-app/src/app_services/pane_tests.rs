@@ -6,10 +6,10 @@ use bae_import::extraction::{ArtworkAnalysis, ArtworkAnalyzer, ArtworkUnreadable
 use bae_import::identification::MAX_IN_FLIGHT;
 use bae_import::{CandidateKey, ImportServiceHandle};
 use bae_util::test_channels::HANG_GUARD;
+use bae_util::test_files::TestFolder;
 use bae_util::test_host::FakeHost;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use tempfile::TempDir;
 
 /// A different barcode per numbered candidate folder, so each asks its own
 /// lookup rather than hitting the response cache.
@@ -40,13 +40,13 @@ struct Library {
     db: bae_store::Store,
     provider: FakeHost,
     root: PathBuf,
-    _temp: TempDir,
+    temp_folder: TestFolder,
 }
 
 impl Library {
     async fn open() -> Self {
         bae_util::test_logs::install();
-        let temp = TempDir::new().unwrap();
+        let temp = TestFolder::new();
         let db = bae_store::Store::new_test(
             bae_library::SCHEMA,
             temp.path(),
@@ -88,21 +88,19 @@ impl Library {
             identification.clone(),
             library.catalogs().clone(),
         );
-        let root = temp.path().join("watched");
-        std::fs::create_dir_all(&root).unwrap();
-        Self { services, import, identification, db, provider, root, _temp: temp }
+        let root = temp.create_folder("watched");
+        Self { services, import, identification, db, provider, root, temp_folder: temp }
     }
 
     /// A candidate folder of two FLACs and one image, so identification runs
     /// through the artwork's barcode.
     fn barcode_candidate(&self, folder: &str) -> PathBuf {
         let dir = self.root.join(folder);
-        std::fs::create_dir_all(&dir).unwrap();
         for name in ["01 Test Track 1.flac", "02 Test Track 2.flac"] {
-            std::fs::copy(bae_import::test_fixtures::flac_dir().join(name), dir.join(name))
-                .unwrap();
+            self.temp_folder
+                .copy_fixture(bae_import::test_fixtures::flac_dir().join(name), dir.join(name));
         }
-        std::fs::write(dir.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0, 0x00]).unwrap();
+        self.temp_folder.write(dir.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0, 0x00]);
         dir
     }
 
@@ -167,7 +165,7 @@ async fn cancelling_from_the_pane_takes_a_waiting_candidate_off_the_queue() {
     let mut dirs = Vec::new();
     for index in 0..MAX_IN_FLIGHT + 1 {
         let dir = library.barcode_candidate(&format!("Album {index}"));
-        std::fs::write(dir.join(format!("playlist-{index}.m3u")), format!("{index}")).unwrap();
+        library.temp_folder.write(dir.join(format!("playlist-{index}.m3u")), format!("{index}"));
         dirs.push(dir);
     }
     library.provider.route("/release?", 200, "{}");
@@ -233,7 +231,9 @@ async fn the_candidate_the_pane_shows_runs_ahead_of_waiting_requests() {
     let keys: Vec<CandidateKey> = (0..MAX_IN_FLIGHT + 2)
         .map(|index| {
             let dir = library.barcode_candidate(&format!("Album {index}"));
-            std::fs::write(dir.join(format!("playlist-{index}.m3u")), format!("{index}")).unwrap();
+            library
+                .temp_folder
+                .write(dir.join(format!("playlist-{index}.m3u")), format!("{index}"));
             CandidateKey::folder(&dir)
         })
         .collect();

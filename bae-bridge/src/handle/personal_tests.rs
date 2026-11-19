@@ -9,7 +9,7 @@ async fn playlists_now(store: &bae_store::Store) -> Vec<bae_views::playlists::Pl
 
 #[test]
 fn profiles_ratings_playlists_and_history_use_the_same_store() {
-    let root = tempfile::tempdir().unwrap();
+    let root = bae_util::test_files::TestFolder::new();
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(2)
         .thread_stack_size(16 * 1024 * 1024)

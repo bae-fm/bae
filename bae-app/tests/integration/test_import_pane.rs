@@ -4,7 +4,7 @@
 use crate::test_import_selection::{open, scan_albums};
 use bae_import::{ArtistAssignment, CandidateAction, CandidateStage, ImportCandidateDetail};
 use bae_util::test_channels::HANG_GUARD;
-use tempfile::TempDir;
+use bae_util::test_files::TestFolder;
 
 /// The pane's values until one `accept` admits.
 async fn until(
@@ -29,10 +29,10 @@ async fn until(
 #[tokio::test(flavor = "multi_thread")]
 async fn an_import_moves_the_open_pane_to_the_release() {
     bae_util::test_logs::install();
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let services = open(&tmp.path().join("db")).await;
     let collection = tmp.path().join("Collection");
-    scan_albums(&services, &collection, 1).await;
+    scan_albums(&services, &tmp, &collection, 1).await;
     let key = bae_import::CandidateKey::folder(&collection.join("Album 0"));
     services.import_select_candidate_file_tags(key.clone()).await.unwrap();
     services

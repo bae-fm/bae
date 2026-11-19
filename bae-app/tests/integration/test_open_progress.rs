@@ -6,14 +6,14 @@ use std::sync::{Arc, Mutex};
 
 use bae_app::{bootstrap, BootstrapError};
 use bae_app_dir::AppDir;
-use tempfile::TempDir;
+use bae_util::test_files::TestFolder;
 
 /// A library this device holds that hasn't run bae's migration yet, as
 /// after an update that adds one, opens through the app's own path and
 /// reports its steps in order, ending with the migration done.
 #[test]
 fn opening_a_library_with_a_migration_to_run_reports_migrating_it() {
-    let directory = TempDir::new().unwrap();
+    let directory = TestFolder::new();
     let app_dir = AppDir::under_home(directory.path()).unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let store = bae_library::test_libraries::multi_thread_runtime()

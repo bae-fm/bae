@@ -65,7 +65,6 @@ coven = { workspace = true }
 bae-util = { workspace = true, features = ["test-utils"] }
 # The WAV reader the transcode tests check served bytes with.
 bae-audio = { workspace = true, features = ["test-utils"] }
-tempfile = { workspace = true }
 tokio = { workspace = true, features = ["net", "sync", "rt", "rt-multi-thread", "macros", "time"] }
 serde_json = { workspace = true }
 tower = { workspace = true, features = ["util"] }

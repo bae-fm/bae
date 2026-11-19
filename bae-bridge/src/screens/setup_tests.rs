@@ -44,7 +44,7 @@ fn the_stream_holds_the_running_step_until_the_call_ends() {
     reason = "test code: the runtime it builds ends with the test"
 )]
 fn creating_a_library_reports_its_step() {
-    let root = tempfile::tempdir().unwrap();
+    let root = bae_util::test_files::TestFolder::new();
     let host = crate::handle::tests::test_host(root.path());
     let setup = BridgeLibrarySetup::new(host.clone());
     let caller = tokio::runtime::Runtime::new().unwrap();
@@ -75,7 +75,7 @@ fn creating_a_library_reports_its_step() {
     reason = "test code: the runtime it builds ends with the test"
 )]
 fn a_blank_creator_name_creates_nothing() {
-    let root = tempfile::tempdir().unwrap();
+    let root = bae_util::test_files::TestFolder::new();
     let host = crate::handle::tests::test_host(root.path());
     let setup = BridgeLibrarySetup::new(host.clone());
     let caller = tokio::runtime::Runtime::new().unwrap();

@@ -372,6 +372,7 @@ async fn a_move_to_this_device_entry_reaches_the_reads() {
         .await;
     let (release_id, _files) = crate::create_local_release(
         manager.manager(),
+        &dir,
         &dir.path().join("originals"),
         &[("a.flac", b"audio")],
     )
@@ -431,8 +432,7 @@ async fn a_move_to_this_device_entry_reaches_the_reads() {
 
     // The worker leaves the entry waiting.
     manager.manager().set_downloads_paused(true).await.unwrap();
-    let folder = dir.path().join("local");
-    std::fs::create_dir(&folder).unwrap();
+    let folder = dir.create_folder("local");
     manager
         .manager()
         .move_releases_to_this_device(vec![release_id.clone()], &folder)
@@ -505,7 +505,7 @@ async fn the_inspector_shows_each_files_upload_and_its_error() {
 
     // The upload can't read a source that moved, so it waits on the file
     // with the error it met.
-    std::fs::remove_file(temp.path().join("inspected/a.flac")).unwrap();
+    temp.remove("inspected/a.flac");
     assert_eq!(manager.manager().drain_uploads_expecting_work().await.unwrap(), 0);
     inspector_until(&inspector, |value| {
         value.files.iter().any(|row| {

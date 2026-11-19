@@ -2,11 +2,8 @@
 
 /// A handle over a fresh library holding one album of `tracks` tracks, and
 /// the album's track ids in order.
-fn handle_over_one_album(
-    test_name: &str,
-    tracks: &[&str],
-) -> (super::super::tests::TestHandle, Vec<String>) {
-    let (runtime, library, root) = super::super::tests::fresh_test_library(test_name);
+fn handle_over_one_album(tracks: &[&str]) -> (super::super::tests::TestHandle, Vec<String>) {
+    let (runtime, library, root) = super::super::tests::fresh_test_library();
     let fixture = bae_library::LibraryFixture {
         albums: vec![bae_library::FixtureAlbum {
             title: "Album Title".to_string(),
@@ -43,7 +40,7 @@ fn handle_over_one_album(
 /// Each command that adds tracks to Up Next returns how many tracks it added.
 #[test]
 fn each_add_returns_how_many_tracks_it_added() {
-    let (handle, tracks) = handle_over_one_album("queue-adds", &["One", "Two"]);
+    let (handle, tracks) = handle_over_one_album(&["One", "Two"]);
     let runtime = &handle.handle().runtime;
 
     let added = runtime.block_on(handle.handle().clone().add_to_queue(tracks.clone()));

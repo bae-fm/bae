@@ -138,9 +138,8 @@ async fn settle<T>(
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore = "a measurement of live query reruns, run on its own"]
 async fn a_scan_leaves_the_open_candidate_pane_alone() {
-    let temp = tempfile::TempDir::new().unwrap();
-    let library = temp.path().join("library");
-    std::fs::create_dir_all(&library).unwrap();
+    let temp = bae_util::test_files::TestFolder::new();
+    let library = temp.create_folder("library");
     let test_library = bae_library::test_libraries::open_test_library(&library).await;
     let tables = bae_import::tables::ImportTables::new(test_library.store().clone());
     test_library.manager().set_identify_automatically(false).await.unwrap();

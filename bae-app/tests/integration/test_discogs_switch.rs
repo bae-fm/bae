@@ -17,7 +17,7 @@ async fn library_with_a_key(
 /// key goes.
 #[tokio::test]
 async fn switching_discogs_off_clears_its_key() {
-    let dir = tempfile::tempdir().unwrap();
+    let dir = bae_util::test_files::TestFolder::new();
     let (library, services) = library_with_a_key(dir.path()).await;
 
     services.set_metadata_source_enabled(LookupCatalog::Discogs, false).await.unwrap();
@@ -31,7 +31,7 @@ async fn switching_discogs_off_clears_its_key() {
 /// A switch the library refuses to move leaves the key where it is.
 #[tokio::test]
 async fn a_refused_switch_keeps_the_key() {
-    let dir = tempfile::tempdir().unwrap();
+    let dir = bae_util::test_files::TestFolder::new();
     let (library, services) = library_with_a_key(dir.path()).await;
     services.set_metadata_source_enabled(LookupCatalog::MusicBrainz, false).await.unwrap();
 
@@ -46,7 +46,7 @@ async fn a_refused_switch_keeps_the_key() {
 /// Switching Search Discogs on needs no key: it waits for one.
 #[tokio::test]
 async fn switching_discogs_on_without_a_key_waits_for_one() {
-    let dir = tempfile::tempdir().unwrap();
+    let dir = bae_util::test_files::TestFolder::new();
     let library = bae_library::test_libraries::open_test_library(dir.path()).await;
     let services = bae_app::test_services::start_services(&library).await.unwrap();
     services.set_metadata_source_enabled(LookupCatalog::Discogs, false).await.unwrap();

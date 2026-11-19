@@ -12,8 +12,8 @@ use bae_import::{
 };
 use bae_store::ListWindow;
 use bae_util::test_channels::HANG_GUARD;
+use bae_util::test_files::TestFolder;
 use std::path::Path;
-use tempfile::TempDir;
 
 /// A library at `dir` with automatic identification off, so nothing but the
 /// test acts on the candidates.
@@ -25,15 +25,20 @@ pub(crate) async fn open(dir: &Path) -> AppServices {
         .expect("the test library's services start")
 }
 
-/// `count` one-track albums under `collection`, watched and scanned. Each
-/// track has its own name, so no two albums are the same files.
-pub(crate) async fn scan_albums(services: &AppServices, collection: &Path, count: usize) {
-    let flac = std::fs::read(bae_import::test_fixtures::flac_dir().join("01 Test Track 1.flac"))
-        .expect("FLAC fixture");
+/// `count` one-track albums under `collection` in `folder`, watched and
+/// scanned. Each track has its own name, so no two albums are the same files.
+pub(crate) async fn scan_albums(
+    services: &AppServices,
+    folder: &TestFolder,
+    collection: &Path,
+    count: usize,
+) {
+    let flac = bae_util::test_files::read_fixture(
+        bae_import::test_fixtures::flac_dir().join("01 Test Track 1.flac"),
+    );
     for n in 0..count {
         let album = collection.join(format!("Album {n}"));
-        std::fs::create_dir_all(&album).unwrap();
-        std::fs::write(album.join(format!("01 Track {n}.flac")), &flac).unwrap();
+        folder.write(album.join(format!("01 Track {n}.flac")), &flac);
     }
     services.import_add_watched_folder(collection.to_path_buf()).await.unwrap();
     tab_counts_until(services, |counts| counts.pending as usize == count).await;
@@ -189,9 +194,9 @@ fn on_page(snapshot: &ImportListRead) -> Vec<bae_import::CandidateKey> {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_bulk_action_runs_over_every_selected_row() {
     bae_util::test_logs::install();
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let services = open(&tmp.path().join("db")).await;
-    scan_albums(&services, &tmp.path().join("Collection"), 3).await;
+    scan_albums(&services, &tmp, &tmp.path().join("Collection"), 3).await;
     let (list, _) = list_showing(&services, ImportListView::default(), 3).await;
 
     let selected = list.keys().await.unwrap();
@@ -220,9 +225,9 @@ async fn a_bulk_action_runs_over_every_selected_row() {
 #[tokio::test(flavor = "multi_thread")]
 async fn rows_that_leave_the_filter_leave_the_selection() {
     bae_util::test_logs::install();
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let services = open(&tmp.path().join("db")).await;
-    scan_albums(&services, &tmp.path().join("Collection"), 3).await;
+    scan_albums(&services, &tmp, &tmp.path().join("Collection"), 3).await;
     let not_looked_up =
         ImportListView { pending_filter: PendingFilter::NotLookedUp, ..ImportListView::default() };
     let (mut list, shown) = list_showing(&services, not_looked_up, 3).await;
@@ -268,9 +273,9 @@ async fn rows_that_leave_the_filter_leave_the_selection() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_filter_change_keeps_only_the_selected_rows_it_shows() {
     bae_util::test_logs::install();
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let services = open(&tmp.path().join("db")).await;
-    scan_albums(&services, &tmp.path().join("Collection"), 3).await;
+    scan_albums(&services, &tmp, &tmp.path().join("Collection"), 3).await;
     let (mut list, _) = list_showing(&services, ImportListView::default(), 3).await;
     let mut selected = list.keys().await.unwrap();
 
@@ -367,9 +372,9 @@ async fn reached_in_order(
 #[tokio::test(flavor = "multi_thread")]
 async fn a_bulk_identify_admits_the_rows_as_the_list_shows_them() {
     bae_util::test_logs::install();
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let services = open(&tmp.path().join("db")).await;
-    scan_albums(&services, &tmp.path().join("Collection"), 4).await;
+    scan_albums(&services, &tmp, &tmp.path().join("Collection"), 4).await;
     let (list, _) = list_showing(&services, descending(), 4).await;
     let (selected, expected) = select_out_of_order(&services, descending(), &[3, 0, 2]).await;
 
@@ -398,9 +403,9 @@ async fn a_bulk_identify_admits_the_rows_as_the_list_shows_them() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_bulk_import_starts_the_rows_as_the_list_shows_them() {
     bae_util::test_logs::install();
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let services = open(&tmp.path().join("db")).await;
-    scan_albums(&services, &tmp.path().join("Collection"), 4).await;
+    scan_albums(&services, &tmp, &tmp.path().join("Collection"), 4).await;
     for key in shown_keys(&services, descending()).await {
         services.import_select_candidate_file_tags(key.clone()).await.unwrap();
         services
@@ -437,18 +442,16 @@ async fn a_bulk_import_starts_the_rows_as_the_list_shows_them() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_skipped_folder_is_selected_like_a_row_and_offers_nothing() {
     bae_util::test_logs::install();
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let services = open(&tmp.path().join("db")).await;
     let collection = tmp.path().join("Collection");
     let broken = collection.join("Half Copied");
-    std::fs::create_dir_all(&broken).unwrap();
-    std::fs::write(
+    tmp.copy_fixture(
+        bae_import::test_fixtures::flac_dir().join("01 Test Track 1.flac"),
         broken.join("01 Track.flac"),
-        std::fs::read(bae_import::test_fixtures::flac_dir().join("01 Test Track 1.flac")).unwrap(),
-    )
-    .unwrap();
-    std::fs::write(broken.join("02 Track.flac"), b"").unwrap();
-    scan_albums(&services, &collection, 1).await;
+    );
+    tmp.write(broken.join("02 Track.flac"), b"");
+    scan_albums(&services, &tmp, &collection, 1).await;
     let skipped = ImportListView { tab: TriageTab::Skipped, ..ImportListView::default() };
     let (list, _) = list_showing(&services, skipped, 1).await;
     let key = bae_import::CandidateKey::folder(&broken);

@@ -870,7 +870,6 @@ dependencies = [
  "coven",
  "keyring-core",
  "serde_json",
- "tempfile",
  "thiserror 2.0.21",
  "time",
  "tokio",
@@ -930,7 +929,6 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
- "tempfile",
  "tokio",
 ]
 
@@ -967,7 +965,6 @@ dependencies = [
  "keyring-core",
  "libsqlite3-sys",
  "serde_json",
- "tempfile",
  "thiserror 2.0.21",
  "tokio",
  "tracing",
@@ -1398,7 +1395,6 @@ dependencies = [
  "if-watch",
  "md-5 0.10.6",
  "serde_json",
- "tempfile",
  "time",
  "tokio",
  "tokio-stream",

@@ -838,6 +838,8 @@ struct CastToFake {
     _controller: Arc<CastController>,
     _library: bae_library::test_libraries::TestLibrary,
     _device: bae_util::test_files::TestFolder,
+    _album_dir: bae_util::test_files::TestFolder,
+    _library_files: bae_util::test_files::TestFolder,
 }
 
 fn cast_a_release_to_a_fake_chromecast() -> CastToFake {
@@ -853,16 +855,14 @@ fn cast_a_release_to_a_fake_chromecast() -> CastToFake {
             "cast-queue",
             "cast-queue-import".to_string(),
             |dir| {
-                std::fs::write(
-                    dir.join("01 Track One.flac"),
+                dir.write(
+                    "01 Track One.flac",
                     bae_import::test_fixtures::tagged_flac_bytes("Track One"),
-                )
-                .unwrap();
-                std::fs::write(
-                    dir.join("02 Track Two.flac"),
+                );
+                dir.write(
+                    "02 Track Two.flac",
                     bae_import::test_fixtures::tagged_flac_bytes("Track Two"),
-                )
-                .unwrap();
+                );
             },
         ))
         .expect("import the release that is cast");
@@ -901,6 +901,8 @@ fn cast_a_release_to_a_fake_chromecast() -> CastToFake {
         _controller: controller,
         _library: library,
         _device: device,
+        _album_dir: imported.album_dir,
+        _library_files: imported.temp_dir,
     }
 }
 

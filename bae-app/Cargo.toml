@@ -75,7 +75,6 @@ bae-util = { workspace = true, features = ["test-utils"] }
 # Gives the integration tests the album detail request that only tests build.
 bae-views = { workspace = true, features = ["test-utils"] }
 coven = { workspace = true, features = ["test-utils"] }
-tempfile = { workspace = true }
 # Builds the native keychain refusal coven wraps in `KeyError`, for the
 # tests of how a missing keychain entitlement is reported.
 keyring-core = { workspace = true }

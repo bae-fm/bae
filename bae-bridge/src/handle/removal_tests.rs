@@ -18,7 +18,7 @@ fn an_unfinished_removal_is_reported_and_finished_by_the_host() {
         .build()
         .unwrap();
     let (library, root) = bae_library::test_libraries::setup_fresh_library(&runtime);
-    std::fs::create_dir_all(library.manager().library_path().join("cache")).unwrap();
+    root.create_folder(library.manager().library_path().join("cache"));
     let services = runtime.block_on(async move {
         bae_app::test_services::start_services(&library)
             .await
@@ -32,7 +32,7 @@ fn an_unfinished_removal_is_reported_and_finished_by_the_host() {
         .unwrap(),
     );
     let libraries = bae_app_dir::AppDir::under_home(root.path()).unwrap().libraries();
-    std::fs::set_permissions(&libraries, std::fs::Permissions::from_mode(0o555)).unwrap();
+    root.set_permissions(&libraries, std::fs::Permissions::from_mode(0o555));
     let caller = tokio::runtime::Runtime::new().unwrap();
     let result = caller.block_on(app.clone().remove_library(None)).unwrap();
     let BridgeLibraryRemoval::Unfinished { removal } = result else {
@@ -48,7 +48,7 @@ fn an_unfinished_removal_is_reported_and_finished_by_the_host() {
             .finish_removals(crate::BridgeLibrarySetup::new(host.clone()))
             .await
             .is_err());
-        std::fs::set_permissions(&libraries, std::fs::Permissions::from_mode(0o755)).unwrap();
+        root.set_permissions(&libraries, std::fs::Permissions::from_mode(0o755));
         let setup = crate::BridgeLibrarySetup::new(host.clone());
         host.clone().finish_removals(setup.clone()).await.unwrap();
         let finishing = |done, total| {

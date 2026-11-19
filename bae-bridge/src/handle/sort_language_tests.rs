@@ -6,7 +6,7 @@
 #[test]
 fn the_sort_language_is_set_through_the_handle() {
     use crate::types::{BridgeError, BridgeErrorCategory};
-    let handle = super::super::tests::fresh_bridge_handle("sort-language");
+    let handle = super::super::tests::fresh_bridge_handle();
     let run = |tag: &str| {
         handle.handle().runtime.block_on(handle.handle().clone().set_sort_language(tag.to_string()))
     };

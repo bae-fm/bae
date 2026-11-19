@@ -2,18 +2,18 @@
 
 use bae_app::{bootstrap, BootstrapError};
 use bae_app_dir::AppDir;
+use bae_util::test_files::TestFolder;
 use coven::Storage;
-use tempfile::TempDir;
 
 struct Home {
-    _directory: TempDir,
+    _directory: TestFolder,
     app_dir: AppDir,
     installation: coven::Coven,
 }
 
 impl Home {
     fn new() -> Self {
-        let directory = TempDir::new().unwrap();
+        let directory = TestFolder::new();
         let app_dir = AppDir::under_home(directory.path()).unwrap();
         let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
         Self { _directory: directory, app_dir, installation }

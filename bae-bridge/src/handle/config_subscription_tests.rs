@@ -6,7 +6,7 @@ use super::super::tests::pull_until;
 /// follow each setter's write; cancelling ends the pulls.
 #[test]
 fn the_preferences_follow_each_write_until_cancelled() {
-    let handle = super::super::tests::fresh_bridge_handle("config-pulls");
+    let handle = super::super::tests::fresh_bridge_handle();
     let values = handle.handle().subscribe_config();
 
     let first = pull_until(handle.handle(), || values.clone().next(), |_| true);
@@ -57,7 +57,7 @@ fn the_preferences_follow_each_write_until_cancelled() {
 /// call.
 #[test]
 fn a_plain_read_answers_the_stored_preferences() {
-    let handle = super::super::tests::fresh_bridge_handle("config-read");
+    let handle = super::super::tests::fresh_bridge_handle();
     let runtime = &handle.handle().runtime;
 
     let first = runtime.block_on(handle.handle().clone().get_config()).unwrap();

@@ -10,7 +10,7 @@ use super::*;
     reason = "test code: the runtime it builds ends with the test"
 )]
 fn a_close_writes_each_step_it_runs() {
-    let root = tempfile::tempdir().unwrap();
+    let root = bae_util::test_files::TestFolder::new();
     let host = crate::handle::tests::test_host(root.path());
     let caller = tokio::runtime::Runtime::new().unwrap();
     let opened = crate::handle::tests::create_opened_library(&host, &caller, "Closed Library");
@@ -45,7 +45,7 @@ fn a_close_writes_each_step_it_runs() {
     reason = "test code: the runtime it builds ends with the test"
 )]
 fn a_removal_writes_each_step_it_runs() {
-    let root = tempfile::tempdir().unwrap();
+    let root = bae_util::test_files::TestFolder::new();
     let host = crate::handle::tests::test_host(root.path());
     let caller = tokio::runtime::Runtime::new().unwrap();
     let opened = crate::handle::tests::create_opened_library(&host, &caller, "Removed Library");
@@ -81,7 +81,7 @@ fn a_removal_writes_each_step_it_runs() {
     reason = "test code: the runtime it builds ends with the test"
 )]
 fn an_unopened_removal_writes_each_step_it_runs() {
-    let root = tempfile::tempdir().unwrap();
+    let root = bae_util::test_files::TestFolder::new();
     let host = crate::handle::tests::test_host(root.path());
     let caller = tokio::runtime::Runtime::new().unwrap();
     let opened = crate::handle::tests::create_opened_library(&host, &caller, "Unopened Library");

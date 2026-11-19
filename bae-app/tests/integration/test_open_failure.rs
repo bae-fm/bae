@@ -4,11 +4,11 @@
 
 use bae_app::{bootstrap, OpenFailure};
 use bae_app_dir::AppDir;
+use bae_util::test_files::TestFolder;
 use coven::Storage;
-use tempfile::TempDir;
 
 struct Home {
-    directory: TempDir,
+    directory: TestFolder,
     app_dir: AppDir,
     installation: coven::Coven,
     storage: std::sync::Arc<coven::MemoryStorage>,
@@ -16,7 +16,7 @@ struct Home {
 
 impl Home {
     fn new() -> Self {
-        let directory = TempDir::new().unwrap();
+        let directory = TestFolder::new();
         let app_dir = AppDir::under_home(directory.path()).unwrap();
         let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
         let storage = std::sync::Arc::new(

@@ -2,7 +2,7 @@ use super::*;
 use bae_records::{DbAlbum, DbArtist, DbRelease, DbTrack};
 use bae_store::Store;
 use bae_util::test_channels::HANG_GUARD;
-use tempfile::TempDir;
+use bae_util::test_files::TestFolder;
 
 /// Build a real `AppServices` — library manager, actor-backed playback,
 /// and (natively) the import/identify/extraction trio — through the step
@@ -13,8 +13,8 @@ use tempfile::TempDir;
 /// backing audio file, so preparing the first track for playback fails
 /// fast (a DB lookup, no I/O); that failure only stops playback, it
 /// doesn't touch the queue the `PlayRelease` command already set.
-async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, TempDir) {
-    let temp_dir = TempDir::new().unwrap();
+async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, TestFolder) {
+    let temp_dir = TestFolder::new();
     let db = Store::new_test(bae_library::SCHEMA, temp_dir.path(), Arc::new(coven::SystemClock))
         .await
         .unwrap();

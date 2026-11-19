@@ -1,10 +1,9 @@
 use super::*;
 use std::os::unix::fs::PermissionsExt;
 
-fn profile(dir: &tempfile::TempDir) -> String {
-    let path = dir.path().join("profile.toml");
-    std::fs::write(
-        &path,
+fn profile(dir: &bae_util::test_files::TestFolder) -> String {
+    let path = dir.write(
+        "profile.toml",
         r#"
 library_name = "dev"
 creator_name = "Dev Creator"
@@ -21,9 +20,8 @@ secret_access_key = "secret-access-key"
 [discogs]
 token = "discogs-token"
 "#,
-    )
-    .unwrap();
-    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600)).unwrap();
+    );
+    dir.set_permissions("profile.toml", std::fs::Permissions::from_mode(0o600));
     path.to_string_lossy().into_owned()
 }
 
@@ -31,7 +29,7 @@ token = "discogs-token"
 /// the profile names.
 #[test]
 fn the_profile_crosses_with_its_bucket() {
-    let dir = tempfile::tempdir().unwrap();
+    let dir = bae_util::test_files::TestFolder::new();
     let read = read_dev_reset_profile(profile(&dir)).ok().unwrap();
 
     assert_eq!(read.sync_config.bucket, "bucket-name");
@@ -52,7 +50,7 @@ fn the_profile_crosses_with_its_bucket() {
 fn a_dev_reset_reports_each_step_until_one_fails() {
     use crate::types::{BridgeFastValue, BridgeSetupProgress, BridgeSetupStep as Step};
 
-    let root = tempfile::tempdir().unwrap();
+    let root = bae_util::test_files::TestFolder::new();
     let host = crate::handle::tests::test_host(root.path());
     let caller = tokio::runtime::Runtime::new().unwrap();
     for name in ["First", "Second"] {
@@ -66,8 +64,7 @@ fn a_dev_reset_reports_each_step_until_one_fails() {
             .unwrap();
     }
     host.set_device_secret("a speaker", "its pairing");
-    let stray = root.path().join(".bae").join("stray-file");
-    std::fs::write(&stray, "left by an earlier run").unwrap();
+    let stray = root.write(".bae/stray-file", "left by an earlier run");
     let setup = crate::BridgeLibrarySetup::new(host.clone());
 
     let error = caller
@@ -121,7 +118,7 @@ fn a_dev_reset_reports_each_step_until_one_fails() {
         ]
     );
     assert_eq!(host.device_secret("a speaker"), None, "the device's secrets went");
-    assert!(!stray.exists(), "bae's directory was emptied");
+    assert!(!root.exists(&stray), "bae's directory was emptied");
     let libraries = caller.block_on(host.clone().list_libraries()).unwrap().libraries;
     assert_eq!(
         libraries.iter().map(|library| library.name.as_deref().unwrap()).collect::<Vec<_>>(),

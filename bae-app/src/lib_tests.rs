@@ -3,7 +3,7 @@ use bae_library::LibraryError;
 
 #[tokio::test]
 async fn a_keychain_that_refused_right_now_is_not_a_config_failure() {
-    let temp = tempfile::tempdir().unwrap();
+    let temp = bae_util::test_files::TestFolder::new();
     let installation =
         coven::Coven::in_memory(bae_app_dir::AppDir::at(temp.path()).unwrap().coven_app_dir());
     installation.fail_next_keychain_operation();
@@ -26,7 +26,7 @@ async fn a_keychain_that_refused_right_now_is_not_a_config_failure() {
 
 #[tokio::test]
 async fn opening_with_a_locked_keychain_remains_retryable() {
-    let temp = tempfile::tempdir().unwrap();
+    let temp = bae_util::test_files::TestFolder::new();
     let installation =
         coven::Coven::in_memory(bae_app_dir::AppDir::at(temp.path()).unwrap().coven_app_dir());
     installation.fail_next_keychain_operation();
@@ -79,7 +79,7 @@ fn a_bootstrap_that_fails_after_the_library_starts_closes_it() {
         .enable_all()
         .build()
         .unwrap();
-    let temp = tempfile::tempdir().unwrap();
+    let temp = bae_util::test_files::TestFolder::new();
     let app_dir = bae_app_dir::AppDir::at(temp.path()).unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let handle = runtime
@@ -232,9 +232,9 @@ fn closed_library(
 #[test]
 fn only_a_failure_in_the_copy_of_a_stored_library_offers_the_reset() {
     let runtime = bae_library::test_libraries::multi_thread_runtime();
-    let stored_home = tempfile::tempdir().unwrap();
+    let stored_home = bae_util::test_files::TestFolder::new();
     let stored = closed_library(&runtime, stored_home.path(), true);
-    let local_home = tempfile::tempdir().unwrap();
+    let local_home = bae_util::test_files::TestFolder::new();
     let local = closed_library(&runtime, local_home.path(), false);
     let in_the_copy =
         || [BootstrapError::Database("x".into()), BootstrapError::Damaged("x".into())];

@@ -142,8 +142,8 @@ where
 }
 
 /// A handle over a fresh, empty library, built the way the app builds one.
-pub(super) fn fresh_bridge_handle(test_name: &str) -> TestHandle {
-    let (runtime, library, root) = fresh_test_library(test_name);
+pub(super) fn fresh_bridge_handle() -> TestHandle {
+    let (runtime, library, root) = fresh_test_library();
     start_test_handle(runtime, library, root)
 }
 
@@ -152,7 +152,7 @@ pub(super) fn fresh_bridge_handle(test_name: &str) -> TestHandle {
 /// is removed.
 pub(super) struct TestHandle {
     handle: Arc<super::AppHandle>,
-    root: tempfile::TempDir,
+    root: bae_util::test_files::TestFolder,
 }
 
 impl TestHandle {
@@ -162,22 +162,20 @@ impl TestHandle {
     }
 
     /// The directory holding the handle's library and bae directory.
-    pub(super) fn root(&self) -> &std::path::Path {
-        self.root.path()
+    pub(super) fn root(&self) -> &bae_util::test_files::TestFolder {
+        &self.root
     }
 }
 
-/// A fresh library opened in its own temporary directory (named for
-/// `test_name`, unique per call so concurrent test processes never share
-/// one), on the runtime a handle over it runs on. The directory goes when the
-/// returned `TempDir` drops.
-pub(super) fn fresh_test_library(
-    test_name: &str,
-) -> (tokio::runtime::Runtime, bae_library::test_libraries::TestLibrary, tempfile::TempDir) {
-    let root = tempfile::Builder::new()
-        .prefix(&format!("bae-bridge-{test_name}-"))
-        .tempdir()
-        .expect("test library dir");
+/// A fresh library opened in its own temporary directory, on the runtime a
+/// handle over it runs on. The directory goes when the returned `TestFolder`
+/// drops.
+pub(super) fn fresh_test_library() -> (
+    tokio::runtime::Runtime,
+    bae_library::test_libraries::TestLibrary,
+    bae_util::test_files::TestFolder,
+) {
+    let root = bae_util::test_files::TestFolder::new();
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .thread_stack_size(16 * 1024 * 1024)
         .enable_all()
@@ -236,7 +234,7 @@ pub(crate) fn create_opened_library(
 pub(super) fn start_test_handle(
     runtime: tokio::runtime::Runtime,
     library: bae_library::test_libraries::TestLibrary,
-    root: tempfile::TempDir,
+    root: bae_util::test_files::TestFolder,
 ) -> TestHandle {
     let services = runtime.block_on(async move {
         bae_app::test_services::start_services(&library)
@@ -259,7 +257,7 @@ fn flat_albums() -> crate::types::BridgeList {
 
 #[test]
 fn an_album_view_answers_with_the_rows_from_the_top() {
-    let handle = fresh_bridge_handle("album-window-empty");
+    let handle = fresh_bridge_handle();
     let subscription = handle.handle().subscribe_list_view(flat_albums(), 0, 9);
 
     let value =
@@ -273,7 +271,7 @@ fn an_album_view_answers_with_the_rows_from_the_top() {
 
 #[test]
 fn an_album_count_pulls_before_any_window() {
-    let handle = fresh_bridge_handle("album-count-empty");
+    let handle = fresh_bridge_handle();
     let count = handle.handle().subscribe_list_count(flat_albums());
     let value = handle.handle().runtime.block_on(count.clone().next()).expect("album count");
     assert_eq!(value.rows, 0);
@@ -286,7 +284,7 @@ fn an_album_count_pulls_before_any_window() {
 
 #[test]
 fn cancelling_an_album_view_finishes_pending_next() {
-    let handle = fresh_bridge_handle("album-window-cancel");
+    let handle = fresh_bridge_handle();
     let subscription = handle.handle().subscribe_list_view(flat_albums(), 0, 9);
     handle
         .handle()
@@ -320,7 +318,7 @@ fn save_sync_config_survives_the_uniffi_worker_stack() {
         std::panic::set_hook(Box::new(move |_| {
             panic_flag.store(true, std::sync::atomic::Ordering::SeqCst);
         }));
-        let handle = fresh_bridge_handle("save-sync-config-stack");
+        let handle = fresh_bridge_handle();
         let caller_runtime = tokio::runtime::Runtime::new().expect("create caller runtime");
         bae_util::test_spawn::thread_with(
             std::thread::Builder::new().name("uniffi-worker".to_string()).stack_size(544 * 1024),
@@ -367,7 +365,7 @@ fn save_sync_config_survives_the_uniffi_worker_stack() {
 
 #[test]
 fn enqueue_export_missing_release_does_not_panic() {
-    let handle = fresh_bridge_handle("enqueue-export-missing-release");
+    let handle = fresh_bridge_handle();
     let result = handle.handle().runtime.block_on(async {
         Arc::clone(handle.handle())
             .enqueue_export(
@@ -783,7 +781,7 @@ mod candidate_runtime {
 
     #[test]
     fn a_claimed_import_crosses_as_in_flight_and_leaves_when_it_fails() {
-        let handle = fresh_bridge_handle("candidate-runtime-claim");
+        let handle = fresh_bridge_handle();
         let key = b"/watch/Album Title".to_vec();
         let watching = handle.handle().subscribe_candidate_runtime(key.clone());
         let idle = pull_until(handle.handle(), || watching.clone().next(), |_| true);
@@ -858,7 +856,7 @@ fn dropping_a_handle_closes_its_library_before_its_runtime_ends() {
         .enable_all()
         .build()
         .expect("test runtime");
-    let directory = tempfile::TempDir::new().expect("library directory");
+    let directory = bae_util::test_files::TestFolder::new();
     let (library, storage) = runtime.block_on(bae_library::test_libraries::storage_library(
         directory.path(),
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
@@ -905,7 +903,7 @@ fn dropping_a_handle_closes_its_library_before_its_runtime_ends() {
     reason = "test code: the runtime it builds ends with the test"
 )]
 fn reopening_a_library_released_on_its_runtime_waits_for_its_close() {
-    let root = tempfile::tempdir().unwrap();
+    let root = bae_util::test_files::TestFolder::new();
     let host = test_host(root.path());
     let caller = tokio::runtime::Runtime::new().unwrap();
     let opened = create_opened_library(&host, &caller, "Released Library");
@@ -938,7 +936,7 @@ fn reopening_a_library_released_on_its_runtime_waits_for_its_close() {
 #[cfg(desktop)]
 #[test]
 fn a_library_refusal_crosses_in_the_class_core_gave_it() {
-    let handle = fresh_bridge_handle("library-refusal-class");
+    let handle = fresh_bridge_handle();
     let result = handle.handle().runtime.block_on(async {
         Arc::clone(handle.handle())
             .add_artist_credit_name("missing-artist".to_string(), "   ".to_string())

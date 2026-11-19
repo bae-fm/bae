@@ -4,8 +4,8 @@ use std::time::Duration;
 use bae_app::{bootstrap, BootstrapError};
 use bae_app_dir::AppDir;
 use bae_util::test_channels::HANG_GUARD;
+use bae_util::test_files::TestFolder;
 use coven::{Clock, Storage};
-use tempfile::TempDir;
 
 struct TestApp {
     services: bae_app::AppServices,
@@ -55,7 +55,7 @@ impl TestApp {
 
 #[test]
 fn local_startup_returns_while_storage_is_pending_and_reports_its_failure() {
-    let home = TempDir::new().unwrap();
+    let home = TestFolder::new();
     let app_dir = AppDir::under_home(home.path()).unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let clock = Arc::new(StorageClock {

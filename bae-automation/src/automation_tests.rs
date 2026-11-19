@@ -19,7 +19,7 @@ pub(super) struct Fixture {
     automation: Automation,
     tables: bae_import::tables::ImportTables,
     services: AppServices,
-    tmp: tempfile::TempDir,
+    tmp: bae_util::test_files::TestFolder,
 }
 
 impl Fixture {
@@ -61,15 +61,14 @@ impl Fixture {
 
     /// The watched root under the temporary directory, created if missing.
     pub(super) fn root(&self) -> PathBuf {
-        let root = self.tmp.path().join("watched");
-        std::fs::create_dir_all(&root).expect("the watched root exists");
+        let root = self.tmp.create_folder("watched");
         bae_import::tables::watched_path::canonical_absolute_root(&root)
             .expect("the watched root has a canonical path")
     }
 }
 
 pub(super) async fn automation_over() -> Fixture {
-    let tmp = tempfile::TempDir::new().expect("a temp library dir");
+    let tmp = bae_util::test_files::TestFolder::new();
     let library = bae_library::test_libraries::open_test_library(tmp.path()).await;
     let tables = bae_import::tables::ImportTables::new(library.store().clone());
     let services = bae_app::test_services::start_services(&library)
@@ -192,17 +191,19 @@ async fn a_watched_folder_whose_name_is_not_utf8_is_removed_by_its_key() {
 /// The scan item for the album folder `name` below `root`, found by walking
 /// a real folder holding one track: storing a scan item reads each file's
 /// tags, so its files must exist as the item says.
-fn candidate(root: &std::path::Path, name: &str) -> ScanItem {
+fn candidate(
+    files: &bae_util::test_files::TestFolder,
+    root: &std::path::Path,
+    name: &str,
+) -> ScanItem {
     let folder = root.join(name);
-    std::fs::create_dir_all(&folder).expect("the album folder exists");
-    std::fs::copy(
+    files.copy_fixture(
         concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../bae-import/tests/fixtures/flac/01 Test Track 1.flac"
         ),
         folder.join("01.flac"),
-    )
-    .expect("the track is written");
+    );
     let mut found = Vec::new();
     bae_import::folder_scanner::scan_for_candidates_with_decisions(
         root.to_path_buf(),
@@ -230,7 +231,7 @@ fn candidate(root: &std::path::Path, name: &str) -> ScanItem {
 /// return the key automation names it by.
 pub(super) async fn scan(fixture: &Fixture, name: &str) -> String {
     let root = fixture.root();
-    write_scan(fixture, &root, |items| items.push(candidate(&root, name))).await;
+    write_scan(fixture, &root, |items| items.push(candidate(&fixture.tmp, &root, name))).await;
     key_of(&root, name)
 }
 
@@ -314,13 +315,13 @@ async fn the_tables_are_the_answer() {
     let fixture = automation_over().await;
     let root = fixture.root();
     write_scan(&fixture, &root, |items| {
-        items.push(candidate(&root, "A"));
-        items.push(candidate(&root, "B"));
+        items.push(candidate(&fixture.tmp, &root, "A"));
+        items.push(candidate(&fixture.tmp, &root, "B"));
     })
     .await;
 
     fixture.skip(&key_of(&root, "A")).await;
-    write_scan(&fixture, &root, |items| items.push(candidate(&root, "A"))).await;
+    write_scan(&fixture, &root, |items| items.push(candidate(&fixture.tmp, &root, "A"))).await;
 
     assert_eq!(keys(&fixture.list_candidates().await), vec![key_of(&root, "A").as_str()]);
     let candidate = fixture.get_candidate(&key_of(&root, "A")).await.expect("still scanned");
@@ -378,12 +379,10 @@ async fn a_scan_waited_on_answers_with_what_every_folder_read_found() {
     let second = fixture.tmp.path().join("Second");
     for (root, album) in [(&first, "Album One"), (&second, "Album Two")] {
         let album = root.join(album);
-        std::fs::create_dir_all(&album).unwrap();
-        std::fs::write(
+        fixture.tmp.write(
             album.join("01 Track.flac"),
             bae_import::test_fixtures::tagged_flac_bytes("Track"),
-        )
-        .unwrap();
+        );
         fixture
             .automation
             .add_watched_folder(root.to_string_lossy().into_owned())
@@ -410,10 +409,10 @@ async fn a_scan_waited_on_answers_with_what_every_folder_read_found() {
 async fn a_scan_waited_on_names_a_folder_whose_read_failed() {
     let fixture = automation_over().await;
     let root = fixture.tmp.path().join("Gone");
-    std::fs::create_dir_all(root.join("Album")).unwrap();
-    let path = root.canonicalize().unwrap().to_string_lossy().into_owned();
+    fixture.tmp.create_folder(root.join("Album"));
+    let path = fixture.tmp.canonicalize(&root).to_string_lossy().into_owned();
     fixture.automation.add_watched_folder(path.clone()).await.expect("the folder is watched");
-    std::fs::remove_dir_all(&root).unwrap();
+    fixture.tmp.remove(&root);
 
     let error = fixture
         .automation
@@ -602,11 +601,10 @@ mod disagreeing_source_ids {
             "conflicting",
             "conflicting-ids-import".to_string(),
             |dir| {
-                std::fs::write(
-                    dir.join("01 Track One.flac"),
+                dir.write(
+                    "01 Track One.flac",
                     bae_import::test_fixtures::tagged_flac_bytes("Track One"),
-                )
-                .unwrap();
+                );
             },
         )
         .await

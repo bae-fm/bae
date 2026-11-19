@@ -61,7 +61,7 @@ async fn stream_raw_serves_a_cue_track_as_its_own_pcm() {
     assert_eq!(served.content_type, "audio/wav");
     assert!(served.content_length.is_none(), "the stream's length is not known before it ends");
     let wav = bae_audio::parse_streamed_wav(&served.body).expect("a WAV stream");
-    let image = decode_bytes(&std::fs::read(cue_fixture("Test Album.flac")).unwrap());
+    let image = decode_bytes(&bae_util::test_files::read_fixture(cue_fixture("Test Album.flac")));
     assert_eq!(wav.sample_rate, image.sample_rate);
     assert_eq!(wav.channels, image.channels);
     assert_eq!(wav.bits_per_sample, 16, "the image's depth");
@@ -137,7 +137,7 @@ async fn a_track_whose_original_is_gone_is_refused_with_the_reason() {
     assert_eq!(songs[0]["title"], "First Track");
     let gone = songs[0]["id"].as_str().unwrap().to_string();
     let kept = songs[1]["id"].as_str().unwrap().to_string();
-    std::fs::remove_file(lib.per_track_source.join("01.flac")).unwrap();
+    lib.per_track_folder.remove(lib.per_track_source.join("01.flac"));
 
     for format in ["raw", "mp3", "wav"] {
         let refused =
@@ -473,10 +473,9 @@ async fn seed_lossy_release_within(
         )
         .await;
     let temp = TestFolder::new();
-    let dir = temp.path().join("lossy album");
-    std::fs::create_dir_all(&dir).unwrap();
+    let dir = temp.create_folder("lossy album");
     let fixture = bae_audio::test_fixtures::audio_format_dir().join("placeholder-opus.opus");
-    std::fs::copy(&fixture, dir.join("track.opus")).unwrap();
+    temp.copy_fixture(&fixture, dir.join("track.opus"));
 
     let discogs_key = fakes.seed_discogs_test_release(DiscogsRelease {
         country: None,
@@ -529,19 +528,17 @@ async fn first_song_id(router: &Router, release_id: &str) -> String {
     album.sub()["album"]["song"][0]["id"].as_str().unwrap().to_string()
 }
 
-/// Decode encoded audio bytes by writing them to a temp file, filling a sparse
+/// Decode encoded audio bytes by writing them to a file, filling a sparse
 /// buffer through the local reader, and running the real decoder.
 fn decode_bytes(bytes: &[u8]) -> bae_audio::DecodedAudio {
     use bae_audio::sparse_buffer::create_sparse_buffer;
     use bae_track_audio::data_source::{AudioDataReader, LocalReader};
-    use std::io::Write;
 
-    let mut file = tempfile::NamedTempFile::new().unwrap();
-    file.write_all(bytes).unwrap();
-    file.flush().unwrap();
+    let folder = TestFolder::new();
+    let path = folder.write("audio", bytes);
     let buffer = create_sparse_buffer(bytes.len() as u64);
     let reader = Box::new(LocalReader::new(
-        file.path().to_str().unwrap(),
+        path.to_str().unwrap(),
         bae_diagnostics::Diagnostics::noop(),
         bae_util::test_files::lease(),
     ));
@@ -646,13 +643,11 @@ async fn a_stored_wav_is_served_as_audio_wav() {
     )
     .await;
     let source = TestFolder::new();
-    let dir = source.path().join("wav album");
-    std::fs::create_dir_all(&dir).unwrap();
-    std::fs::copy(
+    let dir = source.create_folder("wav album");
+    source.copy_fixture(
         bae_audio::test_fixtures::audio_format_dir().join("placeholder-pcm.wav"),
         dir.join("01.wav"),
-    )
-    .unwrap();
+    );
     let discogs_key =
         fakes.seed_discogs_test_release(bae_catalogs::test_releases::discogs_test_release(
             "test-wav",

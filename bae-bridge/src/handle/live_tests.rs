@@ -3,7 +3,7 @@ use bae_util::test_channels::HANG_GUARD;
 use std::sync::{mpsc, Arc};
 
 /// A library created in `root` and opened, as a host opens one.
-fn open_library(root: &tempfile::TempDir) -> Arc<AppHandle> {
+fn open_library(root: &bae_util::test_files::TestFolder) -> Arc<AppHandle> {
     open_library_reporting(root, crate::BridgeDiagnostics::noop())
 }
 
@@ -13,7 +13,7 @@ fn open_library(root: &tempfile::TempDir) -> Arc<AppHandle> {
     reason = "test code: the runtime it builds ends with the test"
 )]
 fn open_library_reporting(
-    root: &tempfile::TempDir,
+    root: &bae_util::test_files::TestFolder,
     diagnostics: Arc<crate::BridgeDiagnostics>,
 ) -> Arc<AppHandle> {
     let host = crate::BridgeHost::with_test_keyring(
@@ -53,7 +53,7 @@ fn waiting_feed(
 
 #[test]
 fn stopping_a_feed_ends_it() {
-    let root = tempfile::tempdir().unwrap();
+    let root = bae_util::test_files::TestFolder::new();
     let app = open_library(&root);
     let (stop, started, ended) = waiting_feed(&app);
     started.recv_timeout(HANG_GUARD).expect("the feed starts");
@@ -66,7 +66,7 @@ fn stopping_a_feed_ends_it() {
 
 #[test]
 fn closing_the_library_ends_a_feed() {
-    let root = tempfile::tempdir().unwrap();
+    let root = bae_util::test_files::TestFolder::new();
     let app = open_library(&root);
     let (_stop, started, ended) = waiting_feed(&app);
     started.recv_timeout(HANG_GUARD).expect("the feed starts");
@@ -78,7 +78,7 @@ fn closing_the_library_ends_a_feed() {
 
 #[test]
 fn a_feed_started_on_a_closed_library_never_runs() {
-    let root = tempfile::tempdir().unwrap();
+    let root = bae_util::test_files::TestFolder::new();
     let app = open_library(&root);
     app.close_library(None).unwrap();
 
@@ -96,7 +96,7 @@ fn a_feed_started_on_a_closed_library_never_runs() {
     reason = "test code: the runtime it builds ends with the test"
 )]
 fn closing_a_library_cancels_a_waiting_pull_before_its_store_closes() {
-    let root = tempfile::tempdir().unwrap();
+    let root = bae_util::test_files::TestFolder::new();
     let app = open_library(&root);
     let members = app.subscribe_members();
     let caller = tokio::runtime::Runtime::new().unwrap();
@@ -134,7 +134,7 @@ fn closing_a_library_cancels_a_waiting_pull_before_its_store_closes() {
 fn a_feed_that_panics_is_reported_and_others_go_on() {
     let hooked = bae_diagnostics::test_panic::reported_panics();
     let message = "Callback interface failure: the host threw";
-    let root = tempfile::tempdir().unwrap();
+    let root = bae_util::test_files::TestFolder::new();
     let reports = Arc::new(bae_diagnostics::HeardBugReports::new());
     let app =
         open_library_reporting(&root, crate::BridgeDiagnostics::reporting_bugs_to(reports.clone()));

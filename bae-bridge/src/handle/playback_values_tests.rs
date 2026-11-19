@@ -8,7 +8,7 @@ use super::super::tests::pull_until;
 /// change playback makes; cancelling ends the pulls.
 #[test]
 fn playback_values_follow_playback_until_cancelled() {
-    let handle = super::super::tests::fresh_bridge_handle("playback-values");
+    let handle = super::super::tests::fresh_bridge_handle();
     let values = handle.handle().subscribe_playback_values();
 
     let first = pull_until(handle.handle(), || values.clone().next(), |_| true);

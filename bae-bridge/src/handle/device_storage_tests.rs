@@ -9,7 +9,7 @@ use crate::types::{BridgeCacheLimitChoice, BridgeStorageKind};
 /// nothing to remove.
 #[test]
 fn the_storage_follows_keep_up_to_and_its_commands_answer() {
-    let handle = super::super::tests::fresh_bridge_handle("device-storage-pulls");
+    let handle = super::super::tests::fresh_bridge_handle();
     let values = handle.handle().subscribe_device_storage();
 
     let first = pull_until(handle.handle(), || values.clone().next(), |_| true);

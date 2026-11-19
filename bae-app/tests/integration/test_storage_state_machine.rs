@@ -6,17 +6,17 @@
 use bae_library::LibraryManager;
 use bae_store::Store;
 use bae_util::test_channels::HANG_GUARD;
+use bae_util::test_files::TestFolder;
 use bae_views::album_detail::ReleaseStorageState;
 use coven::MemoryStorage;
 use std::sync::Arc;
-use tempfile::TempDir;
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 async fn setup_manager(
-    tmp: &TempDir,
+    tmp: &TestFolder,
 ) -> (bae_library::test_libraries::TestLibrary, Arc<MemoryStorage>) {
     bae_library::test_libraries::storage_library(
         tmp.path(),
@@ -27,7 +27,7 @@ async fn setup_manager(
 }
 
 async fn setup_with_cloud(
-    tmp: &TempDir,
+    tmp: &TestFolder,
 ) -> (bae_library::test_libraries::TestLibrary, Arc<MemoryStorage>) {
     let (library, storage) = setup_manager(tmp).await;
     bae_library::test_libraries::connect_storage(library.manager(), library.store(), &storage)
@@ -41,12 +41,14 @@ async fn setup_with_cloud(
 async fn create_remote_cloud_only_release(
     db: &Store,
     mgr: &LibraryManager,
+    folder: &TestFolder,
     source_dir: &std::path::Path,
     files: &[(&str, &[u8])],
 ) -> (String, Vec<(String, String, Vec<u8>)>) {
     create_remote_cloud_only_release_in_folder(
         db,
         mgr,
+        folder,
         bae_library::test_libraries::TEST_RELEASE_FOLDER,
         source_dir,
         files,
@@ -59,12 +61,13 @@ async fn create_remote_cloud_only_release(
 async fn create_remote_cloud_only_release_in_folder(
     db: &Store,
     mgr: &LibraryManager,
+    folder: &TestFolder,
     folder_name: &str,
     source_dir: &std::path::Path,
     files: &[(&str, &[u8])],
 ) -> (String, Vec<(String, String, Vec<u8>)>) {
     let (release_id, _named) =
-        crate::create_local_release_in_folder(mgr, folder_name, source_dir, files).await;
+        crate::create_local_release_in_folder(mgr, folder_name, folder, source_dir, files).await;
 
     let mut captured = Vec::new();
     for file in mgr.get_files_for_release(&release_id).await.unwrap() {
@@ -122,17 +125,19 @@ async fn move_to_this_device_and_wait(
 
 #[tokio::test]
 async fn test_multiple_releases_independent_completion() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let (mgr, _cloud) = setup_with_cloud(&tmp).await;
 
     let (release_a, _a) = crate::create_local_release(
         mgr.manager(),
+        &tmp,
         &tmp.path().join("a"),
         &[("track.flac", b"aaa")],
     )
     .await;
     let (release_b, _b) = crate::create_local_release(
         mgr.manager(),
+        &tmp,
         &tmp.path().join("b"),
         &[("track.flac", b"bbb")],
     )
@@ -160,7 +165,7 @@ async fn test_multiple_releases_independent_completion() {
 
 #[tokio::test]
 async fn test_manage_refused_without_cloud_storage() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     // No storage connected, so the sync loop is NOT running.
     let (mgr, _cloud) = setup_manager(&tmp).await;
     let db = mgr.store().clone();
@@ -171,6 +176,7 @@ async fn test_manage_refused_without_cloud_storage() {
     let source_dir = tmp.path().join("originals");
     let (release_id, _files) = crate::create_local_release(
         mgr.manager(),
+        &tmp,
         &source_dir,
         &[("a.flac", b"cloud-only-a"), ("b.flac", b"cloud-only-b")],
     )
@@ -200,12 +206,13 @@ async fn test_manage_refused_without_cloud_storage() {
 
 #[tokio::test]
 async fn attached_release_turns_remote_once_its_uploads_finish() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let (mgr, _cloud) = setup_with_cloud(&tmp).await;
     let db = mgr.store().clone();
     let source_dir = tmp.path().join("originals");
     let (release_id, files) = crate::create_local_release(
         mgr.manager(),
+        &tmp,
         &source_dir,
         &[("a.flac", b"cloud-only-a"), ("b.flac", b"cloud-only-b")],
     )
@@ -229,12 +236,13 @@ async fn attached_release_turns_remote_once_its_uploads_finish() {
 /// Upload failure leaves the release Local and its files queued for retry.
 #[tokio::test]
 async fn upload_failure_keeps_attachment_and_pending_work() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let (mgr, cloud) = setup_with_cloud(&tmp).await;
     let db = mgr.store().clone();
     let source_dir = tmp.path().join("originals");
     let (release_id, _files) = crate::create_local_release(
         mgr.manager(),
+        &tmp,
         &source_dir,
         &[("a.flac", b"survive-a"), ("b.flac", b"survive-b")],
     )
@@ -258,12 +266,13 @@ async fn upload_failure_keeps_attachment_and_pending_work() {
 /// changed original, and the source files remain untouched.
 #[tokio::test]
 async fn truncated_source_fails_its_move_without_sending() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let (mgr, _cloud) = setup_with_cloud(&tmp).await;
     let db = mgr.store().clone();
     let source_dir = tmp.path().join("originals");
     let (release_id, files) = crate::create_local_release(
         mgr.manager(),
+        &tmp,
         &source_dir,
         &[("a.flac", b"full-length-bytes"), ("b.flac", b"second-file")],
     )
@@ -271,7 +280,7 @@ async fn truncated_source_fails_its_move_without_sending() {
 
     // Corrupt one original: fewer bytes on disk than its registered size.
     let changed = source_dir.join("a.flac");
-    tokio::fs::write(&changed, b"x").await.unwrap();
+    tmp.write(&changed, b"x");
 
     mgr.manager().upload_release(&release_id).await.unwrap();
     assert_eq!(mgr.manager().drain_uploads_expecting_work().await.unwrap(), 0);
@@ -288,7 +297,7 @@ async fn truncated_source_fails_its_move_without_sending() {
         "{pending:?}"
     );
     for (name, _) in files {
-        assert!(source_dir.join(name).exists());
+        assert!(tmp.exists(source_dir.join(name)));
     }
     assert_eq!(crate::release_storage(&db, &release_id).await, ReleaseStorageState::OnOneDevice);
 }
@@ -301,20 +310,20 @@ async fn truncated_source_fails_its_move_without_sending() {
 
 #[tokio::test]
 async fn detaching_audio_updates_summary_and_original_paths() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let (mgr, _cloud) = setup_with_cloud(&tmp).await;
     let db = mgr.store().clone();
     let source_dir = tmp.path().join("originals");
     let (release_id, files) = create_remote_cloud_only_release(
         &db,
         mgr.manager(),
+        &tmp,
         &source_dir,
         &[("x.flac", b"download-x"), ("y.flac", b"download-yy")],
     )
     .await;
 
-    let new_path = tmp.path().join("exported");
-    std::fs::create_dir(&new_path).unwrap();
+    let new_path = tmp.create_folder("exported");
     move_to_this_device_and_wait(&mgr, std::slice::from_ref(&release_id), &new_path).await.unwrap();
 
     // Release is Local, and each file's original path names its new copy in
@@ -334,7 +343,7 @@ async fn detaching_audio_updates_summary_and_original_paths() {
 /// their own, named for the release, so their `01.flac` do not collide.
 #[tokio::test]
 async fn moving_two_releases_to_this_device_puts_each_in_its_own_folder() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let (mgr, _cloud) = setup_with_cloud(&tmp).await;
     let db = mgr.store().clone();
     let mut releases = Vec::new();
@@ -342,6 +351,7 @@ async fn moving_two_releases_to_this_device_puts_each_in_its_own_folder() {
         let (release_id, _files) = create_remote_cloud_only_release_in_folder(
             &db,
             mgr.manager(),
+            &tmp,
             name,
             &tmp.path().join(format!("originals-{name}")),
             &[("01.flac", bytes)],
@@ -350,17 +360,12 @@ async fn moving_two_releases_to_this_device_puts_each_in_its_own_folder() {
         releases.push((release_id, name));
     }
 
-    let folder = tmp.path().join("exported");
-    std::fs::create_dir(&folder).unwrap();
+    let folder = tmp.create_folder("exported");
     let ids: Vec<String> = releases.iter().map(|(release_id, _)| release_id.clone()).collect();
     move_to_this_device_and_wait(&mgr, &ids, &folder).await.unwrap();
 
     for ((release_id, name), bytes) in releases.iter().zip([b"first".as_slice(), b"second"]) {
-        assert_eq!(
-            std::fs::read(folder.join(name).join("01.flac")).unwrap(),
-            bytes,
-            "{name} has its own folder"
-        );
+        assert_eq!(tmp.read(folder.join(name).join("01.flac")), bytes, "{name} has its own folder");
         assert_eq!(crate::release_storage(&db, release_id).await, ReleaseStorageState::OnOneDevice);
     }
 }
@@ -370,13 +375,14 @@ async fn moving_two_releases_to_this_device_puts_each_in_its_own_folder() {
 /// Remote. Coven reports the missing file and removes the copies it made.
 #[tokio::test]
 async fn detaching_audio_with_a_missing_file_fails_leaving_summary_remote() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let (mgr, cloud) = setup_with_cloud(&tmp).await;
     let db = mgr.store().clone();
     let source_dir = tmp.path().join("originals");
     let (release_id, files) = create_remote_cloud_only_release(
         &db,
         mgr.manager(),
+        &tmp,
         &source_dir,
         &[("x.flac", b"present"), ("y.flac", b"missing")],
     )
@@ -386,8 +392,7 @@ async fn detaching_audio_with_a_missing_file_fails_leaving_summary_remote() {
     // `files` carries `(file_id, original_filename, plaintext)`.
     bae_library::test_libraries::remove_uploaded_file(mgr.manager(), &cloud, &files[1].0).await;
 
-    let new_path = tmp.path().join("exported");
-    std::fs::create_dir(&new_path).unwrap();
+    let new_path = tmp.create_folder("exported");
     let result =
         move_to_this_device_and_wait(&mgr, std::slice::from_ref(&release_id), &new_path).await;
     assert!(result.is_err(), "missing file must fail the entry");
@@ -396,7 +401,7 @@ async fn detaching_audio_with_a_missing_file_fails_leaving_summary_remote() {
         crate::release_storage(&db, &release_id).await,
         ReleaseStorageState::InStorage { pinned: false }
     );
-    assert_eq!(std::fs::read_dir(&new_path).unwrap().count(), 0, "no copy is left");
+    assert_eq!(tmp.entries(&new_path).len(), 0, "no copy is left");
 }
 
 /// Two names of a release that coven writes as one name (`?` becomes its
@@ -405,19 +410,19 @@ async fn detaching_audio_with_a_missing_file_fails_leaving_summary_remote() {
 /// cloud with no copy left behind.
 #[tokio::test]
 async fn detaching_audio_whose_names_write_as_one_is_refused() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let (mgr, _cloud) = setup_with_cloud(&tmp).await;
     let db = mgr.store().clone();
     let (release_id, _files) = create_remote_cloud_only_release(
         &db,
         mgr.manager(),
+        &tmp,
         &tmp.path().join("originals"),
         &[("Why?.flac", b"first"), ("Why\u{FF1F}.flac", b"second")],
     )
     .await;
 
-    let new_path = tmp.path().join("exported");
-    std::fs::create_dir(&new_path).unwrap();
+    let new_path = tmp.create_folder("exported");
     let error = move_to_this_device_and_wait(&mgr, std::slice::from_ref(&release_id), &new_path)
         .await
         .expect_err("two copies at one path can't both be made");
@@ -427,7 +432,7 @@ async fn detaching_audio_whose_names_write_as_one_is_refused() {
         crate::release_storage(&db, &release_id).await,
         ReleaseStorageState::InStorage { pinned: false }
     );
-    assert_eq!(std::fs::read_dir(&new_path).unwrap().count(), 0, "no copy is made");
+    assert_eq!(tmp.entries(&new_path).len(), 0, "no copy is made");
 }
 
 // ---------------------------------------------------------------------------
@@ -457,13 +462,13 @@ async fn next_storage_release(
 async fn storage_subscription_delivers_actions_when_storage_is_set_up() {
     use bae_types::release_storage::ReleaseStorageAction;
 
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let (mgr, cloud) = setup_manager(&tmp).await;
     // The status subscription folds coven's connection lifecycle into the
     // sync values the storage view re-resolves on.
     let source_dir = tmp.path().join("originals");
     let (release_id, _files) =
-        crate::create_local_release(mgr.manager(), &source_dir, &[("a.flac", b"a")]).await;
+        crate::create_local_release(mgr.manager(), &tmp, &source_dir, &[("a.flac", b"a")]).await;
 
     let views = bae_views::LibraryViews::new(mgr.store().clone());
     let values = crate::storage_list::storage_top(

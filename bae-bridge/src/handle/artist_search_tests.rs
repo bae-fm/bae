@@ -12,7 +12,7 @@ fn searching(text: &str) -> BridgeList {
 /// a cancelled view answers that it was cancelled.
 #[test]
 fn artist_search_answers_its_view_and_count_and_blank_finds_nothing() {
-    let handle = super::super::tests::fresh_bridge_handle("artist-search-lists");
+    let handle = super::super::tests::fresh_bridge_handle();
     let runtime = &handle.handle().runtime;
 
     let window = handle.handle().subscribe_list_view(searching("  Placeholder Query  "), 0, 9);

@@ -5,7 +5,7 @@
 use bae_app::bootstrap_on_fixture;
 use bae_app_dir::AppDir;
 use bae_library::create_library;
-use tempfile::TempDir;
+use bae_util::test_files::TestFolder;
 
 struct TestApp {
     services: bae_app::AppServices,
@@ -22,11 +22,11 @@ impl TestApp {
 }
 
 /// A fresh home with one library created in it, and the fixture `json`
-/// written beside it. Bind the `TempDir` for the whole test.
+/// written beside it. Bind the `TestFolder` for the whole test.
 fn library_with_fixture(
     json: serde_json::Value,
-) -> (TempDir, AppDir, String, std::path::PathBuf, coven::Coven) {
-    let dir = TempDir::new().unwrap();
+) -> (TestFolder, AppDir, String, std::path::PathBuf, coven::Coven) {
+    let dir = TestFolder::new();
     let app_dir = AppDir::under_home(dir.path()).unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let runtime = bae_library::test_libraries::multi_thread_runtime();
@@ -44,8 +44,7 @@ fn library_with_fixture(
         handle.close().await.unwrap();
         id
     });
-    let fixture = dir.path().join("fixture.json");
-    std::fs::write(&fixture, serde_json::to_vec(&json).unwrap()).unwrap();
+    let fixture = dir.write("fixture.json", serde_json::to_vec(&json).unwrap());
     (dir, app_dir, id, fixture, installation)
 }
 
@@ -99,7 +98,7 @@ fn a_library_opens_holding_its_fixtures_albums() {
 /// their last read found.
 #[test]
 fn a_library_opens_watching_its_fixtures_folders() {
-    let dir = TempDir::new().unwrap();
+    let dir = TestFolder::new();
     let music = dir.path().join("music").to_string_lossy().into_owned();
     let (_home, app_dir, library_id, fixture, installation) = library_with_fixture(
         serde_json::json!({
