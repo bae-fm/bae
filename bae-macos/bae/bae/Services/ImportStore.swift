@@ -359,9 +359,7 @@ extension ImportStore {
     /// Move the candidate's pane as the person, or a command they ran,
     /// asked. The pane holds where it stands; nothing is written.
     func movePane(_ paneMove: PaneMove, forKey key: Data) {
-        mutateCandidate(forKey: key) {
-            $0.pane.moved = $0.panePosition.moved(by: paneMove)
-        }
+        mutateCandidate(forKey: key) { $0.pane.apply(paneMove) }
     }
 
     /// The typed-search form as the person left it.

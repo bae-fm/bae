@@ -82,28 +82,6 @@ enum PaneMove: Equatable {
 struct CandidatePanePosition: Equatable {
     var presentation: CandidateMetadataPresentation
     var findOnlineSection: FindOnlineSection
-
-    /// Where `paneMove` puts the pane from here: the one rule every move
-    /// follows.
-    func moved(by paneMove: PaneMove) -> CandidatePanePosition {
-        var next = self
-        switch paneMove {
-        case .automatic:
-            next.presentation = .findOnline
-            next.findOnlineSection = .automatic
-        case .search:
-            next.presentation = .findOnline
-            next.findOnlineSection = .search
-        case .openSection(let section):
-            next.presentation = .findOnline
-            next.findOnlineSection = section
-        case .findOnline:
-            next.presentation = .findOnline
-        case .picked, .back:
-            next.presentation = .draft
-        }
-        return next
-    }
 }
 
 /// What one metadata application reads the draft from: a picked release,
@@ -190,10 +168,35 @@ struct CandidateSearchState: Equatable {
 /// state, so the pane holds it and no table stores it; showing another
 /// candidate forgets it.
 struct CandidatePaneState: Equatable {
-    /// Where the person moved the pane; `nil` until they move it, while the
-    /// pane stands where core says it opens.
-    var moved: CandidatePanePosition?
+    /// The surface the person moved the pane to; `nil` until they move it,
+    /// while the pane stands where core says it opens.
+    var presentation: CandidateMetadataPresentation?
+    /// The section of the Find online page the person last opened, which
+    /// stays while the draft shows. Find online opens on Automatic until
+    /// they open another.
+    var findOnlineSection: FindOnlineSection = .automatic
     var search = CandidateSearchState()
+
+    /// Write what `paneMove` says: the surface it moves the pane to, and the
+    /// section of the Find online page when it names one. A move that names
+    /// no section leaves the one last opened.
+    mutating func apply(_ paneMove: PaneMove) {
+        switch paneMove {
+        case .automatic:
+            presentation = .findOnline
+            findOnlineSection = .automatic
+        case .search:
+            presentation = .findOnline
+            findOnlineSection = .search
+        case .openSection(let section):
+            presentation = .findOnline
+            findOnlineSection = section
+        case .findOnline:
+            presentation = .findOnline
+        case .picked, .back:
+            presentation = .draft
+        }
+    }
 }
 
 extension BridgePaneFailure {
@@ -279,16 +282,17 @@ struct Candidate: Equatable, Identifiable {
     var live: BridgeCandidateLiveState?
     /// What the pane holds of this candidate while it shows it.
     var pane = CandidatePaneState()
-    /// Where the pane stands: where the person moved it, or else where core
-    /// says it opens, Find online opening on its Automatic section.
+    /// Where the pane stands: the surface the person moved it to, or else
+    /// the one core says it opens on, with the section of the Find online
+    /// page the person last opened.
     var panePosition: CandidatePanePosition {
-        pane.moved
-            ?? CandidatePanePosition(
-                presentation: draft.map {
+        CandidatePanePosition(
+            presentation: pane.presentation
+                ?? draft.map {
                     CandidateMetadataPresentation(bridge: $0.opensOn)
                 } ?? .draft,
-                findOnlineSection: .automatic
-            )
+            findOnlineSection: pane.findOnlineSection
+        )
     }
     /// The draft, or the Find online page, occupying the metadata slot.
     /// Opening the page never replaces the stored draft; applying a result

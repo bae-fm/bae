@@ -261,6 +261,47 @@ struct ImportStoreCandidateDetailTests {
         #expect(reopened.metadataPresentation == .draft)
         #expect(reopened.search == CandidateSearchState())
     }
+
+    /// A move writes what it names and reads nothing core sent: the pane
+    /// lands in the same place whichever surface the read opens it on.
+    @MainActor
+    @Test("a pane move lands the same whatever the read opens on")
+    func aPaneMoveLandsTheSameWhateverTheReadOpensOn() throws {
+        for opensOn in [BridgeMetadataPresentation.draft, .findOnline] {
+            let store = ImportStore()
+            let key = Data("/w1/a".utf8)
+            store.applyCandidateDetail(
+                key: key,
+                detail: detail(
+                    folderPath: key,
+                    watchedFolderPath: Data("/w1".utf8),
+                    name: "A",
+                    presentation: opensOn
+                )
+            )
+
+            store.movePane(.openSection(.search), forKey: key)
+            store.movePane(.back, forKey: key)
+            let back = try #require(store.selectedCandidates[key])
+            #expect(
+                back.panePosition
+                    == CandidatePanePosition(
+                        presentation: .draft,
+                        findOnlineSection: .search
+                    )
+            )
+
+            store.movePane(.findOnline, forKey: key)
+            let reopened = try #require(store.selectedCandidates[key])
+            #expect(
+                reopened.panePosition
+                    == CandidatePanePosition(
+                        presentation: .findOnline,
+                        findOnlineSection: .search
+                    )
+            )
+        }
+    }
 }
 
 @Suite("ImportStore sidebar covers")

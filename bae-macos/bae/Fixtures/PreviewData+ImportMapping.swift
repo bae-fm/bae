@@ -342,10 +342,8 @@ extension PreviewData {
         album: String = ""
     ) -> CandidatePaneState {
         CandidatePaneState(
-            moved: CandidatePanePosition(
-                presentation: presentation,
-                findOnlineSection: section
-            ),
+            presentation: presentation,
+            findOnlineSection: section,
             search: CandidateSearchState(
                 searchArtist: artist,
                 searchAlbum: album
