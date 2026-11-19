@@ -184,7 +184,7 @@ async fn done_runs_the_releases_still_uploading_first() {
         bae_import::ImportListRequest::of(done(bae_import::ImportListOrder::OldestFirst));
     let opening = tables
         .import_list_view_change(
-            bae_import::ImportListRequest::default(),
+            bae_import::ImportListRequest::of(bae_import::ImportListView::default()),
             oldest_first.clone(),
             selected.clone(),
         )
@@ -320,7 +320,7 @@ async fn moving_a_window_reruns_the_list_as_a_request_change() {
     let (test, _temp_dir) = setup_test_manager().await;
     let import = test.library.start_import().await.unwrap();
     let window = import.subscribe_list_window(
-        bae_import::ImportListRequest::default(),
+        bae_import::ImportListRequest::of(bae_import::ImportListView::default()),
         bae_store::ListWindow::top(0),
     );
     let initial = window.next().await.expect("the initial value");
@@ -340,7 +340,7 @@ async fn closing_the_library_cancels_a_waiting_read_before_the_store_closes() {
     let (test, _temp_dir) = setup_test_manager().await;
     let import = test.library.start_import().await.unwrap();
     let subscription = Arc::new(import.subscribe_list_window(
-        bae_import::ImportListRequest::default(),
+        bae_import::ImportListRequest::of(bae_import::ImportListView::default()),
         bae_store::ListWindow::top(50),
     ));
     subscription.next().await.expect("the initial value");

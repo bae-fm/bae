@@ -91,7 +91,7 @@ pub enum ImportListOrder {
 /// What every read of the import list takes: the view the surface shows and
 /// the groups it folds shut. The surface owns both, and each read builds its
 /// statement from them.
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImportListRequest {
     pub view: ImportListView,
     /// Which groups the list folds shut: their members are not in it.
@@ -109,9 +109,9 @@ pub enum ImportListFolds {
     AllBut(std::collections::BTreeSet<FolderReleaseDecisionKey>),
 }
 
-impl Default for ImportListFolds {
-    /// Every group open.
-    fn default() -> Self {
+impl ImportListFolds {
+    /// Every group open: the list folds none shut.
+    pub fn all_open() -> Self {
         Self::Only(Default::default())
     }
 }
@@ -119,7 +119,7 @@ impl Default for ImportListFolds {
 impl From<ImportListView> for ImportListRequest {
     /// The request showing `view` with every group open.
     fn from(view: ImportListView) -> Self {
-        Self { view, folds: Default::default() }
+        Self { view, folds: ImportListFolds::all_open() }
     }
 }
 

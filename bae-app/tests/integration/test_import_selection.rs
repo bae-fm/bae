@@ -45,7 +45,9 @@ async fn tab_counts_until(
     services: &AppServices,
     accept: impl Fn(&bae_import::TriageTabCounts) -> bool,
 ) {
-    let counts = services.import_list_count(bae_import::ImportListRequest::default());
+    let counts = services.import_list_count(bae_import::ImportListRequest::of(
+        bae_import::ImportListView::default(),
+    ));
     tokio::time::timeout(HANG_GUARD, async {
         loop {
             let count = counts.next().await.expect("the list's count answers");

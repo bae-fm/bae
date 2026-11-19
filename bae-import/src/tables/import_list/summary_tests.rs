@@ -520,7 +520,10 @@ async fn revealing_a_candidate_follows_an_import_from_pending_to_done() {
     )
     .await;
     let reveal = tables
-        .reveal_import_candidate(ImportListRequest::default(), &lib.key("Release"))
+        .reveal_import_candidate(
+            ImportListRequest::of(ImportListView::default()),
+            &lib.key("Release"),
+        )
         .await
         .unwrap()
         .expect("the imported candidate is in Done");
@@ -528,7 +531,10 @@ async fn revealing_a_candidate_follows_an_import_from_pending_to_done() {
     assert_eq!(reveal.position, 0);
     assert_eq!(
         tables
-            .reveal_import_candidate(ImportListRequest::default(), &lib.key("Nowhere"))
+            .reveal_import_candidate(
+                ImportListRequest::of(ImportListView::default()),
+                &lib.key("Nowhere")
+            )
             .await
             .unwrap(),
         None

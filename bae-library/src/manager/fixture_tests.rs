@@ -173,7 +173,7 @@ fn fixture_candidate(folder: &str, state: crate::FixtureCandidateState) -> crate
 /// Found's rows the import list reads, by display path, newest first.
 async fn found_rows(manager: &LibraryManager) -> bae_import::ImportListRead {
     let tables = bae_import::tables::ImportTables::new(manager.store.clone());
-    let list = bae_import::ImportListRequest::default();
+    let list = bae_import::ImportListRequest::of(bae_import::ImportListView::default());
     tables.read_import_list_for_test(list, Vec::new()).await.unwrap()
 }
 

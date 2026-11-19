@@ -820,7 +820,8 @@ async fn a_row_off_the_page_reaches_its_row_once_the_window_holds_it() {
     fixture.scan(2).await;
 
     let tables = &fixture.import.services.tables;
-    let mut window = tables.subscribe_import_window(ImportListRequest::default(), page_window(1));
+    let mut window = tables
+        .subscribe_import_window(ImportListRequest::of(ImportListView::default()), page_window(1));
     let initial = window.next_inline().await.expect("the query stays open").result.unwrap();
     let on_page = keys_of(&initial.rows);
     assert_eq!(on_page.len(), 1, "the window holds one row");
@@ -925,7 +926,8 @@ async fn a_verdict_off_the_page_delivers_the_counts_it_moves() {
     fixture.scan(2).await;
 
     let tables = &fixture.import.services.tables;
-    let mut window = tables.subscribe_import_window(ImportListRequest::default(), page_window(1));
+    let mut window = tables
+        .subscribe_import_window(ImportListRequest::of(ImportListView::default()), page_window(1));
     let initial = window.next_inline().await.expect("the query stays open").result.unwrap();
     let on_key = page_live_of(&initial).into_keys().next().expect("the window holds one row");
     let mut entries = tables.subscribe_import_filter_entries();

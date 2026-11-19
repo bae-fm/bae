@@ -127,7 +127,7 @@ async fn a_view_change_answers_the_selected_rows_that_leave() {
         async move {
             let mut left = tables
                 .import_list_view_change(
-                    ImportListRequest::default(),
+                    ImportListRequest::of(ImportListView::default()),
                     ImportListRequest::of(view),
                     selected,
                 )
