@@ -31,13 +31,13 @@ import fm.bae.app.ui.cloudProviderLabel
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidNotice
+import fm.bae.app.ui.components.AndroidProgress
 import fm.bae.app.ui.components.AndroidScanCode
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
 import fm.bae.app.ui.components.DialogParts
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.rememberScreenScope
-import fm.bae.app.ui.sync.MovingBar
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeInvite
 import uniffi.bae_bridge.BridgeInviteShown
@@ -267,14 +267,10 @@ private fun InviteGranting(
         offline -> {}
 
         else -> {
-            Column(
+            AndroidProgress(
+                title = stringResource(R.string.invite_granting, invite.label),
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
-            ) {
-                val sharing = stringResource(R.string.invite_granting, invite.label)
-                Text(text = sharing, style = ThemeText.body.style, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                MovingBar(description = sharing)
-            }
+            )
         }
     }
 }
