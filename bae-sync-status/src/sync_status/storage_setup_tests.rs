@@ -33,7 +33,7 @@ fn how_a_setup_ended_reads_as_settled_or_undone() {
 /// A library on its own installation, unconnected, whose device reaches
 /// its S3 storage through `device`.
 async fn library(
-    app_dir: &tempfile::TempDir,
+    app_dir: &bae_util::test_files::TestFolder,
     device: Arc<coven::MemoryStorage>,
 ) -> (Store, SyncStatus) {
     let installation = coven::Coven::in_memory(app_dir.path().to_path_buf());
@@ -88,7 +88,7 @@ async fn listed(store: &Store) -> Vec<coven::OperationId> {
 /// why until its call's return, which heard how it ended, acknowledges it.
 #[tokio::test]
 async fn an_undone_setup_shows_why_until_its_call_acknowledges_it() {
-    let app_dir = tempfile::TempDir::new().unwrap();
+    let app_dir = bae_util::test_files::TestFolder::new();
     let storage = coven::MemoryStorage::builder().build().unwrap();
     let device = Arc::new(storage.for_device());
     let (store, sync_status) = library(&app_dir, device.clone()).await;
@@ -113,7 +113,7 @@ async fn an_undone_setup_shows_why_until_its_call_acknowledges_it() {
 /// setup is refused, and stays until the library opens.
 #[tokio::test]
 async fn only_an_undone_setup_is_dismissed() {
-    let app_dir = tempfile::TempDir::new().unwrap();
+    let app_dir = bae_util::test_files::TestFolder::new();
     let storage = coven::MemoryStorage::builder().build().unwrap();
     let device = Arc::new(storage.for_device());
     let (store, sync_status) = library(&app_dir, device.clone()).await;
@@ -145,7 +145,7 @@ async fn only_an_undone_setup_is_dismissed() {
 /// undone one for the person.
 #[tokio::test]
 async fn opening_acknowledges_finished_setups_and_keeps_an_undone_one() {
-    let app_dir = tempfile::TempDir::new().unwrap();
+    let app_dir = bae_util::test_files::TestFolder::new();
     let storage = coven::MemoryStorage::builder().build().unwrap();
     let device = Arc::new(storage.for_device());
     let (store, sync_status) = library(&app_dir, device.clone()).await;
