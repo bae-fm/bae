@@ -247,6 +247,7 @@ impl Store {
         self.reported(self.inner.handle.unlock_store_key().await)
     }
 
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn forget_store_keys(&self) -> Result<(), coven::KeyError> {
         self.reported(self.inner.handle.forget_store_keys().await)
     }
