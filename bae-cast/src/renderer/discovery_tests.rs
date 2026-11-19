@@ -92,30 +92,28 @@ fn unusable_services_are_dropped() {
     assert!(discovery.devices().is_empty());
 }
 
-/// No route to the network starts in a test build: the combined browse the app
-/// uses and each protocol's own browse (mDNS for Cast and AirPlay, SSDP for
-/// UPnP) refuse, so a test that opens the picker over bae's own discovery fails
-/// instead of reaching a real receiver.
-#[test]
-#[should_panic(expected = "a test build browses the network")]
-fn the_builtin_discovery_refuses_to_browse_in_a_test_build() {
-    RendererDiscovery::builtin().start(&bae_diagnostics::Diagnostics::noop());
+/// A browse that reaches nothing, to test the guard every real browse starts
+/// behind.
+struct NoBrowse;
+
+impl crate::renderer::protocol_discovery::Browse for NoBrowse {
+    fn start(
+        _devices: &crate::renderer::published_devices::PublishedDevices,
+        _diagnostics: &bae_diagnostics::Diagnostics,
+    ) -> Option<Self> {
+        None
+    }
+
+    fn stop(self) {}
 }
 
+/// Every route to the network starts in `ProtocolDiscovery::start`: the app's
+/// combined discovery and the Cast, AirPlay and UPnP browses each start their
+/// protocol through it. A test build refuses there, so a test that opens the
+/// picker over bae's own discovery fails instead of reaching a real receiver.
 #[test]
 #[should_panic(expected = "a test build browses the network")]
-fn the_cast_browse_refuses_to_start_in_a_test_build() {
-    crate::cast::CastDiscovery::new().start(&bae_diagnostics::Diagnostics::noop());
-}
-
-#[test]
-#[should_panic(expected = "a test build browses the network")]
-fn the_airplay_browse_refuses_to_start_in_a_test_build() {
-    crate::airplay::AirPlayDiscovery::new().start(&bae_diagnostics::Diagnostics::noop());
-}
-
-#[test]
-#[should_panic(expected = "a test build browses the network")]
-fn the_upnp_search_refuses_to_start_in_a_test_build() {
-    crate::dlna::DlnaDiscovery::new().start(&bae_diagnostics::Diagnostics::noop());
+fn a_test_build_refuses_to_start_any_browse() {
+    crate::renderer::protocol_discovery::ProtocolDiscovery::<NoBrowse>::new()
+        .start(&bae_diagnostics::Diagnostics::noop());
 }
