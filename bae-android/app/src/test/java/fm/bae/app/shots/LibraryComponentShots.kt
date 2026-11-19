@@ -36,6 +36,7 @@ import uniffi.bae_bridge.BridgeMediaCount
 import uniffi.bae_bridge.BridgeMedium
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeTermLabel
+import uniffi.bae_bridge.BridgeTrackWork
 
 private val callbacks = TrackRowCallbacks(onClick = {}, onPlayNext = {}, onAddToQueue = {})
 private val section = BridgeLibraryBrowseSection("artist-1", "Mara Quill", null, 0uL, 12uL)
@@ -120,7 +121,26 @@ class LibraryComponentShots : BoardShot() {
     @Test
     fun androidComponentTrackRowCurrent() =
         component("android.component.track-row.current", wide = true) {
+            TrackRowShot(TrackRowData("2", "The Long Way Home", null, "5:12", isCurrent = true, isPlaying = false))
+        }
+
+    @Test
+    fun androidComponentTrackRowPlaying() =
+        component("android.component.track-row.playing", wide = true) {
             TrackRowShot(TrackRowData("2", "The Long Way Home", null, "5:12", isCurrent = true, isPlaying = true))
+        }
+
+    @Test
+    fun androidComponentTrackRowWork() =
+        component("android.component.track-row.work", wide = true) {
+            Column {
+                AndroidTrackRow(
+                    TrackRowData("4", "Low Tide Hours", null, "5:03", isCurrent = false, isPlaying = false),
+                    callbacks,
+                    positionColumnWidth = 40.dp,
+                    works = listOf(BridgeTrackWork("work-ebb", "Low Tide Suite: I. Ebb", "Ada Lindqvist")),
+                )
+            }
         }
 
     @Test

@@ -194,14 +194,14 @@ private fun SyncPage(
     )
 }
 
-private val RESTORE_CODE =
+internal val RESTORE_CODE =
     BridgeRestoreCodeShare(
         code = "CVR1 UJZD EGXD NCF3 2EPF 3DHO DZDO CIS2 JHTL GMXG EDN7 3U55 XTPL PFT7 3MNB",
         maskedGroups = listOf("CVR1", "UJZD") + List(12) { "••••" } + "3MNB",
         qrText = "CVR1-UJZDEGXDNCF32EPF3DHODZDOCIS2JHTLGMXGEDN73U55XTPLPFT73MNB",
     )
 
-private val SHOWN_RESTORE_CODE =
+internal val SHOWN_RESTORE_CODE =
     BridgeRestoreCodeShare(
         code = SHOWN_RESTORE_CODE_TEXT,
         maskedGroups = listOf("CVR1", "UJZD") + List(60) { "••••" } + "B",

@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import fm.bae.app.DisplayError
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.appearance.ThemeIcon
@@ -28,7 +29,7 @@ import uniffi.bae_bridge.BridgeTrackSpan
 
 internal val playing =
     PlayerStaging(progress = 0.35, elapsedSeconds = 102, held = listOf(BridgeTrackSpan(0.0, 0.6)))
-private val waiting =
+internal val waiting =
     PlayerStaging(
         progress = 0.02,
         elapsedSeconds = 5,
@@ -74,26 +75,7 @@ class PlaybackComponentShots : BoardShot() {
     fun androidComponentSeekBarHoles() = component("android.component.seek-bar.holes", wide = true) { holes.SeekRow() }
 
     @Test
-    fun androidComponentFullPlayerPlaying() =
-        shot("android.component.full-player.playing") {
-            ScreenScene {
-                CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
-                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                        AndroidFullPlayer(
-                            track = playing.track,
-                            failure = null,
-                            onCollapse = {},
-                            seek = { playing.SeekRow(SeekLineLook.LARGE) },
-                            transport = {
-                                AndroidTransport(true, playing.waitsOnStorage, onPrevious = {}, onPlayPause = {}, onNext = {}, full = true)
-                            },
-                            secondaryControls = { ExpandedSecondaryControls(BridgeRepeatMode.OFF, onCycleRepeat = {}) },
-                            volumeRow = { AndroidVolumeSlider(0.7f, false, {}, {}, {}) },
-                        )
-                    }
-                }
-            }
-        }
+    fun androidComponentFullPlayerPlaying() = shot("android.component.full-player.playing") { FullPlayer(playing) }
 
     @Test
     fun androidComponentQueueRowQueued() =
@@ -154,26 +136,56 @@ internal fun Images(content: @Composable () -> Unit) =
     CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved(), content = content)
 
 @Composable
-internal fun Bar(staging: PlayerStaging) =
+internal fun Bar(
+    staging: PlayerStaging,
+    repeatMode: BridgeRepeatMode = BridgeRepeatMode.OFF,
+    castButton: @Composable () -> Unit = { CastBarButton(casting = false, onClick = {}) },
+    failure: DisplayError? = null,
+) = Images {
+    AndroidNowPlayingBar(
+        track = if (failure == null) staging.track else null,
+        failure = failure,
+        onExpand = {},
+        transport = {
+            NowPlayingBarControls(
+                isPlaying = true,
+                waitsOnStorage = staging.waitsOnStorage,
+                repeatMode = repeatMode,
+                onPrevious = {},
+                onPlayPause = {},
+                onNext = {},
+                castButton = castButton,
+                onOpenQueue = {},
+                onCycleRepeat = {},
+            )
+        },
+        progress = { staging.SeekRow() },
+        castEnded = {},
+    )
+}
+
+/** The full player as the boards draw it: [staging]'s track, playing or not, at [volume], with repeat set to [repeatMode]. */
+@Composable
+internal fun FullPlayer(
+    staging: PlayerStaging,
+    isPlaying: Boolean = true,
+    repeatMode: BridgeRepeatMode = BridgeRepeatMode.OFF,
+    volume: Float = 0.7f,
+    receiverWithoutVolume: String? = null,
+) = ScreenScene {
     Images {
-        AndroidNowPlayingBar(
-            track = staging.track,
-            failure = null,
-            onExpand = {},
-            transport = {
-                NowPlayingBarControls(
-                    isPlaying = true,
-                    waitsOnStorage = staging.waitsOnStorage,
-                    repeatMode = BridgeRepeatMode.OFF,
-                    onPrevious = {},
-                    onPlayPause = {},
-                    onNext = {},
-                    castButton = { CastBarButton(casting = false, onClick = {}) },
-                    onOpenQueue = {},
-                    onCycleRepeat = {},
-                )
-            },
-            progress = { staging.SeekRow() },
-            castEnded = {},
-        )
+        Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+            AndroidFullPlayer(
+                track = staging.track,
+                failure = null,
+                onCollapse = {},
+                seek = { staging.SeekRow(SeekLineLook.LARGE) },
+                transport = {
+                    AndroidTransport(isPlaying, staging.waitsOnStorage, onPrevious = {}, onPlayPause = {}, onNext = {}, full = true)
+                },
+                secondaryControls = { ExpandedSecondaryControls(repeatMode, onCycleRepeat = {}) },
+                volumeRow = { AndroidVolumeSlider(volume, false, {}, {}, {}, receiverWithoutVolume) },
+            )
+        }
     }
+}

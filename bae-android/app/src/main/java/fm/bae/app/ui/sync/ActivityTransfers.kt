@@ -121,7 +121,7 @@ internal fun AndroidTransferLine(
  * touch area is the usual 48dp.
  */
 @Composable
-private fun PausePinning(
+internal fun PausePinning(
     paused: Boolean,
     onClick: () -> Unit,
 ) {
