@@ -176,35 +176,22 @@ jobs:
       if: ${{ !cancelled() && steps.nextest.conclusion == 'success' }}
       run: |
         status=0
-        cargo nextest run --no-fail-fast -p bae-util || status=1
-        cargo nextest run --no-fail-fast -p bae-audio || status=1
-        cargo nextest run --no-fail-fast -p bae-types || status=1
-        cargo nextest run --no-fail-fast -p bae-catalogs || status=1
-        cargo nextest run --no-fail-fast -p bae-diagnostics || status=1
-        cargo nextest run --no-fail-fast -p bae-app-dir || status=1
-        cargo nextest run --no-fail-fast -p bae-store || status=1
-        cargo nextest run --no-fail-fast -p bae-records || status=1
-        cargo nextest run --no-fail-fast -p bae-people || status=1
-        cargo nextest run --no-fail-fast -p bae-sync-status || status=1
-        cargo nextest run --no-fail-fast -p bae-preferences || status=1
-        cargo nextest run --no-fail-fast -p bae-track-audio || status=1
-        cargo nextest run --no-fail-fast -p bae-transfers || status=1
-        cargo nextest run --no-fail-fast -p bae-views || status=1
-        cargo nextest run --no-fail-fast -p bae-identify || status=1
-        cargo nextest run --no-fail-fast -p bae-playback || status=1
-        cargo nextest run --no-fail-fast -p bae-import || status=1
-        cargo nextest run --no-fail-fast -p bae-app --features bae-app/test-utils || status=1
-        cargo nextest run --no-fail-fast -p bae-loc || status=1
-        cargo nextest run --no-fail-fast -p bae-theme || status=1
+        # One run for every crate but the bridge, so cargo builds their
+        # dependencies once with the features the crates turn on together. A
+        # run per crate rebuilt coven and the crates below each one for each
+        # crate's own features. The clippy steps above build each crate's tests
+        # with only the features it declares.
+        cargo nextest run --no-fail-fast -p bae-util -p bae-audio -p bae-types -p bae-catalogs \
+          -p bae-diagnostics -p bae-app-dir -p bae-store -p bae-records -p bae-people \
+          -p bae-sync-status -p bae-preferences -p bae-track-audio -p bae-transfers -p bae-views \
+          -p bae-identify -p bae-playback -p bae-import -p bae-app -p bae-loc -p bae-theme \
+          -p bae-automation -p bae-subsonic -p bae-cast -p bae-desktop \
+          --features bae-app/test-utils || status=1
         # Both feature sets: the defaults, and `cast` (which every shipping build
         # turns on) with the debug Mac app's dev reset, so its tests run too. The
         # desktop half of the bridge compiles on every host through `cfg(desktop)`.
         cargo nextest run --no-fail-fast -p bae-bridge --lib || status=1
         cargo nextest run --no-fail-fast -p bae-bridge --lib --features cast,dev-reset || status=1
-        cargo nextest run --no-fail-fast -p bae-automation || status=1
-        cargo nextest run --no-fail-fast -p bae-subsonic || status=1
-        cargo nextest run --no-fail-fast -p bae-cast || status=1
-        cargo nextest run --no-fail-fast -p bae-desktop || status=1
         # Chrome strings no code references; core.* keys are covered by the bridge
         # test above.
         python3 scripts/loc-chrome-orphans.py || status=1
