@@ -83987,25 +83987,25 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "بانتظار التعرّف"
+            "value" : "في انتظار التعرّف"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Изчаква идентифициране"
+            "value" : "В опашката за идентифициране"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Čeká na identifikaci"
+            "value" : "Ve frontě k identifikaci"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Venter på identifikation"
+            "value" : "I kø til identifikation"
           }
         },
         "en" : {
@@ -84017,61 +84017,61 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wartet auf Identifizierung"
+            "value" : "In Warteschlange zur Identifizierung"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Αναμονή ταυτοποίησης"
+            "value" : "Σε ουρά για ταυτοποίηση"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esperando ser identificado"
+            "value" : "En cola para identificar"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Odottaa tunnistusta"
+            "value" : "Jonossa tunnistettavaksi"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "En attente d’identification"
+            "value" : "En file pour identification"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ממתין לזיהוי"
+            "value" : "בתור לזיהוי"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Čeka identifikaciju"
+            "value" : "Na čekanju za identifikaciju"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Azonosításra vár"
+            "value" : "Sorban az azonosításhoz"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "In attesa di identificazione"
+            "value" : "In coda per l’identificazione"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "識別を待機中"
+            "value" : "識別の待機中"
           }
         },
         "ko" : {
@@ -84083,73 +84083,73 @@
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Venter på identifisering"
+            "value" : "I kø for identifisering"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wacht op identificatie"
+            "value" : "In wachtrij om te identificeren"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Czeka na identyfikację"
+            "value" : "W kolejce do identyfikacji"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aguardando identificação"
+            "value" : "Na fila para identificar"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "À espera de identificação"
+            "value" : "Em fila para identificar"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Așteaptă identificarea"
+            "value" : "În coadă pentru identificare"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Čaká na identifikáciu"
+            "value" : "V rade na identifikáciu"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Väntar på identifiering"
+            "value" : "I kö för identifiering"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tanımlanmayı bekliyor"
+            "value" : "Tanımlamak için sırada"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Очікує визначення"
+            "value" : "У черзі на визначення"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "等待识别"
+            "value" : "已排队，等待识别"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "等待識別"
+            "value" : "已加入佇列，等待識別"
           }
         }
       }
@@ -84160,25 +84160,25 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "بانتظار الاستيراد"
+            "value" : "في انتظار الاستيراد"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Изчаква импортиране"
+            "value" : "В опашката за импортиране"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Čeká na import"
+            "value" : "Ve frontě k importu"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Venter på import"
+            "value" : "I kø til import"
           }
         },
         "en" : {
@@ -84190,61 +84190,61 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wartet auf Import"
+            "value" : "In Warteschlange zum Import"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Αναμονή εισαγωγής"
+            "value" : "Σε ουρά για εισαγωγή"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esperando para importar"
+            "value" : "En cola para importar"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Odottaa tuontia"
+            "value" : "Jonossa tuotavaksi"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "En attente d’importation"
+            "value" : "En file pour importation"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ממתין לייבוא"
+            "value" : "בתור לייבוא"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Čeka uvoz"
+            "value" : "Na čekanju za uvoz"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Importálásra vár"
+            "value" : "Sorban az importáláshoz"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "In attesa di importazione"
+            "value" : "In coda per l’importazione"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "取り込みを待機中"
+            "value" : "取り込みの待機中"
           }
         },
         "ko" : {
@@ -84256,73 +84256,73 @@
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Venter på import"
+            "value" : "I kø for import"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wacht op import"
+            "value" : "In wachtrij om te importeren"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Czeka na import"
+            "value" : "W kolejce do importu"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aguardando importação"
+            "value" : "Na fila para importar"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "À espera de importação"
+            "value" : "Em fila para importar"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Așteaptă importul"
+            "value" : "În coadă pentru import"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Čaká na import"
+            "value" : "V rade na import"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Väntar på import"
+            "value" : "I kö för import"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "İçe aktarılmayı bekliyor"
+            "value" : "İçe aktarmak için sırada"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Очікує імпорту"
+            "value" : "У черзі на імпорт"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "等待导入"
+            "value" : "已排队，等待导入"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "等待匯入"
+            "value" : "已加入佇列，等待匯入"
           }
         }
       }
