@@ -340,25 +340,28 @@
                 }
             }
         }
-    #endif
 
-    extension BridgeImportListReveal {
-        /// What core answers when asked to reveal a candidate that sits in no
-        /// group from `request`: the request on `tab` with the text and
-        /// Found's filter cleared, and the candidate at `position`. A fixed
-        /// list or a test stands in for core with it.
-        public static func fixed(
-            from request: BridgeImportListRequest,
-            on tab: BridgeTriageTab,
-            at position: UInt64
-        ) -> BridgeImportListReveal {
-            var revealed = request
-            revealed.view.tab = tab
-            revealed.view.filterText = ""
-            revealed.view.pendingFilter = .all
-            return BridgeImportListReveal(request: revealed, position: position)
+        extension BridgeImportListReveal {
+            /// What core answers when asked to reveal a candidate that sits in no
+            /// group from `request`: the request on `tab` with the text and
+            /// Found's filter cleared, and the candidate at `position`. A fixed
+            /// list or a test stands in for core with it.
+            public static func fixed(
+                from request: BridgeImportListRequest,
+                on tab: BridgeTriageTab,
+                at position: UInt64
+            ) -> BridgeImportListReveal {
+                var revealed = request
+                revealed.view.tab = tab
+                revealed.view.filterText = ""
+                revealed.view.pendingFilter = .all
+                return BridgeImportListReveal(
+                    request: revealed,
+                    position: position
+                )
+            }
         }
-    }
+    #endif
 
     extension AlbumList {
         /// A pre-populated list for shots and tests, seeded with

@@ -133,7 +133,7 @@ extension LibraryArtworkBrowserTests {
                 )
                 .environment(images)
                 .environment(
-                    Library(coverGallery: {
+                    Importer(coverGallery: {
                         .fixed(gallery, delivered: delivered)
                     })
                 )

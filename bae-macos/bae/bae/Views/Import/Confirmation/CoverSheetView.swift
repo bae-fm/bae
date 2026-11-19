@@ -19,8 +19,8 @@ struct CoverSheetView: View {
     private var state = CoverPickerState()
     @State
     private var covers: CoverGalleryState
-    @Environment(Library.self)
-    private var library
+    @Environment(Importer.self)
+    private var importer
 
     init(
         owner: BridgeCoverGalleryOwner,
@@ -73,7 +73,7 @@ struct CoverSheetView: View {
             onDone: onDone
         )
         .task {
-            await covers.open(query: library.coverGallery())
+            await covers.open(query: importer.coverGallery())
         }
         .onDisappear {
             state.cancel()

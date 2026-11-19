@@ -45,7 +45,7 @@ struct CoverPickerTests {
             )
             .environment(images)
             .environment(
-                Library(coverGallery: { .fixed(gallery(of: release)) })
+                Importer(coverGallery: { .fixed(gallery(of: release)) })
             )
             .frame(width: size.width, height: size.height),
             size: size

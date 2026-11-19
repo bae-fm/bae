@@ -38,6 +38,7 @@ private struct ImportOperations: Sendable {
         @Sendable (Data) -> CandidateRuntimeSubscription?
     /// `nil` where no bridge is behind the importer: a shot or a test.
     let folderImages: @Sendable () -> FolderImagesQuery?
+    let coverGallery: @Sendable () -> CoverGalleryQuery
     let editCandidateLookupChoices:
         @Sendable (Data, BridgeLookupChoiceEdit) async throws ->
             BridgePaneOutcome
@@ -164,6 +165,9 @@ extension ImportOperations {
             },
             folderImages: {
                 FolderImagesQuery(handle.subscribeFolderImages())
+            },
+            coverGallery: {
+                CoverGalleryQuery(handle.subscribeCoverGallery())
             },
             editCandidateLookupChoices: {
                 try await handle.editCandidateLookupChoices(
@@ -339,6 +343,9 @@ final class Importer: Sendable, Observable {
                 _ in nil
             },
         folderImages: @escaping @Sendable () -> FolderImagesQuery? = { nil },
+        coverGallery: @escaping @Sendable () -> CoverGalleryQuery = {
+            fatalError("The importer's cover gallery is not installed")
+        },
         editCandidateLookupChoices:
             @escaping @Sendable (Data, BridgeLookupChoiceEdit) async throws ->
             BridgePaneOutcome = { _, _ in .done },
@@ -424,6 +431,7 @@ final class Importer: Sendable, Observable {
             retryCandidateSearch: retryCandidateSearch,
             subscribeCandidateRuntime: subscribeCandidateRuntime,
             folderImages: folderImages,
+            coverGallery: coverGallery,
             editCandidateLookupChoices: editCandidateLookupChoices,
             rerunIdentifyForCandidate: rerunIdentifyForCandidate,
             cancelAllIdentification: cancelAllIdentification,
@@ -603,6 +611,12 @@ extension Importer {
     /// `nil` where no bridge is behind the importer.
     func folderImages() -> FolderImagesQuery? {
         operations.folderImages()
+    }
+
+    /// Open the live read of a library release's or a candidate's cover
+    /// picker, which shows nothing until a request names whose covers.
+    func coverGallery() -> CoverGalleryQuery {
+        operations.coverGallery()
     }
 
     /// Make one change to what a candidate's identification asks about; core

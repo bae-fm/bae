@@ -48,8 +48,7 @@ extension ShotScene {
         openAlbum: Bool = false,
         detail: BridgeAlbumDetail = PreviewData.boardAlbumDetail(),
         playlists: [BridgePlaylistSummary] = [],
-        playlistDetails: [String: BridgePlaylistDetail] = [:],
-        coverGallery: BridgeCoverGallery = boardCoverGallery()
+        playlistDetails: [String: BridgePlaylistDetail] = [:]
     ) -> (library: Library, session: LibraryBrowseSession) {
         let library = Library(
             albumList: { _, _ in
@@ -92,9 +91,6 @@ extension ShotScene {
                     PreviewData.previewReleaseFiles,
                     answers: UnansweredCount()
                 )
-            },
-            coverGallery: {
-                .fixed(coverGallery)
             }
         )
         let session = LibraryBrowseSession(library: library, uiStore: uiStore)

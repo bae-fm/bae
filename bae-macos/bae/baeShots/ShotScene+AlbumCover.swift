@@ -23,13 +23,11 @@ extension ShotScene {
         ShotScene(id: id, size: CGSize(width: 1_200, height: 1_000)) {
             let size = CGSize(width: 1_200, height: 1_000)
             let uiStore = UiStore()
-            let backing = boardLibraryBacking(
-                uiStore: uiStore,
-                openAlbum: true,
-                coverGallery: linked
-                    ? boardCoverGallery()
-                    : boardCoverGallery(remotes: [], linked: false)
-            )
+            let backing = boardLibraryBacking(uiStore: uiStore, openAlbum: true)
+            let gallery =
+                linked
+                ? boardCoverGallery()
+                : boardCoverGallery(remotes: [], linked: false)
             let images = ImageStore(
                 fetchLibraryImageBytes: { PreviewData.previewArtData($0.id) },
                 fetchReleaseImageBytes: { _, source in
@@ -55,6 +53,7 @@ extension ShotScene {
                     )
                 }
                 .environment(images)
+                .environment(Importer(coverGallery: { .fixed(gallery) }))
             }
             return ShotStage(
                 ShotScenes.libraryWindow(
