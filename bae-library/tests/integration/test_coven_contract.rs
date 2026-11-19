@@ -3,9 +3,9 @@
 #[tokio::test]
 async fn real_schema_opens_with_the_declarations_and_device_only_files() {
     let directory = tempfile::tempdir().unwrap();
-    let installation =
-        coven::Coven::in_memory(bae_app_dir::AppDir::at(directory.path()).unwrap().coven_app_dir());
     let sources = bae_library::test_libraries::TestSources::system();
+    let installation =
+        sources.installation(bae_app_dir::AppDir::at(directory.path()).unwrap().coven_app_dir());
     let handle = bae_store::test_devices::create_test_store(
         sources.builder(&installation),
         bae_library::SCHEMA,
@@ -14,10 +14,7 @@ async fn real_schema_opens_with_the_declarations_and_device_only_files() {
     )
     .await
     .unwrap();
-    let records = bae_records::Records::new(
-        bae_store::test_devices::store_under(handle.clone(), sources.clock().clone()),
-        sources.ids().clone(),
-    );
+    let records = bae_records::Records::new(sources.store(handle.clone()), sources.ids().clone());
     let artist = bae_records::DbArtist {
         id: coven::IdSource::new_id(&**sources.ids()).to_string(),
         name: "Schema Artist".into(),
