@@ -25,7 +25,8 @@ use super::rtp::NtpTime;
 use super::rtsp::{Method, RtspConnection, RtspRequest, RtspResponse, UNAUTHORIZED};
 use super::stream::{
     poisoned_connection, MonotonicClock, PayloadCrypto, PcmFeed, RaopStream, RaopStreamControl,
-    RtpAudio, StreamEndpoints, StreamSockets, DEFAULT_LATENCY_FRAMES, FRAMES_PER_PACKET,
+    RtpAudio, StreamEndpoints, StreamFailure, StreamSockets, DEFAULT_LATENCY_FRAMES,
+    FRAMES_PER_PACKET,
 };
 
 /// A failure setting up or running a RAOP session.
@@ -335,11 +336,12 @@ impl RaopSession {
         let mut conn = open(receiver, rtsp_port, verification, password)?;
         let local_ip = conn.local_addr();
 
-        // Bind the timing and control sockets before SETUP so their ports can be
-        // announced: the receiver sends timing requests to the former, and sync
-        // packets leave from the latter.
-        let sockets = StreamSockets::bind()?;
-        let local_timing_port = sockets.timing_port()?;
+        // Open the timing and control sockets before SETUP so their ports can
+        // be announced: the receiver sends timing requests to the former, which
+        // bae answers from now on, and sync packets leave from the latter.
+        let failure = StreamFailure::new(failed);
+        let sockets = StreamSockets::open(diagnostics, &failure)?;
+        let local_timing_port = sockets.timing_port();
         let local_control_port = sockets.control_port()?;
 
         let session_id = NtpTime::now().fraction;
@@ -366,7 +368,7 @@ impl RaopSession {
             audio_port: negotiated.server_port,
             control_port: negotiated.control_port,
         };
-        let stream_control = RaopStreamControl::new(latency, failed);
+        let stream_control = RaopStreamControl::new(latency, failure);
         let stream = RaopStream::spawn(
             diagnostics,
             feed,
@@ -380,7 +382,6 @@ impl RaopSession {
             },
             sockets,
             clock,
-            true, // RAOP sends periodic sync packets
             stream_control.clone(),
         )?;
 

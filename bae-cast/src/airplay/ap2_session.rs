@@ -3,10 +3,16 @@
 //! After transient pair-setup establishes the shared secret, an AirPlay 2
 //! sender drives its control messages over the HomeKit secure transport
 //! ([`super::ap2_channel::HapChannel`]): SETUP (session), SETUP (audio stream,
-//! carrying the `shk` audio key), SETPEERS (the timing-peer list), and
-//! SETRATEANCHORTIME (the RTP-timeline anchor), then RECORD. The bodies are
-//! binary plists ([`super::bplist`]); the message shapes follow the MIT
-//! `airplay2-rs` and pyatv senders.
+//! carrying the `shk` audio key), SETPEERS (the timing-peer list), then RECORD.
+//! The bodies are binary plists ([`super::bplist`]); the message shapes follow
+//! the MIT `airplay2-rs` and pyatv senders.
+//!
+//! The session keeps time over NTP, as pyatv always does and OwnTone does
+//! without its PTP daemon: bae runs no PTP clock, and a Mac's AirPlay Receiver
+//! refuses a SETUP that announces one nobody answers. Its realtime stream is
+//! anchored by sync packets on the control port, as both senders anchor one,
+//! not by SETRATEANCHORTIME, which a Mac's receiver refuses for it; pause is a
+//! FLUSH, as for RAOP.
 //!
 //! The bodies are pure functions (golden-tested), and the whole sequence is
 //! driven over a real encrypted socket against a scripted fake receiver that
@@ -27,11 +33,10 @@ use super::bplist::{self, Plist};
 use super::digest::{DigestAnswer, DigestPassword, DigestStyle, Unauthorized};
 use super::pairing::PairingError;
 use super::pairing_keys::KeptPairing;
-use super::rtp::NtpTime;
 use super::rtsp::{Method, RtspConnection, RtspRequest, RtspResponse, UNAUTHORIZED};
 use super::stream::{
     poisoned_connection, MonotonicClock, PayloadCrypto, PcmFeed, RaopStream, RaopStreamControl,
-    RtpAudio, StreamEndpoints, StreamSockets, DEFAULT_LATENCY_FRAMES,
+    RtpAudio, StreamEndpoints, StreamFailure, StreamSockets, DEFAULT_LATENCY_FRAMES,
 };
 
 const BPLIST_CONTENT_TYPE: &str = "application/x-apple-binary-plist";
@@ -44,34 +49,21 @@ const BPLIST_CONTENT_TYPE: &str = "application/x-apple-binary-plist";
 /// sends `AirPlay/550.10`.
 pub(crate) const AP2_USER_AGENT: &str = "AirPlay/999.0.0";
 
-/// The SETUP session (step 1) body: the timing protocol and session identity the
-/// receiver keys its session on. NTP mode omits the PTP `timingPeerInfo`.
+/// The SETUP session (step 1) body: NTP timing at bae's timing port, and the
+/// session identity the receiver keys its session on.
 pub(crate) fn setup_session_body(
-    timing_protocol: &str,
     group_uuid: &str,
     session_uuid: &str,
     mac_address: &str,
     timing_port: u16,
-    local_ip: IpAddr,
 ) -> Plist {
-    let mut entries = vec![
-        ("timingProtocol".to_string(), Plist::String(timing_protocol.to_string())),
+    Plist::Dict(vec![
+        ("timingProtocol".to_string(), Plist::String("NTP".to_string())),
         ("groupUUID".to_string(), Plist::String(group_uuid.to_string())),
         ("sessionUUID".to_string(), Plist::String(session_uuid.to_string())),
         ("macAddress".to_string(), Plist::String(mac_address.to_string())),
         ("timingPort".to_string(), Plist::Integer(u64::from(timing_port))),
-    ];
-    if timing_protocol == "PTP" {
-        // The receiver listens for our PTP clock on these addresses.
-        entries.push((
-            "timingPeerInfo".to_string(),
-            Plist::Dict(vec![(
-                "Addresses".to_string(),
-                Plist::Array(vec![Plist::String(local_ip.to_string())]),
-            )]),
-        ));
-    }
-    Plist::Dict(entries)
+    ])
 }
 
 /// The SETUP audio-stream (step 2) body: one realtime stream with the audio key
@@ -96,25 +88,6 @@ pub(crate) fn setup_stream_body(shk: &[u8; 32], control_port: u16, timing_port: 
 /// The SETPEERS body: the timing peers as an array of IP-address strings.
 pub(crate) fn set_peers_body(peers: &[IpAddr]) -> Plist {
     Plist::Array(peers.iter().map(|ip| Plist::String(ip.to_string())).collect())
-}
-
-/// The SETRATEANCHORTIME body: `rate` 1 to play or 0 to pause, the RTP timestamp
-/// the anchor pins, and — for PTP timing — the network-time anchor it maps to.
-pub(crate) fn set_rate_anchor_body(
-    rate: u8,
-    rtp_time: u32,
-    ptp_anchor: Option<(u64, u32, u64)>,
-) -> Plist {
-    let mut entries = vec![
-        ("rate".to_string(), Plist::Integer(u64::from(rate))),
-        ("rtpTime".to_string(), Plist::Integer(u64::from(rtp_time))),
-    ];
-    if let Some((secs, frac, timeline_id)) = ptp_anchor {
-        entries.push(("networkTimeSecs".to_string(), Plist::Integer(secs)));
-        entries.push(("networkTimeFrac".to_string(), Plist::Integer(u64::from(frac))));
-        entries.push(("networkTimeTimelineID".to_string(), Plist::Integer(timeline_id)));
-    }
-    Plist::Dict(entries)
 }
 
 /// The receiver's ports and reported latency parsed from a SETUP audio-stream
@@ -248,9 +221,8 @@ impl Ap2Control {
         }
     }
 
-    /// The §control sequence a HomePod requires: SETUP (session), SETUP (audio
-    /// stream), SETPEERS, SETRATEANCHORTIME, RECORD — returning the receiver's
-    /// audio/control ports.
+    /// The control sequence: SETUP (session), SETUP (audio stream), SETPEERS,
+    /// RECORD — returning the receiver's audio/control ports.
     pub(crate) fn run_setup_sequence(
         &mut self,
         shk: &[u8; 32],
@@ -259,12 +231,10 @@ impl Ap2Control {
         self.plist_request(
             Method::Setup,
             &setup_session_body(
-                &session.timing_protocol,
                 &session.group_uuid,
                 &session.session_uuid,
                 &session.mac_address,
                 session.local_timing_port,
-                session.local_ip,
             ),
             "SETUP(session)",
         )?;
@@ -288,34 +258,14 @@ impl Ap2Control {
             "SETPEERS",
         )?;
 
-        // SETRATEANCHORTIME: anchor the RTP timeline to the network clock.
-        self.request_expecting(
-            &RtspRequest::with_body(
-                Method::SetRateAnchorTime,
-                self.uri.clone(),
-                BPLIST_CONTENT_TYPE,
-                bplist::encode(&set_rate_anchor_body(1, 0, session.ptp_anchor)),
-            ),
-            "SETRATEANCHORTIME",
-        )?;
-
         self.request_expecting(&RtspRequest::new(Method::Record, self.uri.clone()), "RECORD")?;
         Ok(ports)
     }
 
-    /// Change the playback rate with a fresh SETRATEANCHORTIME — `0` pauses the
-    /// receiver's rendering, `1` resumes it. AirPlay 2's equivalent of RAOP's
-    /// FLUSH / re-anchor.
-    pub(crate) fn set_rate(&mut self, rate: u8) -> Result<(), Ap2Error> {
-        self.request_expecting(
-            &RtspRequest::with_body(
-                Method::SetRateAnchorTime,
-                self.uri.clone(),
-                BPLIST_CONTENT_TYPE,
-                bplist::encode(&set_rate_anchor_body(rate, 0, None)),
-            ),
-            "SETRATEANCHORTIME",
-        )?;
+    /// FLUSH the receiver's buffer (pause / pre-seek), as OwnTone pauses an
+    /// AirPlay 2 receiver.
+    pub(crate) fn flush(&mut self) -> Result<(), Ap2Error> {
+        self.request_expecting(&RtspRequest::new(Method::Flush, self.uri.clone()), "FLUSH")?;
         Ok(())
     }
 
@@ -389,16 +339,12 @@ impl Ap2Control {
 
 /// The session-identity and port parameters the AirPlay 2 setup sequence carries.
 pub(crate) struct Ap2SetupParams {
-    pub timing_protocol: String,
     pub group_uuid: String,
     pub session_uuid: String,
     pub mac_address: String,
-    pub local_ip: IpAddr,
     pub local_control_port: u16,
     pub local_timing_port: u16,
     pub peers: Vec<IpAddr>,
-    /// The PTP anchor (network seconds, fraction, timeline id) when timing is PTP.
-    pub ptp_anchor: Option<(u64, u32, u64)>,
 }
 
 /// How each AirPlay 2 session proves bae to its receiver, which gives the
@@ -452,9 +398,9 @@ pub(crate) fn pair_once(
 }
 
 /// A cloneable handle to a running AirPlay 2 session's controls, matching the
-/// RAOP one's shape: pause (rate 0) / resume (rate 1 + re-anchor) map to
-/// SETRATEANCHORTIME, teardown to an encrypted TEARDOWN. The encrypted control
-/// connection is behind a mutex because only these methods touch it.
+/// RAOP one's shape: pause is an encrypted FLUSH, resume re-anchors the
+/// sender's pacing, and teardown is an encrypted TEARDOWN. The encrypted
+/// control connection is behind a mutex because only these methods touch it.
 #[derive(Clone)]
 struct Ap2SessionControl {
     control: Arc<Mutex<Ap2Control>>,
@@ -462,15 +408,16 @@ struct Ap2SessionControl {
 }
 
 impl Ap2SessionControl {
-    /// Pause the receiver's rendering (rate 0) — AirPlay 2's FLUSH.
+    /// FLUSH the receiver's buffer (pause / pre-seek).
     fn flush(&self) -> Result<(), Ap2Error> {
-        self.connection()?.set_rate(0)
+        self.connection()?.flush()
     }
 
-    /// Resume rendering (rate 1) and re-anchor the sender's pacing.
-    fn reanchor(&self) -> Result<(), Ap2Error> {
+    /// Re-anchor the sender's pacing (resume / post-seek): the audio thread
+    /// restarts its lead and re-marks the stream, and the next sync packet
+    /// anchors the receiver again.
+    fn reanchor(&self) {
         self.stream.reanchor();
-        self.connection()?.set_rate(1)
     }
 
     /// TEARDOWN the session on the receiver.
@@ -494,9 +441,9 @@ pub(crate) struct Ap2Session {
 
 impl Ap2Session {
     /// Connect to an AirPlay 2 receiver, pair as `auth` says naming this
-    /// device `client_name`, drive the encrypted
-    /// SETUP/SETPEERS/SETRATEANCHORTIME/RECORD sequence, and start streaming
-    /// `feed` as ChaCha-encrypted audio.
+    /// device `client_name`, drive the encrypted SETUP/SETPEERS/RECORD
+    /// sequence while answering the receiver's timing requests, and start
+    /// streaming `feed` as ChaCha-encrypted audio.
     pub(crate) fn start(
         diagnostics: &bae_diagnostics::Diagnostics,
         receiver: IpAddr,
@@ -505,20 +452,20 @@ impl Ap2Session {
         auth: &Ap2Auth,
         feed: PcmFeed,
         failed: AirPlayFailed,
-        timing: super::airplay2::TimingProtocol,
         clock: Arc<dyn MonotonicClock>,
         ids: &dyn coven::IdSource,
     ) -> Result<Self, Ap2Error> {
-        use super::airplay2::TimingProtocol;
-
         let mut conn = RtspConnection::connect(receiver, airplay_port, AP2_USER_AGENT)?;
         let local_ip = conn.local_addr();
 
         let shared = auth.session_secret(&mut conn, client_name)?;
 
-        // Bind the timing/control sockets before SETUP so their ports are announced.
-        let sockets = StreamSockets::bind()?;
-        let local_timing_port = sockets.timing_port()?;
+        // Open the timing/control sockets before SETUP so their ports are
+        // announced. bae answers timing requests from now on: the receiver
+        // syncs its clock before it answers SETUP (stream).
+        let failure = StreamFailure::new(failed);
+        let sockets = StreamSockets::open(diagnostics, &failure)?;
+        let local_timing_port = sockets.timing_port();
         let local_control_port = sockets.control_port()?;
 
         let shk = audio_key(&shared);
@@ -526,30 +473,15 @@ impl Ap2Session {
         let group_uuid = ids.new_id().to_string();
         let uri = format!("rtsp://{local_ip}/{session_uuid}");
 
-        // A receiver that requires PTP is told so, and its SETRATEANCHORTIME carries
-        // the network-time anchor; NTP receivers use the RAOP-style timing responder
-        // and no anchor. The decision is the one `TimingProtocol::from_features` made.
-        let (timing_protocol, ptp_anchor) = match timing {
-            TimingProtocol::Ptp => {
-                let now = NtpTime::now();
-                let timeline_id = rand::random::<u64>();
-                ("PTP".to_string(), Some((u64::from(now.seconds), now.fraction, timeline_id)))
-            }
-            TimingProtocol::Ntp => ("NTP".to_string(), None),
-        };
-
         let mut control =
             Ap2Control::new(conn.into_stream(), &shared, uri, AP2_USER_AGENT, auth.password())?;
         let params = Ap2SetupParams {
-            timing_protocol,
             group_uuid,
             session_uuid,
             mac_address: local_mac_address(),
-            local_ip,
             local_control_port,
             local_timing_port,
             peers: vec![local_ip, receiver],
-            ptp_anchor,
         };
         let ports = control.run_setup_sequence(&shk, &params)?;
 
@@ -561,7 +493,7 @@ impl Ap2Session {
             control_port: ports.control_port,
         };
         let cipher = Ap2AudioCipher::from_shared_secret(&shared);
-        let stream_control = RaopStreamControl::new(latency, failed);
+        let stream_control = RaopStreamControl::new(latency, failure);
         let stream = RaopStream::spawn(
             diagnostics,
             feed,
@@ -575,7 +507,6 @@ impl Ap2Session {
             },
             sockets,
             clock,
-            false, // AirPlay 2 anchors with SETRATEANCHORTIME, not RAOP sync packets
             stream_control.clone(),
         )?;
 
@@ -588,8 +519,8 @@ impl Ap2Session {
         self.control.flush()
     }
 
-    pub(crate) fn reanchor(&self) -> Result<(), Ap2Error> {
-        self.control.reanchor()
+    pub(crate) fn reanchor(&self) {
+        self.control.reanchor();
     }
 
     /// The receiver latency the stream paces by, settled by the SETUP sequence.

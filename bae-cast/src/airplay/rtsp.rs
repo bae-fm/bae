@@ -37,8 +37,6 @@ pub(crate) enum Method {
     Post,
     /// AirPlay 2 timing-peer list (`SETPEERS`).
     SetPeers,
-    /// AirPlay 2 RTP-timeline anchor (`SETRATEANCHORTIME`).
-    SetRateAnchorTime,
     #[cfg(test)]
     Other(String),
 }
@@ -55,7 +53,6 @@ impl Method {
             Method::Teardown => "TEARDOWN",
             Method::Post => "POST",
             Method::SetPeers => "SETPEERS",
-            Method::SetRateAnchorTime => "SETRATEANCHORTIME",
             #[cfg(test)]
             Method::Other(s) => s,
         }

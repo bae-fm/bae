@@ -16,7 +16,6 @@ use bae_playback::airplay_output::{
 use bae_playback::renderer::CastReceiver;
 use bae_playback::AudioError;
 
-use super::airplay2::TimingProtocol;
 use super::ap2_session::{Ap2Auth, Ap2Error, Ap2Session};
 use super::capabilities::RaopEncryption;
 use super::crypto::{apple_public_key, RaopCipher};
@@ -137,8 +136,6 @@ pub(crate) struct Ap2Sink {
     receiver: IpAddr,
     /// The receiver's AirPlay control port (`_airplay._tcp`, usually 7000).
     airplay_port: u16,
-    /// The clock the receiver requires, decided from its features — PTP or NTP.
-    timing: TimingProtocol,
     /// The name each session's pairing gives this device.
     client_name: String,
     /// How each session proves bae to the receiver.
@@ -157,14 +154,13 @@ impl Ap2Sink {
     pub(crate) fn new(
         receiver: IpAddr,
         airplay_port: u16,
-        timing: TimingProtocol,
         client_name: String,
         auth: Ap2Auth,
         device: CastReceiver,
         ids: coven::IdSourceRef,
         diagnostics: Diagnostics,
     ) -> Self {
-        Self { receiver, airplay_port, timing, client_name, auth, device, ids, diagnostics }
+        Self { receiver, airplay_port, client_name, auth, device, ids, diagnostics }
     }
 }
 
@@ -183,7 +179,6 @@ impl AirPlaySink for Ap2Sink {
             &self.auth,
             PcmFeed::new(source, wake),
             failed,
-            self.timing,
             Arc::new(SystemClock::new()),
             self.ids.as_ref(),
         )
@@ -202,12 +197,12 @@ impl AirPlaySink for Ap2Sink {
 
 impl AirPlayStreamControl for Ap2Session {
     fn flush(&self) -> Result<(), AirPlayControlError> {
-        self.flush().map_err(|e| AirPlayControlError::new(format!("pause (rate 0) failed: {e}")))
+        self.flush().map_err(|e| AirPlayControlError::new(format!("FLUSH failed: {e}")))
     }
 
     fn reanchor(&self) -> Result<(), AirPlayControlError> {
-        self.reanchor()
-            .map_err(|e| AirPlayControlError::new(format!("resume (rate 1) failed: {e}")))
+        self.reanchor();
+        Ok(())
     }
 
     fn failure(&self) -> Option<String> {

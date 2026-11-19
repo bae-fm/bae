@@ -12,7 +12,6 @@ use bae_playback::airplay_output::AirPlaySink;
 use bae_playback::renderer::CastReceiver;
 use bae_util::task_failure::TaskFailed;
 
-use crate::airplay::airplay2::TimingProtocol;
 use crate::airplay::ap2_pairing::{run_code_pair_setup, start_pin, PAIR_PIN_START, PAIR_SETUP_M1};
 use crate::airplay::ap2_session::{pair_once, Ap2Auth, Ap2Error, AP2_USER_AGENT};
 use crate::airplay::capabilities::{
@@ -169,8 +168,6 @@ impl CastController {
                 Box::new(Ap2Sink::new(
                     addr,
                     port,
-                    // The receiver's features decide whether it requires PTP or accepts NTP.
-                    TimingProtocol::from_features(capabilities.features),
                     target.client_name,
                     auth,
                     target.receiver,

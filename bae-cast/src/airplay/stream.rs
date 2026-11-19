@@ -196,26 +196,34 @@ pub(super) struct RtpAudio {
     pub(super) initial_timestamp: u32,
 }
 
-/// The two sockets a session bound before SETUP so it could announce their
-/// ports: the receiver sends timing requests to `timing`, and RAOP sync packets
-/// leave from `control`.
+/// The sockets a session opens before SETUP so it can announce their ports:
+/// the timing responder answers on one from the start, since a receiver
+/// syncs its clock with bae while it sets the session up (a Mac's AirPlay
+/// Receiver holds SETUP (stream) until it has, as OwnTone's and pyatv's
+/// timing servers, which run before any SETUP, allow), and sync packets leave
+/// from `control`.
 pub(super) struct StreamSockets {
-    pub(super) timing: UdpSocket,
-    pub(super) control: UdpSocket,
+    timing: TimingResponder,
+    control: UdpSocket,
 }
 
 impl StreamSockets {
-    /// Bind both sockets on any local port.
-    pub(super) fn bind() -> std::io::Result<Self> {
+    /// Bind both sockets on any local port and start answering timing
+    /// requests. A responder that panics fails the stream through `failure`.
+    pub(super) fn open(
+        diagnostics: &Diagnostics,
+        failure: &StreamFailure,
+    ) -> std::io::Result<Self> {
+        let timing = UdpSocket::bind((IpAddr::from([0, 0, 0, 0]), 0))?;
         Ok(Self {
-            timing: UdpSocket::bind((IpAddr::from([0, 0, 0, 0]), 0))?,
+            timing: TimingResponder::start(diagnostics, timing, failure.clone())?,
             control: UdpSocket::bind((IpAddr::from([0, 0, 0, 0]), 0))?,
         })
     }
 
     /// The local port the receiver sends timing requests to.
-    pub(super) fn timing_port(&self) -> std::io::Result<u16> {
-        Ok(self.timing.local_addr()?.port())
+    pub(super) fn timing_port(&self) -> u16 {
+        self.timing.port
     }
 
     /// The local port sync packets leave from.
@@ -224,7 +232,50 @@ impl StreamSockets {
     }
 }
 
-/// How often RAOP sync packets go out.
+/// The thread that answers a receiver's timing requests, from when the
+/// session opens its sockets until it ends. Dropping it stops the thread.
+struct TimingResponder {
+    port: u16,
+    stop: Arc<AtomicBool>,
+    /// Joined only once its read was woken; see `Drop`.
+    thread: Option<ReportedThread>,
+}
+
+impl TimingResponder {
+    fn start(
+        diagnostics: &Diagnostics,
+        socket: UdpSocket,
+        failure: StreamFailure,
+    ) -> std::io::Result<Self> {
+        let port = socket.local_addr()?.port();
+        let stop = Arc::new(AtomicBool::new(false));
+        let thread = spawn_timing_thread(diagnostics, socket, failure, stop.clone())?;
+        Ok(TimingResponder { port, stop, thread: Some(thread) })
+    }
+}
+
+impl Drop for TimingResponder {
+    /// Stop the responder: its read blocks until a datagram arrives, so one
+    /// goes to its socket once `stop` is set.
+    fn drop(&mut self) {
+        self.stop.store(true, Ordering::Release);
+        let woken = UdpSocket::bind((IpAddr::from([127, 0, 0, 1]), 0))
+            .and_then(|socket| socket.send_to(&[], (IpAddr::from([127, 0, 0, 1]), self.port)));
+        if let Some(thread) = self.thread.take() {
+            match woken {
+                Ok(_) => thread.join(),
+                // Nothing would end its read but the receiver's next timing
+                // request, so it is left to exit on that rather than block
+                // the teardown.
+                Err(error) => {
+                    warn!("couldn't wake the airplay timing responder to stop it: {error}")
+                }
+            }
+        }
+    }
+}
+
+/// How often sync packets go out.
 const SYNC_INTERVAL: Duration = Duration::from_secs(1);
 
 /// The audio latency in frames a session paces by when its receiver doesn't
@@ -254,8 +305,9 @@ impl PcmFeed {
 }
 
 /// The live push-audio stream shared by both dialects: the UDP audio flow, the
-/// timing responder, and — for RAOP — the periodic sync packets. Dropping it
-/// stops every thread. Created by a session after RECORD.
+/// periodic sync packets that anchor the receiver's timeline, and the timing
+/// responder the session started. Dropping it stops every thread. Created by
+/// a session after its setup.
 pub(crate) struct RaopStream {
     stop: Arc<AtomicBool>,
     /// What the audio sender waits on for frames: woken after `stop` is set,
@@ -263,12 +315,46 @@ pub(crate) struct RaopStream {
     wake: PcmWake,
     /// Dropped to end the sync sender's wait between packets.
     sync_stop: Option<mpsc::Sender<()>>,
-    /// Where a datagram wakes the timing responder from its blocking read,
-    /// once `stop` is set.
-    timing_wake: SocketAddr,
     threads: Vec<ReportedThread>,
-    /// Joined only once its read was woken; see `Drop`.
-    timing: Option<ReportedThread>,
+    /// Stopped after the other threads, when the stream's fields drop.
+    _timing: TimingResponder,
+}
+
+/// Why a stream failed for good, once it has, and the playback output told
+/// of it once: shared by the timing responder, which runs from before SETUP,
+/// and the stream's threads.
+#[derive(Clone)]
+pub(super) struct StreamFailure {
+    cause: Arc<OnceLock<String>>,
+    failed: AirPlayFailed,
+}
+
+impl StreamFailure {
+    /// `failed` is told when the stream fails.
+    pub(super) fn new(failed: AirPlayFailed) -> Self {
+        Self { cause: Arc::new(OnceLock::new()), failed }
+    }
+
+    /// The audio flow has failed persistently — the receiver is unreachable —
+    /// the last send failing with `cause`. The first cause is kept and warned;
+    /// later ones repeat it.
+    fn mark_failed(&self, sends: u32, cause: &std::io::Error) {
+        let failure = format!("{sends} audio sends in a row failed: {cause}");
+        if self.cause.set(failure.clone()).is_ok() {
+            warn!("airplay receiver unreachable: {failure}");
+            self.failed.report();
+        }
+    }
+
+    /// One of the stream's threads panicked, so the receiver gets no more
+    /// audio, sync or timing answers from it: the stream has failed.
+    fn mark_panicked(&self, failed: Bug) {
+        if self.cause.set(failed.to_string()).is_ok() {
+            self.failed.report();
+        } else {
+            debug!("airplay stream already failed before {failed}");
+        }
+    }
 }
 
 /// The shared state a running stream is observed and steered through: how far the
@@ -279,21 +365,19 @@ pub(crate) struct RaopStream {
 pub(super) struct RaopStreamControl {
     frames_sent: Arc<AtomicU64>,
     reanchor: Arc<AtomicU64>,
-    failure: Arc<OnceLock<String>>,
-    /// Told once, when `failure` is first set.
-    failed: AirPlayFailed,
+    failure: StreamFailure,
     latency_frames: u32,
 }
 
 impl RaopStreamControl {
     /// `latency_frames` is the receiver's audio latency (its reported value, else
-    /// the dialect's ~2 s default); `failed` is told when the stream fails.
-    pub(super) fn new(latency_frames: u32, failed: AirPlayFailed) -> Self {
+    /// the dialect's ~2 s default); `failure` is where the stream says it
+    /// failed.
+    pub(super) fn new(latency_frames: u32, failure: StreamFailure) -> Self {
         Self {
             frames_sent: Arc::new(AtomicU64::new(0)),
             reanchor: Arc::new(AtomicU64::new(0)),
-            failure: Arc::new(OnceLock::new()),
-            failed,
+            failure,
             latency_frames,
         }
     }
@@ -308,7 +392,7 @@ impl RaopStreamControl {
 
     /// Why the audio flow to the receiver failed for good, when it has.
     pub(super) fn failure(&self) -> Option<String> {
-        self.failure.get().cloned()
+        self.failure.cause.get().cloned()
     }
 
     /// The receiver's audio latency in frames — how far ahead of the playback
@@ -335,34 +419,23 @@ impl RaopStreamControl {
         self.frames_sent.fetch_add(frames, Ordering::Relaxed);
     }
 
-    /// The audio flow has failed persistently — the receiver is unreachable —
-    /// the last send failing with `cause`. The first cause is kept and warned;
-    /// later ones repeat it.
+    /// The audio flow has failed persistently; see [`StreamFailure`].
     fn mark_failed(&self, sends: u32, cause: &std::io::Error) {
-        let failure = format!("{sends} audio sends in a row failed: {cause}");
-        if self.failure.set(failure.clone()).is_ok() {
-            warn!("airplay receiver unreachable: {failure}");
-            self.failed.report();
-        }
+        self.failure.mark_failed(sends, cause);
     }
 
-    /// One of the stream's threads panicked, so the receiver gets no more
-    /// audio, sync or timing answers from it: the stream has failed.
+    /// One of the stream's threads panicked; see [`StreamFailure`].
     fn mark_panicked(&self, failed: Bug) {
-        if self.failure.set(failed.to_string()).is_ok() {
-            self.failed.report();
-        } else {
-            debug!("airplay stream already failed before {failed}");
-        }
+        self.failure.mark_panicked(failed);
     }
 }
 
 impl RaopStream {
-    /// Spawn the audio, (optional) sync, and timing threads over the already-bound
-    /// sockets in `sockets`. AirPlay 2 anchors its timeline with
-    /// SETRATEANCHORTIME instead of RAOP sync packets, so it passes
-    /// `send_sync = false`. A thread that panics fails the stream, which ends
-    /// the session.
+    /// Spawn the audio and sync threads over the sockets the session opened,
+    /// whose timing responder already runs. Both dialects anchor the
+    /// receiver's timeline with sync packets, as OwnTone and pyatv do for an
+    /// AirPlay 2 realtime stream. A thread that panics fails the stream, which
+    /// ends the session.
     pub(super) fn spawn(
         diagnostics: &Diagnostics,
         feed: PcmFeed,
@@ -371,7 +444,6 @@ impl RaopStream {
         audio: RtpAudio,
         sockets: StreamSockets,
         clock: Arc<dyn MonotonicClock>,
-        send_sync: bool,
         control: RaopStreamControl,
     ) -> std::io::Result<Self> {
         let audio_socket = UdpSocket::bind((IpAddr::from([0, 0, 0, 0]), 0))?;
@@ -379,6 +451,7 @@ impl RaopStream {
         let control_dst = SocketAddr::new(endpoints.receiver, endpoints.control_port);
 
         let PcmFeed { source, wake } = feed;
+        let StreamSockets { timing, control: control_socket } = sockets;
         let (sync_stop, sync_stopped) = mpsc::channel();
         // Built before any thread starts, so a thread that fails to start
         // drops it, which stops the ones already running.
@@ -386,12 +459,8 @@ impl RaopStream {
             stop: Arc::new(AtomicBool::new(false)),
             wake: wake.clone(),
             sync_stop: Some(sync_stop),
-            timing_wake: SocketAddr::new(
-                IpAddr::from([127, 0, 0, 1]),
-                sockets.timing.local_addr()?.port(),
-            ),
             threads: Vec::new(),
-            timing: None,
+            _timing: timing,
         };
         let stop = stream.stop.clone();
         stream.threads.push(spawn_audio_thread(
@@ -415,46 +484,29 @@ impl RaopStream {
                 control: control.clone(),
             },
         )?);
-        stream.timing =
-            Some(spawn_timing_thread(diagnostics, sockets.timing, control.clone(), stop)?);
-        if send_sync {
-            stream.threads.push(spawn_sync_thread(
-                diagnostics,
-                sockets.control,
-                control_dst,
-                audio.initial_timestamp,
-                control,
-                sync_stopped,
-            )?);
-        }
+        stream.threads.push(spawn_sync_thread(
+            diagnostics,
+            control_socket,
+            control_dst,
+            audio.initial_timestamp,
+            control,
+            sync_stopped,
+        )?);
 
         Ok(stream)
     }
 }
 
 impl Drop for RaopStream {
-    /// Stop every thread and wait for each: the audio sender by its wake, the
-    /// sync sender by its channel closing, the timing responder by a datagram
-    /// to its socket.
+    /// Stop the audio and sync threads and wait for each: the audio sender
+    /// by its wake, the sync sender by its channel closing. The timing
+    /// responder stops when its field drops.
     fn drop(&mut self) {
         self.stop.store(true, Ordering::Release);
         self.wake.wake();
         self.sync_stop.take();
-        let timing_woken = UdpSocket::bind((IpAddr::from([127, 0, 0, 1]), 0))
-            .and_then(|socket| socket.send_to(&[], self.timing_wake));
         for thread in self.threads.drain(..) {
             thread.join();
-        }
-        if let Some(timing) = self.timing.take() {
-            match timing_woken {
-                Ok(_) => timing.join(),
-                // Nothing would end its read but the receiver's next timing
-                // request, so it is left to exit on that rather than block
-                // the teardown.
-                Err(error) => {
-                    warn!("couldn't wake the airplay timing responder to stop it: {error}")
-                }
-            }
         }
     }
 }
@@ -590,11 +642,11 @@ fn spawn_sync_thread(
 }
 
 /// Answer the receiver's timing requests until stopped. The read blocks until
-/// a datagram arrives; the stream's drop sends one once `stop` is set.
+/// a datagram arrives; the responder's drop sends one once `stop` is set.
 fn spawn_timing_thread(
     diagnostics: &Diagnostics,
     socket: UdpSocket,
-    control: RaopStreamControl,
+    failure: StreamFailure,
     stop: Arc<AtomicBool>,
 ) -> std::io::Result<ReportedThread> {
     diagnostics.spawn_thread_reported(
@@ -624,7 +676,7 @@ fn spawn_timing_thread(
                 }
             }
         },
-        move |failed| control.mark_panicked(failed),
+        move |failed| failure.mark_panicked(failed),
     )
 }
 

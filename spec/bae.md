@@ -5040,6 +5040,13 @@ play the track's sample rate; it is never sent
 unconverted. A conversion that fails partway stops playback with an error and
 is reported as a bug; no audio is skipped silently.
 
+bae keeps every AirPlay receiver's clock in step with its own over NTP: it
+answers the receiver's timing requests from the moment it starts setting up
+the session, since a receiver such as a Mac's AirPlay Receiver syncs its clock
+before it accepts the stream, and it marks where the stream's audio falls in
+time with a sync packet as the stream starts and one each second after. bae runs no
+PTP clock, so it asks no receiver for PTP timing, even one that advertises PTP.
+
 How to connect is read from what the receiver advertises, never guessed. An
 AirPlay advertisement must state its features; a RAOP one without them states
 none, and a receiver without status flags sets none, as older receivers do; a

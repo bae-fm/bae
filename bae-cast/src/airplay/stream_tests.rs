@@ -115,7 +115,7 @@ fn audio_thread_reporting(
     wake: PcmWake,
     failed: AirPlayFailed,
 ) -> (ReportedThread, RaopStreamControl) {
-    let control = RaopStreamControl::new(88_200, failed);
+    let control = RaopStreamControl::new(88_200, StreamFailure::new(failed));
     let handle = spawn_audio_thread(
         diagnostics,
         AudioThread {
@@ -246,16 +246,16 @@ fn reanchor_re_marks_the_next_packet() {
 #[test]
 fn dropping_the_stream_stops_every_thread() {
     let (source, _packets, _drained) = FixedSource::holding(0);
+    let failure = StreamFailure::new(AirPlayFailed::ignored());
     let stream = RaopStream::spawn(
         &Diagnostics::noop(),
         PcmFeed::new(Box::new(source), PcmWake::unattached()),
         PayloadCrypto::Raop(RaopCipher::none()),
         StreamEndpoints { receiver: IpAddr::from([127, 0, 0, 1]), audio_port: 9, control_port: 9 },
         RtpAudio { ssrc: 1, sample_rate: 44_100, channels: 2, initial_timestamp: 0 },
-        StreamSockets::bind().unwrap(),
+        StreamSockets::open(&Diagnostics::noop(), &failure).unwrap(),
         Arc::new(FarAheadClock),
-        true,
-        RaopStreamControl::new(88_200, AirPlayFailed::ignored()),
+        RaopStreamControl::new(88_200, failure),
     )
     .expect("the stream starts");
 

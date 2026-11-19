@@ -1,6 +1,6 @@
 //! A minimal Apple binary property list (`bplist00`) codec.
 //!
-//! The AirPlay 2 control messages — SETUP, SETPEERS, SETRATEANCHORTIME — carry
+//! The AirPlay 2 control messages — SETUP and SETPEERS — carry
 //! their bodies as binary plists (`application/x-apple-binary-plist`). This
 //! encodes the value tree those bodies need (dicts, arrays, strings, integers,
 //! reals, booleans, byte blobs) into the CoreFoundation format, and decodes a

@@ -28,18 +28,3 @@ fn audio_cipher_round_trips_and_advances_the_counter() {
         dec.decrypt(Nonce::from_slice(&nonce_bytes), Payload { msg: ct, aad: &aad }).unwrap();
     assert_eq!(plain, payload);
 }
-
-/// PTP is chosen only when the receiver advertises the PTP feature bit.
-#[test]
-fn timing_protocol_follows_features() {
-    assert_eq!(TimingProtocol::from_features(0), TimingProtocol::Ntp);
-    assert_eq!(TimingProtocol::from_features(1 << 41), TimingProtocol::Ptp);
-}
-
-/// Bit 42 is the screen multi-codec bit, not the PTP bit: a receiver that sets
-/// it without bit 41 uses NTP.
-#[test]
-fn only_bit_41_selects_ptp() {
-    assert_eq!(TimingProtocol::from_features(1 << 42), TimingProtocol::Ntp);
-    assert_eq!(TimingProtocol::from_features((1 << 42) | (1 << 41)), TimingProtocol::Ptp);
-}

@@ -1,4 +1,4 @@
-//! AirPlay 2 audio-packet encryption and the clock choice.
+//! AirPlay 2 audio-packet encryption.
 //!
 //! The SRP key from transient pair-setup ([`super::pairing`]) keys the control
 //! channel ([`super::ap2_channel`]) and, through the same HKDF expansion, the
@@ -48,31 +48,6 @@ impl Ap2AudioCipher {
     #[cfg(test)]
     pub(crate) fn counter(&self) -> u64 {
         self.counter
-    }
-}
-
-/// Which clock an AirPlay 2 receiver uses, decided from its features — PTP for
-/// receivers that advertise it, else the NTP timing responder RAOP already runs.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum TimingProtocol {
-    /// The receiver participates in the sender's NTP timing (RAOP-style).
-    Ntp,
-    /// The receiver requires PTP (IEEE 1588) clock synchronization.
-    Ptp,
-}
-
-impl TimingProtocol {
-    /// Bit 41 of the features value (`SupportsPTP`) marks a receiver that uses
-    /// PTP timing. Bit 42 is the screen multi-codec bit.
-    const SUPPORTS_PTP: u64 = 1 << 41;
-
-    /// Decide the timing protocol from a receiver's features value.
-    pub(crate) fn from_features(features: u64) -> Self {
-        if features & Self::SUPPORTS_PTP != 0 {
-            TimingProtocol::Ptp
-        } else {
-            TimingProtocol::Ntp
-        }
     }
 }
 

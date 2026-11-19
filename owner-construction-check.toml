@@ -795,6 +795,9 @@ OpenCalls = "LibrarySessions"
     "PcmFeed::new",
     "RaopStream::spawn",
     "RaopStreamControl::new",
+    "StreamFailure::new",
+    "StreamSockets::open",
+    "TimingResponder::start",
 ]
 "bae-cast/src/cast/channel.rs" = ["CastChannel::new"]
 "bae-cast/src/cast/client.rs" = [
