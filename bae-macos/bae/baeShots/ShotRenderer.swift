@@ -140,8 +140,11 @@ enum ShotRenderer {
         scene: ShotScene
     ) throws {
         let room = try display.screen().visibleFrame
+        guard let shown = window.contentView?.frame.size else {
+            throw ShotError.noContentView(scene.id)
+        }
         guard
-            window.contentView?.frame.size == scene.size,
+            shown == scene.size,
             window.frame.width <= room.width,
             window.frame.height <= room.height
         else {
@@ -149,7 +152,7 @@ enum ShotRenderer {
                 scene.id,
                 content: scene.size,
                 window: window.frame.size,
-                shown: window.contentView?.frame.size ?? .zero,
+                shown: shown,
                 room: room.size
             )
         }
@@ -363,6 +366,7 @@ enum ShotError: Error, CustomStringConvertible {
     case windowNotKey(String)
     case noScreen(String)
     case noShotDisplay(String)
+    case noContentView(String)
     case windowTooLarge(
         String,
         content: CGSize,
@@ -390,6 +394,8 @@ enum ShotError: Error, CustomStringConvertible {
             "another app kept the focus, so scene \(id) would draw inactive"
         case .noScreen(let id):
             "ScreenCaptureKit shares no shot display for scene \(id)'s window"
+        case .noContentView(let id):
+            "scene \(id)'s window has no content view"
         case .noShotDisplay(let why):
             "the renderer has no shot display for the scenes shown in their "
                 + "windows: \(why)"
