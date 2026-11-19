@@ -88,6 +88,7 @@ struct MacQueuePanel: View {
     /// Sets the playing context's shuffle, from the context section's header.
     let onSetShuffle: (Bool) -> Void
 
+    // periphery:ignore - a `.task(id:)` identity: compared, never read.
     /// The panel opens the context's list again when a context appears or
     /// shuffle changes.
     private struct UpcomingOpening: Hashable {

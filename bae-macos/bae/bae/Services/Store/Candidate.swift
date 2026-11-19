@@ -473,14 +473,3 @@ struct Candidate: Equatable, Identifiable {
         detail?.signals.map(Signals.init(bridge:))
     }
 }
-
-extension BridgeReleaseLink {
-    /// The pressing the link names; `nil` for an album, whose pressing is
-    /// unknown.
-    var pressing: BridgePressingLink? {
-        switch self {
-        case .pressing(let link): link
-        case .album: nil
-        }
-    }
-}

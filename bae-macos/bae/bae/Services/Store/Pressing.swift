@@ -7,9 +7,6 @@ import BaeKit
 struct Pressing: Equatable, Identifiable {
     /// The release whose facts the row shows.
     let lead: BridgeMetadataResult
-    /// Every source's record of this pressing, `lead` first. The row is picked
-    /// whole, so these are not separate picks.
-    let releases: [BridgeMetadataResult]
     /// Every label the records state, each name once with its catalog
     /// numbers, in the order of the record the row leads with.
     let labels: [BridgeStatedLabelLine]
@@ -64,7 +61,6 @@ struct Pressing: Equatable, Identifiable {
     init?(bridge: BridgePressing) {
         guard let lead = bridge.releases.first else { return nil }
         self.lead = lead
-        releases = bridge.releases
         labels = bridge.labels
         years = bridge.years.map(\.stated)
         barcodes = bridge.barcodes.map(\.stated)

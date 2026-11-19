@@ -5,9 +5,16 @@ import Observation
 
 /// What narrows the import list's rows: the tab, the typed text and Found's
 /// filter entry. A count belongs to the narrowing its list was read under.
+///
+/// Periphery, the dead-code check, treats the compiler's generated `==` as
+/// writing these properties without reading them, so a `periphery:ignore`
+/// comment above each property makes Periphery skip it.
 struct ImportListNarrowing: Equatable {
+    // periphery:ignore
     let tab: BridgeTriageTab
+    // periphery:ignore
     let filterText: String
+    // periphery:ignore
     let pendingFilter: BridgePendingFilter
 
     init(of view: BridgeImportListView) {
@@ -100,6 +107,7 @@ final class ImportListSlot {
     @ObservationIgnored
     private let onSelection:
         @MainActor @Sendable (BridgeSelectionSummary) -> Void
+    // periphery:ignore - held for its lifetime: dropping it ends the reads.
     /// The reads around the list: the summary, Found's filter entries and
     /// the selection.
     @ObservationIgnored
@@ -203,8 +211,8 @@ final class ImportListSlot {
     /// The list on screen.
     var list: PaginatedList<BridgeImportListItem>? { current?.list }
 
-    /// The request the list on screen reads, which the filter field's count
-    /// is checked against.
+    // periphery:ignore - read by baeTests
+    /// The request the list on screen reads.
     var shown: BridgeImportListRequest? { current?.request }
 
     /// How many of the tab's rows the list shows, when the list on screen

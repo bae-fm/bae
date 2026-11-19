@@ -240,26 +240,11 @@ extension ReleaseSelectionFailureTests {
         "a row whose document could not be read says so, and Retry identifies again"
     )
     func unreadRowSaysSoAndRetriesTheRun() async throws {
-        let offered = try #require(
-            PreviewData.searchStateFoundExact.identifiedGroups.first?.pressings
-                .first
+        var offered = try #require(
+            PreviewData.searchGroupExactBridge.sections.first?.pressings.first
         )
-        let pressing = try #require(
-            Pressing(
-                bridge: BridgePressing(
-                    releases: offered.releases,
-                    sources: offered.sources,
-                    labels: offered.labels.map { line in
-                        BridgeLabelLine(
-                            names: line.names,
-                            catalogNumbers: line.catalogNumbers.map(\.text)
-                        )
-                    },
-                    documentFailure: .timeout,
-                    pick: offered.link
-                )
-            )
-        )
+        offered.documentFailure = .timeout
+        let pressing = try #require(Pressing(bridge: offered))
         let message = BridgeLookupFailure.timeout.unreadDocumentLine
         var retried = false
         var selected: Pressing?

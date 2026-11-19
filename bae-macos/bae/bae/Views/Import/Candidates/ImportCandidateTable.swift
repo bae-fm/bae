@@ -129,6 +129,7 @@ struct ImportCandidateTable: NSViewRepresentable {
     }
 }
 
+// periphery:ignore - compared to tell a changed list, never read.
 /// Which rows a table shows of its list: how many, and the revision of
 /// their content.
 struct ImportCandidateTableRows: Equatable {

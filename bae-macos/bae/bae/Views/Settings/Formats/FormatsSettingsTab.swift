@@ -246,7 +246,7 @@ private enum SavePresetReadState: Equatable {
 private final class SavePresetRead {
     private(set) var state = SavePresetReadState.waiting
     @ObservationIgnored
-    private var subscription: AnyObject?
+    private var subscription: ScreenSubscription<SavePresetSubscription>?
 
     /// Follow `source`, handing a failed read to `fail`.
     func open(

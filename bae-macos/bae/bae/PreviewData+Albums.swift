@@ -264,6 +264,7 @@
             )
         }
 
+        // periphery:ignore - called by baeShots
         /// The album the boards open in the library window: "Low Tide Hours"
         /// by Mara Quill, one CD of ten tracks under no disc heading, as
         /// the boards list them with their lengths.

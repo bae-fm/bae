@@ -5,7 +5,6 @@ import SwiftUI
 /// candidate's picker under the source the person picks, and the catalog
 /// lookup whose covers core stores.
 struct CoverSheetView: View {
-    let owner: BridgeCoverGalleryOwner
     /// The cover the owner has now, which the sheet can't pick again; `nil`
     /// where the gallery shows the saved cover itself.
     let selectedCover: BridgeCoverSelection?
@@ -31,7 +30,6 @@ struct CoverSheetView: View {
         onSelect: @escaping (BridgeCoverSelection) async throws -> Void,
         onDone: @escaping () -> Void
     ) {
-        self.owner = owner
         self.selectedCover = selectedCover
         self.lightboxLoad = lightboxLoad
         self.onFindRelease = onFindRelease

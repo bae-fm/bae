@@ -62,6 +62,7 @@ final class S3KeyReplacement {
     }
 
     #if DEBUG
+        // periphery:ignore - called by baeShots
         /// A replacement showing `sheet` and `line`, with no call behind it,
         /// for a shot.
         init(sheet: Sheet? = nil, line: Line? = nil) {
@@ -196,6 +197,7 @@ struct S3KeySheet: View {
     }
 
     #if DEBUG
+        // periphery:ignore - called by baeShots
         /// The sheet with `accessKey` and `secretKey` already typed, for a
         /// shot.
         init(

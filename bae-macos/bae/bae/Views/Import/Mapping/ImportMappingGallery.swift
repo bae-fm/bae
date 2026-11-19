@@ -25,11 +25,7 @@ struct ImportMappingGallery: View {
             spacing: ThemeSpace.related
         ) {
             ForEach(images, id: \.fileId) { image in
-                ImportMappingGalleryTile(
-                    image: image,
-                    images: images,
-                    onOpen: onOpen
-                )
+                ImportMappingGalleryTile(image: image, onOpen: onOpen)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -53,8 +49,6 @@ struct MacImportImages: View {
 /// the cover well makes it the cover.
 struct ImportMappingGalleryTile: View {
     let image: BridgeMappingImage
-    /// Every gallery image, for the lightbox to page through.
-    let images: [BridgeMappingImage]
     let onOpen: (String) -> Void
 
     @State

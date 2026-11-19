@@ -571,10 +571,11 @@ extension ImportMappingPaneTests {
         )
         #expect(candidate.metadataProvenance == MappingFixtures.provenance)
         #expect(candidate.mapping.trackMappings.count == 13)
-        #expect(
-            candidate.releaseLink?.pressing?.record.key
-                == MappingFixtures.releaseId
-        )
+        guard case .pressing(let link) = candidate.releaseLink else {
+            Issue.record("the candidate links a pressing")
+            return
+        }
+        #expect(link.record.key == MappingFixtures.releaseId)
     }
 }
 

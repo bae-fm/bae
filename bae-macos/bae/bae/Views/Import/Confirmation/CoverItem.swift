@@ -67,14 +67,6 @@ enum RemoteCoverItems: Equatable {
     case linked([CoverItem])
     case failed([CoverItem], failure: DisplayError?)
 
-    var items: [CoverItem] {
-        switch self {
-        case .unlinked: []
-        case .loading(let items), .linked(let items), .failed(let items, _):
-            items
-        }
-    }
-
     var isLoading: Bool {
         if case .loading = self { return true }
         return false
