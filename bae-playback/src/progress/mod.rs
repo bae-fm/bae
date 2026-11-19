@@ -42,6 +42,10 @@ pub struct PreviewPosition {
     pub duration_ms: u64,
     pub position_ms: u64,
     pub progress: f64,
+    /// How many seeks by the seek bar the preview player has taken of this
+    /// clip, which a bar that holds the drop's position until the player
+    /// takes the seek compares with its count at the drop.
+    pub seeks: u64,
 }
 
 /// The one playback presentation an operating-system media surface should
@@ -177,6 +181,7 @@ impl PlaybackValues {
             | PlaybackProgress::SeekTaken { .. }
             | PlaybackProgress::PreviewPositionUpdate { .. }
             | PlaybackProgress::PreviewSeeked { .. }
+            | PlaybackProgress::PreviewSeekTaken
             | PlaybackProgress::TrackCompleted { .. }
             | PlaybackProgress::DecodeStats { .. }
             | PlaybackProgress::ServiceEnded => None,
@@ -245,16 +250,19 @@ impl PlaybackPositions {
             ) => {
                 // The same clip pausing, resuming or reloading for a seek
                 // keeps its place; another clip starts from its beginning.
-                let (position_ms, progress) = next
+                let (position_ms, progress, seeks) = next
                     .preview
                     .as_ref()
                     .filter(|preview| preview.target == *target)
-                    .map_or((0, 0.0), |preview| (preview.position_ms, preview.progress));
+                    .map_or((0, 0.0, 0), |preview| {
+                        (preview.position_ms, preview.progress, preview.seeks)
+                    });
                 next.preview = Some(PreviewPosition {
                     target: target.clone(),
                     duration_ms: *duration_ms,
                     position_ms,
                     progress,
+                    seeks,
                 });
             }
             PlaybackProgress::PreviewPositionUpdate { position_ms, progress } => {
@@ -276,6 +284,9 @@ impl PlaybackPositions {
                 };
                 preview.position_ms = *position_ms;
                 preview.progress = *progress;
+            }
+            PlaybackProgress::PreviewSeekTaken => {
+                next.preview.as_mut()?.seeks += 1;
             }
             PlaybackProgress::VolumeChanged { .. }
             | PlaybackProgress::MuteChanged { .. }
@@ -412,6 +423,10 @@ pub enum PlaybackProgress {
         position_ms: u64,
         progress: f64,
     },
+    /// The preview player took a seek the seek bar made on the preview,
+    /// whether it moved the preview or ended it: the preview's
+    /// [`PreviewPosition::seeks`] counts it.
+    PreviewSeekTaken,
     /// A service ended and its end has been told: nothing of it follows, and
     /// whatever comes next is another service's.
     ServiceEnded,

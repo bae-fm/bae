@@ -222,7 +222,8 @@ struct PlaybackProgressViewTests {
                     target: target,
                     durationMs: 180_000,
                     positionMs: 45_000,
-                    progress: 0.25
+                    progress: 0.25,
+                    seeks: 0
                 )
             )
             try await Wait.untilText(of: labels, is: ["0:45", "3:00"])
@@ -233,7 +234,8 @@ struct PlaybackProgressViewTests {
                     target: target,
                     durationMs: 240_000,
                     positionMs: 120_000,
-                    progress: 0.5
+                    progress: 0.5,
+                    seeks: 0
                 )
             )
             bar.previews.frame()
@@ -243,6 +245,68 @@ struct PlaybackProgressViewTests {
             preview.remove()
             try await Wait.untilText(of: labels, is: ["", ""])
             #expect(slider.doubleValue == 0)
+        }
+    }
+}
+
+@Suite("Preview seek bar drop", .serialized)
+@MainActor
+struct PreviewSeekBarDropTests {
+    private static let target = BridgePreviewTarget(
+        path: Data("/Music/Track.flac".utf8),
+        name: "Track.flac",
+        startSample: 0,
+        endSample: nil
+    )
+
+    private static func clip(
+        _ positionMs: UInt64,
+        progress: Double,
+        seeks: UInt64
+    ) -> BridgePreviewPosition {
+        BridgePreviewPosition(
+            target: target,
+            durationMs: 180_000,
+            positionMs: positionMs,
+            progress: progress,
+            seeks: seeks
+        )
+    }
+
+    /// The preview's bar keeps the dropped position and fill, whatever the
+    /// playing ticks say, until the stream counts the seek the player took.
+    @Test("a preview's drop stays until the player takes the seek")
+    func dropStaysUntilTheSeekIsTaken() async throws {
+        let preview = LatestStream<BridgePreviewPosition>.written()
+        preview.set(Self.clip(45_000, progress: 0.25, seeks: 0))
+        try await SnapshotTestSupport.withHostedWindow(
+            PreviewProgressView(onSeek: { _ in })
+                .environment(\.previewPosition, preview.stream.only),
+            size: NSSize(width: 460, height: 40)
+        ) { window, host in
+            try await SnapshotTestSupport.settle(host)
+            let descendants = SnapshotTestSupport.descendants(of: host)
+            let slider = try #require(
+                descendants.compactMap { $0 as? SeekSlider }.first
+            )
+            let bar = try #require(
+                descendants.compactMap { $0 as? SeekBarNSView }.first
+            )
+            let labels = descendants.compactMap { $0 as? NSTextField }
+            try clickMiddle(of: slider, in: window)
+            #expect(labels.map(\.stringValue) == ["1:30", "3:00"])
+
+            preview.set(Self.clip(47_000, progress: 0.26, seeks: 0))
+            bar.previews.frame()
+            #expect(labels.map(\.stringValue) == ["1:30", "3:00"])
+            #expect(abs(slider.doubleValue - 0.5) < 0.05)
+
+            preview.set(Self.clip(90_000, progress: 0.5, seeks: 1))
+            bar.previews.frame()
+            preview.set(Self.clip(91_000, progress: 0.51, seeks: 1))
+            bar.previews.frame()
+            #expect(labels.map(\.stringValue) == ["1:31", "3:00"])
+            #expect(abs(slider.doubleValue - 0.51) < 0.001)
         }
     }
 }

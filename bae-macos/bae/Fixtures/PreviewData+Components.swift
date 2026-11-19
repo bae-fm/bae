@@ -45,7 +45,8 @@ extension PreviewData {
                 ),
                 durationMs: durationMs,
                 positionMs: positionMs,
-                progress: Double(positionMs) / Double(durationMs)
+                progress: Double(positionMs) / Double(durationMs),
+                seeks: 0
             )
         )
         .only

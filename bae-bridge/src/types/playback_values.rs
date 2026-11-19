@@ -261,6 +261,10 @@ pub struct BridgePreviewPosition {
     pub duration_ms: u64,
     pub position_ms: u64,
     pub progress: f64,
+    /// How many seeks by the seek bar the preview player has taken of this
+    /// clip: a bar that holds the position its drop named shows the stream's
+    /// position again once this is more than it was at the drop.
+    pub seeks: u64,
 }
 
 /// What the operating-system media surface shows. Mirrors
@@ -415,8 +419,15 @@ impl BridgeLoadingTrack {
 impl BridgePreviewPosition {
     /// The preview's position.
     pub(crate) fn from_core(position: bae_playback::PreviewPosition) -> Self {
-        let bae_playback::PreviewPosition { target, duration_ms, position_ms, progress } = position;
-        Self { target: BridgePreviewTarget::from_core(target), duration_ms, position_ms, progress }
+        let bae_playback::PreviewPosition { target, duration_ms, position_ms, progress, seeks } =
+            position;
+        Self {
+            target: BridgePreviewTarget::from_core(target),
+            duration_ms,
+            position_ms,
+            progress,
+            seeks,
+        }
     }
 }
 

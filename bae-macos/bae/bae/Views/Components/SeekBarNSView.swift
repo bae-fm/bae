@@ -17,16 +17,21 @@ private struct SeekPosition: Equatable {
     let positionMs: Int64
     /// `nil` when the track's length is unknown.
     let durationMs: UInt64?
-    /// How many seeks playback has taken of the track, or `nil` for a stream
-    /// that doesn't count them.
-    let seeks: UInt64?
+    /// How many seeks playback has taken of the track or clip.
+    let seeks: UInt64
 }
 
-/// The track source a bar follows and the position a drop named on it, which
-/// the bar keeps drawing until playback takes the seek: the drop's position,
+/// The stream a bar follows: a track's position or a preview's.
+private enum FollowedStream: Equatable {
+    case track(LatestSource<BridgeTrackPosition>)
+    case preview(LatestSource<BridgePreviewPosition>)
+}
+
+/// The stream a bar follows and the position a drop named on it, which the
+/// bar keeps drawing until playback takes the seek: the drop's position,
 /// fill and the count of seeks playback had taken then.
-private struct FollowedTrack {
-    let source: LatestSource<BridgeTrackPosition>
+private struct Followed {
+    let stream: FollowedStream
     var dropped: SeekPosition?
 }
 
@@ -100,7 +105,7 @@ final class SeekBarNSView: NSView {
                         progress: $0.progress,
                         positionMs: Int64($0.positionMs),
                         durationMs: $0.durationMs,
-                        seeks: nil
+                        seeks: $0.seeks
                     )
                 }
             )
@@ -110,11 +115,11 @@ final class SeekBarNSView: NSView {
     /// Set while the user drags the slider: the dragged position, shown until
     /// the drag ends. Nil means the leading label follows playback.
     private var draggingPositionMs: Int64?
-    /// The track the bar follows, with the drop that waits for playback to
+    /// The stream the bar follows, with the drop that waits for playback to
     /// take its seek, which the stream says by counting it: the time and the
     /// fill stay at the dropped position while the stream still sends the
-    /// playing one. A drop never outlives its track. Screen state only.
-    private var followed: FollowedTrack?
+    /// playing one. A drop never outlives its stream. Screen state only.
+    private var followed: Followed?
 
     init(showsRemainingTimeToggle: Bool) {
         self.showsRemainingTimeToggle = showsRemainingTimeToggle
@@ -186,14 +191,12 @@ final class SeekBarNSView: NSView {
     func follow(_ source: SeekBarSource?) {
         switch source {
         case .track(let source, let held):
-            if source != followed?.source {
-                followed = FollowedTrack(source: source, dropped: nil)
-            }
+            follow(stream: .track(source))
             previews.stop()
             tracks.follow(source)
             buffered.follow(held)
         case .preview(let source):
-            followed = nil
+            follow(stream: .preview(source))
             tracks.stop()
             buffered.stop()
             slider.held = []
@@ -205,6 +208,12 @@ final class SeekBarNSView: NSView {
             previews.stop()
             slider.held = []
             show(nil)
+        }
+    }
+
+    private func follow(stream: FollowedStream) {
+        if stream != followed?.stream {
+            followed = Followed(stream: stream, dropped: nil)
         }
     }
 
@@ -227,9 +236,7 @@ final class SeekBarNSView: NSView {
             updateLabels()
             return
         }
-        if let held = followed?.dropped?.seeks, let seeks = shown.seeks,
-            seeks > held
-        {
+        if let held = followed?.dropped?.seeks, shown.seeks > held {
             followed?.dropped = nil
         }
         slider.isEnabled = shown.durationMs != nil
@@ -288,7 +295,7 @@ final class SeekBarNSView: NSView {
     /// the seek's target as the position when it takes the seek, and every
     /// view drawing the track shows it from the next frame.
     private func seekCompleted(_ value: Double) {
-        if followed != nil, let shown = position, shown.seeks != nil,
+        if followed != nil, let shown = position,
             let durationMs = shown.durationMs
         {
             followed?.dropped = SeekPosition(

@@ -301,6 +301,10 @@ impl PreviewPlayer {
             .position_at_progress(ratio)
             .expect("a preview window has a length");
         self.seek(position, audio_device).await;
+        // The player has taken the seek, whatever it came to, which a seek
+        // bar that held the drop's position waits to hear. A seek that ended
+        // the preview left it no position, and the count goes with it.
+        emit_progress(&self.progress_tx, PlaybackProgress::PreviewSeekTaken);
     }
 
     /// Seek within the active preview. Tears down the current pipeline (retaining

@@ -177,6 +177,43 @@ fn a_taken_seek_counts_on_its_tracks_position() {
     assert_eq!(seeks(&ticked.applying(&update("track-2", 0)).expect("kept")), 0);
 }
 
+/// A seek the preview player takes counts on its clip's position, and the
+/// count stays through the pauses and ticks after it; another clip starts at
+/// zero, and a preview that ended has no count.
+#[test]
+fn a_taken_preview_seek_counts_on_its_clips_position() {
+    let first = preview_target("/tmp/first.flac");
+    let playing = |target: &bae_track_audio::PreviewTarget| {
+        PlaybackProgress::PreviewStateChanged(PreviewState::Playing {
+            target: target.clone(),
+            duration_ms: 120_000,
+        })
+    };
+    let seeks = |positions: &PlaybackPositions| positions.preview.as_ref().expect("clip").seeks;
+
+    let loaded = PlaybackPositions::initial().applying(&playing(&first)).expect("clip plays");
+    assert_eq!(seeks(&loaded), 0);
+
+    let seeked = loaded.applying(&PlaybackProgress::PreviewSeekTaken).expect("a seek is counted");
+    assert_eq!(seeks(&seeked), 1);
+
+    let ticked = seeked
+        .applying(&PlaybackProgress::PreviewPositionUpdate { position_ms: 5_000, progress: 0.04 })
+        .expect("a tick is kept");
+    assert_eq!(seeks(&ticked), 1, "a tick keeps the count");
+    let reloaded = ticked.applying(&playing(&first)).expect("the same clip reloads");
+    assert_eq!(seeks(&reloaded), 1, "the same clip keeps the count");
+
+    let second = preview_target("/tmp/second.flac");
+    let other = reloaded.applying(&playing(&second)).expect("another clip plays");
+    assert_eq!(seeks(&other), 0);
+
+    let idle = other
+        .applying(&PlaybackProgress::PreviewStateChanged(PreviewState::Idle))
+        .expect("the preview ends");
+    assert!(idle.applying(&PlaybackProgress::PreviewSeekTaken).is_none());
+}
+
 #[test]
 fn a_preview_position_names_its_clip_and_keeps_its_place_only_on_that_clip() {
     let first = preview_target("/tmp/first.flac");
@@ -199,6 +236,7 @@ fn a_preview_position_names_its_clip_and_keeps_its_place_only_on_that_clip() {
             duration_ms: 120_000,
             position_ms: 30_000,
             progress: 0.25,
+            seeks: 0,
         })
     );
 
@@ -224,6 +262,7 @@ fn a_preview_position_names_its_clip_and_keeps_its_place_only_on_that_clip() {
             duration_ms: 60_000,
             position_ms: 0,
             progress: 0.0,
+            seeks: 0,
         })
     );
 
