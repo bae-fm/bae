@@ -193,7 +193,7 @@ impl ImportServiceHandle {
         mut accept: impl FnMut(&crate::FolderScanProgress) -> bool,
     ) -> crate::FolderScanProgress {
         let mut scans = bae_store::live_results::LiveResults::new(
-            self.services.tables.subscribe_folder_scan_progress(Default::default()),
+            self.services.tables.subscribe_folder_scan_progress(),
             self.services.diagnostics.bug_sink(),
         );
         loop {

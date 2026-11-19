@@ -333,13 +333,12 @@ impl ImportTables {
     }
 
     /// Where each watched folder's scan stands, live, with an alert for each
-    /// problem not among the raised alerts the request names, starting from
-    /// `initial`. A new request changes them on the same query.
+    /// problem not among the raised alerts the request names, which start as
+    /// none. A new request changes them on the same query.
     pub fn subscribe_folder_scan_progress(
         &self,
-        initial: RaisedScanAlerts,
     ) -> coven::ReconfigurableLiveQuery<RaisedScanAlerts, FolderScanProgress, DbError> {
-        self.store.subscribe_reconfigurable(initial, |raised, sql| {
+        self.store.subscribe_reconfigurable(RaisedScanAlerts::new(), |raised, sql| {
             load_folder_scan_progress_on(&sql, raised)
         })
     }

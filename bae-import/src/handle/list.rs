@@ -209,19 +209,18 @@ impl ImportServiceHandle {
     }
 
     /// Each watched folder's scan status, with an alert for each problem not
-    /// among the raised alerts the request names, starting from `initial`: a
+    /// among the raised alerts the request names, which start as none: a
     /// value after each write that changes it, whether a scan stored it or
     /// the folder scan coordinator wrote what it keeps for the scans, and
     /// after each new request.
     pub fn subscribe_folder_scans(
         &self,
-        initial: crate::RaisedScanAlerts,
     ) -> coven::ReconfigurableLiveQuery<
         crate::RaisedScanAlerts,
         crate::FolderScanProgress,
         bae_store::DbError,
     > {
-        self.services.tables.subscribe_folder_scan_progress(initial)
+        self.services.tables.subscribe_folder_scan_progress()
     }
 
     /// The folders bae is scanning, each with how many folders its scan has

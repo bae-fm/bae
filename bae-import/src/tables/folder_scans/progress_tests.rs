@@ -64,7 +64,7 @@ async fn progress_follows_the_walk_in_flight() {
     let generation = tables.begin_folder_scan(root, crate::VolumeKind::Local).await.unwrap();
     tables.save_folder_scan_item(root, generation, &scan_candidate(root, "first")).await.unwrap();
 
-    let mut live = tables.subscribe_folder_scan_progress(Default::default());
+    let mut live = tables.subscribe_folder_scan_progress();
     let initial = live.next_inline().await.expect("the query stays open").result.unwrap();
     assert_eq!(
         initial.statuses[0].status,
@@ -316,7 +316,7 @@ async fn raising_an_alert_drops_it_from_the_live_progress() {
     let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
     tables.finish_folder_scan(&root, generation, Some("offline")).await.unwrap();
 
-    let mut live = tables.subscribe_folder_scan_progress(Default::default());
+    let mut live = tables.subscribe_folder_scan_progress();
     let first = live.next_inline().await.expect("the query stays open").result.unwrap();
     assert_eq!(first.alerts, [music_alert(&root, Failed, "offline")]);
 

@@ -268,9 +268,7 @@ impl AppServices {
     /// read starts with none.
     pub fn subscribe_folder_scans(&self) -> crate::live_reads::LiveFolderScans {
         bae_store::live_query::LiveRead::new(
-            self.inner
-                .manager
-                .until_closed(self.inner.import.subscribe_folder_scans(Default::default())),
+            self.inner.manager.until_closed(self.inner.import.subscribe_folder_scans()),
             |_read, progress| Some(progress),
         )
     }
