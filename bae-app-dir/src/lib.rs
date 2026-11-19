@@ -5,6 +5,8 @@
 //! preferences can be read.
 
 mod removals;
+#[cfg(any(test, feature = "test-utils"))]
+mod test_support;
 
 pub use removals::RemovalLock;
 

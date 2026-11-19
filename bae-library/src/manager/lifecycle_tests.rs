@@ -21,31 +21,22 @@ async fn release_memory_keeps_the_library_readable_and_writable() {
 
 /// Removing the active library closes its custody and removes both directories.
 #[tokio::test]
-#[expect(
-    clippy::disallowed_methods,
-    reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
-)]
 async fn removal_releases_custody_and_preferences() {
     let (test, _temp) = setup_test_manager().await;
     let manager = test.library.manager();
-    let id = manager.store.store_id().to_string();
     manager.ensure_mcp_token().await.unwrap();
     manager.set_mcp_config(bae_preferences::McpConfig::disabled_default()).await.unwrap();
     manager.app_dir.save_active_library(manager.store.store_id()).unwrap();
     manager.remove_library(&test.installation, &|_| ()).await.unwrap();
     assert!(manager.get_mcp_token().await.is_err());
-    assert!(!manager.app_dir.registered_library(&id).exists());
+    assert!(!manager.app_dir.has_registered_library(manager.store.store_id()));
     assert!(test.installation.stores().await.unwrap().is_empty());
-    assert!(!manager.app_dir.active_library_pointer().exists());
+    assert!(manager.app_dir.active_library_id().unwrap().is_none());
 }
 
 /// What removal would lose is read without removing anything; the removal
 /// then discards it.
 #[tokio::test]
-#[expect(
-    clippy::disallowed_methods,
-    reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
-)]
 async fn removal_discards_the_unsent_work_it_reports() {
     let (test, _temp) = setup_test_manager().await;
     let manager = test.library.manager();
@@ -59,7 +50,6 @@ async fn removal_discards_the_unsent_work_it_reports() {
         &[("01.flac", b"audio")],
     )
     .await;
-    let id = manager.store.store_id().to_string();
 
     let work = manager.unsent_before_removal().await.unwrap();
     assert!(work.writes > 0, "{work:?}");
@@ -68,7 +58,7 @@ async fn removal_discards_the_unsent_work_it_reports() {
 
     manager.remove_library(&test.installation, &|_| ()).await.unwrap();
     assert!(test.installation.stores().await.unwrap().is_empty());
-    assert!(!manager.app_dir.registered_library(&id).exists());
+    assert!(!manager.app_dir.has_registered_library(manager.store.store_id()));
 }
 
 /// A library with no storage set up has nowhere it uploads to, so nothing

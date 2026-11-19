@@ -9,10 +9,6 @@ mod codes;
 mod settings;
 
 #[tokio::test]
-#[expect(
-    clippy::disallowed_methods,
-    reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
-)]
 async fn creating_a_library_establishes_its_identity_without_marking_it_active() {
     let app_dir = AppDir::temporary().unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
@@ -28,7 +24,7 @@ async fn creating_a_library_establishes_its_identity_without_marking_it_active()
     let store = handle.store_id();
     let device = handle.device_id();
     assert_eq!(handle.store_name().await.unwrap(), "Created Library");
-    assert!(!app_dir.active_library_pointer().exists());
+    assert!(app_dir.active_library_id().unwrap().is_none());
     handle.close().await.unwrap();
     let reopened =
         configure_store(bae_store::test_devices::test_builder(&installation), crate::SCHEMA)
@@ -138,10 +134,6 @@ async fn a_created_library_holds_its_creator_s_profile_from_its_first_read() {
 }
 
 #[tokio::test]
-#[expect(
-    clippy::disallowed_methods,
-    reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
-)]
 async fn failed_creation_removes_the_partial_library() {
     let app_dir = AppDir::temporary().unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
@@ -161,7 +153,7 @@ async fn failed_creation_removes_the_partial_library() {
         bae_diagnostics::UiErrorCategory::KeyringLocked
     );
     assert!(installation.stores().await.unwrap().is_empty());
-    assert!(!app_dir.active_library_pointer().exists());
+    assert!(app_dir.active_library_id().unwrap().is_none());
 }
 
 /// Coven refuses to reset a library that never set up storage, since there is
@@ -704,10 +696,6 @@ fn a_restore_cancelled_after_registering_says_it_stays_unfinished() {
 /// one it replaced: nothing of the library is left listed, its files and the
 /// pointer naming it are gone, and no removal record is left.
 #[tokio::test]
-#[expect(
-    clippy::disallowed_methods,
-    reason = "file system: checks bae's own libraries folder in the app directory, which coven does not own"
-)]
 async fn removing_a_library_whose_restore_stopped_after_its_record_deletes_both_copies() {
     let temp = bae_util::test_files::TestFolder::new();
     let app_dir = AppDir::at(temp.path()).unwrap();
@@ -761,7 +749,7 @@ async fn removing_a_library_whose_restore_stopped_after_its_record_deletes_both_
     .unwrap();
     assert!(installation.stores().await.unwrap().is_empty());
     assert!(!installation.store_dir(&store).files_exist());
-    assert!(!app_dir.registered_library(&store.to_string()).exists());
+    assert!(!app_dir.has_registered_library(store));
     assert!(app_dir
         .discover_libraries(&installation, coven::task::HeardBugs::shared().as_ref())
         .await

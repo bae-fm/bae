@@ -47,10 +47,6 @@ impl Home {
 
     /// A library with bae's own directory for it, as one this device has
     /// opened.
-    #[expect(
-        clippy::disallowed_methods,
-        reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
-    )]
     async fn library(&self, name: &str) -> coven::CovenHandle {
         let storage = Arc::new(
             coven::MemoryStorage::builder().clock(Arc::new(coven::SystemClock)).build().unwrap(),
@@ -65,7 +61,7 @@ impl Home {
         .await
         .unwrap();
         self.storages.lock().unwrap().insert(handle.store_id(), storage);
-        std::fs::create_dir_all(self.directory(handle.store_id()).join("cache")).unwrap();
+        self.app_dir.seed_registered_library(handle.store_id());
         handle
     }
 
@@ -109,12 +105,15 @@ impl Home {
         self.app_dir.registered_library(&id.to_string())
     }
 
-    #[expect(
-        clippy::disallowed_methods,
-        reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
-    )]
     fn point_at(&self, id: coven::StoreId) {
-        std::fs::write(self.app_dir.active_library_pointer(), id.to_string()).unwrap();
+        self.app_dir.save_active_library(id).unwrap();
+    }
+
+    /// Whether the library's directory holds its cache folder.
+    fn has_cache(&self, id: coven::StoreId) -> bool {
+        self.app_dir
+            .registered_library_entries(id)
+            .is_some_and(|names| names.iter().any(|name| name == "cache"))
     }
 
     fn pointer(&self) -> Option<String> {
@@ -128,10 +127,6 @@ impl Home {
             .await
             .unwrap()
             .map(|removal| (removal.to_string(), removal.files_remain()))
-    }
-
-    fn record(&self, id: coven::StoreId) -> std::path::PathBuf {
-        self.app_dir.test_removal_records().join(id.to_string())
     }
 
     /// Run a removal and stop it, as the app quitting would, once `delete`
@@ -167,22 +162,7 @@ impl Home {
     }
 }
 
-#[cfg(unix)]
-#[expect(
-    clippy::disallowed_methods,
-    reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
-)]
-fn set_writable(path: &std::path::Path, writable: bool) {
-    use std::os::unix::fs::PermissionsExt;
-    let mode = if writable { 0o755 } else { 0o555 };
-    std::fs::set_permissions(path, std::fs::Permissions::from_mode(mode)).unwrap();
-}
-
 #[tokio::test]
-#[expect(
-    clippy::disallowed_methods,
-    reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
-)]
 async fn removing_an_inactive_library_preserves_the_active_pointer() {
     let home = Home::new();
     let active = home.library("Active").await;
@@ -191,17 +171,13 @@ async fn removing_an_inactive_library_preserves_the_active_pointer() {
     let id = removed.store_id();
     home.remove(&removed).await.unwrap();
     assert_eq!(home.stores().await, 1);
-    assert!(!home.directory(id).exists());
+    assert!(!home.app_dir.has_registered_library(id));
     assert_eq!(home.pointer(), Some(active.store_id().to_string()));
-    assert!(home.directory(active.store_id()).exists());
+    assert!(home.app_dir.has_registered_library(active.store_id()));
     assert_eq!(home.unfinished().await, None);
 }
 
 #[tokio::test]
-#[expect(
-    clippy::disallowed_methods,
-    reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
-)]
 async fn removing_the_active_library_clears_its_pointer() {
     let home = Home::new();
     let handle = home.library("Library").await;
@@ -209,7 +185,7 @@ async fn removing_the_active_library_clears_its_pointer() {
     home.point_at(id);
     home.remove(&handle).await.unwrap();
     assert_eq!(home.stores().await, 0);
-    assert!(!home.directory(id).exists());
+    assert!(!home.app_dir.has_registered_library(id));
     assert_eq!(home.pointer(), None);
     assert_eq!(home.unfinished().await, None);
 }
@@ -218,10 +194,6 @@ async fn removing_the_active_library_clears_its_pointer() {
 /// discarding the store finishes the deletion, and the removal goes on to
 /// delete bae's files, the pointer and the record.
 #[tokio::test]
-#[expect(
-    clippy::disallowed_methods,
-    reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
-)]
 async fn a_close_failing_after_leaving_is_finished_by_discarding_the_store() {
     let home = Home::new();
     let handle = home.library("Library").await;
@@ -241,9 +213,9 @@ async fn a_close_failing_after_leaving_is_finished_by_discarding_the_store() {
     .await
     .unwrap();
     assert_eq!(home.stores().await, 0);
-    assert!(!home.directory(id).exists());
+    assert!(!home.app_dir.has_registered_library(id));
     assert_eq!(home.pointer(), None);
-    assert!(!home.record(id).exists());
+    assert!(!home.app_dir.has_removal_record(id));
 }
 
 /// Closing the store fails once this device has left the library, and
@@ -251,10 +223,6 @@ async fn a_close_failing_after_leaving_is_finished_by_discarding_the_store() {
 /// saying so, with the library's files still on this device, its pointer
 /// kept and no removal recorded.
 #[tokio::test]
-#[expect(
-    clippy::disallowed_methods,
-    reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
-)]
 async fn a_close_failing_after_leaving_whose_discard_fails_keeps_the_files_and_says_so() {
     let home = Home::new();
     let handle = home.library("Library").await;
@@ -280,19 +248,15 @@ async fn a_close_failing_after_leaving_whose_discard_fails_keeps_the_files_and_s
     );
     assert!(error.to_string().contains("files are still on this device"), "{error}");
     assert_eq!(home.stores().await, 1);
-    assert!(home.directory(id).join("cache").exists());
+    assert!(home.has_cache(id));
     assert_eq!(home.pointer(), Some(id.to_string()));
-    assert!(!home.record(id).exists());
+    assert!(!home.app_dir.has_removal_record(id));
     handle.close().await.unwrap();
 }
 
 /// A removal coven refuses changes nothing of bae's; the same request
 /// finishes once storage is back.
 #[tokio::test]
-#[expect(
-    clippy::disallowed_methods,
-    reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
-)]
 async fn offline_removal_keeps_the_store_preferences_and_active_pointer() {
     let home = Home::new();
     let handle = home.library("Library").await;
@@ -307,14 +271,14 @@ async fn offline_removal_keeps_the_store_preferences_and_active_pointer() {
         bae_diagnostics::UiErrorCategory::Storage(coven::StorageFailure::Network)
     );
     assert_eq!(handle.store_name().await.unwrap(), "Library");
-    assert!(home.directory(id).join("cache").exists());
+    assert!(home.has_cache(id));
     assert_eq!(home.pointer(), Some(id.to_string()));
-    assert!(!home.record(id).exists());
+    assert!(!home.app_dir.has_removal_record(id));
     assert_eq!(home.unfinished().await, None);
     home.storage(id).set_online(true);
     home.remove(&handle).await.unwrap();
     assert_eq!(home.pointer(), None);
-    assert!(!home.directory(id).exists());
+    assert!(!home.app_dir.has_registered_library(id));
     assert_eq!(home.unfinished().await, None);
 }
 
@@ -359,64 +323,52 @@ async fn a_forgotten_restore_code_is_no_longer_offered() {
 }
 
 #[tokio::test]
-#[expect(
-    clippy::disallowed_methods,
-    reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
-)]
 async fn a_removal_that_cannot_be_recorded_removes_nothing() {
     let home = Home::new();
     let handle = home.library("Library").await;
     let id = handle.store_id();
     home.point_at(id);
-    std::fs::write(home.app_dir.test_removal_records(), b"").unwrap();
+    home.app_dir.block_removal_records();
     let error = home.remove(&handle).await.unwrap_err();
     assert!(matches!(error, LibraryRemovalError::Record(_)), "{error}");
     assert_eq!(handle.store_name().await.unwrap(), "Library");
     assert_eq!(home.pointer(), Some(id.to_string()));
-    assert!(home.directory(id).exists());
+    assert!(home.app_dir.has_registered_library(id));
 }
 
 /// The app stops after recording the removal, before coven deletes the store:
 /// the library is still here, the person is told the removal didn't finish,
 /// and the record is cleared so it's reported once.
 #[tokio::test]
-#[expect(
-    clippy::disallowed_methods,
-    reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
-)]
 async fn a_removal_stopped_before_the_delete_reports_the_library_still_here() {
     let home = Home::new();
     let handle = home.library("Library").await;
     let id = handle.store_id();
     home.point_at(id);
     home.stop_removal_after(id, async { Ok(()) }).await;
-    assert!(home.record(id).exists());
+    assert!(home.app_dir.has_removal_record(id));
 
     let (shown, files_remain) = home.unfinished().await.unwrap();
     assert!(shown.contains("still on this device"), "{shown}");
     assert!(shown.contains(&id.to_string()), "{shown}");
     assert!(!files_remain);
-    assert!(!home.record(id).exists());
+    assert!(!home.app_dir.has_removal_record(id));
     assert_eq!(home.unfinished().await, None);
     finish_removals(&home.app_dir, &home.installation, &Diagnostics::noop(), &|_, _| ())
         .await
         .unwrap();
     assert_eq!(home.stores().await, 1);
     assert_eq!(home.pointer(), Some(id.to_string()));
-    assert!(home.directory(id).exists());
+    assert!(home.app_dir.has_registered_library(id));
 
     home.remove(&handle).await.unwrap();
     assert_eq!(home.stores().await, 0);
-    assert!(!home.directory(id).exists());
+    assert!(!home.app_dir.has_registered_library(id));
 }
 
 /// The app stops right after coven deletes the store: the record finds the
 /// removal again, and finishing it deletes bae's files and then the record.
 #[tokio::test]
-#[expect(
-    clippy::disallowed_methods,
-    reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
-)]
 async fn a_removal_stopped_after_the_store_was_deleted_is_found_again() {
     let home = Home::new();
     let handle = home.library("Library").await;
@@ -428,7 +380,7 @@ async fn a_removal_stopped_after_the_store_was_deleted_is_found_again() {
     let (shown, files_remain) = home.unfinished().await.unwrap();
     assert!(shown.contains(&id.to_string()), "{shown}");
     assert!(files_remain);
-    assert!(home.record(id).exists());
+    assert!(home.app_dir.has_removal_record(id));
     let finished = std::sync::Mutex::new(Vec::new());
     finish_removals(&home.app_dir, &home.installation, &Diagnostics::noop(), &|done, total| {
         finished.lock().unwrap().push((done, total))
@@ -441,8 +393,8 @@ async fn a_removal_stopped_after_the_store_was_deleted_is_found_again() {
         "finishing counts the one removal it finishes"
     );
     assert_eq!(home.pointer(), None);
-    assert!(!home.directory(id).exists());
-    assert!(!home.record(id).exists());
+    assert!(!home.app_dir.has_registered_library(id));
+    assert!(!home.app_dir.has_removal_record(id));
     assert_eq!(home.unfinished().await, None);
     finish_removals(&home.app_dir, &home.installation, &Diagnostics::noop(), &|_, _| ())
         .await
@@ -452,35 +404,31 @@ async fn a_removal_stopped_after_the_store_was_deleted_is_found_again() {
 /// The pointer can't be read: the store is gone, the record keeps the removal
 /// listed, and a retry finishes it once the cause is fixed.
 #[tokio::test]
-#[expect(
-    clippy::disallowed_methods,
-    reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
-)]
 async fn a_pointer_that_cannot_be_cleared_leaves_the_removal_to_retry() {
     let home = Home::new();
     let handle = home.library("Library").await;
     let id = handle.store_id();
-    std::fs::create_dir(home.app_dir.active_library_pointer()).unwrap();
+    home.app_dir.block_active_library_pointer();
     let error = home.remove(&handle).await.unwrap_err();
     assert!(matches!(error, LibraryRemovalError::Unfinished(_)), "{error}");
     assert!(error.to_string().contains("store was removed"), "{error}");
     assert_eq!(error.category(), bae_diagnostics::UiErrorCategory::Config);
     assert_eq!(home.stores().await, 0);
-    assert!(home.directory(id).exists());
-    assert!(home.record(id).exists());
+    assert!(home.app_dir.has_registered_library(id));
+    assert!(home.app_dir.has_removal_record(id));
     assert!(home.unfinished().await.unwrap().1);
 
     assert!(finish_removals(&home.app_dir, &home.installation, &Diagnostics::noop(), &|_, _| ())
         .await
         .is_err());
-    std::fs::remove_dir(home.app_dir.active_library_pointer()).unwrap();
+    home.app_dir.unblock_active_library_pointer();
     home.point_at(id);
     finish_removals(&home.app_dir, &home.installation, &Diagnostics::noop(), &|_, _| ())
         .await
         .unwrap();
     assert_eq!(home.pointer(), None);
-    assert!(!home.directory(id).exists());
-    assert!(!home.record(id).exists());
+    assert!(!home.app_dir.has_registered_library(id));
+    assert!(!home.app_dir.has_removal_record(id));
     assert_eq!(home.unfinished().await, None);
 }
 
@@ -488,30 +436,26 @@ async fn a_pointer_that_cannot_be_cleared_leaves_the_removal_to_retry() {
 /// keeps the removal listed, and a retry deletes the directory and record.
 #[cfg(unix)]
 #[tokio::test]
-#[expect(
-    clippy::disallowed_methods,
-    reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
-)]
 async fn a_directory_that_cannot_be_deleted_leaves_the_removal_to_retry() {
     let home = Home::new();
     let handle = home.library("Library").await;
     let id = handle.store_id();
     home.point_at(id);
-    set_writable(&home.app_dir.libraries(), false);
+    home.app_dir.set_libraries_writable(false);
     let error = home.remove(&handle).await.unwrap_err();
     assert!(matches!(error, LibraryRemovalError::Unfinished(_)), "{error}");
     assert!(error.to_string().contains(&home.directory(id).display().to_string()), "{error}");
     assert_eq!(home.stores().await, 0);
     assert_eq!(home.pointer(), None);
-    assert!(home.directory(id).exists());
+    assert!(home.app_dir.has_registered_library(id));
     assert!(home.unfinished().await.unwrap().1);
 
-    set_writable(&home.app_dir.libraries(), true);
+    home.app_dir.set_libraries_writable(true);
     finish_removals(&home.app_dir, &home.installation, &Diagnostics::noop(), &|_, _| ())
         .await
         .unwrap();
-    assert!(!home.directory(id).exists());
-    assert!(!home.record(id).exists());
+    assert!(!home.app_dir.has_registered_library(id));
+    assert!(!home.app_dir.has_removal_record(id));
     assert_eq!(home.unfinished().await, None);
 }
 
@@ -519,15 +463,11 @@ async fn a_directory_that_cannot_be_deleted_leaves_the_removal_to_retry() {
 /// hidden from the list, or files left some other way), are never reported
 /// or deleted by removal code.
 #[tokio::test]
-#[expect(
-    clippy::disallowed_methods,
-    reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
-)]
 async fn files_without_a_removal_record_are_left_alone() {
     let home = Home::new();
     let kept = home.library("Kept").await;
     let hidden = coven::StoreId(coven::IdSource::new_id(&coven::UuidIds));
-    std::fs::create_dir_all(home.directory(hidden).join("cache")).unwrap();
+    home.app_dir.seed_registered_library(hidden);
     home.point_at(hidden);
     let removed = home.library("Removed").await;
     home.stop_removal_after(removed.store_id(), removed.delete_store(coven::IfUnsent::Refuse))
@@ -539,20 +479,16 @@ async fn files_without_a_removal_record_are_left_alone() {
     finish_removals(&home.app_dir, &home.installation, &Diagnostics::noop(), &|_, _| ())
         .await
         .unwrap();
-    assert!(!home.directory(removed.store_id()).exists());
-    assert!(home.directory(hidden).exists());
+    assert!(!home.app_dir.has_registered_library(removed.store_id()));
+    assert!(home.app_dir.has_registered_library(hidden));
     assert_eq!(home.pointer(), Some(hidden.to_string()));
-    assert!(home.directory(kept.store_id()).exists());
+    assert!(home.app_dir.has_registered_library(kept.store_id()));
     assert_eq!(home.unfinished().await, None);
 }
 
 /// A lookup started while a removal waits on coven's delete waits for the
 /// removal and sees it finished, rather than reading its record mid-way.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-#[expect(
-    clippy::disallowed_methods,
-    reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
-)]
 async fn a_lookup_during_a_removal_waits_for_it() {
     let home = Arc::new(Home::new());
     let handle = home.library("Library").await;
@@ -582,7 +518,7 @@ async fn a_lookup_during_a_removal_waits_for_it() {
         }
     });
     deleting.notified().await;
-    assert!(home.record(id).exists());
+    assert!(home.app_dir.has_removal_record(id));
 
     let waiting = home.app_dir.when_removal_lock_waits();
     let lookup = bae_util::test_spawn::task({
@@ -601,8 +537,8 @@ async fn a_lookup_during_a_removal_waits_for_it() {
     removal.await.unwrap().unwrap();
     assert_eq!(lookup.await.unwrap(), None);
     assert_eq!(home.stores().await, 0);
-    assert!(!home.record(id).exists());
-    assert!(!home.directory(id).exists());
+    assert!(!home.app_dir.has_removal_record(id));
+    assert!(!home.app_dir.has_registered_library(id));
 }
 
 /// What removing a library that isn't open would lose is read by opening its
@@ -640,10 +576,6 @@ async fn unsent_work_of_a_closed_library_leaves_it_closed() {
 /// directory and the pointer naming it are gone, and the library beside it
 /// stays.
 #[tokio::test]
-#[expect(
-    clippy::disallowed_methods,
-    reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
-)]
 async fn a_library_whose_settings_cant_be_read_is_removed_without_opening() {
     let home = Home::new();
     let kept = home.library("Kept").await;
@@ -690,21 +622,17 @@ async fn a_library_whose_settings_cant_be_read_is_removed_without_opening() {
         [crate::ClosingStep::LeavingLibrary, crate::ClosingStep::DeletingFiles]
     );
     assert_eq!(home.stores().await, 1);
-    assert!(!home.directory(id).exists());
+    assert!(!home.app_dir.has_registered_library(id));
     assert_eq!(home.pointer(), None);
-    assert!(!home.record(id).exists());
+    assert!(!home.app_dir.has_removal_record(id));
     assert_eq!(home.unfinished().await, None);
     assert_eq!(kept.store_name().await.unwrap(), "Kept");
-    assert!(home.directory(kept.store_id()).exists());
+    assert!(home.app_dir.has_registered_library(kept.store_id()));
 }
 
 /// coven refusing the delete, here because the library is open, removes
 /// nothing and leaves no record to report.
 #[tokio::test]
-#[expect(
-    clippy::disallowed_methods,
-    reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
-)]
 async fn an_unopenable_removal_coven_refuses_removes_nothing() {
     let home = Home::new();
     let handle = home.library("Library").await;
@@ -721,9 +649,9 @@ async fn an_unopenable_removal_coven_refuses_removes_nothing() {
     .expect_err("an open library holds its lock");
     assert!(matches!(error, LibraryRemovalError::Store(_)), "{error}");
     assert_eq!(handle.store_name().await.unwrap(), "Library");
-    assert!(home.directory(id).exists());
+    assert!(home.app_dir.has_registered_library(id));
     assert_eq!(home.pointer(), Some(id.to_string()));
-    assert!(!home.record(id).exists());
+    assert!(!home.app_dir.has_removal_record(id));
     assert_eq!(home.unfinished().await, None);
 }
 
@@ -733,10 +661,6 @@ async fn an_unopenable_removal_coven_refuses_removes_nothing() {
 /// publishes the leaving, deletes the store, then bae's files, pointer and
 /// record, as any removal does.
 #[tokio::test]
-#[expect(
-    clippy::disallowed_methods,
-    reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
-)]
 async fn a_removal_stopped_after_leaving_is_listed_and_finished() {
     let home = Home::new();
     let handle = home.library("Library").await;
@@ -803,9 +727,9 @@ async fn a_removal_stopped_after_leaving_is_listed_and_finished() {
         [crate::ClosingStep::LeavingLibrary, crate::ClosingStep::DeletingFiles]
     );
     assert_eq!(home.stores().await, 0);
-    assert!(!home.directory(id).exists());
+    assert!(!home.app_dir.has_registered_library(id));
     assert_eq!(home.pointer(), None);
-    assert!(!home.record(id).exists());
+    assert!(!home.app_dir.has_removal_record(id));
     assert_eq!(home.unfinished().await, None);
 }
 
@@ -813,10 +737,6 @@ async fn a_removal_stopped_after_leaving_is_listed_and_finished() {
 /// tell the library's other devices it left: the removal is refused as a
 /// sign-in to do first, and nothing changes.
 #[tokio::test]
-#[expect(
-    clippy::disallowed_methods,
-    reason = "file system: known violation, a test that reads or writes a library's own files by path instead of through coven"
-)]
 async fn removing_a_signed_out_library_asks_for_the_sign_in() {
     let home = Home::new();
     let handle = home.library("Library").await;
@@ -843,8 +763,8 @@ async fn removing_a_signed_out_library_asks_for_the_sign_in() {
     );
     assert_eq!(error.category(), bae_diagnostics::UiErrorCategory::DeletionSignInRequired);
     assert_eq!(reopened.store_name().await.unwrap(), "Library");
-    assert!(home.directory(id).join("cache").exists());
+    assert!(home.has_cache(id));
     assert_eq!(home.pointer(), Some(id.to_string()));
-    assert!(!home.record(id).exists());
+    assert!(!home.app_dir.has_removal_record(id));
     reopened.close().await.unwrap();
 }
