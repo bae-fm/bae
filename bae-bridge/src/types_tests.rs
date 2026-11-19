@@ -517,7 +517,6 @@ mod conversion_roundtrip {
 
         {
             let bridge = BridgeReleaseEditDraft::from_core(bae_import::ReleaseEditDraft {
-                edit: edit.clone(),
                 cover: None,
                 source_audio: None,
                 sides: Some(vec![bae_import::ReleaseEditTrackSide {
@@ -553,7 +552,6 @@ mod conversion_roundtrip {
                 changed: true,
                 invalid: Some(bae_import::EditValidationError::NoAlbumArtist),
             });
-            assert_eq!(bridge.edit.album_title, edit.album_title);
             assert!(bridge.changed);
             assert!(matches!(bridge.invalid, Some(BridgeValidationReason::NoAlbumArtist)));
             assert_eq!(

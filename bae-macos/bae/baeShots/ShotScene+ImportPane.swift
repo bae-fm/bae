@@ -53,7 +53,7 @@ extension ShotScene {
                 .imported,
                 size: CGSize(width: 1_400, height: 1_300),
                 releaseEditor: PreviewData.releaseEditor(
-                    holding: PreviewData.northboundReleaseDraft()
+                    holding: PreviewData.northboundRelease()
                 ),
                 // The editor opens the release after the pane first draws:
                 // it is there once its last track's title field holds the

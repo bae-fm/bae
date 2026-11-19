@@ -615,9 +615,9 @@ pub struct BridgeReleaseEditSaved {
     pub form: std::sync::Arc<crate::BridgeReleaseEditForm>,
 }
 
-/// A library release's editor's draft for the form it holds: the form with
-/// its picked artists as the library holds them now, the release's cover as
-/// it is now, the summary of its audio, its tracks in the table's sides
+/// A library release's editor's draft beside the form it holds, which the
+/// editor draws itself (`BridgeReleaseEditForm::edit`): the release's cover
+/// as it is now, the summary of its audio, its tracks in the table's sides
 /// beside their form rows, the files no track plays from, the album a save
 /// files the release under, how the form's album artists stand to the
 /// library, whether a save would write anything the editor did not open on,
@@ -626,7 +626,6 @@ pub struct BridgeReleaseEditSaved {
 #[cfg(desktop)]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeReleaseEditDraft {
-    pub edit: BridgeRawReleaseEdit,
     pub cover: Option<BridgeImageRef>,
     pub source_audio: Option<BridgeSourceAudioSummary>,
     /// The release's tracks in the sides and runs the table draws, each beside

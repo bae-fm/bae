@@ -32,23 +32,23 @@ extension ShotScene {
     /// The release the editor opens on: Northbound as its import made it,
     /// with a change made, so the editor offers Cancel and Save, and the rip
     /// log and front cover its folder carried.
-    private static var editedRelease: BridgeReleaseEditDraft {
-        var draft = PreviewData.northboundReleaseDraft()
-        draft.files = Array(PreviewData.carriedBoardFiles.prefix(2))
-        draft.cover = BridgeImageRef(
+    private static var editedRelease: PreviewReleaseEdit {
+        var release = PreviewData.northboundRelease()
+        release.draft.files = Array(PreviewData.carriedBoardFiles.prefix(2))
+        release.draft.cover = BridgeImageRef(
             id: editedReleaseId,
             version: "1",
             imageType: .cover
         )
-        draft.changed = true
-        return draft
+        release.draft.changed = true
+        return release
     }
 
     /// The same release as one image a CUE sheet carves the four tracks
     /// from: one run under the image's name, each row giving where its track
     /// starts in the image.
-    private static var editedCueRelease: BridgeReleaseEditDraft {
-        var draft = editedRelease
+    private static var editedCueRelease: PreviewReleaseEdit {
+        var release = editedRelease
         let image = BridgeReleaseEditTrackSource(
             fileId: "Northbound.flac",
             name: "Northbound.flac",
@@ -60,9 +60,9 @@ extension ShotScene {
                 let start = startMs
                 startMs += track.durationMs
                 return BridgeReleaseEditTrackRow(
-                    edit: draft.edit.tracks[index],
+                    edit: release.values.tracks[index],
                     context: BridgeReleaseEditTrackContext(
-                        trackId: draft.edit.tracks[index].id,
+                        trackId: release.values.tracks[index].id,
                         source: image,
                         startClock: BridgeDurationClock.length(ms: start),
                         durationClock: BridgeDurationClock.length(
@@ -73,14 +73,14 @@ extension ShotScene {
                     artistStanding: nil
                 )
             }
-        draft.sides = [
+        release.draft.sides = [
             BridgeReleaseEditTrackSide(
                 side: .flat,
                 headerKey: nil,
                 runs: [.sheet(source: image, rows: rows)]
             )
         ]
-        draft.files = [
+        release.draft.files = [
             PreviewData.mappingFile(
                 PreviewData.previewFile(
                     name: "Northbound.log",
@@ -91,13 +91,13 @@ extension ShotScene {
             ),
             PreviewData.carriedBoardFiles[1],
         ]
-        return draft
+        return release
     }
 
     private static func albumEditorScene(
         id: String,
         stage: AlbumEditorStage,
-        release: BridgeReleaseEditDraft = editedRelease
+        release: PreviewReleaseEdit = editedRelease
     ) -> ShotScene {
         let size = CGSize(width: 1_200, height: 1_120)
         return ShotScene(id: id, size: size) {
@@ -142,9 +142,9 @@ extension ShotScene {
     private static func presentEditor(
         on uiStore: UiStore,
         images: ImageStore,
-        release: BridgeReleaseEditDraft
+        release: PreviewReleaseEdit
     ) {
-        let library = PreviewReleaseLibrary(draft: release)
+        let library = PreviewReleaseLibrary(release: release)
         uiStore.presentModal {
             ReleaseEditorSheet(
                 releaseId: editedReleaseId,
@@ -196,7 +196,7 @@ extension ShotScene {
         MacMenuInPlace(
             {
                 MacPopUpMenu(
-                    DraftAlbumRow.albumOptions(editedRelease.album),
+                    DraftAlbumRow.albumOptions(editedRelease.draft.album),
                     selection: .standing,
                     select: { _ in }
                 )

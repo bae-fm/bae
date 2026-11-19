@@ -207,7 +207,6 @@ impl BridgeReleaseEditTrackSide {
 impl BridgeReleaseEditDraft {
     pub(crate) fn from_core(draft: bae_import::ReleaseEditDraft) -> Self {
         let bae_import::ReleaseEditDraft {
-            edit,
             cover,
             source_audio,
             sides,
@@ -218,7 +217,6 @@ impl BridgeReleaseEditDraft {
             invalid,
         } = draft;
         Self {
-            edit: BridgeRawReleaseEdit::from_core(edit),
             cover: cover.map(BridgeImageRef::from_core),
             source_audio: source_audio.map(BridgeSourceAudioSummary::from_core),
             sides: sides.map(|sides| {

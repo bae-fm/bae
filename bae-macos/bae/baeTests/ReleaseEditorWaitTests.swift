@@ -43,21 +43,23 @@ struct ReleaseEditorWaitTests {
     /// A session whose save and apply never finish, so the editor stays on
     /// its wait.
     private func heldSession() -> ReleaseMetadataEditSession {
-        let draft = PreviewData.releaseEditDraft(trackCount: 2)
+        let release = PreviewData.releaseEdit(trackCount: 2)
+        let values = release.values
         let held = ReleaseEditFormCommands(
-            setField: { _, _ in },
-            setLabels: { _ in },
-            setBarcodes: { _ in },
-            setPressingFact: { _ in },
-            setAlbumArtists: { _ in },
-            setTrack: { _ in },
+            setField: { _, _ in values },
+            setLabels: { _ in values },
+            setBarcodes: { _ in values },
+            setPressingFact: { _ in values },
+            setAlbumArtists: { _ in values },
+            setTrack: { _ in values },
             apply: { _, _ in try await Task.neverAnswers() },
             setAlbum: { _ in },
-            cancel: {},
+            cancel: { values },
             save: { try await Task.neverAnswers() }
         )
         let opened = OpenedReleaseEdit(
-            drafts: PreviewReleaseEditSession(draft: draft).drafts(),
+            values: values,
+            drafts: PreviewReleaseEditSession(release: release).drafts(),
             form: held
         )
         return ReleaseMetadataEditSession(

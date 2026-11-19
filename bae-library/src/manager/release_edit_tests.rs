@@ -248,7 +248,6 @@ async fn discarding_a_form_restores_the_library_s_values_exactly() {
         )
         .await
         .unwrap();
-    let applied = draft_now(manager, &applied).await;
     assert_ne!(applied.edit, before.edit, "the apply filled the form");
     drop(applied);
 
@@ -581,11 +580,18 @@ async fn a_form_holds_each_change_until_its_save() {
     };
     let stored = library_titles(manager).await;
 
-    let mut row = opened.edit.tracks[1].clone();
+    let mut row = form.edit.tracks[1].clone();
     row.title = "Renamed Track".to_string();
     assert!(form.edit.set_track(row.clone()));
     let draft = draft_now(manager, &form).await;
-    assert_eq!(draft.edit.tracks[1].title, "Renamed Track");
+    let titles: Vec<_> = draft
+        .sides
+        .iter()
+        .flatten()
+        .flat_map(bae_import::ReleaseEditTrackSide::rows)
+        .map(|row| row.edit.title.as_str())
+        .collect();
+    assert_eq!(titles[1], "Renamed Track", "the track row beside the form's");
     assert!(draft.changed);
     assert_eq!(library_titles(manager).await, stored, "the library holds no change yet");
 
@@ -603,9 +609,8 @@ async fn a_form_holds_each_change_until_its_save() {
     assert_eq!(draft_now(manager, &form).await.invalid, None);
 
     let reopened = manager.open_release_edit(&release.id).await.unwrap();
-    let reopened = draft_now(manager, &reopened).await;
-    assert_eq!(reopened.edit, opened.edit, "opening again drops what the form held");
-    assert!(!reopened.changed);
+    assert_eq!(reopened.edit, form.opened.edit, "opening again drops what the form held");
+    assert!(!draft_now(manager, &reopened).await.changed);
 
     let mut form = manager.save_release_edit(form, super::PickedAlbumGone::Unpick).await.unwrap();
     assert_eq!(library_titles(manager).await[1], "Renamed Track");
@@ -778,7 +783,6 @@ async fn an_applied_catalog_s_form_keeps_the_persisted_track_ids() {
         )
         .await
         .unwrap();
-    let applied = draft_now(library, &applied).await;
     assert_eq!(
         applied.edit.tracks.into_iter().map(|track| track.id).collect::<Vec<_>>(),
         persisted_ids

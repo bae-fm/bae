@@ -72,7 +72,8 @@ extension PreviewData {
         return draft
     }
 
-    static func releaseEditDraft(trackCount: Int) -> BridgeReleaseEditDraft {
+    /// A release of `trackCount` tracks as its editor opens on it.
+    static func releaseEdit(trackCount: Int) -> PreviewReleaseEdit {
         let edit = editMetadataDraft(trackCount: trackCount)
         let format = BridgeAudioFormat(
             codec: "FLAC",
@@ -81,8 +82,7 @@ extension PreviewData {
             bitrateKbps: nil,
             channels: 2
         )
-        return BridgeReleaseEditDraft(
-            edit: edit,
+        let draft = BridgeReleaseEditDraft(
             cover: nil,
             sourceAudio: .uniform(
                 descriptor: BridgeSourceAudioDescriptor(
@@ -126,6 +126,7 @@ extension PreviewData {
             changed: false,
             invalid: nil
         )
+        return PreviewReleaseEdit(values: edit, draft: draft)
     }
 
     /// One track's context beside its form row in the release editor.
@@ -145,16 +146,14 @@ extension PreviewData {
         )
     }
 
-    /// An editor over a library holding `draft`.
+    /// An editor over a library holding `release`.
     @MainActor
     static func releaseEditor(
-        holding draft: BridgeReleaseEditDraft = releaseEditDraft(
-            trackCount: 5
-        )
+        holding release: PreviewReleaseEdit = releaseEdit(trackCount: 5)
     ) -> ReleaseEditor {
         ReleaseEditor(
             openReleaseEdit: { _ in
-                PreviewReleaseLibrary(draft: draft).opened()
+                PreviewReleaseLibrary(release: release).opened()
             }
         )
     }
@@ -224,44 +223,53 @@ extension PreviewData {
     }
 }
 
+/// A release as its editor opens on it in previews, shots and tests: the
+/// values of the form the editor holds, and the draft beside them.
+struct PreviewReleaseEdit: Sendable {
+    var values: BridgeRawReleaseEdit
+    var draft: BridgeReleaseEditDraft
+}
+
 /// A release's library as an editor's form commands meet it: opening reads
 /// what it holds, and a save becomes that.
 actor PreviewReleaseLibrary {
     /// What the library held before anything was saved to it.
-    nonisolated let opening: BridgeReleaseEditDraft
-    private var saved: BridgeReleaseEditDraft
+    nonisolated let opening: PreviewReleaseEdit
+    private var saved: PreviewReleaseEdit
 
-    init(draft: BridgeReleaseEditDraft) {
-        opening = draft
-        saved = draft
+    init(release: PreviewReleaseEdit) {
+        opening = release
+        saved = release
     }
 
     /// A session opened before anything was saved.
     nonisolated func opened() -> OpenedReleaseEdit {
-        opened(PreviewReleaseEditSession(draft: opening))
+        opened(PreviewReleaseEditSession(release: opening))
     }
 
-    func open() -> BridgeReleaseEditDraft {
+    func open() -> PreviewReleaseEdit {
         saved
     }
 
-    func save(_ draft: BridgeReleaseEditDraft) -> String {
-        saved = draft
-        saved.changed = false
+    func save(_ release: PreviewReleaseEdit) -> String {
+        saved = release
+        saved.draft.changed = false
         return "album-preview"
     }
 
-    /// Save `session`'s draft, then open the session again on what it saved.
-    func save(_ session: PreviewReleaseEditSession) async -> String {
-        let albumId = save(await session.draft)
-        await session.replace(with: open())
-        return albumId
+    /// Save `session`'s form, then open the session again on what it saved.
+    func save(_ session: PreviewReleaseEditSession) async -> SavedReleaseEdit {
+        let albumId = save(await session.release)
+        let values = await session.replace(with: open())
+        return SavedReleaseEdit(albumId: albumId, values: values)
     }
 
     nonisolated func commands() -> ReleaseEditCommands {
         ReleaseEditCommands(
             open: { _ in
-                self.opened(PreviewReleaseEditSession(draft: await self.open()))
+                self.opened(
+                    PreviewReleaseEditSession(release: await self.open())
+                )
             },
             searchAlbums: { _ in [] },
             catalogApply: { nil }
@@ -274,6 +282,7 @@ actor PreviewReleaseLibrary {
         -> OpenedReleaseEdit
     {
         OpenedReleaseEdit(
+            values: session.opening.values,
             drafts: session.drafts(),
             form: commands(of: session)
         )
@@ -285,46 +294,46 @@ actor PreviewReleaseLibrary {
     ) -> ReleaseEditFormCommands {
         ReleaseEditFormCommands(
             setField: { field, value in
-                await session.change { draft in
+                await session.change { release in
                     switch field {
-                    case .albumTitle: draft.edit.albumTitle = value
-                    case .albumYear: draft.edit.albumYear = value
-                    case .pressingYear: draft.edit.pressing.year = value
+                    case .albumTitle: release.values.albumTitle = value
+                    case .albumYear: release.values.albumYear = value
+                    case .pressingYear: release.values.pressing.year = value
                     }
                 }
             },
             setLabels: { labels in
-                await session.change { $0.edit.pressing.labels = labels }
+                await session.change { $0.values.pressing.labels = labels }
             },
             setBarcodes: { barcodes in
                 await session.change {
-                    $0.edit.pressing.barcodes = barcodes
+                    $0.values.pressing.barcodes = barcodes
                 }
             },
             setPressingFact: { fact in
                 await session.change {
-                    $0.edit.pressing.facts = bridgeApplyPressingFact(
-                        facts: $0.edit.pressing.facts,
+                    $0.values.pressing.facts = bridgeApplyPressingFact(
+                        facts: $0.values.pressing.facts,
                         edit: fact
                     )
                 }
             },
             setAlbumArtists: { assignments in
                 await session.change {
-                    $0.edit.albumArtistAssignments = assignments
+                    $0.values.albumArtistAssignments = assignments
                 }
             },
             setTrack: { track in
-                await session.change { draft in
-                    draft.edit.tracks = draft.edit.tracks.map {
+                await session.change { release in
+                    release.values.tracks = release.values.tracks.map {
                         $0.id == track.id ? track : $0
                     }
                 }
             },
             apply: { _, _ in await session.change { _ in } },
             setAlbum: { pick in
-                await session.change {
-                    $0.album =
+                _ = await session.change {
+                    $0.draft.album =
                         switch pick {
                         case .records: .new
                         case .new: .pickedNew
@@ -345,29 +354,38 @@ actor PreviewReleaseLibrary {
     }
 }
 
-/// One session's draft in a shot library, which each change edits, and the
-/// drafts its subscription sends: the draft at once, then the draft after
-/// each change.
+/// One session's form and draft in a shot library, which each change edits,
+/// and the drafts its subscription sends: the draft at once, then the draft
+/// after each change.
 actor PreviewReleaseEditSession {
-    private(set) var draft: BridgeReleaseEditDraft
+    /// The form and draft the session opened on.
+    nonisolated let opening: PreviewReleaseEdit
+    private(set) var release: PreviewReleaseEdit
     /// The draft the subscription has not sent yet, if any.
     private var unsent: BridgeReleaseEditDraft?
     private var waiting: CheckedContinuation<BridgeReleaseEditDraft?, Never>?
 
-    init(draft: BridgeReleaseEditDraft) {
-        self.draft = draft
-        unsent = draft
+    init(release: PreviewReleaseEdit) {
+        opening = release
+        self.release = release
+        unsent = release.draft
     }
 
-    func change(_ edit: @Sendable (inout BridgeReleaseEditDraft) -> Void) {
-        edit(&draft)
-        draft.changed = true
-        send(draft)
+    /// Make `edit` to the form or its draft; returns the form's values.
+    func change(_ edit: @Sendable (inout PreviewReleaseEdit) -> Void)
+        -> BridgeRawReleaseEdit
+    {
+        edit(&release)
+        release.draft.changed = true
+        send(release.draft)
+        return release.values
     }
 
-    func replace(with draft: BridgeReleaseEditDraft) {
-        self.draft = draft
-        send(draft)
+    /// Open the session again on `release`; returns the form's values.
+    func replace(with release: PreviewReleaseEdit) -> BridgeRawReleaseEdit {
+        self.release = release
+        send(release.draft)
+        return release.values
     }
 
     /// The subscription's values.

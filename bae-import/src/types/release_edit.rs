@@ -216,23 +216,23 @@ impl ReleaseEditForm {
     }
 }
 
-/// A library release's editor's draft, as the editor shows it for one form:
-/// the form with its picked artists as the library holds them now, each one
-/// the library no longer holds as a credit of the values the form holds for
-/// it, the release's cover as it is now, the tracks beside the form, the album a
-/// save files the release under, how the form's album artists stand to the
-/// library, whether a save would write anything the editor did not open on,
-/// and why the form can't be saved, when it can't.
+/// A library release's editor's draft, as the editor shows it beside one
+/// form, which the editor draws itself: the release's cover as it is now,
+/// the tracks beside their form rows, the album a save files the release
+/// under, how the form's album artists stand to the library, whether a save
+/// would write anything the editor did not open on, and why the form can't
+/// be saved, when it can't.
 #[cfg(desktop)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReleaseEditDraft {
-    pub edit: RawReleaseEdit,
     pub cover: Option<bae_records::ImageRef>,
     /// The summary of the release's audio.
     pub source_audio: Option<bae_records::source_audio::SourceAudioSummary>,
     /// The release's tracks in the sides and runs the editor's table draws,
-    /// each beside the form row that edits it; `None` when the release has no
-    /// tracks.
+    /// each beside the form row that edits it, with its picked artists as
+    /// the library holds them now and each one the library no longer holds
+    /// as a credit of the values the form holds for it; `None` when the
+    /// release has no tracks.
     pub sides: Option<Vec<crate::ReleaseEditTrackSide>>,
     /// The files the release carries that no track plays from, in the
     /// release's file order; `None` when it carries none.

@@ -148,6 +148,7 @@ final class ReleaseEditor: Observable {
         )
         try form.showDraft()
         return OpenedReleaseEdit(
+            values: form.values,
             drafts: PulledValues(form.drafts),
             form: ReleaseEditFormCommands(
                 setField: { field, value in
@@ -176,7 +177,7 @@ final class ReleaseEditor: Observable {
                 },
                 apply: { try await form.apply(link: $0, apply: $1) },
                 setAlbum: { pick in
-                    try await form.change { $0.withAlbum(pick: pick) }
+                    _ = try await form.change { $0.withAlbum(pick: pick) }
                 },
                 cancel: { try await form.reopen() },
                 save: { try await form.save() }
@@ -224,7 +225,8 @@ final class ReleaseEditor: Observable {
 /// The form one release editor holds, as core gave it, and the draft read
 /// that follows it. Core keeps no form: each change replaces the form held
 /// here and sets it on the read, and an apply, a save or a Cancel hands core
-/// the form and holds the form core returns.
+/// the form and holds the form core returns. Each command that can change
+/// the form's values returns them, for the editor to draw.
 @MainActor
 final class HeldReleaseEditForm {
     private var form: BridgeReleaseEditForm
@@ -241,24 +243,31 @@ final class HeldReleaseEditForm {
         self.handle = handle
     }
 
+    /// The values of the form held now.
+    var values: BridgeRawReleaseEdit {
+        form.edit()
+    }
+
     /// Point the draft read at the form held now.
     func showDraft() throws {
         try drafts.setForm(form: form)
     }
 
-    /// Hold the form `next` makes of the one held now.
+    /// Hold the form `next` makes of the one held now; returns its values.
     func change(
         _ next:
             @Sendable (BridgeReleaseEditForm) throws -> BridgeReleaseEditForm
-    ) throws {
+    ) throws -> BridgeRawReleaseEdit {
         form = try next(form)
         try showDraft()
+        return values
     }
 
     /// Hold the form with the catalog release `link` picks applied, each
-    /// network read the apply waits on written to `apply`'s row.
+    /// network read the apply waits on written to `apply`'s row; returns its
+    /// values.
     func apply(link: BridgePressingLink, apply: BridgeCatalogApply?)
-        async throws
+        async throws -> BridgeRawReleaseEdit
     {
         form = try await handle.applyReleaseEditCatalog(
             form: form,
@@ -266,21 +275,24 @@ final class HeldReleaseEditForm {
             apply: apply
         )
         try showDraft()
+        return values
     }
 
     /// Save the form held now, then hold the form opened on what the save
-    /// wrote; returns the album the release is on after the save.
-    func save() async throws -> String {
+    /// wrote; returns the album the release is on after the save and the
+    /// values of that form.
+    func save() async throws -> SavedReleaseEdit {
         let saved = try await handle.saveReleaseEdit(form: form)
         form = saved.form
         try showDraft()
-        return saved.albumId
+        return SavedReleaseEdit(albumId: saved.albumId, values: values)
     }
 
     /// Hold the form opened again on the release as the library holds it
-    /// now, which drops every change.
-    func reopen() async throws {
+    /// now, which drops every change; returns its values.
+    func reopen() async throws -> BridgeRawReleaseEdit {
         form = try await handle.openReleaseEdit(releaseId: form.releaseId())
         try showDraft()
+        return values
     }
 }

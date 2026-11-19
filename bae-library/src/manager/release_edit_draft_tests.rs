@@ -28,8 +28,8 @@ async fn a_save_returns_the_form_opened_on_what_it_saved() {
         .await
         .unwrap();
 
+    assert_eq!(saved.edit.album_title, "Saved Title");
     let draft = draft_now(manager, &saved).await;
-    assert_eq!(draft.edit.album_title, "Saved Title");
     assert!(!draft.changed, "the saved form opened on what it saved");
     manager
         .save_release_edit(titled(saved, "Saved Again"), super::PickedAlbumGone::Unpick)
@@ -202,9 +202,15 @@ async fn an_artist_the_form_picked_shows_as_a_new_credit_once_deleted() {
             ..bae_catalogs::credits::ArtistCredit::named("Departed Artist")
         },
     });
-    assert_eq!(draft.edit.album_artist_assignments, std::slice::from_ref(&credit));
+    let first_row = draft
+        .sides
+        .iter()
+        .flatten()
+        .flat_map(bae_import::ReleaseEditTrackSide::rows)
+        .next()
+        .expect("the release has tracks");
     assert_eq!(
-        draft.edit.tracks[0].artist_assignments,
+        first_row.edit.artist_assignments,
         bae_import::TrackArtistAssignments::Explicit(vec![credit])
     );
 }

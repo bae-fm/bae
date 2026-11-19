@@ -347,9 +347,10 @@ async fn selected_folders_from_different_roots_import_as_one_release() {
         .await
         .unwrap_or_else(|error| panic!("combined import failed: {error}"));
 
+    let form = fixture.library.manager().open_release_edit(&release_id).await.unwrap();
+    assert_eq!(form.edit.album_title, "Collected Volumes");
+    assert_eq!(form.edit.tracks.len(), 4);
     let imported = fixture.release_edit(&release_id).await;
-    assert_eq!(imported.edit.album_title, "Collected Volumes");
-    assert_eq!(imported.edit.tracks.len(), 4);
     let disc = |disc| bae_types::mediums::TrackSide::Disc { disc };
     assert_eq!(
         imported

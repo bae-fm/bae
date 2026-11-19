@@ -3,9 +3,9 @@ use super::*;
 /// The form a library release's editor holds: what the editor opened on, the
 /// form with each change the person made, the catalog release the person
 /// applied and the album they picked. The app holds it and core keeps none:
-/// each change returns a new form, the editor's draft subscription reads the
-/// form the app sets on it, and a save writes the form the app sends. The
-/// app never reads into it; the draft shows it.
+/// each change returns a new form, the editor draws the form's values
+/// ([`Self::edit`]), the editor's draft subscription reads the form the app
+/// sets on it, and a save writes the form the app sends.
 #[derive(uniffi::Object)]
 pub struct BridgeReleaseEditForm {
     inner: bae_import::ReleaseEditForm,
@@ -37,6 +37,13 @@ impl BridgeReleaseEditForm {
     /// The release the form edits.
     pub fn release_id(&self) -> String {
         self.inner.release_id.clone()
+    }
+
+    /// The form's values as the editor draws them: each field, label,
+    /// barcode, pressing fact, album artist and track row as the form holds
+    /// it now.
+    pub fn edit(&self) -> crate::types::BridgeRawReleaseEdit {
+        crate::types::BridgeRawReleaseEdit::from_core(self.inner.edit.clone())
     }
 
     /// The form with one album-level text field as the person left it.

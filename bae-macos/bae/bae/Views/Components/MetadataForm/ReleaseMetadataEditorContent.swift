@@ -1,10 +1,10 @@
 import BaeKit
 import SwiftUI
 
-/// The release editor's draft: the draft card holding `lead` over the
-/// release's fields, then the album row, the folder's images where it has
-/// them, the track table, and the files the release carries that no track
-/// plays from.
+/// The release editor's form and its draft: the draft card holding `lead`
+/// over the form's fields, then the album row, the folder's images where it
+/// has them, the track table, and the files the release carries that no
+/// track plays from.
 struct ReleaseMetadataEditorContent<Lead: View>: View {
     let session: ReleaseMetadataEditSession
     /// The session's draft as its subscription sent it last.
@@ -43,7 +43,7 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
             ) {
                 lead()
                 ReleaseMetadataHeader(
-                    values: draft.edit,
+                    values: session.values,
                     albumArtistStanding: draft.albumArtistStanding,
                     writer: session.fieldWriter,
                     editingCommands: session.editingCommands,

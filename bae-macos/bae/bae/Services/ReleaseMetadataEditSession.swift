@@ -5,37 +5,52 @@ import Observation
 /// so two editors on one release never share an edit, an apply or a pick,
 /// and an editor that closes drops its form, writing nothing to the release.
 /// Each change replaces the form and points the editor's draft read at it;
-/// an apply, a save and a Cancel return once core has answered.
+/// an apply, a save and a Cancel return once core has answered. Each command
+/// that can change the form's values returns them, which the editor draws.
 struct ReleaseEditFormCommands: Sendable {
     let setField:
-        @Sendable (BridgeCandidateEditField, String) async throws -> Void
-    let setLabels: @Sendable ([BridgeRawLabelEdit]) async throws -> Void
-    let setBarcodes: @Sendable ([String]) async throws -> Void
-    let setPressingFact: @Sendable (BridgePressingFactEdit) async throws -> Void
-    let setAlbumArtists: @Sendable ([BridgeCredited]) async throws -> Void
-    /// Write one track row's title and artists, by its id.
-    let setTrack: @Sendable (BridgeRawTrackEdit) async throws -> Void
+        @Sendable (BridgeCandidateEditField, String) async throws ->
+            BridgeRawReleaseEdit
+    let setLabels:
+        @Sendable ([BridgeRawLabelEdit]) async throws -> BridgeRawReleaseEdit
+    let setBarcodes: @Sendable ([String]) async throws -> BridgeRawReleaseEdit
+    let setPressingFact:
+        @Sendable (BridgePressingFactEdit) async throws -> BridgeRawReleaseEdit
+    let setAlbumArtists:
+        @Sendable ([BridgeCredited]) async throws -> BridgeRawReleaseEdit
+    /// Change one track row's title and artists, by its id.
+    let setTrack:
+        @Sendable (BridgeRawTrackEdit) async throws -> BridgeRawReleaseEdit
     /// Apply a catalog release to the form, each network read it waits on
     /// written to the apply's stream; its every value replaces the form's,
     /// held until the save.
     let apply:
-        @Sendable (BridgePressingLink, BridgeCatalogApply?) async throws -> Void
+        @Sendable (BridgePressingLink, BridgeCatalogApply?) async throws ->
+            BridgeRawReleaseEdit
     /// Record what the person picked for the album a save files the release
     /// under.
     let setAlbum: @Sendable (BridgeAlbumPick) async throws -> Void
     /// Discard every change: the editor opens its form again on the release
     /// as the library holds it now.
-    let cancel: @Sendable () async throws -> Void
-    /// Save the form, and hold the form opened on what the save wrote;
-    /// returns the album the release is on after it. Core refuses the save,
-    /// and writes nothing, when the release changed after the form opened on
-    /// it.
-    let save: @Sendable () async throws -> String
+    let cancel: @Sendable () async throws -> BridgeRawReleaseEdit
+    /// Save the form, and hold the form opened on what the save wrote. Core
+    /// refuses the save, and writes nothing, when the release changed after
+    /// the form opened on it.
+    let save: @Sendable () async throws -> SavedReleaseEdit
 }
 
-/// A form an editor just opened on a release: the subscription that sends
-/// the form's draft, and the commands the form takes.
+/// What a release editor's save returns: the album the release is on after
+/// the save, and the values of the form opened on what the save wrote.
+struct SavedReleaseEdit: Sendable {
+    let albumId: String
+    let values: BridgeRawReleaseEdit
+}
+
+/// A form an editor just opened on a release: its values, the subscription
+/// that sends the form's draft, and the commands the form takes.
 struct OpenedReleaseEdit: Sendable {
+    /// The values of the form as it opened.
+    let values: BridgeRawReleaseEdit
     /// The form's draft at once, then after each change of the form and
     /// each write that changes what the draft shows; `nil` once someone
     /// deletes the form's release.
@@ -57,8 +72,8 @@ struct ReleaseEditCommands {
 
 /// One release editor's working state, behind the one release editor in the
 /// Library sheet and the import pane of an imported folder: the form it
-/// holds, through its commands, and the draft the form's subscription sent
-/// last. Every change makes a new form as the person makes it, one after
+/// holds, through its commands, the values of that form, which the editor
+/// draws, and the draft the form's subscription sent last. Every change makes a new form as the person makes it, one after
 /// another in the order the person made them. The subscription sends a new
 /// draft whenever the form changes or a write changes what the draft shows
 /// of the library, such as when someone merges an artist, renames the album
@@ -76,6 +91,9 @@ final class ReleaseMetadataEditSession {
     }
 
     let releaseId: String
+    /// The values of the form the editor holds, as its last command left
+    /// them.
+    private(set) var values: BridgeRawReleaseEdit
     /// The draft the subscription sent last; `nil` until it sends its first,
     /// and the editor shows nothing until then.
     private(set) var draft: BridgeReleaseEditDraft?
@@ -104,6 +122,7 @@ final class ReleaseMetadataEditSession {
         commands: ReleaseEditCommands
     ) {
         self.releaseId = releaseId
+        values = opened.values
         form = opened.form
         self.commands = commands
         drafts = ScreenSubscription(
@@ -170,11 +189,12 @@ final class ReleaseMetadataEditSession {
                 return
             }
             do {
-                let albumId = try await serially { [form] in
+                let saved = try await serially { [form] in
                     try await form.save()
                 }
+                values = saved.values
                 finish(serial)
-                onSuccess(albumId)
+                onSuccess(saved.albumId)
             }
             catch is CancellationError {
                 finish(serial)
@@ -201,7 +221,9 @@ final class ReleaseMetadataEditSession {
                 return
             }
             do {
-                try await serially { [form] in try await form.cancel() }
+                values = try await serially { [form] in
+                    try await form.cancel()
+                }
                 failure = nil
             }
             catch is CancellationError {}
@@ -225,7 +247,7 @@ final class ReleaseMetadataEditSession {
                 return
             }
             do {
-                try await serially { [form] in
+                values = try await serially { [form] in
                     try await form.apply(link, apply?.bridgeApply)
                 }
             }
@@ -265,14 +287,14 @@ final class ReleaseMetadataEditSession {
         drafts = nil
     }
 
-    /// Make one change of the form.
+    /// Make one change of the form, and hold the values it leaves.
     private func write(
         _ change:
             @escaping @MainActor (ReleaseEditFormCommands) async throws ->
-            Void
+            BridgeRawReleaseEdit
     ) async {
         do {
-            try await serially { [form] in try await change(form) }
+            values = try await serially { [form] in try await change(form) }
             failure = nil
         }
         catch is CancellationError {}
