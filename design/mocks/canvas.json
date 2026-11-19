@@ -3739,38 +3739,6 @@
    "x": 1296,
    "y": 21244
   },
-  "android.settings.your-plays.dc.html": {
-   "h": 916,
-   "page": "library",
-   "title": "Your plays",
-   "w": 412,
-   "x": 1294,
-   "y": 27204
-  },
-  "android.settings.person.plays.dc.html": {
-   "h": 916,
-   "page": "library",
-   "title": "A person: their plays",
-   "w": 412,
-   "x": 1802,
-   "y": 27204
-  },
-  "mac.settings.your-plays.dc.html": {
-   "h": 600,
-   "page": "library",
-   "title": "macOS: Your plays",
-   "w": 690,
-   "x": 2310,
-   "y": 27204
-  },
-  "mac.settings.person.plays.dc.html": {
-   "h": 600,
-   "page": "library",
-   "title": "macOS: A person: their plays",
-   "w": 690,
-   "x": 3096,
-   "y": 27204
-  },
   "android.settings.person.add-device.dc.html": {
    "h": 916,
    "page": "library",
@@ -6539,10 +6507,6 @@
   "android.welcome.libraries.unreadable.dc.html",
   "mac.album.record-sides.dc.html",
   "android.album.record-sides.dc.html",
-  "android.settings.your-plays.dc.html",
-  "android.settings.person.plays.dc.html",
-  "mac.settings.your-plays.dc.html",
-  "mac.settings.person.plays.dc.html",
   "android.settings.person.add-device.dc.html",
   "mac.settings.person.add-device.dc.html",
   "android.library.artist.menu.dc.html",

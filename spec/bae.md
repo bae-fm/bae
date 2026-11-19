@@ -2968,16 +2968,15 @@ the network, not what a seek jumped over. The row is written when the play
 counts and updated as he keeps listening. Its start time is the playing
 device's clock when the play began, stored as UTC.
 
-bae records plays and syncs them by their audience. A person's plays show with
-their profile, newest first, under the day they were played: the person's own
-page lists all of theirs, and another person's page lists the plays they share
-with *Everyone*. *History*, from the person's menu, lists the plays this device
-holds together, newest first, each with when it was played and whose it is,
-under the day they were played, and shows everyone's plays or one person's. On
-a Mac History is a tab of the side pane, and the end of its first day's heading
-names whose plays it shows, *Everyone* or a person's name, in the accent with a
-⌄, above the column of whose each play is, and opens a menu of those choices;
-on Android the same choice ends the screen's top bar.
+bae records plays and syncs them by their audience. Plays show in *History* and
+nowhere else: no page in Settings lists them. *History*, from the person's
+menu, lists the plays this device holds together, newest first, each with when
+it was played and whose it is, under the day they were played, and shows
+everyone's plays or one person's. On a Mac History is a tab of the side pane,
+and the end of its first day's heading names whose plays it shows, *Everyone*
+or a person's name, in the accent with a ⌄, above the column of whose each play
+is, and opens a menu of those choices; on Android the same choice ends the
+screen's top bar.
 
 Each play is its own row, with a fresh id, so a play count is the number of
 rows, never a cell holding a number.
