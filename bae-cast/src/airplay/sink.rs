@@ -22,7 +22,7 @@ use super::capabilities::RaopEncryption;
 use super::crypto::{apple_public_key, RaopCipher};
 use super::device_verification::{SessionVerification, VerificationError};
 use super::pairing::PairingError;
-use super::session::{RaopError, RaopSession};
+use super::session::{RaopError, RaopPassword, RaopSession};
 use super::stream::{PcmFeed, SystemClock};
 
 /// The parameters an [`AirPlaySink`] needs to open a RAOP session to a receiver.
@@ -32,6 +32,8 @@ pub(crate) struct RaopSink {
     /// What each session proves bae with, for a receiver that verifies the
     /// device.
     verification: Option<SessionVerification>,
+    /// The password the receiver asks for as HTTP Digest, if it has one.
+    password: Option<RaopPassword>,
     /// The encryption the receiver requires — `None` for `et=0`, `RsaAes` for
     /// `et=1`.
     encryption: RaopEncryption,
@@ -49,12 +51,22 @@ impl RaopSink {
         receiver: IpAddr,
         rtsp_port: u16,
         verification: Option<SessionVerification>,
+        password: Option<RaopPassword>,
         encryption: RaopEncryption,
         initial_volume: bae_playback::Volume,
         device: CastReceiver,
         diagnostics: Diagnostics,
     ) -> Self {
-        Self { receiver, rtsp_port, verification, encryption, initial_volume, device, diagnostics }
+        Self {
+            receiver,
+            rtsp_port,
+            verification,
+            password,
+            encryption,
+            initial_volume,
+            device,
+            diagnostics,
+        }
     }
 }
 
@@ -75,6 +87,7 @@ impl AirPlaySink for RaopSink {
             self.receiver,
             self.rtsp_port,
             self.verification.as_ref(),
+            self.password.as_ref(),
             PcmFeed::new(source, wake),
             failed,
             cipher,
@@ -82,9 +95,12 @@ impl AirPlaySink for RaopSink {
             Arc::new(SystemClock::new()),
         )
         .map_err(|error| match error {
-            // The receiver no longer accepts the key bae kept: casting to it
-            // again pairs anew.
+            // The receiver no longer accepts the key or the password bae
+            // kept: casting to it again asks anew.
             RaopError::Verification(VerificationError::NoLongerKnown) => {
+                AudioError::AirPlayPairingLost(self.device.clone())
+            }
+            RaopError::PasswordRefused if self.password.is_some() => {
                 AudioError::AirPlayPairingLost(self.device.clone())
             }
             error => AudioError::AirPlayRefused(error.to_string()),

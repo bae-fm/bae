@@ -1,5 +1,7 @@
 use super::*;
 use crate::airplay::crypto::apple_public_key;
+use crate::airplay::digest::DigestStyle;
+use crate::airplay::fake_raop_receiver::{Challenges, DigestGate};
 use crate::airplay::fake_verification_receiver::{listen_for_verification, VerificationReceiver};
 use crate::airplay::rtsp::read_request;
 use bae_playback::airplay_output::{AirPlayStreamControl, PcmSource};
@@ -173,6 +175,7 @@ fn playback_is_told_the_latency_the_receiver_reports() {
         addr.ip(),
         addr.port(),
         None,
+        None,
         crate::airplay::stream::PcmFeed::new(
             Box::new(SilentSource),
             bae_playback::airplay_output::PcmWake::unattached(),
@@ -233,6 +236,7 @@ fn a_session_verifies_the_device_before_its_handshake() {
         [127, 0, 0, 1].into(),
         port,
         Some(&verification(&key)),
+        None,
         crate::airplay::stream::PcmFeed::new(
             Box::new(SilentSource),
             bae_playback::airplay_output::PcmWake::unattached(),
@@ -273,6 +277,7 @@ fn a_session_start_on_a_receiver_that_forgot_the_key_names_it() {
         [127, 0, 0, 1].into(),
         port,
         Some(verification(&key)),
+        None,
         crate::airplay::capabilities::RaopEncryption::None,
         bae_playback::Volume::FULL,
         device.clone(),
@@ -284,6 +289,107 @@ fn a_session_start_on_a_receiver_that_forgot_the_key_names_it() {
         bae_playback::airplay_output::AirPlayFailed::ignored(),
     ) else {
         panic!("a receiver that forgot the key starts no session");
+    };
+    assert!(
+        matches!(&error, bae_playback::AudioError::AirPlayPairingLost(receiver) if *receiver == device),
+        "{error}"
+    );
+}
+
+/// A receiver with the password `hunter2` asked for as `challenges` says, with
+/// its RTP ports bound so the stream's sends land.
+fn password_receiver(
+    challenges: Challenges,
+) -> (u16, Arc<std::sync::Mutex<VerificationReceiver>>, [UdpSocket; 2]) {
+    let audio = UdpSocket::bind(("127.0.0.1", 0)).unwrap();
+    let control = UdpSocket::bind(("127.0.0.1", 0)).unwrap();
+    let mut receiver = VerificationReceiver::new(&[]);
+    receiver.password = Some(DigestGate::new("hunter2", DigestStyle::Standard, challenges));
+    receiver.ports = (audio.local_addr().unwrap().port(), control.local_addr().unwrap().port());
+    let (port, receiver) = listen_for_verification(receiver);
+    (port, receiver, [audio, control])
+}
+
+fn password(password: &str) -> RaopPassword {
+    RaopPassword { password: password.to_string(), style: DigestStyle::Standard }
+}
+
+fn start_session(port: u16, password: &RaopPassword) -> Result<RaopSession, RaopError> {
+    RaopSession::start(
+        &bae_diagnostics::Diagnostics::noop(),
+        [127, 0, 0, 1].into(),
+        port,
+        None,
+        Some(password),
+        crate::airplay::stream::PcmFeed::new(
+            Box::new(SilentSource),
+            bae_playback::airplay_output::PcmWake::unattached(),
+        ),
+        bae_playback::airplay_output::AirPlayFailed::ignored(),
+        RaopCipher::none(),
+        bae_playback::Volume::FULL,
+        Arc::new(crate::airplay::stream::SystemClock::new()),
+    )
+}
+
+/// A session with the password answers the receiver's first 401 and carries
+/// the answer on every later request, its TEARDOWN included.
+#[test]
+fn a_session_answers_every_request_with_the_password() {
+    let (port, receiver, _rtp) = password_receiver(Challenges::EveryRequest);
+    let session = start_session(port, &password("hunter2")).expect("the session starts");
+    drop(session);
+    let receiver = receiver.lock().unwrap();
+    let taken = &receiver.password.as_ref().unwrap().taken;
+    let methods: Vec<_> = taken.iter().map(|t| (t.method.as_str(), t.status)).collect();
+    assert_eq!(
+        methods,
+        [
+            ("OPTIONS", 401),
+            ("OPTIONS", 200),
+            ("ANNOUNCE", 200),
+            ("SETUP", 200),
+            ("RECORD", 200),
+            ("SET_PARAMETER", 200),
+            ("TEARDOWN", 200),
+        ]
+    );
+    assert!(taken[1..].iter().all(|t| t.authorized));
+}
+
+/// A receiver that refuses the password with a second 401 fails the session
+/// start, and the sink says the receiver no longer accepts this device.
+#[test]
+fn a_session_start_the_receiver_refuses_the_password_of_names_the_receiver() {
+    use bae_playback::airplay_output::AirPlaySink;
+    let (port, _receiver, _rtp) = password_receiver(Challenges::EveryRequest);
+    let error = start_session(port, &password("hunter3")).err().expect("the receiver refuses");
+    assert!(matches!(error, RaopError::PasswordRefused), "{error:?}");
+
+    let device = bae_playback::renderer::CastReceiver {
+        id: "001122334455".to_string(),
+        name: "Studio".to_string(),
+        kind: bae_playback::renderer::RendererKind::AirPlay,
+        model: None,
+        address: "127.0.0.1".to_string(),
+        takes_volume: true,
+    };
+    let sink = crate::airplay::sink::RaopSink::new(
+        [127, 0, 0, 1].into(),
+        port,
+        None,
+        Some(password("hunter3")),
+        crate::airplay::capabilities::RaopEncryption::None,
+        bae_playback::Volume::FULL,
+        device.clone(),
+        bae_diagnostics::Diagnostics::noop(),
+    );
+    let Err(error) = sink.start(
+        Box::new(SilentSource),
+        bae_playback::airplay_output::PcmWake::unattached(),
+        bae_playback::airplay_output::AirPlayFailed::ignored(),
+    ) else {
+        panic!("a receiver that refuses the password starts no session");
     };
     assert!(
         matches!(&error, bae_playback::AudioError::AirPlayPairingLost(receiver) if *receiver == device),

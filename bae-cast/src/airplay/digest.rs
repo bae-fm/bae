@@ -3,10 +3,38 @@
 //! pair-verify, at SETUP, and an AirPlay 1 receiver on any request.
 //!
 //! The answer is OwnTone's (`src/outputs/airplay.c:721-820`, `raop.c:879-990`):
-//! an empty username, and `response = MD5(MD5(":" realm ":" password) ":"
-//! nonce ":" MD5(method ":" uri))` in lowercase hex.
+//! `response = MD5(MD5(user ":" realm ":" password) ":" nonce ":" MD5(method
+//! ":" uri))`, with an empty username and lowercase hex, except for a
+//! first-generation AirPort Express ([`DigestStyle::AirPortExpress`]).
 
 use md5::{Digest, Md5};
+
+/// How a receiver wants its Digest answer written: the username and the case
+/// of the hex.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DigestStyle {
+    /// An empty username and lowercase hex.
+    Standard,
+    /// The username `iTunes` and capital hex, which a first-generation AirPort
+    /// Express wants (OwnTone `raop.c:894-915`, `:2220-2224`, `:4392-4394`).
+    AirPortExpress,
+}
+
+impl DigestStyle {
+    fn username(self) -> &'static str {
+        match self {
+            DigestStyle::Standard => "",
+            DigestStyle::AirPortExpress => "iTunes",
+        }
+    }
+
+    fn hex(self, bytes: impl AsRef<[u8]>) -> String {
+        match self {
+            DigestStyle::Standard => hex::encode(bytes),
+            DigestStyle::AirPortExpress => hex::encode_upper(bytes),
+        }
+    }
+}
 
 /// The `realm` and `nonce` a receiver's `WWW-Authenticate: Digest …` states.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -37,20 +65,24 @@ impl DigestChallenge {
     }
 
     /// The `Authorization` value that answers this challenge with `password`
-    /// for a `method` request to `uri`.
-    pub(crate) fn authorization(&self, password: &str, method: &str, uri: &str) -> String {
-        let credentials = md5_hex(&format!(":{}:{password}", self.realm));
+    /// for a `method` request to `uri`, written as `style` says.
+    pub(crate) fn authorization(
+        &self,
+        style: DigestStyle,
+        password: &str,
+        method: &str,
+        uri: &str,
+    ) -> String {
+        let user = style.username();
+        let md5_hex = |text: &str| style.hex(Md5::digest(text.as_bytes()));
+        let credentials = md5_hex(&format!("{user}:{}:{password}", self.realm));
         let request = md5_hex(&format!("{method}:{uri}"));
         let response = md5_hex(&format!("{credentials}:{}:{request}", self.nonce));
         format!(
-            "Digest username=\"\", realm=\"{}\", nonce=\"{}\", uri=\"{uri}\", response=\"{response}\"",
+            "Digest username=\"{user}\", realm=\"{}\", nonce=\"{}\", uri=\"{uri}\", response=\"{response}\"",
             self.realm, self.nonce
         )
     }
-}
-
-fn md5_hex(text: &str) -> String {
-    hex::encode(Md5::digest(text.as_bytes()))
 }
 
 #[cfg(test)]

@@ -19,6 +19,7 @@ use std::collections::HashMap;
 
 use tracing::debug;
 
+use super::digest::DigestStyle;
 use crate::renderer::discovery::RendererServiceType;
 
 /// The AirPlay feature bits carried in the 64-bit `features`/`ft` value that a
@@ -80,8 +81,9 @@ pub struct RaopAuth {
     /// every connection (AirPlay 1 device verification), and how often the
     /// receiver asks for the PIN.
     pub device_verification: Option<DeviceVerification>,
-    /// `pw=true` or `0x80`: ANNOUNCE needs the receiver's password.
-    pub password: bool,
+    /// `pw=true` or `0x80`: the receiver answers requests with a Digest
+    /// challenge for its password, written as this style says.
+    pub password: Option<DigestStyle>,
 }
 
 /// How often an AirPlay 1 receiver that verifies the device asks for its PIN:
@@ -224,9 +226,22 @@ impl AirPlayCapabilities {
             } else {
                 None
             };
-            let auth = RaopAuth { device_verification, password };
+            let auth =
+                RaopAuth { device_verification, password: password.then_some(digest_style(txt)) };
             AirPlayCapabilities { dialect: Dialect::Raop { encryption, auth }, features, access }
         })
+    }
+}
+
+/// How a RAOP receiver with a password wants its Digest answer written. A
+/// first-generation AirPort Express states no model (`am`) and wants the
+/// username `iTunes` with capital hex; every other receiver takes an empty
+/// username and lowercase hex.
+fn digest_style(txt: &HashMap<String, String>) -> DigestStyle {
+    if txt.contains_key("am") {
+        DigestStyle::Standard
+    } else {
+        DigestStyle::AirPortExpress
     }
 }
 

@@ -16,6 +16,8 @@ use std::io::{self, BufRead, BufReader, Write};
 use std::net::{IpAddr, SocketAddr, TcpStream};
 use std::time::Duration;
 
+use super::digest::{DigestChallenge, DigestStyle};
+
 /// How long the control connection waits on the receiver — to connect, or for
 /// a request to go out or its reply to come back — before the operation fails.
 /// A receiver on the local network answers well within it.
@@ -231,7 +233,21 @@ pub(crate) struct RtspConnection {
     /// The local address the receiver sees us on, for building request URIs and
     /// SDP connection lines.
     local_addr: IpAddr,
+    /// The password to answer a Digest challenge with, when bae has one.
+    password: Option<DigestPassword>,
 }
+
+/// A receiver's password, and the Digest challenge that asked for it once the
+/// receiver has asked: every later request carries the answer to it.
+struct DigestPassword {
+    password: String,
+    style: DigestStyle,
+    challenge: Option<DigestChallenge>,
+}
+
+/// The status a receiver answers a request with when it wants the password
+/// as HTTP Digest.
+pub(crate) const UNAUTHORIZED: u16 = 401;
 
 impl RtspConnection {
     /// Open the RTSP control connection to `addr:port`, giving up after
@@ -266,7 +282,17 @@ impl RtspConnection {
             user_agent: user_agent.into(),
             session: None,
             local_addr,
+            password: None,
         })
+    }
+
+    /// Answer the receiver's Digest challenge with `password`, written as
+    /// `style` says. The first 401 to any request is answered and the request
+    /// sent again, and every later request carries the answer. A 401 after
+    /// that is the receiver refusing the password, and reaches the caller as
+    /// the response.
+    pub(crate) fn answer_challenges_with(&mut self, password: String, style: DigestStyle) {
+        self.password = Some(DigestPassword { password, style, challenge: None });
     }
 
     /// Take the underlying TCP stream back, for handing a control connection off to
@@ -290,12 +316,38 @@ impl RtspConnection {
     /// connection's `User-Agent` and `Session` headers. A response whose `CSeq`
     /// doesn't echo the request's is a protocol error.
     pub(crate) fn request(&mut self, request: &RtspRequest) -> io::Result<RtspResponse> {
+        let response = self.send(request)?;
+        if response.status != UNAUTHORIZED {
+            return Ok(response);
+        }
+        let Some(asked) = self.password.as_mut().filter(|password| password.challenge.is_none())
+        else {
+            return Ok(response);
+        };
+        let Some(challenge) =
+            response.header("WWW-Authenticate").and_then(DigestChallenge::from_header)
+        else {
+            return Ok(response);
+        };
+        asked.challenge = Some(challenge);
+        self.send(request)
+    }
+
+    /// Send `request` once, with the answer to the receiver's challenge when
+    /// it has made one, and read its response.
+    fn send(&mut self, request: &RtspRequest) -> io::Result<RtspResponse> {
         self.cseq += 1;
         let cseq = self.cseq;
 
         let mut extra = vec![("User-Agent".to_string(), self.user_agent.clone())];
         if let Some(session) = &self.session {
             extra.push(("Session".to_string(), session.clone()));
+        }
+        if let Some(DigestPassword { password, style, challenge: Some(challenge) }) = &self.password
+        {
+            let answer =
+                challenge.authorization(*style, password, request.method.as_str(), &request.uri);
+            extra.push(("Authorization".to_string(), answer));
         }
 
         let bytes = request.serialize(cseq, &extra);

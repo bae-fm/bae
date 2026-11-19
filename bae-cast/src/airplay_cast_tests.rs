@@ -1,4 +1,6 @@
 use super::*;
+use crate::airplay::digest::DigestStyle;
+use crate::airplay::fake_raop_receiver::{Challenges, DigestGate};
 use crate::airplay::fake_receiver::{
     listen_for_code_pairing, CodeReceiver, CodeRefusal, ReceiverCode,
 };
@@ -69,7 +71,7 @@ fn reported_raop_receiver(port: u16, flags: &str) -> ReportedRenderer {
         instance_name: format!("{RAOP_RECEIVER}@Studio"),
         addr: "127.0.0.1".to_string(),
         port,
-        txt: [("et", "0"), ("sf", flags)]
+        txt: [("et", "0"), ("sf", flags), ("am", "AirPort10,115")]
             .into_iter()
             .map(|(k, v)| (k.to_string(), v.to_string()))
             .collect(),
@@ -373,6 +375,29 @@ impl Casting<VerificationReceiver> {
         })
     }
 
+    /// An AirPlay 1 receiver with status `flags` that states no model, as a
+    /// first-generation AirPort Express does.
+    fn to_raop_without_a_model(receiver: VerificationReceiver, flags: &str) -> Self {
+        Self::listing(RAOP_RECEIVER, listen_for_verification(receiver), |port| {
+            let mut reported = reported_raop_receiver(port, flags);
+            reported.txt.remove("am");
+            reported
+        })
+    }
+
+    /// The password this device kept for the receiver.
+    fn kept_password(&self) -> Option<String> {
+        self.controller.device_secrets.device_secret(&password_secret_name(RAOP_RECEIVER)).unwrap()
+    }
+
+    /// What the receiver's password check took: each request's method and the
+    /// status it answered.
+    fn password_checks(&self) -> Vec<(String, u16)> {
+        let receiver = self.receiver.lock().unwrap();
+        let gate = receiver.password.as_ref().expect("the receiver has a password");
+        gate.taken.iter().map(|taken| (taken.method.clone(), taken.status)).collect()
+    }
+
     /// The key this device kept for the receiver.
     fn kept_key(&self) -> Option<VerificationKey> {
         self.controller
@@ -487,12 +512,161 @@ fn an_airplay1_receiver_that_asks_for_nothing_pairs_not_at_all() {
     assert_eq!(casting.count("/pair-pin-start") + casting.count("/pair-verify"), 0);
 }
 
-/// An AirPlay 1 receiver that asks for a password is refused before
-/// connecting, since bae sends none.
+/// An AirPlay 1 receiver with a password that has `password` set on it and
+/// asks for it as `challenges` says.
+fn with_password(
+    mut receiver: VerificationReceiver,
+    password: &str,
+    style: DigestStyle,
+    challenges: Challenges,
+) -> VerificationReceiver {
+    receiver.password = Some(DigestGate::new(password, style, challenges));
+    receiver
+}
+
+fn password_ask(why: CodeAsked, last_try: Option<CodeRefused>) -> CodeRequest {
+    CodeRequest { code: CodeKind::Password, why, last_try }
+}
+
+/// An AirPlay 1 receiver that challenges OPTIONS: the first cast asks for the
+/// password, answers the 401 with it and sends OPTIONS again, keeps it, and
+/// the next cast answers with the kept one and asks nothing.
 #[test]
-fn an_airplay1_receiver_with_a_password_is_refused() {
-    let casting = Casting::to_raop(VerificationReceiver::new(&[]), "0x80");
-    let cast = casting.cast(no_code());
-    assert!(matches!(cast, Err(CastError::AirPlay1PasswordUnsupported)), "{cast:?}");
-    assert!(casting.receiver.lock().unwrap().requests.is_empty());
+fn an_airplay1_receiver_that_challenges_options_pairs_once_the_password_is_entered() {
+    let receiver = with_password(
+        VerificationReceiver::new(&[]),
+        "hunter2",
+        DigestStyle::Standard,
+        Challenges::EveryRequest,
+    );
+    let casting = Casting::to_raop(receiver, "0x80");
+    let prompt = ScriptedPrompt::answering(&["hunter2"]);
+    casting.cast(prompt.clone()).expect("the receiver took the password");
+    assert_eq!(prompt.asked(), [password_ask(CodeAsked::FirstPairing, None)]);
+    assert_eq!(casting.kept_password().as_deref(), Some("hunter2"));
+    assert_eq!(
+        casting.password_checks(),
+        [
+            ("OPTIONS".to_string(), 401),
+            ("OPTIONS".to_string(), 401),
+            ("OPTIONS".to_string(), 200),
+            ("ANNOUNCE".to_string(), 200)
+        ],
+        "the probe for unadvertised device verification got a 401, then the 401 to OPTIONS was \
+         answered and the request sent again"
+    );
+
+    let again = ScriptedPrompt::answering(&[]);
+    casting.cast(again.clone()).expect("the kept password is taken");
+    assert_eq!(again.asked(), []);
+}
+
+/// An AirPlay 1 receiver that challenges only the session's requests is
+/// answered at ANNOUNCE.
+#[test]
+fn an_airplay1_receiver_that_challenges_announce_pairs_once_the_password_is_entered() {
+    let receiver = with_password(
+        VerificationReceiver::new(&[]),
+        "hunter2",
+        DigestStyle::Standard,
+        Challenges::Session,
+    );
+    let casting = Casting::to_raop(receiver, "0x80");
+    casting.cast(ScriptedPrompt::answering(&["hunter2"])).expect("the receiver took the password");
+    assert_eq!(casting.kept_password().as_deref(), Some("hunter2"));
+    let receiver = casting.receiver.lock().unwrap();
+    assert_eq!(receiver.password.as_ref().unwrap().methods_answered(401), ["ANNOUNCE"]);
+}
+
+/// A wrong password asks again with what was wrong and keeps nothing until
+/// the receiver takes one. A password of the wrong shape asks again without
+/// reaching the receiver.
+#[test]
+fn a_wrong_airplay1_password_or_a_wrong_shape_asks_again() {
+    let receiver = with_password(
+        VerificationReceiver::new(&[]),
+        "hunter2",
+        DigestStyle::Standard,
+        Challenges::EveryRequest,
+    );
+    let casting = Casting::to_raop(receiver, "0x80");
+    let prompt = ScriptedPrompt::answering(&["", "hunter3", "hunter2"]);
+    casting.cast(prompt.clone()).expect("the third try is the password");
+    assert_eq!(
+        prompt.asked(),
+        [
+            password_ask(CodeAsked::FirstPairing, None),
+            password_ask(CodeAsked::FirstPairing, Some(CodeRefused::WrongShape)),
+            password_ask(CodeAsked::FirstPairing, Some(CodeRefused::WrongCode)),
+        ]
+    );
+    assert_eq!(casting.kept_password().as_deref(), Some("hunter2"));
+    let receiver = casting.receiver.lock().unwrap();
+    assert_eq!(
+        receiver.password.as_ref().unwrap().methods_answered(401),
+        ["OPTIONS", "OPTIONS", "OPTIONS", "OPTIONS"],
+        "the probe for device verification got a 401; the empty password never reached the \
+         receiver; the wrong one got a challenge and a second 401, and the right one a challenge"
+    );
+}
+
+/// A receiver whose password changed refuses the one bae kept with a second
+/// 401, so bae asks again, saying the receiver no longer knows this device,
+/// and the new password replaces the kept one.
+#[test]
+fn a_changed_airplay1_password_asks_again_and_replaces_what_bae_kept() {
+    let receiver = with_password(
+        VerificationReceiver::new(&[]),
+        "hunter2",
+        DigestStyle::Standard,
+        Challenges::EveryRequest,
+    );
+    let casting = Casting::to_raop(receiver, "0x80");
+    casting.cast(ScriptedPrompt::answering(&["hunter2"])).expect("the first cast");
+    casting.receiver.lock().unwrap().password.as_mut().unwrap().set_password("correct horse");
+
+    let prompt = ScriptedPrompt::answering(&["correct horse"]);
+    casting.cast(prompt.clone()).expect("the new password");
+    assert_eq!(prompt.asked(), [password_ask(CodeAsked::PairingLost, None)]);
+    assert_eq!(casting.kept_password().as_deref(), Some("correct horse"));
+}
+
+/// A first-generation AirPort Express states no model, and wants the
+/// username `iTunes` and capital hex.
+#[test]
+fn a_first_generation_airport_express_is_answered_in_its_own_style() {
+    let receiver = with_password(
+        VerificationReceiver::new(&[]),
+        "hunter2",
+        DigestStyle::AirPortExpress,
+        Challenges::EveryRequest,
+    );
+    let casting = Casting::to_raop_without_a_model(receiver, "0x80");
+    casting.cast(ScriptedPrompt::answering(&["hunter2"])).expect("the receiver took the password");
+    assert_eq!(casting.kept_password().as_deref(), Some("hunter2"));
+}
+
+/// A receiver that verifies the device and has a password gets the PIN
+/// prompt and then the password prompt, and bae keeps both.
+#[test]
+fn an_airplay1_receiver_with_a_pin_and_a_password_asks_for_both_in_turn() {
+    let receiver = with_password(
+        VerificationReceiver::new(&["4821"]),
+        "hunter2",
+        DigestStyle::Standard,
+        Challenges::Session,
+    );
+    let casting = Casting::to_raop(receiver, "0x280");
+    let prompt = ScriptedPrompt::answering(&["4821", "hunter2"]);
+    casting.cast(prompt.clone()).expect("the receiver took both");
+    assert_eq!(
+        prompt.asked(),
+        [first_pin(CodeAsked::FirstPairing), password_ask(CodeAsked::FirstPairing, None)]
+    );
+    assert!(casting.kept_key().is_some());
+    assert_eq!(casting.kept_password().as_deref(), Some("hunter2"));
+
+    let again = ScriptedPrompt::answering(&[]);
+    casting.cast(again.clone()).expect("the kept key and password are taken");
+    assert_eq!(again.asked(), []);
 }

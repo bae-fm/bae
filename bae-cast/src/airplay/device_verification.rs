@@ -46,7 +46,7 @@ use x25519_dalek::{x25519, X25519_BASEPOINT_BYTES};
 use super::bplist::{self, BplistError, Plist};
 use super::pairing::{public_key, sign};
 use super::pairing_keys::VerificationKey;
-use super::rtsp::{Method, RtspConnection, RtspRequest};
+use super::rtsp::{Method, RtspConnection, RtspRequest, UNAUTHORIZED};
 use super::srp::{SrpClient, SrpError, SrpSuite};
 
 /// The steps a receiver can refuse, as an error names them.
@@ -158,7 +158,8 @@ pub(crate) fn pair_with_pin(
 
 /// Prove to the receiver that this connection comes from the device that
 /// paired with `key`. A receiver that refuses either step no longer knows
-/// the key.
+/// the key, except with a 401, which is the receiver refusing the password
+/// the connection answers its challenge with.
 pub(crate) fn verify(
     conn: &mut RtspConnection,
     client_name: &str,
@@ -166,7 +167,9 @@ pub(crate) fn verify(
 ) -> Result<(), VerificationError> {
     let verify = PairVerify::new(key);
     let known = |error| match error {
-        VerificationError::Rejected { .. } => VerificationError::NoLongerKnown,
+        VerificationError::Rejected { status, .. } if status != UNAUTHORIZED => {
+            VerificationError::NoLongerKnown
+        }
         other => other,
     };
     let reply = post(conn, "/pair-verify", VERIFY_KEYS, OCTETS, client_name, verify.start())

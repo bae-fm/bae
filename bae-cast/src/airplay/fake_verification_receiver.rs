@@ -19,6 +19,7 @@ use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use sha2::{Digest, Sha512};
 
 use super::bplist::{self, Plist};
+use super::fake_raop_receiver::{DigestGate, CHALLENGE};
 use super::fake_receiver::{respond_with_headers, SrpServer};
 use super::rtsp::{read_request, Method, ParsedRequest};
 
@@ -46,6 +47,8 @@ pub(crate) struct VerificationReceiver {
     pub(crate) requests: Vec<String>,
     /// The RTP ports its SETUP names.
     pub(crate) ports: (u16, u16),
+    /// The password it asks for as HTTP Digest, on the requests it says.
+    pub(crate) password: Option<DigestGate>,
     setup: Option<SrpServer>,
 }
 
@@ -75,6 +78,7 @@ impl VerificationReceiver {
             refuse_verify_keys: None,
             requests: Vec::new(),
             ports: (1, 1),
+            password: None,
             setup: None,
         }
     }
@@ -96,6 +100,12 @@ impl VerificationReceiver {
         while let Some(request) = read_request(reader).unwrap() {
             self.requests.push(format!("{} {}", request.method.as_str(), request.uri));
             let cseq = request.cseq().to_string();
+            if let Some(gate) = &mut self.password {
+                if !gate.lets_through(&request) {
+                    respond_with_headers(writer, "401 Unauthorized", &cseq, CHALLENGE, &[]);
+                    continue;
+                }
+            }
             let (status, extra, body) = match (&request.method, request.uri.as_str()) {
                 (Method::Post, "/pair-pin-start") => {
                     self.shown += 1;

@@ -20,9 +20,6 @@ pub enum CastError {
     /// The ephemeral serving couldn't be started (bind / no LAN address).
     #[error("couldn't start serving audio to the Cast device: {0}")]
     Serving(String),
-    /// The AirPlay 1 receiver asks for a password, which bae doesn't send.
-    #[error("this AirPlay 1 receiver asks for a password, which bae doesn't send")]
-    AirPlay1PasswordUnsupported,
     /// The AirPlay receiver refused to pair, for a reason it gave or a reply
     /// that didn't check out.
     #[error("couldn't pair with {receiver}: {detail}")]
@@ -100,9 +97,7 @@ impl CastError {
     pub fn category(&self) -> bae_diagnostics::UiErrorCategory {
         use bae_diagnostics::UiErrorCategory as C;
         match self {
-            Self::AirPlay1PasswordUnsupported | Self::AirPlayEncryptionUnsupported => {
-                C::AirPlayUnsupported
-            }
+            Self::AirPlayEncryptionUnsupported => C::AirPlayUnsupported,
             Self::AirPlayPairingFailed { receiver, .. } => {
                 C::AirPlayPairingFailed { receiver: receiver.clone() }
             }

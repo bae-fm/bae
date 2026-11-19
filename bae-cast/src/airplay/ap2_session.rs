@@ -24,11 +24,11 @@ use super::airplay2::Ap2AudioCipher;
 use super::ap2_channel::{audio_key, HapChannel};
 use super::ap2_pairing::{run_pair_verify, run_transient_pair_setup};
 use super::bplist::{self, Plist};
-use super::digest::DigestChallenge;
+use super::digest::{DigestChallenge, DigestStyle};
 use super::pairing::PairingError;
 use super::pairing_keys::KeptPairing;
 use super::rtp::NtpTime;
-use super::rtsp::{Method, RtspConnection, RtspRequest, RtspResponse};
+use super::rtsp::{Method, RtspConnection, RtspRequest, RtspResponse, UNAUTHORIZED};
 use super::stream::{
     poisoned_connection, MonotonicClock, PayloadCrypto, PcmFeed, RaopStream, RaopStreamControl,
     RtpAudio, StreamEndpoints, StreamSockets, DEFAULT_LATENCY_FRAMES,
@@ -182,10 +182,6 @@ pub(crate) struct Ap2Control {
     challenge: Option<DigestChallenge>,
 }
 
-/// The status a receiver answers a request with when it wants the password
-/// as HTTP Digest.
-const UNAUTHORIZED: u16 = 401;
-
 impl Ap2Control {
     /// Wrap an already-verified stream in the encrypted transport. `uri` is the
     /// RTSP request URI (`rtsp://<local>/<session-id>`). `password` answers a
@@ -215,7 +211,12 @@ impl Ap2Control {
         self.cseq += 1;
         let mut extra = vec![("User-Agent".to_string(), self.user_agent.clone())];
         if let (Some(password), Some(challenge)) = (&self.password, &self.challenge) {
-            let answer = challenge.authorization(password, request.method.as_str(), &request.uri);
+            let answer = challenge.authorization(
+                DigestStyle::Standard,
+                password,
+                request.method.as_str(),
+                &request.uri,
+            );
             extra.push(("Authorization".to_string(), answer));
         }
         let plaintext = request.serialize(self.cseq, &extra);

@@ -28,8 +28,10 @@ pub(crate) mod bplist;
 pub(crate) mod capabilities;
 pub(crate) mod crypto;
 pub(crate) mod device_verification;
-mod digest;
+pub(crate) mod digest;
 pub(crate) mod discovery;
+#[cfg(test)]
+pub(crate) mod fake_raop_receiver;
 #[cfg(test)]
 pub(crate) mod fake_receiver;
 #[cfg(test)]

@@ -25,6 +25,12 @@ pub(crate) fn verification_secret_name(receiver_id: &str) -> String {
     format!("airplay1-verification:{receiver_id}")
 }
 
+/// The name of the keychain entry in which this device keeps the password of
+/// the AirPlay 1 receiver `receiver_id`, which is the entry's whole text.
+pub(crate) fn password_secret_name(receiver_id: &str) -> String {
+    format!("airplay1-password:{receiver_id}")
+}
+
 /// Who bae is to one receiver: the pairing identifier it introduced itself
 /// with and the seed of the Ed25519 key it signs with. Each receiver gets an
 /// identity of its own, so replacing one pairing touches no other.

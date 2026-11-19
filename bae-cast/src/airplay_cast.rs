@@ -19,13 +19,16 @@ use crate::airplay::capabilities::{
     Ap2Pairing, DeviceVerification, Dialect, RaopAuth, RaopEncryption, ReceiverAccess,
 };
 use crate::airplay::device_verification::{self, SessionVerification, VerificationError};
+use crate::airplay::digest::DigestStyle;
 use crate::airplay::pairing::{HomeKitError, PairingError};
 use crate::airplay::pairing_keys::{
-    pairing_secret_name, verification_secret_name, ControllerIdentity, KeptPairing,
-    MalformedPairingKeys, VerificationKey,
+    pairing_secret_name, password_secret_name, verification_secret_name, ControllerIdentity,
+    KeptPairing, MalformedPairingKeys, VerificationKey,
 };
 use crate::airplay::rtsp::RtspConnection;
-use crate::airplay::session::{asks_for_verification, RAOP_USER_AGENT};
+use crate::airplay::session::{
+    asks_for_verification, password_accepted, RaopError, RaopPassword, RAOP_USER_AGENT,
+};
 use crate::airplay::sink::{Ap2Sink, RaopSink};
 use crate::airplay::{AirPlayCapabilities, UnreadableSetting};
 use crate::code_prompt::{
@@ -53,6 +56,15 @@ struct Ap2Receiver(PairingTarget);
 
 /// An AirPlay 1 receiver bae pairs with by device verification.
 struct RaopReceiver(PairingTarget);
+
+/// An AirPlay 1 receiver that asks for a password as HTTP Digest, which
+/// bae keeps as the receiver's pairing, with what each request to it proves
+/// bae first where it verifies the device too.
+struct RaopPasswordReceiver {
+    target: PairingTarget,
+    style: DigestStyle,
+    verification: Option<SessionVerification>,
+}
 
 /// Where a pairing by code keeps what it agreed on.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -166,12 +178,9 @@ impl CastController {
                     self.diagnostics.clone(),
                 ))
             }
-            Dialect::Raop { auth: RaopAuth { password: true, .. }, .. } => {
-                return Err(CastError::AirPlay1PasswordUnsupported);
-            }
             Dialect::Raop {
                 encryption: offered,
-                auth: RaopAuth { device_verification, password: false },
+                auth: RaopAuth { device_verification, password },
             } => {
                 let encryption = if offered.contains(&RaopEncryption::None) {
                     RaopEncryption::None
@@ -180,12 +189,27 @@ impl CastController {
                 } else {
                     return Err(CastError::AirPlayEncryptionUnsupported);
                 };
-                let verification =
-                    self.verify_device(addr, port, &device, *device_verification, prompt).await?;
+                let verification = self
+                    .verify_device(addr, port, &device, *device_verification, prompt.clone())
+                    .await?;
+                let password = match password {
+                    Some(style) => {
+                        let target = RaopPasswordReceiver {
+                            target: self.pairing_target(addr, port, device.clone()).await?,
+                            style: *style,
+                            verification: verification.clone(),
+                        };
+                        let kept =
+                            self.kept_or_new_pairing(&target, CodeKind::Password, prompt).await?;
+                        Some(RaopPassword { password: kept, style: *style })
+                    }
+                    None => None,
+                };
                 Box::new(RaopSink::new(
                     addr,
                     port,
                     verification,
+                    password,
                     encryption,
                     // The receiver plays at its hardware volume; bae attenuates locally
                     // in the output drain, so seed the session at full.
@@ -559,6 +583,75 @@ impl PairsByCode for RaopReceiver {
     }
 }
 
+impl PairsByCode for RaopPasswordReceiver {
+    /// The password, which is the keychain entry's whole text.
+    type Kept = String;
+
+    fn kept_entry(&self) -> String {
+        password_secret_name(&self.target.receiver.id)
+    }
+
+    fn decode_kept(text: &str) -> Result<String, MalformedPairingKeys> {
+        Ok(text.to_string())
+    }
+
+    async fn verify_kept(
+        &self,
+        cast: &CastController,
+        kept: String,
+    ) -> Result<KeptVerified, CastError> {
+        let accepted = self.accepts(cast, kept).await?;
+        Ok(if accepted { KeptVerified::Accepted } else { KeptVerified::Lost })
+    }
+
+    /// A password is no PIN, so the receiver shows nothing.
+    async fn show_pin(&self, _cast: &CastController) -> Result<(), CastError> {
+        Ok(())
+    }
+
+    /// The receiver takes the password when no request of the check gets a
+    /// 401 after the answer, and a wrong one states no wait.
+    async fn try_code(
+        &self,
+        cast: &CastController,
+        _code: CodeKind,
+        entered: String,
+        kept_for: KeptFor,
+    ) -> Result<CodeTried<String>, CastError> {
+        let entry = self.kept_entry();
+        let secrets = cast.device_secrets.clone();
+        if !self.accepts(cast, entered.clone()).await? {
+            return Ok(CodeTried::Wrong { retry_after: None });
+        }
+        // Once the receiver took the password, the keychain write runs to its
+        // end even when the cast is called off meanwhile.
+        cast.diagnostics
+            .blocking("keep an AirPlay 1 receiver's password", move || {
+                keep(&secrets, &entry, &entered, kept_for)?;
+                Ok(CodeTried::Paired(entered))
+            })
+            .await
+            .map_err(CastError::Internal)?
+    }
+}
+
+impl RaopPasswordReceiver {
+    /// Whether the receiver takes `password`, asked on a connection of its
+    /// own, off the runtime.
+    async fn accepts(&self, cast: &CastController, password: String) -> Result<bool, CastError> {
+        let PairingTarget { addr, port, receiver, .. } = self.target.clone();
+        let password = RaopPassword { password, style: self.style };
+        let verification = self.verification.clone();
+        cast.diagnostics
+            .blocking("check an AirPlay 1 receiver's password", move || {
+                password_accepted(addr, port, verification.as_ref(), &password)
+                    .map_err(|error| raop_session_failure(error, &receiver.name))
+            })
+            .await
+            .map_err(CastError::Internal)?
+    }
+}
+
 /// Write `text` to this device's keychain entry `entry` when the pairing is
 /// kept for later casts. A write the keychain refuses fails the cast.
 fn keep(
@@ -594,6 +687,29 @@ pub(crate) fn raop_pairing_failure(error: VerificationError, receiver: &str) -> 
         | VerificationError::Srp(_)) => {
             CastError::AirPlayPairingFailed { receiver, detail: error.to_string() }
         }
+    }
+}
+
+/// What a failed connection to the AirPlay 1 receiver named `receiver` says
+/// to the person who cast: a failed device verification as it says, a
+/// connection that failed is unreachable, and any other reply is a pairing
+/// that didn't complete.
+fn raop_session_failure(error: RaopError, receiver: &str) -> CastError {
+    match error {
+        RaopError::Verification(error) => raop_pairing_failure(error, receiver),
+        RaopError::Io(error) if error.kind() != std::io::ErrorKind::InvalidData => {
+            CastError::AirPlayUnreachable {
+                receiver: receiver.to_string(),
+                detail: error.to_string(),
+            }
+        }
+        error @ (RaopError::Io(_)
+        | RaopError::Rejected { .. }
+        | RaopError::PasswordRefused
+        | RaopError::MissingTransport) => CastError::AirPlayPairingFailed {
+            receiver: receiver.to_string(),
+            detail: error.to_string(),
+        },
     }
 }
 

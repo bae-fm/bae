@@ -22,7 +22,7 @@ fn features_str(bits: u64) -> String {
 }
 
 /// What a RAOP receiver with no pairing or password asks for.
-const NO_AUTH: RaopAuth = RaopAuth { device_verification: None, password: false };
+const NO_AUTH: RaopAuth = RaopAuth { device_verification: None, password: None };
 
 /// An AirPlay 2 receiver that asks for nothing pairs with the transient pairing.
 const TRANSIENT: Dialect = Dialect::AirPlay2 { pairing: Ap2Pairing::Transient };
@@ -151,15 +151,16 @@ fn an_airplay2_receivers_pairing_follows_its_status_flags() {
 #[test]
 fn a_raop_receivers_auth_follows_its_status_flags() {
     use DeviceVerification::{EveryCast, Once};
+    let standard = Some(DigestStyle::Standard);
     for (extra, device_verification, password) in [
-        (vec![("sf", "0x1")], None, false),
-        (vec![("sf", "0x200")], Some(Once), false),
-        (vec![("sf", "0x8")], Some(EveryCast), false),
-        (vec![("sf", "0x208")], Some(Once), false),
-        (vec![("sf", "0x80")], None, true),
-        (vec![("pw", "true")], None, true),
-        (vec![("sf", "0x280")], Some(Once), true),
-        (vec![("sf", "0x200"), ("pw", "true")], Some(Once), true),
+        (vec![("sf", "0x1")], None, None),
+        (vec![("sf", "0x200")], Some(Once), None),
+        (vec![("sf", "0x8")], Some(EveryCast), None),
+        (vec![("sf", "0x208")], Some(Once), None),
+        (vec![("sf", "0x80"), ("am", "AirPort10,115")], None, standard),
+        (vec![("pw", "true"), ("am", "AirPort10,115")], None, standard),
+        (vec![("sf", "0x280"), ("am", "AirPort10,115")], Some(Once), standard),
+        (vec![("sf", "0x200"), ("pw", "true"), ("am", "AirPort10,115")], Some(Once), standard),
     ] {
         let caps = raop_caps(&extra);
         let Dialect::Raop { auth, .. } = caps.dialect else {
@@ -167,6 +168,17 @@ fn a_raop_receivers_auth_follows_its_status_flags() {
         };
         assert_eq!(auth, RaopAuth { device_verification, password }, "{extra:?}");
     }
+}
+
+/// A RAOP receiver with a password that states no model (`am`) is a
+/// first-generation AirPort Express, which wants its Digest answer written
+/// its own way.
+#[test]
+fn a_raop_password_receiver_without_a_model_is_a_first_generation_airport_express() {
+    let Dialect::Raop { auth, .. } = raop_caps(&[("pw", "true")]).dialect else {
+        panic!("a RAOP receiver");
+    };
+    assert_eq!(auth.password, Some(DigestStyle::AirPortExpress));
 }
 
 /// `acl` and `act` on the AirPlay advertisement say who the receiver plays

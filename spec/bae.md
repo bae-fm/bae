@@ -5015,8 +5015,10 @@ device verification included), or for a password, in this device's
 keychain, one entry per receiver, for every
 library on the device: later casts to the receiver pair with it and ask
 nothing. For a receiver with a password, bae keeps the password beside the
-pairing, since the receiver asks for it again on each connection. When the
-receiver no longer accepts the kept pairing, bae asks for the code with "no
+pairing, since the receiver asks for it again on each connection. An AirPlay 1
+receiver with a password has no pairing of its own, so bae keeps its password
+alone; one that verifies the device and has a password asks for the PIN, then
+the password. When the receiver no longer accepts the kept pairing, bae asks for the code with "no
 longer knows this device", and the new pairing replaces the kept one once the
 receiver accepts it. A PIN that a receiver asks for on every cast covers every
 connection bae makes to it during that cast, and bae keeps nothing of it
