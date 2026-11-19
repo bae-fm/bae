@@ -161,6 +161,7 @@ impl LibraryManager {
                 )
                 .expect("numbers count from one"),
                 duration_ms: 180_000,
+                stated_length_ms: None,
                 created_at: added,
             })
             .collect();

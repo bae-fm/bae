@@ -231,8 +231,8 @@ pub fn insert_track_row(conn: &CovenWrite<'_>, track: &DbTrack) -> Result<(), Db
         r#"
         INSERT INTO tracks (
             id, release_id, title, medium_id, side, track_number, duration_ms,
-            created_at, position
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?,
+            stated_length_ms, created_at, position
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?,
             (SELECT COALESCE(MAX(position) + 1, 0) FROM tracks WHERE release_id = ?))
         "#,
         params![
@@ -243,6 +243,7 @@ pub fn insert_track_row(conn: &CovenWrite<'_>, track: &DbTrack) -> Result<(), Db
             track.side,
             track.track_number,
             track.duration_ms,
+            track.stated_length_ms,
             track.created_at.to_rfc3339(),
             track.release_id,
         ],
@@ -555,6 +556,37 @@ pub fn insert_scrub_points_row(
     conn.execute(
         "INSERT INTO audio_segment_scrub_points (audio_format_segment_id, points) VALUES (?, ?)",
         params![points.audio_segment_id, super::scrub_points_column::encode(&points.points),],
+    )
+    .map(|_| ())
+    .map_err(DbError::from)
+}
+
+/// Record that the CUE sheet `sheet_file_id`, one of a release's files,
+/// carves some of the release's tracks out of an image, as disc
+/// `disc_number` of the release.
+pub fn insert_carving_sheet_row(
+    conn: &CovenWrite<'_>,
+    sheet_file_id: &str,
+    disc_number: u32,
+) -> Result<(), DbError> {
+    conn.execute(
+        "INSERT INTO release_carving_sheets (file_id, disc_number) VALUES (?, ?)",
+        params![sheet_file_id, disc_number],
+    )
+    .map(|_| ())
+    .map_err(DbError::from)
+}
+
+/// Record that the carving sheet `sheet_file_id` carves the track `track_id`
+/// out of an image.
+pub fn insert_carved_track_row(
+    conn: &CovenWrite<'_>,
+    track_id: &str,
+    sheet_file_id: &str,
+) -> Result<(), DbError> {
+    conn.execute(
+        "INSERT INTO carved_tracks (track_id, sheet_file_id) VALUES (?, ?)",
+        params![track_id, sheet_file_id],
     )
     .map(|_| ())
     .map_err(DbError::from)

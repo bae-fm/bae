@@ -374,6 +374,9 @@ pub struct DbTrack {
     pub track_number: NonZeroU32,
     /// How long the track's audio plays, measured when it was imported.
     pub duration_ms: u64,
+    /// How long the source the release's values came from lists the track;
+    /// `None` where it lists no length or no source gave the values.
+    pub stated_length_ms: Option<u64>,
     pub created_at: UtcDateTime,
 }
 
@@ -838,6 +841,7 @@ impl DbTrack {
             side: std::num::NonZeroU8::MIN,
             track_number: NonZeroU32::new(track_number).expect("track numbers count from one"),
             duration_ms: 180_000,
+            stated_length_ms: None,
             created_at: now,
         }
     }

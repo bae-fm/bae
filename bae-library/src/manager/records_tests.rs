@@ -250,6 +250,7 @@ async fn set_records_does_not_touch_metadata_columns() {
         side: std::num::NonZeroU8::MIN,
         track_number: std::num::NonZeroU32::MIN,
         duration_ms: 180_000,
+        stated_length_ms: None,
         created_at: UtcDateTime::now(),
     };
     manager.records.insert_track(&track).await.unwrap();
@@ -360,6 +361,7 @@ async fn set_records_clears_primary_when_it_pointed_at_the_moved_release() {
         side: std::num::NonZeroU8::MIN,
         track_number: std::num::NonZeroU32::MIN,
         duration_ms: 180_000,
+        stated_length_ms: None,
         created_at: now,
     };
     manager.records.insert_track(&beta_track).await.unwrap();

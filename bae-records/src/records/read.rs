@@ -378,6 +378,7 @@ pub fn row_to_track_with_prefix(row: &Row, prefix: &str) -> rusqlite::Result<DbT
         side: row.get(column("side").as_str())?,
         track_number: row.get(column("track_number").as_str())?,
         duration_ms: row.get(column("duration_ms").as_str())?,
+        stated_length_ms: row.get(column("stated_length_ms").as_str())?,
         created_at: rfc3339_column(row, &column("created_at"))?,
     })
 }

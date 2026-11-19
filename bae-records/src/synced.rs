@@ -67,6 +67,11 @@ pub fn synced_tables() -> Vec<SyncedTable> {
         // A segment's points are one row, keyed by the segment's id.
         SyncedTable::new("audio_segment_scrub_points", RowIdentity::IndependentUuid)
             .key_columns(["audio_format_segment_id"]),
+        // A carving sheet is one row, keyed by the sheet's file id, and a
+        // carved track one row, keyed by the track's id.
+        SyncedTable::new("release_carving_sheets", RowIdentity::IndependentUuid)
+            .key_columns(["file_id"]),
+        SyncedTable::new("carved_tracks", RowIdentity::IndependentUuid).key_columns(["track_id"]),
         // The write naming an image waits until its file is stored.
         SyncedTable::new("covers", RowIdentity::SharedKey)
             .file_column(FileColumn::new("file").bound()),

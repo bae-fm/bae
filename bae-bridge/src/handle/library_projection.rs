@@ -600,6 +600,7 @@ impl BridgeTrackRoleSummary {
             side: _,
             track_number: _,
             duration_ms: _,
+            stated_length_ms: _,
             created_at: _,
         } = track;
         let bae_records::DbAlbum {
@@ -649,6 +650,7 @@ impl BridgeWorkTrackSummary {
             side: _,
             track_number: _,
             duration_ms: _,
+            stated_length_ms: _,
             created_at: _,
         } = track;
         let bae_records::DbAlbum {

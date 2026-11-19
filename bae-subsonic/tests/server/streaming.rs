@@ -385,6 +385,7 @@ async fn musicbrainz_id_surfaces_when_present() {
         side: std::num::NonZeroU8::MIN,
         track_number: std::num::NonZeroU32::MIN,
         duration_ms: 1000,
+        stated_length_ms: None,
         created_at: now,
     };
     library

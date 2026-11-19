@@ -1994,8 +1994,13 @@ Ana clicks Import. bae:
    from no source again: the album; the release, with a fresh random id, and
    this device's record of the folder's hash it read (§2.7); its tracks, files, segments, scrub points, credits, roles, works, records,
    cover, and the new artists' pictures. Each track row is made once its audio is bound, with the
-   length that audio measures, so no track is ever stored without one. A track
-   left untitled takes its file's name. An existing album is checked in that
+   length that audio measures, so no track is ever stored without one, and
+   with the length the draft's source lists for it, where it lists one. A track
+   left untitled takes its file's name. The same write stores what the draft
+   worked out and the pane showed about the folder's CUE sheets: each sheet
+   that carves tracks out of an image, with the disc the pane showed for it, and
+   the sheet that carves each such track. The `.cue` file stays among the
+   release's files and is never read again to show them. An existing album is checked in that
    same write: one deleted since the import was prepared, because a later
    write took its last release (§2.1), fails the import, which writes nothing
    and tells the person to pick another album or New album.
@@ -2214,7 +2219,8 @@ number, the roles and works the catalog credits, the release's records (the
 applied one first) and the album those name — none of which is written yet;
 the cover stays the release's own. Saving writes the whole form in one
 transaction: the edited fields, and where a catalog was applied, its every
-value too, so nothing a previous source credited survives. The release lands
+value too, each track's listed length among them, so nothing a previous
+source credited survives. The release lands
 in the album its records name (§3.7), or in a library album the person
 picked, which keeps its own title and artists. The editor names that album
 with the import pane's album picker: the album the release is in, the one an
@@ -5881,12 +5887,14 @@ All sync.
 | `release_artist_roles` | credit on a release, with the role it holds (a key of bae's list, `instrument` with an instrument's id, `voice` with a voice's id, `performer` with the catalog's words for its part, or `stated` with the catalog's words) and its qualifiers, and the other name it prints (none: the artist's own) |
 | `release_records` | catalog record of a release: pressing or album, key, album key; its URL is made from these as it is read; with an index of each release's records in the order surfaces list catalogs, which the release reads them in |
 | `release_mediums` | a release's medium: its position, carrier and number of sides (§2.2) |
-| `tracks` | track: title, place (its medium, side and number, all required), length (required: the import measures every track's audio), playing order |
+| `tracks` | track: title, place (its medium, side and number, all required), length (required: the import measures every track's audio), the length its source lists (none where the source lists none), playing order |
 | `track_artists` | track's own credit, one per place in its list, from position 0, as an album's |
 | `track_artist_roles` | credit on a track, with its role, qualifiers and printed name as a release's |
 | `track_works` | work a track performs, in order |
 | `audio_formats` | track's format, pregap, loudness and peak |
 | `audio_format_segments` | span of a file a track reads: pregap or main, samples and bytes; one main and at most one pregap per format, each kept to one by a unique index |
+| `release_carving_sheets` | CUE sheet of a release that carves tracks out of an image, keyed by the sheet's `release_files` row: the disc of the release the import read it as; deleting the sheet's file deletes it |
+| `carved_tracks` | track a CUE sheet carves out of an image, keyed by the track: the sheet (`release_carving_sheets`); deleting the track or the sheet deletes it |
 | `audio_segment_scrub_points` | frames a seek inside a segment can start its decode at, one row per segment that has any, keyed by the segment: each frame's first sample, its byte, and the first sample a decode from it plays exactly, packed in sample order in one blob; for a FLAC whose seektable is missing or sparser than the points' 10-second spacing, and for every MP3 (§3.7) |
 
 Beside them, device-local tables:
@@ -6149,6 +6157,8 @@ transfer queues (A.9), so they never sync.
 | `audio_formats` | independent | store | | |
 | `audio_format_segments` | independent | store | | |
 | `audio_segment_scrub_points` | independent: its segment | store | | |
+| `release_carving_sheets` | independent: the sheet's file | store | | |
+| `carved_tracks` | independent: its track | store | | |
 | `release_sheet_bindings` | shared key: the sheet's file and the `FILE` line | store | | |
 | `release_sheet_discs` | shared key: the sheet's file | store | | |
 | `covers` | shared key: the release | store | | `file`, bound, in `covers`: bae's own; read on first use |

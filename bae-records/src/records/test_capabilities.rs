@@ -122,6 +122,28 @@ impl Records {
             .await
     }
 
+    /// Each track of the release a CUE sheet carves out of an image, in play
+    /// order: its title, the sheet's file name and the disc the sheet is.
+    pub async fn carved_tracks_for_test(
+        &self,
+        release_id: &str,
+    ) -> Result<Vec<(String, String, u32)>, DbError> {
+        let release_id = release_id.to_string();
+        self.store
+            .read(move |sql| {
+                Ok(sql.query(
+                    "SELECT t.title, f.original_filename, s.disc_number FROM carved_tracks c \
+                     JOIN tracks t ON t.id = c.track_id \
+                     JOIN release_carving_sheets s ON s.file_id = c.sheet_file_id \
+                     JOIN release_files f ON f.id = c.sheet_file_id \
+                     WHERE t.release_id = ?1 ORDER BY t.position",
+                    [&release_id],
+                    |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+                )?)
+            })
+            .await
+    }
+
     pub async fn committed_track_files_for_test(
         &self,
         release_id: &str,
@@ -275,6 +297,7 @@ impl Records {
                     medium_id: track.medium_id,
                     side: track.side,
                     track_number: track.track_number,
+                    stated_length_ms: track.stated_length_ms,
                     created_at: track.created_at,
                 })
                 .collect(),

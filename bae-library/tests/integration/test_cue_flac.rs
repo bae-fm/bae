@@ -604,3 +604,78 @@ async fn test_served_decode_starts_with_the_generated_pregap() {
         "the track's tone follows the pregap"
     );
 }
+
+/// A release imported from a CUE image keeps the sheet that carves its
+/// tracks, the disc the sheet is and each track's listed length. A catalog
+/// applied in the editor and saved writes its own listed lengths.
+#[tokio::test]
+async fn a_cue_image_s_release_keeps_its_sheet_and_listed_lengths() {
+    bae_util::test_logs::install();
+    let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
+    let release = DiscogsRelease {
+        master_id: Some("listed-lengths-master".to_string()),
+        ..bae_catalogs::test_releases::discogs_test_release(
+            "listed-lengths",
+            "Test Album",
+            &[("Track One", "0:10"), ("Track Two", "0:20"), ("Track Three", "0:10")],
+        )
+    };
+    let (library, imported) = bae_library::test_libraries::imported_release_setup_with(
+        &fakes,
+        release,
+        "test",
+        coven::IdSource::new_id(&coven::UuidIds).to_string(),
+        |album| copy_cue_flac_fixture_with_seektable(album, album.path()),
+    )
+    .await
+    .expect("import the CUE image");
+    let stated = |tracks: Vec<bae_records::DbTrack>| -> Vec<Option<u64>> {
+        tracks.into_iter().map(|track| track.stated_length_ms).collect()
+    };
+    let tracks = library.records().get_tracks_for_release(&imported.release_id).await.unwrap();
+    assert_eq!(stated(tracks), [Some(10_000), Some(20_000), Some(10_000)]);
+    let sheet = |title: &str| (title.to_string(), "Test Album.cue".to_string(), 1);
+    assert_eq!(
+        library.records().carved_tracks_for_test(&imported.release_id).await.unwrap(),
+        [sheet("Track One"), sheet("Track Two"), sheet("Track Three")]
+    );
+
+    let manager = library.manager();
+    let form = manager.open_release_edit(&imported.release_id).await.unwrap();
+    let (mb_release, mb_group) = ("listed-lengths-mb-release", "listed-lengths-mb-group");
+    let track = |position, title, length| bae_catalogs::musicbrainz::MbTrack {
+        length: Some(length),
+        ..bae_catalogs::test_releases::mb_track(position, title)
+    };
+    let response = bae_catalogs::musicbrainz::MbReleaseResponse {
+        media: vec![bae_catalogs::test_releases::mb_medium(vec![
+            track(1, "Track One", 10_000),
+            track(2, "Track Two", 10_000),
+            track(3, "Track Three", 40_000),
+        ])],
+        ..bae_catalogs::test_releases::mb_release(mb_release, mb_group, "Test Album")
+    };
+    fakes.seed_musicbrainz_release(mb_release, serde_json::to_string(&response).unwrap());
+    fakes.seed_musicbrainz_release_group(
+        mb_group,
+        serde_json::json!({ "id": mb_group }).to_string(),
+    );
+    let applied = manager
+        .apply_release_edit_catalog(
+            form,
+            &bae_identify::PressingLink {
+                record: bae_catalogs::records::LookupRef::new(
+                    bae_catalogs::catalog::LookupCatalog::MusicBrainz,
+                    mb_release,
+                ),
+                partners: vec![],
+            },
+            &bae_import::CatalogApplySteps::unread(),
+        )
+        .await
+        .expect("apply the catalog's release");
+    manager.save_release_edit(applied, bae_library::GonePick::Refuse).await.expect("save the form");
+
+    let tracks = library.records().get_tracks_for_release(&imported.release_id).await.unwrap();
+    assert_eq!(stated(tracks), [Some(10_000), Some(10_000), Some(40_000)]);
+}

@@ -324,6 +324,7 @@ pub(crate) fn composer_detail_rows_query(order: &ListOrder, seek: &Seek) -> Stri
                 t.id AS track_id, t.release_id AS track_release_id, t.title AS track_title,
                 t.medium_id AS track_medium_id, t.side AS track_side,
                 t.track_number AS track_track_number, t.duration_ms AS track_duration_ms,
+                t.stated_length_ms AS track_stated_length_ms,
                 t.created_at AS track_created_at,
                 album.id AS album_id, album.title AS album_title, album.year AS album_year,
                 album.is_compilation AS album_is_compilation,

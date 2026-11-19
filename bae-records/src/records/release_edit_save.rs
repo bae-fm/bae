@@ -10,13 +10,13 @@ use bae_util::timestamp::StoredTimestamp as _;
 #[cfg(desktop)]
 pub enum ReleaseEditWrite {
     /// The editable fields only: album title, credits and year, the pressing,
-    /// and each track's title and credits. Mediums, places, roles and works
-    /// stay as stored.
+    /// and each track's title and credits. Mediums, places, listed lengths,
+    /// roles and works stay as stored.
     Fields(ReleaseMetadataRows),
     /// Every row a catalog applied in the editor makes, keyed by the
     /// release's own ids, its tracks' and the album it lands in: it replaces
-    /// the release's mediums and places, roles and works as well, so nothing
-    /// a previous source stated survives.
+    /// the release's mediums and places, its tracks' listed lengths, roles and
+    /// works as well, so nothing a previous source stated survives.
     Applied {
         rows: ReleaseRows,
         /// The artist rows that are library artists a person picked.
@@ -185,9 +185,9 @@ impl Records {
 }
 
 /// Write `rows` over the release they name: its album's fields and credits,
-/// its pressing, its mediums and each track's place, title and credits, and
-/// its roles and works, every one the rows hold and no other, a picked
-/// artist the library no longer holds as `gone` says.
+/// its pressing, its mediums and each track's place, title, listed length and
+/// credits, and its roles and works, every one the rows hold and no other, a
+/// picked artist the library no longer holds as `gone` says.
 #[cfg(desktop)]
 fn write_applied_rows_on(
     tx: &CovenWrite<'_>,
@@ -271,9 +271,18 @@ fn write_applied_rows_on(
     for track in &rows.tracks {
         let medium_id = kept.get(track.medium_id.as_str()).unwrap_or(&track.medium_id);
         tx.execute(
-            "UPDATE tracks SET title = ?, medium_id = ?, side = ?, track_number = ? \
+            "UPDATE tracks SET title = ?, medium_id = ?, side = ?, track_number = ?, \
+                 stated_length_ms = ? \
              WHERE id = ? AND release_id = ?",
-            params![track.title, medium_id, track.side, track.track_number, track.id, release_id],
+            params![
+                track.title,
+                medium_id,
+                track.side,
+                track.track_number,
+                track.stated_length_ms,
+                track.id,
+                release_id
+            ],
         )?;
     }
     for stale in held.values() {

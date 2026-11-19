@@ -102,6 +102,8 @@ INDEX 01 00:00:00
     let cue_sheet = crate::cue_sheet::parse_cue_sheet(&cue_path, bae_util::test_files::place())
         .expect("parse cue");
     let cue_pair = CueFlacAnalysis {
+        sheet_id: "Album.cue".to_string(),
+        disc_number: 1,
         cue_sheet,
         audio_files: vec![CueAnalyzedAudioFile {
             file_reference: "test.wav".to_string(),

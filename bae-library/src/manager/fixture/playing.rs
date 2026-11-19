@@ -65,7 +65,14 @@ impl LibraryManager {
                 probe,
             });
         }
-        let analysis = Arc::new(CueFlacAnalysis { cue_sheet: sheet, audio_files });
+        let sheet_id = playing
+            .cue_sheet
+            .file_name()
+            .and_then(|name| name.to_str())
+            .ok_or_else(|| invalid("names no file".to_string()))?
+            .to_string();
+        let analysis =
+            Arc::new(CueFlacAnalysis { sheet_id, disc_number: 1, cue_sheet: sheet, audio_files });
 
         let mut seeded = self
             .seeded_album(
@@ -100,6 +107,7 @@ impl LibraryManager {
                 track_number: std::num::NonZeroU32::new(track.number)
                     .ok_or_else(|| invalid(format!("track {} has no number", track.number)))?,
                 duration_ms,
+                stated_length_ms: None,
                 created_at: added,
             };
             if track.number == playing.track {

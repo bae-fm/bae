@@ -42,6 +42,8 @@ pub struct TrackRow {
     pub medium_id: String,
     pub side: std::num::NonZeroU8,
     pub track_number: std::num::NonZeroU32,
+    /// How long the source of the rows' values lists the track.
+    pub stated_length_ms: Option<u64>,
     pub created_at: time::UtcDateTime,
 }
 
@@ -56,6 +58,7 @@ impl TrackRow {
             side: self.side,
             track_number: self.track_number,
             duration_ms,
+            stated_length_ms: self.stated_length_ms,
             created_at: self.created_at,
         }
     }

@@ -1055,6 +1055,8 @@ tables = [
     "audio_formats",
     "audio_format_segments",
     "audio_segment_scrub_points",
+    "release_carving_sheets",
+    "carved_tracks",
     "name_sort",
 ]
 

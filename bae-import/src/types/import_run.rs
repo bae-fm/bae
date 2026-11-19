@@ -49,10 +49,14 @@ pub enum TrackAudio {
     CueBacked { cue_pair: Arc<CueFlacAnalysis>, cue_index: usize },
 }
 
-/// Parsed CUE sheet plus probed container analysis, shared across all tracks
-/// that live inside the same file.
+/// Parsed CUE sheet plus probed container analysis, with the sheet's path and
+/// the disc it is, shared across all tracks that live inside the same file.
 #[derive(Debug)]
 pub struct CueFlacAnalysis {
+    /// The sheet's path in the folder.
+    pub sheet_id: String,
+    /// The disc of the release the sheet is, counted from one.
+    pub disc_number: u32,
     pub cue_sheet: CueSheet,
     pub audio_files: Vec<CueAnalyzedAudioFile>,
 }

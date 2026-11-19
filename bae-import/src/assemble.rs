@@ -165,6 +165,7 @@ pub fn assemble_rows<Binding: TrackBinding>(
                 .clone(),
             side: track.place.side,
             track_number: track.place.number,
+            stated_length_ms: track.stated_length_ms,
             created_at: now,
         };
         if let TrackArtistAssignments::Explicit(assignments) = &shaped.artist_assignments {

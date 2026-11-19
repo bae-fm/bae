@@ -7,16 +7,16 @@ use super::*;
 use bae_records::records::artist_resolution::{relink, relink_album_artists, relink_track_artists};
 use bae_records::records::label_resolution::pressing_write;
 use bae_records::records::write::{
-    insert_audio_format_row, insert_audio_segment_row, insert_release_artist_role_row,
-    insert_release_file_row, insert_release_medium_row, insert_release_row,
-    insert_scrub_points_row, insert_track_artist_role_row, insert_track_artist_row,
-    insert_track_row, insert_track_work_row, insert_work_artist_row, insert_work_part_row,
-    insert_work_row, replace_album_artists, upsert_album_row, upsert_library_image_row,
-    write_release_records,
+    insert_audio_format_row, insert_audio_segment_row, insert_carved_track_row,
+    insert_carving_sheet_row, insert_release_artist_role_row, insert_release_file_row,
+    insert_release_medium_row, insert_release_row, insert_scrub_points_row,
+    insert_track_artist_role_row, insert_track_artist_row, insert_track_row, insert_track_work_row,
+    insert_work_artist_row, insert_work_part_row, insert_work_row, replace_album_artists,
+    upsert_album_row, upsert_library_image_row, write_release_records,
 };
 use bae_records::GonePicked;
 use bae_util::timestamp::StoredTimestamp as _;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// Why an import's commit was refused. Nothing of it was written; the person
 /// may ask for the import again.
@@ -305,6 +305,55 @@ pub(crate) struct ImportRows<'a> {
     pub records: &'a [bae_catalogs::records::ReleaseRecord],
 }
 
+/// What an import worked out about the CUE sheets that carve its tracks out
+/// of images, each sheet named by its path in the folder: the disc each
+/// carving sheet is, and the sheet each carved track comes from.
+struct Carving {
+    sheets: BTreeMap<String, u32>,
+    /// Each carved track's id with its sheet's path.
+    tracks: Vec<(String, String)>,
+}
+
+impl Carving {
+    /// The carving of `tracks`, read from the sheet each CUE-backed track
+    /// plays a slice of.
+    fn of(tracks: &[crate::TrackFile]) -> Self {
+        let mut carving = Self { sheets: BTreeMap::new(), tracks: Vec::new() };
+        for track in tracks {
+            if let crate::TrackAudio::CueBacked { cue_pair, .. } = &track.audio {
+                carving.sheets.insert(cue_pair.sheet_id.clone(), cue_pair.disc_number);
+                carving.tracks.push((track.db_track.id.clone(), cue_pair.sheet_id.clone()));
+            }
+        }
+        carving
+    }
+
+    /// Write the carving as rows over the release's files `file_ids` (each
+    /// path with the id of its `release_files` row), after the tracks and
+    /// the files. The release holds every file the import read, so a sheet
+    /// whose path names none of them is a damaged state, and `store_on`
+    /// fails the commit.
+    fn store_on(
+        &self,
+        sql: &CovenWrite<'_>,
+        file_ids: &HashMap<&str, &str>,
+    ) -> Result<(), DbError> {
+        let file_id = |path: &str| {
+            file_ids
+                .get(path)
+                .copied()
+                .ok_or_else(|| DbError::unreadable("the sheet that carves a track", path))
+        };
+        for (sheet, disc_number) in &self.sheets {
+            insert_carving_sheet_row(sql, file_id(sheet)?, *disc_number)?;
+        }
+        for (track_id, sheet) in &self.tracks {
+            insert_carved_track_row(sql, track_id, file_id(sheet)?)?;
+        }
+        Ok(())
+    }
+}
+
 /// Pictures for the new artists an import expects to create. Their bytes are
 /// staged before the transaction's SQL runs, so they are prepared against a
 /// read of the library just before it; the transaction resolves the credits
@@ -338,6 +387,7 @@ impl ImportTables {
         let album = album.map(|album| (album.row.clone(), album.picked_new));
         let mut release = release.clone();
         let tracks: Vec<DbTrack> = tracks_to_files.iter().map(|tf| tf.db_track.clone()).collect();
+        let carving = Carving::of(tracks_to_files);
         let mediums = rows.mediums.to_vec();
         let track_artists = rows.track_artists.to_vec();
         let album_artists = rows.album_artists.to_vec();
@@ -530,6 +580,9 @@ impl ImportTables {
                         .map(|row| (row.original_filename.as_str(), row.id.as_str()))
                         .collect();
                     crate::tables::release_sheet_decisions::store_on(tx, &decided, &file_ids)?;
+                    // What the import worked out and showed about the sheets
+                    // that carve its tracks.
+                    carving.store_on(tx, &file_ids)?;
 
                     for af in &audio_formats {
                         insert_audio_format_row(tx, af)?;

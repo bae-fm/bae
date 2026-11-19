@@ -886,6 +886,8 @@ async fn a_seektable_less_cue_image_gets_scrub_points_for_every_track() {
          TRACK 02 AUDIO\n    INDEX 01 00:15:00\n  TRACK 03 AUDIO\n    INDEX 01 00:30:00\n",
     );
     let cue_pair = Arc::new(CueFlacAnalysis {
+        sheet_id: "Album.cue".to_string(),
+        disc_number: 1,
         cue_sheet: crate::cue_sheet::parse_cue_sheet(&cue_path, bae_util::test_files::place())
             .expect("parse the sheet"),
         audio_files: vec![CueAnalyzedAudioFile {

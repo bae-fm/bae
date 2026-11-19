@@ -110,6 +110,7 @@ pub(crate) fn rows_for(units: Vec<AudioFile>) -> Vec<(bae_records::TrackRow, Aud
                         u32::try_from(index + 1).expect("a test track number fits u32"),
                     )
                     .expect("track numbers count from one"),
+                    stated_length_ms: None,
                     created_at: now,
                 },
                 unit,

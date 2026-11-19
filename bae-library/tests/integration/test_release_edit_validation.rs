@@ -48,6 +48,7 @@ async fn seed(records: &bae_records::Records) -> (String, String) {
         side: std::num::NonZeroU8::MIN,
         track_number: std::num::NonZeroU32::MIN,
         duration_ms: 180_000,
+        stated_length_ms: None,
         created_at: UtcDateTime::now(),
     };
     records.insert_artist(&artist).await.unwrap();

@@ -602,6 +602,7 @@ pub(super) async fn insert_n_tracks(records: &bae_records::Records, release_id: 
             )
             .expect("track numbers count from one"),
             duration_ms: 200_000,
+            stated_length_ms: None,
             created_at: UtcDateTime::now(),
         };
         records.insert_track(&track).await.unwrap();

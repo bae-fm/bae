@@ -229,6 +229,7 @@ fn find_work_detail_on(
                 t.title AS track_title, t.medium_id AS track_medium_id, t.side AS track_side,
                 t.track_number AS track_track_number,
                 t.duration_ms AS track_duration_ms,
+                t.stated_length_ms AS track_stated_length_ms,
                 t.created_at AS track_created_at,
                 a.id AS album_id, a.title AS album_title,
                 a.year AS album_year,

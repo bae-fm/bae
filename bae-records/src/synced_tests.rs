@@ -34,6 +34,8 @@ fn library_declarations_match_the_store_audience_and_file_contract() {
             "audio_formats",
             "audio_format_segments",
             "audio_segment_scrub_points",
+            "release_carving_sheets",
+            "carved_tracks",
             "covers",
             "artist_images",
         ])
@@ -61,6 +63,8 @@ fn library_declarations_match_the_store_audience_and_file_contract() {
         let keys: &[&str] = match table.name() {
             "artist_credits" => &["artist_id", "name_key"],
             "audio_segment_scrub_points" => &["audio_format_segment_id"],
+            "release_carving_sheets" => &["file_id"],
+            "carved_tracks" => &["track_id"],
             // A track's medium is named with its release, so the key includes both.
             "release_mediums" => &["id", "release_id"],
             _ => &["id"],
