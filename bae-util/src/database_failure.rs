@@ -78,6 +78,10 @@ fn coven_database_failure(error: &coven::DbError) -> DatabaseFailure {
         }
         E::FileCleanup { write: Err(write), .. } => coven_database_failure(write),
         E::FileCleanup { write: Ok(()), .. } => Refused,
+        // bae's own SQL wrote a synced table where coven allows device-local
+        // tables only: in a bulk write, or in the before-commit function the
+        // app registers. Made again, the write breaks the same rule.
+        E::SyncedTableInBulkWrite { .. } | E::SyncedTableBeforeCommit { .. } => Refused,
         E::NoClaim
         | E::ClaimNumberExhausted
         | E::WriteNumberExhausted
@@ -101,7 +105,6 @@ fn coven_database_failure(error: &coven::DbError) -> DatabaseFailure {
         | E::StatementFailed
         | E::InternalTable { .. }
         | E::TriggerTarget { .. }
-        | E::SyncedTableInBulkWrite { .. }
         | E::TransactionEnded
         | E::StatementForbidden { .. }
         | E::WalUnavailable { .. }
