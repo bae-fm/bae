@@ -59,7 +59,8 @@ internal fun CastCodeDialog(
             null
         } else {
             bridgeAirplayCodeFieldKey(sheet.request)?.let { key ->
-                context.coreString(key, mapOf("digits" to (sheet.request.digits ?: 0)))
+                // Only a PIN's line counts its digits.
+                context.coreString(key, sheet.request.digits?.let { mapOf("digits" to it) } ?: emptyMap())
             }
         }
     AndroidDialog(
@@ -102,7 +103,6 @@ internal fun castCodeDialogParts(
     onCodeChange: (String) -> Unit,
     onPair: () -> Unit,
     onCancel: () -> Unit,
-    focusesField: Boolean = true,
 ): DialogParts {
     val digits = request.digits
     val full = if (digits != null) code.length == digits else code.isNotEmpty()
@@ -114,7 +114,7 @@ internal fun castCodeDialogParts(
         content = {
             Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
                 // The field takes the keyboard as the dialog opens.
-                val focus = if (focusesField && !pairing) Modifier.focusOnShow() else Modifier
+                val focus = if (!pairing) Modifier.focusOnShow() else Modifier
                 if (digits != null) {
                     AndroidPinField(
                         digits = digits,

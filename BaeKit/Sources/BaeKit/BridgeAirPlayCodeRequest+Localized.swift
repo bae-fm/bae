@@ -16,7 +16,9 @@ extension BridgeAirPlayCodeRequest {
         guard let key = bridgeAirplayCodeFieldKey(request: self) else {
             return nil
         }
-        return localizedCoreString(key, Int(digits ?? 0))
+        // Only a PIN's line counts its digits.
+        guard let digits else { return localizedCoreString(key) }
+        return localizedCoreString(key, Int(digits))
     }
 
     /// How many digits the PIN has, or `nil` for a password.
