@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.CoverImage
+import fm.bae.app.ui.components.Artwork
 import uniffi.bae_bridge.BridgeImageRef
 
 /** An album's tile: its [cover], [title] and a [line] under it, opening the album. */
@@ -28,7 +28,7 @@ internal fun AndroidAlbumTile(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.clickable(onClick = onClick)) {
-        CoverImage(
+        Artwork(
             cover = cover,
             cornerRadius = ThemeRadius.cover,
             iconPadding = 40.dp,

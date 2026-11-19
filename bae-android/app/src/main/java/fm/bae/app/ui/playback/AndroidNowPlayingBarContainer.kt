@@ -79,7 +79,7 @@ fun AndroidNowPlayingBarContainer(session: OpenLibrary) {
     if (expanded) {
         AndroidFullPlayerContainer(session = session, onDismiss = { expanded = false })
     }
-    track?.let { SidePauseAlert(session = session, track = it) }
+    track?.let { AndroidSidePause(session = session, track = it) }
 
     AndroidNowPlayingBar(
         track = track,
@@ -118,15 +118,15 @@ private fun CastEndedLine(session: OpenLibrary) {
     )
 }
 
-/** [SidePauseAlert] wired to [session]. */
+/** [AndroidSidePause] wired to [session]. */
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
-private fun SidePauseAlert(
+private fun AndroidSidePause(
     session: OpenLibrary,
     track: fm.bae.app.playback.NowPlaying,
 ) {
     val context = LocalContext.current
-    SidePauseAlert(
+    AndroidSidePause(
         track = track,
         onTurnOffPauseBetweenSides = {
             session.messages.perform("turn off pause-between-sides from the side-pause prompt") {
@@ -147,7 +147,7 @@ private val SIDE_PAUSE_DIALOG_WIDTH = 340.dp
  * box starts checked because the prompt only appears while the setting is on.
  */
 @Composable
-fun SidePauseAlert(
+fun AndroidSidePause(
     track: fm.bae.app.playback.NowPlaying,
     onTurnOffPauseBetweenSides: () -> Unit,
     onPlay: () -> Unit,

@@ -18,14 +18,14 @@ import uniffi.bae_bridge.BridgeSortField
 
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
-class LibraryHeaderTest {
+class AndroidLibraryHeaderTest {
     @get:Rule
     val compose = createComposeRule()
 
     private fun showHeader(state: LibraryBrowserState) {
         compose.setContent {
             TestTheme {
-                LibraryHeader(
+                AndroidLibraryHeader(
                     state = state,
                     collapse = { 0f },
                     onShuffleLibrary = {},
@@ -90,7 +90,7 @@ class LibraryHeaderTest {
         var settingsOpened = false
         compose.setContent {
             TestTheme {
-                LibraryHeader(
+                AndroidLibraryHeader(
                     state = state,
                     collapse = { 0f },
                     onShuffleLibrary = { shuffled = true },

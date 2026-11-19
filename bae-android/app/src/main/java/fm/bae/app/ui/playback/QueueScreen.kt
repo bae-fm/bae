@@ -335,7 +335,7 @@ private fun UpNextSectionLabel(
     failures: QueueFailures,
 ) {
     val scope = rememberCoroutineScope()
-    AndroidQueueLabel(
+    AndroidQueueSection(
         title = stringResource(R.string.queue_section_up_next),
         clearDescription = stringResource(R.string.queue_clear_up_next),
         onClear = { scope.launch { failures.answer("clearUpNext") { session.appHandle.clearUpNext() } } },
@@ -351,7 +351,7 @@ private fun ContextSectionLabel(
     shuffled: Boolean,
 ) {
     val scope = rememberCoroutineScope()
-    AndroidQueueLabel(
+    AndroidQueueSection(
         title = text,
         clearDescription = stringResource(R.string.queue_clear_playing_from),
         onClear = { scope.launch { failures.answer("clearPlayingFrom") { session.appHandle.clearPlayingFrom() } } },

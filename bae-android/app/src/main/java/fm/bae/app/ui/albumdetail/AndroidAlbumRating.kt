@@ -19,7 +19,7 @@ import uniffi.bae_bridge.BridgeStars
 
 /** Shows the album's stars, which the person taps to rate it, and the line that names who rated it. */
 @Composable
-internal fun AlbumRating(
+internal fun AndroidAlbumRating(
     rating: BridgeAlbumRating,
     onRate: (BridgeStars?) -> Unit,
     modifier: Modifier = Modifier,

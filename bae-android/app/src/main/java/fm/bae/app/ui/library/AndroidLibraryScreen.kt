@@ -17,7 +17,7 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.ui.ActivityProblemId
 import fm.bae.app.ui.AppProblem
 import fm.bae.app.ui.playback.AndroidNowPlayingBarContainer
-import fm.bae.app.ui.sync.ActivityButton
+import fm.bae.app.ui.sync.AndroidActivityButton
 import uniffi.bae_bridge.BridgeArtistSortCriterion
 import uniffi.bae_bridge.BridgeArtistSortField
 import uniffi.bae_bridge.BridgeComposerSortCriterion
@@ -83,7 +83,7 @@ internal fun AndroidLibraryScreenContainer(
         },
         onSettings = onSettings,
         syncActivity = {
-            ActivityButton(
+            AndroidActivityButton(
                 store = session.syncActivityStore,
                 app = launchProblems,
                 dismissed = state.activityDismissed,
@@ -129,14 +129,14 @@ internal fun AndroidLibraryScreen(
     BackHandler(enabled = state.searchOpen) { state.closeSearch() }
     Column(modifier = Modifier.fillMaxSize()) {
         if (state.searchOpen) {
-            LibrarySearchBar(
+            AndroidSearchBar(
                 query = state.searchQuery,
                 onQueryChange = { state.searchQuery = it },
                 onClose = state::closeSearch,
             )
         } else {
             val collapse = rememberHeadingCollapse(state)
-            LibraryHeader(
+            AndroidLibraryHeader(
                 state = state,
                 collapse = { collapse.value },
                 onShuffleLibrary = onShuffleLibrary,

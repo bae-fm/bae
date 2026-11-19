@@ -15,7 +15,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidNotice
-import fm.bae.app.ui.components.AndroidSegmentedButtons
+import fm.bae.app.ui.components.AndroidSegmentedControl
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
 import fm.bae.app.ui.components.DialogParts
@@ -55,7 +55,7 @@ internal fun playlistDialogParts(
                     modifier = Modifier.fillMaxWidth().focusOnShow(),
                 )
                 Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-                    AndroidSegmentedButtons(
+                    AndroidSegmentedControl(
                         options = SHARING_CHOICES.map { stringResource(it.labelRes()) },
                         selected = SHARING_CHOICES.indexOf(sharing),
                         onSelect = { onSharingChange(SHARING_CHOICES[it]) },

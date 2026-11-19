@@ -288,7 +288,7 @@ private fun FramedNotice(
                 }
                 if (hasButtons && buttons == NoticeButtons.INLINE) {
                     // The buttons' own padding overhangs: a label's right edge is the notice's.
-                    FirstLineBox {
+                    AndroidItem {
                         NoticeButtonRow(hasDetails, onDetails, action, Modifier.offset(x = ThemeSpace.related))
                     }
                 }

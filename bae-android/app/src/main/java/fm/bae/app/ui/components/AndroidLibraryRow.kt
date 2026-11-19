@@ -120,7 +120,7 @@ private fun RowArt(
     } else if (missing) {
         Box(tile.clip(RoundedCornerShape(ThemeRadius.artwork)).background(BaeTheme.surfaces.placeholder))
     } else {
-        CoverImage(
+        Artwork(
             cover = art,
             cornerRadius = ThemeRadius.artwork,
             iconPadding = ThemeSpace.group,

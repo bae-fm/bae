@@ -59,7 +59,7 @@ internal fun welcomeLibrariesView(
         (model.list as? WelcomeLibrariesList.Loaded)?.libraries?.isNotEmpty() == true ||
             flow.unreadable.libraryId != null
     return WelcomeLibrariesView(listed = listed) { onAdd ->
-        WelcomeLibrariesSection(
+        AndroidWelcomeLibraries(
             model,
             onOpen = onOpen,
             onAdd = onAdd,

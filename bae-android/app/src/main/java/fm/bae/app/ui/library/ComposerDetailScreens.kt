@@ -29,9 +29,9 @@ import fm.bae.app.displayError
 import fm.bae.app.metadataText
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.AndroidErrorLine
 import fm.bae.app.ui.components.AndroidLibraryRow
 import fm.bae.app.ui.components.AndroidNotice
-import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.retryAction
 import fm.bae.app.ui.playback.AndroidNowPlayingBarContainer
@@ -115,7 +115,7 @@ private fun <Detail : Any> DetailAnswer(
         is LiveQueryState.Answered -> {
             val detail = query.value
             if (detail == null) {
-                ErrorText(message = stringResource(notFound), modifier = Modifier.padding(ThemeSpace.page))
+                AndroidErrorLine(message = stringResource(notFound), modifier = Modifier.padding(ThemeSpace.page))
             } else {
                 content(detail)
             }
@@ -316,14 +316,4 @@ private fun WorkDetailContent(
             }
         }
     }
-}
-
-@Composable
-internal fun AndroidSearchSection(title: String) {
-    Text(
-        text = title,
-        style = ThemeText.heading.style,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
-    )
 }

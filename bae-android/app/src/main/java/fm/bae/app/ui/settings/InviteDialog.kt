@@ -31,13 +31,13 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidNotice
-import fm.bae.app.ui.components.AndroidSegmentedButtons
+import fm.bae.app.ui.components.AndroidS3KeyFields
+import fm.bae.app.ui.components.AndroidSegmentedControl
 import fm.bae.app.ui.components.ButtonAlign
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
 import fm.bae.app.ui.components.DialogParts
 import fm.bae.app.ui.components.NoticeLook
-import fm.bae.app.ui.components.S3KeyFields
 import fm.bae.app.ui.components.closerToAbove
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
@@ -186,13 +186,13 @@ internal fun inviteFormParts(
 private fun InviteChoices(input: InviteAccessInput) {
     val roles = listOf(BridgeMemberRole.MEMBER, BridgeMemberRole.ADMIN)
     val lifetimes = listOf(BridgeInviteLifetime.SEVEN_DAYS, BridgeInviteLifetime.THIRTY_DAYS)
-    AndroidSegmentedButtons(
+    AndroidSegmentedControl(
         options = roles.map { stringResource(it.labelRes()) },
         selected = roles.indexOf(input.role),
         onSelect = { input.role = roles[it] },
         label = stringResource(R.string.people_role),
     )
-    AndroidSegmentedButtons(
+    AndroidSegmentedControl(
         options = lifetimes.map { stringResource(it.labelRes()) },
         selected = lifetimes.indexOf(input.lifetime),
         onSelect = { input.lifetime = lifetimes[it] },
@@ -271,7 +271,7 @@ private fun S3InviteFields(
             Text(stringResource(R.string.invite_s3_use_their_key))
         }
     } else {
-        S3KeyFields(
+        AndroidS3KeyFields(
             accessKeyId = input.accessKeyId,
             secretAccessKey = input.secretAccessKey,
             onAccessKeyIdChange = { input.accessKeyId = it.trim() },

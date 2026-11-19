@@ -34,7 +34,7 @@ import uniffi.bae_bridge.BridgeDownloadState
 import uniffi.bae_bridge.BridgeDownloadTransferProgress
 
 @Composable
-internal fun AndroidDownloadRow(
+internal fun AndroidPinningRow(
     op: BridgeDownloadOp,
     progress: LatestSource<BridgeDownloadTransferProgress>,
     onCancel: () -> Unit,

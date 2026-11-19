@@ -50,7 +50,7 @@ internal fun StorageSection(
     Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
         AndroidSection(text = stringResource(R.string.sync_cloud_home))
         AndroidCard {
-            StorageRows(location)
+            AndroidCloudHome(location)
             if (location is BridgeStorageLocation.S3 && access is BridgeMemberAccess.S3AccessKey) {
                 AndroidRow(title = stringResource(R.string.s3_access_key_id), subtitle = access.accessKeyId)
                 AndroidRow(title = stringResource(R.string.s3_replace_key), onClick = onReplaceKey)
@@ -97,7 +97,7 @@ private fun S3KeyLineNotice(
 
 /** The rows of [StorageSection]'s card, which the welcome's library details sheet shows too, as they are. */
 @Composable
-internal fun StorageRows(location: BridgeStorageLocation) {
+internal fun AndroidCloudHome(location: BridgeStorageLocation) {
     AndroidRow(
         title = stringResource(R.string.settings_provider),
         subtitle = cloudProviderLabel(storageProvider(location)),

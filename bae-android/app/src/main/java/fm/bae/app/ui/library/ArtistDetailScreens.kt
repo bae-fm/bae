@@ -20,9 +20,9 @@ import fm.bae.app.coreString
 import fm.bae.app.data.LiveQueryState
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.AndroidErrorLine
 import fm.bae.app.ui.components.AndroidEyebrow
 import fm.bae.app.ui.components.AndroidLibraryRow
-import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.playback.AndroidNowPlayingBarContainer
 import fm.bae.app.yearText
 import uniffi.bae_bridge.BridgeArtistDetail
@@ -50,7 +50,7 @@ internal fun ArtistDetailScreen(
     ) {
         when (val answer = query) {
             is LiveQueryState.Failed -> {
-                ErrorText(
+                AndroidErrorLine(
                     message = stringResource(R.string.artist_detail_load_failed),
                     modifier = Modifier.padding(ThemeSpace.page),
                 )
@@ -62,7 +62,7 @@ internal fun ArtistDetailScreen(
             is LiveQueryState.Answered -> {
                 val detail = answer.value
                 if (detail == null) {
-                    ErrorText(
+                    AndroidErrorLine(
                         message = stringResource(R.string.artist_detail_not_found),
                         modifier = Modifier.padding(ThemeSpace.page),
                     )

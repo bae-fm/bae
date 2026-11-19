@@ -32,7 +32,7 @@ class GalleryLoadingTest {
         compose.setContent {
             TestTheme {
                 CompositionLocalProvider(LocalImageStore provides store, LocalBugReports provides BugReports()) {
-                    GalleryDialog(releaseId = "rel-1", items = listOf(PreviewData.galleryItem()), count = 1u, onDismiss = {})
+                    AndroidLightbox(releaseId = "rel-1", items = listOf(PreviewData.galleryItem()), count = 1u, onDismiss = {})
                 }
             }
         }

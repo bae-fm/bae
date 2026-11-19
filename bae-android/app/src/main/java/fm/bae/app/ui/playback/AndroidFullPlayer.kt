@@ -61,7 +61,7 @@ import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidNotice
-import fm.bae.app.ui.components.CoverImage
+import fm.bae.app.ui.components.Artwork
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeRepeatMode
@@ -213,7 +213,7 @@ internal fun AndroidFullPlayer(
         if (failure != null) {
             AndroidNotice(failure)
         } else {
-            CoverImage(
+            Artwork(
                 cover = track.display.library?.coverImage,
                 cornerRadius = ThemeRadius.cover,
                 iconPadding = 64.dp,

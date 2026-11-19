@@ -68,7 +68,7 @@ internal fun LibraryGridScene(
         val gridState = rememberLazyGridState(initialFirstVisibleItemIndex = firstItem)
         val collapse = rememberHeadingCollapse(gridState)
         Column(modifier = Modifier.fillMaxSize()) {
-            LibraryHeader(
+            AndroidLibraryHeader(
                 state = state,
                 collapse = { collapse.value },
                 onShuffleLibrary = {},

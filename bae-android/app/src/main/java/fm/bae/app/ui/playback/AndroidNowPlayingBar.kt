@@ -40,8 +40,8 @@ import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSize
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.CoverImage
-import fm.bae.app.ui.components.ErrorText
+import fm.bae.app.ui.components.AndroidErrorLine
+import fm.bae.app.ui.components.Artwork
 import fm.bae.app.ui.components.color
 import fm.bae.app.ui.components.liftsSnackbar
 import uniffi.bae_bridge.BridgeNowPlayingDisplay
@@ -77,7 +77,7 @@ internal fun AndroidNowPlayingBar(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (failure != null) {
-                        ErrorText(message = failure.line, maxLines = 2, modifier = Modifier.weight(1f))
+                        AndroidErrorLine(message = failure.line, maxLines = 2, modifier = Modifier.weight(1f))
                     } else if (track != null) {
                         NowPlayingTrackInfo(
                             track = track,
@@ -126,7 +126,7 @@ private fun RowScope.NowPlayingTrackInfo(
                 .semantics(mergeDescendants = true) { contentDescription = nowPlayingDescription },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        CoverImage(
+        Artwork(
             cover = track.display.library?.coverImage,
             cornerRadius = ThemeRadius.artwork,
             iconPadding = ThemeSpace.group,

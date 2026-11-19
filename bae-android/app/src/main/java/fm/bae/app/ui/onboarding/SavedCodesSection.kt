@@ -260,7 +260,7 @@ internal val sceneSavedEntries =
  */
 @Composable
 internal fun WelcomeSavedCodesScene() {
-    WelcomeScene(
+    AndroidWelcomeHome(
         libraries = WelcomeLibrariesView(listed = true) { onAdd -> WelcomeLibrariesSceneContent(onAdd) },
         savedCodes = {
             SavedCodesContent(

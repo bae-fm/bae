@@ -30,7 +30,7 @@ import fm.bae.app.ui.components.ButtonKind
  * can't, with [onShuffle].
  */
 @Composable
-internal fun AndroidQueueLabel(
+internal fun AndroidQueueSection(
     title: String,
     clearDescription: String,
     onClear: () -> Unit,

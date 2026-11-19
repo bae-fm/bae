@@ -13,7 +13,7 @@ import uniffi.bae_bridge.BridgeOpenProgress
  * open to follow, [idle] alone. With [bar] false the step shows as its name alone.
  */
 @Composable
-internal fun OpenProgressLine(
+internal fun AndroidProgressLine(
     steps: LatestSource<BridgeOpenProgress>?,
     modifier: Modifier = Modifier,
     bar: Boolean = true,

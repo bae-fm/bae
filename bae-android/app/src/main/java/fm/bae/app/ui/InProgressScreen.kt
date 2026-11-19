@@ -16,8 +16,8 @@ import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidProgress
+import fm.bae.app.ui.components.AndroidProgressLine
 import fm.bae.app.ui.components.AndroidSpinner
-import fm.bae.app.ui.components.OpenProgressLine
 import fm.bae.app.ui.onboarding.ResettingScreen
 import fm.bae.fastvalues.LatestSource
 import uniffi.bae_bridge.BridgeClosingProgress
@@ -70,7 +70,7 @@ private fun LoadingScreen(
     @StringRes title: Int,
 ) {
     Box(modifier = Modifier.fillMaxSize().padding(ThemeSpace.page), contentAlignment = Alignment.Center) {
-        OpenProgressLine(steps = steps, modifier = Modifier.widthIn(max = OPEN_PROGRESS_MAX_WIDTH)) {
+        AndroidProgressLine(steps = steps, modifier = Modifier.widthIn(max = OPEN_PROGRESS_MAX_WIDTH)) {
             AndroidSpinner(text = stringResource(title))
         }
     }

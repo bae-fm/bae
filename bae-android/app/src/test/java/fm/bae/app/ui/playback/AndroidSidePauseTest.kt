@@ -23,7 +23,7 @@ import java.time.Instant
 
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
-class SidePauseAlertTest {
+class AndroidSidePauseTest {
     @get:Rule
     val compose = createComposeRule()
 
@@ -48,7 +48,7 @@ class SidePauseAlertTest {
         compose.mainClock.autoAdvance = false
         compose.setContent {
             TestTheme {
-                SidePauseAlert(
+                AndroidSidePause(
                     track =
                         NowPlaying(
                             trackId = "trk-1",

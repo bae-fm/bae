@@ -35,6 +35,7 @@ import fm.bae.app.queueWaitText
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidContentUnavailable
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidTopBar
 import fm.bae.app.ui.components.ButtonKind
@@ -110,7 +111,7 @@ internal fun AndroidStoragePinning(
     body: @Composable BoxScope.() -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
-        AndroidDownloadsBar(
+        AndroidPinningBar(
             paused = paused,
             hasDownloads = hasDownloads,
             hasFailures = hasFailures,
@@ -184,10 +185,8 @@ private fun BoxScope.DownloadsBody(
 /** What the Pinning screen says when nothing is queued. */
 @Composable
 internal fun DownloadsEmpty(modifier: Modifier = Modifier) {
-    Text(
-        text = stringResource(R.string.pinning_empty),
-        style = ThemeText.body.style,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    AndroidContentUnavailable(
+        message = stringResource(R.string.pinning_empty),
         modifier = modifier.padding(ThemeSpace.page),
     )
 }
@@ -204,25 +203,6 @@ private fun ReportVisibleDownloads(
             (visible.firstOrNull() ?: 0) to (visible.lastOrNull() ?: 0)
         }.distinctUntilChanged()
             .collect { (first, last) -> page.reportVisibleRange(first, last) }
-    }
-}
-
-@Composable
-internal fun AndroidDownloadsBar(
-    paused: Boolean,
-    hasDownloads: Boolean,
-    hasFailures: Boolean,
-    onBack: () -> Unit,
-    onPauseToggle: () -> Unit,
-    onRetry: () -> Unit,
-) {
-    AndroidTopBar(onBack = onBack, title = stringResource(R.string.pinning)) {
-        AndroidButton(kind = ButtonKind.TEXT, onClick = onRetry, enabled = hasFailures) {
-            Text(stringResource(R.string.retry))
-        }
-        AndroidButton(kind = ButtonKind.TEXT, onClick = onPauseToggle, enabled = hasDownloads) {
-            Text(stringResource(if (paused) R.string.resume else R.string.pause))
-        }
     }
 }
 
@@ -262,7 +242,7 @@ internal fun DownloadsList(
         items(count, key = { index -> index }) { index ->
             val op = row(index) ?: return@items
             // The row's progress View reads the release's latest bytes each frame; nothing recomposes for them.
-            AndroidDownloadRow(
+            AndroidPinningRow(
                 op = op,
                 progress = downloads.latestProgress(op.releaseId),
                 onCancel = { onCancel(op.releaseId) },

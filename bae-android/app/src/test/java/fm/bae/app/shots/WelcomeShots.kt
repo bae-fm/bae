@@ -15,6 +15,8 @@ import fm.bae.app.ui.ResetOfferedScreen
 import fm.bae.app.ui.ResetUnfinishedScreen
 import fm.bae.app.ui.components.RemovalLoss
 import fm.bae.app.ui.components.removeLibraryParts
+import fm.bae.app.ui.onboarding.AndroidWelcomeActions
+import fm.bae.app.ui.onboarding.AndroidWelcomeHome
 import fm.bae.app.ui.onboarding.CodeEntry
 import fm.bae.app.ui.onboarding.JoinEndedStep
 import fm.bae.app.ui.onboarding.JoinNameStep
@@ -25,12 +27,10 @@ import fm.bae.app.ui.onboarding.OnboardingStep
 import fm.bae.app.ui.onboarding.PairingEndedStep
 import fm.bae.app.ui.onboarding.PairingWaitingStep
 import fm.bae.app.ui.onboarding.StandingRead
-import fm.bae.app.ui.onboarding.WelcomeActions
 import fm.bae.app.ui.onboarding.WelcomeDamagedJoinScene
 import fm.bae.app.ui.onboarding.WelcomeLibrariesScene
 import fm.bae.app.ui.onboarding.WelcomeRemovingScene
 import fm.bae.app.ui.onboarding.WelcomeSavedCodesScene
-import fm.bae.app.ui.onboarding.WelcomeScene
 import fm.bae.app.ui.onboarding.deleteSavedCodeParts
 import fm.bae.app.ui.onboarding.removalFailedParts
 import fm.bae.app.ui.onboarding.sceneSavedEntries
@@ -59,7 +59,7 @@ import java.time.Instant
 class WelcomeShots : BoardShot() {
     /** The welcome of a phone holding no library: the logo over the tagline, Scan code and Enter code at the foot. */
     @Test
-    fun androidWelcomeLibrariesNone() = shot("android.welcome.libraries.none") { ScreenScene { WelcomeScene() } }
+    fun androidWelcomeLibrariesNone() = shot("android.welcome.libraries.none") { ScreenScene { AndroidWelcomeHome() } }
 
     /** The welcome on a phone that holds two libraries, one of them never synced. */
     @Test
@@ -92,7 +92,7 @@ class WelcomeShots : BoardShot() {
     fun androidWelcomeAddLibrary() =
         shot("android.welcome.add-library") {
             SheetScene(stringResource(R.string.welcome_add_library), behind = { WelcomeLibrariesScene() }) {
-                WelcomeActions(onScan = {}, onEnter = {})
+                AndroidWelcomeActions(onScan = {}, onEnter = {})
             }
         }
 

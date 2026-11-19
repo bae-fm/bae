@@ -62,7 +62,7 @@ import uniffi.bae_bridge.BridgeSyncActivity
  * date, until the person closes it.
  */
 @Composable
-internal fun ActivityButton(
+internal fun AndroidActivityButton(
     store: SyncActivityStore,
     app: List<AppProblem>,
     dismissed: Set<ActivityProblemId>,

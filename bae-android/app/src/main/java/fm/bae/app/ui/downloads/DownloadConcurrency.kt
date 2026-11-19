@@ -14,7 +14,7 @@ import fm.bae.app.R
 import fm.bae.app.countText
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.AndroidSegmentedButtons
+import fm.bae.app.ui.components.AndroidSegmentedControl
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -47,7 +47,7 @@ internal fun DownloadConcurrencySelector(
             style = ThemeText.body.style,
             color = MaterialTheme.colorScheme.onSurface,
         )
-        AndroidSegmentedButtons(
+        AndroidSegmentedControl(
             options = options.map { context.countText(it) },
             selected = options.indexOf(value),
             onSelect = { onSelect(options[it]) },

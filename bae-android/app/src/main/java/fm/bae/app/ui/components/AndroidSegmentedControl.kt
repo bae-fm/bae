@@ -25,7 +25,7 @@ import fm.bae.app.ui.appearance.ThemeText
  * whose board has TalkBack read the choice's name draws that name itself and passes no label.
  */
 @Composable
-internal fun AndroidSegmentedButtons(
+internal fun AndroidSegmentedControl(
     options: List<String>,
     selected: Int,
     onSelect: (Int) -> Unit,

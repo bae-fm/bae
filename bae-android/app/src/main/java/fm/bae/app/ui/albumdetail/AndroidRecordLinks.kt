@@ -18,7 +18,7 @@ import uniffi.bae_bridge.BridgeReleaseRecord
  * no native library, passes its own.
  */
 @Composable
-internal fun AlbumRecordLinks(
+internal fun AndroidRecordLinks(
     records: List<BridgeReleaseRecord>,
     catalogName: (BridgeCatalog) -> String,
 ) {

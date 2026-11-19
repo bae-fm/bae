@@ -18,7 +18,7 @@ private val BUTTON_GAP = 10.dp
 
 /** Scan code and Enter code, full width, one over the other. */
 @Composable
-internal fun WelcomeActions(
+internal fun AndroidWelcomeActions(
     onScan: () -> Unit,
     onEnter: () -> Unit,
 ) {

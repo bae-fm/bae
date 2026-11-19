@@ -111,7 +111,7 @@ internal fun AndroidRow(
                 modifier = Modifier.size(ThemeIcon.large),
             )
         }
-        avatar?.let { AndroidAvatar(face = it, size = AVATAR_SIZE) }
+        avatar?.let { Avatar(face = it, size = AVATAR_SIZE) }
         Column(modifier = Modifier.weight(1f)) {
             Title(title, tag, action = action, destructive = destructive)
             subtitle?.let { Subtitle(it, tone) }
@@ -224,7 +224,7 @@ private fun Subtitle(
         verticalAlignment = Alignment.Top,
     ) {
         val color = tone?.color ?: MaterialTheme.colorScheme.onSurfaceVariant
-        if (tone != null) FirstLineBox { Box(modifier = Modifier.size(DOT).background(color, CircleShape)) }
+        if (tone != null) AndroidItem { Box(modifier = Modifier.size(DOT).background(color, CircleShape)) }
         Text(
             text = text,
             style = ThemeText.body.style,

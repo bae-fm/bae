@@ -17,7 +17,7 @@ import fm.bae.app.ui.components.AndroidSheet
 import fm.bae.app.ui.components.AndroidSpinner
 import fm.bae.app.ui.components.SomethingWentWrongNotice
 import fm.bae.app.ui.components.StatusTone
-import fm.bae.app.ui.settings.StorageRows
+import fm.bae.app.ui.settings.AndroidCloudHome
 import fm.bae.app.ui.settings.statusTone
 import fm.bae.app.ui.settings.syncLastSyncedText
 import fm.bae.app.ui.settings.syncStatusText
@@ -95,5 +95,5 @@ internal fun LibraryDetailsRows(
             }
         }
     }
-    StorageRows(storage)
+    AndroidCloudHome(storage)
 }

@@ -13,9 +13,9 @@ import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.playback.AndroidFullPlayer
 import fm.bae.app.ui.playback.AndroidNowPlayingBar
 import fm.bae.app.ui.playback.AndroidPlayPause
-import fm.bae.app.ui.playback.AndroidQueueLabel
 import fm.bae.app.ui.playback.AndroidQueuePlaceholderRow
 import fm.bae.app.ui.playback.AndroidQueueRow
+import fm.bae.app.ui.playback.AndroidQueueSection
 import fm.bae.app.ui.playback.CastBarButton
 import fm.bae.app.ui.playback.ExpandedSecondaryControls
 import fm.bae.app.ui.playback.ExpandedTransportRow
@@ -140,12 +140,12 @@ class PlaybackComponentShots : BoardShot() {
 
     @Test
     fun androidComponentQueueLabelUpNext() =
-        component("android.component.queue-section.up-next", wide = true) { AndroidQueueLabel("Up next", "Clear up next", {}) }
+        component("android.component.queue-section.up-next", wide = true) { AndroidQueueSection("Up next", "Clear up next", {}) }
 
     @Test
     fun androidComponentQueueLabelPlayingFrom() =
         component("android.component.queue-section.playing-from", wide = true) {
-            AndroidQueueLabel("Playing from", "Clear playing from", {}, shuffled = false)
+            AndroidQueueSection("Playing from", "Clear playing from", {}, shuffled = false)
         }
 }
 

@@ -19,11 +19,11 @@ import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidProgress
+import fm.bae.app.ui.components.AndroidS3KeyFields
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
 import fm.bae.app.ui.components.DialogParts
 import fm.bae.app.ui.components.NoticeLook
-import fm.bae.app.ui.components.S3KeyFields
 import fm.bae.app.ui.components.focusOnShow
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -269,7 +269,7 @@ internal fun s3KeyDialogParts(
                     // The field the person types in next takes the focus as the fields show: the ID while it is
                     // empty, else the secret. Typing doesn't move it.
                     val focusesId = remember { accessKeyId.isEmpty() }
-                    S3KeyFields(
+                    AndroidS3KeyFields(
                         accessKeyId = accessKeyId,
                         secretAccessKey = secretAccessKey,
                         onAccessKeyIdChange = onAccessKeyIdChange,

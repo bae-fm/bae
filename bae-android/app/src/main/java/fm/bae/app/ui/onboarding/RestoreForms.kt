@@ -29,10 +29,10 @@ import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidRow
+import fm.bae.app.ui.components.AndroidS3KeyFields
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
 import fm.bae.app.ui.components.NoticeLook
-import fm.bae.app.ui.components.S3KeyFields
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeS3Credentials
 
@@ -124,7 +124,7 @@ internal fun S3KeyDialog(
         message = stringResource(R.string.onboarding_s3_key_prompt),
         content = {
             Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.group)) {
-                S3KeyFields(
+                AndroidS3KeyFields(
                     accessKeyId = keys.accessKeyId,
                     secretAccessKey = keys.secretAccessKey,
                     onAccessKeyIdChange = { keys.accessKeyId = it.trim() },
@@ -190,7 +190,7 @@ private fun RestoreAction(
             style = ThemeText.detail.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        S3KeyFields(
+        AndroidS3KeyFields(
             accessKeyId = accessKeyId,
             secretAccessKey = secretAccessKey,
             onAccessKeyIdChange = { accessKeyId = it.trim() },

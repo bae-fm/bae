@@ -49,8 +49,8 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidNotice
+import fm.bae.app.ui.components.Artwork
 import fm.bae.app.ui.components.ButtonKind
-import fm.bae.app.ui.components.CoverImage
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.PageDeletionShown
 import fm.bae.app.ui.components.StatusChip
@@ -303,7 +303,7 @@ internal fun AlbumDetailContent(
 
     var showGallery by remember { mutableStateOf(false) }
     if (showGallery && shown.galleryItemCount > 0u) {
-        GalleryDialog(
+        AndroidLightbox(
             releaseId = shown.id,
             items = shown.galleryItems,
             count = shown.galleryItemCount,
@@ -326,7 +326,7 @@ internal fun AlbumDetailContent(
             )
         }
 
-        block { AlbumRating(rating = detail.rating, onRate = callbacks.onRateAlbum) }
+        block { AndroidAlbumRating(rating = detail.rating, onRate = callbacks.onRateAlbum) }
 
         if (detail.showsReleaseChoices) {
             block {
@@ -349,7 +349,7 @@ internal fun AlbumDetailContent(
         }
 
         if (shown.hasRecords) {
-            block { AlbumRecordLinks(shown.records, catalogName) }
+            block { AndroidRecordLinks(shown.records, catalogName) }
         }
 
         block { releaseDownloadControl(shown) }
@@ -371,7 +371,7 @@ internal fun AndroidAlbumHeader(
     val context = LocalContext.current
 
     Row(verticalAlignment = Alignment.Top) {
-        CoverImage(
+        Artwork(
             cover = cover,
             cornerRadius = ThemeRadius.cover,
             iconPadding = ThemeSpace.page,

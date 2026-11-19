@@ -19,7 +19,7 @@ import fm.bae.app.data.ImageContent
 import fm.bae.app.ui.appearance.ThemeOpacity
 import uniffi.bae_bridge.BridgePersonProfile
 
-/** What an [AndroidAvatar] draws: the [initials] that stand in while the person has no [picture]. */
+/** What an [Avatar] draws: the [initials] that stand in while the person has no [picture]. */
 internal class AvatarFace(
     val initials: String,
     val picture: ImageContent.Avatar?,
@@ -31,7 +31,7 @@ internal fun BridgePersonProfile.face(): AvatarFace =
 
 /** A person's picture, or their initials in the accent on its tint while they have none. Round. */
 @Composable
-internal fun AndroidAvatar(
+internal fun Avatar(
     face: AvatarFace,
     size: Dp,
     modifier: Modifier = Modifier,

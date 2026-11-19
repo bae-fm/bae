@@ -36,10 +36,10 @@ import fm.bae.app.displayError
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidProgressLine
 import fm.bae.app.ui.components.AndroidSpinner
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.Logo
-import fm.bae.app.ui.components.OpenProgressLine
 import fm.bae.app.ui.components.QRScannerScreen
 import fm.bae.app.ui.rememberScreenScope
 import uniffi.bae_bridge.BridgeBootstrapResult
@@ -370,7 +370,7 @@ internal fun RunningLines(
     var stepping by remember(step.openSteps) { mutableStateOf(false) }
     // A counted step's own bar stands in for the spinner.
     var counting by remember(step.steps) { mutableStateOf(false) }
-    OpenProgressLine(
+    AndroidProgressLine(
         steps = step.openSteps,
         modifier = Modifier.widthIn(max = STEP_LINE_MAX_WIDTH),
         onStepping = { stepping = it },

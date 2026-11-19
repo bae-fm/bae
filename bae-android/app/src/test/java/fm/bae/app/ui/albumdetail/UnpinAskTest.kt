@@ -32,7 +32,7 @@ class UnpinAskTest {
     private fun showControl(asksBeforeUnpinning: Boolean) {
         compose.setContent {
             TestTheme {
-                AndroidDownloadControl(
+                AndroidPinControl(
                     status = BridgeReleaseDownloadStatus.Downloaded,
                     progress = PreviewData.downloadStore().latestProgress("rel-1"),
                     unpinning = false,

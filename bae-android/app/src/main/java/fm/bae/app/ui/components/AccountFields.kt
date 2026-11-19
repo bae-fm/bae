@@ -17,7 +17,7 @@ import fm.bae.app.R
  * focus it.
  */
 @Composable
-internal fun S3KeyFields(
+internal fun AndroidS3KeyFields(
     accessKeyId: String,
     secretAccessKey: String,
     onAccessKeyIdChange: (String) -> Unit,

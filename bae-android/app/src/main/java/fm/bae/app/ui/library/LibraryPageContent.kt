@@ -29,6 +29,7 @@ import fm.bae.app.data.ListPageState
 import fm.bae.app.data.PageError
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.AndroidContentUnavailable
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.retryAction
@@ -92,7 +93,7 @@ internal fun LibraryPageContent(
 
             is ListPageState.Counted -> {
                 if (shown.rows == 0) {
-                    ListPlaceholder { EmptyList(emptyMessage, emptyAction) }
+                    ListPlaceholder { AndroidContentUnavailable(emptyMessage, actions = emptyAction) }
                 } else {
                     rows()
                 }
@@ -112,22 +113,6 @@ internal fun LibraryReadFailed(pageError: PageError) {
             look = NoticeLook.CENTERED,
             action = pageError.error.retryAction(onClick = pageError.onRetry),
         )
-    }
-}
-
-/** The line a list with nothing in it says, with its [action] under it when it has one. */
-@Composable
-private fun EmptyList(
-    message: String,
-    action: (@Composable () -> Unit)?,
-) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = message,
-            style = ThemeText.body.style,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        action?.invoke()
     }
 }
 

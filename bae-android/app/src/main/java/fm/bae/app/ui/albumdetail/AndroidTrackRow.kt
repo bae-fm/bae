@@ -78,7 +78,7 @@ internal fun AndroidTrackRow(
                 .padding(vertical = ThemeSpace.related),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        TrackPositionIndicator(data.isCurrent, data.isPlaying, data.positionLabel, positionColumnWidth)
+        AndroidTrackLead(data.isCurrent, data.isPlaying, data.positionLabel, positionColumnWidth)
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = data.title,
@@ -115,7 +115,7 @@ internal fun AndroidTrackRow(
 }
 
 @Composable
-private fun TrackPositionIndicator(
+private fun AndroidTrackLead(
     isCurrent: Boolean,
     isPlaying: Boolean,
     positionLabel: String,

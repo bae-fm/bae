@@ -25,7 +25,7 @@ import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSize
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.CoverImage
+import fm.bae.app.ui.components.Artwork
 import uniffi.bae_bridge.BridgeImageRef
 
 /**
@@ -59,7 +59,7 @@ internal fun AndroidQueueRow(
                 ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        CoverImage(
+        Artwork(
             cover = cover,
             cornerRadius = ThemeRadius.artwork,
             iconPadding = ThemeSpace.group,

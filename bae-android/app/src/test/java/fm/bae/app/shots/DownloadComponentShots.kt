@@ -4,12 +4,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import fm.bae.app.ui.PreviewData
-import fm.bae.app.ui.albumdetail.AndroidDownloadControl
+import fm.bae.app.ui.albumdetail.AndroidPinControl
+import fm.bae.app.ui.albumdetail.AndroidUnplayableLine
 import fm.bae.app.ui.albumdetail.AndroidUploadLine
-import fm.bae.app.ui.albumdetail.UnplayableLine
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.downloads.AndroidDownloadRow
-import fm.bae.app.ui.downloads.AndroidDownloadsBar
+import fm.bae.app.ui.downloads.AndroidPinningBar
+import fm.bae.app.ui.downloads.AndroidPinningRow
 import org.junit.Test
 import uniffi.bae_bridge.BridgeDownloadState
 import uniffi.bae_bridge.BridgeMessage
@@ -45,7 +45,7 @@ class DownloadComponentShots : BoardShot() {
     @Test
     fun androidComponentDownloadControlElsewhere() =
         component("android.component.pin-control.elsewhere") {
-            UnplayableLine(BridgeMessage("core.release.on_device", listOf(BridgeMessageArg("device", "Ana’s Mac"))))
+            AndroidUnplayableLine(BridgeMessage("core.release.on_device", listOf(BridgeMessageArg("device", "Ana’s Mac"))))
         }
 
     @Test
@@ -58,7 +58,7 @@ class DownloadComponentShots : BoardShot() {
                     previewDownload("rel-1", "Winter Kitchen", 10UL, 331_000_000UL, BridgeDownloadState.Queued),
                     previewDownload("rel-3", "Glass Harbor", 9UL, 356_000_000UL, BridgeDownloadState.Failed("Network unreachable")),
                 ).forEach { op ->
-                    AndroidDownloadRow(op, downloads.latestProgress(op.releaseId), onCancel = {}, onRetry = {})
+                    AndroidPinningRow(op, downloads.latestProgress(op.releaseId), onCancel = {}, onRetry = {})
                 }
             }
         }
@@ -66,7 +66,7 @@ class DownloadComponentShots : BoardShot() {
     @Test
     fun androidComponentDownloadsBarDefault() =
         component("android.component.pinning-bar.failed", wide = true) {
-            AndroidDownloadsBar(
+            AndroidPinningBar(
                 paused = false,
                 hasDownloads = true,
                 hasFailures = true,
@@ -100,7 +100,7 @@ private fun previewDownload(
 @Composable
 private fun Control(status: BridgeReleaseDownloadStatus) =
     Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.compact)) {
-        AndroidDownloadControl(
+        AndroidPinControl(
             status = status,
             progress = PreviewData.downloadStore(downloadingReleaseId = "rel-1").latestProgress("rel-1"),
             unpinning = false,

@@ -77,7 +77,7 @@ private const val FULL_RES_SCALE_THRESHOLD = 1.01f
 private const val DISMISS_THRESHOLD_DP = 150f
 private const val DRAG_FADE_DISTANCE_MULTIPLIER = 2f
 private const val DRAG_BACKDROP_FADE = 0.7f
-private const val TAG = "bae.GalleryDialog"
+private const val TAG = "bae.AndroidLightbox"
 private val logger = BaeLogger(TAG)
 
 /**
@@ -86,7 +86,7 @@ private val logger = BaeLogger(TAG)
  * the release's query counts, and the page counter shows that number.
  */
 @Composable
-fun GalleryDialog(
+fun AndroidLightbox(
     releaseId: String,
     items: List<BridgeGalleryItem>,
     count: UInt,

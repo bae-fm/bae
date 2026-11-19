@@ -109,7 +109,7 @@ internal fun AndroidAlbumGrid(
                                     )
                             }
                         }
-                        AndroidArtistHeading(
+                        AndroidArtistGroupHeading(
                             section = section,
                             pinned = pinned,
                             gridPadding = ThemeSpace.group,

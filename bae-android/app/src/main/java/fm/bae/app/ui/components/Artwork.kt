@@ -38,7 +38,7 @@ import fm.bae.app.ui.BaeTheme
 import kotlinx.coroutines.CancellationException
 import uniffi.bae_bridge.BridgeImageRef
 
-private const val TAG = "bae.CoverImage"
+private const val TAG = "bae.Artwork"
 private val logger = BaeLogger(TAG)
 
 private sealed interface SlotState {
@@ -61,7 +61,7 @@ private sealed interface SlotState {
  * the size.
  */
 @Composable
-fun CoverImage(
+fun Artwork(
     cover: BridgeImageRef?,
     cornerRadius: Dp,
     iconPadding: Dp,

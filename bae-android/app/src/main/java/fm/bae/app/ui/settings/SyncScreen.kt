@@ -284,7 +284,7 @@ internal fun AndroidSettingsSync(
             contentPadding = PaddingValues(ThemeSpace.edge),
             verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
         ) {
-            item { SyncStatusBlock(line = line, onFix = onFix) }
+            item { AndroidSyncStatus(line = line, onFix = onFix) }
             item { Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related), content = notices) }
             location?.let { place ->
                 item {
@@ -371,7 +371,7 @@ private fun SyncDialogs(
  * fix and when sync last finished, each only when core sends one. Until the status is first read it shows nothing.
  */
 @Composable
-internal fun SyncStatusBlock(
+internal fun AndroidSyncStatus(
     line: SyncLine,
     onFix: (BridgeSyncFix) -> Unit,
     nowMs: () -> Long = System::currentTimeMillis,

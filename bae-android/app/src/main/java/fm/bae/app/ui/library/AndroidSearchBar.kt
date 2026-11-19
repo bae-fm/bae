@@ -38,7 +38,7 @@ import fm.bae.app.ui.components.AndroidInlineIconButton
 private val SEARCH_FIELD_HEIGHT = 56.dp
 
 @Composable
-internal fun LibrarySearchBar(
+internal fun AndroidSearchBar(
     query: String,
     onQueryChange: (String) -> Unit,
     onClose: () -> Unit,

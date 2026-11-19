@@ -30,11 +30,11 @@ import fm.bae.app.ui.components.AndroidCard
 import fm.bae.app.ui.components.AndroidMoreMenu
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidProgress
+import fm.bae.app.ui.components.AndroidProgressLine
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidSection
 import fm.bae.app.ui.components.AndroidSpinner
 import fm.bae.app.ui.components.ButtonKind
-import fm.bae.app.ui.components.OpenProgressLine
 import fm.bae.app.ui.components.RemoveLibraryDialog
 import fm.bae.app.ui.settings.isUnopenableListing
 import fm.bae.app.ui.settings.libraryDetail
@@ -69,7 +69,7 @@ internal class WelcomeLibrariesCallbacks(
  * discard.
  */
 @Composable
-internal fun WelcomeLibrariesSection(
+internal fun AndroidWelcomeLibraries(
     libraries: WelcomeLibraries,
     onOpen: (BridgeLibrary) -> Unit,
     onAdd: () -> Unit,
@@ -277,7 +277,7 @@ private fun RunningLibraryRow(
                 modifier = Modifier.fillMaxWidth(),
                 bar = false,
             ) {
-                OpenProgressLine(steps = running.opening, modifier = Modifier.fillMaxWidth(), bar = false) {
+                AndroidProgressLine(steps = running.opening, modifier = Modifier.fillMaxWidth(), bar = false) {
                     if (!running.removing) {
                         Text(
                             text = stringResource(R.string.loading_opening_library),
@@ -305,7 +305,7 @@ private val SPINNER_SLOT = 48.dp
  */
 @Composable
 internal fun WelcomeLibrariesScene() {
-    WelcomeScene(libraries = WelcomeLibrariesView(listed = true) { onAdd -> WelcomeLibrariesSceneContent(onAdd) })
+    AndroidWelcomeHome(libraries = WelcomeLibrariesView(listed = true) { onAdd -> WelcomeLibrariesSceneContent(onAdd) })
 }
 
 /**
@@ -328,7 +328,7 @@ internal fun WelcomeRemovingScene() {
                         ),
                     ).only,
         )
-    WelcomeScene(
+    AndroidWelcomeHome(
         libraries = WelcomeLibrariesView(listed = true) { onAdd -> WelcomeLibrariesSceneContent(onAdd, running) },
     )
 }
@@ -342,7 +342,7 @@ internal const val SCENE_UNREADABLE_JOIN = "3b9e07d4-51a2-4c8f-b6e3-0f2d9a7c4e81
  */
 @Composable
 internal fun WelcomeDamagedJoinScene() {
-    WelcomeScene(
+    AndroidWelcomeHome(
         libraries =
             WelcomeLibrariesView(listed = true) { onAdd ->
                 WelcomeLibrariesSceneContent(onAdd, unreadableInstallation = SCENE_UNREADABLE_JOIN)

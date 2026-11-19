@@ -32,7 +32,7 @@ import java.io.IOException
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-class CoverImageTest {
+class ArtworkTest {
     @get:Rule
     val compose = createComposeRule()
 
@@ -80,7 +80,7 @@ class CoverImageTest {
         compose.setContent {
             TestTheme {
                 CompositionLocalProvider(LocalImageStore provides store) {
-                    CoverImage(
+                    Artwork(
                         cover = cover,
                         cornerRadius = 4.dp,
                         iconPadding = 8.dp,

@@ -113,7 +113,7 @@ private fun rememberHeadingCollapse(
  * at the top of the list into a slim bar by [collapse], 0 to 1.
  */
 @Composable
-internal fun LibraryHeader(
+internal fun AndroidLibraryHeader(
     state: LibraryBrowserState,
     collapse: () -> Float,
     onShuffleLibrary: () -> Unit,
@@ -204,26 +204,4 @@ internal fun LibraryViewMenuItems(state: LibraryBrowserState) {
             },
         )
     }
-}
-
-/** One of a menu's choices, the chosen one in the accent color. */
-@Composable
-internal fun AndroidMenuItem(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-) {
-    // TalkBack reads Selected as the chosen item's state, because the design draws no selected state for a menu item.
-    val chosen = stringResource(R.string.menu_item_chosen)
-    DropdownMenuItem(
-        text = {
-            Text(
-                text = label,
-                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                fontWeight = if (selected) FontWeight.SemiBold else null,
-            )
-        },
-        onClick = onClick,
-        modifier = Modifier.semantics { if (selected) stateDescription = chosen },
-    )
 }

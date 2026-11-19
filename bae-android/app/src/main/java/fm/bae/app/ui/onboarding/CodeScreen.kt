@@ -273,7 +273,7 @@ private fun ListedWelcome(
     }
     if (adding) {
         AndroidSheet(title = stringResource(R.string.welcome_add_library), onDismiss = { adding = false }) {
-            WelcomeActions(
+            AndroidWelcomeActions(
                 onScan = {
                     adding = false
                     callbacks.onScan()
@@ -315,7 +315,7 @@ private fun EmptyWelcome(
                 AndroidNotice(it)
             }
         }
-        WelcomeActions(onScan = callbacks.onScan, onEnter = callbacks.onShowCodeDialog)
+        AndroidWelcomeActions(onScan = callbacks.onScan, onEnter = callbacks.onShowCodeDialog)
         Spacer(modifier = Modifier.height(ThemeSpace.section))
     }
 }
@@ -345,7 +345,7 @@ private val LIST_TAGLINE_PADDING =
  * that lists restore codes saved for others, drawn by [savedCodes].
  */
 @Composable
-internal fun WelcomeScene(
+internal fun AndroidWelcomeHome(
     libraries: WelcomeLibrariesView? = null,
     savedCodes: @Composable () -> Unit = {},
 ) {

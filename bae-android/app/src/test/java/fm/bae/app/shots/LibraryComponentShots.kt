@@ -22,7 +22,7 @@ import fm.bae.app.ui.components.AndroidLibraryRow
 import fm.bae.app.ui.library.AlbumGridLayout
 import fm.bae.app.ui.library.AndroidAlbumGrid
 import fm.bae.app.ui.library.AndroidAlbumTile
-import fm.bae.app.ui.library.AndroidArtistHeading
+import fm.bae.app.ui.library.AndroidArtistGroupHeading
 import fm.bae.app.ui.library.AndroidMenuItem
 import fm.bae.app.ui.library.AndroidSearchSection
 import fm.bae.app.ui.library.GroupByArtistItem
@@ -76,13 +76,13 @@ class LibraryComponentShots : BoardShot() {
     @Test
     fun androidComponentArtistHeadingTop() =
         component("android.component.artist-group-heading.top", wide = true) {
-            Images { AndroidArtistHeading(section, pinned = false, gridPadding = 16.dp, onClick = {}) }
+            Images { AndroidArtistGroupHeading(section, pinned = false, gridPadding = 16.dp, onClick = {}) }
         }
 
     @Test
     fun androidComponentArtistHeadingPinned() =
         component("android.component.artist-group-heading.pinned", wide = true) {
-            Images { AndroidArtistHeading(section, pinned = true, gridPadding = 16.dp, onClick = {}) }
+            Images { AndroidArtistGroupHeading(section, pinned = true, gridPadding = 16.dp, onClick = {}) }
         }
 
     @Test

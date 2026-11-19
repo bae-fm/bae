@@ -29,7 +29,7 @@ import fm.bae.app.R
 import fm.bae.app.ui.appearance.ThemeSize
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.CoverImage
+import fm.bae.app.ui.components.Artwork
 import uniffi.bae_bridge.BridgeLibraryBrowseSection
 
 /** The artist's picture in the slim header pinned at the top of the grid. */
@@ -45,7 +45,7 @@ private val PINNED_PICTURE = 32.dp
  * the albums beneath.
  */
 @Composable
-internal fun AndroidArtistHeading(
+internal fun AndroidArtistGroupHeading(
     section: BridgeLibraryBrowseSection,
     pinned: Boolean,
     gridPadding: Dp,
@@ -109,7 +109,7 @@ private fun ArtistPicture(
     section: BridgeLibraryBrowseSection,
     size: Dp,
 ) {
-    CoverImage(
+    Artwork(
         cover = section.image,
         cornerRadius = size / 2,
         iconPadding = ThemeSpace.related,

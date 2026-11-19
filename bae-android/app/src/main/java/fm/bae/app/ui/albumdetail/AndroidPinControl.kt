@@ -63,7 +63,7 @@ internal fun AndroidDownloadControlContainer(
 ) {
     val unplayable = bridgeReleasePlayabilityLine(release.playability)
     if (unplayable != null) {
-        UnplayableLine(unplayable)
+        AndroidUnplayableLine(unplayable)
         return
     }
     // Core reads the release's place in the download queue into the release itself.
@@ -73,7 +73,7 @@ internal fun AndroidDownloadControlContainer(
 
 /** Why this device can't play the release, as core's [message] words it. */
 @Composable
-internal fun UnplayableLine(message: BridgeMessage) {
+internal fun AndroidUnplayableLine(message: BridgeMessage) {
     Text(
         text = LocalContext.current.coreString(message),
         style = ThemeText.detail.style,
@@ -92,7 +92,7 @@ private fun PlayableReleaseDownloadControl(
     val config by session.configStore.config.collectAsState()
 
     Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.compact)) {
-        AndroidDownloadControl(
+        AndroidPinControl(
             status = status,
             progress = session.downloadStore.latestProgress(release.id),
             unpinning = unpin.unpinning,
@@ -116,7 +116,7 @@ private fun PlayableReleaseDownloadControl(
 }
 
 @Composable
-internal fun AndroidDownloadControl(
+internal fun AndroidPinControl(
     status: BridgeReleaseDownloadStatus,
     progress: LatestSource<BridgeDownloadTransferProgress>,
     unpinning: Boolean,

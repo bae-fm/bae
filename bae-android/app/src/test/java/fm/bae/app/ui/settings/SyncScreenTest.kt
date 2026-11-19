@@ -203,7 +203,7 @@ class SyncScreenTest {
             )
         compose.setContent {
             TestTheme {
-                SyncStatusBlock(line = SyncLine.Read(waiting), onFix = {}, nowMs = { resumesAtMs - 41_500L })
+                AndroidSyncStatus(line = SyncLine.Read(waiting), onFix = {}, nowMs = { resumesAtMs - 41_500L })
             }
         }
 

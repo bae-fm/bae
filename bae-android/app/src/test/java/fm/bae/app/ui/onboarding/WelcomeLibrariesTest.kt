@@ -140,7 +140,7 @@ class WelcomeLibrariesTest {
             val model = remember { fake.model(scope) }
             CompositionLocalProvider(LocalBugReports provides BugReports()) {
                 TestTheme {
-                    WelcomeLibrariesSection(model, onOpen = { fake.calls += "open ${it.id}" }, onAdd = { fake.calls += "add" })
+                    AndroidWelcomeLibraries(model, onOpen = { fake.calls += "open ${it.id}" }, onAdd = { fake.calls += "add" })
                 }
             }
         }
@@ -172,7 +172,7 @@ class WelcomeLibrariesTest {
                 OnboardingSteps(
                     flow,
                     WelcomeLibrariesView(listed = fake.libraries.isNotEmpty()) { onAdd ->
-                        WelcomeLibrariesSection(model, onOpen = {}, onAdd = onAdd)
+                        AndroidWelcomeLibraries(model, onOpen = {}, onAdd = onAdd)
                     },
                 )
             }

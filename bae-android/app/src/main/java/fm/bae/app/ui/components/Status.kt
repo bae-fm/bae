@@ -219,10 +219,10 @@ private val NoticeGlyphSize: Dp = (ThemeText.body.style.fontSize.value * 1.19f).
 /** Where a notice's words start, past its glyph: what a list of notices insets its dividers by. */
 internal val NoticeTextInset = NoticeGlyphSize + ThemeSpace.related
 
-/** The tone's glyph in a [FirstLineBox], so it centres on the first line. */
+/** The tone's glyph in a [AndroidItem], so it centres on the first line. */
 @Composable
 private fun FirstLineGlyph(tone: StatusTone) {
-    FirstLineBox { StatusGlyph(tone, size = NoticeGlyphSize) }
+    AndroidItem { StatusGlyph(tone, size = NoticeGlyphSize) }
 }
 
 /**
@@ -230,7 +230,7 @@ private fun FirstLineGlyph(tone: StatusTone) {
  * notice's glyph and buttons sit in one, on the title's line.
  */
 @Composable
-internal fun FirstLineBox(content: @Composable BoxScope.() -> Unit) {
+internal fun AndroidItem(content: @Composable BoxScope.() -> Unit) {
     val measurer = rememberTextMeasurer()
     val style = ThemeText.body.style
     val lineHeight =
@@ -244,7 +244,7 @@ internal fun FirstLineBox(content: @Composable BoxScope.() -> Unit) {
 
 /** A line saying something failed. */
 @Composable
-fun ErrorText(
+fun AndroidErrorLine(
     message: String,
     modifier: Modifier = Modifier,
     maxLines: Int = Int.MAX_VALUE,

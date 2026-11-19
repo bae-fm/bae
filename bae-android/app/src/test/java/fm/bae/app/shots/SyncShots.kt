@@ -8,8 +8,8 @@ import androidx.compose.ui.Modifier
 import fm.bae.app.data.SyncLine
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidScreen
+import fm.bae.app.ui.settings.AndroidSyncStatus
 import fm.bae.app.ui.settings.StorageSection
-import fm.bae.app.ui.settings.SyncStatusBlock
 import org.junit.Test
 import uniffi.bae_bridge.BridgeCountdown
 import uniffi.bae_bridge.BridgeDropboxLocation
@@ -34,7 +34,7 @@ class SyncShots : BoardShot() {
                         modifier = Modifier.padding(ThemeSpace.edge),
                         verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
                     ) {
-                        SyncStatusBlock(
+                        AndroidSyncStatus(
                             line =
                                 SyncLine.Read(
                                     syncShown(

@@ -31,7 +31,7 @@ fun PlaylistPicture(
 ) {
     when (cover) {
         is BridgePlaylistCover.Single -> {
-            CoverImage(
+            Artwork(
                 cover = cover.cover,
                 cornerRadius = cornerRadius,
                 iconPadding = ThemeSpace.group,
@@ -62,7 +62,7 @@ private fun ColumnScope.GridRow(
         horizontalArrangement = Arrangement.spacedBy(GRID_GAP),
     ) {
         for (index in from until from + 2) {
-            CoverImage(
+            Artwork(
                 cover = cover.covers.getOrNull(index),
                 cornerRadius = 0.dp,
                 iconPadding = 0.dp,
