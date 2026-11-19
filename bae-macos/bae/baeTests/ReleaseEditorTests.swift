@@ -162,7 +162,10 @@ struct ReleaseEditorTests {
             releaseId: "release-test",
             release: release
         )
-        let size = NSSize(width: width, height: 700)
+        // Tall enough that neither layout scrolls: on a Mac that always shows
+        // scroll bars, as CI's runner does, the bar narrows a layout that
+        // scrolls, and its columns move left of the ones that fit.
+        let size = NSSize(width: width, height: 1_200)
         return try await SnapshotTestSupport.withHostedWindow(
             ScrollView {
                 ReleaseMetadataEditorContent(
