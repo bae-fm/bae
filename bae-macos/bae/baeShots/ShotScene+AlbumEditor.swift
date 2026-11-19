@@ -5,9 +5,10 @@ import SwiftUI
 
 extension ShotScene {
     /// The library's release editor over the album page, as the boards draw
-    /// it: its cover opens Change cover over it, and its album pop-up opens
-    /// over its row.
+    /// it: on its own, with Change cover over it, and with its album pop-up
+    /// open over its row.
     static let albumEditorScenes: [ShotScene] = [
+        albumEditorScene(id: "mac.album.edit", stage: .editor),
         albumEditorScene(id: "mac.album.edit.cover", stage: .coverSheet),
         albumEditorScene(
             id: "mac.album.edit.album-picker",
@@ -16,41 +17,23 @@ extension ShotScene {
     ]
 
     private enum AlbumEditorStage {
+        case editor
         case coverSheet
         case albumMenu
     }
 
     private static let editedReleaseId = "rel-board-0"
 
-    /// The release the editor opens on: "Northbound" with a change made, so
-    /// the editor offers Cancel and Save.
+    /// The release the editor opens on: Northbound as its import made it,
+    /// with a change made, so the editor offers Cancel and Save, and the rip
+    /// log and front cover its folder carried.
     private static var editedRelease: BridgeReleaseEditDraft {
-        var draft = PreviewData.releaseEditDraft(trackCount: 4)
-        draft.edit.albumTitle = "Northbound"
-        draft.edit.albumYear = "1974"
-        draft.edit.albumArtistAssignments = [
-            PreviewData.pickedArtist("Mara Quill", artistId: "artist-quill")
-        ]
-        draft.edit.pressing.year = "1992"
-        draft.edit.pressing.labels = [
-            BridgeRawLabelEdit(name: "Harbor Records", catalogNumber: "HR-1042")
-        ]
-        draft.edit.pressing.barcodes = []
-        let titles = ["Northbound", "Margins", "Salt Road", "Winter Light"]
-        for index in draft.edit.tracks.indices {
-            draft.edit.tracks[index].title = titles[index]
-        }
+        var draft = PreviewData.northboundReleaseDraft()
+        draft.files = Array(PreviewData.carriedBoardFiles.prefix(2))
         draft.cover = BridgeImageRef(
             id: editedReleaseId,
             version: "1",
             imageType: .cover
-        )
-        draft.album = .named(
-            albumId: "album-northbound",
-            line: .titleAndArtists(
-                title: "Northbound",
-                artistLine: .named("Mara Quill")
-            )
         )
         draft.changed = true
         return draft
@@ -105,7 +88,7 @@ extension ShotScene {
         uiStore.presentModal {
             ReleaseEditorSheet(
                 releaseId: editedReleaseId,
-                displayName: "Northbound · CD · Harbor Records HR-1042 · 1992",
+                displayName: "Northbound · CD · Harbor Records HR-0412 · 1974",
                 opened: library.opened(),
                 commands: library.commands(),
                 onSaved: { _ in },

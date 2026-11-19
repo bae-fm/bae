@@ -11,6 +11,8 @@ struct ReleaseEditorSheet: View {
 
     @State
     private var session: ReleaseMetadataEditSession
+    @Environment(Playback.self)
+    private var playback
 
     init(
         releaseId: String,
@@ -42,6 +44,7 @@ struct ReleaseEditorSheet: View {
                     ReleaseEditorView(
                         session: session,
                         displayName: displayName,
+                        onPlayTrack: playTrack,
                         onSaved: onSaved
                     )
                     .padding(ThemeSpace.section)
@@ -60,6 +63,11 @@ struct ReleaseEditorSheet: View {
         // However the sheet goes, its work stops; what it did not save goes
         // with its session.
         .onDisappear { session.cancelTasks() }
+    }
+
+    /// Play the release from `trackId`, as a row of its album does.
+    private func playTrack(_ trackId: String) {
+        playback.playRelease(session.releaseId, trackId, false)
     }
 
     /// How much narrower and shorter than its host the sheet sits.

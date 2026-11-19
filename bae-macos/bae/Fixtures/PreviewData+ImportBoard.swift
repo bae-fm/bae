@@ -242,7 +242,11 @@ extension PreviewData {
                     )
                 ],
                 barcodes: [],
-                facts: pressingFacts(country: "US", media: media(.cd))
+                facts: pressingFacts(
+                    country: "US",
+                    media: media(.cd),
+                    status: .official
+                )
             ),
             tracks: northboundTracks.enumerated()
                 .map {
