@@ -117,6 +117,9 @@ OTHER_NEXT_CALLS: dict[tuple[str, str], str] = {
 # `for await` loops in Swift app code whose sequence is not a subscription, by
 # file and the sequence's first name, with what the sequence is.
 OTHER_FOR_AWAITS: dict[tuple[str, str], str] = {
+    ("BaeKit/Sources/BaeKit/Services/CastStart.swift", "asks"): (
+        "the requests for a receiver's code that a cast's prompt sends its start"
+    ),
     ("BaeKit/Sources/BaeKit/Services/DeviceStorageStore.swift", "cancelled"): (
         "a stream that never yields, which holds the task until it is cancelled"
     ),

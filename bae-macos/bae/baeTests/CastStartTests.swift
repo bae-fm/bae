@@ -45,7 +45,7 @@ struct CastStartTests {
     }
 
     @Test("a newer cast calls off the one still connecting")
-    func newerCastCallsOffOlder() async {
+    func newerCastCallsOffOlder() async throws {
         // Never answers: the kitchen's connect ends only when it is called off.
         let (silence, keepSilent) = AsyncStream.makeStream(of: Void.self)
         let (answers, answer) = AsyncStream.makeStream(of: Void.self)
@@ -71,14 +71,14 @@ struct CastStartTests {
         #expect(start.connecting?.id == "den")
 
         answer.yield(())
-        while start.connecting != nil { await Task.yield() }
+        try await Wait.until { start.connecting == nil }
         #expect(start.started == den)
         #expect(start.started != kitchen)
         keepSilent.finish()
     }
 
     @Test("a cast that connects closes only the place that asked for it")
-    func onlyTheAskerSeesItStart() async {
+    func onlyTheAskerSeesItStart() async throws {
         let (answers, answer) = AsyncStream.makeStream(of: Void.self)
         let cast = Cast(castTo: { _, _ in
             for await _ in answers { return }
@@ -94,7 +94,7 @@ struct CastStartTests {
         #expect(!start.didStart(firstPickerAsked))
 
         answer.yield(())
-        while start.connecting != nil { await Task.yield() }
+        try await Wait.until { start.connecting == nil }
 
         #expect(start.didStart(firstPickerAsked))
         #expect(!start.didStart(secondPickerAsked))
@@ -111,7 +111,7 @@ struct CastStartTests {
     }
 
     @Test("a receiver's ask opens the sheet, and Pair hands back the code")
-    func askOpensTheSheetAndPairAnswers() async {
+    func askOpensTheSheetAndPairAnswers() async throws {
         let (codes, entered) = AsyncStream.makeStream(of: String.self)
         let (answers, answer) = AsyncStream.makeStream(of: Void.self)
         let request = pinRequest()
@@ -127,7 +127,7 @@ struct CastStartTests {
         )
 
         start.cast(to: receiver("kitchen"))
-        while start.codeSheet == nil { await Task.yield() }
+        try await Wait.until { start.codeSheet != nil }
         #expect(start.codeSheet?.request == request)
         #expect(start.codeSheet?.pairing == false)
 
@@ -136,18 +136,18 @@ struct CastStartTests {
         var typed = codes.makeAsyncIterator()
         #expect(await typed.next() == "0482")
 
-        while start.codeSheet?.request != wrong { await Task.yield() }
+        try await Wait.until { start.codeSheet?.request == wrong }
         #expect(start.codeSheet?.pairing == false)
         start.pair(code: "1234")
         #expect(await typed.next() == "1234")
 
         answer.yield(())
-        while start.connecting != nil { await Task.yield() }
+        try await Wait.until { start.connecting == nil }
         #expect(start.codeSheet == nil)
     }
 
     @Test("Cancel closes the sheet and calls the cast off")
-    func cancelCallsTheCastOff() async {
+    func cancelCallsTheCastOff() async throws {
         let (ends, ended) = AsyncStream.makeStream(of: Bool.self)
         let request = pinRequest()
         let cast = Cast(castTo: { _, prompt in
@@ -161,7 +161,7 @@ struct CastStartTests {
         )
 
         start.cast(to: receiver("kitchen"))
-        while start.codeSheet == nil { await Task.yield() }
+        try await Wait.until { start.codeSheet != nil }
         start.cancelCode()
 
         #expect(start.codeSheet == nil)
@@ -172,7 +172,7 @@ struct CastStartTests {
     }
 
     @Test("a receiver's refusal shows titled with the receiver, not reported")
-    func refusalNamesTheReceiver() async {
+    func refusalNamesTheReceiver() async throws {
         let cast = Cast(castTo: { _, _ in
             throw BridgeError.Diagnostic(
                 category: .airPlayLockedOut(receiver: "Kitchen"),
@@ -185,7 +185,7 @@ struct CastStartTests {
         )
 
         start.cast(to: receiver("kitchen"))
-        while start.connecting != nil { await Task.yield() }
+        try await Wait.until { start.connecting == nil }
 
         #expect(start.refusal?.receiver == "Kitchen")
         start.dismissRefusal()

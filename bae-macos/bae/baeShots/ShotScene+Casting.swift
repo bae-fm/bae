@@ -144,10 +144,11 @@ extension ShotScene {
         typed: String,
         pairing: Bool = false
     ) -> ShotStage {
-        let start = CastStart.asking(request, of: kitchen, pairing: pairing)
-        guard let sheet = start.codeSheet else {
-            preconditionFailure("a start that asks opens its sheet")
-        }
+        let sheet = CastStart.CodeSheet.drawn(
+            request,
+            of: kitchen,
+            pairing: pairing
+        )
         return libraryWindowStage { window in
             AnyView(
                 OverWindow.sheet(
