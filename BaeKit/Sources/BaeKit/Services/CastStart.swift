@@ -48,33 +48,26 @@ public final class CastStart {
     /// again or the cast ends. One cast's sheet keeps its identity across its
     /// requests, so it stays open between a wrong code and the next.
     public struct CodeSheet: Equatable, Identifiable {
-        public let receiver: BridgeCastReceiver
-        public let request: BridgeAirPlayCodeRequest
+        fileprivate let asked: Asked
         public let pairing: Bool
-        fileprivate let attempt: Attempt
 
-        public var id: Int { attempt.number }
-
-        fileprivate init(_ asked: Asked, pairing: Bool) {
-            receiver = asked.receiver
-            request = asked.request
-            self.pairing = pairing
-            attempt = asked.attempt
-        }
+        public var receiver: BridgeCastReceiver { asked.receiver }
+        public var request: BridgeAirPlayCodeRequest { asked.request }
+        public var id: Int { asked.attempt.number }
     }
 
     /// The sheet that asks for the code the receiver of the cast connecting
     /// wants, while it is open.
     public var codeSheet: CodeSheet? {
         switch code {
-        case .asking(let asked, _): CodeSheet(asked, pairing: false)
-        case .pairing(let asked): CodeSheet(asked, pairing: true)
+        case .asking(let asked, _): CodeSheet(asked: asked, pairing: false)
+        case .pairing(let asked): CodeSheet(asked: asked, pairing: true)
         case nil: nil
         }
     }
 
     /// What a receiver of the cast `attempt` asked for.
-    fileprivate struct Asked {
+    fileprivate struct Asked: Equatable {
         let receiver: BridgeCastReceiver
         let request: BridgeAirPlayCodeRequest
         let attempt: Attempt
@@ -265,7 +258,7 @@ public final class CastStart {
             pairing: Bool = false
         ) -> CastStart.CodeSheet {
             CastStart.CodeSheet(
-                CastStart.Asked(
+                asked: CastStart.Asked(
                     receiver: receiver,
                     request: request,
                     attempt: CastStart.Attempt(number: 0)

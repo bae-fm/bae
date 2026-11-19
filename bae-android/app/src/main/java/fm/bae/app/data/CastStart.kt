@@ -84,15 +84,20 @@ class CastStart(
      * What the open dialog asks: the receiver, core's request, and whether the person's code is out, so the
      * dialog shows Pairing… until core asks again or the cast ends.
      */
-    data class CodeSheet(
-        val receiver: BridgeCastReceiver,
-        val request: BridgeAirPlayCodeRequest,
+    @ConsistentCopyVisibility
+    data class CodeSheet internal constructor(
+        private val asked: Asked,
         val pairing: Boolean,
-        internal val attempt: Int,
-    )
+    ) {
+        val receiver: BridgeCastReceiver get() = asked.receiver
+        val request: BridgeAirPlayCodeRequest get() = asked.request
+
+        /** The cast whose dialog this is, which keeps one dialog open across its requests. */
+        internal val attempt: Int get() = asked.attempt
+    }
 
     /** What a receiver of the cast [attempt] asked for. */
-    private class Asked(
+    internal data class Asked(
         val receiver: BridgeCastReceiver,
         val request: BridgeAirPlayCodeRequest,
         val attempt: Int,
@@ -114,7 +119,7 @@ class CastStart(
         ) : CodeState
 
         val sheet: CodeSheet
-            get() = CodeSheet(asked.receiver, asked.request, pairing = this is Pairing, attempt = asked.attempt)
+            get() = CodeSheet(asked, pairing = this is Pairing)
     }
 
     /** One call to [cast]. [started] equals it once that start connects. */
