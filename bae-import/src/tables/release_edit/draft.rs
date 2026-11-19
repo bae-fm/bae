@@ -139,14 +139,11 @@ impl FormParams {
         })
     }
 
-    /// The form's artist fields, as the standing clauses read them, with
-    /// `answers`, the records' rule's answer to each of their credits
-    /// ([`form_credit_answers_on`]).
-    fn credits<'a>(&'a self, answers: &'a String) -> CreditSource<'a> {
+    /// The form's artist fields, as the standing clauses read them.
+    fn credits(&self) -> CreditSource<'_> {
         CreditSource::Form {
             album_artists: &self.album_artists,
             track_artists: &self.track_artists,
-            answers,
         }
     }
 }
@@ -269,8 +266,6 @@ pub(crate) fn release_edit_draft_rows_on(
     if !held {
         return Ok(None);
     }
-    let answers = form_credit_answers_on(sql, &form.edit)?;
-    let credits = params.credits(&answers);
     let (album_artists, form_tracks) = sql.query_row(
         &format!(
             "SELECT {album} AS album_artists, \
@@ -290,14 +285,14 @@ pub(crate) fn release_edit_draft_rows_on(
         form: form.clone(),
         album_artists,
         form_tracks,
-        album_artist_standing: album_artist_standing_on(sql, credits)?,
+        album_artist_standing: album_artist_standing_on(sql, params.credits())?,
         album: release_edit_album_on(sql, &params)?,
         cover_version: sql.query_row(
             &format!("SELECT {}", bae_records::records::files::cover_version_sql(":release")),
             release,
             |row| row.get(0),
         )?,
-        tracks: draft_tracks_on(sql, &params, credits)?,
+        tracks: draft_tracks_on(sql, &params)?,
         has_tracks: sql.query_row(
             "SELECT EXISTS (SELECT 1 FROM tracks WHERE release_id = :release)",
             release,
@@ -310,11 +305,10 @@ pub(crate) fn release_edit_draft_rows_on(
 /// The tracks of the form's release in release order, on the mediums the
 /// catalog the person applied gives them or else on the release's own, each
 /// with the form row that edits it and how that row's own artists stand to
-/// the library, as `credits` reads them.
+/// the library.
 fn draft_tracks_on(
     sql: &impl coven::SqlRead,
     form: &FormParams,
-    credits: CreditSource<'_>,
 ) -> Result<Vec<DraftTrackRow>, DbError> {
     let mediums = "(SELECT j.value ->> 'position' AS id, :release AS release_id, \
                            j.value ->> 'position' AS position, j.value ->> 'carrier' AS medium, \
@@ -329,6 +323,7 @@ fn draft_tracks_on(
                    UNION ALL \
                    SELECT id, medium_id, side, track_number FROM tracks \
                    WHERE release_id = :release AND NOT :applied)";
+    let credits = form.credits();
     let mut params = credits.params();
     params.extend([
         (":form_tracks", &form.form_tracks as &dyn rusqlite::ToSql),

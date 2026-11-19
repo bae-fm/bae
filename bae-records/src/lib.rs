@@ -23,7 +23,7 @@ pub mod test_fixtures;
 
 pub use cache_limit::CacheLimit;
 pub use models::*;
-pub use records::credit_artists_on;
+pub use records::credit_artist_clauses;
 #[cfg(any(test, feature = "test-utils"))]
 pub use records::resolved_in_an_empty_library;
 pub use release_file_role::{DocumentKind, ReleaseFileRole};

@@ -91,14 +91,6 @@ pub enum TrackArtistAssignments {
 }
 
 impl TrackArtistAssignments {
-    /// The track's own artists; none when it takes the album's.
-    pub fn explicit(&self) -> &[Credited] {
-        match self {
-            Self::AlbumArtists => &[],
-            Self::Explicit(assignments) => assignments,
-        }
-    }
-
     /// Each credit normalized and the joins kept as stored (see
     /// [`Credited::normalized_list`]).
     pub(crate) fn normalize(&mut self) {
@@ -242,14 +234,6 @@ impl ArtistAssignment {
             album_artists,
             [only] if bae_types::text_match::is_various_artists(only.artist.name())
         )
-    }
-
-    /// The credit this assignment leaves to be resolved, if it is one.
-    pub fn credit(&self) -> Option<&ArtistCredit> {
-        match self {
-            Self::Picked { .. } => None,
-            Self::Credit { credit } => Some(credit),
-        }
     }
 
     pub(crate) fn is_blank(&self) -> bool {

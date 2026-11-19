@@ -1,4 +1,4 @@
--- Which library artists the records' rule (`bae_records::credit_artists_on`)
+-- Which library artists the records' rule (`bae_records::credit_artist_clauses`)
 -- names for each artist credit a candidate's draft holds, stored once per
 -- distinct credit as the rule reads one: its folded name and its two catalog
 -- ids. The rule reads nothing else of a credit, so two credits alike in these

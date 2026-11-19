@@ -4,12 +4,12 @@
 //! artist, and another device's artist write as this device applies it. A
 //! credit no draft holds has no answer.
 
-use super::*;
 use crate::identification::tests::fixed_now;
 use crate::tables::import_state::tests::*;
 use crate::tables::ImportTables;
 use crate::{ArtistAssignment, Credited, RawTrackEdit, TrackArtistAssignments};
-use bae_records::DbArtist;
+use bae_catalogs::credits::ArtistCredit;
+use bae_records::{DbArtist, ExistingArtist};
 use bae_store::test_fixtures::empty_db;
 use bae_store::{DbError, Store};
 
@@ -52,6 +52,69 @@ fn key_of(credit: &ArtistCredit) -> CreditKey {
         musicbrainz_artist_id: credit.musicbrainz_artist_id.clone(),
         discogs_artist_id: credit.discogs_artist_id.clone(),
     }
+}
+
+/// A credit as the rule reads it: its folded name and its catalog ids.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct CreditKey {
+    name_key: String,
+    musicbrainz_artist_id: Option<String>,
+    discogs_artist_id: Option<String>,
+}
+
+/// The library artists the rule's SQL names for `credit` against the library
+/// as `sql` reads it, after checking that a write committing the credit alone
+/// decides as they say: it links the one artist they name, and makes a new
+/// artist when they name none or several.
+fn ruled_on(
+    sql: &impl coven::SqlRead,
+    credit: &ArtistCredit,
+) -> Result<Vec<ExistingArtist>, DbError> {
+    let named = sql.query(
+        &format!(
+            "WITH credit_under_test (name_key, musicbrainz_artist_id, discogs_artist_id) AS \
+                 (SELECT bae_artist_name_key(?1), ?2, ?3), \
+             {} \
+             SELECT artist_id, name, sort_name, artist_musicbrainz_id, artist_discogs_id \
+             FROM credit_artist ORDER BY position",
+            bae_records::credit_artist_clauses("credit_under_test")
+        ),
+        rusqlite::params![credit.name, credit.musicbrainz_artist_id, credit.discogs_artist_id],
+        |row| {
+            Ok(ExistingArtist {
+                artist_id: row.get(0)?,
+                name: row.get(1)?,
+                sort_name: row.get(2)?,
+                musicbrainz_artist_id: row.get(3)?,
+                discogs_artist_id: row.get(4)?,
+            })
+        },
+    )?;
+    let written = DbArtist {
+        id: "credit-under-test".to_string(),
+        name: credit.name.clone(),
+        sort_name: None,
+        discogs_artist_id: credit.discogs_artist_id.clone(),
+        musicbrainz_artist_id: credit.musicbrainz_artist_id.clone(),
+        created_at: fixed_now(),
+    };
+    let resolved = bae_records::ArtistCredits { credits: &[written], picked: &[] }
+        .resolve_on(sql)
+        .expect("a credit alone resolves against the library");
+    match named.as_slice() {
+        [one] => assert_eq!(
+            (resolved.ids.clone(), resolved.inserts.len()),
+            (vec![one.artist_id.clone()], 0),
+            "a write links the one artist the rule names for {credit:?}"
+        ),
+        _ => assert_eq!(
+            resolved.inserts.iter().map(|new| new.id.clone()).collect::<Vec<_>>(),
+            resolved.ids,
+            "a write makes a new artist where the rule names {} for {credit:?}",
+            named.len()
+        ),
+    }
+    Ok(named)
 }
 
 /// How a test reads an answer: the library artists it names, as none, one or
@@ -118,7 +181,7 @@ async fn stored_answers(db: &Store) -> Answers {
         assert_eq!(stored.len(), held.len(), "one answer per credit held: {stored:?}");
         let mut answers = Vec::new();
         for credit in &held {
-            let ruled = resolution_of(bae_records::credit_artists_on(&sql, credit)?);
+            let ruled = resolution_of(ruled_on(&sql, credit)?);
             let (_, answer) = stored
                 .iter()
                 .find(|(key, _)| *key == key_of(credit))

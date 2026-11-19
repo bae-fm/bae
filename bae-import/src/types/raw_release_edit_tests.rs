@@ -1,4 +1,5 @@
 use super::*;
+use bae_catalogs::credits::ArtistCredit;
 use bae_records::ExistingArtist;
 
 fn existing_artist() -> ExistingArtist {

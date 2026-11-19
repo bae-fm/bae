@@ -455,7 +455,61 @@ async fn read_credit(
         musicbrainz_artist_id: None,
         discogs_artist_id: discogs_artist_id.map(str::to_string),
     };
-    db.read(move |sql| Ok::<_, DbError>(credit_artists_on(&sql, &credit)?)).await.unwrap()
+    db.read(move |sql| rule_artists_on(&sql, &credit)).await.unwrap()
+}
+
+/// The library artists [`credit_artist_clauses`] names for `credit`, in
+/// order, after checking that a write committing the credit alone decides
+/// as they say: it links the one artist they name, and makes a new artist
+/// when they name none or several.
+fn rule_artists_on(
+    sql: &impl coven::SqlRead,
+    credit: &bae_catalogs::credits::ArtistCredit,
+) -> Result<Vec<crate::ExistingArtist>, DbError> {
+    let named = sql.query(
+        &format!(
+            "WITH credit_under_test (name_key, musicbrainz_artist_id, discogs_artist_id) AS \
+                 (SELECT bae_artist_name_key(?1), ?2, ?3), \
+             {} \
+             SELECT artist_id, name, sort_name, artist_musicbrainz_id, artist_discogs_id \
+             FROM credit_artist ORDER BY position",
+            credit_artist_clauses("credit_under_test")
+        ),
+        params![credit.name, credit.musicbrainz_artist_id, credit.discogs_artist_id],
+        |row| {
+            Ok(crate::ExistingArtist {
+                artist_id: row.get(0)?,
+                name: row.get(1)?,
+                sort_name: row.get(2)?,
+                musicbrainz_artist_id: row.get(3)?,
+                discogs_artist_id: row.get(4)?,
+            })
+        },
+    )?;
+    let written = DbArtist {
+        id: "credit-under-test".to_string(),
+        name: credit.name.clone(),
+        sort_name: credit.sort_name.clone(),
+        discogs_artist_id: credit.discogs_artist_id.clone(),
+        musicbrainz_artist_id: credit.musicbrainz_artist_id.clone(),
+        created_at: UtcDateTime::MIN,
+    };
+    let resolved = resolve_artists_on(sql, &[written], &HashSet::new())
+        .expect("a credit alone resolves against the library");
+    match named.as_slice() {
+        [one] => assert_eq!(
+            (resolved.ids.as_slice(), resolved.inserts.len()),
+            ([one.artist_id.clone()].as_slice(), 0),
+            "the write links the one artist the rule's SQL names for {credit:?}"
+        ),
+        _ => assert_eq!(
+            resolved.inserts.iter().map(|new| &new.id).collect::<Vec<_>>(),
+            resolved.ids.iter().collect::<Vec<_>>(),
+            "the write makes a new artist where the rule's SQL names {} for {credit:?}",
+            named.len()
+        ),
+    }
+    Ok(named)
 }
 
 fn artist_ids(artists: &[crate::ExistingArtist]) -> Vec<&str> {
@@ -506,10 +560,64 @@ async fn a_read_credit_whose_ids_name_two_artists_is_the_musicbrainz_one() {
         musicbrainz_artist_id: Some("mb-1".to_string()),
         discogs_artist_id: Some("discogs-1".to_string()),
     };
-    let named =
-        db.read(move |sql| Ok::<_, DbError>(credit_artists_on(&sql, &credit)?)).await.unwrap();
+    let named = db.read(move |sql| rule_artists_on(&sql, &credit)).await.unwrap();
 
     assert_eq!(artist_ids(&named), ["by-musicbrainz"], "the MusicBrainz id names the artist");
+}
+
+/// A credit naming Various Artists by one catalog's id, which no artist
+/// holds, names the artist holding the other catalog's Various Artists id.
+#[tokio::test]
+async fn a_read_credit_naming_various_artists_by_one_id_names_the_other_holder() {
+    let (db, _tmp) = library().await;
+    let va = &crate::VARIOUS_ARTISTS;
+    add_artist(&db, "various", "Various Artists", None, Some(va.musicbrainz)).await;
+
+    let named = read_credit(&db, "Various", Some(va.discogs)).await;
+    assert_eq!(artist_ids(&named), ["various"]);
+    assert_eq!(named[0].discogs_artist_id, None, "the read fills in nothing");
+}
+
+/// A credit whose Discogs id names an artist holding another MusicBrainz id
+/// goes by its MusicBrainz id alone; when no artist holds that, it goes by
+/// its name with the Discogs id dropped.
+#[tokio::test]
+async fn a_read_credit_whose_ids_disagree_goes_by_its_musicbrainz_id_then_its_name() {
+    let (db, _tmp) = library().await;
+    add_artist(&db, "by-discogs", "Other Name", Some("discogs-1"), Some("mb-other")).await;
+    add_artist(&db, "by-name", "Artist Name", Some("discogs-2"), None).await;
+
+    let credit = bae_catalogs::credits::ArtistCredit {
+        musicbrainz_artist_id: Some("mb-1".to_string()),
+        discogs_artist_id: Some("discogs-1".to_string()),
+        ..bae_catalogs::credits::ArtistCredit::named("Artist Name")
+    };
+    let named = db.read(move |sql| rule_artists_on(&sql, &credit)).await.unwrap();
+
+    assert_eq!(
+        artist_ids(&named),
+        ["by-name"],
+        "the name names the artist, its Discogs id dropped"
+    );
+}
+
+/// An artist holding a credit's id takes the ids and sort name it lacks
+/// from the others that hold it, as the merge the next write makes.
+#[tokio::test]
+async fn a_read_credit_whose_id_several_artists_hold_names_them_as_one() {
+    let (db, _tmp) = library().await;
+    let mut first = credit("first", "Artist One", Some("discogs-1"), None);
+    first.sort_name = None;
+    let mut second = credit("second", "Artist Two", Some("discogs-1"), Some("mb-2"));
+    second.sort_name = Some("Two, Artist".to_string());
+    let records = crate::test_fixtures::test_records(&db);
+    records.insert_artist(&first).await.unwrap();
+    records.insert_artist(&second).await.unwrap();
+
+    let named = read_credit(&db, "Artist Name", Some("discogs-1")).await;
+    assert_eq!(artist_ids(&named), ["first"]);
+    assert_eq!(named[0].musicbrainz_artist_id.as_deref(), Some("mb-2"));
+    assert_eq!(named[0].sort_name.as_deref(), Some("Two, Artist"));
 }
 
 /// A read of a credit whose id two library artists hold names the one the
@@ -838,10 +946,7 @@ async fn check_two_devices_give_one_artist_id(devices: &bae_store::test_devices:
     };
     for device in [devices.a(), devices.b()] {
         let read = read.clone();
-        let named = device
-            .read(move |sql| Ok::<_, DbError>(credit_artists_on(&sql, &read)?))
-            .await
-            .unwrap();
+        let named = device.read(move |sql| rule_artists_on(&sql, &read)).await.unwrap();
         assert_eq!(artist_ids(&named), ["artist-a"], "the id names one artist");
     }
 }

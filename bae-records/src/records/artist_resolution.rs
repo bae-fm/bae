@@ -34,6 +34,11 @@
 //! artist a catalog names takes the id [`crate::identity::artist_id`]
 //! derives from that catalog entry, from the ids it holds once the write has
 //! decided every credit (`catalog_match`).
+//!
+//! A read that asks which artists a credit names against the committed
+//! library, with no write around it, applies the rule as SQL
+//! ([`super::credit_artist_clauses`]); the tests check that a write of the
+//! credit alone decides as that SQL says.
 
 use super::catalog_match::*;
 use super::*;
@@ -248,36 +253,6 @@ pub async fn resolved_in_an_empty_library(credits: &[DbArtist]) -> Vec<String> {
         .await
         .expect("credits resolve in an empty library")
         .ids
-}
-
-/// The library artists that the rule every write commits by names for one
-/// credit alone, against the committed library as it stands now, in the
-/// rule's order: none when committing would make a new artist, the one
-/// artist the credit names, or the several that carry its name when no
-/// catalog id tells them apart (committing then makes a new artist unless
-/// the person picks one). The import stores this answer for each credit of
-/// a draft, and a release editor's draft asks it for each credit of its form.
-pub fn credit_artists_on<Q: coven::SqlRead>(
-    sql: &Q,
-    credit: &bae_catalogs::credits::ArtistCredit,
-) -> rusqlite::Result<Vec<crate::ExistingArtist>> {
-    let row = DbArtist {
-        id: String::new(),
-        name: credit.name.clone(),
-        sort_name: credit.sort_name.clone(),
-        discogs_artist_id: credit.discogs_artist_id.clone(),
-        musicbrainz_artist_id: credit.musicbrainz_artist_id.clone(),
-        created_at: time::UtcDateTime::MIN,
-    };
-    let committed = WriteSoFar { inserts: &[], staged: &[] };
-    let (row, matched) = settled_catalog_match_on(sql, &row, committed)?;
-    Ok(match matched {
-        Some(CatalogFound { holder: Holder::Library(held), .. }) => vec![held.row.into()],
-        Some(CatalogFound { holder: Holder::New(_), .. }) => {
-            unreachable!("a read of the committed library sees no artist a write makes")
-        }
-        None => name_matches_on(sql, &row, &[])?.into_iter().map(Into::into).collect(),
-    })
 }
 
 /// The name step for a credit no catalog id placed: the one new artist of

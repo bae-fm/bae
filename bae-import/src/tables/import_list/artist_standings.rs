@@ -7,9 +7,11 @@
 //! The clauses read which library artists each credit names from the records'
 //! rule's answer to it: for a draft, the answer the library stores
 //! (`credit_resolutions`), which every write that can change it stores in its
-//! own transaction; for a form, which no table holds, the answer its read
-//! asks the same rule for. A picked artist is in the library. A field's own
-//! standing counts its artists' with GROUP BY.
+//! own transaction; for a form, which no table holds because what the person
+//! types is view state, the answer the rule's SQL
+//! (`bae_records::credit_artist_clauses`) gives in the same statement. A
+//! picked artist is in the library. A field's own standing counts its
+//! artists' with GROUP BY.
 
 use super::*;
 use crate::{ArtistFieldStanding, ArtistStanding, ArtistsStanding};
@@ -24,8 +26,8 @@ const ARTIST_STANDING_CLAUSES: &str = "
 raw AS ({raw}),
 -- The rule's answer to each credit the source answers, by the folded name
 -- and catalog ids the rule reads: the library artists it names as a JSON
--- array, in the rule's order.
-credit_answer (name_key, mb, dg, artists) AS ({answers}),
+-- array, in the rule's order, in `credit_answer (name_key, mb, dg, artists)`.
+{answers},
 -- Each place of each field with its artist's standing: a picked artist is in
 -- the library, and a credit stands as its answer says, with the library
 -- artists it could be when it is ambiguous: none names a new artist, one an
@@ -81,7 +83,7 @@ artist_field_standing AS MATERIALIZED (
 #[derive(Clone, Copy)]
 pub(crate) enum CreditSource<'a> {
     Candidate(crate::tables::import_state::OneCandidate<'a>),
-    Form { album_artists: &'a String, track_artists: &'a String, answers: &'a String },
+    Form { album_artists: &'a String, track_artists: &'a String },
 }
 
 impl CreditSource<'_> {
@@ -128,74 +130,72 @@ impl CreditSource<'_> {
         }
     }
 
-    /// The statement selecting the rule's answer to each credit as
-    /// `(name_key, mb, dg, artists)`: for a candidate, the answers the
+    /// The clauses that end in `credit_answer (name_key, mb, dg, artists)`,
+    /// the rule's answer to each credit: for a candidate, the answers the
     /// library stores for its draft's credits (`credit_resolutions`); for a
-    /// form, the answers its read asked the same rule for
-    /// ([`form_credit_answers_on`]), which the statement binds as JSON.
-    fn answers(self) -> &'static str {
+    /// form, the rule's SQL over the form's credits in `raw`.
+    fn answers(self) -> String {
+        // The answer's artists as a JSON array, from the rows of `artists`
+        // that `of` picks, whose artist ids are in `mb` and `dg`.
+        let answer = |artists: &str, mb: &str, dg: &str, of: &str| {
+            format!(
+                "(SELECT json_group_array(json_object( \
+                             'artist_id', a.artist_id, 'name', a.name, \
+                             'sort_name', a.sort_name, \
+                             'musicbrainz_artist_id', a.{mb}, 'discogs_artist_id', a.{dg}) \
+                         ORDER BY a.position) \
+                  FROM {artists} AS a WHERE {of})"
+            )
+        };
         match self {
-            Self::Candidate(_) => {
-                "SELECT r.name_key, r.musicbrainz_artist_id, r.discogs_artist_id, \
-                        (SELECT json_group_array(json_object( \
-                                    'artist_id', a.artist_id, 'name', a.name, \
-                                    'sort_name', a.sort_name, \
-                                    'musicbrainz_artist_id', a.musicbrainz_artist_id, \
-                                    'discogs_artist_id', a.discogs_artist_id) \
-                                ORDER BY a.position) \
-                         FROM import_credit_resolution_artist AS a WHERE a.resolution = r.id) \
-                 FROM import_credit_resolution AS r"
-            }
-            Self::Form { .. } => {
-                "SELECT bae_artist_name_key(j.value ->> 'name'), j.value ->> 'mb', \
-                        j.value ->> 'dg', MAX(j.value ->> 'artists') \
-                 FROM json_each(:credit_answers) AS j GROUP BY 1, 2, 3"
-            }
+            Self::Candidate(_) => format!(
+                "credit_answer (name_key, mb, dg, artists) AS ( \
+                     SELECT r.name_key, r.musicbrainz_artist_id, r.discogs_artist_id, {} \
+                     FROM import_credit_resolution AS r)",
+                answer(
+                    "import_credit_resolution_artist",
+                    "musicbrainz_artist_id",
+                    "discogs_artist_id",
+                    "a.resolution = r.id",
+                ),
+            ),
+            Self::Form { .. } => format!(
+                "form_credit AS ( \
+                     SELECT DISTINCT bae_artist_name_key(name) AS name_key, \
+                            mb AS musicbrainz_artist_id, dg AS discogs_artist_id \
+                     FROM raw WHERE assignment_kind = 'credit'), \
+                 {rule}, \
+                 credit_answer (name_key, mb, dg, artists) AS ( \
+                     SELECT c.name_key, c.musicbrainz_artist_id, c.discogs_artist_id, {answer} \
+                     FROM form_credit AS c)",
+                rule = bae_records::credit_artist_clauses("form_credit"),
+                answer = answer(
+                    "credit_artist",
+                    "artist_musicbrainz_id",
+                    "artist_discogs_id",
+                    "a.name_key = c.name_key AND a.musicbrainz_artist_id IS c.musicbrainz_artist_id \
+                     AND a.discogs_artist_id IS c.discogs_artist_id",
+                ),
+            ),
         }
     }
 
-    /// What [`Self::raw`] and [`Self::answers`] bind, as a statement's
-    /// parameters.
+    /// What [`Self::raw`] binds, as a statement's parameters.
     pub(crate) fn params(&self) -> Vec<(&'static str, &dyn rusqlite::ToSql)> {
         match self {
             Self::Candidate(candidate) => candidate.params(),
-            Self::Form { album_artists, track_artists, answers } => vec![
+            Self::Form { album_artists, track_artists } => vec![
                 (":album_artists", *album_artists as &dyn rusqlite::ToSql),
                 (":track_artists", *track_artists as &dyn rusqlite::ToSql),
-                (":credit_answers", *answers as &dyn rusqlite::ToSql),
             ],
         }
     }
 }
 
-/// The records' rule's answer to each credit among `edit`'s album artists
-/// and its tracks' own ([`crate::RawReleaseEdit::credits`]), as the JSON
-/// array a form's credit source binds: each credit's name and catalog ids,
-/// and the library artists the rule names for it. A credit the form holds
-/// twice is in it twice, and the source's statement groups them. The rule
-/// reads through `sql`, so a live read that asks it reads again after a
-/// write that changes an artist it can name.
-pub(crate) fn form_credit_answers_on(
-    sql: &impl coven::SqlRead,
-    edit: &crate::RawReleaseEdit,
-) -> Result<String, DbError> {
-    let mut answers = Vec::new();
-    for credit in edit.credits() {
-        answers.push(serde_json::json!({
-            "name": credit.name,
-            "mb": credit.musicbrainz_artist_id,
-            "dg": credit.discogs_artist_id,
-            "artists": bae_records::credit_artists_on(sql, credit)?,
-        }));
-    }
-    serde_json::to_string(&answers)
-        .map_err(|error| DbError::encode("a form's credit answers", error))
-}
-
 /// The clauses over `source`'s credits. A statement puts them after its
 /// WITH and binds [`CreditSource::params`].
 pub(crate) fn artist_standing_clauses(source: CreditSource<'_>) -> String {
-    ARTIST_STANDING_CLAUSES.replace("{raw}", &source.raw()).replace("{answers}", source.answers())
+    ARTIST_STANDING_CLAUSES.replace("{raw}", &source.raw()).replace("{answers}", &source.answers())
 }
 
 /// An expression for the standing JSON of the artist field of the track

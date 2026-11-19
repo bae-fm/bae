@@ -1,5 +1,5 @@
 //! Which library artists each artist credit of a candidate's draft names, as
-//! the records' rule (`bae_records::credit_artists_on`) decides it, stored
+//! the records' rule decides it (`bae_records::credit_artist_clauses`), stored
 //! per distinct credit (its folded name and its two catalog ids, all the rule
 //! reads of it).
 //!
@@ -10,11 +10,10 @@
 //! runs last in every such transaction: it answers each due credit with the
 //! rule, deletes the answer of a credit no draft holds any more, and empties
 //! the list. The import pane's reads join the stored answers
-//! (`artist_standings`); a release editor's form is in no table, so its
-//! draft's read answers each of its credits with the same rule.
+//! (`artist_standings`). A release editor's form is in no table, since what
+//! the person types is view state, so its draft's read applies the same
+//! rule's SQL to the form's credits.
 
-use bae_catalogs::credits::ArtistCredit;
-use bae_records::ExistingArtist;
 use rusqlite::{params, OptionalExtension};
 
 /// The credit resolutions' part of the library's schema. It runs after the
@@ -23,163 +22,142 @@ pub(super) const SCHEMA: bae_store::SchemaPart =
     bae_store::SchemaPart::new(&[include_str!("credit_resolutions.sql")])
         .before_commit(answer_due_credits);
 
-/// A credit as the rule reads it: its folded name and its catalog ids.
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct CreditKey {
-    name_key: String,
-    musicbrainz_artist_id: Option<String>,
-    discogs_artist_id: Option<String>,
+/// Whether a draft holds a credit of the relation row `credit` by its folded
+/// name and catalog ids, as an SQL condition.
+fn held_sql(credit: &str) -> String {
+    let holding = |table: &str| {
+        format!(
+            "EXISTS (SELECT 1 FROM {table} AS held \
+                     WHERE held.assignment_kind = 'credit' \
+                       AND bae_artist_name_key(held.name) = {credit}.name_key \
+                       AND held.musicbrainz_artist_id IS {credit}.musicbrainz_artist_id \
+                       AND held.discogs_artist_id IS {credit}.discogs_artist_id)"
+        )
+    };
+    format!(
+        "({} OR {})",
+        holding("import_candidate_album_artist_assignment"),
+        holding("import_candidate_track_artist_assignment"),
+    )
+}
+
+/// An answer's artists as the JSON array both the stored answer and the
+/// rule's are compared and stored as, from the rows `artists` names with the
+/// columns of an answer's artist, ordered by `position`.
+fn artists_json_sql(artists: &str, of: &str) -> String {
+    format!(
+        "(SELECT json_group_array(json_object( \
+                     'artist_id', a.artist_id, 'name', a.name, 'sort_name', a.sort_name, \
+                     'musicbrainz_artist_id', a.musicbrainz_artist_id, \
+                     'discogs_artist_id', a.discogs_artist_id) ORDER BY a.position) \
+          FROM {artists} AS a WHERE {of})"
+    )
 }
 
 /// Answer every credit the transaction's writes marked due and empty the
-/// list: each one a draft still holds gets the rule's answer,
-/// written where it differs from the stored one, and each one none holds
-/// loses its answer.
+/// list: each one a draft still holds gets the rule's answer, written where
+/// it differs from the stored one, and each one none holds loses its answer.
 fn answer_due_credits(sql: &coven::CommitSql<'_>) -> Result<(), coven::DbError> {
-    let due = sql.query(
-        "SELECT DISTINCT name_key, musicbrainz_artist_id, discogs_artist_id \
-         FROM import_credit_resolution_due",
-        [],
-        |row| {
-            Ok(CreditKey {
-                name_key: row.get(0)?,
-                musicbrainz_artist_id: row.get(1)?,
-                discogs_artist_id: row.get(2)?,
-            })
-        },
-    )?;
-    if due.is_empty() {
+    let any_due: bool =
+        sql.query_row("SELECT EXISTS (SELECT 1 FROM import_credit_resolution_due)", [], |row| {
+            row.get(0)
+        })?;
+    if !any_due {
         return Ok(());
     }
-    for key in &due {
-        match held_name_on(sql, key)? {
-            Some(name) => {
-                let credit = ArtistCredit {
-                    credited_as: None,
-                    name,
-                    sort_name: None,
-                    musicbrainz_artist_id: key.musicbrainz_artist_id.clone(),
-                    discogs_artist_id: key.discogs_artist_id.clone(),
-                };
-                let answer = bae_records::credit_artists_on(sql, &credit)?;
-                if stored_answer_on(sql, key)?.as_ref() != Some(&answer) {
-                    store_answer_on(sql, key, &answer)?;
-                }
+    sql.execute(
+        &format!(
+            "DELETE FROM import_credit_resolution AS r \
+             WHERE EXISTS (SELECT 1 FROM import_credit_resolution_due AS d \
+                           WHERE d.name_key = r.name_key \
+                             AND d.musicbrainz_artist_id IS r.musicbrainz_artist_id \
+                             AND d.discogs_artist_id IS r.discogs_artist_id) \
+               AND NOT {}",
+            held_sql("r")
+        ),
+        [],
+    )?;
+    let changed = sql.query(
+        &format!(
+            "WITH due_credit AS ( \
+                 SELECT DISTINCT name_key, musicbrainz_artist_id, discogs_artist_id \
+                 FROM import_credit_resolution_due AS due WHERE {held}), \
+             {rule}, \
+             fresh AS ( \
+                 SELECT c.name_key, c.musicbrainz_artist_id, c.discogs_artist_id, \
+                        {fresh} AS artists \
+                 FROM due_credit AS c) \
+             SELECT f.name_key, f.musicbrainz_artist_id, f.discogs_artist_id, f.artists \
+             FROM fresh AS f \
+             LEFT JOIN import_credit_resolution AS r \
+                 ON r.name_key = f.name_key \
+                AND r.musicbrainz_artist_id IS f.musicbrainz_artist_id \
+                AND r.discogs_artist_id IS f.discogs_artist_id \
+             WHERE r.id IS NULL OR {stored} IS NOT f.artists",
+            held = held_sql("due"),
+            rule = bae_records::credit_artist_clauses("due_credit"),
+            fresh = artists_json_sql(
+                "(SELECT position, artist_id, name, sort_name, \
+                         artist_musicbrainz_id AS musicbrainz_artist_id, \
+                         artist_discogs_id AS discogs_artist_id, name_key AS credit_key, \
+                         musicbrainz_artist_id AS credit_mb, discogs_artist_id AS credit_dg \
+                  FROM credit_artist)",
+                "a.credit_key = c.name_key AND a.credit_mb IS c.musicbrainz_artist_id \
+                 AND a.credit_dg IS c.discogs_artist_id",
+            ),
+            stored = artists_json_sql("import_credit_resolution_artist", "a.resolution = r.id"),
+        ),
+        [],
+        |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, Option<String>>(1)?,
+                row.get::<_, Option<String>>(2)?,
+                row.get::<_, String>(3)?,
+            ))
+        },
+    )?;
+    for (name_key, musicbrainz, discogs, artists) in &changed {
+        let key = params![name_key, musicbrainz, discogs];
+        let resolution_of = || {
+            sql.query_row(
+                "SELECT id FROM import_credit_resolution \
+                 WHERE name_key = ?1 AND musicbrainz_artist_id IS ?2 AND discogs_artist_id IS ?3",
+                key,
+                |row| row.get::<_, i64>(0),
+            )
+            .optional()
+        };
+        let resolution = match resolution_of()? {
+            Some(resolution) => {
+                sql.execute(
+                    "DELETE FROM import_credit_resolution_artist WHERE resolution = ?1",
+                    [resolution],
+                )?;
+                resolution
             }
             None => {
                 sql.execute(
-                    "DELETE FROM import_credit_resolution \
-                     WHERE name_key = ?1 AND musicbrainz_artist_id IS ?2 \
-                       AND discogs_artist_id IS ?3",
-                    params![key.name_key, key.musicbrainz_artist_id, key.discogs_artist_id],
+                    "INSERT INTO import_credit_resolution \
+                         (name_key, musicbrainz_artist_id, discogs_artist_id) \
+                     VALUES (?1, ?2, ?3)",
+                    key,
                 )?;
+                resolution_of()?.expect("the answer this function just inserted")
             }
-        }
-    }
-    sql.execute("DELETE FROM import_credit_resolution_due", [])?;
-    Ok(())
-}
-
-/// The name of one credit a draft holds as `key`, any one of them: the rule reads only its folded name, which they share. `None` when
-/// none holds it.
-fn held_name_on(sql: &coven::CommitSql<'_>, key: &CreditKey) -> rusqlite::Result<Option<String>> {
-    let holding = |table: &str| {
-        format!(
-            "SELECT name FROM {table} WHERE assignment_kind = 'credit' \
-               AND bae_artist_name_key(name) = ?1 AND musicbrainz_artist_id IS ?2 \
-               AND discogs_artist_id IS ?3"
-        )
-    };
-    sql.query_row(
-        &format!(
-            "{} UNION ALL {} LIMIT 1",
-            holding("import_candidate_album_artist_assignment"),
-            holding("import_candidate_track_artist_assignment"),
-        ),
-        params![key.name_key, key.musicbrainz_artist_id, key.discogs_artist_id],
-        |row| row.get(0),
-    )
-    .optional()
-}
-
-/// The artists the stored answer for `key` names, in order; `None` when no
-/// answer is stored.
-fn stored_answer_on(
-    sql: &coven::CommitSql<'_>,
-    key: &CreditKey,
-) -> rusqlite::Result<Option<Vec<ExistingArtist>>> {
-    let Some(resolution) = resolution_id_on(sql, key)? else {
-        return Ok(None);
-    };
-    sql.query(
-        "SELECT artist_id, name, sort_name, musicbrainz_artist_id, discogs_artist_id \
-         FROM import_credit_resolution_artist WHERE resolution = ?1 ORDER BY position",
-        [resolution],
-        |row| {
-            Ok(ExistingArtist {
-                artist_id: row.get(0)?,
-                name: row.get(1)?,
-                sort_name: row.get(2)?,
-                musicbrainz_artist_id: row.get(3)?,
-                discogs_artist_id: row.get(4)?,
-            })
-        },
-    )
-    .map(Some)
-}
-
-/// The id of the stored answer for `key`.
-fn resolution_id_on(sql: &coven::CommitSql<'_>, key: &CreditKey) -> rusqlite::Result<Option<i64>> {
-    sql.query_row(
-        "SELECT id FROM import_credit_resolution \
-         WHERE name_key = ?1 AND musicbrainz_artist_id IS ?2 AND discogs_artist_id IS ?3",
-        params![key.name_key, key.musicbrainz_artist_id, key.discogs_artist_id],
-        |row| row.get(0),
-    )
-    .optional()
-}
-
-/// Store `answer` as the answer for `key`, over any stored one.
-fn store_answer_on(
-    sql: &coven::CommitSql<'_>,
-    key: &CreditKey,
-    answer: &[ExistingArtist],
-) -> rusqlite::Result<()> {
-    let resolution = match resolution_id_on(sql, key)? {
-        Some(resolution) => {
-            sql.execute(
-                "DELETE FROM import_credit_resolution_artist WHERE resolution = ?1",
-                [resolution],
-            )?;
-            resolution
-        }
-        None => {
-            sql.execute(
-                "INSERT INTO import_credit_resolution \
-                     (name_key, musicbrainz_artist_id, discogs_artist_id) \
-                 VALUES (?1, ?2, ?3)",
-                params![key.name_key, key.musicbrainz_artist_id, key.discogs_artist_id],
-            )?;
-            resolution_id_on(sql, key)?.expect("the answer this function just inserted")
-        }
-    };
-    for (position, artist) in answer.iter().enumerate() {
+        };
         sql.execute(
             "INSERT INTO import_credit_resolution_artist \
                  (resolution, position, artist_id, name, sort_name, musicbrainz_artist_id, \
                   discogs_artist_id) \
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-            params![
-                resolution,
-                position as i64,
-                artist.artist_id,
-                artist.name,
-                artist.sort_name,
-                artist.musicbrainz_artist_id,
-                artist.discogs_artist_id,
-            ],
+             SELECT ?1, j.key, j.value ->> 'artist_id', j.value ->> 'name', \
+                    j.value ->> 'sort_name', j.value ->> 'musicbrainz_artist_id', \
+                    j.value ->> 'discogs_artist_id' \
+             FROM json_each(?2) AS j",
+            params![resolution, artists],
         )?;
     }
+    sql.execute("DELETE FROM import_credit_resolution_due", [])?;
     Ok(())
 }
 

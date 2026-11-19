@@ -6,7 +6,6 @@
 //! form.
 
 use super::*;
-use bae_catalogs::credits::ArtistCredit;
 pub use bae_types::edit_validation::EditValidationError;
 
 /// Edit-metadata form values exactly as the editor holds them — text the user
@@ -47,15 +46,6 @@ impl RawReleaseEdit {
 }
 
 impl RawReleaseEdit {
-    /// Every artist credit the form carries, the album's first, then each
-    /// track's own; picked library artists are not credits.
-    pub fn credits(&self) -> impl Iterator<Item = &ArtistCredit> {
-        self.album_artist_assignments
-            .iter()
-            .chain(self.tracks.iter().flat_map(|track| track.artist_assignments.explicit()))
-            .filter_map(|credited| credited.artist.credit())
-    }
-
     /// Put one album-level field edit in the form: text typed into a field,
     /// the label or barcode rows as the person left them, or a choice of
     /// what the pressing is. A label row keeps the ids of the form's row with

@@ -41,6 +41,7 @@ macro_rules! release_moves {
 mod album;
 pub use album::PrimaryReleaseError;
 mod artist_sql;
+pub use artist_sql::credit_artist_clauses;
 pub(crate) use artist_sql::{ARTIST_IDENTITY, ARTIST_IS_VARIOUS_ARTISTS, ARTIST_NAME_KEY};
 mod album_identity;
 pub(crate) use album_identity::ALBUM_IDENTITY;
@@ -54,7 +55,7 @@ mod catalog_match;
 pub mod label_resolution;
 #[cfg(any(test, feature = "test-utils"))]
 pub use artist_resolution::resolved_in_an_empty_library;
-pub use artist_resolution::{credit_artists_on, ArtistCredits};
+pub use artist_resolution::ArtistCredits;
 use artist_resolution::{relink_album_artists, relink_track_artists};
 pub use artist_resolution::{IdentityRefusal, IdentityWriteError};
 use label_resolution::pressing_write;

@@ -530,9 +530,11 @@ bae stores the answer of these rules for each credit of a candidate's
 draft. The write that adds or changes a credit, or changes an artist the
 rules can name for it, stores the new answer in the same transaction,
 whether this device made the write or applied another device's, and the
-pane reads the stored answers. The release editor holds its form itself,
-so its draft applies the same rules to each credit of the form as it reads
-it, and reads again when a write changes an artist the rules can name.
+pane reads the stored answers. bae stores no release editor's form,
+because what the person types stays in the editor, so the editor's read
+of its draft is the one place that applies these rules to credits no
+write has stored: it applies them to each credit of the form, and reads
+again when a write changes an artist the rules can name.
 
 **Edge cases.**
 
