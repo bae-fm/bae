@@ -75,3 +75,21 @@ fn a_record_entry_needs_its_board_too() {
     assert!(found[0].sentence.contains("design/shots.toml has an entry 'mac.welcome.gone'"));
     assert!(found[0].sentence.contains("mac.welcome.gone.dc.html is missing"));
 }
+
+#[test]
+fn a_shared_component_is_the_board_of_each_platforms_shot() {
+    let root = bae_util::test_files::TestFolder::new();
+    root.write("design/system/components/Artwork/preview.html", "W('Default', a)");
+    root.write("design/system/components/MacRow/preview.html", "W('Label', a)");
+    root.write("design/system/components/Row/preview.html", "W('Label', a)");
+    let component = |name: &str| match Name::parse(name).unwrap() {
+        Name::Component(c) => board_component(root.path(), &c),
+        Name::Screen(_) => unreachable!(),
+    };
+    assert_eq!(component("mac.component.artwork.default"), "Artwork");
+    assert_eq!(component("mac.component.row.label"), "MacRow");
+    assert_eq!(component("mac.component.nothing.default"), "MacNothing");
+    let shots =
+        [declared("mac.component.artwork.default"), declared("android.component.artwork.default")];
+    assert!(sentences(root.path(), &shots).is_empty());
+}

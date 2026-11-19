@@ -177,14 +177,22 @@ impl ComponentName {
     /// The design-system component the shot draws: `cast-row` on Android is
     /// `AndroidCastRow`.
     pub fn component(&self) -> String {
-        let words = self.thing.split('-').map(|word| {
-            let mut chars = word.chars();
-            chars
-                .next()
-                .map(|first| first.to_uppercase().chain(chars).collect::<String>())
-                .unwrap_or_default()
-        });
-        std::iter::once(self.platform.component_prefix().to_string()).chain(words).collect()
+        format!("{}{}", self.platform.component_prefix(), self.shared_component())
+    }
+
+    /// The component both platforms share, when the platform has none:
+    /// `artwork` is `Artwork`.
+    pub fn shared_component(&self) -> String {
+        self.thing
+            .split('-')
+            .map(|word| {
+                let mut chars = word.chars();
+                chars
+                    .next()
+                    .map(|first| first.to_uppercase().chain(chars).collect::<String>())
+                    .unwrap_or_default()
+            })
+            .collect()
     }
 
     pub fn state(&self) -> &str {

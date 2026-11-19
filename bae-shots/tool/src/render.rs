@@ -10,6 +10,7 @@ pub(crate) mod runtime;
 pub(crate) mod serve;
 
 use crate::design;
+use bae_shots_lint::lint;
 use bae_shots_lint::names::{self, Name};
 use std::path::Path;
 
@@ -49,7 +50,9 @@ pub(crate) fn hashes(
             Name::Screen(_) => {
                 design::board_hash(root, &name.to_string(), runtime_sha256, chrome::PINNED)
             }
-            Name::Component(c) => design::preview_hash(root, &c.component(), chrome::PINNED),
+            Name::Component(c) => {
+                design::preview_hash(root, &lint::board_component(root, c), chrome::PINNED)
+            }
         }
         .map_err(|e| format!("{name}: {e}"))?;
         hashes.insert(name.clone(), hash);
@@ -165,7 +168,7 @@ async fn draw_component(
     server: &serve::Server,
     platform: names::Platform,
 ) -> Result<Drawn, String> {
-    let component = name.component();
+    let component = lint::board_component(root, name);
     preview::check_react(root).map_err(|e| e.to_string())?;
     let row = preview::render_row(
         page,
