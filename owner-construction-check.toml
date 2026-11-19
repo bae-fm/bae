@@ -1009,9 +1009,14 @@ homes = [
     "bae-views/src/",
 ]
 
-[[capabilities.gates]]
-kind = "SQLite library (rusqlite / libsqlite3-sys)"
-crates = ["rusqlite", "libsqlite3_sys"]
+# The bridge's async exports run on their owner's runtime: each is declared
+# here to call one of these runs, which the typed lint checks in the types.
+[async_exports]
+runs = [
+    "bae_bridge::operation_runtime::OperationRuntime::run",
+    "bae_bridge::operation_runtime::OperationRuntime::run_to_completion",
+    "bae_bridge::handle::AppHandle::run_exported",
+]
 
 # The library's tables by the domain that writes them. SQL anywhere may read
 # a table; only its domain's homes write it, in a statement or a trigger's

@@ -104,6 +104,10 @@ impl ImportService {
 
         let watched = services.clone();
         let bugs = diagnostics.bug_sink();
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "the import service is a composition root: it owns this thread and stops it"
+        )]
         let watcher =
             WorkerThread::spawn("folder scan coordinator", bugs.clone(), move |_, watcher_rx| {
                 run_watcher(watcher_rx, fs_rx, watched, folder_watcher);
@@ -112,6 +116,10 @@ impl ImportService {
         let release_reads =
             crate::ReleaseReads::new(services.tables.clone(), services.catalogs.clone());
         let release_reads_for_worker = release_reads.clone();
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "the import service is a composition root: it owns this thread and stops it"
+        )]
         let worker = WorkerThread::spawn("import worker thread", bugs, move |_, commands_rx| {
             let rt = tokio::runtime::Builder::new_current_thread()
                 .enable_all()

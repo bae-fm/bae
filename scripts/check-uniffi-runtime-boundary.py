@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reject exported async Rust methods that run on a foreign caller stack."""
+"""Reject foreign-language wrappers that put the bridge's async exports on a second thread."""
 
 from pathlib import Path
 import re
@@ -55,13 +55,6 @@ def reject_detached_async_bridge_calls(root: Path, violations: list[str]) -> Non
                 violations.append(
                     f"{path.relative_to(root)}:{line} wraps an async bridge call in Task.detached"
                 )
-
-
-# An `OperationRuntime` run: the AppHandle's or a subscription's `runtime`, or
-# the host's `operations`.
-OWNED_RUNTIME_CALL = re.compile(
-    r"\b(?:runtime|operations)\s*(?:\.clone\(\)\s*)?\.(?:run|run_to_completion)\("
-)
 
 
 def lower_camel(name: str) -> str:
@@ -210,48 +203,31 @@ def exported_methods(path: Path) -> list[tuple[str, bool, str]]:
     return methods
 
 
-SPAWN_CALL = re.compile(r"\bspawn\s*\(")
-OPERATION_RUNTIME_SPAWN = re.compile(r"\boperation_runtime\s*::\s*spawn\b")
-RUN_EXPORTED = re.compile(r"\brun_exported\b")
-
-
-def check(root: Path) -> tuple[list[str], int, int]:
-    """The violations, and the counts of async and task-producing exports."""
+def check(root: Path) -> tuple[list[str], int]:
+    """The violations, and the count of async exports. That an async export
+    runs on its owner's runtime is checked by coven's typed lint
+    `async_export_off_runtime`, which the hook's clippy runs."""
     violations: list[str] = []
-    async_count = 0
-    spawned_count = 0
     async_exports = set()
     for path in sorted((root / "bae-bridge" / "src").rglob("*.rs")):
-        for name, is_async, body in exported_methods(path):
-            relative = path.relative_to(root)
+        for name, is_async, _body in exported_methods(path):
             if is_async:
-                async_count += 1
                 async_exports.add(lower_camel(name))
-                if not OWNED_RUNTIME_CALL.search(body) and not RUN_EXPORTED.search(body):
-                    violations.append(f"{relative}::{name}")
-            if SPAWN_CALL.search(body):
-                spawned_count += 1
-                if not OPERATION_RUNTIME_SPAWN.search(body):
-                    violations.append(f"{relative}::{name} constructs a task before scheduling")
 
     reject_flush_on_worker_thread(root, violations)
     reject_detached_async_bridge_calls(root, violations)
     reject_android_async_worker_wrappers(root, async_exports, violations)
-    return violations, async_count, spawned_count
+    return violations, len(async_exports)
 
 
 def main() -> int:
-    violations, async_count, spawned_count = check(ROOT)
+    violations, async_count = check(ROOT)
     if violations:
         print("UniFFI runtime boundary violations:", file=sys.stderr)
         for violation in violations:
             print(f"  {violation}", file=sys.stderr)
         return 1
-    print(
-        "UniFFI runtime boundary: "
-        f"{async_count} async exports and {spawned_count} task-producing exports "
-        "use an owned runtime"
-    )
+    print(f"UniFFI runtime boundary: {async_count} async exports have no foreign worker wrapper")
     return 0
 
 

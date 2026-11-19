@@ -41,6 +41,7 @@ fn queue_gone() -> Bug {
 /// thread, with nothing joining it. Sabotage: run the body uncaught, and the
 /// panic waits in the join handle for a join nobody makes.
 #[test]
+#[expect(clippy::disallowed_methods, reason = "test code: it starts the worker thread it tests")]
 fn a_panic_in_the_body_is_reported_as_it_happens() {
     let (heard, bugs) = channel();
     let worker = WorkerThread::<()>::spawn("test worker", Arc::new(SentBugs(heard)), |_, _| {
@@ -54,6 +55,7 @@ fn a_panic_in_the_body_is_reported_as_it_happens() {
 /// The join of a thread whose body panicked reports nothing more: the panic
 /// was reported once, as it happened.
 #[test]
+#[expect(clippy::disallowed_methods, reason = "test code: it starts the worker thread it tests")]
 fn the_join_does_not_report_the_panic_again() {
     let (heard, bugs) = channel();
     let worker = WorkerThread::<()>::spawn("test worker", Arc::new(SentBugs(heard)), |_, _| {
@@ -68,6 +70,7 @@ fn the_join_does_not_report_the_panic_again() {
 /// recorded before the thread reported it. Sabotage: answer a send from the
 /// closed channel alone, and the caller can't tell a panic from a stop.
 #[test]
+#[expect(clippy::disallowed_methods, reason = "test code: it starts the worker thread it tests")]
 fn a_send_after_a_panic_comes_back_with_the_bug() {
     let (heard, bugs) = channel();
     let worker = WorkerThread::<u32>::spawn("test worker", Arc::new(SentBugs(heard)), |_, _| {
@@ -84,6 +87,7 @@ fn a_send_after_a_panic_comes_back_with_the_bug() {
 /// Whoever waits for the thread's end hears how it ended: a panic's bug, or
 /// that the body returned.
 #[tokio::test]
+#[expect(clippy::disallowed_methods, reason = "test code: it starts the worker thread it tests")]
 async fn the_end_is_heard_by_whoever_waits_for_it() {
     let (heard, _bugs) = channel();
     let panicked = WorkerThread::<()>::spawn("test worker", Arc::new(SentBugs(heard)), |_, _| {

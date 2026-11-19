@@ -429,6 +429,10 @@ impl PlaybackService {
             arbiter: arbiter.clone(),
             playing_bytes,
         };
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "the playback service is a composition root: it owns this thread and stops it"
+        )]
         let worker = WorkerThread::spawn(PLAYBACK_THREAD, bugs, move |channel, messages| {
             thread.run(channel, messages, restore_playback)
         });

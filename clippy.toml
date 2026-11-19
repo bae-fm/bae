@@ -35,6 +35,10 @@ disallowed-methods = [
     { path = "tokio_util::task::TaskTracker::spawn_local_on", reason = "use Diagnostics::spawn_reported or spawn_ending and track what it returns, unless the tracker's owner waits for it before it ends and the work reports its own panic" },
     { path = "tokio_util::task::TaskTracker::spawn_blocking", reason = "use Diagnostics::blocking, unless the tracker's owner waits for it before it ends" },
     { path = "tokio_util::task::TaskTracker::spawn_blocking_on", reason = "use Diagnostics::blocking, unless the tracker's owner waits for it before it ends" },
+    # A worker thread started from a bridge export would outlive the call
+    # that made it. A worker thread starts at the composition roots that own
+    # it, which mark the call.
+    { path = "bae_util::worker_thread::WorkerThread::spawn", reason = "start a worker thread only where its owner is built, and mark the call" },
     # A runtime outlives the function that builds it, and the work on it ends
     # on a panic with no one told, unless its owner reports and stops it. A
     # runtime is built only at a composition root, which keeps and stops it.

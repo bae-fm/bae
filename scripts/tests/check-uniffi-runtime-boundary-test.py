@@ -56,52 +56,6 @@ class RuntimeBoundaryTests(unittest.TestCase):
         self.assertEqual(result.returncode, 1, result.stdout)
         self.assertIn(message, result.stderr)
 
-    def test_an_export_on_the_owned_runtime_passes(self) -> None:
-        self.assert_passes({BRIDGE: OWNED, LOGGER: "class BaeLogger {}\n"})
-
-    def test_an_async_export_off_the_runtime_fails(self) -> None:
-        self.assert_fails(
-            {
-                BRIDGE: OWNED.replace("self.runtime.run(async { Ok(()) }).await", "Ok(())"),
-                LOGGER: "",
-            },
-            f"{BRIDGE}::load",
-        )
-
-    def test_a_comment_naming_run_exported_is_no_run(self) -> None:
-        self.assert_fails(
-            {
-                BRIDGE: OWNED.replace(
-                    "self.runtime.run(async { Ok(()) }).await",
-                    "// run_exported would go here\n        Ok(())",
-                ),
-                LOGGER: "",
-            },
-            f"{BRIDGE}::load",
-        )
-
-    def test_a_string_naming_spawn_is_no_task(self) -> None:
-        self.assert_passes(
-            {
-                BRIDGE: OWNED.replace(
-                    "Ok(()) }).await",
-                    'Ok(()) }).await?;\n        log("spawn(x) is not called");\n        Ok(())',
-                ),
-                LOGGER: "",
-            }
-        )
-
-    def test_a_task_built_before_scheduling_fails(self) -> None:
-        self.assert_fails(
-            {
-                BRIDGE: OWNED.replace(
-                    "Ok(()) }).await", "Ok(()) }).await?;\n        tokio::spawn(work());\n        Ok(())"
-                ),
-                LOGGER: "",
-            },
-            "constructs a task before scheduling",
-        )
-
     def test_the_flush_on_a_worker_thread_fails(self) -> None:
         self.assert_fails(
             {
