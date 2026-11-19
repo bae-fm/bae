@@ -1,5 +1,5 @@
 use super::*;
-use tempfile::TempDir;
+use bae_util::test_files::TestFolder;
 
 /// A store named `name`, created in `installation` and closed, as discovery
 /// lists it.
@@ -14,7 +14,7 @@ fn installation(app_dir: &AppDir) -> coven::Coven {
 
 #[tokio::test]
 async fn discovery_uses_coven_names_and_sorts_the_active_store_first() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let app_dir = AppDir::at(tmp.path()).unwrap();
     let installation = installation(&app_dir);
     let first_id = store(&installation, "First").await;
@@ -43,7 +43,7 @@ async fn discovery_uses_coven_names_and_sorts_the_active_store_first() {
 /// instead of failing the whole listing.
 #[tokio::test]
 async fn discovery_lists_a_store_whose_name_cant_be_read() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let app_dir = AppDir::at(tmp.path()).unwrap();
     let installation = installation(&app_dir);
     let named = store(&installation, "Named").await;
@@ -66,7 +66,7 @@ async fn discovery_lists_a_store_whose_name_cant_be_read() {
 /// the others still list as they are.
 #[tokio::test]
 async fn discovery_lists_a_library_whose_settings_cant_be_read() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let app_dir = AppDir::at(tmp.path()).unwrap();
     let installation = installation(&app_dir);
     let mut ids = Vec::new();
@@ -101,16 +101,16 @@ async fn discovery_lists_a_library_whose_settings_cant_be_read() {
 
 #[tokio::test]
 async fn discovery_reports_invalid_or_unreadable_active_pointers() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let app_dir = AppDir::at(tmp.path()).unwrap();
     let installation = installation(&app_dir);
-    std::fs::write(app_dir.active_library_pointer(), " \n").unwrap();
+    tmp.write(app_dir.active_library_pointer(), " \n");
     assert!(app_dir
         .discover_libraries(&installation, coven::task::HeardBugs::shared().as_ref())
         .await
         .is_err());
-    std::fs::remove_file(app_dir.active_library_pointer()).unwrap();
-    std::fs::create_dir(app_dir.active_library_pointer()).unwrap();
+    tmp.remove(app_dir.active_library_pointer());
+    tmp.create_folder(app_dir.active_library_pointer());
     assert!(app_dir
         .discover_libraries(&installation, coven::task::HeardBugs::shared().as_ref())
         .await
@@ -119,36 +119,36 @@ async fn discovery_reports_invalid_or_unreadable_active_pointers() {
 
 #[test]
 fn installation_id_is_shared_by_libraries_and_survives_reopening() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let app_dir = AppDir::at(tmp.path()).unwrap();
     let ids = coven::SequentialIds::new();
     let first = app_dir.install_id(&ids).unwrap();
     assert_eq!(app_dir.install_id(&ids).unwrap(), first);
     assert_eq!(AppDir::at(tmp.path()).unwrap().install_id(&ids).unwrap(), first);
-    std::fs::write(tmp.path().join("install-id"), "invalid").unwrap();
+    tmp.write("install-id", "invalid");
     assert!(app_dir.install_id(&ids).is_err());
 }
 
 #[test]
 fn an_unreadable_installation_id_names_its_file() {
-    let tmp = TempDir::new().unwrap();
+    let tmp = TestFolder::new();
     let app_dir = AppDir::at(tmp.path()).unwrap();
     let ids = coven::SequentialIds::new();
     let path = tmp.path().join("install-id");
-    std::fs::create_dir(&path).unwrap();
+    tmp.create_folder(&path);
     let error = app_dir.install_id(&ids).unwrap_err();
     assert!(error.to_string().contains(&path.display().to_string()), "{error}");
-    std::fs::remove_dir(&path).unwrap();
-    std::fs::write(&path, "invalid").unwrap();
+    tmp.remove(&path);
+    tmp.write(&path, "invalid");
     let error = app_dir.install_id(&ids).unwrap_err();
     assert!(error.to_string().contains(&path.display().to_string()), "{error}");
 }
 
 #[tokio::test]
 async fn an_app_dir_under_a_fresh_home_exists_and_holds_a_new_store() {
-    let home = TempDir::new().unwrap();
+    let home = TestFolder::new();
     let app_dir = AppDir::under_home(home.path()).unwrap();
-    assert!(home.path().join(".bae").is_dir());
+    assert!(home.metadata(".bae").is_dir());
     store(&installation(&app_dir), "First").await;
 }
 

@@ -27,6 +27,7 @@ uuid = { workspace = true }
 tempfile = { workspace = true }
 
 [dev-dependencies]
+bae-util = { workspace = true, features = ["test-utils"] }
 # The in-memory installation and the stores the discovery tests create.
 coven = { workspace = true, features = ["test-utils"] }
 tokio = { workspace = true, features = ["macros", "rt"] }
