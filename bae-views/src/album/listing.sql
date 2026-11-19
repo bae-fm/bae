@@ -44,7 +44,8 @@ CREATE INDEX IF NOT EXISTS idx_album_listing_credits_desc ON album_listing (cred
 -- row. The grid
 -- grouped by artist orders by this table's columns alone: the artists by
 -- their key and id, each artist's albums in the grid's sort, read from an
--- index here, so it sorts nothing.
+-- index here, so it sorts nothing. An artist's page reads its albums in its
+-- own order from another index here.
 CREATE TABLE IF NOT EXISTS album_artist_link (
     artist_id TEXT NOT NULL,
     album_id TEXT NOT NULL REFERENCES album_listing (album_id) ON DELETE CASCADE,
@@ -88,6 +89,10 @@ CREATE INDEX IF NOT EXISTS idx_album_artist_link_year_desc ON album_artist_link 
 CREATE INDEX IF NOT EXISTS idx_album_artist_link_artists_desc_year ON album_artist_link (artist_sort_key DESC, artist_id DESC, year_missing, year, album_id);
 
 CREATE INDEX IF NOT EXISTS idx_album_artist_link_artists_desc_year_desc ON album_artist_link (artist_sort_key DESC, artist_id DESC, year_missing DESC, year DESC, album_id);
+
+-- An artist's page reads its albums from this index in its order: year, an
+-- unknown year after every year, then title, then id.
+CREATE INDEX IF NOT EXISTS idx_album_artist_link_artist_page ON album_artist_link (artist_id, year_missing, year, title_sort_key, album_id);
 
 -- Inserting an album id into `album_listing_refresh` rewrites that album's
 -- row of `album_listing` and its links from the album, its releases and its

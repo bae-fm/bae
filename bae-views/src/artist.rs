@@ -92,10 +92,10 @@ impl LibraryViews {
     }
 
     /// The artist's summary row plus every album whose credit list names it,
-    /// in discography order: year
-    /// ascending with unknown years last, then title (case-insensitive), then
-    /// id. `None` when the artist doesn't exist or has no album links —
-    /// exactly the artists `get_artist_page` never lists.
+    /// in discography order: year ascending with unknown years last, then
+    /// title in the device's name order, then id. `None` when the artist
+    /// doesn't exist or has no album links, exactly the artists
+    /// `get_artist_page` never lists.
     pub(crate) async fn find_artist_detail(
         &self,
         artist_id: &str,
@@ -144,11 +144,12 @@ pub fn resolve_artist_detail_projection(
 /// An artist's page as its rows read it.
 fn artist_detail_of(raw: DbArtistDetail) -> ArtistDetail {
     ArtistDetail {
-        artist: raw.artist,
         credit_names: raw.credit_names,
         albums: raw.albums.into_iter().map(AlbumSummary::from_raw).collect(),
         credit_name_count: raw.credit_name_count,
-        album_count: raw.album_count,
+        album_count: u64::try_from(raw.artist.album_count)
+            .expect("an album count is never negative"),
+        artist: raw.artist,
     }
 }
 
@@ -166,39 +167,37 @@ fn find_artist_detail_on(
     let Some(artist) = artist else {
         return Ok(None);
     };
-    let albums_query = format!(
-        "{select} \
-         FROM album_artist_link link \
-         JOIN albums a ON a.id = link.album_id \
-         WHERE link.artist_id = ?1 \
-         ORDER BY CASE WHEN a.year IS NULL THEN 1 ELSE 0 END, \
-                  a.year, {title_key}, a.id",
-        select = album_summary_select(),
-        title_key = crate::sort_key_sql("a.title"),
-    );
-    let albums = sql.query(&albums_query, params![artist_id], AlbumSummaryRow::read)?;
+    let albums = sql.query(&artist_albums_query(), params![artist_id], AlbumSummaryRow::read)?;
     let credit_names = bae_records::records::artist_credit_names::credit_names_of_on(
         sql,
         &artist.artist.id,
         &crate::sort_key_sql("credit_name.name"),
     )?;
-    // How many rows each section above lists, counted over the rows that
-    // section's statement reads.
-    let (credit_name_count, album_count) = sql.query_row(
+    // How many other names the page lists, counted over the rows their
+    // statement reads.
+    let credit_name_count = sql.query_row(
         &format!(
-            "SELECT {credit_names} AS credit_name_count, \
-                    (SELECT COUNT(*) FROM ({albums_query})) AS album_count",
+            "SELECT {credit_names} AS credit_name_count",
             credit_names = bae_records::records::artist_credit_names::credit_name_count_sql("?1"),
         ),
         params![artist_id],
-        |row| {
-            Ok((
-                bae_store::read::count_column(row, "credit_name_count")?,
-                bae_store::read::count_column(row, "album_count")?,
-            ))
-        },
+        |row| bae_store::read::count_column(row, "credit_name_count"),
     )?;
-    Ok(Some(ArtistDetailRows { artist, credit_names, albums, credit_name_count, album_count }))
+    Ok(Some(ArtistDetailRows { artist, credit_names, albums, credit_name_count }))
+}
+
+/// The albums of the artist `?1` names, in its page's order, which
+/// `album_artist_link`'s artist page index (`album/listing.sql`) holds, so
+/// the read sorts nothing.
+pub(crate) fn artist_albums_query() -> String {
+    format!(
+        "{select} \
+         FROM album_artist_link link \
+         JOIN albums a ON a.id = link.album_id \
+         WHERE link.artist_id = ?1 \
+         ORDER BY link.year_missing, link.year, link.title_sort_key, link.album_id",
+        select = album_summary_select(),
+    )
 }
 
 #[derive(Clone, PartialEq)]
@@ -207,7 +206,6 @@ struct ArtistDetailRows {
     credit_names: Vec<bae_records::credits::ArtistCreditName>,
     albums: Vec<AlbumSummaryRow>,
     credit_name_count: u64,
-    album_count: u64,
 }
 
 impl ArtistDetailRows {
@@ -221,7 +219,6 @@ impl ArtistDetailRows {
                 .map(AlbumSummaryRow::process)
                 .collect::<Result<_, _>>()?,
             credit_name_count: self.credit_name_count,
-            album_count: self.album_count,
         })
     }
 }

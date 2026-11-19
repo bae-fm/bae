@@ -23,6 +23,7 @@ pub struct ArtistDetail {
     /// How many other printed names the page lists, which decides whether
     /// it shows them.
     pub credit_name_count: u64,
-    /// How many albums the page lists.
+    /// How many albums the page lists: the album count of the artist's
+    /// listing row, which its triggers keep equal to the albums' links.
     pub album_count: u64,
 }

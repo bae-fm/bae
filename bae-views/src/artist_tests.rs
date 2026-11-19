@@ -310,18 +310,45 @@ async fn artist_detail_orders_albums_year_then_title_with_unknown_years_last() {
         .await
         .unwrap();
 
-    let detail = LibraryViews::new(db.clone()).find_artist_detail(ARTIST_A).await.unwrap();
+    let detail = LibraryViews::new(db.clone()).get_artist_detail(ARTIST_A).await.unwrap();
     let detail = detail.expect("artist-a has album links and must resolve");
 
     assert_eq!(detail.artist.artist.id, ARTIST_A);
-    assert_eq!(detail.artist.album_count, 5);
-    assert_eq!((detail.album_count, detail.credit_name_count), (5, 1), "the page counts its rows");
+    assert_eq!(detail.credit_name_count, 1, "the page counts its other names");
+    assert_eq!(detail.album_count, 5, "the page takes the artist row's album count");
 
     let album_ids: Vec<&str> = detail.albums.iter().map(|a| a.id.as_str()).collect();
     assert_eq!(
         album_ids,
         vec![ALBUM_1999, ALBUM_2001_LOWER, ALBUM_2001_UPPER, ALBUM_JUNCTION, ALBUM_NULL,]
     );
+}
+
+/// An artist's page reads its albums in order from the artist page index of
+/// `album_artist_link`, and sorts none of them.
+#[tokio::test]
+async fn artist_detail_reads_its_albums_from_the_link_index() {
+    let (db, _tmp) = seeded_db().await;
+    let plan = db
+        .read(|sql| {
+            sql.query(
+                &format!("EXPLAIN QUERY PLAN {}", crate::artist::artist_albums_query()),
+                [ARTIST_PRIMARY],
+                |row| Ok((row.get::<_, i64>(1)?, row.get::<_, String>(3)?)),
+            )
+            .map_err(bae_store::DbError::from)
+        })
+        .await
+        .unwrap();
+    // The statement's own steps, apart from its column subqueries' steps.
+    let own: Vec<&str> =
+        plan.iter().filter(|(parent, _)| *parent == 0).map(|(_, step)| step.as_str()).collect();
+    assert_eq!(
+        own.first().copied(),
+        Some("SEARCH link USING COVERING INDEX idx_album_artist_link_artist_page (artist_id=?)"),
+        "{plan:?}"
+    );
+    assert!(!own.iter().any(|step| step.starts_with("USE TEMP B-TREE")), "{plan:?}");
 }
 
 #[tokio::test]

@@ -158,8 +158,6 @@ pub struct DbArtistDetail {
     pub albums: Vec<DbAlbumSummary>,
     /// How many rows `credit_names` holds.
     pub credit_name_count: u64,
-    /// How many rows `albums` holds.
-    pub album_count: u64,
 }
 
 impl DbComposerSummary {
