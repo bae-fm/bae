@@ -103,17 +103,7 @@ async fn keys_written_with_other_collation_data_are_written_again_when_a_library
     // Keys of an earlier build's data: another key, under the data version
     // that build wrote.
     records.age_name_keys_for_test().await.unwrap();
-    db.call_bulk(|sql| {
-        sql.execute("UPDATE album_listing SET title_sort_key = x'01'", [])?;
-        sql.execute(
-            "UPDATE artist_listing SET name_sort_key = x'01', sort_name_sort_key = x'01'",
-            [],
-        )?;
-        sql.execute("UPDATE album_artist_link SET artist_sort_key = x'01'", [])?;
-        Ok(())
-    })
-    .await
-    .unwrap();
+    LibraryViews::new(db.clone()).plant_keys_of_earlier_data().await.unwrap();
 
     records.settle_name_keys().await.unwrap();
 
