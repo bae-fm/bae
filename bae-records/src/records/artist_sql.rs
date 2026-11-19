@@ -48,10 +48,8 @@ pub(crate) static ARTIST_IS_VARIOUS_ARTISTS: SchemaFunction = SchemaFunction {
     compute: |arguments| {
         let musicbrainz = arguments.get::<Option<String>>(0)?;
         let discogs = arguments.get::<Option<String>>(1)?;
-        let various = &crate::VARIOUS_ARTISTS;
         Ok(Value::Integer(i64::from(
-            musicbrainz.as_deref() == Some(various.musicbrainz)
-                || discogs.as_deref() == Some(various.discogs),
+            crate::VARIOUS_ARTISTS.named_by(musicbrainz.as_deref(), discogs.as_deref()),
         )))
     },
 };

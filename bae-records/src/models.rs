@@ -62,6 +62,13 @@ pub struct VariousArtistsIds {
 pub const VARIOUS_ARTISTS: VariousArtistsIds =
     VariousArtistsIds { discogs: "194", musicbrainz: "89ad4ac3-39f7-470e-963a-56509c546377" };
 
+impl VariousArtistsIds {
+    /// Whether either id is its catalog's Various Artists entry.
+    pub fn named_by(&self, musicbrainz: Option<&str>, discogs: Option<&str>) -> bool {
+        musicbrainz == Some(self.musicbrainz) || discogs == Some(self.discogs)
+    }
+}
+
 impl DbArtist {
     /// True if this artist is the well-known "Various Artists" placeholder of any
     /// metadata source. The destructure is deliberate: adding a `*_artist_id`
@@ -76,8 +83,7 @@ impl DbArtist {
             created_at: _,
         } = self;
 
-        discogs_artist_id.as_deref() == Some(VARIOUS_ARTISTS.discogs)
-            || musicbrainz_artist_id.as_deref() == Some(VARIOUS_ARTISTS.musicbrainz)
+        VARIOUS_ARTISTS.named_by(musicbrainz_artist_id.as_deref(), discogs_artist_id.as_deref())
     }
 }
 
