@@ -109,28 +109,31 @@ mod artists {
 
     fn live<Request, Projection>(
         query: coven::ReconfigurableLiveQuery<Request, Projection, bae_store::DbError>,
+        closing: &CancellationToken,
     ) -> CancellableLiveQuery<Request, Projection, bae_store::DbError>
     where
         Request: Clone + PartialEq + Send + Sync + 'static,
         Projection: Clone + PartialEq + Send + 'static,
     {
-        CancellableLiveQuery::new(query, CancellationToken::new(), coven::task::HeardBugs::shared())
+        CancellableLiveQuery::new(query, closing.child_token(), coven::task::HeardBugs::shared())
     }
 
-    /// The artist list's reads under its default sort.
-    fn reads(db: &Store) -> ListReads {
+    /// The artist list's reads under its default sort, which cancelling
+    /// `closing` cancels, as closing the library cancels its reads.
+    fn reads(db: &Store, closing: &CancellationToken) -> ListReads {
         let views = crate::LibraryViews::new(db.clone());
         let (for_window, for_position) = (views.clone(), views.clone());
+        let (window_closing, position_closing) = (closing.clone(), closing.clone());
         ListReads {
             window: Box::new(move |window| {
                 crate::LiveListWindow::new(
-                    live(for_window.subscribe_artist_window(&[], window)),
+                    live(for_window.subscribe_artist_window(&[], window), &window_closing),
                     |_, read| Some(crate::artist::resolve_artist_window(read)),
                 )
             }),
             position: Box::new(move |key| {
                 crate::LiveListPosition::new(
-                    live(for_position.subscribe_artist_position(&[], key)),
+                    live(for_position.subscribe_artist_position(&[], key), &position_closing),
                     |read, rows_before| {
                         Some(crate::ListPosition { key: read.request.clone(), rows_before })
                     },
@@ -193,8 +196,11 @@ mod artists {
     #[tokio::test]
     async fn the_view_keeps_its_window_around_the_rows_on_screen() {
         let (db, _dir) = hundred_artists().await;
-        let (view, run) =
-            ListView::open(reads(&db), Visible::new(50, 59), CancellationToken::new());
+        let (view, run) = ListView::open(
+            reads(&db, &CancellationToken::new()),
+            Visible::new(50, 59),
+            CancellationToken::new(),
+        );
         #[expect(
             clippy::disallowed_methods,
             reason = "the test joins the view's task, so a panic in it fails the test"
@@ -246,5 +252,33 @@ mod artists {
             .await
             .expect("the view's task ends with its handle")
             .expect("the view's task does not panic");
+    }
+
+    /// Cancelling the view's reads, as closing the library does, ends the
+    /// view while the screen still holds its handle and takes no value: a
+    /// cancelled read answers at once, so a view that went on asking it would
+    /// keep its runtime thread busy and never end. The runtime has a second
+    /// thread, so the test's timeout fires even while the view's thread is
+    /// busy.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn cancelling_the_reads_ends_the_view() {
+        let (db, _dir) = hundred_artists().await;
+        let closing = CancellationToken::new();
+        let (view, run) =
+            ListView::open(reads(&db, &closing), Visible::new(0, 9), CancellationToken::new());
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "the test joins the view's task, so a panic in it fails the test"
+        )]
+        let task = tokio::spawn(run);
+        let first = tokio::time::timeout(HANG_GUARD, view.next()).await.unwrap().unwrap();
+        assert_eq!(names(&first), named(0..30));
+
+        closing.cancel();
+        tokio::time::timeout(HANG_GUARD, task)
+            .await
+            .expect("the view's task ends once its reads are cancelled")
+            .expect("the view's task does not panic");
+        assert!(matches!(view.next().await, Err(LiveQueryError::Cancelled)));
     }
 }

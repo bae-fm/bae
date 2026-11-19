@@ -300,7 +300,10 @@ impl ListView {
     /// first once both answer, then one each time either answers again. A
     /// failed read is sent as its error, and the view goes on. A value the
     /// screen has not taken yet gives way to a later one. The view ends its
-    /// reads and returns once the screen's handle is gone.
+    /// reads and returns once the screen's handle is gone, or once its reads
+    /// are cancelled, as closing the library cancels them: a cancelled read
+    /// answers at once every time it is asked, so it has nothing more to
+    /// send.
     async fn run(
         mut self,
         mut visible: watch::Receiver<Visible>,
@@ -309,8 +312,10 @@ impl ListView {
         let mut unsent: Option<Result<ListViewValue, LiveQueryError>> = None;
         loop {
             let shown = *visible.borrow_and_update();
-            if let Err(error) = self.place(shown).await {
-                unsent = Some(Err(error));
+            match self.place(shown).await {
+                Ok(()) => {}
+                Err(LiveQueryError::Cancelled) => break,
+                Err(error) => unsent = Some(Err(error)),
             }
             if let Some(value) = self.state.take_fresh() {
                 unsent = Some(Ok(value));
@@ -329,8 +334,10 @@ impl ListView {
                     }
                 }
                 answer = self.state.answer() => {
-                    if let Err(error) = self.state.take(answer) {
-                        unsent = Some(Err(error));
+                    match self.state.take(answer) {
+                        Ok(()) => {}
+                        Err(LiveQueryError::Cancelled) => break,
+                        Err(error) => unsent = Some(Err(error)),
                     }
                 }
             }
