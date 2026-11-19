@@ -121,6 +121,10 @@ final class TabStripView<Tab: Hashable>: NSView {
         // would conflict with them, and each change to one would make the
         // strip measure itself again.
         drawing.sizingOptions = [.intrinsicContentSize]
+        // In the title bar the hosting view would inset the drawing by the
+        // bar's safe area, so the tabs would draw, and take clicks, below the
+        // frames `tabStripFrame` reports and the elements announce.
+        drawing.safeAreaRegions = []
         drawing.translatesAutoresizingMaskIntoConstraints = false
         addSubview(drawing)
         NSLayoutConstraint.activate([
