@@ -623,6 +623,8 @@ impl AppServices {
     #[cfg(desktop)]
     delegate_async!(manager, save_release_edit => save_release_edit(form: bae_import::ReleaseEditForm) -> Result<bae_import::ReleaseEditForm, bae_library::LibraryError>);
     #[cfg(desktop)]
+    delegate_async!(manager, pick_release_edit_album => pick_release_edit_album(form: bae_import::ReleaseEditForm, album_id: String) -> Result<bae_import::ReleaseEditForm, bae_library::LibraryError>);
+    #[cfg(desktop)]
     delegate_sync!(manager, subscribe_release_edit_draft => subscribe_release_edit_draft() -> bae_library::LiveReleaseEditDraft);
     #[cfg(desktop)]
     delegate_async!(manager, enqueue_export => enqueue_export(release_id: &str, target_dir: std::path::PathBuf) -> Result<(), bae_library::LibraryError>);

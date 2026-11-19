@@ -107,6 +107,23 @@ impl LibraryManager {
         Ok(form.applying(applied))
     }
 
+    /// `form` with the library album `album_id` picked to file the release
+    /// under. The method refuses an album the library does not hold, for a
+    /// caller that names the album itself.
+    pub async fn pick_release_edit_album(
+        &self,
+        form: bae_import::ReleaseEditForm,
+        album_id: String,
+    ) -> Result<bae_import::ReleaseEditForm, LibraryError> {
+        if self.records.find_album_by_id(&album_id).await?.is_none() {
+            return Err(LibraryError::AlbumMissing { album_id });
+        }
+        Ok(bae_import::ReleaseEditForm {
+            album_pick: bae_import::AlbumPick::Album { album_id },
+            ..form
+        })
+    }
+
     /// Save `form`: in one write, the form as the person left it, every
     /// value the catalog the person applied gives (its mediums and places,
     /// roles and works), its records, and the album the release lands in:
