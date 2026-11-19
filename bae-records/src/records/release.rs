@@ -102,17 +102,8 @@ pub(super) fn write_release_metadata_on(
     // the album/track links below point at them.
     let resolved = ArtistCredits { credits, picked }.resolve_on(tx, gone)?;
     resolved.write_on(tx)?;
-    let artist_ids = resolved.id_map(credits);
-    let album_artists = relink_album_artists(
-        &resolved
-            .unpicked_printed(credits, album_artists, |link| (&link.artist_id, &mut link.credit)),
-        &artist_ids,
-    );
-    let track_artists = relink_track_artists(
-        &resolved
-            .unpicked_printed(credits, track_artists, |link| (&link.artist_id, &mut link.credit)),
-        &artist_ids,
-    );
+    let (album_artists, track_artists) =
+        resolved.relinked_credit_links(credits, album_artists, track_artists);
 
     if album_fields == AlbumFields::Written {
         tx.execute(

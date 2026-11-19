@@ -200,19 +200,9 @@ fn write_applied_rows_on(
 ) -> Result<(), IdentityWriteError> {
     let resolved = ArtistCredits { credits: &rows.artists, picked }.resolve_on(tx, gone)?;
     resolved.write_on(tx)?;
+    let (album_artists, track_artists) =
+        resolved.relinked_credit_links(&rows.artists, &rows.album_artists, &rows.track_artists);
     let artist_ids = resolved.id_map(&rows.artists);
-    let album_artists = relink_album_artists(
-        &resolved.unpicked_printed(&rows.artists, &rows.album_artists, |link| {
-            (&link.artist_id, &mut link.credit)
-        }),
-        &artist_ids,
-    );
-    let track_artists = relink_track_artists(
-        &resolved.unpicked_printed(&rows.artists, &rows.track_artists, |link| {
-            (&link.artist_id, &mut link.credit)
-        }),
-        &artist_ids,
-    );
     let release_roles =
         relink(&rows.release_artist_roles, &artist_ids, "release artist role", |role| {
             &mut role.artist_id

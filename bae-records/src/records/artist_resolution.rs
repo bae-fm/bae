@@ -149,10 +149,36 @@ impl ResolvedArtists {
         credits.iter().zip(&self.ids).map(|(credit, id)| (credit.id.clone(), id.clone())).collect()
     }
 
+    /// The write's album and track links, which name `credits` by the ids
+    /// they came in with, each linking the artist its credit resolved to.
+    /// A link to an unpicked credit prints what it printed when picked.
+    pub(crate) fn relinked_credit_links(
+        &self,
+        credits: &[DbArtist],
+        album_artists: &[DbAlbumArtist],
+        track_artists: &[DbTrackArtist],
+    ) -> (Vec<DbAlbumArtist>, Vec<DbTrackArtist>) {
+        let artist_ids = self.id_map(credits);
+        (
+            relink_album_artists(
+                &self.unpicked_printed(credits, album_artists, |link| {
+                    (&link.artist_id, &mut link.credit)
+                }),
+                &artist_ids,
+            ),
+            relink_track_artists(
+                &self.unpicked_printed(credits, track_artists, |link| {
+                    (&link.artist_id, &mut link.credit)
+                }),
+                &artist_ids,
+            ),
+        )
+    }
+
     /// `links`, each one that names an unpicked credit printing what it
     /// printed when picked: its credit name, else the name the credit's row
     /// in `credits` holds. `parts` gives a link's credit id and credit name.
-    pub(crate) fn unpicked_printed<L: Clone>(
+    fn unpicked_printed<L: Clone>(
         &self,
         credits: &[DbArtist],
         links: &[L],
