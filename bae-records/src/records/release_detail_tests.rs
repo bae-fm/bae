@@ -292,27 +292,19 @@ async fn a_stored_device_coven_does_not_register_or_this_device_fails_the_read()
             .to_string()
     };
 
-    let unregistered = [0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef];
+    let unregistered = coven::DeviceId(0x0123_4567_89ab_cdef);
     crate::release_storage::plant_audio_elsewhere_device_for_test(
         dir.path(),
         RELEASE_A,
-        &unregistered,
+        unregistered,
     );
     let error = detail_error().await;
     assert!(error.contains("0123456789ABCDEF, which coven doesn't register"), "{error}");
 
-    let this_device: Vec<u8> = store
-        .read(|sql| {
-            Ok(sql.query_row("SELECT device FROM coven_devices WHERE is_self", [], |row| {
-                row.get(0)
-            })?)
-        })
-        .await
-        .unwrap();
     crate::release_storage::plant_audio_elsewhere_device_for_test(
         dir.path(),
         RELEASE_A,
-        &this_device,
+        store.device_id(),
     );
     let error = detail_error().await;
     assert!(error.contains("names this device"), "{error}");
