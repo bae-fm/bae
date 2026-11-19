@@ -288,13 +288,9 @@ async fn assert_fixture(fixture_path: &Path) {
 #[tokio::test(flavor = "multi_thread")]
 async fn run_all_candidate_text_fixtures() {
     let dir = fixtures_dir();
-    let entries = std::fs::read_dir(&dir)
-        .unwrap_or_else(|e| panic!("failed to list fixtures at {dir:?}: {e}"));
-
     let mut fixture_count = 0;
-    for entry in entries {
-        let entry = entry.expect("fixture entry");
-        let path = entry.path();
+    for name in bae_util::test_files::fixture_entries(&dir) {
+        let path = dir.join(name);
         if path.extension().and_then(|e| e.to_str()) != Some("json") {
             continue;
         }

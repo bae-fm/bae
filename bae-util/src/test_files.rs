@@ -54,6 +54,26 @@ pub fn read_fixture(path: impl AsRef<Path>) -> Vec<u8> {
     })
 }
 
+/// The names of the files and folders in `folder`, a folder committed to the
+/// repo, sorted. Panics when `folder` is outside the repo or can't be listed.
+pub fn fixture_entries(folder: impl AsRef<Path>) -> Vec<String> {
+    let folder = folder.as_ref();
+    let repo = std::fs::canonicalize(concat!(env!("CARGO_MANIFEST_DIR"), "/.."))
+        .expect("the repo's folder resolves");
+    let resolved = std::fs::canonicalize(folder)
+        .unwrap_or_else(|error| panic!("fixture folder {}: {error}", folder.display()));
+    assert!(resolved.starts_with(&repo), "{} is not a folder in the repo", folder.display());
+    let mut names: Vec<String> = std::fs::read_dir(&resolved)
+        .unwrap_or_else(|error| panic!("list {}: {error}", folder.display()))
+        .map(|entry| {
+            let entry = entry.unwrap_or_else(|error| panic!("list {}: {error}", folder.display()));
+            entry.file_name().to_string_lossy().into_owned()
+        })
+        .collect();
+    names.sort();
+    names
+}
+
 /// A fresh folder in the system's temporary directory that a test owns,
 /// removed with everything in it when the value drops.
 ///

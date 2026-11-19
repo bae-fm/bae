@@ -52,3 +52,9 @@ fn a_failed_open_gives_back_its_error() {
     let error = folder.try_open("missing").expect_err("no file is there");
     assert_eq!(error.kind(), std::io::ErrorKind::NotFound);
 }
+
+#[test]
+fn a_fixture_folder_lists_from_the_repo() {
+    let names = fixture_entries(concat!(env!("CARGO_MANIFEST_DIR"), "/src"));
+    assert!(names.contains(&"test_files.rs".to_string()), "{names:?}");
+}
