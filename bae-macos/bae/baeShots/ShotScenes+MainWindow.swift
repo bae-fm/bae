@@ -35,13 +35,6 @@ extension ShotScenes {
         importPercents: LatestStream<UInt32>? = nil,
         projections: LibraryProjectionStore? = nil,
         history: HistoryStore? = nil,
-        membership: MembershipStore = MembershipStore.stub(
-            people: PreviewData.members(
-                reaching: PreviewData.previewDropboxStorage
-            ),
-            selfIsAdmin: true
-        ),
-        syncStatus: SyncStatusStore = SyncStatusStore(),
         size: CGSize = CGSize(width: 1280, height: 800)
     ) -> some View {
         let slot =
@@ -89,8 +82,16 @@ extension ShotScenes {
                 history
                     ?? HistoryStore(library: backing.library, onError: { _ in })
             )
-            .environment(membership)
-            .environment(syncStatus)
+            // Ana, an admin, whose picture ends the title bar.
+            .environment(
+                MembershipStore.stub(
+                    people: PreviewData.members(
+                        reaching: PreviewData.previewDropboxStorage
+                    ),
+                    selfIsAdmin: true
+                )
+            )
+            .environment(SyncStatusStore())
             .environmentIfGiven(images)
             .environmentIfGiven(releaseEditor)
             .environmentIfGiven(outbox)
