@@ -3,7 +3,7 @@
 .bae-m-lrow-wide { padding-right: 16px; }
 .bae-m-lrow-selected { background: var(--accent-tint); }
 .bae-m-lrow-lifted { opacity: .45; }
-.bae-m-lrow-dragging { opacity: .75; background: var(--elevated); box-shadow: 0 8px 24px rgba(0,0,0,.35); pointer-events: none; }
+.bae-m-lrow-dragging { opacity: .75; background: var(--elevated); box-shadow: 0 8px 24px var(--shadow); pointer-events: none; }
 .bae-a-lrow { display: flex; align-items: center; gap: 12px; padding: 8px 16px; font-family: var(--font-android); }
 .bae-a-lrow-selected { background: var(--accent-tint); }
 .bae-m-chips { display: inline-flex; align-items: center; gap: var(--space-inline); }
