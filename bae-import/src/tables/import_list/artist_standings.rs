@@ -169,24 +169,18 @@ impl CreditSource<'_> {
 }
 
 /// The records' rule's answer to each credit among `edit`'s album artists
-/// and its tracks' own, as the JSON array a form's credit source binds: each
-/// credit's name and catalog ids, and the library artists the rule names
-/// for it. A credit the form holds twice is in it twice, and the source's
-/// statement groups them. The rule reads through `sql`, so a live read that asks it reads
-/// again after a write that changes an artist it can name.
+/// and its tracks' own ([`crate::RawReleaseEdit::credits`]), as the JSON
+/// array a form's credit source binds: each credit's name and catalog ids,
+/// and the library artists the rule names for it. A credit the form holds
+/// twice is in it twice, and the source's statement groups them. The rule
+/// reads through `sql`, so a live read that asks it reads again after a
+/// write that changes an artist it can name.
 pub(crate) fn form_credit_answers_on(
     sql: &impl coven::SqlRead,
     edit: &crate::RawReleaseEdit,
 ) -> Result<String, DbError> {
-    let tracks = edit.tracks.iter().flat_map(|track| match &track.artist_assignments {
-        crate::TrackArtistAssignments::AlbumArtists => [].as_slice(),
-        crate::TrackArtistAssignments::Explicit(assignments) => assignments.as_slice(),
-    });
     let mut answers = Vec::new();
-    for credited in edit.album_artist_assignments.iter().chain(tracks) {
-        let crate::ArtistAssignment::Credit { credit } = &credited.artist else {
-            continue;
-        };
+    for credit in edit.credits() {
         answers.push(serde_json::json!({
             "name": credit.name,
             "mb": credit.musicbrainz_artist_id,
