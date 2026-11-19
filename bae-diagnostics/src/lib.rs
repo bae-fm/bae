@@ -543,7 +543,7 @@ fn insert_str_header(
     Ok(())
 }
 
-#[derive(Debug, thiserror::Error)]
+#[derive(thiserror::Error)]
 pub enum DiagnosticsError {
     #[error("diagnostics worker failed to start")]
     SpawnWorker(#[source] std::io::Error),
@@ -567,6 +567,12 @@ pub enum DiagnosticsError {
     Transport(#[source] reqwest::Error),
     #[error("diagnostics intake rejected the batch with HTTP {0}")]
     Status(StatusCode),
+}
+
+impl fmt::Debug for DiagnosticsError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        bae_util::error_text::debug_as_text(f, "DiagnosticsError", self)
+    }
 }
 
 #[async_trait::async_trait]

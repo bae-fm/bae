@@ -124,7 +124,7 @@ fn mb_body(
 /// is kept structured — flattening it into a formatted string here would destroy
 /// it for every consumer. `Request` and `Other` are bae's own failures, never
 /// a provider verdict.
-#[derive(Debug, Error)]
+#[derive(Error)]
 pub enum MusicBrainzError {
     /// No release matched the DiscID (404 or an empty result set).
     #[error("No release found for DISCID: {0}")]
@@ -152,6 +152,12 @@ pub enum MusicBrainzError {
     /// search answer missing a field.
     #[error("MusicBrainz API error: {0}")]
     Other(String),
+}
+
+impl std::fmt::Debug for MusicBrainzError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        bae_util::error_text::debug_as_text(f, "MusicBrainzError", self)
+    }
 }
 
 impl MusicBrainzError {

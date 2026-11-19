@@ -29,6 +29,18 @@ impl fmt::Display for CauseChain<'_> {
     }
 }
 
+/// `Debug` for an error type that holds a `reqwest::Error`: the type's name
+/// and its `Display` text, which prints reqwest's error through
+/// [`CauseChain`]. reqwest's own `Debug` can hold a full URL, so such a type
+/// writes its `Debug` with this instead of deriving it.
+pub fn debug_as_text(
+    f: &mut fmt::Formatter<'_>,
+    name: &str,
+    error: &dyn fmt::Display,
+) -> fmt::Result {
+    f.debug_tuple(name).field(&format_args!("{error}")).finish()
+}
+
 /// `text` with each URL cut to its scheme, host and port.
 fn redact_urls(text: &str) -> String {
     let mut redacted = String::with_capacity(text.len());

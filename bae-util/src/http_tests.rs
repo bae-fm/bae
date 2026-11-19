@@ -164,7 +164,7 @@ async fn a_test_transport_holds_a_request_as_long_as_its_host_does() {
     let response = http.execute(request);
     tokio::pin!(response);
     tokio::select! {
-        answered = &mut response => panic!("a held request answered: {answered:?}"),
+        answered = &mut response => panic!("a held request answered: ok = {}", answered.is_ok()),
         () = host.wait_for_request("/held", 1) => {}
     }
 

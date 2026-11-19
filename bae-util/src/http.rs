@@ -398,12 +398,18 @@ impl TransportFailure {
     }
 }
 
-#[derive(Debug, thiserror::Error)]
+#[derive(thiserror::Error)]
 pub enum HttpBodyError {
     #[error("HTTP body too large (limit {limit} bytes)")]
     TooLarge { limit: usize },
     #[error("failed to read HTTP body: {}", crate::error_text::CauseChain(.0))]
     Read(#[source] reqwest::Error),
+}
+
+impl std::fmt::Debug for HttpBodyError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        crate::error_text::debug_as_text(f, "HttpBodyError", self)
+    }
 }
 
 pub async fn read_body_capped(

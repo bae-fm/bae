@@ -141,7 +141,7 @@ fn artist_url(artist_id: &str) -> String {
     format!("{API_BASE_URL}/artists/{artist_id}")
 }
 
-#[derive(Error, Debug)]
+#[derive(Error)]
 pub enum DiscogsError {
     /// The request never reached a usable response — connection, DNS, timeout, a
     /// dropped or unreadable body. Transport-level and worth retrying. Prints
@@ -164,6 +164,12 @@ pub enum DiscogsError {
     NotFound,
     #[error("Serialization error: {0}")]
     Serialization(#[from] serde_json::Error),
+}
+
+impl std::fmt::Debug for DiscogsError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        bae_util::error_text::debug_as_text(f, "DiscogsError", self)
+    }
 }
 
 impl DiscogsError {

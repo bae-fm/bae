@@ -22,7 +22,7 @@ pub use covers::{
 };
 
 /// Why a catalog's image or an archive gallery could not be read.
-#[derive(Debug, thiserror::Error)]
+#[derive(thiserror::Error)]
 pub enum RemoteImageError {
     /// What the host served is not a usable answer: bytes that are not an
     /// image bae can decode, a body over its size cap, a gallery document
@@ -62,6 +62,12 @@ pub enum RemoteImageError {
     /// an address.
     #[error("the image cache's table failed: {0}")]
     CacheStore(bae_store::DbError),
+}
+
+impl std::fmt::Debug for RemoteImageError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        bae_util::error_text::debug_as_text(f, "RemoteImageError", self)
+    }
 }
 
 #[cfg(test)]

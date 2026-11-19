@@ -52,7 +52,7 @@ pub struct Wikidata {
 /// MusicBrainz client keeps: a transport failure that produced no HTTP
 /// response, a timeout, or an HTTP error *response* carrying a status.
 /// `Request` and `Other` are bae's own failures, never Wikidata's verdict.
-#[derive(Debug, Error)]
+#[derive(Error)]
 pub enum WikidataError {
     /// Wikidata has no such item — a 404, which is its answer for an id that
     /// was deleted or never existed.
@@ -80,6 +80,12 @@ pub enum WikidataError {
     /// A local/internal failure (JSON parsing, body read).
     #[error("Wikidata API error: {0}")]
     Other(String),
+}
+
+impl std::fmt::Debug for WikidataError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        bae_util::error_text::debug_as_text(f, "WikidataError", self)
+    }
 }
 
 impl WikidataError {

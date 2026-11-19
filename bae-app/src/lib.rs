@@ -629,8 +629,10 @@ fn open_library(
     // that ask over it: each keeps its own rate limit and answers for as long
     // as this library is open. Only the desktop's import asks the catalogs.
     #[cfg(desktop)]
-    let http = bae_util::http::Http::new(Arc::clone(&clock))
-        .map_err(|e| BootstrapError::Internal(format!("Failed to build the HTTP client: {e}")))?;
+    let http = bae_util::http::Http::new(Arc::clone(&clock)).map_err(|e| {
+        let causes = bae_util::error_text::CauseChain(&e);
+        BootstrapError::Internal(format!("Failed to build the HTTP client: {causes}"))
+    })?;
     #[cfg(desktop)]
     let providers = bae_catalogs::providers::Providers::new(http.clone());
 
