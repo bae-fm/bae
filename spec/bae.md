@@ -3281,7 +3281,11 @@ history setting.
   language. The people with no profile yet come after them, in the order their
   member ids were made: when the founder created the library, or when an
   inviter created the invite. A removed person's row stays, read-only, and the
-  list does not show them.
+  list does not show them. Each person's row starts with their picture, or the
+  initials of their name, and says their role and how many devices they have,
+  as in *Member · 1 device*; a person with no profile yet has a blank picture
+  and a row that says they have no name yet. Invites are rows of their own
+  (**Open invites**, §5.6).
 
 ### 5.5 "Ana rated this"
 
