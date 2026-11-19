@@ -3,12 +3,12 @@ use bae_util::test_channels::HANG_GUARD;
 use tokio::time::timeout;
 
 /// The fan-out over a fresh library's `playback_now` row, with the
-/// sender that feeds it. The `TempDir` holds the library.
+/// sender that feeds it. The `TestFolder` holds the library.
 async fn started() -> (
     PlaybackProgressHandle,
     tokio_mpsc::UnboundedSender<PlaybackProgress>,
     bae_store::Store,
-    tempfile::TempDir,
+    bae_util::test_files::TestFolder,
 ) {
     started_reporting(bae_diagnostics::Diagnostics::noop()).await
 }
@@ -21,9 +21,9 @@ async fn started_reporting(
     PlaybackProgressHandle,
     tokio_mpsc::UnboundedSender<PlaybackProgress>,
     bae_store::Store,
-    tempfile::TempDir,
+    bae_util::test_files::TestFolder,
 ) {
-    let tmp = tempfile::TempDir::new().unwrap();
+    let tmp = bae_util::test_files::TestFolder::new();
     let db =
         bae_store::Store::new_test(crate::TEST_SCHEMA, tmp.path(), Arc::new(coven::SystemClock))
             .await

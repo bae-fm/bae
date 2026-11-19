@@ -222,9 +222,8 @@ mod scrub_points {
     fn a_scrub_inside_a_track_of_a_single_file_album_jumps_to_its_scrub_point() {
         bae_audio::init();
         let flac = noise_flac(30);
-        let dir = tempfile::TempDir::new().unwrap();
-        let path = dir.path().join("album.flac");
-        std::fs::write(&path, &flac).unwrap();
+        let dir = bae_util::test_files::TestFolder::new();
+        let path = dir.write("album.flac", &flac);
         let start_sample = 12 * u64::from(SAMPLE_RATE) + 1_234;
         let start_byte =
             bae_audio::seek_landing_bytes(&path, &[start_sample], &bae_util::test_files::lease())
@@ -249,9 +248,8 @@ mod scrub_points {
     fn a_track_start_in_a_file_without_a_seektable_jumps_to_its_byte() {
         bae_audio::init();
         let flac = noise_flac(30);
-        let dir = tempfile::TempDir::new().unwrap();
-        let path = dir.path().join("album.flac");
-        std::fs::write(&path, &flac).unwrap();
+        let dir = bae_util::test_files::TestFolder::new();
+        let path = dir.write("album.flac", &flac);
         let start_sample = 12 * u64::from(SAMPLE_RATE) + 1_234;
         let start_byte =
             bae_audio::seek_landing_bytes(&path, &[start_sample], &bae_util::test_files::lease())
@@ -354,7 +352,7 @@ mod image_track_starts {
     /// the image's end, starting its decode at the byte a seek to that sample
     /// lands on.
     fn image_track2(
-        dir: &std::path::Path,
+        dir: &bae_util::test_files::TestFolder,
         name: &str,
         format: EncodeFormat,
     ) -> (Vec<u8>, SegmentSpan) {
@@ -362,8 +360,7 @@ mod image_track_starts {
             .map(|i| (((i / 2) as f64 * 0.031).sin() * 0.3 * i32::MAX as f64) as i32)
             .collect();
         let bytes = bae_audio::encode_i32(format, &samples, 44_100, 2).expect("encode the image");
-        let path = dir.join(name);
-        std::fs::write(&path, &bytes).expect("write the image");
+        let path = dir.write(name, &bytes);
         let landing =
             bae_audio::seek_landing_bytes(&path, &[TRACK_2_START], &bae_util::test_files::lease())
                 .expect("read where track 2 starts")
@@ -385,8 +382,8 @@ mod image_track_starts {
         format: EncodeFormat,
         content_type: ContentType,
     ) -> (Vec<f32>, Vec<f32>) {
-        let temp = tempfile::tempdir().expect("tempdir");
-        let (bytes, track2) = image_track2(temp.path(), name, format);
+        let temp = bae_util::test_files::TestFolder::new();
+        let (bytes, track2) = image_track2(&temp, name, format);
         let buffer = || filled_sparse_buffer(&bytes);
 
         let mut prepared = test_prepared_track("track-2", buffer());

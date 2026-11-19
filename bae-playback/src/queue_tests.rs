@@ -9,7 +9,7 @@ use bae_store::Store;
 use std::collections::HashMap;
 
 pub(super) struct Fixture {
-    pub(super) _home: tempfile::TempDir,
+    pub(super) _home: bae_util::test_files::TestFolder,
     pub(super) db: Store,
     pub(super) queue: PlaybackQueue,
     pub(super) ids: HashMap<String, String>,
@@ -20,7 +20,7 @@ pub(super) struct Fixture {
 /// tracks in that order, and an empty queue over it.
 pub(super) async fn fixture(releases: &[(&str, &[&str])]) -> Fixture {
     use bae_records::{DbAlbum, DbAlbumArtist, DbArtist, DbRelease, DbReleaseMedium, DbTrack};
-    let home = tempfile::TempDir::new().unwrap();
+    let home = bae_util::test_files::TestFolder::new();
     let db =
         Store::new_test(crate::TEST_SCHEMA, home.path(), std::sync::Arc::new(coven::SystemClock))
             .await

@@ -7,6 +7,7 @@ use crate::capture_output::{
 };
 use crate::service::PlaybackMessage;
 use bae_audio::test_samples::{filled_sparse_buffer, samples_as_f32};
+use bae_util::test_files::TestFolder;
 use std::sync::Arc;
 
 /// A one-second stereo preview of `preview.wav` over `buffer` — the shape every
@@ -24,9 +25,8 @@ fn preview_source(buffer: SharedSparseBuffer) -> PreviewSource {
 #[tokio::test]
 #[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 async fn preview_play_rejects_unprobeable_file() {
-    let temp_dir = tempfile::TempDir::new().unwrap();
-    let path = temp_dir.path().join("not-audio.bin");
-    std::fs::write(&path, b"not audio").unwrap();
+    let temp_dir = TestFolder::new();
+    let path = temp_dir.write("not-audio.bin", b"not audio");
     let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
     let (command_tx, _command_rx) = OwnCommands::channel();
     let mut player = PreviewPlayer::new(
@@ -139,7 +139,7 @@ async fn preview_plays_only_the_requested_sample_window() {
         "a one-second source window emits exactly one second of samples"
     );
     let reference_path = fixture_dir.join("02 Test Artist - Track Two (White Noise).flac");
-    let reference_bytes = std::fs::read(reference_path).expect("read reference fixture");
+    let reference_bytes = bae_util::test_files::read_fixture(reference_path);
     let reference_buffer = filled_sparse_buffer(&reference_bytes);
     let reference =
         bae_audio::decode_audio(reference_buffer, None, None).expect("decode reference fixture");
@@ -213,7 +213,7 @@ async fn preview_seek_is_relative_to_the_requested_sample_window() {
     let captured = seeked_capture.wait_for_samples(1_000).await;
 
     let reference_path = fixture_dir.join("02 Test Artist - Track Two (White Noise).flac");
-    let reference_bytes = std::fs::read(reference_path).expect("read reference fixture");
+    let reference_bytes = bae_util::test_files::read_fixture(reference_path);
     let reference_buffer = filled_sparse_buffer(&reference_bytes);
     let reference =
         bae_audio::decode_audio(reference_buffer, None, None).expect("decode reference fixture");
@@ -379,7 +379,7 @@ async fn an_invalidated_preview_starts_again_where_it_got_to() {
     player.toggle_pause();
     let captured = second_capture.wait_for_samples(1_000).await;
     let reference_path = fixture_dir.join("02 Test Artist - Track Two (White Noise).flac");
-    let reference_bytes = std::fs::read(reference_path).expect("read reference fixture");
+    let reference_bytes = bae_util::test_files::read_fixture(reference_path);
     let reference_buffer = filled_sparse_buffer(&reference_bytes);
     let reference =
         bae_audio::decode_audio(reference_buffer, None, None).expect("decode reference fixture");
@@ -634,12 +634,10 @@ fn resolve_preview_probe_accepts_usable_format() {
 #[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
 async fn ending_a_preview_closes_its_file() {
     bae_audio::init();
-    let dir = tempfile::TempDir::new().unwrap();
+    let dir = TestFolder::new();
     let fixture = bae_audio::test_fixtures::cue_flac_dir();
-    let first = dir.path().join("first.flac");
-    let second = dir.path().join("second.flac");
-    std::fs::copy(fixture.join("Test Album.flac"), &first).unwrap();
-    std::fs::copy(fixture.join("Test Album.flac"), &second).unwrap();
+    let first = dir.copy_fixture(fixture.join("Test Album.flac"), "first.flac");
+    let second = dir.copy_fixture(fixture.join("Test Album.flac"), "second.flac");
     let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
     let (command_tx, _command_rx) = OwnCommands::channel();
     let mut player = PreviewPlayer::new(
@@ -654,7 +652,7 @@ async fn ending_a_preview_closes_its_file() {
     let device = CaptureAudioDevice::new(captured);
 
     let open_now = |path: &std::path::Path| {
-        let path = path.canonicalize().unwrap();
+        let path = dir.canonicalize(path);
         coven::open_files_under(dir.path()).into_iter().filter(|open| *open == path).count()
     };
     // The preview's fill opens its file on its own task, holds it until the

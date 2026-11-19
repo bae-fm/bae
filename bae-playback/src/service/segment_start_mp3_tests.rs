@@ -76,8 +76,8 @@ fn vbr_mp3(samples: &[i32], xing: bool) -> Vec<u8> {
     use ffmpeg_next as ff;
 
     let sample_rate = STEREO_44K.sample_rate as i32;
-    let dir = tempfile::TempDir::new().unwrap();
-    let path = dir.path().join("vbr.mp3");
+    let dir = bae_util::test_files::TestFolder::new();
+    let path = dir.join("vbr.mp3");
     let codec = ff::encoder::find_by_name("libmp3lame").expect("the LAME encoder");
     let mut output = ff::format::output_as(&path, "mp3").expect("the MP3 muxer");
     let format = ff::format::Sample::I16(ff::format::sample::Type::Planar);
@@ -129,7 +129,7 @@ fn vbr_mp3(samples: &[i32], xing: bool) -> Vec<u8> {
     encoder.send_eof().expect("flush the encoder");
     drain(&mut encoder, &mut output);
     output.write_trailer().expect("finish the MP3");
-    std::fs::read(&path).expect("read the MP3 back")
+    dir.read(&path)
 }
 
 /// One test file: its name, layout, length and bytes.

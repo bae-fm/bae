@@ -5,7 +5,7 @@ use bae_util::test_channels::HANG_GUARD;
 /// its task stops instead of reading the closed store again and again.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn a_follow_ends_once_its_store_closes() {
-    let directory = tempfile::TempDir::new().unwrap();
+    let directory = bae_util::test_files::TestFolder::new();
     let db = bae_store::Store::new_test(
         crate::TEST_SCHEMA,
         directory.path(),
@@ -42,7 +42,7 @@ async fn follow_ends<Request, Value>(follow: &mut LibraryFollow<Request, Value>)
 /// and leaves the service that holds it running.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn an_ended_follow_takes_a_new_request() {
-    let directory = tempfile::TempDir::new().unwrap();
+    let directory = bae_util::test_files::TestFolder::new();
     let db = bae_store::Store::new_test(
         crate::TEST_SCHEMA,
         directory.path(),
@@ -79,7 +79,7 @@ impl bae_diagnostics::BugReporter for HeardBugs {
 /// diagnostics: playback learns of a deleted track only from these reads.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn a_failed_read_is_reported_as_a_bug() {
-    let directory = tempfile::TempDir::new().unwrap();
+    let directory = bae_util::test_files::TestFolder::new();
     let db = bae_store::Store::new_test(
         crate::TEST_SCHEMA,
         directory.path(),
