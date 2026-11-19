@@ -141,6 +141,23 @@ fn a_moves_original_offers_restoring_it_or_cancelling_the_upload() {
     );
 }
 
+/// An upload whose source is coven's own copy, as of a cover, artist image
+/// or avatar bae made, has no original to put back: when the copy fails its
+/// check, coven retries the upload by itself, and the record offers waiting.
+#[test]
+fn an_upload_whose_copy_fails_its_check_waits_for_coven_to_retry() {
+    let record = coven::PendingRecord::new(
+        coven::PendingSubject::Upload {
+            device: coven::DeviceId(1),
+            object: coven::ObjectId(uuid::Uuid::from_u128(7)),
+        },
+        coven::PendingReason::FileUnavailable(coven::FileMissingReason::Source(
+            coven::FileSourceFailure::Integrity,
+        )),
+    );
+    assert_eq!(pending_action(&record, None), PendingAction::Wait);
+}
+
 #[test]
 fn missing_provider_permission_offers_sign_in() {
     let record = coven::PendingRecord::new(

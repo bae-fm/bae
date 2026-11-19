@@ -363,6 +363,8 @@ pub enum PendingAction {
     UpdateApp,
     SignIn(coven::CloudProvider),
     Reconnect,
+    /// Put a person's original back where it was imported from: what a
+    /// release's move whose original went missing waits for.
     RestoreFile,
     RetryOperation(coven::OperationId),
     /// Pin the release again through the download queue: what a failed
@@ -400,8 +402,11 @@ pub fn pending_action(record: &coven::PendingRecord, release_id: Option<&str>) -
                 coven::StorageFailure::Authentication | coven::StorageFailure::AccessNotGranted { .. },
             ..
         } => PendingAction::SignIn(*provider),
-        R::FileUnavailable(coven::FileMissingReason::Source(_))
-        | R::Original { failure: coven::FileSourceFailure::Missing, .. } => {
+        // Only a person's original can be put back. An upload's own source
+        // failure is coven's copy of a file bae made (a cover, artist image
+        // or avatar) failing its check, which coven retries by itself
+        // (`record.retry()` below).
+        R::Original { failure: coven::FileSourceFailure::Missing, .. } => {
             PendingAction::RestoreFile
         }
         R::FileUnavailable(coven::FileMissingReason::Lost) => PendingAction::Review,
