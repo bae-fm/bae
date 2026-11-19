@@ -539,7 +539,7 @@
     <string name="pair_waiting">في انتظار جهازك الآخر…</string>
     <string name="pair_ended_title">انتهت صلاحية هذا الرمز</string>
     <string name="pair_ended_text">افتح «إضافة جهاز» على جهازك الآخر للحصول على رمز جديد.</string>
-    <string name="add_device_expired">انتهت صلاحية هذا الرمز. أغلق هذه النافذة واختر «إضافة جهاز» مرة أخرى للحصول على رمز جديد.</string>
+    <string name="add_device_ended_text">اختر «إضافة جهاز» مرة أخرى للحصول على رمز جديد.</string>
     <string name="add_device_refused">تم رفض طلب الجهاز الجديد، لذلك لم تتم إضافته. حاول مرة أخرى برمز جديد.</string>
     <string name="onboarding_unreadable_join_title">انضمام غير مكتمل تتعذّر قراءته</string>
     <string name="onboarding_unreadable_join_discard">تجاهل…</string>

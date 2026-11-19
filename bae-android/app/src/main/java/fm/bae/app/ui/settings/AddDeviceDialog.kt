@@ -299,7 +299,16 @@ private fun AddDeviceBody(
             }
 
             face is AddDeviceFace.Expired || face is AddDeviceFace.Forgotten -> {
-                BodyLine(stringResource(R.string.add_device_expired))
+                Text(
+                    text = stringResource(R.string.pair_ended_title),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = stringResource(R.string.add_device_ended_text),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
 
             face is AddDeviceFace.Refused -> {

@@ -503,7 +503,7 @@
     <string name="pair_waiting">Diğer cihazınız bekleniyor…</string>
     <string name="pair_ended_title">Bu kodun süresi doldu</string>
     <string name="pair_ended_text">Yeni kod için diğer cihazınızda Cihaz ekle’yi açın.</string>
-    <string name="add_device_expired">Bu kodun süresi doldu. Bunu kapatın ve yeni kod için Cihaz ekle’yi yeniden seçin.</string>
+    <string name="add_device_ended_text">Yeni kod için Cihaz ekle’yi yeniden seçin.</string>
     <string name="add_device_refused">Yeni cihazın isteği reddedildi, bu yüzden eklenmedi. Yeni bir kodla yeniden deneyin.</string>
     <string name="onboarding_unreadable_join_title">Okunamayan tamamlanmamış katılma</string>
     <string name="onboarding_unreadable_join_discard">Sil…</string>

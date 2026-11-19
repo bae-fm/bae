@@ -169,6 +169,28 @@ extension ShotScene {
             )
         },
         ShotScene(
+            id: "mac.settings.add-device.ended",
+            size: CGSize(width: 690, height: 600),
+            frame: .window(title: "Settings", titleBar: .hidden)
+        ) {
+            peopleStage(
+                subpage: .devices,
+                sheet: {
+                    AnyView(
+                        AddDeviceSheetContent(
+                            result: nil,
+                            face: .expired,
+                            busy: false,
+                            error: nil,
+                            onApprove: {},
+                            onDecline: {},
+                            onDismiss: {}
+                        )
+                    )
+                }
+            )
+        },
+        ShotScene(
             id: "mac.settings.invite.dropbox",
             size: CGSize(width: 690, height: 600),
             frame: .window(title: "Settings", titleBar: .hidden)

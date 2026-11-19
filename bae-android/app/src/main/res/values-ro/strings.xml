@@ -510,7 +510,7 @@
     <string name="pair_waiting">Se așteaptă celălalt dispozitiv…</string>
     <string name="pair_ended_title">Acest cod a expirat</string>
     <string name="pair_ended_text">Deschide Adaugă dispozitiv pe celălalt dispozitiv pentru unul nou.</string>
-    <string name="add_device_expired">Acest cod a expirat. Închide această fereastră și alege din nou Adaugă dispozitiv pentru unul nou.</string>
+    <string name="add_device_ended_text">Alege din nou Adaugă dispozitiv pentru unul nou.</string>
     <string name="add_device_refused">Cererea noului dispozitiv a fost refuzată, deci nu a fost adăugat. Încearcă din nou cu un cod nou.</string>
     <string name="onboarding_unreadable_join_title">Alăturare neterminată care nu poate fi citită</string>
     <string name="onboarding_unreadable_join_discard">Renunță…</string>

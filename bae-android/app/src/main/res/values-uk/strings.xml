@@ -521,7 +521,7 @@
     <string name="pair_waiting">Очікування вашого іншого пристрою…</string>
     <string name="pair_ended_title">Термін дії цього коду минув</string>
     <string name="pair_ended_text">Щоб отримати новий, відкрийте «Додати пристрій» на іншому пристрої.</string>
-    <string name="add_device_expired">Термін дії цього коду минув. Закрийте це вікно й знову виберіть «Додати пристрій», щоб отримати новий.</string>
+    <string name="add_device_ended_text">Щоб отримати новий, знову виберіть «Додати пристрій».</string>
     <string name="add_device_refused">Запит нового пристрою відхилено, тож його не додано. Спробуйте ще раз із новим кодом.</string>
     <string name="onboarding_unreadable_join_title">Незавершене приєднання, яке неможливо прочитати</string>
     <string name="onboarding_unreadable_join_discard">Відхилити…</string>

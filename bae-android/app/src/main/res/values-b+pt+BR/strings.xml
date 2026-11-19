@@ -510,7 +510,7 @@
     <string name="pair_waiting">Aguardando o seu outro dispositivo…</string>
     <string name="pair_ended_title">Este código expirou</string>
     <string name="pair_ended_text">Abra Adicionar dispositivo no seu outro dispositivo para obter um novo.</string>
-    <string name="add_device_expired">Este código expirou. Feche isto e escolha Adicionar dispositivo de novo para obter um novo.</string>
+    <string name="add_device_ended_text">Escolha Adicionar dispositivo de novo para obter um novo.</string>
     <string name="add_device_refused">O pedido do novo dispositivo foi recusado, então ele não foi adicionado. Tente de novo com um código novo.</string>
     <string name="onboarding_unreadable_join_title">Entrada não concluída que não pode ser lida</string>
     <string name="onboarding_unreadable_join_discard">Descartar…</string>

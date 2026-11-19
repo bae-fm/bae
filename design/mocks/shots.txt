@@ -52,6 +52,7 @@ android.search.typing
 android.settings.about
 android.settings.add-device
 android.settings.add-device.added
+android.settings.add-device.ended
 android.settings.add-device.request
 android.settings.appearance
 android.settings.casting.found
@@ -226,6 +227,7 @@ mac.search.results.none
 mac.settings.about
 mac.settings.add-device
 mac.settings.add-device.added
+mac.settings.add-device.ended
 mac.settings.add-device.request
 mac.settings.appearance
 mac.settings.automation.off

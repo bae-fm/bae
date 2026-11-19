@@ -512,7 +512,7 @@
     <string name="pair_waiting">Čekanje na vaš drugi uređaj…</string>
     <string name="pair_ended_title">Ovaj je kôd istekao</string>
     <string name="pair_ended_text">Na drugom uređaju otvorite Dodaj uređaj za novi kôd.</string>
-    <string name="add_device_expired">Ovaj je kôd istekao. Zatvorite ovo i ponovno odaberite Dodaj uređaj za novi kôd.</string>
+    <string name="add_device_ended_text">Za novi kôd ponovno odaberite Dodaj uređaj.</string>
     <string name="add_device_refused">Zahtjev novog uređaja odbijen je pa uređaj nije dodan. Pokušajte ponovno s novim kôdom.</string>
     <string name="onboarding_unreadable_join_title">Nedovršeno pridruživanje koje se ne može pročitati</string>
     <string name="onboarding_unreadable_join_discard">Odbaci…</string>

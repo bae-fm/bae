@@ -148,6 +148,22 @@ class SettingsPeopleShots : BoardShot() {
             }
         }
 
+    /** Add device after its code ended: the sheet says so and what to do. */
+    @Test
+    fun androidSettingsAddDeviceEnded() =
+        shot("android.settings.add-device.ended") {
+            InPlaceDialogScene(behind = { DevicesPageScene(ana()) }) {
+                addDeviceParts(
+                    adding = null,
+                    face = AddDeviceFace.Expired,
+                    error = null,
+                    onApprove = {},
+                    onDecline = {},
+                    onDismiss = {},
+                )
+            }
+        }
+
     /** The request of a new device to join, with the number to compare. */
     @Test
     fun androidSettingsAddDeviceRequest() =

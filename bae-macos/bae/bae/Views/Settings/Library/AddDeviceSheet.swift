@@ -134,10 +134,13 @@ struct AddDeviceSheetContent: View {
         case .adding(let name):
             MacSpinner("Adding \(name)…")
         case .expired, .forgotten:
-            Text(
-                "This code has ended. Close this and choose Add device again for a new one."
-            )
-            .themeText(.body)
+            VStack(alignment: .leading, spacing: ThemeSpace.related) {
+                Text("This code has ended")
+                    .themeText(.body)
+                Text("Choose Add device again for a new one.")
+                    .themeText(.body)
+                    .foregroundStyle(.secondary)
+            }
         case .refused:
             Text(
                 "The new device’s request was refused, so it was not added. Try again with a new code."

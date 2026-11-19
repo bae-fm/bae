@@ -501,7 +501,7 @@
     <string name="pair_waiting">Venter på den andre enheten din…</string>
     <string name="pair_ended_title">Denne koden er utløpt</string>
     <string name="pair_ended_text">Åpne Legg til enhet på den andre enheten din for å få en ny.</string>
-    <string name="add_device_expired">Denne koden er utløpt. Lukk dette og velg Legg til enhet på nytt for å få en ny.</string>
+    <string name="add_device_ended_text">Velg Legg til enhet på nytt for å få en ny.</string>
     <string name="add_device_refused">Forespørselen fra den nye enheten ble avvist, så den ble ikke lagt til. Prøv igjen med en ny kode.</string>
     <string name="onboarding_unreadable_join_title">Uferdig tilkobling som ikke kan leses</string>
     <string name="onboarding_unreadable_join_discard">Forkast…</string>

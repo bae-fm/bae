@@ -512,7 +512,7 @@
     <string name="pair_waiting">ממתין למכשיר השני שלך…</string>
     <string name="pair_ended_title">תוקף הקוד הזה הסתיים</string>
     <string name="pair_ended_text">פתח את ״הוספת מכשיר״ במכשיר השני שלך כדי לקבל קוד חדש.</string>
-    <string name="add_device_expired">תוקף הקוד הזה הסתיים. סגור את החלון ובחר שוב ״הוספת מכשיר״ כדי לקבל קוד חדש.</string>
+    <string name="add_device_ended_text">בחר שוב ״הוספת מכשיר״ כדי לקבל קוד חדש.</string>
     <string name="add_device_refused">הבקשה של המכשיר החדש נדחתה, ולכן הוא לא נוסף. נסה שוב עם קוד חדש.</string>
     <string name="onboarding_unreadable_join_title">הצטרפות שלא הסתיימה ואי אפשר לקרוא אותה</string>
     <string name="onboarding_unreadable_join_discard">השלך…</string>

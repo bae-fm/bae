@@ -166648,169 +166648,169 @@
         }
       }
     },
-    "This code has ended. Close this and choose Add device again for a new one." : {
+    "Choose Add device again for a new one." : {
       "comment" : "Add device sheet: shown when the pairing's code ended before a device was added.",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "انتهت صلاحية هذا الرمز. أغلق هذه النافذة واختر «إضافة جهاز» مرة أخرى للحصول على رمز جديد."
+            "value" : "اختر «إضافة جهاز» مرة أخرى للحصول على رمز جديد."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Този код е изтекъл. Затворете това и изберете отново „Добавяне на устройство“ за нов код."
+            "value" : "Изберете отново „Добавяне на устройство“ за нов код."
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Platnost tohoto kódu skončila. Zavřete toto okno a znovu zvolte Přidat zařízení pro nový kód."
+            "value" : "Pro nový kód znovu zvolte Přidat zařízení."
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Denne kode er udløbet. Luk dette, og vælg Tilføj enhed igen for at få en ny."
+            "value" : "Vælg Tilføj enhed igen for at få en ny."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dieser Code ist abgelaufen. Schließe dieses Fenster und wähle erneut „Gerät hinzufügen“, um einen neuen zu erhalten."
+            "value" : "Wähle erneut „Gerät hinzufügen“, um einen neuen Code zu erhalten."
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Αυτός ο κωδικός έχει λήξει. Κλείστε αυτό και επιλέξτε ξανά Προσθήκη συσκευής για νέο κωδικό."
+            "value" : "Επιλέξτε ξανά Προσθήκη συσκευής για νέο κωδικό."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Este código ha caducado. Cierra esto y elige Añadir dispositivo de nuevo para obtener uno nuevo."
+            "value" : "Elige Añadir dispositivo de nuevo para obtener uno nuevo."
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tämä koodi on vanhentunut. Sulje tämä ja valitse Lisää laite uudelleen saadaksesi uuden koodin."
+            "value" : "Valitse Lisää laite uudelleen saadaksesi uuden koodin."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ce code a expiré. Fermez cette fenêtre et choisissez de nouveau Ajouter un appareil pour en obtenir un nouveau."
+            "value" : "Choisissez de nouveau Ajouter un appareil pour en obtenir un nouveau."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "תוקף הקוד הזה הסתיים. סגור את החלון ובחר שוב ״הוספת מכשיר״ כדי לקבל קוד חדש."
+            "value" : "בחר שוב ״הוספת מכשיר״ כדי לקבל קוד חדש."
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ovaj je kôd istekao. Zatvorite ovo i ponovno odaberite Dodaj uređaj za novi kôd."
+            "value" : "Za novi kôd ponovno odaberite Dodaj uređaj."
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ez a kód lejárt. Zárd be ezt, és válaszd újra az Eszköz hozzáadása lehetőséget egy újért."
+            "value" : "Válaszd újra az Eszköz hozzáadása lehetőséget egy újért."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Questo codice è scaduto. Chiudi questa finestra e scegli di nuovo Aggiungi dispositivo per ottenerne uno nuovo."
+            "value" : "Scegli di nuovo Aggiungi dispositivo per ottenerne uno nuovo."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "このコードは期限切れです。これを閉じて、もう一度「デバイスを追加」を選び、新しいコードを取得してください。"
+            "value" : "新しいコードを取得するには、もう一度「デバイスを追加」を選んでください。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "이 코드가 만료되었습니다. 이 창을 닫고 기기 추가를 다시 선택해 새 코드를 받으세요."
+            "value" : "새 코드를 받으려면 기기 추가를 다시 선택하세요."
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Denne koden er utløpt. Lukk dette og velg Legg til enhet på nytt for å få en ny."
+            "value" : "Velg Legg til enhet på nytt for å få en ny."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Deze code is verlopen. Sluit dit en kies opnieuw Apparaat toevoegen voor een nieuwe."
+            "value" : "Kies opnieuw Apparaat toevoegen voor een nieuwe."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ten kod wygasł. Zamknij to okno i ponownie wybierz Dodaj urządzenie, aby dostać nowy."
+            "value" : "Aby dostać nowy kod, ponownie wybierz Dodaj urządzenie."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Este código expirou. Feche isto e escolha Adicionar dispositivo de novo para obter um novo."
+            "value" : "Escolha Adicionar dispositivo de novo para obter um novo."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Este código expirou. Feche isto e escolha Adicionar dispositivo de novo para obter um novo."
+            "value" : "Escolha Adicionar dispositivo de novo para obter um novo."
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Acest cod a expirat. Închide această fereastră și alege din nou Adaugă dispozitiv pentru unul nou."
+            "value" : "Alege din nou Adaugă dispozitiv pentru unul nou."
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Platnosť tohto kódu skončila. Zavrite toto okno a znova zvoľte Pridať zariadenie pre nový kód."
+            "value" : "Pre nový kód znova zvoľte Pridať zariadenie."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Den här koden har gått ut. Stäng detta och välj Lägg till enhet igen för att få en ny."
+            "value" : "Välj Lägg till enhet igen för att få en ny."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu kodun süresi doldu. Bunu kapatın ve yeni kod için Cihaz ekle’yi yeniden seçin."
+            "value" : "Yeni kod için Cihaz ekle’yi yeniden seçin."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Термін дії цього коду минув. Закрийте це вікно й знову виберіть «Додати пристрій», щоб отримати новий."
+            "value" : "Щоб отримати новий, знову виберіть «Додати пристрій»."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "此代码已失效。请关闭此窗口，再次选择“添加设备”以获取新代码。"
+            "value" : "请再次选择“添加设备”以获取新代码。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "此代碼已失效。請關閉此視窗，再次選擇「新增裝置」以取得新代碼。"
+            "value" : "請再次選擇「新增裝置」以取得新代碼。"
           }
         }
       }

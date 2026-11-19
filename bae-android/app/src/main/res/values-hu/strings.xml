@@ -501,7 +501,7 @@
     <string name="pair_waiting">Várakozás a másik eszközödre…</string>
     <string name="pair_ended_title">Ez a kód lejárt</string>
     <string name="pair_ended_text">Nyisd meg a másik eszközödön az Eszköz hozzáadása lehetőséget egy újért.</string>
-    <string name="add_device_expired">Ez a kód lejárt. Zárd be ezt, és válaszd újra az Eszköz hozzáadása lehetőséget egy újért.</string>
+    <string name="add_device_ended_text">Válaszd újra az Eszköz hozzáadása lehetőséget egy újért.</string>
     <string name="add_device_refused">Az új eszköz kérését elutasították, ezért nem lett hozzáadva. Próbáld újra új kóddal.</string>
     <string name="onboarding_unreadable_join_title">Nem olvasható befejezetlen csatlakozás</string>
     <string name="onboarding_unreadable_join_discard">Eldobás…</string>

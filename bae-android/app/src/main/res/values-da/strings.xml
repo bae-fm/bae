@@ -501,7 +501,7 @@
     <string name="pair_waiting">Venter på din anden enhed…</string>
     <string name="pair_ended_title">Denne kode er udløbet</string>
     <string name="pair_ended_text">Åbn Tilføj enhed på din anden enhed for at få en ny.</string>
-    <string name="add_device_expired">Denne kode er udløbet. Luk dette, og vælg Tilføj enhed igen for at få en ny.</string>
+    <string name="add_device_ended_text">Vælg Tilføj enhed igen for at få en ny.</string>
     <string name="add_device_refused">Den nye enheds anmodning blev afvist, så den blev ikke tilføjet. Prøv igen med en ny kode.</string>
     <string name="onboarding_unreadable_join_title">Ufuldstændig tilslutning, der ikke kan læses</string>
     <string name="onboarding_unreadable_join_discard">Kassér…</string>

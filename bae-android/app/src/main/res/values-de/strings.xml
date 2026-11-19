@@ -503,7 +503,7 @@
     <string name="pair_waiting">Warte auf dein anderes Gerät …</string>
     <string name="pair_ended_title">Dieser Code ist abgelaufen</string>
     <string name="pair_ended_text">Öffne auf deinem anderen Gerät „Gerät hinzufügen“, um einen neuen zu erhalten.</string>
-    <string name="add_device_expired">Dieser Code ist abgelaufen. Schließe dieses Fenster und wähle erneut „Gerät hinzufügen“, um einen neuen zu erhalten.</string>
+    <string name="add_device_ended_text">Wähle erneut „Gerät hinzufügen“, um einen neuen Code zu erhalten.</string>
     <string name="add_device_refused">Die Anfrage des neuen Geräts wurde abgelehnt, daher wurde es nicht hinzugefügt. Versuche es mit einem neuen Code erneut.</string>
     <string name="onboarding_unreadable_join_title">Unfertiges Beitreten, das nicht gelesen werden kann</string>
     <string name="onboarding_unreadable_join_discard">Verwerfen …</string>

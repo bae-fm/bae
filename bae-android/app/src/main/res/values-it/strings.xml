@@ -510,7 +510,7 @@
     <string name="pair_waiting">In attesa dell’altro dispositivo…</string>
     <string name="pair_ended_title">Questo codice è scaduto</string>
     <string name="pair_ended_text">Apri Aggiungi dispositivo sull’altro dispositivo per ottenerne uno nuovo.</string>
-    <string name="add_device_expired">Questo codice è scaduto. Chiudi questa finestra e scegli di nuovo Aggiungi dispositivo per ottenerne uno nuovo.</string>
+    <string name="add_device_ended_text">Scegli di nuovo Aggiungi dispositivo per ottenerne uno nuovo.</string>
     <string name="add_device_refused">La richiesta del nuovo dispositivo è stata rifiutata, quindi non è stato aggiunto. Riprova con un nuovo codice.</string>
     <string name="onboarding_unreadable_join_title">Adesione non completata che non può essere letta</string>
     <string name="onboarding_unreadable_join_discard">Scarta…</string>

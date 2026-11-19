@@ -494,7 +494,7 @@
     <string name="pair_waiting">다른 기기를 기다리는 중…</string>
     <string name="pair_ended_title">이 코드가 만료되었습니다</string>
     <string name="pair_ended_text">새 코드를 받으려면 다른 기기에서 기기 추가를 여세요.</string>
-    <string name="add_device_expired">이 코드가 만료되었습니다. 이 창을 닫고 기기 추가를 다시 선택해 새 코드를 받으세요.</string>
+    <string name="add_device_ended_text">새 코드를 받으려면 기기 추가를 다시 선택하세요.</string>
     <string name="add_device_refused">새 기기의 요청이 거부되어 추가되지 않았습니다. 새 코드로 다시 시도하세요.</string>
     <string name="onboarding_unreadable_join_title">읽을 수 없는 미완료 참여</string>
     <string name="onboarding_unreadable_join_discard">삭제…</string>

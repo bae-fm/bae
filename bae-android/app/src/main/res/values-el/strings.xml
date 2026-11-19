@@ -501,7 +501,7 @@
     <string name="pair_waiting">Αναμονή για την άλλη σας συσκευή…</string>
     <string name="pair_ended_title">Αυτός ο κωδικός έχει λήξει</string>
     <string name="pair_ended_text">Ανοίξτε την Προσθήκη συσκευής στην άλλη σας συσκευή για νέο κωδικό.</string>
-    <string name="add_device_expired">Αυτός ο κωδικός έχει λήξει. Κλείστε αυτό και επιλέξτε ξανά Προσθήκη συσκευής για νέο κωδικό.</string>
+    <string name="add_device_ended_text">Επιλέξτε ξανά Προσθήκη συσκευής για νέο κωδικό.</string>
     <string name="add_device_refused">Το αίτημα της νέας συσκευής απορρίφθηκε, οπότε δεν προστέθηκε. Δοκιμάστε ξανά με νέο κωδικό.</string>
     <string name="onboarding_unreadable_join_title">Ημιτελής συμμετοχή που δεν μπορεί να διαβαστεί</string>
     <string name="onboarding_unreadable_join_discard">Απόρριψη…</string>

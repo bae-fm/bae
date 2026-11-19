@@ -519,7 +519,7 @@
     <string name="pair_waiting">Čaká sa na vaše druhé zariadenie…</string>
     <string name="pair_ended_title">Platnosť tohto kódu skončila</string>
     <string name="pair_ended_text">Na druhom zariadení otvorte Pridať zariadenie a získajte nový kód.</string>
-    <string name="add_device_expired">Platnosť tohto kódu skončila. Zavrite toto okno a znova zvoľte Pridať zariadenie pre nový kód.</string>
+    <string name="add_device_ended_text">Pre nový kód znova zvoľte Pridať zariadenie.</string>
     <string name="add_device_refused">Žiadosť nového zariadenia bola zamietnutá, takže nebolo pridané. Skúste to znova s novým kódom.</string>
     <string name="onboarding_unreadable_join_title">Nedokončené pripojenie, ktoré sa nedá prečítať</string>
     <string name="onboarding_unreadable_join_discard">Zahodiť…</string>

@@ -503,7 +503,7 @@
     <string name="pair_waiting">Изчакване на другото ви устройство…</string>
     <string name="pair_ended_title">Този код е изтекъл</string>
     <string name="pair_ended_text">Отворете „Добавяне на устройство“ на другото си устройство за нов код.</string>
-    <string name="add_device_expired">Този код е изтекъл. Затворете това и изберете отново „Добавяне на устройство“ за нов код.</string>
+    <string name="add_device_ended_text">Изберете отново „Добавяне на устройство“ за нов код.</string>
     <string name="add_device_refused">Заявката на новото устройство беше отказана, затова то не е добавено. Опитайте отново с нов код.</string>
     <string name="onboarding_unreadable_join_title">Незавършено присъединяване, което не може да бъде прочетено</string>
     <string name="onboarding_unreadable_join_discard">Отхвърляне…</string>
