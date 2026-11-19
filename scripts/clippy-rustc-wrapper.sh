@@ -1,11 +1,17 @@
 #!/bin/bash
 # cargo's RUSTC_WRAPPER for scripts/clippy-crates.sh. cargo runs a workspace
 # crate as `<wrapper> <lints> rustc <args>`, where <lints> is the typed
-# lints' wrapper (tools/typed-lints/built/typed-lints-rustc), and sccache,
-# handed that, takes `rustc` for a second input file and caches nothing. So a
-# workspace crate runs under the typed lints' wrapper alone, and every other
-# crate runs as `<cache> rustc <args>`, which sccache caches and shares
-# between worktrees. <cache> is ~/.local/bin/builds-rustc when builds
+# lints' wrapper (tools/typed-lints/built/typed-lints-rustc). A workspace
+# crate runs under the typed lints' wrapper alone, never through sccache, for
+# three reasons:
+#   - a cache hit would restore the crate's metadata without the read rule's
+#     record that the driver writes beside it (below);
+#   - sccache refuses an incremental compile, and the workspace crates compile
+#     incrementally (below);
+#   - sccache's key holds the checkout's folder, so no other worktree would
+#     share the entry.
+# Every other crate runs as `<cache> rustc <args>`, which sccache caches and
+# shares between worktrees. <cache> is ~/.local/bin/builds-rustc when builds
 # installed it, which runs sccache and remaps a filled OUT_DIR so crates such
 # as serde_core give the same bytes in every worktree; without builds (CI) it
 # is sccache.
@@ -27,8 +33,7 @@
 # The workspace crates compile incrementally, so a lint after an edit
 # recompiles only what the edit changed. `builds cargo` turns incremental
 # compilation off outside main, since sccache refuses an incremental compile,
-# but sccache caches nothing the driver runs anyway. When cargo passes no
-# `-C incremental`, the wrapper passes
+# so when cargo passes no `-C incremental`, the wrapper passes
 # `-C incremental=<profile dir>/incremental`, which builds keeps.
 set -uo pipefail
 cache=sccache
