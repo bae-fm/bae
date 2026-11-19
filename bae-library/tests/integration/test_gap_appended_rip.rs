@@ -25,7 +25,11 @@ fn tone(frequency: f64) -> Vec<i32> {
 /// Import the rip: three WAV files and a sheet whose tracks 2 and 3 start
 /// their pregap two seconds into the file before their own. Returns the
 /// library, the release and the directory that owns it all.
-async fn import_rip() -> (bae_library::test_libraries::TestLibrary, String, tempfile::TempDir) {
+async fn import_rip() -> (
+    bae_library::test_libraries::TestLibrary,
+    String,
+    (bae_util::test_files::TestFolder, bae_util::test_files::TestFolder),
+) {
     bae_util::test_logs::install();
     bae_audio::init();
     let release = bae_catalogs::discogs::models::DiscogsRelease {
@@ -49,9 +53,9 @@ async fn import_rip() -> (bae_library::test_libraries::TestLibrary, String, temp
                     2,
                 )
                 .expect("encode a file");
-                std::fs::write(dir.join(name), audio).unwrap();
+                dir.write(dir.join(name), audio);
             }
-            std::fs::write(
+            dir.write(
                 dir.join("Album Title.cue"),
                 format!(
                     "FILE \"{}\" WAVE\n  TRACK 01 AUDIO\n    TITLE \"Track One\"\n    INDEX 01 00:00:00\n  \
@@ -60,15 +64,13 @@ async fn import_rip() -> (bae_library::test_libraries::TestLibrary, String, temp
                      TRACK 03 AUDIO\n    TITLE \"Track Three\"\n    INDEX 00 00:02:00\n\
                      FILE \"{}\" WAVE\n    INDEX 01 00:00:00\n",
                     FILES[0], FILES[1], FILES[2]
-                ),
-            )
-            .unwrap();
+                ));
         },
     )
     .await
     .expect("import the rip");
     assert_eq!(imported.track_ids.len(), 3, "the rip's three tracks");
-    (library, imported.release_id, imported.temp_dir)
+    (library, imported.release_id, (imported.temp_dir, imported.album_dir))
 }
 
 /// Each of the editor's rows names the file its track's body plays from,

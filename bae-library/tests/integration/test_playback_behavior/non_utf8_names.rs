@@ -14,7 +14,7 @@ async fn a_track_whose_name_is_not_utf8_plays() {
         album,
         "non-utf8-name",
         coven::IdSource::new_id(&coven::UuidIds).to_string(),
-        |album_dir| write_first_test_track(album_dir, b"01 Caf\xE9.flac"),
+        |album| write_first_test_track(album, album.path(), b"01 Caf\xE9.flac"),
     )
     .await
     .expect("the album imports");
@@ -36,13 +36,12 @@ async fn a_track_in_a_folder_whose_name_is_not_utf8_plays() {
         bae_util::http::Http::for_test(),
     )
     .await;
-    let album_dir = temp_dir.path().join(std::ffi::OsStr::from_bytes(b"Caf\xE9"));
-    std::fs::create_dir_all(&album_dir).unwrap();
+    let album_dir = temp_dir.create_folder(std::ffi::OsStr::from_bytes(b"Caf\xE9"));
     let mut album = create_test_album();
     album.id = "non-utf8-folder".to_string();
     album.tracklist.truncate(1);
     let release_key = fakes.seed_discogs_test_release(album);
-    write_first_test_track(&album_dir, b"01 Track.flac");
+    write_first_test_track(&temp_dir, &album_dir, b"01 Track.flac");
 
     let release_id = library.import_folder(album_dir, release_key).await;
     let tracks = library.records().get_tracks_for_release(&release_id).await.unwrap();
@@ -54,13 +53,13 @@ async fn a_track_in_a_folder_whose_name_is_not_utf8_plays() {
 }
 
 /// Write the first test track's FLAC into `album_dir` under `name`.
-fn write_first_test_track(album_dir: &std::path::Path, name: &[u8]) {
+fn write_first_test_track(
+    folder: &bae_util::test_files::TestFolder,
+    album_dir: &std::path::Path,
+    name: &[u8],
+) {
     let fixture = bae_import::test_fixtures::flac_dir().join("01 Test Track 1.flac");
-    std::fs::write(
-        album_dir.join(std::ffi::OsStr::from_bytes(name)),
-        bae_util::test_files::read_fixture(&fixture),
-    )
-    .unwrap();
+    folder.copy_fixture(&fixture, album_dir.join(std::ffi::OsStr::from_bytes(name)));
 }
 
 /// Play `track_id` on a capture device and wait until it plays and its audio

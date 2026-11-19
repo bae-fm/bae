@@ -6,13 +6,13 @@ async fn folder_scan_produces_candidates() {
     bae_util::test_logs::install();
     let f = ImportFixture::new().await;
 
-    let collection = f.temp_path().join("Collection");
+    let collection = f.temp.path().join("Collection");
     let album1 = collection.join("Artist - First Album");
     let album2 = collection.join("Artist - Second Album");
-    fs::create_dir_all(&album1).unwrap();
-    fs::create_dir_all(&album2).unwrap();
-    generate_album_files(&album1, &["01 Track.flac", "02 Track.flac"]);
-    generate_album_files(&album2, &["01 Track.flac"]);
+    f.temp.create_folder(&album1);
+    f.temp.create_folder(&album2);
+    generate_album_files(&f.temp, &album1, &["01 Track.flac", "02 Track.flac"]);
+    generate_album_files(&f.temp, &album2, &["01 Track.flac"]);
 
     let mut scan_rx = f.handle.every_scan_event_for_test();
     f.handle.add_watched_folder(collection.to_path_buf()).await.unwrap();
@@ -44,10 +44,10 @@ async fn watcher_reconciles_added_and_removed_candidates() {
     bae_util::test_logs::install();
     let f = ImportFixture::new().await;
 
-    let collection = f.temp_path().join("Collection");
+    let collection = f.temp.path().join("Collection");
     let album1 = collection.join("Artist - First Album");
-    fs::create_dir_all(&album1).unwrap();
-    generate_album_files(&album1, &["01 Track.flac"]);
+    f.temp.create_folder(&album1);
+    generate_album_files(&f.temp, &album1, &["01 Track.flac"]);
     let album1_key = bae_import::CandidateKey::folder(&album1);
 
     let mut scan_rx = f.handle.every_scan_event_for_test();
@@ -62,8 +62,8 @@ async fn watcher_reconciles_added_and_removed_candidates() {
 
     // A new release folder appears on disk; re-scan surfaces it.
     let album2 = collection.join("Artist - Second Album");
-    fs::create_dir_all(&album2).unwrap();
-    generate_album_files(&album2, &["01 Track.flac"]);
+    f.temp.create_folder(&album2);
+    generate_album_files(&f.temp, &album2, &["01 Track.flac"]);
     let album2_key = bae_import::CandidateKey::folder(&album2);
     f.handle.scan_watched_folders().await.unwrap();
 
@@ -77,7 +77,7 @@ async fn watcher_reconciles_added_and_removed_candidates() {
     );
 
     // The first release folder is deleted; re-scan removes its candidate.
-    fs::remove_dir_all(&album1).unwrap();
+    f.temp.remove(&album1);
     f.handle.scan_watched_folders().await.unwrap();
 
     let third = scan_batch_until(&mut scan_rx, "the deleted folder's candidate removal", |e| {
@@ -161,10 +161,10 @@ async fn remove_watched_folder_drops_folder_and_candidates() {
     bae_util::test_logs::install();
     let f = ImportFixture::new().await;
 
-    let collection = f.temp_path().join("Collection");
+    let collection = f.temp.path().join("Collection");
     let album = collection.join("Artist - Album");
-    fs::create_dir_all(&album).unwrap();
-    generate_album_files(&album, &["01 Track.flac"]);
+    f.temp.create_folder(&album);
+    generate_album_files(&f.temp, &album, &["01 Track.flac"]);
     let album_key = bae_import::CandidateKey::folder(&album);
     let collection_key = collection.clone();
 
@@ -194,8 +194,8 @@ async fn remove_watched_folder_drops_folder_and_candidates() {
     // Watched throughout: what its watch finds is the sentinel below. Its
     // first read is over before the sentinel is written, so only the watch
     // can find it.
-    let other = f.temp_path().join("Other");
-    fs::create_dir_all(&other).unwrap();
+    let other = f.temp.path().join("Other");
+    f.temp.create_folder(&other);
     let other_key = other.clone();
     f.handle.add_watched_folder(other_key.to_path_buf()).await.unwrap();
     wait_for_reads(&f, "the still-watched folder's first read", &[&other_key]).await;
@@ -231,11 +231,11 @@ async fn remove_watched_folder_drops_folder_and_candidates() {
     // The watch stopped: a new release folder under the removed root is not
     // found ahead of one written after it under the root still watched.
     let new_album = collection.join("Artist - Second Album");
-    fs::create_dir_all(&new_album).unwrap();
-    generate_album_files(&new_album, &["01 Track.flac"]);
+    f.temp.create_folder(&new_album);
+    generate_album_files(&f.temp, &new_album, &["01 Track.flac"]);
     let sentinel = other.join("Artist - Third Album");
-    fs::create_dir_all(&sentinel).unwrap();
-    generate_album_files(&sentinel, &["01 Track.flac"]);
+    f.temp.create_folder(&sentinel);
+    generate_album_files(&f.temp, &sentinel, &["01 Track.flac"]);
     let sentinel_key = bae_import::CandidateKey::folder(&sentinel);
     let after_unwatch = scan_batch_until(&mut scan_rx, "the still-watched folder's candidate", |e| {
         matches!(e, ScanEvent::FolderCandidate { candidate: c, .. } if bae_import::CandidateKey::folder(&c.path) == sentinel_key)
@@ -253,7 +253,7 @@ async fn unavailable_watched_folder_remains_durable_and_reports_scan_failure() {
     bae_util::test_logs::install();
     let f = ImportFixture::new().await;
 
-    let missing = f.temp_path().join("does-not-exist");
+    let missing = f.temp.path().join("does-not-exist");
     let missing_key = missing.clone();
 
     f.handle.add_watched_folder(missing_key.to_path_buf()).await.unwrap();
@@ -273,10 +273,10 @@ async fn unavailable_watched_folder_remains_durable_and_reports_scan_failure() {
 async fn scan_whose_stored_decisions_cannot_be_read_records_the_failure() {
     bae_util::test_logs::install();
     let f = ImportFixture::new().await;
-    let root = f.temp_path().join("Collection");
+    let root = f.temp.path().join("Collection");
     let album = root.join("Artist - Album");
-    fs::create_dir_all(&album).unwrap();
-    generate_album_files(&album, &["01 Track.flac"]);
+    f.temp.create_folder(&album);
+    generate_album_files(&f.temp, &album, &["01 Track.flac"]);
     let root_key = root.to_path_buf();
 
     let invalid_folder = format!("{}/a/./b", root_key.display());
@@ -315,10 +315,10 @@ async fn scan_whose_stored_decisions_cannot_be_read_records_the_failure() {
 async fn adding_an_already_watched_folder_reads_it_again() {
     bae_util::test_logs::install();
     let f = ImportFixture::new().await;
-    let root = f.temp_path().join("Collection");
+    let root = f.temp.path().join("Collection");
     let album = root.join("Artist - Album");
-    fs::create_dir_all(&album).unwrap();
-    generate_album_files(&album, &["01 Track.flac"]);
+    f.temp.create_folder(&album);
+    generate_album_files(&f.temp, &album, &["01 Track.flac"]);
     let root_key = root.to_path_buf();
 
     // Every whole read of the root ends with `Finished`, in order: the second
@@ -345,10 +345,10 @@ async fn adding_an_already_watched_folder_reads_it_again() {
 async fn adding_a_folder_inside_a_watched_one_is_refused_naming_both() {
     bae_util::test_logs::install();
     let f = ImportFixture::new().await;
-    let root = f.temp_path().join("Collection");
+    let root = f.temp.path().join("Collection");
     let album = root.join("Artist - Album");
-    fs::create_dir_all(&album).unwrap();
-    generate_album_files(&album, &["01 Track.flac"]);
+    f.temp.create_folder(&album);
+    generate_album_files(&f.temp, &album, &["01 Track.flac"]);
     f.handle.add_watched_folder(root.clone()).await.unwrap();
     wait_for_reads(&f, "the folder is read", &[&root]).await;
 
@@ -368,9 +368,9 @@ async fn adding_a_folder_inside_a_watched_one_is_refused_naming_both() {
 
 /// An album folder with one track at `relative` under the fixture's folder.
 fn album_dir(f: &ImportFixture, relative: &str) -> std::path::PathBuf {
-    let dir = f.temp_path().join(relative);
-    fs::create_dir_all(&dir).unwrap();
-    generate_album_files(&dir, &["01 Track.flac"]);
+    let dir = f.temp.path().join(relative);
+    f.temp.create_folder(&dir);
+    generate_album_files(&f.temp, &dir, &["01 Track.flac"]);
     dir
 }
 
@@ -406,7 +406,7 @@ async fn scanned_folder(
 async fn a_folder_holding_watched_folders_takes_them_over_and_keeps_what_was_decided() {
     bae_util::test_logs::install();
     let f = ImportFixture::new().await;
-    let music = f.temp_path().join("Music");
+    let music = f.temp.path().join("Music");
     let artist = music.join("Artist");
     let other = music.join("Other Artist");
     let skipped = album_dir(&f, "Music/Artist/Album");
@@ -465,7 +465,7 @@ async fn a_folder_holding_watched_folders_takes_them_over_and_keeps_what_was_dec
 async fn removing_a_watched_folder_forgets_what_was_decided_under_it() {
     bae_util::test_logs::install();
     let f = ImportFixture::new().await;
-    let artist = f.temp_path().join("Music/Artist");
+    let artist = f.temp.path().join("Music/Artist");
     let album = album_dir(&f, "Music/Artist/Album");
     f.handle.add_watched_folder(artist.clone()).await.unwrap();
     wait_for_reads(&f, "the folder is read", &[&artist]).await;
@@ -488,16 +488,16 @@ async fn removing_a_watched_folder_forgets_what_was_decided_under_it() {
 async fn refresh_missing_watched_folder_records_failure_and_preserves_candidates() {
     bae_util::test_logs::install();
     let f = ImportFixture::new().await;
-    let root = f.temp_path().join("unplugged-drive");
+    let root = f.temp.path().join("unplugged-drive");
     let album = root.join("Artist - Album");
-    fs::create_dir_all(&album).unwrap();
-    generate_album_files(&album, &["01 Track.flac"]);
+    f.temp.create_folder(&album);
+    generate_album_files(&f.temp, &album, &["01 Track.flac"]);
     let root_key = root.to_path_buf();
     let album_key = bae_import::CandidateKey::folder(&album);
     f.handle.add_watched_folder(root_key.to_path_buf()).await.unwrap();
     f.handle.refresh_watched_folder(root_key.to_path_buf()).await.unwrap();
 
-    fs::remove_dir_all(&root).unwrap();
+    f.temp.remove(&root);
     f.handle
         .refresh_watched_folder(root_key.to_path_buf())
         .await
@@ -527,10 +527,10 @@ async fn set_candidate_skipped_flips_flag_and_is_idempotent() {
     bae_util::test_logs::install();
     let f = ImportFixture::new().await;
 
-    let collection = f.temp_path().join("Collection");
+    let collection = f.temp.path().join("Collection");
     let album = collection.join("Artist - Album");
-    fs::create_dir_all(&album).unwrap();
-    generate_album_files(&album, &["01 Track.flac"]);
+    f.temp.create_folder(&album);
+    generate_album_files(&f.temp, &album, &["01 Track.flac"]);
     let album_key = bae_import::CandidateKey::folder(&album);
 
     let mut scan_rx = f.handle.every_scan_event_for_test();
@@ -591,10 +591,11 @@ async fn a_done_row_follows_its_folder_and_its_release() {
     bae_util::test_logs::install();
     let f = ImportFixture::new().await;
 
-    let collection = f.temp_path().join("Collection");
+    let collection = f.temp.path().join("Collection");
     let album = collection.join("Artist - Album");
-    fs::create_dir_all(&album).unwrap();
+    f.temp.create_folder(&album);
     generate_tagged_album_files(
+        &f.temp,
         &album,
         "Album",
         "Artist",
@@ -639,7 +640,7 @@ async fn a_done_row_follows_its_folder_and_its_release() {
     assert_eq!(done.folder_name, found.folder_name);
 
     let renamed = collection.join("Renamed Album");
-    fs::rename(&album, &renamed).unwrap();
+    f.temp.rename(&album, &renamed);
     let renamed_key = bae_import::CandidateKey::folder(&renamed);
     f.handle.refresh_watched_folder(collection_key.to_path_buf()).await.unwrap();
     let moved = done_row(&f, "the renamed folder", &renamed_key).await;
@@ -675,13 +676,14 @@ async fn a_folder_whose_files_this_device_imported_is_done() {
     bae_util::test_logs::install();
     let f = ImportFixture::new().await;
 
-    let collection = f.temp_path().join("Collection");
+    let collection = f.temp.path().join("Collection");
     let titles = ["First", "Second", "Third"];
     let mut keys = Vec::new();
     for title in titles {
         let album = collection.join(format!("Artist - {title}"));
-        fs::create_dir_all(&album).unwrap();
+        f.temp.create_folder(&album);
         generate_tagged_album_files(
+            &f.temp,
             &album,
             title,
             "Artist",
@@ -693,18 +695,16 @@ async fn a_folder_whose_files_this_device_imported_is_done() {
     // A copy that keeps the modification times hashes like the original.
     let original = collection.join("Artist - First");
     let copy = collection.join("Backup of Artist - First");
-    fs::create_dir_all(&copy).unwrap();
-    for entry in fs::read_dir(&original).unwrap() {
-        let source = entry.unwrap().path();
-        let target = copy.join(source.file_name().unwrap());
-        fs::copy(&source, &target).unwrap();
-        fs::File::options()
-            .write(true)
-            .open(&target)
-            .unwrap()
+    f.temp.create_folder(&copy);
+    for name in f.temp.entries(&original) {
+        let source = original.join(&name);
+        let target = copy.join(&name);
+        f.temp.copy(&source, &target);
+        f.temp
+            .open_with(&target, std::fs::OpenOptions::new().write(true))
             .set_times(
-                fs::FileTimes::new()
-                    .set_modified(fs::metadata(&source).unwrap().modified().unwrap()),
+                std::fs::FileTimes::new()
+                    .set_modified(f.temp.metadata(&source).modified().unwrap()),
             )
             .unwrap();
     }

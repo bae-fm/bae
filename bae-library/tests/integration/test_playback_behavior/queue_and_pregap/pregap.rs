@@ -188,9 +188,9 @@ async fn test_cue_flac_seek() {
             bae_playback::test_capture::wait_for_seek(&mut fixture.progress_rx, &track_id).await;
 
             let fixture_dir = bae_audio::test_fixtures::cue_flac_dir();
-            let reference_data =
-                std::fs::read(fixture_dir.join("02 Test Artist - Track Two (White Noise).flac"))
-                    .expect("read reference");
+            let reference_data = bae_util::test_files::read_fixture(
+                fixture_dir.join("02 Test Artist - Track Two (White Noise).flac"),
+            );
             let reference = decode_audio(
                 bae_audio::test_samples::filled_sparse_buffer(&reference_data),
                 None,
@@ -306,7 +306,7 @@ async fn restore_without_a_saved_position_shows_the_track_start() {
         create_cue_flac_test_album(),
         "test",
         coven::IdSource::new_id(&coven::UuidIds).to_string(),
-        generate_cue_flac_files,
+        |dir| generate_cue_flac_files(dir, dir.path()),
     )
     .await
     .expect("import the CUE/FLAC album");
@@ -348,9 +348,9 @@ async fn test_direct_play_skips_pregap_cue_flac() {
 
             // XLD splits at INDEX 01, so the reference has no pregap.
             let fixture_dir = bae_audio::test_fixtures::cue_flac_dir();
-            let reference_data =
-                std::fs::read(fixture_dir.join("02 Test Artist - Track Two (White Noise).flac"))
-                    .expect("read reference");
+            let reference_data = bae_util::test_files::read_fixture(
+                fixture_dir.join("02 Test Artist - Track Two (White Noise).flac"),
+            );
             let reference = decode_audio(
                 bae_audio::test_samples::filled_sparse_buffer(&reference_data),
                 None,
@@ -432,7 +432,7 @@ async fn test_direct_play_skips_pregap_cue_flac() {
 /// track 3 has none. In the file: track 1 spans 0:00–0:05, track 2 0:05–0:17.5
 /// (10 s after its pregap), track 3 0:17.5–0:28. Times past 0:07 are ~7 ms
 /// later than written, since 2.5 s is 187.5 CD frames.
-fn generate_back_album_files(dir: &std::path::Path) {
+fn generate_back_album_files(dir: &bae_util::test_files::TestFolder) {
     const SAMPLE_RATE: u32 = 44_100;
     const FILE_SECONDS: f64 = 28.0;
     // INDEX 00 at 00:05:00 to INDEX 01 at 00:07:38, in 1/75 s CD frames.
@@ -459,7 +459,7 @@ fn generate_back_album_files(dir: &std::path::Path) {
         2,
     )
     .expect("encode the Back album FLAC");
-    std::fs::write(dir.join("Back Album.flac"), flac).expect("write the Back album FLAC");
+    dir.write(dir.join("Back Album.flac"), flac);
 
     let cue = "\
 PERFORMER \"Test Artist\"
@@ -479,7 +479,7 @@ FILE \"Back Album.flac\" WAVE
     PERFORMER \"Test Artist\"
     INDEX 01 00:17:38
 ";
-    std::fs::write(dir.join("Back Album.cue"), cue).expect("write the Back album CUE");
+    dir.write(dir.join("Back Album.cue"), cue);
 }
 
 fn create_back_album() -> DiscogsRelease {

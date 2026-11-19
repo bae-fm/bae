@@ -66,7 +66,7 @@ async fn test_cue_ape_track2_samples_match_xld_reference() {
     let ape_path = fixture_dir.join("Test Album.ape");
     let ref_path = fixture_dir.join("02 Test Artist - Track Two.flac");
 
-    let ape_data = std::fs::read(&ape_path).expect("read ape");
+    let ape_data = bae_util::test_files::read_fixture(&ape_path);
 
     // Decode the full APE file (no seeking -- APE frames are stateful)
     let full_decoded =
@@ -88,7 +88,7 @@ async fn test_cue_ape_track2_samples_match_xld_reference() {
     );
 
     // Decode XLD reference
-    let ref_data = std::fs::read(&ref_path).expect("read reference");
+    let ref_data = bae_util::test_files::read_fixture(&ref_path);
     let reference =
         decode_audio(bae_audio::test_samples::filled_sparse_buffer(&ref_data), None, None)
             .expect("decode reference");
@@ -206,8 +206,7 @@ async fn test_cue_ape_track_playback_matches_reference() {
         bae_playback::test_capture::wait_until_playing(&mut fixture.progress_rx, &track_id).await;
 
         let fixture_dir = bae_import::test_fixtures::cue_ape_dir();
-        let reference_data =
-            std::fs::read(fixture_dir.join(reference_file)).expect("read reference");
+        let reference_data = bae_util::test_files::read_fixture(fixture_dir.join(reference_file));
         let reference = decode_audio(
             bae_audio::test_samples::filled_sparse_buffer(&reference_data),
             None,
@@ -275,7 +274,7 @@ async fn test_cue_ape_seek() {
     // seek position (not the original play position).
     let fixture_dir = bae_import::test_fixtures::cue_ape_dir();
     let reference_data =
-        std::fs::read(fixture_dir.join("02 Test Artist - Track Two.flac")).expect("read reference");
+        bae_util::test_files::read_fixture(fixture_dir.join("02 Test Artist - Track Two.flac"));
     let reference =
         decode_audio(bae_audio::test_samples::filled_sparse_buffer(&reference_data), None, None)
             .expect("decode reference");
@@ -414,7 +413,7 @@ async fn test_cue_ape_auto_advance_no_replay() {
     // === GROUND TRUTH: XLD-split reference FLAC ===
     let fixture_dir = bae_import::test_fixtures::cue_ape_dir();
     let reference_data =
-        std::fs::read(fixture_dir.join("02 Test Artist - Track Two.flac")).expect("read reference");
+        bae_util::test_files::read_fixture(fixture_dir.join("02 Test Artist - Track Two.flac"));
     let reference =
         decode_audio(bae_audio::test_samples::filled_sparse_buffer(&reference_data), None, None)
             .expect("decode reference");

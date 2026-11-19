@@ -90,9 +90,9 @@ async fn work_mbid_is_stored_beside_a_minted_row_id_and_shared_across_releases()
             work_with_composer(V3_WORK, "Shared Work", "composer-shared", None),
         )],
     );
-    let first_dir = f.temp_path().join("first");
-    fs::create_dir_all(&first_dir).unwrap();
-    generate_album_files(&first_dir, &["01 First Movement.flac"]);
+    let first_dir = f.temp.path().join("first");
+    f.temp.create_folder(&first_dir);
+    generate_album_files(&f.temp, &first_dir, &["01 First Movement.flac"]);
     let (first_release_id, _) = import_folder(
         &f,
         &first_dir,
@@ -117,9 +117,9 @@ async fn work_mbid_is_stored_beside_a_minted_row_id_and_shared_across_releases()
             work_with_composer(V3_WORK, "Shared Work", "composer-shared", None),
         )],
     );
-    let second_dir = f.temp_path().join("second");
-    fs::create_dir_all(&second_dir).unwrap();
-    generate_album_files(&second_dir, &["01 Second Movement.flac"]);
+    let second_dir = f.temp.path().join("second");
+    f.temp.create_folder(&second_dir);
+    generate_album_files(&f.temp, &second_dir, &["01 Second Movement.flac"]);
     let (second_release_id, _) = import_folder(
         &f,
         &second_dir,
@@ -156,9 +156,9 @@ async fn import_with_cover_art() {
     let release = discogs_release("Cover Album", &["Track"]);
     let release_id_key = f.fakes.seed_discogs_test_release(release);
 
-    let album_dir = f.temp_path().join("album");
-    fs::create_dir_all(&album_dir).unwrap();
-    generate_album_with_cover(&album_dir, &["01 Track.flac"]);
+    let album_dir = f.temp.path().join("album");
+    f.temp.create_folder(&album_dir);
+    generate_album_with_cover(&f.temp, &album_dir, &["01 Track.flac"]);
 
     let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
     f.handle
@@ -208,9 +208,9 @@ async fn import_resizes_oversized_cover_to_jpeg_thumbnail() {
     let release = discogs_release("Oversized Cover Album", &["Track"]);
     let release_id_key = f.fakes.seed_discogs_test_release(release);
 
-    let album_dir = f.temp_path().join("album");
-    fs::create_dir_all(&album_dir).unwrap();
-    let cover_path = generate_album_with_oversized_cover(&album_dir, &["01 Track.flac"]);
+    let album_dir = f.temp.path().join("album");
+    f.temp.create_folder(&album_dir);
+    let cover_path = generate_album_with_oversized_cover(&f.temp, &album_dir, &["01 Track.flac"]);
 
     let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
     f.handle
@@ -265,10 +265,10 @@ async fn import_gif_and_webp_covers_stores_first_image_as_jpeg() {
         let f = ImportFixture::new().await;
         let release_id_key = f.fakes.seed_discogs_test_release(release);
 
-        let album_dir = f.temp_path().join("album");
-        fs::create_dir_all(&album_dir).unwrap();
-        generate_album_files(&album_dir, &["01 Track.flac"]);
-        fs::write(album_dir.join(name), bytes).unwrap();
+        let album_dir = f.temp.path().join("album");
+        f.temp.create_folder(&album_dir);
+        generate_album_files(&f.temp, &album_dir, &["01 Track.flac"]);
+        f.temp.write(album_dir.join(name), bytes);
         let import_id = f.ids.new_id().to_string();
         f.handle
             .send_command(ImportCommand {
@@ -305,11 +305,7 @@ async fn import_gif_and_webp_covers_stores_first_image_as_jpeg() {
         for (actual, expected) in pixel.into_iter().zip([120u8, 40, 200]) {
             assert!(actual.abs_diff(expected) <= 3, "{name}: {pixel:?}");
         }
-        assert_eq!(
-            fs::read(album_dir.join(name)).unwrap(),
-            bytes,
-            "source artwork stays unchanged"
-        );
+        assert_eq!(f.temp.read(album_dir.join(name)), bytes, "source artwork stays unchanged");
         assert_cover_row_describes_stored_bytes(&f, &release_id).await;
     }
 }

@@ -113,8 +113,10 @@ pub(super) fn create_test_album() -> DiscogsRelease {
     }
 }
 /// Copy the `flac` fixtures into `dir` and return their bytes.
-pub(super) fn generate_test_flac_files(dir: &std::path::Path) -> Vec<Vec<u8>> {
-    use std::fs;
+pub(super) fn generate_test_flac_files(
+    folder: &bae_util::test_files::TestFolder,
+    dir: &std::path::Path,
+) -> Vec<Vec<u8>> {
     let fixture_dir = bae_import::test_fixtures::flac_dir();
     let fixture_files =
         vec!["01 Test Track 1.flac", "02 Test Track 2.flac", "03 Test Track 3.flac"];
@@ -123,25 +125,27 @@ pub(super) fn generate_test_flac_files(dir: &std::path::Path) -> Vec<Vec<u8>> {
         let fixture_path = fixture_dir.join(fixture_name);
         let test_path = dir.join(fixture_name);
         let data = bae_util::test_files::read_fixture(&fixture_path);
-        fs::write(&test_path, &data).expect("Failed to copy FLAC fixture");
+        folder.write(&test_path, &data);
         file_data.push(data);
     }
     file_data
 }
 /// Copy the `cue_flac` fixture's FLAC and CUE files into `dir`.
-pub(super) fn generate_cue_flac_files(dir: &std::path::Path) {
-    use std::fs;
+pub(super) fn generate_cue_flac_files(
+    folder: &bae_util::test_files::TestFolder,
+    dir: &std::path::Path,
+) {
     let fixture_dir = bae_audio::test_fixtures::cue_flac_dir();
 
     let flac_src = fixture_dir.join("Test Album.flac");
     let flac_dst = dir.join("Test Album.flac");
     let flac_data = bae_util::test_files::read_fixture(&flac_src);
-    fs::write(&flac_dst, &flac_data).expect("Failed to copy FLAC fixture");
+    folder.write(&flac_dst, &flac_data);
 
     let cue_src = fixture_dir.join("Test Album.cue");
     let cue_dst = dir.join("Test Album.cue");
     let cue_data = bae_util::test_files::read_fixture(&cue_src);
-    fs::write(&cue_dst, &cue_data).expect("Failed to copy CUE fixture");
+    folder.write(&cue_dst, &cue_data);
 }
 
 /// The three-track album matching the `cue_flac` fixture.
@@ -172,7 +176,8 @@ pub(super) struct CueFlacTestFixture {
     pub(super) library: TestLibrary,
     pub(super) capture_stream_rx: bae_playback::test_capture::CaptureStreamRx,
     pub(super) audio_clock: AudioClock,
-    pub(super) _temp_dir: TempDir,
+    pub(super) _temp_dir: TestFolder,
+    pub(super) _album_dir: TestFolder,
 }
 
 impl PlaybackFixture for CueFlacTestFixture {
@@ -184,14 +189,15 @@ impl PlaybackFixture for CueFlacTestFixture {
 
 impl CueFlacTestFixture {
     pub(super) async fn new() -> Result<Self, Box<dyn std::error::Error>> {
-        Self::import(create_cue_flac_test_album(), generate_cue_flac_files).await
+        Self::import(create_cue_flac_test_album(), |dir| generate_cue_flac_files(dir, dir.path()))
+            .await
     }
 
     /// Import a three-track CUE/FLAC album that `generate_files` writes, and
     /// play it.
     pub(super) async fn import(
         album: DiscogsRelease,
-        generate_files: impl FnOnce(&std::path::Path),
+        generate_files: impl FnOnce(&bae_util::test_files::TestFolder),
     ) -> Result<Self, Box<dyn std::error::Error>> {
         let (library, imported) = imported_release_setup(
             album,
@@ -212,6 +218,7 @@ impl CueFlacTestFixture {
             capture_stream_rx,
             audio_clock,
             _temp_dir: imported.temp_dir,
+            _album_dir: imported.album_dir,
         })
     }
 
@@ -235,7 +242,8 @@ pub(super) struct SidePauseTestFixture {
     pub(super) clock: Arc<bae_playback::ManualPlaybackClock>,
     /// The capture device's audio time, which only the test moves.
     pub(super) audio_clock: AudioClock,
-    pub(super) _temp_dir: TempDir,
+    pub(super) _temp_dir: TestFolder,
+    pub(super) _album_dir: TestFolder,
 }
 
 impl PlaybackFixture for SidePauseTestFixture {
@@ -294,7 +302,7 @@ impl SidePauseTestFixture {
             "side-pause",
             import_id,
             |album_dir| {
-                let _track_data = generate_test_flac_files(album_dir);
+                let _track_data = generate_test_flac_files(album_dir, album_dir.path());
             },
         )
         .await?;
@@ -322,6 +330,7 @@ impl SidePauseTestFixture {
             clock,
             audio_clock,
             _temp_dir: imported.temp_dir,
+            _album_dir: imported.album_dir,
         })
     }
 
@@ -453,9 +462,11 @@ pub(super) fn create_side_pause_test_album(format: &str, positions: [&str; 3]) -
 /// stream. Raw in-track timelines by construction: track 1 spans 0:00–0:58
 /// (ends at track 2's INDEX 00), track 2 spans 0:58–2:00 (62 s including its
 /// pregap), track 3 spans 2:00–3:00.
-pub(super) fn generate_multi_window_cue_flac_files(dir: &std::path::Path) {
-    std::fs::write(dir.join("Multi Window Album.flac"), MULTI_WINDOW_FLAC.as_slice())
-        .expect("write the multi-window FLAC");
+pub(super) fn generate_multi_window_cue_flac_files(
+    folder: &bae_util::test_files::TestFolder,
+    dir: &std::path::Path,
+) {
+    folder.write(dir.join("Multi Window Album.flac"), MULTI_WINDOW_FLAC.as_slice());
 
     let cue = "\
 PERFORMER \"Test Artist\"
@@ -475,7 +486,7 @@ FILE \"Multi Window Album.flac\" WAVE
     PERFORMER \"Test Artist\"
     INDEX 01 02:00:00
 ";
-    std::fs::write(dir.join("Multi Window Album.cue"), cue).expect("write the multi-window CUE");
+    folder.write(dir.join("Multi Window Album.cue"), cue);
 }
 
 pub(super) fn create_multi_window_cue_album() -> DiscogsRelease {
@@ -505,7 +516,8 @@ pub(super) struct MultiWindowPlayback {
     pub(super) _capture_stream_rx: bae_playback::test_capture::CaptureStreamRx,
     /// The capture device's audio time, which only the test moves.
     pub(super) audio_clock: AudioClock,
-    pub(super) _temp_dir: TempDir,
+    pub(super) _temp_dir: TestFolder,
+    pub(super) _album_dir: TestFolder,
 }
 
 impl MultiWindowPlayback {
@@ -515,11 +527,12 @@ impl MultiWindowPlayback {
             create_multi_window_cue_album(),
             name,
             coven::IdSource::new_id(&coven::UuidIds).to_string(),
-            generate_multi_window_cue_flac_files,
+            |dir| generate_multi_window_cue_flac_files(dir, dir.path()),
         )
         .await
         .expect("import the multi-window fixture");
         let temp_dir = imported.temp_dir;
+        let album_dir = imported.album_dir;
         let track_ids = imported.track_ids;
         let (playback_handle, capture_stream_rx, audio_clock) =
             start_capture_service(&library).await;
@@ -532,6 +545,7 @@ impl MultiWindowPlayback {
             _capture_stream_rx: capture_stream_rx,
             audio_clock,
             _temp_dir: temp_dir,
+            _album_dir: album_dir,
         }
     }
 
@@ -605,18 +619,18 @@ pub(super) struct RestoreTestLibrary {
     /// seeds.
     pub(super) fakes: bae_catalogs::fake_catalogs::FakeCatalogs,
     pub(super) track_ids: Vec<String>,
-    pub(super) _temp_dir: TempDir,
+    pub(super) _temp_dir: TestFolder,
 }
 
 pub(super) async fn restore_test_library() -> RestoreTestLibrary {
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
-    let (library, album_dir, temp_dir) =
-        bae_library::test_libraries::setup_test_library_with_album_dir(
-            fakes.providers(),
-            bae_util::http::Http::for_test(),
-        )
-        .await;
-    let _ = generate_test_flac_files(&album_dir);
+    let (library, temp_dir) = bae_library::test_libraries::setup_test_library_with(
+        fakes.providers(),
+        bae_util::http::Http::for_test(),
+    )
+    .await;
+    let album_dir = temp_dir.create_folder("album");
+    let _ = generate_test_flac_files(&temp_dir, &album_dir);
     let release_id_key = fakes.seed_discogs_test_release(create_test_album());
     library.import_folder(album_dir, release_id_key).await;
     let releases = library
@@ -636,9 +650,9 @@ pub(super) async fn restore_test_library() -> RestoreTestLibrary {
 
 /// A library with no imports, for the empty-library no-op paths, beside the
 /// temp dir that keeps its files.
-pub(super) async fn empty_test_library() -> (TestLibrary, TempDir) {
+pub(super) async fn empty_test_library() -> (TestLibrary, TestFolder) {
     bae_util::test_logs::install();
-    let temp_dir = TempDir::new().unwrap();
+    let temp_dir = bae_util::test_files::TestFolder::new();
     let library = open_test_library(temp_dir.path()).await;
     (library, temp_dir)
 }
@@ -646,13 +660,13 @@ pub(super) async fn empty_test_library() -> (TestLibrary, TempDir) {
 /// Import a second, distinct-content release (the CUE/FLAC album) into `lib`'s
 /// library so a test can have a current track in one release and a
 /// preloaded/queued track in another — needed to delete one without the other.
-/// Returns the new release's id and track ids; the source `TempDir` is returned
+/// Returns the new release's id and track ids; the source `TestFolder` is returned
 /// so the caller keeps it alive.
 pub(super) async fn import_second_release(
     lib: &RestoreTestLibrary,
-) -> (String, Vec<String>, TempDir) {
-    let source = TempDir::new().unwrap();
-    generate_cue_flac_files(source.path());
+) -> (String, Vec<String>, TestFolder) {
+    let source = bae_util::test_files::TestFolder::new();
+    generate_cue_flac_files(&source, source.path());
     let release_key = lib.fakes.seed_discogs_test_release(create_cue_flac_test_album());
     let import_handle = lib.library.start_discogs_import().await;
     let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();

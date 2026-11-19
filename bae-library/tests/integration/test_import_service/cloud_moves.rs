@@ -2,9 +2,10 @@ use super::*;
 
 /// An album folder of two tagged tracks under the fixture's temp folder.
 fn two_track_album(f: &ImportFixture, title: &str) -> std::path::PathBuf {
-    let album = f.temp_path().join("Collection").join(title);
-    fs::create_dir_all(&album).unwrap();
+    let album = f.temp.path().join("Collection").join(title);
+    f.temp.create_folder(&album);
     generate_tagged_album_files(
+        &f.temp,
         &album,
         title,
         "Artist",
@@ -54,7 +55,7 @@ async fn assert_on_this_device(f: &ImportFixture, release_id: &str, folder: &Pat
         );
         assert_eq!(
             f.library.manager().materialize_release_file_for_test(&file.id).await.unwrap(),
-            fs::read(&original).unwrap()
+            f.temp.read(&original)
         );
     }
 }
@@ -183,8 +184,8 @@ async fn a_release_moved_to_this_device_moves_back_to_the_cloud() {
     let files = release_file_ids(&f, &id).await;
     finish_move(&f, &id, &files).await;
 
-    let local = f.temp_path().join("Moved to This Device");
-    fs::create_dir_all(&local).unwrap();
+    let local = f.temp.path().join("Moved to This Device");
+    f.temp.create_folder(&local);
     f.library.manager().move_releases_to_this_device(vec![id.clone()], &local).await.unwrap();
     tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         while !f.library.manager().download_snapshot().await.unwrap().rows.is_empty() {

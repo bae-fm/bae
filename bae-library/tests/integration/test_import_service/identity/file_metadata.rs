@@ -22,9 +22,10 @@ async fn file_metadata_import_seeds_from_the_folder_and_writes_no_identity() {
     bae_util::test_logs::install();
 
     let f = ImportFixture::new().await;
-    let album_dir = f.temp_path().join("album");
-    fs::create_dir_all(&album_dir).unwrap();
+    let album_dir = f.temp.path().join("album");
+    f.temp.create_folder(&album_dir);
     generate_tagged_album_files(
+        &f.temp,
         &album_dir,
         "Album From Tags",
         "Artist From Tags",
@@ -72,9 +73,9 @@ async fn the_seeded_draft_for_a_cue_folder_matches_its_commit_layout() {
     bae_util::test_logs::install();
 
     let f = ImportFixture::new().await;
-    let album_dir = f.temp_path().join("cue-album");
-    fs::create_dir_all(&album_dir).unwrap();
-    copy_cue_flac_fixture(&album_dir);
+    let album_dir = f.temp.path().join("cue-album");
+    f.temp.create_folder(&album_dir);
+    copy_cue_flac_fixture(&f.temp, &album_dir);
 
     let candidate_key = bae_import::CandidateKey::folder(&album_dir);
     f.handle.add_watched_folder(album_dir.to_path_buf()).await.unwrap();
@@ -190,9 +191,10 @@ async fn file_metadata_import_seeds_embedded_cover_when_no_folder_image() {
     bae_util::test_logs::install();
 
     let f = ImportFixture::new().await;
-    let album_dir = f.temp_path().join("album");
-    fs::create_dir_all(&album_dir).unwrap();
+    let album_dir = f.temp.path().join("album");
+    f.temp.create_folder(&album_dir);
     generate_tagged_album_files_with_embedded_cover(
+        &f.temp,
         &album_dir,
         "Embedded Cover Album",
         "Artist",
@@ -244,17 +246,17 @@ async fn file_metadata_cover_dims_beside(folder_image: &str) -> (u32, u32) {
     bae_util::test_logs::install();
 
     let f = ImportFixture::new().await;
-    let album_dir = f.temp_path().join("album");
-    fs::create_dir_all(&album_dir).unwrap();
+    let album_dir = f.temp.path().join("album");
+    f.temp.create_folder(&album_dir);
     generate_tagged_album_files_with_embedded_cover(
+        &f.temp,
         &album_dir,
         "Both Covers Album",
         "Artist",
         &[TaggedTrack { filename: "01.flac", title: "Track One", track_number: 1 }],
     );
     let image = album_dir.join(folder_image);
-    fs::create_dir_all(image.parent().unwrap()).unwrap();
-    fs::write(&image, solid_jpeg(FOLDER_IMAGE_DIMS)).unwrap();
+    f.temp.write(&image, solid_jpeg(FOLDER_IMAGE_DIMS));
 
     let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
     f.handle
@@ -309,9 +311,9 @@ async fn file_metadata_import_always_creates_a_fresh_album() {
     let release = discogs_release_rich("Album Title", "master-existing", &["Track One"]);
     let release_id_key = f.fakes.seed_discogs_test_release(release);
 
-    let identified_dir = f.temp_path().join("identified");
-    fs::create_dir_all(&identified_dir).unwrap();
-    generate_album_files(&identified_dir, &["01 Track One.flac"]);
+    let identified_dir = f.temp.path().join("identified");
+    f.temp.create_folder(&identified_dir);
+    generate_album_files(&f.temp, &identified_dir, &["01 Track One.flac"]);
 
     let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
     f.handle
@@ -331,9 +333,10 @@ async fn file_metadata_import_always_creates_a_fresh_album() {
 
     // Second import: file metadata, same album title in tags. Must NOT
     // attach to the identified album.
-    let file_tags_dir = f.temp_path().join("file-tags");
-    fs::create_dir_all(&file_tags_dir).unwrap();
+    let file_tags_dir = f.temp.path().join("file-tags");
+    f.temp.create_folder(&file_tags_dir);
     generate_tagged_album_files(
+        &f.temp,
         &file_tags_dir,
         "Album Title",
         "Artist Name",
@@ -372,9 +375,10 @@ async fn file_metadata_import_with_user_edit_overlay() {
     bae_util::test_logs::install();
 
     let f = ImportFixture::new().await;
-    let album_dir = f.temp_path().join("album");
-    fs::create_dir_all(&album_dir).unwrap();
+    let album_dir = f.temp.path().join("album");
+    f.temp.create_folder(&album_dir);
     generate_tagged_album_files(
+        &f.temp,
         &album_dir,
         "Wrong Album Title",
         "Wrong Artist",
@@ -470,11 +474,11 @@ async fn file_metadata_import_with_no_tags_seeds_title_from_folder_name() {
     bae_util::test_logs::install();
 
     let f = ImportFixture::new().await;
-    let album_dir = f.temp_path().join("Mystery Rip");
-    fs::create_dir_all(&album_dir).unwrap();
+    let album_dir = f.temp.path().join("Mystery Rip");
+    f.temp.create_folder(&album_dir);
     // The fixture FLAC carries no Vorbis comments — no ALBUM/ARTIST tag
     // for the projection to read, so the folder name is the album title.
-    generate_album_files(&album_dir, &["01.flac", "02.flac"]);
+    generate_album_files(&f.temp, &album_dir, &["01.flac", "02.flac"]);
 
     let candidate_key = bae_import::CandidateKey::folder(&album_dir);
     f.handle.add_watched_folder(album_dir.to_path_buf()).await.unwrap();

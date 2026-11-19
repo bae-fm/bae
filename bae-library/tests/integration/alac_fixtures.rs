@@ -14,8 +14,8 @@ use bae_import::folder_scanner::{
 };
 use bae_import::rip_reading::read_rip_artifacts;
 use bae_util::content_type::ContentType;
-use std::path::{Path, PathBuf};
-use tempfile::TempDir;
+use bae_util::test_files::TestFolder;
+use std::path::PathBuf;
 use tracing::info;
 
 fn fixture_dir() -> PathBuf {
@@ -33,16 +33,14 @@ fn make_discogs_release(id: &str, title: &str, tracks: &[&str]) -> DiscogsReleas
 
 async fn import_single_m4a_fixture(
     fixture_name: &str,
-    temp_root: &Path,
+    temp_root: &TestFolder,
 ) -> (bae_library::test_libraries::TestLibrary, String) {
-    let album_dir = temp_root.join("album");
-    let db_dir = temp_root.join("db");
-    std::fs::create_dir_all(&album_dir).expect("album dir");
-    std::fs::create_dir_all(&db_dir).expect("db dir");
+    let album_dir = temp_root.create_folder("album");
+    let db_dir = temp_root.create_folder("db");
 
     let fixture_path = fixture_dir().join(fixture_name);
     let dest = album_dir.join(fixture_name);
-    std::fs::copy(&fixture_path, &dest).expect("copy fixture");
+    temp_root.copy_fixture(&fixture_path, &dest);
 
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
     let library = bae_library::test_libraries::open_test_library_with(
@@ -100,9 +98,8 @@ fn probe_aac_returns_content_type_aac() {
 #[tokio::test]
 async fn import_standalone_alac_m4a() {
     bae_util::test_logs::install();
-    let temp_root = TempDir::new().expect("temp root");
-    let (library, release_id) =
-        import_single_m4a_fixture("silence-alac.m4a", temp_root.path()).await;
+    let temp_root = TestFolder::new();
+    let (library, release_id) = import_single_m4a_fixture("silence-alac.m4a", &temp_root).await;
 
     let tracks = library.records().get_tracks_for_release(&release_id).await.expect("get tracks");
     assert_eq!(tracks.len(), 1, "standalone .m4a produces one track");
@@ -135,9 +132,8 @@ async fn import_standalone_alac_m4a() {
 #[tokio::test]
 async fn import_standalone_aac_m4a() {
     bae_util::test_logs::install();
-    let temp_root = TempDir::new().expect("temp root");
-    let (library, release_id) =
-        import_single_m4a_fixture("silence-aac.m4a", temp_root.path()).await;
+    let temp_root = TestFolder::new();
+    let (library, release_id) = import_single_m4a_fixture("silence-aac.m4a", &temp_root).await;
 
     let tracks = library.records().get_tracks_for_release(&release_id).await.expect("get tracks");
     assert_eq!(tracks.len(), 1);
@@ -169,13 +165,13 @@ async fn import_standalone_aac_m4a() {
 /// release with three tracks, and report a CUE-backed ALAC source descriptor.
 #[test]
 fn scanner_recognizes_cue_alac_pair() {
-    let temp_root = TempDir::new().expect("temp root");
+    let temp_root = TestFolder::new();
     let album_dir = temp_root.path().join("album");
-    std::fs::create_dir_all(&album_dir).expect("album dir");
+    temp_root.create_folder(&album_dir);
 
     let fix = fixture_dir();
-    std::fs::copy(fix.join("cue-alac.m4a"), album_dir.join("cue-alac.m4a")).expect("copy m4a");
-    std::fs::copy(fix.join("cue-alac.cue"), album_dir.join("cue-alac.cue")).expect("copy cue");
+    temp_root.copy_fixture(fix.join("cue-alac.m4a"), album_dir.join("cue-alac.m4a"));
+    temp_root.copy_fixture(fix.join("cue-alac.cue"), album_dir.join("cue-alac.cue"));
 
     let mut candidates = Vec::new();
     scan_for_candidates_with_decisions(
@@ -215,15 +211,15 @@ fn scanner_recognizes_cue_alac_pair() {
 #[tokio::test]
 async fn import_cue_alac_pair() {
     bae_util::test_logs::install();
-    let temp_root = TempDir::new().expect("temp root");
+    let temp_root = TestFolder::new();
     let album_dir = temp_root.path().join("album");
     let db_dir = temp_root.path().join("db");
-    std::fs::create_dir_all(&album_dir).expect("album dir");
-    std::fs::create_dir_all(&db_dir).expect("db dir");
+    temp_root.create_folder(&album_dir);
+    temp_root.create_folder(&db_dir);
 
     let fix = fixture_dir();
-    std::fs::copy(fix.join("cue-alac.m4a"), album_dir.join("cue-alac.m4a")).expect("copy m4a");
-    std::fs::copy(fix.join("cue-alac.cue"), album_dir.join("cue-alac.cue")).expect("copy cue");
+    temp_root.copy_fixture(fix.join("cue-alac.m4a"), album_dir.join("cue-alac.m4a"));
+    temp_root.copy_fixture(fix.join("cue-alac.cue"), album_dir.join("cue-alac.cue"));
 
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
     let library = bae_library::test_libraries::open_test_library_with(
@@ -285,13 +281,13 @@ async fn import_cue_alac_pair() {
 /// duration reported by FFmpeg).
 #[test]
 fn cue_alac_disc_id_is_stable() {
-    let temp_root = TempDir::new().expect("temp root");
+    let temp_root = TestFolder::new();
     let album_dir = temp_root.path().join("album");
-    std::fs::create_dir_all(&album_dir).expect("album dir");
+    temp_root.create_folder(&album_dir);
 
     let fix = fixture_dir();
-    std::fs::copy(fix.join("cue-alac.m4a"), album_dir.join("cue-alac.m4a")).expect("copy m4a");
-    std::fs::copy(fix.join("cue-alac.cue"), album_dir.join("cue-alac.cue")).expect("copy cue");
+    temp_root.copy_fixture(fix.join("cue-alac.m4a"), album_dir.join("cue-alac.m4a"));
+    temp_root.copy_fixture(fix.join("cue-alac.cue"), album_dir.join("cue-alac.cue"));
 
     let categorized = collect_release_candidate_files_with_scope(
         &album_dir,
@@ -352,7 +348,7 @@ fn cue_alac_cue_sheet_has_three_tracks() {
 /// decoded noise.
 #[test]
 fn decode_alac_fixture_smoke() {
-    let bytes = std::fs::read(fixture_dir().join("silence-alac.m4a")).expect("read alac");
+    let bytes = bae_util::test_files::read_fixture(fixture_dir().join("silence-alac.m4a"));
     let decoded = decode_audio(bae_audio::test_samples::filled_sparse_buffer(&bytes), None, None)
         .expect("decode alac");
 

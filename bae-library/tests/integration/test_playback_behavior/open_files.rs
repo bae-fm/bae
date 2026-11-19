@@ -21,7 +21,7 @@ fn tone(frequency: f64) -> Vec<i32> {
 
 /// A gap-appended rip: three files, the second and third tracks each starting
 /// their pregap in the file before their own, so each of them reads two files.
-fn write_gap_appended_rip(dir: &std::path::Path) {
+fn write_gap_appended_rip(dir: &bae_util::test_files::TestFolder) {
     for (name, frequency) in FILES.iter().zip([220.0, 440.0, 880.0]) {
         let audio = bae_audio::encode_i32(
             EncodeFormat::PcmWav { bits_per_sample: 16 },
@@ -30,9 +30,9 @@ fn write_gap_appended_rip(dir: &std::path::Path) {
             2,
         )
         .expect("encode a file");
-        std::fs::write(dir.join(name), audio).unwrap();
+        dir.write(dir.join(name), audio);
     }
-    std::fs::write(
+    dir.write(
         dir.join("Album Title.cue"),
         format!(
             "FILE \"{}\" WAVE\n  TRACK 01 AUDIO\n    TITLE \"Track One\"\n    INDEX 01 00:00:00\n  \
@@ -42,8 +42,7 @@ fn write_gap_appended_rip(dir: &std::path::Path) {
              FILE \"{}\" WAVE\n    INDEX 01 00:00:00\n",
             FILES[0], FILES[1], FILES[2]
         ),
-    )
-    .unwrap();
+    );
 }
 
 /// Playback over tracks that each read two files, within a budget of exactly

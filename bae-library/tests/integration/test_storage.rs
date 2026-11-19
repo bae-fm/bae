@@ -4,9 +4,8 @@ use bae_import::test_imports::wait_for_import_complete;
 use bae_import::{CoverSelection, ImportCommand};
 use bae_records::LibraryImageType;
 use bae_util::content_type::ContentType;
-use std::fs;
+use bae_util::test_files::TestFolder;
 use std::path::Path;
-use tempfile::TempDir;
 use tracing::info;
 
 /// With no storage the files stay in place, and the chosen cover and audio
@@ -22,20 +21,20 @@ async fn test_import_with_cover_selection() {
 async fn test_local_import() {
     bae_util::test_logs::install();
 
-    let temp_root = TempDir::new().expect("temp root");
+    let temp_root = TestFolder::new();
     let album_dir = temp_root.path().join("album");
     let db_dir = temp_root.path().join("db");
-    fs::create_dir_all(&album_dir).expect("album dir");
-    fs::create_dir_all(&db_dir).expect("db dir");
+    temp_root.create_folder(&album_dir);
+    temp_root.create_folder(&db_dir);
 
-    let file_data = generate_test_files(&album_dir);
+    let file_data = generate_test_files(&temp_root, &album_dir);
     let original_files: Vec<_> = ["01 Track One.flac", "02 Track Two.flac", "03 Track Three.flac"]
         .iter()
         .map(|f| album_dir.join(f))
         .collect();
 
     for path in &original_files {
-        assert!(path.exists(), "Test file should exist: {:?}", path);
+        assert!(temp_root.exists(path), "Test file should exist: {:?}", path);
     }
 
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
@@ -117,7 +116,11 @@ async fn test_local_import() {
     info!("Release is correctly local");
 
     for path in &original_files {
-        assert!(path.exists(), "Original file should still exist after local import: {:?}", path);
+        assert!(
+            temp_root.exists(path),
+            "Original file should still exist after local import: {:?}",
+            path
+        );
     }
 
     info!("Original files preserved in place");
@@ -128,20 +131,20 @@ async fn test_local_import() {
 async fn test_local_delete_preserves_files() {
     bae_util::test_logs::install();
 
-    let temp_root = TempDir::new().expect("temp root");
+    let temp_root = TestFolder::new();
     let album_dir = temp_root.path().join("album");
     let db_dir = temp_root.path().join("db");
-    fs::create_dir_all(&album_dir).expect("album dir");
-    fs::create_dir_all(&db_dir).expect("db dir");
+    temp_root.create_folder(&album_dir);
+    temp_root.create_folder(&db_dir);
 
-    let _file_data = generate_test_files(&album_dir);
+    let _file_data = generate_test_files(&temp_root, &album_dir);
     let original_files: Vec<_> = ["01 Track One.flac", "02 Track Two.flac", "03 Track Three.flac"]
         .iter()
         .map(|f| album_dir.join(f))
         .collect();
 
     for path in &original_files {
-        assert!(path.exists(), "Test file should exist: {:?}", path);
+        assert!(temp_root.exists(path), "Test file should exist: {:?}", path);
     }
 
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
@@ -192,7 +195,7 @@ async fn test_local_delete_preserves_files() {
 
     for path in &original_files {
         assert!(
-            path.exists(),
+            temp_root.exists(path),
             "Original file must be preserved after deleting local release: {:?}",
             path
         );
@@ -206,12 +209,12 @@ async fn test_local_delete_preserves_files() {
 const BACK_SCAN_DIMS: (u32, u32) = (3, 2);
 
 async fn run_import_with_cover_test() {
-    let temp_root = TempDir::new().expect("Failed to create temp root");
+    let temp_root = TestFolder::new();
     let album_dir = temp_root.path().join("album");
     let db_dir = temp_root.path().join("db");
-    fs::create_dir_all(&album_dir).expect("Failed to create album dir");
-    fs::create_dir_all(&db_dir).expect("Failed to create db dir");
-    let file_data = generate_test_files(&album_dir);
+    temp_root.create_folder(&album_dir);
+    temp_root.create_folder(&db_dir);
+    let file_data = generate_test_files(&temp_root, &album_dir);
     info!("Generated {} test files", file_data.len());
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
     let library = bae_library::test_libraries::open_test_library_with(
@@ -288,7 +291,7 @@ async fn run_import_with_cover_test() {
     for file in &files {
         let original_path = album_dir.join(&file.original_filename);
         assert!(
-            original_path.exists(),
+            temp_root.exists(&original_path),
             "File '{}' should still exist at original location: {:?}",
             file.original_filename,
             original_path,
@@ -360,12 +363,12 @@ fn create_test_discogs_release() -> DiscogsRelease {
     }
 }
 
-fn generate_test_files(dir: &Path) -> Vec<Vec<u8>> {
+fn generate_test_files(folder: &bae_util::test_files::TestFolder, dir: &Path) -> Vec<Vec<u8>> {
     let fixture_path = bae_import::test_fixtures::flac_dir().join("01 Test Track 1.flac");
     let flac_template = bae_util::test_files::read_fixture(&fixture_path);
     let files = ["01 Track One.flac", "02 Track Two.flac", "03 Track Three.flac"];
     let bae_dir = dir.join(".bae");
-    fs::create_dir_all(&bae_dir).expect("Failed to create .bae directory");
+    folder.create_folder(&bae_dir);
     let minimal_jpeg: Vec<u8> = vec![
         0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00,
         0x01, 0x00, 0x01, 0x00, 0x00, 0xFF, 0xDB, 0x00, 0x43, 0x00, 0x08, 0x06, 0x06, 0x07, 0x06,
@@ -391,11 +394,11 @@ fn generate_test_files(dir: &Path) -> Vec<Vec<u8>> {
         0xF8, 0xF9, 0xFA, 0xFF, 0xDA, 0x00, 0x08, 0x01, 0x01, 0x00, 0x00, 0x3F, 0x00, 0xFB, 0xD5,
         0xDB, 0x20, 0xA8, 0xF1, 0x7E, 0xFF, 0xD9,
     ];
-    fs::write(bae_dir.join("cover-mb.jpg"), &minimal_jpeg).expect("Failed to write cover image");
-    fs::write(dir.join("cover.jpg"), &minimal_jpeg).expect("Failed to write local cover");
+    folder.write(bae_dir.join("cover-mb.jpg"), &minimal_jpeg);
+    folder.write(dir.join("cover.jpg"), &minimal_jpeg);
     let scans_dir = dir.join("scans");
-    fs::create_dir_all(&scans_dir).expect("Failed to create scans directory");
-    fs::write(scans_dir.join("front.jpg"), &minimal_jpeg).expect("Failed to write scans/front.jpg");
+    folder.create_folder(&scans_dir);
+    folder.write(scans_dir.join("front.jpg"), &minimal_jpeg);
     let (width, height) = BACK_SCAN_DIMS;
     let mut back = std::io::Cursor::new(Vec::new());
     image::DynamicImage::ImageRgb8(image::RgbImage::from_pixel(
@@ -405,13 +408,12 @@ fn generate_test_files(dir: &Path) -> Vec<Vec<u8>> {
     ))
     .write_to(&mut back, image::ImageFormat::Jpeg)
     .expect("encode scans/back.jpg");
-    fs::write(scans_dir.join("back.jpg"), back.into_inner())
-        .expect("Failed to write scans/back.jpg");
+    folder.write(scans_dir.join("back.jpg"), back.into_inner());
     files
         .iter()
         .map(|filename| {
             let file_path = dir.join(filename);
-            fs::write(&file_path, &flac_template).expect("Failed to write FLAC file");
+            folder.write(&file_path, &flac_template);
             flac_template.clone()
         })
         .collect()

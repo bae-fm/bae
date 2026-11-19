@@ -12,9 +12,9 @@ async fn a_picked_release_writes_its_id_and_pressing_fields() {
     let release = discogs_release_rich("Album Title", "master-exact", &["Track One"]);
     let release_id_key = f.fakes.seed_discogs_test_release(release);
 
-    let album_dir = f.temp_path().join("album");
-    fs::create_dir_all(&album_dir).unwrap();
-    generate_album_files(&album_dir, &["01 Track One.flac"]);
+    let album_dir = f.temp.path().join("album");
+    f.temp.create_folder(&album_dir);
+    generate_album_files(&f.temp, &album_dir, &["01 Track One.flac"]);
 
     let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
     f.handle
@@ -78,9 +78,9 @@ async fn a_user_edit_overlays_the_picked_release() {
     let release = discogs_release_rich("Album Title", "master-edit", &["Track One"]);
     let release_id_key = f.fakes.seed_discogs_test_release(release);
 
-    let album_dir = f.temp_path().join("album");
-    fs::create_dir_all(&album_dir).unwrap();
-    generate_album_files(&album_dir, &["01 Track One.flac"]);
+    let album_dir = f.temp.path().join("album");
+    f.temp.create_folder(&album_dir);
+    generate_album_files(&f.temp, &album_dir, &["01 Track One.flac"]);
 
     let edit = ReleaseUserEdit {
         album_title: "Edited Title".to_string(),
@@ -161,9 +161,10 @@ async fn a_linked_draft_read_from_the_tags_imports_under_the_link() {
     let release = discogs_release_rich("Album Title", "master-tags", &["Track One"]);
     let release_id_key = f.fakes.seed_discogs_test_release(release);
 
-    let album_dir = f.temp_path().join("album");
-    fs::create_dir_all(&album_dir).unwrap();
+    let album_dir = f.temp.path().join("album");
+    f.temp.create_folder(&album_dir);
     generate_tagged_album_files(
+        &f.temp,
         &album_dir,
         "Tagged Title",
         "Tagged Artist",
@@ -298,9 +299,9 @@ async fn a_cross_link_writes_both_catalogs_records() {
         "Album Title",
     );
 
-    let album_dir = f.temp_path().join("album");
-    fs::create_dir_all(&album_dir).unwrap();
-    generate_album_files(&album_dir, &["01 Track One.flac"]);
+    let album_dir = f.temp.path().join("album");
+    f.temp.create_folder(&album_dir);
+    generate_album_files(&f.temp, &album_dir, &["01 Track One.flac"]);
 
     let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
     f.handle
@@ -361,9 +362,9 @@ async fn a_pick_with_a_partner_writes_both_records() {
     let discogs_id = seed_discogs_for_xref(&f, "90000101", "partner-d-master", "Album Title");
     let mb_id = seed_mb_without_xref(&f, "partner-mb-rel", "partner-mb-group", "Album Title");
 
-    let album_dir = f.temp_path().join("album");
-    fs::create_dir_all(&album_dir).unwrap();
-    generate_album_files(&album_dir, &["01 Track One.flac"]);
+    let album_dir = f.temp.path().join("album");
+    f.temp.create_folder(&album_dir);
+    generate_album_files(&f.temp, &album_dir, &["01 Track One.flac"]);
 
     let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
     f.handle
@@ -428,9 +429,9 @@ async fn a_partner_replaces_an_inferred_record_of_the_same_catalog() {
         "Album Title",
     );
 
-    let album_dir = f.temp_path().join("album");
-    fs::create_dir_all(&album_dir).unwrap();
-    generate_album_files(&album_dir, &["01 Track One.flac"]);
+    let album_dir = f.temp.path().join("album");
+    f.temp.create_folder(&album_dir);
+    generate_album_files(&f.temp, &album_dir, &["01 Track One.flac"]);
 
     let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
     f.handle

@@ -2,7 +2,7 @@
 
 #[tokio::test]
 async fn real_schema_opens_with_the_declarations_and_device_only_files() {
-    let directory = tempfile::tempdir().unwrap();
+    let directory = bae_util::test_files::TestFolder::new();
     let sources = bae_library::test_libraries::TestSources::system();
     let installation =
         sources.installation(bae_app_dir::AppDir::at(directory.path()).unwrap().coven_app_dir());
@@ -49,7 +49,7 @@ async fn real_schema_opens_with_the_declarations_and_device_only_files() {
         time::UtcDateTime::now(),
     );
     let original = directory.path().join("track.flac");
-    std::fs::write(&original, vec![0; 42]).unwrap();
+    directory.write(&original, vec![0; 42]);
     records.insert_file_for_test(&file, &original).await.unwrap();
     let stored = records.find_file_by_id(&file.id).await.unwrap().unwrap();
     assert!(!stored.stored);
@@ -75,7 +75,7 @@ fn creation_retains_its_keyring_failure_through_cleanup() {
 
 #[tokio::test]
 async fn upload_cancellation_keeps_the_file_on_this_device_with_its_original() {
-    let directory = tempfile::tempdir().unwrap();
+    let directory = bae_util::test_files::TestFolder::new();
     let (library, storage) = bae_library::test_libraries::storage_library(
         directory.path(),
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
@@ -113,7 +113,7 @@ async fn upload_cancellation_keeps_the_file_on_this_device_with_its_original() {
         .await
         .unwrap();
     let source = directory.path().join("track.flac");
-    std::fs::write(&source, b"audio").unwrap();
+    directory.write(&source, b"audio");
     let file = bae_records::NewReleaseFile::new(
         &release.id,
         "track.flac",

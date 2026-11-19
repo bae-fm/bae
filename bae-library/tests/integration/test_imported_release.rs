@@ -8,15 +8,15 @@
 use bae_import::{CandidateKey, ImportEvent, ImportServiceHandle};
 use bae_library::test_libraries::TestLibrary;
 use bae_util::test_channels::HANG_GUARD;
+use bae_util::test_files::TestFolder;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use tempfile::TempDir;
 
 /// A library and the import service started over it.
 struct ImportingLibrary {
     library: TestLibrary,
     import: ImportServiceHandle,
-    temp: TempDir,
+    temp: TestFolder,
 }
 
 impl ImportingLibrary {
@@ -33,7 +33,7 @@ impl ImportingLibrary {
         providers: bae_catalogs::providers::Providers,
         http: bae_util::http::Http,
     ) -> Self {
-        let temp = TempDir::new().unwrap();
+        let temp = TestFolder::new();
         let database = bae_store::Store::new_test(
             bae_library::SCHEMA,
             temp.path(),
@@ -64,17 +64,17 @@ impl ImportingLibrary {
             );
         let root = self.temp.path().join(root);
         let folder = root.join(name);
-        std::fs::create_dir_all(&folder).unwrap();
+        self.temp.create_folder(&folder);
         let fixtures = bae_import::test_fixtures::flac_dir();
         for (index, fixture) in ["01 Test Track 1.flac", "02 Test Track 2.flac"].iter().enumerate()
         {
             let path = folder.join(format!("{:02} Track.flac", index + 1));
-            std::fs::copy(fixtures.join(fixture), &path).unwrap();
-            set_modified(&path, modified);
+            self.temp.copy_fixture(fixtures.join(fixture), &path);
+            set_modified(&self.temp, &path, modified);
         }
         let cover = folder.join("cover.jpg");
-        std::fs::write(&cover, cover_jpeg()).unwrap();
-        set_modified(&cover, modified);
+        self.temp.write(&cover, cover_jpeg());
+        set_modified(&self.temp, &cover, modified);
         self.import.add_watched_folder(root.clone()).await.unwrap();
         self.import.refresh_watched_folder(root).await.unwrap();
         CandidateKey::folder(&folder)
@@ -132,11 +132,10 @@ fn cover_jpeg() -> Vec<u8> {
     bytes.into_inner()
 }
 
-fn set_modified(path: &Path, modified: std::time::SystemTime) {
-    std::fs::File::options()
-        .write(true)
-        .open(path)
-        .and_then(|file| file.set_modified(modified))
+fn set_modified(folder: &TestFolder, path: &Path, modified: std::time::SystemTime) {
+    folder
+        .open_with(path, std::fs::OpenOptions::new().write(true))
+        .set_modified(modified)
         .expect("set the file's modification time");
 }
 
@@ -370,7 +369,7 @@ async fn selected_folders_from_different_roots_import_as_one_release() {
         imported,
         "separating source folders preserves the imported copy"
     );
-    assert!(original_paths.iter().all(|path| path.is_file()));
+    assert!(original_paths.iter().all(|path| fixture.temp.metadata(path).is_file()));
     fixture.shut_down().await;
 }
 

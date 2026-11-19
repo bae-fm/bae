@@ -6,9 +6,13 @@ async fn guest_named(
     household: &Household,
     key: &str,
     name: &str,
-) -> (tempfile::TempDir, tempfile::TempDir, bae_library::test_libraries::TestLibrary) {
+) -> (
+    bae_util::test_files::TestFolder,
+    bae_util::test_files::TestFolder,
+    bae_library::test_libraries::TestLibrary,
+) {
     let invite = household.invite(key).await;
-    let installation_dir = tempfile::tempdir().unwrap();
+    let installation_dir = bae_util::test_files::TestFolder::new();
     let installation = installation_in(&installation_dir);
     let control = bae_library::JoinControl::new();
     let joining = bae_library::join_with_invite(
@@ -27,7 +31,7 @@ async fn guest_named(
     .await
     .unwrap();
     let guest = loaded(joined.unwrap().unwrap());
-    let library_dir = tempfile::tempdir().unwrap();
+    let library_dir = bae_util::test_files::TestFolder::new();
     let (library, profile) = joined_profile(guest, household, library_dir.path()).await;
     assert_eq!(profile.name, name);
     (installation_dir, library_dir, library)
@@ -42,7 +46,7 @@ fn the_people_list_others_by_name_in_the_devices_language() {
         let household = Household::new().await;
         let zoe = guest_named(&household, "zoe-key", "Zoe").await;
         let osten = guest_named(&household, "osten-key", "Östen").await;
-        let owner_dir = tempfile::tempdir().unwrap();
+        let owner_dir = bae_util::test_files::TestFolder::new();
         let owner = household.owners_library(owner_dir.path()).await;
         owner.manager().attach_and_start_sync().await.unwrap();
         let names = |people: &bae_people::people::PeopleView| -> Vec<String> {

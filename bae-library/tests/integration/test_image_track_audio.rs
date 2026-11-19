@@ -43,7 +43,12 @@ fn track2_of(image: &[u8]) -> Vec<i32> {
 async fn import_image(
     extension: &str,
     format: EncodeFormat,
-) -> (bae_library::test_libraries::TestLibrary, String, Vec<u8>, tempfile::TempDir) {
+) -> (
+    bae_library::test_libraries::TestLibrary,
+    String,
+    Vec<u8>,
+    (bae_util::test_files::TestFolder, bae_util::test_files::TestFolder),
+) {
     bae_util::test_logs::install();
     bae_audio::init();
     let image =
@@ -63,22 +68,20 @@ async fn import_image(
         "test",
         coven::IdSource::new_id(&coven::UuidIds).to_string(),
         move |dir| {
-            std::fs::write(dir.join(&name), &written).unwrap();
-            std::fs::write(
+            dir.write(dir.join(&name), &written);
+            dir.write(
                 dir.join("Album Title.cue"),
                 format!(
                     "FILE \"{name}\" WAVE\n  TRACK 01 AUDIO\n    TITLE \"Track One\"\n    INDEX 01 00:00:00\n  \
                      TRACK 02 AUDIO\n    TITLE \"Track Two\"\n    INDEX 01 00:03:00\n  \
                      TRACK 03 AUDIO\n    TITLE \"Track Three\"\n    INDEX 01 00:06:00\n"
-                ),
-            )
-            .unwrap();
+                ));
         },
     )
     .await
     .expect("import the image");
     assert_eq!(imported.track_ids.len(), 3, "the image's three tracks");
-    (library, imported.track_ids[1].clone(), image, imported.temp_dir)
+    (library, imported.track_ids[1].clone(), image, (imported.temp_dir, imported.album_dir))
 }
 
 /// The loudness of `samples` as the import's meter reads it.
@@ -108,11 +111,11 @@ async fn check_track2_loudness(extension: &str, format: EncodeFormat) {
 /// Import an image, save track 2 as FLAC, and check the saved file holds
 /// track 2's own samples.
 async fn check_track2_save(extension: &str, format: EncodeFormat) {
-    let (library, track2, image, dir) = import_image(extension, format).await;
+    let (library, track2, image, (dir, _album)) = import_image(extension, format).await;
     let out = dir.path().join("saved.flac");
     library.manager().save_track(&track2, &out, "flac").await.expect("save track 2");
     let saved = bae_audio::decode_audio(
-        bae_audio::test_samples::filled_sparse_buffer(&std::fs::read(&out).unwrap()),
+        bae_audio::test_samples::filled_sparse_buffer(&dir.read(&out)),
         None,
         None,
     )

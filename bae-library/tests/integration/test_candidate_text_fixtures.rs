@@ -7,12 +7,11 @@ use bae_identify::signals::TextSignal;
 use bae_import::extraction::service::{ExtractionService, ExtractionSource};
 use bae_import::extraction::{ArtworkAnalysis, ArtworkAnalyzer, ArtworkUnreadable};
 use bae_import::ImportEventBus;
+use bae_util::test_files::TestFolder;
 use serde::Deserialize;
 use std::collections::HashMap;
-use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
-use tempfile::TempDir;
 
 #[derive(Debug, Deserialize)]
 struct Fixture {
@@ -59,9 +58,8 @@ fn fixtures_dir() -> PathBuf {
     std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/candidate_text")
 }
 
-fn load_fixture(path: &Path) -> Fixture {
-    let bytes =
-        std::fs::read(path).unwrap_or_else(|e| panic!("failed to read fixture {path:?}: {e}"));
+fn load_fixture(path: &std::path::Path) -> Fixture {
+    let bytes = bae_util::test_files::read_fixture(path);
     serde_json::from_slice(&bytes)
         .unwrap_or_else(|e| panic!("failed to parse fixture {path:?}: {e}"))
 }
@@ -93,7 +91,7 @@ impl ArtworkAnalyzer for FixtureAnalyzer {
 
 /// Build a fixture's release folder in `tmp`, returning it and the OCR lines
 /// keyed by each artwork file's absolute path.
-fn materialize(fixture: &Fixture, tmp: &TempDir) -> (PathBuf, HashMap<PathBuf, Vec<String>>) {
+fn materialize(fixture: &Fixture, tmp: &TestFolder) -> (PathBuf, HashMap<PathBuf, Vec<String>>) {
     // `{tmp}/{parent}/{release}`, from the last two path components.
     let (parent_name, release_base) = match fixture.sources.path_components.as_slice() {
         [] => (None, "release".to_string()),
@@ -114,25 +112,25 @@ fn materialize(fixture: &Fixture, tmp: &TempDir) -> (PathBuf, HashMap<PathBuf, V
         Some(p) => tmp.path().join(p),
         None => tmp.path().to_path_buf(),
     };
-    fs::create_dir_all(&parent_dir).unwrap();
+    tmp.create_folder(&parent_dir);
     let folder = parent_dir.join(&release_folder_name);
-    fs::create_dir_all(&folder).unwrap();
+    tmp.create_folder(&folder);
 
     // One audio file so the folder is a candidate; audio file names feed no
     // pool.
-    fs::write(folder.join("sentinel.mp3"), PROBEABLE_MP3).unwrap();
+    tmp.write(folder.join("sentinel.mp3"), PROBEABLE_MP3);
 
     // File names land on images, whose names the pass reads.
     for stem in &fixture.sources.filenames_generic {
         let name = format!("{stem}.jpg");
-        fs::write(folder.join(&name), minimal_jpeg()).unwrap();
+        tmp.write(folder.join(&name), minimal_jpeg());
     }
 
     // Each CUE field becomes a top-level TITLE.
     if !fixture.sources.cue_fields.is_empty() {
         let cue_body: String =
             fixture.sources.cue_fields.iter().map(|s| format!("TITLE \"{s}\"\n")).collect();
-        fs::write(folder.join("fixture.cue"), cue_body).unwrap();
+        tmp.write(folder.join("fixture.cue"), cue_body);
     }
 
     // Each text file becomes a `.txt` named after its declared path.
@@ -146,7 +144,7 @@ fn materialize(fixture: &Fixture, tmp: &TempDir) -> (PathBuf, HashMap<PathBuf, V
         } else {
             format!("{basename}.txt")
         };
-        fs::write(folder.join(&name), tf.lines.join("\n")).unwrap();
+        tmp.write(folder.join(&name), tf.lines.join("\n"));
     }
 
     // Each artwork file is a stub JPEG; the OCR map carries its lines.
@@ -157,19 +155,19 @@ fn materialize(fixture: &Fixture, tmp: &TempDir) -> (PathBuf, HashMap<PathBuf, V
             .map(|n| n.to_string_lossy().into_owned())
             .unwrap_or_else(|| "Cover.jpg".to_string());
         let materialized = folder.join(&basename);
-        fs::write(&materialized, minimal_jpeg()).unwrap();
+        tmp.write(&materialized, minimal_jpeg());
         // The analyzer receives the canonical path.
-        let canonical = materialized.canonicalize().unwrap_or(materialized.clone());
+        let canonical = tmp.canonicalize(&materialized);
         ocr_map.insert(canonical, art.lines.clone());
     }
 
-    let canonical_folder = folder.canonicalize().unwrap_or(folder);
+    let canonical_folder = tmp.canonicalize(&folder);
     (canonical_folder, ocr_map)
 }
 
 /// A throwaway library database over a temp dir, which must outlive it.
-async fn make_database() -> (bae_store::Store, TempDir) {
-    let tmp = TempDir::new().expect("library temp dir");
+async fn make_database() -> (bae_store::Store, TestFolder) {
+    let tmp = TestFolder::new();
     let library = bae_library::test_libraries::open_test_library(tmp.path()).await;
     (library.store().clone(), tmp)
 }
@@ -238,7 +236,7 @@ async fn drive_fixture(
 
 async fn assert_fixture(fixture_path: &Path) {
     let fixture = load_fixture(fixture_path);
-    let tmp = TempDir::new().expect("temp dir");
+    let tmp = TestFolder::new();
     let (folder, ocr_map) = materialize(&fixture, &tmp);
     let (catalogs, free_text) = drive_fixture(&fixture, folder, ocr_map).await;
 

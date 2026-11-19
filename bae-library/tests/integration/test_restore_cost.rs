@@ -120,8 +120,7 @@ async fn restore_cost(library: Library) {
     let clock =
         Arc::new(BenchClock { origin: Instant::now(), ahead: tokio::sync::watch::Sender::new(0) });
     let storage = Arc::new(MemoryStorage::builder().clock(clock.clone()).build().unwrap());
-    let owner_dir = tempfile::TempDir::new().unwrap();
-    let app_dir = AppDir::at(owner_dir.path()).unwrap();
+    let app_dir = AppDir::temporary().unwrap();
     let sources = bae_store::TestSources::on(&(clock.clone() as coven::ClockRef));
     let installation = Coven::in_memory(app_dir.coven_app_dir());
     let handle = bae_store::test_devices::create_test_store(
@@ -182,8 +181,7 @@ async fn restore_cost(library: Library) {
     faults.delay = library.latency;
     storage.set_faults(faults).await;
 
-    let device_dir = tempfile::TempDir::new().unwrap();
-    let device_app_dir = AppDir::at(device_dir.path()).unwrap();
+    let device_app_dir = AppDir::temporary().unwrap();
     let (_cancelling, cancel) = tokio::sync::watch::channel(false);
     let restoring = Instant::now();
     let restored = bae_library::restore_from_code(

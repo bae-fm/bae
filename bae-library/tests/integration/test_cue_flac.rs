@@ -11,8 +11,8 @@ use bae_audio::test_samples::{assert_captured_matches_reference, samples_as_f32}
 use bae_catalogs::discogs::models::DiscogsRelease;
 use bae_records::DbAudioSegmentRole;
 use bae_util::content_type::ContentType;
+use bae_util::test_files::TestFolder;
 use std::path::Path;
-use tempfile::TempDir;
 use tracing::info;
 
 /// CUE/FLAC imports record each track's sample window correctly.
@@ -22,8 +22,8 @@ use tracing::info;
 #[tokio::test]
 async fn test_cue_flac_records_track_positions() {
     bae_util::test_logs::install();
-    let temp_root = TempDir::new().expect("temp root");
-    let (library, release_id) = import_cue_flac_fixture(temp_root.path()).await;
+    let temp_root = TestFolder::new();
+    let (library, release_id) = import_cue_flac_fixture(&temp_root).await;
     info!("Import completed, release_id: {}", release_id);
     let tracks = library.records().get_tracks_for_release(&release_id).await.expect("get tracks");
     assert_eq!(tracks.len(), 3, "Should have 3 tracks");
@@ -202,9 +202,9 @@ async fn test_cue_flac_playback_uses_track_positions() {
 
     // Decode XLD reference for track 2 (white noise)
     let fixture_dir = bae_audio::test_fixtures::cue_flac_dir();
-    let reference_data =
-        std::fs::read(fixture_dir.join("02 Test Artist - Track Two (White Noise).flac"))
-            .expect("read reference");
+    let reference_data = bae_util::test_files::read_fixture(
+        fixture_dir.join("02 Test Artist - Track Two (White Noise).flac"),
+    );
     let reference =
         decode_audio(bae_audio::test_samples::filled_sparse_buffer(&reference_data), None, None)
             .expect("decode reference");
@@ -242,8 +242,8 @@ async fn test_cue_flac_playback_uses_track_positions() {
 #[tokio::test]
 async fn test_cue_flac_decoded_duration_matches_cue_timing() {
     bae_util::test_logs::install();
-    let temp_root = TempDir::new().expect("temp root");
-    let (library, release_id) = import_cue_flac_fixture(temp_root.path()).await;
+    let temp_root = TestFolder::new();
+    let (library, release_id) = import_cue_flac_fixture(&temp_root).await;
     let tracks = library.records().get_tracks_for_release(&release_id).await.expect("get tracks");
     assert_eq!(tracks.len(), 3, "Should have exactly 3 tracks");
 
@@ -289,27 +289,23 @@ async fn test_cue_flac_decoded_duration_matches_cue_timing() {
 }
 
 /// Copy the CUE/FLAC fixture with seektable (30-second file with 3 tracks).
-fn copy_cue_flac_fixture_with_seektable(dir: &Path) {
-    use std::fs;
+fn copy_cue_flac_fixture_with_seektable(folder: &bae_util::test_files::TestFolder, dir: &Path) {
     let fixture_dir = bae_audio::test_fixtures::cue_flac_dir();
-    let flac_data = bae_util::test_files::read_fixture(fixture_dir.join("Test Album.flac"));
-    let cue_data = bae_util::test_files::read_fixture(fixture_dir.join("Test Album.cue"));
-    fs::write(dir.join("Test Album.flac"), &flac_data).expect("write flac");
-    fs::write(dir.join("Test Album.cue"), &cue_data).expect("write cue");
-    info!("Copied CUE/FLAC fixture with seektable: {} bytes FLAC", flac_data.len());
+    let flac =
+        folder.copy_fixture(fixture_dir.join("Test Album.flac"), dir.join("Test Album.flac"));
+    folder.copy_fixture(fixture_dir.join("Test Album.cue"), dir.join("Test Album.cue"));
+    info!("Copied CUE/FLAC fixture with seektable: {} bytes FLAC", folder.metadata(flac).len());
 }
 
 /// Import the 3-track CUE/FLAC fixture (storageless) under `temp_root` and return
 /// the library manager and the imported release id. Shared by the CUE/FLAC tests
 /// whose only common setup is this import.
 async fn import_cue_flac_fixture(
-    temp_root: &Path,
+    temp_root: &bae_util::test_files::TestFolder,
 ) -> (bae_library::test_libraries::TestLibrary, String) {
-    let album_dir = temp_root.join("album");
-    let db_dir = temp_root.join("db");
-    std::fs::create_dir_all(&album_dir).expect("album dir");
-    std::fs::create_dir_all(&db_dir).expect("db dir");
-    copy_cue_flac_fixture_with_seektable(&album_dir);
+    let album_dir = temp_root.create_folder("album");
+    let db_dir = temp_root.create_folder("db");
+    copy_cue_flac_fixture_with_seektable(temp_root, &album_dir);
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
     let library = bae_library::test_libraries::open_test_library_with(
         &db_dir,
@@ -330,7 +326,8 @@ struct CueFlacCaptureFixture {
     playback_handle: bae_playback::PlaybackHandle,
     track_ids: Vec<String>,
     capture_stream_rx: bae_playback::test_capture::CaptureStreamRx,
-    _temp_dir: TempDir,
+    _temp_dir: TestFolder,
+    _album_dir: TestFolder,
 }
 
 impl CueFlacCaptureFixture {
@@ -341,7 +338,7 @@ impl CueFlacCaptureFixture {
             create_test_discogs_release(),
             "test",
             coven::IdSource::new_id(&coven::UuidIds).to_string(),
-            copy_cue_flac_fixture_with_seektable,
+            |album| copy_cue_flac_fixture_with_seektable(album, album.path()),
         )
         .await?;
         assert_eq!(imported.track_ids.len(), 3, "Should have 3 tracks from CUE/FLAC");
@@ -352,6 +349,7 @@ impl CueFlacCaptureFixture {
             track_ids: imported.track_ids,
             capture_stream_rx,
             _temp_dir: imported.temp_dir,
+            _album_dir: imported.album_dir,
         })
     }
 
@@ -376,8 +374,8 @@ async fn test_cue_flac_export_single_track() {
 
     bae_util::test_logs::install();
 
-    let temp_root = TempDir::new().expect("temp root");
-    let (library, release_id) = import_cue_flac_fixture(temp_root.path()).await;
+    let temp_root = TestFolder::new();
+    let (library, release_id) = import_cue_flac_fixture(&temp_root).await;
 
     let tracks = library.records().get_tracks_for_release(&release_id).await.expect("get tracks");
     assert_eq!(tracks.len(), 3, "Should have 3 tracks");
@@ -387,7 +385,7 @@ async fn test_cue_flac_export_single_track() {
     library.manager().save_track(&tracks[1].id, &export_path, "flac").await.expect("export track");
 
     // Decode the exported file and check its duration
-    let exported_data = std::fs::read(&export_path).expect("read exported file");
+    let exported_data = temp_root.read(&export_path);
     let decoded =
         decode_audio(bae_audio::test_samples::filled_sparse_buffer(&exported_data), None, None)
             .expect("decode exported");
@@ -432,8 +430,8 @@ async fn test_cue_flac_gapless_track_boundary() {
     use bae_audio::decode_audio;
 
     bae_util::test_logs::install();
-    let temp_root = TempDir::new().expect("temp root");
-    let (library, release_id) = import_cue_flac_fixture(temp_root.path()).await;
+    let temp_root = TestFolder::new();
+    let (library, release_id) = import_cue_flac_fixture(&temp_root).await;
     let tracks = library.records().get_tracks_for_release(&release_id).await.expect("get tracks");
     assert_eq!(tracks.len(), 3, "Should have 3 tracks");
 
@@ -443,13 +441,13 @@ async fn test_cue_flac_gapless_track_boundary() {
     let t2_path = temp_root.path().join("t2.flac");
     library.manager().save_track(&tracks[1].id, &t2_path, "flac").await.expect("export track 2");
     let t1 = decode_audio(
-        bae_audio::test_samples::filled_sparse_buffer(&std::fs::read(&t1_path).unwrap()),
+        bae_audio::test_samples::filled_sparse_buffer(&temp_root.read(&t1_path)),
         None,
         None,
     )
     .expect("decode track 1");
     let t2 = decode_audio(
-        bae_audio::test_samples::filled_sparse_buffer(&std::fs::read(&t2_path).unwrap()),
+        bae_audio::test_samples::filled_sparse_buffer(&temp_root.read(&t2_path)),
         None,
         None,
     )
@@ -458,7 +456,7 @@ async fn test_cue_flac_gapless_track_boundary() {
     // Ground truth: the source file decoded once.
     let source = bae_audio::test_fixtures::cue_flac_dir().join("Test Album.flac");
     let full = decode_audio(
-        bae_audio::test_samples::filled_sparse_buffer(&std::fs::read(&source).unwrap()),
+        bae_audio::test_samples::filled_sparse_buffer(&bae_util::test_files::read_fixture(&source)),
         None,
         None,
     )
@@ -498,7 +496,7 @@ fn create_test_discogs_release() -> DiscogsRelease {
 /// A two-track CUE album over one 10 s FLAC tone written here. Track 2's
 /// `PREGAP 00:02:00` is 2 s of silence bae generates before its INDEX 01 at
 /// 0:05; it is not in the file.
-fn generate_generated_pregap_album(dir: &Path) {
+fn generate_generated_pregap_album(dir: &bae_util::test_files::TestFolder) {
     const SAMPLE_RATE: u32 = 44_100;
     let samples: Vec<i32> = (0..10 * SAMPLE_RATE)
         .flat_map(|frame| {
@@ -516,7 +514,7 @@ fn generate_generated_pregap_album(dir: &Path) {
         2,
     )
     .expect("encode the PREGAP album FLAC");
-    std::fs::write(dir.join("Pregap Album.flac"), flac).expect("write the PREGAP album FLAC");
+    dir.write(dir.join("Pregap Album.flac"), flac);
     let cue = "\
 PERFORMER \"Test Artist\"
 TITLE \"Pregap Album\"
@@ -531,7 +529,7 @@ FILE \"Pregap Album.flac\" WAVE
     PREGAP 00:02:00
     INDEX 01 00:05:00
 ";
-    std::fs::write(dir.join("Pregap Album.cue"), cue).expect("write the PREGAP album CUE");
+    dir.write(dir.join("Pregap Album.cue"), cue);
 }
 
 /// Collects a decode's interleaved samples.

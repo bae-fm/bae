@@ -14,7 +14,7 @@ fn png(image: image::RgbImage) -> Vec<u8> {
 
 #[tokio::test]
 async fn a_profile_names_each_new_avatar_at_once() {
-    let directory = tempfile::tempdir().unwrap();
+    let directory = bae_util::test_files::TestFolder::new();
     let (library, storage) = storage_library(
         directory.path(),
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
@@ -80,7 +80,7 @@ async fn a_profile_names_each_new_avatar_at_once() {
 /// PNG source nor the JPEG compresses it away.
 #[tokio::test]
 async fn an_oversized_avatar_is_stored_as_a_downscaled_jpeg() {
-    let directory = tempfile::tempdir().unwrap();
+    let directory = bae_util::test_files::TestFolder::new();
     let (library, storage) = storage_library(
         directory.path(),
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
@@ -113,7 +113,7 @@ async fn an_oversized_avatar_is_stored_as_a_downscaled_jpeg() {
 /// stored bytes are the JPEG bae makes of any image it stores.
 #[tokio::test]
 async fn a_png_avatar_is_stored_as_covers_are() {
-    let directory = tempfile::tempdir().unwrap();
+    let directory = bae_util::test_files::TestFolder::new();
     let (library, storage) = storage_library(
         directory.path(),
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
@@ -136,7 +136,7 @@ async fn a_png_avatar_is_stored_as_covers_are() {
 /// profile keeps none.
 #[tokio::test]
 async fn an_undecodable_avatar_is_refused() {
-    let directory = tempfile::tempdir().unwrap();
+    let directory = bae_util::test_files::TestFolder::new();
     let (library, storage) = storage_library(
         directory.path(),
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),

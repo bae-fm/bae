@@ -10,7 +10,7 @@ struct HighSampleRateTestFixture {
     library: TestLibrary,
     _capture_stream_rx: bae_playback::test_capture::CaptureStreamRx,
     audio_clock: AudioClock,
-    _temp_dir: TempDir,
+    _temp_dir: TestFolder,
 }
 
 impl PlaybackFixture for HighSampleRateTestFixture {
@@ -23,17 +23,16 @@ impl PlaybackFixture for HighSampleRateTestFixture {
 impl HighSampleRateTestFixture {
     async fn new() -> Result<Self, Box<dyn std::error::Error>> {
         let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
-        let (library, album_dir, temp_dir) =
-            bae_library::test_libraries::setup_test_library_with_album_dir(
-                fakes.providers(),
-                bae_util::http::Http::for_test(),
-            )
-            .await;
+        let (library, temp_dir) = bae_library::test_libraries::setup_test_library_with(
+            fakes.providers(),
+            bae_util::http::Http::for_test(),
+        )
+        .await;
+        let album_dir = temp_dir.create_folder("album");
 
         let fixture_path = bae_import::test_fixtures::flac_dir().join("96khz_test.flac");
         let test_path = album_dir.join("01 96kHz Track.flac");
-        std::fs::write(&test_path, bae_util::test_files::read_fixture(&fixture_path))
-            .expect("copy the 96 kHz FLAC fixture");
+        temp_dir.copy_fixture(&fixture_path, &test_path);
 
         // Create release with one track
         let discogs_release = DiscogsRelease {
@@ -290,9 +289,9 @@ async fn test_cue_flac_seek_respects_track_end_boundary() {
 
             // Decode reference and compare at the seek position
             let fixture_dir = bae_audio::test_fixtures::cue_flac_dir();
-            let reference_data =
-                std::fs::read(fixture_dir.join("02 Test Artist - Track Two (White Noise).flac"))
-                    .expect("read reference");
+            let reference_data = bae_util::test_files::read_fixture(
+                fixture_dir.join("02 Test Artist - Track Two (White Noise).flac"),
+            );
             let reference = decode_audio(
                 bae_audio::test_samples::filled_sparse_buffer(&reference_data),
                 None,
@@ -360,17 +359,17 @@ async fn test_cue_flac_seek_respects_track_end_boundary() {
 
 /// The three-track FLAC album imported into a fresh library with no playback
 /// service started — the arrange for the tests below, which each decide when
-/// their own service comes up — beside the library's store. The `TempDir` owns
+/// their own service comes up — beside the library's store. The `TestFolder` owns
 /// the library's files.
-async fn imported_library_without_playback() -> (TestLibrary, TempDir) {
+async fn imported_library_without_playback() -> (TestLibrary, TestFolder) {
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
-    let (library, album_dir, temp_dir) =
-        bae_library::test_libraries::setup_test_library_with_album_dir(
-            fakes.providers(),
-            bae_util::http::Http::for_test(),
-        )
-        .await;
-    let _ = generate_test_flac_files(&album_dir);
+    let (library, temp_dir) = bae_library::test_libraries::setup_test_library_with(
+        fakes.providers(),
+        bae_util::http::Http::for_test(),
+    )
+    .await;
+    let album_dir = temp_dir.create_folder("album");
+    let _ = generate_test_flac_files(&temp_dir, &album_dir);
     let release_id_key = fakes.seed_discogs_test_release(create_test_album());
     library.import_folder(album_dir, release_id_key).await;
     (library, temp_dir)

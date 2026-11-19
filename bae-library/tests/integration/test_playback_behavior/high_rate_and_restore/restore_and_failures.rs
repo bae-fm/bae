@@ -131,7 +131,7 @@ struct CloudOnlyPlaybackFixture {
     cloud: Arc<coven::MemoryStorage>,
     track_ids: Vec<String>,
     _capture_stream_rx: bae_playback::test_capture::CaptureStreamRx,
-    _temp_dir: TempDir,
+    _temp_dir: TestFolder,
 }
 
 impl PlaybackFixture for CloudOnlyPlaybackFixture {
@@ -148,9 +148,9 @@ impl CloudOnlyPlaybackFixture {
     /// is returned so the test can arm a read failure before playing.
     async fn new() -> Result<Self, Box<dyn std::error::Error>> {
         bae_util::test_logs::install();
-        let temp_dir = TempDir::new()?;
+        let temp_dir = bae_util::test_files::TestFolder::new();
         let album_dir = temp_dir.path().join("album");
-        std::fs::create_dir_all(&album_dir)?;
+        temp_dir.create_folder(&album_dir);
         let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
         let (library, cloud) = bae_library::test_libraries::storage_library(
             temp_dir.path(),
@@ -163,7 +163,7 @@ impl CloudOnlyPlaybackFixture {
 
         let discogs_release = create_test_album();
         let release_id_key = fakes.seed_discogs_test_release(discogs_release);
-        generate_test_flac_files(&album_dir);
+        generate_test_flac_files(&temp_dir, &album_dir);
 
         let import_handle = library.start_discogs_import().await;
         let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
@@ -194,7 +194,7 @@ impl CloudOnlyPlaybackFixture {
         }
 
         // Delete the import originals so file resolution can't fall back to them.
-        std::fs::remove_dir_all(&album_dir)?;
+        temp_dir.remove(&album_dir);
 
         let tracks = library.records().get_tracks_for_release(&release_id).await?;
         let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();

@@ -11,8 +11,8 @@
 use bae_catalogs::discogs::models::DiscogsRelease;
 use bae_records::ResolvedTrackAudio;
 use bae_records::ScrubPoint;
+use bae_util::test_files::TestFolder;
 use std::path::Path;
-use tempfile::TempDir;
 
 const SAMPLE_RATE: u32 = 44_100;
 const TEN_SECONDS: u64 = 10 * SAMPLE_RATE as u64;
@@ -74,9 +74,9 @@ fn with_seektable(flac: &[u8], points: &[SeekPoint]) -> Vec<u8> {
 /// `flac` with a SEEKTABLE naming its first frame, then, up to sample
 /// `until`, the last frame at most `apart` samples past the point before.
 fn with_seek_points(flac: &[u8], apart: u64, until: u64) -> Vec<u8> {
-    let dir = TempDir::new().unwrap();
+    let dir = TestFolder::new();
     let path = dir.path().join("plain.flac");
-    std::fs::write(&path, flac).unwrap();
+    dir.write(&path, flac);
     let frames = frames(&path);
     let first = frames[0];
     let point = |frame: &ScrubPoint, next: &ScrubPoint| SeekPoint {
@@ -219,12 +219,15 @@ fn release(id: &str, tracks: &[(&str, &str)]) -> DiscogsRelease {
 /// the folder the files sit in, and the directory that owns both.
 struct Imported {
     tracks: Vec<ResolvedTrackAudio>,
-    album_dir: std::path::PathBuf,
-    _temp_dir: TempDir,
+    album_dir: TestFolder,
+    _temp_dir: TestFolder,
 }
 
 /// Import `release` from the folder `write_files` fills.
-async fn import(release: DiscogsRelease, write_files: impl FnOnce(&Path)) -> Imported {
+async fn import(
+    release: DiscogsRelease,
+    write_files: impl FnOnce(&bae_util::test_files::TestFolder),
+) -> Imported {
     let (library, imported) = bae_library::test_libraries::imported_release_setup(
         release,
         "test",
@@ -250,8 +253,8 @@ async fn a_single_file_album_without_a_seektable_stores_points_per_segment() {
             &[("Track One", "0:23"), ("Track Two", "0:25"), ("Track Three", "0:25")],
         ),
         move |dir| {
-            std::fs::write(dir.join("Album Title.flac"), &album).unwrap();
-            std::fs::write(
+            dir.write(dir.join("Album Title.flac"), &album);
+            dir.write(
                 dir.join("Album Title.cue"),
                 "\
 PERFORMER \"Artist Name\"
@@ -268,8 +271,7 @@ FILE \"Album Title.flac\" WAVE
     TITLE \"Track Three\"
     INDEX 01 00:50:00
 ",
-            )
-            .unwrap();
+            );
         },
     )
     .await;
@@ -303,8 +305,8 @@ async fn per_track_files_without_a_seektable_store_points() {
     let imported = import(
         release("scrub-points-per-track", &[("Track One", "0:25"), ("Track Two", "0:32")]),
         move |dir| {
-            std::fs::write(dir.join("01 Track One.flac"), &written[0]).unwrap();
-            std::fs::write(dir.join("02 Track Two.flac"), &written[1]).unwrap();
+            dir.write(dir.join("01 Track One.flac"), &written[0]);
+            dir.write(dir.join("02 Track Two.flac"), &written[1]);
         },
     )
     .await;
@@ -328,7 +330,7 @@ async fn a_seektable_of_placeholders_counts_as_none() {
     let flac = with_seektable(&noise_flac(25, 17), &[PLACEHOLDER; 4]);
     let imported =
         import(release("scrub-points-placeholders", &[("Track One", "0:25")]), move |dir| {
-            std::fs::write(dir.join("01 Track One.flac"), &flac).unwrap()
+            dir.write(dir.join("01 Track One.flac"), &flac);
         })
         .await;
     let frames = frames(&imported.album_dir.join("01 Track One.flac"));
@@ -345,7 +347,7 @@ async fn a_seektable_sparser_than_ten_seconds_stores_points() {
     let flac = with_seek_points(&noise_flac(45, 19), 30 * u64::from(SAMPLE_RATE), u64::MAX);
     let imported =
         import(release("scrub-points-sparse-seektable", &[("Track One", "0:45")]), move |dir| {
-            std::fs::write(dir.join("01 Track One.flac"), &flac).unwrap()
+            dir.write(dir.join("01 Track One.flac"), &flac);
         })
         .await;
     let frames = frames(&imported.album_dir.join("01 Track One.flac"));
@@ -362,7 +364,7 @@ async fn a_seektable_that_stops_short_of_the_end_stores_points() {
     let flac = with_seek_points(&noise_flac(45, 23), TEN_SECONDS, 20 * u64::from(SAMPLE_RATE));
     let imported =
         import(release("scrub-points-short-seektable", &[("Track One", "0:45")]), move |dir| {
-            std::fs::write(dir.join("01 Track One.flac"), &flac).unwrap()
+            dir.write(dir.join("01 Track One.flac"), &flac);
         })
         .await;
     let frames = frames(&imported.album_dir.join("01 Track One.flac"));
@@ -380,7 +382,7 @@ async fn a_seektable_no_sparser_than_ten_seconds_stores_no_points() {
     let flac = with_seek_points(&noise_flac(45, 29), TEN_SECONDS, u64::MAX);
     let imported =
         import(release("scrub-points-dense-seektable", &[("Track One", "0:45")]), move |dir| {
-            std::fs::write(dir.join("01 Track One.flac"), &flac).unwrap()
+            dir.write(dir.join("01 Track One.flac"), &flac);
         })
         .await;
     let points = imported.tracks[0].segments[0].scrub_points.as_slice();
@@ -404,11 +406,10 @@ async fn a_file_with_a_seektable_stores_no_points() {
         ),
         move |dir| {
             for name in ["Test Album.flac", "Test Album.cue"] {
-                std::fs::write(
+                dir.write(
                     dir.join(name),
                     bae_util::test_files::read_fixture(fixture_dir.join(name)),
-                )
-                .unwrap();
+                );
             }
         },
     )
@@ -431,8 +432,8 @@ async fn per_track_mp3s_store_points() {
     let imported = import(
         release("scrub-points-per-track-mp3", &[("Track One", "0:25"), ("Track Two", "0:32")]),
         move |dir| {
-            std::fs::write(dir.join("01 Track One.mp3"), &written[0]).unwrap();
-            std::fs::write(dir.join("02 Track Two.mp3"), &written[1]).unwrap();
+            dir.write(dir.join("01 Track One.mp3"), &written[0]);
+            dir.write(dir.join("02 Track Two.mp3"), &written[1]);
         },
     )
     .await;
@@ -459,7 +460,9 @@ async fn a_served_mp3_decode_holds_the_files_samples() {
         release("scrub-points-served-mp3", &[("Track One", "0:12")]),
         "test",
         coven::IdSource::new_id(&coven::UuidIds).to_string(),
-        move |dir| std::fs::write(dir.join("01 Track One.mp3"), &written).unwrap(),
+        move |dir| {
+            dir.write(dir.join("01 Track One.mp3"), &written);
+        },
     )
     .await
     .expect("import the release");

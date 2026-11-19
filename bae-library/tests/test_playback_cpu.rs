@@ -34,9 +34,9 @@
 
 use bae_catalogs::discogs::models::DiscogsRelease;
 use bae_playback::{PlaybackProgress, PlaybackState};
+use bae_util::test_files::TestFolder;
 use serial_test::serial;
 use std::time::{Duration, Instant};
-use tempfile::TempDir;
 
 /// Let playback reach steady state before measuring: the decoder fills the ring
 /// buffer in an initial burst, which isn't representative of steady playback.
@@ -149,9 +149,7 @@ fn run_ffmpeg(args: &[&str], fixture: &str) {
 /// work (drain, gain, ticks) dominates the cheap decode, so the synthetic
 /// fixture tracks real playback closely. Brown noise so the decoder does real
 /// work every frame (silence decodes trivially).
-fn generate_cue_flac_files(dir: &std::path::Path) {
-    use std::fs;
-
+fn generate_cue_flac_files(dir: &bae_util::test_files::TestFolder) {
     let flac_path = dir.join("Test Album.flac");
     let cue_path = dir.join("Test Album.cue");
 
@@ -194,13 +192,11 @@ FILE "Test Album.flac" WAVE
     PERFORMER "Test Artist"
     INDEX 01 01:00:00
 "#;
-    fs::write(&cue_path, cue_content).expect("Failed to write CUE file");
+    dir.write(&cue_path, cue_content);
 }
 
 /// Generate per-track MP3 files: three 30s 44.1kHz stereo tracks at 320kbps CBR.
-fn generate_mp3_track_files(dir: &std::path::Path) {
-    use std::fs;
-
+fn generate_mp3_track_files(dir: &bae_util::test_files::TestFolder) {
     for i in 1..=3 {
         let mp3_path = dir.join(format!("{:02} Track {}.mp3", i, i));
 
@@ -224,7 +220,7 @@ fn generate_mp3_track_files(dir: &std::path::Path) {
     }
 
     // Minimal log file so the folder scanner doesn't complain.
-    fs::write(dir.join("rip.log"), "").unwrap();
+    dir.write(dir.join("rip.log"), "");
 }
 
 /// Metadata for the CUE/FLAC album (three 30s tracks).
@@ -265,13 +261,15 @@ struct PlaybackTestFixture {
     /// establish this machine's cost per second of audio — the baseline the
     /// playback measurement is expressed against.
     source_file: std::path::PathBuf,
-    _temp_dir: TempDir,
+    /// The folder `source_file` is in.
+    album: TestFolder,
+    _temp_dir: TestFolder,
 }
 
 impl PlaybackTestFixture {
     async fn new(
         discogs_release: DiscogsRelease,
-        generate_files: impl FnOnce(&std::path::Path),
+        generate_files: impl FnOnce(&TestFolder),
         expected_tracks: usize,
         source_file: &str,
     ) -> Result<Self, Box<dyn std::error::Error>> {
@@ -305,6 +303,7 @@ impl PlaybackTestFixture {
             progress_rx,
             track_ids: imported.track_ids,
             source_file: imported.album_dir.join(source_file),
+            album: imported.album_dir,
             _temp_dir: imported.temp_dir,
         })
     }
@@ -365,12 +364,7 @@ async fn await_playing(fixture: &mut PlaybackTestFixture, label: &str) {
 /// The file is read into memory before the CPU clock starts, so the I/O to fetch
 /// it is not charged to the decode.
 fn measure_decode_baseline_factor(fixture: &PlaybackTestFixture, label: &str) -> f64 {
-    let bytes = std::fs::read(&fixture.source_file).unwrap_or_else(|e| {
-        panic!(
-            "{label}: read the source file to measure the decode baseline ({}): {e}",
-            fixture.source_file.display()
-        )
-    });
+    let bytes = fixture.album.read(&fixture.source_file);
 
     let cpu_before = get_process_cpu_time();
     let mut audio_seconds = 0.0f64;

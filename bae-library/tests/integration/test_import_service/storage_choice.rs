@@ -7,12 +7,13 @@ async fn an_import_goes_where_the_stored_choice_says_as_it_starts() {
     bae_util::test_logs::install();
     let f = ImportFixture::new().await;
     f.connect_cloud().await;
-    let collection = f.temp_path().join("Collection");
+    let collection = f.temp.path().join("Collection");
     let mut keys = Vec::new();
     for title in ["Album One", "Album Two"] {
         let album = collection.join(format!("Artist - {title}"));
-        fs::create_dir_all(&album).unwrap();
+        f.temp.create_folder(&album);
         generate_tagged_album_files(
+            &f.temp,
             &album,
             title,
             "Artist",
@@ -91,12 +92,13 @@ async fn import_outcome(
 async fn a_local_import_s_queued_cover_is_not_its_release_uploading() {
     bae_util::test_logs::install();
     let f = ImportFixture::new().await;
-    let collection = f.temp_path().join("Collection");
+    let collection = f.temp.path().join("Collection");
     let mut release_ids = Vec::new();
     for title in ["Album One", "Album Two", "Album Three"] {
         let album = collection.join(format!("Artist - {title}"));
-        fs::create_dir_all(&album).unwrap();
+        f.temp.create_folder(&album);
         generate_tagged_album_files_with_embedded_cover(
+            &f.temp,
             &album,
             title,
             "Artist",

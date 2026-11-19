@@ -15,10 +15,10 @@ pub(super) use bae_playback::{
 pub(super) use bae_preferences::SidePauseCountdown;
 pub(super) use bae_types::track_time::TrackTime;
 pub(super) use bae_util::test_channels::HANG_GUARD;
+pub(super) use bae_util::test_files::TestFolder;
 pub(super) use coven::{IdSource, SequentialIds};
 pub(super) use std::sync::Arc;
 pub(super) use std::time::Duration;
-pub(super) use tempfile::TempDir;
 pub(super) use tracing::debug;
 
 /// Return the first `StateChanged` state that satisfies `predicate`, or `None`
@@ -418,7 +418,7 @@ pub(super) struct PlaybackTestFixture {
     pub(super) playback_handle: bae_playback::PlaybackHandle,
     pub(super) progress_rx: bae_playback::PlaybackProgressFeed,
     pub(super) track_ids: Vec<String>,
-    pub(super) album_dir: std::path::PathBuf,
+    pub(super) album_dir: TestFolder,
     /// The library the album was imported into, which tests read and edit
     /// directly.
     pub(super) library: TestLibrary,
@@ -426,7 +426,7 @@ pub(super) struct PlaybackTestFixture {
     pub(super) _capture_stream_rx: bae_playback::CapturedStreams,
     /// The capture device's audio time, which only the test moves.
     pub(super) audio_clock: AudioClock,
-    pub(super) _temp_dir: TempDir,
+    pub(super) _temp_dir: TestFolder,
 }
 impl PlaybackFixture for PlaybackTestFixture {
     async fn close(self) {
@@ -442,7 +442,7 @@ impl PlaybackTestFixture {
             "playback",
             coven::IdSource::new_id(&coven::UuidIds).to_string(),
             |directory| {
-                generate_test_flac_files(directory);
+                generate_test_flac_files(directory, directory.path());
             },
         )
         .await

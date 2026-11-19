@@ -11,10 +11,10 @@ use bae_people::admin_change::{AdminChange, AdminChangeKind, AdminChangeState};
 fn an_approval_is_listed_by_the_joiners_name_until_dismissed() {
     on_app_runtime(async {
         let household = Household::new().await;
-        let dir = tempfile::tempdir().unwrap();
+        let dir = bae_util::test_files::TestFolder::new();
         let library = household.owners_library(dir.path()).await;
         let invite = household.invite("guest-key").await;
-        let guest_dir = tempfile::tempdir().unwrap();
+        let guest_dir = bae_util::test_files::TestFolder::new();
         let guest = installation_in(&guest_dir);
         let control = bae_library::JoinControl::new();
         // The waiting screen shows: the join checks every few seconds.

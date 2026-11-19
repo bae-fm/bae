@@ -19,9 +19,9 @@ fn discogs_album_folder(
 ) -> (std::path::PathBuf, bae_import::test_imports::DraftSource) {
     let release = discogs_release(title, &["Track One"]);
     let release_key = f.fakes.seed_discogs_test_release(release);
-    let dir = f.temp_path().join(dir_name);
-    fs::create_dir_all(&dir).unwrap();
-    generate_album_files(&dir, &["01 Track One.flac"]);
+    let dir = f.temp.path().join(dir_name);
+    f.temp.create_folder(&dir);
+    generate_album_files(&f.temp, &dir, &["01 Track One.flac"]);
     (dir, bae_import::test_imports::discogs_release(release_key))
 }
 
@@ -32,9 +32,10 @@ fn tagged_album_folder(
     title: &str,
     artist: &str,
 ) -> std::path::PathBuf {
-    let dir = f.temp_path().join(dir_name);
-    fs::create_dir_all(&dir).unwrap();
+    let dir = f.temp.path().join(dir_name);
+    f.temp.create_folder(&dir);
     generate_tagged_album_files(
+        &f.temp,
         &dir,
         title,
         artist,
@@ -369,9 +370,9 @@ async fn a_discogs_credit_imports_with_its_printed_name_and_join() {
         bae_catalogs::test_releases::discogs_artist("discogs-artist-b", "Artist B"),
     ];
     let release_key = f.fakes.seed_discogs_test_release(release);
-    let dir = f.temp_path().join("album-credited");
-    fs::create_dir_all(&dir).unwrap();
-    generate_album_files(&dir, &["01 Track One.flac"]);
+    let dir = f.temp.path().join("album-credited");
+    f.temp.create_folder(&dir);
+    generate_album_files(&f.temp, &dir, &["01 Track One.flac"]);
 
     let (_, album_id) =
         import_and_wait(&f, dir, bae_import::test_imports::discogs_release(release_key)).await;

@@ -113,10 +113,10 @@ async fn a_changed_cover_reaches_the_paused_track_and_the_queue() {
             now_playing_until(&values, &track_id, "the paused track", |_| true).await.cover_image;
         first_upcoming_until(&mut queue, |item| item.display.cover_image == before).await;
 
-        let image_dir = TempDir::new().unwrap();
+        let image_dir = bae_util::test_files::TestFolder::new();
         let image_path = image_dir.path().join("front.gif");
         let image_bytes = bae_util::test_cover_art::SOLID_GIF.to_vec();
-        std::fs::write(&image_path, &image_bytes).unwrap();
+        image_dir.write(&image_path, &image_bytes);
         let file = bae_records::NewReleaseFile::new(
             &release_id,
             "front.gif",

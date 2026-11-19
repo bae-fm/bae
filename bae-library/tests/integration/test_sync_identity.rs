@@ -359,17 +359,16 @@ async fn one_id_on_two_artists(devices: &TwoDevices) -> (String, String, Vec<Str
 /// import-pane state no sync carries: a folder of one track under a watched
 /// folder, scanned, and its album credited to the artist in the pane. The
 /// folder lives as long as the directory returned.
-async fn draft_crediting(device: &TestDevice, artist_id: &str) -> tempfile::TempDir {
+async fn draft_crediting(device: &TestDevice, artist_id: &str) -> bae_util::test_files::TestFolder {
     let store = device.store();
-    let dir = tempfile::tempdir().unwrap();
-    let watched = std::fs::canonicalize(dir.path()).unwrap();
+    let dir = bae_util::test_files::TestFolder::new();
+    let watched = dir.canonicalize(dir.path());
     let folder = watched.join("Album");
-    std::fs::create_dir_all(&folder).unwrap();
-    std::fs::copy(
+    dir.create_folder(&folder);
+    dir.copy_fixture(
         bae_import::test_fixtures::flac_dir().join("01 Test Track 1.flac"),
         folder.join("01 Test Track 1.flac"),
-    )
-    .unwrap();
+    );
     let tables = bae_import::tables::ImportTables::new(store.clone());
     tables.add_watched_import_folder(&watched).await.unwrap();
     let candidate = bae_import::folder_scanner::FolderCandidate {

@@ -7,22 +7,18 @@
 //! the most files open at once to be one, and none of them to remain open once
 //! the import is done.
 
-use std::fs;
-use std::path::Path;
 use std::time::Instant;
 
 const DISCS: usize = 3;
 const TRACKS_PER_DISC: usize = 100;
 
-fn write_box_set(album_dir: &Path) {
-    let flac = fs::read(bae_import::test_fixtures::flac_dir().join("01 Test Track 1.flac"))
-        .expect("FLAC fixture");
+fn write_box_set(album: &bae_util::test_files::TestFolder) {
+    let flac = bae_util::test_files::read_fixture(
+        bae_import::test_fixtures::flac_dir().join("01 Test Track 1.flac"),
+    );
     for disc in 1..=DISCS {
-        let disc_dir = album_dir.join(format!("CD{disc}"));
-        fs::create_dir_all(&disc_dir).unwrap();
         for track in 1..=TRACKS_PER_DISC {
-            fs::write(disc_dir.join(format!("{track:03} - Track Title {track}.flac")), &flac)
-                .unwrap();
+            album.write(format!("CD{disc}/{track:03} - Track Title {track}.flac"), &flac);
         }
     }
 }
@@ -67,7 +63,7 @@ async fn a_box_set_imports_with_a_budget_of_one_place() {
     import_handle
         .send_command(bae_import::test_imports::folder_import(
             &import_id,
-            album_dir.clone(),
+            album_dir.path().to_path_buf(),
             bae_import::test_imports::discogs_release(release_key),
         ))
         .await
@@ -89,5 +85,5 @@ async fn a_box_set_imports_with_a_budget_of_one_place() {
     assert_eq!(tracks.len(), DISCS * TRACKS_PER_DISC);
 
     // Every source file the import opened is closed once it is done.
-    coven::assert_no_open_files_under(&album_dir);
+    coven::assert_no_open_files_under(album_dir.path());
 }

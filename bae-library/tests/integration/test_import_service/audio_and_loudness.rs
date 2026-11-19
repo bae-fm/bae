@@ -11,9 +11,10 @@ async fn local_folder_import() {
     let release = discogs_release("Test Album", &["Track One", "Track Two", "Track Three"]);
     let release_id_key = f.fakes.seed_discogs_test_release(release);
 
-    let album_dir = f.temp_path().join("album");
-    fs::create_dir_all(&album_dir).unwrap();
+    let album_dir = f.temp.path().join("album");
+    f.temp.create_folder(&album_dir);
     generate_album_files(
+        &f.temp,
         &album_dir,
         &["01 Track One.flac", "02 Track Two.flac", "03 Track Three.flac"],
     );
@@ -54,9 +55,9 @@ async fn local_folder_import() {
     let files = f.library.records().get_files_for_release(&release_id).await.unwrap();
     assert_eq!(files.len(), 3);
 
-    assert!(album_dir.join("01 Track One.flac").exists());
-    assert!(album_dir.join("02 Track Two.flac").exists());
-    assert!(album_dir.join("03 Track Three.flac").exists());
+    assert!(f.temp.exists(album_dir.join("01 Track One.flac")));
+    assert!(f.temp.exists(album_dir.join("02 Track Two.flac")));
+    assert!(f.temp.exists(album_dir.join("03 Track Three.flac")));
 }
 
 #[tokio::test]
@@ -68,10 +69,11 @@ async fn import_progress_names_every_operation_before_loudness() {
     let f = ImportFixture::new().await;
     let mut events = f.handle.every_event();
 
-    let album_dir = f.temp_path().join("album");
+    let album_dir = f.temp.path().join("album");
     let expected_candidate_key = bae_import::CandidateKey::folder(&album_dir);
-    fs::create_dir_all(&album_dir).unwrap();
+    f.temp.create_folder(&album_dir);
     generate_tagged_album_files(
+        &f.temp,
         &album_dir,
         "Album Title",
         "Artist Name",
@@ -143,9 +145,9 @@ async fn import_produces_audio_format_records() {
     let release = discogs_release("Format Album", &["Track"]);
     let release_id_key = f.fakes.seed_discogs_test_release(release);
 
-    let album_dir = f.temp_path().join("album");
-    fs::create_dir_all(&album_dir).unwrap();
-    generate_album_files(&album_dir, &["01 Track.flac"]);
+    let album_dir = f.temp.path().join("album");
+    f.temp.create_folder(&album_dir);
+    generate_album_files(&f.temp, &album_dir, &["01 Track.flac"]);
 
     let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
     f.handle
@@ -181,13 +183,12 @@ async fn exact_metadata_import_stores_dsd_audio_format() {
         let f = ImportFixture::new().await;
         let release_id_key = f.fakes.seed_discogs_test_release(release);
 
-        let album_dir = f.temp_path().join("album");
-        fs::create_dir_all(&album_dir).unwrap();
-        fs::copy(
+        let album_dir = f.temp.path().join("album");
+        f.temp.create_folder(&album_dir);
+        f.temp.copy_fixture(
             bae_audio::test_fixtures::audio_format_dir().join(fixture_name),
             album_dir.join(import_name),
-        )
-        .unwrap();
+        );
 
         let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
         f.handle
@@ -250,7 +251,12 @@ fn sine(amplitude: f64, sample_rate: u32, secs: f64, spikes: bool) -> Vec<i32> {
 }
 
 /// Write a synthetic 16-bit stereo FLAC of `samples` to `path`.
-fn write_flac(path: &Path, samples: &[i32], sample_rate: u32) {
+fn write_flac(
+    folder: &bae_util::test_files::TestFolder,
+    path: &std::path::Path,
+    samples: &[i32],
+    sample_rate: u32,
+) {
     let bytes = bae_audio::encode_i32(
         bae_audio::EncodeFormat::Flac { bits_per_sample: 16 },
         samples,
@@ -258,7 +264,7 @@ fn write_flac(path: &Path, samples: &[i32], sample_rate: u32) {
         2,
     )
     .expect("encode synthetic FLAC");
-    fs::write(path, bytes).unwrap();
+    folder.write(path, bytes);
 }
 
 /// Two tracks of different loudness are measured at import, and at playback the
@@ -275,13 +281,13 @@ async fn loudness_measured_at_import_drives_playback_gain() {
     let release = discogs_release("Loudness Album", &["Quiet Track", "Loud Track"]);
     let release_id_key = f.fakes.seed_discogs_test_release(release);
 
-    let album_dir = f.temp_path().join("album");
-    fs::create_dir_all(&album_dir).unwrap();
+    let album_dir = f.temp.path().join("album");
+    f.temp.create_folder(&album_dir);
     let sr = 44_100;
     // Quiet track: a low sine with full-scale spikes, so it wants a boost but
     // peaks near full scale. Loud track: a steady half-scale sine.
-    write_flac(&album_dir.join("01 Quiet Track.flac"), &sine(0.03, sr, 4.0, true), sr);
-    write_flac(&album_dir.join("02 Loud Track.flac"), &sine(0.5, sr, 4.0, false), sr);
+    write_flac(&f.temp, &album_dir.join("01 Quiet Track.flac"), &sine(0.03, sr, 4.0, true), sr);
+    write_flac(&f.temp, &album_dir.join("02 Loud Track.flac"), &sine(0.5, sr, 4.0, false), sr);
 
     let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
     f.handle
@@ -383,10 +389,11 @@ async fn loudness_pass_advances_the_candidate_rows_percent() {
 
     let mut event_rx = f.handle.every_event();
 
-    let album_dir = f.temp_path().join("album");
+    let album_dir = f.temp.path().join("album");
     let expected_candidate_key = bae_import::CandidateKey::folder(&album_dir);
-    fs::create_dir_all(&album_dir).unwrap();
+    f.temp.create_folder(&album_dir);
     generate_album_files(
+        &f.temp,
         &album_dir,
         &["01 Track One.flac", "02 Track Two.flac", "03 Track Three.flac"],
     );

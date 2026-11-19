@@ -18,7 +18,7 @@ static NO_DIAGNOSTICS: std::sync::LazyLock<bae_diagnostics::Diagnostics> =
 /// history setting they change.
 #[tokio::test]
 async fn the_creator_changes_the_profile_the_library_was_created_with() {
-    let directory = tempfile::tempdir().unwrap();
+    let directory = bae_util::test_files::TestFolder::new();
     let (library, _storage) = storage_library(
         directory.path(),
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
@@ -231,7 +231,7 @@ pub(super) fn on_app_runtime(body: impl std::future::Future<Output = ()> + Send 
 
 /// An owner's library on shared S3 or Dropbox storage, with Robin's profile.
 pub(super) struct Household {
-    _dir: tempfile::TempDir,
+    _dir: bae_util::test_files::TestFolder,
     pub(super) owner: coven::CovenHandle,
     pub(super) storage: std::sync::Arc<coven::MemoryStorage>,
     pub(super) sources: bae_library::test_libraries::TestSources,
@@ -253,7 +253,7 @@ impl Household {
 
     async fn on(provider: coven::CloudProvider, sign_in: Option<&DropboxSignIn>) -> Self {
         use coven::Storage;
-        let dir = tempfile::tempdir().unwrap();
+        let dir = bae_util::test_files::TestFolder::new();
         let installation =
             coven::Coven::in_memory(bae_app_dir::AppDir::at(dir.path()).unwrap().coven_app_dir());
         let sources = bae_library::test_libraries::TestSources::system();
@@ -453,7 +453,7 @@ fn joining_writes_the_invites_name_and_cannot_edit_another_person() {
     on_app_runtime(async {
         let household = Household::new().await;
         let invite = household.invite("guest-key").await;
-        let guest_dir = tempfile::tempdir().unwrap();
+        let guest_dir = bae_util::test_files::TestFolder::new();
         let guest = installation_in(&guest_dir);
         let control = bae_library::JoinControl::new();
         let joining = household.join(&invite.code, &guest, &control);
@@ -463,7 +463,7 @@ fn joining_writes_the_invites_name_and_cannot_edit_another_person() {
         .await
         .unwrap();
         let guest = loaded(joined.unwrap().unwrap());
-        let library_dir = tempfile::tempdir().unwrap();
+        let library_dir = bae_util::test_files::TestFolder::new();
         let (library, profile) =
             joined_profile(guest.clone(), &household, library_dir.path()).await;
         let owner_profile = household.robin.clone();
@@ -507,7 +507,7 @@ fn a_stopped_join_resumes_and_writes_the_profile() {
     on_app_runtime(async {
         let household = Household::new().await;
         let invite = household.invite("guest-key").await;
-        let guest_dir = tempfile::tempdir().unwrap();
+        let guest_dir = bae_util::test_files::TestFolder::new();
         let guest = installation_in(&guest_dir);
         let control = bae_library::JoinControl::new();
         let (waiting, mut waits) = tokio::sync::watch::channel(false);
@@ -555,7 +555,7 @@ fn a_stopped_join_resumes_and_writes_the_profile() {
         .await
         .unwrap();
         let guest = loaded(joined.unwrap().unwrap());
-        let library_dir = tempfile::tempdir().unwrap();
+        let library_dir = bae_util::test_files::TestFolder::new();
         let (library, profile) = joined_profile(guest, &household, library_dir.path()).await;
         assert_eq!(profile.name, "Rowan");
         library.manager().close().await.unwrap();
@@ -572,7 +572,7 @@ fn a_restore_onto_a_device_whose_join_waits_leaves_the_join() {
     on_app_runtime(async {
         let household = Household::new().await;
         let invite = household.invite("guest-key").await;
-        let guest_dir = tempfile::tempdir().unwrap();
+        let guest_dir = bae_util::test_files::TestFolder::new();
         let guest = installation_in(&guest_dir);
         let control = bae_library::JoinControl::new();
         let (waiting, mut waits) = tokio::sync::watch::channel(false);
@@ -640,7 +640,7 @@ fn a_restore_onto_a_device_whose_join_waits_leaves_the_join() {
 }
 
 /// A device of its own whose stores live in `dir`, with its own keychain.
-pub(super) fn installation_in(dir: &tempfile::TempDir) -> coven::Coven {
+pub(super) fn installation_in(dir: &bae_util::test_files::TestFolder) -> coven::Coven {
     coven::Coven::in_memory(bae_app_dir::AppDir::at(dir.path()).unwrap().coven_app_dir())
 }
 
@@ -693,7 +693,7 @@ fn a_stopped_dropbox_join_resumes_with_the_sign_in_it_kept() {
     on_app_runtime(async {
         let sign_in = DropboxSignIn::start().await;
         let household = Household::on_dropbox(&sign_in).await;
-        let guest_dir = tempfile::tempdir().unwrap();
+        let guest_dir = bae_util::test_files::TestFolder::new();
         let guest = installation_in(&guest_dir);
         let control = bae_library::JoinControl::new();
         let (_, join) = stopped_dropbox_join(&household, &sign_in, &guest, &control).await;
@@ -712,7 +712,7 @@ fn a_stopped_dropbox_join_resumes_with_the_sign_in_it_kept() {
         .unwrap();
         let guest = loaded(joined.unwrap().unwrap());
         assert_eq!(sign_in.presented(), presented);
-        let library_dir = tempfile::tempdir().unwrap();
+        let library_dir = bae_util::test_files::TestFolder::new();
         let (library, profile) = joined_profile(guest, &household, library_dir.path()).await;
         assert_eq!(profile.name, "Rowan");
         library.manager().close().await.unwrap();
@@ -728,7 +728,7 @@ fn a_stopped_join_whose_sign_in_dropbox_refuses_signs_in_again_and_resumes() {
     on_app_runtime(async {
         let sign_in = DropboxSignIn::start().await;
         let household = Household::on_dropbox(&sign_in).await;
-        let guest_dir = tempfile::tempdir().unwrap();
+        let guest_dir = bae_util::test_files::TestFolder::new();
         let guest = installation_in(&guest_dir);
         let control = bae_library::JoinControl::new();
         let (_, join) = stopped_dropbox_join(&household, &sign_in, &guest, &control).await;
@@ -749,7 +749,7 @@ fn a_stopped_join_whose_sign_in_dropbox_refuses_signs_in_again_and_resumes() {
         .unwrap();
         let guest = loaded(joined.unwrap().unwrap());
         assert_eq!(sign_in.presented(), presented + 1);
-        let library_dir = tempfile::tempdir().unwrap();
+        let library_dir = bae_util::test_files::TestFolder::new();
         let (library, profile) = joined_profile(guest, &household, library_dir.path()).await;
         assert_eq!(profile.name, "Rowan");
         library.manager().close().await.unwrap();
@@ -797,7 +797,7 @@ fn an_ended_dropbox_invite_ends_before_any_sign_in() {
         let household = Household::on_dropbox(&sign_in).await;
         let invite = household.invite("").await;
         let ended = ended_clock(&invite.code);
-        let guest_dir = tempfile::tempdir().unwrap();
+        let guest_dir = bae_util::test_files::TestFolder::new();
         let guest = installation_in(&guest_dir);
         let presented = sign_in.presented();
         let joined = bae_library::join_with_invite(
@@ -829,7 +829,7 @@ fn a_join_whose_request_was_sent_goes_on_after_its_invite_ends() {
     on_app_runtime(async {
         let sign_in = DropboxSignIn::start().await;
         let household = Household::on_dropbox(&sign_in).await;
-        let guest_dir = tempfile::tempdir().unwrap();
+        let guest_dir = bae_util::test_files::TestFolder::new();
         let guest = installation_in(&guest_dir);
         let control = bae_library::JoinControl::new();
         let (code, _) = stopped_dropbox_join(&household, &sign_in, &guest, &control).await;
@@ -850,7 +850,7 @@ fn a_join_whose_request_was_sent_goes_on_after_its_invite_ends() {
         .await
         .unwrap();
         let guest = loaded(joined.unwrap().expect("the sent request is approved"));
-        let library_dir = tempfile::tempdir().unwrap();
+        let library_dir = bae_util::test_files::TestFolder::new();
         let (library, profile) = joined_profile(guest, &household, library_dir.path()).await;
         assert_eq!(profile.name, "Rowan");
         library.manager().close().await.unwrap();

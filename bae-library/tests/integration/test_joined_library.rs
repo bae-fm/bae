@@ -25,7 +25,7 @@ fn an_approved_join_whose_load_is_refused_opens_the_library() {
     on_app_runtime(async {
         let household = Household::new().await;
         let invite = household.invite("guest-key").await;
-        let guest_dir = tempfile::tempdir().unwrap();
+        let guest_dir = bae_util::test_files::TestFolder::new();
         let guest = installation_in(&guest_dir);
         let control = bae_library::JoinControl::new();
         let joining = household.join(&invite.code, &guest, &control);
@@ -63,7 +63,7 @@ fn an_approved_join_whose_load_is_refused_opens_the_library() {
         // it, and nothing it does at open is a synced write, which would fail
         // as not registered: nothing waits to send, and the person has no
         // profile yet.
-        let library_dir = tempfile::tempdir().unwrap();
+        let library_dir = bae_util::test_files::TestFolder::new();
         let library = household.library(handle.clone(), library_dir.path()).await;
         assert_eq!(handle.unsent_work().await.unwrap().writes, 0);
         assert!(library.people().own_person().await.unwrap().is_none());
@@ -87,7 +87,7 @@ fn a_join_whose_load_is_refused_gets_the_profile_when_the_library_loads() {
     on_app_runtime(async {
         let household = Household::new().await;
         let invite = household.invite("guest-key").await;
-        let guest_dir = tempfile::tempdir().unwrap();
+        let guest_dir = bae_util::test_files::TestFolder::new();
         let guest = installation_in(&guest_dir);
         let control = bae_library::JoinControl::new();
         let joining = household.join(&invite.code, &guest, &control);
@@ -120,7 +120,7 @@ fn a_join_whose_load_is_refused_gets_the_profile_when_the_library_loads() {
             .open(store, |_| ())
             .await
             .unwrap();
-        let library_dir = tempfile::tempdir().unwrap();
+        let library_dir = bae_util::test_files::TestFolder::new();
         let library = household.library(reopened.clone(), library_dir.path()).await;
         let mut listed = library.manager().subscribe_people();
         library.manager().attach_and_start_sync().await.unwrap();
@@ -167,7 +167,7 @@ fn a_stopped_join_whose_settings_cannot_be_read_is_discarded_by_library() {
     on_app_runtime(async {
         let household = Household::new().await;
         let invite = household.invite("guest-key").await;
-        let guest_dir = tempfile::tempdir().unwrap();
+        let guest_dir = bae_util::test_files::TestFolder::new();
         let guest = installation_in(&guest_dir);
         let control = bae_library::JoinControl::new();
         let (waiting, mut waits) = tokio::sync::watch::channel(false);

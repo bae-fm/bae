@@ -34,7 +34,7 @@ async fn test_cue_ape_next_track() {
     // Decode XLD reference
     let fixture_dir = bae_import::test_fixtures::cue_ape_dir();
     let reference_data =
-        std::fs::read(fixture_dir.join("02 Test Artist - Track Two.flac")).expect("read reference");
+        bae_util::test_files::read_fixture(fixture_dir.join("02 Test Artist - Track Two.flac"));
     let reference =
         decode_audio(bae_audio::test_samples::filled_sparse_buffer(&reference_data), None, None)
             .expect("decode reference");
@@ -105,20 +105,20 @@ async fn test_cue_ape_next_track() {
 /// and bytes-uploaded-cloud-only (Remote, no pin).
 async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestination) {
     bae_util::test_logs::install();
-    let temp_root = TempDir::new().expect("temp root");
+    let temp_root = bae_util::test_files::TestFolder::new();
     let album_dir = temp_root.path().join("album");
     let cd1_dir = album_dir.join("CD1");
     let cd2_dir = album_dir.join("CD2");
     let db_dir = temp_root.path().join("db");
-    std::fs::create_dir_all(&cd1_dir).expect("cd1 dir");
-    std::fs::create_dir_all(&cd2_dir).expect("cd2 dir");
-    std::fs::create_dir_all(&db_dir).expect("db dir");
+    temp_root.create_folder(&cd1_dir);
+    temp_root.create_folder(&cd2_dir);
+    temp_root.create_folder(&db_dir);
 
     // Reuse the 90s / 3-track CUE+APE fixture, once per disc, renamed to
     // `CDImage.*` so both discs share the same bare filename (a common
     // multi-disc rip layout).
     let fixture_dir = bae_import::test_fixtures::cue_ape_dir();
-    let ape_bytes = std::fs::read(fixture_dir.join("Test Album.ape")).expect("read ape fixture");
+    let ape_bytes = bae_util::test_files::read_fixture(fixture_dir.join("Test Album.ape"));
     let cue_body = "PERFORMER \"Test Artist\"\n\
                     TITLE \"Disc Title\"\n\
                     FILE \"CDImage.ape\" WAVE\n  \
@@ -126,8 +126,8 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestinati
                     TRACK 02 AUDIO\n    TITLE \"Track Two\"\n    INDEX 01 00:30:00\n  \
                     TRACK 03 AUDIO\n    TITLE \"Track Three\"\n    INDEX 01 01:00:00\n";
     for dir in [&cd1_dir, &cd2_dir] {
-        std::fs::write(dir.join("CDImage.ape"), &ape_bytes).expect("write ape");
-        std::fs::write(dir.join("CDImage.cue"), cue_body).expect("write cue");
+        temp_root.write(dir.join("CDImage.ape"), &ape_bytes);
+        temp_root.write(dir.join("CDImage.cue"), cue_body);
     }
 
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();

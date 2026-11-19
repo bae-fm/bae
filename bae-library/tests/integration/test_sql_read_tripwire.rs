@@ -47,7 +47,7 @@ async fn pure_reads_use_the_read_connection() {
     // Writers that already have the requested state decide before opening a
     // write transaction.
     let root = tmp.path().join("watched");
-    std::fs::create_dir_all(&root).unwrap();
+    tmp.create_folder(&root);
     let root = root.to_str().unwrap();
 
     queue.clear_playback_state().await.unwrap();

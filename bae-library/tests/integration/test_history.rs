@@ -5,7 +5,7 @@ use std::time::Duration;
 
 #[tokio::test]
 async fn qualifying_plays_keep_their_identity_and_original_audience() {
-    let directory = tempfile::tempdir().unwrap();
+    let directory = bae_util::test_files::TestFolder::new();
     let (library, _storage) = storage_library(
         directory.path(),
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
@@ -90,7 +90,7 @@ async fn qualifying_plays_keep_their_identity_and_original_audience() {
 /// A play begun before Off keeps the audience it began with.
 #[tokio::test]
 async fn off_records_no_new_plays_and_earlier_plays_keep_their_audience() {
-    let directory = tempfile::tempdir().unwrap();
+    let directory = bae_util::test_files::TestFolder::new();
     let (library, _storage) = storage_library(
         directory.path(),
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),

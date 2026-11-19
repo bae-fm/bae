@@ -8,7 +8,6 @@ use bae_preferences::{
     SaveFolderValue, SavePreset,
 };
 use bae_transfers::OutputKind;
-use std::fs;
 
 /// A release save writes into a folder named by the folder name pattern, from
 /// the release's own data, not the folder it was imported from.
@@ -16,13 +15,12 @@ use std::fs;
 async fn a_release_save_names_its_folder_by_the_folder_pattern() {
     bae_util::test_logs::install();
     let f = ExportFixture::new().await;
-    let album_dir = f.temp_path().join("source folder");
-    fs::create_dir_all(&album_dir).unwrap();
-    std::fs::write(
+    let album_dir = f.temp.path().join("source folder");
+    f.temp.create_folder(&album_dir);
+    f.temp.write(
         album_dir.join("01.flac"),
         bae_import::test_fixtures::tagged_flac_bytes("Track One"),
-    )
-    .unwrap();
+    );
     let release_id = import_unknown_local(&f, &album_dir).await;
     let manager = f.library.manager();
     let release = manager.get_release_by_id(&release_id).await.unwrap().unwrap();
@@ -33,8 +31,8 @@ async fn a_release_save_names_its_folder_by_the_folder_pattern() {
         let (f, release_id, flac) = (&f, &release_id, &flac);
         let directory = directory.to_string();
         async move {
-            let target = f.temp_path().join(directory);
-            fs::create_dir_all(&target).unwrap();
+            let target = f.temp.path().join(directory);
+            f.temp.create_folder(&target);
             f.library
                 .manager()
                 .export_release(
@@ -49,9 +47,9 @@ async fn a_release_save_names_its_folder_by_the_folder_pattern() {
                 )
                 .await
                 .expect("the release save succeeds");
-            let entries: Vec<_> = fs::read_dir(&target).unwrap().collect();
+            let entries = f.temp.entries(&target);
             assert_eq!(entries.len(), 1, "one folder per save");
-            entries[0].as_ref().unwrap().file_name().to_string_lossy().to_string()
+            entries[0].clone()
         }
     };
 
@@ -71,8 +69,8 @@ async fn a_release_save_names_its_folder_by_the_folder_pattern() {
     ]);
     for (invalid, directory) in [(NamePattern::new(Vec::new()), "by-nothing"), (slash, "by-slash")]
     {
-        let target = f.temp_path().join(directory);
-        fs::create_dir_all(&target).unwrap();
+        let target = f.temp.path().join(directory);
+        f.temp.create_folder(&target);
         let refused = manager
             .export_release(
                 &release_id,
@@ -89,7 +87,7 @@ async fn a_release_save_names_its_folder_by_the_folder_pattern() {
             matches!(refused, Err(bae_library::LibraryError::FolderPattern(_))),
             "the save is refused for its folder pattern: {refused:?}"
         );
-        assert_eq!(fs::read_dir(&target).unwrap().count(), 0, "nothing was written");
+        assert_eq!(f.temp.entries(&target).len(), 0, "nothing was written");
     }
 }
 
@@ -101,18 +99,16 @@ async fn a_release_save_names_its_folder_by_the_folder_pattern() {
 async fn one_filename_pattern_names_every_format() {
     bae_util::test_logs::install();
     let f = ExportFixture::new().await;
-    let album_dir = f.temp_path().join("album");
-    fs::create_dir_all(&album_dir).unwrap();
-    std::fs::write(
+    let album_dir = f.temp.path().join("album");
+    f.temp.create_folder(&album_dir);
+    f.temp.write(
         album_dir.join("01.flac"),
         bae_import::test_fixtures::tagged_flac_bytes("Track One"),
-    )
-    .unwrap();
-    std::fs::write(
+    );
+    f.temp.write(
         album_dir.join("02.flac"),
         bae_import::test_fixtures::tagged_flac_bytes("Track Two"),
-    )
-    .unwrap();
+    );
     let release_id = import_unknown_local(&f, &album_dir).await;
     let tracks = f.library.records().get_tracks_for_release(&release_id).await.unwrap();
     let manager = f.library.manager();
@@ -122,8 +118,8 @@ async fn one_filename_pattern_names_every_format() {
         let (f, release_id) = (&f, &release_id);
         let save = saves.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         async move {
-            let target = f.temp_path().join(format!("out-{}-{save}", preset.id));
-            fs::create_dir_all(&target).unwrap();
+            let target = f.temp.path().join(format!("out-{}-{save}", preset.id));
+            f.temp.create_folder(&target);
             f.library
                 .manager()
                 .export_release(
@@ -138,14 +134,12 @@ async fn one_filename_pattern_names_every_format() {
                 )
                 .await
                 .expect("the release save succeeds");
-            let folder = fs::read_dir(&target).unwrap().next().unwrap().unwrap().path();
-            let mut names: Vec<String> = fs::read_dir(folder)
-                .unwrap()
-                .map(|entry| entry.unwrap().file_name().to_string_lossy().to_string())
+            let folder = target.join(&f.temp.entries(&target)[0]);
+            f.temp
+                .entries(folder)
+                .into_iter()
                 .filter(|name| name != ".bae-output")
-                .collect();
-            names.sort();
-            names
+                .collect::<Vec<String>>()
         }
     };
     let presets = manager.save_presets().await.unwrap();
@@ -196,8 +190,8 @@ async fn one_filename_pattern_names_every_format() {
         manager.save_track_suggested_name(&tracks[0].id).await,
         Err(bae_library::LibraryError::FilenamePattern(_))
     ));
-    let target = f.temp_path().join("out-refused");
-    fs::create_dir_all(&target).unwrap();
+    let target = f.temp.path().join("out-refused");
+    f.temp.create_folder(&target);
     let refused = manager
         .export_release(
             &release_id,

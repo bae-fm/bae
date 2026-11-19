@@ -2,8 +2,8 @@ use super::*;
 
 /// Cut a FLAC's audio in half, keeping every metadata block, so it decodes far
 /// fewer samples than its STREAMINFO declares.
-fn truncate_flac_body(path: &Path) {
-    let bytes = fs::read(path).expect("read flac to truncate");
+fn truncate_flac_body(folder: &bae_util::test_files::TestFolder, path: &std::path::Path) {
+    let bytes = folder.read(path);
     assert_eq!(&bytes[..4], b"fLaC", "{} is a FLAC stream", path.display());
     let mut audio_start = 4;
     loop {
@@ -15,7 +15,7 @@ fn truncate_flac_body(path: &Path) {
         }
     }
     let keep = audio_start + (bytes.len() - audio_start) / 2;
-    fs::write(path, &bytes[..keep]).expect("write truncated flac");
+    folder.write(path, &bytes[..keep]);
 }
 
 /// A track that doesn't decode fully fails its import before anything is
@@ -26,16 +26,17 @@ async fn a_track_that_does_not_decode_fully_fails_its_import() {
     bae_util::test_logs::install();
     let f = ImportFixture::new().await;
 
-    let album_dir = f.temp_path().join("album");
-    fs::create_dir_all(&album_dir).unwrap();
+    let album_dir = f.temp.path().join("album");
+    f.temp.create_folder(&album_dir);
     generate_tagged_album_files(
+        &f.temp,
         &album_dir,
         "Broken Album",
         "Broken Artist",
         None,
         &[TaggedTrack { filename: "01.flac", title: "Broken Track", track_number: 1 }],
     );
-    truncate_flac_body(&album_dir.join("01.flac"));
+    truncate_flac_body(&f.temp, &album_dir.join("01.flac"));
 
     let err = import_folder(
         &f,
@@ -100,10 +101,10 @@ async fn two_credit_mb_release_keeps_both_album_artists() {
     let mb_id = seed_two_credit_mb_release(&f, "two-credit-mb-rel", "two-credit-mb-group");
 
     // Scan the album in, since an import starts from a scanned candidate.
-    let collection = f.temp_path().join("two-credit-collection");
+    let collection = f.temp.path().join("two-credit-collection");
     let album_dir = collection.join("two-credit");
-    fs::create_dir_all(&album_dir).unwrap();
-    generate_album_files(&album_dir, &["01 Track One.flac"]);
+    f.temp.create_folder(&album_dir);
+    generate_album_files(&f.temp, &album_dir, &["01 Track One.flac"]);
     let candidate_key = bae_import::CandidateKey::folder(&album_dir);
 
     let mut scan_rx = f.handle.every_scan_event_for_test();
@@ -253,11 +254,15 @@ async fn pick_release_for_folder(
 
 /// Scan in a folder of `track_count` audio files and return its candidate key.
 async fn scanned_folder_of(f: &ImportFixture, track_count: usize) -> bae_import::CandidateKey {
-    let collection = f.temp_path().join("collection");
+    let collection = f.temp.path().join("collection");
     let album_dir = collection.join("album");
-    fs::create_dir_all(&album_dir).unwrap();
+    f.temp.create_folder(&album_dir);
     let names: Vec<String> = (1..=track_count).map(|n| format!("{n:02} Track.flac")).collect();
-    generate_album_files(&album_dir, &names.iter().map(String::as_str).collect::<Vec<_>>());
+    generate_album_files(
+        &f.temp,
+        &album_dir,
+        &names.iter().map(String::as_str).collect::<Vec<_>>(),
+    );
     let mut scan_rx = f.handle.every_scan_event_for_test();
     f.handle.add_watched_folder(collection.to_path_buf()).await.unwrap();
     let expected = album_dir.clone();
@@ -447,11 +452,11 @@ async fn the_commit_binds_each_track_to_the_audio_in_its_place() {
     let f = ImportFixture::new().await;
     let mb_id = seed_mb_release_with_track_count(&f, "mb-rel-repair", "mb-group-repair", 3);
 
-    let collection = f.temp_path().join("collection-repair");
+    let collection = f.temp.path().join("collection-repair");
     let album_dir = collection.join("album");
-    fs::create_dir_all(&album_dir).unwrap();
+    f.temp.create_folder(&album_dir);
     let names = ["01 Track.flac", "02 Track.flac", "03 Track.flac"];
-    generate_album_files(&album_dir, &names);
+    generate_album_files(&f.temp, &album_dir, &names);
 
     let (candidate_key, pane) = pick_release_for_folder(&f, &collection, &album_dir, &mb_id).await;
 
@@ -522,11 +527,11 @@ async fn an_import_with_no_cover_pick_takes_the_release_s_own_cover() {
     );
     f.images.serve_front(mb_id, bae_catalogs::test_image_host::cover_png());
 
-    let album_dir = f.temp_path().join("album");
-    fs::create_dir_all(&album_dir).unwrap();
+    let album_dir = f.temp.path().join("album");
+    f.temp.create_folder(&album_dir);
     // No folder art: the only cover this release can end up with is the one its
     // own document points at.
-    generate_album_files(&album_dir, &["01 Track.flac"]);
+    generate_album_files(&f.temp, &album_dir, &["01 Track.flac"]);
 
     let (release_id, _) = import_folder(
         &f,
@@ -572,9 +577,9 @@ async fn an_import_fails_when_the_release_s_own_cover_will_not_download() {
     );
     f.images.fail_front(mb_id, 503);
 
-    let album_dir = f.temp_path().join("album");
-    fs::create_dir_all(&album_dir).unwrap();
-    generate_album_files(&album_dir, &["01 Track.flac"]);
+    let album_dir = f.temp.path().join("album");
+    f.temp.create_folder(&album_dir);
+    generate_album_files(&f.temp, &album_dir, &["01 Track.flac"]);
 
     let error = import_folder(
         &f,
@@ -600,7 +605,11 @@ async fn an_import_fails_when_the_release_s_own_cover_will_not_download() {
 /// A gap-appended rip: each file holds one track's body from its INDEX 01 at
 /// the file's start, then the next track's pregap, whose INDEX 00 is at
 /// the file's tail.
-fn write_gap_appended_rip(album_dir: &Path, names: &[&str]) {
+fn write_gap_appended_rip(
+    folder: &bae_util::test_files::TestFolder,
+    album_dir: &std::path::Path,
+    names: &[&str],
+) {
     const SAMPLE_RATE: u32 = 44_100;
     for (name, frequency) in names.iter().zip([220.0_f64, 440.0, 880.0]) {
         let samples: Vec<i32> = (0..SAMPLE_RATE as usize * 3 * 2)
@@ -617,9 +626,9 @@ fn write_gap_appended_rip(album_dir: &Path, names: &[&str]) {
             2,
         )
         .expect("encode a file");
-        fs::write(album_dir.join(name), audio).unwrap();
+        folder.write(album_dir.join(name), audio);
     }
-    fs::write(
+    folder.write(
         album_dir.join("Album Title.cue"),
         format!(
             "FILE \"{}\" WAVE\n  TRACK 01 AUDIO\n    TITLE \"Track One\"\n    INDEX 01 00:00:00\n  \
@@ -629,18 +638,17 @@ fn write_gap_appended_rip(album_dir: &Path, names: &[&str]) {
              FILE \"{}\" WAVE\n    INDEX 01 00:00:00\n",
             names[0], names[1], names[2]
         ),
-    )
-    .unwrap();
+    );
 }
 
 /// A release listing each track as long as its file, which includes the next
 /// track's pregap, in a fixture holding the rip as `album`.
 fn seed_gap_appended_rip(f: &ImportFixture) -> (std::path::PathBuf, std::path::PathBuf, String) {
     let names = ["01 Track One.wav", "02 Track Two.wav", "03 Track Three.wav"];
-    let collection = f.temp_path().join("collection");
+    let collection = f.temp.path().join("collection");
     let album_dir = collection.join("album");
-    fs::create_dir_all(&album_dir).unwrap();
-    write_gap_appended_rip(&album_dir, &names);
+    f.temp.create_folder(&album_dir);
+    write_gap_appended_rip(&f.temp, &album_dir, &names);
     let tracks = (1..=3)
         .map(|position| {
             let mut track = bae_catalogs::test_releases::mb_track(

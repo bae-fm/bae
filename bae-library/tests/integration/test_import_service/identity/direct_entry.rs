@@ -5,9 +5,9 @@ async fn direct_entry_import_records_no_catalog_and_reads_no_tags() {
     bae_util::test_logs::install();
 
     let f = ImportFixture::new().await;
-    let album_dir = f.temp_path().join("direct-entry-album");
-    fs::create_dir_all(&album_dir).unwrap();
-    generate_album_files(&album_dir, &["01 Track Title.flac"]);
+    let album_dir = f.temp.path().join("direct-entry-album");
+    f.temp.create_folder(&album_dir);
+    generate_album_files(&f.temp, &album_dir, &["01 Track Title.flac"]);
 
     let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
     f.handle

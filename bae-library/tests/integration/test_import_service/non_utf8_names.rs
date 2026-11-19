@@ -11,10 +11,14 @@ fn latin1_name(rest: &str) -> std::ffi::OsString {
 
 /// `Collection/Album` holding one tagged track named with the Latin-1 bytes
 /// of `Café.flac`; the folder and the track's path.
-fn album_with_a_latin1_name(collection: &Path) -> (std::path::PathBuf, std::path::PathBuf) {
+fn album_with_a_latin1_name(
+    folder: &bae_util::test_files::TestFolder,
+    collection: &Path,
+) -> (std::path::PathBuf, std::path::PathBuf) {
     let album = collection.join("Album");
-    fs::create_dir_all(&album).unwrap();
+    folder.create_folder(&album);
     generate_tagged_album_files(
+        folder,
         &album,
         "Album Title",
         "Artist Name",
@@ -22,7 +26,7 @@ fn album_with_a_latin1_name(collection: &Path) -> (std::path::PathBuf, std::path
         &[TaggedTrack { filename: "Track.flac", title: "Track Title", track_number: 1 }],
     );
     let track = album.join(latin1_name(".flac"));
-    fs::rename(album.join("Track.flac"), &track).unwrap();
+    folder.rename(album.join("Track.flac"), &track);
     (album, track)
 }
 
@@ -62,10 +66,14 @@ async fn import_scanned(f: &ImportFixture, album: &Path) -> String {
 }
 
 /// `Collection/Café`, its name Latin-1, holding one tagged track; the folder.
-fn latin1_album(collection: &Path) -> std::path::PathBuf {
+fn latin1_album(
+    folder: &bae_util::test_files::TestFolder,
+    collection: &Path,
+) -> std::path::PathBuf {
     let album = collection.join(latin1_name(""));
-    fs::create_dir_all(&album).unwrap();
+    folder.create_folder(&album);
     generate_tagged_album_files(
+        folder,
         &album,
         "Album Title",
         "Artist Name",
@@ -82,8 +90,8 @@ fn latin1_album(collection: &Path) -> std::path::PathBuf {
 async fn a_folder_whose_name_is_not_utf8_is_scanned_and_imported_under_its_escaped_name() {
     bae_util::test_logs::install();
     let f = ImportFixture::new().await;
-    let collection = f.temp_path().join("Collection");
-    let album = latin1_album(&collection);
+    let collection = f.temp.path().join("Collection");
+    let album = latin1_album(&f.temp, &collection);
 
     let releases = scanned_releases(&f, &collection).await;
 
@@ -119,8 +127,8 @@ async fn a_folder_whose_name_is_not_utf8_is_scanned_and_imported_under_its_escap
 async fn a_folder_whose_name_is_not_utf8_is_skipped_by_its_own_path() {
     bae_util::test_logs::install();
     let f = ImportFixture::new().await;
-    let collection = f.temp_path().join("Collection");
-    let album = latin1_album(&collection);
+    let collection = f.temp.path().join("Collection");
+    let album = latin1_album(&f.temp, &collection);
     let releases = scanned_releases(&f, &collection).await;
     assert_eq!(releases.len(), 1, "the scan lists the folder: {releases:?}");
     let key = bae_import::CandidateKey::folder(&album);
@@ -147,12 +155,12 @@ async fn a_folder_whose_name_is_not_utf8_is_skipped_by_its_own_path() {
 async fn the_releases_in_a_folder_whose_name_is_not_utf8_combine_into_it() {
     bae_util::test_logs::install();
     let f = ImportFixture::new().await;
-    let collection = f.temp_path().join("Collection");
+    let collection = f.temp.path().join("Collection");
     let boxed = collection.join(latin1_name(""));
     let albums = [boxed.join("Album A"), boxed.join("Album B")];
     for album in &albums {
-        fs::create_dir_all(album).unwrap();
-        generate_album_files(album, &["01 Track.flac"]);
+        f.temp.create_folder(album);
+        generate_album_files(&f.temp, album, &["01 Track.flac"]);
     }
     let releases = scanned_releases(&f, &collection).await;
     assert_eq!(releases.len(), 2, "the scan lists each album: {releases:?}");
@@ -183,8 +191,8 @@ async fn the_releases_in_a_folder_whose_name_is_not_utf8_combine_into_it() {
 async fn a_track_whose_name_is_not_utf8_is_scanned_and_imported_under_its_escaped_name() {
     bae_util::test_logs::install();
     let f = ImportFixture::new().await;
-    let collection = f.temp_path().join("Collection");
-    let (album, track) = album_with_a_latin1_name(&collection);
+    let collection = f.temp.path().join("Collection");
+    let (album, track) = album_with_a_latin1_name(&f.temp, &collection);
 
     let releases = scanned_releases(&f, &collection).await;
 
@@ -226,14 +234,14 @@ async fn a_track_whose_name_is_not_utf8_is_scanned_and_imported_under_its_escape
 async fn a_track_whose_name_is_not_utf8_exports_under_the_name_coven_writes() {
     bae_util::test_logs::install();
     let f = ImportFixture::new().await;
-    let collection = f.temp_path().join("Collection");
-    let (album, track) = album_with_a_latin1_name(&collection);
+    let collection = f.temp.path().join("Collection");
+    let (album, track) = album_with_a_latin1_name(&f.temp, &collection);
     let releases = scanned_releases(&f, &collection).await;
     assert_eq!(releases.len(), 1, "the scan lists the album: {releases:?}");
     let release_id = import_scanned(&f, &album).await;
 
-    let target = f.temp_path().join("Export");
-    fs::create_dir_all(&target).unwrap();
+    let target = f.temp.path().join("Export");
+    f.temp.create_folder(&target);
     f.library
         .manager()
         .export_release(&release_id, &target, bae_transfers::OutputKind::Export)
@@ -241,13 +249,8 @@ async fn a_track_whose_name_is_not_utf8_exports_under_the_name_coven_writes() {
         .expect("the release exports");
 
     let exported = target.join("Album").join("Caf＼xE9.flac");
-    assert_eq!(fs::read(&exported).unwrap(), fs::read(&track).unwrap());
-    let mut names: Vec<std::ffi::OsString> = fs::read_dir(target.join("Album"))
-        .unwrap()
-        .map(|entry| entry.unwrap().file_name())
-        .collect();
-    names.sort();
-    assert_eq!(names, [".bae-output", "Caf＼xE9.flac"]);
+    assert_eq!(f.temp.read(&exported), f.temp.read(&track));
+    assert_eq!(f.temp.entries(target.join("Album")), [".bae-output", "Caf＼xE9.flac"]);
 }
 
 /// A track whose name isn't UTF-8 uploads: coven reads it by its own path.
@@ -256,8 +259,8 @@ async fn a_track_whose_name_is_not_utf8_uploads() {
     bae_util::test_logs::install();
     let f = ImportFixture::new().await;
     f.connect_cloud().await;
-    let collection = f.temp_path().join("Collection");
-    let (album, _track) = album_with_a_latin1_name(&collection);
+    let collection = f.temp.path().join("Collection");
+    let (album, _track) = album_with_a_latin1_name(&f.temp, &collection);
     let releases = scanned_releases(&f, &collection).await;
     assert_eq!(releases.len(), 1, "the scan lists the album: {releases:?}");
     let key = bae_import::CandidateKey::folder(&album);
@@ -290,11 +293,11 @@ async fn a_track_whose_name_is_not_utf8_uploads() {
 async fn two_tracks_showing_one_name_are_skipped_with_that_name() {
     bae_util::test_logs::install();
     let f = ImportFixture::new().await;
-    let collection = f.temp_path().join("Collection");
+    let collection = f.temp.path().join("Collection");
     let album = collection.join("Album");
-    fs::create_dir_all(&album).unwrap();
-    generate_album_files(&album, &[r"Caf\xE9.flac", "Track.flac"]);
-    fs::rename(album.join("Track.flac"), album.join(latin1_name(".flac"))).unwrap();
+    f.temp.create_folder(&album);
+    generate_album_files(&f.temp, &album, &[r"Caf\xE9.flac", "Track.flac"]);
+    f.temp.rename(album.join("Track.flac"), album.join(latin1_name(".flac")));
 
     assert!(scanned_releases(&f, &collection).await.is_empty());
 

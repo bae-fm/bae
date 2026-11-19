@@ -18,10 +18,9 @@ use bae_import::{
 use bae_records::LibraryImageType;
 use bae_types::pressing::ReleaseLabel;
 use bae_util::test_channels::HANG_GUARD;
-use std::fs;
+use bae_util::test_files::TestFolder;
 use std::path::Path;
 use std::sync::Arc;
-use tempfile::TempDir;
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -36,15 +35,15 @@ struct ImportFixture {
     /// Every MusicBrainz release group offers a derived cover address, and an
     /// address no test registered answers 404.
     images: bae_catalogs::test_image_host::RemoteImageHost,
-    _temp: TempDir,
+    temp: TestFolder,
 }
 
 impl ImportFixture {
     async fn new() -> Self {
         let images = bae_catalogs::test_image_host::RemoteImageHost::start().await;
-        let temp = TempDir::new().unwrap();
+        let temp = TestFolder::new();
         let db_dir = temp.path().join("db");
-        fs::create_dir_all(&db_dir).unwrap();
+        temp.create_folder(&db_dir);
 
         let http = images.route(bae_util::http::Http::for_test());
         let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::over(http.clone());
@@ -53,11 +52,7 @@ impl ImportFixture {
         let ids: Arc<dyn coven::IdSource> = library.ids().clone();
         let handle = library.start_discogs_import().await;
 
-        Self { library, storage, handle, fakes, ids, images, _temp: temp }
-    }
-
-    fn temp_path(&self) -> &Path {
-        self._temp.path()
+        Self { library, storage, handle, fakes, ids, images, temp }
     }
 
     /// No sync loop behind the connection: the remote-import tests drain the
@@ -109,18 +104,18 @@ async fn assert_release_has_external_ref(f: &ImportFixture, release_id: &str) {
     );
 }
 
-fn generate_album_files(dir: &Path, filenames: &[&str]) {
+fn generate_album_files(folder: &bae_util::test_files::TestFolder, dir: &Path, filenames: &[&str]) {
     let fixture = bae_import::test_fixtures::flac_dir().join("01 Test Track 1.flac");
-    let flac = fs::read(&fixture).expect("FLAC fixture missing");
+    let flac = bae_util::test_files::read_fixture(&fixture);
     for name in filenames {
-        fs::write(dir.join(name), &flac).unwrap();
+        folder.write(dir.join(name), &flac);
     }
 }
 
-fn copy_cue_flac_fixture(dir: &Path) {
+fn copy_cue_flac_fixture(folder: &bae_util::test_files::TestFolder, dir: &Path) {
     let fixture = bae_audio::test_fixtures::cue_flac_dir();
     for name in ["Test Album.cue", "Test Album.flac"] {
-        fs::copy(fixture.join(name), dir.join(name)).expect("copy CUE fixture");
+        folder.copy_fixture(fixture.join(name), dir.join(name));
     }
 }
 
@@ -137,6 +132,7 @@ struct TaggedTrack<'a> {
 /// metadata across every file. The FLAC fixture itself carries no
 /// tags; lofty rewrites a Vorbis-comment block on top.
 fn generate_tagged_album_files(
+    folder: &bae_util::test_files::TestFolder,
     dir: &Path,
     album_title: &str,
     album_artist: &str,
@@ -149,12 +145,12 @@ fn generate_tagged_album_files(
     use lofty::tag::{Tag, TagType};
 
     let fixture = bae_import::test_fixtures::flac_dir().join("01 Test Track 1.flac");
-    let flac = fs::read(&fixture).expect("FLAC fixture missing");
+    let flac = bae_util::test_files::read_fixture(&fixture);
 
     for t in tracks {
         let dest = dir.join(t.filename);
-        fs::write(&dest, &flac).unwrap();
-        let mut tagged = lofty::read_from_path(&dest).expect("read for tagging");
+        folder.write(&dest, &flac);
+        let mut tagged = lofty::read_from(&mut folder.open(&dest)).expect("read for tagging");
         let mut tag = Tag::new(TagType::VorbisComments);
         tag.set_title(t.title.to_string());
         tag.set_artist(album_artist.to_string());
@@ -172,7 +168,12 @@ fn generate_tagged_album_files(
         }
         tag.set_track(t.track_number);
         tagged.insert_tag(tag);
-        tagged.save_to_path(&dest, WriteOptions::default()).expect("save tags");
+        tagged
+            .save_to(
+                &mut folder.open_with(&dest, std::fs::OpenOptions::new().read(true).write(true)),
+                WriteOptions::default(),
+            )
+            .expect("save tags");
     }
 }
 
@@ -198,6 +199,7 @@ fn solid_jpeg((w, h): (u32, u32)) -> Vec<u8> {
 /// (`embedded_cover_jpeg`) as the front cover in every file — a tagged rip
 /// whose only artwork is embedded in the audio.
 fn generate_tagged_album_files_with_embedded_cover(
+    folder: &bae_util::test_files::TestFolder,
     dir: &Path,
     album_title: &str,
     album_artist: &str,
@@ -209,12 +211,12 @@ fn generate_tagged_album_files_with_embedded_cover(
     use lofty::tag::{Tag, TagType};
 
     let fixture = bae_import::test_fixtures::flac_dir().join("01 Test Track 1.flac");
-    let flac = fs::read(&fixture).expect("FLAC fixture missing");
+    let flac = bae_util::test_files::read_fixture(&fixture);
 
     for t in tracks {
         let dest = dir.join(t.filename);
-        fs::write(&dest, &flac).unwrap();
-        let mut tagged = lofty::read_from_path(&dest).expect("read for tagging");
+        folder.write(&dest, &flac);
+        let mut tagged = lofty::read_from(&mut folder.open(&dest)).expect("read for tagging");
         let mut tag = Tag::new(TagType::VorbisComments);
         tag.set_title(t.title.to_string());
         tag.set_artist(album_artist.to_string());
@@ -228,28 +230,41 @@ fn generate_tagged_album_files_with_embedded_cover(
                 .build(),
         );
         tagged.insert_tag(tag);
-        tagged.save_to_path(&dest, WriteOptions::default()).expect("save tags");
+        tagged
+            .save_to(
+                &mut folder.open_with(&dest, std::fs::OpenOptions::new().read(true).write(true)),
+                WriteOptions::default(),
+            )
+            .expect("save tags");
     }
 }
 
-fn generate_album_with_cover(dir: &Path, filenames: &[&str]) {
-    generate_album_files(dir, filenames);
+fn generate_album_with_cover(
+    folder: &bae_util::test_files::TestFolder,
+    dir: &Path,
+    filenames: &[&str],
+) {
+    generate_album_files(folder, dir, filenames);
     let scans = dir.join("scans");
-    fs::create_dir_all(&scans).unwrap();
-    fs::write(scans.join("back.jpg"), embedded_cover_jpeg()).unwrap();
+    folder.create_folder(&scans);
+    folder.write(scans.join("back.jpg"), embedded_cover_jpeg());
 }
 
 /// Like `generate_album_with_cover`, but the folder image is an oversized
 /// (1000×1000) PNG — a source that must be downscaled and re-encoded to JPEG at
 /// store time. Returns the selection path for the cover.
-fn generate_album_with_oversized_cover(dir: &Path, filenames: &[&str]) -> String {
-    generate_album_files(dir, filenames);
+fn generate_album_with_oversized_cover(
+    folder: &bae_util::test_files::TestFolder,
+    dir: &Path,
+    filenames: &[&str],
+) -> String {
+    generate_album_files(folder, dir, filenames);
     let scans = dir.join("scans");
-    fs::create_dir_all(&scans).unwrap();
+    folder.create_folder(&scans);
     let img = image::RgbImage::from_pixel(1000, 1000, image::Rgb([20, 160, 90]));
     let mut buf = std::io::Cursor::new(Vec::new());
     image::DynamicImage::ImageRgb8(img).write_to(&mut buf, image::ImageFormat::Png).unwrap();
-    fs::write(scans.join("cover.png"), buf.into_inner()).unwrap();
+    folder.write(scans.join("cover.png"), buf.into_inner());
     "scans/cover.png".to_string()
 }
 

@@ -5,7 +5,8 @@
 
 use std::process::Command;
 
-/// Set in the child to the file it writes once the body has run.
+/// Set in the child, which prints it with the test's name once the body has
+/// run.
 const RAN: &str = "BAE_TEST_OWN_PROCESS_RAN";
 
 /// Run `body` in a child process that runs only the test named `name`, its
@@ -13,21 +14,25 @@ const RAN: &str = "BAE_TEST_OWN_PROCESS_RAN";
 /// body and passed. The child records that the body ran because a filter
 /// that matches no test passes with nothing run.
 pub(crate) fn in_own_process(name: &str, body: impl FnOnce()) {
-    if let Some(ran) = std::env::var_os(RAN) {
+    if std::env::var_os(RAN).is_some() {
         body();
-        std::fs::write(ran, name).expect("record that the body ran");
+        println!("{RAN}={name}");
         return;
     }
-    let directory = tempfile::tempdir().expect("a directory for the child's record");
-    let ran = directory.path().join("ran");
-    let status = Command::new(std::env::current_exe().expect("this test binary"))
+    let output = Command::new(std::env::current_exe().expect("this test binary"))
         .args([name, "--exact", "--nocapture", "--test-threads=1"])
-        .env(RAN, &ran)
-        .status()
+        .env(RAN, "1")
+        .output()
         .expect("run the test in its own process");
-    assert!(status.success(), "{name} failed in its own process: {status}");
+    let printed = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
-        ran.exists(),
+        output.status.success(),
+        "{name} failed in its own process: {}\n{printed}\n{stderr}",
+        output.status
+    );
+    assert!(
+        printed.contains(&format!("{RAN}={name}")),
         "{name} ran no test in its own process: no test in this binary has that name"
     );
 }

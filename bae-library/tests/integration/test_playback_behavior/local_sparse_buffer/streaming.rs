@@ -574,7 +574,7 @@ async fn stopping_playback_closes_the_files_it_streamed() {
         "test",
         import_ids.new_id().to_string(),
         |album_dir| {
-            let _track_data = generate_test_flac_files(album_dir);
+            let _track_data = generate_test_flac_files(album_dir, album_dir.path());
         },
     )
     .await
@@ -585,7 +585,7 @@ async fn stopping_playback_closes_the_files_it_streamed() {
     playback_handle.play(imported.track_ids[0].clone());
     bae_playback::test_capture::wait_until_playing(&mut progress_rx, &imported.track_ids[0]).await;
     assert!(
-        !coven::open_files_under(&imported.album_dir).is_empty(),
+        !coven::open_files_under(imported.album_dir.path()).is_empty(),
         "the playing track's file is open while it streams"
     );
 
@@ -594,8 +594,8 @@ async fn stopping_playback_closes_the_files_it_streamed() {
     // The fill holds the file open until it ends, which stopping cancels.
     playback_handle.fills_ended().await;
     assert!(
-        coven::open_files_under(&imported.album_dir).is_empty(),
+        coven::open_files_under(imported.album_dir.path()).is_empty(),
         "files still open after stopping: {:?}",
-        coven::open_files_under(&imported.album_dir)
+        coven::open_files_under(imported.album_dir.path())
     );
 }

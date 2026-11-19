@@ -7,7 +7,7 @@ use super::test_people::{installation_in, on_app_runtime};
 /// The owner's library on Dropbox, signed in through `sign_in` and closed,
 /// with the storage it is on and the person's restore code.
 async fn dropbox_library(
-    dir: &tempfile::TempDir,
+    dir: &bae_util::test_files::TestFolder,
     sign_in: &DropboxSignIn,
 ) -> (std::sync::Arc<coven::MemoryStorage>, String) {
     use coven::Storage;
@@ -63,9 +63,9 @@ async fn stop_once_recorded<T>(
 fn a_stopped_restore_whose_sign_in_dropbox_refuses_signs_in_again_and_finishes() {
     on_app_runtime(async {
         let sign_in = DropboxSignIn::start().await;
-        let owner_dir = tempfile::tempdir().unwrap();
+        let owner_dir = bae_util::test_files::TestFolder::new();
         let (storage, code) = dropbox_library(&owner_dir, &sign_in).await;
-        let laptop_dir = tempfile::tempdir().unwrap();
+        let laptop_dir = bae_util::test_files::TestFolder::new();
         let laptop = installation_in(&laptop_dir);
         let builder = || {
             sign_in.configure(

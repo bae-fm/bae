@@ -13,7 +13,7 @@ struct RemoteMultiWindowPlayback {
     _capture_stream_rx: bae_playback::test_capture::CaptureStreamRx,
     /// The capture device's audio time, which only the test moves.
     audio_clock: AudioClock,
-    _temp_dir: TempDir,
+    _temp_dir: TestFolder,
 }
 
 impl RemoteMultiWindowPlayback {
@@ -25,9 +25,9 @@ impl RemoteMultiWindowPlayback {
     /// upload it, and drop every local copy, so playback reads storage.
     async fn import(name: &str) -> Result<Self, Box<dyn std::error::Error>> {
         bae_util::test_logs::install();
-        let temp_dir = TempDir::new()?;
+        let temp_dir = bae_util::test_files::TestFolder::new();
         let album_dir = temp_dir.path().join("album");
-        std::fs::create_dir_all(&album_dir)?;
+        temp_dir.create_folder(&album_dir);
         let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
         let (library, cloud) = bae_library::test_libraries::storage_library(
             temp_dir.path(),
@@ -37,7 +37,7 @@ impl RemoteMultiWindowPlayback {
         .await;
         bae_library::test_libraries::connect_storage(library.manager(), library.store(), &cloud)
             .await;
-        generate_multi_window_cue_flac_files(&album_dir);
+        generate_multi_window_cue_flac_files(&temp_dir, &album_dir);
         let release_key = fakes.seed_discogs_test_release(create_multi_window_cue_album());
         let import_handle = library.start_discogs_import().await;
         let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
@@ -72,7 +72,7 @@ impl RemoteMultiWindowPlayback {
         for file in files {
             library.manager().evict_file_for_test(file.file).await?;
         }
-        std::fs::remove_dir_all(album_dir)?;
+        temp_dir.remove(album_dir);
         let track_ids = library
             .records()
             .get_tracks_for_release(&release_id)

@@ -14,7 +14,7 @@ async fn playlists_now(store: &bae_store::Store) -> Vec<bae_views::playlists::Pl
 
 #[tokio::test]
 async fn ratings_and_playlist_edits_preserve_identity_order_and_audience() {
-    let directory = tempfile::tempdir().unwrap();
+    let directory = bae_util::test_files::TestFolder::new();
     let (library, _storage) = storage_library(
         directory.path(),
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
@@ -107,7 +107,7 @@ async fn ratings_and_playlist_edits_preserve_identity_order_and_audience() {
 
 #[tokio::test]
 async fn a_playlist_is_made_holding_its_tracks_or_not_at_all() {
-    let directory = tempfile::tempdir().unwrap();
+    let directory = bae_util::test_files::TestFolder::new();
     let (library, _storage) = storage_library(
         directory.path(),
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
@@ -153,7 +153,7 @@ async fn a_playlist_is_made_holding_its_tracks_or_not_at_all() {
 /// order given, and appends none of them when one is not in the library.
 #[tokio::test]
 async fn several_tracks_are_added_to_a_playlist_together_or_not_at_all() {
-    let directory = tempfile::tempdir().unwrap();
+    let directory = bae_util::test_files::TestFolder::new();
     let (library, _storage) = storage_library(
         directory.path(),
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
@@ -207,7 +207,7 @@ async fn several_tracks_are_added_to_a_playlist_together_or_not_at_all() {
 /// existing one.
 #[tokio::test]
 async fn picked_tracks_go_into_a_playlist_in_their_release_s_order() {
-    let directory = tempfile::tempdir().unwrap();
+    let directory = bae_util::test_files::TestFolder::new();
     let (library, _storage) = storage_library(
         directory.path(),
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
@@ -272,7 +272,7 @@ async fn picked_tracks_go_into_a_playlist_in_their_release_s_order() {
 #[tokio::test]
 async fn a_playlists_summary_comes_counted_with_its_row() {
     use bae_views::playlists::PlaylistCover;
-    let directory = tempfile::tempdir().unwrap();
+    let directory = bae_util::test_files::TestFolder::new();
     let (library, _storage) = storage_library(
         directory.path(),
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
@@ -345,7 +345,7 @@ async fn detail_matching(
 /// the household's.
 #[tokio::test]
 async fn the_playlist_reads_follow_each_change_to_a_playlist() {
-    let directory = tempfile::tempdir().unwrap();
+    let directory = bae_util::test_files::TestFolder::new();
     let (library, _storage) = storage_library(
         directory.path(),
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
@@ -450,7 +450,7 @@ async fn the_playlist_reads_follow_each_change_to_a_playlist() {
 /// letter.
 #[tokio::test]
 async fn playlists_list_by_name_in_the_devices_language() {
-    let directory = tempfile::tempdir().unwrap();
+    let directory = bae_util::test_files::TestFolder::new();
     let (library, _storage) = storage_library(
         directory.path(),
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
@@ -481,7 +481,7 @@ async fn playlists_list_by_name_in_the_devices_language() {
 /// track.
 #[tokio::test]
 async fn rating_delivers_a_new_album_detail() {
-    let directory = tempfile::tempdir().unwrap();
+    let directory = bae_util::test_files::TestFolder::new();
     let (library, _storage) = storage_library(
         directory.path(),
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),

@@ -19,10 +19,10 @@ async fn two_sequential_imports() {
     let mut release_ids = vec![];
     for (i, title) in titles.iter().enumerate() {
         let _ = title;
-        let album_dir = f.temp_path().join(format!("album{}", i + 1));
-        fs::create_dir_all(&album_dir).unwrap();
+        let album_dir = f.temp.path().join(format!("album{}", i + 1));
+        f.temp.create_folder(&album_dir);
         let track_name = format!("01 Track {}.flac", i + 1);
-        generate_album_files(&album_dir, &[track_name.as_str()]);
+        generate_album_files(&f.temp, &album_dir, &[track_name.as_str()]);
 
         let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
         f.handle
@@ -72,14 +72,12 @@ async fn repeated_imports_keep_independent_copies() {
     .enumerate()
     {
         // A copy whose modification times changed hashes apart from the others.
-        let album_dir = f.temp_path().join(format!("copy-{index}"));
-        fs::create_dir_all(&album_dir).unwrap();
-        generate_album_files(&album_dir, &["01 Track.flac"]);
-        fs::File::options()
-            .write(true)
-            .open(album_dir.join("01 Track.flac"))
-            .unwrap()
-            .set_times(fs::FileTimes::new().set_modified(
+        let album_dir = f.temp.path().join(format!("copy-{index}"));
+        f.temp.create_folder(&album_dir);
+        generate_album_files(&f.temp, &album_dir, &["01 Track.flac"]);
+        f.temp
+            .open_with(album_dir.join("01 Track.flac"), std::fs::OpenOptions::new().write(true))
+            .set_times(std::fs::FileTimes::new().set_modified(
                 std::time::UNIX_EPOCH
                     + std::time::Duration::from_secs(1_000_000_000 + index as u64),
             ))
@@ -147,9 +145,10 @@ async fn a_remote_import_without_a_cloud_connection_queues_its_uploads() {
     bae_util::test_logs::install();
     let f = ImportFixture::new().await;
 
-    let album_dir = f.temp_path().join("remote");
-    fs::create_dir_all(&album_dir).unwrap();
+    let album_dir = f.temp.path().join("remote");
+    f.temp.create_folder(&album_dir);
     generate_tagged_album_files(
+        &f.temp,
         &album_dir,
         "Remote Album",
         "Remote Artist",

@@ -17,21 +17,16 @@ use bae_library::LibraryManager;
 use bae_playback::PlaybackProgress;
 use bae_types::track_time::TrackTime;
 use bae_util::content_type::ContentType;
+use bae_util::test_files::TestFolder;
 use std::path::Path;
 use std::time::Duration;
-use tempfile::TempDir;
 use tracing::info;
 
-fn copy_cue_ape_fixture(dir: &Path) {
-    use std::fs;
+fn copy_cue_ape_fixture(folder: &bae_util::test_files::TestFolder, dir: &Path) {
     let fixture_dir = bae_import::test_fixtures::cue_ape_dir();
-    let ape_data = fs::read(fixture_dir.join("Test Album.ape"))
-        .unwrap_or_else(|_| panic!("CUE/APE fixture not found at {:?}", fixture_dir));
-    let cue_data = fs::read(fixture_dir.join("Test Album.cue"))
-        .unwrap_or_else(|_| panic!("CUE/APE fixture not found at {:?}", fixture_dir));
-    fs::write(dir.join("Test Album.ape"), &ape_data).expect("write ape");
-    fs::write(dir.join("Test Album.cue"), &cue_data).expect("write cue");
-    info!("Copied CUE/APE fixture: {} bytes APE", ape_data.len());
+    let ape = folder.copy_fixture(fixture_dir.join("Test Album.ape"), dir.join("Test Album.ape"));
+    folder.copy_fixture(fixture_dir.join("Test Album.cue"), dir.join("Test Album.cue"));
+    info!("Copied CUE/APE fixture: {} bytes APE", folder.metadata(ape).len());
 }
 
 fn create_test_discogs_release() -> DiscogsRelease {
@@ -64,14 +59,13 @@ const FULL_FILE_DURATION_MS: u64 = 90000;
 /// Import the 3-track CUE/APE fixture into a fresh library, returning the
 /// manager, the imported release id, and the temp root that owns both the
 /// album folder and the database.
-async fn import_cue_ape_fixture() -> (bae_library::test_libraries::TestLibrary, String, TempDir) {
+async fn import_cue_ape_fixture() -> (bae_library::test_libraries::TestLibrary, String, TestFolder)
+{
     bae_util::test_logs::install();
-    let temp_root = TempDir::new().expect("temp root");
-    let album_dir = temp_root.path().join("album");
-    let db_dir = temp_root.path().join("db");
-    std::fs::create_dir_all(&album_dir).expect("album dir");
-    std::fs::create_dir_all(&db_dir).expect("db dir");
-    copy_cue_ape_fixture(&album_dir);
+    let temp_root = TestFolder::new();
+    let album_dir = temp_root.create_folder("album");
+    let db_dir = temp_root.create_folder("db");
+    copy_cue_ape_fixture(&temp_root, &album_dir);
 
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
     let library = bae_library::test_libraries::open_test_library_with(
@@ -92,7 +86,8 @@ struct CueApeTestFixture {
     capture_stream_rx: bae_playback::test_capture::CaptureStreamRx,
     /// The capture device's audio time, which only the test moves.
     audio_clock: bae_playback::AudioClock,
-    _temp_dir: TempDir,
+    _temp_dir: TestFolder,
+    _album_dir: TestFolder,
 }
 
 impl CueApeTestFixture {
@@ -103,7 +98,7 @@ impl CueApeTestFixture {
             create_test_discogs_release(),
             "test",
             coven::IdSource::new_id(&coven::UuidIds).to_string(),
-            copy_cue_ape_fixture,
+            |album| copy_cue_ape_fixture(album, album.path()),
         )
         .await?;
         assert_eq!(imported.track_ids.len(), 3, "Should have 3 tracks from CUE/APE");
@@ -117,6 +112,7 @@ impl CueApeTestFixture {
             capture_stream_rx,
             audio_clock,
             _temp_dir: imported.temp_dir,
+            _album_dir: imported.album_dir,
         })
     }
 
