@@ -7,6 +7,13 @@ extension BridgeSyncShown {
     var causeLine: String? {
         cause?.macLine
     }
+
+    /// The line under the cause that counts down to when sync resumes, when
+    /// the cause names that moment.
+    var causeCountdown: BridgeSyncCountdown? {
+        guard case .message(_, let countdown) = cause else { return nil }
+        return countdown
+    }
 }
 
 extension BridgeSyncCause {
@@ -14,8 +21,8 @@ extension BridgeSyncCause {
     /// Mac words those, with the keychain where the saved keys live.
     var macLine: String {
         switch self {
-        case .message(let message, let resumesAt):
-            message.syncCauseLine(resumesAt: resumesAt)
+        case .message(let message, _):
+            message.localizedLine
         case .deviceDiskFull:
             String(
                 localized:

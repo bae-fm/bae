@@ -6,6 +6,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import fm.bae.app.coreString
 import kotlinx.coroutines.delay
 
 private const val MILLIS_PER_SECOND = 1_000L
@@ -38,4 +40,18 @@ internal fun rememberCountdownNow(
         }
     }
     return now
+}
+
+/**
+ * Core's countdown message [key] with the whole seconds left until [deadlineMs] as its `seconds` argument, worded
+ * again as each whole second before the deadline passes.
+ */
+@Composable
+internal fun rememberCountdownLine(
+    key: String,
+    deadlineMs: Long,
+    nowMs: () -> Long,
+): String {
+    val now = rememberCountdownNow(deadlineMs, nowMs)
+    return LocalContext.current.coreString(key, mapOf("seconds" to countdownSecondsLeft(deadlineMs, now)))
 }

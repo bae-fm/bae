@@ -71,13 +71,18 @@ struct SidePauseCountdownTests {
 
     @Test("seconds left round up and stop at zero")
     func secondsLeftRoundUp() {
-        let countdown = Self.countdown
-        #expect(countdown.secondsLeft(at: Self.before(5_000)) == 5)
-        #expect(countdown.secondsLeft(at: Self.before(4_001)) == 5)
-        #expect(countdown.secondsLeft(at: Self.before(4_000)) == 4)
-        #expect(countdown.secondsLeft(at: Self.before(1)) == 1)
-        #expect(countdown.secondsLeft(at: Self.before(0)) == 0)
-        #expect(countdown.secondsLeft(at: Self.before(-3_000)) == 0)
+        func left(before ms: Int64) -> Int {
+            countdownSecondsLeft(
+                deadlineMs: Self.resumesAtMs,
+                nowMs: Self.before(ms).millisecondsSince1970
+            )
+        }
+        #expect(left(before: 5_000) == 5)
+        #expect(left(before: 4_001) == 5)
+        #expect(left(before: 4_000) == 4)
+        #expect(left(before: 1) == 1)
+        #expect(left(before: 0) == 0)
+        #expect(left(before: -3_000) == 0)
     }
 
     @Test("the card line names the medium and the seconds left")

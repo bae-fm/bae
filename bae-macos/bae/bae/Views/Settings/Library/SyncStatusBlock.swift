@@ -22,8 +22,9 @@ struct SyncFixActions {
 }
 
 /// The top of the Sync page: the state in words and the color core gives it,
-/// then its cause, its fix and when sync last finished, each only when core
-/// sends one. Until the status is first read it shows nothing.
+/// then its cause with any countdown under it, its fix and when sync last
+/// finished, each only when core sends one. Until the status is first read
+/// it shows nothing.
 struct SyncStatusBlock: View {
     /// The library's storage, whose folder a fix opens.
     let location: BridgeStorageLocation?
@@ -56,10 +57,17 @@ struct SyncStatusBlock: View {
                     )
                 }
                 if let cause = shown.causeLine {
-                    Text(cause)
-                        .themeText(.detail)
-                        .lineSpacing(ThemeSpace.line)
-                        .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: ThemeSpace.inline) {
+                        SyncCauseText(text: cause)
+                        if let countdown = shown.causeCountdown {
+                            CountdownTimeline(deadline: countdown.until) {
+                                now in
+                                SyncCauseText(text: countdown.line(at: now))
+                                    .monospacedDigit()
+                                    .accessibilityAddTraits(.updatesFrequently)
+                            }
+                        }
+                    }
                 }
                 if let fix = shown.fix {
                     SyncFixButton(
@@ -73,6 +81,18 @@ struct SyncStatusBlock: View {
                 LabeledContent("Last synced", value: lastSynced)
             }
         }
+    }
+}
+
+/// A line of a sync state's cause, in the block's quieter text.
+private struct SyncCauseText: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .themeText(.detail)
+            .lineSpacing(ThemeSpace.line)
+            .foregroundStyle(.secondary)
     }
 }
 

@@ -34,8 +34,7 @@ import fm.bae.app.ui.components.AndroidSheet
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.color
-import fm.bae.app.ui.countdownSecondsLeft
-import fm.bae.app.ui.rememberCountdownNow
+import fm.bae.app.ui.rememberCountdownLine
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeRepeatMode
@@ -217,14 +216,8 @@ private fun SidePauseCountdownLine(
     countdown: BridgeSideCountdown,
     nowMs: () -> Long,
 ) {
-    val context = LocalContext.current
-    val now = rememberCountdownNow(countdown.resumesAtMs, nowMs)
     Text(
-        text =
-            context.coreString(
-                messageKey,
-                mapOf("seconds" to countdownSecondsLeft(countdown.resumesAtMs, now)),
-            ),
+        text = rememberCountdownLine(messageKey, countdown.resumesAtMs, nowMs),
         style = ThemeText.strong.style,
         color = MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },

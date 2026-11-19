@@ -22,6 +22,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import fm.bae.app.AppSessionHolder
 import fm.bae.app.BaeLogger
@@ -45,6 +48,7 @@ import fm.bae.app.ui.components.AndroidScreen
 import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.joinsTileAbove
+import fm.bae.app.ui.rememberCountdownLine
 import fm.bae.app.ui.rememberScreenScope
 import fm.bae.app.ui.storageLocationLabel
 import kotlinx.coroutines.CoroutineScope
@@ -54,6 +58,8 @@ import uniffi.bae_bridge.BridgeLibrarySetup
 import uniffi.bae_bridge.BridgeMemberAccess
 import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeStorageSetup
+import uniffi.bae_bridge.BridgeSyncCause
+import uniffi.bae_bridge.BridgeSyncCountdown
 import uniffi.bae_bridge.BridgeSyncFix
 
 private val logger = BaeLogger("bae.SyncScreen")
@@ -361,13 +367,14 @@ private fun SyncDialogs(
 }
 
 /**
- * The top of the page: the state in words and the color core gives it, then its cause, its fix and when sync last
- * finished, each only when core sends one. Until the status is first read it shows nothing.
+ * The top of the page: the state in words and the color core gives it, then its cause with any countdown under it, its
+ * fix and when sync last finished, each only when core sends one. Until the status is first read it shows nothing.
  */
 @Composable
 internal fun SyncStatusBlock(
     line: SyncLine,
     onFix: (BridgeSyncFix) -> Unit,
+    nowMs: () -> Long = System::currentTimeMillis,
 ) {
     val context = LocalContext.current
     when (line) {
@@ -396,11 +403,15 @@ internal fun SyncStatusBlock(
                     followed = shown.cause != null || fixLabel != null || shown.lastSynced != null,
                 )
                 shown.cause?.let { cause ->
-                    Text(
-                        text = syncCauseText(context, cause),
-                        style = ThemeText.body.style,
+                    Column(
                         modifier = Modifier.joinsTileAbove().padding(CAUSE_PADDING),
-                    )
+                        verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline),
+                    ) {
+                        Text(text = syncCauseText(context, cause), style = ThemeText.body.style)
+                        (cause as? BridgeSyncCause.Message)?.countdown?.let { countdown ->
+                            SyncCountdownLine(countdown, nowMs)
+                        }
+                    }
                 }
                 shown.fix?.let { fix ->
                     fixLabel?.let { label ->
@@ -423,6 +434,19 @@ internal fun SyncStatusBlock(
             }
         }
     }
+}
+
+/** The line under a cause that counts down to core's moment, redrawn each whole second and read out as it changes. */
+@Composable
+private fun SyncCountdownLine(
+    countdown: BridgeSyncCountdown,
+    nowMs: () -> Long,
+) {
+    Text(
+        text = rememberCountdownLine(countdown.key, countdown.until.toEpochMilli(), nowMs),
+        style = ThemeText.body.style,
+        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+    )
 }
 
 /** The words on a fix's button: this app's own, but for the ones core words. Nothing for a fix Android never gets. */

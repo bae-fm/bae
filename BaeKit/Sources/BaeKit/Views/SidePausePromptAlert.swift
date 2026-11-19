@@ -138,19 +138,13 @@ private struct SidePauseCountdownLine: View {
     let countdown: BridgeSideCountdown
 
     var body: some View {
-        TimelineView(.periodic(from: tickAnchor, by: 1)) { context in
-            Text(verbatim: prompt.countdownLine(countdown, at: context.date))
+        CountdownTimeline(deadline: countdown.resumesAt) { now in
+            Text(verbatim: prompt.countdownLine(countdown, at: now))
                 .themeText(.strong)
                 .monospacedDigit()
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.updatesFrequently)
         }
-    }
-
-    /// An hour before the deadline, so ticks land on whole seconds before it
-    /// and the anchor is in the past for any countdown the settings offer.
-    private var tickAnchor: Date {
-        countdown.resumesAt.addingTimeInterval(-3600)
     }
 }
 

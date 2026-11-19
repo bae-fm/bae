@@ -21,6 +21,7 @@ import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.LocalBugReports
 import fm.bae.app.NoErrorDisplays
 import fm.bae.app.OpenLibrary
+import fm.bae.app.data.SyncLine
 import fm.bae.app.data.SyncStatusStore
 import fm.bae.app.openTestLibrary
 import fm.bae.app.playback.FakeAppHandle
@@ -32,13 +33,17 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeLibraryClosing
+import uniffi.bae_bridge.BridgeMessage
+import uniffi.bae_bridge.BridgeMessageArg
 import uniffi.bae_bridge.BridgeRestoreCodeShare
 import uniffi.bae_bridge.BridgeSyncCause
+import uniffi.bae_bridge.BridgeSyncCountdown
 import uniffi.bae_bridge.BridgeSyncFix
 import uniffi.bae_bridge.BridgeSyncShown
 import uniffi.bae_bridge.BridgeSyncStatusSnapshot
 import uniffi.bae_bridge.BridgeSyncStatusWord
 import uniffi.bae_bridge.BridgeSyncTone
+import java.time.Instant
 
 /** The Sync page runs its status's fix as the library's storage takes it. */
 @RunWith(BaeRobolectricTestRunner::class)
@@ -167,6 +172,41 @@ class SyncScreenTest {
         }
 
         compose.onNodeWithText("This device is out of space. Free some up and bae will try again.").assertExists()
+    }
+
+    /** The provider's wait says who asked bae to slow down, and the line under it counts down to when sync resumes. */
+    @Test
+    fun aProvidersWaitCountsDownToWhenSyncResumes() {
+        val resumesAtMs = 1_800_000_000_000L
+        val waiting =
+            BridgeSyncShown(
+                status = BridgeSyncStatusWord.WAITING_TO_SYNC,
+                statusKey = "core.sync.status.waiting_to_sync",
+                tone = BridgeSyncTone.WARNING,
+                cause =
+                    BridgeSyncCause.Message(
+                        message =
+                            BridgeMessage(
+                                "core.sync.cause.provider_wait",
+                                listOf(BridgeMessageArg("provider", "Dropbox")),
+                            ),
+                        countdown =
+                            BridgeSyncCountdown(
+                                key = "core.sync.cause.provider_wait.countdown",
+                                until = Instant.ofEpochMilli(resumesAtMs),
+                            ),
+                    ),
+                fix = null,
+                lastSynced = null,
+            )
+        compose.setContent {
+            TestTheme {
+                SyncStatusBlock(line = SyncLine.Read(waiting), onFix = {}, nowMs = { resumesAtMs - 41_500L })
+            }
+        }
+
+        compose.onNodeWithText("Dropbox asked bae to slow down.").assertExists()
+        compose.onNodeWithText("Resuming in 42 seconds.").assertExists()
     }
 
     /**

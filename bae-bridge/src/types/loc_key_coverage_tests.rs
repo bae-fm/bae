@@ -814,8 +814,8 @@ fn playback_error_reason_lines() -> Vec<BridgeMessage> {
     .collect()
 }
 
-/// Every cause a sync state gives, as a UI makes it a message: a cause that
-/// names when sync resumes takes that time as its last argument.
+/// Every cause a sync state gives, as a UI makes it messages: the cause's own,
+/// then its countdown's, which takes the seconds left as its argument.
 fn sync_cause_messages() -> Vec<BridgeMessage> {
     use bae_sync_status::SyncCauseLine as C;
     [
@@ -838,16 +838,16 @@ fn sync_cause_messages() -> Vec<BridgeMessage> {
         C::SomethingWentWrong,
     ]
     .into_iter()
-    .map(|cause| {
-        let BridgeSyncCause::Message { mut message, resumes_at } =
-            BridgeSyncCause::from_core(cause)
+    .flat_map(|cause| {
+        let BridgeSyncCause::Message { message, countdown } = BridgeSyncCause::from_core(cause)
         else {
             panic!("a cause with a catalog message is a Message");
         };
-        if resumes_at.is_some() {
-            message.args.push(BridgeMessageArg { name: "time".to_string(), value: "3:40".into() });
-        }
-        message
+        let countdown = countdown.map(|countdown| BridgeMessage {
+            key: countdown.key,
+            args: vec![BridgeMessageArg { name: "seconds".to_string(), value: "42".into() }],
+        });
+        std::iter::once(message).chain(countdown)
     })
     .collect()
 }

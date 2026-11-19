@@ -32,20 +32,14 @@ extension Date {
     }
 }
 
-extension BridgeMessage {
-    /// A sync cause's message with its arguments formatted in, the time sync
-    /// resumes at last when the cause names one, in the person's locale.
-    public func syncCauseLine(resumesAt: Date?) -> String {
-        var arguments: [CVarArg] = args.map(\.value)
-        if let resumesAt {
-            arguments.append(
-                resumesAt.formatted(date: .omitted, time: .shortened)
-            )
-        }
-        return String(
-            format: localizedCoreString(key),
-            locale: Locale.current,
-            arguments: arguments
+extension BridgeSyncCountdown {
+    /// The countdown's line at `now`: core's words with the whole seconds
+    /// left.
+    public func line(at now: Date) -> String {
+        localizedCountdownLine(
+            key: key,
+            deadlineMs: until.millisecondsSince1970,
+            at: now
         )
     }
 }

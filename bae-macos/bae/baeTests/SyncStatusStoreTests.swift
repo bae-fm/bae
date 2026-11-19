@@ -86,8 +86,6 @@ struct SyncStatusStoreTests {
         #expect(!sync.unreadable)
     }
 
-    /// The state's words, cause and last sync are core's, in the person's
-    /// language: a provider's wait names it and when sync resumes.
     @Test("the causes that name the device are worded for the Mac")
     func deviceCausesAreWordedForTheMac() {
         #expect(
@@ -108,6 +106,9 @@ struct SyncStatusStoreTests {
         )
     }
 
+    /// The state's words, cause and last sync are core's, in the person's
+    /// language: a provider's wait names it, and the line under it counts
+    /// down to when sync resumes.
     @MainActor
     @Test("a state is worded from core's keys and arguments")
     func aStateIsWordedFromCoresKeys() throws {
@@ -121,23 +122,41 @@ struct SyncStatusStoreTests {
                     key: "core.sync.cause.provider_wait",
                     args: [BridgeMessageArg(name: "provider", value: "Dropbox")]
                 ),
-                resumesAt: resumes
+                countdown: BridgeSyncCountdown(
+                    key: "core.sync.cause.provider_wait.countdown",
+                    until: resumes
+                )
             ),
             fix: nil,
             lastSynced: Date(timeIntervalSinceNow: -7_200)
         )
         #expect(shown.statusLine == "Waiting to sync")
-        let cause = try #require(shown.causeLine)
+        #expect(shown.causeLine == "Dropbox asked bae to slow down.")
+        let countdown = try #require(shown.causeCountdown)
         #expect(
-            cause.hasPrefix("Dropbox asked bae to wait. Syncing resumes at ")
+            countdown.line(at: resumes.addingTimeInterval(-42))
+                == "Resuming in 42 seconds."
         )
         #expect(
-            cause.hasSuffix(
-                resumes.formatted(date: .omitted, time: .shortened) + "."
-            )
+            countdown.line(at: resumes.addingTimeInterval(-0.5))
+                == "Resuming in 1 second."
         )
         #expect(shown.lastSyncedLine == "2 hours ago")
         #expect(shown.statusTone.color == StatusTone.warning.color)
+    }
+
+    /// A cause that names no moment has no countdown under it.
+    @Test("a cause with no moment has no countdown")
+    func aCauseWithNoMomentHasNoCountdown() {
+        let shown = BridgeSyncShown(
+            status: .syncFailed,
+            statusKey: "core.sync.failed",
+            tone: .danger,
+            cause: .deviceDiskFull,
+            fix: .retryNow,
+            lastSynced: nil
+        )
+        #expect(shown.causeCountdown == nil)
     }
 
     private func status(_ shown: BridgeSyncShown) -> BridgeSyncStatusSnapshot {

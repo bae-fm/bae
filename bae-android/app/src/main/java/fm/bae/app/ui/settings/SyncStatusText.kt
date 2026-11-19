@@ -4,7 +4,6 @@ import android.content.Context
 import android.text.format.DateUtils
 import fm.bae.app.R
 import fm.bae.app.coreString
-import fm.bae.app.currentLocale
 import fm.bae.app.data.SyncLine
 import fm.bae.app.ui.components.StatusTone
 import uniffi.bae_bridge.BridgeCloudProvider
@@ -13,8 +12,6 @@ import uniffi.bae_bridge.BridgeSyncCause
 import uniffi.bae_bridge.BridgeSyncShown
 import uniffi.bae_bridge.BridgeSyncStatusWord
 import uniffi.bae_bridge.BridgeSyncTone
-import java.text.DateFormat
-import java.util.Date
 
 /** The state in the person's language: core's words for it. */
 internal fun syncStatusText(
@@ -22,27 +19,14 @@ internal fun syncStatusText(
     shown: BridgeSyncShown,
 ): String = context.coreString(shown.statusKey)
 
-/**
- * Why the state is what it is, in core's words but for the causes that name the device, which this app words. A cause
- * that names when sync resumes takes that time as its last argument, written as the device's locale writes a time.
- */
+/** Why the state is what it is, in core's words but for the causes that name the device, which this app words. */
 internal fun syncCauseText(
     context: Context,
     cause: BridgeSyncCause,
 ): String =
     when (cause) {
         is BridgeSyncCause.Message -> {
-            val args =
-                cause.message.args
-                    .associate { it.name to it.value as Any }
-                    .toMutableMap()
-            cause.resumesAt?.let { moment ->
-                args["time"] =
-                    DateFormat
-                        .getTimeInstance(DateFormat.SHORT, context.currentLocale())
-                        .format(Date.from(moment))
-            }
-            context.coreString(cause.message.key, args)
+            context.coreString(cause.message)
         }
 
         BridgeSyncCause.DeviceDiskFull -> {

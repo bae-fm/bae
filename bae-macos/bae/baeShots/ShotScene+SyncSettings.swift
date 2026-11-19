@@ -145,7 +145,10 @@ extension ShotScene {
                 key: "core.sync.cause.provider_wait",
                 args: [BridgeMessageArg(name: "provider", value: "Dropbox")]
             ),
-            resumesAt: Date(timeIntervalSinceNow: 42)
+            countdown: BridgeSyncCountdown(
+                key: "core.sync.cause.provider_wait.countdown",
+                until: Date(timeIntervalSinceNow: 42)
+            )
         ),
         fix: nil,
         lastSynced: Date(timeIntervalSinceNow: -2 * 3_600)

@@ -539,17 +539,16 @@ pub enum BridgeSyncStatusWord {
 }
 
 /// Why a sync state is what it is. Most causes are a catalog message, whose
-/// arguments are the message's own; a cause that names when sync resumes also
-/// carries that moment: the UI formats it in the person's locale and passes
-/// it as the message's last argument. The causes that name the device (its
-/// disk, its saved keys, its library, its restore from a new restore code,
-/// the changes it keeps) are worded by each platform in its own terms ("this
-/// Mac" and the keychain, "this device").
+/// arguments are the message's own; a cause that names a moment sync waits
+/// for also carries a countdown to it, the line under the message. The causes
+/// that name the device (its disk, its saved keys, its library, its restore
+/// from a new restore code, the changes it keeps) are worded by each platform
+/// in its own terms ("this Mac" and the keychain, "this device").
 #[derive(Debug, Clone, PartialEq, uniffi::Enum)]
 pub enum BridgeSyncCause {
     Message {
         message: BridgeMessage,
-        resumes_at: Option<std::time::SystemTime>,
+        countdown: Option<BridgeSyncCountdown>,
     },
     /// The disk on this device is full.
     DeviceDiskFull,
@@ -563,6 +562,17 @@ pub enum BridgeSyncCause {
     EnterNewRestoreCode,
     /// The changes this device made stay on it until it signs in again.
     ChangesStayOnDevice,
+}
+
+/// A line that counts down to the moment `until`, such as when sync resumes
+/// after the provider asked bae to wait. The UI words the catalog message
+/// `key` with the whole seconds left, rounded up, as its `seconds` argument,
+/// and words it again as each second passes; core, not the UI, acts at
+/// `until`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeSyncCountdown {
+    pub key: String,
+    pub until: std::time::SystemTime,
 }
 
 /// What the person can do about a sync state. The button's words are the
@@ -665,11 +675,14 @@ impl BridgeSyncCause {
     pub(crate) fn from_core(cause: bae_sync_status::SyncCauseLine) -> Self {
         use bae_sync_status::SyncCauseLine as C;
         let plain = |key: &str| BridgeMessage { key: key.to_string(), args: Vec::new() };
-        let mut resumes_at = None;
+        let mut countdown = None;
         let message = match cause {
             C::UploadFailedWillRetry => plain("core.sync.cause.upload_failed"),
             C::ProviderWait { provider, until } => {
-                resumes_at = Some(until);
+                countdown = Some(BridgeSyncCountdown {
+                    key: "core.sync.cause.provider_wait.countdown".to_string(),
+                    until,
+                });
                 BridgeMessage {
                     key: "core.sync.cause.provider_wait".to_string(),
                     args: vec![BridgeMessageArg::new("provider", provider_name(provider).into())],
@@ -708,7 +721,7 @@ impl BridgeSyncCause {
                 | BridgeError::NotFound { .. } => plain("core.sync.cause.went_wrong"),
             },
         };
-        Self::Message { message, resumes_at }
+        Self::Message { message, countdown }
     }
 }
 

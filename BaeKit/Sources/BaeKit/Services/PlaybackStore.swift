@@ -287,12 +287,10 @@ extension BridgeSidePausePrompt {
         _ countdown: BridgeSideCountdown,
         at now: Date
     ) -> String {
-        String(
-            format: localizedCoreString(
-                bridgePauseBoundaryCountdownKey(boundary: boundary)
-            ),
-            locale: Locale.current,
-            countdown.secondsLeft(at: now)
+        localizedCountdownLine(
+            key: bridgePauseBoundaryCountdownKey(boundary: boundary),
+            deadlineMs: countdown.resumesAtMs,
+            at: now
         )
     }
 }
@@ -301,14 +299,6 @@ extension BridgeSideCountdown {
     /// When the next side starts.
     public var resumesAt: Date {
         Date(timeIntervalSince1970: TimeInterval(resumesAtMs) / 1000)
-    }
-
-    /// Whole seconds until the next side starts at `now`, rounded up so the
-    /// line never reads 0 while the side has yet to start, and never below 0.
-    public func secondsLeft(at now: Date) -> Int {
-        let nowMs = Int64((now.timeIntervalSince1970 * 1000).rounded(.down))
-        let remainingMs = max(0, resumesAtMs - nowMs)
-        return Int((remainingMs + 999) / 1000)
     }
 }
 

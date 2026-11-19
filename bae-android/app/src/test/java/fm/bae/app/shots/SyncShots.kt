@@ -17,6 +17,7 @@ import uniffi.bae_bridge.BridgeMessage
 import uniffi.bae_bridge.BridgeMessageArg
 import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeSyncCause
+import uniffi.bae_bridge.BridgeSyncCountdown
 import uniffi.bae_bridge.BridgeSyncStatusWord
 import uniffi.bae_bridge.BridgeSyncTone
 import java.time.Instant
@@ -66,7 +67,11 @@ class SyncShots : BoardShot() {
 private fun dropboxAskedToWait() =
     BridgeSyncCause.Message(
         message = BridgeMessage("core.sync.cause.provider_wait", listOf(BridgeMessageArg("provider", "Dropbox"))),
-        resumesAt = Instant.now().plusSeconds(WAIT_SECONDS_LEFT),
+        countdown =
+            BridgeSyncCountdown(
+                key = "core.sync.cause.provider_wait.countdown",
+                until = Instant.now().plusSeconds(WAIT_SECONDS_LEFT),
+            ),
     )
 
 private const val WAIT_SECONDS_LEFT = 42L

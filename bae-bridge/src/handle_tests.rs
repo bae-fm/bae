@@ -731,6 +731,42 @@ fn a_provider_failure_crosses_as_sync_failed_with_the_providers_words() {
     assert_eq!(bridge.shown.last_synced, Some(std::time::UNIX_EPOCH));
 }
 
+/// The provider's wait crosses as a message that names the provider, with a
+/// countdown to the moment coven's state says sync resumes.
+#[test]
+fn a_providers_wait_crosses_with_a_countdown_to_when_sync_resumes() {
+    let until = std::time::UNIX_EPOCH + std::time::Duration::from_secs(1_800_000_000);
+    let snapshot = bae_sync_status::SyncStatusSnapshot {
+        error: None,
+        coven: coven::SyncStatus {
+            state: coven::SyncState::WaitingToSync(coven::SyncWait::CoolingDown { until }),
+            last_synced: None,
+        },
+        retry_effect: coven::RetryEffect::Pass,
+        storage_setup: None,
+        location: Some(dropbox_location()),
+    };
+
+    let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(snapshot);
+
+    assert_eq!(
+        bridge.shown.cause,
+        Some(crate::types::BridgeSyncCause::Message {
+            message: crate::types::BridgeMessage {
+                key: "core.sync.cause.provider_wait".into(),
+                args: vec![crate::types::BridgeMessageArg {
+                    name: "provider".into(),
+                    value: "Dropbox".into()
+                }],
+            },
+            countdown: Some(crate::types::BridgeSyncCountdown {
+                key: "core.sync.cause.provider_wait.countdown".into(),
+                until,
+            }),
+        })
+    );
+}
+
 /// One candidate's runtime pulled end to end: a claim crosses as its import
 /// in flight, a subscriber opening mid-import reads it, and the import
 /// failing leaves nothing in flight.
