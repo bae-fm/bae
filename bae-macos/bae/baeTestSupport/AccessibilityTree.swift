@@ -74,8 +74,8 @@ struct AccessibilityTree: Sendable {
         let parent: Int?
     }
 
-    /// The window's elements, each before the ones it holds, in the tree's
-    /// order. The window itself is not one.
+    /// The window's elements, each before the ones it holds, in the order an
+    /// assistive client reads them. The window itself is not one.
     let nodes: [Node]
 
     /// The tree of `window`.
@@ -182,8 +182,17 @@ struct AccessibilityTree: Sendable {
             )
         }
 
+        /// The elements `element` holds, in the order VoiceOver reads them:
+        /// the navigation order where the element gives one, which differs
+        /// from the plain list of children for a titled window. A window lists
+        /// its content first and its title bar's buttons, toolbar and title
+        /// after it, and reads them title bar first.
         static func children(of element: AXUIElement) -> [AXUIElement] {
-            attribute(element, kAXChildrenAttribute) as? [AXUIElement] ?? []
+            let navigation = NSAccessibility.Attribute
+                .childrenInNavigationOrderAttribute.rawValue
+            return attribute(element, navigation) as? [AXUIElement]
+                ?? attribute(element, kAXChildrenAttribute) as? [AXUIElement]
+                ?? []
         }
 
         static func frame(of element: AXUIElement) -> CGRect? {
@@ -332,24 +341,50 @@ extension AccessibilityTree {
         return Self(
             nodes: nodes
                 + other.nodes.map {
-                    Node(
-                        role: $0.role,
-                        subrole: $0.subrole,
-                        title: $0.title,
-                        description: $0.description,
-                        placeholder: $0.placeholder,
-                        value: $0.value,
-                        x: $0.x + x,
-                        y: $0.y + y,
-                        width: $0.width,
-                        height: $0.height,
-                        enabled: $0.enabled,
-                        selected: $0.selected,
-                        focused: $0.focused,
-                        style: $0.style,
-                        parent: $0.parent.map { $0 + base }
-                    )
+                    $0.placed(dx: x, dy: y, parent: $0.parent.map { $0 + base })
                 }
+        )
+    }
+
+    /// This tree without the nodes `isLeftOut` picks and the nodes they hold.
+    func leavingOut(_ isLeftOut: (Node) -> Bool) -> Self {
+        // The new index of each node kept, by its old index.
+        var kept: [Int: Int] = [:]
+        var out: [Node] = []
+        for (index, node) in nodes.enumerated() {
+            var parent: Int?
+            if let old = node.parent {
+                // A node whose holder was left out goes with it.
+                guard let new = kept[old] else { continue }
+                parent = new
+            }
+            if isLeftOut(node) { continue }
+            kept[index] = out.count
+            out.append(node.placed(dx: 0, dy: 0, parent: parent))
+        }
+        return Self(nodes: out)
+    }
+}
+
+extension AccessibilityTree.Node {
+    /// This node moved `dx`, `dy` points, held by the node at `parent`.
+    fileprivate func placed(dx: Double, dy: Double, parent: Int?) -> Self {
+        Self(
+            role: role,
+            subrole: subrole,
+            title: title,
+            description: description,
+            placeholder: placeholder,
+            value: value,
+            x: x + dx,
+            y: y + dy,
+            width: width,
+            height: height,
+            enabled: enabled,
+            selected: selected,
+            focused: focused,
+            style: style,
+            parent: parent
         )
     }
 }

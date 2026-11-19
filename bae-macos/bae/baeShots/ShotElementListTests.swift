@@ -108,6 +108,53 @@ struct ShotElementListTests {
         #expect(cancel.bounds.y > message.bounds.y, "\(json)")
     }
 
+    /// A titled window lists its title before its content, as VoiceOver reads
+    /// it and a board draws it, and leaves out the window's close, minimise
+    /// and zoom buttons, which a board hides. The window sits past every
+    /// display, so it takes no focus.
+    @Test
+    func listsATitledWindowsTitleFirstWithoutItsButtons() throws {
+        let size = CGSize(width: 400, height: 200)
+        let right = NSScreen.screens.map(\.frame.maxX).max() ?? 0
+        let window = NSWindow(
+            contentRect: NSRect(
+                origin: NSPoint(x: right + 1_000, y: 0),
+                size: size
+            ),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.animationBehavior = .none
+        window.isReleasedWhenClosed = false
+        window.title = "Window Title"
+        let body = NSTextField(labelWithString: "Body words")
+        body.frame = NSRect(x: 20, y: 20, width: 200, height: 20)
+        window.contentView?.addSubview(body)
+        window.orderFront(nil)
+        defer { window.close() }
+
+        let list = try ShotElementList.read(
+            board: "a titled window",
+            window: window,
+            size: size,
+            scale: 2
+        )
+        let json = try json(list)
+        #expect(
+            list.elements.compactMap(\.label) == [
+                "Window Title", "Body words",
+            ],
+            "\(json)"
+        )
+        #expect(!list.elements.contains { $0.role == "button" }, "\(json)")
+        for (index, element) in list.elements.enumerated() {
+            if let parent = element.parent {
+                #expect(parent < index, "\(json)")
+            }
+        }
+    }
+
     /// macOS reports a spinner as a busy indicator; the shot lists it with
     /// the role progress, as VoiceOver reads it.
     @Test

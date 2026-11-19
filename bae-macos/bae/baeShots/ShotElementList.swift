@@ -99,6 +99,11 @@ struct ShotElementList: Encodable {
                 y: window.frame.maxY - panel.frame.maxY
             )
         }
+        // The window's own buttons are the platform's frame, not the view:
+        // a board draws them and hides them from its reading order.
+        tree = tree.leavingOut { node in
+            node.subrole.map(windowButtons.contains) == true
+        }
         return Self(
             board: board,
             size: Size(width: size.width, height: size.height),
@@ -106,6 +111,15 @@ struct ShotElementList: Encodable {
             elements: tree.nodes.map(Element.init(node:))
         )
     }
+
+    /// The subroles of a window's close, minimise, zoom and full screen
+    /// buttons.
+    private static let windowButtons: Set<String> = [
+        NSAccessibility.Subrole.closeButton.rawValue,
+        NSAccessibility.Subrole.minimizeButton.rawValue,
+        NSAccessibility.Subrole.zoomButton.rawValue,
+        NSAccessibility.Subrole.fullScreenButton.rawValue,
+    ]
 
     /// The JSON the list is written as.
     func json() throws -> Data {
