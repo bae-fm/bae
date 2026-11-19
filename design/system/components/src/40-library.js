@@ -84,7 +84,7 @@
 
   // A row's ⋯ button with the row's actions in its menu: a row offers its actions here, not as a button of each. `open` draws the menu under it, `items` its entries ("-" for a line between groups), `highlighted` the one under the pointer; `off` dims it while none of its actions can run.
   function MacMoreMenu(props) {
-    var btn = h(MacIconButton, { icon: 'ellipsis', size: 15, label: props.label || 'More', active: props.open, menu: true, off: props.off });
+    var btn = h(MacIconButton, { icon: 'ellipsis', size: 15, label: props.label || 'More', active: props.open, menu: true, off: props.off, boxed: props.boxed });
     if (!props.open) return btn;
     return h('span', { className: 'bae-m-moremenu' }, btn, h('div', { className: 'bae-m-moremenu-pop' }, h(MacMenu, null, list(props.items).map(function (t, i) {
       return t === '-' ? h(MacMenuItem, { key: i, divider: true }) : h(MacMenuItem, { key: i, highlighted: t === props.highlighted }, t);
@@ -207,7 +207,7 @@
           h('div', { className: 'bae-m-plpage-facts' }, [props.count, props.length].join(' · '), shared),
           h('div', { className: 'bae-m-plpage-actions' },
             h(MacButton, { kind: 'primary' }, 'Play'),
-            h(MacMoreMenu, { label: 'Playlist options', items: ['Shuffle'].concat(props.options ? ['-'].concat(list(props.options)) : []).join(','), open: props.optionsOpen, highlighted: props.highlighted })))),
+            h(MacMoreMenu, { boxed: true, label: 'Playlist options', items: ['Shuffle'].concat(props.options ? ['-'].concat(list(props.options)) : []).join(','), open: props.optionsOpen, highlighted: props.highlighted })))),
       h('div', { className: 'bae-m-plpage-tracks' }, props.children));
   }
 
