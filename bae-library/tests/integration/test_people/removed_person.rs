@@ -28,10 +28,10 @@ async fn play(people: &bae_people::People, track: &str) -> uuid::Uuid {
 fn a_removed_person_s_device_keeps_recording_their_private_plays() {
     on_app_runtime(async {
         let household = Household::new().await;
-        let owner_dir = tempfile::tempdir().unwrap();
+        let owner_dir = bae_util::test_files::TestFolder::new();
         let owner = household.owners_library(owner_dir.path()).await;
         let invite = household.invite("guest-key").await;
-        let guest_dir = tempfile::tempdir().unwrap();
+        let guest_dir = bae_util::test_files::TestFolder::new();
         let guest = installation_in(&guest_dir);
         let control = bae_library::JoinControl::new();
         let joining = household.join(&invite.code, &guest, &control);
@@ -41,7 +41,7 @@ fn a_removed_person_s_device_keeps_recording_their_private_plays() {
         .await
         .unwrap();
         let guest = loaded(joined.unwrap().unwrap());
-        let library_dir = tempfile::tempdir().unwrap();
+        let library_dir = bae_util::test_files::TestFolder::new();
         let (rowan_library, rowan) =
             joined_profile(guest.clone(), &household, library_dir.path()).await;
         assert_eq!(rowan.history_sharing, HistorySharing::Private);
