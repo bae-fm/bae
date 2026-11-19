@@ -199,7 +199,7 @@ fn flac_seek_uses_seektable_not_binary_search() {
     // 30s synthetic stereo CUE/FLAC fixture (silence / white noise / brown noise)
     // carrying a 6-point seektable.
     let path = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/cue_flac/Test Album.flac");
-    let flac = std::fs::read(path).expect("read fixture");
+    let flac = bae_util::test_files::read_fixture(path);
     let file_len = flac.len() as u64;
 
     let buffer = create_sparse_buffer(file_len);
@@ -279,7 +279,7 @@ fn byte_seek_to_landing_is_sample_exact() {
 
     init();
     let path = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/cue_flac/Test Album.flac");
-    let flac = std::fs::read(path).expect("read fixture");
+    let flac = bae_util::test_files::read_fixture(path);
     let sample_rate = 44100u64;
     let channels = 2u32;
     // Track 2 start (white noise) -- random content correlates precisely, unlike

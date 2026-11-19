@@ -20,10 +20,9 @@ fn seek_landing_bytes_track_sample_positions() {
     let flac =
         encode_i32(EncodeFormat::Flac { bits_per_sample: 16 }, &samples, sample_rate, 1).unwrap();
 
-    let mut file = tempfile::NamedTempFile::new().unwrap();
-    std::io::Write::write_all(&mut file, &flac).unwrap();
-    std::io::Write::flush(&mut file).unwrap();
-    let path = file.path();
+    let folder = bae_util::test_files::TestFolder::new();
+    let path = folder.write("track.flac", &flac);
+    let path = path.as_path();
     let file_size = flac.len() as u64;
 
     // Probe at second boundaries (0, 1s, 2s, 3s).
@@ -67,7 +66,7 @@ fn seek_landing_bytes_follow_content_not_time_when_bitrate_swings() {
     let probe = probe_audio_from_path(path, bae_util::test_files::place()).expect("probe fixture");
     let sr = u64::from(probe.sample_rate.get());
     let total_samples = (probe.duration.as_secs_f64() * sr as f64) as u64;
-    let file_size = std::fs::metadata(path).unwrap().len();
+    let file_size = bae_util::test_files::read_fixture(path).len() as u64;
 
     // Track starts from the CUE: 0s (silence), 10s (white noise), 20s (brown).
     let starts = [0u64, 10 * sr, 20 * sr];
@@ -118,9 +117,11 @@ impl DecodedSink for CollectedSamples {
 }
 
 /// A 16-bit stereo FLAC of `frames` frames, each channel `level(frame)` of full
-/// scale plus a little noise, written to a temp file. Returns the file and its
-/// bytes.
-fn stereo_flac_file(frames: usize) -> (tempfile::NamedTempFile, Vec<u8>) {
+/// scale plus a little noise, written to a file in a test folder. Returns the
+/// folder, the file's path and its bytes.
+fn stereo_flac_file(
+    frames: usize,
+) -> (bae_util::test_files::TestFolder, std::path::PathBuf, Vec<u8>) {
     let mut noise: u64 = 1;
     let samples: Vec<i32> = (0..frames * 2)
         .map(|i| {
@@ -132,10 +133,9 @@ fn stereo_flac_file(frames: usize) -> (tempfile::NamedTempFile, Vec<u8>) {
         })
         .collect();
     let flac = encode_i32(EncodeFormat::Flac { bits_per_sample: 16 }, &samples, 44_100, 2).unwrap();
-    let mut file = tempfile::NamedTempFile::new().unwrap();
-    std::io::Write::write_all(&mut file, &flac).unwrap();
-    std::io::Write::flush(&mut file).unwrap();
-    (file, flac)
+    let folder = bae_util::test_files::TestFolder::new();
+    let path = folder.write("track.flac", &flac);
+    (folder, path, flac)
 }
 
 /// Decode `flac` by jumping to the byte `landing`, as playback starts a track:
@@ -161,14 +161,14 @@ fn decode_from_landing(flac: &[u8], landing: u64, start: Option<u64>) -> Vec<i32
 fn seek_landing_bytes_search_a_long_flac_rather_than_read_it() {
     init();
     let frames = 4_608 * 1_000;
-    let (file, flac) = stereo_flac_file(frames);
-    let path = file.path();
+    let (_folder, path, flac) = stereo_flac_file(frames);
+    let path = path.as_path();
     let target = frames as u64 / 2 + 123;
 
     let landing =
         seek_landing_bytes(path, &[target], &bae_util::test_files::lease()).expect("landing")[0];
 
-    let read = crate::test_reads::landing_search(file.path());
+    let read = crate::test_reads::landing_search(path);
     assert!(read > 0, "the search's reads are counted");
     assert!(
         read < flac.len() as u64 / 10,
@@ -191,8 +191,8 @@ fn seek_landing_bytes_search_a_long_flac_rather_than_read_it() {
 fn seek_landing_bytes_land_targets_in_a_flacs_final_frames() {
     init();
     let frames = 4_608 * 30 + 1_000;
-    let (file, flac) = stereo_flac_file(frames);
-    let path = file.path();
+    let (_folder, path, flac) = stereo_flac_file(frames);
+    let path = path.as_path();
     // STREAMINFO follows the 4-byte marker and its 4-byte block header; its
     // maximum block size is bytes 2..4, and this encoder's blocks are all that
     // size but the last.

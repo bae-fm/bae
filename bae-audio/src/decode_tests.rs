@@ -378,11 +378,10 @@ fn decode_audio_decodes_audio_format_fixtures() {
         "placeholder-dsd.dsf",
         "placeholder-dsd.dff",
     ] {
-        let bytes = std::fs::read(format!(
+        let bytes = bae_util::test_files::read_fixture(format!(
             "{}/test-fixtures/audio-format/{name}",
             env!("CARGO_MANIFEST_DIR")
-        ))
-        .unwrap();
+        ));
         let decoded = decode_audio(filled_sparse_buffer(&bytes), None, None)
             .unwrap_or_else(|e| panic!("{name}: {e}"));
         assert!(decoded.sample_rate > 0, "{name}");

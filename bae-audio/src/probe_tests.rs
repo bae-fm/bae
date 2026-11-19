@@ -42,10 +42,11 @@ fn content_type_from_codec_id_unknown_falls_into_other() {
 
 /// One second of 16-bit stereo silence at 44.1 kHz, as a WAV file in `dir`
 /// under `name`.
-fn silent_wav_in(dir: &std::path::Path, name: &std::ffi::OsStr) -> std::path::PathBuf {
-    let path = dir.join(name);
-    std::fs::write(&path, wav_with_fmt(1, 16, 2, 44_100, &vec![0; 44_100 * 4])).unwrap();
-    path
+fn silent_wav_in(
+    dir: &bae_util::test_files::TestFolder,
+    name: &std::ffi::OsStr,
+) -> std::path::PathBuf {
+    dir.write(name, wav_with_fmt(1, 16, 2, 44_100, &vec![0; 44_100 * 4]))
 }
 
 /// The probe reads the file through the handle Rust opens at the path, and
@@ -53,8 +54,8 @@ fn silent_wav_in(dir: &std::path::Path, name: &std::ffi::OsStr) -> std::path::Pa
 #[test]
 fn probe_reads_the_file_through_its_handle() {
     init();
-    let dir = tempfile::tempdir().unwrap();
-    let path = silent_wav_in(dir.path(), std::ffi::OsStr::new("Track.wav"));
+    let dir = bae_util::test_files::TestFolder::new();
+    let path = silent_wav_in(&dir, std::ffi::OsStr::new("Track.wav"));
 
     let probe = probe_audio_from_path(&path, bae_util::test_files::place()).expect("probe");
 
@@ -73,7 +74,7 @@ fn probe_reads_the_file_through_its_handle() {
 #[test]
 fn a_failed_read_is_an_io_error_not_a_file_without_audio() {
     init();
-    let dir = tempfile::tempdir().unwrap();
+    let dir = bae_util::test_files::TestFolder::new();
 
     assert!(matches!(
         probe_audio_from_path(dir.path(), bae_util::test_files::place()),
@@ -85,9 +86,8 @@ fn a_failed_read_is_an_io_error_not_a_file_without_audio() {
 #[test]
 fn bytes_that_are_no_audio_are_not_audio() {
     init();
-    let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join("Track.flac");
-    std::fs::write(&path, vec![0u8; 4096]).unwrap();
+    let dir = bae_util::test_files::TestFolder::new();
+    let path = dir.write("Track.flac", vec![0u8; 4096]);
 
     assert!(matches!(
         probe_audio_from_path(&path, bae_util::test_files::place()),
@@ -103,8 +103,8 @@ fn probe_reads_a_file_whose_name_is_not_utf8() {
     use std::os::unix::ffi::OsStrExt;
 
     init();
-    let dir = tempfile::tempdir().unwrap();
-    let path = silent_wav_in(dir.path(), std::ffi::OsStr::from_bytes(b"Caf\xE9.wav"));
+    let dir = bae_util::test_files::TestFolder::new();
+    let path = silent_wav_in(&dir, std::ffi::OsStr::from_bytes(b"Caf\xE9.wav"));
 
     let probe = probe_audio_from_path(&path, bae_util::test_files::place()).expect("probe");
 
@@ -142,9 +142,8 @@ fn probe_audio_from_path_maps_audio_format_fixtures() {
 fn probe_reads_the_container_from_the_bytes() {
     init();
     let flac = crate::test_fixtures::cue_flac_dir().join("Test Album.flac");
-    let dir = tempfile::tempdir().unwrap();
-    let misnamed = dir.path().join("track.wav");
-    std::fs::copy(&flac, &misnamed).unwrap();
+    let dir = bae_util::test_files::TestFolder::new();
+    let misnamed = dir.copy_fixture(&flac, "track.wav");
 
     let probe = probe_audio_from_path(&misnamed, bae_util::test_files::place()).expect("probe");
 
