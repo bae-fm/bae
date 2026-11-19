@@ -931,7 +931,10 @@ fn an_instrument_is_worded_in_english_as_musicbrainz_names_it() {
 }
 
 /// Orphan direction: every `core.*` catalog entry is produced by a key fn
-/// or listed in `DIRECT_KEYS`.
+/// or listed in `DIRECT_KEYS`. The catalog holds the AirPlay keys whatever
+/// the features, and only a build with `cast` has the functions that produce
+/// them.
+#[cfg(feature = "cast")]
 #[test]
 fn no_orphan_core_keys() {
     let cat = catalog();
