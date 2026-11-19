@@ -16,7 +16,7 @@
 # coven's script this checkout's rust-toolchain.toml.
 set -eu
 cd "$(dirname "$0")/../.."
-revision=6ae0f0078a66e9d373069cce912669977493c329
+revision=bfb3ff59e45f688c6eb01d86e444d0adfd650c2f
 
 case "${1-}:$#" in
 key:1)
