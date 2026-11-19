@@ -3,7 +3,7 @@
 //! bae browses the network itself ([`BuiltinDiscovery`]): mDNS for Cast and
 //! AirPlay, SSDP for UPnP, and it merges the three lists into one
 //! [`RendererDevice`] list, started and stopped with the picker's visibility.
-//! Tests run the cast controller over [`reported::ReportedDiscovery`] instead,
+//! Tests run the cast controller over `reported::ReportedDiscovery` instead,
 //! which takes services a test hands it and holds no socket; it maps each one
 //! through the same code bae's own browse uses (`crate::cast::discovery`,
 //! `crate::airplay::discovery`).
