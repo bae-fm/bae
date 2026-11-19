@@ -142,6 +142,7 @@ struct AlbumGridView<ExpansionContent: View>: View {
                 )
                 .padding(.bottom)
                 .libraryContentContainer(fullWidth: fullWidth)
+                .coordinateSpace(.named(albumGridContentSpace))
                 // A click on the empty background clears the selection.
                 .contentShape(Rectangle())
                 .onTapGesture {
@@ -188,8 +189,18 @@ struct AlbumGridView<ExpansionContent: View>: View {
                     visibleHeight: geometry.containerSize.height,
                     offsets: top...max(top, bottom)
                 )
-            } action: { _, scroll in
+            } action: { old, scroll in
                 viewport.setScroll(scroll)
+                // The grid places rows it has not drawn by the heights of
+                // the ones it has, and moves them as it draws more, and the
+                // content's end can stop a slot short of the top until the
+                // rows under it are drawn; so the held slot goes back on top
+                // whenever the offsets the content scrolls between change.
+                // The viewport takes the new offsets first, so the hold
+                // measures against them.
+                if old.offsets != scroll.offsets {
+                    keepHeldSlotOnTop(columnCount: metrics.columnCount)
+                }
                 if let reveal {
                     albumGridLogger.debug(
                         "reveal of \(reveal.albumId): scroll \(String(describing: scroll))"
@@ -221,14 +232,6 @@ struct AlbumGridView<ExpansionContent: View>: View {
                 if let slot = viewport.anchor(from: old, to: new) {
                     scrollToTop(slot)
                 }
-            }
-            // The grid places rows it has not drawn by the heights of the
-            // ones it has, and moves them as it draws more, so the held slot
-            // goes back on top whenever the content's height changes.
-            .onScrollGeometryChange(for: CGFloat.self) { geometry in
-                geometry.contentSize.height
-            } action: { _, _ in
-                keepHeldSlotOnTop(columnCount: metrics.columnCount)
             }
             // Scrolling, another sort, or another open album ends the hold.
             // The person scrolling also ends the reveal: the grid no longer
@@ -293,6 +296,17 @@ struct AlbumGridView<ExpansionContent: View>: View {
             }
         }
     }
+}
+
+/// The grid content's coordinate space, in which a scroll to an offset
+/// measures.
+private let albumGridContentSpace = "albumGridContent"
+
+/// Where a cell is laid out: its frame in the visible area, and its top in
+/// the grid's content, where a scroll to an offset measures.
+private struct PlacedCell: Equatable {
+    let frame: CGRect
+    let contentTop: CGFloat
 }
 
 /// The grid's height, its row height and its columns, which size the list's
@@ -491,14 +505,22 @@ extension AlbumGridView {
         columnCount: Int
     ) -> some View {
         view
-            .onGeometryChange(for: CGRect.self) { geometry in
-                geometry.frame(in: .scrollView)
-            } action: { frame in
+            .onGeometryChange(for: PlacedCell.self) { geometry in
+                PlacedCell(
+                    frame: geometry.frame(in: .scrollView),
+                    contentTop:
+                        geometry.frame(
+                            in: .named(albumGridContentSpace)
+                        )
+                        .minY
+                )
+            } action: { placed in
                 viewport.place(
                     cell,
                     as: slot,
                     columnCount: columnCount,
-                    frame: frame
+                    frame: placed.frame,
+                    contentTop: placed.contentTop
                 )
                 if viewport.held == slot {
                     keepHeldSlotOnTop(columnCount: columnCount)
@@ -637,7 +659,7 @@ extension AlbumGridView {
         // The scroll lands where the lazy grid estimated the card, and the
         // grid moves the card as it draws the rows around it; the hold puts
         // the card back on top each time.
-        viewport.hold(.position(index, sectionId: sectionId))
+        viewport.holdForReveal(.position(index, sectionId: sectionId))
         scrollPosition.scrollTo(id: card, anchor: .top)
     }
 
@@ -698,35 +720,66 @@ extension AlbumGridView {
         }
     }
 
-    /// Scrolls the held slot back to the top when the grid moved it.
+    /// Scrolls the held slot back to the top when the grid moved it, as
+    /// what holds it says (`AlbumGridHold`).
     private func keepHeldSlotOnTop(columnCount: Int) {
         guard
-            let slot = viewport.scrollBackingHeldSlot(columnCount: columnCount)
+            let held = viewport.scrollBackingHeldSlot(columnCount: columnCount)
         else { return }
-        scrollToTop(slot)
+        guard let id = cell(at: held.hold.slot) else {
+            // The slot left the grid; the next change keeps what is on top
+            // then.
+            viewport.release()
+            return
+        }
+        switch held.hold.reason {
+        case .columnChange:
+            scrollPosition.scrollTo(id: id, anchor: .top)
+        case .reveal:
+            scrollRevealedCard(id, toTopFrom: held.contentTop)
+        }
     }
 
-    /// Scrolls `slot` to the top.
+    /// Scrolls `slot` to the top by its cell.
     private func scrollToTop(_ slot: AlbumGridSlot) {
-        let id: AlbumGridCell.Identity
-        switch slot {
-        case .position(let position, let sectionId)
-        where position < list.positionCount:
-            if let albumId = list.idAt(position) {
-                id = .album(albumId, sectionId: sectionId)
-            }
-            else {
-                id = .placeholder(position)
-            }
-        case .detail(let albumId) where uiStore.selectedAlbumId == albumId:
-            id = .detail
-        case .position, .detail:
+        guard let id = cell(at: slot) else {
             // The slot left the grid; the next change keeps what is on top
             // then.
             viewport.release()
             return
         }
         scrollPosition.scrollTo(id: id, anchor: .top)
+    }
+
+    /// Scrolls the revealed album's card, the cell `id`, to the top: to
+    /// `contentTop`, the card's top in the content, or by the cell while the
+    /// card is not laid out and so has no top in the content.
+    private func scrollRevealedCard(
+        _ id: AlbumGridCell.Identity,
+        toTopFrom contentTop: CGFloat?
+    ) {
+        if let contentTop {
+            scrollPosition.scrollTo(y: contentTop)
+        }
+        else {
+            scrollPosition.scrollTo(id: id, anchor: .top)
+        }
+    }
+
+    /// The cell that shows `slot`, or nil when the slot has left the grid.
+    private func cell(at slot: AlbumGridSlot) -> AlbumGridCell.Identity? {
+        switch slot {
+        case .position(let position, let sectionId)
+        where position < list.positionCount:
+            if let albumId = list.idAt(position) {
+                return .album(albumId, sectionId: sectionId)
+            }
+            return .placeholder(position)
+        case .detail(let albumId) where uiStore.selectedAlbumId == albumId:
+            return .detail
+        case .position, .detail:
+            return nil
+        }
     }
 
     /// Cmd toggles the album in the selection, shift extends the range, and a

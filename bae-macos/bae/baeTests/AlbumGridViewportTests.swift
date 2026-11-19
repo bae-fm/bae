@@ -27,7 +27,8 @@ struct AlbumGridViewportTests {
                         y: top + CGFloat(row) * 230,
                         width: 200,
                         height: 200
-                    )
+                    ),
+                    contentTop: top + CGFloat(row) * 230
                 )
             }
         }
@@ -54,7 +55,8 @@ struct AlbumGridViewportTests {
             .album("a9"),
             as: .position(9),
             columnCount: 3,
-            frame: CGRect(x: 0, y: -100, width: 200, height: 400)
+            frame: CGRect(x: 0, y: -100, width: 200, height: 400),
+            contentTop: -100
         )
         #expect(viewport.anchor(from: 4, to: 3) == .position(0))
     }
@@ -69,7 +71,8 @@ struct AlbumGridViewportTests {
             .album("a3"),
             as: .position(3),
             columnCount: 3,
-            frame: CGRect(x: 0, y: 0, width: 260, height: 260)
+            frame: CGRect(x: 0, y: 0, width: 260, height: 260),
+            contentTop: 0
         )
         #expect(viewport.anchor(from: 3, to: 4) == .position(0))
 
@@ -93,7 +96,8 @@ struct AlbumGridViewportTests {
             .album("a0"),
             as: .position(0),
             columnCount: 2,
-            frame: frame
+            frame: frame,
+            contentTop: frame.minY
         )
         // The placeholder the album replaced leaves after the album arrived.
         viewport.remove(.placeholder(0), columnCount: 2)
@@ -108,13 +112,15 @@ struct AlbumGridViewportTests {
             .detail,
             as: .detail(albumId: "a1"),
             columnCount: 2,
-            frame: CGRect(x: 0, y: -100, width: 200, height: 500)
+            frame: CGRect(x: 0, y: -100, width: 200, height: 500),
+            contentTop: -100
         )
         viewport.place(
             .album("a2"),
             as: .position(2),
             columnCount: 2,
-            frame: CGRect(x: 0, y: 432, width: 200, height: 200)
+            frame: CGRect(x: 0, y: 432, width: 200, height: 200),
+            contentTop: 432
         )
         #expect(viewport.anchor(from: 2, to: 3) == .detail(albumId: "a1"))
     }
@@ -127,7 +133,8 @@ struct AlbumGridViewportTests {
             .album("a0"),
             as: .position(0),
             columnCount: 2,
-            frame: CGRect(x: 0, y: 800, width: 200, height: 200)
+            frame: CGRect(x: 0, y: 800, width: 200, height: 200),
+            contentTop: 800
         )
         #expect(viewport.anchor(from: 2, to: 3) == nil)
     }
@@ -334,7 +341,7 @@ struct AlbumGridViewportRevealTests {
         viewport.setScroll(
             AlbumGridScroll(offset: 4300, visibleHeight: 700, offsets: 0...4300)
         )
-        place(.album("a9"), at: 300, in: viewport)
+        place(.album("a9"), at: 300, scrolledTo: 4300, in: viewport)
 
         #expect(viewport.revealScrolls(to: .album("a9")))
     }
@@ -366,17 +373,20 @@ struct AlbumGridViewportRevealTests {
         #expect(viewport.revealedRow(of: "t2", arrived: true) == nil)
     }
 
-    /// Lays out `cell`'s 200-point card `y` points below the top.
+    /// Lays out `cell`'s 200-point card `y` points below the top, with the
+    /// content scrolled to `offset`, as `scrolled()` scrolls it unless given.
     private func place(
         _ cell: AlbumGridCell.Identity,
         at y: CGFloat,
+        scrolledTo offset: CGFloat = 1000,
         in viewport: AlbumGridViewport
     ) {
         viewport.place(
             cell,
             as: .position(9),
             columnCount: 4,
-            frame: CGRect(x: 0, y: y, width: 200, height: 200)
+            frame: CGRect(x: 0, y: y, width: 200, height: 200),
+            contentTop: offset + y
         )
     }
 }

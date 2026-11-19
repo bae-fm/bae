@@ -5517,7 +5517,9 @@ artist, else the album's first card, which the grid also uses once the
 artist's group no longer holds the album. A write that moves the card, such as
 a new title under a title sort, moves the detail with it. Revealing an album
 opens it and scrolls to that card, and a write that moves the card while the
-reveal waits sends the reveal to the card's new place.
+reveal waits sends the reveal to the card's new place. Revealing a track, as a
+track in search results or Go to Now Playing does, then scrolls the track's row
+in the album's open detail into view and flashes the row.
 
 The artist picker's search puts the artists whose id or name the text matches
 exactly first, then those whose name starts with it, then the rest, by name
