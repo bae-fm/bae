@@ -114,7 +114,7 @@ fn open_invite(row: &rusqlite::Row<'_>) -> rusqlite::Result<OpenInvite> {
         .get::<_, Option<coven::PendingRecord>>("record")?
         .map(|mut record| {
             record.cause = row.get("cause")?;
-            Ok::<_, rusqlite::Error>(bae_sync_status::PendingWait::of(&record, None))
+            Ok::<_, rusqlite::Error>(bae_sync_status::PendingWait::of(&record))
         })
         .transpose()?;
     let requester = row.get::<_, Option<String>>("requester")?;

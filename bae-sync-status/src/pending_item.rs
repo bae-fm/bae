@@ -1,7 +1,5 @@
 //! What each of coven's pending records is about, named so a person
-//! recognizes it, with why it waits and what they can do about it.
-
-use crate::sync_status::{pending_action, PendingAction};
+//! recognizes it, with why it waits.
 
 /// What a pending record is about, by what it is.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -28,9 +26,8 @@ pub enum PendingSubjectName {
     Operation(coven::OperationKind),
 }
 
-/// Why a record waits, and what the person can do about it. Two waits are
-/// the same when they wait for the same reason, offer the same action, and
-/// name the same error behind it: a surface shows all three.
+/// Why a record waits. Two waits are the same when they wait for the same
+/// reason and name the same error behind it: a surface shows both.
 #[derive(Debug, Clone, PartialEq)]
 pub struct PendingWait {
     /// The record's first unmet condition, kept as coven typed it.
@@ -39,18 +36,12 @@ pub struct PendingWait {
     /// when the run that met it kept it; none after the store reopens.
     /// coven keeps it beside every record, the connection's included.
     pub cause: Option<String>,
-    pub action: PendingAction,
 }
 
 impl PendingWait {
-    /// The wait of `record`, about a file of the release `release_id` when
-    /// it names one.
-    pub fn of(record: &coven::PendingRecord, release_id: Option<&str>) -> Self {
-        Self {
-            reason: record.reason.clone(),
-            cause: record.cause.clone(),
-            action: pending_action(record, release_id),
-        }
+    /// The wait of `record`.
+    pub fn of(record: &coven::PendingRecord) -> Self {
+        Self { reason: record.reason.clone(), cause: record.cause.clone() }
     }
 }
 

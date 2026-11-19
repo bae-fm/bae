@@ -435,9 +435,8 @@ async fn download_bytes_send_no_new_sync_activity() {
     pending.abort();
 }
 
-/// A pin the download queue couldn't finish leaves a pending record whose
-/// action is to pin the release again, which lands the pin, and the record
-/// goes.
+/// A pin the download queue couldn't finish leaves a pending record of its
+/// download. Pinning the release again lands the pin, and the record goes.
 #[tokio::test]
 async fn a_failed_pins_retry_pins_the_release_again() {
     let (test, temp_dir) = setup_test_manager().await;
@@ -457,11 +456,10 @@ async fn a_failed_pins_retry_pins_the_release_again() {
     })
     .await;
     manager.enqueue_pins(vec![release_id.clone()]).await.unwrap();
-    let retry = bae_sync_status::PendingAction::RetryDownload { release_id: release_id.clone() };
     let retries = |records: &[coven::PendingRecord]| {
         records
             .iter()
-            .any(|record| bae_sync_status::pending_action(record, Some(&release_id)) == retry)
+            .any(|record| matches!(record.subject, coven::PendingSubject::Download { .. }))
     };
     pending_records_until(manager, retries).await;
 

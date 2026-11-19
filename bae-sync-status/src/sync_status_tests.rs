@@ -87,93 +87,6 @@ pub(crate) fn failed_status(failure: coven::StatusFailure, named: Names) -> cove
 }
 
 #[test]
-fn pending_authentication_offers_the_provider_sign_in() {
-    let record = coven::PendingRecord::new(
-        coven::PendingSubject::Connection,
-        coven::PendingReason::Storage {
-            provider: coven::CloudProvider::Dropbox,
-            failure: coven::StorageFailure::Authentication,
-            answered: true,
-        },
-    );
-    assert_eq!(pending_action(&record, None), PendingAction::SignIn(coven::CloudProvider::Dropbox));
-}
-
-/// A pin's failed download offers pinning the release again; with no release
-/// file naming it, only its details.
-#[test]
-fn a_failed_pins_download_offers_pinning_its_release_again() {
-    let record = coven::PendingRecord::new(
-        coven::PendingSubject::Download {
-            device: coven::DeviceId(2),
-            object: coven::ObjectId(uuid::Uuid::from_u128(9)),
-        },
-        coven::PendingReason::Storage {
-            provider: coven::CloudProvider::S3,
-            failure: coven::StorageFailure::Network,
-            answered: true,
-        },
-    );
-    assert_eq!(
-        pending_action(&record, Some("release")),
-        PendingAction::RetryDownload { release_id: "release".into() }
-    );
-    assert_eq!(pending_action(&record, None), PendingAction::Review);
-}
-
-/// A move whose original went missing waits for it to be put back; one whose
-/// original changed failed, and offers cancelling the release's upload.
-#[test]
-fn a_moves_original_offers_restoring_it_or_cancelling_the_upload() {
-    let original = |failure| {
-        coven::PendingRecord::new(
-            coven::PendingSubject::Move { id: coven::MoveId(4) },
-            coven::PendingReason::Original { path: "/music/a.flac".into(), failure },
-        )
-    };
-    assert_eq!(
-        pending_action(&original(coven::FileSourceFailure::Missing), Some("release")),
-        PendingAction::RestoreFile
-    );
-    assert_eq!(
-        pending_action(&original(coven::FileSourceFailure::Changed), Some("release")),
-        PendingAction::CancelUpload { id: coven::MoveId(4) }
-    );
-}
-
-/// An upload whose source is coven's own copy, as of a cover, artist image
-/// or avatar bae made, has no original to put back: when the copy fails its
-/// check, coven retries the upload by itself, and the record offers waiting.
-#[test]
-fn an_upload_whose_copy_fails_its_check_waits_for_coven_to_retry() {
-    let record = coven::PendingRecord::new(
-        coven::PendingSubject::Upload {
-            device: coven::DeviceId(1),
-            object: coven::ObjectId(uuid::Uuid::from_u128(7)),
-        },
-        coven::PendingReason::FileUnavailable(coven::FileMissingReason::Source(
-            coven::FileSourceFailure::Integrity,
-        )),
-    );
-    assert_eq!(pending_action(&record, None), PendingAction::Wait);
-}
-
-#[test]
-fn missing_provider_permission_offers_sign_in() {
-    let record = coven::PendingRecord::new(
-        coven::PendingSubject::Connection,
-        coven::PendingReason::Storage {
-            provider: coven::CloudProvider::Dropbox,
-            failure: coven::StorageFailure::AccessNotGranted {
-                required: coven::OAuthAccess::Dropbox(coven::DropboxAccess::FullDropbox),
-            },
-            answered: true,
-        },
-    );
-    assert_eq!(pending_action(&record, None), PendingAction::SignIn(coven::CloudProvider::Dropbox));
-}
-
-#[test]
 fn a_failed_pass_with_no_pending_records_does_not_claim_synced() {
     let status = alone(failed_status(
         coven::StatusFailure::Storage(coven::StorageFailure::PermissionDenied),
@@ -254,10 +167,6 @@ fn category(snapshot: &SyncStatusSnapshot) -> bae_diagnostics::UiErrorCategory {
 /// register it again: its record is only reviewed, never reset.
 #[test]
 fn a_removed_device_says_so_and_offers_nothing_that_registers_it() {
-    assert_eq!(
-        pending_action(&record(coven::PendingReason::Removed(coven::Removal::Device)), None),
-        PendingAction::Review
-    );
     assert_eq!(category(&alone(removed_state())), bae_diagnostics::UiErrorCategory::DeviceRemoved);
 }
 
@@ -266,10 +175,6 @@ fn a_removed_device_says_so_and_offers_nothing_that_registers_it() {
 /// only reviewed (coven §13.2).
 #[test]
 fn a_device_whose_admission_was_refused_shows_as_removed() {
-    assert_eq!(
-        pending_action(&record(coven::PendingReason::Removed(coven::Removal::NeverAdmitted)), None),
-        PendingAction::Review
-    );
     assert_eq!(
         category(&alone(removed(coven::Removal::NeverAdmitted))),
         bae_diagnostics::UiErrorCategory::DeviceRemoved
@@ -286,17 +191,6 @@ fn a_device_whose_admission_was_refused_shows_as_removed() {
             })
         ),
         "{refused:?}"
-    );
-}
-
-/// Keys replaced by another of the person's devices are restored with the
-/// person's current code, not by resetting this device.
-#[test]
-fn replaced_member_keys_offer_restoring_from_the_code() {
-    let member = coven::MemberId(uuid::Uuid::from_u128(7));
-    assert_eq!(
-        pending_action(&record(coven::PendingReason::MemberKeysReplaced { member }), None),
-        PendingAction::RestoreFromCode
     );
 }
 

@@ -62,7 +62,7 @@ async fn remote_read_with_sync_stopped_reports_sync_disconnected() {
 }
 
 /// An upload whose original vanished cannot finish by waiting. Playback reports
-/// the source failure, and the pending list offers restoring the file.
+/// the source failure, and the pending list holds the missing original's record.
 #[tokio::test]
 async fn pending_upload_with_missing_source_reports_the_missing_original() {
     use bae_playback::PlaybackErrorReason;
@@ -78,14 +78,10 @@ async fn pending_upload_with_missing_source_reports_the_missing_original() {
         .expect("the un-uploaded file whose source was removed");
     let reason = playback_error_reason_for_file(manager, file).await;
     assert!(matches!(reason, PlaybackErrorReason::OriginalMissing), "got {reason:?}");
-    assert!(manager
-        .store
-        .pending()
-        .await
-        .unwrap()
-        .iter()
-        .any(|record| bae_sync_status::pending_action(record, None)
-            == bae_sync_status::PendingAction::RestoreFile));
+    assert!(manager.store.pending().await.unwrap().iter().any(|record| matches!(
+        record.reason,
+        coven::PendingReason::Original { failure: coven::FileSourceFailure::Missing, .. }
+    )));
 }
 
 /// Each device says whether it can play a release from the library's

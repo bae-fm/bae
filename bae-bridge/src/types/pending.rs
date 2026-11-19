@@ -1,4 +1,4 @@
-use super::{BridgeCloudProvider, BridgeMessage};
+use super::BridgeMessage;
 
 /// One thing coven is waiting on while a library is restored or joined:
 /// what it is about, and why.
@@ -18,18 +18,14 @@ impl BridgePendingRecord {
     }
 }
 
-/// Why a file in the upload queue waits, and what the person can do about it.
+/// Why a file in the upload queue or an invite's work waits.
 #[derive(Debug, Clone, PartialEq, uniffi::Record)]
 pub struct BridgePendingWait {
     pub reason: BridgePendingReason,
-    pub action: BridgePendingAction,
 }
 impl BridgePendingWait {
     pub(crate) fn from_core(wait: bae_sync_status::PendingWait) -> Self {
-        Self {
-            reason: BridgePendingReason::from_core(wait.reason, wait.cause),
-            action: BridgePendingAction::from_core(wait.action),
-        }
+        Self { reason: BridgePendingReason::from_core(wait.reason, wait.cause) }
     }
 }
 
@@ -108,50 +104,6 @@ impl BridgePendingReason {
             _ => Vec::new(),
         };
         Self { key: kind.key().to_string(), detail, causes }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, uniffi::Enum)]
-pub enum BridgePendingAction {
-    Wait,
-    UpdateApp,
-    SignIn {
-        provider: BridgeCloudProvider,
-    },
-    Reconnect,
-    RestoreFile,
-    RetryOperation {
-        id: i64,
-    },
-    /// Pin the release again: `queue_pin_releases`, which queues a failed
-    /// pin again in its place.
-    RetryDownload {
-        release_id: String,
-    },
-    /// End a release's failed move to the cloud: `cancel_failed_release_move`.
-    CancelUpload {
-        id: i64,
-    },
-    RestoreFromCode,
-    Review,
-}
-impl BridgePendingAction {
-    fn from_core(value: bae_sync_status::PendingAction) -> Self {
-        use bae_sync_status::PendingAction as A;
-        match value {
-            A::Wait => Self::Wait,
-            A::UpdateApp => Self::UpdateApp,
-            A::SignIn(provider) => {
-                Self::SignIn { provider: BridgeCloudProvider::from_core(&provider) }
-            }
-            A::Reconnect => Self::Reconnect,
-            A::RestoreFile => Self::RestoreFile,
-            A::RetryOperation(id) => Self::RetryOperation { id: id.0 },
-            A::RetryDownload { release_id } => Self::RetryDownload { release_id },
-            A::CancelUpload { id } => Self::CancelUpload { id: id.0 },
-            A::RestoreFromCode => Self::RestoreFromCode,
-            A::Review => Self::Review,
-        }
     }
 }
 

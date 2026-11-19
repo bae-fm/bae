@@ -73,9 +73,7 @@ impl StorageInspector {
                 upload: file.upload.map(|upload| StorageInspectorUpload {
                     file: upload.file,
                     sending: upload.sending,
-                    pending: upload
-                        .pending
-                        .map(|record| PendingWait::of(&record, Some(&release_id))),
+                    pending: upload.pending.map(|record| PendingWait::of(&record)),
                 }),
                 pin: file.pin,
                 file: FileDetail::from_raw(file.file),
