@@ -159,6 +159,10 @@ impl BridgeSaveFolderPiece {
 impl BridgeNamePatternError {
     /// Core's answer on `pattern`: why it can't make a name, or `None`.
     pub(crate) fn of<Value>(pattern: &bae_preferences::NamePattern<Value>) -> Option<Self> {
+        #[expect(
+            clippy::read_length_branch,
+            reason = "validating a name pattern works on the characters of one text value; the values are not rows"
+        )]
         match pattern.validate() {
             Ok(()) => None,
             Err(bae_preferences::NamePatternError::Empty) => Some(Self::Empty),

@@ -325,6 +325,10 @@ pub struct BridgeCandidateSearch {
 #[cfg(desktop)]
 impl BridgeCandidateSearch {
     pub(crate) fn from_core(search: bae_import::CandidateSearch) -> Self {
+        #[expect(
+            clippy::read_cutoff,
+            reason = "a barcode's comparison key works on the characters of one text value; its shortest length is a property of barcodes, not a cutoff between two reads"
+        )]
         let unusable_barcode =
             search.query.unusable_barcode().map(BridgeUnusableBarcode::from_core);
         let bae_import::CandidateSearch { query, sources, groups, status } = search;

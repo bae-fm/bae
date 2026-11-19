@@ -9,11 +9,10 @@
 # feature resolution), as CI does. tools/typed-lints/clippy.sh runs clippy, so
 # each crate compiles once for clippy's lints and the typed lints.
 #
-# Only the named crates are linted. The workspace crates they depend on are
-# compiled by scripts/clippy-rustc-wrapper.sh through sccache: under the
-# typed lints' driver sccache caches nothing, so each new set of crates (a new
-# feature resolution) would recheck every workspace crate below them. They were
-# linted when a commit changed them.
+# The workspace crates the named crates depend on are linted too: the read
+# rule's lints read the record each earlier workspace crate's compile writes,
+# and only a compile through the typed lints' driver writes it
+# (scripts/clippy-rustc-wrapper.sh).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -63,13 +62,6 @@ done
 while IFS= read -r feature; do
     [ -n "$feature" ] && args+=(--features "$feature")
 done <<< "$features"
-# On whichever machine runs cargo (`builds cargo` sends the check to the host
-# with the most free cores), builds runs scripts/clippy-before.sh first,
-# through BUILDS_CARGO_BEFORE: it points tools/typed-lints/built at the driver
-# there, and makes each crate named here stale, since a crate
-# scripts/clippy-rustc-wrapper.sh compiled without lints is fresh to cargo,
-# which would then never lint it.
-export BUILDS_CARGO_BEFORE="scripts/clippy-before.sh ${crates[*]+"${crates[*]}"}"
 # clippy has no lint or flag that makes a clippy.toml entry naming nothing an
 # error: it prints "warning: `<path>` does not refer to a reachable function"
 # (or type, macro, ...), which -D warnings leaves a warning, so a misspelled

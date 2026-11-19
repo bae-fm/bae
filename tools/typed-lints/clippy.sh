@@ -13,10 +13,9 @@
 # (scripts/clippy-crates.sh), `builds land`'s compile check (.land-compile) and
 # CI's clippy runs on every platform go through here.
 #
-# cargo may run on another build machine: the program BUILDS_CARGO_BEFORE
-# names runs first on whichever machine runs it, and must point
-# tools/typed-lints/built at the driver there. It is driver.sh unless the
-# caller names a program that runs driver.sh itself (scripts/clippy-crates.sh).
+# cargo may run on another build machine: driver.sh, which BUILDS_CARGO_BEFORE
+# names, runs first on whichever machine runs it and points
+# tools/typed-lints/built at the driver there.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 top=$PWD
@@ -45,7 +44,7 @@ for arg in "$@"; do
     clippy_args+="${arg}__CLIPPY_HACKERY__"
 done
 
-BUILDS_CARGO_BEFORE="${BUILDS_CARGO_BEFORE:-tools/typed-lints/driver.sh}" \
+BUILDS_CARGO_BEFORE=tools/typed-lints/driver.sh \
     RUSTC_WORKSPACE_WRAPPER="$top/tools/typed-lints/built/typed-lints-rustc$exe" \
     CLIPPY_ARGS="$clippy_args" \
     exec scripts/cargo.sh check "${cargo_args[@]}"
