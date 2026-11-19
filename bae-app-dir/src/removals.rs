@@ -37,7 +37,7 @@ impl AppDir {
             Ok(file) => return Ok(RemovalLock { _file: file }),
             Err(std::fs::TryLockError::WouldBlock) => {
                 #[cfg(any(test, feature = "test-utils"))]
-                removal_lock_waits::waiting(&path);
+                self.removal_lock_waits.tell();
             }
             Err(std::fs::TryLockError::Error(error)) => return Err(io_at(&path, error)),
         }
@@ -139,34 +139,38 @@ fn io_at(path: &Path, error: std::io::Error) -> AppDirError {
     AppDirError::Io(bae_util::fs::io_error_at(path, error))
 }
 
-/// Where a test hears that a call found the removal lock held and is about
-/// to wait for it.
+/// The tests waiting to hear that a call found the removal lock held. The
+/// clones of one app directory share it.
 #[cfg(any(test, feature = "test-utils"))]
-pub mod removal_lock_waits {
-    use std::path::{Path, PathBuf};
-    use std::sync::Mutex;
+#[derive(Clone, Debug, Default)]
+pub(crate) struct LockWaits(
+    std::sync::Arc<std::sync::Mutex<Vec<tokio::sync::oneshot::Sender<()>>>>,
+);
 
-    static WATCHED: Mutex<Vec<(PathBuf, tokio::sync::oneshot::Sender<()>)>> =
-        Mutex::new(Vec::new());
-
-    /// Told once a call finds the lock at `path` held.
-    pub fn when_waiting(path: PathBuf) -> tokio::sync::oneshot::Receiver<()> {
+#[cfg(any(test, feature = "test-utils"))]
+impl LockWaits {
+    fn listen(&self) -> tokio::sync::oneshot::Receiver<()> {
         let (told, telling) = tokio::sync::oneshot::channel();
-        WATCHED.lock().unwrap().push((path, told));
+        self.0.lock().unwrap().push(told);
         telling
     }
 
-    pub(super) fn waiting(path: &Path) {
-        let mut watched = WATCHED.lock().unwrap();
-        let (found, rest): (Vec<_>, Vec<_>) =
-            std::mem::take(&mut *watched).into_iter().partition(|(watched, _)| watched == path);
-        *watched = rest;
-        for (_, told) in found {
+    fn tell(&self) {
+        for told in std::mem::take(&mut *self.0.lock().unwrap()) {
             #[expect(
                 clippy::let_underscore_must_use,
                 reason = "a test that stopped listening has no use for it"
             )]
             let _ = told.send(());
         }
+    }
+}
+
+#[cfg(any(test, feature = "test-utils"))]
+impl AppDir {
+    /// Told once a call on this directory, or a clone of it, finds the
+    /// removal lock held and is about to wait for it.
+    pub fn when_removal_lock_waits(&self) -> tokio::sync::oneshot::Receiver<()> {
+        self.removal_lock_waits.listen()
     }
 }

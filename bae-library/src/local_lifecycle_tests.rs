@@ -584,7 +584,7 @@ async fn a_lookup_during_a_removal_waits_for_it() {
     deleting.notified().await;
     assert!(home.record(id).exists());
 
-    let waiting = bae_app_dir::removal_lock_waits::when_waiting(home.app_dir.test_removal_lock());
+    let waiting = home.app_dir.when_removal_lock_waits();
     let lookup = bae_util::test_spawn::task({
         let home = home.clone();
         async move { home.unfinished().await }

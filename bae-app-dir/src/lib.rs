@@ -6,8 +6,6 @@
 
 mod removals;
 
-#[cfg(any(test, feature = "test-utils"))]
-pub use removals::removal_lock_waits;
 pub use removals::RemovalLock;
 
 use std::num::{NonZeroU32, NonZeroUsize};
@@ -30,6 +28,9 @@ pub struct AppDir {
     /// once the last clone of the directory is gone.
     #[cfg(any(test, feature = "test-utils"))]
     _temporary: Option<std::sync::Arc<tempfile::TempDir>>,
+    /// What tests listening for a wait on the removal lock hear.
+    #[cfg(any(test, feature = "test-utils"))]
+    removal_lock_waits: removals::LockWaits,
 }
 
 impl AppDir {
@@ -58,6 +59,7 @@ impl AppDir {
         Ok(Self {
             path: folder.path().to_path_buf(),
             _temporary: Some(std::sync::Arc::new(folder)),
+            removal_lock_waits: removals::LockWaits::default(),
         })
     }
 
@@ -71,6 +73,8 @@ impl AppDir {
             path,
             #[cfg(any(test, feature = "test-utils"))]
             _temporary: None,
+            #[cfg(any(test, feature = "test-utils"))]
+            removal_lock_waits: removals::LockWaits::default(),
         })
     }
 
@@ -134,12 +138,6 @@ impl AppDir {
     #[cfg(any(test, feature = "test-utils"))]
     pub fn test_removal_records(&self) -> PathBuf {
         self.removal_records()
-    }
-
-    /// Where a test that watches the removal lock finds it.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub fn test_removal_lock(&self) -> PathBuf {
-        self.removal_lock()
     }
 
     /// This device's libraries as coven keeps them: each library's store in

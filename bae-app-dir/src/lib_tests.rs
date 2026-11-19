@@ -285,7 +285,7 @@ fn deleting_a_library_clears_the_pointer_only_when_it_names_that_library() {
 fn the_removal_lock_excludes_another_holder_until_released() {
     let tmp = TestFolder::new();
     let app_dir = AppDir::at(tmp.path()).unwrap();
-    let waiting = removal_lock_waits::when_waiting(app_dir.test_removal_lock());
+    let waiting = app_dir.when_removal_lock_waits();
     let held = app_dir.lock_removals().unwrap();
     let second = bae_util::test_spawn::thread({
         let app_dir = app_dir.clone();
