@@ -26,7 +26,7 @@ fn load_folder_scan_snapshots_on(
 ) -> Result<impl FnOnce() -> Result<Vec<DbFolderScanSnapshot>, DbError> + Send + 'static, DbError> {
     let roots = sql.query(
         "SELECT watched_folder_path, generation, status, detail, \
-                unwatched_directory, unwatched_cause \
+                unwatched_below, unwatched_cause \
          FROM folder_scan_roots \
          ORDER BY watched_folder_path",
         [],
@@ -45,25 +45,8 @@ fn load_folder_scan_snapshots_on(
     let mut snapshots = Vec::with_capacity(roots.len());
     for (watched_folder_path, generation, status, detail, directory, cause) in roots {
         let generation = to_u64(generation, "folder_scan_roots.generation")?;
-        let status = match (status.as_deref(), detail, directory, cause) {
-            (None, None, None, None) => crate::StoredScanOutcome::Unfinished,
-            (Some("complete"), None, None, None) => crate::StoredScanOutcome::Complete,
-            (Some("failed"), Some(error), None, None) => crate::StoredScanOutcome::Failed { error },
-            (Some("unwatched"), Some(message), Some(directory), Some(cause)) => {
-                crate::StoredScanOutcome::NotWatched {
-                    reason: columns::unwatched_reason_of(message, directory, &cause)?,
-                }
-            }
-            (status, detail, directory, cause) => {
-                return Err(DbError::unreadable(
-                    format!(
-                        "the status and detail of folder scan root {}",
-                        coven::path_text(&watched_folder_path)
-                    ),
-                    (status, detail, directory, cause),
-                ))
-            }
-        };
+        let status =
+            progress::stored_outcome(&watched_folder_path, status, detail, directory.zip(cause))?;
         let items = load_folder_scan_items_on(sql, &watched_folder_path, RowSources::Any)?;
         snapshots.push((watched_folder_path, generation, status, items));
     }

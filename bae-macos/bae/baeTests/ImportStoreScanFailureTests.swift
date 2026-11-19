@@ -33,7 +33,7 @@ struct ImportStoreScanFailureTests {
             problem: notWatched
                 ? .notWatched(
                     reason: BridgeUnwatchedReason(
-                        directory: Data("\(path)/a".utf8),
+                        below: Data("a".utf8),
                         shownDirectory:
                             "\(URL(fileURLWithPath: path).lastPathComponent)/a",
                         cause: .limitReached,

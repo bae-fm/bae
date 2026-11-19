@@ -32,29 +32,22 @@ mirror_enum! {
 }
 
 impl crate::types::BridgeUnwatchedReason {
-    /// `reason` of a directory in `folder`, shown by the folder's name and
-    /// the path below it.
+    /// `reason` of a directory in `folder`.
     fn from_core(reason: bae_import::UnwatchedReason, folder: &bae_import::WatchedFolder) -> Self {
-        let bae_import::UnwatchedReason { directory, cause, message } = reason;
-        let below = directory.strip_prefix(&folder.path).unwrap_or(&directory);
-        let shown_directory = std::iter::once(folder.name.clone())
-            .chain(below.components().map(|part| coven::path_text(part.as_ref())))
-            .collect::<Vec<_>>()
-            .join("/");
         Self {
-            directory: coven::path_bytes(&directory),
-            shown_directory,
-            cause: crate::types::BridgeUnwatchedCause::from_core(cause),
-            message,
+            shown_directory: reason.shown_directory(&folder.name),
+            below: coven::path_bytes(&reason.below),
+            cause: crate::types::BridgeUnwatchedCause::from_core(reason.cause),
+            message: reason.message,
         }
     }
 
     /// The reason as core names it; a path that is no path is the app's
     /// mistake.
     fn into_core(self) -> Result<bae_import::UnwatchedReason, crate::types::BridgeError> {
-        let Self { directory, shown_directory: _, cause, message } = self;
+        let Self { below, shown_directory: _, cause, message } = self;
         Ok(bae_import::UnwatchedReason {
-            directory: crate::from_app::path(directory)?,
+            below: crate::from_app::path(below)?,
             cause: cause.into_core(),
             message,
         })

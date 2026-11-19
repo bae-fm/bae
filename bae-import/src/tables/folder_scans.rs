@@ -150,7 +150,7 @@ fn finish_read_tree(
     match unwatched {
         None => sql.execute(
             "UPDATE folder_scan_roots SET status = 'complete', detail = NULL, \
-                 unwatched_directory = NULL, unwatched_cause = NULL \
+                 unwatched_below = NULL, unwatched_cause = NULL \
              WHERE watched_folder_path = ? AND generation = ?",
             params![coven::path_bytes(watched_folder_path), generation],
         )?,
@@ -170,11 +170,11 @@ fn store_unwatched(
 ) -> Result<usize, DbError> {
     Ok(sql.execute(
         "UPDATE folder_scan_roots SET status = 'unwatched', detail = ?, \
-             unwatched_directory = ?, unwatched_cause = ? \
+             unwatched_below = ?, unwatched_cause = ? \
          WHERE watched_folder_path = ? AND generation = ?",
         params![
             reason.message,
-            coven::path_bytes(&reason.directory),
+            coven::path_bytes(&reason.below),
             columns::unwatched_cause_text(reason.cause),
             coven::path_bytes(watched_folder_path),
             generation
@@ -245,7 +245,7 @@ impl ImportTables {
                  VALUES (?, ?, NULL, NULL, ?) \
                  ON CONFLICT(watched_folder_path) DO UPDATE SET \
                      generation = excluded.generation, status = NULL, detail = NULL, \
-                     unwatched_directory = NULL, unwatched_cause = NULL, \
+                     unwatched_below = NULL, unwatched_cause = NULL, \
                      volume = excluded.volume",
                     params![watched_folder_path, generation, volume],
                 )?;
@@ -416,7 +416,7 @@ impl ImportTables {
                 if let Some(error) = error {
                     sql.execute(
                         "UPDATE folder_scan_roots SET status = 'failed', detail = ?, \
-                         unwatched_directory = NULL, unwatched_cause = NULL \
+                         unwatched_below = NULL, unwatched_cause = NULL \
                      WHERE watched_folder_path = ? AND generation = ?",
                         params![error, coven::path_bytes(&watched_folder_path), generation],
                     )?;

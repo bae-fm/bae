@@ -143,6 +143,10 @@ impl FolderWatcher {
         root: &Path,
         directory: &Path,
     ) -> Result<(), UnwatchedReason> {
+        self.try_install_directory(root, directory).map_err(|refusal| self.reason(root, refusal))
+    }
+
+    fn try_install_directory(&self, root: &Path, directory: &Path) -> Result<(), Refusal> {
         let Some(mode) = watch_mode(root, directory) else {
             return Ok(());
         };
@@ -168,6 +172,37 @@ impl FolderWatcher {
         scope: &Path,
         seen: &HashSet<PathBuf>,
     ) -> Result<(), UnwatchedReason> {
+        self.try_retain_directories_under(root, scope, seen)
+            .map_err(|refusal| self.reason(root, refusal))
+    }
+
+    /// `refusal` as the reason the folder `root` is not watched: the
+    /// directory is always under the root, so one that is not is a bug.
+    fn reason(&self, root: &Path, refusal: Refusal) -> UnwatchedReason {
+        let Refusal { directory, cause, message } = refusal;
+        let below = match directory.strip_prefix(root) {
+            Ok(below) => below.to_path_buf(),
+            Err(_) => {
+                self.diagnostics.report_bug(
+                    "name the directory a watch refused",
+                    &format_args!(
+                        "{} is not under the watched folder {}",
+                        directory.display(),
+                        root.display()
+                    ),
+                );
+                PathBuf::new()
+            }
+        };
+        UnwatchedReason { below, cause, message }
+    }
+
+    fn try_retain_directories_under(
+        &self,
+        root: &Path,
+        scope: &Path,
+        seen: &HashSet<PathBuf>,
+    ) -> Result<(), Refusal> {
         if uses_recursive_root_watch() {
             return Ok(());
         }
@@ -228,7 +263,7 @@ impl FolderWatcher {
                 continue;
             }
             if let Err(error) = watches.install(root, directory, mode) {
-                failures.push(error.to_string());
+                failures.push(format!("{}: {}", error.directory.display(), error.message));
             }
         }
         if failures.is_empty() {
@@ -253,7 +288,7 @@ impl Watches {
         root: &Path,
         directory: &Path,
         mode: RecursiveMode,
-    ) -> Result<(), UnwatchedReason> {
+    ) -> Result<(), Refusal> {
         if uses_recursive_root_watch() {
             let mut backend = (self.open)(root).map_err(|error| watch_refusal(root, &error))?;
             backend.watch(directory, mode).map_err(|error| watch_refusal(directory, &error))?;
@@ -278,18 +313,25 @@ impl Watches {
     }
 }
 
+/// A watch the system refused: the directory, by its absolute path, and why.
+struct Refusal {
+    directory: PathBuf,
+    cause: UnwatchedCause,
+    message: String,
+}
+
 /// The system's refusal to watch `directory`, `error`.
-fn watch_refusal(directory: &Path, error: &notify::Error) -> UnwatchedReason {
+fn watch_refusal(directory: &Path, error: &notify::Error) -> Refusal {
     let cause = match error.kind {
         notify::ErrorKind::MaxFilesWatch => UnwatchedCause::LimitReached,
         _ => UnwatchedCause::Refused,
     };
-    UnwatchedReason { directory: directory.to_path_buf(), cause, message: error.to_string() }
+    Refusal { directory: directory.to_path_buf(), cause, message: error.to_string() }
 }
 
 /// A refusal to watch `directory` that no system error names, for `message`.
-fn refused(directory: &Path, message: &str) -> UnwatchedReason {
-    UnwatchedReason {
+fn refused(directory: &Path, message: &str) -> Refusal {
+    Refusal {
         directory: directory.to_path_buf(),
         cause: UnwatchedCause::Refused,
         message: message.to_string(),

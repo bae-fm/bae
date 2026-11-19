@@ -232,7 +232,7 @@ async fn a_tree_read_but_not_watched_is_its_own_status() {
     let (tables, root, _temp) = watching_music().await;
     let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
     tables
-        .finish_folder_scan_unwatched(&root, generation, &unwatched(&root, "too many open files"))
+        .finish_folder_scan_unwatched(&root, generation, &unwatched("too many open files"))
         .await
         .unwrap();
 
@@ -240,7 +240,7 @@ async fn a_tree_read_but_not_watched_is_its_own_status() {
     assert_eq!(
         progress.statuses[0].status,
         crate::FolderScanStatus::NotWatched {
-            reason: unwatched(&root, "too many open files"),
+            reason: unwatched("too many open files"),
             on_network_volume: false
         }
     );
@@ -249,9 +249,9 @@ async fn a_tree_read_but_not_watched_is_its_own_status() {
 }
 
 /// Why `/music/a` could not be watched, for `message`.
-fn unwatched(root: &std::path::Path, message: &str) -> crate::UnwatchedReason {
+fn unwatched(message: &str) -> crate::UnwatchedReason {
     crate::UnwatchedReason {
-        directory: root.join("a"),
+        below: std::path::PathBuf::from("a"),
         cause: crate::UnwatchedCause::LimitReached,
         message: message.to_string(),
     }
@@ -314,13 +314,10 @@ async fn the_progress_lists_each_problem_the_app_raised_no_alert_for() {
 
     tables.hold_root_scans(crate::folder_scan_status::HeldRootScans::new()).await.unwrap();
     let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
-    tables
-        .finish_folder_scan_unwatched(&root, generation, &unwatched(&root, "offline"))
-        .await
-        .unwrap();
+    tables.finish_folder_scan_unwatched(&root, generation, &unwatched("offline")).await.unwrap();
     assert_eq!(
         listed_alerts(&tables, &raised).await,
-        [crate::FolderScanProblem::NotWatched { reason: unwatched(&root, "offline") }]
+        [crate::FolderScanProblem::NotWatched { reason: unwatched("offline") }]
     );
 }
 

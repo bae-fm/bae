@@ -299,8 +299,8 @@ pub enum BridgeFolderScanStatus {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, uniffi::Record)]
 pub struct BridgeUnwatchedReason {
     /// The first directory that could not be watched, as coven's bytes for
-    /// its path.
-    pub directory: Vec<u8>,
+    /// its path below the watched folder.
+    pub below: Vec<u8>,
     /// The directory as the person reads it: the watched folder's name, then
     /// the path below it, such as `Downloads/Albums/2024`.
     pub shown_directory: String,
