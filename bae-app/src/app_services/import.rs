@@ -29,8 +29,7 @@ impl AppServices {
     delegate_async!(import, import_remove_watched_folder => remove_watched_folder(path: std::path::PathBuf) -> Result<(), bae_import::ImportError>);
     delegate_async!(import, import_scan_watched_folders => scan_watched_folders() -> Result<(), bae_import::ImportError>);
     delegate_async!(import, import_watched_folders => watched_folders() -> Result<Vec<bae_import::WatchedFolder>, bae_import::ImportError>);
-    #[cfg(any(test, feature = "test-utils"))]
-    delegate_sync!(import, import_emit_event_for_test => emit_event_for_test(event: bae_import::ImportEvent) -> ());
+    delegate_sync!(#[cfg(any(test, feature = "test-utils"))] import, import_emit_event_for_test => emit_event_for_test(event: bae_import::ImportEvent) -> ());
     delegate_async!(import, import_get_candidate => get_candidate(key: &bae_import::CandidateKey) -> Result<Option<bae_import::ImportCandidateSnapshot>, bae_import::ImportError>);
     delegate_async!(import, import_read_watched_folders => read_watched_folders() -> Result<Vec<bae_import::WatchedFolderScanStatus>, bae_import::ImportError>);
     delegate_async!(import, import_set_candidate_skipped => set_candidate_skipped(candidate_key: bae_import::CandidateKey, skipped: bool) -> Result<(), bae_import::ImportError>);
