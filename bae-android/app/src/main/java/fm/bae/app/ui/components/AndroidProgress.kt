@@ -6,9 +6,11 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -21,6 +23,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import fm.bae.app.ui.appearance.ThemeOpacity
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.sync.MovingBar
 import fm.bae.app.ui.sync.ShareBarView
 import fm.bae.fastvalues.FrameFollowing
 import fm.bae.fastvalues.LatestSource
@@ -71,6 +74,21 @@ internal fun <Step : Any> AndroidProgress(
                 onRelease = { view -> view.stopFollowing() },
             )
         }
+    }
+}
+
+/**
+ * What shows while a call runs that has no steps to follow: [title], the words for what it does, over a moving bar
+ * that screen readers name by [title], as a step that counts nothing shows.
+ */
+@Composable
+internal fun AndroidProgress(
+    title: String,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
+        Text(title, style = ThemeText.body.style, color = MaterialTheme.colorScheme.onSurface)
+        MovingBar(description = title)
     }
 }
 

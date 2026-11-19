@@ -14,17 +14,16 @@ import androidx.compose.ui.res.stringResource
 import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidNotice
+import fm.bae.app.ui.components.AndroidProgress
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.ButtonTone
 import fm.bae.app.ui.components.DialogParts
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.S3KeyFields
 import fm.bae.app.ui.components.focusOnShow
-import fm.bae.app.ui.sync.MovingBar
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -231,11 +230,7 @@ internal fun s3KeyDialogParts(
         message = stringResource(R.string.s3_key_message),
         content = {
             if (checking) {
-                val checkingText = stringResource(R.string.s3_key_checking)
-                Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-                    Text(checkingText, style = ThemeText.body.style)
-                    MovingBar(description = checkingText)
-                }
+                AndroidProgress(title = stringResource(R.string.s3_key_checking))
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.group)) {
                     (sheet as? S3KeyReplacement.Sheet.Fields)?.failure?.let { S3KeyFailureNotice(it) }
