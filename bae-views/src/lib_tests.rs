@@ -159,6 +159,11 @@ pub(super) async fn plan(
 /// by an index search, never a scan.
 pub(super) const LIST_ALIASES: &[&str] = &["listing", "artist", "link", "a", "r", "q"];
 
+/// Whether `step` sorts rows for an ORDER BY.
+fn sorts_for_order_by(step: &PlanStep) -> bool {
+    step.detail.starts_with("USE TEMP B-TREE FOR") && step.detail.ends_with("ORDER BY")
+}
+
 /// Whether `steps` scan a list's table, or sort in the statement's own
 /// SELECT, which sorts the list's rows. A column subquery's sorts order its
 /// own rows.
@@ -167,10 +172,14 @@ pub(super) fn scans_or_sorts(steps: &[PlanStep]) -> bool {
         LIST_ALIASES.iter().any(|alias| {
             step.detail.starts_with(&format!("SCAN {alias} "))
                 || step.detail == format!("SCAN {alias}")
-        }) || (step.own
-            && step.detail.starts_with("USE TEMP B-TREE FOR")
-            && step.detail.ends_with("ORDER BY"))
+        }) || (step.own && sorts_for_order_by(step))
     })
+}
+
+/// Whether `steps` sort for an ORDER BY at any level of the statement,
+/// subqueries included.
+pub(super) fn sorts_at_any_level(steps: &[PlanStep]) -> bool {
+    steps.iter().any(sorts_for_order_by)
 }
 
 /// Hold every seek beside the row at `key` of `order`'s rows to an index:

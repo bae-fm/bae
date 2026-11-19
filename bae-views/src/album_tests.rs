@@ -911,19 +911,17 @@ async fn a_search_reads_its_tracks_and_works_in_order_from_the_title_indexes() {
                 Ok(sql.query(
                     &format!("EXPLAIN QUERY PLAN {statement}"),
                     params![search_pattern("1"), 50],
-                    |row| Ok((row.get::<_, i64>(1)?, row.get::<_, String>(3)?)),
+                    |row| {
+                        Ok(crate::tests::PlanStep {
+                            detail: row.get(3)?,
+                            own: row.get::<_, i64>(1)? == 0,
+                        })
+                    },
                 )?)
             })
             .await
             .unwrap()
         }
-    };
-    let sorts = |steps: &[(i64, String)], own: bool| {
-        steps.iter().any(|(parent, detail)| {
-            (!own || *parent == 0)
-                && detail.starts_with("USE TEMP B-TREE FOR")
-                && detail.ends_with("ORDER BY")
-        })
     };
     for (kind, statement) in
         [("track", first_tracks_found_sql()), ("work", first_works_found_sql())]
@@ -932,12 +930,12 @@ async fn a_search_reads_its_tracks_and_works_in_order_from_the_title_indexes() {
         assert!(!found.contains("bae_name_key"), "{found}");
         let steps = plan(found).await;
         let index = format!("USING COVERING INDEX idx_{kind}_search_entry_title");
-        assert!(steps.iter().any(|(_, detail)| detail.contains(&index)), "{steps:?}");
-        assert!(!sorts(&steps, false), "{kind}: {steps:?}");
+        assert!(steps.iter().any(|step| step.detail.contains(&index)), "{steps:?}");
+        assert!(!crate::tests::sorts_at_any_level(&steps), "{kind}: {steps:?}");
 
         let steps = plan(statement).await;
-        assert!(steps.iter().any(|(_, detail)| detail.contains(&index)), "{steps:?}");
-        assert!(!sorts(&steps, true), "{kind}: {steps:?}");
+        assert!(steps.iter().any(|step| step.detail.contains(&index)), "{steps:?}");
+        assert!(!crate::tests::scans_or_sorts(&steps), "{kind}: {steps:?}");
     }
 }
 
