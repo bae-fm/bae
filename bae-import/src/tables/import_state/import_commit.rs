@@ -14,6 +14,7 @@ use bae_records::records::write::{
     insert_work_row, replace_album_artists, upsert_album_row, upsert_library_image_row,
     write_release_records,
 };
+use bae_records::GonePicked;
 use bae_util::timestamp::StoredTimestamp as _;
 use std::collections::BTreeSet;
 
@@ -421,7 +422,8 @@ impl ImportTables {
                     // before the links below point at them.
                     let credits =
                         ArtistCredits { credits: &artist_credits, picked: &picked_artists };
-                    let resolved = credits.resolve_on(tx).map_err(commit_error)?;
+                    let resolved =
+                        credits.resolve_on(tx, GonePicked::Refuse).map_err(commit_error)?;
                     let inserted: BTreeSet<String> =
                         resolved.inserts.iter().map(|artist| artist.id.clone()).collect();
                     if inserted != expected_new_artists {
@@ -566,7 +568,8 @@ impl ImportTables {
         let (credits, picked) = (credits.to_vec(), picked.to_vec());
         self.store
             .read_coven(move |sql| {
-                ArtistCredits { credits: &credits, picked: &picked }.resolve_on(&sql)
+                ArtistCredits { credits: &credits, picked: &picked }
+                    .resolve_on(&sql, GonePicked::Refuse)
             })
             .await
     }

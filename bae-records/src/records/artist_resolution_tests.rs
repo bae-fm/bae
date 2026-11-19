@@ -46,7 +46,11 @@ fn credit(
 
 async fn resolve(db: &bae_store::Store, credits: &[DbArtist]) -> ResolvedArtists {
     let credits = credits.to_vec();
-    db.read_coven(move |sql| resolve_artists_on(&sql, &credits, &HashSet::new())).await.unwrap()
+    db.read_coven(move |sql| {
+        resolve_artists_on(&sql, &credits, &HashSet::new(), GonePicked::Refuse)
+    })
+    .await
+    .unwrap()
 }
 
 #[tokio::test]
@@ -191,8 +195,10 @@ async fn a_picked_artist_that_is_gone_refuses_the_write() {
     let picked = HashSet::from(["gone".to_string()]);
 
     let credits = [credit("gone", "Artist Name", None, None)];
-    let error =
-        db.read_coven(move |sql| resolve_artists_on(&sql, &credits, &picked)).await.unwrap_err();
+    let error = db
+        .read_coven(move |sql| resolve_artists_on(&sql, &credits, &picked, GonePicked::Refuse))
+        .await
+        .unwrap_err();
 
     assert!(
         matches!(&error, IdentityWriteError::Refused(IdentityRefusal::ArtistGone(id)) if id == "gone"),

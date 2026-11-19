@@ -216,7 +216,6 @@ async fn an_artist_the_form_picked_shows_and_saves_as_a_new_credit_once_deleted(
     let album_id = manager.records.find_album_id_for_release(&release_id).await.unwrap().unwrap();
     let credits = manager.records.get_artists_for_album(&album_id).await.unwrap();
     let [saved] = credits.as_slice() else { panic!("one album credit: {credits:?}") };
-    assert_ne!(saved.artist.id, artist.id);
     assert_eq!(saved.artist.name, "Departed Artist");
 }
 

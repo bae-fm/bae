@@ -33,10 +33,10 @@ pub use records::artist_credit_names::CreditNameError;
 pub use records::name_sort::SortLanguageError;
 pub use records::AlbumFields;
 #[cfg(desktop)]
-pub use records::ArtistCredits;
-#[cfg(desktop)]
 pub use records::RecordsChange;
 pub use records::ReleaseMetadataRows;
+#[cfg(desktop)]
+pub use records::{ArtistCredits, GonePicked};
 pub use records::{
     Deleted, DeletionError, DeletionRefusal, IdentityRefusal, IdentityWriteError, ImageWriteError,
     ImageWriteRefusal, OtherDeviceError, PressingParts, PrimaryReleaseError, Records,

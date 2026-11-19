@@ -74,7 +74,8 @@ impl Records {
         let credits = credits.to_vec();
         self.store
             .write(move |sql| {
-                let resolved = ArtistCredits { credits: &credits, picked: &[] }.resolve_on(&sql)?;
+                let resolved = ArtistCredits { credits: &credits, picked: &[] }
+                    .resolve_on(&sql, GonePicked::Refuse)?;
                 resolved.write_on(&sql)?;
                 Ok(resolved.ids)
             })
@@ -96,6 +97,10 @@ pub struct ResolvedArtists {
     /// Library artists holding one catalog id, each merged into the artist
     /// with the smallest id.
     pub merges: Vec<ArtistIdMerge>,
+    /// The picked credits whose artist the library no longer holds, which
+    /// the write decided as credits of their rows, by the id each came in
+    /// with.
+    pub unpicked: Vec<String>,
 }
 
 /// A library artist this write merges into another because both hold one
@@ -143,6 +148,31 @@ impl ResolvedArtists {
     pub fn id_map(&self, credits: &[DbArtist]) -> HashMap<String, String> {
         credits.iter().zip(&self.ids).map(|(credit, id)| (credit.id.clone(), id.clone())).collect()
     }
+
+    /// `links`, each one that names an unpicked credit printing what it
+    /// printed when picked: its credit name, else the name the credit's row
+    /// in `credits` holds. `parts` gives a link's credit id and credit name.
+    pub(crate) fn unpicked_printed<L: Clone>(
+        &self,
+        credits: &[DbArtist],
+        links: &[L],
+        parts: impl Fn(&mut L) -> (&String, &mut Option<crate::credits::CreditName>),
+    ) -> Vec<L> {
+        links
+            .iter()
+            .map(|link| {
+                let mut link = link.clone();
+                let (credit_id, credit_name) = parts(&mut link);
+                if self.unpicked.contains(credit_id) {
+                    let row = credits.iter().find(|credit| credit.id == *credit_id).unwrap_or_else(
+                        || panic!("a link names {credit_id}, which no credit of the write is"),
+                    );
+                    credit_name.get_or_insert_with(|| crate::credits::CreditName::of(&row.name));
+                }
+                link
+            })
+            .collect()
+    }
 }
 
 /// The artist credits one write links, as its links name them. A credit whose
@@ -156,18 +186,35 @@ pub struct ArtistCredits<'a> {
 }
 
 impl ArtistCredits<'_> {
+    /// The credits resolved, a picked artist the library no longer holds as
+    /// `gone` says.
     pub fn resolve_on<Q: coven::SqlRead>(
         &self,
         sql: &Q,
+        gone: GonePicked,
     ) -> Result<ResolvedArtists, IdentityWriteError> {
         let picked: HashSet<String> = self.picked.iter().cloned().collect();
-        resolve_artists_on(sql, self.credits, &picked)
+        resolve_artists_on(sql, self.credits, &picked, gone)
     }
 }
 
+/// What resolving a picked credit does when the library no longer holds its
+/// artist.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GonePicked {
+    /// Refuse the write as [`IdentityRefusal::ArtistGone`].
+    Refuse,
+    /// Decide the credit as a credit of the values its row holds, as a typed
+    /// name is decided; the credit is then one of
+    /// [`ResolvedArtists::unpicked`]. A new artist it makes takes the row's
+    /// id, the id of the artist the library no longer holds.
+    AsCredit,
+}
+
 /// Resolve every credit an import or edit writes. `picked` names the credits
-/// that are library artists a person chose: each resolves to itself, and must
-/// still exist. Every other credit goes through the rule in the module doc,
+/// that are library artists a person chose: each resolves to itself while
+/// the library holds it, and `gone` says what one it no longer holds does.
+/// Every other credit goes through the rule in the module doc,
 /// against the committed library and against the rows this same write already
 /// decided — so two credits of one release naming one new artist insert it
 /// once, and a credit meeting an artist another credit of this write just
@@ -180,19 +227,24 @@ pub(crate) fn resolve_artists_on<Q: coven::SqlRead>(
     sql: &Q,
     credits: &[DbArtist],
     picked: &HashSet<String>,
+    gone: GonePicked,
 ) -> Result<ResolvedArtists, IdentityWriteError> {
     let mut ids = Vec::with_capacity(credits.len());
     let mut inserts: Vec<DbArtist> = Vec::new();
     let mut external_id_updates: Vec<DbArtist> = Vec::new();
     let mut merges: Vec<ArtistIdMerge> = Vec::new();
+    let mut unpicked = Vec::new();
 
     for credit in credits {
         if picked.contains(&credit.id) {
-            if artist_by_id_on(sql, &credit.id)?.is_none() {
+            if artist_by_id_on(sql, &credit.id)?.is_some() {
+                ids.push(credit.id.clone());
+                continue;
+            }
+            if gone == GonePicked::Refuse {
                 return Err(IdentityRefusal::ArtistGone(credit.id.clone()).into());
             }
-            ids.push(credit.id.clone());
-            continue;
+            unpicked.push(credit.id.clone());
         }
 
         let so_far = WriteSoFar { inserts: &inserts, staged: &external_id_updates };
@@ -239,7 +291,7 @@ pub(crate) fn resolve_artists_on<Q: coven::SqlRead>(
 
     identify_new_rows(&mut inserts, &mut ids);
 
-    Ok(ResolvedArtists { ids, inserts, external_id_updates, merges })
+    Ok(ResolvedArtists { ids, inserts, external_id_updates, merges, unpicked })
 }
 
 /// The library artist each of `credits` resolves to when one write commits
@@ -249,10 +301,12 @@ pub(crate) fn resolve_artists_on<Q: coven::SqlRead>(
 pub async fn resolved_in_an_empty_library(credits: &[DbArtist]) -> Vec<String> {
     let (db, _tmp) = bae_store::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     let credits = credits.to_vec();
-    db.read_coven(move |sql| resolve_artists_on(&sql, &credits, &HashSet::new()))
-        .await
-        .expect("credits resolve in an empty library")
-        .ids
+    db.read_coven(move |sql| {
+        resolve_artists_on(&sql, &credits, &HashSet::new(), GonePicked::Refuse)
+    })
+    .await
+    .expect("credits resolve in an empty library")
+    .ids
 }
 
 /// The library artists [`super::credit_artist_clauses`] names for `credit`,
@@ -292,7 +346,7 @@ pub fn credit_artists_checked_on(
         musicbrainz_artist_id: credit.musicbrainz_artist_id.clone(),
         created_at: time::UtcDateTime::MIN,
     };
-    let resolved = resolve_artists_on(sql, &[written], &HashSet::new())
+    let resolved = resolve_artists_on(sql, &[written], &HashSet::new(), GonePicked::Refuse)
         .expect("a credit alone resolves against the library");
     match named.as_slice() {
         [one] => assert_eq!(
@@ -534,7 +588,7 @@ impl CatalogCredit for DbArtist {
     }
 }
 
-pub(super) fn artist_by_id_on<Q: coven::SqlRead>(
+fn artist_by_id_on<Q: coven::SqlRead>(
     sql: &Q,
     artist_id: &str,
 ) -> Result<Option<DbArtist>, DbError> {

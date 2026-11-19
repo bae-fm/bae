@@ -73,7 +73,8 @@ pub(super) fn update_release_pressing_on(
 /// Write `metadata`: the release's pressing fields, each named track's title
 /// and those tracks' artist links, and — unless `album_fields` keeps the
 /// album's own — the album's title, year, compilation flag and artist links.
-/// The links are made exactly the edit's.
+/// The links are made exactly the edit's, a picked artist the library no
+/// longer holds as `gone` says.
 ///
 /// Deliberately untouched: the stored catalog release (what the source said,
 /// independent of a user edit) and the release's records and where the draft
@@ -84,6 +85,7 @@ pub(super) fn write_release_metadata_on(
     album_fields: AlbumFields,
     now: &str,
     pressing: &super::PressingWrite<'_>,
+    gone: GonePicked,
 ) -> Result<(), IdentityWriteError> {
     let ReleaseMetadataRows {
         album,
@@ -98,11 +100,19 @@ pub(super) fn write_release_metadata_on(
     // Decide every credit against the library as it stands now, then insert
     // new artist rows and fill empty source-ID fields on linked artists before
     // the album/track links below point at them.
-    let resolved = ArtistCredits { credits, picked }.resolve_on(tx)?;
+    let resolved = ArtistCredits { credits, picked }.resolve_on(tx, gone)?;
     resolved.write_on(tx)?;
     let artist_ids = resolved.id_map(credits);
-    let album_artists = relink_album_artists(album_artists, &artist_ids);
-    let track_artists = relink_track_artists(track_artists, &artist_ids);
+    let album_artists = relink_album_artists(
+        &resolved
+            .unpicked_printed(credits, album_artists, |link| (&link.artist_id, &mut link.credit)),
+        &artist_ids,
+    );
+    let track_artists = relink_track_artists(
+        &resolved
+            .unpicked_printed(credits, track_artists, |link| (&link.artist_id, &mut link.credit)),
+        &artist_ids,
+    );
 
     if album_fields == AlbumFields::Written {
         tx.execute(
@@ -252,6 +262,7 @@ impl Records {
                     AlbumFields::Written,
                     &now,
                     &pressing_write(&pressing),
+                    GonePicked::Refuse,
                 )?;
                 Ok(emptiable.remove_emptied(&sql)?)
             })

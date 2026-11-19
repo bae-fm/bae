@@ -122,7 +122,7 @@ async fn save_crediting_a_gone_artist(
 /// A save writes what its editor shows: an artist the form picked that the
 /// library no longer holds is a credit of the values the form holds for it,
 /// which the write decides as it does a typed name, here a new artist of
-/// that name printed as the form printed it.
+/// that name, under the id the form named, printed as the form printed it.
 #[tokio::test]
 async fn a_picked_artist_the_library_no_longer_holds_saves_as_a_credit() {
     let (db, _temp) = bae_store::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;
@@ -145,7 +145,7 @@ async fn a_picked_artist_the_library_no_longer_holds_saves_as_a_credit() {
 
     let credits = records.get_artists_for_album(ALBUM_A).await.unwrap();
     let [credit] = credits.as_slice() else { panic!("one album credit: {credits:?}") };
-    assert_ne!(credit.artist.id, GONE_ARTIST, "a new artist, not the one the library deleted");
+    assert_eq!(credit.artist.id, GONE_ARTIST, "a new artist under the id the form named");
     assert_eq!(credit.artist.name, "Departed Artist");
     assert_eq!(credit.artist.sort_name.as_deref(), Some("Artist, Departed"));
     assert_eq!(credit.printed(), "Departed Alias", "printed as the form printed it");
