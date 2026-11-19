@@ -193,7 +193,7 @@ object PreviewData {
             shownReleaseIndex = 0u,
             shownReleaseCanBecomePrimary = false,
             showsReleaseChoices = releases.size > 1,
-            rating = BridgeAlbumRating(canRate = false, shown = false, mine = null, raters = emptyList()),
+            rating = BridgeAlbumRating(mine = null, raters = emptyList()),
         )
 
     fun workSummary(

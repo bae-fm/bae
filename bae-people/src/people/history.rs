@@ -16,7 +16,7 @@ impl People {
         duration: Option<Duration>,
         started_at: UtcDateTime,
     ) -> Result<Option<HistoryPlay>, PlayRecordError> {
-        let person = self.playing_person().await?.ok_or(PlayRecordError::NoPerson)?;
+        let person = self.writing_person().await?.ok_or(PlayRecordError::NoPerson)?;
         let crate::people::Person { profile, membership } = person;
         let profile = profile.ok_or(PlayRecordError::NoProfile(membership.id))?;
         let Some(audience) = profile.history_sharing.audience(profile.private_circle) else {
@@ -41,7 +41,7 @@ impl People {
             return Ok(false);
         }
         let entry = play.entry.clone();
-        if self.playing_person().await?.map(|person| person.membership.id) != Some(entry.person) {
+        if self.writing_person().await?.map(|person| person.membership.id) != Some(entry.person) {
             return Err(PlayRecordError::PersonChanged(entry.person));
         }
         let played_ms = bae_store::query::to_i64(entry.played.as_millis(), "played_ms")?;

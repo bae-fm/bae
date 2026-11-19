@@ -21,8 +21,6 @@ class AlbumRatingTextTest {
     fun theLineNamesThisPersonFirstThenEachOtherByNameAndStars() {
         val rating =
             BridgeAlbumRating(
-                canRate = true,
-                shown = true,
                 mine = BridgeStars.FOUR,
                 raters = listOf(BridgeRater.You, BridgeRater.Person("Ana", BridgeStars.FIVE)),
             )
@@ -32,14 +30,14 @@ class AlbumRatingTextTest {
 
     @Test
     fun anAlbumNobodyRatedHasNoLine() {
-        val rating = BridgeAlbumRating(canRate = true, shown = true, mine = null, raters = emptyList())
+        val rating = BridgeAlbumRating(mine = null, raters = emptyList())
 
         assertEquals("", context.ratersText(rating))
     }
 
     @Test
     fun tappingTheStarsThePersonGaveClearsTheRating() {
-        val rating = BridgeAlbumRating(canRate = true, shown = true, mine = BridgeStars.FOUR, raters = emptyList())
+        val rating = BridgeAlbumRating(mine = BridgeStars.FOUR, raters = emptyList())
 
         assertEquals(BridgeStars.TWO, rating.starsAfterTapping(BridgeStars.TWO))
         assertNull(rating.starsAfterTapping(BridgeStars.FOUR))

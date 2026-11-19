@@ -28,10 +28,11 @@ fn profile_sql() -> String {
 }
 
 impl People {
-    /// The person this device records plays as: [`Self::own_person`], and
-    /// still this device's person after the library removed it, as the
-    /// removed device keeps its copy and keeps writing to it.
-    pub(super) async fn playing_person(&self) -> Result<Option<Person>, DbError> {
+    /// The person this device writes as, for plays, ratings, playlists and
+    /// their profile: [`Self::own_person`], and still this device's person
+    /// after the library removed it, as the removed device keeps its copy and
+    /// keeps writing to it.
+    pub(super) async fn writing_person(&self) -> Result<Option<Person>, DbError> {
         let statement = members_sql(IS_OWN_MEMBER, "");
         Ok(self.inner.store.read(move |sql| Ok(people_on(&sql, &statement, [])?)).await?.pop())
     }
@@ -81,7 +82,7 @@ impl People {
     }
 
     pub(crate) async fn own_profile(&self) -> Result<PersonProfile, ProfileError> {
-        self.own_person()
+        self.writing_person()
             .await?
             .ok_or(ProfileError::NotRegistered)?
             .profile

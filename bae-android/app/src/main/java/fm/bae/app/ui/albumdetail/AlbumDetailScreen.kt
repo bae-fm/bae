@@ -326,9 +326,7 @@ internal fun AlbumDetailContent(
             )
         }
 
-        if (detail.rating.shown) {
-            block { AlbumRating(rating = detail.rating, onRate = callbacks.onRateAlbum) }
-        }
+        block { AlbumRating(rating = detail.rating, onRate = callbacks.onRateAlbum) }
 
         if (detail.showsReleaseChoices) {
             block {

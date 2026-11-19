@@ -105,11 +105,6 @@ impl BridgePersonProfile {
 /// An album's ratings as its page shows them.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeAlbumRating {
-    /// Whether this person can rate: only a person with a profile does.
-    pub can_rate: bool,
-    /// Whether the page shows a rating row: this person can rate, or someone
-    /// rated the album.
-    pub shown: bool,
     /// The stars this person gave the album.
     pub mine: Option<BridgeStars>,
     /// Who rated the album: this person first, when they did, then each
@@ -129,10 +124,8 @@ pub enum BridgeRater {
 
 impl BridgeAlbumRating {
     pub(crate) fn from_core(rating: bae_views::album_detail::AlbumRating) -> Self {
-        let bae_views::album_detail::AlbumRating { can_rate, shown, mine, raters } = rating;
+        let bae_views::album_detail::AlbumRating { mine, raters } = rating;
         Self {
-            can_rate,
-            shown,
             mine: mine.map(BridgeStars::from_core),
             raters: raters
                 .into_iter()

@@ -30,15 +30,10 @@ pub struct Rating {
     pub stars: Stars,
 }
 
-/// What the album's page reads of its ratings: whether this person can rate
-/// (they have a profile), the stars they gave it, and the stars each other
-/// person gave it, by name then id.
+/// What the album's page reads of its ratings: the stars this person gave it,
+/// and the stars each other person gave it, by name then id.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AlbumRatings {
-    pub can_rate: bool,
-    /// Whether the album's page shows a rating row: this person can rate, or
-    /// someone rated the album.
-    pub shown: bool,
     pub mine: Option<Stars>,
     pub others: Vec<OtherRating>,
 }

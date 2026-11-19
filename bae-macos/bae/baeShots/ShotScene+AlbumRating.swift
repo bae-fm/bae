@@ -37,8 +37,6 @@ extension ShotScene {
     private static func ratedBoardAlbum() -> BridgeAlbumDetail {
         var detail = PreviewData.boardAlbumDetail()
         detail.rating = BridgeAlbumRating(
-            canRate: true,
-            shown: true,
             mine: .four,
             raters: [.you, .person(name: "Ana", stars: .five)]
         )

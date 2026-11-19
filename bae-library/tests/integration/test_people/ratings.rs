@@ -28,7 +28,9 @@ async fn detail_matching(
 
 /// Rowan rates an album on his own device and Robin's page names him; an
 /// admin then removes Rowan, and his rating still names him beside Robin's
-/// own (§5.4: a removed person's ratings stay under their identity).
+/// own (§5.4: a removed person's ratings stay under their identity). Rowan's
+/// removed device keeps its copy: his rating shows there as his own, and he
+/// can change it.
 #[test]
 fn a_removed_person_s_rating_still_names_them() {
     on_app_runtime(async {
@@ -63,7 +65,7 @@ fn a_removed_person_s_rating_still_names_them() {
             .subscribe_album_detail(Some(bae_views::album_detail::AlbumDetailRequest::album(
                 album.clone(),
             )));
-        detail_matching(&mut rowans, |detail| detail.rating.can_rate).await;
+        detail_matching(&mut rowans, |detail| !detail.releases.is_empty()).await;
         rowan_library
             .people()
             .set_rating(RatingTarget::Album(album.clone()), Some(Stars::Two))
@@ -107,12 +109,34 @@ fn a_removed_person_s_rating_still_names_them() {
             .await
             .unwrap()
             .expect("the album is still there");
-        assert!(after.rating.can_rate);
         assert_eq!(after.rating.mine, Some(Stars::Four));
         assert_eq!(
             after.rating.raters,
             vec![Rater::You, Rater::Person { name: "Rowan".to_string(), stars: Stars::Two }]
         );
+
+        // Rowan's device learns its person was removed. It keeps its copy:
+        // his stars still show as his, and he can still rate.
+        let mut people = rowan_library.people().subscribe_people();
+        bae_library::followed::query_matching(&mut people, |view| view.own.is_none()).await;
+        let rowans_views = bae_views::LibraryViews::new(rowan_library.store().clone());
+        let removed = rowans_views
+            .find_album_detail(&album)
+            .await
+            .unwrap()
+            .expect("the album is still on the removed device");
+        assert_eq!(removed.rating.mine, Some(Stars::Two));
+        assert_eq!(
+            removed.rating.raters,
+            vec![Rater::You, Rater::Person { name: "Robin".to_string(), stars: Stars::Four }]
+        );
+        rowan_library
+            .people()
+            .set_rating(RatingTarget::Album(album.clone()), Some(Stars::Five))
+            .await
+            .unwrap();
+        let rerated = rowans_views.find_album_detail(&album).await.unwrap().unwrap();
+        assert_eq!(rerated.rating.mine, Some(Stars::Five));
         rowan_library.manager().close().await.unwrap();
         owner.manager().close().await.unwrap();
     });

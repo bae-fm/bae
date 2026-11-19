@@ -504,8 +504,6 @@ async fn rating_delivers_a_new_album_detail() {
         Some(bae_views::album_detail::AlbumDetailRequest::album(album.clone())),
     );
     let first = next_detail(&mut values).await;
-    assert!(first.rating.can_rate);
-    assert!(first.rating.shown);
     assert_eq!(first.rating.mine, None);
 
     people.set_rating(RatingTarget::Album(album.clone()), Some(Stars::Four)).await.unwrap();

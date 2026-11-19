@@ -101,13 +101,11 @@ struct AlbumExpansionContent: View {
                         albumMenu
                     }
                     .padding(.top, ThemeSpace.group)
-                    if detail.rating.shown {
-                        AlbumRatingRow(
-                            rating: detail.rating,
-                            onRate: onRateAlbum
-                        )
-                        .padding(.top, ThemeSpace.related)
-                    }
+                    AlbumRatingRow(
+                        rating: detail.rating,
+                        onRate: onRateAlbum
+                    )
+                    .padding(.top, ThemeSpace.related)
                     AlbumTrackListView(
                         release: selectedRelease,
                         isCompilation: album.isCompilation,
@@ -118,7 +116,7 @@ struct AlbumExpansionContent: View {
                         onAddNext: onAddNext,
                         onAddToQueue: onAddToQueue,
                         onExportTrack: onExportTrack,
-                        onRateTrack: detail.rating.canRate ? onRateTrack : nil,
+                        onRateTrack: onRateTrack,
                         playlists: playlists,
                         picking: picking
                     )

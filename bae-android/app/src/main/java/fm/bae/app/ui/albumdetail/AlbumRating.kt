@@ -17,10 +17,7 @@ import fm.bae.app.ui.components.Stars
 import uniffi.bae_bridge.BridgeAlbumRating
 import uniffi.bae_bridge.BridgeStars
 
-/**
- * Shows the line that names who rated the album, with the album's stars above it for a person who can rate
- * the album. That person taps the stars to rate it.
- */
+/** Shows the album's stars, which the person taps to rate it, and the line that names who rated it. */
 @Composable
 internal fun AlbumRating(
     rating: BridgeAlbumRating,
@@ -29,13 +26,11 @@ internal fun AlbumRating(
 ) {
     val context = LocalContext.current
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(ThemeSpace.line)) {
-        if (rating.canRate) {
-            Stars(
-                value = rating.mine?.number ?: 0,
-                size = 24.dp,
-                onRate = { onRate(rating.starsAfterTapping(it)) },
-            )
-        }
+        Stars(
+            value = rating.mine?.number ?: 0,
+            size = 24.dp,
+            onRate = { onRate(rating.starsAfterTapping(it)) },
+        )
         Text(
             text = context.ratersText(rating),
             style = ThemeText.fine.style,

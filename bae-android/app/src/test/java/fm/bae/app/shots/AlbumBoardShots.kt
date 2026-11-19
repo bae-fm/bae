@@ -33,8 +33,6 @@ class AlbumBoardShots : BoardShot() {
                 boardAlbum(
                     rating =
                         BridgeAlbumRating(
-                            canRate = true,
-                            shown = true,
                             mine = BridgeStars.FOUR,
                             raters = listOf(BridgeRater.You, BridgeRater.Person("Ana", BridgeStars.FIVE)),
                         ),
@@ -107,9 +105,7 @@ private fun boardFile(
 )
 
 /** "Low Tide Hours" by Mara Quill with the six tracks the boards list, one disc, with [rating] as its rating. */
-internal fun boardAlbum(
-    rating: BridgeAlbumRating = BridgeAlbumRating(canRate = false, shown = false, mine = null, raters = emptyList()),
-): BridgeAlbumDetail {
+internal fun boardAlbum(rating: BridgeAlbumRating = BridgeAlbumRating(mine = null, raters = emptyList())): BridgeAlbumDetail {
     val titles = listOf("Harbor Lights", "The Long Way Home", "Second Floor", "Low Tide Hours", "Tin Roof", "Margins")
     val tracks = titles.mapIndexed { index, title -> PreviewData.track("trk-${index + 1}", title, index + 1) }
     val album = PreviewData.album(title = "Low Tide Hours", year = 1992, artistNames = "Mara Quill")

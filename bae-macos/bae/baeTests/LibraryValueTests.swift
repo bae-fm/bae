@@ -130,8 +130,6 @@ func makeBridgeAlbumDetail(
         shownReleaseCanBecomePrimary: shownReleaseIndex > 0,
         showsReleaseChoices: releases.count > 1,
         rating: BridgeAlbumRating(
-            canRate: false,
-            shown: false,
             mine: nil,
             raters: []
         ),
@@ -279,11 +277,9 @@ struct ReleaseDetailTests {
     }
 
     @MainActor
-    @Test("an album detail carries who rated it and whether this person can")
+    @Test("an album detail carries who rated it")
     func albumDetailCarriesItsRating() {
         let rating = BridgeAlbumRating(
-            canRate: true,
-            shown: true,
             mine: .four,
             raters: [.you, .person(name: "Rowan", stars: .two)]
         )
@@ -292,7 +288,6 @@ struct ReleaseDetailTests {
 
         let detail = AlbumDetail(bridge: bridge)
 
-        #expect(detail.rating.canRate)
         #expect(detail.rating.mine == .four)
         #expect(detail.rating.raters.count == 2)
     }

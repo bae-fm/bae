@@ -2977,17 +2977,15 @@ track's rating belongs to one release's track, so the tracks of two copies of a
 pressing (§2.7) are rated apart. An album's page shows the person's own stars
 for it and a line naming who rated it: *You* when they did, then each other
 person who did, with their stars, by name. A track's stars on the page are the
-person's own. Only a person with a profile rates (§5.4). The page shows the
-rating when this person can rate or anyone rated the album.
+person's own.
 
 On macOS the album's stars sit above its tracks: clicking a star rates the album
 with that many stars, and clicking the star the person already gave clears the
-rating. A person without a profile sees no stars, only the line of who rated
-the album.
+rating.
 
 On macOS a track's row shows the person's stars for it, and its menu offers
-*Rate* to a person who can rate: a submenu of five stars down to one, the
-person's own checked, then *Clear rating*.
+*Rate*: a submenu of five stars down to one, the person's own checked, then
+*Clear rating*.
 
 On Android the album's stars sit under its header with the line of who rated
 the album under them, and a tap on a star rates and clears as on macOS.
@@ -3032,14 +3030,15 @@ couldn't take from the household what its devices have already read. A new
 profile starts private. A play is recorded only as the person it began as:
 once this device is a different person, saving it is refused.
 
-**Plays on a removed device.** A device's person has their profile from the
+**Writes on a removed device.** A device's person has their profile from the
 moment the device registers (§5.4), and before that the device holds none of
-the library's rows, so it has nothing to play. A device removed from the
-library keeps its copy and keeps writing to it, plays included: each play is a
-`history` row under its person's profile, as on any device. The row stays on
-that device, which no longer syncs. When an admin removes the person, each of
-their own devices keeps their circle and every row in it, and keeps recording
-their plays the same way, the private ones under *Only me* included
+the library's rows, so it has nothing to play or rate. A device removed from
+the library keeps its copy and keeps writing to it, plays and ratings
+included: each is a row under its person's profile, as on any device, and the
+album's page there still shows the person's own ratings as *You*. The rows
+stay on that device, which no longer syncs. When an admin removes the person,
+each of their own devices keeps their circle and every row in it, and keeps
+recording their plays the same way, the private ones under *Only me* included
 ([coven §14.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#141-the-cut-off)).
 
 **Playlists.** A playlist belongs to the person who made it, and is private or
@@ -3737,7 +3736,7 @@ declares it (§6.3), and what a person sees when sync stops (§6.4).
 | Fetched catalog data (§3.4) | Ratings, history and playlists (§5.3) |
 | Settings (Appendix C) | |
 | The paths of a local release's originals, in coven's records (§4.2) | |
-| A removed device's own writes, plays among them (§5.3) | |
+| A removed device's own writes, plays and ratings among them (§5.3) | |
 
 Each reason is the same: the data is one device's, and another device would be
 wrong to follow it. Ana's queue is what she is listening to, not Ben. A scan is
