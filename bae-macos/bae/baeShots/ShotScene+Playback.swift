@@ -21,12 +21,14 @@ extension ShotScene {
                         queueEntry(
                             "Margins",
                             album: "Northbound",
-                            durationMs: 295_000
+                            duration: 295_000,
+                            covered: false
                         ),
                         queueEntry(
                             "Night Ferry",
                             album: "Quiet Engines",
-                            durationMs: 276_000
+                            duration: 276_000,
+                            covered: false
                         ),
                     ],
                     context: nil,
@@ -48,25 +50,4 @@ extension ShotScene {
             )
         }
     ]
-
-    /// One of Mara Quill's tracks in the queue, as the boards list it.
-    private static func queueEntry(
-        _ title: String,
-        album: String,
-        durationMs: UInt64
-    ) -> BridgeQueueEntry {
-        BridgeQueueEntry(
-            entryId: "entry-\(title)",
-            trackId: "track-\(title)",
-            display: BridgeTrackDisplay(
-                title: title,
-                artistLine: .named("Mara Quill"),
-                albumId: "album-\(album)",
-                releaseId: "release-\(album)",
-                albumTitle: album,
-                coverImage: nil
-            ),
-            durationClock: BridgeDurationClock.length(ms: durationMs)
-        )
-    }
 }

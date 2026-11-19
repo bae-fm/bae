@@ -388,10 +388,13 @@ extension ShotScene {
         ),
     ]
 
-    private static func queueEntry(
+    /// One of Mara Quill's tracks in the queue, as the boards list it, with
+    /// its album's cover unless `covered` is false.
+    static func queueEntry(
         _ title: String,
         album: String,
-        duration: UInt64
+        duration: UInt64,
+        covered: Bool = true
     ) -> BridgeQueueEntry {
         BridgeQueueEntry(
             entryId: "e-\(title)",
@@ -402,7 +405,7 @@ extension ShotScene {
                 albumId: "a-\(album)",
                 releaseId: "r-\(album)",
                 albumTitle: album,
-                coverImage: cover(album)
+                coverImage: covered ? cover(album) : nil
             ),
             durationClock: BridgeDurationClock.length(ms: duration)
         )
