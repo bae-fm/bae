@@ -3,8 +3,8 @@
 //! barcode rows, its album and track artist assignments, its mediums, and
 //! the roles and works of its release and its tracks.
 
-use crate::tables::draft_rows::{decoded, AssignmentRow};
-use crate::{Credited, RawLabelEdit, RawReleaseEdit};
+use crate::tables::draft_rows::decoded;
+use crate::{ArtistAssignment, Credited, RawLabelEdit, RawReleaseEdit};
 use bae_catalogs::catalog::Catalog;
 use bae_catalogs::credits::{ArtistCredit, CreditedRole};
 use bae_catalogs::works::{GraphWork, WorkCredit, WorkGraph, WorkPart};
@@ -14,7 +14,7 @@ use coven::CovenWrite;
 use rusqlite::{params, ToSql};
 use std::str::FromStr;
 
-/// The columns an owner's row holds the form's album-level fields in.
+/// The columns a candidate's edit row holds the form's album-level fields in.
 pub(crate) const FORM_COLUMNS: &str =
     "album_title, album_year, year, country, region, media, status, packaging, discogs_details";
 
@@ -132,6 +132,51 @@ pub(crate) fn store_album_artist_assignments(
     Ok(())
 }
 
+/// One artist assignment as a candidate's assignment table stores it: a
+/// picked artist by its id and the credit name the person picked, or a
+/// credit by what it says.
+struct AssignmentRow<'a> {
+    assignment_kind: &'static str,
+    artist_id: Option<&'a str>,
+    name: Option<&'a str>,
+    sort_name: Option<&'a str>,
+    musicbrainz_artist_id: Option<&'a str>,
+    discogs_artist_id: Option<&'a str>,
+    credit_key: Option<&'a str>,
+    credited_as: Option<&'a str>,
+    join_phrase: Option<&'a str>,
+}
+
+impl<'a> AssignmentRow<'a> {
+    fn of(credited: &'a Credited) -> Self {
+        let join_phrase = credited.join.as_deref();
+        match &credited.artist {
+            ArtistAssignment::Picked { artist, credit_name } => Self {
+                assignment_kind: "picked",
+                artist_id: Some(&artist.artist_id),
+                name: None,
+                sort_name: None,
+                musicbrainz_artist_id: None,
+                discogs_artist_id: None,
+                credit_key: credit_name.as_ref().map(|credit_name| credit_name.key.as_str()),
+                credited_as: None,
+                join_phrase,
+            },
+            ArtistAssignment::Credit { credit } => Self {
+                assignment_kind: "credit",
+                artist_id: None,
+                name: Some(credit.name.as_str()),
+                sort_name: credit.sort_name.as_deref(),
+                musicbrainz_artist_id: credit.musicbrainz_artist_id.as_deref(),
+                discogs_artist_id: credit.discogs_artist_id.as_deref(),
+                credit_key: None,
+                credited_as: credit.credited_as.as_deref(),
+                join_phrase,
+            },
+        }
+    }
+}
+
 /// Make the album artist at `position` `assignment`, in place when one is
 /// there.
 fn store_album_artist_assignment(
@@ -204,7 +249,7 @@ pub(crate) fn insert_track_artist_assignments(
 }
 
 /// Write a draft's works and the roles on its release, under
-/// `key`. The caller has already written the owner's row.
+/// `key`. The caller has already written the candidate's edit row.
 pub(crate) fn insert_draft_values(
     sql: &CovenWrite<'_>,
     key: &dyn ToSql,
@@ -324,34 +369,34 @@ pub(crate) fn insert_track_values(
     Ok(())
 }
 
-/// The label rows of the owner `owner` (an SQL expression for its key), as
+/// The label rows of the candidate `candidate` (an SQL expression for its key), as
 /// a JSON array in their order, which [`read_label_rows`] reads.
-pub(crate) fn labels_json_sql(owner: &str) -> String {
+pub(crate) fn labels_json_sql(candidate: &str) -> String {
     format!(
         "(SELECT json_group_array(json_object( \
              'name', label.name, 'catalog_number', label.catalog_number, \
              'musicbrainz_label_id', label.musicbrainz_label_id, \
              'discogs_label_id', label.discogs_label_id) \
              ORDER BY label.position) \
-         FROM import_candidate_edit_label AS label WHERE label.content_hash = {owner})",
+         FROM import_candidate_edit_label AS label WHERE label.content_hash = {candidate})",
     )
 }
 
-/// The barcode rows of the owner `owner`, as a JSON array in their order.
-pub(crate) fn barcodes_json_sql(owner: &str) -> String {
+/// The barcode rows of the candidate `candidate`, as a JSON array in their order.
+pub(crate) fn barcodes_json_sql(candidate: &str) -> String {
     format!(
         "(SELECT json_group_array(barcode.barcode ORDER BY barcode.position) \
-         FROM import_candidate_edit_barcode AS barcode WHERE barcode.content_hash = {owner})",
+         FROM import_candidate_edit_barcode AS barcode WHERE barcode.content_hash = {candidate})",
     )
 }
 
-/// The mediums of the owner `owner`, as a JSON array in their order, which
+/// The mediums of the candidate `candidate`, as a JSON array in their order, which
 /// [`mediums_of`] reads.
-pub(crate) fn mediums_json_sql(owner: &str) -> String {
+pub(crate) fn mediums_json_sql(candidate: &str) -> String {
     format!(
         "(SELECT json_group_array(json_object( \
              'carrier', medium.medium, 'sides', medium.side_count) ORDER BY medium.position) \
-         FROM import_candidate_medium AS medium WHERE medium.content_hash = {owner})",
+         FROM import_candidate_medium AS medium WHERE medium.content_hash = {candidate})",
     )
 }
 
@@ -385,10 +430,10 @@ pub(crate) fn mediums_of(json: &str) -> Result<Vec<bae_types::mediums::ReleaseMe
         .collect()
 }
 
-/// The works of the owner `owner` (an SQL expression for its key), each with
+/// The works of the candidate `candidate` (an SQL expression for its key), each with
 /// its credits, as a JSON array in the draft's order, which [`works_of`]
 /// decodes.
-pub(crate) fn works_json_sql(owner: &str) -> String {
+pub(crate) fn works_json_sql(candidate: &str) -> String {
     format!(
         "(SELECT json_group_array(json_object( \
              'musicbrainz_work_id', work.musicbrainz_work_id, 'title', work.title, \
@@ -404,17 +449,17 @@ pub(crate) fn works_json_sql(owner: &str) -> String {
                  WHERE credit.content_hash = work.content_hash \
                    AND credit.musicbrainz_work_id = work.musicbrainz_work_id))) \
              ORDER BY work.position) \
-         FROM import_candidate_work AS work WHERE work.content_hash = {owner})",
+         FROM import_candidate_work AS work WHERE work.content_hash = {candidate})",
     )
 }
 
-/// Which of the owner `owner`'s works is part of which, as a JSON array in
+/// Which of the candidate `candidate`'s works is part of which, as a JSON array in
 /// the order the source relates them.
-pub(crate) fn work_parts_json_sql(owner: &str) -> String {
+pub(crate) fn work_parts_json_sql(candidate: &str) -> String {
     format!(
         "(SELECT json_group_array(json_object( \
              'parent', part.parent_work_id, 'child', part.child_work_id) ORDER BY part.position) \
-         FROM import_candidate_work_part AS part WHERE part.content_hash = {owner})",
+         FROM import_candidate_work_part AS part WHERE part.content_hash = {candidate})",
     )
 }
 
@@ -427,32 +472,32 @@ const ROLE_JSON: &str = "json_object( \
      'role', role.role, 'role_words', role.role_words, \
      'qualifiers', role.qualifiers)";
 
-/// The roles the source credits on the owner `owner`'s release, as a JSON
+/// The roles the source credits on the candidate `candidate`'s release, as a JSON
 /// array in its order, which [`roles_of`] decodes.
-pub(crate) fn release_roles_json_sql(owner: &str) -> String {
+pub(crate) fn release_roles_json_sql(candidate: &str) -> String {
     format!(
         "(SELECT json_group_array({ROLE_JSON} ORDER BY role.position) \
-         FROM import_candidate_release_role AS role WHERE role.content_hash = {owner})",
+         FROM import_candidate_release_role AS role WHERE role.content_hash = {candidate})",
     )
 }
 
-/// The roles the source credits on the owner `owner`'s track `track` (SQL
+/// The roles the source credits on the candidate `candidate`'s track `track` (SQL
 /// expressions for their keys), as a JSON array in its order, which
 /// [`roles_of`] decodes.
-pub(crate) fn track_roles_json_sql(owner: &str, track: &str) -> String {
+pub(crate) fn track_roles_json_sql(candidate: &str, track: &str) -> String {
     format!(
         "(SELECT json_group_array({ROLE_JSON} ORDER BY role.position) \
-         FROM import_candidate_track_role AS role WHERE role.content_hash = {owner} AND role.track_id = {track})",
+         FROM import_candidate_track_role AS role WHERE role.content_hash = {candidate} AND role.track_id = {track})",
     )
 }
 
-/// The works the owner `owner`'s track `track` performs, as a JSON array of
+/// The works the candidate `candidate`'s track `track` performs, as a JSON array of
 /// their ids in its order.
-pub(crate) fn track_works_json_sql(owner: &str, track: &str) -> String {
+pub(crate) fn track_works_json_sql(candidate: &str, track: &str) -> String {
     format!(
         "(SELECT json_group_array(performed.musicbrainz_work_id ORDER BY performed.position) \
          FROM import_candidate_track_work AS performed \
-         WHERE performed.content_hash = {owner} AND performed.track_id = {track})",
+         WHERE performed.content_hash = {candidate} AND performed.track_id = {track})",
     )
 }
 

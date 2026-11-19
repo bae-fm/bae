@@ -6,10 +6,10 @@
 //! catalog the person applied gives them or else on the release's own, each
 //! beside the form row that edits it.
 
+use super::form_assignments::{assignment_rows, assignment_rows_sql};
 use super::*;
 use crate::tables::draft_rows::{
-    assignment_kind_column, assignment_rows, assignment_rows_sql, assignments_json_sql,
-    assignments_of, decoded, DraftAlbumRow,
+    assignment_kind_column, assignments_json_sql, assignments_of, decoded, DraftAlbumRow,
 };
 use crate::{AlbumPick, DraftAlbum, RawReleaseEdit, RawTrackEdit, TrackArtistAssignments};
 

@@ -78,7 +78,7 @@ artist_field_standing AS MATERIALIZED (
 
 /// Whose artist fields the standing clauses read: a candidate's draft, or a
 /// release editor's form, whose album artists and explicit tracks' artists
-/// the statement binds as the JSON arrays that `draft_rows`'
+/// the statement binds as the JSON arrays that the release editor's
 /// `assignment_rows` makes.
 #[derive(Clone, Copy)]
 pub(crate) enum CreditSource<'a> {
@@ -112,7 +112,7 @@ impl CreditSource<'_> {
                 )
             }
             Self::Form { .. } => {
-                let rows = crate::tables::draft_rows::assignment_rows_sql;
+                let rows = crate::tables::release_edit::assignment_rows_sql;
                 format!(
                     "SELECT 0 AS part, NULL AS track_id, 0 AS track_position, \
                             a.position AS position, a.assignment_kind, a.credited_as, a.name, \
