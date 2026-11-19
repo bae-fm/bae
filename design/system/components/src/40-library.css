@@ -91,6 +91,7 @@
 .bae-m-plpage-sharing { display: inline-flex; fill: currentColor; }
 .bae-m-plpage-actions { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
 .bae-m-plpage-tracks { margin: 0; }
+.bae-m-plpage-tracks .bae-m-lrow-lead { width: 24px; }
 .bae-m-qrow { display: flex; align-items: center; gap: 12px; padding: 6px 8px; border-radius: var(--radius-control); }
 .bae-m-qrow-hover { background: var(--hover); }
 .bae-m-qrow-play { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--scrim); color: var(--on-fill); fill: currentColor; }
