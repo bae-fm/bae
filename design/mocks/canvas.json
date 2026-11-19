@@ -458,14 +458,6 @@
    "x": 770,
    "y": 6076
   },
-  "android.library.albums.several-picked.dc.html": {
-   "h": 916,
-   "page": "explore",
-   "title": "Exploration: Several albums picked",
-   "w": 412,
-   "x": 1476,
-   "y": 10548
-  },
   "android.playlists.playlist.dc.html": {
    "h": 916,
    "page": "explore",
@@ -577,14 +569,6 @@
    "w": 1200,
    "x": 1280,
    "y": 4596
-  },
-  "mac.parts.folder-picker.dc.html": {
-   "h": 300,
-   "page": "shared",
-   "title": "Folder picker",
-   "w": 460,
-   "x": 0,
-   "y": 160
   },
   "android.settings.listening-history.changed.dc.html": {
    "h": 916,
@@ -737,14 +721,6 @@
    "w": 412,
    "x": 492,
    "y": 19448
-  },
-  "android.parts.invite-fields.dc.html": {
-   "h": 230,
-   "page": "shared",
-   "title": "Invite fields",
-   "w": 292,
-   "x": 1200,
-   "y": 700
   },
   "android.settings.invite.flow.dc.html": {
    "h": 630,
@@ -1313,14 +1289,6 @@
    "w": 690,
    "x": 3390,
    "y": 16856
-  },
-  "mac.parts.invite-fields.dc.html": {
-   "h": 130,
-   "page": "shared",
-   "title": "macOS: Invite fields",
-   "w": 400,
-   "x": 1572,
-   "y": 700
   },
   "mac.settings.invite.dropbox.dc.html": {
    "h": 600,
@@ -2066,14 +2034,6 @@
    "x": 1316,
    "y": 9392
   },
-  "mac.parts.sync-status.dc.html": {
-   "h": 150,
-   "page": "shared",
-   "title": "macOS: Sync status",
-   "w": 460,
-   "x": 1692,
-   "y": 160
-  },
   "mac.settings.transfers.dc.html": {
    "h": 600,
    "page": "settings",
@@ -2530,15 +2490,6 @@
    "x": 1960,
    "y": 12192
   },
-  "mac.parts.restore-code.dc.html": {
-   "h": 150,
-   "is_interactive": true,
-   "page": "shared",
-   "title": "Restore code",
-   "w": 460,
-   "x": 0,
-   "y": 1520
-  },
   "android.settings.restore-code.printed.dc.html": {
    "h": 792,
    "page": "library",
@@ -2546,14 +2497,6 @@
    "w": 612,
    "x": 2524,
    "y": 23336
-  },
-  "mac.parts.s3-form.dc.html": {
-   "h": 420,
-   "page": "shared",
-   "title": "S3-compatible form",
-   "w": 460,
-   "x": 0,
-   "y": 780
   },
   "android.search.results.failed.dc.html": {
    "h": 916,
@@ -2907,14 +2850,6 @@
    "x": 0,
    "y": 9392
   },
-  "android.parts.sync-status.dc.html": {
-   "h": 220,
-   "page": "shared",
-   "title": "Sync status",
-   "w": 412,
-   "x": 1200,
-   "y": 160
-  },
   "android.settings.transfers.dc.html": {
    "h": 916,
    "page": "settings",
@@ -3202,38 +3137,6 @@
    "w": 1460,
    "x": 0,
    "y": 3840
-  },
-  "android.parts.welcome-buttons.dc.html": {
-   "h": 106,
-   "page": "shared",
-   "title": "Welcome buttons",
-   "w": 412,
-   "x": 1200,
-   "y": 1250
-  },
-  "mac.parts.welcome-buttons.dc.html": {
-   "h": 70,
-   "page": "shared",
-   "title": "macOS: Welcome buttons",
-   "w": 460,
-   "x": 1692,
-   "y": 1250
-  },
-  "android.parts.welcome-libraries.dc.html": {
-   "h": 290,
-   "page": "shared",
-   "title": "Welcome libraries",
-   "w": 412,
-   "x": 1200,
-   "y": 1750
-  },
-  "mac.parts.welcome-libraries.dc.html": {
-   "h": 170,
-   "page": "shared",
-   "title": "macOS: Welcome libraries",
-   "w": 420,
-   "x": 1692,
-   "y": 1750
   },
   "android.welcome.library-menu.dc.html": {
    "h": 916,
@@ -3650,14 +3553,6 @@
    "w": 412,
    "x": 8250,
    "y": 11672
-  },
-  "android.parts.restore-code.dc.html": {
-   "h": 260,
-   "page": "shared",
-   "title": "Restore code",
-   "w": 412,
-   "x": 540,
-   "y": 1520
   },
   "android.settings.library.rename-waiting.dc.html": {
    "h": 916,
@@ -4307,14 +4202,6 @@
    "x": 11176,
    "y": 8652
   },
-  "mac.parts.s3-cloud-home.dc.html": {
-   "h": 300,
-   "page": "shared",
-   "title": "macOS: S3 cloud home",
-   "w": 650,
-   "x": 540,
-   "y": 2300
-  },
   "mac.settings.sync.s3-replace-key-empty.dc.html": {
    "h": 600,
    "page": "library",
@@ -4322,30 +4209,6 @@
    "w": 690,
    "x": 9700,
    "y": 7652
-  },
-  "android.parts.s3-cloud-home.dc.html": {
-   "h": 420,
-   "page": "shared",
-   "title": "S3 cloud home",
-   "w": 412,
-   "x": 1642,
-   "y": 2300
-  },
-  "mac.parts.s3-key-fields.dc.html": {
-   "h": 140,
-   "page": "shared",
-   "title": "macOS: S3 key fields",
-   "w": 460,
-   "x": 0,
-   "y": 2300
-  },
-  "android.parts.s3-key-fields.dc.html": {
-   "h": 170,
-   "page": "shared",
-   "title": "S3 key fields",
-   "w": 292,
-   "x": 1270,
-   "y": 2300
   },
   "android.settings.sync.s3-replace-key-checking.dc.html": {
    "h": 916,
@@ -4586,15 +4449,6 @@
   "canvas-key-settings",
   "canvas-key-library",
   "canvas-key-welcome",
-  "canvas-key-shared",
-  "row-shared-folderpicker",
-  "shared-folderpicker-aligned",
-  "row-shared-s3form",
-  "row-shared-restorecode",
-  "row-shared-syncstatus",
-  "row-shared-invitefields",
-  "row-shared-welcomeactions",
-  "row-shared-welcomelibraries",
   "row-welcome-join",
   "row-library-invite-online",
   "row-library-invite-offline",
@@ -4683,7 +4537,6 @@
   "code-welcome-create",
   "code-welcome-damaged-join",
   "row-library-s3-key",
-  "row-shared-s3key",
   "code-s3-key",
   "row-play-pin-android",
   "row-play-pin-mac",
@@ -4709,16 +4562,6 @@
    "w": 720,
    "x": 0,
    "y": -520
-  },
-  "canvas-key-shared": {
-   "bold": true,
-   "fill": "purple",
-   "page": "shared",
-   "size": 40,
-   "text": "Shared\nParts the screens are built from. Each screen that shows one imports it, so a change here shows everywhere.",
-   "w": 720,
-   "x": 0,
-   "y": -320
   },
   "canvas-key-welcome": {
    "bold": true,
@@ -5578,51 +5421,6 @@
    "x": 0,
    "y": 6500
   },
-  "row-shared-folderpicker": {
-   "kind": "title1",
-   "maxW": 460,
-   "page": "shared",
-   "text": "Folder picker",
-   "w": 240,
-   "x": 0,
-   "y": 0
-  },
-  "row-shared-invitefields": {
-   "kind": "title1",
-   "maxW": 952,
-   "page": "shared",
-   "text": "Invite fields",
-   "w": 240,
-   "x": 1200,
-   "y": 540
-  },
-  "row-shared-restorecode": {
-   "kind": "title1",
-   "maxW": 460,
-   "page": "shared",
-   "text": "Restore code",
-   "w": 240,
-   "x": 0,
-   "y": 1360
-  },
-  "row-shared-s3form": {
-   "kind": "title1",
-   "maxW": 460,
-   "page": "shared",
-   "text": "S3-compatible form",
-   "w": 240,
-   "x": 0,
-   "y": 620
-  },
-  "row-shared-syncstatus": {
-   "kind": "title1",
-   "maxW": 952,
-   "page": "shared",
-   "text": "Sync status",
-   "w": 240,
-   "x": 1200,
-   "y": 0
-  },
   "row-store-mac": {
    "kind": "title1",
    "maxW": 4600,
@@ -5711,15 +5509,6 @@
    "w": 380,
    "x": 770,
    "y": 2852
-  },
-  "shared-folderpicker-aligned": {
-   "bold": true,
-   "page": "shared",
-   "size": 24,
-   "text": "The new folder's name starts where the folder names above it start: the field's box sits 10px further left, so the text inside it lines up. Today the field and Create are an HStack in the Folders section (OAuthFolderSetup.swift:114-118). bae change.",
-   "w": 380,
-   "x": 520,
-   "y": 160
   },
   "store-today": {
    "fill": "blue",
@@ -5855,24 +5644,6 @@
    "x": 0,
    "y": 1920,
    "text": "Accents"
-  },
-  "row-shared-welcomeactions": {
-   "kind": "title1",
-   "maxW": 952,
-   "page": "shared",
-   "text": "Welcome buttons",
-   "w": 240,
-   "x": 1200,
-   "y": 1090
-  },
-  "row-shared-welcomelibraries": {
-   "kind": "title1",
-   "maxW": 912,
-   "page": "shared",
-   "text": "Welcome libraries",
-   "w": 240,
-   "x": 1200,
-   "y": 1590
   },
   "welcome-removing-steps": {
    "fill": "blue",
@@ -6043,14 +5814,6 @@
    "y": 7652,
    "text": "What the code needs for these boards:\n- An S3 library’s Sync page shows the key’s id in the Cloud home rows, with Replace key… (Android: Replace key). The signed-out page shows the same rows. bae change; today neither shows it.\n- Replace key… and Sign in to S3… (Android: Sign in to S3) open the same S3 key sheet: Cancel, and Save, which stays off until both fields hold text. The welcome’s S3 key sheet draws its fields from the same part.\n- Save checks the key with S3 storage and shows Checking the key with S3 storage… with only Cancel. A refused key keeps what was typed and says “This key was not accepted.” above the fields. coven’s one call for a new key does the check and the change.\n- After a save the sheet closes, the page shows the new key’s id, and a dismissable line says to delete the old key, naming its id. bae keeps no record of the old id once the person dismisses the line or leaves the page. bae change."
   },
-  "row-shared-s3key": {
-   "kind": "title1",
-   "page": "shared",
-   "text": "S3 key",
-   "w": 240,
-   "x": 0,
-   "y": 2140
-  },
   "code-playlist-page": {
    "page": "explore",
    "size": 24,
@@ -6117,8 +5880,6 @@
   "mac.settings.library.rename-waiting.dc.html",
   "mac.settings.library.rename-done.dc.html",
   "mac.settings.sync-setup.choose-cloud.dc.html",
-  "mac.parts.folder-picker.dc.html",
-  "mac.parts.s3-form.dc.html",
   "mac.settings.sync-setup.dropbox-choose-home.dc.html",
   "mac.settings.sync-setup.dropbox-signing-in.dc.html",
   "mac.settings.sync-setup.dropbox-reading-folders.dc.html",
@@ -6154,7 +5915,6 @@
   "mac.settings.sync-setup.icloud-step-1.dc.html",
   "mac.settings.sync-setup.icloud-step-2.dc.html",
   "mac.settings.sync-setup.icloud-step-3.dc.html",
-  "mac.parts.restore-code.dc.html",
   "mac.settings.sync-setup.icloud-restore-code.dc.html",
   "mac.settings.sync-setup.icloud-done.dc.html",
   "mac.settings.sync-setup.s3-choose-home.dc.html",
@@ -6225,25 +5985,13 @@
   "mac.settings.sync.s3-replace-key-refused.dc.html",
   "mac.settings.sync.s3-key-replaced.dc.html",
   "mac.settings.sync.signed-out-s3-sign-in.dc.html",
-  "mac.parts.s3-key-fields.dc.html",
-  "mac.parts.s3-cloud-home.dc.html",
-  "android.parts.s3-key-fields.dc.html",
-  "android.parts.s3-cloud-home.dc.html",
   "android.library.more-menu.libraries.dc.html",
   "android.library.libraries.dc.html",
-  "android.parts.sync-status.dc.html",
-  "mac.parts.sync-status.dc.html",
   "android.settings.invite.onedrive.dc.html",
   "android.settings.invite.s3.dc.html",
   "mac.settings.invite.onedrive.dc.html",
   "mac.settings.invite.icloud.dc.html",
   "mac.settings.invite.s3.dc.html",
-  "android.parts.invite-fields.dc.html",
-  "mac.parts.invite-fields.dc.html",
-  "android.parts.welcome-buttons.dc.html",
-  "mac.parts.welcome-buttons.dc.html",
-  "android.parts.welcome-libraries.dc.html",
-  "mac.parts.welcome-libraries.dc.html",
   "android.settings.invite.request.dc.html",
   "mac.settings.invite.request.dc.html",
   "android.settings.invite.no-code-yet.dc.html",
@@ -6475,7 +6223,6 @@
   "android.album.links-and-files.dc.html",
   "android.album.set-primary-release.dc.html",
   "android.library.artist.other-names.dc.html",
-  "android.library.albums.several-picked.dc.html",
   "android.storage.releases.dc.html",
   "android.welcome.libraries.dc.html",
   "android.welcome.library-menu.dc.html",
@@ -6566,7 +6313,6 @@
   "android.settings.sync.pending.dc.html",
   "mac.settings.person.s3.dc.html",
   "android.settings.person.s3.dc.html",
-  "android.parts.restore-code.dc.html",
   "mac.welcome.libraries.unreadable.dc.html",
   "android.welcome.libraries.unreadable.dc.html",
   "mac.album.record-sides.dc.html",
@@ -6663,10 +6409,6 @@
   {
    "id": "explore",
    "name": "Explorations"
-  },
-  {
-   "id": "shared",
-   "name": "Shared"
   }
  ],
  "title": "bae mocks"

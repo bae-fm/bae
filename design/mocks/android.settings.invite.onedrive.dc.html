@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
 <style>
-body{margin:0}
+body{margin:0;background:var(--elevated)}
 a{color:var(--accent)}a:hover{color:#F6BFD9}
 .ib{width:48px;height:48px;flex:none;display:flex;align-items:center;justify-content:center;background:none;border:0;padding:0;color:var(--text-primary);cursor:pointer}
 .ib svg{fill:currentColor}
@@ -41,7 +41,7 @@ a{color:var(--accent)}a:hover{color:#F6BFD9}
     <x-import component-from-global-scope="Bae.AndroidRow" title="Invite" action="{{yes}}" leading-icon="add"></x-import>
   </x-import>
   <x-import component-from-global-scope="Bae.AndroidDialog" title="Invite a person" width="340">
-    <dc-import name="android.parts.invite-fields" storage="onedrive" key-owner="theirs" hint-size="100%,84px"></dc-import>
+    <x-import component-from-global-scope="Bae.AndroidInviteFields" storage="onedrive" key-owner="theirs"></x-import>
     <x-import component-from-global-scope="Bae.AndroidDialogActions">
       <x-import component-from-global-scope="Bae.AndroidButton" kind="text" neutral="{{yes}}">Cancel</x-import>
       <x-import component-from-global-scope="Bae.AndroidButton" kind="text">Create invite</x-import>

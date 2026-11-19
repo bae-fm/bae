@@ -14,11 +14,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
 <style>
-body{margin:0;background:var(--background)}
+body{margin:0;background:var(--elevated)}
 
 </style>
 </helmet>
-<x-import component-from-global-scope="Bae.AndroidScreen" keyboard="{{ true }}"><div style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:32px;box-sizing:border-box;text-align:center;font:400 14px/20px var(--font-android)"><x-import component-from-global-scope="Bae.Logo" size="120"></x-import><div style="height:32px"></div><x-import component-from-global-scope="Bae.AndroidButton">Scan code</x-import><x-import component-from-global-scope="Bae.AndroidButton" kind="outlined">Enter code</x-import></div><x-import component-from-global-scope="Bae.AndroidDialog" title="S3 key" width="340" message="Enter your credentials for your S3 storage."><dc-import name="android.parts.s3-key-fields" key-id="AKIA4EXAMPLE" hint-size="100%,150px"></dc-import><x-import component-from-global-scope="Bae.AndroidDialogActions"><x-import component-from-global-scope="Bae.AndroidButton" kind="text" neutral="{{yes}}">Back</x-import><x-import component-from-global-scope="Bae.AndroidButton" kind="text" off="{{yes}}">Add</x-import></x-import></x-import></x-import>
+<x-import component-from-global-scope="Bae.AndroidScreen" keyboard="{{ true }}"><div style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:32px;box-sizing:border-box;text-align:center;font:400 14px/20px var(--font-android)"><x-import component-from-global-scope="Bae.Logo" size="120"></x-import><div style="height:32px"></div><x-import component-from-global-scope="Bae.AndroidButton">Scan code</x-import><x-import component-from-global-scope="Bae.AndroidButton" kind="outlined">Enter code</x-import></div><x-import component-from-global-scope="Bae.AndroidDialog" title="S3 key" width="340" message="Enter your credentials for your S3 storage."><x-import component-from-global-scope="Bae.AndroidS3KeyFields" key-id="AKIA4EXAMPLE"></x-import><x-import component-from-global-scope="Bae.AndroidDialogActions"><x-import component-from-global-scope="Bae.AndroidButton" kind="text" neutral="{{yes}}">Back</x-import><x-import component-from-global-scope="Bae.AndroidButton" kind="text" off="{{yes}}">Add</x-import></x-import></x-import></x-import>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":412,"height":916}}'>
 class Component extends DCLogic {

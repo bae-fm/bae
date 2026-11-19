@@ -18,7 +18,7 @@ body{margin:0;background:var(--background)}
 
 </style>
 </helmet>
-<x-import component-from-global-scope="Bae.AndroidLibraryScreen" view="Albums"><div style="height:100%;box-sizing:border-box;padding:32px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:12px"><div style="font:400 14px var(--font-android);color:var(--text-secondary)">No albums yet</div></div></x-import>
+<x-import component-from-global-scope="Bae.AndroidLibraryScreen" view="Albums"><x-import component-from-global-scope="Bae.AndroidContentUnavailable" title="No albums yet"></x-import></x-import>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":412,"height":916}}'>
 class Component extends DCLogic {

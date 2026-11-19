@@ -12,7 +12,7 @@
 <x-dc>
 <helmet>
 <style>
-body{margin:0}
+body{margin:0;background:var(--elevated)}
 .side{display:block;width:100%;text-align:left;border:0;background:none;color:var(--text-primary);font:13px -apple-system,'SF Pro Text',system-ui,sans-serif;padding:5px 10px;border-radius:6px;cursor:pointer}
 .box{background:var(--surface);border-radius:8px;display:flex;flex-direction:column}
 .r{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:36px;padding:4px 12px;font-size:13px}
@@ -44,7 +44,7 @@ body{margin:0}
     </x-import><x-import component-from-global-scope="Bae.MacSheetFooter"><x-import component-from-global-scope="Bae.MacButton">Invite…</x-import></x-import>
   </x-import>
   <x-import component-from-global-scope="Bae.MacSheet" title="Invite a person" overlay="{{yes}}" width="440">
-    <dc-import name="mac.parts.invite-fields" storage="s3" key-owner="mine" hint-size="100%,50px"></dc-import>
+    <x-import component-from-global-scope="Bae.MacInviteFields" storage="s3" key-owner="mine"></x-import>
     <x-import component-from-global-scope="Bae.MacSheetFooter" split="{{yes}}">
       <x-import component-from-global-scope="Bae.MacButton">Use their own key instead</x-import>
       <x-import component-from-global-scope="Bae.MacButton">Cancel</x-import>

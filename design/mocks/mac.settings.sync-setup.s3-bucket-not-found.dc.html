@@ -12,7 +12,7 @@
 <x-dc>
 <helmet>
 <style>
-body{margin:0}
+body{margin:0;background:var(--elevated)}
 .side{display:block;width:100%;text-align:left;border:0;background:none;color:var(--text-primary);font:13px -apple-system,'SF Pro Text',system-ui,sans-serif;padding:5px 10px;border-radius:6px;cursor:pointer}
 .box{background:var(--surface);border-radius:8px;display:flex;flex-direction:column}
 .r{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:36px;padding:4px 12px;font-size:13px}
@@ -50,7 +50,7 @@ body{margin:0}
     </x-import>
   </x-import>
   <x-import component-from-global-scope="Bae.MacSheet" title="Set up sync: S3-compatible" overlay="{{yes}}">
-    <dc-import name="mac.parts.s3-form" error="bucket" hint-size="460px,360px"></dc-import>
+    <x-import component-from-global-scope="Bae.MacS3Form" error="bucket"></x-import>
   </x-import>
 </x-import>
 </x-dc>

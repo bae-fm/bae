@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
 <style>
-body{margin:0}
+body{margin:0;background:var(--background)}
 a{color:var(--accent)}a:hover{color:#F6BFD9}
 .ib{width:48px;height:48px;flex:none;display:flex;align-items:center;justify-content:center;background:none;border:0;padding:0;color:var(--text-primary);cursor:pointer}
 .ib svg{fill:currentColor}
@@ -28,7 +28,7 @@ a{color:var(--accent)}a:hover{color:#F6BFD9}
 </style>
 </helmet>
 <x-import component-from-global-scope="Bae.AndroidScreen" title="Sync" back="{{yes}}">
-  <dc-import name="android.parts.sync-status" status="Synced" tone="success" cause="" fix="" last-synced="" hint-size="100%,140px"></dc-import>
+  <x-import component-from-global-scope="Bae.AndroidSyncStatus" status="Synced" tone="success" cause="" fix="" last-synced=""></x-import>
   <x-import component-from-global-scope="Bae.AndroidSection" title="Cloud home"></x-import>
   <x-import component-from-global-scope="Bae.AndroidCard">
     <x-import component-from-global-scope="Bae.AndroidRow" title="Provider" subtitle="Dropbox"></x-import>
@@ -36,7 +36,7 @@ a{color:var(--accent)}a:hover{color:#F6BFD9}
     <x-import component-from-global-scope="Bae.AndroidRow" title="Folder" subtitle="Music"></x-import>
     <x-import component-from-global-scope="Bae.AndroidRow" title="Open in browser" action="{{yes}}"></x-import>
   </x-import>
-  <dc-import name="android.parts.restore-code" shown="true" hint-size="100%,260px"></dc-import>
+  <x-import component-from-global-scope="Bae.AndroidRestoreCode" shown="true"></x-import>
 </x-import>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":412,"height":916}}'>

@@ -5,13 +5,14 @@ bae's screens as they should work, drawn on a claude.ai Design canvas. Each
 (`mac.settings.subsonic.port-in-use`), as
 agent-instructions' `principles/design-to-implementation.md` sets out;
 `canvas.json` places the boards on pages and holds the notes beside them.
-A board another board mounts (`dc-import`) is a part, named
-`<platform>.parts.<thing>`. A board that every platform shares, such as a table of states, takes `all` as
-its platform (`all.settings.sync.states-table`).
+A board draws each piece of its screen with the design system's component
+for it (`x-import`), and no board mounts another board. A board that every
+platform shares, such as a table of states, takes `all` as its platform
+(`all.settings.sync.states-table`).
 
 `shots.txt` lists, one name a line, the boards whose screens get a shot: the
 app's real view drawn in a test and checked against the board. Explorations,
-proposals, parts and boards that gather every state of a part side by side
+proposals and boards that gather every state of a component side by side
 have none; a board for a screen the code doesn't build yet joins the list
 when it does.
 
@@ -24,8 +25,8 @@ Yellow notes beside a row name what the code needs.
 A canvas holds at most 512 files, so the boards are published as two
 canvases, split by page:
 
-- "bae boards: welcome, settings, library": the welcome, settings, library,
-  logo and shared pages.
+- "bae boards: welcome, settings, library": the welcome, settings, library
+  and logo pages.
 - "bae boards: home, import, storage": the home, loading, search, import,
   storage and explore pages.
 

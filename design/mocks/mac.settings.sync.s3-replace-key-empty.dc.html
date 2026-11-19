@@ -12,15 +12,15 @@
 <x-dc>
 <helmet>
 <style>
-body{margin:0}
+body{margin:0;background:var(--elevated)}
 </style>
 </helmet>
 <x-import component-from-global-scope="Bae.MacSettingsWindow" pane="Library" title="Sync" back="Library">
-  <dc-import name="mac.parts.sync-status" status="Synced" tone="success" cause="" fix="" last-synced="" hint-size="100%,110px"></dc-import>
-  <dc-import name="mac.parts.s3-cloud-home" key-id="AKIA4EXAMPLEOLD" hint-size="100%,210px"></dc-import>
-<x-import component-from-global-scope="Bae.MacSection" title="Restore code"><dc-import name="mac.parts.restore-code" s3="true" hint-size="100%,150px"></dc-import></x-import>
+  <x-import component-from-global-scope="Bae.MacSyncStatus" status="Synced" tone="success" cause="" fix="" last-synced=""></x-import>
+  <x-import component-from-global-scope="Bae.MacCloudHome" key-id="AKIA4EXAMPLEOLD"></x-import>
+<x-import component-from-global-scope="Bae.MacSection" title="Restore code"><x-import component-from-global-scope="Bae.MacRestoreCode" s3="true"></x-import></x-import>
   <x-import component-from-global-scope="Bae.MacSheet" title="S3 key" overlay="{{yes}}" width="440" message="Enter a key that can use this library’s S3 storage.">
-    <dc-import name="mac.parts.s3-key-fields" focus="id" hint-size="100%,90px"></dc-import>
+    <x-import component-from-global-scope="Bae.MacS3KeyFields" focus="id"></x-import>
     <x-import component-from-global-scope="Bae.MacSheetFooter"><x-import component-from-global-scope="Bae.MacButton">Cancel</x-import><x-import component-from-global-scope="Bae.MacButton" kind="primary" off="{{yes}}">Save</x-import></x-import>
   </x-import>
 </x-import>

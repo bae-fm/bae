@@ -5,7 +5,7 @@
 [[canvas]]
 title = "bae boards: welcome, settings, library"
 launch = "welcome"
-pages = ["welcome", "settings", "library", "logo", "shared"]
+pages = ["welcome", "settings", "library", "logo"]
 
 [[canvas]]
 title = "bae boards: home, import, storage"

@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
 <style>
-body{margin:0}
+body{margin:0;background:var(--background)}
 a{color:var(--accent)}a:hover{color:#F6BFD9}
 .ib{width:48px;height:48px;flex:none;display:flex;align-items:center;justify-content:center;background:none;border:0;padding:0;color:var(--text-primary);cursor:pointer}
 .ib svg{fill:currentColor}
@@ -28,7 +28,7 @@ a{color:var(--accent)}a:hover{color:#F6BFD9}
 </style>
 </helmet>
 <x-import component-from-global-scope="Bae.AndroidScreen">
-  <div style="flex: 1; display: flex; flex-direction: column; padding: 0 0 24px"><div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px"><x-import component-from-global-scope="Bae.Logo" size="150" bob="{{yes}}" glow="{{yes}}"></x-import><div style="font-size: 16px; line-height: 24px; color: var(--text-secondary)">Your music, everywhere</div></div><dc-import name="android.parts.welcome-buttons" hint-size="100%,106px"></dc-import></div>
+  <x-import component-from-global-scope="Bae.AndroidWelcomeHome" empty="{{yes}}"></x-import>
 </x-import>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":412,"height":916}}'>

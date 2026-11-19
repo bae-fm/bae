@@ -12,7 +12,7 @@
 <x-dc>
 <helmet>
 <style>
-body{margin:0}
+body{margin:0;background:var(--background)}
 .side{display:block;width:100%;text-align:left;border:0;background:none;color:var(--text-primary);font:13px -apple-system,'SF Pro Text',system-ui,sans-serif;padding:5px 10px;border-radius:6px;cursor:pointer}
 .box{background:var(--surface);border-radius:8px;display:flex;flex-direction:column}
 .r{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:36px;padding:4px 12px;font-size:13px}
@@ -37,17 +37,14 @@ body{margin:0}
   <x-import component-from-global-scope="Bae.MacBox">
     <x-import component-from-global-scope="Bae.MacRow" label="Status" value="Syncing…"></x-import>
   </x-import>
-  <x-import component-from-global-scope="Bae.MacSection" title="Cloud home">
-    <x-import component-from-global-scope="Bae.MacBox">
-      <x-import component-from-global-scope="Bae.MacRow" label="Provider" value="Dropbox"></x-import>
-    </x-import>
-  </x-import>
+  <x-import component-from-global-scope="Bae.MacCloudHome" provider="dropbox"></x-import>
   <x-import component-from-global-scope="Bae.MacSection" title="Restore code">
-    <dc-import name="mac.parts.restore-code" hint-size="460px,150px"></dc-import>
+    <x-import component-from-global-scope="Bae.MacRestoreCode"></x-import>
   </x-import>
   <x-import component-from-global-scope="Bae.MacSheet" title="Set up sync: Dropbox" overlay="{{yes}}">
-    <div style="font-weight: 600">Restore code</div>
-    <dc-import name="mac.parts.restore-code" hint-size="428px,150px"></dc-import>
+    <x-import component-from-global-scope="Bae.MacSection" title="Restore code">
+      <x-import component-from-global-scope="Bae.MacRestoreCode"></x-import>
+    </x-import>
     <x-import component-from-global-scope="Bae.MacSheetFooter">
       <x-import component-from-global-scope="Bae.MacButton" kind="primary">Done</x-import>
     </x-import>

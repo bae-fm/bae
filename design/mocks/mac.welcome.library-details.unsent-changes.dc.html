@@ -12,7 +12,7 @@
 <x-dc>
 <helmet>
 <style>
-body{margin:0}
+body{margin:0;background:var(--background)}
 .side{display:block;width:100%;text-align:left;border:0;background:none;color:var(--text-primary);font:13px -apple-system,'SF Pro Text',system-ui,sans-serif;padding:5px 10px;border-radius:6px;cursor:pointer}
 .box{background:var(--surface);border-radius:8px;display:flex;flex-direction:column}
 .r{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:36px;padding:4px 12px;font-size:13px}
@@ -25,8 +25,8 @@ body{margin:0}
 </style>
 </helmet>
 <x-import component-from-global-scope="Bae.MacWelcomeWindow" height="680">
-  <div style="position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 28px 0 48px"><x-import component-from-global-scope="Bae.Logo" size="72" bob="{{yes}}" glow="{{yes}}"></x-import><div style="margin-top: 10px; font-size: 15px; color: var(--text-secondary)">Your music, everywhere</div><div style="width: 420px; margin-top: 28px; display: flex; flex-direction: column; gap: 8px"><dc-import name="mac.parts.welcome-libraries" hint-size="100%,170px"></dc-import></div></div>
-  <x-import component-from-global-scope="Bae.MacPopover" width="320" top="402" right="114"><x-import component-from-global-scope="Bae.MacSection" title="Home music"><x-import component-from-global-scope="Bae.MacBox"><x-import component-from-global-scope="Bae.MacRow" label="Status" value="Unsent changes" tone="warning"></x-import><x-import component-from-global-scope="Bae.MacRow" label="Last synced" value="2 hours ago"></x-import><x-import component-from-global-scope="Bae.MacRow" label="Provider" value="Dropbox"></x-import><x-import component-from-global-scope="Bae.MacRow" label="Account" value="mara.quill@example.com"></x-import><x-import component-from-global-scope="Bae.MacRow" label="Folder" value="Music"></x-import></x-import></x-import></x-import>
+  <x-import component-from-global-scope="Bae.MacWelcomeHome"></x-import>
+  <x-import component-from-global-scope="Bae.MacPopover" width="320" top="402" right="114"><x-import component-from-global-scope="Bae.MacSection" title="Home music"><x-import component-from-global-scope="Bae.MacBox"><x-import component-from-global-scope="Bae.MacRow" label="Status" value="Unsent changes" tone="warning"></x-import><x-import component-from-global-scope="Bae.MacRow" label="Last synced" value="2 hours ago"></x-import><x-import component-from-global-scope="Bae.MacCloudHome" provider="dropbox" account="mara.quill@example.com" folder="Music" bare="{{yes}}"></x-import></x-import></x-import></x-import>
 </x-import>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":690,"height":680}}'>

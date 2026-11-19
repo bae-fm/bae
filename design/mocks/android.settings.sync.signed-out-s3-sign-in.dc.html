@@ -19,11 +19,11 @@ a{color:var(--accent)}a:hover{color:#F6BFD9}
 </style>
 </helmet>
 <x-import component-from-global-scope="Bae.AndroidScreen" title="Sync" back="{{yes}}" keyboard="{{ true }}">
-  <dc-import name="android.parts.sync-status" status="Signed out of S3" tone="warning" cause="Your changes stay on this device." fix="Sign in to S3" last-synced="3 days ago" hint-size="100%,140px"></dc-import>
-  <dc-import name="android.parts.s3-cloud-home" key-id="AKIA4EXAMPLEOLD" hint-size="100%,400px"></dc-import>
-  <dc-import name="android.parts.restore-code" s3="true" hint-size="100%,260px"></dc-import>
+  <x-import component-from-global-scope="Bae.AndroidSyncStatus" status="Signed out of S3" tone="warning" cause="Your changes stay on this device." fix="Sign in to S3" last-synced="3 days ago"></x-import>
+  <x-import component-from-global-scope="Bae.AndroidCloudHome" key-id="AKIA4EXAMPLEOLD"></x-import>
+  <x-import component-from-global-scope="Bae.AndroidRestoreCode" s3="true"></x-import>
   <x-import component-from-global-scope="Bae.AndroidDialog" title="S3 key" width="340" message="Enter a key that can use this library’s S3 storage.">
-    <dc-import name="android.parts.s3-key-fields" focus="id" hint-size="100%,150px"></dc-import>
+    <x-import component-from-global-scope="Bae.AndroidS3KeyFields" focus="id"></x-import>
     <x-import component-from-global-scope="Bae.AndroidDialogActions"><x-import component-from-global-scope="Bae.AndroidButton" kind="text" neutral="{{yes}}">Cancel</x-import><x-import component-from-global-scope="Bae.AndroidButton" kind="text" off="{{yes}}">Save</x-import></x-import>
   </x-import>
 </x-import>
