@@ -80,7 +80,7 @@ fn pacer_sends_no_more_than_the_latency_at_the_anchor() {
 /// A stream's start sends a Mac's AirPlay Receiver no more at once than it
 /// keeps, so the receiver drops none of it, and the sender keeps pace with
 /// the clock after. Sabotage: send the whole 2 s latency lead at the start,
-/// as bae did, and the receiver drops every packet past its 90th.
+/// and the receiver drops every packet past its 90th.
 #[test]
 fn a_stream_start_sends_no_more_than_a_mac_receiver_keeps() {
     let mut intake = AudioIntake::mac();
