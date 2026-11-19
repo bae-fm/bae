@@ -30,7 +30,6 @@ import fm.bae.app.ui.components.AndroidCard
 import fm.bae.app.ui.components.AndroidMoreMenu
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidProgress
-import fm.bae.app.ui.components.AndroidProgressLine
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidSection
 import fm.bae.app.ui.components.AndroidSpinner
@@ -277,7 +276,13 @@ private fun RunningLibraryRow(
                 modifier = Modifier.fillMaxWidth(),
                 bar = false,
             ) {
-                AndroidProgressLine(steps = running.opening, modifier = Modifier.fillMaxWidth(), bar = false) {
+                AndroidProgress(
+                    steps = running.opening,
+                    title = { context.coreString(it.key) },
+                    fraction = { it.fraction },
+                    modifier = Modifier.fillMaxWidth(),
+                    bar = false,
+                ) {
                     if (!running.removing) {
                         Text(
                             text = stringResource(R.string.loading_opening_library),
