@@ -51,10 +51,8 @@ const DIRECT_KEYS: &[&str] = &[
     "core.access_key.unused_invite",
     "core.invite.cancel_confirm.title",
     "core.invite.cancel_confirm.keep",
-    // The words of the Sync page's Reconnect fix and of signing in to
-    // storage again.
+    // The words of the Sync page's Reconnect fix.
     "core.pending.action.reconnect",
-    "core.pending.action.sign_in",
     // The Activity panel.
     "core.activity.title",
     "core.activity.attention",

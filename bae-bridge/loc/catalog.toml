@@ -12516,38 +12516,6 @@ da = "Personens adgangsnøgler er ændret."
 nb = "Personens tilgangsnøkler er endret."
 fi = "Tämän henkilön käyttöavaimet muuttuivat."
 
-[messages."core.pending.action.sign_in"]
-value = "Sign in"
-
-[messages."core.pending.action.sign_in".translations]
-es = "Iniciar sesión"
-fr = "Se connecter"
-de = "Anmelden"
-pt-BR = "Entrar"
-ja = "サインイン"
-ko = "로그인"
-zh-Hans = "登录"
-ar = "تسجيل الدخول"
-he = "התחבר"
-uk = "Увійти"
-bg = "Влизане"
-pl = "Zaloguj się"
-cs = "Přihlásit se"
-hr = "Prijavi se"
-zh-Hant = "登入"
-it = "Accedi"
-tr = "Oturum aç"
-nl = "Aanmelden"
-sk = "Prihlásiť sa"
-hu = "Bejelentkezés"
-ro = "Conectează-te"
-el = "Σύνδεση"
-pt-PT = "Iniciar sessão"
-sv = "Logga in"
-da = "Log ind"
-nb = "Logg inn"
-fi = "Kirjaudu sisään"
-
 [messages."core.pending.action.reconnect"]
 value = "Reconnect"
 
