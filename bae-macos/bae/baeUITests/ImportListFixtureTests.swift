@@ -46,12 +46,7 @@ final class ImportListFixtureTests: XCTestCase {
         XCTAssertTrue(importSection.waitForExistence(timeout: 20))
         importSection.click()
         let list = app.tables["import-list"]
-        for (folder, _) in states {
-            XCTAssertTrue(
-                list.staticTexts[folder].waitForExistence(timeout: 20),
-                folder
-            )
-        }
+        assertListsExactly(Set(states.map(\.1)), in: list, after: "Opening")
 
         // The list's menu, named by what it holds.
         let menu = window.menuButtons["Sorting, filtering and watched folders"]
@@ -59,14 +54,17 @@ final class ImportListFixtureTests: XCTestCase {
         menu.click()
         // Lookup Error, Error and Import Error wait on the person as Needs
         // You does, so its entry holds all four.
-        for entry in [
+        let entryTitles = [
             "All (7)", "Needs you (4)", "In progress (0)", "Identified (1)",
             "Unmatched (1)", "Not looked up (1)",
-        ] {
-            XCTAssertTrue(
-                app.menuItems[entry].waitForExistence(timeout: 10),
-                entry
-            )
+        ]
+        let entriesShown = waitUntil(timeout: 10) {
+            entryTitles.allSatisfy { app.menuItems[$0].exists }
+        }
+        if !entriesShown {
+            for entry in entryTitles {
+                XCTAssertTrue(app.menuItems[entry].exists, entry)
+            }
         }
         // An entry holding no row cannot be chosen.
         XCTAssertFalse(app.menuItems["In progress (0)"].isEnabled)
@@ -91,26 +89,29 @@ final class ImportListFixtureTests: XCTestCase {
     }
 
     /// The list shows the folder of each state in `shown`, and of no other.
+    /// One wait covers every folder: each wait for one element takes a second
+    /// even when the element is already there, and a wait per folder per
+    /// entry kept the test past its time allowance.
     @MainActor
     private func assertListsExactly(
         _ shown: Set<LibraryFixture.CandidateState>,
         in list: XCUIElement,
         after entry: String
     ) {
+        let listsExactly = {
+            Self.states.allSatisfy { folder, state in
+                list.staticTexts[folder].exists == shown.contains(state)
+            }
+        }
+        if waitUntil(timeout: 20, listsExactly) { return }
         for (folder, state) in Self.states {
-            let row = list.staticTexts[folder]
-            if shown.contains(state) {
-                XCTAssertTrue(
-                    row.waitForExistence(timeout: 10),
-                    "\(entry) lists \(folder)"
-                )
-            }
-            else {
-                XCTAssertTrue(
-                    row.waitForNonExistence(timeout: 10),
-                    "\(entry) leaves out \(folder)"
-                )
-            }
+            XCTAssertEqual(
+                list.staticTexts[folder].exists,
+                shown.contains(state),
+                shown.contains(state)
+                    ? "\(entry) lists \(folder)"
+                    : "\(entry) leaves out \(folder)"
+            )
         }
     }
 }
