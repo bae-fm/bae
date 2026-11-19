@@ -623,10 +623,6 @@ internal open class FakeAppHandle(
         source: BridgeGallerySource,
     ): ByteArray = unfaked("fetchReleaseImageBytes")
 
-    override suspend fun lockActiveLibrary() {
-        unfaked("lockActiveLibrary")
-    }
-
     override suspend fun renameLibrary(name: String) {
         unfaked("renameLibrary")
     }

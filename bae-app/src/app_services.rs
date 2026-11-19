@@ -446,7 +446,6 @@ impl AppServices {
     ) -> Result<(), bae_library::LibraryError> {
         Ok(self.inner.membership.rename_store(name.as_str()).await?)
     }
-    delegate_lib!(store, forget_encryption_key => forget_store_keys() -> ());
     pub async fn unlock_store_key(&self) -> Result<(), bae_library::LibraryError> {
         self.inner.store.unlock_store_key().await?;
         Ok(())

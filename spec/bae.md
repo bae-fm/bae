@@ -4424,8 +4424,7 @@ until an app dismisses it, so nothing is gone while bae doesn't show them.
 **The keyring.** The library's encryption key lives in the system keyring. A
 keyring that is locked right now, by a locked session or a sleeping display,
 is told apart from a broken one: bae asks again after unlock instead of
-reporting the library unusable. A device can forget the key, which locks the
-library until it is unlocked again.
+reporting the library unusable.
 
 **Backups of the phone.** Android's backup and its transfer to a new phone
 leave out every library and its stores and the keyring: they are this

@@ -194,11 +194,6 @@ forward! { sync this => {
 } }
 
 forward! { async this => {
-    fn lock_active_library() -> () {
-        this.services.forget_encryption_key().await?;
-        Ok(())
-    }
-
     fn unlock_store_key() -> () {
         this.services
             .unlock_store_key()
