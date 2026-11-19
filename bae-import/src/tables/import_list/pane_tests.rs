@@ -498,7 +498,6 @@ async fn import_candidate_moves_between_candidates_on_one_subscription() {
 /// write to that candidate and for no write of another folder the scan finds,
 /// with its own files, state and draft.
 #[tokio::test]
-#[ignore = "coven narrows a table its statement compares a column of and joins to another source by the comparison alone, so the files statement reruns for another folder's audio file"]
 async fn a_scan_of_another_folder_leaves_the_pane_s_read_unmarked() {
     let (db, _temp) = empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db.clone());
