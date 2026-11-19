@@ -160,11 +160,12 @@ async fn test_multiple_releases_independent_completion() {
 }
 
 // ---------------------------------------------------------------------------
-// upload requires configured cloud storage.
+// With no storage set up, coven accepts the move and holds it until storage
+// is connected. Only the apps' Upload action waits for storage.
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn test_manage_refused_without_cloud_storage() {
+async fn test_move_to_cloud_without_storage_is_accepted_and_waits() {
     let tmp = TestFolder::new();
     // No storage connected, so the sync loop is NOT running.
     let (mgr, _cloud) = setup_manager(&tmp).await;
@@ -182,20 +183,16 @@ async fn test_manage_refused_without_cloud_storage() {
     )
     .await;
 
-    // No configured destination: refuse before attaching any files.
     let result = mgr
         .manager()
         .upload_releases(std::slice::from_ref(&release_id))
         .await
-        .expect("the batch reports a per-release refusal");
-    let bae_library::UploadReleasesOutcome::Partial { receipt: None, failure } = result else {
-        panic!("upload must refuse the release without a receipt");
+        .expect("the batch reports its outcome");
+    let bae_library::UploadReleasesOutcome::Complete { receipt } = result else {
+        panic!("coven accepts the move with no storage set up");
     };
-    assert_eq!(failure.release_ids, vec![release_id.clone()]);
-    assert!(
-        db.queued_upload_count_for_test().await.unwrap() == 0,
-        "no upload may be enqueued when the pipeline can't drain it"
-    );
+    assert_eq!(receipt.release_ids, vec![release_id.clone()]);
+    // Nothing is stored until storage is connected, so the release stays on one device.
     assert_eq!(crate::release_storage(&db, &release_id).await, ReleaseStorageState::OnOneDevice);
 }
 
