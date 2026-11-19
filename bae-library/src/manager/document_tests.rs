@@ -6,13 +6,14 @@ use super::*;
 use crate::manager::tests::*;
 use bae_records::{NewReleaseFile, ReleaseFileRole};
 use bae_util::content_type::ContentType;
+use bae_util::test_files::TestFolder;
 use time::UtcDateTime;
 
 /// Seed `release_id`'s file `name` in `role`, holding `bytes`, as an import
 /// stages it on this device.
 async fn seed(
     manager: &LibraryManager,
-    dir: &std::path::Path,
+    dir: &TestFolder,
     release_id: &str,
     name: &str,
     role: ReleaseFileRole,
@@ -26,8 +27,7 @@ async fn seed(
         coven::IdSource::new_id(&coven::UuidIds).to_string(),
         UtcDateTime::now(),
     );
-    let path = dir.join(name);
-    std::fs::write(&path, bytes).unwrap();
+    let path = dir.write(name, bytes);
     manager.add_external_file_for_test(&file, &path).await.unwrap();
     file.id
 }
@@ -38,7 +38,7 @@ async fn a_document_written_in_latin1_reads_decoded() {
     let manager = test.library.manager();
     let log = seed(
         manager,
-        temp_dir.path(),
+        &temp_dir,
         &release.id,
         "rip.log",
         ReleaseFileRole::Document(bae_records::DocumentKind::RipLog),
@@ -47,7 +47,7 @@ async fn a_document_written_in_latin1_reads_decoded() {
     .await;
     let sheet = seed(
         manager,
-        temp_dir.path(),
+        &temp_dir,
         &release.id,
         "disc.cue",
         ReleaseFileRole::TrackSheet,
@@ -67,8 +67,7 @@ async fn a_file_that_is_no_document_or_not_the_release_s_is_refused() {
     let (test, temp_dir, _album, release) = manager_with_release().await;
     let manager = test.library.manager();
     let nfo =
-        seed(manager, temp_dir.path(), &release.id, "notes.nfo", ReleaseFileRole::Other, b"notes")
-            .await;
+        seed(manager, &temp_dir, &release.id, "notes.nfo", ReleaseFileRole::Other, b"notes").await;
 
     let other = manager.read_release_document(&release.id, &nfo).await;
     let missing = manager.read_release_document(&release.id, "absent-file-id").await;

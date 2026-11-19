@@ -4,6 +4,7 @@
 
 use super::*;
 use crate::manager::tests::*;
+use bae_util::test_files::TestFolder;
 
 fn batch(done: u32, total: u32) -> bae_views::TransferBatch {
     bae_views::TransferBatch { done, total }
@@ -25,11 +26,13 @@ async fn pinnable_releases(test: &TestManager, count: usize) -> Vec<String> {
     let manager = test.library.manager();
     connect_test_cloud(test).await;
     let mut releases = Vec::with_capacity(count);
+    let originals = TestFolder::new();
     for index in 0..count {
         let bytes = format!("release-{index}-bytes").into_bytes();
         let release = uploaded_release_with_files(
             manager,
-            &manager.library_path().join(format!("pin-source-{index}")),
+            &originals,
+            format!("pin-source-{index}"),
             &format!("Album Title {index}"),
             &[("track.flac", &bytes)],
             false,
@@ -114,8 +117,7 @@ async fn pins_and_moves_to_this_device_are_counted_apart() {
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     let releases = pinnable_releases(&test, 4).await;
-    let folder = temp_dir.path().join("local");
-    std::fs::create_dir(&folder).unwrap();
+    let folder = temp_dir.create_folder("local");
 
     queue_pins(manager, &[releases[0].clone(), releases[1].clone()]).await;
     manager

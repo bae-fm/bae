@@ -2,9 +2,9 @@ use super::{closed_library_standing, StandingState};
 use bae_app_dir::AppDir;
 use bae_diagnostics::Diagnostics;
 use bae_sync_status::SyncStatusWord;
+use bae_util::test_files::TestFolder;
 use coven::Storage;
 use std::sync::Arc;
-use tempfile::TempDir;
 
 /// A library with S3 storage set up, synced, then closed.
 async fn synced_closed_library(
@@ -40,7 +40,7 @@ async fn synced_closed_library(
 /// changes it never uploaded, as coven recorded them before it closed.
 #[tokio::test]
 async fn a_closed_library_reports_its_last_sync_and_its_unsent_changes() {
-    let temp = TempDir::new().unwrap();
+    let temp = TestFolder::new();
     let installation =
         coven::Coven::in_memory(AppDir::under_home(temp.path()).unwrap().coven_app_dir());
     let sources = crate::test_libraries::TestSources::system();
@@ -84,7 +84,7 @@ async fn a_closed_library_reports_its_last_sync_and_its_unsent_changes() {
 /// sync's state words it, as it did while open.
 #[tokio::test]
 async fn a_closed_library_without_storage_holds_no_unsent_changes() {
-    let temp = TempDir::new().unwrap();
+    let temp = TestFolder::new();
     let installation =
         coven::Coven::in_memory(AppDir::under_home(temp.path()).unwrap().coven_app_dir());
     let sources = crate::test_libraries::TestSources::system();

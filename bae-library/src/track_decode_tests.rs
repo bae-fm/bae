@@ -15,11 +15,10 @@ impl bae_audio::DecodedSink for DiscardingSink {
 #[test]
 fn a_track_decode_whose_read_panics_fails_with_its_bug() {
     bae_audio::init();
-    let bytes = std::fs::read(
+    let bytes = bae_util::test_files::read_fixture(
         bae_audio::test_fixtures::cue_flac_dir()
             .join("03 Test Artist - Track Three (Brown Noise).flac"),
-    )
-    .expect("fixture");
+    );
     let buffer = bae_audio::sparse_buffer::create_sparse_buffer(bytes.len() as u64);
     buffer.append_at(0, &bytes);
     buffer.panic_reads();

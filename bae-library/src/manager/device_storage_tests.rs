@@ -119,10 +119,11 @@ async fn the_parts_hold_what_coven_and_the_image_cache_measure() {
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     connect_test_cloud(&test).await;
-    let pinned = uploaded_release(manager, &temp_dir.path().join("pinned"), "Pinned", true).await;
+    let pinned = uploaded_release(manager, &temp_dir, "pinned", "Pinned", true).await;
     let played = uploaded_release_with_files(
         manager,
-        &temp_dir.path().join("played"),
+        &temp_dir,
+        "played",
         "Played",
         &[("played.flac", b"played-bytes")],
         false,
@@ -170,10 +171,11 @@ async fn clear_cache_empties_the_cache_and_leaves_the_pinned_releases() {
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     connect_test_cloud(&test).await;
-    uploaded_release(manager, &temp_dir.path().join("pinned"), "Pinned", true).await;
+    uploaded_release(manager, &temp_dir, "pinned", "Pinned", true).await;
     let played = uploaded_release_with_files(
         manager,
-        &temp_dir.path().join("played"),
+        &temp_dir,
+        "played",
         "Played",
         &[("played.flac", b"played-bytes")],
         false,
@@ -249,7 +251,7 @@ async fn a_budget_no_choice_names_fails_the_subscription() {
 /// the subscription delivers each change.
 #[tokio::test]
 async fn data_from_before_a_reset_shows_until_it_is_deleted() {
-    let temp = tempfile::TempDir::new().unwrap();
+    let temp = bae_util::test_files::TestFolder::new();
     let app_dir = bae_app_dir::AppDir::at(temp.path()).unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let sources = bae_store::TestSources::system();

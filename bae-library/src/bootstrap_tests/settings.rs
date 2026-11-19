@@ -35,8 +35,7 @@ async fn settings(handle: &coven::CovenHandle) -> bae_preferences::Preferences {
 /// presets. The load runs under the transfer limits a library starts at.
 #[tokio::test]
 async fn a_restore_over_this_devices_copy_starts_at_a_new_librarys_settings() {
-    let temp = tempfile::TempDir::new().unwrap();
-    let app_dir = AppDir::at(temp.path()).unwrap();
+    let app_dir = AppDir::temporary().unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
     let replaced = keys_replaced_elsewhere(&installation, &storage).await;
@@ -71,8 +70,7 @@ async fn a_restore_over_this_devices_copy_starts_at_a_new_librarys_settings() {
 /// clears.
 #[tokio::test]
 async fn a_reset_starts_at_a_new_librarys_settings() {
-    let temp = tempfile::TempDir::new().unwrap();
-    let app_dir = AppDir::at(temp.path()).unwrap();
+    let app_dir = AppDir::temporary().unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
     let (store, _, _) = connected_library(&installation, &storage, "Household").await;

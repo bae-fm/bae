@@ -50,9 +50,6 @@ async-trait = { workspace = true }
 tokio-util = { workspace = true, features = ["io"] }
 rand = { workspace = true }
 tracing = { workspace = true }
-# The app directory's files are staged in a temporary file before an atomic
-# persist.
-tempfile = { workspace = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { workspace = true, features = ["js"] }

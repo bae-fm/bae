@@ -28,6 +28,7 @@ use bae_diagnostics::Diagnostics;
 use bae_import::{CatalogSessions, ImportServiceHandle};
 use bae_store::Store;
 use bae_sync_status::SyncStatus;
+use bae_util::test_files::TestFolder;
 use coven::{ClockRef, IdSourceRef};
 use std::sync::Arc;
 
@@ -415,9 +416,9 @@ pub async fn test_library_from_handle(
     .await
 }
 
-/// [`open_test_library`] over a fresh temp directory. The returned `TempDir`
+/// [`open_test_library`] over a fresh temp folder. The returned `TestFolder`
 /// owns the database file, so it must outlive the library.
-pub async fn setup_test_library() -> (TestLibrary, tempfile::TempDir) {
+pub async fn setup_test_library() -> (TestLibrary, TestFolder) {
     setup_test_library_with(
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
         bae_util::http::Http::for_test(),
@@ -430,9 +431,9 @@ pub async fn setup_test_library() -> (TestLibrary, tempfile::TempDir) {
 pub async fn setup_test_library_with(
     providers: bae_catalogs::providers::Providers,
     http: bae_util::http::Http,
-) -> (TestLibrary, tempfile::TempDir) {
+) -> (TestLibrary, TestFolder) {
     bae_util::test_logs::install();
-    let temp_dir = tempfile::TempDir::new().expect("test library temp dir");
+    let temp_dir = TestFolder::new();
     let library = open_test_library_with(temp_dir.path(), providers, http).await;
     (library, temp_dir)
 }
@@ -443,9 +444,9 @@ pub async fn setup_test_library_with_album_dir_within(
     providers: bae_catalogs::providers::Providers,
     http: bae_util::http::Http,
     files: coven::FileBudget,
-) -> (TestLibrary, std::path::PathBuf, tempfile::TempDir) {
+) -> (TestLibrary, TestFolder, TestFolder) {
     bae_util::test_logs::install();
-    let temp_dir = tempfile::TempDir::new().expect("test library temp dir");
+    let temp_dir = TestFolder::new();
     let store = open_test_db_within(temp_dir.path(), files).await;
     let library = TestLibrary::open(
         store,
@@ -454,26 +455,25 @@ pub async fn setup_test_library_with_album_dir_within(
         http,
     )
     .await;
-    let album_dir = temp_dir.path().join("album");
-    std::fs::create_dir_all(&album_dir).expect("test album dir");
-    (library, album_dir, temp_dir)
+    (library, TestFolder::new(), temp_dir)
 }
 
-/// [`setup_test_library_with`] with an `album/` directory made alongside it,
-/// for a test that writes audio into a folder and imports that folder. The
-/// `TempDir` owns both directories, so it must outlive the library.
+/// [`setup_test_library_with`] with a folder for the album beside it, for a
+/// test that writes audio into a folder and imports that folder. The library's
+/// folder, the last of the three, owns the library's files, so it must outlive
+/// the library.
 pub async fn setup_test_library_with_album_dir(
     providers: bae_catalogs::providers::Providers,
     http: bae_util::http::Http,
-) -> (TestLibrary, std::path::PathBuf, tempfile::TempDir) {
+) -> (TestLibrary, TestFolder, TestFolder) {
     setup_test_library_with_album_dir_within(providers, http, coven::FileBudget::for_test()).await
 }
 
 /// Set up a fresh library through the production creation and open paths.
 /// Sync is not set up: tests configure it themselves via
 /// connect_*/save_s3_config.
-pub fn setup_fresh_library(runtime: &tokio::runtime::Runtime) -> (TestLibrary, tempfile::TempDir) {
-    let tmp = tempfile::TempDir::new().unwrap();
+pub fn setup_fresh_library(runtime: &tokio::runtime::Runtime) -> (TestLibrary, TestFolder) {
+    let tmp = TestFolder::new();
     let app_dir = bae_app_dir::AppDir::under_home(tmp.path()).unwrap();
     let sources = TestSources::system();
     let installation = sources.installation(app_dir.coven_app_dir());
@@ -519,9 +519,9 @@ pub struct ImportedRelease {
     pub track_ids: Vec<String>,
     pub release_id: String,
     /// The folder the audio was written into, for a test that reads a real file.
-    pub album_dir: std::path::PathBuf,
+    pub album_dir: TestFolder,
     /// Owns the library's files, so it must outlive the library.
-    pub temp_dir: tempfile::TempDir,
+    pub temp_dir: TestFolder,
 }
 
 /// Import one Discogs-identified release from a folder, on the calling test's
@@ -536,7 +536,7 @@ pub async fn imported_release_setup<G>(
     generate_files: G,
 ) -> Result<(TestLibrary, ImportedRelease), Box<dyn std::error::Error>>
 where
-    G: FnOnce(&std::path::Path),
+    G: FnOnce(&TestFolder),
 {
     imported_release_setup_with(
         &bae_catalogs::fake_catalogs::FakeCatalogs::offline(),
@@ -558,7 +558,7 @@ pub async fn imported_release_setup_with<G>(
     generate_files: G,
 ) -> Result<(TestLibrary, ImportedRelease), Box<dyn std::error::Error>>
 where
-    G: FnOnce(&std::path::Path),
+    G: FnOnce(&TestFolder),
 {
     imported_release_setup_within(
         fakes,
@@ -582,7 +582,7 @@ pub async fn imported_release_setup_within<G>(
     generate_files: G,
 ) -> Result<(TestLibrary, ImportedRelease), Box<dyn std::error::Error>>
 where
-    G: FnOnce(&std::path::Path),
+    G: FnOnce(&TestFolder),
 {
     let (library, album_dir, temp_dir) = setup_test_library_with_album_dir_within(
         fakes.providers(),
@@ -595,7 +595,7 @@ where
     generate_files(&album_dir);
 
     let (release_id, _album_id) = library
-        .import_folder_as(album_dir.clone(), release_id_key, candidate_key, import_id)
+        .import_folder_as(album_dir.path().to_path_buf(), release_id_key, candidate_key, import_id)
         .await?;
     let tracks = library.records().get_tracks_for_release(&release_id).await?;
     let track_ids: Vec<String> = tracks.iter().map(|t| t.id.clone()).collect();

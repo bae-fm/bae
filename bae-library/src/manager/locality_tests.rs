@@ -6,8 +6,8 @@ use crate::manager::tests::*;
 use bae_records::OtherDevice;
 use bae_store::FormerDeviceState;
 use bae_types::release_storage::ReleaseStorageAction;
+use bae_util::test_files::TestFolder;
 use bae_views::album_detail::ReleasePlayability;
-use tempfile::TempDir;
 
 #[test]
 fn cancelling_queued_audio_keeps_only_this_device_playable() {
@@ -30,13 +30,14 @@ async fn check_release_detachment(devices: &crate::test_libraries::TwoDevices, u
     devices.pause().await;
     let manager = devices.a().manager();
     manager.store.set_uploads_paused(true).await.unwrap();
-    let original = TempDir::new().unwrap();
-    let destination = TempDir::new().unwrap();
+    let original = TestFolder::new();
+    let destination = TestFolder::new();
     let album = create_test_album();
     manager.records.insert_album(&album).await.unwrap();
     let release = insert_local_release_in_album(
         manager,
         &album.id,
+        &original,
         original.path(),
         &[("a.flac", b"first audio"), ("b.flac", b"second audio")],
     )
@@ -60,7 +61,7 @@ async fn check_release_detachment(devices: &crate::test_libraries::TwoDevices, u
         assert_eq!(moving_file_count(manager, &release.id).await, 0);
         // The second device has cached the audio; detachment must still prevent playback.
         for file in &files {
-            let expected = std::fs::read(original.path().join(&file.original_filename)).unwrap();
+            let expected = original.read(&file.original_filename);
             assert_eq!(
                 devices
                     .b()
@@ -100,7 +101,7 @@ async fn check_release_detachment(devices: &crate::test_libraries::TwoDevices, u
             original.path().join(&file.original_filename)
         };
         assert_eq!(manager.file_local_path(&file.id).await.unwrap(), Some(path));
-        let expected = std::fs::read(original.path().join(&file.original_filename)).unwrap();
+        let expected = original.read(&file.original_filename);
         assert_eq!(
             manager
                 .records
@@ -178,8 +179,9 @@ async fn next_playability(
 #[test]
 fn the_live_release_names_the_device_its_audio_is_on_until_it_moves_to_the_cloud() {
     crate::test_libraries::run_two_device_test(async |devices| {
-        let originals = TempDir::new().unwrap();
-        let release = release_on_the_first_device(devices, originals.path(), "Album").await;
+        let originals = TestFolder::new();
+        let release =
+            release_on_the_first_device(devices, &originals, originals.path(), "Album").await;
         let manager = devices.b().manager();
         let mut live = bae_views::LibraryViews::new(manager.store.clone())
             .subscribe_release_detail(Some(release.id.clone()));
@@ -210,8 +212,9 @@ fn the_live_release_names_the_device_its_audio_is_on_until_it_moves_to_the_cloud
 #[test]
 fn pin_is_offered_only_for_a_release_in_the_cloud() {
     crate::test_libraries::run_two_device_test(async |devices| {
-        let originals = TempDir::new().unwrap();
-        let release = release_on_the_first_device(devices, originals.path(), "Album").await;
+        let originals = TestFolder::new();
+        let release =
+            release_on_the_first_device(devices, &originals, originals.path(), "Album").await;
         assert_eq!(
             offered(devices.a().manager(), &release.id).await,
             (vec![ReleaseStorageAction::Upload], None)
@@ -251,9 +254,10 @@ fn pin_is_offered_only_for_a_release_in_the_cloud() {
 #[test]
 fn a_release_on_a_removed_device_names_it_as_removed() {
     crate::test_libraries::run_two_device_test(async |devices| {
-        let originals = TempDir::new().unwrap();
+        let originals = TestFolder::new();
         let release = insert_local_release_with_files(
             devices.b().manager(),
+            &originals,
             originals.path(),
             "Album",
             &[("track1.flac", b"audio")],
@@ -328,7 +332,8 @@ async fn unpinning_a_release_removes_its_audio_from_this_device_and_leaves_its_c
     connect_test_cloud(&test).await;
     let release = insert_local_release_with_files(
         manager,
-        &temp_dir.path().join("pinned-with-cover"),
+        &temp_dir,
+        "pinned-with-cover",
         "Pinned With Cover",
         &[("track.flac", b"track-bytes")],
     )
@@ -374,14 +379,16 @@ async fn a_pinned_release_over_the_budget_leaves_room_to_cache_a_played_track() 
     let played_bytes = vec![9_u8; 512];
     let big = insert_local_release_with_files(
         manager,
-        &temp_dir.path().join("big"),
+        &temp_dir,
+        "big",
         "Big",
         &[("big.flac", pinned_bytes.as_slice())],
     )
     .await;
     let played = insert_local_release_with_files(
         manager,
-        &temp_dir.path().join("played"),
+        &temp_dir,
+        "played",
         "Played",
         &[("played.flac", played_bytes.as_slice())],
     )
@@ -427,7 +434,8 @@ async fn unpinning_a_selection_releases_every_pin_in_one_write() {
     for name in ["a", "b"] {
         let release = insert_local_release_with_files(
             manager,
-            &temp_dir.path().join(name),
+            &temp_dir,
+            name,
             &format!("Kept {name}"),
             &[("track.flac", name.as_bytes())],
         )
@@ -479,6 +487,7 @@ async fn unpinning_a_local_release_leaves_its_files_here() {
     let manager = test.library.manager();
     let release = insert_local_release_with_files(
         manager,
+        &temp_dir,
         temp_dir.path(),
         "Local",
         &[("track.flac", b"local audio")],
@@ -505,7 +514,8 @@ async fn the_write_that_switches_a_releases_files_ends_its_entry() {
     connect_test_cloud(&test).await;
     let release = insert_local_release_with_files(
         manager,
-        &temp_dir.path().join("uploaded"),
+        &temp_dir,
+        "uploaded",
         "Uploaded",
         &[("track.flac", b"track-bytes")],
     )
@@ -517,8 +527,7 @@ async fn the_write_that_switches_a_releases_files_ends_its_entry() {
 
     // The copies are ready, but the release has no entry in the queue to end:
     // the write is refused and switches no file.
-    let refused_folder = temp_dir.path().join("refused");
-    std::fs::create_dir(&refused_folder).unwrap();
+    let refused_folder = temp_dir.create_folder("refused");
     let paths = files
         .iter()
         .map(|file| {
@@ -548,8 +557,7 @@ async fn the_write_that_switches_a_releases_files_ends_its_entry() {
         "a write that can't end the entry switches no file"
     );
 
-    let folder = temp_dir.path().join("local");
-    std::fs::create_dir(&folder).unwrap();
+    let folder = temp_dir.create_folder("local");
     move_to_this_device_and_wait(manager, std::slice::from_ref(&release.id), &folder)
         .await
         .unwrap();
@@ -569,7 +577,8 @@ async fn the_write_that_queues_a_moves_files_is_the_move() {
     connect_test_cloud(&test).await;
     let release = insert_local_release_with_files(
         manager,
-        &temp_dir.path().join("moved"),
+        &temp_dir,
+        "moved",
         "Moved",
         &[("track.flac", b"track-bytes")],
     )
@@ -599,13 +608,9 @@ async fn a_release_moved_to_this_device_lists_its_bytes_while_its_copies_downloa
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     let home = connect_test_cloud(&test).await;
-    let release_id = uploaded_release(
-        manager,
-        &temp_dir.path().join("moved-to-this-device"),
-        "Moved to This Device",
-        false,
-    )
-    .await;
+    let release_id =
+        uploaded_release(manager, &temp_dir, "moved-to-this-device", "Moved to This Device", false)
+            .await;
     let file = release_files(manager, &release_id).await.remove(0);
     let reference = manager.release_file_ref(&file.id).await.unwrap();
     manager.evict_file_for_test(file.file).await.unwrap();
@@ -628,8 +633,7 @@ async fn a_release_moved_to_this_device_lists_its_bytes_while_its_copies_downloa
     )
     .await;
     let mut transfers = manager.watch_download_transfers();
-    let folder = temp_dir.path().join("local");
-    std::fs::create_dir(&folder).unwrap();
+    let folder = temp_dir.create_folder("local");
     manager.move_releases_to_this_device(vec![release_id.clone()], &folder).await.unwrap();
     observed.await.unwrap();
     let listed = tokio::time::timeout(
@@ -678,8 +682,7 @@ async fn cancelling_a_move_to_this_device_leaves_the_release_in_the_cloud() {
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     let home = connect_test_cloud(&test).await;
-    let release_id =
-        uploaded_release(manager, &temp_dir.path().join("r1"), "Album One", false).await;
+    let release_id = uploaded_release(manager, &temp_dir, "r1", "Album One", false).await;
     let file = release_files(manager, &release_id).await.remove(0);
     let reference = manager.release_file_ref(&file.id).await.unwrap();
     manager.evict_file_for_test(file.file).await.unwrap();
@@ -700,8 +703,7 @@ async fn cancelling_a_move_to_this_device_leaves_the_release_in_the_cloud() {
     )
     .await;
 
-    let dest = temp_dir.path().join("out");
-    std::fs::create_dir(&dest).unwrap();
+    let dest = temp_dir.create_folder("out");
     manager.move_releases_to_this_device(vec![release_id.clone()], &dest).await.unwrap();
     observed.await.unwrap();
     manager.cancel_release_transition(&release_id).await.unwrap();
@@ -716,7 +718,7 @@ async fn cancelling_a_move_to_this_device_leaves_the_release_in_the_cloud() {
         release_files(manager, &release_id).await.iter().all(|file| file.stored),
         "cancellation leaves every file in the cloud"
     );
-    assert_eq!(std::fs::read_dir(&dest).unwrap().count(), 0, "no copy is left");
+    assert_eq!(temp_dir.entries(&dest).len(), 0, "no copy is left");
 }
 
 const REL_NONE: &str = "cdb5eed8-db50-45f6-814a-dc623215ae04"; // was "rel-none"
@@ -740,8 +742,7 @@ async fn making_a_release_local_replaces_its_failed_pin() {
     .await;
     test.storage.set_online(true);
 
-    let folder = temp_dir.path().join("local");
-    std::fs::create_dir(&folder).unwrap();
+    let folder = temp_dir.create_folder("local");
     move_to_this_device_and_wait(manager, std::slice::from_ref(&release_id), &folder)
         .await
         .unwrap();

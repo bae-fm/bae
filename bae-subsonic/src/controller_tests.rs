@@ -3,9 +3,9 @@ use std::sync::{Arc, Mutex};
 
 use crate::{NotRunningTone, ServedAddress, SubsonicStatus};
 use bae_app::AppServices;
-use tempfile::TempDir;
+use bae_util::test_files::TestFolder;
 
-async fn test_manager() -> (AppServices, TempDir) {
+async fn test_manager() -> (AppServices, TestFolder) {
     let (library, temp) = bae_library::test_libraries::setup_test_library().await;
     let services = bae_app::test_services::start_services(&library)
         .await

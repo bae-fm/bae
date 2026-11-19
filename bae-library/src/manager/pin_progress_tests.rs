@@ -159,7 +159,7 @@ async fn a_pins_bytes_never_fall_back_as_a_file_lands() {
     let manager = test.library.manager();
     let home = connect_test_cloud(&test).await;
     let release_id =
-        uploaded_release(manager, &temp_dir.path().join("pin-forward"), "Pin Forward", false).await;
+        uploaded_release(manager, &temp_dir, "pin-forward", "Pin Forward", false).await;
     let file = release_files(manager, &release_id).await.remove(0);
     let size = file.file_size;
     let file = manager.release_file_ref(&file.id).await.unwrap();
@@ -262,7 +262,8 @@ async fn a_failed_files_bytes_never_count() {
     let failing_bytes = vec![2u8; 200_000];
     let release = insert_local_release_with_files(
         manager,
-        &temp_dir.path().join("pin-failing"),
+        &temp_dir,
+        "pin-failing",
         "Pin Failing",
         &[("1.flac", whole_bytes.as_slice()), ("2.flac", failing_bytes.as_slice())],
     )
@@ -381,7 +382,8 @@ async fn pin_release_counts_audio_and_keeps_cover_evictable() {
     let cover_bytes: &[u8] = b"cover-bytes-are-longer";
     let release = insert_local_release_with_files(
         manager,
-        &temp_dir.path().join("unpinned-with-cover"),
+        &temp_dir,
+        "unpinned-with-cover",
         "Unpinned With Cover",
         &[("track.flac", file_bytes)],
     )

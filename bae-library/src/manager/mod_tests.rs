@@ -10,8 +10,8 @@ use bae_import::ImportError;
 use bae_records::{DbAlbum, DbFile, DbLibraryImage, DbRelease, LibraryImageType, NewReleaseFile};
 use bae_types::release_storage::ReleaseStorageAction;
 use bae_util::content_type::ContentType;
+use bae_util::test_files::TestFolder;
 use coven::{MemoryStorage, Storage};
-use tempfile::TempDir;
 use time::UtcDateTime;
 
 // Fixture row ids. coven validates every synced row's primary key as a
@@ -37,21 +37,21 @@ pub(super) struct TestManager {
     pub(super) installation: coven::Coven,
 }
 
-pub(super) async fn setup_test_manager() -> (TestManager, TempDir) {
+pub(super) async fn setup_test_manager() -> (TestManager, TestFolder) {
     setup_test_manager_with_clock(Arc::new(coven::SystemClock)).await
 }
 
 pub(super) async fn setup_test_manager_with_clock(
     clock: coven::ClockRef,
-) -> (TestManager, TempDir) {
+) -> (TestManager, TestFolder) {
     setup_test_manager_with(clock, bae_diagnostics::Diagnostics::noop()).await
 }
 
 pub(super) async fn setup_test_manager_with(
     clock: coven::ClockRef,
     diagnostics: bae_diagnostics::Diagnostics,
-) -> (TestManager, TempDir) {
-    let temp_dir = TempDir::new().unwrap();
+) -> (TestManager, TestFolder) {
+    let temp_dir = TestFolder::new();
     let app_dir = bae_app_dir::AppDir::at(temp_dir.path()).unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let storage = Arc::new(MemoryStorage::builder().clock(clock.clone()).build().unwrap());
@@ -167,8 +167,8 @@ pub(super) fn create_test_release(album_id: &str) -> DbRelease {
 
 /// A manager holding one album with one release — the spine most of these
 /// tests start from before adding tracks, files, or covers of their own. The
-/// `TempDir` owns the library directory, so callers keep it.
-pub(super) async fn manager_with_release() -> (TestManager, TempDir, DbAlbum, DbRelease) {
+/// `TestFolder` owns the library directory, so callers keep it.
+pub(super) async fn manager_with_release() -> (TestManager, TestFolder, DbAlbum, DbRelease) {
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     let album = create_test_album();
@@ -231,11 +231,12 @@ pub(super) async fn library_on_a_stopped_clock() -> (TestManager, TempDir, Arc<c
 /// The manager must already be connected via [`connect_test_cloud`].
 pub(super) async fn insert_release_with_queued_uploads(
     manager: &LibraryManager,
-    dir: &std::path::Path,
+    folder: &TestFolder,
+    dir: impl AsRef<std::path::Path>,
     album_title: &str,
     files: &[(&str, &[u8])],
 ) -> DbRelease {
-    let release = insert_local_release_with_files(manager, dir, album_title, files).await;
+    let release = insert_local_release_with_files(manager, folder, dir, album_title, files).await;
     manager.upload_release(&release.id).await.unwrap();
     assert_eq!(
         manager.records.queued_upload_count_for_release_for_test(&release.id).await.unwrap(),
@@ -287,22 +288,31 @@ pub(super) async fn wait_for_published_file(manager: &LibraryManager, table: &st
 /// must already be connected via [`connect_test_cloud`].
 pub(super) async fn uploaded_release(
     manager: &LibraryManager,
-    dir: &std::path::Path,
+    folder: &TestFolder,
+    dir: impl AsRef<std::path::Path>,
     album_title: &str,
     pin: bool,
 ) -> String {
-    uploaded_release_with_files(manager, dir, album_title, &[("track.flac", b"track-bytes")], pin)
-        .await
+    uploaded_release_with_files(
+        manager,
+        folder,
+        dir,
+        album_title,
+        &[("track.flac", b"track-bytes")],
+        pin,
+    )
+    .await
 }
 
 pub(super) async fn uploaded_release_with_files(
     manager: &LibraryManager,
-    dir: &std::path::Path,
+    folder: &TestFolder,
+    dir: impl AsRef<std::path::Path>,
     album_title: &str,
     files: &[(&str, &[u8])],
     pin: bool,
 ) -> String {
-    let release = insert_local_release_with_files(manager, dir, album_title, files).await;
+    let release = insert_local_release_with_files(manager, folder, dir, album_title, files).await;
     manager.upload_release(&release.id).await.unwrap();
     let uploaded = manager.drain_uploads_expecting_work().await.unwrap();
     assert_eq!(uploaded, files.len(), "each release file uploaded");
@@ -332,12 +342,14 @@ pub(super) async fn wait_for_kept_release(manager: &LibraryManager, release_id: 
 /// test does not own.
 pub(super) async fn upload_release_unpaused(
     manager: &LibraryManager,
-    dir: &std::path::Path,
+    folder: &TestFolder,
+    dir: impl AsRef<std::path::Path>,
     album_title: &str,
     pin: bool,
 ) -> String {
     let release = insert_local_release_with_files(
         manager,
+        folder,
         dir,
         album_title,
         &[("track.flac", b"track-bytes")],
@@ -358,14 +370,15 @@ pub(super) async fn wait_for_landed_upload(manager: &LibraryManager, release_id:
 
 pub(super) async fn insert_local_release_with_files(
     manager: &LibraryManager,
-    dir: &std::path::Path,
+    folder: &TestFolder,
+    dir: impl AsRef<std::path::Path>,
     album_title: &str,
     files: &[(&str, &[u8])],
 ) -> DbRelease {
     let mut album = create_test_album();
     album.title = album_title.to_string();
     manager.records.insert_album(&album).await.unwrap();
-    insert_local_release_in_album(manager, &album.id, dir, files).await
+    insert_local_release_in_album(manager, &album.id, folder, dir, files).await
 }
 
 /// A local release with `files` under `dir`, on an album that already exists —
@@ -373,16 +386,15 @@ pub(super) async fn insert_local_release_with_files(
 pub(super) async fn insert_local_release_in_album(
     manager: &LibraryManager,
     album_id: &str,
-    dir: &std::path::Path,
+    folder: &TestFolder,
+    dir: impl AsRef<std::path::Path>,
     files: &[(&str, &[u8])],
 ) -> DbRelease {
     let release = create_test_release(album_id);
     insert_release(manager, &release).await;
-    std::fs::create_dir_all(dir).unwrap();
     let created_at = UtcDateTime::now();
     for (index, (name, bytes)) in files.iter().enumerate() {
-        let path = dir.join(name);
-        std::fs::write(&path, bytes).unwrap();
+        let path = folder.write(dir.as_ref().join(name), bytes);
         let file = NewReleaseFile::new(
             &release.id,
             name,
@@ -401,11 +413,13 @@ pub(super) async fn insert_local_release_in_album(
 /// device sees of a release another device holds.
 pub(super) async fn release_on_the_first_device(
     devices: &crate::test_libraries::TwoDevices,
-    dir: &std::path::Path,
+    folder: &TestFolder,
+    dir: impl AsRef<std::path::Path>,
     album_title: &str,
 ) -> DbRelease {
     let release = insert_local_release_with_files(
         devices.a().manager(),
+        folder,
         dir,
         album_title,
         &[("track1.flac", b"audio")],
@@ -502,8 +516,10 @@ pub(super) async fn file_pinned(manager: &LibraryManager, namespace: &str, row_i
 /// Upload one real file and evict its cache so the release needs a download.
 pub(super) async fn insert_pinnable_release(manager: &TestManager) -> String {
     connect_test_cloud(manager).await;
-    let source = manager.library.manager().library_path().join("pin-source");
-    let release = uploaded_release(manager.library.manager(), &source, "Test Album", false).await;
+    let source = TestFolder::new();
+    let release =
+        uploaded_release(manager.library.manager(), &source, source.path(), "Test Album", false)
+            .await;
     let file = release_files(manager.library.manager(), &release).await.remove(0);
     manager.library.manager().evict_file_for_test(file.file).await.unwrap();
     release
@@ -964,13 +980,14 @@ pub(super) async fn by_storage(
 /// `folder` names the source directory under the temp dir.
 pub(super) async fn queued_upload_fixture(
     folder: &str,
-) -> (TestManager, TempDir, DbRelease, String) {
+) -> (TestManager, TestFolder, DbRelease, String) {
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     connect_test_cloud(&test).await;
     let release = insert_release_with_queued_uploads(
         manager,
-        &temp_dir.path().join(folder),
+        &temp_dir,
+        folder,
         "Test Album",
         &[("a.flac", &vec![b'a'; 1000])],
     )

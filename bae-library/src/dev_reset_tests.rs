@@ -18,16 +18,15 @@ secret_access_key = "secret-access-key"
 token = "discogs-token"
 "#;
 
-fn write(dir: &tempfile::TempDir, text: &str, mode: u32) -> PathBuf {
-    let path = dir.path().join("profile.toml");
-    std::fs::write(&path, text).unwrap();
-    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(mode)).unwrap();
+fn write(dir: &bae_util::test_files::TestFolder, text: &str, mode: u32) -> PathBuf {
+    let path = dir.write("profile.toml", text);
+    dir.set_permissions("profile.toml", std::fs::Permissions::from_mode(mode));
     path
 }
 
 #[test]
 fn a_private_profile_reads_into_the_library_it_describes() {
-    let dir = tempfile::tempdir().unwrap();
+    let dir = bae_util::test_files::TestFolder::new();
     let profile = DevResetProfile::read(&write(&dir, PROFILE, 0o600)).unwrap();
 
     assert_eq!(profile.library_name.as_str(), "dev");
@@ -45,7 +44,7 @@ fn a_private_profile_reads_into_the_library_it_describes() {
 
 #[test]
 fn a_profile_others_can_read_is_refused() {
-    let dir = tempfile::tempdir().unwrap();
+    let dir = bae_util::test_files::TestFolder::new();
     let error = DevResetProfile::read(&write(&dir, PROFILE, 0o644))
         .err()
         .expect("a readable profile is refused");
@@ -55,7 +54,7 @@ fn a_profile_others_can_read_is_refused() {
 
 #[test]
 fn an_empty_credential_is_refused_by_name() {
-    let dir = tempfile::tempdir().unwrap();
+    let dir = bae_util::test_files::TestFolder::new();
     let text = PROFILE.replace("\"secret-access-key\"", "\"\"");
     let error = DevResetProfile::read(&write(&dir, &text, 0o600))
         .err()
@@ -68,7 +67,7 @@ fn an_empty_credential_is_refused_by_name() {
 /// prefix is refused before the reset removes anything.
 #[test]
 fn a_profile_naming_a_key_prefix_is_refused() {
-    let dir = tempfile::tempdir().unwrap();
+    let dir = bae_util::test_files::TestFolder::new();
     let text = PROFILE
         .replace("bucket = \"bucket-name\"\n", "bucket = \"bucket-name\"\nkey_prefix = \"dev\"\n");
     let error =
@@ -84,7 +83,7 @@ fn a_profile_naming_a_key_prefix_is_refused() {
 /// not, since that line may hold a credential.
 #[test]
 fn a_malformed_profile_names_the_line_without_repeating_it() {
-    let dir = tempfile::tempdir().unwrap();
+    let dir = bae_util::test_files::TestFolder::new();
     let text = PROFILE.replace(
         "secret_access_key = \"secret-access-key\"",
         "secret_access_key = secret-access-key",
@@ -102,7 +101,7 @@ fn a_malformed_profile_names_the_line_without_repeating_it() {
 
 #[test]
 fn an_unknown_field_is_refused() {
-    let dir = tempfile::tempdir().unwrap();
+    let dir = bae_util::test_files::TestFolder::new();
     let text = format!("{PROFILE}\n[other]\nkey = \"value\"\n");
     let error = DevResetProfile::read(&write(&dir, &text, 0o600))
         .err()

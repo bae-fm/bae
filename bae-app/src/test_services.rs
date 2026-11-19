@@ -42,9 +42,10 @@ pub async fn start_services_on(
 }
 
 /// [`bae_library::test_libraries::multi_thread_runtime`] with a fresh library's
-/// [`AppServices`] already built on it. The `TempDir` owns the library's
+/// [`AppServices`] already built on it. The `TestFolder` owns the library's
 /// files, so it must outlive both.
-pub fn runtime_with_services() -> (tokio::runtime::Runtime, AppServices, tempfile::TempDir) {
+pub fn runtime_with_services(
+) -> (tokio::runtime::Runtime, AppServices, bae_util::test_files::TestFolder) {
     let runtime = bae_library::test_libraries::multi_thread_runtime();
     let (library, tmp) = bae_library::test_libraries::setup_fresh_library(&runtime);
     let services = runtime.block_on(async move {

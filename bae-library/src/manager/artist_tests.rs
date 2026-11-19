@@ -5,7 +5,7 @@
 use super::*;
 use crate::manager::tests::*;
 use bae_records::{DbAlbum, DbRelease};
-use tempfile::TempDir;
+use bae_util::test_files::TestFolder;
 use time::UtcDateTime;
 
 #[tokio::test]
@@ -102,7 +102,7 @@ const CREDIT_ARTIST_B: &str = "6d1f3a20-8b4c-4e2a-9f1d-2c3b4a5d6e02";
 
 struct CreditedLibrary {
     manager: TestManager,
-    _temp_dir: TempDir,
+    _temp_dir: TestFolder,
     album: DbAlbum,
     release: DbRelease,
     featured: DbTrack,

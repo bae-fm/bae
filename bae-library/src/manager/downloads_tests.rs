@@ -5,6 +5,7 @@
 
 use super::*;
 use crate::manager::tests::*;
+use bae_util::test_files::TestFolder;
 
 /// Pausing before the first enqueue parks the worker, so the queue's
 /// state (enqueue, dedup, snapshot counts, cancel) is observable
@@ -44,8 +45,7 @@ async fn download_queue_skips_already_pinned() {
     // A genuinely pinned release: made Remote with pin, so its file lands in
     // coven's offline cache.
     connect_test_cloud(&test).await;
-    let release_id =
-        uploaded_release(manager, &temp_dir.path().join("pinned"), "Test Album", true).await;
+    let release_id = uploaded_release(manager, &temp_dir, "pinned", "Test Album", true).await;
     let summary = views(manager).find_release_detail(&release_id).await.unwrap().unwrap().summary;
     assert_eq!(
         summary.storage_state,
@@ -66,8 +66,8 @@ async fn a_pin_request_queues_what_it_can_in_the_order_asked() {
     let (test, _temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     let first = insert_pinnable_release(&test).await;
-    let source = manager.library_path().join("second-source");
-    let second = uploaded_release(manager, &source, "Album Title", false).await;
+    let source = TestFolder::new();
+    let second = uploaded_release(manager, &source, source.path(), "Album Title", false).await;
     manager.set_downloads_paused(true).await.unwrap();
     let unknown = "4b9f0e0e-7d3a-4f2a-9c51-1f0c2b3a4d5e".to_string();
 
@@ -101,7 +101,8 @@ async fn a_pin_of_a_local_release_fails_with_covens_refusal() {
     let manager = test.library.manager();
     let release = insert_local_release_with_files(
         manager,
-        &temp_dir.path().join("local-source"),
+        &temp_dir,
+        "local-source",
         "Test Album",
         &[("a.flac", b"aaa")],
     )
@@ -173,7 +174,7 @@ async fn a_pin_waits_while_the_network_is_down() {
     let manager = test.library.manager();
     connect_test_cloud(&test).await;
     let release_id =
-        uploaded_release(manager, &temp_dir.path().join("offline-pin"), "Offline Pin", false).await;
+        uploaded_release(manager, &temp_dir, "offline-pin", "Offline Pin", false).await;
     for file in release_files(manager, &release_id).await {
         manager.evict_file_for_test(file.file).await.unwrap();
     }
@@ -207,9 +208,9 @@ async fn a_queued_pin_shows_queued_and_a_failed_one_its_error() {
     let manager = test.library.manager();
     connect_test_cloud(&test).await;
     let dir = |name: &str| temp_dir.path().join(name);
-    let first = uploaded_release(manager, &dir("first"), "Album Title A", false).await;
-    let second = uploaded_release(manager, &dir("second"), "Album Title B", false).await;
-    let third = uploaded_release(manager, &dir("third"), "Album Title C", false).await;
+    let first = uploaded_release(manager, &temp_dir, &dir("first"), "Album Title A", false).await;
+    let second = uploaded_release(manager, &temp_dir, &dir("second"), "Album Title B", false).await;
+    let third = uploaded_release(manager, &temp_dir, &dir("third"), "Album Title C", false).await;
     manager.set_downloads_paused(true).await.unwrap();
     manager.enqueue_pins(vec![first.clone(), second.clone(), third.clone()]).await.unwrap();
 
@@ -264,8 +265,8 @@ async fn pinning_a_failed_download_queues_it_again_in_its_place() {
     let (test, _temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     let failed = insert_pinnable_release(&test).await;
-    let source = manager.library_path().join("second-source");
-    let later = uploaded_release(manager, &source, "Album Title", false).await;
+    let source = TestFolder::new();
+    let later = uploaded_release(manager, &source, source.path(), "Album Title", false).await;
 
     test.storage.set_online(false);
     manager.enqueue_pins(vec![failed.clone()]).await.unwrap();
@@ -442,8 +443,7 @@ async fn a_failed_pins_retry_pins_the_release_again() {
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     let home = connect_test_cloud(&test).await;
-    let release_id =
-        uploaded_release(manager, &temp_dir.path().join("retry-pin"), "Retry Pin", false).await;
+    let release_id = uploaded_release(manager, &temp_dir, "retry-pin", "Retry Pin", false).await;
     for file in release_files(manager, &release_id).await {
         manager.evict_file_for_test(file.file).await.unwrap();
     }
@@ -496,8 +496,7 @@ async fn the_inspector_never_reads_a_pin_out_of_the_queue_before_its_files_are_k
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     connect_test_cloud(&test).await;
-    let cloud =
-        uploaded_release(manager, &temp_dir.path().join("cloud"), "Album Title B", false).await;
+    let cloud = uploaded_release(manager, &temp_dir, "cloud", "Album Title B", false).await;
     let mut rows = bae_views::LibraryViews::new(manager.store.clone())
         .subscribe_storage_inspector(Some(cloud.clone()));
 
@@ -543,8 +542,7 @@ async fn the_inspector_shows_each_files_pin_while_the_release_pins() {
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     connect_test_cloud(&test).await;
-    let cloud =
-        uploaded_release(manager, &temp_dir.path().join("cloud"), "Album Title B", false).await;
+    let cloud = uploaded_release(manager, &temp_dir, "cloud", "Album Title B", false).await;
     inspector_rows_until(manager, &cloud, |rows| rows.files.iter().all(|file| file.pin.is_none()))
         .await;
 
@@ -581,8 +579,7 @@ async fn a_failed_pin_shows_no_file_pins() {
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     connect_test_cloud(&test).await;
-    let cloud =
-        uploaded_release(manager, &temp_dir.path().join("cloud"), "Album Title B", false).await;
+    let cloud = uploaded_release(manager, &temp_dir, "cloud", "Album Title B", false).await;
 
     manager.set_downloads_paused(true).await.unwrap();
     manager.enqueue_pins(vec![cloud.clone()]).await.unwrap();
@@ -614,8 +611,8 @@ async fn a_release_sorts_as_pinning_while_the_download_queue_holds_it() {
     let manager = test.library.manager();
     connect_test_cloud(&test).await;
     let dir = |name: &str| temp_dir.path().join(name);
-    let first = uploaded_release(manager, &dir("first"), "Album Title A", false).await;
-    let second = uploaded_release(manager, &dir("second"), "Album Title B", false).await;
+    let first = uploaded_release(manager, &temp_dir, &dir("first"), "Album Title A", false).await;
+    let second = uploaded_release(manager, &temp_dir, &dir("second"), "Album Title B", false).await;
     let ascending =
         || by_storage(manager, bae_views::StorageFilter::All, bae_store::SortDirection::Ascending);
     let resting = vec![first.clone(), second.clone()];
@@ -677,15 +674,15 @@ async fn the_storage_list_carries_the_queues_holding_work() {
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     connect_test_cloud(&test).await;
-    let pinning =
-        uploaded_release(manager, &temp_dir.path().join("pin"), "Album Title", false).await;
+    let pinning = uploaded_release(manager, &temp_dir, "pin", "Album Title", false).await;
     let idle = StorageQueues { uploads: None, downloads: None, outputs: None };
     assert_eq!(listed_queues(manager).await, idle);
 
     manager.store.set_uploads_paused(true).await.unwrap();
     let uploading = insert_release_with_queued_uploads(
         manager,
-        &temp_dir.path().join("upload"),
+        &temp_dir,
+        "upload",
         "Album Title B",
         &[("track.flac", b"uploading")],
     )
@@ -798,8 +795,7 @@ async fn a_pin_and_its_entry_end_in_one_write() {
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     let home = connect_test_cloud(&test).await;
-    let release_id =
-        uploaded_release(manager, &temp_dir.path().join("one-write"), "One Write", false).await;
+    let release_id = uploaded_release(manager, &temp_dir, "one-write", "One Write", false).await;
     let file = release_files(manager, &release_id).await.remove(0);
     manager.evict_file_for_test(file.file).await.unwrap();
 
@@ -884,7 +880,8 @@ async fn cancelling_a_pin_removes_what_it_downloaded() {
     let track = large_track();
     let release_id = uploaded_release_with_files(
         manager,
-        &temp_dir.path().join("cancelled-pin"),
+        &temp_dir,
+        "cancelled-pin",
         "Cancelled Pin",
         &[("track.flac", &track)],
         false,
@@ -945,7 +942,8 @@ async fn resuming_a_paused_pin_fetches_only_the_rest() {
     let track = large_track();
     let release_id = uploaded_release_with_files(
         manager,
-        &temp_dir.path().join("paused-pin"),
+        &temp_dir,
+        "paused-pin",
         "Paused Pin",
         &[("track.flac", &track)],
         false,

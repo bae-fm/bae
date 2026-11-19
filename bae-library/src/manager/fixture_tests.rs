@@ -3,6 +3,7 @@
 
 use super::*;
 use crate::manager::tests::*;
+use bae_util::test_files::TestFolder;
 
 /// One album of a library fixture, credited to `artists`, with no cover.
 fn fixture_album(title: &str, artists: &[&str], tracks: &[&str]) -> crate::FixtureAlbum {
@@ -120,8 +121,13 @@ async fn a_fixture_album_credited_to_two_artists_is_listed_under_each() {
 async fn a_fixture_albums_cover_is_its_releases_cover() {
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
-    let cover = temp_dir.path().join("cover.png");
-    ::image::RgbImage::from_pixel(4, 4, ::image::Rgb([200, 40, 40])).save(&cover).unwrap();
+    let cover = temp_dir.write("cover.png", {
+        let mut png = std::io::Cursor::new(Vec::new());
+        ::image::RgbImage::from_pixel(4, 4, ::image::Rgb([200, 40, 40]))
+            .write_to(&mut png, ::image::ImageFormat::Png)
+            .unwrap();
+        png.into_inner()
+    });
     let mut album = fixture_album("Covered Album", &["Artist A"], &["One"]);
     album.cover = Some(cover.clone());
 
@@ -135,10 +141,7 @@ async fn a_fixture_albums_cover_is_its_releases_cover() {
         .await
         .unwrap()
         .expect("the release has a cover");
-    assert_eq!(
-        stored,
-        bae_util::stored_image::stored_jpeg(&std::fs::read(&cover).unwrap()).unwrap()
-    );
+    assert_eq!(stored, bae_util::stored_image::stored_jpeg(&temp_dir.read(&cover)).unwrap());
 }
 
 /// An album that credits no artist is no album a library holds, and the
@@ -325,7 +328,7 @@ async fn fixture_candidates_carry_what_their_states_name() {
 /// A disc image in `folder`: ten seconds of silent CD audio as a WAV file, and
 /// a sheet carving it into two tracks, the second after an INDEX 00 two
 /// seconds before its INDEX 01. Returns the sheet's path.
-fn fixture_disc_image(folder: &std::path::Path) -> std::path::PathBuf {
+fn fixture_disc_image(folder: &TestFolder) -> std::path::PathBuf {
     let samples: u32 = 44_100 * 10;
     let data_size = samples * 4;
     let mut wav = Vec::with_capacity(44 + data_size as usize);
@@ -342,10 +345,9 @@ fn fixture_disc_image(folder: &std::path::Path) -> std::path::PathBuf {
     wav.extend_from_slice(b"data");
     wav.extend_from_slice(&data_size.to_le_bytes());
     wav.resize(44 + data_size as usize, 0);
-    std::fs::write(folder.join("disc.wav"), wav).unwrap();
-    let sheet = folder.join("disc.cue");
-    std::fs::write(
-        &sheet,
+    folder.write("disc.wav", wav);
+    folder.write(
+        "disc.cue",
         "PERFORMER \"Artist Name\"\n\
          TITLE \"Album Title\"\n\
          FILE \"disc.wav\" WAVE\n\
@@ -357,8 +359,6 @@ fn fixture_disc_image(folder: &std::path::Path) -> std::path::PathBuf {
          \x20   INDEX 00 00:03:00\n\
          \x20   INDEX 01 00:05:00\n",
     )
-    .unwrap();
-    sheet
 }
 
 /// The fixture of nothing but `playing`.
@@ -377,7 +377,7 @@ fn fixture_playing(playing: crate::FixturePlaying) -> crate::LibraryFixture {
 async fn a_fixtures_playing_album_lays_its_tracks_over_the_disc_image() {
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
-    let sheet = fixture_disc_image(temp_dir.path());
+    let sheet = fixture_disc_image(&temp_dir);
 
     manager
         .write_fixture(&fixture_playing(crate::FixturePlaying {
@@ -435,7 +435,7 @@ async fn a_fixtures_playing_album_lays_its_tracks_over_the_disc_image() {
 async fn playback_resumes_the_fixtures_playing_album_in_the_pregap() {
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
-    let sheet = fixture_disc_image(temp_dir.path());
+    let sheet = fixture_disc_image(&temp_dir);
     manager
         .write_fixture(&fixture_playing(crate::FixturePlaying {
             title: "Album Title".to_string(),

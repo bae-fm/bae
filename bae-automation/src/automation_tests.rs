@@ -491,12 +491,11 @@ mod release_album {
     use super::*;
 
     /// Write one tagged fixture track into `dir`.
-    fn one_track(dir: &std::path::Path) {
-        std::fs::write(
+    fn one_track(folder: &bae_util::test_files::TestFolder, dir: &std::path::Path) {
+        folder.write(
             dir.join("01 Track One.flac"),
             bae_import::test_fixtures::tagged_flac_bytes("Track One"),
-        )
-        .unwrap();
+        );
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -511,13 +510,12 @@ mod release_album {
             ),
             "moved",
             "album-set-moved-import".to_string(),
-            one_track,
+            |dir| one_track(dir, dir.path()),
         )
         .await
         .expect("import the release that moves");
-        let picked_dir = imported.temp_dir.path().join("picked");
-        std::fs::create_dir_all(&picked_dir).expect("the second album's folder");
-        one_track(&picked_dir);
+        let picked_dir = imported.temp_dir.create_folder("picked");
+        one_track(&imported.temp_dir, &picked_dir);
         let picked_key =
             fakes.seed_discogs_test_release(bae_catalogs::test_releases::discogs_test_release(
                 "album-set-picked",

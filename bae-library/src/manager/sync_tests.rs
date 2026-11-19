@@ -4,8 +4,8 @@
 use super::*;
 use crate::manager::tests::*;
 use crate::test_libraries::TestLibrary;
+use bae_util::test_files::TestFolder;
 use coven::Storage;
-use tempfile::TempDir;
 
 #[path = "sync_tests/access_key.rs"]
 mod access_key;
@@ -23,9 +23,9 @@ async fn an_original_changed_since_its_import_fails_the_move() {
     let (manager, temp, release, _file_id) = queued_upload_fixture("changed").await;
     manager.library.manager().start().unwrap();
     let path = temp.path().join("changed/a.flac");
-    let modified = std::fs::metadata(&path).unwrap().modified().unwrap();
-    std::fs::write(&path, vec![b'b'; 1000]).unwrap();
-    std::fs::File::options().write(true).open(&path).unwrap().set_modified(modified).unwrap();
+    let modified = temp.metadata(&path).modified().unwrap();
+    temp.write(&path, vec![b'b'; 1000]);
+    temp.open_with(&path, std::fs::OpenOptions::new().write(true)).set_modified(modified).unwrap();
     assert_eq!(manager.library.manager().drain_uploads_expecting_work().await.unwrap(), 0);
 
     pending_records_until(manager.library.manager(), |records| {
@@ -519,7 +519,8 @@ async fn retrying_a_refused_upload_uploads_it() {
     manager.library.manager().store.set_uploads_paused(true).await.unwrap();
     let release = insert_release_with_queued_uploads(
         manager.library.manager(),
-        &temp_dir.path().join("refused"),
+        &temp_dir,
+        "refused",
         "Test Album",
         &[("a.flac", &vec![b'a'; 1000])],
     )
@@ -587,7 +588,7 @@ async fn the_unmetered_only_setting_follows_each_change() {
 /// Close `manager`, delete this device's storage credentials as a keychain
 /// entry deleted by hand does, and open the library again: its location
 /// stays recorded, with no storage set up on this device.
-async fn reopen_without_credentials(manager: TestManager, temp_dir: &TempDir) -> TestManager {
+async fn reopen_without_credentials(manager: TestManager, temp_dir: &TestFolder) -> TestManager {
     let store = manager.library.manager().store.store_id();
     manager.library.manager().close().await.unwrap();
     manager.installation.lose_storage_credentials(store).unwrap();
@@ -643,8 +644,8 @@ mod sign_in {
     /// OneDrive applications registered as the apps register them.
     async fn manager_signing_in_with(
         presenter: Arc<RecordingPresenter>,
-    ) -> (LibraryManager, Arc<MemoryStorage>, TempDir) {
-        let temp_dir = TempDir::new().unwrap();
+    ) -> (LibraryManager, Arc<MemoryStorage>, TestFolder) {
+        let temp_dir = TestFolder::new();
         let app_dir = bae_app_dir::AppDir::at(temp_dir.path()).unwrap();
         let clock: coven::ClockRef = Arc::new(coven::SystemClock);
         let storage = Arc::new(MemoryStorage::builder().clock(clock.clone()).build().unwrap());

@@ -3,14 +3,14 @@ use bae_diagnostics::{
     AppDiagnosticMetadata, DatadogDiagnosticsConfig, DiagnosticEvent, Diagnostics,
     RecordingTransport,
 };
+use bae_util::test_files::TestFolder;
 use coven::Storage;
 use std::sync::Arc;
-use tempfile::TempDir;
 
 /// A `LibraryManager` (over an empty test DB) whose diagnostics ship to a
 /// recording transport, so an emitted event can be read back off the wire.
 async fn manager_with_recording_transport(
-) -> (LibraryManager, Diagnostics, Arc<RecordingTransport>, TempDir) {
+) -> (LibraryManager, Diagnostics, Arc<RecordingTransport>, TestFolder) {
     let (manager, diagnostics, transport, home, _storage, _store) =
         manager_with_recording_transport_over_storage().await;
     (manager, diagnostics, transport, home)
@@ -22,11 +22,11 @@ async fn manager_with_recording_transport_over_storage() -> (
     LibraryManager,
     Diagnostics,
     Arc<RecordingTransport>,
-    TempDir,
+    TestFolder,
     Arc<coven::MemoryStorage>,
     bae_store::Store,
 ) {
-    let home = TempDir::new().unwrap();
+    let home = TestFolder::new();
     let storage = Arc::new(
         coven::MemoryStorage::builder()
             .clock(Arc::new(coven::SystemClock))

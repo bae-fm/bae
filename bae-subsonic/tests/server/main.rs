@@ -18,8 +18,8 @@ use bae_import::{ImportCommand, ImportDestination, ReleaseFileScope};
 use bae_preferences::SubsonicCredential;
 use bae_records::{DbAlbum, DbArtist, DbRelease, DbTrack};
 use bae_subsonic::token;
+use bae_util::test_files::TestFolder;
 use serde_json::Value;
-use tempfile::TempDir;
 use tower::ServiceExt;
 
 const USER: &str = "listener";
@@ -84,11 +84,11 @@ async fn call_with_range(router: &Router, method: &str, qs: &str, range: Option<
     Resp { status, content_type, content_length, content_range, body }
 }
 
-async fn new_library() -> (bae_library::test_libraries::TestLibrary, TempDir) {
+async fn new_library() -> (bae_library::test_libraries::TestLibrary, TestFolder) {
     bae_library::test_libraries::setup_test_library().await
 }
 
-async fn new_services() -> (AppServices, TempDir) {
+async fn new_services() -> (AppServices, TestFolder) {
     let (library, temp) = new_library().await;
     let services = bae_app::test_services::start_services(&library)
         .await
@@ -113,7 +113,7 @@ struct Library {
     /// originals on this device.
     per_track_source: std::path::PathBuf,
     cue_release: String,
-    _temps: Vec<TempDir>,
+    _temps: Vec<TestFolder>,
     /// The folder the per-track release was imported from.
     _per_track_folder: bae_util::test_files::TestFolder,
 }
@@ -180,7 +180,7 @@ async fn seed_library() -> Library {
 
     // CUE-image release, imported against a seeded Discogs release (cached, no
     // network) so it exercises the single-file-with-CUE track windows.
-    let cue_temp = TempDir::new().unwrap();
+    let cue_temp = TestFolder::new();
     let cue_dir = cue_temp.path().join("cue album");
     std::fs::create_dir_all(&cue_dir).unwrap();
     std::fs::copy(cue_fixture("Test Album.flac"), cue_dir.join("Test Album.flac")).unwrap();

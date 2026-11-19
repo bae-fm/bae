@@ -41,7 +41,8 @@ pub async fn insert_release(records: &bae_records::Records, release: &DbRelease)
 /// under `dir` and recorded as this device's originals.
 pub async fn insert_local_release_with_files(
     library: &TestLibrary,
-    dir: &std::path::Path,
+    folder: &bae_util::test_files::TestFolder,
+    dir: impl AsRef<std::path::Path>,
     album_title: &str,
     files: &[(&str, &[u8])],
 ) -> DbRelease {
@@ -50,11 +51,9 @@ pub async fn insert_local_release_with_files(
     library.records().insert_album(&album).await.unwrap();
     let release = test_release(&album.id);
     insert_release(library.records(), &release).await;
-    std::fs::create_dir_all(dir).unwrap();
     let created_at = UtcDateTime::now();
     for (index, (name, bytes)) in files.iter().enumerate() {
-        let path = dir.join(name);
-        std::fs::write(&path, bytes).unwrap();
+        let path = folder.write(dir.as_ref().join(name), bytes);
         let file = NewReleaseFile::new(
             &release.id,
             name,
@@ -73,11 +72,12 @@ pub async fn insert_local_release_with_files(
 /// uploads paused.
 pub async fn insert_release_with_queued_uploads(
     library: &TestLibrary,
-    dir: &std::path::Path,
+    folder: &bae_util::test_files::TestFolder,
+    dir: impl AsRef<std::path::Path>,
     album_title: &str,
     files: &[(&str, &[u8])],
 ) -> DbRelease {
-    let release = insert_local_release_with_files(library, dir, album_title, files).await;
+    let release = insert_local_release_with_files(library, folder, dir, album_title, files).await;
     library.manager().upload_release(&release.id).await.unwrap();
     assert_eq!(
         library.records().queued_upload_count_for_release_for_test(&release.id).await.unwrap(),

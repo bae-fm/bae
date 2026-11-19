@@ -39,7 +39,8 @@ async fn the_upload_queue_says_it_is_paused() {
     manager.store.set_uploads_paused(true).await.unwrap();
     let release = insert_release_with_queued_uploads(
         manager,
-        &temp_dir.path().join("paused"),
+        &temp_dir,
+        "paused",
         "Album Title",
         &[("a.flac", b"bytes-a")],
     )
@@ -161,7 +162,7 @@ async fn the_upload_queue_names_the_first_wait_that_holds() {
 #[tokio::test]
 async fn an_uploads_row_names_only_a_missing_original() {
     let (manager, temp, release, _file_id) = queued_upload_fixture("named").await;
-    std::fs::remove_file(temp.path().join("named/a.flac")).unwrap();
+    temp.remove("named/a.flac");
     assert_eq!(manager.library.manager().drain_uploads_expecting_work().await.unwrap(), 0);
     manager.library.manager().start().unwrap();
     pending_records_until(manager.library.manager(), |records| !records.is_empty()).await;
@@ -191,7 +192,7 @@ async fn a_waiting_moves_storage_row_stores_the_file_its_pending_record_names() 
     let library = manager.library.manager();
     let stored = || super::tests::stored_move_files(library, &release.id);
     assert_eq!(stored().await, (None, None));
-    std::fs::remove_file(temp.path().join("stored/a.flac")).unwrap();
+    temp.remove("stored/a.flac");
     assert_eq!(library.drain_uploads_expecting_work().await.unwrap(), 0);
     library.start().unwrap();
     pending_records_until(library, |records| !records.is_empty()).await;

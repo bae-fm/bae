@@ -106,7 +106,8 @@ async fn the_listed_pinned_count_follows_every_pin_and_file_write() {
                     files.iter().map(|(name, bytes)| (name.as_str(), bytes.as_slice())).collect();
                 let release = insert_local_release_with_files(
                     manager,
-                    &temp_dir.path().join(format!("release-{step}")),
+                    &temp_dir,
+                    format!("release-{step}"),
                     &format!("Album Title {step}"),
                     &files,
                 )
@@ -216,10 +217,11 @@ async fn storage_row(store: &bae_store::Store, release: &str) -> Vec<String> {
 #[test]
 fn a_release_s_storage_counts_its_pins_and_queued_files_on_each_device() {
     crate::test_libraries::run_two_device_test(async |devices| {
-        let originals = tempfile::TempDir::new().unwrap();
+        let originals = bae_util::test_files::TestFolder::new();
         let theirs = insert_local_release_with_files(
             devices.b().manager(),
-            &originals.path().join("theirs"),
+            &originals,
+            "theirs",
             "Album Title B",
             &[("track.flac", b"track-bytes")],
         )
@@ -251,7 +253,8 @@ fn a_release_s_storage_counts_its_pins_and_queued_files_on_each_device() {
         manager.store.set_uploads_paused(true).await.unwrap();
         let ours = insert_local_release_with_files(
             manager,
-            &originals.path().join("ours"),
+            &originals,
+            "ours",
             "Album Title A",
             &[("one.flac", b"first audio"), ("two.flac", b"second audio")],
         )
@@ -275,8 +278,7 @@ async fn a_file_a_pin_downloads_reads_as_downloading() {
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     let home = connect_test_cloud(&test).await;
-    let release_id =
-        uploaded_release(manager, &temp_dir.path().join("pin-files"), "Pin Files", false).await;
+    let release_id = uploaded_release(manager, &temp_dir, "pin-files", "Pin Files", false).await;
     let file = release_files(manager, &release_id).await.remove(0);
     manager.evict_file_for_test(file.file).await.unwrap();
     let mut files = manager.watch_pin_file_transfers();
@@ -357,7 +359,8 @@ async fn album_detail_releases_carry_their_own_pin_state() {
         let release = insert_local_release_in_album(
             manager,
             &album.id,
-            &temp_dir.path().join(format!("pressing-{index}")),
+            &temp_dir,
+            format!("pressing-{index}"),
             &[("track.flac", b"track-bytes")],
         )
         .await;
@@ -403,7 +406,8 @@ async fn a_pin_the_provider_refuses_is_a_storage_setup_failure() {
     let home = connect_test_cloud(&test).await;
     let release = insert_local_release_with_files(
         manager,
-        &temp_dir.path().join("pin-refused"),
+        &temp_dir,
+        "pin-refused",
         "Pin Refused",
         &[("track.flac", b"track-bytes")],
     )
@@ -459,7 +463,8 @@ async fn a_pin_the_cloud_cannot_serve_is_a_network_failure() {
     let home = connect_test_cloud(&test).await;
     let release = insert_local_release_with_files(
         manager,
-        &temp_dir.path().join("pin-offline"),
+        &temp_dir,
+        "pin-offline",
         "Pin Offline",
         &[("track.flac", b"track-bytes")],
     )

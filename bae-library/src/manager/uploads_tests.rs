@@ -4,7 +4,7 @@
 use super::*;
 use crate::manager::tests::*;
 use bae_records::{DbLibraryImage, DbRelease, NewReleaseFile};
-use tempfile::TempDir;
+use bae_util::test_files::TestFolder;
 use time::UtcDateTime;
 
 #[path = "uploads_tests/failed_moves.rs"]
@@ -40,12 +40,13 @@ async fn cancelling_uploads_with_a_missing_original_keeps_every_release_here() {
     let (manager, temp, first, _) = queued_upload_fixture("first").await;
     let second = insert_release_with_queued_uploads(
         manager.library.manager(),
-        &temp.path().join("second"),
+        &temp,
+        "second",
         "Album",
         &[("a.flac", b"first"), ("b.flac", b"second")],
     )
     .await;
-    std::fs::remove_file(temp.path().join("second/b.flac")).unwrap();
+    temp.remove("second/b.flac");
     manager.library.manager().cancel_all_release_uploads().await.unwrap();
     assert_eq!(manager.library.manager().store.queued_upload_count_for_test().await.unwrap(), 0);
     for release in [&first, &second] {
@@ -98,7 +99,8 @@ async fn making_a_release_remote_without_storage_waits_for_storage() {
     let manager = test.library.manager();
     let release = insert_release_with_queued_uploads(
         manager,
-        &temp_dir.path().join("waiting"),
+        &temp_dir,
+        "waiting",
         "Album",
         &[("a.flac", b"first")],
     )
@@ -120,22 +122,23 @@ async fn making_a_release_remote_without_storage_waits_for_storage() {
 #[test]
 fn upload_is_offered_for_a_release_another_device_holds_and_coven_refuses_it() {
     crate::test_libraries::run_two_device_test(async |devices| {
-        let first = TempDir::new().unwrap();
-        let elsewhere = release_on_the_first_device(devices, first.path(), "Album B").await;
-        let originals = TempDir::new().unwrap();
-        check_upload_offered(devices.b().manager(), originals.path(), &elsewhere).await;
+        let first = TestFolder::new();
+        let elsewhere = release_on_the_first_device(devices, &first, first.path(), "Album B").await;
+        let originals = TestFolder::new();
+        check_upload_offered(devices.b().manager(), &originals, &elsewhere).await;
     });
 }
 
 async fn check_upload_offered(
     manager: &LibraryManager,
-    originals: &std::path::Path,
+    originals: &TestFolder,
     elsewhere: &DbRelease,
 ) {
     use bae_types::release_storage::ReleaseStorageAction;
     let here = insert_local_release_with_files(
         manager,
         originals,
+        originals.path(),
         "Album A",
         &[("track.flac", b"track-bytes")],
     )
@@ -163,7 +166,7 @@ async fn check_upload_offered(
 
     assert_eq!(offered(here.id.clone()).await, vec![ReleaseStorageAction::Upload]);
     assert_eq!(offered(elsewhere.id.clone()).await, vec![ReleaseStorageAction::Upload]);
-    std::fs::remove_file(originals.join("track.flac")).unwrap();
+    originals.remove("track.flac");
     assert_eq!(offered(here.id.clone()).await, vec![ReleaseStorageAction::Upload]);
 
     let outcome = manager.upload_releases(std::slice::from_ref(&elsewhere.id)).await.unwrap();
@@ -185,7 +188,8 @@ async fn a_storage_row_reads_its_queued_upload_from_the_queue() {
     connect_test_cloud(&test).await;
     let release = insert_release_with_queued_uploads(
         manager,
-        &temp_dir.path().join("queued"),
+        &temp_dir,
+        "queued",
         "Album Title",
         &[("a.flac", b"bytes-a"), ("b.flac", b"bytes-b")],
     )
@@ -242,7 +246,8 @@ async fn a_selection_with_a_release_mid_upload_offers_only_cancelling() {
     connect_test_cloud(&test).await;
     let release = insert_release_with_queued_uploads(
         manager,
-        &temp_dir.path().join("queued"),
+        &temp_dir,
+        "queued",
         "Album Title",
         &[("a.flac", b"bytes-a")],
     )
@@ -277,7 +282,8 @@ async fn a_storage_row_counts_the_file_being_sent() {
     let home = connect_test_cloud(&test).await;
     let release = insert_release_with_queued_uploads(
         manager,
-        &temp_dir.path().join("sending"),
+        &temp_dir,
+        "sending",
         "Album Title",
         &[("a.flac", b"bytes-a")],
     )
@@ -332,7 +338,8 @@ async fn the_sync_activity_follows_a_send_as_it_starts_and_ends() {
     let home = connect_test_cloud(&test).await;
     insert_release_with_queued_uploads(
         manager,
-        &temp_dir.path().join("sending"),
+        &temp_dir,
+        "sending",
         "Album Title",
         &[("a.flac", b"bytes-a")],
     )
@@ -383,14 +390,16 @@ async fn uploading_releases_keep_their_admission_order() {
 
     let first = insert_release_with_queued_uploads(
         manager,
-        &temp_dir.path().join("first-upload"),
+        &temp_dir,
+        "first-upload",
         "Album Z",
         &[("track.flac", b"first")],
     )
     .await;
     let second = insert_release_with_queued_uploads(
         manager,
-        &temp_dir.path().join("second-upload"),
+        &temp_dir,
+        "second-upload",
         "Album A",
         &[("track.flac", b"second")],
     )
@@ -410,14 +419,12 @@ async fn upload_keeps_every_file_in_the_queue() {
     let release = create_test_release(&album.id);
     insert_release(manager, &release).await;
     let source_dir = temp_dir.path().join("ordered-upload");
-    std::fs::create_dir_all(&source_dir).unwrap();
     let created_at = UtcDateTime::now();
     for (id, name, bytes) in [
         ("00000000-0000-4000-8000-000000000001", "Track 10.flac", b"ten".as_slice()),
         ("ffffffff-ffff-4fff-bfff-ffffffffffff", "track 2.flac", b"two".as_slice()),
     ] {
-        let path = source_dir.join(name);
-        std::fs::write(&path, bytes).unwrap();
+        let path = temp_dir.write(source_dir.join(name), bytes);
         let file = NewReleaseFile::new(
             &release.id,
             name,
@@ -455,8 +462,9 @@ async fn upload_keeps_every_file_in_the_queue() {
 fn playing_a_file_on_another_device_names_the_device() {
     crate::test_libraries::run_two_device_test(async |devices| {
         use bae_playback::PlaybackErrorReason;
-        let originals = TempDir::new().unwrap();
-        let release = release_on_the_first_device(devices, originals.path(), "Album").await;
+        let originals = TestFolder::new();
+        let release =
+            release_on_the_first_device(devices, &originals, originals.path(), "Album").await;
         let manager = devices.b().manager();
 
         let files = release_files(manager, &release.id).await;
@@ -477,8 +485,9 @@ fn playing_a_file_on_another_device_names_the_device() {
 #[test]
 fn surfaces_a_local_release_another_device_holds() {
     crate::test_libraries::run_two_device_test(async |devices| {
-        let originals = TempDir::new().unwrap();
-        let release = release_on_the_first_device(devices, originals.path(), "Album").await;
+        let originals = TestFolder::new();
+        let release =
+            release_on_the_first_device(devices, &originals, originals.path(), "Album").await;
         check_release_surfaces(devices.b().manager(), &release).await;
     });
 }
@@ -515,7 +524,7 @@ async fn cancelling_a_completed_upload_preserves_the_attachment() {
         .await
         .iter()
         .all(|file| file.stored));
-    assert_eq!(std::fs::read(temp.path().join("completed/a.flac")).unwrap().len(), 1000);
+    assert_eq!(temp.read("completed/a.flac").len(), 1000);
 }
 
 /// A missing original makes its move wait, and cancelling the move needs no
@@ -527,7 +536,7 @@ async fn a_missing_upload_source_is_pending_until_its_move_is_cancelled() {
         manager.library.manager().count_pending_uploads_for_release(&release.id).await.unwrap(),
         1
     );
-    std::fs::remove_file(temp.path().join("queued/a.flac")).unwrap();
+    temp.remove("queued/a.flac");
     assert_eq!(manager.library.manager().drain_uploads_expecting_work().await.unwrap(), 0);
     assert!(!manager.library.store().pending().await.unwrap().is_empty());
     manager.library.manager().cancel_release_upload(&release.id).await.unwrap();
@@ -543,7 +552,8 @@ async fn cancelling_all_release_uploads_restores_their_originals() {
     let (manager, temp, first, _) = queued_upload_fixture("first").await;
     let second = insert_release_with_queued_uploads(
         manager.library.manager(),
-        &temp.path().join("second"),
+        &temp,
+        "second",
         "Album",
         &[("b.flac", b"audio")],
     )
@@ -568,7 +578,7 @@ async fn cancelling_all_release_uploads_restores_their_originals() {
                     .await
                     .unwrap()
                     .len(),
-                std::fs::metadata(
+                temp.metadata(
                     manager
                         .library
                         .manager()
@@ -579,7 +589,6 @@ async fn cancelling_all_release_uploads_restores_their_originals() {
                         .unwrap()
                         .path
                 )
-                .unwrap()
                 .len() as usize
             );
         }
@@ -602,7 +611,7 @@ async fn an_upload_whose_release_is_deleted_leaves_the_queue() {
 #[tokio::test]
 async fn the_inspector_shows_a_missing_originals_move_record_on_its_file() {
     let (manager, temp, release, _file_id) = queued_upload_fixture("inspector-move").await;
-    std::fs::remove_file(temp.path().join("inspector-move/a.flac")).unwrap();
+    temp.remove("inspector-move/a.flac");
     assert_eq!(manager.library.manager().drain_uploads_expecting_work().await.unwrap(), 0);
     let mut inspector = bae_views::LibraryViews::new(manager.library.manager().store.clone())
         .subscribe_storage_inspector(Some(release.id.clone()));
@@ -644,7 +653,8 @@ async fn a_releases_cover_is_no_file_of_its_upload() {
     connect_test_cloud(&test).await;
     let release = insert_local_release_with_files(
         manager,
-        &temp_dir.path().join("cover-upload"),
+        &temp_dir,
+        "cover-upload",
         "Album Title",
         &[("track.flac", b"track-bytes")],
     )
@@ -682,14 +692,16 @@ async fn an_upload_queues_each_release_before_returning() {
     connect_test_cloud(&test).await;
     let release = insert_local_release_with_files(
         manager,
-        &temp_dir.path().join("publish-queue"),
+        &temp_dir,
+        "publish-queue",
         "Album Title",
         &[("track.flac", b"track-bytes")],
     )
     .await;
     let second_release = insert_local_release_with_files(
         manager,
-        &temp_dir.path().join("publish-queue-second"),
+        &temp_dir,
+        "publish-queue-second",
         "Second Album Title",
         &[("second.flac", b"second-track-bytes")],
     )
@@ -719,7 +731,8 @@ async fn moving_a_selection_queues_each_release_under_a_move_of_its_own() {
     for name in ["a", "b", "c", "d", "e"] {
         let release = insert_local_release_with_files(
             manager,
-            &temp_dir.path().join(name),
+            &temp_dir,
+            name,
             &format!("Album {name}"),
             &[("track.flac", name.as_bytes())],
         )
@@ -787,21 +800,24 @@ async fn a_release_in_storage_already_does_not_block_sibling_cloud_admissions() 
     connect_test_cloud(&test).await;
     let first_new_release = insert_local_release_with_files(
         manager,
-        &temp_dir.path().join("first-new-target"),
+        &temp_dir,
+        "first-new-target",
         "First Album",
         &[("first.flac", b"first-bytes")],
     )
     .await;
     let moving_release = insert_local_release_with_files(
         manager,
-        &temp_dir.path().join("active-target"),
+        &temp_dir,
+        "active-target",
         "Second Album",
         &[("second.flac", b"second-bytes")],
     )
     .await;
     let last_new_release = insert_local_release_with_files(
         manager,
-        &temp_dir.path().join("last-new-target"),
+        &temp_dir,
+        "last-new-target",
         "Third Album",
         &[("third.flac", b"third-bytes")],
     )
@@ -837,7 +853,8 @@ async fn an_upload_batch_refuses_duplicate_release_ids_without_admission() {
     connect_test_cloud(&test).await;
     let release = insert_local_release_with_files(
         manager,
-        &temp_dir.path().join("duplicate-target"),
+        &temp_dir,
+        "duplicate-target",
         "Album Title",
         &[("track.flac", b"track-bytes")],
     )

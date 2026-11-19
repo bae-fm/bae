@@ -8,15 +8,15 @@ use bae_library::test_libraries::{
 };
 use bae_records::DbRelease;
 use bae_util::test_channels::HANG_GUARD;
+use bae_util::test_files::TestFolder;
 use bae_views::album_detail::StorageRowStatus;
 use bae_views::LibraryViews;
 use coven::MemoryStorage;
 use std::sync::Arc;
-use tempfile::TempDir;
 
 /// A test library over in-memory storage, with storage not yet set up.
-async fn open_library() -> (TestLibrary, Arc<MemoryStorage>, TempDir) {
-    let dir = TempDir::new().unwrap();
+async fn open_library() -> (TestLibrary, Arc<MemoryStorage>, TestFolder) {
+    let dir = TestFolder::new();
     let (library, storage) = storage_library(
         dir.path(),
         bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
@@ -45,13 +45,14 @@ async fn seed_albums(library: &TestLibrary, count: usize) {
 /// upload, and that file's id.
 async fn queued_upload_library(
     folder: &str,
-) -> (TestLibrary, Arc<MemoryStorage>, TempDir, DbRelease, String) {
+) -> (TestLibrary, Arc<MemoryStorage>, TestFolder, DbRelease, String) {
     let (library, storage, dir) = open_library().await;
     bae_library::test_libraries::connect_storage(library.manager(), library.store(), &storage)
         .await;
     let release = insert_release_with_queued_uploads(
         &library,
-        &dir.path().join(folder),
+        &dir,
+        folder,
         "Test Album",
         &[("a.flac", &vec![b'a'; 1000])],
     )
@@ -216,7 +217,8 @@ async fn release_detail_offers_storage_once_storage_is_set_up() {
     let (manager, storage, temp_dir) = open_library().await;
     let release = insert_local_release_with_files(
         &manager,
-        &temp_dir.path().join("local-source"),
+        &temp_dir,
+        "local-source",
         "Test Album",
         &[("a.flac", b"aaa")],
     )
@@ -259,7 +261,8 @@ async fn a_pin_reaches_the_storage_view_without_a_sync_cycle() {
         .await;
     let release = insert_local_release_with_files(
         &manager,
-        &temp_dir.path().join("pin-watch"),
+        &temp_dir,
+        "pin-watch",
         "Pin Watch",
         &[("track.flac", b"track-bytes")],
     )

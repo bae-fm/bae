@@ -13,12 +13,13 @@ async fn a_failed_move_shows_on_the_storage_row_until_cancelled() {
     let (manager, temp, release, _file_id) = queued_upload_fixture("failed-row").await;
     let other = insert_local_release_with_files(
         manager.library.manager(),
-        &temp.path().join("other"),
+        &temp,
+        "other",
         "Another Album",
         &[("b.flac", b"b")],
     )
     .await;
-    std::fs::write(temp.path().join("failed-row/a.flac"), b"changed after the move").unwrap();
+    temp.write("failed-row/a.flac", b"changed after the move");
     manager.library.manager().drain_uploads_expecting_work().await.unwrap();
     let statuses = || async {
         let sort = bae_views::StorageSortCriterion {
@@ -60,7 +61,7 @@ async fn a_failed_moves_storage_row_names_the_file_its_pending_record_names() {
     let library = manager.library.manager();
     let stored = || stored_move_files(library, &release.id);
     assert_eq!(stored().await, (None, None));
-    std::fs::write(temp.path().join("failed-file/a.flac"), b"changed after the move").unwrap();
+    temp.write("failed-file/a.flac", b"changed after the move");
     library.drain_uploads_expecting_work().await.unwrap();
     assert_eq!(stored().await, (Some("a.flac".to_string()), None));
     library.cancel_release_transition(&release.id).await.unwrap();
@@ -75,22 +76,19 @@ async fn a_failed_moves_storage_row_names_the_file_its_pending_record_names() {
 async fn a_release_in_a_failed_move_is_named_and_the_rest_of_the_selection_moves() {
     let (manager, temp, failed, _file_id) = queued_upload_fixture("failed").await;
     let library = manager.library.manager();
-    std::fs::write(temp.path().join("failed/a.flac"), b"changed after the move").unwrap();
+    temp.write("failed/a.flac", b"changed after the move");
     library.drain_uploads_expecting_work().await.unwrap();
     let first = insert_local_release_with_files(
         library,
-        &temp.path().join("first"),
+        &temp,
+        "first",
         "First Album",
         &[("b.flac", b"b")],
     )
     .await;
-    let last = insert_local_release_with_files(
-        library,
-        &temp.path().join("last"),
-        "Last Album",
-        &[("c.flac", b"c")],
-    )
-    .await;
+    let last =
+        insert_local_release_with_files(library, &temp, "last", "Last Album", &[("c.flac", b"c")])
+            .await;
 
     let outcome = library
         .upload_releases(&[first.id.clone(), failed.id.clone(), last.id.clone()])

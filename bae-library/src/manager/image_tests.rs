@@ -6,7 +6,7 @@ use super::*;
 use crate::manager::tests::*;
 use bae_records::{LibraryImageType, NewReleaseFile};
 use bae_util::content_type::ContentType;
-use tempfile::TempDir;
+use bae_util::test_files::TestFolder;
 use time::UtcDateTime;
 
 /// `change_cover` resizes whatever the user picks to a ≤600 JPEG thumbnail
@@ -44,10 +44,10 @@ async fn an_undecodable_cover_pick_is_refused_as_unreadable_artwork() {
     let release = create_test_release(&album.id);
     manager.records.insert_album(&album).await.unwrap();
     insert_release(manager, &release).await;
-    let source_dir = TempDir::new().unwrap();
+    let source_dir = TestFolder::new();
     let source_path = source_dir.path().join("broken.png");
     let bytes = b"not an image".as_slice();
-    std::fs::write(&source_path, bytes).unwrap();
+    source_dir.write(&source_path, bytes);
     let file = NewReleaseFile::new(
         &release.id,
         "broken.png",
@@ -84,9 +84,9 @@ async fn assert_changed_cover(
     manager.records.insert_album(&album).await.unwrap();
     insert_release(manager, &release).await;
 
-    let source_dir = TempDir::new().unwrap();
+    let source_dir = TestFolder::new();
     let source_path = source_dir.path().join(filename);
-    std::fs::write(&source_path, cover_bytes).unwrap();
+    source_dir.write(&source_path, cover_bytes);
     let file = NewReleaseFile::new(
         &release.id,
         filename,
@@ -108,7 +108,7 @@ async fn assert_changed_cover(
     assert_eq!(::image::guess_format(&stored).unwrap(), ::image::ImageFormat::Jpeg);
     let decoded = ::image::load_from_memory(&stored).unwrap();
     assert_eq!((decoded.width(), decoded.height()), dimensions);
-    assert_eq!(std::fs::read(&source_path).unwrap(), cover_bytes);
+    assert_eq!(source_dir.read(&source_path), cover_bytes);
 
     // The row describes the stored thumbnail, a JPEG, and its coven file
     // holds the thumbnail's bytes.
@@ -137,7 +137,7 @@ async fn change_cover_twice_replaces_the_cover_file() {
     insert_release(manager, &release).await;
 
     // Two visibly different release images, so the two stored thumbnails differ.
-    let source_dir = TempDir::new().unwrap();
+    let source_dir = TestFolder::new();
     let png = |rgb: [u8; 3]| {
         let img = ::image::RgbImage::from_pixel(400, 400, ::image::Rgb(rgb));
         let mut buf = std::io::Cursor::new(Vec::new());
@@ -147,7 +147,7 @@ async fn change_cover_twice_replaces_the_cover_file() {
         buf.into_inner()
     };
     let add_source = |name: &str, bytes: &[u8]| {
-        std::fs::write(source_dir.path().join(name), bytes).unwrap();
+        source_dir.write(name, bytes);
         NewReleaseFile::new(
             &release.id,
             name,

@@ -5,10 +5,10 @@
 //! listing this process's open files catches it on every platform.
 
 /// Copy the three fixture tracks into `dir`.
-fn write_tracks(dir: &std::path::Path) {
+fn write_tracks(dir: &bae_util::test_files::TestFolder) {
     let fixtures = bae_import::test_fixtures::flac_dir();
     for name in ["01 Test Track 1.flac", "02 Test Track 2.flac", "03 Test Track 3.flac"] {
-        std::fs::copy(fixtures.join(name), dir.join(name)).expect("copy a fixture track");
+        dir.copy_fixture(fixtures.join(name), name);
     }
 }
 
@@ -49,4 +49,5 @@ async fn closing_a_playing_library_leaves_none_of_its_files_open() {
     services.close().await.unwrap();
 
     coven::assert_no_open_files_under(imported.temp_dir.path());
+    coven::assert_no_open_files_under(imported.album_dir.path());
 }

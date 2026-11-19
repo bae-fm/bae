@@ -129,7 +129,8 @@ async fn the_listed_queue_counts_follow_every_upload_and_file_write() {
                     files.iter().map(|(name, bytes)| (name.as_str(), bytes.as_slice())).collect();
                 let release = insert_local_release_with_files(
                     manager,
-                    &temp_dir.path().join(format!("release-{step}")),
+                    &temp_dir,
+                    format!("release-{step}"),
                     &format!("Album Title {step}"),
                     &files,
                 )
@@ -346,13 +347,10 @@ async fn storage_page_rows_carry_state_appropriate_actions() {
     connect_test_cloud_uploading(&test).await;
 
     // Pinned: made Remote with pin, so its file lands in coven's offline cache.
-    let pinned =
-        upload_release_unpaused(manager, &temp_dir.path().join("pinned"), "Pinned Album", true)
-            .await;
+    let pinned = upload_release_unpaused(manager, &temp_dir, "pinned", "Pinned Album", true).await;
     // Cloud-only: made Remote without pin, so its file is evictable, not pinned.
     let cloud_only =
-        upload_release_unpaused(manager, &temp_dir.path().join("cloud"), "Cloud Album", false)
-            .await;
+        upload_release_unpaused(manager, &temp_dir, "cloud", "Cloud Album", false).await;
 
     // Local: not remote, files at a local path.
     let mut local_album = create_test_album();
@@ -394,11 +392,11 @@ async fn storage_page_local_filter_matches_local_path() {
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     connect_test_cloud(&test).await;
-    let remote_id =
-        uploaded_release(manager, &temp_dir.path().join("remote"), "Remote Album", false).await;
+    let remote_id = uploaded_release(manager, &temp_dir, "remote", "Remote Album", false).await;
     let local_release = insert_local_release_with_files(
         manager,
-        &temp_dir.path().join("local"),
+        &temp_dir,
+        "local",
         "Local Album",
         &[("track.flac", b"local")],
     )
@@ -431,7 +429,8 @@ async fn storage_count_matches_filtered_page_total() {
     for i in 0..3 {
         let release = insert_local_release_with_files(
             manager,
-            &temp_dir.path().join(format!("album-{i}")),
+            &temp_dir,
+            format!("album-{i}"),
             &format!("Album {i}"),
             &[("track.flac", b"track")],
         )
@@ -471,14 +470,16 @@ async fn storage_total_size_matches_page_total_size_sum() {
 
     insert_local_release_with_files(
         manager,
-        &temp_dir.path().join("local"),
+        &temp_dir,
+        "local",
         "Local Album",
         &[("a.flac", &vec![0u8; 1_000])],
     )
     .await;
     uploaded_release_with_files(
         manager,
-        &temp_dir.path().join("remote"),
+        &temp_dir,
+        "remote",
         "Remote Album",
         &[("a.flac", &[0u8; 100])],
         false,
@@ -486,7 +487,8 @@ async fn storage_total_size_matches_page_total_size_sum() {
     .await;
     insert_release_with_queued_uploads(
         manager,
-        &temp_dir.path().join("uploading"),
+        &temp_dir,
+        "uploading",
         "Uploading Album",
         &[("a.flac", &vec![0u8; 10_000])],
     )
@@ -757,21 +759,24 @@ async fn storage_page_sort_by_storage_state() {
     connect_test_cloud(&test).await;
     let dir = |name: &str| temp_dir.path().join(name);
 
-    let cloud = uploaded_release(manager, &dir("cloud"), "Album Title A", false).await;
-    let pinned = uploaded_release(manager, &dir("pinned"), "Album Title B", true).await;
+    let cloud = uploaded_release(manager, &temp_dir, &dir("cloud"), "Album Title A", false).await;
+    let pinned = uploaded_release(manager, &temp_dir, &dir("pinned"), "Album Title B", true).await;
     let local = insert_local_release_with_files(
         manager,
+        &temp_dir,
         &dir("local"),
         "Album Title C",
         &[("track.flac", b"local")],
     )
     .await
     .id;
-    let pinning = uploaded_release(manager, &dir("pinning"), "Album Title D", false).await;
+    let pinning =
+        uploaded_release(manager, &temp_dir, &dir("pinning"), "Album Title D", false).await;
     manager.set_downloads_paused(true).await.unwrap();
     manager.enqueue_pins(vec![pinning.clone()]).await.unwrap();
     let uploading = insert_release_with_queued_uploads(
         manager,
+        &temp_dir,
         &dir("uploading"),
         "Album Title E",
         &[("track.flac", b"uploading")],

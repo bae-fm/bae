@@ -87,7 +87,7 @@ struct Casting<R> {
     receiver: Arc<Mutex<R>>,
     /// The receiver's id, which the cast names.
     id: &'static str,
-    _tmp: tempfile::TempDir,
+    _tmp: bae_util::test_files::TestFolder,
 }
 
 impl<R> Casting<R> {

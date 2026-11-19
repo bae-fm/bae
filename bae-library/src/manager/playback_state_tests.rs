@@ -4,15 +4,16 @@
 use super::*;
 use crate::manager::tests::*;
 use bae_records::DbRelease;
-use tempfile::TempDir;
+use bae_util::test_files::TestFolder;
 
 async fn insert_partially_uploaded_release(
     manager: &LibraryManager,
-    temp_dir: &std::path::Path,
+    temp_dir: &TestFolder,
 ) -> DbRelease {
     let source_dir = temp_dir.join(coven::IdSource::new_id(&coven::UuidIds).to_string());
     let release = insert_local_release_with_files(
         manager,
+        temp_dir,
         &source_dir,
         "Partially Uploaded",
         &[("a.flac", b"uploaded"), ("b.flac", b"missing")],
@@ -22,7 +23,7 @@ async fn insert_partially_uploaded_release(
     manager.upload_release(&release.id).await.unwrap();
     assert_eq!(queued_upload_count(manager).await, 2);
 
-    std::fs::remove_file(source_dir.join("b.flac")).unwrap();
+    temp_dir.remove(source_dir.join("b.flac"));
     manager.drain_uploads_expecting_work().await.unwrap();
     // The move switches no file to the cloud until every one is stored, and
     // waits for the missing original.
@@ -47,6 +48,7 @@ async fn remote_read_with_sync_stopped_reports_sync_disconnected() {
     connect_test_cloud(&test).await;
     let release_id = uploaded_release_with_files(
         manager,
+        &dir,
         dir.path(),
         "Album Title",
         &[("track.flac", b"track-bytes")],
@@ -69,7 +71,7 @@ async fn pending_upload_with_missing_source_reports_the_missing_original() {
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     connect_test_cloud(&test).await;
-    let release = insert_partially_uploaded_release(manager, temp_dir.path()).await;
+    let release = insert_partially_uploaded_release(manager, &temp_dir).await;
 
     let files = release_files(manager, &release.id).await;
     let file = files
@@ -91,16 +93,17 @@ async fn pending_upload_with_missing_source_reports_the_missing_original() {
 #[test]
 fn a_release_says_whether_this_device_can_play_it() {
     crate::test_libraries::run_two_device_test(async |devices| {
-        let first = TempDir::new().unwrap();
-        let elsewhere = release_on_the_first_device(devices, first.path(), "Album Elsewhere").await;
-        let originals = TempDir::new().unwrap();
-        check_playability(devices.b().manager(), originals.path(), &elsewhere).await;
+        let first = TestFolder::new();
+        let elsewhere =
+            release_on_the_first_device(devices, &first, first.path(), "Album Elsewhere").await;
+        let originals = TestFolder::new();
+        check_playability(devices.b().manager(), &originals, &elsewhere).await;
     });
 }
 
 async fn check_playability(
     manager: &LibraryManager,
-    originals: &std::path::Path,
+    originals: &TestFolder,
     elsewhere: &DbRelease,
 ) {
     use bae_playback::PlaybackErrorReason;
@@ -108,6 +111,7 @@ async fn check_playability(
     let here = insert_local_release_with_files(
         manager,
         originals,
+        originals.path(),
         "Album Title",
         &[("track.flac", b"track-bytes")],
     )
@@ -129,7 +133,7 @@ async fn check_playability(
         })
     );
 
-    std::fs::remove_file(originals.join("track.flac")).unwrap();
+    originals.remove("track.flac");
     assert_eq!(
         playability(here.id.clone()).await,
         ReleasePlayability::Playable,

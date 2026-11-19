@@ -7,15 +7,14 @@ use super::*;
 use crate::manager::tests::*;
 use crate::test_libraries::TestLibrary;
 use bae_store::live_query::LiveQueryError;
+use bae_util::test_files::TestFolder;
 use coven::MemoryStorage;
-use tempfile::TempDir;
 
 /// A library opened over a store whose download queue holds an entry opens
 /// with that entry and the pause the person left it with.
 #[tokio::test]
 async fn opening_a_library_keeps_its_download_queue() {
-    let temp_dir = TempDir::new().unwrap();
-    let app_dir = bae_app_dir::AppDir::at(temp_dir.path()).unwrap();
+    let app_dir = bae_app_dir::AppDir::temporary().unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let clock: coven::ClockRef = Arc::new(coven::SystemClock);
     let sources = bae_store::TestSources::on(&clock);
@@ -62,20 +61,18 @@ async fn opening_a_library_keeps_its_download_queue() {
 /// listed for the folder it was imported from.
 async fn done_with_two_uploading(
     manager: &TestManager,
-    dir: &std::path::Path,
+    dir: &TestFolder,
 ) -> Vec<(String, bae_import::CandidateKey)> {
     connect_test_cloud(manager).await;
     let import = manager.library.start_discogs_import().await;
     let mut keys = Vec::new();
     for name in ["A", "C", "B", "D"] {
-        let folder = std::fs::canonicalize(dir).unwrap().join(name);
-        std::fs::create_dir_all(&folder).unwrap();
+        let folder = dir.create_folder(dir.canonicalize(dir.path()).join(name));
         // Named for its folder, so that no two folders' files hash alike.
-        std::fs::copy(
+        dir.copy_fixture(
             bae_import::test_fixtures::flac_dir().join("01 Test Track 1.flac"),
             folder.join(format!("{name}.flac")),
-        )
-        .unwrap();
+        );
         let release = manager.fakes.seed_discogs_test_release(
             bae_catalogs::test_releases::discogs_test_release(
                 &format!("done-{name}"),
@@ -139,7 +136,7 @@ async fn done_runs_the_releases_still_uploading_first() {
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     let tables = bae_import::tables::ImportTables::new(manager.store.clone());
-    let keys = done_with_two_uploading(&test, temp_dir.path()).await;
+    let keys = done_with_two_uploading(&test, &temp_dir).await;
     let done = |order| bae_import::ImportListView {
         tab: bae_import::TriageTab::Done,
         order,
@@ -227,7 +224,7 @@ fn done_uploads(
 async fn a_done_row_carries_its_release_upload() {
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
-    done_with_two_uploading(&test, temp_dir.path()).await;
+    done_with_two_uploading(&test, &temp_dir).await;
     let import = test.library.start_import().await.unwrap();
     let subscription = import.subscribe_list_window(
         bae_import::ImportListRequest::of(bae_import::ImportListView {
@@ -291,7 +288,7 @@ async fn extending_on_done_selects_the_run_across_its_two_parts() {
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     let tables = bae_import::tables::ImportTables::new(manager.store.clone());
-    let keys = done_with_two_uploading(&test, temp_dir.path()).await;
+    let keys = done_with_two_uploading(&test, &temp_dir).await;
     let key = |name: &str| keys.iter().find(|(key, _)| key == name).unwrap().1.clone();
     let list = bae_import::ImportListRequest::of(bae_import::ImportListView {
         tab: bae_import::TriageTab::Done,
@@ -463,7 +460,8 @@ async fn the_transfers_name_only_the_files_being_sent() {
     let home = connect_test_cloud(&test).await;
     let release = insert_release_with_queued_uploads(
         manager,
-        &temp_dir.path().join("sending"),
+        &temp_dir,
+        "sending",
         "Album Title",
         &[("a.flac", b"bytes-a"), ("b.flac", b"bytes-b")],
     )
@@ -535,7 +533,8 @@ async fn a_file_sent_in_one_request_moves_its_release_as_it_goes() {
     let home = connect_test_cloud(&test).await;
     let release = insert_release_with_queued_uploads(
         manager,
-        &temp_dir.path().join("sending"),
+        &temp_dir,
+        "sending",
         "Album Title",
         &[("a.flac", b"bytes-a")],
     )
@@ -603,7 +602,7 @@ async fn a_file_sent_in_one_request_moves_its_release_as_it_goes() {
 
 /// A test manager whose bugs go to the returned reporter.
 async fn setup_test_manager_reporting_bugs(
-) -> (TestManager, TempDir, Arc<bae_diagnostics::RecordingBugReporter>) {
+) -> (TestManager, TestFolder, Arc<bae_diagnostics::RecordingBugReporter>) {
     let bugs = Arc::new(bae_diagnostics::RecordingBugReporter::default());
     let (manager, temp_dir) = setup_test_manager_with(
         Arc::new(coven::SystemClock),

@@ -4,8 +4,6 @@
 //! and compared by `bae_store::test_devices`.
 use std::sync::Arc;
 
-use tempfile::TempDir;
-
 use crate::LibraryManager;
 use bae_app_dir::AppDir;
 use bae_store::test_devices::{self as stores, SyncCycles};
@@ -21,7 +19,6 @@ pub struct TestDevice {
     storage: Arc<coven::MemoryStorage>,
     /// The clock and ids every device of the library runs on.
     sources: super::TestSources,
-    _dir: TempDir,
 }
 
 /// The library a device runs over its open store, with the record of its
@@ -142,8 +139,7 @@ impl DeviceLibrary {
         credentials: Option<coven::S3Credentials>,
         name: &str,
     ) -> Option<TestDevice> {
-        let dir = TempDir::new().unwrap();
-        let app = AppDir::at(dir.path()).unwrap();
+        let app = AppDir::temporary().unwrap();
         let installation = self.sources.installation(app.coven_app_dir());
         let storage = Arc::new(self.storage.for_device());
         let code = crate::sync::restore_code::entered(code);
@@ -157,7 +153,7 @@ impl DeviceLibrary {
             name,
         )
         .await?;
-        let device = device(dir, app, handle, installation, storage, self.sources.clone()).await;
+        let device = device(app, handle, installation, storage, self.sources.clone()).await;
         device.store().start_sync().await.unwrap();
         Some(device)
     }
@@ -187,13 +183,12 @@ impl DeviceLibrary {
         let storage = Arc::new(
             coven::MemoryStorage::builder().clock(sources.clock().clone()).build().unwrap(),
         );
-        let dir = TempDir::new().unwrap();
-        let app = AppDir::at(dir.path()).unwrap();
+        let app = AppDir::temporary().unwrap();
         let installation = sources.installation(app.coven_app_dir());
         let handle =
             stores::create_first_store(crate::SCHEMA, &installation, &sources, storage.clone())
                 .await;
-        let first = device(dir, app, handle, installation, storage.clone(), sources.clone()).await;
+        let first = device(app, handle, installation, storage.clone(), sources.clone()).await;
         Self { first, storage, sources }
     }
 
@@ -206,8 +201,7 @@ impl DeviceLibrary {
     /// the first device showed, as the app restores one: read back as a
     /// person enters it, in its groups or not, and syncing.
     pub async fn restore(&self, code: &str, name: &str) -> TestDevice {
-        let dir = TempDir::new().unwrap();
-        let app = AppDir::at(dir.path()).unwrap();
+        let app = AppDir::temporary().unwrap();
         let installation = self.sources.installation(app.coven_app_dir());
         let storage = Arc::new(self.storage.for_device());
         let code = crate::sync::restore_code::entered(code);
@@ -220,7 +214,7 @@ impl DeviceLibrary {
             name,
         )
         .await;
-        let device = device(dir, app, handle, installation, storage, self.sources.clone()).await;
+        let device = device(app, handle, installation, storage, self.sources.clone()).await;
         device.store().start_sync().await.unwrap();
         device
     }
@@ -296,7 +290,7 @@ impl TestDevice {
     pub async fn restore_backup_behind(&mut self, newer: impl AsyncFnOnce(&TestDevice)) {
         let id = self.store().store_id();
         let folder = self.app.coven_app_dir().join("stores").join(id.to_string());
-        let backup = TempDir::new().unwrap();
+        let backup = bae_util::test_files::TestFolder::new();
         self.close().await;
         stores::copy_folder(&folder, backup.path());
         self.open_again(None).await;
@@ -336,7 +330,6 @@ fn synced(device: &TestDevice) -> (&Store, &SyncCycles) {
 }
 
 async fn device(
-    dir: TempDir,
     app: AppDir,
     handle: coven::CovenHandle,
     installation: coven::Coven,
@@ -349,7 +342,6 @@ async fn device(
         app,
         storage,
         sources,
-        _dir: dir,
     }
 }
 

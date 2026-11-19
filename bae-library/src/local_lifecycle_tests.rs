@@ -4,12 +4,12 @@ use super::{
 };
 use bae_app_dir::AppDir;
 use bae_diagnostics::Diagnostics;
+use bae_util::test_files::TestFolder;
 use coven::Storage;
 use std::sync::Arc;
-use tempfile::TempDir;
 
 struct Home {
-    _temp: TempDir,
+    _temp: TestFolder,
     app_dir: AppDir,
     installation: coven::Coven,
     /// Each library's storage: every S3 library has its bucket to itself.
@@ -19,7 +19,7 @@ struct Home {
 
 impl Home {
     fn new() -> Self {
-        let temp = TempDir::new().unwrap();
+        let temp = TestFolder::new();
         let app_dir = AppDir::under_home(temp.path()).unwrap();
         Self {
             _temp: temp,

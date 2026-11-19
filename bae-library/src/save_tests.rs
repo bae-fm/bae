@@ -171,9 +171,11 @@ fn an_invalid_pattern_is_refused_with_its_error() {
 }
 
 /// Encode a short FLAC and run the real `write_tags` over it with `cover`.
-/// Returns the temp dir — which has to outlive the read-back — and the
+/// Returns the test folder, which has to outlive the read-back, and the
 /// tagged file's path.
-fn write_tags_to_encoded_flac(cover: Option<&[u8]>) -> (tempfile::TempDir, std::path::PathBuf) {
+fn write_tags_to_encoded_flac(
+    cover: Option<&[u8]>,
+) -> (bae_util::test_files::TestFolder, std::path::PathBuf) {
     bae_audio::init();
     let samples: Vec<i32> =
         (0..4410).map(|i| ((i as f64 * 0.02).sin() * 0.5 * i32::MAX as f64) as i32).collect();
@@ -195,9 +197,9 @@ fn write_tags_to_encoded_flac(cover: Option<&[u8]>) -> (tempfile::TempDir, std::
         disc: Some(1),
     };
 
-    let dir = tempfile::TempDir::new().unwrap();
+    let dir = bae_util::test_files::TestFolder::new();
     let path = dir.path().join("tagged.flac");
-    std::fs::write(&path, &flac).unwrap();
+    dir.write(&path, &flac);
     write_tags(&path, lofty::tag::TagType::VorbisComments, &tags, Some(3), 10, cover, None)
         .unwrap();
     (dir, path)
@@ -217,9 +219,9 @@ fn write_tags_writes_every_known_field() {
         buf.into_inner()
     };
 
-    let (_dir, path) = write_tags_to_encoded_flac(Some(&cover_bytes));
+    let (dir, path) = write_tags_to_encoded_flac(Some(&cover_bytes));
 
-    let tagged = lofty::read_from_path(&path).unwrap();
+    let tagged = lofty::read_from(&mut dir.open(&path)).unwrap();
     let tag = tagged.tag(TagType::VorbisComments).expect("VorbisComments tag present");
     assert_eq!(tag.title().as_deref(), Some("Track Title"));
     assert_eq!(tag.artist().as_deref(), Some("Artist Name"));
@@ -237,9 +239,9 @@ fn write_tags_without_cover_embeds_no_picture() {
     use lofty::prelude::*;
     use lofty::tag::TagType;
 
-    let (_dir, path) = write_tags_to_encoded_flac(None);
+    let (dir, path) = write_tags_to_encoded_flac(None);
 
-    let tagged = lofty::read_from_path(&path).unwrap();
+    let tagged = lofty::read_from(&mut dir.open(&path)).unwrap();
     let tag = tagged.tag(TagType::VorbisComments).expect("VorbisComments tag present");
     assert_eq!(tag.title().as_deref(), Some("Track Title"));
     assert_eq!(tag.track(), Some(3));
@@ -282,14 +284,14 @@ fn write_tags_round_trips_through_mp4_ilst() {
         disc: Some(1),
     };
 
-    let dir = tempfile::TempDir::new().unwrap();
+    let dir = bae_util::test_files::TestFolder::new();
     let path = dir.path().join("tagged.m4a");
-    std::fs::write(&path, &m4a).unwrap();
+    dir.write(&path, &m4a);
     let tag_type = codec_tag_type(&bae_preferences::SaveCodec::Aac { bitrate_kbps: 256 });
     assert_eq!(tag_type, TagType::Mp4Ilst);
     write_tags(&path, tag_type, &tags, Some(3), 10, Some(&cover_bytes), None).unwrap();
 
-    let tagged = lofty::read_from_path(&path).unwrap();
+    let tagged = lofty::read_from(&mut dir.open(&path)).unwrap();
     let tag = tagged.tag(TagType::Mp4Ilst).expect("MP4 ilst tag present");
     assert_eq!(tag.title().as_deref(), Some("Track Title"));
     assert_eq!(tag.artist().as_deref(), Some("Artist Name"));
@@ -307,11 +309,10 @@ fn write_tags_round_trips_through_mp4_ilst() {
 #[test]
 fn a_read_that_panics_fails_the_save_as_unfinished() {
     bae_audio::init();
-    let bytes = std::fs::read(
+    let bytes = bae_util::test_files::read_fixture(
         bae_audio::test_fixtures::cue_flac_dir()
             .join("03 Test Artist - Track Three (Brown Noise).flac"),
-    )
-    .expect("fixture");
+    );
     let buffer = bae_audio::sparse_buffer::create_sparse_buffer(bytes.len() as u64);
     buffer.append_at(0, &bytes);
     buffer.panic_reads();
@@ -325,8 +326,11 @@ fn a_read_that_panics_fails_the_save_as_unfinished() {
         0,
         0,
     );
-    let dir = tempfile::TempDir::new().unwrap();
-    let file = std::fs::File::create(dir.path().join("track.flac")).unwrap();
+    let dir = bae_util::test_files::TestFolder::new();
+    let file = dir.open_with(
+        "track.flac",
+        std::fs::OpenOptions::new().write(true).create(true).truncate(true),
+    );
     let cancel = Arc::new(AtomicBool::new(false));
     let mut encoder = StreamingEncoder::seekable(
         EncodeFormat::Flac { bits_per_sample: 16 },
@@ -553,12 +557,12 @@ fn write_tags_writes_each_credit_as_its_own_value() {
         year: None,
         disc: None,
     };
-    let dir = tempfile::TempDir::new().unwrap();
+    let dir = bae_util::test_files::TestFolder::new();
     let path = dir.path().join("credited.flac");
-    std::fs::write(&path, &flac).unwrap();
+    dir.write(&path, &flac);
     write_tags(&path, TagType::VorbisComments, &tags, None, 1, None, None).unwrap();
 
-    let tagged = lofty::read_from_path(&path).unwrap();
+    let tagged = lofty::read_from(&mut dir.open(&path)).unwrap();
     let tag = tagged.tag(TagType::VorbisComments).expect("VorbisComments tag present");
     assert_eq!(
         tag.get_strings(ItemKey::TrackArtist).collect::<Vec<_>>(),

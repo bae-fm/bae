@@ -10,8 +10,7 @@ mod settings;
 
 #[tokio::test]
 async fn creating_a_library_establishes_its_identity_without_marking_it_active() {
-    let temp = tempfile::TempDir::new().unwrap();
-    let app_dir = AppDir::at(temp.path()).unwrap();
+    let app_dir = AppDir::temporary().unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let handle = create_library(
         bae_store::test_devices::test_builder(&installation),
@@ -75,8 +74,7 @@ fn a_join_can_be_cancelled_until_its_request_may_have_been_sent() {
 
 #[tokio::test]
 async fn a_library_s_connections_keep_bae_s_page_cache_size() {
-    let temp = tempfile::TempDir::new().unwrap();
-    let app_dir = AppDir::at(temp.path()).unwrap();
+    let app_dir = AppDir::temporary().unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let handle = create_library(
         bae_store::test_devices::test_builder(&installation),
@@ -103,8 +101,7 @@ async fn a_library_s_connections_keep_bae_s_page_cache_size() {
 /// private circle named for their member id with them as its only member.
 #[tokio::test]
 async fn a_created_library_holds_its_creator_s_profile_from_its_first_read() {
-    let temp = tempfile::TempDir::new().unwrap();
-    let app_dir = AppDir::at(temp.path()).unwrap();
+    let app_dir = AppDir::temporary().unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let sources = bae_store::TestSources::system();
     let handle = create_library(
@@ -138,8 +135,7 @@ async fn a_created_library_holds_its_creator_s_profile_from_its_first_read() {
 
 #[tokio::test]
 async fn failed_creation_removes_the_partial_library() {
-    let temp = tempfile::TempDir::new().unwrap();
-    let app_dir = AppDir::at(temp.path()).unwrap();
+    let app_dir = AppDir::temporary().unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     installation.fail_next_keychain_operation();
     let error = create_library(
@@ -165,8 +161,7 @@ async fn failed_creation_removes_the_partial_library() {
 /// device.
 #[tokio::test]
 async fn resetting_an_unconnected_store_is_refused_and_changes_nothing() {
-    let temp = tempfile::TempDir::new().unwrap();
-    let app_dir = AppDir::at(temp.path()).unwrap();
+    let app_dir = AppDir::temporary().unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let handle = create_library(
         bae_store::test_devices::test_builder(&installation),
@@ -258,8 +253,7 @@ async fn keys_replaced_elsewhere(
     storage: &std::sync::Arc<coven::MemoryStorage>,
 ) -> KeysReplacedElsewhere {
     let (store, device, stale_code) = connected_library(installation, storage, "Household").await;
-    let phone_dir = tempfile::TempDir::new().unwrap();
-    let phone_app_dir = AppDir::at(phone_dir.path()).unwrap();
+    let phone_app_dir = AppDir::temporary().unwrap();
     let (_sender, cancel) = watch::channel(false);
     let phone = restore_from_code(
         bae_store::test_devices::test_builder(
@@ -320,8 +314,7 @@ async fn opens_as(builder: coven::CovenBuilder, store: coven::StoreId, device: c
 /// again with the current code then succeeds.
 #[tokio::test]
 async fn a_failed_restore_over_this_devices_copy_leaves_it_to_open_or_retry() {
-    let temp = tempfile::TempDir::new().unwrap();
-    let app_dir = AppDir::at(temp.path()).unwrap();
+    let app_dir = AppDir::temporary().unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
     let other_storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
@@ -392,8 +385,7 @@ async fn a_failed_restore_over_this_devices_copy_leaves_it_to_open_or_retry() {
 /// the library opens as the restored one from then on.
 #[tokio::test]
 async fn restoring_with_the_current_code_leaves_the_restored_copy() {
-    let temp = tempfile::TempDir::new().unwrap();
-    let app_dir = AppDir::at(temp.path()).unwrap();
+    let app_dir = AppDir::temporary().unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
     let replaced = keys_replaced_elsewhere(&installation, &storage).await;
@@ -484,8 +476,7 @@ async fn stop_once_recorded<T>(
 /// opens as the restored device.
 #[tokio::test]
 async fn a_restore_stopped_after_its_record_is_listed_and_finished_by_restoring_again() {
-    let temp = tempfile::TempDir::new().unwrap();
-    let app_dir = AppDir::at(temp.path()).unwrap();
+    let app_dir = AppDir::temporary().unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
     let replaced = keys_replaced_elsewhere(&installation, &storage).await;
@@ -570,8 +561,7 @@ async fn a_restore_stopped_after_its_record_is_listed_and_finished_by_restoring_
 /// the restored device.
 #[tokio::test]
 async fn a_restore_stopped_after_its_record_finishes_without_the_code() {
-    let temp = tempfile::TempDir::new().unwrap();
-    let app_dir = AppDir::at(temp.path()).unwrap();
+    let app_dir = AppDir::temporary().unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
     let replaced = keys_replaced_elsewhere(&installation, &storage).await;
@@ -630,8 +620,7 @@ async fn a_restore_stopped_after_its_record_finishes_without_the_code() {
 #[test]
 fn a_reset_stopped_after_its_record_finishes_from_what_coven_kept() {
     bae_store::test_devices::on_device_runtime(async || {
-        let temp = tempfile::TempDir::new().unwrap();
-        let app_dir = AppDir::at(temp.path()).unwrap();
+        let app_dir = AppDir::temporary().unwrap();
         let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
         let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
         let (store, device, _) = connected_library(&installation, &storage, "Household").await;
@@ -708,7 +697,7 @@ fn a_restore_cancelled_after_registering_says_it_stays_unfinished() {
 /// pointer naming it are gone, and no removal record is left.
 #[tokio::test]
 async fn removing_a_library_whose_restore_stopped_after_its_record_deletes_both_copies() {
-    let temp = tempfile::TempDir::new().unwrap();
+    let temp = bae_util::test_files::TestFolder::new();
     let app_dir = AppDir::at(temp.path()).unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
@@ -791,12 +780,11 @@ async fn removing_a_library_whose_restore_stopped_after_its_record_deletes_both_
 /// after.
 #[tokio::test]
 async fn a_restore_onto_a_new_device_stopped_after_its_record_finishes_without_the_code() {
-    let temp = tempfile::TempDir::new().unwrap();
-    let app_dir = AppDir::at(temp.path()).unwrap();
+    let app_dir = AppDir::temporary().unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
     let (store, _, code) = connected_library(&installation, &storage, "Household").await;
-    let phone_dir = tempfile::TempDir::new().unwrap();
+    let phone_dir = bae_util::test_files::TestFolder::new();
     let phone = installation.another_device(AppDir::at(phone_dir.path()).unwrap().coven_app_dir());
     let builder = || {
         bae_store::test_devices::test_builder(&phone)
@@ -845,13 +833,11 @@ async fn a_restore_onto_a_new_device_stopped_after_its_record_finishes_without_t
 /// the transfer limits a library starts at, which it opens under too.
 #[tokio::test]
 async fn a_restore_onto_a_new_device_loads_at_a_new_librarys_transfer_limits() {
-    let temp = tempfile::TempDir::new().unwrap();
-    let app_dir = AppDir::at(temp.path()).unwrap();
+    let app_dir = AppDir::temporary().unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
     let (_, _, code) = connected_library(&installation, &storage, "Household").await;
-    let phone_dir = tempfile::TempDir::new().unwrap();
-    let phone_app_dir = AppDir::at(phone_dir.path()).unwrap();
+    let phone_app_dir = AppDir::temporary().unwrap();
     let (_sender, cancel) = watch::channel(false);
 
     let phone = restore_from_code(
@@ -880,8 +866,7 @@ async fn a_restore_onto_a_new_device_loads_at_a_new_librarys_transfer_limits() {
 /// as typed or pasted: the spaces drop before it decodes.
 #[tokio::test]
 async fn a_restore_code_in_the_groups_it_is_shown_in_restores_the_library() {
-    let temp = tempfile::TempDir::new().unwrap();
-    let app_dir = AppDir::at(temp.path()).unwrap();
+    let app_dir = AppDir::temporary().unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
     let (store, _, code) = connected_library(&installation, &storage, "Household").await;
@@ -891,8 +876,7 @@ async fn a_restore_code_in_the_groups_it_is_shown_in_restores_the_library() {
         crate::sync::decode_code_info(&shown).unwrap(),
         coven::CodeInfo::Restore(metadata) if metadata.store_id == store
     ));
-    let phone_dir = tempfile::TempDir::new().unwrap();
-    let phone_app_dir = AppDir::at(phone_dir.path()).unwrap();
+    let phone_app_dir = AppDir::temporary().unwrap();
     let (_sender, cancel) = watch::channel(false);
 
     let phone = restore_from_code(
@@ -920,8 +904,7 @@ async fn a_restore_code_in_the_groups_it_is_shown_in_restores_the_library() {
 /// caller's reads, such as reading a short history, may never reach it.
 #[tokio::test]
 async fn a_reset_reports_loading_the_library_in_order_to_its_end() {
-    let temp = tempfile::TempDir::new().unwrap();
-    let app_dir = AppDir::at(temp.path()).unwrap();
+    let app_dir = AppDir::temporary().unwrap();
     let installation = coven::Coven::in_memory(app_dir.coven_app_dir());
     let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
     let (store, device, _) = connected_library(&installation, &storage, "Household").await;

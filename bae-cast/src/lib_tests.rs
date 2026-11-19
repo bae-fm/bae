@@ -52,11 +52,11 @@ pub(crate) fn set_casting(
 }
 
 /// A controller over a fresh library, on the runtime it returns, serving
-/// casts on loopback. The `TempDir` owns that library's files, so it must
+/// casts on loopback. The `TestFolder` owns that library's files, so it must
 /// outlive the controller.
 pub(crate) fn test_controller(
     discovery: RendererDiscovery,
-) -> (tokio::runtime::Runtime, Arc<CastController>, AppServices, tempfile::TempDir) {
+) -> (tokio::runtime::Runtime, Arc<CastController>, AppServices, bae_util::test_files::TestFolder) {
     let (runtime, services, tmp) = bae_app::test_services::runtime_with_services();
     let controller = CastController::start_serving_on(
         services.clone(),
@@ -71,7 +71,7 @@ pub(crate) fn test_controller(
 }
 
 /// This device's keychain for a test: in memory, under `tmp`.
-fn device_secrets(tmp: &tempfile::TempDir) -> coven::Coven {
+fn device_secrets(tmp: &bae_util::test_files::TestFolder) -> coven::Coven {
     coven::Coven::in_memory(tmp.path().join("device"))
 }
 
@@ -306,9 +306,13 @@ impl SilentReceiver {
 }
 
 /// Casting on, the picker open, and a silent Chromecast `cast-1` listed.
-fn controller_with_silent_receiver(
-) -> (tokio::runtime::Runtime, Arc<CastController>, AppServices, tempfile::TempDir, SilentReceiver)
-{
+fn controller_with_silent_receiver() -> (
+    tokio::runtime::Runtime,
+    Arc<CastController>,
+    AppServices,
+    bae_util::test_files::TestFolder,
+    SilentReceiver,
+) {
     let (runtime, controller, services, tmp) = test_controller(RendererDiscovery::reported());
     set_casting(&runtime, &controller, &services, true);
     start_discovery(&runtime, &controller);
@@ -833,12 +837,12 @@ struct CastToFake {
     first_load: serde_json::Value,
     _controller: Arc<CastController>,
     _library: bae_library::test_libraries::TestLibrary,
-    _device: tempfile::TempDir,
+    _device: bae_util::test_files::TestFolder,
 }
 
 fn cast_a_release_to_a_fake_chromecast() -> CastToFake {
     let runtime = bae_library::test_libraries::multi_thread_runtime();
-    let device = tempfile::tempdir().expect("a folder for this device's keychain");
+    let device = bae_util::test_files::TestFolder::new();
     let (library, imported) = runtime
         .block_on(bae_library::test_libraries::imported_release_setup(
             bae_catalogs::test_releases::discogs_test_release(

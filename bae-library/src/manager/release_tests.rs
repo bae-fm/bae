@@ -136,6 +136,7 @@ async fn deletion_retires_queued_file_uploads_and_keeps_the_originals() {
         let source = temp.path().join("source");
         let release = insert_release_with_queued_uploads(
             manager,
+            &temp,
             &source,
             "Album",
             &[("track.flac", b"audio")],
@@ -150,7 +151,7 @@ async fn deletion_retires_queued_file_uploads_and_keeps_the_originals() {
             manager.delete_release(&release.id).await.unwrap();
         }
         assert!(find_release(manager, &release.id).await.is_none());
-        assert_eq!(std::fs::read(source.join("track.flac")).unwrap(), b"audio");
+        assert_eq!(temp.read(source.join("track.flac")), b"audio");
         assert_eq!(manager.store.queued_upload_count_for_test().await.unwrap(), 0);
     }
 }
@@ -198,7 +199,7 @@ async fn delete_release_removes_its_cover_image() {
     // the delete runs against a cover that names a real cloud object.
     let release1 = ReleaseRef::of(
         manager,
-        upload_release_unpaused(manager, &temp_dir.path().join("r1"), "Album One", false).await,
+        upload_release_unpaused(manager, &temp_dir, "r1", "Album One", false).await,
     )
     .await;
     // A sibling release so the album survives the single-release delete.
@@ -800,7 +801,7 @@ async fn deleting_a_release_retires_its_queued_uploads() {
     manager.library.manager().delete_release(&release.id).await.unwrap();
     assert_eq!(manager.library.manager().store.queued_upload_count_for_test().await.unwrap(), 0);
     assert!(manager.library.store().pending().await.unwrap().is_empty());
-    assert_eq!(std::fs::read(temp.path().join("queued/a.flac")).unwrap().len(), 1000);
+    assert_eq!(temp.read("queued/a.flac").len(), 1000);
 }
 
 const TRACK_WORK_A: &str = "d410a973-6a19-4ad3-87d8-b0c8c13d6015"; // was "track-work-a"

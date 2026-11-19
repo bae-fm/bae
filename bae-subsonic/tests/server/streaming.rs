@@ -455,7 +455,7 @@ async fn lossy_track_reports_bit_depth_zero() {
 }
 
 /// Import the single-file lossy Opus fixture through the normal import path.
-async fn seed_lossy_release() -> (AppServices, String, Vec<TempDir>) {
+async fn seed_lossy_release() -> (AppServices, String, Vec<TestFolder>) {
     seed_lossy_release_within(coven::FileBudget::for_test()).await
 }
 
@@ -463,7 +463,7 @@ async fn seed_lossy_release() -> (AppServices, String, Vec<TempDir>) {
 /// opens files within `files`, a budget the test sizes and watches.
 async fn seed_lossy_release_within(
     files: coven::FileBudget,
-) -> (AppServices, String, Vec<TempDir>) {
+) -> (AppServices, String, Vec<TestFolder>) {
     let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
     let (library, _album_dir, db_temp) =
         bae_library::test_libraries::setup_test_library_with_album_dir_within(
@@ -472,7 +472,7 @@ async fn seed_lossy_release_within(
             files,
         )
         .await;
-    let temp = TempDir::new().unwrap();
+    let temp = TestFolder::new();
     let dir = temp.path().join("lossy album");
     std::fs::create_dir_all(&dir).unwrap();
     let fixture = bae_audio::test_fixtures::audio_format_dir().join("placeholder-opus.opus");
@@ -645,7 +645,7 @@ async fn a_stored_wav_is_served_as_audio_wav() {
         bae_util::http::Http::for_test(),
     )
     .await;
-    let source = TempDir::new().unwrap();
+    let source = TestFolder::new();
     let dir = source.path().join("wav album");
     std::fs::create_dir_all(&dir).unwrap();
     std::fs::copy(

@@ -5,69 +5,67 @@
 use super::*;
 use crate::manager::tests::*;
 use bae_records::{DbRelease, NewReleaseFile};
+use bae_util::test_files::TestFolder;
 use time::UtcDateTime;
 
 #[test]
 fn replace_output_dir_restores_prior_export_when_staging_rename_fails() {
-    let temp = tempfile::tempdir().expect("create temp dir");
+    let temp = bae_util::test_files::TestFolder::new();
     let final_dir = temp.path().join("album");
-    std::fs::create_dir(&final_dir).expect("create prior export dir");
-    std::fs::write(final_dir.join(OUTPUT_MARKER_FILE), b"release-1").expect("write prior marker");
-    std::fs::write(final_dir.join("prior.txt"), b"prior").expect("write prior export");
+    temp.create_folder(&final_dir);
+    temp.write(final_dir.join(OUTPUT_MARKER_FILE), b"release-1");
+    temp.write(final_dir.join("prior.txt"), b"prior");
 
     let missing_staging = temp.path().join("missing-staging");
     replace_output_dir(&missing_staging, &final_dir, "album", "release-1")
         .expect_err("missing staging fails");
 
-    assert_eq!(std::fs::read(final_dir.join("prior.txt")).expect("read prior export"), b"prior");
-    assert!(!temp.path().join(".album.replace-release-1").exists());
+    assert_eq!(temp.read(final_dir.join("prior.txt")), b"prior");
+    assert!(!temp.exists(".album.replace-release-1"));
 }
 
 #[test]
 fn replace_output_dir_refuses_to_replace_unmarked_directory() {
-    let temp = tempfile::tempdir().expect("create temp dir");
+    let temp = bae_util::test_files::TestFolder::new();
     let final_dir = temp.path().join("album");
-    std::fs::create_dir(&final_dir).expect("create existing dir");
-    std::fs::write(final_dir.join("user-file.txt"), b"user data").expect("write user file");
+    temp.create_folder(&final_dir);
+    temp.write(final_dir.join("user-file.txt"), b"user data");
 
     let staging_dir = temp.path().join("staging");
-    std::fs::create_dir(&staging_dir).expect("create staging dir");
-    std::fs::write(staging_dir.join(OUTPUT_MARKER_FILE), b"release-1").expect("write marker");
-    std::fs::write(staging_dir.join("export.txt"), b"export").expect("write export");
+    temp.create_folder(&staging_dir);
+    temp.write(staging_dir.join(OUTPUT_MARKER_FILE), b"release-1");
+    temp.write(staging_dir.join("export.txt"), b"export");
 
     let error = replace_output_dir(&staging_dir, &final_dir, "album", "release-1")
         .expect_err("unmarked existing target must be refused");
 
     assert!(error.to_string().contains("is not a prior bae output"), "unexpected error: {error}",);
-    assert_eq!(
-        std::fs::read(final_dir.join("user-file.txt")).expect("read user file"),
-        b"user data",
-    );
-    assert!(staging_dir.exists());
-    assert!(!temp.path().join(".album.replace-release-1").exists());
+    assert_eq!(temp.read(final_dir.join("user-file.txt")), b"user data",);
+    assert!(temp.exists(&staging_dir));
+    assert!(!temp.exists(".album.replace-release-1"));
 }
 
 #[test]
 fn replace_output_dir_replaces_marked_directory() {
-    let temp = tempfile::tempdir().expect("create temp dir");
+    let temp = bae_util::test_files::TestFolder::new();
     let final_dir = temp.path().join("album");
-    std::fs::create_dir(&final_dir).expect("create prior export dir");
-    std::fs::write(final_dir.join(OUTPUT_MARKER_FILE), b"release-1").expect("write prior marker");
-    std::fs::write(final_dir.join("prior.txt"), b"prior").expect("write prior export");
+    temp.create_folder(&final_dir);
+    temp.write(final_dir.join(OUTPUT_MARKER_FILE), b"release-1");
+    temp.write(final_dir.join("prior.txt"), b"prior");
 
     let staging_dir = temp.path().join("staging");
-    std::fs::create_dir(&staging_dir).expect("create staging dir");
-    std::fs::write(staging_dir.join(OUTPUT_MARKER_FILE), b"release-1").expect("write marker");
-    std::fs::write(staging_dir.join("export.txt"), b"export").expect("write export");
+    temp.create_folder(&staging_dir);
+    temp.write(staging_dir.join(OUTPUT_MARKER_FILE), b"release-1");
+    temp.write(staging_dir.join("export.txt"), b"export");
 
     let backup = replace_output_dir(&staging_dir, &final_dir, "album", "release-1")
         .expect("marked prior export can be replaced")
         .expect("the earlier export is set aside as a backup");
     remove_prior_export_backup(&backup).expect("the backup is deleted");
 
-    assert_eq!(std::fs::read(final_dir.join("export.txt")).expect("read export"), b"export",);
-    assert!(!final_dir.join("prior.txt").exists());
-    assert!(!temp.path().join(".album.replace-release-1").exists());
+    assert_eq!(temp.read(final_dir.join("export.txt")), b"export",);
+    assert!(!temp.exists(final_dir.join("prior.txt")));
+    assert!(!temp.exists(".album.replace-release-1"));
 }
 
 /// A backup that cannot be fully deleted is reported with its path, and the
@@ -77,20 +75,19 @@ fn replace_output_dir_replaces_marked_directory() {
 fn an_undeletable_prior_backup_is_reported_and_the_new_export_stays() {
     use std::os::unix::fs::PermissionsExt;
 
-    let temp = tempfile::tempdir().expect("create temp dir");
+    let temp = bae_util::test_files::TestFolder::new();
     let final_dir = temp.path().join("album");
     let locked = final_dir.join("locked");
-    std::fs::create_dir_all(&locked).expect("create prior export dir");
-    std::fs::write(final_dir.join(OUTPUT_MARKER_FILE), b"release-1").expect("write prior marker");
-    std::fs::write(final_dir.join("a.txt"), b"prior").expect("write prior file");
-    std::fs::write(locked.join("b.txt"), b"prior").expect("write locked file");
-    std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o500))
-        .expect("lock the subfolder");
+    temp.create_folder(&locked);
+    temp.write(final_dir.join(OUTPUT_MARKER_FILE), b"release-1");
+    temp.write(final_dir.join("a.txt"), b"prior");
+    temp.write(locked.join("b.txt"), b"prior");
+    temp.set_permissions(&locked, std::fs::Permissions::from_mode(0o500));
 
     let staging_dir = temp.path().join("staging");
-    std::fs::create_dir(&staging_dir).expect("create staging dir");
-    std::fs::write(staging_dir.join(OUTPUT_MARKER_FILE), b"release-1").expect("write marker");
-    std::fs::write(staging_dir.join("export.txt"), b"export").expect("write export");
+    temp.create_folder(&staging_dir);
+    temp.write(staging_dir.join(OUTPUT_MARKER_FILE), b"release-1");
+    temp.write(staging_dir.join("export.txt"), b"export");
 
     let backup = replace_output_dir(&staging_dir, &final_dir, "album", "release-1")
         .expect("the new export is put in place")
@@ -98,12 +95,11 @@ fn an_undeletable_prior_backup_is_reported_and_the_new_export_stays() {
     let error = remove_prior_export_backup(&backup).expect_err("the backup cannot be deleted");
 
     let backup_locked = backup.join("locked");
-    std::fs::set_permissions(&backup_locked, std::fs::Permissions::from_mode(0o700))
-        .expect("unlock the subfolder");
+    temp.set_permissions(&backup_locked, std::fs::Permissions::from_mode(0o700));
     assert!(error.to_string().contains(&backup.display().to_string()), "{error}");
-    assert_eq!(std::fs::read(final_dir.join("export.txt")).expect("read export"), b"export");
-    assert!(!final_dir.join("a.txt").exists(), "the earlier export is not moved back");
-    assert!(backup.exists());
+    assert_eq!(temp.read(final_dir.join("export.txt")), b"export");
+    assert!(!temp.exists(final_dir.join("a.txt")), "the earlier export is not moved back");
+    assert!(temp.exists(&backup));
 }
 
 /// Create a Remote, pinned, exportable release: a Local release with
@@ -113,12 +109,14 @@ fn an_undeletable_prior_backup_is_reported_and_the_new_export_stays() {
 /// [`connect_test_cloud`].
 async fn make_exportable_release(
     manager: &LibraryManager,
+    folder: &TestFolder,
     source_dir: &std::path::Path,
     folder_name: &str,
     files: &[(&str, &[u8])],
 ) -> String {
     let (release, _) =
-        insert_export_release_rows(manager, source_dir, folder_name, files, str::to_string).await;
+        insert_export_release_rows(manager, folder, source_dir, folder_name, files, str::to_string)
+            .await;
     manager.upload_release(&release.id).await.unwrap();
     // The uploads this fixture's tests leave running drain the queue, so
     // wait for the upload to finish rather than counting a drain pass this
@@ -130,6 +128,7 @@ async fn make_exportable_release(
 
 async fn insert_export_release_rows(
     manager: &LibraryManager,
+    folder: &TestFolder,
     source_dir: &std::path::Path,
     folder_name: &str,
     files: &[(&str, &[u8])],
@@ -140,7 +139,6 @@ async fn insert_export_release_rows(
     release.source_folder_name = Some(folder_name.to_string());
     manager.records.insert_album(&album).await.unwrap();
     insert_release(manager, &release).await;
-    std::fs::create_dir_all(source_dir).unwrap();
     let created_at = UtcDateTime::now();
     let mut inserted_files = Vec::with_capacity(files.len());
     for (index, (name, bytes)) in files.iter().enumerate() {
@@ -153,8 +151,7 @@ async fn insert_export_release_rows(
             created_at,
         );
         let path = source_dir.join(name);
-        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-        std::fs::write(&path, bytes).unwrap();
+        folder.write(&path, bytes);
         manager.add_external_file_for_test(&file, &path).await.unwrap();
         inserted_files.push(file);
     }
@@ -166,19 +163,24 @@ async fn insert_export_release_rows(
 /// export copy-out builds each path from the names as it reads them.
 async fn insert_local_export_release_named(
     manager: &LibraryManager,
+    folder: &TestFolder,
     source_dir: &std::path::Path,
     bytes: &[u8],
     name: PeerName<'_>,
 ) -> String {
-    let (folder, file_name) = match name {
+    let (source_folder_name, file_name) = match name {
         PeerName::OriginalFilename(value) => ("Album Title", value),
         PeerName::SourceFolderName(value) => (value, "track.flac"),
     };
-    let (release, _) =
-        insert_export_release_rows(manager, source_dir, folder, &[("track.flac", bytes)], |_| {
-            file_name.to_string()
-        })
-        .await;
+    let (release, _) = insert_export_release_rows(
+        manager,
+        folder,
+        source_dir,
+        source_folder_name,
+        &[("track.flac", bytes)],
+        |_| file_name.to_string(),
+    )
+    .await;
     release.id
 }
 
@@ -230,7 +232,7 @@ async fn export_writes_exact_bytes_in_source_folder_and_leaves_release_remote() 
     let files: &[(&str, &[u8])] =
         &[("cover.jpg", b"cover-bytes-abc"), ("CD1/track.flac", b"flac-bytes-0123456789")];
     let release_id =
-        make_exportable_release(manager, &source_dir, "Album Title (2020)", files).await;
+        make_exportable_release(manager, &temp_dir, &source_dir, "Album Title (2020)", files).await;
 
     // Precondition: Remote, no pending uploads after the drain.
     assert!(release_files(manager, &release_id).await.iter().all(|file| file.stored));
@@ -245,15 +247,12 @@ async fn export_writes_exact_bytes_in_source_folder_and_leaves_release_remote() 
     // Byte-accuracy + folder layout.
     for (name, bytes) in files {
         let written = target.join("Album Title (2020)").join(name);
-        let got = std::fs::read(&written).unwrap_or_else(|e| panic!("read exported {name}: {e}"));
+        let got = temp_dir.read(&written);
         assert_eq!(&got, bytes, "exported bytes for {name} match the source");
     }
 
     // The staging directory was renamed into place, leaving nothing behind it.
-    let leftover = std::fs::read_dir(&target)
-        .unwrap()
-        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
-        .collect::<Vec<_>>();
+    let leftover = temp_dir.entries(&target);
     assert_eq!(
         leftover,
         vec!["Album Title (2020)".to_string()],
@@ -273,6 +272,7 @@ async fn export_writes_a_parent_name_inside_its_folder() {
     let manager = test.library.manager();
     let release_id = insert_local_export_release_named(
         manager,
+        &temp_dir,
         &temp_dir.path().join("source"),
         b"escape-bytes",
         PeerName::OriginalFilename("../escape.flac"),
@@ -286,11 +286,11 @@ async fn export_writes_a_parent_name_inside_its_folder() {
         .expect("a parent name exports");
 
     assert_eq!(
-        std::fs::read(target.join("Album Title").join(".．").join("escape.flac")).unwrap(),
+        temp_dir.read(target.join("Album Title").join(".．").join("escape.flac")),
         b"escape-bytes"
     );
-    assert!(!target.join("escape.flac").exists());
-    assert!(!temp_dir.path().join("escape.flac").exists());
+    assert!(!temp_dir.exists(target.join("escape.flac")));
+    assert!(!temp_dir.exists("escape.flac"));
 }
 
 /// A folder name is one name, `/` included: coven writes `../escape-folder`
@@ -301,6 +301,7 @@ async fn export_writes_a_folder_name_holding_a_slash_as_one_folder() {
     let manager = test.library.manager();
     let release_id = insert_local_export_release_named(
         manager,
+        &temp_dir,
         &temp_dir.path().join("source"),
         b"track-bytes",
         PeerName::SourceFolderName("../escape-folder"),
@@ -313,11 +314,8 @@ async fn export_writes_a_folder_name_holding_a_slash_as_one_folder() {
         .await
         .expect("a folder name holding a slash exports");
 
-    assert_eq!(
-        std::fs::read(target.join("..／escape-folder").join("track.flac")).unwrap(),
-        b"track-bytes"
-    );
-    assert!(!temp_dir.path().join("escape-folder").exists());
+    assert_eq!(temp_dir.read(target.join("..／escape-folder").join("track.flac")), b"track-bytes");
+    assert!(!temp_dir.exists("escape-folder"));
 }
 
 /// A write error (an unwritable target) marks the export `Failed` with a message
@@ -331,6 +329,7 @@ async fn export_write_error_marks_failed_until_cancelled() {
     let source_dir = temp_dir.path().join("source");
     let release_id = make_exportable_release(
         manager,
+        &temp_dir,
         &source_dir,
         "Album Title",
         &[("track.flac", b"track-bytes")],
@@ -340,7 +339,7 @@ async fn export_write_error_marks_failed_until_cancelled() {
     // Target a path that is actually a file, so creating the release subfolder
     // under it fails with an I/O error (the read succeeds; the write doesn't).
     let blocker = temp_dir.path().join("blocker");
-    std::fs::write(&blocker, b"a file, not a directory").unwrap();
+    temp_dir.write(&blocker, b"a file, not a directory");
 
     manager.enqueue_export(&release_id, blocker.clone()).await.unwrap();
 
@@ -372,7 +371,7 @@ async fn export_mid_failure_leaves_no_partial_output_at_final_path() {
     // never made Remote — means the export reads these files directly, so removing
     // one forces a read error on a later file mid-export.
     let source_dir = temp_dir.path().join("source");
-    std::fs::create_dir_all(&source_dir).unwrap();
+    temp_dir.create_folder(&source_dir);
     let album = create_test_album();
     let mut release = create_test_release(&album.id);
     release.source_folder_name = Some("Album Title".to_string());
@@ -381,7 +380,7 @@ async fn export_mid_failure_leaves_no_partial_output_at_final_path() {
 
     let files: &[(&str, &[u8])] = &[("01.flac", b"first-ok"), ("02.flac", b"second-fails")];
     for (name, bytes) in files {
-        std::fs::write(source_dir.join(name), bytes).unwrap();
+        temp_dir.write(source_dir.join(name), bytes);
         let file = NewReleaseFile::new(
             &release.id,
             name,
@@ -397,9 +396,9 @@ async fn export_mid_failure_leaves_no_partial_output_at_final_path() {
     // later read fail deterministically rather than racing the copy.
     manager.set_outputs_paused(true).await.unwrap();
     let target = temp_dir.path().join("export-out");
-    std::fs::create_dir_all(&target).unwrap();
+    temp_dir.create_folder(&target);
     manager.enqueue_export(&release.id, target.clone()).await.unwrap();
-    std::fs::remove_file(source_dir.join("02.flac")).unwrap();
+    temp_dir.remove(source_dir.join("02.flac"));
     manager.set_outputs_paused(false).await.unwrap();
 
     // A read error on a later file marks the export Failed.
@@ -413,9 +412,12 @@ async fn export_mid_failure_leaves_no_partial_output_at_final_path() {
 
     // The all-or-nothing guarantee: nothing at the final path, and the staging
     // directory was removed — the target holds no export output at all.
-    assert!(!target.join("Album Title").exists(), "no partial output at the final export path");
+    assert!(
+        !temp_dir.exists(target.join("Album Title")),
+        "no partial output at the final export path"
+    );
     assert_eq!(
-        std::fs::read_dir(&target).unwrap().count(),
+        temp_dir.entries(&target).len(),
         0,
         "staging directory cleaned up; target left empty"
     );
@@ -546,13 +548,13 @@ mod imported_names {
         let manager = test.library.manager();
         let root = temp.path().join("watched");
         let folder = root.join("Album");
-        std::fs::create_dir_all(&folder).unwrap();
-        let flac =
-            std::fs::read(bae_import::test_fixtures::flac_dir().join("01 Test Track 1.flac"))
-                .unwrap();
+        temp.create_folder(&folder);
+        let flac = bae_util::test_files::read_fixture(
+            bae_import::test_fixtures::flac_dir().join("01 Test Track 1.flac"),
+        );
         let name: Vec<u16> =
             "Caf".encode_utf16().chain([0xD800]).chain(".flac".encode_utf16()).collect();
-        std::fs::write(folder.join(std::ffi::OsString::from_wide(&name)), &flac).unwrap();
+        temp.write(folder.join(std::ffi::OsString::from_wide(&name)), &flac);
         let import = test.library.start_import().await.unwrap();
         import.add_watched_folder(root.clone()).await.unwrap();
         import.refresh_watched_folder(root.clone()).await.unwrap();
@@ -592,10 +594,7 @@ mod imported_names {
             .export_release(&release_id, &target, bae_transfers::OutputKind::Export)
             .await
             .expect("the release exports");
-        assert_eq!(
-            std::fs::read(target.join("Album").join("Caf＼xED＼xA0＼x80.flac")).unwrap(),
-            flac
-        );
+        assert_eq!(temp.read(target.join("Album").join("Caf＼xED＼xA0＼x80.flac")), flac);
         bae_util::test_spawn::on_blocking_pool(move || import.stop_and_join()).await;
     }
 }

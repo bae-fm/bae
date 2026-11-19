@@ -2,7 +2,7 @@
 //! removal with what it would lose.
 
 use crate::manager::tests::*;
-use tempfile::TempDir;
+use bae_util::test_files::TestFolder;
 
 /// Releasing the store's cached pages leaves the library readable and
 /// writable: reads after it load what they need again.
@@ -42,9 +42,10 @@ async fn removal_discards_the_unsent_work_it_reports() {
     let (test, _temp) = setup_test_manager().await;
     let manager = test.library.manager();
     connect_test_cloud(&test).await;
-    let files = TempDir::new().unwrap();
+    let files = TestFolder::new();
     insert_release_with_queued_uploads(
         manager,
+        &files,
         files.path(),
         "Album Title",
         &[("01.flac", b"audio")],
@@ -94,9 +95,10 @@ async fn an_open_library_stands_by_its_live_sync_status() {
     );
     assert!(synced.last_synced.is_some(), "{synced:?}");
 
-    let files = TempDir::new().unwrap();
+    let files = TestFolder::new();
     insert_release_with_queued_uploads(
         manager,
+        &files,
         files.path(),
         "Album Title",
         &[("01.flac", b"audio")],

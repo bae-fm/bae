@@ -26,7 +26,7 @@ fn a_failed_read_of_the_saved_codes_stays_a_failure() {
 /// unreadable one for the person to delete.
 #[tokio::test]
 async fn saved_codes_for_libraries_on_this_device_are_not_offered() {
-    let temp = tempfile::TempDir::new().unwrap();
+    let temp = bae_util::test_files::TestFolder::new();
     let installation =
         coven::Coven::in_memory(bae_app_dir::AppDir::at(temp.path()).unwrap().coven_app_dir());
     let here = installation

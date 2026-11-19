@@ -14,7 +14,7 @@ async fn delete_album_removes_release_covers() {
     connect_test_cloud_uploading(&test).await;
     let release = ReleaseRef::of(
         manager,
-        upload_release_unpaused(manager, &temp_dir.path().join("r1"), "Album One", false).await,
+        upload_release_unpaused(manager, &temp_dir, "r1", "Album One", false).await,
     )
     .await;
     store_test_cover(manager, &release.id, b"image").await;
@@ -64,21 +64,27 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
     connect_test_cloud(&test).await;
     // The album holds a release uploaded and pinned on this device and one
     // whose files are on this device only.
-    let kept = uploaded_release(manager, &temp.path().join("kept"), "Deleted", true).await;
+    let kept = uploaded_release(manager, &temp, "kept", "Deleted", true).await;
     let album_id = find_release(manager, &kept).await.unwrap().album_id;
     let local_dir = temp.path().join("local");
     let local = insert_local_release_in_album(
         manager,
         &album_id,
+        &temp,
         &local_dir,
         &[("a.flac", b"local audio")],
     )
     .await
     .id;
     let other_dir = temp.path().join("other");
-    let other =
-        insert_local_release_with_files(manager, &other_dir, "Kept", &[("b.flac", b"other audio")])
-            .await;
+    let other = insert_local_release_with_files(
+        manager,
+        &temp,
+        &other_dir,
+        "Kept",
+        &[("b.flac", b"other audio")],
+    )
+    .await;
     let mut tracks = Vec::new();
     for (index, release_id) in [&kept, &local, &other.id].into_iter().enumerate() {
         store_test_cover(manager, release_id, format!("cover {index}").as_bytes()).await;
@@ -166,8 +172,8 @@ async fn delete_album_deletes_its_releases_and_what_they_own() {
         assert_eq!(manager.store.count_rows_for_test("coven_files", "id", file).await.unwrap(), 0);
         assert_eq!(manager.store.count_rows_for_test("coven_pins", "file", file).await.unwrap(), 0);
     }
-    assert_eq!(std::fs::read(local_dir.join("a.flac")).unwrap(), b"local audio");
-    assert_eq!(std::fs::read(temp.path().join("kept").join("track.flac")).unwrap(), b"track-bytes");
+    assert_eq!(temp.read(local_dir.join("a.flac")), b"local audio");
+    assert_eq!(temp.read("kept/track.flac"), b"track-bytes");
 
     assert!(find_release(manager, &other.id).await.is_some());
     assert_eq!(manager.records.get_tracks_for_release(&other.id).await.unwrap().len(), 1);
