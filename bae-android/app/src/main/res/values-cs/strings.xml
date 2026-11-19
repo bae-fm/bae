@@ -385,11 +385,11 @@
         <item quantity="many">Odebraná zařízení (%1$d)</item>
         <item quantity="other">Odebraná zařízení (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">Odebírání zařízení</string>
+    <string name="device_removed_title">bae odebere zařízení</string>
     <string name="device_cut_off_confirm">Toto zařízení jsem odpojil(a)</string>
     <string name="device_cut_off_not_yet">Ještě ne</string>
     <string name="device_cut_off_running_title">Toto zařízení se stále synchronizuje s cloudem</string>
-    <string name="device_cut_off_running_body">Počkejte, až skončí.</string>
+    <string name="device_cut_off_running_body">Počkejte, až synchronizace skončí.</string>
     <string name="device_cut_off_not_gone_title">Odebrání ještě nedorazilo na toto zařízení</string>
     <string name="device_cut_off_not_gone_body">Zkuste to znovu po další synchronizaci.</string>
     <string name="members_invite">Pozvat</string>

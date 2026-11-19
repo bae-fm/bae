@@ -385,11 +385,11 @@
         <item quantity="many">Usunięte urządzenia (%1$d)</item>
         <item quantity="other">Usunięte urządzenia (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">Usuwanie urządzenia</string>
+    <string name="device_removed_title">bae usunie urządzenie</string>
     <string name="device_cut_off_confirm">Odciąłem(-am) to urządzenie</string>
     <string name="device_cut_off_not_yet">Jeszcze nie</string>
     <string name="device_cut_off_running_title">To urządzenie wciąż synchronizuje się z chmurą</string>
-    <string name="device_cut_off_running_body">Poczekaj, aż się zakończy.</string>
+    <string name="device_cut_off_running_body">Poczekaj, aż synchronizacja się zakończy.</string>
     <string name="device_cut_off_not_gone_title">Usunięcie nie dotarło jeszcze na to urządzenie</string>
     <string name="device_cut_off_not_gone_body">Spróbuj ponownie po następnej synchronizacji.</string>
     <string name="members_invite">Zaproś</string>

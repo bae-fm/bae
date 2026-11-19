@@ -375,11 +375,11 @@
         <item quantity="one">Appareil retiré (%1$d)</item>
         <item quantity="other">Appareils retirés (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">Suppression de l’appareil</string>
+    <string name="device_removed_title">bae va supprimer l’appareil</string>
     <string name="device_cut_off_confirm">J’ai coupé l’accès de cet appareil</string>
     <string name="device_cut_off_not_yet">Pas encore</string>
     <string name="device_cut_off_running_title">Cet appareil est toujours en cours de synchronisation avec le cloud</string>
-    <string name="device_cut_off_running_body">Attendez qu’elle se termine.</string>
+    <string name="device_cut_off_running_body">Attendez la fin de la synchronisation.</string>
     <string name="device_cut_off_not_gone_title">La suppression n’est pas encore arrivée sur cet appareil</string>
     <string name="device_cut_off_not_gone_body">Réessayez après la prochaine synchronisation.</string>
     <string name="members_invite">Inviter</string>

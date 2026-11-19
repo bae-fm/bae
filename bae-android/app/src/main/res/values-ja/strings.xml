@@ -361,11 +361,11 @@
     <plurals name="members_former_devices">
         <item quantity="other">削除済みのデバイス（%1$d）</item>
     </plurals>
-    <string name="device_removed_title">デバイスの削除</string>
+    <string name="device_removed_title">bae がデバイスを削除します</string>
     <string name="device_cut_off_confirm">このデバイスを切り離しました</string>
     <string name="device_cut_off_not_yet">まだ</string>
     <string name="device_cut_off_running_title">このデバイスはまだクラウドと同期中です</string>
-    <string name="device_cut_off_running_body">終了するまでお待ちください。</string>
+    <string name="device_cut_off_running_body">同期が終了するまでお待ちください。</string>
     <string name="device_cut_off_not_gone_title">削除はまだこのデバイスに届いていません</string>
     <string name="device_cut_off_not_gone_body">次の同期のあとでもう一度お試しください。</string>
     <string name="members_invite">招待</string>

@@ -361,11 +361,11 @@
     <plurals name="members_former_devices">
         <item quantity="other">제거된 기기 (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">기기 제거 중</string>
+    <string name="device_removed_title">bae가 기기를 제거합니다</string>
     <string name="device_cut_off_confirm">이 기기의 접근을 차단했습니다</string>
     <string name="device_cut_off_not_yet">아직 아님</string>
     <string name="device_cut_off_running_title">이 기기는 아직 클라우드와 동기화 중입니다</string>
-    <string name="device_cut_off_running_body">요청이 끝날 때까지 기다리세요.</string>
+    <string name="device_cut_off_running_body">동기화가 끝날 때까지 기다리세요.</string>
     <string name="device_cut_off_not_gone_title">제거가 아직 이 기기에 도착하지 않았습니다</string>
     <string name="device_cut_off_not_gone_body">다음 동기화 후에 다시 시도하세요.</string>
     <string name="members_invite">초대</string>

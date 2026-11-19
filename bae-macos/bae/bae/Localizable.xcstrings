@@ -8587,30 +8587,30 @@
         }
       }
     },
-    "Wait for it to end." : {
+    "Wait for the sync to end." : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "انتظر حتى ينتهي."
+            "value" : "انتظر حتى تنتهي المزامنة."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Изчакайте да приключи."
+            "value" : "Изчакайте синхронизирането да приключи."
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Počkejte, až skončí."
+            "value" : "Počkejte, až synchronizace skončí."
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vent, til den er færdig."
+            "value" : "Vent, til synkroniseringen er færdig."
           }
         },
         "de" : {
@@ -8622,133 +8622,133 @@
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Περιμένετε να ολοκληρωθεί."
+            "value" : "Περιμένετε να ολοκληρωθεί ο συγχρονισμός."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Espera a que termine."
+            "value" : "Espera a que termine la sincronización."
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Odota, että se päättyy."
+            "value" : "Odota, että synkronointi päättyy."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Attendez qu’elle se termine."
+            "value" : "Attendez la fin de la synchronisation."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "המתן לסיומה."
+            "value" : "המתן עד שהסנכרון יסתיים."
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pričekajte da završi."
+            "value" : "Pričekajte da sinkronizacija završi."
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Várd meg, amíg befejeződik."
+            "value" : "Várd meg, amíg a szinkronizálás befejeződik."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Attendi che finisca."
+            "value" : "Attendi la fine della sincronizzazione."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "終了するまでお待ちください。"
+            "value" : "同期が終了するまでお待ちください。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "요청이 끝날 때까지 기다리세요."
+            "value" : "동기화가 끝날 때까지 기다리세요."
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vent til den er ferdig."
+            "value" : "Vent til synkroniseringen er ferdig."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wacht tot het klaar is."
+            "value" : "Wacht tot de synchronisatie klaar is."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Poczekaj, aż się zakończy."
+            "value" : "Poczekaj, aż synchronizacja się zakończy."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aguarde o término."
+            "value" : "Aguarde o fim da sincronização."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aguarde que termine."
+            "value" : "Aguarde que a sincronização termine."
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Așteaptă să se termine."
+            "value" : "Așteaptă să se termine sincronizarea."
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Počkajte, kým skončí."
+            "value" : "Počkajte, kým synchronizácia skončí."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vänta tills den är klar."
+            "value" : "Vänta tills synkroniseringen är klar."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bitmesini bekleyin."
+            "value" : "Eşitlemenin bitmesini bekleyin."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Зачекайте, поки він завершиться."
+            "value" : "Зачекайте, поки синхронізація завершиться."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "请等它结束。"
+            "value" : "请等待同步结束。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "請等它結束。"
+            "value" : "請等待同步結束。"
           }
         }
       }
@@ -123042,30 +123042,30 @@
         }
       }
     },
-    "Removing the device" : {
+    "bae will remove the device" : {
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "إزالة الجهاز"
+            "value" : "سيزيل bae الجهاز"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Премахване на устройството"
+            "value" : "bae ще премахне устройството"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Odebírání zařízení"
+            "value" : "bae odebere zařízení"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fjerner enheden"
+            "value" : "bae fjerner enheden"
           }
         },
         "de" : {
@@ -123077,133 +123077,133 @@
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Αφαίρεση της συσκευής"
+            "value" : "Το bae θα αφαιρέσει τη συσκευή"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Quitando el dispositivo"
+            "value" : "bae quitará el dispositivo"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Laitetta poistetaan"
+            "value" : "bae poistaa laitteen"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Suppression de l’appareil"
+            "value" : "bae va supprimer l’appareil"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "הסרת המכשיר"
+            "value" : "bae יסיר את המכשיר"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Uklanjanje uređaja"
+            "value" : "bae će ukloniti uređaj"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Az eszköz eltávolítása"
+            "value" : "A bae eltávolítja az eszközt"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rimozione del dispositivo"
+            "value" : "bae rimuoverà il dispositivo"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "デバイスの削除"
+            "value" : "bae がデバイスを削除します"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "기기 제거 중"
+            "value" : "bae가 기기를 제거합니다"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fjerner enheten"
+            "value" : "bae fjerner enheten"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Het apparaat verwijderen"
+            "value" : "bae verwijdert het apparaat"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Usuwanie urządzenia"
+            "value" : "bae usunie urządzenie"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Removendo o dispositivo"
+            "value" : "O bae vai remover o dispositivo"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A remover o dispositivo"
+            "value" : "O bae vai remover o dispositivo"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Se elimină dispozitivul"
+            "value" : "bae va elimina dispozitivul"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Odstraňovanie zariadenia"
+            "value" : "bae odstráni zariadenie"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Enheten tas bort"
+            "value" : "bae tar bort enheten"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cihaz kaldırılıyor"
+            "value" : "bae cihazı kaldıracak"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Вилучення пристрою"
+            "value" : "bae вилучить пристрій"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在移除设备"
+            "value" : "bae 将移除设备"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在移除裝置"
+            "value" : "bae 將移除裝置"
           }
         }
       }

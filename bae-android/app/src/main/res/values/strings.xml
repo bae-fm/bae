@@ -421,11 +421,11 @@
         <item quantity="one">Removed device (%1$d)</item>
         <item quantity="other">Removed devices (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">Removing the device</string>
+    <string name="device_removed_title">bae will remove the device</string>
     <string name="device_cut_off_confirm">I cut off this device</string>
     <string name="device_cut_off_not_yet">Not yet</string>
     <string name="device_cut_off_running_title">This device is still syncing with the cloud</string>
-    <string name="device_cut_off_running_body">Wait for it to end.</string>
+    <string name="device_cut_off_running_body">Wait for the sync to end.</string>
     <string name="device_cut_off_not_gone_title">The removal has not reached this device yet</string>
     <string name="device_cut_off_not_gone_body">Try again after the next sync.</string>
     <string name="members_invite">Invite</string>

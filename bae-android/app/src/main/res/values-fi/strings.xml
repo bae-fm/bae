@@ -367,11 +367,11 @@
         <item quantity="one">Poistettu laite (%1$d)</item>
         <item quantity="other">Poistetut laitteet (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">Laitetta poistetaan</string>
+    <string name="device_removed_title">bae poistaa laitteen</string>
     <string name="device_cut_off_confirm">Olen katkaissut tämän laitteen pääsyn</string>
     <string name="device_cut_off_not_yet">Ei vielä</string>
     <string name="device_cut_off_running_title">Tämä laite synkronoi yhä pilven kanssa</string>
-    <string name="device_cut_off_running_body">Odota, että se päättyy.</string>
+    <string name="device_cut_off_running_body">Odota, että synkronointi päättyy.</string>
     <string name="device_cut_off_not_gone_title">Poisto ei ole vielä saapunut tälle laitteelle</string>
     <string name="device_cut_off_not_gone_body">Yritä uudelleen seuraavan synkronoinnin jälkeen.</string>
     <string name="members_invite">Kutsu</string>

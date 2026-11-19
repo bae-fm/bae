@@ -367,11 +367,11 @@
         <item quantity="one">Fjernet enhet (%1$d)</item>
         <item quantity="other">Fjernede enheter (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">Fjerner enheten</string>
+    <string name="device_removed_title">bae fjerner enheten</string>
     <string name="device_cut_off_confirm">Jeg har koblet fra denne enheten</string>
     <string name="device_cut_off_not_yet">Ikke ennå</string>
     <string name="device_cut_off_running_title">Denne enheten synkroniserer fortsatt med skyen</string>
-    <string name="device_cut_off_running_body">Vent til den er ferdig.</string>
+    <string name="device_cut_off_running_body">Vent til synkroniseringen er ferdig.</string>
     <string name="device_cut_off_not_gone_title">Fjerningen har ikke nådd denne enheten ennå</string>
     <string name="device_cut_off_not_gone_body">Prøv igjen etter neste synkronisering.</string>
     <string name="members_invite">Inviter</string>

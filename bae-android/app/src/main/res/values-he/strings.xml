@@ -377,11 +377,11 @@
         <item quantity="two">מכשירים שהוסרו (%1$d)</item>
         <item quantity="other">מכשירים שהוסרו (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">הסרת המכשיר</string>
+    <string name="device_removed_title">bae יסיר את המכשיר</string>
     <string name="device_cut_off_confirm">ניתקתי את המכשיר הזה</string>
     <string name="device_cut_off_not_yet">עדיין לא</string>
     <string name="device_cut_off_running_title">המכשיר הזה עדיין מסתנכרן עם הענן</string>
-    <string name="device_cut_off_running_body">המתן לסיומה.</string>
+    <string name="device_cut_off_running_body">המתן עד שהסנכרון יסתיים.</string>
     <string name="device_cut_off_not_gone_title">ההסרה עוד לא הגיעה למכשיר הזה</string>
     <string name="device_cut_off_not_gone_body">נסה שוב אחרי הסנכרון הבא.</string>
     <string name="members_invite">הזמנה</string>

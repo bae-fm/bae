@@ -35,7 +35,7 @@ enum CutOffAlerts {
         onCutOff: @escaping @MainActor () -> Void
     ) -> (MacAlertWords, [MacAlertButton]) {
         let words = MacAlertWords(
-            Text("Removing the device"),
+            Text("bae will remove the device"),
             message: Text(verbatim: instruction.text)
         )
         guard offersCutOff else {
@@ -61,7 +61,7 @@ enum CutOffAlerts {
         switch reason {
         case .providerRequestRunning:
             title = Text("This device is still syncing with the cloud")
-            message = Text("Wait for it to end.")
+            message = Text("Wait for the sync to end.")
             dismiss = Text("Cancel")
         case .deviceNotGone:
             title = Text("This device’s removal has not reached this Mac yet")

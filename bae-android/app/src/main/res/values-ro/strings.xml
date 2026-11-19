@@ -375,11 +375,11 @@
         <item quantity="few">Dispozitive eliminate (%1$d)</item>
         <item quantity="other">Dispozitive eliminate (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">Se elimină dispozitivul</string>
+    <string name="device_removed_title">bae va elimina dispozitivul</string>
     <string name="device_cut_off_confirm">Am deconectat acest dispozitiv</string>
     <string name="device_cut_off_not_yet">Încă nu</string>
     <string name="device_cut_off_running_title">Acest dispozitiv încă se sincronizează cu cloudul</string>
-    <string name="device_cut_off_running_body">Așteaptă să se termine.</string>
+    <string name="device_cut_off_running_body">Așteaptă să se termine sincronizarea.</string>
     <string name="device_cut_off_not_gone_title">Eliminarea nu a ajuns încă pe acest dispozitiv</string>
     <string name="device_cut_off_not_gone_body">Încearcă din nou după următoarea sincronizare.</string>
     <string name="members_invite">Invită</string>

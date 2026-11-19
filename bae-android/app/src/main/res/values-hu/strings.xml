@@ -367,11 +367,11 @@
         <item quantity="one">Eltávolított eszköz (%1$d)</item>
         <item quantity="other">Eltávolított eszközök (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">Az eszköz eltávolítása</string>
+    <string name="device_removed_title">A bae eltávolítja az eszközt</string>
     <string name="device_cut_off_confirm">Lecsatlakoztattam ezt az eszközt</string>
     <string name="device_cut_off_not_yet">Még nem</string>
     <string name="device_cut_off_running_title">Ez az eszköz még szinkronizál a felhővel</string>
-    <string name="device_cut_off_running_body">Várd meg, amíg befejeződik.</string>
+    <string name="device_cut_off_running_body">Várd meg, amíg a szinkronizálás befejeződik.</string>
     <string name="device_cut_off_not_gone_title">Az eltávolítás még nem érkezett meg erre az eszközre</string>
     <string name="device_cut_off_not_gone_body">Próbáld újra a következő szinkronizálás után.</string>
     <string name="members_invite">Meghívás</string>

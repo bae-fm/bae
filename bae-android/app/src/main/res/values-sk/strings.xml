@@ -383,11 +383,11 @@
         <item quantity="many">Odstránené zariadenia (%1$d)</item>
         <item quantity="other">Odstránené zariadenia (%1$d)</item>
     </plurals>
-    <string name="device_removed_title">Odstraňovanie zariadenia</string>
+    <string name="device_removed_title">bae odstráni zariadenie</string>
     <string name="device_cut_off_confirm">Toto zariadenie som odpojil(a)</string>
     <string name="device_cut_off_not_yet">Ešte nie</string>
     <string name="device_cut_off_running_title">Toto zariadenie sa stále synchronizuje s cloudom</string>
-    <string name="device_cut_off_running_body">Počkajte, kým skončí.</string>
+    <string name="device_cut_off_running_body">Počkajte, kým synchronizácia skončí.</string>
     <string name="device_cut_off_not_gone_title">Odstránenie ešte nedorazilo na toto zariadenie</string>
     <string name="device_cut_off_not_gone_body">Skúste to znova po ďalšej synchronizácii.</string>
     <string name="members_invite">Pozvať</string>
