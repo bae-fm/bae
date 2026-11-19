@@ -114,7 +114,12 @@ class CastStartTest {
             )
 
         val kitchenAsked = start.cast(kitchen)
-        assertEquals("Kitchen", start.connecting.value?.name)
+        assertEquals(
+            "Kitchen",
+            start.connecting.value
+                ?.receiver
+                ?.name,
+        )
         val denAsked = start.cast(den)
         waiting.complete(Unit)
 
@@ -144,6 +149,34 @@ class CastStartTest {
 
         assertTrue(start.didStart(firstPickerAsked))
         assertFalse(start.didStart(secondPickerAsked))
+    }
+
+    /** Core says the receiver holds the cast for its owner and then that it answered, and the cast follows. */
+    @Test
+    fun aReceiverHoldingTheCastForItsOwnerIsMarkedUntilItAnswers() {
+        val answered = CompletableDeferred<Unit>()
+        val connected = CompletableDeferred<Unit>()
+        val start =
+            CastStart(
+                scope = scope,
+                castTo = { _, prompt ->
+                    prompt.ownerDeciding(true)
+                    answered.await()
+                    prompt.ownerDeciding(false)
+                    connected.await()
+                },
+                failureOf = { null },
+                pickerOpen = { true },
+                tell = { told += it },
+            )
+
+        start.cast(kitchen)
+        assertEquals(CastStart.Connecting(kitchen, ownerDeciding = true), start.connecting.value)
+        answered.complete(Unit)
+        assertEquals(CastStart.Connecting(kitchen, ownerDeciding = false), start.connecting.value)
+        connected.complete(Unit)
+
+        assertNull(start.connecting.value)
     }
 
     private val pinRequest =

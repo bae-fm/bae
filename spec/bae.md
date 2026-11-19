@@ -5115,6 +5115,20 @@ ends, with "Pairing…" showing until then. bae refuses a code of the wrong
 shape before it connects, with "Enter the 4-digit PIN." or "Enter the
 password." under the field.
 
+A receiver that asks its owner to accept the connection, as a Mac set to allow
+AirPlay for anyone on its network does, holds bae's first request on a
+connection until the owner decides, and asks again once its approval lapses. So
+on each connection bae opens to pair with an AirPlay 2 receiver, bae waits up
+to 60 seconds for the reply to its first request, where it waits at most ten for
+any other reply (see When playing on a receiver breaks). bae cannot tell a
+receiver that holds the request for its owner from one that is slow, so every
+AirPlay 2 receiver gets this wait; bae waits no longer on an AirPlay 1
+receiver. After 5 seconds with no reply, the receiver's row says "Accept on
+Kitchen…" with the receiver's own name, until the receiver answers (see
+Finding receivers). Past 60 seconds with no reply, playing on it fails as on a receiver
+that does not answer: "Kitchen did not answer. Check that it is on and on this
+network, then try again."
+
 A receiver that refuses fails playing on it with a line that says what is wrong and
 what to do. macOS shows it in an alert titled "Could not play on" and the
 receiver's name, with OK, wherever the person is. Android shows it in the Play on
@@ -5240,10 +5254,10 @@ states none has none. The address is the IP address a Cast or AirPlay service
 resolved to, or the host a UPnP description was fetched from. Once the person
 picks a receiver, the picker or the settings name it while bae connects, until
 playback on it starts or fails: the receiver's own row shows a spinner at its
-end and says "Connecting…" in place of its kind. Once an AirPlay receiver has
+end and says "Connecting…" in place of its kind. Once an AirPlay 2 receiver has
 held bae's request for 5 seconds while its owner decides whether to accept it,
 the row says "Accept on Kitchen…" instead, in italic on macOS, until the
-receiver answers. On macOS the connection is the app's, not the
+receiver answers (see Pairing). On macOS the connection is the app's, not the
 picker's or the settings': both name it, so does the Play on button's tooltip, and
 closing either leaves it connecting; a failure says why in an alert,
 wherever the person is. A connection that succeeds closes the picker that started
@@ -5297,7 +5311,9 @@ error, not as an unreachable device. An advertisement or search answer whose
 reading panics is left out of the picker, and browsing goes on. bae waits at most
 ten seconds on an AirPlay receiver's control connection — to connect, send a
 request, or hear back — so a receiver that stops answering without closing it
-can't hold up ending the session.
+can't hold up ending the session. The one reply that can take longer is the
+first on a connection that pairs with an AirPlay 2 receiver, which a receiver
+holds while its owner decides (see Pairing).
 A receiver that refuses a pause ends the session the same way, rather than
 the app showing Paused while it plays on. A resume asks nothing of the
 receiver: bae sends audio again, and the sync packet it sends right after the

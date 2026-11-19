@@ -18,6 +18,10 @@ impl AirPlayCodePromptCallback for Answering {
         );
         "0482".into()
     }
+
+    async fn owner_deciding(&self, deciding: bool) {
+        assert!(deciding);
+    }
 }
 
 fn pin_request() -> bae_cast::CodeRequest {
@@ -35,12 +39,23 @@ async fn the_sheet_answers_the_request_core_sent() {
     assert_eq!(prompt.code(pin_request()).await.unwrap(), "0482");
 }
 
+/// The app hears that the receiver's owner is deciding.
+#[tokio::test]
+async fn the_sheet_hears_that_an_owner_is_deciding() {
+    let prompt = NativeCodePrompt::new(Box::new(Answering), bae_diagnostics::Diagnostics::noop());
+    prompt.owner_deciding(true).await.unwrap();
+}
+
 /// A sheet whose host throws something its callback doesn't declare, which
 /// uniffi raises in Rust as a panic.
 struct Throwing;
 #[async_trait::async_trait]
 impl AirPlayCodePromptCallback for Throwing {
     async fn code(&self, _: BridgeAirPlayCodeRequest) -> String {
+        panic!("Callback interface failure: the host threw");
+    }
+
+    async fn owner_deciding(&self, _: bool) {
         panic!("Callback interface failure: the host threw");
     }
 }

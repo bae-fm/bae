@@ -38,6 +38,7 @@ pub(crate) mod fake_raop_receiver;
 pub(crate) mod fake_receiver;
 #[cfg(test)]
 pub(crate) mod fake_verification_receiver;
+pub(crate) mod owner_wait;
 pub(crate) mod pair_verify;
 pub(crate) mod pairing;
 pub(crate) mod pairing_keys;

@@ -1,5 +1,6 @@
 //! What a cast asks the person who cast for when an AirPlay receiver wants a
-//! PIN or a password, and the prompt the app answers it through.
+//! PIN or a password or holds the cast for its owner, and the prompt the app
+//! answers it through.
 
 use bae_util::task_failure::Bug;
 
@@ -65,6 +66,13 @@ pub trait CodePrompt: Send + Sync {
     /// this waits drops the future, which closes what asks. An `Err` is a
     /// bug in the prompt, reported where it was caught.
     async fn code(&self, request: CodeRequest) -> Result<String, Bug>;
+
+    /// Tell the person whether the receiver holds the cast while its owner
+    /// decides whether to accept bae: `true` once it has held bae's request
+    /// for five seconds, `false` once it answers. A cast that ends meanwhile
+    /// drops the future. An `Err` is a bug in the prompt, reported where it
+    /// was caught.
+    async fn owner_deciding(&self, deciding: bool) -> Result<(), Bug>;
 }
 
 #[cfg(test)]

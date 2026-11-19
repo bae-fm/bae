@@ -8,6 +8,10 @@ import Observation
 /// `started` is the `Attempt` it was given, so a place opened later never
 /// closes for a start it did not ask for.
 ///
+/// An AirPlay 2 receiver that holds the cast while its owner decides whether
+/// to accept bae marks `connecting` as `ownerDeciding`, which the places that
+/// list the receiver say on its row.
+///
 /// An AirPlay receiver that wants a PIN or a password asks the person through
 /// `codeSheet`, which the app shows over its main window while it is set: the
 /// person's code goes back with `pair(code:)`, and `cancelCode()` calls the
@@ -16,8 +20,8 @@ import Observation
 @MainActor
 @Observable
 public final class CastStart {
-    /// The receiver a cast is connecting to, while it does.
-    public private(set) var connecting: BridgeCastReceiver?
+    /// The cast connecting, while one is.
+    public private(set) var connecting: Connecting?
     /// The latest start that reached playback on its receiver.
     public private(set) var started: Attempt?
     /// Why the receiver of the last start refused it, until the person
@@ -41,6 +45,20 @@ public final class CastStart {
     /// One call to `cast(to:)`. `started` equals it once that start connects.
     public struct Attempt: Equatable, Sendable {
         fileprivate let number: Int
+    }
+
+    /// A cast while it connects: its receiver, and whether the receiver holds
+    /// it while its owner decides whether to accept bae, which core says once
+    /// the receiver has held bae's request for five seconds, and again once
+    /// it answers.
+    public struct Connecting: Equatable, Sendable {
+        public let receiver: BridgeCastReceiver
+        public fileprivate(set) var ownerDeciding: Bool
+
+        public init(receiver: BridgeCastReceiver, ownerDeciding: Bool) {
+            self.receiver = receiver
+            self.ownerDeciding = ownerDeciding
+        }
     }
 
     /// What the open sheet asks: the receiver, core's request, and whether
@@ -114,7 +132,7 @@ public final class CastStart {
         task?.cancel()
         closeCodeSheet()
         refusal = nil
-        connecting = receiver
+        connecting = Connecting(receiver: receiver, ownerDeciding: false)
         attempts += 1
         let attempt = Attempt(number: attempts)
         let cast = cast
@@ -188,6 +206,10 @@ public final class CastStart {
                 Asked(receiver: receiver, request: request, attempt: attempt),
                 answer: answer
             )
+        case .ownerDeciding(let deciding):
+            // A cast another start replaced tells nothing more.
+            guard attempt.number == attempts else { return }
+            connecting?.ownerDeciding = deciding
         case .withdrawn:
             closeCodeSheet(of: attempt)
         }
@@ -270,12 +292,14 @@ public final class CastStart {
 #endif
 
 /// What a cast's prompt sends its start: a request to show, with what takes
-/// the person's code back to core, or word that core stopped waiting.
+/// the person's code back to core, whether the receiver holds the cast for
+/// its owner, or word that core stopped waiting.
 private enum CodeAsk: Sendable {
     case ask(
         BridgeAirPlayCodeRequest,
         answer: CheckedContinuation<String, Never>
     )
+    case ownerDeciding(Bool)
     case withdrawn
 }
 
@@ -303,5 +327,9 @@ private final class CastCodePrompt: AirPlayCodePromptCallback {
         } onCancel: {
             asks.yield(.withdrawn)
         }
+    }
+
+    func ownerDeciding(deciding: Bool) async {
+        asks.yield(.ownerDeciding(deciding))
     }
 }

@@ -81,7 +81,7 @@ internal fun SettingsPlaybackSection(
         restoreOnLaunch = restoreOnLaunch,
         playOnEnabled = config.castEnabled,
         receivers = { receivers },
-        connectingName = { connecting?.name },
+        connectingName = { connecting?.receiver?.name },
         transcodeFormat = config.castTranscodeFormat,
         onBack = onBack,
         onPauseBetweenSides = { enabled ->

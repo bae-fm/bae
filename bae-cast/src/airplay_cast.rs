@@ -19,6 +19,7 @@ use crate::airplay::capabilities::{
 };
 use crate::airplay::device_verification::{self, VerificationError};
 use crate::airplay::digest::{DigestPassword, DigestStyle};
+use crate::airplay::owner_wait::OwnerWait;
 use crate::airplay::pairing::{HomeKitError, PairingError};
 use crate::airplay::pairing_keys::{
     pairing_secret_name, password_secret_name, verification_secret_name, ControllerIdentity,
@@ -47,6 +48,9 @@ struct PairingTarget {
     /// prompt to accept the cast.
     client_name: String,
     receiver: CastReceiver,
+    /// Where the person who cast is asked for the receiver's code, and told
+    /// that the receiver holds the cast for its owner.
+    prompt: Arc<dyn CodePrompt>,
 }
 
 /// An AirPlay 2 receiver bae pairs with by HomeKit pairing.
@@ -101,6 +105,9 @@ trait PairsByCode: Sync {
     /// What a pairing agreed on, which each later session proves bae with.
     type Kept: Clone + Send + 'static;
 
+    /// The receiver, and where the person who cast is asked for its code.
+    fn target(&self) -> &PairingTarget;
+
     /// The name of this device's keychain entry for the receiver's pairing.
     fn kept_entry(&self) -> String;
 
@@ -138,7 +145,8 @@ impl CastController {
     /// advertisement states fails before connecting, an AirPlay 2 receiver
     /// pairs before playback moves, an AirPlay 1 receiver that verifies the
     /// device pairs or verifies before playback moves, each asking `prompt`
-    /// for a code where the receiver wants one, and an AirPlay 1 receiver
+    /// for a code where the receiver wants one and telling it when an
+    /// AirPlay 2 receiver holds the cast for its owner, and an AirPlay 1 receiver
     /// that asks for nothing pairs not at all. AirPlay pushes audio, so
     /// playback keeps decoding locally and hands its output to the receiver's
     /// sink; no ephemeral server is needed.
@@ -166,8 +174,8 @@ impl CastController {
         let client_name = self.services.this_device_name().await.map_err(CastError::DeviceName)?;
         let sink: Box<dyn AirPlaySink> = match &capabilities.dialect {
             Dialect::AirPlay2 { pairing } => {
-                let target = PairingTarget { addr, port, client_name, receiver: device };
-                let auth = self.authenticate(Ap2Receiver(target.clone()), *pairing, prompt).await?;
+                let target = PairingTarget { addr, port, client_name, receiver: device, prompt };
+                let auth = self.authenticate(Ap2Receiver(target.clone()), *pairing).await?;
                 Box::new(Ap2Sink::new(
                     addr,
                     port,
@@ -194,9 +202,9 @@ impl CastController {
                     port,
                     client_name: client_name.clone(),
                     receiver: device,
+                    prompt,
                 };
-                let verification =
-                    self.verify_device(&target, *device_verification, prompt.clone()).await?;
+                let verification = self.verify_device(&target, *device_verification).await?;
                 let password = match password {
                     Some(style) => {
                         let target = DigestPasswordReceiver {
@@ -204,8 +212,7 @@ impl CastController {
                             style: *style,
                             verification: verification.clone(),
                         };
-                        let kept =
-                            self.kept_or_new_pairing(&target, CodeKind::Password, prompt).await?;
+                        let kept = self.kept_or_new_pairing(&target, CodeKind::Password).await?;
                         Some(DigestPassword { password: kept, style: *style })
                     }
                     None => None,
@@ -238,29 +245,20 @@ impl CastController {
         &self,
         target: Ap2Receiver,
         pairing: Ap2Pairing,
-        prompt: Arc<dyn CodePrompt>,
     ) -> Result<Ap2Auth, CastError> {
         let kept = match pairing {
             Ap2Pairing::Transient => match self.pair_with(&target.0, Ap2Auth::Transient).await? {
                 Ok(()) => return Ok(Ap2Auth::Transient),
                 Err(Ap2Error::Rejected { step: PAIR_SETUP_M1, status: 470 }) => {
-                    self.kept_or_new_pairing(&target, AIRPLAY_PIN, prompt).await?
+                    self.kept_or_new_pairing(&target, AIRPLAY_PIN).await?
                 }
                 Err(error) => return Err(airplay_pairing_failure(error, &target.0.receiver.name)),
             },
-            Ap2Pairing::PinOnce => self.kept_or_new_pairing(&target, AIRPLAY_PIN, prompt).await?,
-            Ap2Pairing::Password => {
-                self.kept_or_new_pairing(&target, CodeKind::Password, prompt).await?
-            }
+            Ap2Pairing::PinOnce => self.kept_or_new_pairing(&target, AIRPLAY_PIN).await?,
+            Ap2Pairing::Password => self.kept_or_new_pairing(&target, CodeKind::Password).await?,
             Ap2Pairing::PinEveryCast => {
-                self.pair_by_code(
-                    &target,
-                    AIRPLAY_PIN,
-                    CodeAsked::EveryCast,
-                    KeptFor::ThisCast,
-                    prompt,
-                )
-                .await?
+                self.pair_by_code(&target, AIRPLAY_PIN, CodeAsked::EveryCast, KeptFor::ThisCast)
+                    .await?
             }
         };
         // Pair-setup proved this device and the receiver to each other; each
@@ -277,7 +275,6 @@ impl CastController {
         &self,
         target: &PairingTarget,
         advertised: Option<DeviceVerification>,
-        prompt: Arc<dyn CodePrompt>,
     ) -> Result<Option<VerificationKey>, CastError> {
         let asked = match advertised {
             Some(asked) => asked,
@@ -300,18 +297,10 @@ impl CastController {
         };
         let target = RaopReceiver(target.clone());
         let key = match asked {
-            DeviceVerification::Once => {
-                self.kept_or_new_pairing(&target, AIRPLAY_PIN, prompt).await?
-            }
+            DeviceVerification::Once => self.kept_or_new_pairing(&target, AIRPLAY_PIN).await?,
             DeviceVerification::EveryCast => {
-                self.pair_by_code(
-                    &target,
-                    AIRPLAY_PIN,
-                    CodeAsked::EveryCast,
-                    KeptFor::ThisCast,
-                    prompt,
-                )
-                .await?
+                self.pair_by_code(&target, AIRPLAY_PIN, CodeAsked::EveryCast, KeptFor::ThisCast)
+                    .await?
             }
         };
         Ok(Some(key))
@@ -323,7 +312,6 @@ impl CastController {
         &self,
         target: &T,
         code: CodeKind,
-        prompt: Arc<dyn CodePrompt>,
     ) -> Result<T::Kept, CastError> {
         let why = match self.kept_pairing(target).await? {
             None => CodeAsked::FirstPairing,
@@ -332,7 +320,7 @@ impl CastController {
                 KeptVerified::Lost => CodeAsked::PairingLost,
             },
         };
-        self.pair_by_code(target, code, why, KeptFor::LaterCasts, prompt).await
+        self.pair_by_code(target, code, why, KeptFor::LaterCasts).await
     }
 
     /// Pair with the AirPlay 2 receiver once as `auth` says, off the runtime.
@@ -344,12 +332,45 @@ impl CastController {
         auth: Ap2Auth,
     ) -> Result<Result<(), Ap2Error>, CastError> {
         let (addr, port, client_name) = (target.addr, target.port, target.client_name.clone());
-        self.diagnostics
-            .blocking("pair with an AirPlay 2 receiver", move || {
-                pair_once(addr, port, &client_name, &auth)
-            })
-            .await
-            .map_err(CastError::Internal)
+        self.awaiting_owner(target, "pair with an AirPlay 2 receiver", move |owner_wait| {
+            pair_once(addr, port, &client_name, &auth, owner_wait)
+        })
+        .await
+    }
+
+    /// Run `exchange`, blocking work whose connection to an AirPlay 2
+    /// receiver opens with the `OwnerWait` it is given, off the runtime.
+    /// While it waits for a receiver that holds its first reply for its
+    /// owner, the person is told through the target's prompt, and told again
+    /// once the reply comes. The `Err` is a bug.
+    async fn awaiting_owner<T: Send + 'static>(
+        &self,
+        target: &PairingTarget,
+        operation: &'static str,
+        exchange: impl FnOnce(OwnerWait) -> T + Send + 'static,
+    ) -> Result<T, CastError> {
+        let (told, mut tells) = tokio::sync::mpsc::unbounded_channel();
+        let owner_wait = OwnerWait::new(self.reply_timer.clone(), move |deciding| {
+            // A cast that ended has dropped its tells.
+            told.send(deciding).ok();
+        });
+        let mut exchange =
+            std::pin::pin!(self.diagnostics.blocking(operation, move || exchange(owner_wait)));
+        loop {
+            // The tells first: one the exchange sent just before it ended is
+            // told before the exchange's result is returned.
+            tokio::select! {
+                biased;
+                Some(deciding) = tells.recv() => {
+                    target
+                        .prompt
+                        .owner_deciding(deciding)
+                        .await
+                        .map_err(|bug| CastError::Internal(TaskFailed::Panicked(bug)))?;
+                }
+                done = &mut exchange => return done.map_err(CastError::Internal),
+            }
+        }
     }
 
     /// The pairing this device kept for the receiver, if any.
@@ -369,7 +390,7 @@ impl CastController {
         .transpose()
     }
 
-    /// Ask `prompt` for the receiver's `code`, saying `why`, and pair with
+    /// Ask the target's prompt for the receiver's `code`, saying `why`, and pair with
     /// what the person enters until the receiver takes it or refuses. A PIN
     /// starts with `/pair-pin-start`, which makes the receiver show it, and
     /// starts again after a wrong one, since the receiver then shows a new
@@ -382,7 +403,6 @@ impl CastController {
         code: CodeKind,
         why: CodeAsked,
         kept_for: KeptFor,
-        prompt: Arc<dyn CodePrompt>,
     ) -> Result<T::Kept, CastError> {
         let mut last_try = None;
         let mut pin_shown = false;
@@ -392,7 +412,9 @@ impl CastController {
                 target.show_pin(self).await?;
                 pin_shown = true;
             }
-            let entered = prompt
+            let entered = target
+                .target()
+                .prompt
                 .code(CodeRequest { code, why, last_try })
                 .await
                 .map_err(|bug| CastError::Internal(TaskFailed::Panicked(bug)))?;
@@ -418,6 +440,10 @@ impl CastController {
 impl PairsByCode for Ap2Receiver {
     type Kept = KeptPairing;
 
+    fn target(&self) -> &PairingTarget {
+        &self.0
+    }
+
     fn kept_entry(&self) -> String {
         pairing_secret_name(&self.0.receiver.id)
     }
@@ -441,15 +467,15 @@ impl PairsByCode for Ap2Receiver {
     /// A Mac whose AirPlay Receiver plays only for its current user answers
     /// the PIN start with 400.
     async fn show_pin(&self, cast: &CastController) -> Result<(), CastError> {
-        let PairingTarget { addr, port, client_name, receiver } = self.0.clone();
+        let PairingTarget { addr, port, client_name, receiver, .. } = self.0.clone();
         let shown = cast
-            .diagnostics
-            .blocking("ask an AirPlay receiver to show a PIN", move || {
-                let mut conn = RtspConnection::connect(addr, port, ap2_sender(&client_name))?;
+            .awaiting_owner(&self.0, "ask an AirPlay receiver to show a PIN", move |owner_wait| {
+                let sender = ap2_sender(&client_name);
+                let mut conn =
+                    RtspConnection::connect_awaiting_owner(addr, port, sender, owner_wait)?;
                 start_pin(&mut conn)
             })
-            .await
-            .map_err(CastError::Internal)?;
+            .await?;
         shown.map_err(|error| match error {
             Ap2Error::Rejected { step: PAIR_PIN_START, status: 400 } => {
                 CastError::AirPlayOwnerOnly { receiver: receiver.name }
@@ -465,39 +491,42 @@ impl PairsByCode for Ap2Receiver {
         entered: String,
         kept_for: KeptFor,
     ) -> Result<CodeTried<KeptPairing>, CastError> {
-        let PairingTarget { addr, port, client_name, receiver } = self.0.clone();
+        let PairingTarget { addr, port, client_name, receiver, .. } = self.0.clone();
         let entry = self.kept_entry();
         let identity = ControllerIdentity::new(cast.ids.as_ref());
         let secrets = cast.device_secrets.clone();
-        cast.diagnostics
-            .blocking("pair with an AirPlay receiver by code", move || {
-                let paired = RtspConnection::connect(addr, port, ap2_sender(&client_name))
-                    .map_err(Ap2Error::from)
-                    .and_then(|mut conn| run_code_pair_setup(&mut conn, &entered, identity));
-                let keys = match paired {
-                    Ok(keys) => keys,
-                    Err(Ap2Error::Pairing(PairingError::WrongCode { retry_after_seconds })) => {
-                        return Ok(CodeTried::Wrong {
-                            retry_after: retry_after_seconds.map(Duration::from_secs),
-                        });
-                    }
-                    Err(error) => return Err(airplay_pairing_failure(error, &receiver.name)),
-                };
-                let password = match code {
-                    CodeKind::Password => Some(entered),
-                    CodeKind::Pin { .. } => None,
-                };
-                let kept = KeptPairing { keys, password };
-                keep(&secrets, &entry, &kept.encode(), kept_for)?;
-                Ok(CodeTried::Paired(kept))
-            })
-            .await
-            .map_err(CastError::Internal)?
+        cast.awaiting_owner(&self.0, "pair with an AirPlay receiver by code", move |owner_wait| {
+            let sender = ap2_sender(&client_name);
+            let paired = RtspConnection::connect_awaiting_owner(addr, port, sender, owner_wait)
+                .map_err(Ap2Error::from)
+                .and_then(|mut conn| run_code_pair_setup(&mut conn, &entered, identity));
+            let keys = match paired {
+                Ok(keys) => keys,
+                Err(Ap2Error::Pairing(PairingError::WrongCode { retry_after_seconds })) => {
+                    return Ok(CodeTried::Wrong {
+                        retry_after: retry_after_seconds.map(Duration::from_secs),
+                    });
+                }
+                Err(error) => return Err(airplay_pairing_failure(error, &receiver.name)),
+            };
+            let password = match code {
+                CodeKind::Password => Some(entered),
+                CodeKind::Pin { .. } => None,
+            };
+            let kept = KeptPairing { keys, password };
+            keep(&secrets, &entry, &kept.encode(), kept_for)?;
+            Ok(CodeTried::Paired(kept))
+        })
+        .await?
     }
 }
 
 impl PairsByCode for RaopReceiver {
     type Kept = VerificationKey;
+
+    fn target(&self) -> &PairingTarget {
+        &self.0
+    }
 
     fn kept_entry(&self) -> String {
         verification_secret_name(&self.0.receiver.id)
@@ -512,7 +541,7 @@ impl PairsByCode for RaopReceiver {
         cast: &CastController,
         kept: VerificationKey,
     ) -> Result<KeptVerified, CastError> {
-        let PairingTarget { addr, port, client_name, receiver } = self.0.clone();
+        let PairingTarget { addr, port, client_name, receiver, .. } = self.0.clone();
         let verified = cast
             .diagnostics
             .blocking("verify this device to an AirPlay 1 receiver", move || {
@@ -529,7 +558,7 @@ impl PairsByCode for RaopReceiver {
     }
 
     async fn show_pin(&self, cast: &CastController) -> Result<(), CastError> {
-        let PairingTarget { addr, port, client_name, receiver } = self.0.clone();
+        let PairingTarget { addr, port, client_name, receiver, .. } = self.0.clone();
         cast.diagnostics
             .blocking("ask an AirPlay 1 receiver to show a PIN", move || {
                 let mut conn = RtspConnection::connect(addr, port, raop_sender(&client_name))?;
@@ -549,7 +578,7 @@ impl PairsByCode for RaopReceiver {
         entered: String,
         kept_for: KeptFor,
     ) -> Result<CodeTried<VerificationKey>, CastError> {
-        let PairingTarget { addr, port, client_name, receiver } = self.0.clone();
+        let PairingTarget { addr, port, client_name, receiver, .. } = self.0.clone();
         let entry = self.kept_entry();
         let secrets = cast.device_secrets.clone();
         cast.diagnostics
@@ -578,6 +607,10 @@ impl PairsByCode for RaopReceiver {
 impl PairsByCode for DigestPasswordReceiver {
     /// The password, which is the keychain entry's whole text.
     type Kept = String;
+
+    fn target(&self) -> &PairingTarget {
+        &self.target
+    }
 
     fn kept_entry(&self) -> String {
         password_secret_name(&self.target.receiver.id)
@@ -631,7 +664,7 @@ impl DigestPasswordReceiver {
     /// Whether the receiver takes `password`, asked on a connection of its
     /// own, off the runtime.
     async fn accepts(&self, cast: &CastController, password: String) -> Result<bool, CastError> {
-        let PairingTarget { addr, port, client_name, receiver } = self.target.clone();
+        let PairingTarget { addr, port, client_name, receiver, .. } = self.target.clone();
         let password = DigestPassword { password, style: self.style };
         let verification = self.verification.clone();
         cast.diagnostics

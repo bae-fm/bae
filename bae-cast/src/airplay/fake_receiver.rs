@@ -247,6 +247,18 @@ pub(crate) fn serve_transient_pair_setup(
     reader: &mut impl std::io::BufRead,
     writer: &mut TcpStream,
 ) -> Result<Vec<u8>, String> {
+    serve_transient_pair_setup_holding(reader, writer, |_| true)
+}
+
+/// [`serve_transient_pair_setup`], calling `reply_now` with each step's name
+/// ("M1", "M3") once the step's request is read, and sending its reply when
+/// that returns true. One that returns false ends the pairing with an error
+/// and sends nothing.
+pub(crate) fn serve_transient_pair_setup_holding(
+    reader: &mut impl std::io::BufRead,
+    writer: &mut TcpStream,
+    mut reply_now: impl FnMut(&str) -> bool,
+) -> Result<Vec<u8>, String> {
     let mut srp = SrpServer::new();
     for step in ["M1", "M3"] {
         let request = read_request(reader)
@@ -262,6 +274,9 @@ pub(crate) fn serve_transient_pair_setup(
             respond(writer, "400 Bad Request", &cseq, &[]);
             return Err(format!("{step} without X-Apple-Client-Name"));
         }
+        if !reply_now(step) {
+            return Err(format!("{step} was not answered"));
+        }
         let reply = if step == "M1" { srp.m2() } else { srp.m4(&request.body) };
         respond(writer, "200 OK", &cseq, &reply);
     }
@@ -273,6 +288,11 @@ pub(crate) enum PairSetupScript {
     /// Run the whole transient pair-setup, then hold the connection until the
     /// sender closes it.
     Complete,
+    /// Read M1, hold the reply until the test sends on the channel, as a
+    /// receiver does while its owner decides, then run the whole pairing and
+    /// hold the connection until the sender closes it. A channel the test
+    /// drops sends no reply.
+    HoldFirstReply(std::sync::mpsc::Receiver<()>),
     /// Answer M1 with HTTP 200 and this Error TLV code.
     ErrorInM2(u8),
     /// Answer M1 with M2, then close the connection when M3 arrives.
@@ -293,6 +313,15 @@ pub(crate) fn listen_for_pair_setup(script: PairSetupScript) -> u16 {
                     .expect("the sender pairs the way a receiver reads it");
                 let mut rest = Vec::new();
                 std::io::Read::read_to_end(&mut reader, &mut rest).ok();
+            }
+            PairSetupScript::HoldFirstReply(release) => {
+                let paired = serve_transient_pair_setup_holding(&mut reader, &mut stream, |step| {
+                    step != "M1" || release.recv().is_ok()
+                });
+                if paired.is_ok() {
+                    let mut rest = Vec::new();
+                    std::io::Read::read_to_end(&mut reader, &mut rest).ok();
+                }
             }
             PairSetupScript::ErrorInM2(code) => {
                 let m1 = read_request(&mut reader).unwrap().expect("M1 arrives");
@@ -776,5 +805,80 @@ impl CodeReceiver {
             }
             ReceiverCode::Password(password) => password.as_bytes(),
         }
+    }
+}
+
+/// How a wait for a receiver's reply ends, as a test decides it.
+pub(crate) enum WaitEnds {
+    /// The wait's time passes with no reply.
+    Elapses,
+    /// The reply comes: the wait blocks until the receiver sends it.
+    WithReply,
+}
+
+/// A [`ReplyTimer`] whose every wait ends as its test says, so no test waits
+/// on a clock.
+pub(crate) struct ScriptedTimer {
+    asked: std::sync::Mutex<std::sync::mpsc::Sender<std::time::Duration>>,
+    ends: std::sync::Mutex<std::sync::mpsc::Receiver<WaitEnds>>,
+}
+
+/// The test's end of a [`ScriptedTimer`].
+pub(crate) struct TimerDriver {
+    asked: std::sync::mpsc::Receiver<std::time::Duration>,
+    ends: std::sync::mpsc::Sender<WaitEnds>,
+}
+
+pub(crate) fn scripted_timer() -> (std::sync::Arc<ScriptedTimer>, TimerDriver) {
+    let (asked_tx, asked) = std::sync::mpsc::channel();
+    let (ends, ends_rx) = std::sync::mpsc::channel();
+    let timer = ScriptedTimer {
+        asked: std::sync::Mutex::new(asked_tx),
+        ends: std::sync::Mutex::new(ends_rx),
+    };
+    (std::sync::Arc::new(timer), TimerDriver { asked, ends })
+}
+
+impl super::owner_wait::ReplyTimer for ScriptedTimer {
+    fn readable_within(
+        &self,
+        stream: &TcpStream,
+        limit: std::time::Duration,
+    ) -> std::io::Result<bool> {
+        self.asked.lock().unwrap().send(limit).expect("the test reads the waits");
+        let ends = self.ends.lock().unwrap().recv().expect("the test ends each wait");
+        match ends {
+            WaitEnds::Elapses => Ok(false),
+            WaitEnds::WithReply => {
+                stream.set_read_timeout(None)?;
+                stream.peek(&mut [0u8; 1])?;
+                stream.set_read_timeout(Some(super::rtsp::CONTROL_TIMEOUT))?;
+                Ok(true)
+            }
+        }
+    }
+}
+
+impl TimerDriver {
+    /// The limit of the next wait the connection starts, once it starts it.
+    pub(crate) fn next_wait(&self) -> std::time::Duration {
+        self.asked
+            .recv_timeout(bae_util::test_channels::HANG_GUARD)
+            .expect("the connection waits for its reply")
+    }
+
+    /// Whether the connection has started no wait the test has not read.
+    pub(crate) fn asked_nothing_more(&self) -> bool {
+        self.asked.try_recv().is_err()
+    }
+
+    /// End the wait the connection is in with its time passing.
+    pub(crate) fn elapse(&self) {
+        self.ends.send(WaitEnds::Elapses).expect("the connection waits");
+    }
+
+    /// End the wait the connection is in with the reply arriving.
+    pub(crate) fn reply_arrives(&self) {
+        self.ends.send(WaitEnds::WithReply).expect("the connection waits");
     }
 }

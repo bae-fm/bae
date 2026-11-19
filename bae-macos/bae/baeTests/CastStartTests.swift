@@ -34,7 +34,7 @@ struct CastStartTests {
         let start = CastStart(cast: cast, report: { reported.yield($0) })
 
         start.cast(to: receiver("kitchen"))
-        #expect(start.connecting?.id == "kitchen")
+        #expect(start.connecting?.receiver.id == "kitchen")
 
         answer.yield(false)
         var errors = reports.makeAsyncIterator()
@@ -68,13 +68,39 @@ struct CastStartTests {
 
         var endings = ends.makeAsyncIterator()
         #expect(await endings.next() == "kitchen")
-        #expect(start.connecting?.id == "den")
+        #expect(start.connecting?.receiver.id == "den")
 
         answer.yield(())
         try await Wait.until { start.connecting == nil }
         #expect(start.started == den)
         #expect(start.started != kitchen)
         keepSilent.finish()
+    }
+
+    @Test(
+        "a receiver that holds the cast for its owner is marked until it answers"
+    )
+    func receiverHoldingCastForOwner() async throws {
+        let (answers, answer) = AsyncStream.makeStream(of: Void.self)
+        let cast = Cast(castTo: { _, prompt in
+            await prompt.ownerDeciding(deciding: true)
+            for await _ in answers { break }
+            await prompt.ownerDeciding(deciding: false)
+            for await _ in answers { return }
+        })
+        let start = CastStart(
+            cast: cast,
+            report: { Issue.record("the cast reported \($0)") }
+        )
+
+        start.cast(to: receiver("kitchen"))
+        try await Wait.until { start.connecting?.ownerDeciding == true }
+        #expect(start.connecting?.receiver.id == "kitchen")
+
+        answer.yield(())
+        try await Wait.until { start.connecting?.ownerDeciding == false }
+        answer.yield(())
+        try await Wait.until { start.connecting == nil }
     }
 
     @Test("a cast that connects closes only the place that asked for it")

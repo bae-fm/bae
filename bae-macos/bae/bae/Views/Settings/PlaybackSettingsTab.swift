@@ -150,7 +150,7 @@ private struct CastReceiversSection: View {
     var body: some View {
         MacSection {
             if let connecting = start.connecting {
-                MacCastConnectingLine(name: connecting.name)
+                MacCastConnectingLine(name: connecting.receiver.name)
             }
             if castStore.receivers.isEmpty {
                 MacSpinner("Looking for receivers…")

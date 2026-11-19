@@ -2,13 +2,17 @@ use super::*;
 use crate::airplay::digest::DigestStyle;
 use crate::airplay::fake_raop_receiver::{Challenges, DigestGate};
 use crate::airplay::fake_receiver::{
-    listen_for_code_pairing, CodeReceiver, CodeRefusal, ReceiverCode,
+    listen_for_code_pairing, listen_for_pair_setup, scripted_timer, CodeReceiver, CodeRefusal,
+    PairSetupScript, ReceiverCode, TimerDriver,
 };
 use crate::airplay::fake_verification_receiver::{listen_for_verification, VerificationReceiver};
+use crate::airplay::owner_wait::{NOTICE_AFTER, OWNER_DECIDES_WITHIN};
 use crate::airplay::pairing::public_key;
 use crate::renderer::discovery::reported::ReportedRenderer;
 use crate::renderer::{RendererDiscovery, RendererServiceType};
-use crate::tests::{no_code, set_casting, start_discovery, test_controller};
+use crate::tests::{
+    no_code, set_casting, start_discovery, test_controller, test_controller_timing_replies_with,
+};
 use bae_playback::{PlaybackProgress, RemotePlayback};
 use bae_util::test_channels::HANG_GUARD;
 use std::collections::VecDeque;
@@ -44,6 +48,10 @@ impl CodePrompt for ScriptedPrompt {
         self.asked.lock().unwrap().push(request);
         let code = self.codes.lock().unwrap().pop_front();
         Ok(code.expect("the test scripted a code for every ask").to_string())
+    }
+
+    async fn owner_deciding(&self, deciding: bool) -> Result<(), bae_util::task_failure::Bug> {
+        panic!("the cast told of an owner deciding: {deciding}")
     }
 }
 
@@ -340,6 +348,10 @@ impl CodePrompt for WaitingPrompt {
         self.asked.notify_one();
         std::future::pending().await
     }
+
+    async fn owner_deciding(&self, deciding: bool) -> Result<(), bae_util::task_failure::Bug> {
+        panic!("the cast told of an owner deciding: {deciding}")
+    }
 }
 
 /// Stopping casting while the prompt waits calls the cast off: the prompt's
@@ -365,6 +377,92 @@ fn a_cast_called_off_while_the_prompt_waits_drops_the_prompt() {
     assert!(matches!(cast, Err(CastError::CalledOff)), "{cast:?}");
     assert!(prompt.dropped.load(Ordering::Acquire), "the prompt's future was dropped");
     assert_eq!(casting.kept(), None);
+}
+
+/// A prompt that asks for no code and sends each telling that an owner
+/// decides to the test.
+struct OwnerWatching {
+    told: Mutex<std::sync::mpsc::Sender<bool>>,
+}
+
+#[async_trait::async_trait]
+impl CodePrompt for OwnerWatching {
+    async fn code(&self, request: CodeRequest) -> Result<String, bae_util::task_failure::Bug> {
+        panic!("the cast asked for a code: {request:?}")
+    }
+
+    async fn owner_deciding(&self, deciding: bool) -> Result<(), bae_util::task_failure::Bug> {
+        self.told.lock().unwrap().send(deciding).expect("the test reads the tellings");
+        Ok(())
+    }
+}
+
+/// A cast to a receiver that holds its first reply until the test releases
+/// it, as a receiver does while its owner decides, on its own thread. The
+/// test decides when each wait for the reply ends through the timer, so no
+/// test waits on a clock.
+struct HeldCast {
+    driver: TimerDriver,
+    release: std::sync::mpsc::Sender<()>,
+    told: std::sync::mpsc::Receiver<bool>,
+    cast: std::thread::JoinHandle<Result<(), CastError>>,
+    _runtime: tokio::runtime::Runtime,
+    _tmp: bae_util::test_files::TestFolder,
+}
+
+impl HeldCast {
+    fn start() -> Self {
+        let (timer, driver) = scripted_timer();
+        let (runtime, controller, services, tmp) =
+            test_controller_timing_replies_with(RendererDiscovery::reported(), timer);
+        set_casting(&runtime, &controller, &services, true);
+        start_discovery(&runtime, &controller);
+        let (release, released) = std::sync::mpsc::channel();
+        let port = listen_for_pair_setup(PairSetupScript::HoldFirstReply(released));
+        controller.renderer_found(reported_receiver(port, "0x0"));
+        let (told_tx, told) = std::sync::mpsc::channel();
+        let prompt = Arc::new(OwnerWatching { told: Mutex::new(told_tx) });
+        let handle = runtime.handle().clone();
+        let cast = bae_util::test_spawn::thread(move || {
+            handle.block_on(controller.cast_to(RECEIVER, prompt))
+        });
+        HeldCast { driver, release, told, cast, _runtime: runtime, _tmp: tmp }
+    }
+
+    fn next_told(&self) -> bool {
+        self.told.recv_timeout(HANG_GUARD).expect("the cast tells the person")
+    }
+}
+
+/// A receiver that holds its reply for 12 seconds while its owner decides
+/// is waited for: at 5 seconds the person is told, the wait lasts the rest
+/// of the minute, and the owner's accepting ends the telling and moves
+/// playback.
+#[test]
+fn a_cast_waits_for_a_receiver_whose_owner_decides_late() {
+    let held = HeldCast::start();
+    assert_eq!(held.driver.next_wait(), NOTICE_AFTER);
+    held.driver.elapse();
+    assert!(held.next_told());
+    assert_eq!(held.driver.next_wait(), OWNER_DECIDES_WITHIN - NOTICE_AFTER);
+    held.release.send(()).unwrap();
+    held.driver.reply_arrives();
+    assert!(!held.next_told());
+    held.cast.join().unwrap().expect("the cast connects once the owner accepts");
+}
+
+/// Past the minute the cast fails as it does for a receiver that does not
+/// answer.
+#[test]
+fn a_cast_fails_when_the_owner_does_not_decide_within_the_minute() {
+    let held = HeldCast::start();
+    held.driver.next_wait();
+    held.driver.elapse();
+    assert!(held.next_told());
+    held.driver.next_wait();
+    held.driver.elapse();
+    let cast = held.cast.join().unwrap();
+    assert!(matches!(cast, Err(CastError::AirPlayUnreachable { .. })), "{cast:?}");
 }
 
 impl Casting<VerificationReceiver> {

@@ -31,6 +31,7 @@ use super::ap2_channel::{audio_key, HapChannel};
 use super::ap2_pairing::{run_pair_verify, run_transient_pair_setup};
 use super::bplist::{self, Plist};
 use super::digest::{DigestAnswer, DigestPassword, DigestStyle, Unauthorized};
+use super::owner_wait::OwnerWait;
 use super::pairing::PairingError;
 use super::pairing_keys::KeptPairing;
 use super::rtsp::{
@@ -404,8 +405,14 @@ pub(crate) fn pair_once(
     airplay_port: u16,
     client_name: &str,
     auth: &Ap2Auth,
+    owner_wait: OwnerWait,
 ) -> Result<(), Ap2Error> {
-    let mut conn = RtspConnection::connect(receiver, airplay_port, ap2_sender(client_name))?;
+    let mut conn = RtspConnection::connect_awaiting_owner(
+        receiver,
+        airplay_port,
+        ap2_sender(client_name),
+        owner_wait,
+    )?;
     auth.session_secret(&mut conn)?;
     Ok(())
 }

@@ -17,11 +17,12 @@ use std::net::{IpAddr, SocketAddr, TcpStream};
 use std::time::Duration;
 
 use super::digest::{DigestAnswer, DigestPassword, Unauthorized};
+use super::owner_wait::OwnerWait;
 
 /// How long the control connection waits on the receiver — to connect, or for
 /// a request to go out or its reply to come back — before the operation fails.
 /// A receiver on the local network answers well within it.
-const CONTROL_TIMEOUT: Duration = Duration::from_secs(10);
+pub(super) const CONTROL_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// The RTSP methods AirPlay uses. `Method::Other` carries a verb the scripted
 /// test receiver reads that it has no variant for.
@@ -263,6 +264,8 @@ pub(crate) struct RtspConnection {
     local_addr: IpAddr,
     /// The password to answer a Digest challenge with, when bae has one.
     answer: Option<DigestAnswer>,
+    /// How the first request waits for its reply, until it is sent.
+    owner_wait: Option<OwnerWait>,
 }
 
 /// The status a receiver answers a request with when it wants the password
@@ -276,6 +279,19 @@ impl RtspConnection {
         let stream = TcpStream::connect_timeout(&SocketAddr::new(addr, port), CONTROL_TIMEOUT)?;
         stream.set_nodelay(true).ok();
         Self::from_stream(stream, sender)
+    }
+
+    /// [`Self::connect`], where the first request waits for its reply as
+    /// `owner_wait` says: a receiver holds it while its owner decides.
+    pub(crate) fn connect_awaiting_owner(
+        addr: IpAddr,
+        port: u16,
+        sender: SenderIdentity,
+        owner_wait: OwnerWait,
+    ) -> io::Result<Self> {
+        let mut conn = Self::connect(addr, port, sender)?;
+        conn.owner_wait = Some(owner_wait);
+        Ok(conn)
     }
 
     /// Build a connection over an already-open stream (loopback fakes in tests use
@@ -296,6 +312,7 @@ impl RtspConnection {
             session: None,
             local_addr,
             answer: None,
+            owner_wait: None,
         })
     }
 
@@ -368,6 +385,9 @@ impl RtspConnection {
         self.writer.write_all(&bytes)?;
         self.writer.flush()?;
 
+        if let Some(owner_wait) = self.owner_wait.take() {
+            owner_wait.for_reply(&self.writer)?;
+        }
         let response = RtspResponse::read_from(&mut self.reader)?;
         if let Some(echoed) = response.cseq() {
             if echoed != cseq {

@@ -17,7 +17,7 @@ struct CastButton: View {
     var body: some View {
         let castingName = castStore.castingDeviceName
         let active = castingName != nil
-        let connectingName = start.connecting?.name
+        let connectingName = start.connecting?.receiver.name
         return MacIconButton(
             symbol: active ? "hifispeaker.fill" : "hifispeaker",
             label: "Play on…",

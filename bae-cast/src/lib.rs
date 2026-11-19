@@ -50,6 +50,7 @@ use tokio::runtime::Handle;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, warn};
 
+use airplay::owner_wait::{ReplyTimer, SocketTimer};
 use cast::{CastChannel, CastClient};
 pub use cast_error::CastError;
 pub use code_prompt::{CodeAsked, CodeKind, CodePrompt, CodeRefused, CodeRequest};
@@ -229,6 +230,9 @@ pub struct CastController {
     /// discovery readers and the AirPlay stream threads — runs under, so a
     /// panic in it ends what it served.
     diagnostics: Diagnostics,
+    /// How a wait for an AirPlay receiver's reply to bae's first request is
+    /// bounded.
+    reply_timer: Arc<dyn ReplyTimer>,
     /// The `cast_enabled` value the setting watcher last finished applying, so
     /// a test can wait for the watcher to act on a change it wrote.
     #[cfg(test)]
@@ -271,6 +275,7 @@ impl CastController {
             ids,
             device_secrets,
             diagnostics,
+            Arc::new(SocketTimer),
         )
     }
 
@@ -283,6 +288,7 @@ impl CastController {
         ids: coven::IdSourceRef,
         device_secrets: coven::Coven,
         diagnostics: Diagnostics,
+        reply_timer: Arc<dyn ReplyTimer>,
     ) -> Arc<Self> {
         let receivers = discovery.subscribe();
         let controller = Arc::new(Self {
@@ -298,6 +304,7 @@ impl CastController {
             ids,
             device_secrets,
             diagnostics,
+            reply_timer,
             #[cfg(test)]
             setting_applied: tokio::sync::watch::Sender::new(None),
             #[cfg(test)]

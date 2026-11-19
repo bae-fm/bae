@@ -30,6 +30,9 @@ private val logger = BaeLogger("bae.CastStart")
  * receiver that refused it, and is null for one core gives no line, such as a start called off by
  * stopping casting, turning it off, or another cast.
  *
+ * An AirPlay 2 receiver that holds the cast while its owner decides whether to accept bae marks [connecting]
+ * as [Connecting.ownerDeciding], which the places that list the receiver say on its row.
+ *
  * An AirPlay receiver that wants a PIN or a password asks the person through [codeSheet], which the app
  * shows as a dialog over whatever is on screen while it is set: the person's code goes back with [pair],
  * and [cancelCode] calls the cast off.
@@ -41,10 +44,10 @@ class CastStart(
     private val pickerOpen: () -> Boolean,
     private val tell: (DisplayError) -> Unit,
 ) {
-    private val _connecting = MutableStateFlow<BridgeCastReceiver?>(null)
+    private val _connecting = MutableStateFlow<Connecting?>(null)
 
-    /** The receiver a cast is connecting to, while it does. */
-    val connecting: StateFlow<BridgeCastReceiver?> = _connecting.asStateFlow()
+    /** The cast connecting, while one is. */
+    val connecting: StateFlow<Connecting?> = _connecting.asStateFlow()
 
     private val _failure = MutableStateFlow<Failure?>(null)
 
@@ -70,6 +73,16 @@ class CastStart(
 
     private var attempts = 0
     private var job: Job? = null
+
+    /**
+     * A cast while it connects: its receiver, and whether the receiver holds it while its owner decides whether to
+     * accept bae, which core says once the receiver has held bae's request for five seconds, and again once it
+     * answers.
+     */
+    data class Connecting(
+        val receiver: BridgeCastReceiver,
+        val ownerDeciding: Boolean,
+    )
 
     /**
      * Why a start failed, and the receiver that refused it when core says a receiver refused: the picker
@@ -147,7 +160,7 @@ class CastStart(
         val number = ++attempts
         val attempt = Attempt(number)
         _failure.value = null
-        _connecting.value = receiver
+        _connecting.value = Connecting(receiver, ownerDeciding = false)
         // Core holds the prompt for the whole cast, so the prompt holds only the sending end of the channel this
         // start reads its requests from. A request the start never shows gets nothing back.
         val asks = Channel<CodeAsk>(Channel.UNLIMITED) { (it as? CodeAsk.Ask)?.answer?.complete("") }
@@ -207,6 +220,13 @@ class CastStart(
                 codeState = CodeState.Asking(Asked(receiver, ask.request, attempt), ask.answer)
             }
 
+            is CodeAsk.OwnerDeciding -> {
+                // A cast another start replaced tells nothing more.
+                if (attempt == attempts) {
+                    _connecting.value = _connecting.value?.copy(ownerDeciding = ask.deciding)
+                }
+            }
+
             CodeAsk.Withdrawn -> {
                 closeCodeSheet(attempt)
             }
@@ -227,12 +247,16 @@ class CastStart(
     }
 }
 
-/** What a cast's prompt sends its start: a request to show, with what takes the person's code back to core, or word
- *  that core stopped waiting. */
+/** What a cast's prompt sends its start: a request to show, with what takes the person's code back to core, whether
+ *  the receiver holds the cast for its owner, or word that core stopped waiting. */
 private sealed interface CodeAsk {
     class Ask(
         val request: BridgeAirPlayCodeRequest,
         val answer: CompletableDeferred<String>,
+    ) : CodeAsk
+
+    class OwnerDeciding(
+        val deciding: Boolean,
     ) : CodeAsk
 
     data object Withdrawn : CodeAsk
@@ -252,5 +276,9 @@ private class CodePrompt(
         } finally {
             if (!answer.isCompleted) asks.trySend(CodeAsk.Withdrawn)
         }
+    }
+
+    override suspend fun ownerDeciding(deciding: Boolean) {
+        asks.trySend(CodeAsk.OwnerDeciding(deciding))
     }
 }

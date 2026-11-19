@@ -57,6 +57,15 @@ pub(crate) fn set_casting(
 pub(crate) fn test_controller(
     discovery: RendererDiscovery,
 ) -> (tokio::runtime::Runtime, Arc<CastController>, AppServices, bae_util::test_files::TestFolder) {
+    test_controller_timing_replies_with(discovery, Arc::new(SocketTimer))
+}
+
+/// [`test_controller`], bounding the wait for an AirPlay receiver's first
+/// reply with `reply_timer`.
+pub(crate) fn test_controller_timing_replies_with(
+    discovery: RendererDiscovery,
+    reply_timer: Arc<dyn ReplyTimer>,
+) -> (tokio::runtime::Runtime, Arc<CastController>, AppServices, bae_util::test_files::TestFolder) {
     let (runtime, services, tmp) = bae_app::test_services::runtime_with_services();
     let controller = CastController::start_serving_on(
         services.clone(),
@@ -66,6 +75,7 @@ pub(crate) fn test_controller(
         ids(),
         device_secrets(&tmp),
         Diagnostics::noop(),
+        reply_timer,
     );
     (runtime, controller, services, tmp)
 }
@@ -82,6 +92,10 @@ struct NoCodeAsked;
 impl CodePrompt for NoCodeAsked {
     async fn code(&self, request: CodeRequest) -> Result<String, bae_util::task_failure::Bug> {
         panic!("the cast asked for a code: {request:?}")
+    }
+
+    async fn owner_deciding(&self, deciding: bool) -> Result<(), bae_util::task_failure::Bug> {
+        panic!("the cast told of an owner deciding: {deciding}")
     }
 }
 
@@ -878,6 +892,7 @@ fn cast_a_release_to_a_fake_chromecast() -> CastToFake {
         ids(),
         device_secrets(&device),
         Diagnostics::noop(),
+        Arc::new(SocketTimer),
     );
     set_casting(&runtime, &controller, &services, true);
     start_discovery(&runtime, &controller);

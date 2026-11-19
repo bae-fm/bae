@@ -101,7 +101,7 @@ private fun CastPickerSheet(
         CastReceiverRows(
             place = CastReceiverPlace.PICKER,
             receivers = receivers,
-            connectingName = connecting?.name,
+            connectingName = connecting?.receiver?.name,
             onCast = { receiver -> asked = session.castStart.cast(receiver) },
             onDisconnect = {
                 session.cast.stopCasting()
