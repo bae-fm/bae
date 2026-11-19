@@ -105,20 +105,15 @@ struct ReleaseEditorView: View {
             onSearch: { openSearch(.search) },
             onMetadataCommand: nil,
             trailing: {
-                HStack(spacing: ThemeSpace.related) {
-                    Button("Cancel") {
+                ReleaseEditControls(
+                    changed: session.draft?.changed == true,
+                    isBusy: session.isBusy,
+                    onCancel: {
                         searchSection = nil
                         session.cancelChanges()
-                    }
-                    .opacity(session.draft?.changed == true ? 1 : 0)
-                    .allowsHitTesting(session.draft?.changed == true)
-                    .disabled(session.isBusy)
-                    MacButton("Save", kind: .primary) {
-                        session.save(onSuccess: onSaved)
-                    }
-                    .keyboardShortcut(.defaultAction)
-                    .disabled(session.isBusy)
-                }
+                    },
+                    onSave: { session.save(onSuccess: onSaved) }
+                )
             }
         )
     }

@@ -82,27 +82,16 @@ struct ReleaseMetadataHeader<
     var body: some View {
         VStack(alignment: .leading, spacing: ReleaseMetadataLayout.blockSpacing)
         {
-            HStack(alignment: .top, spacing: ThemeSpace.group) {
-                // Clipped here so a non-square cover never spills over the
-                // identity column.
-                cover()
-                    .frame(
-                        width: ReleaseMetadataLayout.coverSize,
-                        height: ReleaseMetadataLayout.coverSize
-                    )
-                    .clipShape(
-                        RoundedRectangle(cornerRadius: ThemeRadius.artwork)
-                    )
-                MacReleaseIdentity(
-                    values: values,
-                    albumArtistStanding: albumArtistStanding,
-                    writer: writer,
-                    editingCommands: editingCommands,
-                    artistSearch: artistSearch,
-                    audioFacts: audioFacts,
-                    albumRow: albumRow
-                )
-            }
+            MacReleaseIdentity(
+                values: values,
+                albumArtistStanding: albumArtistStanding,
+                writer: writer,
+                editingCommands: editingCommands,
+                artistSearch: artistSearch,
+                cover: cover,
+                audioFacts: audioFacts,
+                albumRow: albumRow
+            )
             MacReleaseFields(
                 values: values,
                 writer: writer,

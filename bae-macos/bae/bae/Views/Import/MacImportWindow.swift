@@ -88,7 +88,7 @@ struct MacImportWindow: View {
                         splitContent
                     }
                     else {
-                        ImportEmptyState()
+                        MacImportEmptyState()
                     }
                 }
                 else {

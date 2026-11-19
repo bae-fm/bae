@@ -80,7 +80,7 @@ struct InvitePersonSheet: View {
     var body: some View {
         Group {
             if let storage {
-                InvitePersonForm(
+                MacInviteFields(
                     storage: storage,
                     email: $email,
                     accessKeyId: $accessKeyId,

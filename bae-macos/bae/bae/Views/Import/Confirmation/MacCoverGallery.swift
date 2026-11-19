@@ -34,10 +34,7 @@ struct MacCoverGallery: View {
 
     private var gallery: some View {
         VStack(spacing: 0) {
-            HStack(spacing: ThemeSpace.related) {
-                Text("Change cover")
-                    .themeText(.title)
-                Spacer()
+            MacModalHeader(title: "Change cover", large: true) {
                 if let onRefresh, remoteItems.canRefresh {
                     Button("Refresh", action: onRefresh)
                         .disabled(remoteItems.isLoading || isSaving)
@@ -46,8 +43,6 @@ struct MacCoverGallery: View {
                     .keyboardShortcut(.cancelAction)
                     .disabled(isSaving)
             }
-            .padding(.vertical, ThemeSpace.group + ThemeSpace.line)
-            .padding(.horizontal, ThemeSpace.edge)
             Divider()
             HStack(spacing: 0) {
                 ScrollView {
@@ -297,48 +292,13 @@ extension MacCoverGallery {
     }
 
     private func tile(for item: CoverItem) -> some View {
-        Button {
-            focusedCover = item.id
-        } label: {
-            VStack(alignment: .leading, spacing: ThemeSpace.inline) {
-                Artwork(
-                    content: item.image,
-                    contentMode: .fit,
-                    pointSize: 180
-                )
-                .padding(ThemeSpace.related + ThemeSpace.line)
-                .frame(height: 138)
-                .frame(maxWidth: .infinity)
-                .background(Theme.hover)
-                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
-                .overlay {
-                    RoundedRectangle(cornerRadius: ThemeRadius.artwork)
-                        .strokeBorder(
-                            content.focus?.cover.key == item.id
-                                ? Color.accentColor : .clear,
-                            lineWidth: 2
-                        )
-                }
-                Text(verbatim: item.label)
-                    .themeText(.rowTitle)
-                    .lineLimit(1)
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.accentPlain)
-        .help(item.label)
-        .accessibilityLabel(item.label)
-        .accessibilityAddTraits(
-            content.focus?.cover.key == item.id ? .isSelected : []
+        MacCoverTile(
+            item: item,
+            selected: content.focus?.cover.key == item.id,
+            onFocus: { focusedCover = item.id },
+            onOpenLightbox: { browser.layout = .lightbox }
         )
         .disabled(isSaving)
-        .simultaneousGesture(
-            TapGesture(count: 2)
-                .onEnded {
-                    focusedCover = item.id
-                    browser.layout = .lightbox
-                }
-        )
     }
 }
 

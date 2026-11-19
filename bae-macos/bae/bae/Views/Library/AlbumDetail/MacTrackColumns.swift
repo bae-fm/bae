@@ -74,7 +74,7 @@ struct MacTrackColumns: View {
                     Set(release.tracks.map(\.positionText)).sorted(),
                     id: \.self
                 ) { text in
-                    MacTrackLead(text: text)
+                    MacTrackLead.number(text)
                 }
             }
             .hidden()

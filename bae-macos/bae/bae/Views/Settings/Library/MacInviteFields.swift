@@ -7,7 +7,7 @@ import os.log
 /// Create invite. On S3 a button beside
 /// the footer switches between a key made for the invited person and this
 /// device's own.
-struct InvitePersonForm: View {
+struct MacInviteFields: View {
     let storage: InviteStorage
     @Binding
     var email: String

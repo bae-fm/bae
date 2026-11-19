@@ -7,7 +7,7 @@ private let logger = Logger.bae("QRScanner")
 
 /// A live camera QR-code scanner that calls `onScan` with the first decoded
 /// code, or explains why the camera isn't available.
-struct QRScannerView: View {
+struct MacQRScanner: View {
     let onScan: (String) -> Void
     /// False keeps the view on its "Starting camera…" placeholder without
     /// asking for the camera, for a screenshot of the sheet.
@@ -168,7 +168,7 @@ private final class CameraCapture: @unchecked Sendable {
     }
 }
 
-/// A sheet hosting `QRScannerView` over a screen whose paste field stays the
+/// A sheet hosting `MacQRScanner` over a screen whose paste field stays the
 /// fallback.
 struct CodeScannerSheet: View {
     let onScan: (String) -> Void
@@ -177,7 +177,7 @@ struct CodeScannerSheet: View {
 
     var body: some View {
         MacSheet("Scan a code", width: 400) {
-            QRScannerView(onScan: onScan, startsCamera: startsCamera)
+            MacQRScanner(onScan: onScan, startsCamera: startsCamera)
                 .frame(height: 300)
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.card))
         } footer: {

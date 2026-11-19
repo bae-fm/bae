@@ -4,8 +4,6 @@ import SwiftUI
 /// The selected release's own transfers, as the inspector read them: its
 /// download, its export, its upload. Pausing a whole queue is the footer's.
 struct StorageTransferControls: View {
-    @Environment(DownloadStore.self)
-    private var downloadStore
     @Environment(OutputStore.self)
     private var outputStore
     @Environment(Downloads.self)
@@ -50,17 +48,6 @@ struct StorageTransferControls: View {
             MacFailedTransferRow(
                 entry: .download(
                     operation,
-                    transfer: operation.kind == .pin
-                        ? .pin(
-                            downloadStore.downloadProgress(
-                                forRelease: operation.releaseId
-                            )
-                        )
-                        : .moveToThisDevice(
-                            downloadStore.moveToThisDeviceProgress(
-                                forRelease: operation.releaseId
-                            )
-                        ),
                     onRetry: {
                         run {
                             try await downloads.retryDownload(

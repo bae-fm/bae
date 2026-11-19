@@ -203,14 +203,14 @@ struct FindOnlineAutomaticSection: View {
     @ViewBuilder
     private var keepOwnDraft: some View {
         if let needsYou = state.needsYou, let onKeepOwnDraft {
-            PaneAnswerAction(
+            MacAnswerAction(
                 title: Self.keepOwnDraftTitle(needsYou),
                 subtitle: String(
                     localized: "Keep my info; it is not in the catalogs"
                 ),
+                off: state.isImporting,
                 action: onKeepOwnDraft
             )
-            .disabled(state.isImporting)
         }
     }
 
@@ -228,15 +228,15 @@ struct FindOnlineAutomaticSection: View {
     @ViewBuilder
     private var linkSharedAlbum: some View {
         if state.offersSharedAlbum, let onLinkSharedAlbum {
-            PaneAnswerAction(
+            MacAnswerAction(
                 title: String(localized: "Not sure"),
                 subtitle: String(
                     localized:
                         "Use what these releases share; leave the rest as is"
                 ),
+                off: state.isImporting,
                 action: onLinkSharedAlbum
             )
-            .disabled(state.isImporting)
         }
     }
 
@@ -294,25 +294,6 @@ struct FindOnlineAutomaticSection: View {
     }
 }
 
-/// A way to answer the folder other than picking a row: the button, and
-/// what it does beneath it.
-private struct PaneAnswerAction: View {
-    let title: String
-    let subtitle: String
-    let action: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.line) {
-            Button(title, action: action)
-                .buttonStyle(.accentBordered)
-                .controlSize(.small)
-            Text(subtitle)
-                .themeText(.detail)
-                .foregroundStyle(.tertiary)
-        }
-    }
-}
-
 /// What happened to a folder that waits on the person, in one plain sentence
 /// over everything the page lists.
 private struct NeedsYouSentence: View {
@@ -336,6 +317,6 @@ private struct FolderCheckNote: View {
         Text(text)
             .themeText(.detail)
             .foregroundStyle(Theme.warning)
-            .padding(.leading, ReleaseGroupSection.rowTextInset)
+            .padding(.leading, MacReleaseGroup.rowTextInset)
     }
 }

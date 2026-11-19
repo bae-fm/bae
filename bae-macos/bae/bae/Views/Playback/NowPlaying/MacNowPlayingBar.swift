@@ -162,27 +162,12 @@ extension MacNowPlayingBar {
 
             queueButton
 
-            switch volumeControls {
-            case .setOnReceiver(let name):
-                Text("Volume is set on \(name)")
-                    .themeText(.detail)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            case .controls(let settings):
-                muteButton(settings)
-
-                MacVolumeSlider(
-                    value: settings.volume,
-                    onDrag: onVolumeDrag,
-                    onChange: onVolumeChange
-                )
-                .frame(width: volumeWidth)
-                .accessibilityLabel("Volume")
-            case .waitingForCore:
-                MacTransport.controlSpace
-
-                Color.clear.frame(width: volumeWidth, height: 1)
-            }
+            MacVolumeSlider(
+                controls: volumeControls,
+                onDrag: onVolumeDrag,
+                onChange: onVolumeChange,
+                onSetMuted: onSetMuted
+            )
         }
     }
 
@@ -228,17 +213,7 @@ extension MacNowPlayingBar {
         }
     }
 
-    /// What the bar's right edge offers for the volume.
-    enum VolumeControls: Equatable {
-        /// The receiver playback is on keeps its own volume: a line names it
-        /// in place of mute and the slider, which could only be refused.
-        case setOnReceiver(String)
-        case controls(PlaybackSettings)
-        /// Core has not said the settings yet: the controls keep their place.
-        case waitingForCore
-    }
-
-    var volumeControls: VolumeControls {
+    var volumeControls: MacVolumeSlider.Controls {
         if let receiverWithoutVolume {
             return .setOnReceiver(receiverWithoutVolume)
         }
@@ -246,28 +221,5 @@ extension MacNowPlayingBar {
             return .controls(settings)
         }
         return .waitingForCore
-    }
-
-    fileprivate var volumeWidth: CGFloat { 96 }
-
-    fileprivate func muteButton(_ settings: PlaybackSettings) -> some View {
-        let isMuted = settings.isMuted
-        return MacIconButton(
-            symbol: Self.muteIconName(settings),
-            label: isMuted ? "Unmute" : "Mute"
-        ) {
-            onSetMuted(!isMuted)
-        }
-    }
-
-    /// The speaker glyph for the volume: silenced when muted or at zero, one
-    /// wave up to 0.55, two above it.
-    fileprivate static func muteIconName(_ settings: PlaybackSettings) -> String
-    {
-        if settings.isMuted || settings.volume == 0 {
-            return "speaker.slash.fill"
-        }
-        return settings.volume <= 0.55
-            ? "speaker.wave.1.fill" : "speaker.wave.2.fill"
     }
 }

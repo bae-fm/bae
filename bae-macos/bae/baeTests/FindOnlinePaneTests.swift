@@ -187,7 +187,7 @@ struct NarrowedOutDisclosureTests {
         showsNarrowedOut: Bool
     ) -> [String] {
         groups.flatMap { group in
-            ReleaseGroupSection(
+            MacReleaseGroup(
                 group: group,
                 showsNarrowedOut: showsNarrowedOut,
                 isImporting: false,
@@ -498,8 +498,8 @@ struct FindOnlineReadingPickTests {
         }
     }
 
-    private func section(_ group: ReleaseGroup) -> ReleaseGroupSection {
-        ReleaseGroupSection(
+    private func section(_ group: ReleaseGroup) -> MacReleaseGroup {
+        MacReleaseGroup(
             group: group,
             isImporting: false,
             onSelect: { _ in }
@@ -566,8 +566,8 @@ struct PickedRowTests {
 
     private func section(
         loadingPick: LoadingPick? = nil
-    ) -> ReleaseGroupSection {
-        ReleaseGroupSection(
+    ) -> MacReleaseGroup {
+        MacReleaseGroup(
             group: PreviewData.searchGroupExact,
             isImporting: false,
             loadingPick: loadingPick,

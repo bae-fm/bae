@@ -34,19 +34,17 @@ extension ShotScene {
                 }
             },
         ] + checkboxScenes + castRowScenes + copyTextScenes + disclosureScenes
-        + downloadRowScenes + fieldRowScenes + fileNameFieldScenes
+        + fieldRowScenes + fileNameFieldScenes
         + importDestinationScenes
 
     /// `MacCheckbox`, off and on.
     private static let checkboxScenes: [ShotScene] = [
         component("mac.component.checkbox.off", height: 40) {
-            Toggle("Group by artist", isOn: .constant(false))
-                .toggleStyle(.accentCheckbox)
+            MacCheckbox("Group by artist", isOn: .constant(false))
                 .themeText(.body)
         },
         component("mac.component.checkbox.on", height: 40) {
-            Toggle("Group by artist", isOn: .constant(true))
-                .toggleStyle(.accentCheckbox)
+            MacCheckbox("Group by artist", isOn: .constant(true))
                 .themeText(.body)
         },
     ]
@@ -181,7 +179,7 @@ extension ShotScene {
         component("mac.component.disclosure.open", height: 170) {
             ShotForm {
                 MacDisclosure(isExpanded: .constant(true)) {
-                    LabeledContent("Bit depth") {
+                    MacRow("Bit depth") {
                         MacPopUpButton("Bit depth", selection: .constant(16)) {
                             MacPopUpOption(verbatim: "16-bit", value: 16)
                         }
@@ -197,43 +195,6 @@ extension ShotScene {
             }
         },
     ]
-
-    /// `MacFailedTransferRow` after a pin or a move-to-this-device failed.
-    private static let downloadRowScenes: [ShotScene] = [
-        downloadRow("mac.component.failed-transfer-row.pin", kind: .pin),
-        downloadRow(
-            "mac.component.failed-transfer-row.move-to-this-mac",
-            kind: .moveToThisDevice
-        ),
-    ]
-
-    private static func downloadRow(
-        _ id: String,
-        kind: BridgeDownloadKind
-    ) -> ShotScene {
-        component(id, height: 130) {
-            let op = BridgeDownloadOp(
-                releaseId: "rel-glass-harbor",
-                kind: kind,
-                fileCount: 9,
-                totalSize: 356_000_000,
-                release: BridgeQueuedRelease(title: "Glass Harbor"),
-                createdAt: 0,
-                state: .failed(error: "The network connection was lost.")
-            )
-            return MacFailedTransferRow(
-                entry: .download(
-                    op,
-                    transfer: .pin(
-                        PreviewData.downloadStore()
-                            .downloadProgress(forRelease: op.releaseId)
-                    ),
-                    onRetry: {}
-                ),
-                onCancel: {}
-            )
-        }
-    }
 
     /// `MacFieldRow`, a boxed field with the label on its text line.
     private static let fieldRowScenes: [ShotScene] = [

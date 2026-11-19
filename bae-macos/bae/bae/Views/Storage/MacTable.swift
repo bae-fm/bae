@@ -478,7 +478,7 @@ extension MacTable.Coordinator {
         forRow row: Int,
         column: StorageTableColumn
     ) -> some View {
-        MacTableRow(list: list, position: row, column: column)
+        StorageListCell(list: list, position: row, column: column)
             .environment(imageStore)
             .environment(downloadStore)
             .environment(outboxStore)

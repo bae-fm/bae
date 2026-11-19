@@ -87,20 +87,9 @@ struct ReleaseEditorSheet: View {
     }
 
     private var header: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                Text("Edit release")
-                    .themeText(.heading)
-                Text(displayName)
-                    .themeText(.detail)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-            Spacer()
+        MacModalHeader(title: "Edit release", subtitle: displayName) {
             Button("Close") { onClose() }
                 .keyboardShortcut(.cancelAction)
         }
-        .padding(.vertical, ThemeSpace.group + ThemeSpace.line)
-        .padding(.horizontal, ThemeSpace.edge)
     }
 }

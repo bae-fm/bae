@@ -83,15 +83,10 @@ struct ReleaseStorageSheet: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("Storage")
-                    .themeText(.heading)
-                Spacer()
+            MacModalHeader(title: "Storage") {
                 Button("Done") { onDone() }
                     .keyboardShortcut(.cancelAction)
             }
-            .padding(.horizontal, ThemeSpace.edge)
-            .padding(.vertical, 14)
             Divider()
             if let releaseError {
                 MacNotice(error: releaseError)

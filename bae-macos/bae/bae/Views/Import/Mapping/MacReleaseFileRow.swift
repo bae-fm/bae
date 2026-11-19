@@ -1,9 +1,10 @@
 import BaeKit
 import SwiftUI
 
-/// One file of a release: its name in mono and its size at the right, with
-/// the damage line under them when the file is damaged. Given `onOpen`, the
-/// name and size are one button that opens the file.
+/// One file of a release on one line: its name in mono, the damage after the
+/// name in the warning colour behind the warning glyph when the file is
+/// damaged, and its size at the right. Given `onOpen`, the whole line is one
+/// button that opens the file.
 struct MacReleaseFileRow: View {
     let name: String
     let size: String
@@ -11,22 +12,15 @@ struct MacReleaseFileRow: View {
     var onOpen: (() -> Void)?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.line) {
-            if let onOpen {
-                Button(action: onOpen) {
-                    content
-                }
-                .buttonStyle(.accentPlain)
-                .accessibilityLabel(Text(verbatim: name))
-            }
-            else {
+        if let onOpen {
+            Button(action: onOpen) {
                 content
             }
-            if let damage {
-                Text(damage)
-                    .themeText(.fine)
-                    .foregroundStyle(Theme.warning)
-            }
+            .buttonStyle(.accentPlain)
+            .accessibilityLabel(Text(verbatim: name))
+        }
+        else {
+            content
         }
     }
 
@@ -35,6 +29,15 @@ struct MacReleaseFileRow: View {
             Text(name)
                 .themeText(.mono)
                 .cutLine(.fileName)
+            if let damage {
+                HStack(spacing: ThemeSpace.inline) {
+                    StatusGlyph(.warning)
+                    Text(damage)
+                        .themeText(.fine)
+                        .foregroundStyle(Theme.warning)
+                }
+                .fixedSize()
+            }
             Spacer(minLength: 0)
             Text(size)
                 .themeText(.fine)

@@ -3,7 +3,7 @@ import SwiftUI
 
 /// The Import tab with no folder watched: the sheep, Import Folder, which opens
 /// the folder picker, and Add Discogs Key while Discogs can't be asked.
-struct ImportEmptyState: View {
+struct MacImportEmptyState: View {
     @Environment(UiStore.self)
     private var uiStore
 

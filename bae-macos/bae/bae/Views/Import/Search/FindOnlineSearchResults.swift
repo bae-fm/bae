@@ -70,44 +70,28 @@ struct FindOnlineSearchResults: View {
                 let name = bridgeLookupCatalogName(catalog: entry.source)
                 switch entry.state {
                 case .searching:
-                    HStack(spacing: ThemeSpace.compact) {
-                        MacSpinner()
-                            .frame(
-                                width: ThemeIcon.small.size,
-                                height: ThemeIcon.small.size
-                            )
-                        Text(
-                            "Searching \(name)…",
-                            comment:
-                                "Find online, under a typed search's results: a catalog still searching; the argument is the catalog's name."
-                        )
-                        .foregroundStyle(.tertiary)
-                    }
+                    MacSearchSourceLine(
+                        catalog: name,
+                        status: .searching,
+                        onRetry: onRetry
+                    )
                 case .failed(let failure):
-                    failedLine(name, reason: failure.badgeLine)
+                    MacSearchSourceLine(
+                        catalog: name,
+                        status: .failed(reason: failure.badgeLine),
+                        onRetry: onRetry
+                    )
                 case .error(let failure):
-                    failedLine(name, reason: failure.detail)
+                    MacSearchSourceLine(
+                        catalog: name,
+                        status: .failed(reason: failure.detail),
+                        onRetry: onRetry
+                    )
                 // Answered sources and sources never asked add no line.
                 case .done, .notConfigured, .off:
                     EmptyView()
                 }
             }
-        }
-        .themeText(.detail)
-        .foregroundStyle(.secondary)
-        .padding(.leading, ThemeSpace.group)
-    }
-
-    /// A source that did not answer, with why on hover and its Retry.
-    private func failedLine(_ name: String, reason: String) -> some View {
-        HStack(spacing: ThemeSpace.compact) {
-            Image(systemName: "exclamationmark.circle")
-                .foregroundStyle(Theme.warning)
-                .accessibilityLabel("Failed")
-            Text(name)
-                .foregroundStyle(.tertiary)
-                .help(reason)
-            MacButton("Retry", kind: .borderless, action: onRetry)
         }
     }
 }

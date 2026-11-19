@@ -29,34 +29,16 @@ struct MacTrackRow: View {
     static let leadingSlotMinWidth: CGFloat = 22
 
     var body: some View {
-        let isCurrentPlaying = isCurrent && isPlaying
         HStack(spacing: ThemeSpace.group) {
-            // Every leading-slot state stays in the layout, opacity-toggled,
-            // so the row's size never changes.
-            ZStack(alignment: .trailing) {
-                MacTrackLead(text: track.positionText)
-                    .foregroundStyle(.tertiary)
-                    .opacity(!isCurrent && !hover ? 1 : 0)
-
-                Button(action: isCurrent ? onTogglePlayPause : onPlay) {
-                    Image(
-                        systemName: isCurrentPlaying
-                            ? "pause.fill" : "play.fill"
-                    )
-                    .themeIcon(.medium)
-                }
-                .buttonStyle(.accentPlain)
-                .opacity(hover ? 1 : 0)
-                .allowsHitTesting(hover)
-
-                Image(systemName: "speaker.wave.2.fill")
-                    .themeIcon(.small)
-                    .foregroundStyle(Theme.accent)
-                    .opacity(isCurrent && !hover ? 1 : 0)
-                    .accessibilityLabel("Now playing")
-                    .accessibilityHidden(!isCurrent)
-            }
-            .frame(width: max(positionWidth, Self.leadingSlotMinWidth))
+            MacTrackLead(
+                text: track.positionText,
+                isCurrent: isCurrent,
+                isPlaying: isPlaying,
+                hover: hover,
+                width: max(positionWidth, Self.leadingSlotMinWidth),
+                onPlay: onPlay,
+                onTogglePlayPause: onTogglePlayPause
+            )
             VStack(alignment: .leading, spacing: ThemeSpace.line) {
                 Text(track.title)
                     .themeText(.rowTitle)

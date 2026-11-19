@@ -17,7 +17,7 @@ struct InvalidCandidateRow: View {
         ) {
             VStack(alignment: .leading, spacing: 0) {
                 if let tags = invalid.tags {
-                    ImportReleaseSummaryView(
+                    MacImportReleaseSummary(
                         summary: ImportReleaseSummary(tags: tags),
                         style: .sidebar
                     )

@@ -91,7 +91,7 @@ struct MacImportRow: View {
     @ViewBuilder
     private var releaseSummary: some View {
         if let summary = ImportReleaseSummary(row: row) {
-            ImportReleaseSummaryView(summary: summary, style: .sidebar) {
+            MacImportReleaseSummary(summary: summary, style: .sidebar) {
                 RecordArrow(readFromRecord: row.reading.readFromRecord)
             }
         }

@@ -1,11 +1,11 @@
 import BaeKit
 import SwiftUI
 
-/// A release's row in the Storage Manager's table, drawn one column at a
-/// time: the cover and title, the artist, the media, the storage, and the
-/// numbers. Needs `DownloadStore`, `OutboxStore` and `ImageStore` in the
+/// One cell of a release's row in the Storage Manager's table, for its
+/// column: the cover and title, the artist, the media, the storage, or one of
+/// the numbers. Needs `DownloadStore`, `OutboxStore` and `ImageStore` in the
 /// environment.
-struct MacStorageRow: View {
+struct MacStorageCell: View {
     let release: ReleaseSummary
     let album: BridgeAlbum
     let status: BridgeStorageRowStatus

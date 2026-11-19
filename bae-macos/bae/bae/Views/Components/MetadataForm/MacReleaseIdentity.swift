@@ -1,19 +1,36 @@
 import BaeKit
 import SwiftUI
 
-/// The album identity drawn as a heading that is editable in place.
-struct MacReleaseIdentity<AudioFacts: View, AlbumRow: View>: View {
+/// The release's cover beside its identity, drawn as a heading that is
+/// editable in place.
+struct MacReleaseIdentity<Cover: View, AudioFacts: View, AlbumRow: View>: View {
     let values: BridgeRawReleaseEdit
     let albumArtistStanding: BridgeArtistFieldStanding?
     let writer: ReleaseFieldWriter
     let editingCommands: EditingCommitCommands
     let artistSearch: ArtistSearchOpener
     @ViewBuilder
+    let cover: () -> Cover
+    @ViewBuilder
     let audioFacts: () -> AudioFacts
     @ViewBuilder
     let albumRow: () -> AlbumRow
 
     var body: some View {
+        HStack(alignment: .top, spacing: ThemeSpace.group) {
+            // Clipped here so a non-square cover never spills over the
+            // identity column.
+            cover()
+                .frame(
+                    width: ReleaseMetadataLayout.coverSize,
+                    height: ReleaseMetadataLayout.coverSize
+                )
+                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
+            identity
+        }
+    }
+
+    private var identity: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.inline) {
             MacInlineField(
                 placeholder: String(localized: "Album title"),

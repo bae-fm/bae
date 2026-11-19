@@ -5,7 +5,7 @@ import Testing
 @testable import bae
 
 @Suite("QR scanner frame decoding")
-struct QRScannerViewTests {
+struct MacQRScannerTests {
     @Test("a camera pixel buffer containing a QR code yields its payload")
     func decodesQRCodeFromPixelBuffer() throws {
         let payload = "restore-code-payload"

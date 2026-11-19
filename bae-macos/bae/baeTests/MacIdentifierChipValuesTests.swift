@@ -13,7 +13,9 @@ struct MacIdentifierChipValuesTests {
                 "XX0000000001", "XX0000000002", "XX0000000003",
             ]) == "XX0000000001 · XX0000000002 · XX0000000003"
         )
-        #expect(MacIdentifierChipValues.text(["XX0000000001"]) == "XX0000000001")
+        #expect(
+            MacIdentifierChipValues.text(["XX0000000001"]) == "XX0000000001"
+        )
     }
 
     @Test("accessibility reads every value")

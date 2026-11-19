@@ -29,6 +29,9 @@ struct MacQueueRate<Progress: View>: View {
             QueuePauseButton(queue: queue, paused: paused)
                 .buttonStyle(.accentBorderless)
         }
+        .lineLimit(1)
+        .foregroundStyle(.secondary)
+        .themeText(.body)
         // A narrow table keeps each queue's rate whole on one line; the
         // release count and total give way instead.
         .fixedSize()

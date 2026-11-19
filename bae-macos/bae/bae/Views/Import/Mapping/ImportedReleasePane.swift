@@ -157,7 +157,7 @@ struct ImportingCandidatePane: View {
                             RoundedRectangle(cornerRadius: ThemeRadius.artwork)
                         )
                     if let values = candidate.edit {
-                        ImportReleaseSummaryView(
+                        MacImportReleaseSummary(
                             summary: ImportReleaseSummary(
                                 candidate: candidate,
                                 editValues: values

@@ -51,7 +51,7 @@ struct ReleaseGroupListContent<Trailing: View>: View {
     var body: some View {
         LazyVStack(alignment: .leading, spacing: ThemeSpace.group) {
             ForEach(groups) { group in
-                ReleaseGroupSection(
+                MacReleaseGroup(
                     group: group,
                     showsNarrowedOut: showsNarrowedOut,
                     isImporting: isImporting,
@@ -96,13 +96,13 @@ struct MissingSourceNote: View {
         Text(text)
             .themeText(.detail)
             .foregroundStyle(.tertiary)
-            .padding(.leading, ReleaseGroupSection.rowTextInset)
+            .padding(.leading, MacReleaseGroup.rowTextInset)
     }
 }
 
 /// One release group: its card with the pressing rows hanging beneath on a
 /// connecting rule.
-struct ReleaseGroupSection: View {
+struct MacReleaseGroup: View {
     /// How far the rule sits in from the card's leading edge.
     private static let ruleInset = ThemeSpace.edge
     private static let ruleWidth: CGFloat = 1

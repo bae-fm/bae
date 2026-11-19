@@ -510,7 +510,7 @@ extension ShotScene {
         usesOwnKey: Bool = false
     ) -> AnyView {
         AnyView(
-            InvitePersonForm(
+            MacInviteFields(
                 storage: storage,
                 email: .constant(""),
                 accessKeyId: .constant(""),

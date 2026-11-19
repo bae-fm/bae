@@ -115,8 +115,6 @@ struct MacImportDraft: View {
     /// to make the cover or refuse.
     let onDropCoverImage: (String) -> Void
 
-    @Environment(ConfigStore.self)
-    private var configStore
     @Environment(Library.self)
     private var library
     /// The metadata menu's command the card is asking about.
@@ -225,28 +223,43 @@ struct MacImportDraft: View {
             onMetadataCommand: { confirming = $0 },
             trailing: {
                 if let commit {
-                    if commit.untitledTrackCount > 0 {
-                        Text(
-                            localizedCoreString(
-                                "ui.import.commit.unanswered",
-                                commit.untitledTrackCount
-                            )
-                        )
-                        .themeText(.detail)
-                        .foregroundStyle(Theme.warning)
-                    }
-                    if configStore.syncs {
-                        MacImportDestination(
-                            destination: commit.importDestination
-                        )
-                    }
-                    ImportConfirmationCardAction(
-                        importStatus: commit.importStatus,
-                        onConfirmImport: commit.actions.confirmImport
-                    )
+                    ImportCommitRow(commit: commit)
                 }
             }
         )
+    }
+}
+
+/// The identify bar's trailing controls on an import's card: how many rows
+/// nobody has named, where the import goes when the library syncs, and Import.
+struct ImportCommitRow: View {
+    let commit: ImportCommitControls
+
+    @Environment(ConfigStore.self)
+    private var configStore
+
+    var body: some View {
+        HStack(spacing: ThemeSpace.related) {
+            if commit.untitledTrackCount > 0 {
+                Text(
+                    localizedCoreString(
+                        "ui.import.commit.unanswered",
+                        commit.untitledTrackCount
+                    )
+                )
+                .themeText(.detail)
+                .foregroundStyle(Theme.warning)
+            }
+            if configStore.syncs {
+                MacImportDestination(
+                    destination: commit.importDestination
+                )
+            }
+            ImportConfirmationCardAction(
+                importStatus: commit.importStatus,
+                onConfirmImport: commit.actions.confirmImport
+            )
+        }
     }
 }
 

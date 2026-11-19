@@ -5,14 +5,14 @@ import SwiftUI
 /// the list's query returned there, or as a placeholder until that row's page
 /// lands. It reads the list itself, so it follows the row as the query
 /// answers again.
-struct MacTableRow: View {
+struct StorageListCell: View {
     let list: StorageList
     let position: Int
     let column: StorageTableColumn
 
     var body: some View {
         if let row = list.row(at: position) {
-            MacStorageRow(
+            MacStorageCell(
                 release: ReleaseSummary(from: row.release),
                 album: row.album,
                 status: row.status,

@@ -81,7 +81,7 @@ struct ImportReleaseSummary {
 
 /// An import release summary, scaled for the sidebar or the card, with the
 /// caller's accessory after the title.
-struct ImportReleaseSummaryView<TitleAccessory: View>: View {
+struct MacImportReleaseSummary<TitleAccessory: View>: View {
     enum Style {
         case sidebar
         case card
@@ -135,13 +135,13 @@ struct ImportReleaseSummaryView<TitleAccessory: View>: View {
     }
 }
 
-extension ImportReleaseSummaryView where TitleAccessory == EmptyView {
+extension MacImportReleaseSummary where TitleAccessory == EmptyView {
     init(summary: ImportReleaseSummary, style: Style) {
         self.init(summary: summary, style: style) { EmptyView() }
     }
 }
 
-extension ImportReleaseSummaryView.Style {
+extension MacImportReleaseSummary.Style {
     fileprivate var titleText: ThemeText {
         switch self {
         case .sidebar: .rowTitle

@@ -1,25 +1,19 @@
 import BaeKit
 import SwiftUI
 
-/// One transfer row in the Storage Manager's inspector: the release's title,
-/// file count and size, a state chip, and a cancel button. A pin and a
-/// release moving to This Mac read alike but for their words and the
-/// progress they follow; once the download failed, a notice says why and
-/// offers Retry, which queues every failed download again. An upload held by
-/// a missing original names the file and offers Restore source file…, whose
+/// A transfer that stopped, at the top of the Storage Manager's inspector:
+/// the release's title, file count and size, and a cancel button, with a
+/// notice under them. A pin and a release moving to This Mac read alike but
+/// for their words; the notice of a failed download says why and offers
+/// Retry, which queues every failed download again. An upload held by a
+/// missing original names the file and offers Restore source file…, whose
 /// sheet says to put the file back and retries the upload.
 struct MacFailedTransferRow: View {
     /// What the row shows.
     enum Entry {
-        /// A pin or a move to This Mac. `transfer` is the latest progress of
-        /// the download, which the row's native readout reads each display
-        /// frame while it runs; core retries the queue's failures together,
-        /// not this entry alone.
-        case download(
-            BridgeDownloadOp,
-            transfer: ReleaseProgressSource,
-            onRetry: () -> Void
-        )
+        /// A pin or a move to This Mac that failed; core retries the
+        /// queue's failures together, not this entry alone.
+        case download(BridgeDownloadOp, onRetry: () -> Void)
         /// An upload that waits for the file `missing`, whose original is
         /// gone, with the release's album title and its files' count and
         /// size.
@@ -43,21 +37,17 @@ struct MacFailedTransferRow: View {
             createdAt: nil,
             cancel: .init(help: "Cancel", action: onCancel)
         ) {
-            VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                HStack(
-                    alignment: .firstTextBaseline,
-                    spacing: ThemeSpace.related
-                ) {
-                    Text(title)
-                        .lineLimit(1)
+            HStack(
+                alignment: .firstTextBaseline,
+                spacing: ThemeSpace.related
+            ) {
+                Text(title)
+                    .lineLimit(1)
 
-                    Text(detail)
-                        .themeText(.detail)
-                        .monospacedDigit()
-                        .foregroundStyle(.secondary)
-                }
-                progressView
-                stateChip
+                Text(detail)
+                    .themeText(.detail)
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
             }
         } below: {
             notice
@@ -75,21 +65,21 @@ struct MacFailedTransferRow: View {
 
     private var icon: String {
         switch entry {
-        case .download(let op, _, _): op.kind == .pin ? "pin" : "folder"
+        case .download(let op, _): op.kind == .pin ? "pin" : "folder"
         case .uploadWaiting: "arrow.up"
         }
     }
 
     private var title: String {
         switch entry {
-        case .download(let op, _, _): op.titleText
+        case .download(let op, _): op.titleText
         case .uploadWaiting(let title, _, _, _): title
         }
     }
 
     private var detail: String {
         switch entry {
-        case .download(let op, _, _):
+        case .download(let op, _):
             op.detailText
         case .uploadWaiting(_, let fileCount, let totalSize, _):
             BridgeQueuedRelease.filesText(
@@ -99,39 +89,11 @@ struct MacFailedTransferRow: View {
         }
     }
 
-    /// The queued or running state of a download, under the title line.
-    @ViewBuilder
-    private var stateChip: some View {
-        if case .download(let op, _, _) = entry {
-            switch (op.kind, op.state) {
-            case (.pin, .queued):
-                StatusChip("Queued to pin", symbol: "clock")
-            case (.moveToThisDevice, .queued):
-                StatusChip("Queued to move to This Mac", symbol: "clock")
-            case (.pin, .active):
-                StatusChip(
-                    "Pinning",
-                    tone: .activity,
-                    symbol: "arrow.down.circle.fill"
-                )
-            case (.moveToThisDevice, .active):
-                StatusChip(
-                    verbatim: BridgeReleaseStorageAction.moveToThisDevice
-                        .transferLabel,
-                    tone: .activity,
-                    symbol: "arrow.down.circle.fill"
-                )
-            case (_, .failed):
-                EmptyView()
-            }
-        }
-    }
-
     /// The failed download's notice, or the waiting upload's, under the row.
     @ViewBuilder
     private var notice: some View {
         switch entry {
-        case .download(let op, _, let onRetry):
+        case .download(let op, let onRetry):
             if case .failed(let error) = op.state {
                 MacNotice(
                     title: op.kind == .pin
@@ -155,15 +117,6 @@ struct MacFailedTransferRow: View {
                 },
                 buttons: .below
             )
-        }
-    }
-
-    @ViewBuilder
-    private var progressView: some View {
-        if case .download(let op, let transfer, _) = entry,
-            case .active = op.state
-        {
-            MacTransferReadout(stream: transfer, kind: .pin)
         }
     }
 

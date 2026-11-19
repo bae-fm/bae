@@ -37,8 +37,7 @@ extension BridgeCoverGallery {
 /// `gallery` focused on it.
 struct FocusingCoverGallery: View {
     let gallery: BridgeCoverGallery
-    let view:
-        (CoverGalleryContent, Binding<BridgeCoverKey?>) -> MacCoverGallery
+    let view: (CoverGalleryContent, Binding<BridgeCoverKey?>) -> MacCoverGallery
 
     @State
     private var focusedCover: BridgeCoverKey?
