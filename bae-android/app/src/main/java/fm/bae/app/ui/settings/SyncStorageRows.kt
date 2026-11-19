@@ -35,14 +35,15 @@ private val logger = BaeLogger("bae.SyncStorageRows")
  * The library's storage: its provider, then for S3 the endpoint, region and bucket it names, and for Dropbox and
  * OneDrive the signed-in account and the folder coven recorded, then Open in browser, which opens the folder's page
  * at the provider. A row shows a name or isn't there. On S3 the card ends with the id of the access key the library
- * records for the person, [access], and Replace key, which calls [onReplaceKey]; under the card, [keyLine] is the
- * line after a key call, which [onDismissKeyLine] dismisses.
+ * records for the person, [access], and Replace key, which calls [onReplaceKey]; under the card, the line that
+ * [keyLine] reads after a key call, which [onDismissKeyLine] dismisses. The section reads the line itself, so a new
+ * line redraws only the section.
  */
 @Composable
 internal fun StorageSection(
     location: BridgeStorageLocation,
     access: BridgeMemberAccess?,
-    keyLine: S3KeyReplacement.Line?,
+    keyLine: () -> S3KeyReplacement.Line?,
     onReplaceKey: () -> Unit,
     onDismissKeyLine: () -> Unit,
 ) {
@@ -56,7 +57,7 @@ internal fun StorageSection(
             }
             storageFolder(location)?.let { OpenFolderRow(it) }
         }
-        keyLine?.let { S3KeyLineNotice(it, onDismiss = onDismissKeyLine) }
+        keyLine()?.let { S3KeyLineNotice(it, onDismiss = onDismissKeyLine) }
     }
 }
 

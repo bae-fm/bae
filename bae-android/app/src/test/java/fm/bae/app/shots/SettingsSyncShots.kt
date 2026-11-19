@@ -182,7 +182,7 @@ private fun SyncPage(
         notices = {},
         location = location,
         access = BridgeMemberAccess.S3AccessKey(key),
-        keyLine = keyLine,
+        keyLine = { keyLine },
         onReplaceKey = {},
         onDismissKeyLine = {},
         restoreCode = restoreCode,

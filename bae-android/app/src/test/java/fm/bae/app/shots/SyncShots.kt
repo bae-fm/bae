@@ -44,7 +44,7 @@ class SyncShots : BoardShot() {
                         StorageSection(
                             location = accountDropbox,
                             access = null,
-                            keyLine = null,
+                            keyLine = { null },
                             onReplaceKey = {},
                             onDismissKeyLine = {},
                         )
