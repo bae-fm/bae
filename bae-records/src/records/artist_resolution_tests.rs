@@ -455,7 +455,7 @@ async fn read_credit(
         musicbrainz_artist_id: None,
         discogs_artist_id: discogs_artist_id.map(str::to_string),
     };
-    db.read(move |sql| resolve_credit_on(&sql, &credit)).await.unwrap()
+    db.read(move |sql| Ok::<_, DbError>(resolve_credit_on(&sql, &credit)?)).await.unwrap()
 }
 
 fn artist_ids(artists: &[crate::ExistingArtist]) -> Vec<&str> {
@@ -516,7 +516,8 @@ async fn a_read_credit_whose_ids_name_two_artists_is_the_musicbrainz_one() {
         musicbrainz_artist_id: Some("mb-1".to_string()),
         discogs_artist_id: Some("discogs-1".to_string()),
     };
-    let resolution = db.read(move |sql| resolve_credit_on(&sql, &credit)).await.unwrap();
+    let resolution =
+        db.read(move |sql| Ok::<_, DbError>(resolve_credit_on(&sql, &credit)?)).await.unwrap();
 
     let crate::CreditResolution::Library { artist } = resolution else {
         panic!("the MusicBrainz id names the artist, got {resolution:?}");
@@ -854,7 +855,10 @@ async fn check_two_devices_give_one_artist_id(devices: &bae_store::test_devices:
     };
     for device in [devices.a(), devices.b()] {
         let read = read.clone();
-        let resolution = device.read(move |sql| resolve_credit_on(&sql, &read)).await.unwrap();
+        let resolution = device
+            .read(move |sql| Ok::<_, DbError>(resolve_credit_on(&sql, &read)?))
+            .await
+            .unwrap();
         let crate::CreditResolution::Library { artist } = &resolution else {
             panic!("the id names one artist, got {resolution:?}");
         };

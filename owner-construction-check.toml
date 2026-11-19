@@ -1360,6 +1360,19 @@ tables = [
 ]
 
 [[database.domains]]
+name = "credit resolutions"
+owner = "ImportTables"
+homes = [
+    "bae-import/src/tables/credit_resolutions.rs",
+    "bae-import/src/tables/credit_resolutions.sql",
+]
+tables = [
+    "import_credit_resolution",
+    "import_credit_resolution_artist",
+    "import_credit_resolution_due",
+]
+
+[[database.domains]]
 name = "import origin"
 owner = "ImportTables"
 homes = ["bae-import/src/tables/import_origin.rs", "bae-import/src/tables/import_origin.sql"]

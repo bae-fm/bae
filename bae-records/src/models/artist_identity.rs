@@ -1,11 +1,9 @@
 //! Which library artist a credit names, as the rule every write of an
-//! artist credit decides by reads it (see `client::artist_resolution`):
-//! a library artist as a write names it, and, for the tests that compare the
-//! import's SQL with that rule, what the library holds for one credit.
+//! artist credit decides by reads it (see `records::artist_resolution`):
+//! a library artist as a write names it, and what the library holds for one
+//! credit.
 
 use super::*;
-#[cfg(any(test, feature = "test-utils"))]
-use bae_catalogs::credits::ArtistCredit;
 use serde::{Deserialize, Serialize};
 
 /// One artist already in the library, with the fields an editor needs to show
@@ -33,7 +31,6 @@ impl From<DbArtist> for ExistingArtist {
 }
 
 /// What the library holds for one credit, as it stands when read.
-#[cfg(any(test, feature = "test-utils"))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CreditResolution {
     /// The credit names this library artist.
@@ -43,12 +40,4 @@ pub enum CreditResolution {
     /// Several library artists carry the credit's name and no catalog id tells
     /// them apart. Committing creates a new artist unless the person picks one.
     Ambiguous { artists: Vec<ExistingArtist> },
-}
-
-/// One credit and what it resolves to.
-#[cfg(any(test, feature = "test-utils"))]
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ResolvedCredit {
-    pub credit: ArtistCredit,
-    pub resolution: CreditResolution,
 }

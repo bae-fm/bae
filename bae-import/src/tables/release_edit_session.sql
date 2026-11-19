@@ -85,6 +85,12 @@ CREATE TABLE IF NOT EXISTS release_edit_album_artist (
 CREATE INDEX IF NOT EXISTS release_edit_album_artist_by_artist
     ON release_edit_album_artist (artist_id);
 
+-- Each credit as the artist rule reads it, by which bae finds whether a
+-- session still holds one (`credit_resolutions.sql`).
+CREATE INDEX IF NOT EXISTS release_edit_album_artist_by_credit
+    ON release_edit_album_artist
+       (bae_artist_name_key(name), musicbrainz_artist_id, discogs_artist_id);
+
 -- Each track row of the form, by the library track it edits, in release
 -- order: its title and whether it takes the album's artists.
 CREATE TABLE IF NOT EXISTS release_edit_track (
@@ -130,6 +136,10 @@ CREATE TABLE IF NOT EXISTS release_edit_track_artist (
 
 CREATE INDEX IF NOT EXISTS release_edit_track_artist_by_artist
     ON release_edit_track_artist (artist_id);
+
+CREATE INDEX IF NOT EXISTS release_edit_track_artist_by_credit
+    ON release_edit_track_artist
+       (bae_artist_name_key(name), musicbrainz_artist_id, discogs_artist_id);
 
 -- What the person picked for the album the session files the release under,
 -- over the one its records name, as `import_candidate_album_pick` holds a

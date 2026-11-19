@@ -8,6 +8,7 @@ mod album_link_rows;
 mod catalog_apply_steps;
 mod cover_gallery;
 mod cover_labels;
+mod credit_resolutions;
 mod downscaled_copies;
 mod draft_rows;
 mod folder_scans;
@@ -38,6 +39,7 @@ pub const SCHEMA_PARTS: &[bae_store::SchemaPart] = &[
     cover_gallery::SCHEMA,
     catalog_apply_steps::SCHEMA,
     release_edit_session::SCHEMA,
+    credit_resolutions::SCHEMA,
 ];
 
 pub use cover_gallery::{

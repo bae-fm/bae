@@ -24,9 +24,8 @@ mod scrub_points;
 #[cfg(desktop)]
 mod release_rows;
 
+pub use artist_identity::CreditResolution;
 pub use artist_identity::ExistingArtist;
-#[cfg(any(test, feature = "test-utils"))]
-pub use artist_identity::{CreditResolution, ResolvedCredit};
 pub use images::*;
 pub use query::*;
 #[cfg(desktop)]

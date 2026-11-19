@@ -526,6 +526,11 @@ artist is in the library, New when every one is new, how many are new, how
 many library artists its one credit could be, or how many of its credits
 are left to choose. A picked artist counts as in the library. The badges
 always name the artists that importing or saving the draft would name.
+bae stores the answer of these rules for each credit of a draft or a
+session. The write that adds or changes a credit, or changes an artist the
+rules can name for it, stores the new answer in the same transaction,
+whether this device made the write or applied another device's, and the
+pane and the editor read the stored answers.
 
 **Edge cases.**
 
@@ -5901,6 +5906,14 @@ wrote it, under the same id; Cancel writes the session again from the release as
 is now, in a write of its own. Closing the editor deletes its session's
 rows, and a delete that fails is reported as a bug. No session outlives the process, so the tables are emptied as the
 library opens.
+
+Beside the drafts and the sessions, keyed by a credit's folded name and
+catalog ids:
+
+| Table | Holds |
+|---|---|
+| `import_credit_resolution`, `import_credit_resolution_artist` | for each distinct artist credit a draft or a session holds, the library artists the rules of §2.3 name for it, in their order: none when importing would make a new artist, one, or the several the credit leaves ambiguous, each with the ids and sort name the rules give it. The write that adds or changes a credit, or changes an artist the rules can name for it, stores the answer in the same transaction, whether this device made the write or applied another device's, and the write that removes the last credit holding a key deletes its answer |
+| `import_credit_resolution_due` | the credits whose answer a transaction's writes may have changed; bae answers each one and empties the table before the transaction commits |
 
 Beside them, keyed by the release an import made:
 

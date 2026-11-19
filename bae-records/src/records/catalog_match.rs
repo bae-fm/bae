@@ -20,8 +20,6 @@
 //! id it lacks, and the id its catalog entry derives goes by MusicBrainz
 //! first.
 
-use super::*;
-
 /// The catalogs whose ids name an artist or a label.
 #[derive(Clone, Copy)]
 pub(super) enum CatalogColumn {
@@ -66,7 +64,7 @@ pub(super) trait CatalogRow: CatalogIds + Clone {
         sql: &Q,
         column: CatalogColumn,
         catalog_id: &str,
-    ) -> Result<Vec<Self>, DbError>;
+    ) -> rusqlite::Result<Vec<Self>>;
 }
 
 /// What names a library row by its catalog ids: an artist credit, or a
@@ -144,7 +142,7 @@ pub(super) fn catalog_match_on<Q: coven::SqlRead, R: CatalogRow>(
     sql: &Q,
     credit: &impl CatalogIds,
     so_far: WriteSoFar<'_, R>,
-) -> Result<CatalogMatch<R>, DbError> {
+) -> rusqlite::Result<CatalogMatch<R>> {
     let holder = |column| holder_on(sql, column, credit.catalog_id(column), so_far);
     let by_discogs = holder(CatalogColumn::Discogs)?;
     let by_musicbrainz = holder(CatalogColumn::MusicBrainz)?;
@@ -196,7 +194,7 @@ pub(super) fn settled_on<Q: coven::SqlRead, C: CatalogCredit, R: CatalogRow>(
     credit: C,
     matched: CatalogMatch<R>,
     so_far: WriteSoFar<'_, R>,
-) -> Result<(C, Option<CatalogFound<R>>), DbError> {
+) -> rusqlite::Result<(C, Option<CatalogFound<R>>)> {
     match matched {
         CatalogMatch::Unmatched => Ok((credit, None)),
         CatalogMatch::Found(found) => Ok((credit, Some(found))),
@@ -222,7 +220,7 @@ fn holder_on<Q: coven::SqlRead, R: CatalogRow>(
     column: CatalogColumn,
     id: Option<&str>,
     so_far: WriteSoFar<'_, R>,
-) -> Result<Option<Holder<R>>, DbError> {
+) -> rusqlite::Result<Option<Holder<R>>> {
     let Some(id) = id else {
         return Ok(None);
     };

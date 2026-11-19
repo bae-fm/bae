@@ -37,3 +37,21 @@ pub(crate) static ARTIST_IDENTITY: SchemaFunction = SchemaFunction {
         })
     },
 };
+
+/// `bae_artist_is_various_artists(musicbrainz_id, discogs_id)`: 1 when either
+/// id is its catalog's Various Artists entry (`crate::VARIOUS_ARTISTS`),
+/// which the rule takes as one artist in both catalogs; else 0.
+pub(crate) static ARTIST_IS_VARIOUS_ARTISTS: SchemaFunction = SchemaFunction {
+    name: "bae_artist_is_various_artists",
+    arguments: 2,
+    version: 1,
+    compute: |arguments| {
+        let musicbrainz = arguments.get::<Option<String>>(0)?;
+        let discogs = arguments.get::<Option<String>>(1)?;
+        let various = &crate::VARIOUS_ARTISTS;
+        Ok(Value::Integer(i64::from(
+            musicbrainz.as_deref() == Some(various.musicbrainz)
+                || discogs.as_deref() == Some(various.discogs),
+        )))
+    },
+};

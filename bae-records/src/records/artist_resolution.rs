@@ -251,13 +251,12 @@ pub async fn resolved_in_an_empty_library(credits: &[DbArtist]) -> Vec<String> {
 }
 
 /// What the library holds for one credit as it stands now: the rule every
-/// write commits by, for the credit alone. The tests check that the import
-/// pane's resolution statement gives the same answer as this function.
-#[cfg(any(test, feature = "test-utils"))]
+/// write commits by, for the credit alone, against the committed library.
+/// The import stores its answer for each credit of a draft or a session.
 pub fn resolve_credit_on<Q: coven::SqlRead>(
     sql: &Q,
     credit: &bae_catalogs::credits::ArtistCredit,
-) -> Result<crate::CreditResolution, DbError> {
+) -> rusqlite::Result<crate::CreditResolution> {
     use crate::CreditResolution;
     let row = DbArtist {
         id: String::new(),
@@ -287,26 +286,6 @@ pub fn resolve_credit_on<Q: coven::SqlRead>(
             }
         }
     })
-}
-
-/// Every distinct credit of `credits`, each resolved by `resolve`, in the
-/// order the credits first appear.
-#[cfg(any(test, feature = "test-utils"))]
-pub fn resolve_credits_with<'a>(
-    credits: impl IntoIterator<Item = &'a bae_catalogs::credits::ArtistCredit>,
-    mut resolve: impl FnMut(
-        &bae_catalogs::credits::ArtistCredit,
-    ) -> Result<crate::CreditResolution, DbError>,
-) -> Result<Vec<crate::ResolvedCredit>, DbError> {
-    let mut resolved: Vec<crate::ResolvedCredit> = Vec::new();
-    for credit in credits {
-        if resolved.iter().any(|known| known.credit == *credit) {
-            continue;
-        }
-        resolved
-            .push(crate::ResolvedCredit { credit: credit.clone(), resolution: resolve(credit)? });
-    }
-    Ok(resolved)
 }
 
 /// The name step for a credit no catalog id placed: the one new artist of
@@ -415,7 +394,7 @@ fn settled_catalog_match_on<Q: coven::SqlRead>(
     sql: &Q,
     credit: &DbArtist,
     so_far: WriteSoFar<'_, DbArtist>,
-) -> Result<(DbArtist, Option<CatalogFound<DbArtist>>), DbError> {
+) -> rusqlite::Result<(DbArtist, Option<CatalogFound<DbArtist>>)> {
     let (credit, matched) = match catalog_match_on(sql, credit, so_far)? {
         CatalogMatch::Unmatched => match with_both_various_artists_ids(credit) {
             Some(both) => match catalog_match_on(sql, &both, so_far)? {
@@ -437,7 +416,7 @@ pub(super) fn name_matches_on<Q: coven::SqlRead>(
     sql: &Q,
     credit: &DbArtist,
     staged: &[DbArtist],
-) -> Result<Vec<DbArtist>, DbError> {
+) -> rusqlite::Result<Vec<DbArtist>> {
     let key = bae_types::text_match::artist_name_key(&credit.name);
     if key.is_empty() {
         return Ok(Vec::new());
@@ -504,7 +483,7 @@ impl CatalogRow for DbArtist {
         sql: &Q,
         column: CatalogColumn,
         catalog_id: &str,
-    ) -> Result<Vec<Self>, DbError> {
+    ) -> rusqlite::Result<Vec<Self>> {
         let (column, identity) = match column {
             CatalogColumn::Discogs => {
                 ("discogs_artist_id", Self::catalog_entry_id(None, Some(catalog_id)))
@@ -524,7 +503,6 @@ impl CatalogRow for DbArtist {
             params![catalog_id, identity],
             row_to_artist,
         )
-        .map_err(DbError::from)
     }
 }
 

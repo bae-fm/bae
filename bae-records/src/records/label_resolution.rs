@@ -159,7 +159,7 @@ impl CatalogRow for LabelRow {
         sql: &Q,
         column: CatalogColumn,
         catalog_id: &str,
-    ) -> Result<Vec<Self>, DbError> {
+    ) -> rusqlite::Result<Vec<Self>> {
         let (column, identity) = match column {
             CatalogColumn::Discogs => {
                 ("discogs_label_id", Self::catalog_entry_id(None, Some(catalog_id)))
@@ -168,7 +168,7 @@ impl CatalogRow for LabelRow {
                 ("musicbrainz_label_id", Self::catalog_entry_id(Some(catalog_id), None))
             }
         };
-        Ok(sql.query(
+        sql.query(
             &format!(
                 "SELECT l.* FROM labels l WHERE l.id IN ( \
                      SELECT shown.shown_label_id FROM labels named \
@@ -178,7 +178,7 @@ impl CatalogRow for LabelRow {
             ),
             params![catalog_id, identity],
             LabelRow::from_row,
-        )?)
+        )
     }
 }
 

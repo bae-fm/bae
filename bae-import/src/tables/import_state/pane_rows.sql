@@ -65,8 +65,9 @@ CREATE TABLE IF NOT EXISTS import_candidate_edit_barcode (
 ) STRICT;
 
 -- The draft's album artists: a library artist the user picked ('picked'), or
--- a name a source or the user gave ('credit'). Which library artist a credit
--- is, if any, is decided each time the draft is read and again on import.
+-- a name a source or the user gave ('credit'). Which library artists a credit
+-- names is stored beside it (`credit_resolutions.sql`), and the import
+-- decides it again as it commits.
 CREATE TABLE IF NOT EXISTS import_candidate_album_artist_assignment (
     content_hash          TEXT NOT NULL,
     position              INTEGER NOT NULL CHECK (position >= 0),
@@ -97,6 +98,12 @@ CREATE TABLE IF NOT EXISTS import_candidate_album_artist_assignment (
 
 CREATE INDEX IF NOT EXISTS import_candidate_album_artist_by_artist
     ON import_candidate_album_artist_assignment (artist_id);
+
+-- Each credit as the artist rule reads it, by which bae finds whether a
+-- draft still holds one (`credit_resolutions.sql`).
+CREATE INDEX IF NOT EXISTS import_candidate_album_artist_by_credit
+    ON import_candidate_album_artist_assignment
+       (bae_artist_name_key(name), musicbrainz_artist_id, discogs_artist_id);
 
 -- The mediums of the draft, in order: what applying a source read the
 -- folder's audio to be on.
@@ -168,3 +175,7 @@ CREATE TABLE IF NOT EXISTS import_candidate_track_artist_assignment (
             AND credit_key IS NULL)
     )
 ) STRICT;
+
+CREATE INDEX IF NOT EXISTS import_candidate_track_artist_by_credit
+    ON import_candidate_track_artist_assignment
+       (bae_artist_name_key(name), musicbrainz_artist_id, discogs_artist_id);

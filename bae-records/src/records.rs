@@ -41,7 +41,7 @@ macro_rules! release_moves {
 mod album;
 pub use album::PrimaryReleaseError;
 mod artist_sql;
-pub(crate) use artist_sql::{ARTIST_IDENTITY, ARTIST_NAME_KEY};
+pub(crate) use artist_sql::{ARTIST_IDENTITY, ARTIST_IS_VARIOUS_ARTISTS, ARTIST_NAME_KEY};
 mod album_identity;
 pub(crate) use album_identity::ALBUM_IDENTITY;
 mod catalog_rank;
@@ -54,8 +54,8 @@ mod catalog_match;
 pub mod label_resolution;
 #[cfg(any(test, feature = "test-utils"))]
 pub use artist_resolution::resolved_in_an_empty_library;
-pub use artist_resolution::ArtistCredits;
 use artist_resolution::{relink_album_artists, relink_track_artists};
+pub use artist_resolution::{resolve_credit_on, ArtistCredits};
 pub use artist_resolution::{IdentityRefusal, IdentityWriteError};
 use label_resolution::pressing_write;
 pub use label_resolution::{PressingParts, PressingWrite};
@@ -177,6 +177,7 @@ const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] = &[
     &CATALOG_RANK,
     &ARTIST_NAME_KEY,
     &ARTIST_IDENTITY,
+    &ARTIST_IS_VARIOUS_ARTISTS,
     &crate::source_audio::AUDIO_CODEC,
 ];
 

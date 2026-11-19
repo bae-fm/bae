@@ -20,10 +20,16 @@ const PAGE_CACHE_KIB: u32 = 16 * 1024;
 /// registration, with the facts of the member's latest admission.
 pub type JoiningWrite = fn(&coven::JoiningWrite<'_>, &coven::Joining) -> Result<(), coven::DbError>;
 
+/// A domain's function that coven runs last in each transaction that changes
+/// the app's rows, this device's write or one applied from another device
+/// alike, to store in the domain's device-local tables what its Rust rules
+/// compute from the transaction's rows. Its error rolls the transaction back.
+pub type BeforeCommit = fn(&coven::CommitSql<'_>) -> Result<(), coven::DbError>;
+
 /// One domain's share of the schema: its SQL files, which run in the order
 /// given, the SQL functions and collations those files name, the synced
-/// tables and namespaces of its tables, and its write for a member's device
-/// as it registers.
+/// tables and namespaces of its tables, its write for a member's device as
+/// it registers, and its function before each commit.
 pub struct SchemaPart {
     sql: &'static [&'static str],
     functions: &'static [&'static SchemaFunction],
@@ -31,6 +37,7 @@ pub struct SchemaPart {
     synced_tables: fn() -> Vec<coven::SyncedTable>,
     namespaces: fn() -> Vec<coven::Namespace>,
     joining_write: Option<JoiningWrite>,
+    before_commit: Option<BeforeCommit>,
 }
 
 fn no_synced_tables() -> Vec<coven::SyncedTable> {
@@ -50,6 +57,7 @@ impl SchemaPart {
             synced_tables: no_synced_tables,
             namespaces: no_namespaces,
             joining_write: None,
+            before_commit: None,
         }
     }
 
@@ -79,6 +87,12 @@ impl SchemaPart {
     /// This part's write for a member's device as its registration applies.
     pub const fn joining_write(mut self, write: JoiningWrite) -> Self {
         self.joining_write = Some(write);
+        self
+    }
+
+    /// This part's function before each commit.
+    pub const fn before_commit(mut self, function: BeforeCommit) -> Self {
+        self.before_commit = Some(function);
         self
     }
 }
@@ -194,6 +208,11 @@ impl Schema {
         self.parts().filter_map(|part| part.joining_write).collect()
     }
 
+    /// The parts' functions before each commit, in part order.
+    pub fn before_commits(self) -> Vec<BeforeCommit> {
+        self.parts().filter_map(|part| part.before_commit).collect()
+    }
+
     /// The synced tables the parts declare, in part order.
     pub fn synced_tables(self) -> Vec<coven::SyncedTable> {
         self.parts().flat_map(|part| (part.synced_tables)()).collect()
@@ -217,8 +236,9 @@ impl Schema {
 }
 
 /// bae's store as every handle opens it: its page cache size, and the synced
-/// tables, namespaces, migrations, collations and SQL functions `schema`'s
-/// parts declare.
+/// tables, namespaces, migrations, collations, SQL functions, writes for a
+/// member's device and functions before each commit `schema`'s parts
+/// declare.
 pub fn configure_store(builder: coven::CovenBuilder, schema: Schema) -> coven::CovenBuilder {
     let mut builder = builder
         .sqlite_settings(coven::SqliteSettings {
@@ -236,6 +256,11 @@ pub fn configure_store(builder: coven::CovenBuilder, schema: Schema) -> coven::C
         builder = builder.joining_write(move |sql, joining| {
             joining_writes.iter().try_for_each(|write| write(sql, joining))
         });
+    }
+    let before_commits = schema.before_commits();
+    if !before_commits.is_empty() {
+        builder = builder
+            .before_commit(move |sql| before_commits.iter().try_for_each(|function| function(sql)));
     }
     for function in schema.functions() {
         let compute = function.compute;
