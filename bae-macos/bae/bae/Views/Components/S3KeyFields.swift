@@ -2,9 +2,10 @@ import BaeKit
 import SwiftUI
 
 /// An S3 key's two fields, as every S3 key sheet asks for it: the access key
-/// ID, which has the focus when the sheet opens, and the secret. `above` is
-/// what the sheet says about the key it was given, such as why S3 storage
-/// refused it.
+/// ID and the secret. The field the person types in next takes the focus as
+/// the fields show: the ID while it is empty, else the secret. `above` is what
+/// the sheet says about the key it was given, such as why S3 storage refused
+/// it.
 struct S3KeyFields<Above: View>: View {
     @Binding
     var accessKey: String
@@ -12,8 +13,13 @@ struct S3KeyFields<Above: View>: View {
     var secretKey: String
     private let above: Above
 
+    private enum Field {
+        case accessKey
+        case secretKey
+    }
+
     @FocusState
-    private var idFocused: Bool
+    private var focused: Field?
 
     init(
         accessKey: Binding<String>,
@@ -33,15 +39,16 @@ struct S3KeyFields<Above: View>: View {
                     TextField("Access key ID", text: $accessKey)
                         .labelsHidden()
                         .boxedTextField()
-                        .focused($idFocused)
+                        .focused($focused, equals: .accessKey)
                 }
                 MacTextField("Secret access key") {
                     SecureField("Secret access key", text: $secretKey)
                         .labelsHidden()
                         .boxedTextField()
+                        .focused($focused, equals: .secretKey)
                 }
             }
         }
-        .onAppear { idFocused = accessKey.isEmpty }
+        .onAppear { focused = accessKey.isEmpty ? .accessKey : .secretKey }
     }
 }

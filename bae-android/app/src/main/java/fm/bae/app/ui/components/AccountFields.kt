@@ -13,7 +13,8 @@ import fm.bae.app.R
 
 /**
  * An S3 access key, as a restore, a storage setup and an invite all ask for it. [secretNote] is the line
- * under the secret key's field.
+ * under the secret key's field; [accessKeyIdModifier] and [secretAccessKeyModifier] reach each field, such as to
+ * focus it.
  */
 @Composable
 internal fun S3KeyFields(
@@ -23,6 +24,7 @@ internal fun S3KeyFields(
     onSecretAccessKeyChange: (String) -> Unit,
     secretNote: String? = null,
     accessKeyIdModifier: Modifier = Modifier,
+    secretAccessKeyModifier: Modifier = Modifier,
 ) {
     OutlinedTextField(
         value = accessKeyId,
@@ -37,7 +39,7 @@ internal fun S3KeyFields(
         onValueChange = onSecretAccessKeyChange,
         label = { Text(stringResource(R.string.s3_secret_access_key)) },
         supportingText = secretNote?.let { note -> { Text(note) } },
-        modifier = Modifier.fillMaxWidth(),
+        modifier = secretAccessKeyModifier.fillMaxWidth(),
         singleLine = true,
         visualTransformation = PasswordVisualTransformation(),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false),

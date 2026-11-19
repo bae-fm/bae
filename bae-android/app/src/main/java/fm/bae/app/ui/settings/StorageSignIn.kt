@@ -6,8 +6,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.DisplayError
 import fm.bae.app.R
@@ -21,6 +23,7 @@ import fm.bae.app.ui.components.ButtonTone
 import fm.bae.app.ui.components.DialogParts
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.S3KeyFields
+import fm.bae.app.ui.components.focusOnShow
 import fm.bae.app.ui.sync.MovingBar
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -236,11 +239,16 @@ internal fun s3KeyDialogParts(
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.group)) {
                     (sheet as? S3KeyReplacement.Sheet.Fields)?.failure?.let { S3KeyFailureNotice(it) }
+                    // The field the person types in next takes the focus as the fields show: the ID while it is
+                    // empty, else the secret. Typing doesn't move it.
+                    val focusesId = remember { accessKeyId.isEmpty() }
                     S3KeyFields(
                         accessKeyId = accessKeyId,
                         secretAccessKey = secretAccessKey,
                         onAccessKeyIdChange = onAccessKeyIdChange,
                         onSecretAccessKeyChange = onSecretAccessKeyChange,
+                        accessKeyIdModifier = if (focusesId) Modifier.focusOnShow() else Modifier,
+                        secretAccessKeyModifier = if (focusesId) Modifier else Modifier.focusOnShow(),
                     )
                 }
             }
