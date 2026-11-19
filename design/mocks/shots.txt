@@ -36,12 +36,14 @@ android.library.view-menu
 android.library.work
 android.playback.bar.nothing-played
 android.playback.bar.side-ended
+android.playback.bar.track-removed
 android.playback.bar.values-failed
 android.playback.bar.waiting-on-cloud
 android.playback.cast-picker
 android.playback.casting
 android.playback.full-player
 android.playback.full-player.no-volume
+android.playback.full-player.track-removed
 android.playback.queue
 android.playback.queue.failed
 android.search.open
@@ -222,6 +224,7 @@ mac.playback.queue
 mac.playback.queue.dropping
 mac.playback.queue.nothing-up-next
 mac.playback.queue.tail-failed
+mac.playback.queue.track-removed
 mac.search.results
 mac.search.results.none
 mac.settings.about

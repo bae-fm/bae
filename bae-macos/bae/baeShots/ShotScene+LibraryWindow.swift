@@ -106,9 +106,12 @@ extension ShotScene {
     }
 
     /// "Low Tide Hours" by Mara Quill playing: 1:42 into 5:03, the slider at
-    /// 35 and 60 percent of the track here.
+    /// 35 and 60 percent of the track here. With `removedFromLibrary`, the
+    /// library no longer holds the track.
     @MainActor
-    static func boardPlayback() -> PlaybackStore {
+    static func boardPlayback(
+        removedFromLibrary: Bool = false
+    ) -> PlaybackStore {
         let store = PlaybackStore(
             trackPositions: .trackPositions(
                 holding: [
@@ -141,16 +144,18 @@ extension ShotScene {
                         trackId: "board-track",
                         durationMs: 303_000
                     ),
-                    display: .library(
-                        display: BridgeTrackDisplay(
-                            title: "Low Tide Hours",
-                            artistLine: .named("Mara Quill"),
-                            albumId: "board-0",
-                            releaseId: "rel-board-0",
-                            albumTitle: "Low Tide Hours",
-                            coverImage: nil
+                    display: removedFromLibrary
+                        ? .removed
+                        : .library(
+                            display: BridgeTrackDisplay(
+                                title: "Low Tide Hours",
+                                artistLine: .named("Mara Quill"),
+                                albumId: "board-0",
+                                releaseId: "rel-board-0",
+                                albumTitle: "Low Tide Hours",
+                                coverImage: nil
+                            )
                         )
-                    )
                 )
             )
         )

@@ -27,7 +27,7 @@ struct ShotScene {
         + importListScenes
         + importPaneScenes
         + adminChangeScenes + menuScenes + playlistScenes + castingScenes
-        + addDeviceScenes + peopleScenes + albumCoverScenes
+        + addDeviceScenes + peopleScenes + albumCoverScenes + playbackScenes
         + albumEditorScenes + pickedTracksScenes
         + albumRatingScenes + albumCreditsScenes
 }
