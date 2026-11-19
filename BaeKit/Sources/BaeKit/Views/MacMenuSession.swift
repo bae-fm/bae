@@ -274,14 +274,14 @@
                     if item.isChecked { element.setAccessibilityValue(1) }
                 }
                 let frame = frames[index]
-                let y =
-                    host.isFlipped
-                    ? room + frame.minY
-                    : room + size.height - frame.maxY
+                // AppKit reads an element's frame in its parent's space with
+                // y going up, though the hosting view is flipped: measured
+                // from the top, each line would sit where the menu draws
+                // another line, and a click on it would pick that one.
                 element.setAccessibilityFrameInParentSpace(
                     NSRect(
                         x: room + frame.minX,
-                        y: y,
+                        y: room + size.height - frame.maxY,
                         width: frame.width,
                         height: frame.height
                     )

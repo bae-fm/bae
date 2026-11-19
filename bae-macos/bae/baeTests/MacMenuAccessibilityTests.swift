@@ -58,6 +58,60 @@ struct MacMenuAccessibilityTests {
         }
     }
 
+    @Test("each line is where the menu draws it, the first on top")
+    func eachLineIsWhereTheMenuDrawsIt() throws {
+        let window = NSWindow(
+            contentRect: NSRect(x: 200, y: 200, width: 400, height: 300),
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: false
+        )
+        window.makeKeyAndOrderFront(nil)
+        let session = try #require(
+            MacMenuSession.present(
+                [
+                    .item(MacMenuItem(verbatim: "First") {}),
+                    .item(MacMenuItem(verbatim: "Second") {}),
+                ],
+                over: window,
+                placement: .at(NSPoint(x: 300, y: 450)),
+                appearance: HostedAppearance(
+                    tone: .standard,
+                    accent: .standard
+                ),
+                isPopUp: false
+            )
+        )
+        defer {
+            session.close()
+            window.close()
+        }
+
+        let content = try #require(
+            NSApp.windows.compactMap(\.contentView)
+                .first { $0.accessibilityRole() == .menu }
+        )
+        let panel = try #require(content.window).frame
+        let lines = try #require(
+            content.accessibilityChildren() as? [NSAccessibilityElement]
+        )
+        #expect(lines.count == 2)
+        // The face sits in the panel inside the room for its shadow, and its
+        // lines inside its padding, the first at its top.
+        let room = MacMenuMetrics.shadowRoom
+        let padding = MacMenuMetrics.padding
+        let height = MacMenuMetrics.itemHeight
+        for (index, line) in lines.enumerated() {
+            let frame = line.accessibilityFrame()
+            let top = panel.maxY - room - padding - CGFloat(index) * height
+            #expect(
+                abs(frame.maxY - top) < 0.5 && abs(frame.height - height) < 0.5,
+                "\(line.accessibilityLabel() ?? "") is at \(frame), drawn with its top at \(top)"
+            )
+            #expect(abs(frame.minX - (panel.minX + room + padding)) < 0.5)
+        }
+    }
+
     @Test(
         "a menu button is a pop-up to VoiceOver, and pressing it opens the menu"
     )
