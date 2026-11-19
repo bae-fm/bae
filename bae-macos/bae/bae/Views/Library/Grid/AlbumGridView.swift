@@ -721,22 +721,18 @@ extension AlbumGridView {
     }
 
     /// Scrolls the held slot back to the top when the grid moved it, as
-    /// what holds it says (`AlbumGridHold`).
+    /// what holds it says (`AlbumGridHold`): a revealed card to its top in
+    /// the content, or by its cell while it is not laid out and so has no
+    /// top in the content.
     private func keepHeldSlotOnTop(columnCount: Int) {
         guard
             let held = viewport.scrollBackingHeldSlot(columnCount: columnCount)
         else { return }
-        guard let id = cell(at: held.hold.slot) else {
-            // The slot left the grid; the next change keeps what is on top
-            // then.
-            viewport.release()
-            return
+        if held.hold.reason == .reveal, let contentTop = held.contentTop {
+            scrollPosition.scrollTo(y: contentTop)
         }
-        switch held.hold.reason {
-        case .columnChange:
-            scrollPosition.scrollTo(id: id, anchor: .top)
-        case .reveal:
-            scrollRevealedCard(id, toTopFrom: held.contentTop)
+        else {
+            scrollToTop(held.hold.slot)
         }
     }
 
@@ -749,21 +745,6 @@ extension AlbumGridView {
             return
         }
         scrollPosition.scrollTo(id: id, anchor: .top)
-    }
-
-    /// Scrolls the revealed album's card, the cell `id`, to the top: to
-    /// `contentTop`, the card's top in the content, or by the cell while the
-    /// card is not laid out and so has no top in the content.
-    private func scrollRevealedCard(
-        _ id: AlbumGridCell.Identity,
-        toTopFrom contentTop: CGFloat?
-    ) {
-        if let contentTop {
-            scrollPosition.scrollTo(y: contentTop)
-        }
-        else {
-            scrollPosition.scrollTo(id: id, anchor: .top)
-        }
     }
 
     /// The cell that shows `slot`, or nil when the slot has left the grid.
