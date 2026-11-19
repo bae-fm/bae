@@ -31,7 +31,8 @@ final class SaveFormatPicker: NSObject {
     private let choiceRead: SaveChoiceRead?
     private var choices: [SaveFormatChoice]
     private var chosenIndex: Int
-    private var subscription: AnyObject?
+    private var subscription:
+        ScreenSubscription<PulledValues<[BridgeSaveChoiceRow]>>?
     private var addedSubscription: AnyCancellable?
 
     /// The id of the format the panel saves with: the one it draws chosen.
