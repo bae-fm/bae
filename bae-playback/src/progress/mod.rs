@@ -240,7 +240,13 @@ impl PlaybackPositions {
                 });
             }
             PlaybackProgress::SeekTaken { track_id } => {
-                let position = next.library.as_mut().filter(|p| p.track_id == *track_id)?;
+                let Some(position) = next.library.as_mut().filter(|p| p.track_id == *track_id)
+                else {
+                    tracing::debug!(
+                        "a taken seek of track {track_id} arrived with no position of it; dropped"
+                    );
+                    return None;
+                };
                 position.seeks += 1;
             }
             PlaybackProgress::PreviewStateChanged(PreviewState::Idle) => next.preview = None,
@@ -286,7 +292,11 @@ impl PlaybackPositions {
                 preview.progress = *progress;
             }
             PlaybackProgress::PreviewSeekTaken => {
-                next.preview.as_mut()?.seeks += 1;
+                let Some(preview) = next.preview.as_mut() else {
+                    tracing::debug!("a taken preview seek arrived with no preview loaded; dropped");
+                    return None;
+                };
+                preview.seeks += 1;
             }
             PlaybackProgress::VolumeChanged { .. }
             | PlaybackProgress::MuteChanged { .. }
