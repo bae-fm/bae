@@ -638,28 +638,25 @@ impl<Progress> QueuedReleases<DownloadRequest, Progress>
 where
     Progress: Clone + PartialEq + Send + Sync + 'static,
 {
-    /// Queue to pin, in the order given, each of `release_ids` that is
-    /// uploaded and not wholly pinned on this device, in one write that
-    /// decides which: the write skips one waiting, downloading or pinned,
-    /// queues again, in its place, one whose download failed, and refuses one
-    /// the library no longer holds or whose files are not in the cloud and
-    /// returns the reason.
-    pub async fn enqueue_pinnable(
+    /// Queue to pin, in the order given, each of `release_ids` not wholly
+    /// pinned on this device, in one write that decides which: the write
+    /// skips one waiting, downloading or pinned, queues again, in its place,
+    /// one whose download failed, and names each one the library no longer
+    /// holds. coven says whether it pins a release's files when the pin runs.
+    pub async fn enqueue_pins(
         &self,
         release_ids: Vec<String>,
         created_at: i64,
     ) -> Result<tables::DownloadsQueued, DbError> {
-        self.store
-            .call(move |sql| tables::enqueue_pinnable_releases_on(sql, &release_ids, created_at))
-            .await
+        self.store.call(move |sql| tables::enqueue_pins_on(sql, &release_ids, created_at)).await
     }
 
     /// Queue to move to this device into `target_dir`, in the order given, each of
-    /// `release_ids` that is stored in the cloud, in one write that decides
-    /// which: the write skips one waiting or downloading, turns one whose
-    /// download failed into this move-to-this-device in its place, and
-    /// refuses one the library no longer holds or whose files are not in the
-    /// cloud and returns the reason.
+    /// `release_ids`, in one write that decides which: the write skips one
+    /// waiting or downloading, turns one whose download failed into this
+    /// move-to-this-device in its place, and names each one the library no
+    /// longer holds. coven says whether it moves a release's files when the
+    /// move runs.
     #[cfg(desktop)]
     pub async fn enqueue_moves_to_this_device(
         &self,

@@ -395,58 +395,38 @@ pub(crate) fn enqueue_releases_on<P: QueuedPayload>(
     Ok(added)
 }
 
-/// Why the download queue took no entry for a release of a selection.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum DownloadRefusal {
-    /// No such release is in the library.
-    Missing,
-    /// The release's files are not stored in the cloud, so there is nothing
-    /// to download.
-    NotInStorage,
-}
-
 /// What one write queueing a selection for download did.
 #[derive(Debug, PartialEq, Eq)]
 pub struct DownloadsQueued {
     /// Whether the write added any release or queued one again.
     pub added: bool,
-    /// Each release the write could not queue, in the selection's order,
-    /// with why. Queueing it changed nothing.
-    pub refused: Vec<(String, DownloadRefusal)>,
+    /// Each release of the selection the library no longer holds, in the
+    /// selection's order. Queueing it changed nothing.
+    pub missing: Vec<String>,
 }
 
-/// The releases of `release_ids` (a JSON array) that no download can serve,
-/// in the selection's order, with why.
-fn download_refusals_on(
-    sql: &CovenWrite<'_>,
-    release_ids: &str,
-) -> Result<Vec<(String, DownloadRefusal)>, DbError> {
+/// The releases of `release_ids` (a JSON array) the library no longer holds,
+/// in the selection's order.
+fn missing_releases_on(sql: &CovenWrite<'_>, release_ids: &str) -> Result<Vec<String>, DbError> {
     Ok(sql.query(
-        "SELECT requested.value, releases.id IS NULL \
+        "SELECT requested.value \
          FROM json_each(?1) AS requested \
          LEFT JOIN releases ON releases.id = requested.value \
-         LEFT JOIN release_storage AS storage ON storage.release_id = requested.value \
-         WHERE releases.id IS NULL OR storage.stored IS NOT 1 \
+         WHERE releases.id IS NULL \
          ORDER BY requested.key",
         [release_ids],
-        |row| {
-            let missing: bool = row.get(1)?;
-            Ok((
-                row.get(0)?,
-                if missing { DownloadRefusal::Missing } else { DownloadRefusal::NotInStorage },
-            ))
-        },
+        |row| row.get(0),
     )?)
 }
 
-/// Queue to pin, in the order given, each of `release_ids` that is
-/// uploaded and not wholly pinned on this device, as its storage row says,
-/// in one write that decides which. The write skips one waiting or
-/// downloading, or already pinned, and queues one whose download failed
-/// again in its place, as a retry does. The write refuses one the library no
-/// longer holds and one whose files are not in the cloud, and returns the
-/// reason for each.
-pub(crate) fn enqueue_pinnable_releases_on(
+/// Queue to pin, in the order given, each of `release_ids` not wholly pinned
+/// on this device, as its storage row says, in one write that decides which.
+/// The write skips one waiting or downloading, or already pinned, and queues
+/// one whose download failed again in its place, as a retry does. The write
+/// names each one the library no longer holds. Whether coven pins a release's
+/// files is coven's to say when the pin runs: it refuses a file not in the
+/// cloud, and the entry fails with its reason.
+pub(crate) fn enqueue_pins_on(
     sql: &CovenWrite<'_>,
     release_ids: &[String],
     created_at: i64,
@@ -459,7 +439,7 @@ pub(crate) fn enqueue_pinnable_releases_on(
                     'queued', 'pin' \
              FROM json_each(:release_ids) AS requested \
              JOIN release_storage AS storage ON storage.release_id = requested.value \
-             WHERE storage.stored = 1 AND NOT {pinned} \
+             WHERE NOT {pinned} \
              ORDER BY requested.key \
              ON CONFLICT (release_id) DO UPDATE SET state = 'queued', error = NULL, \
                  file_count = excluded.file_count, total_size = excluded.total_size, \
@@ -472,7 +452,7 @@ pub(crate) fn enqueue_pinnable_releases_on(
             ":release_ids": release_ids,
         },
     )? > 0;
-    Ok(DownloadsQueued { added, refused: download_refusals_on(sql, &release_ids)? })
+    Ok(DownloadsQueued { added, missing: missing_releases_on(sql, &release_ids)? })
 }
 
 /// Whether the queue holds `release_id`, in any phase.
@@ -639,11 +619,12 @@ pub(crate) fn cancel_queued_release_on<P: QueuedPayload>(
 }
 
 /// Queue to move to this device into `target_dir`, in the order given, each of
-/// `release_ids` that is stored in the cloud, in one write that decides which.
-/// The write skips one waiting or downloading and turns one whose download
-/// failed into this move-to-this-device in its place. The write refuses one
-/// the library no longer holds and one whose files are not in the cloud, and
-/// returns the reason for each.
+/// `release_ids`, in one write that decides which. The write skips one waiting
+/// or downloading and turns one whose download failed into this
+/// move-to-this-device in its place. The write names each one the library no
+/// longer holds. Whether coven moves a release's files is coven's to say when
+/// the move runs: it refuses a file not in the cloud, and the entry fails
+/// with its reason.
 #[cfg(desktop)]
 pub(crate) fn enqueue_moves_to_this_device_on(
     sql: &CovenWrite<'_>,
@@ -659,7 +640,6 @@ pub(crate) fn enqueue_moves_to_this_device_on(
                 'queued', 'move_to_this_device', :target_dir \
          FROM json_each(:release_ids) AS requested \
          JOIN release_storage AS storage ON storage.release_id = requested.value \
-         WHERE storage.stored = 1 \
          ORDER BY requested.key \
          ON CONFLICT (release_id) DO UPDATE SET state = 'queued', error = NULL, \
              file_count = excluded.file_count, total_size = excluded.total_size, \
@@ -671,7 +651,7 @@ pub(crate) fn enqueue_moves_to_this_device_on(
             ":target_dir": coven::path_bytes(target_dir),
         },
     )? > 0;
-    Ok(DownloadsQueued { added, refused: download_refusals_on(sql, &release_ids)? })
+    Ok(DownloadsQueued { added, missing: missing_releases_on(sql, &release_ids)? })
 }
 
 /// Empty the export and save queue and let it run: what the library opens

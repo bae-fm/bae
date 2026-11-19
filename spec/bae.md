@@ -2639,9 +2639,11 @@ Asking to pin several releases queues, in the order asked and in one write,
 each that can be: one already waiting or downloading, or pinned, needs
 nothing, and the write queues again, in its place, one whose pin failed, as
 retrying queues it. bae refuses a release that
-someone deleted meanwhile, or one whose files are not in the cloud, and queues
-the rest, and the person sees the refusal. If the write fails, it queues
-nothing; the person sees the error and bae reports the failure as a bug.
+someone deleted meanwhile and queues the rest, and the person sees the refusal.
+A release whose files are not in the cloud queues too: coven refuses its pin
+when the pin runs, and the entry fails with coven's reason. If the write
+fails, it queues nothing; the person sees the error and bae reports the failure
+as a bug.
 
 ### 4.4 Making a release local again
 
@@ -2657,8 +2659,9 @@ collide; a release with no source folder name fails its entry. One request
 queues the whole selection in the download queue (§4.3), in one write: a
 release already waiting or downloading needs nothing, a failed pin's entry
 becomes this move-to-this-device in its place, and the write refuses a release
-that is local or deleted meanwhile, while the rest queue and the person sees the
-refusal. The
+someone deleted meanwhile, while the rest queue and the person sees the
+refusal. A local release queues too: coven refuses its move when the move runs,
+and the entry fails with coven's reason. The
 queue makes them local one release at a time, in the order asked, and its
 pause, cancel, retry and restarts are the pins': pausing stops the download
 that is running at once and its entry stays queued; resuming starts it again

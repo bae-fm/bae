@@ -14,17 +14,19 @@ use bae_util::timestamp::StoredTimestamp as _;
 impl LibraryManager {
     /// Enqueue releases to pin for offline, in one write. The write skips a
     /// release already waiting, downloading or pinned, and queues one whose
-    /// download failed again in its place. The write refuses a release the
-    /// library no longer holds (deleted meanwhile) or whose files are not in
-    /// the cloud and queues the rest, and `enqueue_pins` returns an error for
-    /// the first refused release. When the write fails, it queues nothing,
+    /// download failed again in its place. The write passes over a release
+    /// the library no longer holds (deleted meanwhile) and queues the rest,
+    /// and `enqueue_pins` returns an error for the first such release. coven
+    /// says whether it pins a release's files when the pin runs: a release
+    /// whose files are not in the cloud fails its entry with coven's
+    /// reason. When the write fails, it queues nothing,
     /// and `enqueue_pins` reports the failure to diagnostics as a bug: the
     /// library's own rows failed to read. The entry names the release by id
     /// only; the Downloads pane reads its title, file count, and size from
     /// the library as it shows the row. Wakes the parked worker.
     pub async fn enqueue_pins(&self, release_ids: Vec<String>) -> Result<(), LibraryError> {
         let enqueued_at = bae_store::utc_now(self.clock.as_ref()).unix_timestamp_millis();
-        let queued = match self.downloads.enqueue_pinnable(release_ids, enqueued_at).await {
+        let queued = match self.downloads.enqueue_pins(release_ids, enqueued_at).await {
             Ok(queued) => queued,
             Err(error) => {
                 self.diagnostics.report_failure("queue releases to pin", &error);
@@ -34,7 +36,7 @@ impl LibraryManager {
         if queued.added {
             self.downloads.queued();
         }
-        download_refusals_error("pin", queued.refused).map_or(Ok(()), Err)
+        missing_releases_error("pin", queued.missing).map_or(Ok(()), Err)
     }
 
     /// Pause or resume the download queue. Pausing stops the running download at
@@ -133,24 +135,13 @@ mod tests;
 #[path = "downloads_batch_tests.rs"]
 mod batch_tests;
 
-/// The error for a download's refused releases. The function logs every
-/// refusal and returns the first one, or `None` when the queue took every
-/// release.
-pub(super) fn download_refusals_error(
-    download: &str,
-    refused: Vec<(String, bae_transfers::tables::DownloadRefusal)>,
-) -> Option<LibraryError> {
-    use bae_transfers::tables::DownloadRefusal;
+/// The error for the releases of a download's selection the library no
+/// longer holds. The function logs each and returns the first, or `None`
+/// when the library holds every release.
+pub(super) fn missing_releases_error(download: &str, missing: Vec<String>) -> Option<LibraryError> {
     let mut first = None;
-    for (release_id, refusal) in refused {
-        let error = match refusal {
-            DownloadRefusal::Missing => {
-                LibraryError::release_missing(&release_id, ReleaseWork::Transfer)
-            }
-            DownloadRefusal::NotInStorage => {
-                LibraryError::Storage("The cloud does not hold this release's files".to_string())
-            }
-        };
+    for release_id in missing {
+        let error = LibraryError::release_missing(&release_id, ReleaseWork::Transfer);
         tracing::error!(%release_id, download, failure = %error, "release download refused");
         first.get_or_insert(error);
     }

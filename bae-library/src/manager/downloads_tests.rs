@@ -92,14 +92,13 @@ async fn a_pin_request_queues_what_it_can_in_the_order_asked() {
     );
 }
 
-/// A Local release has nothing to pin, because it is already fully on disk,
-/// so `enqueue_pins` refuses it rather than queueing a download that would fail.
+/// A pin of a local release queues like any other: coven refuses to pin a
+/// file on one device only when the pin runs, and the entry fails with
+/// coven's reason.
 #[tokio::test]
-async fn download_queue_refuses_a_local_release() {
+async fn a_pin_of_a_local_release_fails_with_covens_refusal() {
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
-    manager.set_downloads_paused(true).await.unwrap();
-
     let release = insert_local_release_with_files(
         manager,
         &temp_dir.path().join("local-source"),
@@ -110,15 +109,19 @@ async fn download_queue_refuses_a_local_release() {
     let summary = views(manager).find_release_detail(&release.id).await.unwrap().unwrap().summary;
     assert_eq!(summary.storage_state, bae_views::album_detail::ReleaseStorageState::OnOneDevice);
 
-    let refused = manager.enqueue_pins(vec![release.id.clone()]).await.unwrap_err();
-    assert!(
-        matches!(refused, LibraryError::Storage(_)),
-        "enqueue_pins refuses a local release: {refused}"
-    );
-    assert!(
-        download_queue_now(manager).await.rows.is_empty(),
-        "a local release is not enqueued for pinning"
-    );
+    manager.enqueue_pins(vec![release.id.clone()]).await.unwrap();
+
+    let failed = download_queue_until(manager, |queue| {
+        matches!(
+            queue.rows.first().map(|row| &row.op.state),
+            Some(bae_transfers::DownloadPhase::Failed { .. })
+        )
+    })
+    .await;
+    let bae_transfers::DownloadPhase::Failed { error } = &failed.rows[0].op.state else {
+        unreachable!()
+    };
+    assert!(error.contains("is only on device"), "coven's refusal names the device: {error}");
 }
 
 /// A pin that fails because storage is offline lands `Failed`

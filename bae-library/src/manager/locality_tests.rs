@@ -769,3 +769,32 @@ async fn a_move_to_this_device_passes_over_a_release_already_queued() {
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].op.payload, bae_transfers::DownloadRequest::Pin, "the pin is still queued");
 }
+
+/// A move to this device of a local release queues like any other: coven
+/// refuses a file not in the cloud when the move runs, the entry fails with
+/// coven's reason, and the release's original stays where it was.
+#[tokio::test]
+async fn a_move_to_this_device_of_a_local_release_fails_with_covens_refusal() {
+    let (test, temp_dir) = setup_test_manager().await;
+    let manager = test.library.manager();
+    let release = insert_local_release_with_files(
+        manager,
+        &temp_dir.path().join("source"),
+        "Local",
+        &[("track.flac", b"local audio")],
+    )
+    .await;
+    let folder = temp_dir.path().join("local");
+    std::fs::create_dir(&folder).unwrap();
+
+    let error = move_to_this_device_and_wait(manager, std::slice::from_ref(&release.id), &folder)
+        .await
+        .expect_err("coven refuses a file not in the cloud");
+
+    assert!(error.contains("is not in the cloud"), "coven's refusal says why: {error}");
+    let file = release_files(manager, &release.id).await.remove(0);
+    assert_eq!(
+        manager.records.read_release_file(&file.id, &bae_util::test_files::lease()).await.unwrap(),
+        b"local audio"
+    );
+}

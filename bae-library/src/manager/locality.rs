@@ -9,9 +9,11 @@ impl LibraryManager {
     /// Queue the uploaded releases of a selection to be moved to this device into
     /// `folder`, a folder the person picked, each in a folder of its own
     /// below it named for the release, in one write. The write skips a
-    /// release already waiting or downloading. The write refuses a release
-    /// the library does not hold or whose files are not in the cloud and queues the rest,
-    /// and the call returns the error for the first refused release. Coven
+    /// release already waiting or downloading. The write passes over a
+    /// release the library does not hold and queues the rest, and the call
+    /// returns the error for the first such release. Coven refuses a release
+    /// whose files are not in the cloud when its move runs, and the entry
+    /// fails with coven's reason. Coven
     /// downloads each release's files there, then one write switches them to
     /// this device only, each copy becoming the original it records, and
     /// takes the release out of the queue. A
@@ -38,7 +40,7 @@ impl LibraryManager {
                 return Err(error.into());
             }
         };
-        super::downloads::download_refusals_error("move to this device", queued.refused)
+        super::downloads::missing_releases_error("move to this device", queued.missing)
             .map_or(Ok(()), Err)
     }
 

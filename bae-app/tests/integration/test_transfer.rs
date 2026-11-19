@@ -203,21 +203,6 @@ async fn test_cover_file_stored_via_local_files_is_readable() {
 // Pin / unpin guards
 // ---------------------------------------------------------------------------
 
-/// `enqueue_pins` returns an error for a Local release and queues nothing,
-/// because the release has no cloud file to fetch into the pinned cache.
-#[tokio::test]
-async fn test_pin_rejects_local_release() {
-    bae_util::test_logs::install();
-    let tmp = TempDir::new().unwrap();
-    let mgr = setup(&tmp).await;
-    let (release_id, _f) =
-        crate::create_local_release(mgr.manager(), &tmp.path().join("src"), &[("a.flac", b"a")])
-            .await;
-
-    let refused = mgr.manager().enqueue_pins(vec![release_id]).await.unwrap_err();
-    assert!(matches!(refused, bae_library::LibraryError::Storage(_)), "{refused:?}");
-}
-
 /// Unpin rejects a Local release: it has no remote files to drop from the cache.
 #[tokio::test]
 async fn test_unpin_rejects_local_release() {
