@@ -310,11 +310,11 @@ fn password_receiver(
     (port, receiver, [audio, control])
 }
 
-fn password(password: &str) -> RaopPassword {
-    RaopPassword { password: password.to_string(), style: DigestStyle::Standard }
+fn password(password: &str) -> DigestPassword {
+    DigestPassword { password: password.to_string(), style: DigestStyle::Standard }
 }
 
-fn start_session(port: u16, password: &RaopPassword) -> Result<RaopSession, RaopError> {
+fn start_session(port: u16, password: &DigestPassword) -> Result<RaopSession, RaopError> {
     RaopSession::start(
         &bae_diagnostics::Diagnostics::noop(),
         [127, 0, 0, 1].into(),

@@ -24,7 +24,7 @@ use super::airplay2::Ap2AudioCipher;
 use super::ap2_channel::{audio_key, HapChannel};
 use super::ap2_pairing::{run_pair_verify, run_transient_pair_setup};
 use super::bplist::{self, Plist};
-use super::digest::{DigestChallenge, DigestStyle};
+use super::digest::{DigestAnswer, DigestPassword, DigestStyle, Unauthorized};
 use super::pairing::PairingError;
 use super::pairing_keys::KeptPairing;
 use super::rtp::NtpTime;
@@ -175,11 +175,8 @@ pub(crate) struct Ap2Control {
     uri: String,
     user_agent: String,
     /// The password a receiver that has one asks for again, as HTTP Digest,
-    /// after pair-verify.
-    password: Option<String>,
-    /// The Digest challenge the receiver answered a request with, once it
-    /// asked; every later request carries the answer to it.
-    challenge: Option<DigestChallenge>,
+    /// after pair-verify, and the challenge that asked for it.
+    answer: Option<DigestAnswer>,
 }
 
 impl Ap2Control {
@@ -201,8 +198,9 @@ impl Ap2Control {
             cseq: 0,
             uri: uri.into(),
             user_agent: user_agent.into(),
-            password,
-            challenge: None,
+            answer: password.map(|password| {
+                DigestAnswer::new(DigestPassword { password, style: DigestStyle::Standard })
+            }),
         })
     }
 
@@ -210,14 +208,11 @@ impl Ap2Control {
     pub(crate) fn request(&mut self, request: &RtspRequest) -> Result<RtspResponse, Ap2Error> {
         self.cseq += 1;
         let mut extra = vec![("User-Agent".to_string(), self.user_agent.clone())];
-        if let (Some(password), Some(challenge)) = (&self.password, &self.challenge) {
-            let answer = challenge.authorization(
-                DigestStyle::Standard,
-                password,
-                request.method.as_str(),
-                &request.uri,
-            );
-            extra.push(("Authorization".to_string(), answer));
+        let answer = self.answer.as_ref();
+        if let Some(authorization) =
+            answer.and_then(|answer| answer.authorization(request.method.as_str(), &request.uri))
+        {
+            extra.push(("Authorization".to_string(), authorization));
         }
         let plaintext = request.serialize(self.cseq, &extra);
         let sealed = self.channel.seal(&plaintext);
@@ -374,17 +369,16 @@ impl Ap2Control {
         request: &RtspRequest,
         refused: RtspResponse,
     ) -> Result<RtspResponse, Ap2Error> {
-        if self.password.is_none() {
+        let Some(answer) = &mut self.answer else {
             return Ok(refused);
+        };
+        match answer.unauthorized(refused.header("WWW-Authenticate")) {
+            Unauthorized::Refused => return Err(PairingError::PairingLost.into()),
+            Unauthorized::Unreadable => {
+                return Err(Ap2Error::BadBody("a 401 without a Digest challenge"));
+            }
+            Unauthorized::Challenged => {}
         }
-        if self.challenge.is_some() {
-            return Err(PairingError::PairingLost.into());
-        }
-        let challenge = refused
-            .header("WWW-Authenticate")
-            .and_then(DigestChallenge::from_header)
-            .ok_or(Ap2Error::BadBody("a 401 without a Digest challenge"))?;
-        self.challenge = Some(challenge);
         let answered = self.request(request)?;
         if answered.status == UNAUTHORIZED {
             return Err(PairingError::PairingLost.into());

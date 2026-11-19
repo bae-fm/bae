@@ -19,7 +19,7 @@ use crate::airplay::capabilities::{
     Ap2Pairing, DeviceVerification, Dialect, RaopAuth, RaopEncryption, ReceiverAccess,
 };
 use crate::airplay::device_verification::{self, SessionVerification, VerificationError};
-use crate::airplay::digest::DigestStyle;
+use crate::airplay::digest::{DigestPassword, DigestStyle};
 use crate::airplay::pairing::{HomeKitError, PairingError};
 use crate::airplay::pairing_keys::{
     pairing_secret_name, password_secret_name, verification_secret_name, ControllerIdentity,
@@ -27,7 +27,7 @@ use crate::airplay::pairing_keys::{
 };
 use crate::airplay::rtsp::RtspConnection;
 use crate::airplay::session::{
-    asks_for_verification, password_accepted, RaopError, RaopPassword, RAOP_USER_AGENT,
+    asks_for_verification, password_accepted, RaopError, RAOP_USER_AGENT,
 };
 use crate::airplay::sink::{Ap2Sink, RaopSink};
 use crate::airplay::{AirPlayCapabilities, UnreadableSetting};
@@ -60,7 +60,7 @@ struct RaopReceiver(PairingTarget);
 /// An AirPlay 1 receiver that asks for a password as HTTP Digest, which
 /// bae keeps as the receiver's pairing, with what each request to it proves
 /// bae first where it verifies the device too.
-struct RaopPasswordReceiver {
+struct DigestPasswordReceiver {
     target: PairingTarget,
     style: DigestStyle,
     verification: Option<SessionVerification>,
@@ -194,14 +194,14 @@ impl CastController {
                     .await?;
                 let password = match password {
                     Some(style) => {
-                        let target = RaopPasswordReceiver {
+                        let target = DigestPasswordReceiver {
                             target: self.pairing_target(addr, port, device.clone()).await?,
                             style: *style,
                             verification: verification.clone(),
                         };
                         let kept =
                             self.kept_or_new_pairing(&target, CodeKind::Password, prompt).await?;
-                        Some(RaopPassword { password: kept, style: *style })
+                        Some(DigestPassword { password: kept, style: *style })
                     }
                     None => None,
                 };
@@ -583,7 +583,7 @@ impl PairsByCode for RaopReceiver {
     }
 }
 
-impl PairsByCode for RaopPasswordReceiver {
+impl PairsByCode for DigestPasswordReceiver {
     /// The password, which is the keychain entry's whole text.
     type Kept = String;
 
@@ -635,12 +635,12 @@ impl PairsByCode for RaopPasswordReceiver {
     }
 }
 
-impl RaopPasswordReceiver {
+impl DigestPasswordReceiver {
     /// Whether the receiver takes `password`, asked on a connection of its
     /// own, off the runtime.
     async fn accepts(&self, cast: &CastController, password: String) -> Result<bool, CastError> {
         let PairingTarget { addr, port, receiver, .. } = self.target.clone();
-        let password = RaopPassword { password, style: self.style };
+        let password = DigestPassword { password, style: self.style };
         let verification = self.verification.clone();
         cast.diagnostics
             .blocking("check an AirPlay 1 receiver's password", move || {

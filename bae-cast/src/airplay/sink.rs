@@ -21,8 +21,9 @@ use super::ap2_session::{Ap2Auth, Ap2Error, Ap2Session};
 use super::capabilities::RaopEncryption;
 use super::crypto::{apple_public_key, RaopCipher};
 use super::device_verification::{SessionVerification, VerificationError};
+use super::digest::DigestPassword;
 use super::pairing::PairingError;
-use super::session::{RaopError, RaopPassword, RaopSession};
+use super::session::{RaopError, RaopSession};
 use super::stream::{PcmFeed, SystemClock};
 
 /// The parameters an [`AirPlaySink`] needs to open a RAOP session to a receiver.
@@ -33,7 +34,7 @@ pub(crate) struct RaopSink {
     /// device.
     verification: Option<SessionVerification>,
     /// The password the receiver asks for as HTTP Digest, if it has one.
-    password: Option<RaopPassword>,
+    password: Option<DigestPassword>,
     /// The encryption the receiver requires — `None` for `et=0`, `RsaAes` for
     /// `et=1`.
     encryption: RaopEncryption,
@@ -51,7 +52,7 @@ impl RaopSink {
         receiver: IpAddr,
         rtsp_port: u16,
         verification: Option<SessionVerification>,
-        password: Option<RaopPassword>,
+        password: Option<DigestPassword>,
         encryption: RaopEncryption,
         initial_volume: bae_playback::Volume,
         device: CastReceiver,

@@ -20,7 +20,7 @@ use tracing::warn;
 
 use super::crypto::RaopCipher;
 use super::device_verification::{self, SessionVerification, VerificationError};
-use super::digest::DigestStyle;
+use super::digest::DigestPassword;
 use super::rtp::NtpTime;
 use super::rtsp::{Method, RtspConnection, RtspRequest, RtspResponse, UNAUTHORIZED};
 use super::stream::{
@@ -49,14 +49,6 @@ pub(crate) enum RaopError {
     Verification(#[from] VerificationError),
 }
 
-/// The password a receiver asks for as HTTP Digest, with how it wants the
-/// answer written.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct RaopPassword {
-    pub(crate) password: String,
-    pub(crate) style: DigestStyle,
-}
-
 /// Connect to `receiver` as a RAOP session does: answer its Digest challenge
 /// with `password` where bae has one, and prove bae with `verification`
 /// where the receiver verifies the device.
@@ -64,11 +56,11 @@ fn open(
     receiver: IpAddr,
     rtsp_port: u16,
     verification: Option<&SessionVerification>,
-    password: Option<&RaopPassword>,
+    password: Option<&DigestPassword>,
 ) -> Result<RtspConnection, RaopError> {
     let mut conn = RtspConnection::connect(receiver, rtsp_port, RAOP_USER_AGENT)?;
-    if let Some(RaopPassword { password, style }) = password {
-        conn.answer_challenges_with(password.clone(), *style);
+    if let Some(password) = password {
+        conn.answer_challenges_with(password.clone());
     }
     if let Some(SessionVerification { key, client_name }) = verification {
         device_verification::verify(&mut conn, client_name, key).map_err(|error| match error {
@@ -89,7 +81,7 @@ pub(crate) fn password_accepted(
     receiver: IpAddr,
     rtsp_port: u16,
     verification: Option<&SessionVerification>,
-    password: &RaopPassword,
+    password: &DigestPassword,
 ) -> Result<bool, RaopError> {
     match answers_password(receiver, rtsp_port, verification, password) {
         Ok(()) => Ok(true),
@@ -102,7 +94,7 @@ fn answers_password(
     receiver: IpAddr,
     rtsp_port: u16,
     verification: Option<&SessionVerification>,
-    password: &RaopPassword,
+    password: &DigestPassword,
 ) -> Result<(), RaopError> {
     let mut conn = open(receiver, rtsp_port, verification, Some(password))?;
     let options = conn.request(&RtspRequest::new(Method::Options, "*"))?;
@@ -333,7 +325,7 @@ impl RaopSession {
         receiver: IpAddr,
         rtsp_port: u16,
         verification: Option<&SessionVerification>,
-        password: Option<&RaopPassword>,
+        password: Option<&DigestPassword>,
         feed: PcmFeed,
         failed: AirPlayFailed,
         cipher: RaopCipher,

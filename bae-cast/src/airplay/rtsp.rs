@@ -16,7 +16,7 @@ use std::io::{self, BufRead, BufReader, Write};
 use std::net::{IpAddr, SocketAddr, TcpStream};
 use std::time::Duration;
 
-use super::digest::{DigestChallenge, DigestStyle};
+use super::digest::{DigestAnswer, DigestPassword, Unauthorized};
 
 /// How long the control connection waits on the receiver — to connect, or for
 /// a request to go out or its reply to come back — before the operation fails.
@@ -234,15 +234,7 @@ pub(crate) struct RtspConnection {
     /// SDP connection lines.
     local_addr: IpAddr,
     /// The password to answer a Digest challenge with, when bae has one.
-    password: Option<DigestPassword>,
-}
-
-/// A receiver's password, and the Digest challenge that asked for it once the
-/// receiver has asked: every later request carries the answer to it.
-struct DigestPassword {
-    password: String,
-    style: DigestStyle,
-    challenge: Option<DigestChallenge>,
+    answer: Option<DigestAnswer>,
 }
 
 /// The status a receiver answers a request with when it wants the password
@@ -282,7 +274,7 @@ impl RtspConnection {
             user_agent: user_agent.into(),
             session: None,
             local_addr,
-            password: None,
+            answer: None,
         })
     }
 
@@ -290,9 +282,10 @@ impl RtspConnection {
     /// `style` says. The first 401 to any request is answered and the request
     /// sent again, and every later request carries the answer. A 401 after
     /// that is the receiver refusing the password, and reaches the caller as
-    /// the response.
-    pub(crate) fn answer_challenges_with(&mut self, password: String, style: DigestStyle) {
-        self.password = Some(DigestPassword { password, style, challenge: None });
+    /// the response. A first 401 without a Digest challenge bae can read is
+    /// an error.
+    pub(crate) fn answer_challenges_with(&mut self, password: DigestPassword) {
+        self.answer = Some(DigestAnswer::new(password));
     }
 
     /// Take the underlying TCP stream back, for handing a control connection off to
@@ -320,17 +313,17 @@ impl RtspConnection {
         if response.status != UNAUTHORIZED {
             return Ok(response);
         }
-        let Some(asked) = self.password.as_mut().filter(|password| password.challenge.is_none())
-        else {
+        let Some(answer) = &mut self.answer else {
             return Ok(response);
         };
-        let Some(challenge) =
-            response.header("WWW-Authenticate").and_then(DigestChallenge::from_header)
-        else {
-            return Ok(response);
-        };
-        asked.challenge = Some(challenge);
-        self.send(request)
+        match answer.unauthorized(response.header("WWW-Authenticate")) {
+            Unauthorized::Challenged => self.send(request),
+            Unauthorized::Refused => Ok(response),
+            Unauthorized::Unreadable => Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "a 401 without a Digest challenge bae can read",
+            )),
+        }
     }
 
     /// Send `request` once, with the answer to the receiver's challenge when
@@ -343,11 +336,11 @@ impl RtspConnection {
         if let Some(session) = &self.session {
             extra.push(("Session".to_string(), session.clone()));
         }
-        if let Some(DigestPassword { password, style, challenge: Some(challenge) }) = &self.password
+        let answer = self.answer.as_ref();
+        if let Some(authorization) =
+            answer.and_then(|answer| answer.authorization(request.method.as_str(), &request.uri))
         {
-            let answer =
-                challenge.authorization(*style, password, request.method.as_str(), &request.uri);
-            extra.push(("Authorization".to_string(), answer));
+            extra.push(("Authorization".to_string(), authorization));
         }
 
         let bytes = request.serialize(cseq, &extra);

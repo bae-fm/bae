@@ -36,6 +36,68 @@ impl DigestStyle {
     }
 }
 
+/// The password a receiver asks for as HTTP Digest, with how it wants the
+/// answer written.
+#[derive(Clone, PartialEq, Eq)]
+pub(crate) struct DigestPassword {
+    pub(crate) password: String,
+    pub(crate) style: DigestStyle,
+}
+
+/// The password is a secret: debug output names the style only.
+impl std::fmt::Debug for DigestPassword {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DigestPassword").field("style", &self.style).finish_non_exhaustive()
+    }
+}
+
+/// What a 401 means to a sender that holds a password.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Unauthorized {
+    /// The first 401: the receiver's challenge is kept, and the request goes
+    /// again with the answer.
+    Challenged,
+    /// A 401 after the receiver was answered: it refuses the password.
+    Refused,
+    /// The first 401 states no Digest challenge bae can read.
+    Unreadable,
+}
+
+/// A password, and the challenge that asked for it once the receiver has
+/// asked: every later request carries the answer to it.
+pub(crate) struct DigestAnswer {
+    password: DigestPassword,
+    challenge: Option<DigestChallenge>,
+}
+
+impl DigestAnswer {
+    pub(crate) fn new(password: DigestPassword) -> Self {
+        DigestAnswer { password, challenge: None }
+    }
+
+    /// The `Authorization` value for a `method` request to `uri`, once the
+    /// receiver has challenged.
+    pub(crate) fn authorization(&self, method: &str, uri: &str) -> Option<String> {
+        let DigestPassword { password, style } = &self.password;
+        Some(self.challenge.as_ref()?.authorization(*style, password, method, uri))
+    }
+
+    /// Take what a 401 means, given its `WWW-Authenticate` header: the first
+    /// one keeps the challenge it states.
+    pub(crate) fn unauthorized(&mut self, www_authenticate: Option<&str>) -> Unauthorized {
+        if self.challenge.is_some() {
+            return Unauthorized::Refused;
+        }
+        match www_authenticate.and_then(DigestChallenge::from_header) {
+            Some(challenge) => {
+                self.challenge = Some(challenge);
+                Unauthorized::Challenged
+            }
+            None => Unauthorized::Unreadable,
+        }
+    }
+}
+
 /// The `realm` and `nonce` a receiver's `WWW-Authenticate: Digest …` states.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct DigestChallenge {

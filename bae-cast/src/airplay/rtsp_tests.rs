@@ -1,4 +1,5 @@
 use super::*;
+use crate::airplay::digest::{DigestPassword, DigestStyle};
 use std::io::Cursor;
 use std::net::TcpListener;
 
@@ -120,4 +121,32 @@ fn scripted_fake_receiver_drives_the_setup_sequence_in_order() {
         Some("7A3B120C"),
         "the session id from SETUP is echoed on RECORD"
     );
+}
+
+/// A 401 that states no Digest challenge bae can read is an error, not a
+/// refused password, so the receiver is not blamed for what bae can't read.
+#[test]
+fn a_401_without_a_readable_challenge_is_an_error() {
+    let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+    let addr = listener.local_addr().unwrap();
+    let server = bae_util::test_spawn::thread(move || {
+        let (stream, _) = listener.accept().unwrap();
+        let mut reader = io::BufReader::new(stream.try_clone().unwrap());
+        let mut writer = stream;
+        let request = read_request(&mut reader).unwrap().unwrap();
+        write!(
+            writer,
+            "RTSP/1.0 401 Unauthorized\r\nCSeq: {}\r\nWWW-Authenticate: Basic realm=\"raop\"\r\n\r\n",
+            request.cseq()
+        )
+        .unwrap();
+    });
+    let mut conn = RtspConnection::connect(addr.ip(), addr.port(), "bae/test").unwrap();
+    conn.answer_challenges_with(DigestPassword {
+        password: "hunter2".to_string(),
+        style: DigestStyle::Standard,
+    });
+    let error = conn.request(&RtspRequest::new(Method::Options, "*")).unwrap_err();
+    assert_eq!(error.kind(), io::ErrorKind::InvalidData);
+    server.join().unwrap();
 }
