@@ -324,3 +324,16 @@ async fn a_written_file_arrives_as_its_folders_batch() {
         }
     }
 }
+
+/// The system's limit on watched directories is its own cause; any other
+/// refusal is not.
+#[test]
+fn the_systems_limit_on_watched_directories_is_told_from_other_refusals() {
+    let directory = Path::new("/music/a");
+    let limit = watch_refusal(directory, &notify::Error::new(notify::ErrorKind::MaxFilesWatch));
+    assert_eq!(limit.cause, UnwatchedCause::LimitReached);
+    assert_eq!(limit.directory, directory);
+    let other = watch_refusal(directory, &notify::Error::generic("no permission"));
+    assert_eq!(other.cause, UnwatchedCause::Refused);
+    assert_eq!(other.message, "no permission");
+}

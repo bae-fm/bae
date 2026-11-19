@@ -143,21 +143,43 @@ fn finish_read_tree(
     sql: &CovenWrite<'_>,
     watched_folder_path: &Path,
     generation: i64,
-    unwatched: Option<&str>,
+    unwatched: Option<&crate::UnwatchedReason>,
 ) -> Result<FinishedScan, DbError> {
     let pruned = write::prune_other_generations(sql, watched_folder_path, generation)?;
     let pruned_sidecars = sidecar::prune_sidecars(sql, watched_folder_path, generation, None)?;
-    let (status, detail) = match unwatched {
-        None => ("complete", None),
-        Some(reason) => ("unwatched", Some(reason)),
+    match unwatched {
+        None => sql.execute(
+            "UPDATE folder_scan_roots SET status = 'complete', detail = NULL, \
+                 unwatched_directory = NULL, unwatched_cause = NULL \
+             WHERE watched_folder_path = ? AND generation = ?",
+            params![coven::path_bytes(watched_folder_path), generation],
+        )?,
+        Some(reason) => store_unwatched(sql, watched_folder_path, generation, reason)?,
     };
-    sql.execute(
-        "UPDATE folder_scan_roots SET status = ?, detail = ? \
-         WHERE watched_folder_path = ? AND generation = ?",
-        params![status, detail, coven::path_bytes(watched_folder_path), generation],
-    )?;
     let regrouped = super::release_groupings::rebuild_groupings(sql, &pruned, &pruned_sidecars)?;
     Ok(FinishedScan { pruned, regrouped })
+}
+
+/// Store `reason` as the status of `watched_folder_path`'s `generation`: not
+/// watched.
+fn store_unwatched(
+    sql: &CovenWrite<'_>,
+    watched_folder_path: &Path,
+    generation: i64,
+    reason: &crate::UnwatchedReason,
+) -> Result<usize, DbError> {
+    Ok(sql.execute(
+        "UPDATE folder_scan_roots SET status = 'unwatched', detail = ?, \
+             unwatched_directory = ?, unwatched_cause = ? \
+         WHERE watched_folder_path = ? AND generation = ?",
+        params![
+            reason.message,
+            coven::path_bytes(&reason.directory),
+            columns::unwatched_cause_text(reason.cause),
+            coven::path_bytes(watched_folder_path),
+            generation
+        ],
+    )?)
 }
 
 /// Whether `generation` is still the root's. Read inside the write
@@ -223,6 +245,7 @@ impl ImportTables {
                  VALUES (?, ?, NULL, NULL, ?) \
                  ON CONFLICT(watched_folder_path) DO UPDATE SET \
                      generation = excluded.generation, status = NULL, detail = NULL, \
+                     unwatched_directory = NULL, unwatched_cause = NULL, \
                      volume = excluded.volume",
                     params![watched_folder_path, generation, volume],
                 )?;
@@ -392,7 +415,8 @@ impl ImportTables {
                 }
                 if let Some(error) = error {
                     sql.execute(
-                        "UPDATE folder_scan_roots SET status = 'failed', detail = ? \
+                        "UPDATE folder_scan_roots SET status = 'failed', detail = ?, \
+                         unwatched_directory = NULL, unwatched_cause = NULL \
                      WHERE watched_folder_path = ? AND generation = ?",
                         params![error, coven::path_bytes(&watched_folder_path), generation],
                     )?;
@@ -412,11 +436,11 @@ impl ImportTables {
         &self,
         watched_folder_path: &Path,
         generation: u64,
-        unwatched: &str,
+        unwatched: &crate::UnwatchedReason,
     ) -> Result<Option<FinishedScan>, DbError> {
         let watched_folder_path = watched_folder_path.to_path_buf();
         let generation = generation_column(generation)?;
-        let unwatched = unwatched.to_string();
+        let unwatched = unwatched.clone();
         self.store
             .call(move |sql| {
                 if !holds_generation(sql, &watched_folder_path, generation)? {
@@ -433,21 +457,17 @@ impl ImportTables {
         &self,
         watched_folder_path: &Path,
         generation: u64,
-        reason: &str,
+        reason: &crate::UnwatchedReason,
     ) -> Result<bool, DbError> {
         let watched_folder_path = watched_folder_path.to_path_buf();
         let generation = generation_column(generation)?;
-        let reason = reason.to_string();
+        let reason = reason.clone();
         self.store
             .call(move |sql| {
                 if !holds_generation(sql, &watched_folder_path, generation)? {
                     return Ok(false);
                 }
-                sql.execute(
-                    "UPDATE folder_scan_roots SET status = 'unwatched', detail = ? \
-                     WHERE watched_folder_path = ? AND generation = ?",
-                    params![reason, coven::path_bytes(&watched_folder_path), generation],
-                )?;
+                store_unwatched(sql, &watched_folder_path, generation, &reason)?;
                 Ok(true)
             })
             .await
@@ -900,99 +920,6 @@ pub(super) fn next_folder_scan_generation(sql: &CovenWrite<'_>) -> Result<i64, D
         |row| row.get(0),
     )?;
     Ok(generation)
-}
-
-#[cfg(test)]
-impl ImportTables {
-    /// Plant damage for a test: the table of the directories each walk read
-    /// is gone from the library under `directory`, so every read of what
-    /// the last scan saw fails.
-    pub(crate) async fn lose_scan_directories_for_test(directory: &Path) {
-        let directory = directory.to_path_buf();
-        bae_util::test_spawn::on_blocking_pool(move || {
-            bae_store::test_fixtures::planted_damage::plant_in_library_file(
-                &directory,
-                "folder_scan_directory",
-                "DROP TABLE folder_scan_directory;",
-            )
-        })
-        .await;
-    }
-
-    /// Plant damage for a test: the table of the parts each scanned release
-    /// holds is gone from the library under `directory`, so every read of a
-    /// stored release fails.
-    pub(crate) async fn lose_scan_candidate_parts_for_test(directory: &Path) {
-        let directory = directory.to_path_buf();
-        bae_util::test_spawn::on_blocking_pool(move || {
-            bae_store::test_fixtures::planted_damage::plant_in_library_file(
-                &directory,
-                "scan_candidate_part",
-                "DROP TABLE scan_candidate_part;",
-            )
-        })
-        .await;
-    }
-
-    /// Plant damage for a test: each file named `name` a sidecar in the
-    /// library under `directory` holds is stored as the file named `as_name`
-    /// beside it. A sidecar and a scanned release holding one file replace
-    /// each other in every write, so where a release holds `as_name` the store
-    /// says two things about that file.
-    pub(crate) async fn store_sidecar_file_as_for_test(
-        directory: &Path,
-        name: &str,
-        as_name: &str,
-    ) {
-        let directory = directory.to_path_buf();
-        let damage = format!(
-            "UPDATE scan_sidecar_file SET \
-             absolute_path = CAST(REPLACE(CAST(absolute_path AS TEXT), '{name}', '{as_name}') AS BLOB), \
-             relative_path = REPLACE(relative_path, '{name}', '{as_name}') \
-             WHERE relative_path LIKE '%{name}';"
-        );
-        bae_util::test_spawn::on_blocking_pool(move || {
-            bae_store::test_fixtures::planted_damage::plant_in_library_file(
-                &directory,
-                "scan_sidecar_file",
-                &damage,
-            )
-        })
-        .await;
-    }
-
-    /// Plant damage for a test: every scan that would open a watched folder's
-    /// first generation, in the library under `directory`, fails as a
-    /// statement nothing should refuse.
-    pub(crate) async fn fail_first_scan_begins_for_test(directory: &Path) {
-        let directory = directory.to_path_buf();
-        bae_util::test_spawn::on_blocking_pool(move || {
-            bae_store::test_fixtures::planted_damage::plant_in_library_file(
-                &directory,
-                "folder_scan_roots",
-                "CREATE TRIGGER fail_first_scan_begins BEFORE INSERT ON folder_scan_roots \
-                 BEGIN SELECT RAISE(ABORT, 'the scan could not begin'); END;",
-            )
-        })
-        .await;
-    }
-
-    /// Plant damage for a test: every write that stores a scan as failed, in
-    /// the library under `directory`, fails as a statement nothing should
-    /// refuse.
-    pub(crate) async fn fail_failed_scan_writes_for_test(directory: &Path) {
-        let directory = directory.to_path_buf();
-        bae_util::test_spawn::on_blocking_pool(move || {
-            bae_store::test_fixtures::planted_damage::plant_in_library_file(
-                &directory,
-                "folder_scan_roots",
-                "CREATE TRIGGER fail_failed_scan_writes BEFORE UPDATE ON folder_scan_roots \
-                 WHEN NEW.status = 'failed' \
-                 BEGIN SELECT RAISE(ABORT, 'the failed scan was refused'); END;",
-            )
-        })
-        .await;
-    }
 }
 
 #[cfg(test)]

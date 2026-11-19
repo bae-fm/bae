@@ -912,10 +912,19 @@ change under the folder, a refresh, or the next launch reads it. A directory
 that cannot be watched
 (inotify's watch limit on a large tree, or the watches not starting) is not
 hidden: the tree is read and stored as usual, and the folder's status is *not
-watched*, with the first directory that failed and the system's reason. The
-import list marks the folder as it marks a failed scan, and an alert,
-headlined "Not watching {folder} for changes", shows the reason. A folder read
-again after a change reports it the same way.
+watched*, with the first directory that failed, whether the system's limit on
+watched directories stopped it or the system refused it another way, and what
+the system said. The import list marks the folder as it marks a failed scan,
+and an alert, headlined "Not watching {folder} for changes", says where
+watching stopped and when bae reads new changes there. At the system's limit it
+says "bae reached the system’s limit on watched folders at {directory}. bae
+read every folder in {folder}, and will read new changes at the next refresh or
+launch." After another refusal it says "bae could not watch {directory}. bae
+read every folder in {folder}, and will read new changes at the next refresh or
+launch. The system said: {message}". {directory} is written from the watched
+folder's name down, such as Downloads/Albums/2024. The list's hover text for
+the folder says the same. A folder read again after a change reports it the
+same way.
 
 A watched folder on a network volume is watched like any other, but on macOS
 and Linux a network mount reports only the changes this machine makes (Windows
@@ -974,7 +983,7 @@ is scanning, with how many folders the scan has stored so far.
 
 On a Mac, a folder whose scan failed, or that is not watched, raises an alert
 headlined "Could not scan {folder}" or "Not watching {folder} for changes",
-with the error or the reason. The app keeps, while it runs, the problems it
+with the error, or with the words above for the directory it could not watch. The app keeps, while it runs, the problems it
 raised an alert for, each by its folder, kind and detail. The folder scans
 list's query takes those problems in its request and lists each problem not
 among them, so one problem raises one alert while the app runs, and a problem

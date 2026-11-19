@@ -50,9 +50,34 @@ pub enum FolderScanStatus {
     /// watched, for this reason: a change there reaches bae only when the
     /// folder is read again.
     NotWatched {
-        reason: String,
+        reason: UnwatchedReason,
         on_network_volume: bool,
     },
+}
+
+/// Why bae could not watch a directory in a folder it read in full.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct UnwatchedReason {
+    /// The first directory that could not be watched.
+    pub directory: PathBuf,
+    pub cause: UnwatchedCause,
+    /// What the system said, untranslated.
+    pub message: String,
+}
+
+impl std::fmt::Display for UnwatchedReason {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "failed to watch {}: {}", self.directory.display(), self.message)
+    }
+}
+
+/// What kept a directory from being watched.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum UnwatchedCause {
+    /// The system's limit on watched directories is reached.
+    LimitReached,
+    /// The system refused the watch for another reason.
+    Refused,
 }
 
 /// Each watched folder's scan status, for the chrome around the list.
@@ -86,18 +111,17 @@ pub type RaisedScanAlerts = std::collections::BTreeSet<FolderScanAlert>;
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct FolderScanAlert {
     pub folder: crate::WatchedFolder,
-    pub kind: FolderScanAlertKind,
-    /// The failure, or why the folder is not watched, untranslated.
-    pub detail: String,
+    pub problem: FolderScanProblem,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub enum FolderScanAlertKind {
-    /// The folder's scan failed.
-    Failed,
+/// What is wrong with a watched folder.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum FolderScanProblem {
+    /// The folder's scan failed, for this error, untranslated.
+    Failed { error: String },
     /// The scan read the whole folder, and bae could not watch a directory
     /// in it.
-    NotWatched,
+    NotWatched { reason: UnwatchedReason },
 }
 
 /// A root bae is scanning, with how many folders its scan has stored so far,
@@ -139,7 +163,7 @@ pub enum StoredScanOutcome {
     /// The scan read the whole tree, and bae could not watch a directory in
     /// it.
     NotWatched {
-        reason: String,
+        reason: UnwatchedReason,
     },
 }
 

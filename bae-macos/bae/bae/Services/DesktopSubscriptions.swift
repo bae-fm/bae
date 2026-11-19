@@ -249,23 +249,33 @@ final class DesktopSubscriptions {
     }
 
     /// Raise a watched folder that could not be read, or that is not watched
-    /// for changes, on the app's alert, with the untranslated fault or reason
-    /// as its detail.
+    /// for changes, on the app's alert, with the untranslated fault, or the
+    /// words for why the folder is not watched, as its detail.
     private static func scanFailureAlert(
         on uiStore: UiStore
     ) -> (BridgeFolderScanAlert) -> Void {
         { [uiStore] alert in
-            let key =
-                switch alert.kind {
-                case .failed: "ui.import.folder.scan_failed"
-                case .notWatched: "ui.import.folder.not_watched"
+            let name = alert.folder.name
+            let error: DisplayError =
+                switch alert.problem {
+                case .failed(let error):
+                    DisplayError(
+                        line: localizedCoreString(
+                            "ui.import.folder.scan_failed",
+                            name
+                        ),
+                        detail: error
+                    )
+                case .notWatched(let reason):
+                    DisplayError(
+                        line: localizedCoreString(
+                            "ui.import.folder.not_watched",
+                            name
+                        ),
+                        detail: reason.words(folder: name)
+                    )
                 }
-            uiStore.showError(
-                DisplayError(
-                    line: localizedCoreString(key, alert.folder.name),
-                    detail: alert.detail
-                )
-            )
+            uiStore.showError(error)
         }
     }
 

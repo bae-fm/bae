@@ -182,8 +182,22 @@ final class CandidateListMenuController {
         )
     }
 
+    /// The glyph of a root with a problem, with `problem` as its tooltip.
+    private func problemAccessory(
+        _ problem: String,
+        onNetwork: Bool
+    ) -> MacMenuAccessory {
+        MacMenuAccessory(
+            symbol: "exclamationmark.circle",
+            tone: .danger,
+            help: [problem, onNetwork ? Self.networkLine() : nil]
+                .compactMap { $0 }
+                .joined(separator: "\n")
+        )
+    }
+
     /// One root's line: its scan state is the glyph, and a failed scan's
-    /// error or a folder's reason it is not watched is the tooltip.
+    /// error or the words on a folder that is not watched are the tooltip.
     private func folderLine(_ folder: BridgeWatchedFolderScanStatus)
         -> MacMenuEntry
     {
@@ -195,14 +209,12 @@ final class CandidateListMenuController {
                 tone: .secondary,
                 help: onNetwork ? Self.networkLine() : nil
             )
-        case .failed(let detail, let onNetwork),
-            .notWatched(let detail, let onNetwork):
-            accessory = MacMenuAccessory(
-                symbol: "exclamationmark.circle",
-                tone: .danger,
-                help: [detail, onNetwork ? Self.networkLine() : nil]
-                    .compactMap { $0 }
-                    .joined(separator: "\n")
+        case .failed(let detail, let onNetwork):
+            accessory = problemAccessory(detail, onNetwork: onNetwork)
+        case .notWatched(let reason, let onNetwork):
+            accessory = problemAccessory(
+                reason.words(folder: folder.folder.name),
+                onNetwork: onNetwork
             )
         case .complete(let onNetwork):
             accessory =

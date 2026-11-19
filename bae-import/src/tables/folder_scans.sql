@@ -33,18 +33,24 @@ VALUES (1, 0);
 -- finds them; completing removes the ones it did not see, in the transaction
 -- that marks it complete. A failed or interrupted scan keeps old and new ones.
 -- `status` is how the current generation's scan ended, NULL until it stores
--- that, with `detail` saying why a failed scan failed or what an unwatched
--- folder could not watch. The folder scan coordinator records whether a scan
+-- that, with `detail` saying why a failed scan failed or what the system said
+-- of the directory an unwatched folder could not watch, which
+-- `unwatched_directory` names and `unwatched_cause` classifies. The folder
+-- scan coordinator records whether a scan
 -- is reading the folder, in `folder_scan_held` (`folder_scans/progress.sql`).
 CREATE TABLE IF NOT EXISTS folder_scan_roots (
     watched_folder_path BLOB PRIMARY KEY,
     generation          INTEGER NOT NULL CHECK (generation >= 0),
     status              TEXT CHECK (status IN ('complete', 'failed', 'unwatched')),
     detail              TEXT,
+    unwatched_directory BLOB,
+    unwatched_cause     TEXT CHECK (unwatched_cause IN ('limit_reached', 'refused')),
     -- The volume the folder was on when the scan began, asked once per scan so
     -- reading scan state never waits on a mount.
     volume              TEXT NOT NULL CHECK (volume IN ('local', 'network')),
     CHECK ((status IN ('failed', 'unwatched')) = (detail IS NOT NULL)),
+    CHECK ((status IS 'unwatched') = (unwatched_directory IS NOT NULL)),
+    CHECK ((status IS 'unwatched') = (unwatched_cause IS NOT NULL)),
     FOREIGN KEY (watched_folder_path)
         REFERENCES watched_import_folders (path)
         ON DELETE CASCADE

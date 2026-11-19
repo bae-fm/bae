@@ -611,7 +611,7 @@ async fn a_folder_that_could_not_be_watched_is_stored_as_read_and_reads_as_not_w
     let crate::StoredScanOutcome::NotWatched { reason } = stored_outcome(&test.db).await else {
         panic!("the unwatched folder is stored as not watched");
     };
-    assert!(reason.contains("too many open files"), "{reason}");
+    assert!(reason.message.contains("too many open files"), "{reason}");
     assert_eq!(
         test.tables().load_folder_scan_items(&root).await.unwrap().len(),
         1,
@@ -654,5 +654,5 @@ async fn a_changed_folder_that_could_not_be_watched_reads_as_not_watched() {
     let crate::StoredScanOutcome::NotWatched { reason } = stored_outcome(&test.db).await else {
         panic!("the unwatched folder is stored as not watched");
     };
-    assert!(reason.contains("too many open files"), "{reason}");
+    assert!(reason.message.contains("too many open files"), "{reason}");
 }

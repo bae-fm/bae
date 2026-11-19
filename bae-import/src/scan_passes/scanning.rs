@@ -26,7 +26,7 @@ pub(super) async fn record_scan_failure(
 pub(super) async fn record_scan_unwatched(
     root: &Path,
     generation: u64,
-    reason: &str,
+    reason: &crate::UnwatchedReason,
     services: &crate::ImportServices,
 ) -> Result<bool, bae_store::DbError> {
     let _commit = services.folder_state_commit.lock("store an unwatched folder").await;
@@ -311,7 +311,7 @@ async fn walk_and_reconcile(
                             if directory == walk_root {
                                 watch_available = false;
                             }
-                            watch_failures.push(format!("{}: {error}", directory.display()));
+                            watch_failures.push(error);
                         }
                     }
                 },
@@ -330,7 +330,7 @@ async fn walk_and_reconcile(
             );
         if result.is_ok() && watch_available {
             if let Err(error) = walk_watcher.retain_directories(&walk_root, &seen_directories) {
-                watch_failures.push(format!("{}: {error}", walk_root.display()));
+                watch_failures.push(error);
             }
         }
         result.map(|()| super::WalkEnd { directory_mtimes, watch_failures })

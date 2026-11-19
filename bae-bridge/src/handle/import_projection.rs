@@ -25,23 +25,64 @@ impl crate::types::BridgeFolderReleaseDecisionKey {
 }
 
 mirror_enum! {
-    crate::types::BridgeFolderScanStatus = bae_import::FolderScanStatus,
+    crate::types::BridgeUnwatchedCause = bae_import::UnwatchedCause,
     from_core: fn,
-    variants: {
-        NotScanned,
-        Scanning { on_network_volume },
-        Complete { on_network_volume },
-        Failed { error, on_network_volume },
-        NotWatched { reason, on_network_volume },
-    },
+    into_core: fn,
+    variants: { LimitReached, Refused },
+}
+
+impl crate::types::BridgeUnwatchedReason {
+    /// `reason` of a directory in `folder`, shown by the folder's name and
+    /// the path below it.
+    fn from_core(reason: bae_import::UnwatchedReason, folder: &bae_import::WatchedFolder) -> Self {
+        let bae_import::UnwatchedReason { directory, cause, message } = reason;
+        let below = directory.strip_prefix(&folder.path).unwrap_or(&directory);
+        let shown_directory = std::iter::once(folder.name.clone())
+            .chain(below.components().map(|part| coven::path_text(part.as_ref())))
+            .collect::<Vec<_>>()
+            .join("/");
+        Self {
+            directory: coven::path_bytes(&directory),
+            shown_directory,
+            cause: crate::types::BridgeUnwatchedCause::from_core(cause),
+            message,
+        }
+    }
+
+    /// The reason as core names it; a path that is no path is the app's
+    /// mistake.
+    fn into_core(self) -> Result<bae_import::UnwatchedReason, crate::types::BridgeError> {
+        let Self { directory, shown_directory: _, cause, message } = self;
+        Ok(bae_import::UnwatchedReason {
+            directory: crate::from_app::path(directory)?,
+            cause: cause.into_core(),
+            message,
+        })
+    }
+}
+
+impl crate::types::BridgeFolderScanStatus {
+    fn from_core(status: bae_import::FolderScanStatus, folder: &bae_import::WatchedFolder) -> Self {
+        use bae_import::FolderScanStatus as Core;
+        match status {
+            Core::NotScanned => Self::NotScanned,
+            Core::Scanning { on_network_volume } => Self::Scanning { on_network_volume },
+            Core::Complete { on_network_volume } => Self::Complete { on_network_volume },
+            Core::Failed { error, on_network_volume } => Self::Failed { error, on_network_volume },
+            Core::NotWatched { reason, on_network_volume } => Self::NotWatched {
+                reason: crate::types::BridgeUnwatchedReason::from_core(reason, folder),
+                on_network_volume,
+            },
+        }
+    }
 }
 
 impl crate::types::BridgeWatchedFolderScanStatus {
     pub(super) fn from_core(status: bae_import::WatchedFolderScanStatus) -> Self {
         let bae_import::WatchedFolderScanStatus { folder, status } = status;
         Self {
+            status: crate::types::BridgeFolderScanStatus::from_core(status, &folder),
             folder: crate::types::BridgeWatchedFolder::from_core(folder),
-            status: crate::types::BridgeFolderScanStatus::from_core(status),
         }
     }
 }
@@ -569,21 +610,17 @@ mirror_struct! {
     },
 }
 
-mirror_enum! {
-    crate::types::BridgeFolderScanAlertKind = bae_import::FolderScanAlertKind,
-    from_core: fn,
-    into_core: pub(super) fn,
-    variants: { Failed, NotWatched },
-}
-
 impl crate::types::BridgeFolderScanAlert {
     fn from_core(alert: bae_import::FolderScanAlert) -> Self {
-        let bae_import::FolderScanAlert { folder, kind, detail } = alert;
-        Self {
-            folder: crate::types::BridgeWatchedFolder::from_core(folder),
-            kind: crate::types::BridgeFolderScanAlertKind::from_core(kind),
-            detail,
-        }
+        use bae_import::FolderScanProblem as Core;
+        let bae_import::FolderScanAlert { folder, problem } = alert;
+        let problem = match problem {
+            Core::Failed { error } => crate::types::BridgeFolderScanProblem::Failed { error },
+            Core::NotWatched { reason } => crate::types::BridgeFolderScanProblem::NotWatched {
+                reason: crate::types::BridgeUnwatchedReason::from_core(reason, &folder),
+            },
+        };
+        Self { folder: crate::types::BridgeWatchedFolder::from_core(folder), problem }
     }
 
     /// The alert as core names it; a path that is no path is the app's
@@ -591,14 +628,20 @@ impl crate::types::BridgeFolderScanAlert {
     pub(crate) fn into_core(
         self,
     ) -> Result<bae_import::FolderScanAlert, crate::types::BridgeError> {
-        let Self { folder, kind, detail } = self;
+        use crate::types::BridgeFolderScanProblem as Bridge;
+        let Self { folder, problem } = self;
+        let problem = match problem {
+            Bridge::Failed { error } => bae_import::FolderScanProblem::Failed { error },
+            Bridge::NotWatched { reason } => {
+                bae_import::FolderScanProblem::NotWatched { reason: reason.into_core()? }
+            }
+        };
         Ok(bae_import::FolderScanAlert {
             folder: bae_import::WatchedFolder {
                 path: crate::from_app::path(folder.path)?,
                 name: folder.name,
             },
-            kind: kind.into_core(),
-            detail,
+            problem,
         })
     }
 }

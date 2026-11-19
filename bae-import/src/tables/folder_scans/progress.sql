@@ -50,6 +50,14 @@ SELECT
         WHEN held.state = 'running' THEN NULL
         ELSE 'the scan stopped before bae stored its result'
     END AS detail,
+    CASE
+        WHEN held.state = 'failed' THEN NULL
+        WHEN roots.status IS 'unwatched' THEN roots.unwatched_directory
+    END AS unwatched_directory,
+    CASE
+        WHEN held.state = 'failed' THEN NULL
+        WHEN roots.status IS 'unwatched' THEN roots.unwatched_cause
+    END AS unwatched_cause,
     CASE WHEN held.state = 'failed' THEN held.volume ELSE roots.volume END AS volume
 FROM watched_import_folders AS watched
 LEFT JOIN folder_scan_roots AS roots ON roots.watched_folder_path = watched.path

@@ -40,13 +40,13 @@ type FolderWalkOutcome = Result<WalkEnd, crate::folder_scanner::FolderScanError>
 /// See [`FolderWalkOutcome`].
 struct WalkEnd {
     directory_mtimes: Option<Vec<(PathBuf, i64)>>,
-    watch_failures: Vec<String>,
+    watch_failures: Vec<crate::UnwatchedReason>,
 }
 
 /// Why a folder is not watched, for its status: the first directory that
 /// could not be watched and the system's reason. `None` when every directory
 /// is watched.
-fn unwatched_reason(failures: &[String]) -> Option<String> {
+fn unwatched_reason(failures: &[crate::UnwatchedReason]) -> Option<crate::UnwatchedReason> {
     failures.first().cloned()
 }
 

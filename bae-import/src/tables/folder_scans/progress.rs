@@ -11,14 +11,15 @@
 
 use super::*;
 use crate::folder_scan_status::{
-    FolderScanAlert, FolderScanAlertKind, FolderScanProgress, FolderScanStatus, HeldRootScan,
+    FolderScanAlert, FolderScanProblem, FolderScanProgress, FolderScanStatus, HeldRootScan,
     HeldRootScans, RaisedScanAlerts, ScanningFolder, StoredRootScan, StoredScan, StoredScanOutcome,
     WatchedFolderScanStatus,
 };
 
 /// Each watched folder's status, in the order the folders are listed (their
 /// `position`, by its index).
-const FOLDER_SCAN_STATUSES: &str = "SELECT watched_folder_path, status, detail, volume \
+const FOLDER_SCAN_STATUSES: &str = "SELECT watched_folder_path, status, detail, \
+            unwatched_directory, unwatched_cause, volume \
      FROM folder_scan_status ORDER BY position";
 
 /// Whether any folder's scan failed or left it not watched, and whether any
@@ -31,7 +32,7 @@ const FOLDER_SCAN_FLAGS: &str = "SELECT \
 /// JSON array of each one's folder path in hex, kind and detail, in the order
 /// the folders are listed.
 const OWED_FOLDER_SCAN_ALERTS: &str = "SELECT folder.watched_folder_path, folder.status, \
-            folder.detail \
+            folder.detail, folder.unwatched_directory, folder.unwatched_cause, folder.volume \
      FROM folder_scan_status AS folder \
      WHERE folder.status IN ('failed', 'unwatched') \
        AND (folder.watched_folder_path, folder.status, folder.detail) NOT IN \
@@ -44,11 +45,13 @@ fn raised_alerts_json(raised: &RaisedScanAlerts) -> String {
         &raised
             .iter()
             .map(|alert| {
-                (
-                    hex::encode(coven::path_bytes(&alert.folder.path)),
-                    alert_kind_text(alert.kind),
-                    alert.detail.as_str(),
-                )
+                let (kind, detail) = match &alert.problem {
+                    FolderScanProblem::Failed { error } => ("failed", error.as_str()),
+                    FolderScanProblem::NotWatched { reason } => {
+                        ("unwatched", reason.message.as_str())
+                    }
+                };
+                (hex::encode(coven::path_bytes(&alert.folder.path)), kind, detail)
             })
             .collect::<Vec<_>>(),
     )
@@ -60,6 +63,7 @@ fn folder_scan_status(
     watched_folder_path: &std::path::Path,
     status: String,
     detail: Option<String>,
+    unwatched: Option<(std::path::PathBuf, String)>,
     volume: Option<String>,
 ) -> Result<FolderScanStatus, DbError> {
     let on_network_volume = volume
@@ -68,19 +72,22 @@ fn folder_scan_status(
             Ok::<_, DbError>(super::columns::volume_of(volume)? == crate::VolumeKind::Network)
         })
         .transpose()?;
-    Ok(match (status.as_str(), detail, on_network_volume) {
-        ("not_scanned", None, None) => FolderScanStatus::NotScanned,
-        ("scanning", None, Some(on_network_volume)) => {
+    Ok(match (status.as_str(), detail, unwatched, on_network_volume) {
+        ("not_scanned", None, None, None) => FolderScanStatus::NotScanned,
+        ("scanning", None, None, Some(on_network_volume)) => {
             FolderScanStatus::Scanning { on_network_volume }
         }
-        ("complete", None, Some(on_network_volume)) => {
+        ("complete", None, None, Some(on_network_volume)) => {
             FolderScanStatus::Complete { on_network_volume }
         }
-        ("failed", Some(error), Some(on_network_volume)) => {
+        ("failed", Some(error), None, Some(on_network_volume)) => {
             FolderScanStatus::Failed { error, on_network_volume }
         }
-        ("unwatched", Some(reason), Some(on_network_volume)) => {
-            FolderScanStatus::NotWatched { reason, on_network_volume }
+        ("unwatched", Some(message), Some((directory, cause)), Some(on_network_volume)) => {
+            FolderScanStatus::NotWatched {
+                reason: super::columns::unwatched_reason_of(message, directory, &cause)?,
+                on_network_volume,
+            }
         }
         stored => {
             return Err(DbError::unreadable(
@@ -91,42 +98,31 @@ fn folder_scan_status(
     })
 }
 
-fn alert_kind(kind: &str) -> Result<FolderScanAlertKind, DbError> {
-    match kind {
-        "failed" => Ok(FolderScanAlertKind::Failed),
-        "unwatched" => Ok(FolderScanAlertKind::NotWatched),
-        other => Err(DbError::unreadable("folder_scan_status.status of an alert", other)),
-    }
-}
-
-fn alert_kind_text(kind: FolderScanAlertKind) -> &'static str {
-    match kind {
-        FolderScanAlertKind::Failed => "failed",
-        FolderScanAlertKind::NotWatched => "unwatched",
-    }
-}
-
 /// Each watched folder's status, in the order the folders are listed.
 fn load_folder_scan_statuses_on(
     sql: &SqlReadContext<'_>,
 ) -> Result<Vec<WatchedFolderScanStatus>, DbError> {
-    let mut statuses = Vec::new();
-    for (watched_folder_path, status, detail, volume) in
-        sql.query(FOLDER_SCAN_STATUSES, [], |row| {
-            Ok((
-                path_column::get(row, 0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, Option<String>>(2)?,
-                row.get::<_, Option<String>>(3)?,
-            ))
-        })?
-    {
-        statuses.push(WatchedFolderScanStatus {
-            status: folder_scan_status(&watched_folder_path, status, detail, volume)?,
+    sql.query(FOLDER_SCAN_STATUSES, [], read_folder_scan_status)?.into_iter().collect()
+}
+
+/// A watched folder's status from a row of `folder_scan_status`:
+/// `watched_folder_path`, `status`, `detail`, `unwatched_directory`,
+/// `unwatched_cause` and `volume`.
+fn read_folder_scan_status(
+    row: &rusqlite::Row<'_>,
+) -> rusqlite::Result<Result<WatchedFolderScanStatus, DbError>> {
+    let watched_folder_path = path_column::get(row, 0)?;
+    let status: String = row.get(1)?;
+    let detail: Option<String> = row.get(2)?;
+    let directory = path_column::get_optional(row, 3)?;
+    let cause: Option<String> = row.get(4)?;
+    let volume: Option<String> = row.get(5)?;
+    Ok(folder_scan_status(&watched_folder_path, status, detail, directory.zip(cause), volume).map(
+        |status| WatchedFolderScanStatus {
+            status,
             folder: crate::WatchedFolder::from_path(watched_folder_path),
-        });
-    }
-    Ok(statuses)
+        },
+    ))
 }
 
 fn load_folder_scan_progress_on(
@@ -137,16 +133,21 @@ fn load_folder_scan_progress_on(
     let (has_problem, scanning) =
         sql.query_row(FOLDER_SCAN_FLAGS, [], |row| Ok((row.get(0)?, row.get(1)?)))?;
     let mut alerts = Vec::new();
-    for (watched_folder_path, kind, detail) in
-        sql.query(OWED_FOLDER_SCAN_ALERTS, [raised_alerts_json(raised)], |row| {
-            Ok((path_column::get(row, 0)?, row.get::<_, String>(1)?, row.get::<_, String>(2)?))
-        })?
-    {
-        alerts.push(FolderScanAlert {
-            folder: crate::WatchedFolder::from_path(watched_folder_path),
-            kind: alert_kind(&kind)?,
-            detail,
-        });
+    for owed in sql.query(OWED_FOLDER_SCAN_ALERTS, [raised_alerts_json(raised)], |row| {
+        read_folder_scan_status(row)
+    })? {
+        let WatchedFolderScanStatus { folder, status } = owed?;
+        let problem = match status {
+            FolderScanStatus::Failed { error, .. } => FolderScanProblem::Failed { error },
+            FolderScanStatus::NotWatched { reason, .. } => FolderScanProblem::NotWatched { reason },
+            other => {
+                return Err(DbError::unreadable(
+                    "folder_scan_status of an owed alert",
+                    format!("{other:?}"),
+                ))
+            }
+        };
+        alerts.push(FolderScanAlert { folder, problem });
     }
     Ok(FolderScanProgress { statuses, has_problem, scanning, alerts })
 }
@@ -217,27 +218,34 @@ fn load_held_root_scans_on(sql: &SqlReadContext<'_>) -> Result<HeldRootScans, Db
 /// root. `volume` is never NULL on a root, so a NULL one is a folder with
 /// none.
 const FOLDER_SCAN_PROGRESS: &str = "SELECT watched.path, roots.status, \
-            roots.detail, roots.volume \
+            roots.detail, roots.unwatched_directory, roots.unwatched_cause, roots.volume \
      FROM watched_import_folders AS watched \
      LEFT JOIN folder_scan_roots AS roots ON roots.watched_folder_path = watched.path \
      ORDER BY watched.position";
 
 fn load_stored_folder_scans_on(sql: &SqlReadContext<'_>) -> Result<Vec<StoredRootScan>, DbError> {
     let mut scans = Vec::new();
-    for (watched_folder_path, status, detail, volume) in
+    for (watched_folder_path, status, detail, directory, cause, volume) in
         sql.query(FOLDER_SCAN_PROGRESS, [], |row| {
             Ok((
                 path_column::get(row, 0)?,
                 row.get::<_, Option<String>>(1)?,
                 row.get::<_, Option<String>>(2)?,
-                row.get::<_, Option<String>>(3)?,
+                path_column::get_optional(row, 3)?,
+                row.get::<_, Option<String>>(4)?,
+                row.get::<_, Option<String>>(5)?,
             ))
         })?
     {
         let last_scan = match volume {
             None => None,
             Some(volume) => Some(StoredScan {
-                outcome: stored_outcome(&watched_folder_path, status, detail)?,
+                outcome: stored_outcome(
+                    &watched_folder_path,
+                    status,
+                    detail,
+                    directory.zip(cause),
+                )?,
                 on_network_volume: super::columns::volume_of(&volume)?
                     == crate::VolumeKind::Network,
             }),
@@ -253,12 +261,17 @@ fn stored_outcome(
     watched_folder_path: &std::path::Path,
     status: Option<String>,
     detail: Option<String>,
+    unwatched: Option<(std::path::PathBuf, String)>,
 ) -> Result<StoredScanOutcome, DbError> {
-    Ok(match (status.as_deref(), detail) {
-        (None, None) => StoredScanOutcome::Unfinished,
-        (Some("complete"), None) => StoredScanOutcome::Complete,
-        (Some("failed"), Some(error)) => StoredScanOutcome::Failed { error },
-        (Some("unwatched"), Some(reason)) => StoredScanOutcome::NotWatched { reason },
+    Ok(match (status.as_deref(), detail, unwatched) {
+        (None, None, None) => StoredScanOutcome::Unfinished,
+        (Some("complete"), None, None) => StoredScanOutcome::Complete,
+        (Some("failed"), Some(error), None) => StoredScanOutcome::Failed { error },
+        (Some("unwatched"), Some(message), Some((directory, cause))) => {
+            StoredScanOutcome::NotWatched {
+                reason: super::columns::unwatched_reason_of(message, directory, &cause)?,
+            }
+        }
         stored => {
             return Err(DbError::unreadable(
                 format!(

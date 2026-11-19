@@ -26,6 +26,32 @@ pub(super) fn volume_of(stored: &str) -> Result<VolumeKind, DbError> {
     }
 }
 
+/// The text `folder_scan_roots.unwatched_cause` stores for `cause`.
+pub(super) fn unwatched_cause_text(cause: crate::UnwatchedCause) -> &'static str {
+    match cause {
+        crate::UnwatchedCause::LimitReached => "limit_reached",
+        crate::UnwatchedCause::Refused => "refused",
+    }
+}
+
+fn unwatched_cause_of(stored: &str) -> Result<crate::UnwatchedCause, DbError> {
+    match stored {
+        "limit_reached" => Ok(crate::UnwatchedCause::LimitReached),
+        "refused" => Ok(crate::UnwatchedCause::Refused),
+        other => Err(DbError::unreadable("folder_scan_roots.unwatched_cause", other)),
+    }
+}
+
+/// The reason a root is not watched, from its row's `detail`,
+/// `unwatched_directory` and `unwatched_cause`.
+pub(super) fn unwatched_reason_of(
+    message: String,
+    directory: std::path::PathBuf,
+    cause: &str,
+) -> Result<crate::UnwatchedReason, DbError> {
+    Ok(crate::UnwatchedReason { directory, cause: unwatched_cause_of(cause)?, message })
+}
+
 /// The ripper a stored track sheet names.
 pub(super) fn ripper_text(ripper: CdRipper) -> &'static str {
     match ripper {

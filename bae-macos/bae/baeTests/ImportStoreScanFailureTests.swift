@@ -22,7 +22,7 @@ struct ImportStoreScanFailureTests {
     private static func alert(
         _ path: String,
         _ detail: String,
-        _ kind: BridgeFolderScanAlertKind = .failed
+        notWatched: Bool = false
     ) -> BridgeFolderScanAlert {
         BridgeFolderScanAlert(
             folder: BridgeWatchedFolder(
@@ -30,8 +30,16 @@ struct ImportStoreScanFailureTests {
                 pathText: path,
                 name: URL(fileURLWithPath: path).lastPathComponent
             ),
-            kind: kind,
-            detail: detail
+            problem: notWatched
+                ? .notWatched(
+                    reason: BridgeUnwatchedReason(
+                        directory: Data("\(path)/a".utf8),
+                        shownDirectory:
+                            "\(URL(fileURLWithPath: path).lastPathComponent)/a",
+                        cause: .limitReached,
+                        message: detail
+                    )
+                ) : .failed(error: detail)
         )
     }
 
@@ -55,7 +63,7 @@ struct ImportStoreScanFailureTests {
         store.setRaisedScanAlerts = { requests.sets.append(Set($0)) }
 
         let failed = Self.alert("/Media", "no such column")
-        let notWatched = Self.alert("/Other", "limit reached", .notWatched)
+        let notWatched = Self.alert("/Other", "limit reached", notWatched: true)
         store.applyFolderScans(Self.scans([failed, notWatched]))
 
         #expect(raised == [failed, notWatched])

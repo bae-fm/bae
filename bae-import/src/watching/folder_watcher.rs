@@ -20,7 +20,7 @@ use tokio::sync::mpsc;
 use tracing::{debug, error};
 
 use super::watch_batches::{RootEvent, WatchReport, WatchedRoot};
-use crate::ImportError;
+use crate::{ImportError, UnwatchedCause, UnwatchedReason};
 use bae_diagnostics::lock_or_crash;
 
 trait WatchBackend: Send {
@@ -142,12 +142,12 @@ impl FolderWatcher {
         &self,
         root: &Path,
         directory: &Path,
-    ) -> Result<(), ImportError> {
+    ) -> Result<(), UnwatchedReason> {
         let Some(mode) = watch_mode(root, directory) else {
             return Ok(());
         };
         let mut state = lock_or_crash(&self.diagnostics, WATCH_TABLE, &self.state);
-        let watches = state.as_mut().map_err(|e| ImportError::Watch { detail: e.clone() })?;
+        let watches = state.as_mut().map_err(|message| refused(directory, message))?;
         watches.install(root, directory, mode)
     }
 
@@ -155,7 +155,7 @@ impl FolderWatcher {
         &self,
         root: &Path,
         seen: &HashSet<PathBuf>,
-    ) -> Result<(), ImportError> {
+    ) -> Result<(), UnwatchedReason> {
         self.retain_directories_under(root, root, seen)
     }
 
@@ -167,13 +167,12 @@ impl FolderWatcher {
         root: &Path,
         scope: &Path,
         seen: &HashSet<PathBuf>,
-    ) -> Result<(), ImportError> {
+    ) -> Result<(), UnwatchedReason> {
         if uses_recursive_root_watch() {
             return Ok(());
         }
         let mut state = lock_or_crash(&self.diagnostics, WATCH_TABLE, &self.state);
-        let watches =
-            state.as_mut().map_err(|error| ImportError::Watch { detail: error.clone() })?;
+        let watches = state.as_mut().map_err(|message| refused(scope, message))?;
         let Some(watch) = watches.roots.get_mut(root) else {
             return Ok(());
         };
@@ -187,11 +186,7 @@ impl FolderWatcher {
             match watch.backend.unwatch(directory) {
                 Ok(()) => {}
                 Err(error) if watch_not_found(&error) => {}
-                Err(error) => {
-                    return Err(ImportError::Watch {
-                        detail: format!("failed to unwatch {}: {error}", directory.display()),
-                    });
-                }
+                Err(error) => return Err(watch_refusal(directory, &error)),
             }
             watch.installed.remove(directory);
         }
@@ -258,10 +253,10 @@ impl Watches {
         root: &Path,
         directory: &Path,
         mode: RecursiveMode,
-    ) -> Result<(), ImportError> {
+    ) -> Result<(), UnwatchedReason> {
         if uses_recursive_root_watch() {
-            let mut backend = (self.open)(root).map_err(|error| watch_failed(root, error))?;
-            backend.watch(directory, mode).map_err(|error| watch_failed(directory, error))?;
+            let mut backend = (self.open)(root).map_err(|error| watch_refusal(root, &error))?;
+            backend.watch(directory, mode).map_err(|error| watch_refusal(directory, &error))?;
             let fresh = RootWatch { backend, installed: HashSet::from([directory.to_path_buf()]) };
             // The replaced watch stops here, after the fresh one started.
             drop(self.roots.insert(root.to_path_buf(), fresh));
@@ -270,21 +265,35 @@ impl Watches {
         let watch = match self.roots.entry(root.to_path_buf()) {
             Entry::Occupied(watch) => watch.into_mut(),
             Entry::Vacant(vacant) => vacant.insert(RootWatch {
-                backend: (self.open)(root).map_err(|error| watch_failed(root, error))?,
+                backend: (self.open)(root).map_err(|error| watch_refusal(root, &error))?,
                 installed: HashSet::new(),
             }),
         };
         if let Err(error) = watch.backend.watch(directory, mode) {
             watch.installed.remove(directory);
-            return Err(watch_failed(directory, error));
+            return Err(watch_refusal(directory, &error));
         }
         watch.installed.insert(directory.to_path_buf());
         Ok(())
     }
 }
 
-fn watch_failed(path: &Path, error: notify::Error) -> ImportError {
-    ImportError::Watch { detail: format!("failed to watch {}: {error}", path.display()) }
+/// The system's refusal to watch `directory`, `error`.
+fn watch_refusal(directory: &Path, error: &notify::Error) -> UnwatchedReason {
+    let cause = match error.kind {
+        notify::ErrorKind::MaxFilesWatch => UnwatchedCause::LimitReached,
+        _ => UnwatchedCause::Refused,
+    };
+    UnwatchedReason { directory: directory.to_path_buf(), cause, message: error.to_string() }
+}
+
+/// A refusal to watch `directory` that no system error names, for `message`.
+fn refused(directory: &Path, message: &str) -> UnwatchedReason {
+    UnwatchedReason {
+        directory: directory.to_path_buf(),
+        cause: UnwatchedCause::Refused,
+        message: message.to_string(),
+    }
 }
 
 /// Start each root's watch as the platform's own, reporting on `events`

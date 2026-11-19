@@ -287,12 +287,36 @@ pub enum BridgeFolderScanStatus {
         error: String,
         on_network_volume: bool,
     },
-    /// Read in full, with a directory that could not be watched, for this
-    /// reason (the system's own, untranslated).
+    /// Read in full, with a directory that could not be watched.
     NotWatched {
-        reason: String,
+        reason: BridgeUnwatchedReason,
         on_network_volume: bool,
     },
+}
+
+/// Why bae could not watch a directory in a folder it read in full. Mirrors
+/// `bae_import::UnwatchedReason`.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, uniffi::Record)]
+pub struct BridgeUnwatchedReason {
+    /// The first directory that could not be watched, as coven's bytes for
+    /// its path.
+    pub directory: Vec<u8>,
+    /// The directory as the person reads it: the watched folder's name, then
+    /// the path below it, such as `Downloads/Albums/2024`.
+    pub shown_directory: String,
+    pub cause: BridgeUnwatchedCause,
+    /// What the system said, untranslated.
+    pub message: String,
+}
+
+/// What kept a directory from being watched. Mirrors
+/// `bae_import::UnwatchedCause`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, uniffi::Enum)]
+pub enum BridgeUnwatchedCause {
+    /// The system's limit on watched directories is reached.
+    LimitReached,
+    /// The system refused the watch for another reason.
+    Refused,
 }
 
 // ── Sidebar triage: mirrors of `bae_import::triage` ─────────────────

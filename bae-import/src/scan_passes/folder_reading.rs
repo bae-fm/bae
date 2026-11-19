@@ -135,7 +135,7 @@ enum RootMark {
     Failed(String),
     /// The folder was read again, and a directory in it could not be watched,
     /// for this reason.
-    NotWatched(String),
+    NotWatched(crate::UnwatchedReason),
 }
 
 /// Store `mark` as the status of `root`'s current generation, answering
@@ -147,7 +147,8 @@ async fn store_reading_status(
     services: &crate::ImportServices,
 ) -> Option<String> {
     let message = match &mark {
-        RootMark::Failed(message) | RootMark::NotWatched(message) => message.clone(),
+        RootMark::Failed(message) => message.clone(),
+        RootMark::NotWatched(reason) => reason.to_string(),
     };
     let diagnostics = &services.diagnostics;
     let generation = match services.tables.current_folder_scan_generation(root).await {
@@ -204,7 +205,7 @@ struct FolderReadAgain {
     stored: Vec<ScanItem>,
     /// Each directory in the folder that could not be watched, with the
     /// reason.
-    watch_failures: Vec<String>,
+    watch_failures: Vec<crate::UnwatchedReason>,
 }
 
 /// Store as the status of `root`'s current generation that the directories
@@ -213,7 +214,7 @@ struct FolderReadAgain {
 /// back as a failure, for the coordinator to hold.
 async fn store_watch_failure(
     root: &Path,
-    watch_failures: &[String],
+    watch_failures: &[crate::UnwatchedReason],
     services: &crate::ImportServices,
 ) -> Option<String> {
     let reason = super::unwatched_reason(watch_failures)?;
@@ -463,7 +464,7 @@ struct TopLevelReading {
     items: Vec<crate::folder_scanner::WalkItem>,
     directory_mtimes: Option<Vec<(PathBuf, i64)>>,
     /// Each directory in it that could not be watched, with the reason.
-    watch_failures: Vec<String>,
+    watch_failures: Vec<crate::UnwatchedReason>,
 }
 
 /// Read `folder` under `root` on the calling thread, keeping the watch on
@@ -520,7 +521,7 @@ fn read_top_level_folder(
                     (None, _) => {}
                 }
                 if let Err(error) = watcher.install_directory(root, &directory) {
-                    watch_failures.push(format!("{}: {error}", directory.display()));
+                    watch_failures.push(error);
                 }
                 seen.insert(directory);
             },
@@ -532,7 +533,7 @@ fn read_top_level_folder(
         });
     }
     if let Err(error) = watcher.retain_directories_under(root, &absolute, &seen) {
-        watch_failures.push(format!("{}: {error}", absolute.display()));
+        watch_failures.push(error);
     }
     Ok(TopLevelReading { items, directory_mtimes, watch_failures })
 }

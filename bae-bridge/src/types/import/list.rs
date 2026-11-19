@@ -226,18 +226,18 @@ pub struct BridgeFolderScans {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, uniffi::Record)]
 pub struct BridgeFolderScanAlert {
     pub folder: BridgeWatchedFolder,
-    pub kind: BridgeFolderScanAlertKind,
-    /// The failure, or why the folder is not watched, untranslated.
-    pub detail: String,
+    pub problem: BridgeFolderScanProblem,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, uniffi::Enum)]
-pub enum BridgeFolderScanAlertKind {
-    /// The folder's scan failed.
-    Failed,
+/// What is wrong with a watched folder. Mirrors
+/// `bae_import::FolderScanProblem`.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, uniffi::Enum)]
+pub enum BridgeFolderScanProblem {
+    /// The folder's scan failed, for this error, untranslated.
+    Failed { error: String },
     /// The scan read the whole folder, and bae could not watch a directory
     /// in it.
-    NotWatched,
+    NotWatched { reason: BridgeUnwatchedReason },
 }
 
 /// A root bae is scanning, with how many folders its scan has stored so far,

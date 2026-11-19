@@ -25,7 +25,8 @@ fn load_folder_scan_snapshots_on(
     sql: &SqlReadContext<'_>,
 ) -> Result<impl FnOnce() -> Result<Vec<DbFolderScanSnapshot>, DbError> + Send + 'static, DbError> {
     let roots = sql.query(
-        "SELECT watched_folder_path, generation, status, detail \
+        "SELECT watched_folder_path, generation, status, detail, \
+                unwatched_directory, unwatched_cause \
          FROM folder_scan_roots \
          ORDER BY watched_folder_path",
         [],
@@ -35,25 +36,31 @@ fn load_folder_scan_snapshots_on(
                 row.get::<_, i64>(1)?,
                 row.get::<_, Option<String>>(2)?,
                 row.get::<_, Option<String>>(3)?,
+                path_column::get_optional(row, 4)?,
+                row.get::<_, Option<String>>(5)?,
             ))
         },
     )?;
 
     let mut snapshots = Vec::with_capacity(roots.len());
-    for (watched_folder_path, generation, status, detail) in roots {
+    for (watched_folder_path, generation, status, detail, directory, cause) in roots {
         let generation = to_u64(generation, "folder_scan_roots.generation")?;
-        let status = match (status.as_deref(), detail) {
-            (None, None) => crate::StoredScanOutcome::Unfinished,
-            (Some("complete"), None) => crate::StoredScanOutcome::Complete,
-            (Some("failed"), Some(error)) => crate::StoredScanOutcome::Failed { error },
-            (Some("unwatched"), Some(reason)) => crate::StoredScanOutcome::NotWatched { reason },
-            (status, detail) => {
+        let status = match (status.as_deref(), detail, directory, cause) {
+            (None, None, None, None) => crate::StoredScanOutcome::Unfinished,
+            (Some("complete"), None, None, None) => crate::StoredScanOutcome::Complete,
+            (Some("failed"), Some(error), None, None) => crate::StoredScanOutcome::Failed { error },
+            (Some("unwatched"), Some(message), Some(directory), Some(cause)) => {
+                crate::StoredScanOutcome::NotWatched {
+                    reason: columns::unwatched_reason_of(message, directory, &cause)?,
+                }
+            }
+            (status, detail, directory, cause) => {
                 return Err(DbError::unreadable(
                     format!(
                         "the status and detail of folder scan root {}",
                         coven::path_text(&watched_folder_path)
                     ),
-                    (status, detail),
+                    (status, detail, directory, cause),
                 ))
             }
         };
@@ -853,4 +860,96 @@ pub(crate) async fn stored_folder(
         .unwrap();
     tables.finish_folder_scan(root, generation, None).await.unwrap();
     hash
+}
+
+impl ImportTables {
+    /// Plant damage for a test: the table of the directories each walk read
+    /// is gone from the library under `directory`, so every read of what
+    /// the last scan saw fails.
+    pub(crate) async fn lose_scan_directories_for_test(directory: &Path) {
+        let directory = directory.to_path_buf();
+        bae_util::test_spawn::on_blocking_pool(move || {
+            bae_store::test_fixtures::planted_damage::plant_in_library_file(
+                &directory,
+                "folder_scan_directory",
+                "DROP TABLE folder_scan_directory;",
+            )
+        })
+        .await;
+    }
+
+    /// Plant damage for a test: the table of the parts each scanned release
+    /// holds is gone from the library under `directory`, so every read of a
+    /// stored release fails.
+    pub(crate) async fn lose_scan_candidate_parts_for_test(directory: &Path) {
+        let directory = directory.to_path_buf();
+        bae_util::test_spawn::on_blocking_pool(move || {
+            bae_store::test_fixtures::planted_damage::plant_in_library_file(
+                &directory,
+                "scan_candidate_part",
+                "DROP TABLE scan_candidate_part;",
+            )
+        })
+        .await;
+    }
+
+    /// Plant damage for a test: each file named `name` a sidecar in the
+    /// library under `directory` holds is stored as the file named `as_name`
+    /// beside it. A sidecar and a scanned release holding one file replace
+    /// each other in every write, so where a release holds `as_name` the store
+    /// says two things about that file.
+    pub(crate) async fn store_sidecar_file_as_for_test(
+        directory: &Path,
+        name: &str,
+        as_name: &str,
+    ) {
+        let directory = directory.to_path_buf();
+        let damage = format!(
+            "UPDATE scan_sidecar_file SET \
+             absolute_path = CAST(REPLACE(CAST(absolute_path AS TEXT), '{name}', '{as_name}') AS BLOB), \
+             relative_path = REPLACE(relative_path, '{name}', '{as_name}') \
+             WHERE relative_path LIKE '%{name}';"
+        );
+        bae_util::test_spawn::on_blocking_pool(move || {
+            bae_store::test_fixtures::planted_damage::plant_in_library_file(
+                &directory,
+                "scan_sidecar_file",
+                &damage,
+            )
+        })
+        .await;
+    }
+
+    /// Plant damage for a test: every scan that would open a watched folder's
+    /// first generation, in the library under `directory`, fails as a
+    /// statement nothing should refuse.
+    pub(crate) async fn fail_first_scan_begins_for_test(directory: &Path) {
+        let directory = directory.to_path_buf();
+        bae_util::test_spawn::on_blocking_pool(move || {
+            bae_store::test_fixtures::planted_damage::plant_in_library_file(
+                &directory,
+                "folder_scan_roots",
+                "CREATE TRIGGER fail_first_scan_begins BEFORE INSERT ON folder_scan_roots \
+                 BEGIN SELECT RAISE(ABORT, 'the scan could not begin'); END;",
+            )
+        })
+        .await;
+    }
+
+    /// Plant damage for a test: every write that stores a scan as failed, in
+    /// the library under `directory`, fails as a statement nothing should
+    /// refuse.
+    pub(crate) async fn fail_failed_scan_writes_for_test(directory: &Path) {
+        let directory = directory.to_path_buf();
+        bae_util::test_spawn::on_blocking_pool(move || {
+            bae_store::test_fixtures::planted_damage::plant_in_library_file(
+                &directory,
+                "folder_scan_roots",
+                "CREATE TRIGGER fail_failed_scan_writes BEFORE UPDATE ON folder_scan_roots \
+                 WHEN NEW.status = 'failed' \
+                 BEGIN SELECT RAISE(ABORT, 'the failed scan was refused'); END;",
+            )
+        })
+        .await;
+    }
 }

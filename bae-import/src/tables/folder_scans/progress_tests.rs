@@ -232,7 +232,7 @@ async fn a_tree_read_but_not_watched_is_its_own_status() {
     let (tables, root, _temp) = watching_music().await;
     let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
     tables
-        .finish_folder_scan_unwatched(&root, generation, "/music/a: too many open files")
+        .finish_folder_scan_unwatched(&root, generation, &unwatched(&root, "too many open files"))
         .await
         .unwrap();
 
@@ -240,7 +240,7 @@ async fn a_tree_read_but_not_watched_is_its_own_status() {
     assert_eq!(
         progress.statuses[0].status,
         crate::FolderScanStatus::NotWatched {
-            reason: "/music/a: too many open files".to_string(),
+            reason: unwatched(&root, "too many open files"),
             on_network_volume: false
         }
     );
@@ -248,33 +248,45 @@ async fn a_tree_read_but_not_watched_is_its_own_status() {
     assert!(!progress.scanning);
 }
 
-/// The alerts the folder scans list with `raised` as the alerts the app
-/// raised, as kind and detail.
+/// Why `/music/a` could not be watched, for `message`.
+fn unwatched(root: &std::path::Path, message: &str) -> crate::UnwatchedReason {
+    crate::UnwatchedReason {
+        directory: root.join("a"),
+        cause: crate::UnwatchedCause::LimitReached,
+        message: message.to_string(),
+    }
+}
+
+/// The problems the folder scans list alerts for with `raised` as the alerts
+/// the app raised.
 async fn listed_alerts(
     tables: &crate::tables::ImportTables,
     raised: &[crate::FolderScanAlert],
-) -> Vec<(crate::FolderScanAlertKind, String)> {
+) -> Vec<crate::FolderScanProblem> {
     tables
         .load_folder_scan_progress(raised.iter().cloned().collect())
         .await
         .unwrap()
         .alerts
         .into_iter()
-        .map(|alert| (alert.kind, alert.detail))
+        .map(|alert| alert.problem)
         .collect()
 }
 
-/// The alert for `/music`'s problem of `kind` with `detail`.
+/// The alert for `/music`'s `problem`.
 fn music_alert(
     root: &std::path::Path,
-    kind: crate::FolderScanAlertKind,
-    detail: &str,
+    problem: crate::FolderScanProblem,
 ) -> crate::FolderScanAlert {
     crate::FolderScanAlert {
         folder: crate::WatchedFolder { path: root.to_path_buf(), name: "music".to_string() },
-        kind,
-        detail: detail.to_string(),
+        problem,
     }
+}
+
+/// A failed scan's problem, for `error`.
+fn failed(error: &str) -> crate::FolderScanProblem {
+    crate::FolderScanProblem::Failed { error: error.to_string() }
 }
 
 /// The progress lists an alert for each folder's problem that is not among
@@ -283,44 +295,48 @@ fn music_alert(
 /// same detail of another kind.
 #[tokio::test]
 async fn the_progress_lists_each_problem_the_app_raised_no_alert_for() {
-    use crate::FolderScanAlertKind::{Failed, NotWatched};
     let (tables, root, _temp) = watching_music().await;
     let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
     tables.finish_folder_scan(&root, generation, Some("offline")).await.unwrap();
     let progress = tables.load_folder_scan_progress(Default::default()).await.unwrap();
-    assert_eq!(progress.alerts, [music_alert(&root, Failed, "offline")]);
+    assert_eq!(progress.alerts, [music_alert(&root, failed("offline"))]);
 
-    let raised = [music_alert(&root, Failed, "offline")];
+    let raised = [music_alert(&root, failed("offline"))];
     assert_eq!(listed_alerts(&tables, &raised).await, []);
 
     tables
         .hold_root_scans(unstored(&root, "no such column", crate::VolumeKind::Local))
         .await
         .unwrap();
-    assert_eq!(listed_alerts(&tables, &raised).await, [(Failed, "no such column".to_string())]);
+    assert_eq!(listed_alerts(&tables, &raised).await, [failed("no such column")]);
     tables.hold_root_scans(unstored(&root, "offline", crate::VolumeKind::Local)).await.unwrap();
     assert_eq!(listed_alerts(&tables, &raised).await, []);
 
     tables.hold_root_scans(crate::folder_scan_status::HeldRootScans::new()).await.unwrap();
     let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
-    tables.finish_folder_scan_unwatched(&root, generation, "offline").await.unwrap();
-    assert_eq!(listed_alerts(&tables, &raised).await, [(NotWatched, "offline".to_string())]);
+    tables
+        .finish_folder_scan_unwatched(&root, generation, &unwatched(&root, "offline"))
+        .await
+        .unwrap();
+    assert_eq!(
+        listed_alerts(&tables, &raised).await,
+        [crate::FolderScanProblem::NotWatched { reason: unwatched(&root, "offline") }]
+    );
 }
 
 /// A new request on the same live query changes the alerts it lists: the
 /// alerts the app raised drop out of the next value.
 #[tokio::test]
 async fn raising_an_alert_drops_it_from_the_live_progress() {
-    use crate::FolderScanAlertKind::Failed;
     let (tables, root, _temp) = watching_music().await;
     let generation = tables.begin_folder_scan(&root, crate::VolumeKind::Local).await.unwrap();
     tables.finish_folder_scan(&root, generation, Some("offline")).await.unwrap();
 
     let mut live = tables.subscribe_folder_scan_progress();
     let first = live.next_inline().await.expect("the query stays open").result.unwrap();
-    assert_eq!(first.alerts, [music_alert(&root, Failed, "offline")]);
+    assert_eq!(first.alerts, [music_alert(&root, failed("offline"))]);
 
-    let raised = crate::RaisedScanAlerts::from([music_alert(&root, Failed, "offline")]);
+    let raised = crate::RaisedScanAlerts::from([music_alert(&root, failed("offline"))]);
     live.requests().set(raised.clone()).unwrap();
     let after = tokio::time::timeout(HANG_GUARD, async {
         loop {
