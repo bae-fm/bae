@@ -23,16 +23,18 @@ enum LibraryBrowserMode: CaseIterable {
     }
 }
 
-/// The tabs of the side pane docked beside the library: the queue and the
-/// playlists.
+/// The tabs of the side pane docked beside the library: the queue, the
+/// playlists and the plays.
 enum SidePaneTab: CaseIterable {
     case queue
     case playlists
+    case history
 
     var title: String {
         switch self {
         case .queue: String(localized: "Queue")
         case .playlists: String(localized: "Playlists")
+        case .history: String(localized: "History")
         }
     }
 }
@@ -77,6 +79,10 @@ class UiStore: @unchecked Sendable {
     /// shows again whenever the person comes back to it; `nil` shows the
     /// list of playlists.
     private(set) var openPlaylistId: String?
+    /// Whose plays History shows: a person's member id, or `nil` for
+    /// everyone's. History keeps the choice while the pane shows another
+    /// tab.
+    private(set) var historyPerson: String?
 
     /// The requests to show an album in the album grid, which the grid takes
     /// as they come.
@@ -255,6 +261,12 @@ class UiStore: @unchecked Sendable {
     func openPlaylist(_ playlistId: String) {
         openPlaylistId = playlistId
         openSidePane(.playlists)
+    }
+
+    /// Show the plays of the person with member id `person` in History, or
+    /// everyone's for `nil`.
+    func showHistory(of person: String?) {
+        historyPerson = person
     }
 
     /// Go back from the open playlist to the list of playlists.

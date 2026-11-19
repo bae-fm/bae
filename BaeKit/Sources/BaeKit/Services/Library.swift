@@ -83,6 +83,10 @@ public final class Library: Sendable, Observable {
             _ sort: BridgeStorageSort, _ filter: BridgeStorageFilter,
             _ search: String
         ) -> BridgeListQueries<BridgeStorageRow>
+    /// History's plays, newest first: everyone's, or the plays of the person
+    /// with the member id given.
+    public let historyList:
+        @Sendable (_ person: String?) -> BridgeListQueries<BridgeHistoryPlay>
     /// The rows of the releases selected in the Storage Manager list under
     /// one filter and search text that the list holds.
     public let storageSelection:
@@ -214,6 +218,10 @@ public final class Library: Sendable, Observable {
             ) -> BridgeListQueries<BridgeStorageRow> = { _, _, _ in
                 fatalError("Library storage list is not installed")
             },
+        historyList:
+            @escaping @Sendable (String?) -> BridgeListQueries<
+                BridgeHistoryPlay
+            > = { _ in fatalError("Library history list is not installed") },
         storageSelection:
             @escaping @Sendable (BridgeStorageFilter, String)
             -> StorageSelectionQuery = { _, _ in
@@ -277,6 +285,7 @@ public final class Library: Sendable, Observable {
         self.albumSelection = albumSelection
         self.artistSearch = artistSearch
         self.storageList = storageList
+        self.historyList = historyList
         self.storageSelection = storageSelection
         self.storageIdsBetween = storageIdsBetween
         self.storageIds = storageIds
@@ -329,6 +338,7 @@ extension Library {
                 },
                 artistSearch: Self.artistSearch(handle),
                 storageList: Self.storageList(handle),
+                historyList: Self.historyList(handle),
                 storageSelection: {
                     StorageSelectionQuery(
                         handle.subscribeStorageSelection(
@@ -620,6 +630,29 @@ extension Library {
                     rows: Self.storageRows
                 )
             }
+        }
+
+        /// History's plays, everyone's or one person's, read through
+        /// `handle`.
+        private static func historyList(
+            _ handle: any AppHandleProtocol
+        ) -> @Sendable (String?) -> BridgeListQueries<BridgeHistoryPlay> {
+            { person in
+                BridgeListQueries(
+                    handle: handle,
+                    list: .history(person: person),
+                    rows: Self.historyRows
+                )
+            }
+        }
+
+        private static func historyRows(
+            _ rows: BridgeListRows
+        ) -> [BridgeHistoryPlay] {
+            guard case .history(let rows) = rows else {
+                preconditionFailure("History delivered rows of another list")
+            }
+            return rows
         }
 
         private static func storageRows(

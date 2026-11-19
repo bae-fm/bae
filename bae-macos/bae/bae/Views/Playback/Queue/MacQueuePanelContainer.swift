@@ -24,6 +24,8 @@ struct MacQueuePanelContainer: View {
                     QueueTabContainer(onInsertTracks: onInsertTracks)
                 case .playlists:
                     PlaylistsContent()
+                case .history:
+                    HistoryContent()
                 }
             }
         )

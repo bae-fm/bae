@@ -189,20 +189,20 @@ struct InvitesSubscriptionTests {
     }
 
     @Test(
-        "the people and invites are read while a screen shows them; the admin read runs throughout"
+        "the invites are read while a screen shows them; the admin and people reads run throughout"
     )
     func shownReadsFollowTheScreen() async throws {
         let handle = FakeAppHandle()
         let store = MembershipStore(handle: handle)
 
         store.start()
-        #expect(handle.subscribed == ["members"], "the menu bar's admin read")
+        #expect(
+            Set(handle.subscribed) == ["members", "people"],
+            "the menu bar's admin read and History's people"
+        )
 
         store.show()
-        #expect(
-            Set(handle.subscribed.dropFirst())
-                == ["people", "invites"]
-        )
+        #expect(Array(handle.subscribed.dropFirst(2)) == ["invites"])
         handle.deliverInvites([invite(id: "11")])
         try await Wait.until { store.inviteEntries.map(\.rowId) == ["11"] }
 

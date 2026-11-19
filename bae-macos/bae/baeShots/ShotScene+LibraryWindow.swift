@@ -48,7 +48,8 @@ extension ShotScene {
         openAlbum: Bool = false,
         detail: BridgeAlbumDetail = PreviewData.boardAlbumDetail(),
         playlists: [BridgePlaylistSummary] = [],
-        playlistDetails: [String: BridgePlaylistDetail] = [:]
+        playlistDetails: [String: BridgePlaylistDetail] = [:],
+        history: [BridgeHistoryPlay] = []
     ) -> (library: Library, session: LibraryBrowseSession) {
         let library = Library(
             albumList: { _, _ in
@@ -85,6 +86,14 @@ extension ShotScene {
             },
             playlistDetail: {
                 .fixed(answers: UnansweredCount()) { playlistDetails[$0] }
+            },
+            historyList: { person in
+                .fixed(
+                    history.filter {
+                        person == nil || $0.person.person == person
+                    },
+                    answers: UnansweredCount()
+                )
             },
             releaseFiles: {
                 .fixed(
