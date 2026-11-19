@@ -17,6 +17,7 @@ struct MacMenuAccessibilityTests {
             backing: .buffered,
             defer: false
         )
+        window.animationBehavior = .none
         window.makeKeyAndOrderFront(nil)
         let session = try #require(
             MacMenuSession.present(
@@ -66,6 +67,7 @@ struct MacMenuAccessibilityTests {
             backing: .buffered,
             defer: false
         )
+        window.animationBehavior = .none
         window.makeKeyAndOrderFront(nil)
         let session = try #require(
             MacMenuSession.present(
