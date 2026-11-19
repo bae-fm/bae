@@ -45,3 +45,10 @@ fn a_fixture_outside_the_repo_panics() {
     let folder = TestFolder::new();
     read_fixture(folder.write("file", b""));
 }
+
+#[test]
+fn a_failed_open_gives_back_its_error() {
+    let folder = TestFolder::new();
+    let error = folder.try_open("missing").expect_err("no file is there");
+    assert_eq!(error.kind(), std::io::ErrorKind::NotFound);
+}

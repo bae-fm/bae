@@ -137,7 +137,9 @@ async fn i32_decode_names_the_read_error_when_the_first_read_fails() {
     // or the first read (EISDIR on Unix, access denied on Windows). Whatever
     // error std reports for it is the one the decode must name.
     let dir = bae_util::test_files::TestFolder::new();
-    let expected = std::io::Read::read(&mut dir.open(dir.path()), &mut [0; 1])
+    let expected = dir
+        .try_open(dir.path())
+        .and_then(|mut file| std::io::Read::read(&mut file, &mut [0; 1]))
         .expect_err("reading a directory fails")
         .kind();
     let buffer = create_sparse_buffer(64 * 1024);

@@ -245,6 +245,12 @@ impl TestFolder {
         File::open(&path).unwrap_or_else(|error| panic!("open {}: {error}", path.display()))
     }
 
+    /// Open the file at `path` for reading, giving back the open's error, for
+    /// a test that checks what a failed open reports.
+    pub fn try_open(&self, path: impl AsRef<Path>) -> std::io::Result<File> {
+        File::open(self.join(path))
+    }
+
     /// Open the file at `path` as `options` say.
     pub fn open_with(&self, path: impl AsRef<Path>, options: &OpenOptions) -> File {
         let path = self.join(path);
