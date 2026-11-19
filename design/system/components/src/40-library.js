@@ -195,19 +195,18 @@
       props.options ? h(MacMoreMenu, { label: props.optionsLabel || 'Options', items: props.options, open: props.optionsOpen, highlighted: props.highlighted }) : null);
   }
 
-  // A playlist's page inside the side pane's Playlists tab, the pane's width: the back button to the list and the playlist's name, its picture beside a line of owner, count and length over who sees it, then Play, Shuffle and the owner's ⋯ (`options`; `optionsOpen` draws its menu open, `highlighted` the item under the pointer). Its tracks follow as children, compact `MacListRow`s.
+  // A playlist's page inside the side pane's Playlists tab: the back button to the list over the app's header, its picture beside the name (up to two lines) and the line of owner, count, length and who sees it; then Play, Shuffle and the owner's ⋯ (`options`; `optionsOpen` draws its menu open, `highlighted` the item under the pointer), which the pane's width moves under the header. Its tracks follow as children, compact `MacListRow`s.
   function MacPlaylistPage(props) {
     return h('section', { className: 'bae-m-plpage' },
-      h('div', { className: 'bae-m-plpage-title' }, h(MacBackButton, { to: 'Playlists' }), h('h1', { className: 'bae-m-plpage-name' }, props.name)),
+      h('div', null, h(MacBackButton, { to: 'Playlists' })),
       h('div', { className: 'bae-m-plpage-head' },
-        h(PlaylistPicture, { covers: props.covers, size: 64, radius: 8 }),
+        h(PlaylistPicture, { covers: props.covers, size: 72, radius: 10 }),
         h('div', { className: 'bae-m-plpage-text' },
-          h('div', { className: 'bae-m-plpage-line' }, h(Avatar, { name: props.owner, size: 16 }), [props.owner, props.count, props.length].join(' · ')),
-          h(StatusChip, null, props.sharing || 'Only me'))),
+          h('h1', { className: 'bae-m-plpage-name' }, props.name),
+          h('div', { className: 'bae-m-plpage-line' }, h(Avatar, { name: props.owner, size: 16 }), [props.owner, props.count, props.length].join(' · ') + ' · ', h(StatusChip, null, props.sharing || 'Only me')))),
       h('div', { className: 'bae-m-plpage-actions' },
         h(MacButton, { kind: 'primary' }, 'Play'),
         h(MacButton, null, 'Shuffle'),
-        h('span', { style: { flex: 1 } }),
         props.options ? h(MacMoreMenu, { label: 'Playlist options', items: props.options, open: props.optionsOpen, highlighted: props.highlighted }) : null),
       h('div', { className: 'bae-m-plpage-tracks' }, props.children));
   }

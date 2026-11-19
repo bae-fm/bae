@@ -236,7 +236,7 @@ export declare function MacTrackRow(props: MacTrackRowProps): React.ReactElement
 export declare function MacEyebrow(props: { children?: React.ReactNode }): React.ReactElement;
 export interface MacDetailHeaderProps { name: string; count?: string; noImage?: boolean }
 export declare function MacDetailHeader(props: MacDetailHeaderProps): React.ReactElement;
-/** A playlist's page inside the side pane's Playlists tab: the back button to the list and the name, the picture beside owner, count and length over who sees it, Play, Shuffle and the owner's ⋯ (options). Its tracks (compact MacListRow) are its children. */
+/** A playlist's page inside the side pane's Playlists tab: the back button to the list, then the app's header, the picture beside the name (two lines at most) and owner, count, length and who sees it; Play, Shuffle and the owner's ⋯ (options) under it, where the pane's width moves them. Its tracks (compact MacListRow) are its children. */
 export interface MacPlaylistPageProps { name: string; covers?: string; owner: string; count: string; length: string; sharing?: 'Only me' | 'Everyone'; options?: string; optionsOpen?: boolean; highlighted?: string; children?: React.ReactNode }
 export declare function MacPlaylistPage(props: MacPlaylistPageProps): React.ReactElement;
 /** The round back button before a page's heading, named Back to and where it goes (to). */
@@ -300,7 +300,7 @@ export declare function AndroidSearchSection(props: { title: string }): React.Re
 /** One row of a library list: Search's results, the artist and composer lists, the composer and work pages' rows. */
 export interface AndroidLibraryRowProps { title: string; subtitle?: string; trailing?: string; art?: string; noArt?: boolean; missing?: boolean; part?: boolean; inset?: boolean }
 export declare function AndroidLibraryRow(props: AndroidLibraryRowProps): React.ReactElement;
-export interface MacQueuePanelProps { title?: string; artist?: string; album?: string; playing?: boolean; position?: number; elapsed?: string; empty?: boolean; children?: React.ReactNode }
+export interface MacQueuePanelProps { tab?: 'Queue' | 'Playlists' | 'History'; title?: string; artist?: string; album?: string; playing?: boolean; position?: number; elapsed?: string; empty?: boolean; children?: React.ReactNode }
 export declare function MacQueuePanel(props: MacQueuePanelProps): React.ReactElement;
 export interface MacQueueSectionProps { title: string; clear?: boolean; shuffle?: boolean }
 export declare function MacQueueSection(props: MacQueueSectionProps): React.ReactElement;

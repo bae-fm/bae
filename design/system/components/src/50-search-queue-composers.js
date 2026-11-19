@@ -29,7 +29,7 @@
   }
 
   // ---- Queue and playback (macOS) ----
-  // The side pane: Queue, Playlists or History (`tab`), switched by its tabs. Playlists lists the playlists, each a place to drop tracks; History lists plays, newest first, filtered by whose. Only the queue shows what's playing.
+  // The side pane: Queue, Playlists or History (`tab`), switched by its tabs. Playlists lists the playlists, each a place to drop tracks, or shows the one open (`MacPlaylistPage` as its child); History lists plays, newest first, filtered by whose. Only the queue shows what's playing.
   function MacQueuePanel(props) {
     var tab = props.tab || 'Queue';
     // The head: the tabs centred, close at the end; on Playlists, + at the start makes a new playlist.

@@ -3064,8 +3064,8 @@ Play and Shuffle.
 
 The Playlists list shows every playlist the person can see, by name: their
 own and the household ones others made, never another person's private ones
-(those are not on this device). Each shows its track count, its length, its
-owner, who sees it, and a picture. The picture is the covers of the first four
+(those are not on this device). Each shows its picture, then its name over
+its track count and who sees it. The picture is the covers of the first four
 different releases its entries are on, as a 2×2 square; a playlist on fewer
 than four releases shows its first entry's cover, and one with no entries
 shows the missing-art tile. A playlist's page shows its owner, count, length
@@ -3081,14 +3081,18 @@ the playlists, each with its picture, name, track count and who sees it, and
 a + button at the start of the pane's top, *New playlist…* to screen readers,
 opens the sheet for a new one; clicking a playlist
 opens its page inside the pane, as the playlist made opens, and the window
-keeps the library's view. The page fits the pane's width: a back button
-(*Back to Playlists* to screen readers) and the playlist's name, its picture
-beside its owner, count and length over who sees it, Play, Shuffle and the
-owner's ⋯, then its tracks. The pane's tabs stay switchable while a playlist
-is open, and the Playlists tab shows the open playlist again when the person
-comes back to it. Dragging tracks onto
-a playlist in the pane adds them to its end: while they are held over it the
-playlist is drawn in the accent.
+keeps the library's view. The page starts with a back button (*Back to
+Playlists* to screen readers) that returns to the list; under it, the
+playlist's picture sits beside its name, on up to two lines, over its owner,
+count, length and who sees it; Play, Shuffle and the owner's ⋯ follow on a
+row of their own, since the pane is too narrow for them beside the name; then
+its tracks. The pane's tabs stay switchable while a playlist is open, and the
+Playlists tab shows the open playlist again when the person comes back to
+it, whether after switching tabs, after closing and reopening the pane, or
+from *Playlists* in the person's menu. Deleting the open playlist returns the pane to the list.
+Dragging tracks onto a playlist in the list adds them to its end: while they
+are held over it the playlist is drawn in the accent; an open playlist's page
+takes no drop.
 On Android the Playlists screen, opened from the person's menu, lists the playlists with a *New playlist* button
 under them, or under *No playlists yet* when there are none, which opens a
 dialog for the name and who sees it, and the playlist made opens; a person
