@@ -115,6 +115,17 @@ fn audio_thread_reporting(
     wake: PcmWake,
     failed: AirPlayFailed,
 ) -> (ReportedThread, RaopStreamControl) {
+    audio_thread_pacing_by(diagnostics, source, stop, wake, failed, Arc::new(FarAheadClock))
+}
+
+fn audio_thread_pacing_by(
+    diagnostics: &Diagnostics,
+    source: Box<dyn PcmSource>,
+    stop: Arc<AtomicBool>,
+    wake: PcmWake,
+    failed: AirPlayFailed,
+    clock: Arc<dyn MonotonicClock>,
+) -> (ReportedThread, RaopStreamControl) {
     let control = RaopStreamControl::new(88_200, StreamFailure::new(failed));
     let handle = spawn_audio_thread(
         diagnostics,
@@ -126,13 +137,70 @@ fn audio_thread_reporting(
             sample_rate: 44_100,
             socket: UdpSocket::bind(("127.0.0.1", 0)).unwrap(),
             dst: "127.0.0.1:9".parse().unwrap(),
-            clock: Arc::new(FarAheadClock),
+            clock,
             stop,
             control: control.clone(),
         },
     )
     .expect("spawn the audio sender");
     (handle, control)
+}
+
+/// A clock that a session started before its setup: it reads the seconds a
+/// receiver held SETUP until it is reset, and stands still after. Each read
+/// is told to the test.
+struct StartedBeforeSetupClock {
+    reset: AtomicBool,
+    reads: std::sync::mpsc::Sender<Duration>,
+}
+impl MonotonicClock for StartedBeforeSetupClock {
+    fn elapsed(&self) -> Duration {
+        let elapsed = if self.reset.load(Ordering::Acquire) {
+            Duration::ZERO
+        } else {
+            Duration::from_secs(10)
+        };
+        self.reads.send(elapsed).ok();
+        elapsed
+    }
+    fn reset(&self) {
+        self.reset.store(true, Ordering::Release);
+    }
+}
+
+/// The sender paces from when the audio starts, so the seconds a receiver
+/// held SETUP are owed no audio: at the start it sends its latency lead and
+/// nothing more. Sabotage: drop the clock's reset at the thread's start, and
+/// the sender sends the setup's ten seconds of audio with the lead at once.
+#[test]
+fn the_sender_owes_no_audio_for_the_time_setup_took() {
+    let stop = Arc::new(AtomicBool::new(false));
+    let wake = PcmWake::unattached();
+    let (source, _packets, _drained) = FixedSource::holding(2000);
+    let (reads_tx, reads) = std::sync::mpsc::channel();
+    let clock =
+        Arc::new(StartedBeforeSetupClock { reset: AtomicBool::new(false), reads: reads_tx });
+    let (handle, control) = audio_thread_pacing_by(
+        &Diagnostics::noop(),
+        Box::new(source),
+        stop.clone(),
+        wake.clone(),
+        AirPlayFailed::ignored(),
+        clock,
+    );
+
+    // The sender sends every packet due at one read before it reads the
+    // clock again, so after the second read the first read's packets are out.
+    for _ in 0..2 {
+        reads
+            .recv_timeout(bae_util::test_channels::HANG_GUARD)
+            .expect("the sender reads its clock");
+    }
+    stop.store(true, Ordering::Release);
+    wake.wake();
+    handle.join();
+    // 88200 frames of latency lead is 250 whole packets.
+    assert_eq!(control.frames_sent(), 250 * u64::from(FRAMES_PER_PACKET));
 }
 
 /// A source whose pull panics: a bug in the samples' way to the sender.

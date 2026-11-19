@@ -529,8 +529,9 @@ struct AudioThread {
 /// source with nothing to give (paused, starved, between tracks) yields no
 /// packet but the thread lives on, waiting on the feed's wake until the source
 /// may have frames again — only [`RaopStream`] being dropped (the stop flag)
-/// ends it, so pause and gapless track swaps don't tear the stream down. A
-/// re-anchor resets the pacing lead and clock and re-marks the next packet.
+/// ends it, so pause and gapless track swaps don't tear the stream down. The
+/// pacing clock starts with the thread. A re-anchor resets the pacing lead
+/// and clock and re-marks the next packet.
 fn spawn_audio_thread(
     diagnostics: &Diagnostics,
     mut t: AudioThread,
@@ -543,6 +544,11 @@ fn spawn_audio_thread(
     diagnostics.spawn_thread_reported(
         "airplay audio sender",
         move || {
+            // The pacing counts from now, when the audio starts, not from
+            // when the session began its setup: a receiver can hold SETUP
+            // for seconds while its owner allows the sender, and the time
+            // before the stream started is owed no audio.
+            t.clock.reset();
             let mut buf = vec![0i16; FRAMES_PER_PACKET as usize * channels];
             let mut seen_reanchor = t.control.reanchor_epoch();
             let mut consecutive_failures = 0u32;
