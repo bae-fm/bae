@@ -58,9 +58,10 @@ pub async fn closed_library_standing(
     let location = coven::Coven::storage_config(&directory)
         .await
         .map_err(|error| coven::task::reported(diagnostics, error))?;
+    let unsent = bae_store::unsent_to_storage(location.as_ref(), status.unsent);
     Ok(LibraryStanding::of(
         &bae_sync_status::SyncStatusSnapshot::closed(status.sync, location),
-        status.unsent,
+        unsent,
     ))
 }
 

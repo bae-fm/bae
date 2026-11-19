@@ -79,6 +79,36 @@ async fn a_closed_library_reports_its_last_sync_and_its_unsent_changes() {
     assert_eq!(status.state, StandingState::UnsentChanges);
 }
 
+/// A library with no storage set up has nowhere to upload the writes coven
+/// queues, the creator's profile among them, so once closed it stands as
+/// sync's state words it, as it did while open.
+#[tokio::test]
+async fn a_closed_library_without_storage_holds_no_unsent_changes() {
+    let temp = TempDir::new().unwrap();
+    let installation =
+        coven::Coven::in_memory(AppDir::under_home(temp.path()).unwrap().coven_app_dir());
+    let sources = crate::test_libraries::TestSources::system();
+    let handle = bae_store::test_devices::create_test_store(
+        sources.builder(&installation),
+        crate::SCHEMA,
+        "Kept Here",
+        "Test Device",
+    )
+    .await
+    .unwrap();
+    let id = handle.store_id();
+    assert!(!handle.unsent_work().await.unwrap().is_empty(), "creation queues a write");
+    handle.close().await.unwrap();
+    drop(handle);
+
+    let status = closed_library_standing(&installation, id, &Diagnostics::noop()).await.unwrap();
+
+    assert!(
+        matches!(&status.state, StandingState::Sync(shown) if shown.status == SyncStatusWord::NotSynced),
+        "{status:?}"
+    );
+}
+
 /// With nothing to upload a library stands as sync's state words it, and with
 /// the time sync last finished.
 #[test]

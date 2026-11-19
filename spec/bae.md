@@ -3276,7 +3276,8 @@ row shows the step under its name with a spinner in place of the ⋯ (the ⋮ on
 phone), and the other libraries and adding one are dimmed and can't be used
 until it ends. **Details…** hangs a popover off the ⋯, titled with the library's name, with its sync status as
 this Mac last knew it (**Synced**, or **Unsent changes** while it holds some it
-never uploaded), when it last synced, and its provider, account and folder, without *Open in
+never uploaded to its storage; a library kept on this Mac only uploads nothing,
+so it never shows **Unsent changes**), when it last synced, and its provider, account and folder, without *Open in
 browser*, which the Sync page keeps. A
 library that is open shows its live sync status; any other is read as it last
 stood, without opening it, and one that is closing once its close has ended.

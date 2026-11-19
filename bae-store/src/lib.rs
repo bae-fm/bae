@@ -33,7 +33,8 @@ pub use schema::{
 };
 mod store;
 pub use store::{
-    utc_now, StorageSetupSteps, Store, RECORDED_STORAGE, UNMETERED_ONLY, UPLOADS_PAUSED,
+    unsent_to_storage, utc_now, StorageSetupSteps, Store, RECORDED_STORAGE, UNMETERED_ONLY,
+    UPLOADS_PAUSED,
 };
 mod store_read;
 pub use store_read::StoreRead;

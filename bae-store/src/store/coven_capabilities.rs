@@ -18,6 +18,23 @@ pub const UNMETERED_ONLY: &str = "SELECT unmetered_only FROM coven_network";
 pub const RECORDED_STORAGE: &str = "SELECT s.location, m.account, m.access_key_id \
      FROM coven_sync_status AS s LEFT JOIN coven_members AS m ON m.is_self = 1";
 
+/// What this device holds that the store's storage, `storage`, lacks, from
+/// `queued`, the writes and files coven's queues hold: all of them while
+/// storage is set up. A store with no storage set up has nowhere it uploads
+/// to, so nothing counts as unsent: deleting it loses its whole catalog
+/// instead, and its standing is its sync state. coven queues every write
+/// whether or not storage is set up, such as the creator's profile, which the
+/// store's creation writes.
+pub fn unsent_to_storage(
+    storage: Option<&coven::StorageConfig>,
+    queued: coven::UnsentWork,
+) -> coven::UnsentWork {
+    match storage {
+        Some(_) => queued,
+        None => coven::UnsentWork { writes: 0, files: 0 },
+    }
+}
+
 /// Where a storage setup reports each step coven runs, as coven reports it.
 pub type StorageSetupSteps<'a> =
     &'a (dyn Fn(coven::Progress<coven::StorageSetupStep>) + Send + Sync);
@@ -42,17 +59,14 @@ impl Store {
     }
 
     /// What deleting the store from this device loses: the writes and files
-    /// still waiting to upload to its storage. A store with no storage set up
-    /// has nowhere it uploads to and loses its whole catalog instead, so
-    /// nothing counts as unsent.
+    /// still waiting to upload to its storage, as [`unsent_to_storage`]
+    /// counts them.
     pub async fn unsent_before_removal(&self) -> Result<coven::UnsentWork, DbError> {
         let storage = self
             .reported(self.inner.handle.storage_config().await)
             .map_err(|error| DbError::from(coven::CovenError::Sync(error)))?;
-        if storage.is_none() {
-            return Ok(coven::UnsentWork { writes: 0, files: 0 });
-        }
-        Ok(self.reported(self.inner.handle.unsent_work().await)?)
+        let queued = self.reported(self.inner.handle.unsent_work().await)?;
+        Ok(unsent_to_storage(storage.as_ref(), queued))
     }
 
     pub async fn storage_config(&self) -> Result<Option<coven::StorageConfig>, coven::SyncError> {
