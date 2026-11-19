@@ -331,6 +331,80 @@ impl BridgePlaylistDetail {
     }
 }
 
+/// A calendar day: the date the playing device showed when a play began.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeDay {
+    pub year: i32,
+    /// From 1 for January.
+    pub month: u8,
+    pub day: u8,
+}
+impl BridgeDay {
+    fn from_core(day: time::Date) -> Self {
+        Self { year: day.year(), month: u8::from(day.month()), day: day.day() }
+    }
+}
+
+/// One play as History lists it: the track, when it began, the day it was
+/// played and whose it is.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeHistoryPlay {
+    pub id: String,
+    pub track_id: String,
+    pub title: String,
+    /// The track's credit line: its own credits, else its album's.
+    pub artist_line: super::BridgeCreditLine,
+    pub album_title: String,
+    /// The cover of the release the track is on; `None` when it has none.
+    pub cover: Option<BridgeImageRef>,
+    /// When the play began, as Unix epoch milliseconds; the app formats it.
+    pub started_at: i64,
+    /// The day the play was played on, as the playing device's calendar
+    /// showed it.
+    pub played_on: BridgeDay,
+    /// Whether this is the newest play the list shows of its day, which
+    /// starts the day's heading.
+    pub opens_day: bool,
+    /// Whose play it is.
+    pub person: BridgePlaylistOwner,
+}
+impl BridgeHistoryPlay {
+    pub(crate) fn from_core(value: bae_views::history::HistoryRow) -> Self {
+        use bae_util::timestamp::StoredTimestamp as _;
+        let bae_views::history::HistoryRow {
+            id,
+            track_id,
+            title,
+            artist_line,
+            album_title,
+            cover,
+            started_at,
+            played_on,
+            opens_day,
+            person,
+            person_name,
+            avatar_version,
+        } = value;
+        Self {
+            id: id.to_string(),
+            track_id,
+            title,
+            artist_line: super::BridgeCreditLine::from_core(artist_line),
+            album_title,
+            cover: cover.map(BridgeImageRef::from_core),
+            started_at: started_at.unix_timestamp_millis(),
+            played_on: BridgeDay::from_core(played_on),
+            opens_day,
+            person: BridgePlaylistOwner {
+                person: person.to_string(),
+                initials: bae_people::people::initials(&person_name),
+                name: person_name,
+                avatar_version,
+            },
+        }
+    }
+}
+
 impl From<bae_people::people::ProfileError> for BridgeError {
     fn from(error: bae_people::people::ProfileError) -> Self {
         Self::categorized(error.category(), error)

@@ -45,6 +45,8 @@ pub enum ListRows {
     WorkChildren(Vec<crate::album_detail::WorkChild>),
     /// The albums a library search lists, in title order.
     SearchAlbums(Vec<crate::album_detail::AlbumSearchResult>),
+    /// History's plays, newest first.
+    History(Vec<crate::history::HistoryRow>),
     /// The import list's items.
     #[cfg(desktop)]
     Import(Vec<bae_import::ImportListItem>),

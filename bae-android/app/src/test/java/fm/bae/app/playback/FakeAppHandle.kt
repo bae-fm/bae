@@ -265,6 +265,7 @@ internal open class FakeAppHandle(
             is BridgeList.Upcoming,
             is BridgeList.ArtistSearch,
             is BridgeList.Storage,
+            is BridgeList.History,
             -> {
                 unfaked("the list $list")
             }

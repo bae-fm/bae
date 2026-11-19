@@ -46,7 +46,10 @@ impl People {
         }
         let played_ms = bae_store::query::to_i64(entry.played.as_millis(), "played_ms")?;
         Ok(self.inner.store.call(move |sql| {
-            sql.execute("INSERT INTO history (id, person_id, track_id, started_at, played_ms, audience) VALUES (?1, ?2, ?3, ?4, ?5, ?6) ON CONFLICT(id) DO UPDATE SET played_ms = MAX(history.played_ms, excluded.played_ms)", params![entry.id.to_string(), entry.person.to_string(), entry.track_id, entry.started_at.to_rfc3339(), played_ms, entry.audience])?;
+            // The day is the date this device's clock shows where it is
+            // when the play began, which SQLite reads from the device's
+            // time zone; the first write stores it, and the play keeps it.
+            sql.execute("INSERT INTO history (id, person_id, track_id, started_at, played_on, played_ms, audience) VALUES (?1, ?2, ?3, ?4, date(?4, 'localtime'), ?5, ?6) ON CONFLICT(id) DO UPDATE SET played_ms = MAX(history.played_ms, excluded.played_ms)", params![entry.id.to_string(), entry.person.to_string(), entry.track_id, entry.started_at.to_rfc3339(), played_ms, entry.audience])?;
             Ok(true)
         }).await?)
     }

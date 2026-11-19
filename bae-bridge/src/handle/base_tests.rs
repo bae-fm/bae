@@ -29,8 +29,8 @@ fn delete_album_takes_the_album_out_of_the_grid() {
         playing: None,
     });
     let list = crate::types::BridgeList::AlbumGrid { sort: Vec::new(), group_by_artist: false };
-    let subscription = handle.handle().subscribe_list_view(list.clone(), 0, 9);
-    let counts = handle.handle().subscribe_list_count(list);
+    let subscription = handle.handle().subscribe_list_view(list.clone(), 0, 9).unwrap();
+    let counts = handle.handle().subscribe_list_count(list).unwrap();
     let titles = |value: &crate::types::BridgeListView| -> Vec<String> {
         let crate::types::BridgeListRows::Albums { rows } = &value.rows else {
             panic!("the album grid's window holds albums");
@@ -79,8 +79,8 @@ fn the_upcoming_list_of_an_idle_queue_is_empty() {
         playing: None,
     });
     let list = crate::types::BridgeList::Upcoming { shuffled: false };
-    let window = handle.handle().subscribe_list_view(list.clone(), 0, 9);
-    let counts = handle.handle().subscribe_list_count(list);
+    let window = handle.handle().subscribe_list_view(list.clone(), 0, 9).unwrap();
+    let counts = handle.handle().subscribe_list_count(list).unwrap();
     let runtime = &handle.handle().runtime;
 
     let listed = runtime.block_on(window.clone().next()).expect("upcoming window value");

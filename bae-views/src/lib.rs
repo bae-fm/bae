@@ -24,6 +24,7 @@ pub mod artist_search;
 mod browse;
 pub mod composer;
 pub mod composer_detail;
+pub mod history;
 mod invites;
 pub mod list_view;
 pub use invites::{InviteEntry, OpenInvite, RefusedInvite};

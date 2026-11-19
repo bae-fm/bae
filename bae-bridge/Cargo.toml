@@ -54,6 +54,8 @@ tokio = { workspace = true, features = ["full"] }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 thiserror = { workspace = true }
+# The calendar day a play was played on, which History's rows carry.
+time = { workspace = true }
 libsqlite3-sys = { workspace = true, features = ["session", "bundled"] }
 
 # What only the desktop apps use: the servers, the identify views and verdicts

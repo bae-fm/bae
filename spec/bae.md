@@ -3011,7 +3011,10 @@ it, whichever comes first, has played; a 40-second interlude counts after 20. A 
 How much he heard counts only audio that played: not pauses, not waiting for
 the network, not what a seek jumped over. The row is written when the play
 counts and updated as he keeps listening. Its start time is the playing
-device's clock when the play began, stored as UTC.
+device's clock when the play began, stored as UTC. The row also stores the
+day the play was played on: the date the playing device's calendar showed
+where it was when the play began. History groups plays by that stored day,
+so a play stays under the day it was played on wherever it is read.
 
 bae records plays and syncs them by their audience. Plays show in *History* and
 nowhere else: no page in Settings lists them. *History*, from the person's
@@ -5920,7 +5923,7 @@ All sync (§5), except `admin_operations`.
 |---|---|
 | `people` | person, keyed by their `MemberId`: name, private circle, history setting (private or household), and the coven file of their avatar (`avatar_id`), with an index by it |
 | `ratings` | rating by a person of an album or of a track, one to five stars |
-| `history` | play: person, track, when it started, how much was played, audience |
+| `history` | play: person, track, when it started, the day it was played on, how much was played, audience |
 | `playlists` | playlist: whose it is, its name and its audience |
 | `playlist_entries` | place in a playlist, keyed by the playlist and a position id: the track there and its position |
 | `admin_operations` | admin change this device asked for, while coven lists its operation: keyed by that operation, the library's new name, the person and their new role, the person removed, the device removed, or the person an approval lets in with the name their invite gave them (§5.6) |

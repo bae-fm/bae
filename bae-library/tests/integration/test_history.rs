@@ -138,3 +138,97 @@ async fn off_records_no_new_plays_and_earlier_plays_keep_their_audience() {
         .is_some());
     library.manager().close().await.unwrap();
 }
+
+/// History lists the plays newest first, each with its track and whose it
+/// is; the newest play of each day opens the day, which the play's write
+/// stores; and one person's History holds only their plays.
+#[tokio::test]
+async fn history_lists_plays_newest_first_under_their_days() {
+    let directory = bae_util::test_files::TestFolder::new();
+    let (library, _storage) = storage_library(
+        directory.path(),
+        bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
+        bae_util::http::Http::for_test(),
+    )
+    .await;
+    let people = bae_people::People::new(library.store().clone(), coven::FileBudget::for_test());
+    let person = own_profile(library.people()).await;
+    let release = test_uuid("days-release");
+    let (first, second) = (test_uuid("days-first"), test_uuid("days-second"));
+    bae_records::test_fixtures::album_with_tracks(
+        library.records(),
+        (&test_uuid("days-album"), "Album Title"),
+        &release,
+        &[(&first, "First Track"), (&second, "Second Track")],
+    )
+    .await;
+    // Noon UTC is the same calendar day in every time zone from UTC-11 to
+    // UTC+11, so the stored day does not depend on where the test runs.
+    for (track, started) in [
+        (&first, "2026-10-17T12:00:00Z"),
+        (&second, "2026-10-18T12:00:00Z"),
+        (&first, "2026-10-18T12:05:00Z"),
+    ] {
+        let mut play = people
+            .begin_play(
+                coven::IdSource::new_id(&coven::UuidIds),
+                track,
+                Some(Duration::from_secs(40)),
+                bae_util::timestamp::parse_rfc3339(started).unwrap(),
+            )
+            .await
+            .unwrap()
+            .expect("recorded");
+        play.set_played(Duration::from_secs(30));
+        assert!(people.record_play(&play).await.unwrap());
+    }
+    let views = bae_views::LibraryViews::new(library.store().clone());
+
+    let everyone = views
+        .subscribe_history_window(None, bae_store::ListWindow::top(10))
+        .next_inline()
+        .await
+        .expect("the query stays open")
+        .result
+        .unwrap();
+    let rows: Vec<_> = everyone
+        .rows
+        .iter()
+        .map(|(row, _)| (row.title.as_str(), row.played_on.to_string(), row.opens_day))
+        .collect();
+    assert_eq!(
+        rows,
+        [
+            ("First Track", "2026-10-18".to_string(), true),
+            ("Second Track", "2026-10-18".to_string(), false),
+            ("First Track", "2026-10-17".to_string(), true),
+        ]
+    );
+    let newest = &everyone.rows[0].0;
+    assert_eq!((newest.person, newest.album_title.as_str()), (person.id, "Album Title"));
+    assert_eq!(newest.person_name, person.name);
+    let count = views.subscribe_history_count(None).next_inline().await.unwrap().unwrap();
+    assert_eq!(count, 3);
+
+    let own = views
+        .subscribe_history_window(Some(person.id), bae_store::ListWindow::top(10))
+        .next_inline()
+        .await
+        .unwrap()
+        .result
+        .unwrap();
+    assert_eq!(own.rows.len(), 3);
+    let nobody = coven::MemberId(test_uuid("days-nobody").parse().unwrap());
+    let none = views
+        .subscribe_history_window(Some(nobody), bae_store::ListWindow::top(10))
+        .next_inline()
+        .await
+        .unwrap()
+        .result
+        .unwrap();
+    assert!(none.rows.is_empty());
+    let none_counted =
+        views.subscribe_history_count(Some(nobody)).next_inline().await.unwrap().unwrap();
+    assert_eq!(none_counted, 0);
+    library.manager().close().await.unwrap();
+}

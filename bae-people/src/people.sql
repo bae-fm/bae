@@ -50,12 +50,21 @@ CREATE TABLE playlist_entries (
 -- append, along the playlist's own run of this index.
 CREATE INDEX playlist_entries_position ON playlist_entries(playlist_id, position);
 
+-- One play. `played_on` is the calendar date the playing device's clock
+-- showed where it was when the play began (YYYY-MM-DD), which the play's
+-- write stores, so History groups plays by the day they were played there.
 CREATE TABLE history (
     id TEXT PRIMARY KEY NOT NULL,
     person_id TEXT NOT NULL REFERENCES people(id) ON DELETE CASCADE,
     track_id TEXT NOT NULL REFERENCES tracks(id) ON DELETE CASCADE,
     started_at TEXT NOT NULL,
+    played_on TEXT NOT NULL CHECK (played_on GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
     played_ms INTEGER NOT NULL CHECK (played_ms > 0),
     audience TEXT NOT NULL
 ) STRICT;
-CREATE INDEX history_started_at ON history(started_at);
+-- History lists everyone's plays newest first, and finds each day's newest
+-- play, along these indexes; one person's plays along their own runs.
+CREATE INDEX history_order ON history(started_at, id);
+CREATE INDEX history_day ON history(played_on, started_at, id);
+CREATE INDEX history_person_order ON history(person_id, started_at, id);
+CREATE INDEX history_person_day ON history(person_id, played_on, started_at, id);

@@ -82,11 +82,11 @@ public struct BridgeListQueries<Row: Sendable>: Sendable {
         func subscribeListView(first: UInt64, last: UInt64) throws
             -> ListViewSubscription
         {
-            handle.subscribeListView(list: list, first: first, last: last)
+            try handle.subscribeListView(list: list, first: first, last: last)
         }
 
         func subscribeListCount() throws -> ListCountSubscription {
-            handle.subscribeListCount(list: list)
+            try handle.subscribeListCount(list: list)
         }
     }
 
