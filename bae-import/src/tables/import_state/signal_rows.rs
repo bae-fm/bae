@@ -81,6 +81,48 @@ pub(super) fn signals_read_columns() -> ColumnList {
     ])
 }
 
+/// The Disc IDs, then the barcodes, of the release the scan stores at the
+/// key a statement binds as `:key`, that name the candidate file they were
+/// read off, each list in reading order, while the candidate's state is the
+/// current one. A library release's values name no file and are not
+/// selected.
+pub(crate) fn load_file_evidence_on(
+    sql: &impl coven::SqlRead,
+    key: &crate::CandidateKey,
+) -> Result<Vec<crate::FileEvidence>, DbError> {
+    let stored = sql.query(
+        &format!(
+            "SELECT listed.list, listed.value, listed.origin_path \
+             FROM import_candidate_state AS state \
+             JOIN import_candidate_signal_value AS listed \
+                 ON listed.content_hash = state.content_hash \
+             WHERE {current} \
+               AND listed.list IN ('disc_id', 'barcode') \
+               AND listed.origin_path IS NOT NULL \
+             ORDER BY listed.list = 'barcode', listed.position",
+            current = super::current_at_scan_sql("state"),
+        ),
+        rusqlite::named_params! { ":key": key },
+        |row| Ok((row.get::<_, String>("list")?, row.get("value")?, row.get("origin_path")?)),
+    )?;
+    stored
+        .into_iter()
+        .map(|(list, value, file_id)| {
+            let signal = match list.as_str() {
+                "disc_id" => crate::EvidenceSignal::DiscId,
+                "barcode" => crate::EvidenceSignal::Barcode,
+                other => {
+                    return Err(DbError::unreadable(
+                        "import_candidate_signal_value.list of file evidence",
+                        other,
+                    ))
+                }
+            };
+            Ok(crate::FileEvidence { signal, value, file_id })
+        })
+        .collect()
+}
+
 /// Every signal row under `content_hash`. The values cascade from the header.
 pub(super) fn delete_signals(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
     sql.execute("DELETE FROM import_candidate_signals WHERE content_hash = ?", [content_hash])?;

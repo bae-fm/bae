@@ -234,6 +234,73 @@ async fn a_verdict_the_folder_rules_out_reads_back_as_its_failed_check() {
     );
 }
 
+/// The pane reads only the Disc IDs and barcodes that name a file of the
+/// candidate, the Disc IDs first, each list in reading order.
+#[tokio::test]
+async fn the_detail_reads_only_the_evidence_that_names_a_file() {
+    use bae_identify::signals::{BarcodeSignal, ComputedDiscId, DiscIdSignal, SourcedValue};
+    let (db, _tmp, root) = watched_root().await;
+    let tables = crate::tables::ImportTables::new(db.clone());
+    let candidate = scanned(&db, &root, "Album").await;
+    assert!(tables
+        .store_verdict(&NewImportCandidateVerdict {
+            content_hash: candidate.files.content_hash(),
+            file_edit_revision: 0,
+            candidate_key: candidate.key(),
+            verdict: verdict("mb-verdict", None),
+            signals: bae_identify::signals::Signals {
+                origin: bae_catalogs::AudioOrigin::default(),
+                disc_id: DiscIdSignal::Computed {
+                    discs: vec![
+                        ComputedDiscId { disc_id: "no-file".to_string(), source_file: None },
+                        ComputedDiscId {
+                            disc_id: "from-log".to_string(),
+                            source_file: Some("Disc 1/Album.log".to_string()),
+                        },
+                    ],
+                },
+                barcode: BarcodeSignal::Settled {
+                    codes: vec![
+                        SourcedValue::in_file("5099969394522".to_string(), "Back.jpg".to_string()),
+                        SourcedValue::new("0602527336459".to_string()),
+                        SourcedValue::in_file("5099969394539".to_string(), "Inlay.jpg".to_string()),
+                    ],
+                },
+                text: bae_identify::signals::TextSignal::Settled {
+                    catalogs: Vec::new(),
+                    free_text: Vec::new(),
+                },
+                text_pool: Vec::new(),
+                isrcs: Vec::new(),
+                track_titles: Vec::new(),
+            },
+            pick: None,
+            releases: Vec::new(),
+        })
+        .await
+        .unwrap());
+
+    let detail = tables
+        .load_import_candidate(&crate::CandidateKey::folder(&candidate.path))
+        .await
+        .unwrap()
+        .expect("the candidate reads back");
+
+    let evidence = |signal, value: &str, file_id: &str| crate::FileEvidence {
+        signal,
+        value: value.to_string(),
+        file_id: file_id.to_string(),
+    };
+    assert_eq!(
+        detail.file_evidence,
+        vec![
+            evidence(crate::EvidenceSignal::DiscId, "from-log", "Disc 1/Album.log"),
+            evidence(crate::EvidenceSignal::Barcode, "5099969394522", "Back.jpg"),
+            evidence(crate::EvidenceSignal::Barcode, "5099969394539", "Inlay.jpg"),
+        ]
+    );
+}
+
 /// The detail resumes the stored verdict's matches.
 #[tokio::test]
 async fn the_detail_resumes_the_stored_verdict() {

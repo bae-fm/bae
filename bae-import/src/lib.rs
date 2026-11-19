@@ -243,7 +243,7 @@ pub use event_bus::{ImportEvent, ImportEventBus, ImportEvents, ScanEvent};
 #[cfg(all(desktop, any(test, feature = "test-utils")))]
 pub use event_bus::{ImportProgressFeed, ScanEvents};
 #[cfg(desktop)]
-pub use file_evidence::{file_evidence, EvidenceSignal, FileEvidence};
+pub use file_evidence::{EvidenceSignal, FileEvidence};
 #[cfg(desktop)]
 pub use folder_scan_status::{
     FolderScanAlert, FolderScanProblem, FolderScanProgress, FolderScanStatus, RaisedScanAlerts,

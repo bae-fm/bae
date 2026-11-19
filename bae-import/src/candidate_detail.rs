@@ -38,6 +38,9 @@ pub struct ImportCandidateDetailProjection {
     pub stored_verdict: Option<IdentifyStateView>,
     /// The signals identification settled on, or `None` before it has.
     pub signals: Option<Signals>,
+    /// The candidate's Disc IDs and barcodes that name a file of it, as its
+    /// pane's read selects them.
+    pub file_evidence: Vec<FileEvidence>,
     /// What is running for the candidate, from its standing.
     pub standing: TriageRuntimeFacts,
     /// Where the list places the candidate, as its row in the list's
@@ -183,6 +186,7 @@ impl ImportCandidateDetailProjection {
             skipped,
             stored_verdict,
             signals,
+            file_evidence,
             standing: facts,
             listed,
             stage,
@@ -190,7 +194,6 @@ impl ImportCandidateDetailProjection {
         let import_step = facts.import;
         let importing = facts.importing();
         let identifying = facts.identifying();
-        let file_evidence = signals.as_ref().map(crate::file_evidence).unwrap_or_default();
         let placement = listed.basis.placement;
         let live = CandidateLiveState::of(listed.actions, facts, listed.standing);
         // The check against the folder the stored verdict's found release

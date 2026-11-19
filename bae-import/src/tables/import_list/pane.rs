@@ -12,7 +12,8 @@ use crate::folder_scanner::FolderCandidate;
 use crate::tables::folder_scans::candidate_cover_choice_on;
 use crate::tables::import_state::{
     album_pick_sql, current_at_scan_sql, load_candidate_verdict_cards_on, load_current_state_on,
-    load_pane_rows_on, load_standing_on, stored_verdict_view, OneCandidate, SCANNED_HASH,
+    load_file_evidence_on, load_pane_rows_on, load_standing_on, stored_verdict_view, OneCandidate,
+    SCANNED_HASH,
 };
 use crate::tables::import_state::{claimed_records_of_json, claimed_records_sql};
 use crate::tables::release_groupings::{load_candidate_on, skipped_on};
@@ -33,6 +34,8 @@ pub(super) struct CandidateDetailRows {
     actionable: bool,
     skipped: bool,
     current: Option<DbImportCandidateState>,
+    /// The Disc IDs and barcodes that name a file of the candidate.
+    file_evidence: Vec<crate::FileEvidence>,
     /// The cards the stored verdict's rows hold.
     cards: bae_identify::VerdictCards,
     standing: crate::TriageRuntimeFacts,
@@ -103,6 +106,7 @@ pub(super) fn load_candidate_detail_on(
     let standing = load_standing_on(sql, key)?.facts();
     let imported = imported_on(sql, key)?;
     let current = load_current_state_on(sql, key)?;
+    let file_evidence = load_file_evidence_on(sql, key)?;
     let cards = load_candidate_verdict_cards_on(sql, key)?;
     let candidate = stored.candidate;
     // An imported candidate holds no draft: its pane reads the library
@@ -119,6 +123,7 @@ pub(super) fn load_candidate_detail_on(
         actionable: stored.actionable,
         skipped,
         current,
+        file_evidence,
         cards,
         standing,
         listed,
@@ -247,6 +252,7 @@ impl CandidateDetailRows {
             actionable,
             skipped,
             current,
+            file_evidence,
             cards,
             standing,
             listed,
@@ -306,6 +312,7 @@ impl CandidateDetailRows {
             skipped,
             stored_verdict,
             signals,
+            file_evidence,
             standing,
             listed,
             stage,

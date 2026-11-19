@@ -236,10 +236,6 @@ impl AppServices {
             bae_store::live_query::LiveRead::new(
                 self.inner.manager.until_closed(query),
                 |read, rows| {
-                    #[expect(
-                        clippy::read_filter,
-                        reason = "kept finding: resolving the candidate's detail keeps the Disc ID and barcode signals that name a file of the candidate"
-                    )]
                     let value = rows.map(bae_import::ImportCandidateDetailProjection::resolve);
                     Some(bae_library::DetailSnapshot { id: read.request.clone(), value })
                 },
