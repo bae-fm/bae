@@ -63,4 +63,19 @@ done <<< "$features"
 if [ "${#crates[@]}" -gt 0 ]; then
     export BUILDS_CARGO_BEFORE="scripts/clippy-stale-units.sh ${crates[*]}"
 fi
-RUSTC_WRAPPER="$PWD/scripts/clippy-rustc-wrapper.sh" exec scripts/cargo.sh "${args[@]}" -- -D warnings
+# clippy has no lint or flag that makes a clippy.toml entry naming nothing an
+# error: it prints "warning: `<path>` does not refer to a reachable function"
+# (or type, macro, ...), which -D warnings leaves a warning, so a misspelled
+# entry would gate nothing. Fail on that text, naming each entry.
+log=$(mktemp)
+trap 'rm -f "$log"' EXIT
+status=0
+RUSTC_WRAPPER="$PWD/scripts/clippy-rustc-wrapper.sh" scripts/cargo.sh "${args[@]}" -- -D warnings 2> >(tee "$log" >&2) || status=$?
+wait
+unreachable=$(sed $'s/\\x1b\\[[0-9;]*m//g' "$log" | grep -E 'does not refer to a reachable' | sort -u || true)
+if [ -n "$unreachable" ]; then
+    echo "clippy.toml names paths that do not exist (fix or remove these entries):" >&2
+    echo "$unreachable" >&2
+    exit 1
+fi
+exit "$status"
