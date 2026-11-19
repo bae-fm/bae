@@ -79,6 +79,12 @@ final class ImportListPinnedHeaderStrip: NSView {
         isHidden = false
     }
 
+    /// The pinned header repeats a header the list holds as a row, so
+    /// assistive technology reads that row and not the strip.
+    override func isAccessibilityElement() -> Bool { false }
+
+    override func accessibilityChildren() -> [Any]? { [] }
+
     /// Pin nothing.
     func hide() {
         isHidden = true

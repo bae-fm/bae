@@ -182,26 +182,12 @@ extension BridgeTriageRow {
 /// The row's status line and trailing column.
 extension MacImportRow {
     /// The line under the release summary: how bae broke for a row in
-    /// error, or a failed import.
+    /// error. A failed import says so in its badge, and its pane says why.
     var statusLine: String? {
         if case .error(let failure) = live.standing {
             return failure.detail
         }
-        switch row.placement {
-        case .pending, .skipped:
-            return nil
-        case .failed, .done:
-            return importStatusLine
-        }
-    }
-
-    private var importStatusLine: String? {
-        switch row.importStatus {
-        case .complete, nil:
-            return nil
-        case .error(let error):
-            return error.localizedLine
-        }
+        return nil
     }
 
     // MARK: - Trailing
@@ -231,8 +217,10 @@ extension MacImportRow {
     ) -> some View {
         switch step {
         case .queued:
+            let waiting = String(localized: "Waiting to be identified")
             trailingIcon("clock", tint: .secondary)
-                .help(String(localized: "Waiting to be identified"))
+                .help(waiting)
+                .accessibilityLabel(waiting)
         case .running:
             MacSpinner()
                 .help(String(localized: "Identifying\u{2026}"))

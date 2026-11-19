@@ -23,7 +23,10 @@ struct ImportListRowLayout<Meta: View, Trailing: View>: View {
                 height: MacImportRow.coverPointSize
             )
             .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
+            // The row's text reads before its trailing column, as one
+            // group, whichever sits higher.
             meta()
+                .accessibilityElement(children: .contain)
             Spacer(minLength: ThemeSpace.inline)
             trailing()
         }
