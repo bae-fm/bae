@@ -131,15 +131,18 @@ internal val SYSTEM_APPEARANCE =
 /**
  * A dialog's [parts] drawn in place, as its window would show them: over [behind], dimmed by the scrim, centred on
  * the phone, with title, message, content and buttons on the dialog's surface, 340 dp wide, 16 apart with the buttons 24 below
- * the content, as the design system's dialog sets them.
+ * the content, as the design system's dialog sets them. With [keyboardUp], a field has focus: the keyboard's inset
+ * holds the bottom of the screen, and the page and the dialog fit in the space above it, as the board's keyboard
+ * leaves them.
  */
 @Composable
 internal fun InPlaceDialogScene(
     behind: @Composable () -> Unit = {},
+    keyboardUp: Boolean = false,
     dialog: @Composable () -> DialogParts,
 ) {
     ScreenScene {
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.fillMaxSize().padding(bottom = if (keyboardUp) KEYBOARD_HEIGHT else 0.dp)) {
             behind()
             Box(
                 modifier =
@@ -169,6 +172,12 @@ internal fun InPlaceDialogScene(
 }
 
 private val DIALOG_WIDTH = 340.dp
+
+/**
+ * The height of the board's keyboard (the design system's `AndroidKeyboard`): 10 above four rows of 46-high keys, 10
+ * apart, then 10 more to the 28-high gesture bar.
+ */
+private val KEYBOARD_HEIGHT = 262.dp
 
 /** The surface a dialog's words sit on. */
 @Composable

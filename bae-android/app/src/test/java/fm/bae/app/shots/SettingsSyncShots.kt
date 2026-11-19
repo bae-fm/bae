@@ -126,13 +126,16 @@ private val signedOutOfS3 =
 /** The new key the boards' dialogs show typed: its ID and its secret. */
 private val TYPED_KEY = "AKIA4EXAMPLENEW" to "abcdefghijkl"
 
-/** The S3 key dialog as [sheet] and [typed] show it, over the Sync page of the S3 library at [line]. */
+/**
+ * The S3 key dialog as [sheet] and [typed] show it, over the Sync page of the S3 library at [line]. While the fields
+ * show, one has focus, so the keyboard is up.
+ */
 @Composable
 private fun S3KeyDialogOverSync(
     sheet: S3KeyReplacement.Sheet,
     line: SyncLine = synced,
     typed: Pair<String, String> = "" to "",
-) = InPlaceDialogScene(behind = { SyncPage(line, s3) }) {
+) = InPlaceDialogScene(behind = { SyncPage(line, s3) }, keyboardUp = sheet is S3KeyReplacement.Sheet.Fields) {
     s3KeyDialogParts(
         sheet = sheet,
         accessKeyId = typed.first,
