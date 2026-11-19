@@ -207,6 +207,7 @@ internal fun syncShown(
 ) = BridgeSyncShown(
     status = status,
     statusKey = statusKey,
+    shortStatusKey = statusKey,
     tone = tone,
     cause = cause,
     fix = fix,

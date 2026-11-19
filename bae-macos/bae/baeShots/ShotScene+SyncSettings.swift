@@ -139,6 +139,7 @@ extension ShotScene {
     private static let dropboxAskedToWait = BridgeSyncShown(
         status: .waitingToSync,
         statusKey: "core.sync.status.waiting_to_sync",
+        shortStatusKey: "core.sync.status.waiting_to_sync",
         tone: .warning,
         cause: .message(
             message: BridgeMessage(
@@ -163,6 +164,7 @@ extension ShotScene {
     private static let signedOutOfS3 = BridgeSyncShown(
         status: .signedOutOfS3,
         statusKey: "core.sync.status.signed_out_s3",
+        shortStatusKey: "core.sync.status.signed_out",
         tone: .warning,
         cause: .changesStayOnDevice,
         fix: .enterAccessKey,

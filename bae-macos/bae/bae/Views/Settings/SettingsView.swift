@@ -54,13 +54,13 @@ private struct PausedBadge: View {
     }
 }
 
-/// The sync state beside Library in the sidebar as a chip, in core's words and
-/// the tone it gives them, shown only while the state is amber or red.
+/// The sync state beside Library in the sidebar as a chip, in core's short
+/// words and the tone it gives them, shown only while the state is amber or red.
 private struct SyncBadge: View {
     let shown: BridgeSyncShown
 
     var body: some View {
-        StatusChip(verbatim: shown.statusLine, tone: shown.statusTone)
+        StatusChip(verbatim: shown.shortStatusLine, tone: shown.statusTone)
     }
 }
 

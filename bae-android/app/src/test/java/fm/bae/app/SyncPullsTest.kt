@@ -101,6 +101,7 @@ class SyncPullsTest {
             BridgeSyncShown(
                 status = status,
                 statusKey = statusKey,
+                shortStatusKey = statusKey,
                 tone = tone,
                 cause = null,
                 fix = null,

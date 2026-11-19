@@ -116,6 +116,7 @@ struct SyncStatusStoreTests {
         let shown = BridgeSyncShown(
             status: .waitingToSync,
             statusKey: "core.sync.status.waiting_to_sync",
+            shortStatusKey: "core.sync.status.waiting_to_sync",
             tone: .warning,
             cause: .message(
                 message: BridgeMessage(
@@ -145,12 +146,31 @@ struct SyncStatusStoreTests {
         #expect(shown.statusTone.color == StatusTone.warning.color)
     }
 
+    /// Where room is short, a sign-out says only Signed out; the full line
+    /// still names the provider.
+    @MainActor
+    @Test("a sign-out says only Signed out where room is short")
+    func aSignOutSaysOnlySignedOutWhereRoomIsShort() {
+        let shown = BridgeSyncShown(
+            status: .signedOutOfDropbox,
+            statusKey: "core.sync.status.signed_out_dropbox",
+            shortStatusKey: "core.sync.status.signed_out",
+            tone: .warning,
+            cause: nil,
+            fix: nil,
+            lastSynced: nil
+        )
+        #expect(shown.statusLine == "Signed out of Dropbox")
+        #expect(shown.shortStatusLine == "Signed out")
+    }
+
     /// A cause that names no moment has no countdown under it.
     @Test("a cause with no moment has no countdown")
     func aCauseWithNoMomentHasNoCountdown() {
         let shown = BridgeSyncShown(
             status: .syncFailed,
             statusKey: "core.sync.failed",
+            shortStatusKey: "core.sync.failed",
             tone: .danger,
             cause: .deviceDiskFull,
             fix: .retryNow,

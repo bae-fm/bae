@@ -595,6 +595,11 @@ pub struct BridgeSyncShown {
     /// itself; it never asks the bridge for them, so a screen renders without
     /// the native library loaded.
     pub status_key: String,
+    /// The catalog key of the state's words where room is short, such as the
+    /// Mac settings sidebar's Library item: the same as `status_key`, except
+    /// that a sign-out says only Signed out, without the provider the Sync
+    /// page names.
+    pub short_status_key: String,
     pub tone: BridgeSyncTone,
     pub cause: Option<BridgeSyncCause>,
     pub fix: Option<BridgeSyncFix>,
@@ -608,6 +613,7 @@ impl BridgeSyncShown {
         let status = BridgeSyncStatusWord::from_core(shown.status);
         Self {
             status_key: status.key().to_string(),
+            short_status_key: status.short_key().to_string(),
             status,
             tone: match shown.tone {
                 bae_sync_status::SyncTone::Neutral => BridgeSyncTone::Neutral,
@@ -733,6 +739,17 @@ impl BridgeSyncFix {
 }
 
 impl BridgeSyncStatusWord {
+    /// The catalog key of the state's words where room is short.
+    pub(crate) fn short_key(self) -> &'static str {
+        match self {
+            BridgeSyncStatusWord::SignedOutOfDropbox
+            | BridgeSyncStatusWord::SignedOutOfOneDrive
+            | BridgeSyncStatusWord::SignedOutOfICloud
+            | BridgeSyncStatusWord::SignedOutOfS3 => "core.sync.status.signed_out",
+            _ => self.key(),
+        }
+    }
+
     /// The catalog key of the state's words.
     pub(crate) fn key(self) -> &'static str {
         match self {

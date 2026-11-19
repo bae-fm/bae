@@ -38,6 +38,7 @@ public final class SyncStatusStore {
         public static let fixtureSynced = BridgeSyncShown(
             status: .synced,
             statusKey: "core.sync.synced",
+            shortStatusKey: "core.sync.synced",
             tone: .success,
             cause: nil,
             fix: nil,
@@ -48,6 +49,7 @@ public final class SyncStatusStore {
         public static let fixtureNotSynced = BridgeSyncShown(
             status: .notSynced,
             statusKey: "core.sync.status.not_synced",
+            shortStatusKey: "core.sync.status.not_synced",
             tone: .neutral,
             cause: nil,
             fix: nil,
@@ -58,6 +60,7 @@ public final class SyncStatusStore {
         public static let fixtureOffline = BridgeSyncShown(
             status: .offline,
             statusKey: "core.sync.offline",
+            shortStatusKey: "core.sync.offline",
             tone: .warning,
             cause: nil,
             fix: nil,

@@ -153,6 +153,7 @@ class SyncScreenTest {
                     BridgeSyncShown(
                         status = BridgeSyncStatusWord.SYNC_FAILED,
                         statusKey = "core.sync.failed",
+                        shortStatusKey = "core.sync.failed",
                         tone = BridgeSyncTone.DANGER,
                         cause = BridgeSyncCause.DeviceDiskFull,
                         fix = null,
@@ -182,6 +183,7 @@ class SyncScreenTest {
             BridgeSyncShown(
                 status = BridgeSyncStatusWord.WAITING_TO_SYNC,
                 statusKey = "core.sync.status.waiting_to_sync",
+                shortStatusKey = "core.sync.status.waiting_to_sync",
                 tone = BridgeSyncTone.WARNING,
                 cause =
                     BridgeSyncCause.Message(
@@ -233,6 +235,7 @@ class SyncScreenTest {
                     BridgeSyncShown(
                         status = BridgeSyncStatusWord.NEW_RESTORE_CODE,
                         statusKey = "core.sync.status.new_restore_code",
+                        shortStatusKey = "core.sync.status.new_restore_code",
                         tone = BridgeSyncTone.WARNING,
                         cause = BridgeSyncCause.EnterNewRestoreCode,
                         fix = BridgeSyncFix.EnterRestoreCode,
@@ -310,6 +313,7 @@ class SyncScreenTest {
         BridgeSyncShown(
             status = BridgeSyncStatusWord.SYNCED,
             statusKey = "core.sync.synced",
+            shortStatusKey = "core.sync.synced",
             tone = BridgeSyncTone.SUCCESS,
             cause = null,
             fix = null,
@@ -320,6 +324,7 @@ class SyncScreenTest {
         BridgeSyncShown(
             status = BridgeSyncStatusWord.SIGNED_OUT_OF_S3,
             statusKey = "core.sync.status.signed_out_s3",
+            shortStatusKey = "core.sync.status.signed_out",
             tone = BridgeSyncTone.WARNING,
             cause = BridgeSyncCause.ChangesStayOnDevice,
             fix = BridgeSyncFix.EnterAccessKey,

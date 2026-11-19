@@ -38,6 +38,7 @@ class SyncStatusStoreTest {
             BridgeSyncShown(
                 status = BridgeSyncStatusWord.SIGNED_OUT_OF_DROPBOX,
                 statusKey = "core.sync.status.signed_out_dropbox",
+                shortStatusKey = "core.sync.status.signed_out",
                 tone = BridgeSyncTone.WARNING,
                 cause = null,
                 fix = BridgeSyncFix.SignIn(uniffi.bae_bridge.BridgeCloudProvider.DROPBOX),
@@ -80,7 +81,15 @@ class SyncStatusStoreTest {
         status: BridgeSyncStatusWord,
         statusKey: String,
         tone: BridgeSyncTone,
-    ) = BridgeSyncShown(status = status, statusKey = statusKey, tone = tone, cause = null, fix = null, lastSynced = null)
+    ) = BridgeSyncShown(
+        status = status,
+        statusKey = statusKey,
+        shortStatusKey = statusKey,
+        tone = tone,
+        cause = null,
+        fix = null,
+        lastSynced = null,
+    )
 
     private fun status(shown: BridgeSyncShown) =
         BridgeSyncStatusSnapshot(

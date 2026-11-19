@@ -6217,8 +6217,9 @@ corner, and each pane's title in bold at the top left of the pane. A page inside
 a pane puts a round button, 24 points across and named "Back to" and the page it
 goes back to, before its title. The Settings window opens on Appearance, the
 first pane. The sidebar names the sync state beside Library only while it is
-amber or red, and Offline beside Subsonic while it is on and not running, each
-as a chip tinted in its tone. About shows the bae logo, the sheep over the word,
+amber or red, with a sign-out saying only Signed out, and Offline beside
+Subsonic while it is on and not running, each as a chip tinted in its tone.
+About shows the bae logo, the sheep over the word,
 96 points wide and still, over the version: Android's Version is a row on a
 card, the Mac's a line with Check for updates….
 

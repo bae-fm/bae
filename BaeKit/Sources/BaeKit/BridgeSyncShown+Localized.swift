@@ -6,6 +6,12 @@ extension BridgeSyncShown {
         localizedCoreString(statusKey)
     }
 
+    /// The state in the person's language where room is short, such as beside
+    /// the Library item in the settings sidebar.
+    public var shortStatusLine: String {
+        localizedCoreString(shortStatusKey)
+    }
+
     /// The color the state reads in.
     public var statusTone: StatusTone {
         switch tone {

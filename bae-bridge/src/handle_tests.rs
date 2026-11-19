@@ -974,3 +974,21 @@ fn dropbox_location() -> coven::StorageConfig {
         folder_label: None,
     }
 }
+
+/// A sign-out of any storage has Signed out as its short words, while the
+/// full words name the provider; every other state says the same either way.
+#[test]
+fn a_sign_out_says_only_signed_out_where_room_is_short() {
+    use crate::types::BridgeSyncStatusWord as Word;
+    for word in [
+        Word::SignedOutOfDropbox,
+        Word::SignedOutOfOneDrive,
+        Word::SignedOutOfICloud,
+        Word::SignedOutOfS3,
+    ] {
+        assert_eq!(word.short_key(), "core.sync.status.signed_out", "{word:?}");
+        assert_ne!(word.key(), word.short_key(), "{word:?}");
+    }
+    assert_eq!(Word::WaitingToSync.short_key(), Word::WaitingToSync.key());
+    assert_eq!(Word::SyncFailed.short_key(), Word::SyncFailed.key());
+}

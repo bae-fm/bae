@@ -99,6 +99,7 @@ extension PreviewData {
             shown: BridgeSyncShown(
                 status: .synced,
                 statusKey: "core.sync.synced",
+                shortStatusKey: "core.sync.synced",
                 tone: .success,
                 cause: nil,
                 fix: nil,
