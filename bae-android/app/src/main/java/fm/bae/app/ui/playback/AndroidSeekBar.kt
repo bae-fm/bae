@@ -214,6 +214,16 @@ internal class PlaybackProgressView(
     /** What the stream last said; null while it holds nothing. */
     private var position: BridgeTrackPosition? = null
 
+    /**
+     * The position a drop named, from the drop until playback takes the seek, which the stream
+     * says by counting it: the time and the fill stay there while the stream still sends the
+     * playing position. Screen state only. Null when no drop waits.
+     */
+    private var dropped: BridgeTrackPosition? = null
+
+    /** The track the bar follows, so a drop never outlives its track. */
+    private var followedTrack: LatestSource<BridgeTrackPosition>? = null
+
     init {
         orientation = HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
@@ -283,6 +293,8 @@ internal class PlaybackProgressView(
         this.onSeekRatio = onSeekRatio
         this.onToggleRemaining = onToggleRemaining
         this.state = state
+        if (position != followedTrack) dropped = null
+        followedTrack = position
         if (position == null) {
             following.stop()
             show(null)
@@ -301,12 +313,18 @@ internal class PlaybackProgressView(
     /** A position the stream holds; core names a seek's target as the position when it accepts the seek. */
     private fun show(position: BridgeTrackPosition?) {
         this.position = position
+        val held = dropped
+        if (position == null || (held != null && position.seeks > held.seeks)) dropped = null
         showShown()
     }
 
-    /** What the labels and fill show: the dragged position while the person drags, else the stream's position. */
+    /**
+     * What the labels and fill show: the dragged position while the person drags, the dropped one
+     * until playback takes the seek, else the stream's position.
+     */
     private fun showShown() {
-        setPosition(state(if (isDragging) positionAt(draggedRatio()) ?: position else position))
+        val shown = if (isDragging) positionAt(draggedRatio()) ?: position else dropped ?: position
+        setPosition(state(shown))
     }
 
     private fun draggedRatio(): Double = seekBar.progress.toDouble() / seekBar.max.toDouble()
@@ -324,6 +342,7 @@ internal class PlaybackProgressView(
 
     internal fun finishTracking() {
         val ratio = draggedRatio()
+        dropped = positionAt(ratio)
         isDragging = false
         showShown()
         onSeekRatio(ratio)

@@ -13,16 +13,22 @@ impl PlaybackService {
     /// drawn as `TrackTimeline::progress` draws it. A track whose length is
     /// unknown has no position at any fill, so it stays where it is.
     pub(super) async fn seek_by_ratio(&mut self, ratio: f64) {
+        let track_id = self.slot.held_track_id().map(str::to_owned);
         if let PlaybackSlot::Active(cur) = &self.slot {
-            let Some(position) = cur.prepared.timeline.position_at_progress(ratio) else {
-                warn!(
+            match cur.prepared.timeline.position_at_progress(ratio) {
+                Some(position) => self.seek(position).await,
+                None => warn!(
                     track_id = %cur.prepared.track_id,
                     ratio,
                     "seek by ratio ignored: the track's length is unknown"
-                );
-                return;
-            };
-            self.seek(position).await;
+                ),
+            }
+        }
+        // Whatever the seek came to, playback has taken it, which a seek bar
+        // that held the drop's position waits to hear. A seek that failed
+        // ended playback, and its position went with it.
+        if let Some(track_id) = track_id {
+            emit_progress(&self.progress_tx, PlaybackProgress::SeekTaken { track_id });
         }
     }
 

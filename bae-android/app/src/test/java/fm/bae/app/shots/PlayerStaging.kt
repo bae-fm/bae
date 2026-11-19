@@ -41,6 +41,7 @@ internal class PlayerStaging(
             positionMs = elapsedSeconds * MILLIS_PER_SECOND,
             durationMs = DURATION_MS.toULong(),
             progress = progress,
+            seeks = 0uL,
         )
     val positions = LatestStream.trackPositions(mapOf(TRACK_ID to position)).source(TRACK_ID)
     val buffered = LatestStream.trackBuffered(mapOf(TRACK_ID to BridgeTrackBuffered(held))).source(TRACK_ID)

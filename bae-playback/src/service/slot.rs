@@ -107,6 +107,16 @@ pub(super) enum PlaybackSlot {
 }
 
 impl PlaybackSlot {
+    /// The id of the track the slot holds in any phase, a load included.
+    pub(super) fn held_track_id(&self) -> Option<&str> {
+        match self {
+            PlaybackSlot::Active(cur) => Some(cur.prepared.track_id.as_str()),
+            PlaybackSlot::Loading(LoadingTrack::Prepared(track)) => Some(track.track_id.as_str()),
+            PlaybackSlot::Loading(LoadingTrack::Unprepared(track_id)) => Some(track_id.as_str()),
+            PlaybackSlot::Stopped => None,
+        }
+    }
+
     /// The current track's id, once one exists (Active in any phase). None while
     /// the slot is Stopped or still resolving a fresh load.
     pub(super) fn current_track_id(&self) -> Option<&str> {

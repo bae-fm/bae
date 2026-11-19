@@ -223,6 +223,10 @@ pub struct BridgeTrackPosition {
     pub duration_ms: Option<u64>,
     /// The seek bar's fill; zero throughout when the length is unknown.
     pub progress: f64,
+    /// How many seeks by the seek bar playback has taken of this track: a bar
+    /// that holds the position its drop named shows the stream's position
+    /// again once this is more than it was at the drop.
+    pub seeks: u64,
 }
 
 /// The parts of the playing track whose bytes this device holds, as its
@@ -441,9 +445,14 @@ impl BridgeTrackPosition {
     /// The track's position, without the track it names, which is the key
     /// the stream holds it under.
     pub(crate) fn from_core(position: bae_playback::PlaybackPosition) -> Self {
-        let bae_playback::PlaybackPosition { track_id: _, position_ms, duration_ms, progress } =
-            position;
-        Self { position_ms, duration_ms, progress }
+        let bae_playback::PlaybackPosition {
+            track_id: _,
+            position_ms,
+            duration_ms,
+            progress,
+            seeks,
+        } = position;
+        Self { position_ms, duration_ms, progress, seeks }
     }
 }
 

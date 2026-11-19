@@ -49,7 +49,7 @@ class PlaybackProgressViewTest {
         assertEquals(7_000, view.seekBar.progress)
     }
 
-    /** The time follows the dragged position, not the playing one, and shows the stream's once the drag ends. */
+    /** The time follows the dragged position, not the playing one, and keeps it from the drop until playback takes the seek. */
     @Test
     fun theTimeFollowsTheDragThenTheStreamsPosition() {
         val view = attachedView()
@@ -69,12 +69,18 @@ class PlaybackProgressViewTest {
         assertEquals(7_500, view.seekBar.progress)
 
         view.finishTracking()
-        assertEquals("11000", view.leadingTextView.text.toString())
-        assertEquals(1_100, view.seekBar.progress)
+        assertEquals("75000", view.leadingTextView.text.toString())
+        assertEquals(7_500, view.seekBar.progress)
 
-        positions.write(KEY, position(76_000))
+        positions.write(KEY, position(12_000))
+        shadowOf(Looper.getMainLooper()).idleFor(FRAME)
+        assertEquals("75000", view.leadingTextView.text.toString())
+        assertEquals(7_500, view.seekBar.progress)
+
+        positions.write(KEY, position(76_000, seeks = 1uL))
         shadowOf(Looper.getMainLooper()).idleFor(FRAME)
         assertEquals("76000", view.leadingTextView.text.toString())
+        assertEquals(7_600, view.seekBar.progress)
     }
 
     @Test
@@ -132,9 +138,9 @@ class PlaybackProgressViewTest {
         assertEquals(5_000, view.seekBar.progress)
     }
 
-    /** After a seek, the bar shows the stream's position; core reports the target as the position once it accepts the seek. */
+    /** After a drop, the bar keeps the dropped position until the stream counts the seek playback took, and shows the stream's position from then on. */
     @Test
-    fun aSeekLeavesTheBarOnTheStreamsPosition() {
+    fun aDropStaysUntilPlaybackTakesTheSeek() {
         val view = attachedView()
         val positions = LatestStream.written<BridgeTrackPosition>()
         positions.write(KEY, position(10_000))
@@ -146,11 +152,40 @@ class PlaybackProgressViewTest {
         view.finishTracking()
 
         assertEquals(listOf(0.75), ratios)
-        assertEquals("10000", view.leadingTextView.text.toString())
+        assertEquals("75000", view.leadingTextView.text.toString())
+        assertEquals(7_500, view.seekBar.progress)
 
-        positions.write(KEY, position(75_000))
+        positions.write(KEY, position(10_008))
         shadowOf(Looper.getMainLooper()).idleFor(FRAME)
         assertEquals("75000", view.leadingTextView.text.toString())
+
+        positions.write(KEY, position(75_000, seeks = 1uL))
+        shadowOf(Looper.getMainLooper()).idleFor(FRAME)
+        assertEquals("75000", view.leadingTextView.text.toString())
+
+        positions.write(KEY, position(75_008, seeks = 1uL))
+        shadowOf(Looper.getMainLooper()).idleFor(FRAME)
+        assertEquals("75008", view.leadingTextView.text.toString())
+    }
+
+    /** A seek that ends playback leaves no position, and the dropped one goes with it. */
+    @Test
+    fun aDropGoesWhenThePositionDoes() {
+        val view = attachedView()
+        val positions = LatestStream.written<BridgeTrackPosition>()
+        positions.write(KEY, position(10_000))
+        view.bind(positions.source(KEY), buffered = null, state = ::labels, onSeekRatio = {}, onToggleRemaining = {})
+
+        view.beginTracking()
+        view.seekBar.progress = 7_500
+        view.finishTracking()
+        positions.write(KEY, null)
+        shadowOf(Looper.getMainLooper()).idleFor(FRAME)
+        assertEquals("", view.leadingTextView.text.toString())
+
+        positions.write(KEY, position(20_000))
+        shadowOf(Looper.getMainLooper()).idleFor(FRAME)
+        assertEquals("20000", view.leadingTextView.text.toString())
     }
 
     /** The bar draws the parts of its track the buffered stream holds, and each change after. */
@@ -186,7 +221,10 @@ class PlaybackProgressViewTest {
             SeekBarState(it.progress, it.positionMs.toString(), "", seekable = it.durationMs != null)
         } ?: SeekBarState(0.0, "", "", seekable = false)
 
-    private fun position(positionMs: Long) = BridgeTrackPosition(positionMs, DURATION_MS.toULong(), positionMs.toDouble() / DURATION_MS)
+    private fun position(
+        positionMs: Long,
+        seeks: ULong = 0uL,
+    ) = BridgeTrackPosition(positionMs, DURATION_MS.toULong(), positionMs.toDouble() / DURATION_MS, seeks)
 
     private companion object {
         const val KEY = "track"

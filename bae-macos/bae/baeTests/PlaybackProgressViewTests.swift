@@ -9,12 +9,14 @@ import Testing
 private func position(
     _ positionMs: Int64,
     of durationMs: UInt64?,
-    progress: Double
+    progress: Double,
+    seeks: UInt64 = 0
 ) -> BridgeTrackPosition {
     BridgeTrackPosition(
         positionMs: positionMs,
         durationMs: durationMs,
-        progress: progress
+        progress: progress,
+        seeks: seeks
     )
 }
 
@@ -292,6 +294,101 @@ struct SeekBarDragTests {
                 labels.map(\.stringValue)
                     == [showRemaining ? "-1:30" : "1:30", "3:00"]
             )
+        }
+    }
+
+    /// From the drop the bar keeps the dropped position and fill, whatever
+    /// the playing ticks say, until the stream counts the seek playback took;
+    /// then it shows the stream's position.
+    @Test("a drop stays until playback takes the seek")
+    func dropStaysUntilTheSeekIsTaken() async throws {
+        let positions = LatestStream<BridgeTrackPosition>.written()
+        positions.set(
+            position(45_000, of: 180_000, progress: 0.25),
+            for: "track"
+        )
+        try await SnapshotTestSupport.withHostedWindow(
+            PlaybackProgressView(
+                position: positions.stream.source(for: "track"),
+                buffered: LatestStream.trackBuffered().source(for: "track"),
+                showRemainingTime: false,
+                onSeek: { _ in },
+                onToggleRemainingTime: {}
+            ),
+            size: NSSize(width: 460, height: 40)
+        ) { window, host in
+            try await SnapshotTestSupport.settle(host)
+            let descendants = SnapshotTestSupport.descendants(of: host)
+            let slider = try #require(
+                descendants.compactMap { $0 as? SeekSlider }.first
+            )
+            let bar = try #require(
+                descendants.compactMap { $0 as? SeekBarNSView }.first
+            )
+            let labels = descendants.compactMap { $0 as? NSTextField }
+            try clickMiddle(of: slider, in: window)
+            #expect(labels.map(\.stringValue) == ["1:30", "3:00"])
+
+            positions.set(
+                position(47_000, of: 180_000, progress: 0.26),
+                for: "track"
+            )
+            bar.tracks.frame()
+            #expect(labels.map(\.stringValue) == ["1:30", "3:00"])
+            #expect(abs(slider.doubleValue - 0.5) < 0.05)
+
+            positions.set(
+                position(90_000, of: 180_000, progress: 0.5, seeks: 1),
+                for: "track"
+            )
+            bar.tracks.frame()
+            positions.set(
+                position(91_000, of: 180_000, progress: 0.51, seeks: 1),
+                for: "track"
+            )
+            bar.tracks.frame()
+            #expect(labels.map(\.stringValue) == ["1:31", "3:00"])
+            #expect(abs(slider.doubleValue - 0.51) < 0.001)
+        }
+    }
+
+    /// A seek that ends playback leaves no position, and the dropped one goes
+    /// with it.
+    @Test("a drop goes when the position does")
+    func dropGoesWithThePosition() async throws {
+        let positions = LatestStream<BridgeTrackPosition>.written()
+        positions.set(
+            position(45_000, of: 180_000, progress: 0.25),
+            for: "track"
+        )
+        try await SnapshotTestSupport.withHostedWindow(
+            PlaybackProgressView(
+                position: positions.stream.source(for: "track"),
+                buffered: LatestStream.trackBuffered().source(for: "track"),
+                showRemainingTime: false,
+                onSeek: { _ in },
+                onToggleRemainingTime: {}
+            ),
+            size: NSSize(width: 460, height: 40)
+        ) { window, host in
+            try await SnapshotTestSupport.settle(host)
+            let descendants = SnapshotTestSupport.descendants(of: host)
+            let slider = try #require(
+                descendants.compactMap { $0 as? SeekSlider }.first
+            )
+            let bar = try #require(
+                descendants.compactMap { $0 as? SeekBarNSView }.first
+            )
+            try clickMiddle(of: slider, in: window)
+            positions.remove("track")
+            bar.tracks.frame()
+            positions.set(
+                position(20_000, of: 180_000, progress: 0.11),
+                for: "track"
+            )
+            bar.tracks.frame()
+            let labels = descendants.compactMap { $0 as? NSTextField }
+            #expect(labels.map(\.stringValue) == ["0:20", "3:00"])
         }
     }
 }

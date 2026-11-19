@@ -4847,7 +4847,9 @@ where the bar counts down. The playing position, which keeps moving while
 they drag, doesn't move the time, and neither the time nor the fill steps
 back to it between the drop and the seek landing. On release the player
 seeks there, the bar shows the seek's target from the next frame, and the
-playing position follows from there. A seek that fails
+playing position follows from there. The bar keeps the dropped position until
+playback takes the seek, including a seek that leaves the track where it was,
+and then shows the playing position again. A seek that fails
 ends playback with its error, as any failure of the player does (§7.6), and
 the bar then shows no time, as it does when nothing plays: the dropped
 position is never left standing.

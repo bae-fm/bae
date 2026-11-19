@@ -146,6 +146,37 @@ fn a_state_on_another_track_ends_the_library_position() {
     assert!(!paused.playing);
 }
 
+/// A seek the service takes counts on its track's position, and the count
+/// stays through the position updates after it; another track starts at zero.
+#[test]
+fn a_taken_seek_counts_on_its_tracks_position() {
+    let update = |track_id: &str, position_ms: i64| PlaybackProgress::PositionUpdate {
+        position_ms,
+        duration_ms: Some(100_000),
+        track_id: track_id.to_string(),
+        progress: position_ms as f64 / 100_000.0,
+    };
+    let seeks = |positions: &PlaybackPositions| positions.library.as_ref().expect("position").seeks;
+    let taken = |track_id: &str| PlaybackProgress::SeekTaken { track_id: track_id.to_string() };
+
+    let playing = PlaybackPositions::initial().applying(&update("track-1", 1_000)).expect("kept");
+    assert_eq!(seeks(&playing), 0);
+
+    let seeked = playing.applying(&taken("track-1")).expect("a seek of the track is counted");
+    assert_eq!(seeks(&seeked), 1);
+    assert_eq!(seeked.library.as_ref().expect("position").position_ms, 1_000);
+
+    let ticked = seeked.applying(&update("track-1", 1_008)).expect("kept");
+    assert_eq!(seeks(&ticked), 1, "a tick keeps the count");
+
+    assert!(
+        ticked.applying(&taken("track-2")).is_none(),
+        "a seek of another track counts on no position"
+    );
+    assert!(PlaybackPositions::initial().applying(&taken("track-1")).is_none());
+    assert_eq!(seeks(&ticked.applying(&update("track-2", 0)).expect("kept")), 0);
+}
+
 #[test]
 fn a_preview_position_names_its_clip_and_keeps_its_place_only_on_that_clip() {
     let first = preview_target("/tmp/first.flac");

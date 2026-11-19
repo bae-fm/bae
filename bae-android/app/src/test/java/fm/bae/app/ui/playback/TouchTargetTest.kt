@@ -57,7 +57,7 @@ class TouchTargetTest {
     @Test
     fun aPressAboveTheSeekLinesDrawnRowMovesThePosition() {
         val positions = LatestStream.written<BridgeTrackPosition>()
-        positions.write(KEY, BridgeTrackPosition(10_000, DURATION_MS.toULong(), 0.1))
+        positions.write(KEY, BridgeTrackPosition(10_000, DURATION_MS.toULong(), 0.1, 0uL))
         val ratios = mutableListOf<Double>()
         compose.setContent {
             PreviewTheme {

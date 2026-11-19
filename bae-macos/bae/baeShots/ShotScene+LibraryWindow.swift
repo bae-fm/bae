@@ -114,7 +114,8 @@ extension ShotScene {
                     "board-track": BridgeTrackPosition(
                         positionMs: 102_000,
                         durationMs: 303_000,
-                        progress: 0.35
+                        progress: 0.35,
+                        seeks: 0
                     )
                 ]
             ),

@@ -208,6 +208,7 @@ fn the_position_stream_holds_each_position_and_rests_while_paused() {
             position_ms,
             duration_ms: Some(300_000),
             progress: position_ms as f64 / 300_000.0,
+            seeks: 0,
         });
         positions.playing = playing;
         write_track_position(&writer, &positions);

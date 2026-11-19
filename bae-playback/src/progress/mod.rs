@@ -28,6 +28,10 @@ pub struct PlaybackPosition {
     pub duration_ms: Option<u64>,
     /// The seek bar's fill; zero throughout when the length is unknown.
     pub progress: f64,
+    /// How many seeks by the seek bar playback has taken of this track. A bar
+    /// that holds the position its drop named, until playback takes the
+    /// seek, compares this with the count it saw at the drop.
+    pub seeks: u64,
 }
 
 /// Where the preview is in its clip, and which clip that is, so a surface
@@ -170,6 +174,7 @@ impl PlaybackValues {
             }
             PlaybackProgress::PositionUpdate { .. }
             | PlaybackProgress::Seeked { .. }
+            | PlaybackProgress::SeekTaken { .. }
             | PlaybackProgress::PreviewPositionUpdate { .. }
             | PlaybackProgress::PreviewSeeked { .. }
             | PlaybackProgress::TrackCompleted { .. }
@@ -216,12 +221,22 @@ impl PlaybackPositions {
             }
             PlaybackProgress::PositionUpdate { track_id, position_ms, duration_ms, progress }
             | PlaybackProgress::Seeked { track_id, position_ms, duration_ms, progress } => {
+                let seeks = next
+                    .library
+                    .as_ref()
+                    .filter(|position| position.track_id == *track_id)
+                    .map_or(0, |position| position.seeks);
                 next.library = Some(PlaybackPosition {
                     track_id: track_id.clone(),
                     position_ms: *position_ms,
                     duration_ms: *duration_ms,
                     progress: *progress,
+                    seeks,
                 });
+            }
+            PlaybackProgress::SeekTaken { track_id } => {
+                let position = next.library.as_mut().filter(|p| p.track_id == *track_id)?;
+                position.seeks += 1;
             }
             PlaybackProgress::PreviewStateChanged(PreviewState::Idle) => next.preview = None,
             PlaybackProgress::PreviewStateChanged(
@@ -371,6 +386,12 @@ pub enum PlaybackProgress {
         duration_ms: Option<u64>,
         track_id: String,
         progress: f64,
+    },
+    /// Playback took a seek the seek bar made on the track, whether it moved
+    /// the track, left it where it was or ended playback: the track's
+    /// [`PlaybackPosition::seeks`] counts it.
+    SeekTaken {
+        track_id: String,
     },
     /// Decode stats for a track that finished or was stopped.
     DecodeStats {
