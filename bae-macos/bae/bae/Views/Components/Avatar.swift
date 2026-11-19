@@ -38,3 +38,15 @@ struct Avatar: View {
             .joined()
     }
 }
+
+extension Avatar {
+    /// A person's picture from their profile: the avatar their profile names,
+    /// or their initials while it names none.
+    init(profile: BridgePersonProfile, size: CGFloat) {
+        self.init(
+            name: profile.name,
+            picture: profile.avatarVersion.map { (profile.id, $0) },
+            size: size
+        )
+    }
+}

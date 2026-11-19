@@ -430,13 +430,8 @@ extension PeopleAndDevicesPage {
                 // Only an admin has anything to do on a person's page.
                 PageLinkRow(
                     title: displayName(person),
-                    avatar: Avatar(
-                        name: displayName(person),
-                        picture: person.profile.flatMap { profile in
-                            profile.avatarVersion.map { (profile.id, $0) }
-                        },
-                        size: 28
-                    ),
+                    avatar: person.profile.map { Avatar(profile: $0, size: 28) }
+                        ?? Avatar(name: displayName(person), size: 28),
                     tag: member.role.label,
                     value: deviceCount(member),
                     opens: store.selfIsAdmin,

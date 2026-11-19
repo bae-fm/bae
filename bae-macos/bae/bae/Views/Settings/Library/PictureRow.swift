@@ -32,11 +32,7 @@ struct PictureRow: View {
             }
         } label: {
             HStack(spacing: ThemeSpace.related) {
-                Avatar(
-                    name: profile.name,
-                    picture: profile.avatarVersion.map { (profile.id, $0) },
-                    size: 28
-                )
+                Avatar(profile: profile, size: 28)
                 Text("Picture")
             }
         }
