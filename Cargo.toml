@@ -50,6 +50,12 @@ dead_code = "deny"
 # uniffi's generated scaffolding emits cfgs cargo does not know about.
 unexpected_cfgs = "allow"
 
+# Cargo's own lints on the manifests. `-D warnings` on clippy does not reach
+# them: they run when cargo reads the workspace, so a dependency a crate's
+# enabled features never use fails every cargo command, hook included.
+[workspace.lints.cargo]
+unused_dependencies = "deny"
+
 [workspace.lints.clippy]
 too_many_arguments = "allow"
 new_without_default = "allow"
