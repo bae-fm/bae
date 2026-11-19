@@ -89,7 +89,7 @@
 .bae-m-plpage-owner { display: flex; gap: 6px; align-items: center; font: 600 13px var(--font-sans); color: var(--text-secondary); }
 .bae-m-plpage-facts { display: flex; gap: 6px; align-items: center; margin-top: 4px; font: 400 11.5px var(--font-sans); color: var(--text-tertiary); }
 .bae-m-plpage-sharing { display: inline-flex; fill: currentColor; }
-.bae-m-plpage-actions { display: flex; align-items: center; gap: 8px; }
+.bae-m-plpage-actions { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
 .bae-m-plpage-tracks { margin: 0; }
 .bae-m-qrow { display: flex; align-items: center; gap: 12px; padding: 6px 8px; border-radius: var(--radius-control); }
 .bae-m-qrow-hover { background: var(--hover); }
