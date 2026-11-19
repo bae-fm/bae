@@ -18,7 +18,7 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.data.LiveQueryState
-import fm.bae.app.factsLine
+import fm.bae.app.factSeparator
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidErrorLine
@@ -129,7 +129,7 @@ internal fun AndroidArtistOtherNames(
             modifier = Modifier.padding(bottom = ThemeSpace.inline),
         )
         Text(
-            text = LocalContext.current.factsLine(names),
+            text = names.joinToString(LocalContext.current.factSeparator()),
             style = ThemeText.body.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
