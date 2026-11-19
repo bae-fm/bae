@@ -78,7 +78,7 @@ allow_attributes_without_reason = "deny"
 # most, the features it needs and whether it is optional.
 
 # Every consumer, including tests, uses coven's application facade.
-coven = { git = "https://github.com/bae-fm/coven", rev = "4c2312724246694540f3d162e7d8efc52ebbb4dc" }
+coven = { git = "https://github.com/bae-fm/coven", rev = "bcfdac8a612b6233cde828d9633ea3f1314bdbe8" }
 # OptionalExtension, dynamic parameters and SQLite callback errors are not
 # re-exported by coven. This is the version coven's SQL contexts use.
 rusqlite = { version = "0.42.0", features = ["functions", "fallible_uint"] }
