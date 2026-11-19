@@ -362,6 +362,55 @@ async fn a_preset_is_read_by_its_id_until_it_is_deleted() {
     assert_eq!(next_preset().await, None);
 }
 
+/// A save panel reads its menu and its choice through one query whose
+/// selection moves in place: the formats in menu order, with the selected
+/// one chosen while a row holds it, else the last used one, and the selected
+/// one once its row arrives.
+#[tokio::test]
+async fn the_save_choice_marks_the_selected_format_or_the_last_used() {
+    let (db, _tmp) = temp_db(crate::TEST_SCHEMA).await;
+    let mut choice = subscribe_save_choice(&db, "flac".to_string());
+    let requests = choice.requests();
+    let mut next_choice = async || {
+        let rows = tokio::time::timeout(HANG_GUARD, choice.next_inline())
+            .await
+            .expect("the live query delivers")
+            .expect("the store is open")
+            .result
+            .unwrap();
+        let ids: Vec<String> = rows.iter().map(|row| row.preset.id.clone()).collect();
+        let chosen: Vec<String> =
+            rows.iter().filter(|row| row.chosen).map(|row| row.preset.id.clone()).collect();
+        (ids, chosen)
+    };
+    let (ids, chosen) = next_choice().await;
+    assert_eq!(ids, ["flac", "mp3"]);
+    assert_eq!(chosen, ["flac"]);
+
+    requests.set("mp3".to_string()).unwrap();
+    assert_eq!(next_choice().await.1, ["mp3"]);
+
+    requests.set("car".to_string()).unwrap();
+    assert_eq!(next_choice().await.1, ["flac"], "no row holds the selection: the last used");
+
+    set(&db, |prefs| {
+        prefs
+            .add_save_preset(SavePreset {
+                id: "car".to_string(),
+                name: "Car".to_string(),
+                codec: SaveCodec::Mp3 { bitrate_kbps: 192 },
+            })
+            .unwrap()
+    })
+    .await;
+    let (ids, chosen) = next_choice().await;
+    assert_eq!(ids, ["flac", "mp3", "car"]);
+    assert_eq!(chosen, ["car"], "the selection is chosen once its row exists");
+
+    set(&db, |prefs| prefs.delete_save_preset("car").unwrap()).await;
+    assert_eq!(next_choice().await.1, ["flac"], "a deleted selection shows the last used");
+}
+
 /// `config` returns the full preset that the last save used, found by the id
 /// in the preferences, and returns the new preset when that id changes.
 #[tokio::test]

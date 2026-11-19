@@ -263,6 +263,14 @@ impl AppServices {
         self.inner.manager.subscribe_config()
     }
 
+    /// The save formats in menu order, with the one a save panel shows for
+    /// the format `selected` chosen: that format while a row holds it, else
+    /// the one the last save used. To select another format, set it on the
+    /// same read.
+    pub fn subscribe_save_choice(&self, selected: String) -> bae_library::LiveSaveChoice {
+        self.inner.manager.subscribe_save_choice(selected)
+    }
+
     /// The save preset `id`, which the format editor reads live: none once no
     /// preset has the id.
     pub fn subscribe_save_preset(

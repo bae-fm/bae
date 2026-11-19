@@ -151,15 +151,8 @@ struct FormatsSettingsTab: View {
             let preset = try outputs.newSavePreset(
                 configStore.config.savePresets
             )
-            configStore.addedSavePresetId = preset.id
-            do {
-                if try await outputs.addSavePreset(preset) == .nameTaken {
-                    throw SavePresetNameTaken(name: preset.name)
-                }
-            }
-            catch {
-                configStore.addedSavePresetId = nil
-                throw error
+            if try await outputs.addSavePreset(preset) == .nameTaken {
+                throw SavePresetNameTaken(name: preset.name)
             }
             editingPreset = EditingPreset(id: preset.id)
         }

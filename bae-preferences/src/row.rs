@@ -88,6 +88,36 @@ pub fn subscribe_save_preset(
     })
 }
 
+/// One save format as a save panel's menu lists it, with whether the panel
+/// shows it as chosen.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SaveChoiceRow {
+    pub preset: SavePreset,
+    pub chosen: bool,
+}
+
+/// Follow the save formats in the order a save panel's menu lists them, with
+/// the one the panel shows chosen when the person has selected the format
+/// `selected`: that format while a row holds it, else the format the last
+/// save used. The selection changes in place through the query's request, so
+/// a selection that no row holds yet shows the last used format as chosen
+/// until the row exists.
+pub fn subscribe_save_choice(
+    store: &Store,
+    selected: String,
+) -> coven::ReconfigurableLiveQuery<String, Vec<SaveChoiceRow>, bae_store::DbError> {
+    store.subscribe_reconfigurable(selected, |selected, sql| {
+        Ok(sql.query(
+            "SELECT s.*, s.id = COALESCE( \
+                 (SELECT id FROM save_preset WHERE id = ?1), \
+                 (SELECT last_save_preset FROM preferences)) AS chosen \
+             FROM save_preset AS s ORDER BY s.position",
+            [selected.as_str()],
+            |row| Ok(SaveChoiceRow { preset: save_preset_row(row)?, chosen: row.get("chosen")? }),
+        )?)
+    })
+}
+
 /// The owner of the `preferences` row: the one place it is written, one
 /// edit at a time.
 #[derive(Clone)]

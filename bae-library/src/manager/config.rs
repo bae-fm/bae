@@ -7,6 +7,12 @@
 
 use super::*;
 
+/// The formats a save panel's menu lists, read live, with the one its pop-up
+/// shows chosen: the format the person selected while a row holds it, else
+/// the format the last save used. The selection changes in place through [`bae_store::live_query::LiveRead::set`].
+pub type LiveSaveChoice =
+    bae_store::live_query::LiveRead<String, Vec<bae_preferences::SaveChoiceRow>>;
+
 /// A preference the UI writes and nothing else reacts to: the write *is* the
 /// whole operation, and the row's live queries re-render whoever reads it.
 /// Setters that also validate, or that hand the new value to something already
@@ -264,6 +270,18 @@ impl LibraryManager {
         id: String,
     ) -> bae_store::live_query::LiveValues<Option<bae_preferences::SavePreset>> {
         self.values_until_closed(bae_preferences::subscribe_save_preset(&self.store, id))
+    }
+
+    /// Returns the save formats in menu order each time they or the choice
+    /// change, with the one a save panel's pop-up shows for the format
+    /// `selected` chosen: that format while a row holds it, else the format
+    /// the last save used. To select another format, set it
+    /// on the same read.
+    pub fn subscribe_save_choice(&self, selected: String) -> LiveSaveChoice {
+        LiveSaveChoice::new(
+            self.until_closed(bae_preferences::subscribe_save_choice(&self.store, selected)),
+            |_read, choice| Some(choice),
+        )
     }
 
     pub async fn save_presets(

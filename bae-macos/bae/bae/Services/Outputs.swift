@@ -1,4 +1,5 @@
 import BaeKit
+import Combine
 import Foundation
 
 /// Controls for the export queue: enqueue a release export
@@ -33,11 +34,25 @@ final class Outputs: Sendable, Observable {
     /// preset's edit sheet.
     let subscribeSavePreset:
         @Sendable (_ id: String) throws -> SavePresetSubscription
+    /// The save formats in the order a save panel's menu lists them, read
+    /// live, with the one its pop-up shows chosen for the format the person
+    /// selected: that format while a row holds it, else the last used one.
+    let subscribeSaveChoice:
+        @Sendable (_ selected: String) throws -> SaveChoiceRead
     /// Add a save preset after the others. When another preset already has
     /// the name, core returns taken and saves nothing.
-    let addSavePreset:
+    private let writeAddSavePreset:
         @Sendable (_ preset: BridgeSavePreset) async throws ->
             BridgeSavePresetWrite
+    /// Combine's subjects take sends from any thread.
+    nonisolated(unsafe)
+        private let addedSavePresetSubject = PassthroughSubject<String, Never>()
+    /// The id of each format the person adds, sent once core has saved it.
+    /// An event, not state: each open save panel chooses the format when it
+    /// hears it.
+    var addedSavePresets: AnyPublisher<String, Never> {
+        addedSavePresetSubject.eraseToAnyPublisher()
+    }
     /// Replace the save preset with the preset's id. When another preset
     /// already has the name, core returns taken and saves nothing.
     let replaceSavePreset:
@@ -83,6 +98,10 @@ final class Outputs: Sendable, Observable {
             @escaping @Sendable (String) throws -> SavePresetSubscription = {
                 _ in throw CancellationError()
             },
+        subscribeSaveChoice:
+            @escaping @Sendable (String) throws -> SaveChoiceRead = { _ in
+                throw CancellationError()
+            },
         addSavePreset:
             @escaping @Sendable (BridgeSavePreset) async throws ->
             BridgeSavePresetWrite = { _ in .saved },
@@ -116,7 +135,8 @@ final class Outputs: Sendable, Observable {
         self.setOutputsPaused = setOutputsPaused
         self.cancelOutput = cancelOutput
         self.subscribeSavePreset = subscribeSavePreset
-        self.addSavePreset = addSavePreset
+        self.subscribeSaveChoice = subscribeSaveChoice
+        self.writeAddSavePreset = addSavePreset
         self.replaceSavePreset = replaceSavePreset
         self.deleteSavePreset = deleteSavePreset
         self.setFilenamePieces = setFilenamePieces
@@ -124,6 +144,18 @@ final class Outputs: Sendable, Observable {
         self.setSaveEmbedCover = setSaveEmbedCover
         self.setSaveCoverFile = setSaveCoverFile
         self.setSaveLoudnessTags = setSaveLoudnessTags
+    }
+
+    /// Add `preset` after the other formats. When core saves it, every open
+    /// save panel hears the add and chooses the format.
+    func addSavePreset(_ preset: BridgeSavePreset) async throws
+        -> BridgeSavePresetWrite
+    {
+        let result = try await writeAddSavePreset(preset)
+        if result == .saved {
+            addedSavePresetSubject.send(preset.id)
+        }
+        return result
     }
 
     /// The text the app's language writes 0 as: core writes the number of a
@@ -156,6 +188,13 @@ final class Outputs: Sendable, Observable {
             setOutputsPaused: { try await handle.setOutputsPaused(paused: $0) },
             cancelOutput: { try await handle.cancelOutput(releaseId: $0) },
             subscribeSavePreset: { handle.subscribeSavePreset(id: $0) },
+            subscribeSaveChoice: { selected in
+                let read = handle.subscribeSaveChoice(selected: selected)
+                return SaveChoiceRead(
+                    values: PulledValues(read),
+                    select: { try read.select(presetId: $0) }
+                )
+            },
             addSavePreset: { try await handle.addSavePreset(preset: $0) },
             replaceSavePreset: {
                 try await handle.replaceSavePreset(preset: $0)
@@ -181,4 +220,11 @@ final class Outputs: Sendable, Observable {
             Outputs(newSavePreset: { _ in PreviewData.savePresets[0] })
         }
     #endif
+}
+
+/// A save panel's read of the format its pop-up shows: the values core
+/// answers, and the call that moves the selection the answer is for.
+struct SaveChoiceRead: Sendable {
+    let values: PulledValues<[BridgeSaveChoiceRow]>
+    let select: @Sendable (_ presetId: String) throws -> Void
 }

@@ -19,6 +19,20 @@ impl AppHandle {
         crate::screens::save_preset(self.services.subscribe_save_preset(id), self.runtime.clone())
     }
 
+    /// The save formats in the order a save panel's menu lists them, with the
+    /// one its pop-up shows chosen when the person has selected the format
+    /// `selected`: that format while a row holds it, else the format the last
+    /// save used. The selection moves in place through `select`.
+    pub fn subscribe_save_choice(
+        &self,
+        selected: String,
+    ) -> std::sync::Arc<crate::SaveChoiceSubscription> {
+        crate::screens::save_choice(
+            self.services.subscribe_save_choice(selected),
+            self.runtime.clone(),
+        )
+    }
+
     /// What this device keeps for the open library, in bytes: the first
     /// value at once, then one after each change.
     pub fn subscribe_device_storage(&self) -> std::sync::Arc<crate::DeviceStorageSubscription> {

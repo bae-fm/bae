@@ -90,6 +90,7 @@ final class StorageActionRunner {
             guard
                 let target = await OutputTarget.resolveReleaseSave(
                     configStore: configStore,
+                    outputs: outputs,
                     openFormats: openSaveAsSettings
                 )
             else {

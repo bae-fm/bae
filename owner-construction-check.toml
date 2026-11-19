@@ -346,6 +346,7 @@ task_types = [
     "ReleaseDetailSubscription",
     "ReleaseEditDraftSubscription",
     "ReleaseFilesSubscription",
+    "SaveChoiceSubscription",
     "SavePresetSubscription",
     "ScanningFoldersSubscription",
     "SetupStatesSubscription",

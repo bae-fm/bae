@@ -285,6 +285,27 @@ pulled_read! {
 }
 
 pulled_read! {
+    /// The save formats in the order a save panel's menu lists them, with the
+    /// one its pop-up shows chosen: the format the person selected while a
+    /// row holds it, else the format the last save used. One read for as long
+    /// as the panel is open, whose selection moves in place.
+    SaveChoiceSubscription: bae_library::LiveSaveChoice => Vec<crate::types::BridgeSaveChoiceRow>,
+    converted by |rows: Vec<bae_preferences::SaveChoiceRow>| {
+        rows.iter().map(crate::types::BridgeSaveChoiceRow::from_core).collect::<Vec<_>>()
+    },
+    built by save_choice
+}
+
+#[uniffi::export]
+impl SaveChoiceSubscription {
+    /// Show the format `preset_id` from now on, or the last used format
+    /// while no row holds it.
+    pub fn select(&self, preset_id: String) -> Result<(), BridgeError> {
+        self.inner.set(preset_id).map(|_revision| ()).map_err(BridgeError::from)
+    }
+}
+
+pulled_read! {
     /// The queue as its screens show it.
     QueueSubscription:
         LiveValues<bae_playback::ResolvedQueueSnapshot> => crate::types::BridgeQueueSnapshot,

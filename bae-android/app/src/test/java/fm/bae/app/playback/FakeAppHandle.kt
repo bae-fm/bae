@@ -95,6 +95,7 @@ import uniffi.bae_bridge.PlaybackTimelineSubscription
 import uniffi.bae_bridge.PlaybackValuesSubscription
 import uniffi.bae_bridge.QueueSubscription
 import uniffi.bae_bridge.ReleaseDetailSubscription
+import uniffi.bae_bridge.SaveChoiceSubscription
 import uniffi.bae_bridge.SavePresetSubscription
 import uniffi.bae_bridge.SessionUpNextSubscription
 import uniffi.bae_bridge.StorageQueuesSubscription
@@ -150,6 +151,8 @@ internal open class FakeAppHandle(
     override fun subscribeConfig(): ConfigSubscription = FakeConfigSubscription()
 
     override fun subscribeSavePreset(id: String): SavePresetSubscription = unfaked("subscribeSavePreset")
+
+    override fun subscribeSaveChoice(selected: String): SaveChoiceSubscription = unfaked("subscribeSaveChoice")
 
     override suspend fun getConfig(): BridgeConfig = unfaked("getConfig")
 

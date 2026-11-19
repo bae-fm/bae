@@ -138,6 +138,7 @@ extension PlaybackTimelineSubscription: PulledSubscription {}
 extension CastReceiversSubscription: PulledSubscription {}
 extension ConfigSubscription: PulledSubscription {}
 extension SavePresetSubscription: PulledSubscription {}
+extension SaveChoiceSubscription: PulledSubscription {}
 extension QueueSubscription: PulledSubscription {}
 extension DownloadCountsSubscription: PulledSubscription {}
 extension UploadsPausedSubscription: PulledSubscription {}

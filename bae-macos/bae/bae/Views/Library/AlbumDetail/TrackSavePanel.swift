@@ -22,6 +22,7 @@ enum TrackSavePanel {
     static func make(
         suggestedStem stem: String,
         configStore: ConfigStore,
+        outputs: Outputs,
         openFormats: @escaping @MainActor () -> Void
     ) -> SaveFilePanel {
         let panel = NSSavePanel()
@@ -29,7 +30,7 @@ enum TrackSavePanel {
 
         let picker = SaveFormatPicker(
             configStore: configStore,
-            selectedPresetId: configStore.config.lastSavePreset.id,
+            outputs: outputs,
             frame: NSRect(x: 54, y: 5, width: 190, height: 24),
             openFormats: openFormats,
             onChange: { [weak panel] choice in
@@ -43,14 +44,7 @@ enum TrackSavePanel {
                 }
             }
         )
-        let selected =
-            SaveFormatChoice.choices(
-                presets: configStore.config.savePresets
-            )
-            .first { $0.presetId == picker.selectedPresetId }
-        guard let selected else {
-            preconditionFailure("the selected preset is one of the choices")
-        }
+        let selected = picker.selectedChoice
         panel.nameFieldStringValue = "\(stem).\(selected.extensionName)"
         if let type = UTType(filenameExtension: selected.extensionName) {
             panel.allowedContentTypes = [type]

@@ -89,6 +89,20 @@ pub fn bridge_save_preset_can_delete(presets: Vec<BridgeSavePreset>) -> bool {
     bae_preferences::SavePreset::can_delete(&presets)
 }
 
+/// One save format in a save panel's menu, and whether the panel's pop-up
+/// shows it as chosen.
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct BridgeSaveChoiceRow {
+    pub preset: BridgeSavePreset,
+    pub chosen: bool,
+}
+
+impl BridgeSaveChoiceRow {
+    pub(crate) fn from_core(row: &bae_preferences::SaveChoiceRow) -> Self {
+        Self { preset: BridgeSavePreset::from_core(&row.preset), chosen: row.chosen }
+    }
+}
+
 /// How adding or changing one save preset ended.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeSavePresetWrite {

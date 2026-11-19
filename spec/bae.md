@@ -2764,7 +2764,8 @@ Two ways put a release back on disk, from desktop:
   and for a release, starting with the one last used; its Format menu ends in
   Edit Formats…, which opens Settings at Save as in front of the panel, which
   stays open behind it; the menu follows any change made there, and a format
-  added there is chosen in it at once. Deleting the format last used makes the
+  added there becomes the choice of every Save as… panel open at that time. A
+  panel opened later starts with the format last used. Deleting the format last used makes the
   first format left the last used, in the same write; the only format left
   can't be deleted, and its Delete… is off. The file name field's preview
   ends in the extension of the format Save as… starts with.
@@ -6095,7 +6096,8 @@ as it starts and as it settles, casting as the picker or its settings page
 opens, as the setting changes, or as a cast starts,
 the MCP and Subsonic servers as the row changes, and the store's transfer
 limits as the library opens and as either limit changes. The schema
-refuses what no setter writes: a last-used format that names no format, two
+refuses what no setter writes: a last-used format that
+names no format, two
 formats of one name, a format its codec can't write, a name pattern piece
 that is not exactly one of a value and typed text, or is typed text of
 nothing. A Subsonic server turned on with no username or password, or at a port

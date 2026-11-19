@@ -25,8 +25,8 @@ pub use import_destination::ImportDestination;
 pub use name_pattern::{NamePattern, NamePatternError, NamePiece};
 pub use presentation::LookupCatalogSetting;
 pub use row::{
-    config, preferences, subscribe_config, subscribe_preferences, subscribe_save_preset,
-    PreferencesRow,
+    config, preferences, subscribe_config, subscribe_preferences, subscribe_save_choice,
+    subscribe_save_preset, PreferencesRow, SaveChoiceRow,
 };
 #[cfg(any(test, feature = "test-utils"))]
 pub use row::{fail_preferences_writes_for_test, plant_unknown_replay_gain_mode_for_test};

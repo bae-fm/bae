@@ -27,6 +27,14 @@ impl<Id: Clone + PartialEq + Send + Sync + 'static> LiveRequest for Option<Id> {
     }
 }
 
+/// A read for another id answers about something the reader no longer asks
+/// for.
+impl LiveRequest for String {
+    fn still_answers(&self, current: &Self) -> bool {
+        self == current
+    }
+}
+
 /// A read for another set of ids answers about ids the reader no longer
 /// asks about.
 impl<Id: Ord + Clone + Send + Sync + 'static> LiveRequest for BTreeSet<Id> {

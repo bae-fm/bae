@@ -424,6 +424,7 @@ extension AlbumDetailView {
             guard
                 let target = await OutputTarget.resolveReleaseSave(
                     configStore: configStore,
+                    outputs: outputs,
                     openFormats: openSaveAsSettings
                 )
             else {
@@ -579,6 +580,7 @@ extension AlbumDetailView {
             let panel = TrackSavePanel.make(
                 suggestedStem: stem,
                 configStore: configStore,
+                outputs: outputs,
                 openFormats: openSaveAsSettings
             )
             defer { panel.picker.stop() }
