@@ -24,7 +24,7 @@ body{margin:0}
 .foot{font-size:11px;color:var(--text-secondary);padding:6px 4px 0}
 </style>
 </helmet>
-<x-import component-from-global-scope="Bae.MacSettingsWindow" pane="Library" title="Sync" back="Library" height="820">
+<x-import component-from-global-scope="Bae.MacSettingsWindow" pane="Library" title="Sync" back="Library" status-pane="Library" status="Waiting to sync" status-tone="warning" height="820">
   <dc-import name="mac.parts.sync-status" status="Waiting to sync" tone="warning" cause="Dropbox asked bae to slow down." remedy="Resuming in 42 seconds." last-synced="2 hours ago" hint-size="100%,110px"></dc-import>
   <x-import component-from-global-scope="Bae.MacSection" title="Cloud home">
     <x-import component-from-global-scope="Bae.MacBox">

@@ -15,7 +15,7 @@
 body{margin:0}
 </style>
 </helmet>
-<x-import component-from-global-scope="Bae.MacSettingsWindow" pane="Library" title="Sync" back="Library">
+<x-import component-from-global-scope="Bae.MacSettingsWindow" pane="Library" title="Sync" back="Library" status-pane="Library" status="Signed out" status-tone="warning">
   <dc-import name="mac.parts.sync-status" status="Signed out of S3" tone="warning" cause="Your changes stay on this Mac." fix="Sign in to S3…" last-synced="3 days ago" hint-size="100%,110px"></dc-import>
   <dc-import name="mac.parts.s3-cloud-home" key-id="AKIA4EXAMPLEOLD" hint-size="100%,210px"></dc-import>
 <x-import component-from-global-scope="Bae.MacSection" title="Restore code"><dc-import name="mac.parts.restore-code" s3="true" hint-size="100%,150px"></dc-import></x-import>
