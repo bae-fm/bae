@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,6 +28,7 @@ import fm.bae.app.R
 import fm.bae.app.ui.appearance.ThemeSize
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.AndroidDivider
 import fm.bae.app.ui.components.Artwork
 import uniffi.bae_bridge.BridgeLibraryBrowseSection
 
@@ -98,7 +98,7 @@ internal fun AndroidArtistGroupHeading(
                     Spacer(modifier = Modifier.width(ThemeSpace.group))
                     ArtistName(section)
                 }
-                HorizontalDivider(thickness = ThemeSpace.hairline)
+                AndroidDivider(thickness = ThemeSpace.hairline)
             }
         }
     }

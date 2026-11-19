@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,6 +34,7 @@ import fm.bae.app.queueWaitText
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidContentUnavailable
+import fm.bae.app.ui.components.AndroidDivider
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.retryAction
@@ -116,8 +116,8 @@ internal fun AndroidStoragePinning(
             onPauseToggle = onPauseToggle,
             onRetry = onRetry,
         )
-        DownloadConcurrencySelector(value = concurrency, limit = concurrencyLimit, onSelect = onSelectConcurrency)
-        HorizontalDivider()
+        AndroidPinsAtOnce(value = concurrency, limit = concurrencyLimit, onSelect = onSelectConcurrency)
+        AndroidDivider()
         Box(modifier = Modifier.weight(1f).fillMaxWidth(), content = body)
     }
 }
@@ -245,7 +245,7 @@ internal fun DownloadsList(
                 onCancel = { onCancel(op.releaseId) },
                 onRetry = { onRetry(op.releaseId) },
             )
-            HorizontalDivider()
+            AndroidDivider()
         }
     }
 }

@@ -42,12 +42,12 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import java.util.concurrent.ExecutorService
 
-private const val TAG = "QRScannerScreen"
+private const val TAG = "AndroidQRScanner"
 private const val NANOS_PER_MILLI = 1_000_000L
 private const val SUMMARY_INTERVAL_NANOS = 1_000 * NANOS_PER_MILLI
 
 @Composable
-fun QRScannerScreen(
+fun AndroidQRScanner(
     onScanned: (String) -> Unit,
     onDismiss: () -> Unit,
     instructions: String? = stringResource(R.string.qr_scanner_instructions),
@@ -85,7 +85,7 @@ fun QRScannerScreen(
             },
             modifier = Modifier.fillMaxSize(),
         )
-        QRScannerOverlay(
+        AndroidQRScannerOverlay(
             modifier = Modifier.align(Alignment.BottomCenter),
             instructions = instructions,
             onDismiss = onDismiss,
@@ -223,7 +223,7 @@ private class QrFrameTally(
 }
 
 @Composable
-private fun QRScannerOverlay(
+private fun AndroidQRScannerOverlay(
     modifier: Modifier,
     instructions: String?,
     onDismiss: () -> Unit,

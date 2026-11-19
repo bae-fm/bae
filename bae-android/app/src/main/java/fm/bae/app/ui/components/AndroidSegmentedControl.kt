@@ -22,7 +22,8 @@ import fm.bae.app.ui.appearance.ThemeText
 /**
  * Material's single-choice segmented buttons, full width, the [selected] one checked. [label] names the choice over
  * them, in the secondary text, as a form does, and TalkBack reads only the buttons, as each board specifies. A screen
- * whose board has TalkBack read the choice's name draws that name itself and passes no label.
+ * whose board has TalkBack read the choice's name draws that name itself and passes no label. [helper] says what the
+ * chosen option means, under the buttons in smaller secondary text.
  */
 @Composable
 internal fun AndroidSegmentedControl(
@@ -31,6 +32,7 @@ internal fun AndroidSegmentedControl(
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
     label: String? = null,
+    helper: String? = null,
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
         // The column draws the label above the buttons, and TalkBack skips it.
@@ -68,6 +70,9 @@ internal fun AndroidSegmentedControl(
                     Text(option)
                 }
             }
+        }
+        helper?.let {
+            Text(text = it, style = ThemeText.detail.style, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

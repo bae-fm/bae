@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -15,6 +14,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.ui.components.AndroidDialog
+import fm.bae.app.ui.components.AndroidDivider
 import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.AndroidMenu
 import fm.bae.app.ui.components.DialogAction
@@ -40,7 +40,7 @@ internal fun AlbumOptionsMenu(
                         onSetPrimaryRelease()
                     },
                 )
-                HorizontalDivider()
+                AndroidDivider()
             }
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.delete_album)) },

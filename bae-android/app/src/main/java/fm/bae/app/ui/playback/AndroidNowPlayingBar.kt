@@ -12,7 +12,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -35,6 +34,7 @@ import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSize
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.AndroidDivider
 import fm.bae.app.ui.components.AndroidErrorLine
 import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.Artwork
@@ -66,7 +66,7 @@ internal fun AndroidNowPlayingBar(
         Column(modifier = Modifier.fillMaxWidth()) {
             // A hairline along the top edge, so what scrolls above doesn't run
             // straight into the bar.
-            HorizontalDivider(color = BaeTheme.colors.hairline)
+            AndroidDivider(color = BaeTheme.colors.hairline)
             Column(
                 modifier =
                     Modifier

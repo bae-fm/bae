@@ -1,43 +1,42 @@
 package fm.bae.app.ui.albumdetail
 
-import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import fm.bae.app.R
 import fm.bae.app.fileKindText
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.AndroidDivider
 import fm.bae.app.ui.components.AndroidEyebrow
-import uniffi.bae_bridge.BridgeRelease
+import uniffi.bae_bridge.BridgeFile
 
 /**
- * The release's Files: the files no track plays from, each as its name at the start and what kind of
- * file it is at the end, under a hairline.
+ * The release's Files: the [files] no track plays from, under the Files eyebrow, each as its name at the start and
+ * what kind of file it is at the end, under a hairline.
  */
-internal fun LazyListScope.albumFiles(
-    release: BridgeRelease,
-    context: Context,
+@Composable
+internal fun AndroidReleaseFiles(
+    files: List<BridgeFile>,
+    modifier: Modifier = Modifier,
 ) {
-    if (!release.hasOtherFiles) return
-    item {
+    val context = LocalContext.current
+    Column(modifier = modifier) {
         AndroidEyebrow(
-            text = context.getString(R.string.album_files),
+            text = stringResource(R.string.album_files),
             modifier = Modifier.padding(bottom = ThemeSpace.inline),
             spaceAbove = ThemeSpace.inline,
         )
-    }
-    items(release.otherFiles, key = { it.id }) { file ->
-        Column {
-            HorizontalDivider()
+        files.forEach { file ->
+            AndroidDivider()
             Row(
                 modifier = Modifier.fillMaxWidth().padding(vertical = ThemeSpace.related),
                 horizontalArrangement = Arrangement.SpaceBetween,

@@ -1,10 +1,8 @@
 package fm.bae.app.ui.library
 
 import android.content.Context
-import androidx.compose.foundation.background
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
@@ -13,12 +11,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.creditLineText
 import fm.bae.app.durationClockLabel
@@ -187,28 +183,18 @@ private fun ReorderableCollectionItemScope.PlaylistEntry(
         trailing = context.durationClockLabel(entry.durationClock),
         art = entry.cover,
         onClick = { actions.onPlay(entry.positionId, false) },
+        dragging = lifted,
         modifier =
-            Modifier
-                .then(
-                    if (lifted) {
-                        Modifier
-                            .shadow(LIFT_SHADOW, MaterialTheme.shapes.medium)
-                            .background(MaterialTheme.colorScheme.surfaceContainerHigh, MaterialTheme.shapes.medium)
-                    } else {
-                        Modifier
-                    },
-                ).then(
-                    if (yours) {
-                        Modifier
-                            .screenReaderMoves(latestReorder, entry, moveUp, moveDown)
-                            .longPressDraggableHandle(
-                                onDragStarted = { latestReorder.start(entry.positionId) },
-                                onDragStopped = { latestReorder.finish() },
-                            )
-                    } else {
-                        Modifier
-                    },
-                ),
+            if (yours) {
+                Modifier
+                    .screenReaderMoves(latestReorder, entry, moveUp, moveDown)
+                    .longPressDraggableHandle(
+                        onDragStarted = { latestReorder.start(entry.positionId) },
+                        onDragStopped = { latestReorder.finish() },
+                    )
+            } else {
+                Modifier
+            },
         menu = {
             TrackOptionsMenu(
                 onPlayNext = { actions.onPlayNext(entry.trackId) },
@@ -249,5 +235,3 @@ private fun entryMoveAction(
         reorder.move(entry.positionId, up)
         true
     }
-
-private val LIFT_SHADOW = 6.dp

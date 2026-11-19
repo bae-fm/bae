@@ -7,7 +7,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -22,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.AndroidDivider
 import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.AndroidMenu
 import uniffi.bae_bridge.BridgeArtistSortCriterion
@@ -129,7 +129,7 @@ internal fun LibraryMoreMenuItems(
                     .semantics { heading() },
         )
         ViewSortItems(state = state, close = close)
-        HorizontalDivider(modifier = Modifier.padding(vertical = ThemeSpace.related))
+        AndroidDivider(modifier = Modifier.padding(vertical = ThemeSpace.related))
     }
     DropdownMenuItem(
         text = { Text(stringResource(R.string.shuffle_library)) },

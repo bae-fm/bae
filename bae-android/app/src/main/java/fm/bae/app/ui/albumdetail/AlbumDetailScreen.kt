@@ -345,7 +345,9 @@ internal fun AlbumDetailContent(
         }
         albumTrackGroups(shown, positionColumnWidth, playback, callbacks, context)
         albumCredits(shown)
-        albumFiles(shown, context)
+        if (shown.hasOtherFiles) {
+            item { AndroidReleaseFiles(shown.otherFiles) }
+        }
     }
 }
 

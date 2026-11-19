@@ -142,7 +142,7 @@ fun AndroidLightbox(
                         GalleryPage(releaseId = releaseId, item = items[page])
                     }
                     GalleryCloseButton(onDismiss = onDismiss)
-                    GalleryCaption(items = items, count = count, pagerState = pagerState)
+                    GalleryFoot(items = items, count = count, pagerState = pagerState)
                 }
             }
         }
@@ -215,36 +215,50 @@ private fun BoxScope.GalleryCloseButton(onDismiss: () -> Unit) {
 }
 
 /**
- * Current item's label and, when there are several, its position. Reads
- * [PagerState.currentPage] here so only the caption recomposes on a page turn.
+ * The gallery's foot: the shown item's caption at the bottom centre. Reads [PagerState.currentPage] here so only the
+ * caption recomposes on a page turn.
  */
 @Composable
-private fun BoxScope.GalleryCaption(
+private fun BoxScope.GalleryFoot(
     items: List<BridgeGalleryItem>,
     count: UInt,
     pagerState: PagerState,
 ) {
     val currentPage = pagerState.currentPage
+    AndroidGalleryCaption(
+        label = LocalContext.current.galleryLabelText(items[currentPage].label),
+        page = currentPage + 1,
+        count = count,
+        modifier = Modifier.align(Alignment.BottomCenter),
+    )
+}
+
+/**
+ * The gallery's caption on the dark backdrop: the shown image's [label] and, when there are several images, its
+ * [page] of [count].
+ */
+@Composable
+internal fun AndroidGalleryCaption(
+    label: String,
+    page: Int,
+    count: UInt,
+    modifier: Modifier = Modifier,
+) {
     Column(
         modifier =
-            Modifier
-                .align(Alignment.BottomCenter)
+            modifier
                 .windowInsetsPadding(
                     WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
                 ).padding(ThemeSpace.edge),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(
-            text = LocalContext.current.galleryLabelText(items[currentPage].label),
-            style = ThemeText.body.style,
-            color = BaeTheme.colors.onFill,
-        )
+        Text(text = label, style = ThemeText.body.style, color = BaeTheme.colors.onFill)
         if (count > 1u) {
             Text(
                 text =
                     stringResource(
                         R.string.gallery_page_counter,
-                        LocalContext.current.countText(currentPage + 1),
+                        LocalContext.current.countText(page),
                         LocalContext.current.countText(count),
                     ),
                 style = ThemeText.body.style,

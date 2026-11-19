@@ -31,7 +31,7 @@ internal fun setDownloadConcurrency(
 /** Shows the concurrency picker under a heading that TalkBack reads. The picker offers 1 up to [limit], selects
  *  [value] and passes each tap to [onSelect]. */
 @Composable
-internal fun DownloadConcurrencySelector(
+internal fun AndroidPinsAtOnce(
     value: UInt,
     limit: UInt,
     onSelect: (UInt) -> Unit,

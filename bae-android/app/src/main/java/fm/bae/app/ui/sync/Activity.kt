@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -36,6 +35,7 @@ import fm.bae.app.ui.AppProblem
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.AndroidDivider
 import fm.bae.app.ui.components.AndroidEyebrow
 import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.AndroidNotice
@@ -241,7 +241,7 @@ private fun NeedsAttention(
         AndroidEyebrow(context.coreString("core.activity.attention"))
         Column {
             problems.shown.forEachIndexed { index, id ->
-                if (index > 0) HorizontalDivider(modifier = Modifier.padding(start = NoticeTextInset))
+                if (index > 0) AndroidDivider(modifier = Modifier.padding(start = NoticeTextInset))
                 ProblemRow(
                     id = id,
                     app = app,

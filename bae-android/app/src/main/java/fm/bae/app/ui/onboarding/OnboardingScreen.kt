@@ -37,10 +37,10 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidProgress
+import fm.bae.app.ui.components.AndroidQRScanner
 import fm.bae.app.ui.components.AndroidSpinner
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.Logo
-import fm.bae.app.ui.components.QRScannerScreen
 import fm.bae.app.ui.rememberScreenScope
 import uniffi.bae_bridge.BridgeBootstrapResult
 import uniffi.bae_bridge.BridgeBootstrapStatus
@@ -188,7 +188,7 @@ internal fun OnboardingSteps(
     when (val step = flow.step) {
         is OnboardingStep.EnterCode -> {
             if (scanning) {
-                QRScannerScreen(
+                AndroidQRScanner(
                     onScanned = { code ->
                         scanning = false
                         flow.enter(step, code, CodeSource.SCANNED)
