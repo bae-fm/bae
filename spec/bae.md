@@ -1889,7 +1889,7 @@ The files the folder carries that are no track, such as a rip log, its images
 (which its gallery above the tracks also shows) or a track
 sheet that carves no tracks, are listed under the tracks beneath a ruled *Files*
 heading, one line per file: its name in monospace, its size at the right, a
-hairline between lines, a damaged file marked with why in two words: *Empty file* for a file that holds no bytes, *No audio bae can read* for one that holds no audio bae can play. Every size bae shows, here
+hairline between lines, a damaged file marked with why: *Empty file* for a file that holds no bytes, *No audio bae can read* for one that holds no audio bae can play. Every size bae shows, here
 and elsewhere, is in decimal units with at most one decimal and none when whole
 ("3.9 GB", "420 MB", "1 GB", an empty file's "0 B"), the number and the unit in the person's language.
 A document opens in the
