@@ -3069,9 +3069,9 @@ its track count and who sees it. The picture is the covers of the first four
 different releases its entries are on, as a 2×2 square; a playlist on fewer
 than four releases shows its first entry's cover, and one with no entries
 shows the missing-art tile. A playlist's page shows its owner, count, length
-and who sees it (on a Mac, only on the person's own playlist), then its tracks in order, each with its credit line (§2.3),
-album and release cover. On macOS each track also shows its number in the
-playlist, from 1; while a move's write runs, the rows show no number. The Add to playlist menu offers only the person's own
+and who sees it (on a Mac, only on the person's own playlist), then its tracks in order, each with its credit line (§2.3)
+and release cover, and on Android its album too. On macOS each track also shows its number in the
+playlist, from 1, and its cover at the queue's size; while a move's write runs, the rows show no number. The Add to playlist menu offers only the person's own
 playlists, and a playlist can be made only once the person has a profile.
 
 A playlist is made with a name and who sees it, *Only me* or *Everyone*,

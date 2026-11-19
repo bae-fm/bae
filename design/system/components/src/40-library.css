@@ -94,6 +94,7 @@
 /* The track numbers hang in the gutter, left of the picture's edge, so each cover lines up under the picture. */
 .bae-m-plpage-tracks .bae-m-lrow { margin-left: -26px; padding-left: 0; }
 .bae-m-plpage-tracks .bae-m-lrow-lead { width: 16px; text-align: right; }
+.bae-m-plpage-tracks .bae-m-lrow-sub { margin-top: 3px; }
 .bae-m-qrow { display: flex; align-items: center; gap: 12px; padding: 6px 8px; border-radius: var(--radius-control); }
 .bae-m-qrow-hover { background: var(--hover); }
 .bae-m-qrow-play { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--scrim); color: var(--on-fill); fill: currentColor; }

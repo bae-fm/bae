@@ -381,7 +381,7 @@ export declare function MacLightbox(props: { title?: string; label?: string; sou
 export declare function MacStorageBand(props: { state?: 'local' | 'pinned' | 'cloud' | 'uploading' | 'waiting'; missing?: string; download?: 'queued' | 'downloading' | 'failed'; moveToThisDevice?: 'queued' | 'moving' | 'failed'; progress?: number; why?: string; actions?: string }): React.ReactElement;
 export declare function Stars(props: { value?: number; size?: number; who?: string }): React.ReactElement;
 export declare function Avatar(props: { name: string; image?: string; size?: number }): React.ReactElement;
-export declare function MacListRow(props: { lead?: string; title: string; sub?: string; album?: string; who?: string; stars?: number; duration?: string; selected?: boolean; wide?: boolean; lifted?: boolean; dragging?: boolean }): React.ReactElement;
+export declare function MacListRow(props: { /** the cover's size, 32pt unless given */ cover?: number; lead?: string; title: string; sub?: string; album?: string; who?: string; stars?: number; duration?: string; selected?: boolean; wide?: boolean; lifted?: boolean; dragging?: boolean }): React.ReactElement;
 export declare function AndroidListRow(props: { title: string; sub?: string; album?: string; who?: string; trailing?: string; selected?: boolean }): React.ReactElement;
 
 // ---- Logo and app icons ----
