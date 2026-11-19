@@ -5,6 +5,7 @@
 //! carries that no track plays from.
 
 use bae_records::source_audio::{SourceAudioLayout, SourceAudioSummary};
+use bae_records::DbReleaseEditSheet;
 use bae_types::mediums::TrackSide;
 
 /// The file a persisted track's body plays from: its main segment's file. A
@@ -14,16 +15,6 @@ pub struct ReleaseEditTrackSource {
     pub file_id: String,
     pub name: String,
     pub layout: SourceAudioLayout,
-}
-
-/// The CUE sheet that carves a persisted track out of an image, as the editor
-/// names it above the tracks it carves: its file, its name, and the disc of
-/// the release the import read it as.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct ReleaseEditSheet {
-    pub file_id: String,
-    pub name: String,
-    pub disc_number: u32,
 }
 
 /// Display-only facts that accompany one persisted metadata row in the shared
@@ -46,15 +37,16 @@ pub struct ReleaseEditTrackContext {
     /// never edits.
     pub position_text: String,
     /// The CUE sheet that carves the track out of its source file; `None`
-    /// for a track that plays a whole file.
-    pub sheet: Option<ReleaseEditSheet>,
+    /// for a track that plays a whole file, or whose sheet the release no
+    /// longer holds.
+    pub sheet: Option<DbReleaseEditSheet>,
 }
 
 #[cfg(desktop)]
 impl ReleaseEditTrackContext {
     /// The CUE sheet that carves this track's body, and the file it carves
     /// the body from.
-    fn carved_from(&self) -> Option<(&ReleaseEditSheet, &ReleaseEditTrackSource)> {
+    fn carved_from(&self) -> Option<(&DbReleaseEditSheet, &ReleaseEditTrackSource)> {
         self.sheet.as_ref().map(|sheet| (sheet, &self.source))
     }
 }
@@ -87,7 +79,7 @@ pub enum ReleaseEditTrackRun {
     /// Two or more consecutive tracks a CUE sheet carves from one file, which
     /// is named once above them with the sheet.
     Sheet {
-        sheet: ReleaseEditSheet,
+        sheet: DbReleaseEditSheet,
         source: ReleaseEditTrackSource,
         rows: Vec<ReleaseEditTrackRow>,
     },
@@ -125,7 +117,7 @@ impl ReleaseEditTrackSide {
     /// from the same file, else as a run of its own.
     #[cfg(desktop)]
     fn append(&mut self, row: ReleaseEditTrackRow) {
-        let carved_with = |(sheet, source): (&ReleaseEditSheet, &ReleaseEditTrackSource)| {
+        let carved_with = |(sheet, source): (&DbReleaseEditSheet, &ReleaseEditTrackSource)| {
             row.context.carved_from().is_some_and(|(next_sheet, next_source)| {
                 next_sheet.file_id == sheet.file_id && next_source.file_id == source.file_id
             })
@@ -225,11 +217,7 @@ impl ReleaseEditTrackContext {
             duration_ms: entry.track.duration_ms,
             listed_length_ms: entry.listed_length_ms,
             position_text: entry.position.text(),
-            sheet: entry.sheet.map(|sheet| ReleaseEditSheet {
-                file_id: sheet.file_id,
-                name: sheet.name,
-                disc_number: sheet.disc_number,
-            }),
+            sheet: entry.sheet,
         })
     }
 }

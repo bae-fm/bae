@@ -44,6 +44,7 @@ mod artist_sql;
 pub use artist_sql::credit_artist_clauses;
 pub(crate) use artist_sql::{ARTIST_IDENTITY, ARTIST_IS_VARIOUS_ARTISTS, ARTIST_NAME_KEY};
 mod album_identity;
+#[cfg(desktop)]
 mod lengths_disagree;
 pub(crate) use album_identity::ALBUM_IDENTITY;
 mod catalog_rank;
@@ -184,6 +185,7 @@ const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] = &[
     &ARTIST_IDENTITY,
     &ARTIST_IS_VARIOUS_ARTISTS,
     &crate::source_audio::AUDIO_CODEC,
+    #[cfg(desktop)]
     &lengths_disagree::LENGTHS_DISAGREE,
 ];
 

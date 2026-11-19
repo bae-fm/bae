@@ -155,7 +155,7 @@ mirror_struct! {
 }
 
 mirror_struct! {
-    BridgeReleaseEditSheet = bae_import::ReleaseEditSheet,
+    BridgeReleaseEditSheet = bae_records::DbReleaseEditSheet,
     from_core: fn,
     fields: { file_id, name, disc_number },
 }

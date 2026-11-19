@@ -106,8 +106,13 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
             case .track(let row):
                 trackRow(row, sourceIsInCaption: false)
                     .id(row.edit.id)
-            case .sheet(_, let source, let rows):
-                sharedSourceCaption(source)
+            case .sheet(let sheet, let source, let rows):
+                ReleaseEditSheetCaption(
+                    sheet: sheet,
+                    source: source,
+                    onOpenDocument: onOpenDocument
+                )
+                .frame(width: tableWidth, alignment: .leading)
                 ForEach(rows, id: \.edit.id) { row in
                     trackRow(row, sourceIsInCaption: true)
                 }
@@ -162,7 +167,7 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
                 track: row.edit,
                 artistStanding: row.artistStanding,
                 length: row.context.durationClock,
-                listedLength: nil,
+                listedLength: row.context.listedLength,
                 columns: columns,
                 editingCommands: session.editingCommands,
                 position: row.context.positionText,
@@ -205,23 +210,6 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
             }
         }
         .frame(width: columns.source, alignment: .leading)
-    }
-
-    private func sharedSourceCaption(
-        _ source: BridgeReleaseEditTrackSource
-    ) -> some View {
-        HStack(spacing: ThemeSpace.related) {
-            Image(systemName: "list.bullet.rectangle")
-                .foregroundStyle(.tertiary)
-            Text(source.name)
-                .themeText(.mono)
-                .cutLine(.fileName)
-                .help(source.name)
-        }
-        .padding(.horizontal, ReleaseMetadataTrackColumns.rowPadding)
-        .padding(.top, ThemeSpace.related)
-        .padding(.bottom, ThemeSpace.compact)
-        .frame(width: tableWidth, alignment: .leading)
     }
 
     private func eyebrow(_ key: String) -> some View {

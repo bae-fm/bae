@@ -16,7 +16,7 @@ fn context(side: TrackSide, id: &str, file: &str, sheet: Option<&str>) -> Releas
         duration_ms: 1_000,
         listed_length_ms: None,
         position_text: String::new(),
-        sheet: sheet.map(|sheet| ReleaseEditSheet {
+        sheet: sheet.map(|sheet| bae_records::DbReleaseEditSheet {
             file_id: sheet.to_string(),
             name: format!("{sheet}.cue"),
             disc_number: 1,
@@ -257,17 +257,10 @@ fn a_track_keeps_its_listed_length_and_its_sheet() {
     };
     let mut tracks = one_track(1, Some(segment("id-disc.flac")));
     tracks[0].listed_length_ms = Some(183_001);
-    tracks[0].sheet = Some(sheet);
+    tracks[0].sheet = Some(sheet.clone());
     let display = ReleaseEditDisplayContext::from_raw(&no_files(), tracks).unwrap();
     assert_eq!(display.tracks[0].listed_length_ms, Some(183_001));
-    assert_eq!(
-        display.tracks[0].sheet,
-        Some(ReleaseEditSheet {
-            file_id: "id-disc.cue".to_string(),
-            name: "disc.cue".to_string(),
-            disc_number: 2,
-        })
-    );
+    assert_eq!(display.tracks[0].sheet, Some(sheet));
 }
 
 /// The Files section lists every file no track plays from, in the release's

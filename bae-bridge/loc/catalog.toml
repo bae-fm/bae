@@ -5836,7 +5836,7 @@ nb = "Artist"
 fi = "Esittäjä"
 
 [messages."ui.import.sheet.disc"]
-comment = "Import mapping table: which disc of the release a track sheet's entries are. Cue filenames are arbitrary, so this is a decision rather than something read off a name."
+comment = "Import mapping table and the release editor's caption over a CUE sheet's tracks: which disc of the release a track sheet's entries are. Cue filenames are arbitrary, so this is a decision rather than something read off a name."
 args = { number = "Int" }
 value = "Disc {number}"
 

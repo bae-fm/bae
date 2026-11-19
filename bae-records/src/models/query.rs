@@ -65,8 +65,9 @@ pub struct DbReleaseEditTrack {
 }
 
 /// A CUE sheet that carves a track out of an image, as the release editor
-/// names it: its file's id and name, and the disc of the release it is.
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// names it: its file's id and name, and the disc of the release the import
+/// read it as.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct DbReleaseEditSheet {
     pub file_id: String,
     pub name: String,

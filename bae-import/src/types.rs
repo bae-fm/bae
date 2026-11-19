@@ -28,8 +28,8 @@ pub use raw_release_edit::{
 #[cfg(desktop)]
 pub use release_edit_display::ReleaseEditDisplayContext;
 pub use release_edit_display::{
-    ReleaseEditLoadError, ReleaseEditSheet, ReleaseEditTrackContext, ReleaseEditTrackRow,
-    ReleaseEditTrackRun, ReleaseEditTrackSide, ReleaseEditTrackSource,
+    ReleaseEditLoadError, ReleaseEditTrackContext, ReleaseEditTrackRow, ReleaseEditTrackRun,
+    ReleaseEditTrackSide, ReleaseEditTrackSource,
 };
 #[cfg(desktop)]
 mod release_link;

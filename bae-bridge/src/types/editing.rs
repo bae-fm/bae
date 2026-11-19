@@ -687,7 +687,7 @@ pub struct BridgeReleaseEditTrackSource {
 
 /// The CUE sheet that carves a run of the release editor's tracks out of
 /// their file, as the run's caption names it. Mirrors
-/// `bae_import::ReleaseEditSheet`.
+/// `bae_records::DbReleaseEditSheet`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeReleaseEditSheet {
     pub file_id: String,

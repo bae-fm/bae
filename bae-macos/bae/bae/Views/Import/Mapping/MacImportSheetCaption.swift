@@ -11,12 +11,22 @@ struct MacImportSheetCaption: View {
     let actions: ImportMappingActions
 
     @State
-    private var hoveringName = false
-    @State
     private var hoveringBound = false
 
     var body: some View {
-        caption
+        SheetCaption(
+            name: sheet.name,
+            onOpen: { actions.openDocument(sheet.name, sheet.sheetId) },
+            disc: {
+                if showsDiscMenu {
+                    ImportSheetDiscMenu(
+                        sheet: sheet,
+                        onAssign: { actions.setSheetDisc(sheet.sheetId, $0) },
+                    )
+                }
+            },
+            audio: { audio }
+        )
     }
 
     private func bind(
@@ -26,54 +36,39 @@ struct MacImportSheetCaption: View {
         actions.bindSheet(sheet.sheetId, reference.fileReference, fileId)
     }
 
-    private var caption: some View {
-        HStack(spacing: ThemeSpace.related) {
-            if showsDiscMenu {
-                ImportSheetDiscMenu(
-                    sheet: sheet,
-                    onAssign: { actions.setSheetDisc(sheet.sheetId, $0) },
+    /// The audio the sheet's FILE lines are bound to, and the pop-up that
+    /// binds the lines that have none.
+    @ViewBuilder
+    private var audio: some View {
+        switch sheet.boundAudio {
+        case .none:
+            if sheet.unboundReferences == nil {
+                boundText
+            }
+        case .one(let reference):
+            boundMenu {
+                ImportSheetBindingItems(
+                    reference: reference,
+                    onBind: { bind(reference, to: $0) }
                 )
             }
-            formatTag
-            nameButton
-            // The arrow joins the sheet to its audio for the eye; the
-            // pop-up after it says what it is.
-            Image(systemName: "arrow.forward")
-                .themeIcon(.small)
-                .foregroundStyle(.tertiary)
-                .fixedSize()
-                .accessibilityHidden(true)
-            switch sheet.boundAudio {
-            case .none:
-                if sheet.unboundReferences == nil {
-                    boundText
-                }
-            case .one(let reference):
-                boundMenu {
-                    ImportSheetBindingItems(
-                        reference: reference,
-                        onBind: { bind(reference, to: $0) }
-                    )
-                }
-            case .several(let references):
-                boundMenu {
-                    for reference in references {
-                        MacMenuSubmenu(verbatim: referenceTitle(reference)) {
-                            ImportSheetBindingItems(
-                                reference: reference,
-                                onBind: { bind(reference, to: $0) }
-                            )
-                        }
+        case .several(let references):
+            boundMenu {
+                for reference in references {
+                    MacMenuSubmenu(verbatim: referenceTitle(reference)) {
+                        ImportSheetBindingItems(
+                            reference: reference,
+                            onBind: { bind(reference, to: $0) }
+                        )
                     }
                 }
             }
-            if let unbound = sheet.unboundReferences {
-                ImportSheetUnboundMenu(
-                    references: unbound,
-                    onBind: { bind($0, to: $1) }
-                )
-            }
-            Spacer(minLength: 0)
+        }
+        if let unbound = sheet.unboundReferences {
+            ImportSheetUnboundMenu(
+                references: unbound,
+                onBind: { bind($0, to: $1) }
+            )
         }
     }
 
@@ -113,28 +108,6 @@ struct MacImportSheetCaption: View {
         String(
             localized: "\(reference.fileReference) → \(reference.fileId ?? "")"
         )
-    }
-
-    /// What kind of sheet this is; a format name, so it is not translated.
-    private var formatTag: some View {
-        StatusChip(verbatim: "CUE", tone: .accent)
-            .fixedSize()
-    }
-
-    /// The sheet's name opens it in the viewer.
-    private var nameButton: some View {
-        Button {
-            actions.openDocument(sheet.name, sheet.sheetId)
-        } label: {
-            Text(sheet.name)
-                .themeText(.mono)
-                .foregroundStyle(.primary)
-                .underline(hoveringName)
-                .cutLine(.fileName)
-        }
-        .buttonStyle(.accentPlain)
-        .layoutPriority(1)
-        .onHover { hoveringName = $0 }
     }
 }
 
