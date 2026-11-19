@@ -14,7 +14,7 @@ import uniffi.bae_bridge.BridgeActivityLine
 /** The component shot of the Activity sheet's list: syncing, uploading and pinning, each bar part full. */
 class ActivityComponentShots : BoardShot() {
     @Test
-    fun androidComponentActivityDefault() =
+    fun androidComponentActivityTransfers() =
         component("android.component.activity.transfers", wide = true) {
             val store =
                 remember {

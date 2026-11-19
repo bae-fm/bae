@@ -19,37 +19,37 @@ import uniffi.bae_bridge.BridgeReleaseDownloadStatus
 /** The component shots of pinning: the release's download control and upload line, the downloads list's rows and bar. */
 class DownloadComponentShots : BoardShot() {
     @Test
-    fun androidComponentDownloadControlAvailable() =
+    fun androidComponentPinControlAvailable() =
         component("android.component.pin-control.available") { Control(BridgeReleaseDownloadStatus.Available) }
 
     @Test
-    fun androidComponentDownloadControlQueued() =
+    fun androidComponentPinControlQueued() =
         component("android.component.pin-control.queued") { Control(BridgeReleaseDownloadStatus.Queued) }
 
     @Test
-    fun androidComponentDownloadControlDownloading() =
+    fun androidComponentPinControlPinning() =
         component("android.component.pin-control.pinning", wide = true) {
             Control(BridgeReleaseDownloadStatus.Downloading)
         }
 
     @Test
-    fun androidComponentDownloadControlFailed() =
+    fun androidComponentPinControlFailed() =
         component("android.component.pin-control.failed", wide = true) {
             Control(BridgeReleaseDownloadStatus.Failed("Network unreachable"))
         }
 
     @Test
-    fun androidComponentDownloadControlDownloaded() =
+    fun androidComponentPinControlPinned() =
         component("android.component.pin-control.pinned") { Control(BridgeReleaseDownloadStatus.Downloaded) }
 
     @Test
-    fun androidComponentDownloadControlElsewhere() =
+    fun androidComponentPinControlElsewhere() =
         component("android.component.pin-control.elsewhere") {
             AndroidUnplayableLine(BridgeMessage("core.release.on_device", listOf(BridgeMessageArg("device", "Ana’s Mac"))))
         }
 
     @Test
-    fun androidComponentDownloadRowDefault() =
+    fun androidComponentPinningRowPinning() =
         component("android.component.pinning-row.pinning", wide = true) {
             val downloads = PreviewData.downloadStore(downloadingReleaseId = "rel-2")
             Column {
@@ -64,7 +64,7 @@ class DownloadComponentShots : BoardShot() {
         }
 
     @Test
-    fun androidComponentDownloadsBarDefault() =
+    fun androidComponentPinningBarFailed() =
         component("android.component.pinning-bar.failed", wide = true) {
             AndroidPinningBar(
                 paused = false,

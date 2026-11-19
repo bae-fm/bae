@@ -27,7 +27,7 @@ import org.junit.Test
 /** The component shots of the two screen frames: a settings screen's, and a library detail page's. */
 class ScreenComponentShots : BoardShot() {
     @Test
-    fun androidComponentScreenDefault() =
+    fun androidComponentScreenBack() =
         component("android.component.screen.back", wide = true) {
             AndroidScreen(title = "Library", onBack = {}, modifier = Modifier.height(360.dp)) {
                 Text("The screen’s content", modifier = Modifier.padding(ThemeSpace.edge))
@@ -35,10 +35,10 @@ class ScreenComponentShots : BoardShot() {
         }
 
     @Test
-    fun androidComponentLibraryScreenDefault() = shot("android.component.library-screen.top") { ScreenScene { PlayingLibraryScreen() } }
+    fun androidComponentLibraryScreenTop() = shot("android.component.library-screen.top") { ScreenScene { PlayingLibraryScreen() } }
 
     @Test
-    fun androidComponentDetailScreenDefault() =
+    fun androidComponentDetailScreenResting() =
         component("android.component.detail-screen.resting", wide = true) {
             Images {
                 AndroidDetailScreen(

@@ -74,7 +74,7 @@ class PlaybackComponentShots : BoardShot() {
     fun androidComponentSeekBarHoles() = component("android.component.seek-bar.holes", wide = true) { holes.SeekRow() }
 
     @Test
-    fun androidComponentFullPlayerDefault() =
+    fun androidComponentFullPlayerPlaying() =
         shot("android.component.full-player.playing") {
             ScreenScene {
                 CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
@@ -139,11 +139,11 @@ class PlaybackComponentShots : BoardShot() {
         }
 
     @Test
-    fun androidComponentQueueLabelUpNext() =
+    fun androidComponentQueueSectionUpNext() =
         component("android.component.queue-section.up-next", wide = true) { AndroidQueueSection("Up next", "Clear up next", {}) }
 
     @Test
-    fun androidComponentQueueLabelPlayingFrom() =
+    fun androidComponentQueueSectionPlayingFrom() =
         component("android.component.queue-section.playing-from", wide = true) {
             AndroidQueueSection("Playing from", "Clear playing from", {}, shuffled = false)
         }
