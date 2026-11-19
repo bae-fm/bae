@@ -104,6 +104,7 @@ private struct HistoryMenu {
 
     /// The choice of everyone's plays or one person's, which `choose` takes
     /// as the person's member id, or `nil` for everyone's.
+    @MainActor
     func inlineMenu(
         action: Bool,
         choose: @escaping (String?) -> Void
