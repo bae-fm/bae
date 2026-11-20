@@ -19,10 +19,7 @@ generate_codable_conformance = true
 # `withTaskCancellationHandler`, whose handler drops the Rust future, and the
 # call throws `CancellationError`. Every other async callable runs to its end
 # once started: `AppHandle.save_playback_state` is left out because dropping it
-# partway leaves the queue, current track and position unwritten. The list is
-# every async method of the pull-style subscriptions, `KeyedValueStream`,
-# `ImportList`, `BridgeHost`, `BridgeDeviceReset` and the `AppHandle` blocks
-# that were exported as `cancellable` before uniffi took this list.
+# partway leaves the queue, current track and position unwritten.
 async_cancellable = [
     "AddDeviceStatusSubscription.cancel",
     "AddDeviceStatusSubscription.next",
