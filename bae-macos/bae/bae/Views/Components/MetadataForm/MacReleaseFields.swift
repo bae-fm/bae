@@ -82,8 +82,8 @@ struct MacReleaseFields: View {
     }
 
     /// One row per label, name beside number, as core hands them: a blank row
-    /// when there is none, and each row with the heading, remove button and
-    /// add button it carries.
+    /// when there is none, and each row with the heading and remove button
+    /// it carries, and Add on its own line under the last row.
     @ViewBuilder
     private var labelRows: some View {
         let rows = values.pressing.labels
@@ -127,13 +127,10 @@ struct MacReleaseFields: View {
                             String(localized: "Remove \(named)")
                         )
                     }
-                    if row.place.addsRow && !row.place.removable {
-                        addLabel(rows: rows)
-                    }
                 }
                 .themeIcon(.small)
             }
-            if row.place.addsRow && row.place.removable {
+            if row.place.addsRow {
                 GridRow {
                     rowLabel("")
                     addLabel(rows: rows)
@@ -154,7 +151,7 @@ struct MacReleaseFields: View {
 
     /// One row per barcode, as core hands them: a blank row when there is
     /// none, and each row with the heading and remove button it carries, and
-    /// Add on its own line under the last row (beside the one blank row).
+    /// Add on its own line under the last row.
     @ViewBuilder
     private var barcodeRows: some View {
         let rows = values.pressing.barcodes
@@ -186,13 +183,10 @@ struct MacReleaseFields: View {
                             String(localized: "Remove \(row.barcode)")
                         )
                     }
-                    if row.place.addsRow && !row.place.removable {
-                        addBarcode(rows: rows)
-                    }
                 }
                 .themeIcon(.small)
             }
-            if row.place.addsRow && row.place.removable {
+            if row.place.addsRow {
                 GridRow {
                     rowLabel("")
                     addBarcode(rows: rows)
