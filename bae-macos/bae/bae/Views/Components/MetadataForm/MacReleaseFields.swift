@@ -89,31 +89,32 @@ struct MacReleaseFields: View {
         let rows = values.pressing.labels
         ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
             GridRow {
-                rowLabel(row.labelled ? String(localized: "Label") : "")
+                rowLabel(row.place.labelled ? String(localized: "Label") : "")
                 HStack(spacing: ThemeSpace.compact) {
                     valueText(
-                        row.name,
+                        row.label.name,
                         name: String(localized: "Label"),
                         monospaced: false
                     ) { name in
-                        var next = rows.map(\.edit)
+                        var next = rows.map(\.label)
                         next[index].name = name
                         await writer.setLabels(next)
                     }
                     valueText(
-                        row.catalogNumber,
+                        row.label.catalogNumber,
                         name: String(localized: "Catalog number"),
                         monospaced: true
                     ) { number in
-                        var next = rows.map(\.edit)
+                        var next = rows.map(\.label)
                         next[index].catalogNumber = number
                         await writer.setLabels(next)
                     }
-                    if row.removable {
+                    if row.place.removable {
                         let named =
-                            row.name.isEmpty ? row.catalogNumber : row.name
+                            row.label.name.isEmpty
+                            ? row.label.catalogNumber : row.label.name
                         Button {
-                            var next = rows.map(\.edit)
+                            var next = rows.map(\.label)
                             next.remove(at: index)
                             Task { await writer.setLabels(next) }
                         } label: {
@@ -126,7 +127,7 @@ struct MacReleaseFields: View {
                             String(localized: "Remove \(named)")
                         )
                     }
-                    if row.addsRow {
+                    if row.place.addsRow {
                         Button {
                             let blank = BridgeRawLabelEdit(
                                 name: "",
@@ -134,7 +135,7 @@ struct MacReleaseFields: View {
                             )
                             Task {
                                 await writer.setLabels(
-                                    rows.map(\.edit) + [blank]
+                                    rows.map(\.label) + [blank]
                                 )
                             }
                         } label: {
@@ -159,7 +160,7 @@ struct MacReleaseFields: View {
         let rows = values.pressing.barcodes
         ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
             GridRow {
-                rowLabel(row.labelled ? String(localized: "Barcode") : "")
+                rowLabel(row.place.labelled ? String(localized: "Barcode") : "")
                 HStack(spacing: ThemeSpace.compact) {
                     valueText(
                         row.barcode,
@@ -170,7 +171,7 @@ struct MacReleaseFields: View {
                         next[index] = barcode
                         await writer.setBarcodes(next)
                     }
-                    if row.removable {
+                    if row.place.removable {
                         Button {
                             var next = rows.map(\.barcode)
                             next.remove(at: index)
@@ -185,7 +186,7 @@ struct MacReleaseFields: View {
                             String(localized: "Remove \(row.barcode)")
                         )
                     }
-                    if row.addsRow {
+                    if row.place.addsRow {
                         Button {
                             Task {
                                 await writer.setBarcodes(
@@ -255,12 +256,5 @@ struct MacReleaseFields: View {
             name: label,
             monospaced: monospaced
         ) { await writer.setField(field, $0) }
-    }
-}
-
-extension BridgeLabelRow {
-    /// The label as a write of the label rows sends it.
-    fileprivate var edit: BridgeRawLabelEdit {
-        BridgeRawLabelEdit(name: name, catalogNumber: catalogNumber)
     }
 }

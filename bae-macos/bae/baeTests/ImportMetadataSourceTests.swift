@@ -428,8 +428,8 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
             XCTAssertTrue(text.contains(values.albumYear))
             XCTAssertTrue(text.contains(values.pressing.year))
             for label in values.pressing.labels {
-                XCTAssertTrue(text.contains(label.name))
-                XCTAssertTrue(text.contains(label.catalogNumber))
+                XCTAssertTrue(text.contains(label.label.name))
+                XCTAssertTrue(text.contains(label.label.catalogNumber))
             }
         }
     }

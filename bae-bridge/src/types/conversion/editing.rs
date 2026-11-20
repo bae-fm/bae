@@ -112,43 +112,33 @@ impl BridgeRawPressingEdit {
     }
 }
 
+impl BridgeListPlace {
+    fn of_row<T>(row: &bae_import::ListRow<T>) -> Self {
+        Self { labelled: row.labelled, removable: row.removable, adds_row: row.adds_row }
+    }
+}
+
 impl BridgeLabelRow {
     fn from_core(row: bae_import::ListRow<bae_import::RawLabelEdit>) -> Self {
+        let place = BridgeListPlace::of_row(&row);
         Self {
-            name: row.row.name,
-            catalog_number: row.row.catalog_number,
-            labelled: row.labelled,
-            removable: row.removable,
-            adds_row: row.adds_row,
+            label: BridgeRawLabelEdit {
+                name: row.row.name,
+                catalog_number: row.row.catalog_number,
+            },
+            place,
         }
     }
 
     fn into_core(self) -> bae_import::RawLabelEdit {
-        BridgeRawLabelEdit { name: self.name, catalog_number: self.catalog_number }.into_core()
-    }
-
-    /// The rows the editor draws of `labels`.
-    #[cfg(desktop)]
-    pub(crate) fn of_stored(labels: Vec<BridgeRawLabelEdit>) -> Vec<Self> {
-        let stored: Vec<_> = labels.into_iter().map(BridgeRawLabelEdit::into_core).collect();
-        bae_import::ListRow::of_labels(&stored).into_iter().map(Self::from_core).collect()
+        self.label.into_core()
     }
 }
 
 impl BridgeBarcodeRow {
     fn from_core(row: bae_import::ListRow<String>) -> Self {
-        Self {
-            barcode: row.row,
-            labelled: row.labelled,
-            removable: row.removable,
-            adds_row: row.adds_row,
-        }
-    }
-
-    /// The rows the editor draws of `barcodes`.
-    #[cfg(desktop)]
-    pub(crate) fn of_stored(barcodes: Vec<String>) -> Vec<Self> {
-        bae_import::ListRow::of_barcodes(&barcodes).into_iter().map(Self::from_core).collect()
+        let place = BridgeListPlace::of_row(&row);
+        Self { barcode: row.row, place }
     }
 }
 

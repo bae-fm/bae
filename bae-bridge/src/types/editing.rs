@@ -768,27 +768,29 @@ pub struct BridgeRawPressingEdit {
     pub facts: BridgePressingFacts,
 }
 
-/// One label row the editor draws, with what the row carries: the list's
-/// heading on the first row, the control that adds a row on the last, and a
-/// remove control on every row but a lone blank one. Mirrors
-/// `bae_import::ListRow` of a `bae_import::RawLabelEdit`.
+/// What a row of a list the editor draws carries: the list's heading on the
+/// first row, the control that adds a row on the last, and a remove control
+/// on every row but a lone blank one. Mirrors the flags of
+/// `bae_import::ListRow`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeLabelRow {
-    pub name: String,
-    pub catalog_number: String,
+pub struct BridgeListPlace {
     pub labelled: bool,
     pub removable: bool,
     pub adds_row: bool,
 }
 
-/// One barcode row the editor draws, with what the row carries, as a
-/// [`BridgeLabelRow`] does.
+/// One label row the editor draws.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeLabelRow {
+    pub label: BridgeRawLabelEdit,
+    pub place: BridgeListPlace,
+}
+
+/// One barcode row the editor draws.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeBarcodeRow {
     pub barcode: String,
-    pub labelled: bool,
-    pub removable: bool,
-    pub adds_row: bool,
+    pub place: BridgeListPlace,
 }
 
 /// One label row of the editor, as the editor writes it. Mirrors
@@ -797,22 +799,6 @@ pub struct BridgeBarcodeRow {
 pub struct BridgeRawLabelEdit {
     pub name: String,
     pub catalog_number: String,
-}
-
-/// The rows the editor draws of `labels`, for a form bound to a value
-/// rather than to a draft in core, as a preview's is.
-#[cfg(desktop)]
-#[uniffi::export]
-pub fn bridge_label_rows(labels: Vec<BridgeRawLabelEdit>) -> Vec<BridgeLabelRow> {
-    BridgeLabelRow::of_stored(labels)
-}
-
-/// The rows the editor draws of `barcodes`, for a form bound to a value
-/// rather than to a draft in core, as a preview's is.
-#[cfg(desktop)]
-#[uniffi::export]
-pub fn bridge_barcode_rows(barcodes: Vec<String>) -> Vec<BridgeBarcodeRow> {
-    BridgeBarcodeRow::of_stored(barcodes)
 }
 
 /// One raw track row from the editor. Mirrors
