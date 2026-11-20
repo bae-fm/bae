@@ -258,7 +258,7 @@
 .bae-m-sidepause-buttons { display: flex; justify-content: flex-end; gap: 8px; padding-top: 8px; }
 .bae-m-castpop { z-index: 7; width: 260px; color: var(--text-primary); box-sizing: border-box; display: flex; flex-direction: column; gap: 6px; padding: 6px 4px 12px; overflow: hidden; border-radius: var(--radius-control); background: var(--tile); box-shadow: 0 8px 24px var(--shadow); font: 400 13px var(--font-sans); }
 .bae-m-castpop-head { padding: var(--space-group) var(--space-group) 0; }
-.bae-m-castpop-none { padding: var(--space-compact) var(--space-inline); color: var(--text-secondary); }
+.bae-m-castpop-none { padding: var(--space-compact) var(--space-group); color: var(--text-secondary); }
 /* A receiver row: a box row's inset around MacItem, which spans it, so Disconnect sits at the right edge. */
 .bae-m-castrow { padding: 10px var(--space-group); }
 .bae-m-castpop-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
