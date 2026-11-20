@@ -25,6 +25,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.zIndex
 import fm.bae.app.R
@@ -82,9 +84,14 @@ internal fun AndroidCastRow(
         modifier =
             Modifier
                 .fillMaxWidth()
-                // A menu a shot draws open lies over the rows after this one.
-                .zIndex(if (LocalOpenReceiverMenu.current == receiver.id) 1f else 0f)
                 .then(
+                    // A menu a shot draws open lies over the rows after this one, and the row still reads first.
+                    if (LocalOpenReceiverMenu.current == receiver.id) {
+                        Modifier.zIndex(1f).semantics { traversalIndex = -1f }
+                    } else {
+                        Modifier
+                    },
+                ).then(
                     when (role) {
                         is CastReceiverRole.Casting -> Modifier
                         is CastReceiverRole.Found -> Modifier.clickable(onClick = role.onCast)
