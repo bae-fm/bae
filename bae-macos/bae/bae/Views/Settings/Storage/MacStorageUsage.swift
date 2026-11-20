@@ -6,6 +6,7 @@ import SwiftUI
 struct MacStorageUsage: View {
     let usage: StorageUsage
 
+    /// The space between two neighbouring segments.
     private static let gap: CGFloat = 2
     private static let thinnest: CGFloat = 4
 
@@ -25,23 +26,24 @@ struct MacStorageUsage: View {
 
     private var bar: some View {
         GeometryReader { proxy in
-            let gaps = Self.gap * CGFloat(max(usage.segments.count - 1, 0))
-            let room = max(proxy.size.width - gaps, 0)
-            HStack(spacing: Self.gap) {
-                ForEach(Array(usage.segments.enumerated()), id: \.element.id) {
-                    index,
-                    segment in
-                    let last = usage.segments.count - 1
-                    UnevenRoundedRectangle(
-                        topLeadingRadius: index == 0 ? 4 : 2,
-                        bottomLeadingRadius: index == 0 ? 4 : 2,
-                        bottomTrailingRadius: index == last ? 4 : 2,
-                        topTrailingRadius: index == last ? 4 : 2
-                    )
-                    .fill(segment.kind.color)
-                    .frame(width: max(Self.thinnest, room * segment.share))
+            HStack(spacing: 0) {
+                ForEach(usage.segments) { segment in
+                    Rectangle()
+                        .fill(segment.kind.color)
+                        .frame(
+                            width: max(
+                                Self.thinnest,
+                                proxy.size.width * segment.share
+                            )
+                        )
+                        // Each segment's edges give up half a gap, so two
+                        // neighbours leave one gap between them.
+                        .mask {
+                            Rectangle().padding(.horizontal, Self.gap / 2)
+                        }
                 }
             }
+            .clipShape(RoundedRectangle(cornerRadius: 4))
         }
         .frame(height: 8)
         // VoiceOver reads the bar as one image, labelled with each kind and
