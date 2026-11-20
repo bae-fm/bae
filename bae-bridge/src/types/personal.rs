@@ -153,7 +153,7 @@ pub struct BridgePlaylistOwner {
 }
 
 impl BridgePlaylistOwner {
-    pub(crate) fn from_core(owner: bae_views::playlists::PlaylistOwner) -> Self {
+    pub(crate) fn from_core(owner: bae_people::people::PersonRef) -> Self {
         Self {
             person: owner.person.0.to_string(),
             initials: bae_people::people::initials(&owner.name),

@@ -25,22 +25,13 @@ pub enum PlaylistCover {
     Grid([Option<ImageRef>; COVER_GRID]),
 }
 
-/// Who made a playlist.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PlaylistOwner {
-    pub person: coven::MemberId,
-    pub name: String,
-    /// The version of the person's avatar; `None` without one.
-    pub avatar_version: Option<String>,
-}
-
 /// A playlist as the Playlists view and the Add to playlist menu list it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlaylistSummary {
     pub id: uuid::Uuid,
     pub name: String,
     pub sharing: Sharing,
-    pub owner: PlaylistOwner,
+    pub owner: bae_people::people::PersonRef,
     /// Whether this device's person made it.
     pub yours: bool,
     /// "{count} tracks" (`core.library.track_count`).
@@ -188,7 +179,7 @@ fn playlist_row(row: &Row) -> rusqlite::Result<PlaylistSummary> {
         id: uuid_column(row, 0)?,
         name: row.get(1)?,
         sharing: Sharing::of_audience(row.get(2)?),
-        owner: PlaylistOwner {
+        owner: bae_people::people::PersonRef {
             person: coven::MemberId(uuid_column(row, 3)?),
             name: row.get(4)?,
             avatar_version: row.get(5)?,

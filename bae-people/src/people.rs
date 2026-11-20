@@ -120,6 +120,16 @@ impl HistorySharing {
     }
 }
 
+/// A person as a screen's row refers to them: who made a playlist, whose play
+/// it is.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PersonRef {
+    pub person: coven::MemberId,
+    pub name: String,
+    /// The version of the person's avatar; `None` without one.
+    pub avatar_version: Option<String>,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PersonProfile {
     pub id: coven::MemberId,
