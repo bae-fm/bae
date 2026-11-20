@@ -90,6 +90,8 @@ pub(crate) struct Raw {
     pub(crate) bounds: Option<Bounds>,
     pub(crate) text: Option<TextStyle>,
     pub(crate) placeholder: Option<String>,
+    /// A password field: what is typed shows masked, never as itself.
+    pub(crate) secret: bool,
 }
 
 fn nonempty(text: Option<&str>) -> Option<String> {
@@ -116,7 +118,7 @@ pub(crate) fn build(raw: &[Raw], platform: Platform) -> Result<Vec<Element>, Rea
         if kept && !(role == Role::Text && inside_control) {
             if let Some(bounds) = node.bounds {
                 next_parent = Some(elements.len());
-                elements.push(element(node, role, label.clone(), bounds, parent));
+                elements.push(element(node, role, label.clone(), bounds, parent, platform));
             }
         }
         if kept && role.is_control() && label.is_some() {
@@ -137,6 +139,7 @@ fn element(
     label: Option<String>,
     bounds: Bounds,
     parent: Option<usize>,
+    platform: Platform,
 ) -> Element {
     let value = match role {
         Role::Toggle => node.checked.as_deref().map(|c| match c {
@@ -144,7 +147,10 @@ fn element(
             "false" => "off".to_string(),
             other => other.to_string(),
         }),
-        Role::Field => Some(node.value.clone().unwrap_or_default()),
+        Role::Field => {
+            let typed = node.value.clone().unwrap_or_default();
+            Some(if node.secret { masked(&typed, platform) } else { typed })
+        }
         Role::Popup | Role::Slider | Role::Progress => node.value.clone(),
         _ => None,
     };
@@ -167,6 +173,18 @@ fn element(
     }
 }
 
+/// What a password field holds as its platform reports it: one mask
+/// character for each character typed. Chrome reports the typed text itself;
+/// macOS reports its secure field's private-use bullet, and Compose its
+/// password field's bullet.
+fn masked(typed: &str, platform: Platform) -> String {
+    let mask = match platform {
+        Platform::Mac => '\u{F79A}',
+        Platform::Android => '\u{2022}',
+    };
+    typed.chars().map(|_| mask).collect()
+}
+
 /// What a DOM node reports about its box and its font.
 #[derive(Debug, Deserialize)]
 struct Geometry {
@@ -185,6 +203,8 @@ struct Geometry {
     /// `false`). Chrome's accessibility tree has no selected state for a
     /// button, where the Mac marks the open row of a sidebar selected.
     current: bool,
+    /// The node is a password input.
+    secret: bool,
 }
 
 const GEOMETRY: &str = r#"function() {
@@ -220,6 +240,7 @@ const GEOMETRY: &str = r#"function() {
       : this.getAttribute('role') === 'textbox' ? typed(this) : null,
     current: !isText && this.hasAttribute('aria-current')
       && this.getAttribute('aria-current') !== 'false',
+    secret: !isText && this.tagName === 'INPUT' && this.type === 'password',
   };
 }"#;
 
@@ -386,6 +407,7 @@ async fn gather(page: &Page) -> Result<Vec<Raw>, ReadError> {
                                 if let Some(value) = geometry.field_value {
                                     raw.value = Some(value);
                                 }
+                                raw.secret = geometry.secret;
                             }
                         }
                     }

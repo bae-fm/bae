@@ -139,6 +139,7 @@ const BOARD: &str = r##"<x-dc><helmet><style>body{margin:0;font:13px sans-serif}
 <div role="radio" aria-checked="true" aria-label="Dark" tabindex="0">x</div>
 <input type="text" aria-label="Name" placeholder="Library name" value="Odile">
 <input type="text" aria-label="Restore" placeholder="Restore code">
+<input type="password" aria-label="Secret" value="abc">
 <div role="textbox" aria-label="Code empty"><span aria-hidden="true">Code empty</span></div>
 <div role="textbox" aria-label="Code typed">CVR1 ABCD</div>
 <select aria-label="Mode"><option>Never</option><option selected>Always</option></select>
@@ -219,6 +220,11 @@ async fn a_board_reads_as_the_shots_do() {
     let empty = find(&elements, Role::Field, "Restore");
     assert_eq!(empty.value.as_deref(), Some(""), "an empty field's value is not its placeholder");
     assert_eq!(empty.placeholder.as_deref(), Some("Restore code"));
+    assert_eq!(
+        find(&elements, Role::Field, "Secret").value.as_deref(),
+        Some("\u{F79A}\u{F79A}\u{F79A}"),
+        "a password field reads masked, as a Mac's secure field does"
+    );
     assert_eq!(find(&elements, Role::Field, "Code empty").value.as_deref(), Some(""));
     assert_eq!(find(&elements, Role::Field, "Code typed").value.as_deref(), Some("CVR1 ABCD"));
 
@@ -251,4 +257,17 @@ async fn a_texts_box_is_its_words_not_its_container() {
     assert_eq!(style.size, Some(13.0));
     assert_eq!(style.weight, Some(600));
     assert_eq!(style.color.as_ref().map(String::len), Some(9));
+}
+
+#[test]
+fn a_password_field_reads_masked_as_each_platform_masks_it() {
+    let mut secret = named(node("2", "textbox", &[]), "Secret");
+    secret.value = Some("abcd".to_string());
+    secret.secret = true;
+    let raw = [node("1", "RootWebArea", &["2"]), secret];
+    let value = |platform| {
+        build(&raw, platform).unwrap().into_iter().find(|e| e.role == Role::Field).unwrap().value
+    };
+    assert_eq!(value(Platform::Mac).as_deref(), Some("\u{F79A}\u{F79A}\u{F79A}\u{F79A}"));
+    assert_eq!(value(Platform::Android).as_deref(), Some("\u{2022}\u{2022}\u{2022}\u{2022}"));
 }
