@@ -27,8 +27,13 @@ extension SnapshotTestSupport {
         var retired = false
         let result: Value
         do {
-            let (window, host) = autoreleasepool {
-                openWindow(hosting: view, size: size)
+            let (window, host) = try autoreleasepool {
+                try openWindow(
+                    hosting: view,
+                    size: size,
+                    file: file,
+                    line: line
+                )
             }
             released = window
             Wait.announceRelease(of: window)
@@ -53,16 +58,7 @@ extension SnapshotTestSupport {
         // Swift Testing drains none until the run ends, so under it a window
         // not let go here would stay for the rest of the run.
         if Test.current != nil, !retired {
-            let end = ContinuousClock.now.advanced(by: HangGuard.duration)
-            while released != nil {
-                handlePendingNotices()
-                if released == nil { break }
-                try await Wait.nextIdle(
-                    before: end,
-                    file: file,
-                    line: line
-                )
-            }
+            try await untilWindows(file: file, line: line) { released == nil }
         }
         return result
     }
@@ -70,8 +66,10 @@ extension SnapshotTestSupport {
     @MainActor
     private static func openWindow<V: View>(
         hosting view: V,
-        size: NSSize
-    ) -> (window: NSWindow, host: NSHostingView<V>) {
+        size: NSSize,
+        file: StaticString,
+        line: UInt
+    ) throws -> (window: NSWindow, host: NSHostingView<V>) {
         let host = NSHostingView(rootView: view)
         host.frame = NSRect(origin: .zero, size: size)
         let window = SnapshotTestWindow(
@@ -93,7 +91,7 @@ extension SnapshotTestSupport {
         window.orderFront(nil)
         host.layoutSubtreeIfNeeded()
         if Test.current != nil {
-            takePlacementNotice(for: window)
+            try takePlacementNotice(for: window, file: file, line: line)
         }
         return (window, host)
     }
@@ -102,54 +100,41 @@ extension SnapshotTestSupport {
     /// window ordered in, handling it and anything else it sends meanwhile
     /// in the caller's autorelease pool.
     ///
-    /// The notice comes a tenth of a second after the window is ordered in,
-    /// and handling it autoreleases the window. Left to the test host's run
-    /// loop it is handled in the pool the test runner holds for the whole
+    /// Handling the notice autoreleases the window. Left to the test host's
+    /// run loop it is handled in the pool the test runner holds for the whole
     /// run, which Swift Testing never drains, and the window then outlived
     /// its test. XCTest drains a pool after each of its tests, so a window
-    /// hosted there needs no wait.
+    /// hosted there needs no wait. The wait ends on this window's notice,
+    /// however late the window server sends it; only the hang guard ends it
+    /// otherwise, and fails the test.
     @MainActor
-    private static func takePlacementNotice(for window: SnapshotTestWindow) {
-        let deadline = Date(timeIntervalSinceNow: 2)
+    private static func takePlacementNotice(
+        for window: SnapshotTestWindow,
+        file: StaticString,
+        line: UInt
+    ) throws {
+        let end = Date(timeIntervalSinceNow: HangGuard.seconds)
         while !window.isPlaced,
             let notice = NSApp.nextEvent(
                 matching: .appKitDefined,
-                until: deadline,
+                until: end,
                 inMode: .default,
                 dequeue: true
             )
         {
             NSApp.sendEvent(notice)
         }
-    }
-
-    /// Take the notices the window server sends about a sheet that opened or
-    /// closed, handling them and anything else it sends meanwhile in a pool of
-    /// their own, until none comes for a moment.
-    ///
-    /// Like the placement notice, each handled in the run loop is autoreleased
-    /// with the window it names into the pool the test runner holds for the
-    /// whole run, which Swift Testing never drains: a hosted window a sheet
-    /// was begun or ended on then outlived its test. A test that begins or
-    /// ends a sheet, or waits for something that does, calls this after.
-    @MainActor
-    static func takeSheetNotices() {
-        autoreleasepool {
-            while let notice = NSApp.nextEvent(
-                matching: .appKitDefined,
-                until: Date(timeIntervalSinceNow: 0.2),
-                inMode: .default,
-                dequeue: true
-            ) {
-                NSApp.sendEvent(notice)
-            }
+        if !window.isPlaced {
+            throw Wait.TimedOut(file: file, line: line)
         }
     }
 
     /// Handle, in a pool of their own, the notices the window server has
     /// already sent, without waiting for more. Handled by the run loop
     /// instead, each is autoreleased with the window it names into the pool
-    /// the test runner holds for the whole run (see [`takeSheetNotices`]).
+    /// the test runner holds for the whole run, which Swift Testing never
+    /// drains: a hosted window a sheet was begun or ended on, or that was
+    /// made key, then outlived its test.
     @MainActor
     private static func handlePendingNotices() {
         autoreleasepool {
@@ -164,11 +149,32 @@ extension SnapshotTestSupport {
         }
     }
 
+    /// Return once `condition` holds of AppKit's windows, which send no
+    /// change notice: it is read at once and at each idle of the run loop.
+    /// The window server's notices that come meanwhile are handled here, in
+    /// a pool of their own (see [`handlePendingNotices`]), as they come. The
+    /// wait ends on the windows' own state, not on a stretch with no notices.
+    @MainActor
+    static func untilWindows(
+        file: StaticString = #filePath,
+        line: UInt = #line,
+        _ condition: @MainActor () -> Bool
+    ) async throws {
+        let end = ContinuousClock.now.advanced(by: HangGuard.duration)
+        while true {
+            handlePendingNotices()
+            if autoreleasepool(invoking: condition) { return }
+            try await Wait.nextIdle(
+                before: end,
+                file: file,
+                line: line
+            )
+        }
+    }
+
     /// Return once `window` has a sheet attached, or none, as `attached`
     /// says. A sheet begun or ended is not done when the call returns: the
-    /// window server finishes it, and tells the app with notices, which are
-    /// handled here as they come. The wait ends on the window's own state,
-    /// read at each idle of the run loop, not on a stretch with no notices.
+    /// window server finishes it, and tells the app with notices.
     @MainActor
     static func untilSheet(
         on window: NSWindow,
@@ -176,19 +182,8 @@ extension SnapshotTestSupport {
         file: StaticString = #filePath,
         line: UInt = #line
     ) async throws {
-        let end = ContinuousClock.now.advanced(by: HangGuard.duration)
-        while true {
-            handlePendingNotices()
-            if autoreleasepool(invoking: { window.attachedSheet != nil })
-                == attached
-            {
-                return
-            }
-            try await Wait.nextIdle(
-                before: end,
-                file: file,
-                line: line
-            )
+        try await untilWindows(file: file, line: line) {
+            (window.attachedSheet != nil) == attached
         }
     }
 

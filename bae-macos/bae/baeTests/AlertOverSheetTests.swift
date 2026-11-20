@@ -39,29 +39,22 @@ struct AlertOverSheetTests {
         return sheet
     }
 
-    /// Whether `condition` holds within the deadline. AppKit's windows send
-    /// no change notice, so this checks `condition` each time the run loop
-    /// goes idle.
+    /// Whether `condition` holds within the hang guard, read as the windows
+    /// change (`SnapshotTestSupport.untilWindows`).
     private func holds(
+        file: StaticString = #filePath,
+        line: UInt = #line,
         _ condition: @MainActor () -> Bool
     ) async -> Bool {
-        let end = ContinuousClock.now.advanced(by: HangGuard.duration)
-        // `takeSheetNotices` drains the window server's key and order-in
-        // notices in its own autorelease pool, as for a sheet, so they do not
-        // keep the hosted window alive after its test.
-        while !condition() {
-            SnapshotTestSupport.takeSheetNotices()
-            if condition() { return true }
-            do {
-                try await Wait.nextIdle(
-                    before: end,
-                    file: #filePath,
-                    line: #line
-                )
-            }
-            catch { return condition() }
+        do {
+            try await SnapshotTestSupport.untilWindows(
+                file: file,
+                line: line,
+                condition
+            )
+            return true
         }
-        return true
+        catch { return false }
     }
 
     /// What stops the sheet below the alert from being reached: by pointer,
