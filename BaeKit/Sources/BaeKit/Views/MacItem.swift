@@ -25,12 +25,12 @@ public struct MacItem<Lead: View, Content: View, Trail: View>: View {
     }
 
     public var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: ThemeSpace.related) {
-            // The hidden line gives the column the first line's height and
-            // baseline, and the lead centres on that line over it. As an
-            // overlay the lead adds no baseline of its own: in a stack beside
-            // the line, a native view's baseline at its top would become the
-            // column's, and the row would align its text to the lead's top.
+        // The three start at the item's top, as the design system lays them
+        // out: a control at the end, taller than a line, sits from the top
+        // of the first line down rather than pushing the row taller.
+        HStack(alignment: .top, spacing: ThemeSpace.related) {
+            // The hidden line gives the column the first line's height, and
+            // the lead centres on that line over it.
             Text(verbatim: " ").themeText(.body).hidden()
                 .frame(width: ThemeSize.lead)
                 .overlay { lead }
