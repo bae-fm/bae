@@ -476,9 +476,10 @@ extension MappingFixtures {
     static func mapping(of store: ImportStore) -> BridgeMappingTable {
         store.selectedCandidates[candidateKey]?.mapping
             ?? BridgeMappingTable(
-                images: [],
-                trackSides: [],
-                files: [],
+                images: nil,
+                trackSides: nil,
+                files: nil,
+                trackCount: 0,
                 untitledTrackCount: 0
             )
     }
@@ -491,7 +492,7 @@ extension MappingFixtures {
         guard let candidate = store.selectedCandidates[candidateKey],
             var edit = candidate.edit
         else { return false }
-        edit.tracks = candidate.mapping.trackRows.map(\.track)
+        edit.tracks = (candidate.mapping?.trackRows ?? []).map(\.track)
         if case .valid = shapeReleaseEdit(raw: edit) { return true }
         return false
     }

@@ -40,11 +40,6 @@ struct ImportMappingPane: View {
     let onDropCoverImage: (String) -> Void
     let onNavigateToPlacement: (Data) -> Void
 
-    /// The folder's mapping, as core reads it back for this candidate.
-    private var mapping: BridgeMappingTable {
-        candidate.mapping
-    }
-
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: ThemeSpace.group) {
@@ -77,11 +72,10 @@ struct ImportMappingPane: View {
     /// the draft is still a read away.
     @ViewBuilder
     private var editor: some View {
-        if let edit = candidate.edit,
-            let offers = candidate.draft?.pressingOffers
-        {
+        if let draft = candidate.draft {
+            let edit = draft.metadataDraft
             MacReleaseEditor(
-                actionRow: .importing(commitControls),
+                actionRow: .importing(commitControls(draft)),
                 commands: ReleaseEditorCommands(
                     identifyAutomatically: onIdentify,
                     search: onSearchForRelease,
@@ -96,8 +90,8 @@ struct ImportMappingPane: View {
                 ),
                 card: ReleaseEditorCard(
                     values: { edit },
-                    pressingOffers: offers,
-                    albumArtists: candidate.draft?.albumArtists,
+                    pressingOffers: draft.pressingOffers,
+                    albumArtists: draft.albumArtists,
                     writer: editActions,
                     cover: ReleaseCover(
                         content: coverContent,
@@ -107,7 +101,7 @@ struct ImportMappingPane: View {
                     sourceAudio: candidate.files.sourceAudio,
                     // A blank draft files under nothing yet.
                     album: candidate.metadataDraftIsBlank
-                        ? nil : candidate.draft?.album,
+                        ? nil : draft.album,
                     albumActions: albumActions,
                     records: candidate.records,
                     pressingUnknown: {
@@ -120,10 +114,10 @@ struct ImportMappingPane: View {
                     }()
                 ),
                 tracks: ReleaseEditorTracks(
-                    images: candidate.detail == nil ? nil : mapping.images,
+                    images: draft.mapping.images,
                     onOpenImages: mappingActions.openImages,
-                    sides: candidate.detail == nil ? nil : mapping.trackSides,
-                    files: candidate.detail == nil ? nil : mapping.files,
+                    sides: draft.mapping.trackSides,
+                    files: draft.mapping.files,
                     previewingTarget: previewingTarget,
                     actions: mappingActions.trackTable
                 ),
@@ -153,13 +147,16 @@ struct ImportMappingPane: View {
         .disabled(!actionable)
     }
 
-    /// The card's commit row, absent while the draft is entirely blank.
-    private var commitControls: ImportCommitControls? {
-        guard candidate.detail != nil, !candidate.metadataDraftIsBlank else {
+    /// The card's commit row over `draft`, absent while the draft is
+    /// entirely blank.
+    private func commitControls(
+        _ draft: BridgeCandidateDraftPane
+    ) -> ImportCommitControls? {
+        guard !draft.metadataDraftIsBlank else {
             return nil
         }
         return ImportCommitControls(
-            untitledTrackCount: Int(mapping.untitledTrackCount),
+            untitledTrackCount: Int(draft.mapping.untitledTrackCount),
             folderCheck: candidate.folderCheck,
             importStatus: candidate.importStatus,
             importDestination: $importDestination,

@@ -548,7 +548,7 @@ extension ImportMappingPaneTests {
             store.selectedCandidates[MappingFixtures.candidateKey]
         )
         #expect(candidate.metadataProvenance == .fileMetadata)
-        #expect(candidate.mapping.trackRows.count == 2)
+        #expect(candidate.mapping?.trackRows.count == 2)
         #expect(
             candidate.releaseLink == MappingFixtures.releaseLink,
             "reading the tags leaves the link as it is"
@@ -574,7 +574,7 @@ extension ImportMappingPaneTests {
             store.selectedCandidates[MappingFixtures.candidateKey]
         )
         #expect(candidate.metadataProvenance == MappingFixtures.provenance)
-        #expect(candidate.mapping.trackRows.count == 13)
+        #expect(candidate.mapping?.trackRows.count == 13)
         guard case .pressing(let link) = candidate.releaseLink else {
             Issue.record("the candidate links a pressing")
             return

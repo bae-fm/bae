@@ -10,8 +10,10 @@ struct ImportReleaseSummary {
     let factsLine: String
     let sourceAudio: BridgeSourceAudioSummary?
 
-    init(candidate: Candidate, editValues values: BridgeRawReleaseEdit) {
-        let provenance = candidate.metadataProvenance
+    /// `candidate`'s draft, `draft`, with the folder's audio.
+    init(candidate: Candidate, draft: BridgeCandidateDraftPane) {
+        let values = draft.metadataDraft
+        let provenance = draft.metadataProvenance
         titleIsPlaceholder = values.albumTitle.isEmpty
         title =
             values.albumTitle.isEmpty
@@ -20,7 +22,7 @@ struct ImportReleaseSummary {
             values.albumArtistAssignments.isEmpty
             ? nil
             : bridgeCreditLine(credits: values.albumArtistAssignments).text
-        let count = Int(candidate.mapping.trackCount)
+        let count = Int(draft.mapping.trackCount)
         let trackText = String(localized: "\(count) tracks")
         switch provenance {
         case .externalRelease:
@@ -28,7 +30,7 @@ struct ImportReleaseSummary {
                 PressingText.media(values.pressing.facts.media),
                 values.pressing.year,
                 values.pressing.facts.area?.text,
-                candidate.draft?.summaryCatalogNumber,
+                draft.summaryCatalogNumber,
                 trackText,
             ])
         case .fileMetadata:

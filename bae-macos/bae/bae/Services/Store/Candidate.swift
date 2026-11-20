@@ -396,17 +396,10 @@ struct Candidate: Equatable, Identifiable {
     }
 
     /// Every source unit the folder offers with the track committing makes of
-    /// it. An empty table until the first read answers; the pane's own shape
-    /// does not change for it.
-    var mapping: BridgeMappingTable {
+    /// it; `nil` until the first read answers, and once this device imported
+    /// its files.
+    var mapping: BridgeMappingTable? {
         draft?.mapping
-            ?? BridgeMappingTable(
-                images: nil,
-                trackSides: nil,
-                files: nil,
-                trackCount: 0,
-                untitledTrackCount: 0
-            )
     }
 
     /// The cover this candidate commits with.

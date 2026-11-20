@@ -157,11 +157,11 @@ struct ImportingCandidatePane: View {
                         .clipShape(
                             RoundedRectangle(cornerRadius: ThemeRadius.artwork)
                         )
-                    if let values = candidate.edit {
+                    if let draft = candidate.draft {
                         MacImportReleaseSummary(
                             summary: ImportReleaseSummary(
                                 candidate: candidate,
-                                editValues: values
+                                draft: draft
                             ),
                             style: .card
                         )

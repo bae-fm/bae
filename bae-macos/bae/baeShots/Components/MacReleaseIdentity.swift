@@ -108,7 +108,10 @@ extension ShotScene {
                 untitledTrackCount: 0
             )
         )
-        return ImportReleaseSummary(candidate: candidate, editValues: edit)
+        guard let draft = candidate.draft else {
+            preconditionFailure("the pane candidate holds a draft")
+        }
+        return ImportReleaseSummary(candidate: candidate, draft: draft)
     }
 
     private static func coverWell(_ cover: Bool) -> some View {
