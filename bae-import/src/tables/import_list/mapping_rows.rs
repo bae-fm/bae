@@ -227,7 +227,8 @@ sides AS (
     FROM (SELECT side_no, MIN(side_kind) AS side_kind, MIN(side_value) AS side_value,
                  json_group_array(json(json) ORDER BY run_no) AS runs_json
           FROM runs GROUP BY side_no)
-)
+),
+{unplayed}
 SELECT json_object(
     'images', json((SELECT json_group_array(json_object(
                         'file_id', relative_path, 'name', file_name, 'path', hex(absolute_path),
@@ -242,9 +243,7 @@ SELECT json_object(
                                'size', f.size, 'role', f.role))
                        END ORDER BY f.position)
                    FROM f LEFT JOIN sheets AS s ON s.relative_path = f.relative_path
-                   WHERE NOT EXISTS (SELECT 1 FROM rows AS r
-                                     WHERE r.sheet_id = f.relative_path
-                                        OR r.unit_file_id = f.relative_path))),
+                   WHERE f.relative_path IN (SELECT file_id FROM unplayed_files))),
     'untitled', (SELECT COUNT(*) FILTER (WHERE bae_trim(title) = '') FROM rows),
     'tracks', (SELECT COUNT(*) FROM rows),
     'units', (SELECT COUNT(*) FROM scan_candidate_unit
@@ -254,6 +253,10 @@ SELECT json_object(
             crate::tables::import_state::OneCandidate::Scanned(key)
         )),
         track_artists = super::track_artist_field_sql("n.track_id"),
+        unplayed = bae_records::records::files::unplayed_files_cte(
+            "(SELECT relative_path AS file_id FROM f)",
+            "(SELECT unit_file_id AS audio_file_id, sheet_id AS sheet_file_id FROM rows)",
+        ),
     )
 }
 

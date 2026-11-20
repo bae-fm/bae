@@ -196,7 +196,7 @@ fn performs_works_sql(release: &str) -> String {
 /// their audio, as one JSON object for [`release_files_column`]. A track
 /// plays from each file a segment of the table `segments` (with the column
 /// `file_id` of `audio_format_segments`) reads, and from each CUE sheet that
-/// carves it.
+/// carves it, by [`super::files::unplayed_files_cte`].
 fn release_files_json_sql(release: &str, table: &str, segments: &str) -> String {
     let covers: Vec<String> = ContentType::SUPPORTED_COVERS
         .iter()
@@ -211,7 +211,7 @@ fn release_files_json_sql(release: &str, table: &str, segments: &str) -> String 
     };
     let image = "listed.content_type GLOB 'image/*'";
     format!(
-        "(SELECT json_object( \
+        "(WITH {unplayed} SELECT json_object( \
               'files', json({files}), 'images', json({images}), 'covers', json({covers}), \
               'others', json({others}), \
               'has_others', COALESCE(SUM(NOT listed.played), 0) > 0, \
@@ -219,13 +219,19 @@ fn release_files_json_sql(release: &str, table: &str, segments: &str) -> String 
               'total_size', COALESCE(SUM(listed.size), 0), \
               'source_audio', {source_audio}) \
           FROM (SELECT f.id, f.original_filename, f.content_type, \
-                       EXISTS (SELECT 1 FROM {segments} AS s WHERE s.file_id = f.id) \
-                       OR EXISTS (SELECT 1 FROM carved_tracks AS c \
-                                  WHERE c.sheet_file_id = f.id) AS played, \
+                       f.id NOT IN (SELECT file_id FROM unplayed_files) AS played, \
                        coven.size AS size, {file_json} AS file_json \
                 FROM {table} AS f \
                 JOIN coven_files AS coven ON coven.id = f.file \
                 WHERE f.release_id = {release}) AS listed)",
+        unplayed = super::files::unplayed_files_cte(
+            &format!("(SELECT id AS file_id FROM {table} WHERE release_id = {release})"),
+            &format!(
+                "(SELECT file_id AS audio_file_id, NULL AS sheet_file_id FROM {segments} \
+                  UNION ALL \
+                  SELECT NULL, sheet_file_id FROM carved_tracks)"
+            ),
+        ),
         files = list("1"),
         images = list(image),
         covers = list(&format!("listed.content_type IN ({})", covers.join(", "))),
