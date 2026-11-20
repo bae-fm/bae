@@ -57,7 +57,7 @@ macro_rules! forward {
         }
     ) => {
         $(#[$block])*
-        #[uniffi::export(async_runtime = "tokio", cancellable)]
+        #[uniffi::export(async_runtime = "tokio")]
         impl AppHandle {
             $(
                 $(#[$method])*

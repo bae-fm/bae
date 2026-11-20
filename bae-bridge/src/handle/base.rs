@@ -421,7 +421,7 @@ forward! { sync this => {
     }
 } }
 
-#[uniffi::export(async_runtime = "tokio", cancellable)]
+#[uniffi::export(async_runtime = "tokio")]
 impl AppHandle {
     /// Move the entry `entry_id` to `position` among `lane`'s rows as the
     /// screens show them (for the context lane, the rows after its playing

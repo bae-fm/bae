@@ -52,7 +52,7 @@ impl BridgeUnfinishedRemoval {
     }
 }
 
-#[uniffi::export(async_runtime = "tokio", cancellable)]
+#[uniffi::export(async_runtime = "tokio")]
 impl AppHandle {
     /// Stop services and leave the store before deleting its local files,
     /// discarding what this device hasn't uploaded. Each step it runs is

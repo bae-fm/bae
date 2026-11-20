@@ -273,7 +273,7 @@ impl KeyedValueStream {
     }
 }
 
-#[uniffi::export(async_runtime = "tokio", cancellable)]
+#[uniffi::export(async_runtime = "tokio")]
 impl KeyedValueStream {
     /// The keys that started or stopped holding a value since the last
     /// pull, in byte order, a key that came and went once: `latest` says

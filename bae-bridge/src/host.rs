@@ -431,7 +431,7 @@ impl BridgeHost {
     }
 }
 
-#[uniffi::export(async_runtime = "tokio", cancellable)]
+#[uniffi::export(async_runtime = "tokio")]
 impl BridgeHost {
     pub async fn flush_diagnostics(self: Arc<Self>) -> Result<(), BridgeError> {
         self.operations

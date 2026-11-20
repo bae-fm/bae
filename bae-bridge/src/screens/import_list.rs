@@ -136,7 +136,7 @@ impl ImportSelectionSubscription {
     }
 }
 
-#[uniffi::export(async_runtime = "tokio", cancellable)]
+#[uniffi::export(async_runtime = "tokio")]
 impl ImportList {
     /// What showing the list `after` in place of the list `before` comes to
     /// for `selected`, the rows the app keeps selected: where it opens and

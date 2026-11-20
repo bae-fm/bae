@@ -106,7 +106,7 @@ macro_rules! pulled_read {
 /// for every other.
 macro_rules! pulled_read_calls {
     ($object:ident => $bridge:ty, converted by $convert:expr) => {
-        #[uniffi::export(async_runtime = "tokio", cancellable)]
+        #[uniffi::export(async_runtime = "tokio")]
         impl $object {
             /// The read's next value, the first at once. A failed read is
             /// answered as its error.

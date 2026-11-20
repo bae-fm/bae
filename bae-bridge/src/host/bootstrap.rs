@@ -47,7 +47,7 @@ impl BridgeHost {
     }
 }
 
-#[uniffi::export(async_runtime = "tokio", cancellable)]
+#[uniffi::export(async_runtime = "tokio")]
 impl BridgeHost {
     pub async fn saved_restore_codes(
         self: Arc<Self>,
@@ -481,7 +481,7 @@ pub struct BridgeDeviceReset {
     store: coven::StoreId,
     device_name: String,
 }
-#[uniffi::export(async_runtime = "tokio", cancellable)]
+#[uniffi::export(async_runtime = "tokio")]
 impl BridgeDeviceReset {
     /// Reset the device after the person accepted the warning: coven loads
     /// the library from storage again, telling `callback` how far it has
