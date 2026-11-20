@@ -169,6 +169,26 @@ extension PreviewData {
         return selection
     }
 
+    /// What a selection of five folders offers, two of them ready to
+    /// import: every action the card lists, with how many it applies to.
+    static let fiveFolderSelectionSummary = BridgeSelectionSummary(
+        count: 5,
+        single: nil,
+        offers: [
+            (.import, 2), (.cancelImport, 0), (.combine, 0), (.separate, 0),
+            (.identify, 5), (.cancelIdentification, 0),
+            (.retryIdentification, 1), (.resetToFileMetadata, 5),
+            (.clearMetadata, 5), (.skip, 5), (.restore, 0), (.revealFolder, 5),
+        ]
+        .map { action, count in
+            BridgeSelectionOffer(
+                action: action,
+                count: count,
+                enabled: count > 0
+            )
+        }
+    )
+
     /// The five folders the several-selected board has chosen, and what the
     /// selection offers: two to import, one identification to retry, and the
     /// rest every folder can be told.
@@ -184,24 +204,7 @@ extension PreviewData {
                 .map(\.key)
             )
         )
-        let offers: [(BridgeCandidateAction, UInt64)] = [
-            (.import, 2), (.identify, 5), (.retryIdentification, 1),
-            (.resetToFileMetadata, 5), (.clearMetadata, 5), (.skip, 5),
-            (.revealFolder, 5),
-        ]
-        selection.apply(
-            BridgeSelectionSummary(
-                count: 5,
-                single: nil,
-                offers: offers.map {
-                    BridgeSelectionOffer(
-                        action: $0.0,
-                        count: $0.1,
-                        enabled: true
-                    )
-                }
-            )
-        )
+        selection.apply(fiveFolderSelectionSummary)
         return selection
     }
 
