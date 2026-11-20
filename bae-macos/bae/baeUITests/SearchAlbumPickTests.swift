@@ -20,16 +20,18 @@ final class SearchAlbumPickTests: XCTestCase {
         let grid = AlbumGrid(app: app)
         let window = app.windows.firstMatch
         XCTAssertTrue(
-            waitUntil(timeout: 30) { grid.shows(Self.newest) },
+            waitUntil { grid.shows(Self.newest) },
             "the grid opens on its newest album"
         )
 
         // Import unmounts the library.
         window.sectionTab("Import").click()
-        XCTAssertTrue(grid.scrollView.waitForNonExistence(timeout: 10))
+        XCTAssertTrue(
+            grid.scrollView.waitForNonExistence(timeout: HangGuard.seconds)
+        )
         pickSearchResult(Self.picked, in: app)
         XCTAssertTrue(
-            waitUntil(timeout: 10) {
+            waitUntil {
                 grid.shows(Self.picked) && grid.isOpen(Self.picked)
             },
             "the album is in view, open"

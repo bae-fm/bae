@@ -15,10 +15,10 @@ final class QueueSidebarTests: XCTestCase {
         let app = try launchApp(library: LibraryFixture(albums: Self.albums))
         let grid = AlbumGrid(app: app)
         let newest = Self.albums[Self.albums.count - 1].title
-        XCTAssertTrue(waitUntil(timeout: 30) { grid.shows(newest) })
+        XCTAssertTrue(waitUntil { grid.shows(newest) })
 
         grid.scroll(by: -4_000)
-        XCTAssertTrue(waitUntil(timeout: 10) { !grid.shows(newest) })
+        XCTAssertTrue(waitUntil { !grid.shows(newest) })
         let before = grid.rowsFromTop(titledFrom: "Album ")
         XCTAssertGreaterThanOrEqual(before.count, 2, "\(before)")
 
@@ -27,7 +27,7 @@ final class QueueSidebarTests: XCTestCase {
         // The narrower grid has fewer columns, so its top row is shorter.
         var opened: [[String]] = []
         XCTAssertTrue(
-            waitUntil(timeout: 10) {
+            waitUntil {
                 opened = grid.rowsFromTop(titledFrom: "Album ")
                 return opened.first.map { $0.count < before[0].count }
                     ?? false
@@ -44,7 +44,7 @@ final class QueueSidebarTests: XCTestCase {
         queueButton.click()
         var closed: [[String]] = []
         XCTAssertTrue(
-            waitUntil(timeout: 10) {
+            waitUntil {
                 closed = grid.rowsFromTop(titledFrom: "Album ")
                 return closed.first?.count == before[0].count
             },
@@ -68,7 +68,7 @@ final class QueueSidebarTests: XCTestCase {
             .firstMatch
             .click()
         XCTAssertTrue(
-            waitUntil(timeout: 10) { grid.isOpen(album) },
+            waitUntil { grid.isOpen(album) },
             "\(album) opens"
         )
     }

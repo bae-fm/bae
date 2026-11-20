@@ -8,9 +8,11 @@ final class EditMenuClipboardTests: XCTestCase {
     func testClipboardItemsFollowWhatTheFocusedTextCanDo() throws {
         let app = try launchApp()
         // Launch presents the primary window.
-        XCTAssertTrue(app.windows.firstMatch.waitForExistence(timeout: 20))
+        XCTAssertTrue(
+            app.windows.firstMatch.waitForExistence(timeout: HangGuard.seconds)
+        )
         let edit = app.menuBars.menuBarItems["Edit"]
-        XCTAssertTrue(edit.waitForExistence(timeout: 20))
+        XCTAssertTrue(edit.waitForExistence(timeout: HangGuard.seconds))
         // Nothing on the clipboard, so nothing can be pasted.
         NSPasteboard.general.clearContents()
 
@@ -36,7 +38,7 @@ final class EditMenuClipboardTests: XCTestCase {
             },
             object: nil
         )
-        wait(for: [copied], timeout: 5)
+        wait(for: [copied], timeout: HangGuard.seconds)
         XCTAssertEqual(
             enabled(["Paste"], under: edit, in: app),
             ["Paste": true]
@@ -53,9 +55,9 @@ final class EditMenuClipboardTests: XCTestCase {
         let app = try launchApp(library: LibraryFixture(albums: albums))
         let grid = AlbumGrid(app: app)
         let newest = albums[albums.count - 1].title
-        XCTAssertTrue(waitUntil(timeout: 30) { grid.shows(newest) })
+        XCTAssertTrue(waitUntil { grid.shows(newest) })
         let edit = app.menuBars.menuBarItems["Edit"]
-        XCTAssertTrue(edit.waitForExistence(timeout: 20))
+        XCTAssertTrue(edit.waitForExistence(timeout: HangGuard.seconds))
         NSPasteboard.general.clearContents()
 
         let query = "Album 1"
@@ -79,12 +81,12 @@ final class EditMenuClipboardTests: XCTestCase {
             },
             object: nil
         )
-        wait(for: [copied], timeout: 5)
+        wait(for: [copied], timeout: HangGuard.seconds)
         // The results for the whole query are listed.
         let result = app.buttons
             .matching(NSPredicate(format: "label BEGINSWITH %@", query))
             .firstMatch
-        XCTAssertTrue(result.waitForExistence(timeout: 10))
+        XCTAssertTrue(result.waitForExistence(timeout: HangGuard.seconds))
         XCTAssertEqual(app.state, .runningForeground)
     }
 
@@ -100,7 +102,10 @@ final class EditMenuClipboardTests: XCTestCase {
         var states: [String: Bool] = [:]
         for title in titles {
             let item = edit.menuItems[title]
-            XCTAssertTrue(item.waitForExistence(timeout: 5), title)
+            XCTAssertTrue(
+                item.waitForExistence(timeout: HangGuard.seconds),
+                title
+            )
             states[title] = item.isEnabled
         }
         app.typeKey(.escape, modifierFlags: [])

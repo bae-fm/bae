@@ -31,13 +31,16 @@ final class EditMenuSelectAllTests: XCTestCase {
         // The section switch, which the window shows once the library is
         // open, not while it opens it.
         let importSection = app.windows.firstMatch.sectionTab("Import")
-        XCTAssertTrue(importSection.waitForExistence(timeout: 20))
+        XCTAssertTrue(
+            importSection.waitForExistence(timeout: HangGuard.seconds)
+        )
         importSection.click()
         let list = app.tables["import-list"]
         // The list draws only the rows on screen, and the count it reaches
         // with Select All is the check that it lists every candidate.
         XCTAssertTrue(
-            list.staticTexts["Album 000"].waitForExistence(timeout: 20)
+            list.staticTexts["Album 000"]
+                .waitForExistence(timeout: HangGuard.seconds)
         )
         // The top row, wherever the list's order put it.
         let topRow = list.coordinate(withNormalizedOffset: .zero)
@@ -45,26 +48,30 @@ final class EditMenuSelectAllTests: XCTestCase {
 
         topRow.click()
         app.typeKey("a", modifierFlags: .command)
-        XCTAssertTrue(selectedAll.waitForExistence(timeout: 10))
+        XCTAssertTrue(selectedAll.waitForExistence(timeout: HangGuard.seconds))
 
         // One row selected: the all-rows selection is gone.
         topRow.click()
-        XCTAssertTrue(selectedAll.waitForNonExistence(timeout: 10))
+        XCTAssertTrue(
+            selectedAll.waitForNonExistence(timeout: HangGuard.seconds)
+        )
         app.menuBars.menuBarItems["Edit"].click()
         app.menuBars.menuItems["Select All"].click()
-        XCTAssertTrue(selectedAll.waitForExistence(timeout: 10))
+        XCTAssertTrue(selectedAll.waitForExistence(timeout: HangGuard.seconds))
 
         // One row selected again: the import screen shows its filter field
         // beside the list, which it does not with several rows selected in a
         // window as narrow as the CI runner's.
         topRow.click()
-        XCTAssertTrue(selectedAll.waitForNonExistence(timeout: 10))
+        XCTAssertTrue(
+            selectedAll.waitForNonExistence(timeout: HangGuard.seconds)
+        )
         let filter = app.searchFields
             .matching(
                 NSPredicate(format: "placeholderValue == %@", "Filter")
             )
             .firstMatch
-        XCTAssertTrue(filter.waitForExistence(timeout: 10))
+        XCTAssertTrue(filter.waitForExistence(timeout: HangGuard.seconds))
         filter.click()
         filter.typeText("Album")
         app.typeKey("a", modifierFlags: .command)

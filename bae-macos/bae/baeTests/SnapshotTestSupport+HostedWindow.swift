@@ -53,13 +53,12 @@ extension SnapshotTestSupport {
         // Swift Testing drains none until the run ends, so under it a window
         // not let go here would stay for the rest of the run.
         if Test.current != nil, !retired {
-            let end = ContinuousClock.now.advanced(by: Wait.deadline)
+            let end = ContinuousClock.now.advanced(by: HangGuard.duration)
             while released != nil {
                 handlePendingNotices()
                 if released == nil { break }
                 try await Wait.nextIdle(
                     before: end,
-                    timeout: Wait.deadline,
                     file: file,
                     line: line
                 )
@@ -177,7 +176,7 @@ extension SnapshotTestSupport {
         file: StaticString = #filePath,
         line: UInt = #line
     ) async throws {
-        let end = ContinuousClock.now.advanced(by: Wait.deadline)
+        let end = ContinuousClock.now.advanced(by: HangGuard.duration)
         while true {
             handlePendingNotices()
             if autoreleasepool(invoking: { window.attachedSheet != nil })
@@ -187,7 +186,6 @@ extension SnapshotTestSupport {
             }
             try await Wait.nextIdle(
                 before: end,
-                timeout: Wait.deadline,
                 file: file,
                 line: line
             )

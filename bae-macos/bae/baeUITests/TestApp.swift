@@ -249,7 +249,7 @@ extension XCTestCase {
         // shows the title bar's Library section.
         guard
             app.windows.firstMatch.sectionTab("Library")
-                .waitForExistence(timeout: 30)
+                .waitForExistence(timeout: HangGuard.seconds)
         else {
             throw LibraryDidNotOpen()
         }

@@ -211,6 +211,9 @@ targets:
     platform: macOS
     sources:
       - baeUITests
+      # The one limit of every test wait, shared with the bundles that take
+      # all of baeTestSupport.
+      - path: baeTestSupport/HangGuard.swift
     dependencies:
       - target: bae
     settings:

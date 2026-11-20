@@ -26,7 +26,9 @@ final class MainMenuTests: XCTestCase {
 
         // Launch presents the primary window.
         let primaryWindow = app.windows.firstMatch
-        XCTAssertTrue(primaryWindow.waitForExistence(timeout: 20))
+        XCTAssertTrue(
+            primaryWindow.waitForExistence(timeout: HangGuard.seconds)
+        )
         // At the library's width, or the screen's on one narrower than that.
         let screen = try XCTUnwrap(NSScreen.main)
         XCTAssertEqual(
@@ -36,7 +38,7 @@ final class MainMenuTests: XCTestCase {
         )
 
         let fileMenu = app.menuBars.menuBarItems["File"]
-        XCTAssertTrue(fileMenu.waitForExistence(timeout: 20))
+        XCTAssertTrue(fileMenu.waitForExistence(timeout: HangGuard.seconds))
         let editMenu = app.menuBars.menuBarItems["Edit"]
         XCTAssertTrue(editMenu.exists)
         XCTAssertLessThan(fileMenu.frame.minX, editMenu.frame.minX)
@@ -51,7 +53,7 @@ final class MainMenuTests: XCTestCase {
         XCTAssertEqual(app.state, .runningForeground)
         XCTAssertTrue(
             app.staticTexts["Your music, everywhere"]
-                .waitForExistence(timeout: 20)
+                .waitForExistence(timeout: HangGuard.seconds)
         )
         XCTAssertEqual(primaryWindow.frame.width, 690, accuracy: 2)
     }
@@ -84,7 +86,7 @@ final class MainMenuTests: XCTestCase {
         // Launch presents the primary window.
         let primaryWindow = app.windows.firstMatch
         XCTAssertTrue(
-            primaryWindow.waitForExistence(timeout: 20),
+            primaryWindow.waitForExistence(timeout: HangGuard.seconds),
             file: file,
             line: line
         )
@@ -93,7 +95,7 @@ final class MainMenuTests: XCTestCase {
         primaryWindow.sectionTab(start.segment).click()
         XCTAssertTrue(
             primaryWindow.staticTexts[start.shows]
-                .waitForExistence(timeout: 20),
+                .waitForExistence(timeout: HangGuard.seconds),
             file: file,
             line: line
         )
@@ -101,7 +103,8 @@ final class MainMenuTests: XCTestCase {
         app.typeKey(key, modifierFlags: .command)
 
         XCTAssertTrue(
-            app.staticTexts[target.shows].waitForExistence(timeout: 20),
+            app.staticTexts[target.shows]
+                .waitForExistence(timeout: HangGuard.seconds),
             file: file,
             line: line
         )

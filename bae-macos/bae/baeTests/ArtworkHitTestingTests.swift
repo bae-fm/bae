@@ -86,7 +86,7 @@ struct ArtworkRetryTests {
             // that lands on the plain tile and asks for nothing. The tree
             // has no AppKit view or accessibility element to wait on, so
             // click at each idle of the run loop until the store is asked.
-            let end = ContinuousClock.now.advanced(by: Wait.deadline)
+            let end = ContinuousClock.now.advanced(by: HangGuard.duration)
             while await attempts.count < 2 {
                 try HostedInput.click(
                     at: NSPoint(x: side / 2, y: side / 2),
@@ -94,7 +94,6 @@ struct ArtworkRetryTests {
                 )
                 try await Wait.nextIdle(
                     before: end,
-                    timeout: Wait.deadline,
                     file: #filePath,
                     line: #line
                 )

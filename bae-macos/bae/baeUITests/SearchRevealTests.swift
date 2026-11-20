@@ -42,24 +42,24 @@ final class SearchRevealTests: XCTestCase {
         let grid = AlbumGrid(app: app)
         // The newest album's card, on top of the grid.
         let newest = near[near.count - 1].title
-        XCTAssertTrue(waitUntil(timeout: 30) { grid.shows(newest) })
+        XCTAssertTrue(waitUntil { grid.shows(newest) })
         XCTAssertFalse(grid.shows(Self.farAlbum))
 
         pickSearchResult(Self.farAlbum, in: app)
         XCTAssertTrue(
-            waitUntil(timeout: 10) { grid.shows(Self.farAlbum) },
+            waitUntil { grid.shows(Self.farAlbum) },
             "the picked album is scrolled into view"
         )
 
         // Back to the top, with the album's detail left open down there.
         scrollToTop(grid)
-        XCTAssertTrue(waitUntil(timeout: 10) { grid.shows(newest) })
+        XCTAssertTrue(waitUntil { grid.shows(newest) })
         let farTrack = Self.farTracks[10]
         XCTAssertFalse(grid.shows(farTrack))
 
         pickSearchResult(farTrack, in: app)
         XCTAssertTrue(
-            waitUntil(timeout: 10) { grid.shows(farTrack) },
+            waitUntil { grid.shows(farTrack) },
             "the picked track's row is scrolled into view"
         )
     }

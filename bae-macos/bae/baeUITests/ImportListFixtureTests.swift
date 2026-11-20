@@ -43,14 +43,16 @@ final class ImportListFixtureTests: XCTestCase {
         // The section switch, which the window shows once the library is
         // open, not while it opens it.
         let importSection = window.sectionTab("Import")
-        XCTAssertTrue(importSection.waitForExistence(timeout: 20))
+        XCTAssertTrue(
+            importSection.waitForExistence(timeout: HangGuard.seconds)
+        )
         importSection.click()
         let list = app.tables["import-list"]
         assertListsExactly(Set(states.map(\.1)), in: list, after: "Opening")
 
         // The list's menu, named by what it holds.
         let menu = window.menuButtons["Sorting, filtering and watched folders"]
-        XCTAssertTrue(menu.waitForExistence(timeout: 10))
+        XCTAssertTrue(menu.waitForExistence(timeout: HangGuard.seconds))
         menu.click()
         // Lookup Error, Error and Import Error wait on the person as Needs
         // You does, so its entry holds all four.
@@ -58,7 +60,7 @@ final class ImportListFixtureTests: XCTestCase {
             "All (7)", "Needs you (4)", "In progress (0)", "Identified (1)",
             "Unmatched (1)", "Not looked up (1)",
         ]
-        let entriesShown = waitUntil(timeout: 10) {
+        let entriesShown = waitUntil {
             entryTitles.allSatisfy { app.menuItems[$0].exists }
         }
         if !entriesShown {
@@ -103,7 +105,7 @@ final class ImportListFixtureTests: XCTestCase {
                 list.staticTexts[folder].exists == shown.contains(state)
             }
         }
-        if waitUntil(timeout: 20, listsExactly) { return }
+        if waitUntil(listsExactly) { return }
         for (folder, state) in Self.states {
             XCTAssertEqual(
                 list.staticTexts[folder].exists,

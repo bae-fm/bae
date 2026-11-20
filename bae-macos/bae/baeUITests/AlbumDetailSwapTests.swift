@@ -30,7 +30,7 @@ final class AlbumDetailSwapTests: XCTestCase {
         let app = try launchApp(library: LibraryFixture(albums: Self.albums))
         let grid = AlbumGrid(app: app)
         let newest = Self.albums[Self.albums.count - 1].title
-        XCTAssertTrue(waitUntil(timeout: 30) { grid.shows(newest) })
+        XCTAssertTrue(waitUntil { grid.shows(newest) })
         let rows = grid.rowsFromTop(titledFrom: "Album ")
         XCTAssertGreaterThanOrEqual(rows.count, 2, "\(rows)")
         XCTAssertGreaterThanOrEqual(rows[0].count, 2, "\(rows)")
@@ -48,7 +48,7 @@ final class AlbumDetailSwapTests: XCTestCase {
 
         open(sameRow, in: grid)
         XCTAssertTrue(
-            waitUntil(timeout: 10) { grid.laidOutFrames(of: first).count == 1 },
+            waitUntil { grid.laidOutFrames(of: first).count == 1 },
             "\(first) closes as \(sameRow) opens"
         )
         XCTAssertTrue(grid.laidOutFrames(of: track(1, of: first)).isEmpty)
@@ -63,10 +63,10 @@ final class AlbumDetailSwapTests: XCTestCase {
         // The next row is under the detail; scroll it into view, past the
         // header the scroll folds away.
         grid.scroll(by: -2 * rowPitch)
-        XCTAssertTrue(waitUntil(timeout: 10) { grid.shows(nextRow) })
+        XCTAssertTrue(waitUntil { grid.shows(nextRow) })
         open(nextRow, in: grid)
         XCTAssertTrue(
-            waitUntil(timeout: 10) {
+            waitUntil {
                 grid.laidOutFrames(of: sameRow).count == 1
             },
             "\(sameRow) closes as \(nextRow) opens"
@@ -94,7 +94,7 @@ final class AlbumDetailSwapTests: XCTestCase {
             .firstMatch
             .click()
         XCTAssertTrue(
-            waitUntil(timeout: 10) {
+            waitUntil {
                 grid.laidOutFrames(of: album).count == 2
                     && !grid.laidOutFrames(of: self.track(1, of: album))
                         .isEmpty

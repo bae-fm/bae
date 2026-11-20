@@ -45,7 +45,7 @@ struct AlertOverSheetTests {
     private func holds(
         _ condition: @MainActor () -> Bool
     ) async -> Bool {
-        let end = ContinuousClock.now.advanced(by: Wait.deadline)
+        let end = ContinuousClock.now.advanced(by: HangGuard.duration)
         // `takeSheetNotices` drains the window server's key and order-in
         // notices in its own autorelease pool, as for a sheet, so they do not
         // keep the hosted window alive after its test.
@@ -55,7 +55,6 @@ struct AlertOverSheetTests {
             do {
                 try await Wait.nextIdle(
                     before: end,
-                    timeout: Wait.deadline,
                     file: #filePath,
                     line: #line
                 )

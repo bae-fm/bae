@@ -11,24 +11,20 @@ import ObjectiveC
 /// is test code: it calls `Wait.happened()` after each change it records, which
 /// resumes every wait to read its condition again. A hosted view tree is read
 /// each time the main run loop goes idle, about to sleep. The only timer is
-/// the deadline, which fails the wait loudly when the event never comes.
+/// the hang guard ([`HangGuard`]), which fails the wait loudly when the event
+/// never comes.
 enum Wait {
     /// What a wait was given did not happen in time.
     struct TimedOut: LocalizedError, CustomStringConvertible {
-        let after: Duration
         let file: StaticString
         let line: UInt
 
         var description: String {
-            "the wait at \(file):\(line) was still waiting after \(after)"
+            "the wait at \(file):\(line) was still waiting after \(HangGuard.duration)"
         }
 
         var errorDescription: String? { description }
     }
-
-    /// How long any one wait holds out. Far past anything a passing test
-    /// needs, so reaching it means the thing waited for is not coming.
-    static let deadline: Duration = .seconds(10)
 
     /// Return once `condition` holds. It is read under observation tracking
     /// and again after every `happened()`, so it holds only things a store
@@ -39,14 +35,13 @@ enum Wait {
     @MainActor
     static func until(
         notices: [Notice] = [],
-        timeout: Duration = deadline,
         file: StaticString = #filePath,
         line: UInt = #line,
         _ condition: @MainActor () throws -> Bool
     ) async throws {
         let listening = Listening(notices)
         defer { listening.stop() }
-        let end = ContinuousClock.now.advanced(by: timeout)
+        let end = ContinuousClock.now.advanced(by: HangGuard.duration)
         while true {
             let wake = Wake()
             let registration = Wake.register(wake)
@@ -63,7 +58,6 @@ enum Wait {
             if holds { return }
             try await wake.fired(
                 before: end,
-                timeout: timeout,
                 file: file,
                 line: line
             )
@@ -75,14 +69,13 @@ enum Wait {
     @MainActor
     static func until(
         notices: [Notice] = [],
-        timeout: Duration = deadline,
         file: StaticString = #filePath,
         line: UInt = #line,
         _ condition: @MainActor () async throws -> Bool
     ) async throws {
         let listening = Listening(notices)
         defer { listening.stop() }
-        let end = ContinuousClock.now.advanced(by: timeout)
+        let end = ContinuousClock.now.advanced(by: HangGuard.duration)
         while true {
             let wake = Wake()
             let registration = Wake.register(wake)
@@ -90,7 +83,6 @@ enum Wait {
             if try await condition() { return }
             try await wake.fired(
                 before: end,
-                timeout: timeout,
                 file: file,
                 line: line
             )
@@ -211,7 +203,6 @@ enum Wait {
         /// Return when fired; throw when `end` comes first.
         func fired(
             before end: ContinuousClock.Instant,
-            timeout: Duration,
             file: StaticString,
             line: UInt
         ) async throws {
@@ -225,7 +216,7 @@ enum Wait {
                 }
                 group.addTask {
                     try await Task.sleep(until: end, clock: ContinuousClock())
-                    throw TimedOut(after: timeout, file: file, line: line)
+                    throw TimedOut(file: file, line: line)
                 }
                 defer { group.cancelAll() }
                 try await group.next()
@@ -318,18 +309,16 @@ extension Wait {
     @MainActor
     static func untilLaidOut(
         _ host: NSView,
-        timeout: Duration = deadline,
         file: StaticString = #filePath,
         line: UInt = #line,
         _ condition: @MainActor () throws -> Bool
     ) async throws {
-        let end = ContinuousClock.now.advanced(by: timeout)
+        let end = ContinuousClock.now.advanced(by: HangGuard.duration)
         while true {
             host.layoutSubtreeIfNeeded()
             if try condition() { return }
             try await nextIdle(
                 before: end,
-                timeout: timeout,
                 file: file,
                 line: line
             )
@@ -348,7 +337,6 @@ extension Wait {
     @MainActor
     static func nextIdle(
         before end: ContinuousClock.Instant,
-        timeout: Duration,
         file: StaticString,
         line: UInt
     ) async throws {
@@ -364,7 +352,6 @@ extension Wait {
         defer { CFRunLoopObserverInvalidate(observer) }
         try await wake.fired(
             before: end,
-            timeout: timeout,
             file: file,
             line: line
         )
@@ -387,17 +374,15 @@ extension Wait {
     /// its end.
     @MainActor
     static func untilSteady<Value: Equatable>(
-        timeout: Duration = deadline,
         file: StaticString = #filePath,
         line: UInt = #line,
         _ value: @MainActor () async throws -> Value
     ) async throws {
-        let end = ContinuousClock.now.advanced(by: timeout)
+        let end = ContinuousClock.now.advanced(by: HangGuard.duration)
         var last = try await value()
         while true {
             try await nextIdle(
                 before: end,
-                timeout: timeout,
                 file: file,
                 line: line
             )

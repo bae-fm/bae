@@ -46,14 +46,16 @@ final class GoToNowPlayingTests: XCTestCase {
         let window = app.windows.firstMatch
         let grid = AlbumGrid(app: app)
         let playing = Self.playingTracks[Self.playingNumber - 1].title
-        XCTAssertTrue(window.buttons[playing].waitForExistence(timeout: 30))
+        XCTAssertTrue(
+            window.buttons[playing].waitForExistence(timeout: HangGuard.seconds)
+        )
         let oldest = Self.albums[0].title
-        XCTAssertTrue(waitUntil(timeout: 30) { grid.shows(oldest) })
+        XCTAssertTrue(waitUntil { grid.shows(oldest) })
         XCTAssertFalse(grid.shows("Playing Album"))
 
         app.typeKey("l", modifierFlags: .command)
         XCTAssertTrue(
-            waitUntil(timeout: 10) { grid.shows(playing) },
+            waitUntil { grid.shows(playing) },
             "the playing track's row is scrolled into view"
         )
     }

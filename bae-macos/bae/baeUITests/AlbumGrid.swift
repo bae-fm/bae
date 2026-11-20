@@ -79,17 +79,15 @@ struct AlbumGrid {
 }
 
 extension XCTestCase {
-    /// Whether `condition` holds within `timeout`, checked as the app runs.
+    /// Whether `condition` holds within the hang guard, checked as the app
+    /// runs.
     @MainActor
-    func waitUntil(
-        timeout: TimeInterval,
-        _ condition: @escaping () -> Bool
-    ) -> Bool {
+    func waitUntil(_ condition: @escaping () -> Bool) -> Bool {
         let expectation = XCTNSPredicateExpectation(
             predicate: NSPredicate { _, _ in condition() },
             object: nil
         )
-        return XCTWaiter.wait(for: [expectation], timeout: timeout)
+        return XCTWaiter.wait(for: [expectation], timeout: HangGuard.seconds)
             == .completed
     }
 
@@ -101,14 +99,17 @@ extension XCTestCase {
         let field = app.searchFields
             .matching(NSPredicate(format: "placeholderValue == %@", "Search"))
             .firstMatch
-        XCTAssertTrue(field.waitForExistence(timeout: 10))
+        XCTAssertTrue(field.waitForExistence(timeout: HangGuard.seconds))
         field.click()
         field.typeText(title)
         // A result's label is its title, then what its subtitle says.
         let result = app.buttons
             .matching(NSPredicate(format: "label BEGINSWITH %@", "\(title),"))
             .firstMatch
-        XCTAssertTrue(result.waitForExistence(timeout: 10), title)
+        XCTAssertTrue(
+            result.waitForExistence(timeout: HangGuard.seconds),
+            title
+        )
         result.click()
     }
 }

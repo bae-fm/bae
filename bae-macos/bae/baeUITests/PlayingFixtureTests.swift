@@ -15,12 +15,14 @@ final class PlayingFixtureTests: XCTestCase {
         let window = app.windows.firstMatch
         // The now-playing bar names the track, paused: it offers Play.
         XCTAssertTrue(
-            window.buttons["Pregap Track"].waitForExistence(timeout: 20)
+            window.buttons["Pregap Track"]
+                .waitForExistence(timeout: HangGuard.seconds)
         )
         XCTAssertTrue(window.buttons["Play"].exists)
         // The pregap's countdown: two seconds before the track starts.
         XCTAssertTrue(
-            seekBarLabel("-0:02", in: window).waitForExistence(timeout: 20)
+            seekBarLabel("-0:02", in: window)
+                .waitForExistence(timeout: HangGuard.seconds)
         )
     }
 
@@ -33,16 +35,19 @@ final class PlayingFixtureTests: XCTestCase {
 
         let window = app.windows.firstMatch
         XCTAssertTrue(
-            window.buttons["Pregap Track"].waitForExistence(timeout: 20)
+            window.buttons["Pregap Track"]
+                .waitForExistence(timeout: HangGuard.seconds)
         )
         XCTAssertTrue(
-            seekBarLabel("0:05", in: window).waitForExistence(timeout: 20)
+            seekBarLabel("0:05", in: window)
+                .waitForExistence(timeout: HangGuard.seconds)
         )
         let previous = window.buttons["Previous"]
 
         previous.click()
         XCTAssertTrue(
-            seekBarLabel("0:00", in: window).waitForExistence(timeout: 10),
+            seekBarLabel("0:00", in: window)
+                .waitForExistence(timeout: HangGuard.seconds),
             "the track starts over"
         )
         XCTAssertTrue(window.buttons["Pregap Track"].exists)
@@ -51,7 +56,8 @@ final class PlayingFixtureTests: XCTestCase {
 
         previous.click()
         XCTAssertTrue(
-            window.buttons["Opening Track"].waitForExistence(timeout: 10),
+            window.buttons["Opening Track"]
+                .waitForExistence(timeout: HangGuard.seconds),
             "the track before plays"
         )
         XCTAssertFalse(window.buttons["Pregap Track"].exists)
@@ -85,7 +91,9 @@ final class PlayingFixtureTests: XCTestCase {
                 )
             )
         )
-        XCTAssertTrue(app.windows.firstMatch.waitForExistence(timeout: 20))
+        XCTAssertTrue(
+            app.windows.firstMatch.waitForExistence(timeout: HangGuard.seconds)
+        )
         return app
     }
 
