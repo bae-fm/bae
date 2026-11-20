@@ -35,14 +35,6 @@ pub struct CastReceiverList {
     pub is_empty: bool,
 }
 
-impl CastReceiverList {
-    /// The list of `casting` and `found`, saying whether it is empty.
-    pub fn new(casting: Option<CastReceiver>, found: Vec<CastReceiver>) -> Self {
-        let is_empty = casting.is_none() && found.is_empty();
-        Self { casting, found, is_empty }
-    }
-}
-
 /// `kind` as a `kind` column holds it.
 pub(crate) fn kind_column(kind: RendererKind) -> &'static str {
     match kind {
@@ -101,7 +93,13 @@ fn cast_receivers_on(sql: &SqlReadContext<'_>) -> Result<CastReceiverList, DbErr
             })
         },
     )?;
-    Ok(CastReceiverList::new(casting, found))
+    let is_empty: bool = sql.query_row(
+        "SELECT NOT EXISTS (SELECT 1 FROM cast_receiver) \
+            AND NOT EXISTS (SELECT 1 FROM playback_now WHERE remote = 'on')",
+        [],
+        |row| row.get(0),
+    )?;
+    Ok(CastReceiverList { casting, found, is_empty })
 }
 
 /// The picker's list in the library's store: the receivers discovery last
