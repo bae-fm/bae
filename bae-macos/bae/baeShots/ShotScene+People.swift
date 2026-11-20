@@ -479,13 +479,18 @@ extension ShotScene {
         sheet: (@MainActor () -> AnyView)? = nil,
         menu: (@MainActor () -> AnyView)? = nil
     ) -> ShotStage {
+        // A member's board shows Ben as the library's admin.
+        var people = peopleWithBen(
+            role: asAdmin ? .member : .admin,
+            ownPicture: ownPicture,
+            ownRemovedDevices: ownRemovedDevices,
+            ownTabletAdded: ownTabletAdded
+        )
+        if !asAdmin {
+            people.own?.membership.role = .member
+        }
         let membership = MembershipStore.stub(
-            people: peopleWithBen(
-                role: .member,
-                ownPicture: ownPicture,
-                ownRemovedDevices: ownRemovedDevices,
-                ownTabletAdded: ownTabletAdded
-            ),
+            people: people,
             selfIsAdmin: asAdmin,
             invites: invites,
             refusedInvites: refusedInvites
