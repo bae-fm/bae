@@ -23,7 +23,7 @@ struct MacListRow: View {
     let lead: String
     var leadWidth: CGFloat = 56
     var hanging = false
-    var coverSize: CGFloat = 32
+    var coverSize: CGFloat = MacListRow.defaultCoverSize
     var cover: BridgeImageRef?
     let title: String
     let subtitle: String
@@ -42,10 +42,12 @@ struct MacListRow: View {
         leadWidth + gap
     }
 
+    /// The cover's size unless a row asks for another.
+    static let defaultCoverSize: CGFloat = 32
     private static var durationWidth: CGFloat { 40 }
 
     var body: some View {
-        HStack(spacing: hanging ? Self.gap : ThemeSpace.related) {
+        HStack(spacing: Self.gap) {
             Text(lead)
                 .themeText(.detail)
                 .monospacedDigit()
@@ -53,20 +55,19 @@ struct MacListRow: View {
                 .lineLimit(1)
                 .frame(
                     width: leadWidth,
-                    alignment: hanging ? .trailing : .center
+                    alignment: hanging ? .trailing : .leading
                 )
             Artwork(imageRef: cover, pointSize: coverSize)
                 .frame(width: coverSize, height: coverSize)
                 .clipShape(
+                    // The design draws the default cover at 4, between the radius
+                    // tokens, and a given size at the artwork radius.
                     RoundedRectangle(
-                        cornerRadius: hanging
-                            ? ThemeRadius.artwork : ThemeRadius.bar
+                        cornerRadius: coverSize == Self.defaultCoverSize
+                            ? 4 : ThemeRadius.artwork
                     )
                 )
-            VStack(
-                alignment: .leading,
-                spacing: hanging ? 3 : ThemeSpace.line
-            ) {
+            VStack(alignment: .leading, spacing: hanging ? 3 : 0) {
                 Text(title)
                     .themeText(.rowTitle)
                     .lineLimit(1)
@@ -100,7 +101,7 @@ struct MacListRow: View {
             .leading,
             hanging ? 0 : ThemeSpace.related
         )
-        .padding(.vertical, hanging ? 5 : ThemeSpace.inline)
+        .padding(.vertical, 5)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(

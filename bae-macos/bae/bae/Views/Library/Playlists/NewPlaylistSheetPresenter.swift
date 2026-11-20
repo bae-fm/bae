@@ -57,6 +57,8 @@ private struct NewPlaylistSheetPresenter: ViewModifier {
                         sheet.sharing,
                         sheet.pickedTrackIds
                     )
+                // Cancel, while the write ran, leaves the screen as it was.
+                guard !Task.isCancelled else { return }
                 uiStore.openPlaylist(playlistId)
                 uiStore.newPlaylistSheet = nil
             }

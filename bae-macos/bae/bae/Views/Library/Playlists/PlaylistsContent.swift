@@ -126,8 +126,8 @@ private struct PlaylistList: View {
                     in: library
                 )
                 guard !trackIds.isEmpty else {
-                    logger.info(
-                        "a drop of \(dropped.count) items on a playlist held no tracks"
+                    logger.warning(
+                        "a drop on playlist \(playlistId) held no tracks: \(dropped, privacy: .public)"
                     )
                     return
                 }
