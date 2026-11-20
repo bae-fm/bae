@@ -2,6 +2,10 @@ bae is a music library app for macOS, Android, iOS, Windows and Linux. Its scree
 
 Everything here is drawn at each platform's regular size, the one the apps use by default. Other sizes, such as macOS's small and large controls, are variants to add later.
 
+## Design terms
+
+This README uses the design words that `builds help workflow` defines in DESIGN TERMS: board, shared board, canvas, design system, token, component, preview, design change, shot and app work. Read that section for what each word means.
+
 ## Guidelines
 
 The design guidelines are review rules in agent-instructions, under
@@ -20,7 +24,7 @@ screen against them. Each line names one rule file there.
   names, status words, text styles.
 - `one-primary-action-per-screen.md`: the primary button, colour in a row of
   buttons, Cancel.
-- `each-platform-draws-with-its-own-parts.md`: per-platform parts, settings
+- `each-platform-draws-with-its-own-parts.md`: per-platform components, settings
   layouts, spinners, empty lists.
 - `dialogs-sheets-and-popovers-by-what-they-ask.md`: alerts, sheets, popovers
   and the three ways to fold things away.
@@ -47,8 +51,8 @@ The code is checked against this system in two kinds of shot (agent-instructions
 
 ## Using this system
 
-Load `tokens.css`, then `components/bundle.css`, then `components/bundle.js`, which sets `window.Bae` and needs React 18 on the page. `bundle.js` and `bundle.css` are built from their sources in `components/src/`, one `.js` and one `.css` per area, by `build-bundle.py`; edit the sources, not the bundles. Each folder under `components/` is one part, its README and its preview, except `components/Cover/`: that is this system's cover, the picture its page shows above everything else, and no part of either app. Android boards also load Roboto from Google Fonts. On a Design canvas, mount components as `<x-import component-from-global-scope="Bae.MacButton" kind="primary">Set up</x-import>`; content inside becomes children, so a `Bae.MacBox` holds `Bae.MacRow`s and a `Bae.MacSheet` holds its content and a `Bae.MacSheetFooter`.
+Load `tokens.css`, then `components/bundle.css`, then `components/bundle.js`, which sets `window.Bae` and needs React 18 on the page. `bundle.js` and `bundle.css` are built from their sources in `components/src/`, one `.js` and one `.css` per area, by `build-bundle.py`; edit the sources, not the bundles. Each folder under `components/` is one component, with its README and its preview, except `components/Cover/`: that is this system's cover, the picture its page shows above everything else, and no component of either app. Android boards also load Roboto from Google Fonts. On a Design canvas, mount components as `<x-import component-from-global-scope="Bae.MacButton" kind="primary">Set up</x-import>`; content inside becomes children, so a `Bae.MacBox` holds `Bae.MacRow`s and a `Bae.MacSheet` holds its content and a `Bae.MacSheetFooter`.
 
 `groups.json` lists every component, and the cover, by what it is for: the groups in order, each with a one-line introduction, the components it holds and its subgroups, each with an introduction and components of its own. The dashboard's Design system tab draws the components in that order, under those introductions. The first line of each component's preview names the component's group (`<!-- @dsCard group="Fields" height=N -->`), and `build-bundle.py` stops with an error when that name differs from the component's group in `groups.json`, or when `groups.json` leaves a component out.
 
-The canvas draws each `x-import` as the component inside a `<div class="sc-host-x" style="display:contents">`; a preview page draws it bare. Both must draw the same. So a part that reads the parts inside it (their type or props) reads `inner(child)` and puts a changed one back with `rewrap(child, changed)` (`src/00-base.js`), and a rule in `bundle.css` that relates two parts (`>`, `+`, `:first-child`, `:has(+ …)`) also names the wrapper: `.a > .b, .a > .sc-host-x > .b`. A board drawn with and without the wrapper must place every element the same.
+The canvas draws each `x-import` as the component inside a `<div class="sc-host-x" style="display:contents">`; a preview page draws it bare. Both must draw the same. So a component that reads the components inside it (their type or props) reads `inner(child)` and puts a changed one back with `rewrap(child, changed)` (`src/00-base.js`), and a rule in `bundle.css` that relates two components (`>`, `+`, `:first-child`, `:has(+ …)`) also names the wrapper: `.a > .b, .a > .sc-host-x > .b`. A board drawn with and without the wrapper must place every element the same.
