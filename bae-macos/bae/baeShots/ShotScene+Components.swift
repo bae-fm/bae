@@ -7,8 +7,11 @@ import SwiftUI
 extension ShotScene {
     /// The Mac components (`mac.component.<thing>.<state>`), each state a
     /// row of the component's `preview.html`, drawn at the preview's width.
+    /// A component with a capture file, `Components/<Component>.swift`,
+    /// keeps its scenes there.
     static let componentScenes: [ShotScene] =
-        libraryRowScenes + settingsComponentScenes + partsComponentScenes
+        macCheckboxScenes
+        + libraryRowScenes + settingsComponentScenes + partsComponentScenes
         + playbackComponentScenes + libraryComponentScenes
         + storageComponentScenes + importComponentScenes + basicsComponentScenes
         + browseComponentScenes + windowComponentScenes
