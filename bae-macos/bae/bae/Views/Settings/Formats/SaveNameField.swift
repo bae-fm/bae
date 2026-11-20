@@ -1,5 +1,6 @@
 import AppKit
 import BaeKit
+import Combine
 import SwiftUI
 
 /// A value in a name pattern's field: one character of the field's text,
@@ -19,18 +20,6 @@ final class SaveNameChip<Value: SaveNameValue>: NSTextAttachment {
     }
 }
 
-/// The values the pane's Add row asked the field to add, which the field
-/// adds once each: how many it asked for, and the last one.
-struct SaveNameAdds<Value: Hashable>: Equatable {
-    private(set) var count = 0
-    private(set) var last: Value?
-
-    mutating func add(_ value: Value) {
-        count += 1
-        last = value
-    }
-}
-
 /// A name pattern as one field you type in, like Finder's rename Format
 /// field: values are chips among the text, Delete after a chip or Forward
 /// Delete before it takes the chip out, and chips drag to where they belong.
@@ -45,8 +34,8 @@ struct SaveNameField<Piece: SaveNamePiece>: NSViewRepresentable {
 
     /// The stored pattern.
     let pieces: [Piece]
-    /// What the Add row asked the field to add.
-    let adds: SaveNameAdds<Piece.Value>
+    /// Each value the Add row sends, which the field adds once.
+    let adds: AnyPublisher<Piece.Value, Never>
     /// Whether the field is the one being typed in.
     @Binding
     var focused: Bool
@@ -61,7 +50,9 @@ struct SaveNameField<Piece: SaveNamePiece>: NSViewRepresentable {
     }
 
     func makeNSView(context: Context) -> SaveNameFieldView {
-        Self.makeField(coordinator: context.coordinator)
+        let field = Self.makeField(coordinator: context.coordinator)
+        context.coordinator.receive(adds)
+        return field
     }
 
     func updateNSView(_ field: SaveNameFieldView, context: Context) {
@@ -73,7 +64,6 @@ struct SaveNameField<Piece: SaveNamePiece>: NSViewRepresentable {
         field.isSelectable = context.environment.isEnabled
         coordinator.accent = accent.appKitColor
         coordinator.stored(pieces)
-        coordinator.take(adds)
     }
 
     /// The proposed width, and the height its pieces take wrapped to it.
@@ -129,8 +119,8 @@ struct SaveNameField<Piece: SaveNamePiece>: NSViewRepresentable {
             }
         }
 
-        /// How many of the Add row's values the field has added.
-        private var added = 0
+        /// The Add row's values, as the field receives them.
+        private var adds: AnyCancellable?
 
         /// The pattern as last stored.
         private var storedPieces: [Piece] = []
@@ -138,10 +128,10 @@ struct SaveNameField<Piece: SaveNamePiece>: NSViewRepresentable {
         private var handed: [Piece]?
         /// The newest pattern waiting for the write in flight.
         private var queued: [Piece]?
-        /// Whether a write is in flight or queued. While one is, the field
-        /// draws what it handed over; once the writes return, it draws the
-        /// stored pattern.
-        private(set) var writing = false
+        /// The writes in flight and queued, until the last returns. While
+        /// they run, the field draws what it handed over; once they return,
+        /// it draws the stored pattern.
+        private(set) var writes: Task<Void, Never>?
 
         func focus(_ focused: Bool) {
             setFocused(focused)
@@ -160,7 +150,7 @@ struct SaveNameField<Piece: SaveNamePiece>: NSViewRepresentable {
         /// A field not being typed in and with no write in flight draws the
         /// stored pattern.
         private func settle() {
-            guard let field, !field.isEditing, !writing else { return }
+            guard let field, !field.isEditing, writes == nil else { return }
             guard pieces(in: field) != storedPieces else { return }
             field.storage.setAttributedString(text(for: storedPieces))
         }
@@ -228,13 +218,12 @@ struct SaveNameField<Piece: SaveNamePiece>: NSViewRepresentable {
                 .map { Chip($0, accent: accent) }
         }
 
-        /// Add the Add row's value that the field hasn't added yet. Adding it
-        /// ends the typing, which SwiftUI hears of, so it runs after the
-        /// update that brought it.
-        func take(_ adds: SaveNameAdds<Piece.Value>) {
-            guard adds.count > added, let value = adds.last else { return }
-            added = adds.count
-            Task { self.append(value) }
+        /// Add each value the Add row sends. The row sends from its button's
+        /// action, on the main actor.
+        func receive(_ adds: AnyPublisher<Piece.Value, Never>) {
+            self.adds = adds.sink { [weak self] value in
+                MainActor.assumeIsolated { self?.append(value) }
+            }
         }
 
         /// Put `value` as a chip at the end, after what is typed.
@@ -262,9 +251,8 @@ struct SaveNameField<Piece: SaveNamePiece>: NSViewRepresentable {
         private func submit(_ pieces: [Piece]) {
             guard pieces != (queued ?? handed ?? storedPieces) else { return }
             queued = pieces
-            guard !writing else { return }
-            writing = true
-            Task {
+            guard writes == nil else { return }
+            writes = Task {
                 await drain()
             }
         }
@@ -282,7 +270,7 @@ struct SaveNameField<Piece: SaveNamePiece>: NSViewRepresentable {
                 }
             }
             handed = nil
-            writing = false
+            writes = nil
             settle()
         }
     }

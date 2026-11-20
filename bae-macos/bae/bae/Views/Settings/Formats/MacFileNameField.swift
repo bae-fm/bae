@@ -1,4 +1,5 @@
 import BaeKit
+import Combine
 import SwiftUI
 
 /// A value a save name pattern fills in, as the pane's chips offer it.
@@ -70,8 +71,9 @@ struct MacFileNameField<Piece: SaveNamePiece>: View {
     let setPieces: @MainActor ([Piece]) async throws -> Void
     let fail: @MainActor (Error) -> Void
 
+    /// The values the Add row sends the field.
     @State
-    private var adds = SaveNameAdds<Piece.Value>()
+    private var adds = PassthroughSubject<Piece.Value, Never>()
     @State
     private var focused = false
 
@@ -81,7 +83,7 @@ struct MacFileNameField<Piece: SaveNamePiece>: View {
                 .themeText(.body)
             SaveNameField(
                 pieces: pieces,
-                adds: adds,
+                adds: adds.eraseToAnyPublisher(),
                 focused: $focused,
                 setPieces: setPieces,
                 fail: fail
@@ -129,7 +131,7 @@ struct MacFileNameField<Piece: SaveNamePiece>: View {
                 .accessibilitySortPriority(Double(values.count + 1))
             ForEach(Array(values.enumerated()), id: \.element) { index, value in
                 Button(value.label) {
-                    adds.add(value)
+                    adds.send(value)
                 }
                 .buttonStyle(.accentPlain)
                 .themeText(.detail)

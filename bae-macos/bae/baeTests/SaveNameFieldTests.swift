@@ -1,5 +1,6 @@
 import AppKit
 import BaeKit
+import Combine
 import Foundation
 import SwiftUI
 import Testing
@@ -18,6 +19,8 @@ struct SaveNameFieldTests {
         let coordinator = Field.Coordinator()
         let field: SaveNameFieldView
         let window: NSWindow
+        /// The Add row's values.
+        let adds = PassthroughSubject<BridgeSaveFilenameValue, Never>()
         var stored: [[BridgeSaveFilenamePiece]] = []
 
         init(_ pieces: [BridgeSaveFilenamePiece]) {
@@ -31,6 +34,7 @@ struct SaveNameFieldTests {
             field.frame = NSRect(x: 10, y: 10, width: 380, height: 30)
             window.contentView?.addSubview(field)
             coordinator.setPieces = { [self] pieces in stored.append(pieces) }
+            coordinator.receive(adds.eraseToAnyPublisher())
             coordinator.stored(pieces)
         }
 
@@ -40,10 +44,9 @@ struct SaveNameFieldTests {
             return field
         }
 
+        /// Wait until every pattern handed over is stored or refused.
         func settle() async {
-            while !coordinator.isIdle {
-                await Task.yield()
-            }
+            await coordinator.writes?.value
         }
     }
 
@@ -119,14 +122,7 @@ struct SaveNameFieldTests {
         )
         editor.insertText(" - ", replacementRange: editor.selectedRange())
         await bench.settle()
-        var adds = SaveNameAdds<BridgeSaveFilenameValue>()
-        adds.add(.artist)
-        bench.coordinator.take(adds)
-        while bench.stored.last?.last != .value(value: .artist) {
-            await Task.yield()
-        }
-        // The same request again adds nothing more.
-        bench.coordinator.take(adds)
+        bench.adds.send(.artist)
         await bench.settle()
         #expect(
             bench.stored.last == [
@@ -312,13 +308,5 @@ struct MacFileNameFieldLayoutTests {
                 #expect(field.isEditing)
             }
         }
-    }
-}
-
-extension SaveNameField.Coordinator
-where Piece == BridgeSaveFilenamePiece {
-    /// Whether every pattern handed over has been stored or refused.
-    var isIdle: Bool {
-        !writing
     }
 }
