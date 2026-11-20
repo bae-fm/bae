@@ -101,11 +101,12 @@ struct MacTable: NSViewRepresentable {
         let header = StorageTableHeader()
         header.menus = coordinator
         tableView.headerView = header
-        coordinator.applyLayout(layout)
         coordinator.applySortIndicator(to: tableView, sort: sort)
 
         let scrollView = NSScrollView()
         scrollView.documentView = tableView
+        // Applied in the scroll view, whose width the first column fits.
+        coordinator.applyLayout(layout)
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = true
         scrollView.autohidesScrollers = true

@@ -24,6 +24,16 @@ extension MacTable.Coordinator {
         // change does; none of them is a change to write back.
         applyingLayout = true
         defer { applyingLayout = false }
+        // The table keeps its own width by resizing its first column, so a
+        // column hidden or narrowed here would widen the first column by
+        // as much: each column takes the layout's width with that off.
+        let autoresizing = table.columnAutoresizingStyle
+        table.columnAutoresizingStyle = .noColumnAutoresizing
+        defer {
+            table.columnAutoresizingStyle = autoresizing
+            // The table takes the width of its columns as they are now.
+            table.tile()
+        }
         for (index, entry) in layout.columns.enumerated() {
             let at = table.column(
                 withIdentifier: NSUserInterfaceItemIdentifier(
