@@ -159,6 +159,7 @@ extension ShotScene {
         ) {
             peopleStage(
                 subpage: .devices,
+                ownTabletAdded: true,
                 sheet: {
                     AnyView(
                         AddDeviceSheetContent(
@@ -319,16 +320,29 @@ extension ShotScene {
     /// The shot people with the other person named Ben, who has a tablet
     /// and no removed devices, and this person's own removed devices only
     /// when `ownRemovedDevices`: the boards draw them on Your devices alone.
+    /// `ownTabletAdded` adds the tablet this person has just added.
     private static func peopleWithBen(
         role: BridgeMemberRole,
         ownPicture: Bool = false,
-        ownRemovedDevices: Bool = false
+        ownRemovedDevices: Bool = false,
+        ownTabletAdded: Bool = false
     ) -> BridgePeople {
         var people = PreviewData.members(
             reaching: PreviewData.previewDropboxStorage
         )
         if !ownRemovedDevices {
             people = people.ownRemovedDevicesLeftOut()
+        }
+        if ownTabletAdded {
+            people.own?.membership.activeDevices
+                .append(
+                    BridgeActiveDevice(
+                        id: 8,
+                        name: "Tablet",
+                        isSelf: false,
+                        canRemove: true
+                    )
+                )
         }
         if ownPicture {
             people.own?.profile?.avatarVersion = "1"
@@ -458,6 +472,7 @@ extension ShotScene {
         asAdmin: Bool = true,
         ownPicture: Bool = false,
         ownRemovedDevices: Bool = false,
+        ownTabletAdded: Bool = false,
         invites: [BridgeInvite] = [],
         refusedInvites: [BridgeRefusedInvite] = [],
         shown: BridgeSyncShown = .fixtureSynced,
@@ -468,7 +483,8 @@ extension ShotScene {
             people: peopleWithBen(
                 role: .member,
                 ownPicture: ownPicture,
-                ownRemovedDevices: ownRemovedDevices
+                ownRemovedDevices: ownRemovedDevices,
+                ownTabletAdded: ownTabletAdded
             ),
             selfIsAdmin: asAdmin,
             invites: invites,
