@@ -14,8 +14,8 @@ use super::*;
 use crate::folder_scanner::{SheetBindingOffer, SheetDisc, SheetReferenceOptions};
 use crate::mapping::{
     MappingContainer, MappingEntry, MappingFile, MappingFileRow, MappingImage, MappingRole,
-    MappingSource, MappingTable, MappingTrackRun, MappingTrackSide, SheetBound, SheetGroup,
-    TrackMapping,
+    MappingSource, MappingTable, MappingTrackRun, MappingTrackSide, SheetBound, SheetBoundAudio,
+    SheetGroup, TrackMapping,
 };
 use crate::ImportError;
 
@@ -130,6 +130,25 @@ disc_options AS (
         SELECT sheet_disc_number FROM f WHERE sheet_disc = 'disc'
     )
 ),
+reference_json (sheet, seq, bound, json) AS (
+    SELECT r.sheet, r.seq, sa.audio_relative_path IS NOT NULL,
+           json_object(
+               'file_reference', r.file_reference,
+               'file_id', sa.audio_relative_path,
+               'options', json((
+                   SELECT json_group_array(json_object(
+                       'file_id', o.audio_relative_path, 'offer', o.offer,
+                       'codec', o.codec) ORDER BY fo.position)
+                   FROM scan_candidate_sheet_offer AS o
+                   JOIN f AS fo ON fo.relative_path = o.audio_relative_path
+                   WHERE o.watched_folder_path = (SELECT watched_folder_path FROM candidate) AND o.candidate_path = :key
+                     AND o.sheet_relative_path = r.sheet
+                     AND o.file_reference = r.file_reference)))
+    FROM refs AS r
+    LEFT JOIN scan_sheet_audio_file AS sa
+        ON sa.watched_folder_path = (SELECT watched_folder_path FROM candidate) AND sa.candidate_path = :key
+       AND sa.sheet_relative_path = r.sheet AND sa.file_reference = r.file_reference
+),
 sheet_audio_counts (sheet, count) AS (
     SELECT sheet_relative_path, COUNT(*) FROM scan_sheet_audio_file
     WHERE watched_folder_path = (SELECT watched_folder_path FROM candidate) AND candidate_path = :key GROUP BY sheet_relative_path
@@ -159,24 +178,22 @@ sheets (relative_path, json) AS (
                    WHEN 'refused_codec' THEN json_object('binding', 'refused_codec', 'codec', s.sheet_binding_codec)
                    ELSE json_object('binding', s.sheet_binding) END,
                'assignment', s.sheet_disc, 'disc_number', s.sheet_disc_number,
-               'references', json((
-                   SELECT json_group_array(json_object(
-                       'file_reference', r.file_reference,
-                       'file_id', (SELECT sa.audio_relative_path FROM scan_sheet_audio_file AS sa
-                                   WHERE sa.watched_folder_path = (SELECT watched_folder_path FROM candidate) AND sa.candidate_path = :key
-                                     AND sa.sheet_relative_path = s.relative_path
-                                     AND sa.file_reference = r.file_reference),
-                       'options', json((
-                           SELECT json_group_array(json_object(
-                               'file_id', o.audio_relative_path, 'offer', o.offer,
-                               'codec', o.codec) ORDER BY fo.position)
-                           FROM scan_candidate_sheet_offer AS o
-                           JOIN f AS fo ON fo.relative_path = o.audio_relative_path
-                           WHERE o.watched_folder_path = (SELECT watched_folder_path FROM candidate) AND o.candidate_path = :key
-                             AND o.sheet_relative_path = s.relative_path
-                             AND o.file_reference = r.file_reference))
-                   ) ORDER BY r.seq)
-                   FROM refs AS r WHERE r.sheet = s.relative_path)),
+               'bound_audio', json((
+                   SELECT CASE COUNT(*)
+                       WHEN 0 THEN json_object('kind', 'none')
+                       WHEN 1 THEN json_object('kind', 'one', 'reference', json(MIN(r.json)))
+                       ELSE json_object('kind', 'several',
+                                        'references', json_group_array(json(r.json) ORDER BY r.seq))
+                   END
+                   FROM reference_json AS r
+                   WHERE r.sheet = s.relative_path AND r.bound)),
+               'unbound_references', CASE WHEN EXISTS (
+                       SELECT 1 FROM reference_json AS r
+                       WHERE r.sheet = s.relative_path AND NOT r.bound)
+                   THEN json((SELECT json_group_array(json(r.json) ORDER BY r.seq)
+                              FROM reference_json AS r
+                              WHERE r.sheet = s.relative_path AND NOT r.bound))
+                   END,
                'disc_options', CASE WHEN s.sheet_binding = 'resolved'
                                     THEN json((SELECT json FROM disc_options))
                                     ELSE json('[]') END)
@@ -310,6 +327,15 @@ struct ReferenceJson {
     options: Vec<OptionJson>,
 }
 
+/// A sheet's FILE lines that play audio, tagged by how many there are.
+#[derive(serde::Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+enum BoundAudioJson {
+    None,
+    One { reference: ReferenceJson },
+    Several { references: Vec<ReferenceJson> },
+}
+
 #[derive(serde::Deserialize)]
 struct OptionJson {
     file_id: String,
@@ -325,7 +351,8 @@ struct SheetJson {
     bound: BoundJson,
     assignment: String,
     disc_number: Option<i64>,
-    references: Vec<ReferenceJson>,
+    bound_audio: BoundAudioJson,
+    unbound_references: Option<Vec<ReferenceJson>>,
     disc_options: Vec<u32>,
 }
 
@@ -542,48 +569,57 @@ fn sheet_group(sheet: SheetJson) -> Result<SheetGroup, ImportError> {
         &sheet.assignment,
         sheet.disc_number,
     )?;
-    let reference_options = sheet
-        .references
-        .into_iter()
-        .map(|reference| {
-            Ok(SheetReferenceOptions {
-                file_reference: reference.file_reference,
-                file_id: reference.file_id,
-                options: reference
-                    .options
-                    .into_iter()
-                    .map(|option| {
-                        Ok(crate::folder_scanner::SheetBindingOption {
-                            file_id: option.file_id,
-                            offer: match (option.offer.as_str(), option.codec) {
-                                ("offered", None) => SheetBindingOffer::Offered,
-                                ("refused_timing", None) => SheetBindingOffer::RefusedTiming,
-                                ("refused_codec", Some(codec)) => {
-                                    SheetBindingOffer::RefusedCodec { codec }
-                                }
-                                ("refused_unreadable", None) => {
-                                    SheetBindingOffer::RefusedUnreadable
-                                }
-                                (other, _) => {
-                                    return Err(internal(format!(
-                                        "the statement returned an unknown sheet offer {other}"
-                                    )))
-                                }
-                            },
-                        })
-                    })
-                    .collect::<Result<Vec<_>, ImportError>>()?,
-            })
-        })
-        .collect::<Result<Vec<_>, ImportError>>()?;
+    let bound_audio = match sheet.bound_audio {
+        BoundAudioJson::None => SheetBoundAudio::None,
+        BoundAudioJson::One { reference } => SheetBoundAudio::One(reference_options(reference)?),
+        BoundAudioJson::Several { references } => SheetBoundAudio::Several(
+            references.into_iter().map(reference_options).collect::<Result<_, _>>()?,
+        ),
+    };
+    let unbound_references = sheet
+        .unbound_references
+        .map(|references| references.into_iter().map(reference_options).collect())
+        .transpose()?;
     Ok(SheetGroup {
         sheet_id: sheet.sheet_id,
         name: sheet.name,
         size: sheet.size,
         bound,
-        reference_options,
+        bound_audio,
+        unbound_references,
         assignment,
         disc_options: sheet.disc_options,
+    })
+}
+
+/// One FILE line of a sheet, with the audio it plays and the choices the
+/// caption offers for it.
+fn reference_options(reference: ReferenceJson) -> Result<SheetReferenceOptions, ImportError> {
+    Ok(SheetReferenceOptions {
+        file_reference: reference.file_reference,
+        file_id: reference.file_id,
+        options: reference
+            .options
+            .into_iter()
+            .map(|option| {
+                Ok(crate::folder_scanner::SheetBindingOption {
+                    file_id: option.file_id,
+                    offer: match (option.offer.as_str(), option.codec) {
+                        ("offered", None) => SheetBindingOffer::Offered,
+                        ("refused_timing", None) => SheetBindingOffer::RefusedTiming,
+                        ("refused_codec", Some(codec)) => SheetBindingOffer::RefusedCodec { codec },
+                        ("refused_unreadable", None) => SheetBindingOffer::RefusedUnreadable,
+                        (other, _) => {
+                            return Err(ImportError::Internal {
+                                detail: format!(
+                                    "the statement returned an unknown sheet offer {other}"
+                                ),
+                            })
+                        }
+                    },
+                })
+            })
+            .collect::<Result<Vec<_>, ImportError>>()?,
     })
 }
 

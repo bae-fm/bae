@@ -388,7 +388,17 @@ extension ImportMappingTracksLayoutTests {
     }
 
     private func sheet(associated: Bool) -> BridgeSheetGroup {
-        BridgeSheetGroup(
+        let reference = BridgeSheetReferenceOptions(
+            fileReference: longAudioName,
+            fileId: associated ? longAudioName : nil,
+            options: [
+                BridgeSheetBindingOption(
+                    fileId: longAudioName,
+                    offer: .offered
+                )
+            ]
+        )
+        return BridgeSheetGroup(
             sheetId: "descriptor.cue",
             name:
                 "A long descriptor filename that must remain inside Source.cue",
@@ -402,18 +412,9 @@ extension ImportMappingTracksLayoutTests {
                     )
                 )
                 : .unresolved(requested: [longAudioName]),
-            referenceOptions: [
-                BridgeSheetReferenceOptions(
-                    fileReference: longAudioName,
-                    fileId: associated ? longAudioName : nil,
-                    options: [
-                        BridgeSheetBindingOption(
-                            fileId: longAudioName,
-                            offer: .offered
-                        )
-                    ]
-                )
-            ],
+            boundAudio: reference.fileId == nil
+                ? .none : .one(reference: reference),
+            unboundReferences: reference.fileId == nil ? [reference] : nil,
             assignment: .disc(number: 1),
             discOptions: [1, 2]
         )

@@ -6,19 +6,15 @@ import Testing
 @testable import bae
 
 // The sheet caption's audio assignments: which references are listed, and
-// where a bound one is changed. The listing is the binding layout's, and
-// the menus it draws are AppKit pop-up buttons; the words are the
-// `import-mapping-cue-wide` shot's.
+// where a bound one is changed. Core splits the references into the bound
+// and the unbound, and the menus the caption draws are AppKit pop-up
+// buttons; the words are the `import-mapping-cue-wide` shot's.
 extension ImportMappingTracksLayoutTests {
     /// With every reference bound, the summary's menu has a submenu per
     /// reference, each holding only that reference's choices.
     @Test("each bound reference has its own submenu of its own choices")
     func boundReferencesHaveTheirOwnSubmenus() throws {
-        let sheet = assignmentSheet(secondAssigned: true)
-        let references = sheet.referenceOptions
-        let layout = ImportSheetBindingLayout(sheet: sheet)
-        #expect(layout.summary == .submenus(references))
-        #expect(layout.unbound.isEmpty)
+        let references = assignmentReferences(secondAssigned: true)
         #expect(
             ImportSheetBindingChoice.choices(for: references[0])
                 == [
@@ -52,10 +48,7 @@ extension ImportMappingTracksLayoutTests {
             let menus = HostedMenus.controls(in: host)
             #expect(menus.count == 2, "the summary, then the missing reference")
         }
-        let references = sheet.referenceOptions
-        let layout = ImportSheetBindingLayout(sheet: sheet)
-        #expect(layout.summary == .choices(references[0]))
-        #expect(layout.unbound == [references[1]])
+        let references = assignmentReferences(secondAssigned: false)
         #expect(
             ImportSheetBindingChoice.choices(for: references[1])
                 == [
@@ -80,50 +73,62 @@ extension ImportMappingTracksLayoutTests {
     }
 
     private func assignmentSheet(secondAssigned: Bool) -> BridgeSheetGroup {
-        BridgeSheetGroup(
+        let references = assignmentReferences(secondAssigned: secondAssigned)
+        return BridgeSheetGroup(
             sheetId: "Collection.cue",
             name: "Collection.cue",
             size: 2_048,
             bound: secondAssigned
                 ? .describesFiles(audioFileCount: 2)
                 : .unresolved(requested: ["Second.wav"]),
-            referenceOptions: [
-                BridgeSheetReferenceOptions(
-                    fileReference: "First.wav",
-                    fileId: "First.flac",
-                    options: [
-                        BridgeSheetBindingOption(
-                            fileId: "First.flac",
-                            offer: .offered
-                        ),
-                        BridgeSheetBindingOption(
-                            fileId: "Replacement.flac",
-                            offer: .offered
-                        ),
-                        BridgeSheetBindingOption(
-                            fileId: "Wrong.mp3",
-                            offer: .refusedCodec(codec: "MP3")
-                        ),
-                        BridgeSheetBindingOption(
-                            fileId: "Short.flac",
-                            offer: .refusedTiming
-                        ),
-                    ]
-                ),
-                BridgeSheetReferenceOptions(
-                    fileReference: "Second.wav",
-                    fileId: secondAssigned ? "Second.flac" : nil,
-                    options: [
-                        BridgeSheetBindingOption(
-                            fileId: "Second.flac",
-                            offer: .offered
-                        )
-                    ]
-                ),
-            ],
+            boundAudio: secondAssigned
+                ? .several(references: references)
+                : .one(reference: references[0]),
+            unboundReferences: secondAssigned ? nil : [references[1]],
             assignment: secondAssigned ? .disc(number: 1) : .ignored,
             discOptions: secondAssigned ? [1] : []
         )
+    }
+
+    /// The sheet's two references: the first bound, the second bound only
+    /// when `secondAssigned`.
+    private func assignmentReferences(
+        secondAssigned: Bool
+    ) -> [BridgeSheetReferenceOptions] {
+        [
+            BridgeSheetReferenceOptions(
+                fileReference: "First.wav",
+                fileId: "First.flac",
+                options: [
+                    BridgeSheetBindingOption(
+                        fileId: "First.flac",
+                        offer: .offered
+                    ),
+                    BridgeSheetBindingOption(
+                        fileId: "Replacement.flac",
+                        offer: .offered
+                    ),
+                    BridgeSheetBindingOption(
+                        fileId: "Wrong.mp3",
+                        offer: .refusedCodec(codec: "MP3")
+                    ),
+                    BridgeSheetBindingOption(
+                        fileId: "Short.flac",
+                        offer: .refusedTiming
+                    ),
+                ]
+            ),
+            BridgeSheetReferenceOptions(
+                fileReference: "Second.wav",
+                fileId: secondAssigned ? "Second.flac" : nil,
+                options: [
+                    BridgeSheetBindingOption(
+                        fileId: "Second.flac",
+                        offer: .offered
+                    )
+                ]
+            ),
+        ]
     }
 }
 
@@ -157,7 +162,8 @@ extension ImportMappingTracksLayoutTests {
             name: "Collection.cue",
             size: 2_048,
             bound: .describesFiles(audioFileCount: 2),
-            referenceOptions: references,
+            boundAudio: .several(references: references),
+            unboundReferences: nil,
             assignment: .disc(number: 1),
             discOptions: [1]
         )
@@ -168,9 +174,6 @@ extension ImportMappingTracksLayoutTests {
             try #require(menus.count == 1, "the summary is the one menu")
             #expect(try HostedMenus.opens(menus[0]))
         }
-        let layout = ImportSheetBindingLayout(sheet: group)
-        #expect(layout.summary == .submenus(references))
-        #expect(layout.unbound.isEmpty)
     }
 }
 

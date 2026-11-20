@@ -342,23 +342,24 @@ extension PreviewData {
             else {
                 nil
             }
+        let reference = BridgeSheetReferenceOptions(
+            fileReference: "Field Recordings CD\(number).flac",
+            fileId: boundTo,
+            options: [
+                BridgeSheetBindingOption(
+                    fileId: fieldRecordingsContainer.fileId,
+                    offer: .offered
+                )
+            ]
+        )
         return BridgeSheetGroup(
             sheetId: name,
             name: name,
             size: 1_200,
             bound: bound,
-            referenceOptions: [
-                BridgeSheetReferenceOptions(
-                    fileReference: "Field Recordings CD\(number).flac",
-                    fileId: boundTo,
-                    options: [
-                        BridgeSheetBindingOption(
-                            fileId: fieldRecordingsContainer.fileId,
-                            offer: .offered
-                        )
-                    ]
-                )
-            ],
+            boundAudio: reference.fileId == nil
+                ? .none : .one(reference: reference),
+            unboundReferences: reference.fileId == nil ? [reference] : nil,
             assignment: .disc(number: UInt32(number)),
             discOptions: [1, 2]
         )

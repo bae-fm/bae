@@ -336,11 +336,30 @@ pub struct BridgeSheetGroup {
     pub name: String,
     pub size: u64,
     pub bound: BridgeSheetBound,
-    /// Current FILE associations and permitted choices, in sheet reference order.
-    pub reference_options: Vec<BridgeSheetReferenceOptions>,
+    /// The sheet's FILE lines that play audio, as the caption's Audio file
+    /// pop-up offers them.
+    pub bound_audio: BridgeSheetBoundAudio,
+    /// The sheet's FILE lines that play no audio, in the sheet's order, each
+    /// offered from a menu of its own; `None` where every line plays audio.
+    pub unbound_references: Option<Vec<BridgeSheetReferenceOptions>>,
     pub assignment: BridgeSheetDisc,
     /// The discs this sheet may be assigned to, counting from one.
     pub disc_options: Vec<u32>,
+}
+
+/// The FILE lines of a track sheet that play audio, by how the caption's
+/// Audio file pop-up offers them. Mirror of bae-import's `SheetBoundAudio`.
+#[cfg(desktop)]
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeSheetBoundAudio {
+    /// No line plays audio, so the caption names what the sheet describes
+    /// as text.
+    None,
+    /// One line plays audio: its choices sit directly in the pop-up.
+    One { reference: BridgeSheetReferenceOptions },
+    /// Several lines play audio: the pop-up has a submenu per line, in the
+    /// sheet's order.
+    Several { references: Vec<BridgeSheetReferenceOptions> },
 }
 
 /// What a track sheet describes, with the facts its header shows about it.

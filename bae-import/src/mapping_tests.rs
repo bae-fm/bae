@@ -376,16 +376,17 @@ async fn a_sheet_s_entries_carry_their_starts_and_bind_to_its_slices() {
     assert_eq!(sheet.sheet_id, "CDImage.cue");
     assert_eq!(sheet.assignment, SheetDisc::Disc { number: 1 });
     assert_eq!(
-        sheet.reference_options,
-        vec![SheetReferenceOptions {
+        sheet.bound_audio,
+        SheetBoundAudio::One(SheetReferenceOptions {
             file_reference: "CDImage.flac".into(),
             file_id: Some("CDImage.flac".into()),
             options: vec![SheetBindingOption {
                 file_id: "CDImage.flac".into(),
                 offer: SheetBindingOffer::Offered,
             }],
-        }]
+        })
     );
+    assert_eq!(sheet.unbound_references, None);
     let SheetBound::Describes(container) = &sheet.bound else {
         panic!("expected a bound sheet, got {:?}", sheet.bound);
     };
@@ -703,16 +704,17 @@ async fn invalid_cue_times_are_not_reported_as_missing_audio() {
     };
     assert_eq!(sheet.bound, SheetBound::RefusedTiming);
     assert_eq!(
-        sheet.reference_options,
-        vec![SheetReferenceOptions {
+        sheet.bound_audio,
+        SheetBoundAudio::One(SheetReferenceOptions {
             file_reference: "disc.flac".into(),
             file_id: Some("disc.flac".into()),
             options: vec![SheetBindingOption {
                 file_id: "disc.flac".into(),
                 offer: SheetBindingOffer::RefusedTiming,
             }],
-        }]
+        })
     );
+    assert_eq!(sheet.unbound_references, None);
 }
 
 #[tokio::test]
@@ -765,22 +767,23 @@ async fn partial_sheet_keeps_assigned_and_missing_references_even_without_choice
     };
     assert_eq!(sheet.bound, SheetBound::Unresolved { requested: vec!["absent.wav".into()] });
     assert_eq!(
-        sheet.reference_options,
-        vec![
-            SheetReferenceOptions {
-                file_reference: "first.wav".into(),
-                file_id: Some("first.flac".into()),
-                options: vec![SheetBindingOption {
-                    file_id: "first.flac".into(),
-                    offer: SheetBindingOffer::Offered
-                }],
-            },
-            SheetReferenceOptions {
-                file_reference: "absent.wav".into(),
-                file_id: None,
-                options: vec![]
-            },
-        ]
+        sheet.bound_audio,
+        SheetBoundAudio::One(SheetReferenceOptions {
+            file_reference: "first.wav".into(),
+            file_id: Some("first.flac".into()),
+            options: vec![SheetBindingOption {
+                file_id: "first.flac".into(),
+                offer: SheetBindingOffer::Offered
+            }],
+        })
+    );
+    assert_eq!(
+        sheet.unbound_references,
+        Some(vec![SheetReferenceOptions {
+            file_reference: "absent.wav".into(),
+            file_id: None,
+            options: vec![]
+        }])
     );
 }
 
@@ -797,16 +800,17 @@ async fn codec_refusal_does_not_invent_a_current_assignment() {
         panic!("refused CUE remains listed");
     };
     assert_eq!(sheet.bound, SheetBound::RefusedCodec { codec: "MP3".into() });
+    assert_eq!(sheet.bound_audio, SheetBoundAudio::None);
     assert_eq!(
-        sheet.reference_options,
-        vec![SheetReferenceOptions {
+        sheet.unbound_references,
+        Some(vec![SheetReferenceOptions {
             file_reference: "disc.mp3".into(),
             file_id: None,
             options: vec![SheetBindingOption {
                 file_id: "disc.mp3".into(),
                 offer: SheetBindingOffer::RefusedCodec { codec: "MP3".into() }
             }],
-        }]
+        }])
     );
 }
 
@@ -834,7 +838,10 @@ async fn the_first_of_competing_sheets_carves_and_the_rest_stay_listed() {
     assert!(
         matches!(&sheet.bound, SheetBound::Describes(container) if container.file_id == "disc.flac")
     );
-    assert_eq!(sheet.reference_options[0].file_id.as_deref(), Some("disc.flac"));
+    let SheetBoundAudio::One(reference) = &sheet.bound_audio else {
+        panic!("the sheet's one line plays audio: {:?}", sheet.bound_audio);
+    };
+    assert_eq!(reference.file_id.as_deref(), Some("disc.flac"));
 }
 
 /// A CUE's slices on a draft whose medium states no carrier read as one flat
@@ -896,7 +903,8 @@ async fn a_multi_file_sheet_stays_described_when_ignored_without_probing() {
         panic!("the CUE heads its entries");
     };
     assert_eq!(sheet.bound, SheetBound::DescribesFiles { audio_file_count: 2 });
-    assert_eq!(sheet.reference_options, expected);
+    assert_eq!(sheet.bound_audio, SheetBoundAudio::Several(expected.clone()));
+    assert_eq!(sheet.unbound_references, None);
     assert_eq!(entries.len(), 3);
 
     let mut sheet_discs = SheetDiscEdits::default();
@@ -910,7 +918,8 @@ async fn a_multi_file_sheet_stays_described_when_ignored_without_probing() {
     };
     assert_eq!(sheet.assignment, SheetDisc::Ignored);
     assert_eq!(sheet.bound, SheetBound::DescribesFiles { audio_file_count: 2 });
-    assert_eq!(sheet.reference_options, expected);
+    assert_eq!(sheet.bound_audio, SheetBoundAudio::Several(expected.clone()));
+    assert_eq!(sheet.unbound_references, None);
     for (name, count) in ["first.flac", "second.flac"].into_iter().zip(opens) {
         assert_eq!(bae_audio::test_reads::probes(&tmp.path().join(name)), count);
     }

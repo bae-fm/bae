@@ -83,7 +83,7 @@ extension PreviewData {
 
     /// What core offers a sheet in this folder: the FLAC it can use, and
     /// the MP3 it can't, refused with its codec named.
-    static let sheetReferenceOptions = [
+    static let sheetReferenceOptions =
         BridgeSheetReferenceOptions(
             fileReference: mappedAudioContainer.file.name,
             fileId: mappedAudioContainer.file.name,
@@ -98,7 +98,6 @@ extension PreviewData {
                 ),
             ]
         )
-    ]
 
     static let infoLog = previewFile(
         name: "info.log",

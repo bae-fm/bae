@@ -227,11 +227,29 @@ pub struct SheetGroup {
     pub name: String,
     pub size: u64,
     pub bound: SheetBound,
-    /// Current FILE associations and choices, independent of track inclusion.
-    pub reference_options: Vec<SheetReferenceOptions>,
+    /// The sheet's FILE lines that play audio, as the caption's Audio file
+    /// pop-up offers them; independent of track inclusion.
+    pub bound_audio: SheetBoundAudio,
+    /// The sheet's FILE lines that play no audio, in the sheet's order, each
+    /// offered from a menu of its own; `None` where every line plays audio.
+    pub unbound_references: Option<Vec<SheetReferenceOptions>>,
     pub assignment: SheetDisc,
     /// The discs this sheet may be assigned to, counting from one.
     pub disc_options: Vec<u32>,
+}
+
+/// The FILE lines of a track sheet that play audio, by how the caption's
+/// Audio file pop-up offers them.
+#[derive(Debug, Clone, PartialEq)]
+pub enum SheetBoundAudio {
+    /// No line plays audio, so the caption names what the sheet describes
+    /// as text.
+    None,
+    /// One line plays audio: its choices sit directly in the pop-up.
+    One(SheetReferenceOptions),
+    /// Several lines play audio: the pop-up has a submenu per line, in the
+    /// sheet's order.
+    Several(Vec<SheetReferenceOptions>),
 }
 
 /// What a track sheet describes, with the facts its header shows about it.

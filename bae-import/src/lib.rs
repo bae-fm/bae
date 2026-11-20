@@ -285,7 +285,7 @@ pub use list::{
 pub use mapping::{
     mapping_tracks, InvalidCandidateDetail, MappingContainer, MappingEntry, MappingFile,
     MappingFileRow, MappingImage, MappingRole, MappingSource, MappingTable, MappingTrackRun,
-    MappingTrackSide, SheetBound, SheetGroup, TrackMapping,
+    MappingTrackSide, SheetBound, SheetBoundAudio, SheetGroup, TrackMapping,
 };
 #[cfg(desktop)]
 pub use preparations::{

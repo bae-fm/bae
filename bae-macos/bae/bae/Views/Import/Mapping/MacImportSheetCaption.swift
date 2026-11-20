@@ -19,10 +19,6 @@ struct MacImportSheetCaption: View {
         caption
     }
 
-    private var layout: ImportSheetBindingLayout {
-        ImportSheetBindingLayout(sheet: sheet)
-    }
-
     private func bind(
         _ reference: BridgeSheetReferenceOptions,
         to fileId: String?
@@ -47,19 +43,19 @@ struct MacImportSheetCaption: View {
                 .foregroundStyle(.tertiary)
                 .fixedSize()
                 .accessibilityHidden(true)
-            switch layout.summary {
-            case .text:
-                if layout.unbound.isEmpty {
+            switch sheet.boundAudio {
+            case .none:
+                if sheet.unboundReferences == nil {
                     boundText
                 }
-            case .choices(let reference):
+            case .one(let reference):
                 boundMenu {
                     ImportSheetBindingItems(
                         reference: reference,
                         onBind: { bind(reference, to: $0) }
                     )
                 }
-            case .submenus(let references):
+            case .several(let references):
                 boundMenu {
                     for reference in references {
                         MacMenuSubmenu(verbatim: referenceTitle(reference)) {
@@ -71,9 +67,9 @@ struct MacImportSheetCaption: View {
                     }
                 }
             }
-            if !layout.unbound.isEmpty {
+            if let unbound = sheet.unboundReferences {
                 ImportSheetUnboundMenu(
-                    references: layout.unbound,
+                    references: unbound,
                     onBind: { bind($0, to: $1) }
                 )
             }
@@ -139,41 +135,6 @@ struct MacImportSheetCaption: View {
         .buttonStyle(.accentPlain)
         .layoutPriority(1)
         .onHover { hoveringName = $0 }
-    }
-}
-
-/// Where a sheet caption offers its FILE references' audio: a reference
-/// with none bound is a row of its own, under the summary, with its own menu;
-/// bound ones are changed from the summary's menu.
-struct ImportSheetBindingLayout: Equatable {
-    /// What the summary offers.
-    let summary: Summary
-    /// The references with no audio bound, in the sheet's order.
-    let unbound: [BridgeSheetReferenceOptions]
-
-    enum Summary: Equatable {
-        /// Nothing is bound, so the summary is text, not a menu.
-        case text
-        /// One reference is bound: its choices sit directly in the summary's
-        /// menu.
-        case choices(BridgeSheetReferenceOptions)
-        /// Several are bound: the summary's menu has a submenu per
-        /// reference, in the sheet's order.
-        case submenus([BridgeSheetReferenceOptions])
-    }
-
-    init(sheet: BridgeSheetGroup) {
-        let bound = sheet.referenceOptions.filter { $0.fileId != nil }
-        unbound = sheet.referenceOptions.filter { $0.fileId == nil }
-        if bound.isEmpty {
-            summary = .text
-        }
-        else if bound.count == 1, let only = bound.first {
-            summary = .choices(only)
-        }
-        else {
-            summary = .submenus(bound)
-        }
     }
 }
 

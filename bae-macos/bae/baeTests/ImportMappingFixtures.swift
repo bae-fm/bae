@@ -158,24 +158,25 @@ extension MappingFixtures {
         container: BridgeMappingContainer?,
         assignment: BridgeSheetDisc
     ) -> BridgeSheetGroup {
-        BridgeSheetGroup(
+        let reference = BridgeSheetReferenceOptions(
+            fileReference: containerId,
+            fileId: container?.fileId,
+            options: [
+                BridgeSheetBindingOption(
+                    fileId: containerId,
+                    offer: .offered
+                )
+            ]
+        )
+        return BridgeSheetGroup(
             sheetId: sheetId,
             name: sheetId,
             size: 2_048,
             bound: container.map { .describes(container: $0) }
                 ?? .unresolved(requested: [containerId]),
-            referenceOptions: [
-                BridgeSheetReferenceOptions(
-                    fileReference: containerId,
-                    fileId: container?.fileId,
-                    options: [
-                        BridgeSheetBindingOption(
-                            fileId: containerId,
-                            offer: .offered
-                        )
-                    ]
-                )
-            ],
+            boundAudio: reference.fileId == nil
+                ? .none : .one(reference: reference),
+            unboundReferences: reference.fileId == nil ? [reference] : nil,
             assignment: assignment,
             discOptions: [1, 2]
         )

@@ -183,7 +183,8 @@ impl BridgeSheetGroup {
             name,
             size,
             bound,
-            reference_options,
+            bound_audio,
+            unbound_references,
             assignment,
             disc_options,
         } = sheet;
@@ -192,12 +193,29 @@ impl BridgeSheetGroup {
             name,
             size,
             bound: BridgeSheetBound::from_core(bound),
-            reference_options: reference_options
-                .into_iter()
-                .map(BridgeSheetReferenceOptions::from_core)
-                .collect(),
+            bound_audio: BridgeSheetBoundAudio::from_core(bound_audio),
+            unbound_references: unbound_references.map(|references| {
+                references.into_iter().map(BridgeSheetReferenceOptions::from_core).collect()
+            }),
             assignment: BridgeSheetDisc::from_core(assignment),
             disc_options,
+        }
+    }
+}
+
+impl BridgeSheetBoundAudio {
+    fn from_core(audio: bae_import::SheetBoundAudio) -> Self {
+        match audio {
+            bae_import::SheetBoundAudio::None => Self::None,
+            bae_import::SheetBoundAudio::One(reference) => {
+                Self::One { reference: BridgeSheetReferenceOptions::from_core(reference) }
+            }
+            bae_import::SheetBoundAudio::Several(references) => Self::Several {
+                references: references
+                    .into_iter()
+                    .map(BridgeSheetReferenceOptions::from_core)
+                    .collect(),
+            },
         }
     }
 }

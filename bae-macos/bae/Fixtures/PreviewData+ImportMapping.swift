@@ -251,7 +251,8 @@ extension PreviewData {
                 size: mappedAudioContainer.file.size
             )
         ),
-        referenceOptions: sheetReferenceOptions,
+        boundAudio: .one(reference: sheetReferenceOptions),
+        unboundReferences: nil,
         assignment: .disc(number: 1),
         discOptions: [1, 2]
     )
