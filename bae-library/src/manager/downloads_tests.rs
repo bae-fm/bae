@@ -861,10 +861,9 @@ fn last_stored_path(home: &coven::MemoryStorage, manager: &LibraryManager) -> co
 
 /// Wait until a pin has left a partial download on this device.
 async fn wait_for_partial_download(manager: &LibraryManager) {
+    let mut local = manager.store.subscribe_local_bytes();
     tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
-        while manager.store.local_bytes().await.unwrap().pinning == 0 {
-            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
-        }
+        while local.next_inline().await.expect("the query stays open").unwrap().pinning == 0 {}
     })
     .await
     .expect("the pin left a partial download");

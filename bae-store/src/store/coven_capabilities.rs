@@ -355,6 +355,13 @@ impl Store {
         self.reported(self.inner.handle.local_bytes().await).map_err(DbError::from)
     }
 
+    /// [`Self::local_bytes`] now and after each write that changes it, for a
+    /// test that waits on what a pin leaves on this device.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn subscribe_local_bytes(&self) -> coven::LiveQuery<coven::LocalBytes, coven::CovenError> {
+        self.inner.handle.subscribe_local_bytes()
+    }
+
     /// Delete the installations resets kept on this device.
     pub async fn delete_discarded_devices(&self) -> Result<(), DbError> {
         self.reported(self.inner.handle.delete_discarded_devices().await).map_err(DbError::from)
