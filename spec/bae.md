@@ -2853,7 +2853,7 @@ Two ways put a release back on disk, from desktop:
   can't be deleted, and its Delete… is off. The file name field's preview
   ends in the extension of the format Save as… starts with.
   One file name pattern and one folder name pattern serve every format. A
-  pattern is text with values in it, each value one chip: the person types
+  pattern is text with values in it, each value one chip in the accent: the person types
   between the chips (`Artist - Album`), and Delete after a chip or Forward
   Delete before it takes the whole chip out. A value the track or release
   does not state comes out empty and the text around it stays. Typed text
