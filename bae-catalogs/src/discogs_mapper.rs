@@ -7,7 +7,7 @@ use crate::source_release::{
     DisplayCredit, EntryKind, RoleCredit, SourceMedium, SourceRelease, TracklistEntry,
 };
 use crate::CatalogError;
-use bae_types::pressing::{Medium, Pressing, PressingFacts, ReleaseArea, StatedMedia};
+use bae_types::pressing::{Pressing, PressingFacts, ReleaseArea, StatedMedia};
 use std::collections::HashSet;
 use tracing::{debug, warn};
 
@@ -310,19 +310,16 @@ fn covered_layout(
     for (index, medium) in covered.iter().enumerate() {
         let on_medium: Vec<usize> =
             (0..processed.len()).filter(|track| track_mediums[*track] == index).collect();
-        let sided = medium.medium.is_some_and(Medium::is_sided);
         let medium_letters: Vec<Option<u8>> =
             on_medium.iter().map(|track| letters[*track]).collect();
-        let mut count = std::num::NonZeroU8::MIN;
-        if let (true, Some(medium_sides)) =
-            (sided, crate::release_values::sides_by_letter(&medium_letters))
-        {
-            for (track, side) in on_medium.iter().zip(medium_sides) {
-                sides[*track] = side;
-                count = count.max(side);
-            }
+        let medium_sides = crate::release_values::medium_sides(medium.medium, &medium_letters);
+        for (track, side) in on_medium.iter().zip(medium_sides.sides) {
+            sides[*track] = side;
         }
-        mediums.push(bae_types::mediums::ReleaseMedium { carrier: medium.medium, sides: count });
+        mediums.push(bae_types::mediums::ReleaseMedium {
+            carrier: medium.medium,
+            sides: medium_sides.count,
+        });
     }
     let mut placer = bae_types::mediums::Placer::default();
     let places = processed

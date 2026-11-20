@@ -5,6 +5,7 @@ use crate::musicbrainz::{
 };
 use crate::records::LookupRef;
 use crate::works::GraphWork;
+use bae_types::pressing::Medium;
 
 /// Read archived source documents through the same metadata and reading path
 /// as import.

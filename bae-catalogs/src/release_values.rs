@@ -107,6 +107,39 @@ pub(crate) fn sides_by_letter(letters: &[Option<u8>]) -> Option<Vec<std::num::No
     )
 }
 
+/// Which side of one medium each of its rows is on, and how many sides the
+/// medium has.
+pub(crate) struct MediumSides {
+    /// One per row, in row order, counted from one.
+    pub sides: Vec<std::num::NonZeroU8>,
+    pub count: std::num::NonZeroU8,
+}
+
+/// The sides of one medium's rows, from its carrier `carrier` and the
+/// [`side_letter`] each row's position names (`letters`). A medium played
+/// side by side (a record, a cassette) has as many sides as its positions
+/// name letters, counted as [`sides_by_letter`] counts them. Any other
+/// medium, and a sided one whose positions name no letter, is one side.
+pub(crate) fn medium_sides(
+    carrier: Option<bae_types::pressing::Medium>,
+    letters: &[Option<u8>],
+) -> MediumSides {
+    match carrier
+        .is_some_and(bae_types::pressing::Medium::is_sided)
+        .then(|| sides_by_letter(letters))
+        .flatten()
+    {
+        Some(sides) => {
+            let count = *sides.iter().max().expect("a medium whose rows name letters has a side");
+            MediumSides { sides, count }
+        }
+        None => MediumSides {
+            sides: vec![std::num::NonZeroU8::MIN; letters.len()],
+            count: std::num::NonZeroU8::MIN,
+        },
+    }
+}
+
 /// Builds a [`WorkGraph`] from the works a release's recordings perform.
 /// Every reference to a MusicBrainz work carries its whole sub-graph; each
 /// work is held once and its relations read once, however many tracks or

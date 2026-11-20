@@ -22,9 +22,8 @@ use crate::source_release::{
     SourceRelease, SourceWork, SourceWorkEvent, TracklistEntry,
 };
 use crate::CatalogError;
-use bae_types::pressing::{Medium, Pressing, StatedMedia};
+use bae_types::pressing::{Pressing, StatedMedia};
 use std::collections::HashSet;
-use std::num::NonZeroU8;
 use tracing::{debug, warn};
 
 mod credits;
@@ -89,43 +88,22 @@ fn track_title(release_id: &str, track: &TracklistEntry) -> Result<String, Catal
     })
 }
 
-/// Which side of one medium each of its tracks is on, and how many sides the
-/// medium has.
-pub(crate) struct MediumSides {
-    /// One per track, in track order, counted from one.
-    pub sides: Vec<NonZeroU8>,
-    pub count: NonZeroU8,
-}
-
-/// The sides of one medium's tracks.
-///
-/// A medium played side by side (a record, a cassette) has as many sides as
-/// its positions name letters, counted from its lowest letter — so a second
-/// record lettered C/D has sides 1 and 2 of its own. A track whose position
-/// names no letter is on the side of the track before it. Any other medium,
-/// and a sided one whose positions name no letter, is one side.
+/// The sides of one medium's tracks, as
+/// [`crate::release_values::medium_sides`] counts them from its carrier and
+/// its positions' letters.
 ///
 /// An empty medium has no playable tracks and is rejected.
 pub(crate) fn medium_sides(
     release_id: &str,
     medium: &SourceMedium,
-) -> Result<MediumSides, CatalogError> {
+) -> Result<crate::release_values::MediumSides, CatalogError> {
     if medium.entries.is_empty() {
         return Err(CatalogError::SourceData {
             catalog: Catalog::MusicBrainz,
             detail: format!("MusicBrainz release {} has a medium with no tracks", release_id),
         });
     }
-    let one_side =
-        || MediumSides { sides: vec![NonZeroU8::MIN; medium.entries.len()], count: NonZeroU8::MIN };
-    if !medium.medium.is_some_and(Medium::is_sided) {
-        return Ok(one_side());
-    }
-    let Some(sides) = crate::release_values::sides_by_letter(&medium.side_letters()) else {
-        return Ok(one_side());
-    };
-    let count = *sides.iter().max().expect("a medium with tracks has a side");
-    Ok(MediumSides { sides, count })
+    Ok(crate::release_values::medium_sides(medium.medium, &medium.side_letters()))
 }
 
 pub(crate) fn metadata(

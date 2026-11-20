@@ -173,18 +173,10 @@ impl SourceMedium {
             .collect()
     }
 
-    /// The medium as bae holds one: its carrier, and, for a record or a
-    /// cassette, as many sides as its positions name letters, counted from
-    /// its lowest; any other medium, and one whose positions name no letter,
-    /// is one side.
+    /// The medium as bae holds one: its carrier, and its sides as
+    /// [`crate::release_values::medium_sides`] counts them.
     fn held(&self) -> bae_types::mediums::ReleaseMedium {
-        let sides = self
-            .medium
-            .is_some_and(Medium::is_sided)
-            .then(|| crate::release_values::sides_by_letter(&self.side_letters()))
-            .flatten()
-            .and_then(|sides| sides.into_iter().max())
-            .unwrap_or(std::num::NonZeroU8::MIN);
+        let sides = crate::release_values::medium_sides(self.medium, &self.side_letters()).count;
         bae_types::mediums::ReleaseMedium { carrier: self.medium, sides }
     }
 }
