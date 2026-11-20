@@ -38,7 +38,8 @@ abstract class BoardShot {
 
     /**
      * Draws a design-system component in one of its states, as [id] (`android.component.<thing>.<state>`) names
-     * it, on the page colour. A [wide] state is drawn as wide as the phone, as the design system's wide rows are.
+     * it, on the page colour. A [wide] state is drawn as wide as a phone screen's margins leave it, as the design
+     * system's wide rows fill their cell.
      */
     protected fun component(
         id: String,

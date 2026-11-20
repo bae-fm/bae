@@ -110,7 +110,10 @@ private fun SheetWithHandle(
     }
 }
 
-/** A component on the page colour, padded as a preview cell is; [wide] makes it as wide as the phone. */
+/**
+ * A component on the page colour, at the top left with no margin, as a preview cell holds it; [wide] makes it as wide
+ * as a phone screen's margins leave a component.
+ */
 @Composable
 internal fun ComponentScene(
     wide: Boolean,
@@ -118,12 +121,13 @@ internal fun ComponentScene(
 ) {
     ShotTheme {
         Surface(color = MaterialTheme.colorScheme.background) {
-            Box(modifier = (if (wide) Modifier.width(PHONE_WIDTH) else Modifier).padding(ThemeSpace.edge)) { content() }
+            Box(modifier = if (wide) Modifier.width(PHONE_COLUMN) else Modifier) { content() }
         }
     }
 }
 
-private val PHONE_WIDTH = 411.dp
+/** A phone 411 dp wide, less the screen's margin on each side. */
+private val PHONE_COLUMN = 411.dp - ThemeSpace.edge * 2
 
 /** A screen of its own, on the screen's background, in the look [appearance] gives (the boards' by default). */
 @Composable
