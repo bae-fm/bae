@@ -301,19 +301,18 @@ async fn waiting_for_writes_waits_for_a_write_in_flight() {
 
     let held = sessions.discogs.lock().await;
     session.master_covers("909", CallClass::REQUESTED).await.unwrap_err();
-    let waiting = bae_util::test_spawn::task({
-        let sessions = sessions.clone();
-        async move { sessions.wait_for_writes().await }
-    });
-    for _ in 0..100 {
-        tokio::task::yield_now().await;
-    }
-    assert!(!waiting.is_finished(), "the write is still waiting for the key's lock");
+    // Its first poll takes the writes in flight and waits on them; the write
+    // can't end while the test holds the key's lock.
+    let mut waiting = std::pin::pin!(sessions.wait_for_writes());
+    let first = std::future::poll_fn(|cx| {
+        std::task::Poll::Ready(std::future::Future::poll(waiting.as_mut(), cx))
+    })
+    .await;
+    assert!(first.is_pending(), "the write is still waiting for the key's lock");
 
     drop(held);
     tokio::time::timeout(bae_util::test_channels::HANG_GUARD, waiting)
         .await
-        .expect("the wait ends once the write has")
-        .unwrap();
+        .expect("the wait ends once the write has");
     assert_eq!(stored_validation(&db).await, Some(DiscogsValidation::Rejected));
 }
