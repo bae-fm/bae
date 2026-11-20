@@ -515,7 +515,8 @@ extension ShotScene {
         }
     }
 
-    /// The invite form for `storage`.
+    /// The invite form for `storage`, filled in for dan@example.com, as the
+    /// boards draw it.
     private static func inviteForm(
         _ storage: InviteStorage,
         usesOwnKey: Bool = false
@@ -523,14 +524,14 @@ extension ShotScene {
         AnyView(
             MacInviteFields(
                 storage: storage,
-                email: .constant(""),
-                accessKeyId: .constant(""),
-                secretAccessKey: .constant(""),
+                email: .constant("dan@example.com"),
+                accessKeyId: .constant("AKIAEXAMPLEKEY"),
+                secretAccessKey: .constant("abcdefghijkl"),
                 usesOwnKey: .constant(usesOwnKey),
                 role: .constant(.member),
                 lifetime: .constant(.sevenDays),
                 error: nil,
-                canCreate: false,
+                canCreate: true,
                 onCreate: {},
                 onCancel: {}
             )
