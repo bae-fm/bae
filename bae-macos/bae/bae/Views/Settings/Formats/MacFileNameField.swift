@@ -97,9 +97,6 @@ struct MacFileNameField<Piece: SaveNamePiece>: View {
                 )
             )
             // The row aligns by its title's and note's text, not the field's.
-            // An NSTokenField asked for its text baseline while it is typed
-            // in takes in the editor's text and marks its size changed, so
-            // SwiftUI measured it and asked again, without end.
             .alignmentGuide(.firstTextBaseline) { $0[.bottom] }
             .alignmentGuide(.lastTextBaseline) { $0[.bottom] }
             if let error {
