@@ -20,6 +20,17 @@ final class SaveNameChip<Value: SaveNameValue>: NSTextAttachment {
     }
 }
 
+/// The patterns a name pattern's field has handed the store, while the
+/// writes run.
+struct SaveNameWrites<Piece> {
+    /// The pattern of the write in flight.
+    var handed: [Piece]
+    /// The newest pattern waiting for the write in flight.
+    var queued: [Piece]?
+    /// Writes `handed`, then each newer pattern queued, until none is left.
+    let task: Task<Void, Never>
+}
+
 /// A name pattern as one field you type in, like Finder's rename Format
 /// field: values are chips among the text, Delete after a chip or Forward
 /// Delete before it takes the chip out, and chips drag to where they belong.
@@ -124,14 +135,10 @@ struct SaveNameField<Piece: SaveNamePiece>: NSViewRepresentable {
 
         /// The pattern as last stored.
         private var storedPieces: [Piece] = []
-        /// The pattern of the write in flight.
-        private var handed: [Piece]?
-        /// The newest pattern waiting for the write in flight.
-        private var queued: [Piece]?
-        /// The writes in flight and queued, until the last returns. While
-        /// they run, the field draws what it handed over; once they return,
-        /// it draws the stored pattern.
-        private(set) var writes: Task<Void, Never>?
+        /// The writes the field has handed over, while they run: the field
+        /// draws what it handed over until the last returns, and the stored
+        /// pattern after.
+        private(set) var writes: SaveNameWrites<Piece>?
 
         func focus(_ focused: Bool) {
             setFocused(focused)
@@ -249,28 +256,34 @@ struct SaveNameField<Piece: SaveNamePiece>: NSViewRepresentable {
         /// Store `pieces` after the writes before it, one at a time, so the
         /// store ends with the last one.
         private func submit(_ pieces: [Piece]) {
-            guard pieces != (queued ?? handed ?? storedPieces) else { return }
-            queued = pieces
-            guard writes == nil else { return }
-            writes = Task {
-                await drain()
+            let latest = writes.map { $0.queued ?? $0.handed } ?? storedPieces
+            guard pieces != latest else { return }
+            if writes != nil {
+                writes?.queued = pieces
+                return
             }
+            writes = SaveNameWrites(
+                handed: pieces,
+                task: Task { await drain() }
+            )
         }
 
         private func drain() async {
-            while let next = queued {
-                queued = nil
-                handed = next
+            while let current = writes {
                 do {
-                    try await setPieces(next)
+                    try await setPieces(current.handed)
                 }
                 catch {
                     // The store keeps the pattern it had.
                     fail(error)
                 }
+                if let next = writes?.queued {
+                    writes = SaveNameWrites(handed: next, task: current.task)
+                }
+                else {
+                    writes = nil
+                }
             }
-            handed = nil
-            writes = nil
             settle()
         }
     }

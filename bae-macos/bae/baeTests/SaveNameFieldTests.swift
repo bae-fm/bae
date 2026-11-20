@@ -46,7 +46,7 @@ struct SaveNameFieldTests {
 
         /// Wait until every pattern handed over is stored or refused.
         func settle() async {
-            await coordinator.writes?.value
+            await coordinator.writes?.task.value
         }
     }
 
