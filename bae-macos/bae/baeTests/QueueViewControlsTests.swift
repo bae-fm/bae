@@ -75,15 +75,17 @@ struct QueueViewControlsTests {
                 context: store.queueContext,
                 shuffled: store.shuffled,
                 upcoming: QueueUpcoming(store: store, queue: queue),
-                position: store.trackPosition(
-                    forTrack: store.nowPlaying.trackId
-                ),
+                nowPlaying: store.nowPlaying.isActive
+                    ? QueueNowPlaying(
+                        title: store.nowPlaying.display?.title,
+                        artist: store.nowPlaying.display?.library?.artistLine
+                            .text,
+                        cover: nil,
+                        position: store.trackPosition(
+                            forTrack: store.nowPlaying.trackId
+                        )
+                    ) : nil,
                 onShowUpcoming: { await store.showUpcoming(queue: queue) },
-                isActive: store.nowPlaying.isActive,
-                nowPlayingTitle: store.nowPlaying.display?.title,
-                nowPlayingArtist: store.nowPlaying.display?.library?.artistLine
-                    .text,
-                nowPlayingCover: nil,
                 isPlaying: store.nowPlaying.isPlaying,
                 onClose: { recorder.closeCount += 1 },
                 onGoToNowPlaying: { recorder.navigateCount += 1 },

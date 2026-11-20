@@ -40,6 +40,15 @@ extension QueueUpcoming {
     }
 }
 
+/// The playing track as the panel's now-playing card draws it.
+struct QueueNowPlaying {
+    let title: String?
+    let artist: String?
+    let cover: ImageContent?
+    /// Where the playing track is; `nil` while the position is unknown.
+    let position: LatestSource<BridgeTrackPosition>?
+}
+
 /// The queue docked as a fixed-width sidebar: a header, the now-playing card
 /// when active, and the manual "Up next" and context lanes as `QueueSection`s
 /// sharing one drag coordinator, drawn from the values it is given.
@@ -56,17 +65,13 @@ struct MacQueuePanel: View {
     /// Whether shuffle is on, which the context section's toggle shows.
     let shuffled: Bool
     let upcoming: QueueUpcoming
-    /// Where the playing track is; `nil` while none plays.
-    let position: LatestSource<BridgeTrackPosition>?
+    /// The playing track, or `nil` while none plays.
+    let nowPlaying: QueueNowPlaying?
     /// Opens the context's list in the lane's current order and waits for its
     /// length before the panel shows any of its rows.
     let onShowUpcoming: () async -> Void
     var width: CGFloat = 420
 
-    let isActive: Bool
-    let nowPlayingTitle: String?
-    let nowPlayingArtist: String?
-    let nowPlayingCover: ImageContent?
     let isPlaying: Bool
     let onClose: () -> Void
     let onGoToNowPlaying: (() -> Void)?
@@ -104,8 +109,8 @@ struct MacQueuePanel: View {
         VStack(spacing: 0) {
             header
 
-            if isActive {
-                nowPlayingCard
+            if let nowPlaying {
+                nowPlayingCard(nowPlaying)
             }
 
             if isEmpty {
@@ -255,9 +260,9 @@ struct MacQueuePanel: View {
 
     /// The now-playing card: cover, title, artist, and a progress strip on an
     /// elevated surface.
-    private var nowPlayingCard: some View {
+    private func nowPlayingCard(_ nowPlaying: QueueNowPlaying) -> some View {
         HStack(alignment: .top, spacing: ThemeSpace.group) {
-            nowPlayingArt
+            Artwork(content: nowPlaying.cover, pointSize: ThemeSize.barArtwork)
                 .frame(
                     width: ThemeSize.barArtwork,
                     height: ThemeSize.barArtwork
@@ -266,27 +271,8 @@ struct MacQueuePanel: View {
                 .shadow(color: Theme.shadow, radius: 8, y: 4)
                 .allowsHitTesting(false)
 
-            VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                // Not `MacEyebrow`: this label is accent, not secondary.
-                Text("Now playing")
-                    .themeText(.eyebrow)
-                    .foregroundStyle(Theme.accent)
-                if let title = nowPlayingTitle {
-                    Text(title)
-                        .themeText(.rowTitle)
-                        .lineLimit(1)
-                }
-                if let artist = nowPlayingArtist {
-                    Text(artist)
-                        .themeText(.detail)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-                ProgressStripRepresentable(position: position)
-                    .frame(height: 10)
-                    .padding(.top, ThemeSpace.compact)
-            }
-            .allowsHitTesting(false)
+            nowPlayingText(nowPlaying)
+                .allowsHitTesting(false)
 
             Spacer(minLength: 0)
 
@@ -326,7 +312,26 @@ struct MacQueuePanel: View {
         .padding(.bottom, ThemeSpace.compact)
     }
 
-    private var nowPlayingArt: some View {
-        Artwork(content: nowPlayingCover, pointSize: ThemeSize.barArtwork)
+    private func nowPlayingText(_ nowPlaying: QueueNowPlaying) -> some View {
+        VStack(alignment: .leading, spacing: ThemeSpace.line) {
+            // Not `MacEyebrow`: this label is accent, not secondary.
+            Text("Now playing")
+                .themeText(.eyebrow)
+                .foregroundStyle(Theme.accent)
+            if let title = nowPlaying.title {
+                Text(title)
+                    .themeText(.rowTitle)
+                    .lineLimit(1)
+            }
+            if let artist = nowPlaying.artist {
+                Text(artist)
+                    .themeText(.detail)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            ProgressStripRepresentable(position: nowPlaying.position)
+                .frame(height: 10)
+                .padding(.top, ThemeSpace.compact)
+        }
     }
 }

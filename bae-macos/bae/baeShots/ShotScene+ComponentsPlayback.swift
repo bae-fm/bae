@@ -454,15 +454,16 @@ extension ShotScene {
                     failure: nil,
                     onRetry: {}
                 ),
-                position: PreviewData.trackPosition(
-                    positionMs: 102_000,
-                    durationMs: 303_000
+                nowPlaying: QueueNowPlaying(
+                    title: "Low Tide Hours",
+                    artist: "Mara Quill",
+                    cover: .libraryImage(cover("Low Tide Hours")),
+                    position: PreviewData.trackPosition(
+                        positionMs: 102_000,
+                        durationMs: 303_000
+                    )
                 ),
                 onShowUpcoming: {},
-                isActive: true,
-                nowPlayingTitle: "Low Tide Hours",
-                nowPlayingArtist: "Mara Quill",
-                nowPlayingCover: .libraryImage(cover("Low Tide Hours")),
                 isPlaying: true,
                 onClose: {},
                 onGoToNowPlaying: {},
