@@ -8241,175 +8241,175 @@
         }
       }
     },
-    "Stop treating the folder as this release. The metadata stays as it is." : {
-      "comment" : "Import draft pane: help for the Unlink button beside the linked release's catalog links",
+    "Stop linking the release to these catalog records. The metadata stays as it is." : {
+      "comment" : "Release editor, in the import pane and the Edit release sheet: help for the Unlink button beside the release's catalog links",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "التوقف عن اعتبار المجلد هذا الإصدار. تبقى البيانات الوصفية كما هي."
+            "value" : "التوقف عن ربط الإصدار بسجلات الفهرس هذه. تبقى البيانات الوصفية كما هي."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Папката вече няма да се смята за това издание. Метаданните остават непроменени."
+            "value" : "Изданието вече няма да е свързано с тези каталожни записи. Метаданните остават непроменени."
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Složka už nebude považována za toto vydání. Metadata zůstanou beze změny."
+            "value" : "Vydání už nebude propojeno s těmito katalogovými záznamy. Metadata zůstanou beze změny."
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mappen behandles ikke længere som denne udgivelse. Metadataene forbliver uændrede."
+            "value" : "Udgivelsen knyttes ikke længere til disse katalogposter. Metadataene forbliver uændrede."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Den Ordner nicht mehr als diese Veröffentlichung behandeln. Die Metadaten bleiben unverändert."
+            "value" : "Die Veröffentlichung nicht mehr mit diesen Katalogeinträgen verknüpfen. Die Metadaten bleiben unverändert."
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ο φάκελος δεν θα αντιμετωπίζεται πλέον ως αυτή η κυκλοφορία. Τα μεταδεδομένα παραμένουν ως έχουν."
+            "value" : "Η κυκλοφορία δεν θα συνδέεται πλέον με αυτές τις εγγραφές καταλόγου. Τα μεταδεδομένα παραμένουν ως έχουν."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Stop treating the folder as this release. The metadata stays as it is."
+            "value" : "Stop linking the release to these catalog records. The metadata stays as it is."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dejar de tratar la carpeta como este lanzamiento. Los metadatos se mantienen tal cual."
+            "value" : "Dejar de vincular el lanzamiento a estos registros de catálogo. Los metadatos se mantienen tal cual."
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kansiota ei enää käsitellä tänä julkaisuna. Metatiedot pysyvät ennallaan."
+            "value" : "Julkaisua ei enää linkitetä näihin luettelotietueisiin. Metatiedot pysyvät ennallaan."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ne plus traiter le dossier comme cette sortie. Les métadonnées restent inchangées."
+            "value" : "Ne plus associer la sortie à ces fiches de catalogue. Les métadonnées restent inchangées."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "התיקייה לא תיחשב עוד למהדורה הזו. המטא־נתונים נשארים כפי שהם."
+            "value" : "המהדורה לא תקושר עוד לרשומות הקטלוג האלה. המטא־נתונים נשארים כפי שהם."
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mapa se više ne smatra ovim izdanjem. Metapodaci ostaju nepromijenjeni."
+            "value" : "Izdanje se više ne povezuje s ovim kataloškim zapisima. Metapodaci ostaju nepromijenjeni."
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A mappa többé nem számít ennek a kiadásnak. A metaadatok változatlanok maradnak."
+            "value" : "A kiadás többé nem kapcsolódik ezekhez a katalógusbejegyzésekhez. A metaadatok változatlanok maradnak."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La cartella non viene più considerata questa pubblicazione. I metadati restano invariati."
+            "value" : "La pubblicazione non viene più collegata a queste schede di catalogo. I metadati restano invariati."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "このフォルダをこのリリースとして扱うのをやめます。メタデータはそのまま残ります。"
+            "value" : "このリリースとこれらのカタログ記録とのリンクを解除します。メタデータはそのまま残ります。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "이 폴더를 더 이상 이 릴리스로 취급하지 않습니다. 메타데이터는 그대로 유지됩니다."
+            "value" : "이 릴리스를 더 이상 이 카탈로그 기록과 연결하지 않습니다. 메타데이터는 그대로 유지됩니다."
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mappen behandles ikke lenger som denne utgivelsen. Metadataene forblir uendret."
+            "value" : "Utgivelsen kobles ikke lenger til disse katalogoppføringene. Metadataene forblir uendret."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "De map niet langer als deze uitgave behandelen. De metagegevens blijven ongewijzigd."
+            "value" : "De uitgave niet langer aan deze catalogusvermeldingen koppelen. De metagegevens blijven ongewijzigd."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Folder przestanie być traktowany jako to wydanie. Metadane pozostaną bez zmian."
+            "value" : "Wydanie przestanie być powiązane z tymi wpisami katalogowymi. Metadane pozostaną bez zmian."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Deixar de tratar a pasta como este lançamento. Os metadados permanecem como estão."
+            "value" : "Deixar de vincular o lançamento a estes registros de catálogo. Os metadados permanecem como estão."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Deixar de tratar a pasta como esta edição. Os metadados mantêm-se inalterados."
+            "value" : "Deixar de associar a edição a estes registos de catálogo. Os metadados mantêm-se inalterados."
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dosarul nu mai este tratat ca această lansare. Metadatele rămân neschimbate."
+            "value" : "Lansarea nu mai este legată de aceste înregistrări din catalog. Metadatele rămân neschimbate."
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Priečinok sa už nebude považovať za toto vydanie. Metadáta zostanú bez zmeny."
+            "value" : "Vydanie už nebude prepojené s týmito katalógovými záznamami. Metadáta zostanú bez zmeny."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mappen behandlas inte längre som den här utgåvan. Metadata förblir oförändrade."
+            "value" : "Utgåvan länkas inte längre till de här katalogposterna. Metadata förblir oförändrade."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Klasör artık bu yayın olarak ele alınmaz. Meta veriler olduğu gibi kalır."
+            "value" : "Yayın artık bu katalog kayıtlarına bağlanmaz. Meta veriler olduğu gibi kalır."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Тека більше не вважатиметься цим релізом. Метадані залишаються без змін."
+            "value" : "Реліз більше не пов’язуватиметься з цими записами каталогу. Метадані залишаються без змін."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "不再将此文件夹视为该发行。元数据保持不变。"
+            "value" : "不再将该发行关联到这些目录记录。元数据保持不变。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "不再將此資料夾視為該發行。中繼資料保持不變。"
+            "value" : "不再將該發行關聯到這些目錄記錄。中繼資料保持不變。"
           }
         }
       }
@@ -19451,175 +19451,175 @@
         }
       }
     },
-    "The candidate files and mapping choices will remain unchanged." : {
-      "comment" : "Import metadata: clear confirmation explanation",
+    "The tracks and their audio files stay as they are." : {
+      "comment" : "Release editor, in the import pane and the Edit release sheet: what the Clear metadata confirmation keeps",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ستبقى ملفات العنصر المرشّح وخيارات المطابقة دون تغيير."
+            "value" : "تبقى المقاطع وملفاتها الصوتية كما هي."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Файловете на кандидата и изборите за съпоставяне ще останат непроменени."
+            "value" : "Песните и техните аудиофайлове остават непроменени."
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Soubory kandidáta a volby mapování zůstanou beze změny."
+            "value" : "Stopy a jejich zvukové soubory zůstanou beze změny."
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kandidatens filer og tilknytninger forbliver uændrede."
+            "value" : "Sporene og deres lydfiler forbliver uændrede."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The candidate files and mapping choices will remain unchanged."
+            "value" : "The tracks and their audio files stay as they are."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Die Dateien des Kandidaten und die Zuordnungen bleiben unverändert."
+            "value" : "Die Tracks und ihre Audiodateien bleiben unverändert."
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Τα αρχεία του υποψηφίου και οι αντιστοιχίσεις παραμένουν αμετάβλητα."
+            "value" : "Τα κομμάτια και τα αρχεία ήχου τους παραμένουν ως έχουν."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Los archivos del candidato y las opciones de asignación no cambiarán."
+            "value" : "Las pistas y sus archivos de audio se mantienen tal cual."
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ehdokkaan tiedostot ja kytkennät säilyvät ennallaan."
+            "value" : "Raidat ja niiden äänitiedostot pysyvät ennallaan."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Les fichiers du candidat et les choix de correspondance resteront inchangés."
+            "value" : "Les pistes et leurs fichiers audio restent inchangés."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "קובצי המועמד ובחירות המיפוי יישארו ללא שינוי."
+            "value" : "הרצועות וקובצי השמע שלהן נשארים כפי שהם."
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Datoteke kandidata i odabiri mapiranja ostat će nepromijenjeni."
+            "value" : "Pjesme i njihove audiodatoteke ostaju nepromijenjene."
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A jelölt fájljai és a hozzárendelések változatlanok maradnak."
+            "value" : "A számok és a hangfájljaik változatlanok maradnak."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "I file del candidato e le scelte di associazione rimarranno invariati."
+            "value" : "I brani e i loro file audio restano invariati."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "候補のファイルとマッピングの選択は変更されません。"
+            "value" : "トラックとそのオーディオファイルはそのまま残ります。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "후보 파일과 매핑 선택은 변경되지 않습니다."
+            "value" : "트랙과 해당 오디오 파일은 그대로 유지됩니다."
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kandidatens filer og koblinger forblir uendret."
+            "value" : "Sporene og lydfilene deres forblir uendret."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "De bestanden en toewijzingen van de kandidaat blijven ongewijzigd."
+            "value" : "De nummers en hun audiobestanden blijven ongewijzigd."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pliki kandydata i wybory mapowania pozostaną bez zmian."
+            "value" : "Ścieżki i ich pliki audio pozostaną bez zmian."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Os arquivos do candidato e as opções de mapeamento permanecerão inalterados."
+            "value" : "As faixas e seus arquivos de áudio permanecem como estão."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Os ficheiros do candidato e as opções de correspondência mantêm-se inalterados."
+            "value" : "As faixas e os respetivos ficheiros de áudio mantêm-se inalterados."
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fișierele candidatului și alegerile de asociere rămân neschimbate."
+            "value" : "Piesele și fișierele lor audio rămân neschimbate."
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Súbory kandidáta a priradenia zostanú nezmenené."
+            "value" : "Skladby a ich zvukové súbory zostanú bez zmeny."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kandidatens filer och kopplingar lämnas oförändrade."
+            "value" : "Spåren och deras ljudfiler förblir oförändrade."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Adayın dosyaları ve eşleme seçimleri değişmeden kalır."
+            "value" : "Parçalar ve ses dosyaları olduğu gibi kalır."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Файли кандидата й вибрані зіставлення залишаться без змін."
+            "value" : "Треки та їхні аудіофайли залишаються без змін."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "候选项的文件和映射选择将保持不变。"
+            "value" : "曲目及其音频文件保持不变。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "候選項目的檔案和對應選擇將維持不變。"
+            "value" : "曲目及其音訊檔案維持不變。"
           }
         }
       }

@@ -118,7 +118,7 @@ enum ReleaseMetadataCommand: CaseIterable, Identifiable {
         case .clearMetadata:
             String(
                 localized:
-                    "The candidate files and mapping choices will remain unchanged."
+                    "The tracks and their audio files stay as they are."
             )
         }
     }
@@ -314,7 +314,7 @@ private struct ReleaseEditorCardView: View {
             Spacer(minLength: ThemeSpace.group)
             MacButton("Unlink", kind: .borderless, action: commands.unlink)
                 .help(
-                    "Stop treating the folder as this release. The metadata stays as it is."
+                    "Stop linking the release to these catalog records. The metadata stays as it is."
                 )
                 .disabled(!editable)
         }
