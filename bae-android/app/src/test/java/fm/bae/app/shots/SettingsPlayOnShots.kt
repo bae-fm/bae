@@ -1,20 +1,9 @@
 package fm.bae.app.shots
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.material3.MenuDefaults
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import fm.bae.app.ui.appearance.ThemeSpace
+import androidx.compose.runtime.CompositionLocalProvider
 import fm.bae.app.ui.playback.CastReceiverDetailsRows
-import fm.bae.app.ui.playback.CastReceiverMenuItems
-import fm.bae.app.ui.playback.CastReceiverRole
+import fm.bae.app.ui.playback.LocalOpenReceiverMenu
 import fm.bae.app.ui.settings.AndroidSettingsPlayback
 import org.junit.Test
 import uniffi.bae_bridge.BridgeCastReceiver
@@ -51,28 +40,10 @@ class SettingsPlayOnShots : BoardShot() {
     @Test
     fun androidSettingsPlaybackReceiverMenu() =
         shot("android.settings.playback.receiver-menu") {
-            ScreenScene {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    Playback(receivers())
-                    Surface(
-                        shape = MenuDefaults.shape,
-                        color = MenuDefaults.containerColor,
-                        tonalElevation = MenuDefaults.TonalElevation,
-                        shadowElevation = MenuDefaults.ShadowElevation,
-                        modifier = Modifier.align(Alignment.TopEnd).padding(top = MENU_TOP, end = MENU_END),
-                    ) {
-                        Column(modifier = Modifier.padding(vertical = ThemeSpace.related).width(MENU_WIDTH)) {
-                            CastReceiverMenuItems(role = CastReceiverRole.Casting(onDisconnect = {}), onDetails = {}, close = {})
-                        }
-                    }
-                }
-            }
+            val playing = checkNotNull(receivers().casting)
+            ScreenScene { CompositionLocalProvider(LocalOpenReceiverMenu provides playing.id) { Playback(receivers()) } }
         }
 }
-
-private val MENU_TOP = 485.dp
-private val MENU_END = 32.dp
-private val MENU_WIDTH = 200.dp
 
 /** The Playback page with Play on other devices on and [receivers] listed, as the boards draw it. */
 @Composable

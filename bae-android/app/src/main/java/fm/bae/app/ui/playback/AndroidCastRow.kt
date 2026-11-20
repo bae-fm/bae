@@ -16,6 +16,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -25,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.zIndex
 import fm.bae.app.R
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
@@ -60,6 +62,9 @@ internal enum class CastReceiverPlace {
     PAGE,
 }
 
+/** The id of the receiver whose ⋮ menu a shot draws open in its row, or none. */
+internal val LocalOpenReceiverMenu = compositionLocalOf<String?> { null }
+
 /**
  * A receiver as the Play on picker and the Playback settings list it: its kind's icon, its name over its kind, or over
  * "Playing" when playback is on it, which is also the one row that offers Disconnect. Any other row plays on it.
@@ -77,6 +82,8 @@ internal fun AndroidCastRow(
         modifier =
             Modifier
                 .fillMaxWidth()
+                // A menu a shot draws open lies over the rows after this one.
+                .zIndex(if (LocalOpenReceiverMenu.current == receiver.id) 1f else 0f)
                 .then(
                     when (role) {
                         is CastReceiverRole.Casting -> Modifier
@@ -97,7 +104,7 @@ internal fun AndroidCastRow(
         )
         Spacer(modifier = Modifier.width(ThemeSpace.group))
         CastReceiverLabel(receiver = receiver, casting = casting, modifier = Modifier.weight(1f))
-        CastReceiverEnd(role = role, place = place, onDetails = { showsDetails = true })
+        CastReceiverEnd(receiver = receiver, role = role, place = place, onDetails = { showsDetails = true })
     }
     if (showsDetails) {
         AndroidSheet(title = receiver.name, onDismiss = { showsDetails = false }) {
@@ -139,6 +146,7 @@ private fun CastReceiverLabel(
 /** How a row ends: the picker's Disconnect on the receiver cast to, or the page's ⋮ menu on every row. */
 @Composable
 private fun CastReceiverEnd(
+    receiver: BridgeCastReceiver,
     role: CastReceiverRole,
     place: CastReceiverPlace,
     onDetails: () -> Unit,
@@ -153,7 +161,7 @@ private fun CastReceiverEnd(
         }
 
         CastReceiverPlace.PAGE -> {
-            AndroidMoreMenu { close ->
+            AndroidMoreMenu(drawnOpen = LocalOpenReceiverMenu.current == receiver.id) { close ->
                 CastReceiverMenuItems(role = role, onDetails = onDetails, close = close)
             }
         }
