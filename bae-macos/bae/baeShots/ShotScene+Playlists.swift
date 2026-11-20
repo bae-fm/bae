@@ -172,8 +172,8 @@ extension ShotScene {
         }
     }
 
-    private static func owner(_ name: String) -> BridgePlaylistOwner {
-        BridgePlaylistOwner(
+    private static func owner(_ name: String) -> BridgePersonRef {
+        BridgePersonRef(
             person: "person-\(name)",
             name: name,
             initials: String(name.prefix(1)),

@@ -6,7 +6,7 @@ import fm.bae.app.currentLocale
 import fm.bae.app.data.ImageContent
 import fm.bae.app.ui.components.AvatarFace
 import uniffi.bae_bridge.BridgeDay
-import uniffi.bae_bridge.BridgePlaylistOwner
+import uniffi.bae_bridge.BridgePersonRef
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -16,7 +16,7 @@ import java.util.TimeZone
 // How History words a play's time and day, in the person's language.
 
 /** The face of the person whose play it is. */
-internal fun BridgePlaylistOwner.face(): AvatarFace =
+internal fun BridgePersonRef.face(): AvatarFace =
     AvatarFace(initials, avatarVersion?.let { ImageContent.Avatar(person = person, version = it) })
 
 /** The time a play began, as the person's clock shows times. */

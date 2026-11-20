@@ -25,8 +25,8 @@ import uniffi.bae_bridge.BridgeCountLabel
 import uniffi.bae_bridge.BridgeCreditRole
 import uniffi.bae_bridge.BridgeCreditRow
 import uniffi.bae_bridge.BridgeGalleryLabel
+import uniffi.bae_bridge.BridgePersonRef
 import uniffi.bae_bridge.BridgePlaylistCover
-import uniffi.bae_bridge.BridgePlaylistOwner
 import uniffi.bae_bridge.BridgePlaylistSummary
 import uniffi.bae_bridge.BridgeReleaseName
 import uniffi.bae_bridge.BridgeReleaseRecord
@@ -108,7 +108,7 @@ class AlbumPieceComponentShots : BoardShot() {
         component("android.component.playlist-header.playlist", wide = true) {
             Header(
                 BridgeFixtures.playlistSummary(name = "Late night", sharing = BridgeSharing.HOUSEHOLD).copy(
-                    owner = BridgePlaylistOwner(person = "person-1", name = "Ana", initials = "A", avatarVersion = null),
+                    owner = BridgePersonRef(person = "person-1", name = "Ana", initials = "A", avatarVersion = null),
                     cover = BridgePlaylistCover.Grid(covers = List(4) { PreviewData.imageRef("img-$it") }),
                 ),
             )
@@ -119,7 +119,7 @@ class AlbumPieceComponentShots : BoardShot() {
         component("android.component.playlist-header.long-name", wide = true) {
             Header(
                 BridgeFixtures.playlistSummary(name = "Sunday mornings in the kitchen").copy(
-                    owner = BridgePlaylistOwner(person = "person-2", name = "Ben", initials = "B", avatarVersion = null),
+                    owner = BridgePersonRef(person = "person-2", name = "Ben", initials = "B", avatarVersion = null),
                     trackCount = BridgeCountLabel(key = "core.library.track_count", count = 1uL),
                     cover = BridgePlaylistCover.Single(PreviewData.imageRef("img-1")),
                 ),

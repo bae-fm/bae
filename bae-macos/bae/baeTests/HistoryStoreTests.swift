@@ -69,7 +69,7 @@ private func play(_ title: String, by person: String) -> BridgeHistoryPlay {
         startedAt: 0,
         playedOn: BridgeDay(year: 2026, month: 10, day: 18),
         opensDay: true,
-        person: BridgePlaylistOwner(
+        person: BridgePersonRef(
             person: person,
             name: person,
             initials: String(person.prefix(1)),

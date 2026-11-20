@@ -27,11 +27,11 @@ import uniffi.bae_bridge.BridgeLookupCatalog
 import uniffi.bae_bridge.BridgeLookupCatalogSetting
 import uniffi.bae_bridge.BridgeMcpConfig
 import uniffi.bae_bridge.BridgeMemberAccess
+import uniffi.bae_bridge.BridgePersonRef
 import uniffi.bae_bridge.BridgePlaylistCover
 import uniffi.bae_bridge.BridgePlaylistDetail
 import uniffi.bae_bridge.BridgePlaylistEntryRow
 import uniffi.bae_bridge.BridgePlaylistListing
-import uniffi.bae_bridge.BridgePlaylistOwner
 import uniffi.bae_bridge.BridgePlaylistSummary
 import uniffi.bae_bridge.BridgePressingFacts
 import uniffi.bae_bridge.BridgeQueueWait
@@ -200,7 +200,7 @@ object BridgeFixtures {
             id = id,
             name = name,
             sharing = sharing,
-            owner = BridgePlaylistOwner(person = "person-1", name = "Mara", initials = "M", avatarVersion = null),
+            owner = BridgePersonRef(person = "person-1", name = "Mara", initials = "M", avatarVersion = null),
             yours = true,
             trackCount = BridgeCountLabel(key = "core.library.track_count", count = 12uL),
             totalDuration = null,

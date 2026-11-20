@@ -160,7 +160,7 @@ extension ShotScene {
                         day: UInt8(date.day ?? 0)
                     ),
                     opensDay: opensDay,
-                    person: BridgePlaylistOwner(
+                    person: BridgePersonRef(
                         person: play.ana ? anaMemberId : benMemberId,
                         name: play.ana ? "Ana" : "Ben",
                         initials: play.ana ? "A" : "B",

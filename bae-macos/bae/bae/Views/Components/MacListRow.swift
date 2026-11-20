@@ -29,7 +29,7 @@ struct MacListRow: View {
     let title: String
     let subtitle: String
     /// The person the row names at its end, with their picture.
-    var who: BridgePlaylistOwner?
+    var who: BridgePersonRef?
     /// The row's length; a play of History has none.
     var duration: String?
     var wide = false

@@ -709,7 +709,7 @@ extension ShotScene {
             id: "playlist-late-night",
             name: "Harbor evenings",
             sharing: sharing,
-            owner: BridgePlaylistOwner(
+            owner: BridgePersonRef(
                 person: "person-\(owner)",
                 name: owner,
                 initials: String(owner.prefix(1)),
@@ -910,7 +910,7 @@ extension ShotScene {
                 title: "Harbor Lights",
                 subtitle: "Mara Quill · Low Tide Hours",
                 who: who
-                    ? BridgePlaylistOwner(
+                    ? BridgePersonRef(
                         person: "person-ana",
                         name: "Ana",
                         initials: "A",

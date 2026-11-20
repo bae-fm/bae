@@ -140,9 +140,10 @@ impl BridgeAlbumRating {
     }
 }
 
-/// Who made a playlist.
+/// A person as a screen's row refers to them: who made a playlist, whose play
+/// it is.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct BridgePlaylistOwner {
+pub struct BridgePersonRef {
     pub person: String,
     pub name: String,
     /// The letters an avatar draws while the person has no picture.
@@ -152,13 +153,13 @@ pub struct BridgePlaylistOwner {
     pub avatar_version: Option<String>,
 }
 
-impl BridgePlaylistOwner {
-    pub(crate) fn from_core(owner: bae_people::people::PersonRef) -> Self {
+impl BridgePersonRef {
+    pub(crate) fn from_core(person: bae_people::people::PersonRef) -> Self {
         Self {
-            person: owner.person.0.to_string(),
-            initials: bae_people::people::initials(&owner.name),
-            name: owner.name,
-            avatar_version: owner.avatar_version,
+            person: person.person.0.to_string(),
+            initials: bae_people::people::initials(&person.name),
+            name: person.name,
+            avatar_version: person.avatar_version,
         }
     }
 }
@@ -194,7 +195,7 @@ pub struct BridgePlaylistSummary {
     pub id: String,
     pub name: String,
     pub sharing: BridgeSharing,
-    pub owner: BridgePlaylistOwner,
+    pub owner: BridgePersonRef,
     /// Whether this device's person made it.
     pub yours: bool,
     pub track_count: BridgeCountLabel,
@@ -219,7 +220,7 @@ impl BridgePlaylistSummary {
             id: id.to_string(),
             name,
             sharing: BridgeSharing::from_core(sharing),
-            owner: BridgePlaylistOwner::from_core(owner),
+            owner: BridgePersonRef::from_core(owner),
             yours,
             track_count: BridgeCountLabel::from_core(track_count),
             total_duration: bae_util::duration::DurationUnits::from_millis(total_duration_ms)
@@ -370,7 +371,7 @@ pub struct BridgeHistoryPlay {
     /// starts the day's heading.
     pub opens_day: bool,
     /// Whose play it is.
-    pub person: BridgePlaylistOwner,
+    pub person: BridgePersonRef,
 }
 impl BridgeHistoryPlay {
     pub(crate) fn from_core(value: bae_views::history::HistoryRow) -> Self {
@@ -393,7 +394,7 @@ impl BridgeHistoryPlay {
             started_at: started_at.unix_timestamp_millis(),
             played_on: BridgeDay::from_core(played_on),
             opens_day,
-            person: BridgePlaylistOwner::from_core(person),
+            person: BridgePersonRef::from_core(person),
         }
     }
 }

@@ -10,7 +10,7 @@ struct AddToPlaylistMenuTests {
             id: "id-\(name)",
             name: name,
             sharing: .private,
-            owner: BridgePlaylistOwner(
+            owner: BridgePersonRef(
                 person: "person",
                 name: "Person",
                 initials: "P",
