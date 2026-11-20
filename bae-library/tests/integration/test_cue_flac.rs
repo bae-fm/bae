@@ -660,8 +660,8 @@ async fn a_cue_image_s_release_keeps_its_sheet_and_listed_lengths() {
         panic!("one sheet carves every track: {:?}", side.runs);
     };
     assert_eq!(
-        (sheet.name.as_str(), sheet.disc_number, source.name.as_str(), rows.len()),
-        ("Test Album.cue", 1, "Test Album.flac", 3)
+        (sheet.name.as_str(), sheet.place.side, source.name.as_str(), rows.len()),
+        ("Test Album.cue", bae_types::mediums::MediumSide::first_of(1), "Test Album.flac", 3)
     );
     assert_eq!(listed_lengths(&draft), [None, Some(20_000), None]);
 

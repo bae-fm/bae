@@ -11,7 +11,7 @@
 //! units.
 
 use super::*;
-use crate::folder_scanner::{SheetBindingOffer, SheetDisc, SheetReferenceOptions};
+use crate::folder_scanner::{SheetBindingOffer, SheetReferenceOptions};
 use crate::mapping::{
     MappingContainer, MappingEntry, MappingFile, MappingFileRow, MappingImage, MappingRole,
     MappingSource, MappingTable, MappingTrackRun, MappingTrackSide, SheetBound, SheetBoundAudio,
@@ -28,6 +28,28 @@ use crate::ImportError;
 /// take, 1 up to the count of resolved sheets, number those sheets: a
 /// recursive CTE that counted up to them would make coven rerun the
 /// statement for a write to any row of the tables it reads.
+/// The mediums a sheet of the folder `:key` can be put on, with the columns
+/// of `release_mediums`, for the statement of [`mapping_sql`]: the draft's
+/// mediums, a disc of one side at each position up to the count of the
+/// folder's bound sheets, so that each sheet can go on a disc of its own,
+/// and the disc each sheet is on, each with the sides the draft gives it or
+/// the side a sheet is on, whichever is more.
+const PANE_MEDIUMS: &str = "(SELECT reach.position AS id, :key AS release_id, reach.position, \
+            m.medium, \
+            MAX(COALESCE(m.side_count, 1), \
+                COALESCE((SELECT MAX(sheet_side) FROM f \
+                          WHERE sheet_place = 'side' AND sheet_medium = reach.position), 1)) \
+                AS side_count \
+     FROM (SELECT 1 AS position \
+           UNION SELECT position FROM import_candidate_medium \
+                 WHERE content_hash = (SELECT content_hash FROM candidate) \
+           UNION SELECT ROW_NUMBER() OVER (ORDER BY position) FROM f \
+                 WHERE role = 'track_sheet' AND sheet_binding = 'resolved' \
+           UNION SELECT sheet_medium FROM f WHERE sheet_place = 'side') AS reach \
+     LEFT JOIN import_candidate_medium AS m \
+         ON m.content_hash = (SELECT content_hash FROM candidate) \
+        AND m.position = reach.position)";
+
 fn mapping_sql(key: &crate::CandidateKey) -> String {
     format!(
         "
@@ -105,18 +127,11 @@ refs (sheet, file_reference, seq) AS (
         )
     ) GROUP BY sheet, file_reference
 ),
-disc_numbers (number) AS (
-    SELECT 1
-    UNION
-    SELECT ROW_NUMBER() OVER (ORDER BY position) FROM f
-    WHERE role = 'track_sheet' AND sheet_binding = 'resolved'
-),
-disc_options AS (
-    SELECT json_group_array(number ORDER BY number) AS json FROM (
-        SELECT number FROM disc_numbers
-        UNION
-        SELECT sheet_disc_number FROM f WHERE sheet_disc = 'disc'
-    )
+side_choice_rows AS (SELECT * FROM {side_choices}),
+side_choices AS (
+    SELECT json_group_array(json_object('medium', c.medium, 'side', c.side, 'kind', c.kind,
+                                        'ordinal', c.ordinal) ORDER BY c.medium, c.side) AS json
+    FROM side_choice_rows AS c
 ),
 reference_json (sheet, seq, bound, json) AS (
     SELECT r.sheet, r.seq, sa.audio_relative_path IS NOT NULL,
@@ -165,7 +180,16 @@ sheets (relative_path, json) AS (
                                            AND sa.file_reference = r.file_reference))))
                    WHEN 'refused_codec' THEN json_object('binding', 'refused_codec', 'codec', s.sheet_binding_codec)
                    ELSE json_object('binding', s.sheet_binding) END,
-               'assignment', s.sheet_disc, 'disc_number', s.sheet_disc_number,
+               'place', s.sheet_place,
+               -- The choice of the side the sheet is on; every side of a
+               -- disc that is not a record or cassette is the disc, which
+               -- its first side names.
+               'assigned', CASE WHEN s.sheet_place = 'side' THEN json((
+                   SELECT json_object('medium', c.medium, 'side', c.side, 'kind', c.kind,
+                                      'ordinal', c.ordinal)
+                   FROM side_choice_rows AS c
+                   WHERE c.medium = s.sheet_medium
+                     AND c.side = CASE WHEN c.kind = 'sided' THEN s.sheet_side ELSE 1 END)) END,
                'bound_audio', json((
                    SELECT CASE COUNT(*)
                        WHEN 0 THEN json_object('kind', 'none')
@@ -182,8 +206,8 @@ sheets (relative_path, json) AS (
                               FROM reference_json AS r
                               WHERE r.sheet = s.relative_path AND NOT r.bound))
                    END,
-               'disc_options', CASE WHEN s.sheet_binding = 'resolved'
-                                    THEN json((SELECT json FROM disc_options))
+               'side_choices', CASE WHEN s.sheet_binding = 'resolved'
+                                    THEN json((SELECT json FROM side_choices))
                                     ELSE json('[]') END)
     FROM f AS s LEFT JOIN sheet_audio_counts AS n ON n.sheet = s.relative_path
     WHERE s.role = 'track_sheet'
@@ -240,6 +264,7 @@ SELECT json_object(
             crate::tables::import_state::OneCandidate::Scanned(key)
         )),
         track_artists = super::track_artist_field_sql("n.track_id"),
+        side_choices = bae_records::records::sheet_side_choices_sql(PANE_MEDIUMS),
         unplayed = bae_records::records::files::unplayed_files_cte(
             "(SELECT relative_path AS file_id FROM f)",
             "(SELECT unit_file_id AS audio_file_id, sheet_id AS sheet_file_id FROM rows)",
@@ -350,11 +375,27 @@ struct SheetJson {
     name: String,
     size: u64,
     bound: BoundJson,
-    assignment: String,
-    disc_number: Option<i64>,
+    place: String,
+    assigned: Option<SideChoiceJson>,
     bound_audio: BoundAudioJson,
     unbound_references: Option<Vec<ReferenceJson>>,
-    disc_options: Vec<u32>,
+    side_choices: Vec<SideChoiceJson>,
+}
+
+/// One side or disc a sheet can go on, as `sheet_side_choices_sql` names it.
+#[derive(serde::Deserialize)]
+struct SideChoiceJson {
+    medium: u32,
+    side: u32,
+    kind: String,
+    ordinal: u32,
+}
+
+impl SideChoiceJson {
+    fn read(self) -> Result<bae_records::DbSheetSideChoice, ImportError> {
+        bae_records::DbSheetSideChoice::of_columns(self.medium, self.side, &self.kind, self.ordinal)
+            .map_err(|detail| ImportError::Internal { detail })
+    }
 }
 
 /// What a track sheet is bound to, tagged by the binding the statement
@@ -561,11 +602,19 @@ fn sheet_group(sheet: SheetJson) -> Result<SheetGroup, ImportError> {
         BoundJson::RefusedTiming => SheetBound::RefusedTiming,
         BoundJson::RefusedCodec { codec } => SheetBound::RefusedCodec { codec },
     };
-    let assignment = SheetDisc::from_columns(
-        &format!("the disc of track sheet {}", sheet.sheet_id),
-        &sheet.assignment,
-        sheet.disc_number,
-    )?;
+    let assigned = match (sheet.place.as_str(), sheet.assigned) {
+        ("side", Some(choice)) => Some(choice.read()?),
+        ("ignored", None) => None,
+        (place, assigned) => {
+            return Err(internal(format!(
+                "track sheet {} is {place} with the choice {}",
+                sheet.sheet_id,
+                if assigned.is_some() { "of a side" } else { "of none" },
+            )))
+        }
+    };
+    let side_choices =
+        sheet.side_choices.into_iter().map(SideChoiceJson::read).collect::<Result<_, _>>()?;
     let bound_audio = match sheet.bound_audio {
         BoundAudioJson::None => SheetBoundAudio::None,
         BoundAudioJson::One { reference } => SheetBoundAudio::One(reference_options(reference)?),
@@ -584,8 +633,8 @@ fn sheet_group(sheet: SheetJson) -> Result<SheetGroup, ImportError> {
         bound,
         bound_audio,
         unbound_references,
-        assignment,
-        disc_options: sheet.disc_options,
+        assigned,
+        side_choices,
     })
 }
 

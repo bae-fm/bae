@@ -19,7 +19,10 @@ fn context(side: TrackSide, id: &str, file: &str, sheet: Option<&str>) -> Releas
         sheet: sheet.map(|sheet| bae_records::DbReleaseEditSheet {
             file_id: sheet.to_string(),
             name: format!("{sheet}.cue"),
-            disc_number: 1,
+            place: bae_records::DbSheetSideChoice {
+                side: bae_types::mediums::MediumSide::first_of(1),
+                heading: TrackSide::Disc { disc: 1 },
+            },
             file_reference: format!("{file}.flac"),
             audio_options: Vec::new(),
         }),
@@ -56,7 +59,12 @@ fn lay_out_on_discs(
             context,
             artists: None,
         }),
-        &(1..=disc_count).collect::<Vec<_>>(),
+        &(1..=disc_count)
+            .map(|disc| bae_records::DbSheetSideChoice {
+                side: bae_types::mediums::MediumSide::first_of(disc),
+                heading: TrackSide::Disc { disc },
+            })
+            .collect::<Vec<_>>(),
     )
 }
 
@@ -117,7 +125,7 @@ fn tracks_lay_out_a_side_per_run_of_one_side_and_a_run_per_sheet_file() {
     );
 }
 
-/// A sheet's run offers the sheet every disc the release holds.
+/// A sheet's run offers the sheet every side and disc the release holds.
 #[test]
 fn a_sheet_run_offers_every_disc_of_the_release() {
     let sides = lay_out_on_discs(
@@ -130,7 +138,11 @@ fn a_sheet_run_offers_every_disc_of_the_release() {
     let [ReleaseEditTrackRun::Sheet { sheet, .. }] = sides[0].runs.as_slice() else {
         panic!("the sheet carves both tracks: {:?}", sides[0].runs);
     };
-    assert_eq!((sheet.disc_number, sheet.disc_options.as_slice()), (1, [1, 2, 3].as_slice()));
+    assert_eq!(sheet.place.side, bae_types::mediums::MediumSide::first_of(1));
+    assert_eq!(
+        sheet.side_choices.iter().map(|choice| choice.side.medium).collect::<Vec<_>>(),
+        [1, 2, 3]
+    );
 }
 
 /// A sheet's run offers the audio files its line can play from as the
@@ -328,7 +340,10 @@ fn a_track_keeps_its_listed_length_and_its_sheet() {
     let sheet = bae_records::DbReleaseEditSheet {
         file_id: "id-disc.cue".to_string(),
         name: "disc.cue".to_string(),
-        disc_number: 2,
+        place: bae_records::DbSheetSideChoice {
+            side: bae_types::mediums::MediumSide::first_of(2),
+            heading: TrackSide::Disc { disc: 2 },
+        },
         file_reference: "disc.flac".to_string(),
         audio_options: Vec::new(),
     };

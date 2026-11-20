@@ -1,16 +1,18 @@
 import BaeKit
 import SwiftUI
 
-/// The Disc pop-up of a CUE sheet's caption: which of the release's discs
-/// the sheet's tracks are on, and in the import pane that the sheet is
-/// ignored.
-struct SheetDiscMenu: View {
-    /// The discs the pop-up offers, counted from one.
-    let discs: [UInt32]
-    let assignment: BridgeSheetDisc
-    /// Whether the pop-up offers *Ignored* after the discs.
+/// The place pop-up of a CUE sheet's caption: which of the release's sides
+/// and discs the sheet's tracks are on, each named by its heading, and in
+/// the import pane that the sheet is ignored.
+struct SheetPlaceMenu: View {
+    /// The sides and discs the pop-up offers, in order.
+    let choices: [BridgeSheetSideChoice]
+    /// The side or disc the sheet is on, with its heading; `nil` where the
+    /// sheet is ignored.
+    let assigned: BridgeSheetSideChoice?
+    /// Whether the pop-up offers *Ignored* after the sides and discs.
     let offersIgnored: Bool
-    let onAssign: (BridgeSheetDisc) -> Void
+    let onAssign: (BridgeSheetPlace) -> Void
 
     @State
     private var hovering = false
@@ -19,14 +21,11 @@ struct SheetDiscMenu: View {
         MacButton(
             kind: .plain,
             menu: {
-                for number in discs {
+                for choice in choices {
                     MacMenuItem(
-                        verbatim: localizedCoreString(
-                            "ui.import.sheet.disc",
-                            Int(number)
-                        ),
-                        checked: assignment == .disc(number: number)
-                    ) { onAssign(.disc(number: number)) }
+                        verbatim: choice.heading.headingText,
+                        checked: assigned?.side == choice.side
+                    ) { onAssign(.on(side: choice.side)) }
                 }
                 if offersIgnored {
                     MacMenuItem.divider
@@ -34,7 +33,7 @@ struct SheetDiscMenu: View {
                         verbatim: localizedCoreString(
                             "ui.import.sheet.ignored"
                         ),
-                        checked: assignment == .ignored
+                        checked: assigned == nil
                     ) { onAssign(.ignored) }
                 }
             }
@@ -55,17 +54,16 @@ struct SheetDiscMenu: View {
         }
         .fixedSize()
         .onHover { hovering = $0 }
-        .help(localizedCoreString("ui.import.sheet.disc_help"))
-        .accessibilityLabel(String(localized: "Disc"))
+        .help(localizedCoreString("ui.import.sheet.place_help"))
+        .accessibilityLabel(String(localized: "Side or disc"))
         .accessibilityValue(Text(verbatim: assignmentText))
     }
 
+    /// The heading of the side or disc the sheet is on, or *Ignored*.
     private var assignmentText: String {
-        switch assignment {
-        case .disc(let number):
-            localizedCoreString("ui.import.sheet.disc", Int(number))
-        case .ignored:
-            localizedCoreString("ui.import.sheet.ignored")
+        guard let assigned else {
+            return localizedCoreString("ui.import.sheet.ignored")
         }
+        return assigned.heading.headingText
     }
 }

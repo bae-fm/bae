@@ -37,9 +37,10 @@ pub(crate) enum UnitContribution<'a> {
 ///
 /// Runs sit at the scan positions of the sheet-carved containers, but **which
 /// run lands in which of those positions is the assignment's to say**: the runs
-/// are ordered by `(disc number, sheet relative_path)` and laid into those
-/// positions in that order, so disc one's tracks precede disc two's however the
-/// rip spelled its filenames. Loose audio is untouched.
+/// are ordered by `(medium, side, sheet relative_path)` of the side each sheet
+/// is on and laid into those positions in that order, so disc one's tracks
+/// precede disc two's, and side A's side B's, however the rip spelled its
+/// filenames. Loose audio is untouched.
 pub(crate) fn audio_layout(files: &CategorizedFiles) -> Vec<(&ScannedFile, UnitContribution<'_>)> {
     let carving = files.carving_sheets();
 
@@ -66,7 +67,7 @@ pub(crate) fn audio_layout(files: &CategorizedFiles) -> Vec<(&ScannedFile, UnitC
 
     let mut ordered = carving;
     ordered.sort_by(|left, right| {
-        left.disc_number().cmp(&right.disc_number()).then_with(|| {
+        left.place.side().cmp(&right.place.side()).then_with(|| {
             bae_util::natural_order::compare(&left.file.relative_path, &right.file.relative_path)
         })
     });
@@ -170,11 +171,11 @@ pub(crate) struct FolderTrack {
 /// names: sheet slicing and disc assignment are facts about where the samples
 /// live.
 pub(crate) fn folder_tracks(files: &CategorizedFiles) -> Vec<FolderTrack> {
-    let sheet_discs: HashMap<&str, u32> = files
+    let sheet_places: HashMap<&str, u32> = files
         .carving_sheets()
         .into_iter()
         .map(|sheet| {
-            let disc = sheet.disc_number().expect("a carving sheet has a disc assignment");
+            let disc = sheet.place.side().expect("a carving sheet is on a side").medium;
             (sheet.file.relative_path.as_str(), disc)
         })
         .collect();
@@ -187,7 +188,7 @@ pub(crate) fn folder_tracks(files: &CategorizedFiles) -> Vec<FolderTrack> {
             &entry.role,
             crate::folder_scanner::FileRole::TrackSheet {
                 binding,
-                disc: crate::folder_scanner::SheetDisc::Disc { .. },
+                place: crate::folder_scanner::SheetPlace::On(_),
                 ..
             } if binding.is_resolved()
         )
@@ -203,7 +204,7 @@ pub(crate) fn folder_tracks(files: &CategorizedFiles) -> Vec<FolderTrack> {
                         .and_then(|part| layout.loose_disc(part))
                 }
                 AudioFile::SheetSlice { sheet_id, .. } => Some(
-                    *sheet_discs
+                    *sheet_places
                         .get(sheet_id.as_str())
                         .expect("a sheet slice belongs to a carving sheet"),
                 ),

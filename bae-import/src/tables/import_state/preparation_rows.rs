@@ -303,8 +303,8 @@ pub(super) fn save_preparation_on(
             cover_rows::save_cover(sql, content_hash, cover)?;
         }
     }
-    if (&stored.file_edits.sheet_bindings, &stored.file_edits.sheet_discs)
-        != (&prep.file_edits.sheet_bindings, &prep.file_edits.sheet_discs)
+    if (&stored.file_edits.sheet_bindings, &stored.file_edits.sheet_places)
+        != (&prep.file_edits.sheet_bindings, &prep.file_edits.sheet_places)
     {
         delete_file_edits(sql, content_hash)?;
         insert_file_edits(sql, content_hash, &prep.file_edits)?;

@@ -61,8 +61,8 @@ impl MediumsSource<'_> {
 }
 
 /// The common table expression `medium`: the rows of `mediums` whose
-/// release `release_filter` keeps, each with whether it is played side by
-/// side, how many sided sides come before it on its release, and how many
+/// release `release_filter` keeps, each with its count of sides, whether it
+/// is played side by side, how many sided sides come before it on its release, and how many
 /// mediums its release holds.
 /// `mediums` is a table, or an SQL query in parentheses, with the columns of
 /// `release_mediums`. `release_filter` is a condition over `m`, one row of
@@ -71,7 +71,7 @@ fn medium_cte(mediums: &str, release_filter: &str) -> String {
     let sided = sided_media_sql();
     format!(
         "medium AS ( \
-            SELECT m.id, m.release_id, m.position, m.medium, \
+            SELECT m.id, m.release_id, m.position, m.medium, m.side_count, \
                    COALESCE(m.medium IN {sided}, 0) AS sided, \
                    COALESCE(SUM(CASE WHEN COALESCE(m.medium IN {sided}, 0) THEN m.side_count \
                                      ELSE 0 END) \
@@ -89,7 +89,8 @@ fn medium_cte(mediums: &str, release_filter: &str) -> String {
 /// mediums with whether it is played side by side, how many sided sides come
 /// before it on its release, and how many mediums its release holds. `place`
 /// is each track on them, with the columns `id`, `release_id`, `position`
-/// (its playing order), `number` (its number on its side),
+/// (its playing order), `side` (its side on its medium, counted from one),
+/// `number` (its number on its side),
 /// `stated_length_ms`, `medium_position`, `carrier` (its medium's carrier
 /// key, where the source states one), `side_kind` (`sided`, `disc` or
 /// `flat`) and `side_ordinal` (the side's number among the sided sides, the
@@ -99,7 +100,7 @@ pub fn track_places_ctes(source: MediumsSource<'_>, release_filter: &str) -> Str
     format!(
         "{medium}, \
          place AS ( \
-            SELECT p.id, p.release_id, p.position, p.track_number AS number, \
+            SELECT p.id, p.release_id, p.position, p.side, p.track_number AS number, \
                    p.stated_length_ms, m.position AS medium_position, m.medium AS carrier, \
                    CASE WHEN m.sided THEN 'sided' \
                         WHEN m.medium_count > 1 THEN 'disc' \
@@ -141,6 +142,82 @@ pub(super) fn placed_tracks_ctes(
             WHERE track.release_id = {release})",
         places = track_places_ctes(source, &format!("m.release_id = {release}")),
     )
+}
+
+/// The side a CUE sheet whose first track sits on `side` (an SQL
+/// expression) is on, where `sided` (an SQL condition) says whether the
+/// medium is played side by side: that side of such a medium, else the
+/// medium's first side, since every side of another medium shares the
+/// disc's heading.
+#[cfg(desktop)]
+pub(super) fn sheet_side_sql(sided: &str, side: &str) -> String {
+    format!("CASE WHEN {sided} THEN {side} ELSE 1 END")
+}
+
+/// The kind of heading a CUE sheet's side has, where `sided` (an SQL
+/// condition) says whether the medium is played side by side: `sided`, or
+/// `disc` for every other medium, a disc of a release of one medium
+/// included, since a sheet's place needs a name where a track's side has
+/// none.
+pub(super) fn sheet_side_kind_sql(sided: &str) -> String {
+    format!("CASE WHEN {sided} THEN 'sided' ELSE 'disc' END")
+}
+
+/// The ordinal of the heading of a CUE sheet's side, where `sided` (an SQL
+/// condition) says whether the medium is played side by side: the side's
+/// number among the sided sides (`sided_ordinal`), else the disc's number
+/// (`disc`), each an SQL expression.
+pub(super) fn sheet_side_ordinal_sql(sided: &str, sided_ordinal: &str, disc: &str) -> String {
+    format!("CASE WHEN {sided} THEN {sided_ordinal} ELSE {disc} END")
+}
+
+/// Every side or disc of the mediums `mediums` (a table, or an SQL query
+/// in parentheses, with the columns of `release_mediums`, the mediums of one
+/// release) that a CUE sheet can be put on, as a query in parentheses with
+/// the columns `medium`, `side`, `kind` and `ordinal`, in order: each side
+/// of a medium played side by side, lettered as the release's tracks are,
+/// and the one side of every other medium, numbered as its disc.
+/// [`DbSheetSideChoice::of_columns`] reads a row.
+pub fn sheet_side_choices_sql(mediums: &str) -> String {
+    // Every count of sides a medium can have, which a join reads its sides
+    // from: a recursive count would hide from coven which rows the
+    // statement reads.
+    let counts: Vec<String> = (1..=u8::MAX).map(|side| side.to_string()).collect();
+    format!(
+        "(WITH {medium} \
+          SELECT m.position AS medium, side.value AS side, {kind} AS kind, \
+                 {ordinal} AS ordinal \
+          FROM medium m JOIN json_each('[{counts}]') AS side \
+              ON side.value = 1 OR (m.sided AND side.value <= m.side_count) \
+          ORDER BY m.position, side.value)",
+        medium = medium_cte(mediums, "1"),
+        kind = sheet_side_kind_sql("m.sided"),
+        ordinal = sheet_side_ordinal_sql("m.sided", "m.sides_before + side.value", "m.position"),
+        counts = counts.join(","),
+    )
+}
+
+impl DbSheetSideChoice {
+    /// The choice a row of [`sheet_side_choices_sql`] names.
+    pub fn of_columns(medium: u32, side: u32, kind: &str, ordinal: u32) -> Result<Self, String> {
+        Ok(Self {
+            side: bae_types::mediums::MediumSide { medium, side },
+            heading: track_side_of(kind, ordinal)?,
+        })
+    }
+}
+
+/// The rows of [`sheet_side_choices_sql`] over `mediums`, bound to `params`.
+pub fn sheet_side_choices_on(
+    sql: &impl coven::SqlRead,
+    mediums: &str,
+    params: impl rusqlite::Params,
+) -> Result<Vec<DbSheetSideChoice>, DbError> {
+    Ok(sql.query(&format!("SELECT * FROM {}", sheet_side_choices_sql(mediums)), params, |row| {
+        let kind: String = row.get(2)?;
+        DbSheetSideChoice::of_columns(row.get(0)?, row.get(1)?, &kind, row.get(3)?)
+            .map_err(|reason| bae_store::read::column_conversion_error(row, 2, reason))
+    })?)
 }
 
 /// The place a `place` row's columns name: the track's side or disc and its
@@ -367,7 +444,7 @@ pub fn track_places_on(
 /// one medium or a record or cassette, since a flat side has no heading. [`track_places_ctes`] places them, over the
 /// given mediums and one place on each side of the numbered ones, so a
 /// release in a catalog and one in the library name their sides alike.
-pub fn side_headings_on(
+pub(super) fn side_headings_on(
     sql: &impl coven::SqlRead,
     mediums: &[bae_types::mediums::ReleaseMedium],
     numbered: &[u32],

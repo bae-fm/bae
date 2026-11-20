@@ -787,9 +787,10 @@ async fn an_imported_release_keeps_the_sheet_decisions_the_person_made() {
             file_id: "Test Album.flac".to_string(),
         },
     );
-    decided
-        .sheet_discs
-        .set("Test Album.cue".to_string(), crate::folder_scanner::SheetDisc::Disc { number: 1 });
+    decided.sheet_places.set(
+        "Test Album.cue".to_string(),
+        crate::folder_scanner::SheetPlace::On(bae_types::mediums::MediumSide::first_of(1)),
+    );
     test.service.tables.store_file_edits_for_test(&content_hash, decided.clone()).await;
 
     test.service.queue_import_for_test(&candidate_key, "import-1").await;

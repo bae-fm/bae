@@ -362,8 +362,8 @@ extension PreviewData {
             boundAudio: reference.fileId == nil
                 ? .none : .one(reference: reference),
             unboundReferences: reference.fileId == nil ? [reference] : nil,
-            assignment: .disc(number: UInt32(number)),
-            discOptions: [1, 2]
+            assigned: .disc(UInt32(number)),
+            sideChoices: BridgeSheetSideChoice.discs(2)
         )
     }
 

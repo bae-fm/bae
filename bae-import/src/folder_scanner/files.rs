@@ -154,7 +154,7 @@ pub enum FileRole {
     /// A track sheet (CUE) that parsed, carrying its parsed sheet, what its
     /// `FILE` directive resolved to, and which disc of the release its entries
     /// become.
-    TrackSheet { sheet: crate::cue_sheet::CueSheet, binding: SheetBinding, disc: SheetDisc },
+    TrackSheet { sheet: crate::cue_sheet::CueSheet, binding: SheetBinding, place: SheetPlace },
     /// An image the folder carries. Which one leads the release is not a
     /// property of the file: it is the cover choice, answered by the stored
     /// row, then the picked release's own art, then these ranked by name.
@@ -290,8 +290,8 @@ impl CategorizedFiles {
     /// Every parsed track sheet, bound or not.
     pub fn track_sheets(&self) -> impl Iterator<Item = TrackSheetFile<'_>> {
         self.files.iter().filter_map(|entry| match &entry.role {
-            FileRole::TrackSheet { sheet, binding, disc } => {
-                Some(TrackSheetFile { file: &entry.file, sheet, binding, disc: *disc })
+            FileRole::TrackSheet { sheet, binding, place } => {
+                Some(TrackSheetFile { file: &entry.file, sheet, binding, place: *place })
             }
             _ => None,
         })
@@ -329,7 +329,7 @@ impl CategorizedFiles {
             file: sheet.file,
             sheet: sheet.sheet,
             audio_files,
-            disc: sheet.disc,
+            place: sheet.place,
         })
     }
 

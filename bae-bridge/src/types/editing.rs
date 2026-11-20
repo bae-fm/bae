@@ -210,20 +210,39 @@ pub enum BridgeAudioFile {
     SheetSlice { file_id: String, sheet_id: String, index: u32 },
 }
 
-/// Which disc of the release one track sheet's entries become. Mirror of
-/// bae-library's `SheetDisc`.
+/// Which side or disc of the release one track sheet's entries become.
+/// Mirror of bae-import's `SheetPlace`.
 ///
 /// Cue filenames are arbitrary — `CD1.cue` may hold disc two — so this is a
-/// decision, set through `AppHandle::set_sheet_disc`, and never something a UI
-/// reads off a name.
+/// decision, set through `AppHandle::set_sheet_place`, and never something a
+/// UI reads off a name.
 #[cfg(desktop)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeSheetDisc {
-    /// The sheet's entries are the release's disc `number`, counting from one.
-    Disc { number: u32 },
+pub enum BridgeSheetPlace {
+    /// The sheet's entries are on this side of one of the release's mediums.
+    On { side: BridgeMediumSide },
     /// The sheet contributes nothing to the tracklist. Its container is loose
     /// audio again.
     Ignored,
+}
+
+/// One side of one of a release's mediums, each counted from one. Mirror of
+/// bae-types' `MediumSide`.
+#[cfg(desktop)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeMediumSide {
+    pub medium: u32,
+    pub side: u32,
+}
+
+/// One side or disc a CUE sheet can be put on, and the heading the release's
+/// screens name it by ("Side B", "Disc 2"), which the sheet's place pop-up
+/// names it by. Mirror of bae-records' `DbSheetSideChoice`.
+#[cfg(desktop)]
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeSheetSideChoice {
+    pub side: BridgeMediumSide,
+    pub heading: crate::types::BridgeTrackSide,
 }
 
 /// What one of a release's files is, as a row of the mapping table or of a
@@ -338,7 +357,7 @@ pub struct BridgeMappingContainer {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeSheetGroup {
     /// The sheet's `file_id` — the id `AppHandle::set_sheet_binding` and
-    /// `AppHandle::set_sheet_disc` take.
+    /// `AppHandle::set_sheet_place` take.
     pub sheet_id: String,
     pub name: String,
     pub size: u64,
@@ -349,9 +368,14 @@ pub struct BridgeSheetGroup {
     /// The sheet's FILE lines that play no audio, in the sheet's order, each
     /// offered from a menu of its own; `None` where every line plays audio.
     pub unbound_references: Option<Vec<BridgeSheetReferenceOptions>>,
-    pub assignment: BridgeSheetDisc,
-    /// The discs this sheet may be assigned to, counting from one.
-    pub disc_options: Vec<u32>,
+    /// The side or disc the sheet is on, with its heading, which the
+    /// caption's place pop-up names; `None` where the sheet is ignored.
+    pub assigned: Option<BridgeSheetSideChoice>,
+    /// The sides and discs this sheet can be put on, in order: the sides
+    /// of the draft's mediums, and a disc at each position up to the count of
+    /// the folder's bound sheets that the draft lacks, so that each sheet can
+    /// go on a disc of its own.
+    pub side_choices: Vec<BridgeSheetSideChoice>,
 }
 
 /// The FILE lines of a track sheet that play audio, by how the caption's
@@ -704,11 +728,12 @@ pub struct BridgeReleaseEditSheet {
     pub file_id: String,
     /// The sheet's file name, as the release's files name it.
     pub name: String,
-    /// The disc of the release the sheet is, counted from one: the disc the
-    /// editor's form puts its tracks on.
-    pub disc_number: u32,
-    /// The discs the release holds, which the caption's Disc pop-up offers.
-    pub disc_options: Vec<u32>,
+    /// The side of the release the sheet is on, with its heading: the side
+    /// the editor's form puts its first track on.
+    pub place: BridgeSheetSideChoice,
+    /// The sides and discs of the release, which the caption's place pop-up
+    /// offers, in order.
+    pub side_choices: Vec<BridgeSheetSideChoice>,
     /// The text of the sheet's `FILE` line the run's tracks are under.
     pub file_reference: String,
     /// The audio files the line can play from, which the caption's Audio

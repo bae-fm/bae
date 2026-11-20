@@ -30,9 +30,9 @@ struct ReleaseEditFormCommands: Sendable {
     /// Record what the person picked for the album a save files the release
     /// under.
     let setAlbum: @Sendable (BridgeAlbumPick) async throws -> Void
-    /// Record the disc the person picked for a CUE sheet, by the sheet's
-    /// file id: a save moves the sheet's tracks there.
-    let setSheetDisc: @Sendable (String, UInt32) async throws -> Void
+    /// Record the side or disc the person picked for a CUE sheet, by the
+    /// sheet's file id: a save moves the sheet's tracks there.
+    let setSheetSide: @Sendable (String, BridgeMediumSide) async throws -> Void
     /// Record the audio file the person picked for a CUE sheet's FILE line:
     /// the sheet's file id, the line's text and the audio file's id. A save
     /// reads the file and binds the line to it.
@@ -92,7 +92,7 @@ final class ReleaseMetadataEditSession {
         case saving
         case cancelling
         case pickingAlbum
-        case pickingSheetDisc
+        case pickingSheetSide
         case pickingSheetFile
         /// Applying a catalog release. The editor's step line shows the
         /// network read the apply waits on; `nil` when no apply runs.
@@ -285,14 +285,15 @@ final class ReleaseMetadataEditSession {
         }
     }
 
-    /// Record the disc the person picked for the CUE sheet `sheetFileId`.
-    func pickSheetDisc(_ sheetFileId: String, disc: UInt32) {
-        let serial = begin(.pickingSheetDisc)
+    /// Record the side or disc the person picked for the CUE sheet
+    /// `sheetFileId`.
+    func pickSheetSide(_ sheetFileId: String, side: BridgeMediumSide) {
+        let serial = begin(.pickingSheetSide)
         failure = nil
         operationTask = Task { @MainActor in
             do {
                 try await serially { [form] in
-                    try await form.setSheetDisc(sheetFileId, disc)
+                    try await form.setSheetSide(sheetFileId, side)
                 }
             }
             catch is CancellationError {}

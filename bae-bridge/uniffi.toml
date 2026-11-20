@@ -199,7 +199,7 @@ async_cancellable = [
     "AppHandle.set_save_embed_cover",
     "AppHandle.set_save_loudness_tags",
     "AppHandle.set_sheet_binding",
-    "AppHandle.set_sheet_disc",
+    "AppHandle.set_sheet_place",
     "AppHandle.set_show_remaining_time",
     "AppHandle.set_shuffle",
     "AppHandle.set_side_pause_countdown",

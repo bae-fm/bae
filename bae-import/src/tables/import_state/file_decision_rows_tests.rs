@@ -119,8 +119,8 @@ async fn a_cleared_binding_survives_a_relaunch() {
 #[tokio::test]
 async fn a_disc_assignment_survives_a_relaunch() {
     use crate::folder_scanner::{
-        collect_release_candidate_files_with_scope, CandidateFileEdits, SheetDisc, SheetDiscEdits,
-        StoredCandidateEdits,
+        collect_release_candidate_files_with_scope, CandidateFileEdits, SheetPlace,
+        SheetPlaceEdits, StoredCandidateEdits,
     };
 
     let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
@@ -160,10 +160,12 @@ async fn a_disc_assignment_survives_a_relaunch() {
     tables.finish_folder_scan(std::path::Path::new(&root), generation, None).await.unwrap();
 
     // The rip named its sheets the other way round: `alpha.cue` is disc two.
-    let mut sheet_discs = SheetDiscEdits::default();
-    sheet_discs.set("alpha.cue".to_string(), SheetDisc::Disc { number: 2 });
-    sheet_discs.set("beta.cue".to_string(), SheetDisc::Disc { number: 1 });
-    let candidate_edits = CandidateFileEdits { sheet_discs, ..Default::default() };
+    let mut sheet_places = SheetPlaceEdits::default();
+    sheet_places
+        .set("alpha.cue".to_string(), SheetPlace::On(bae_types::mediums::MediumSide::first_of(2)));
+    sheet_places
+        .set("beta.cue".to_string(), SheetPlace::On(bae_types::mediums::MediumSide::first_of(1)));
+    let candidate_edits = CandidateFileEdits { sheet_places, ..Default::default() };
     let mut settled = scanned.clone();
     settled.apply_candidate_file_edits(&candidate_edits).unwrap();
     let hash = scanned.content_hash();
@@ -182,7 +184,10 @@ async fn a_disc_assignment_survives_a_relaunch() {
 
     let current = tables.load_candidate_file_edits(&scanned.content_hash()).await.unwrap();
     assert_eq!(current.revision, 1);
-    assert_eq!(current.sheet_discs.get("alpha.cue"), Some(&SheetDisc::Disc { number: 2 }));
+    assert_eq!(
+        current.sheet_places.get("alpha.cue"),
+        Some(&SheetPlace::On(bae_types::mediums::MediumSide::first_of(2)))
+    );
 
     // The next scan reads the stored decisions.
     let stored = tables.load_stored_candidate_edits().await.unwrap();
@@ -196,11 +201,11 @@ async fn a_disc_assignment_survives_a_relaunch() {
         reopened
             .carving_sheets()
             .iter()
-            .map(|sheet| (sheet.file.relative_path.as_str(), sheet.disc))
+            .map(|sheet| (sheet.file.relative_path.as_str(), sheet.place))
             .collect::<Vec<_>>(),
         vec![
-            ("alpha.cue", SheetDisc::Disc { number: 2 }),
-            ("beta.cue", SheetDisc::Disc { number: 1 }),
+            ("alpha.cue", SheetPlace::On(bae_types::mediums::MediumSide::first_of(2))),
+            ("beta.cue", SheetPlace::On(bae_types::mediums::MediumSide::first_of(1))),
         ],
     );
 }

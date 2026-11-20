@@ -13,7 +13,7 @@ use super::*;
 use crate::cue_sheet::{CueIndex, CueSheet, CueTrack, CueTrackMode};
 use crate::folder_scanner::{
     CandidateFile, CategorizedFiles, Coverage, FileRole, FileVersion, FolderCandidate,
-    InvalidCandidate, ReleasePart, ScanItem, ScannedAudio, ScannedFile, SheetAudioFile, SheetDisc,
+    InvalidCandidate, ReleasePart, ScanItem, ScannedAudio, ScannedFile, SheetAudioFile, SheetPlace,
     SkippedFile,
 };
 use crate::tables::FinishRead;
@@ -366,7 +366,8 @@ fn files_json_sql() -> String {
              'document_kind', file.document_kind, \
              'sheet_binding', file.sheet_binding, \
              'sheet_binding_codec', file.sheet_binding_codec, \
-             'sheet_disc', file.sheet_disc, 'sheet_disc_number', file.sheet_disc_number, \
+             'sheet_place', file.sheet_place, 'sheet_medium', file.sheet_medium, \
+             'sheet_side', file.sheet_side, \
              'sheet', json({SHEET_JSON}), 'sheet_audio', json({SHEET_AUDIO_JSON})) \
              ORDER BY file.position) \
          FROM scan_candidate_file AS file \
@@ -548,8 +549,9 @@ struct FileRow {
     document_kind: Option<String>,
     sheet_binding: Option<String>,
     sheet_binding_codec: Option<String>,
-    sheet_disc: Option<String>,
-    sheet_disc_number: Option<i64>,
+    sheet_place: Option<String>,
+    sheet_medium: Option<i64>,
+    sheet_side: Option<i64>,
     sheet: Option<StoredSheet>,
     sheet_audio: Vec<StoredSheetAudio>,
 }
@@ -593,13 +595,14 @@ fn files_of(candidate_path: &CandidateKey, json: &str) -> Result<Vec<CandidateFi
                             row.sheet_audio.into_iter().map(StoredSheetAudio::audio_file).collect(),
                             row.sheet_binding_codec,
                         )?,
-                        disc: SheetDisc::from_columns(
+                        place: SheetPlace::from_columns(
                             &format!(
-                                "the disc of track sheet {} under {candidate_path}",
+                                "the place of track sheet {} under {candidate_path}",
                                 row.relative_path
                             ),
-                            &row.sheet_disc.ok_or_else(|| missing("disc"))?,
-                            row.sheet_disc_number,
+                            &row.sheet_place.ok_or_else(|| missing("place"))?,
+                            row.sheet_medium,
+                            row.sheet_side,
                         )?,
                     }
                 }

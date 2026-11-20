@@ -38171,175 +38171,175 @@
         }
       }
     },
-    "Could not change which disc %@ is: %@" : {
-      "comment" : "Import mapping table: assigning a track sheet to one of the release's discs failed; args are the sheet's file name and the system error description",
+    "Could not change which side or disc %@ is on: %@" : {
+      "comment" : "Import mapping table: putting a CUE sheet on one of the release's sides or discs failed; args are the sheet's file name and the system error description",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "تعذّر تغيير القرص الذي يمثله %1$@: %2$@"
+            "value" : "تعذّر تغيير الوجه أو القرص الذي يقع عليه %1$@: %2$@"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Не можа да се промени кой диск е %1$@: %2$@"
+            "value" : "Не можа да се промени на коя страна или диск е %1$@: %2$@"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nepodařilo se změnit, který disk je %1$@: %2$@"
+            "value" : "Nepodařilo se změnit, na které straně nebo disku je %1$@: %2$@"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kunne ikke ændre, hvilken disk %1$@ hører til: %2$@"
+            "value" : "Kunne ikke ændre, hvilken side eller disk %1$@ ligger på: %2$@"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Could not change which disc %1$@ is: %2$@"
+            "value" : "Could not change which side or disc %1$@ is on: %2$@"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Konnte nicht ändern, welche Disc %1$@ ist: %2$@"
+            "value" : "Konnte nicht ändern, auf welcher Seite oder CD %1$@ ist: %2$@"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Δεν ήταν δυνατή η αλλαγή του σε ποιον δίσκο ανήκει το %1$@: %2$@"
+            "value" : "Δεν ήταν δυνατή η αλλαγή της πλευράς ή του δίσκου όπου βρίσκεται το %1$@: %2$@"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No se pudo cambiar qué disco es %1$@: %2$@"
+            "value" : "No se pudo cambiar en qué cara o disco está %1$@: %2$@"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ei voitu muuttaa, mille levylle %1$@ kuuluu: %2$@"
+            "value" : "Ei voitu muuttaa, millä puolella tai levyllä %1$@ on: %2$@"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible de changer de quel disque %1$@ fait partie : %2$@"
+            "value" : "Impossible de changer sur quelle face ou quel disque se trouve %1$@ : %2$@"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "לא ניתן לשנות איזה דיסק הוא %1$@: %2$@"
+            "value" : "לא ניתן לשנות באיזה צד או דיסק נמצא %1$@: %2$@"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nije moguće promijeniti koji je disk %1$@: %2$@"
+            "value" : "Nije moguće promijeniti na kojoj je strani ili disku %1$@: %2$@"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nem sikerült módosítani, hogy %1$@ melyik lemez: %2$@"
+            "value" : "Nem sikerült módosítani, hogy %1$@ melyik oldalon vagy lemezen van: %2$@"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossibile cambiare quale disco è %1$@: %2$@"
+            "value" : "Impossibile cambiare su quale lato o disco si trova %1$@: %2$@"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@のディスク番号を変更できませんでした: %2$@"
+            "value" : "%1$@の面またはディスクを変更できませんでした: %2$@"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@의 디스크를 바꿀 수 없음: %2$@"
+            "value" : "%1$@의 면 또는 디스크를 바꿀 수 없음: %2$@"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kunne ikke endre hvilken plate %1$@ hører til: %2$@"
+            "value" : "Kunne ikke endre hvilken side eller plate %1$@ ligger på: %2$@"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kan niet wijzigen welke schijf %1$@ is: %2$@"
+            "value" : "Kan niet wijzigen op welke kant of schijf %1$@ staat: %2$@"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nie udało się zmienić, którą płytą jest %1$@: %2$@"
+            "value" : "Nie udało się zmienić, na której stronie lub płycie jest %1$@: %2$@"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Não foi possível mudar qual disco %1$@ é: %2$@"
+            "value" : "Não foi possível mudar em qual lado ou disco %1$@ está: %2$@"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Não foi possível alterar a que disco %1$@ pertence: %2$@"
+            "value" : "Não foi possível alterar em que lado ou disco %1$@ está: %2$@"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nu s-a putut schimba pe ce disc este %1$@: %2$@"
+            "value" : "Nu s-a putut schimba pe ce față sau disc este %1$@: %2$@"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nepodarilo sa zmeniť, ktorý disk %1$@ je: %2$@"
+            "value" : "Nepodarilo sa zmeniť, na ktorej strane alebo disku je %1$@: %2$@"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kunde inte ändra vilken skiva %1$@ tillhör: %2$@"
+            "value" : "Kunde inte ändra vilken sida eller skiva %1$@ ligger på: %2$@"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ öğesinin hangi disk olduğu değiştirilemedi: %2$@"
+            "value" : "%1$@ öğesinin hangi yüzde veya diskte olduğu değiştirilemedi: %2$@"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Не вдалося змінити, яким диском є %1$@: %2$@"
+            "value" : "Не вдалося змінити, на якій стороні чи диску %1$@: %2$@"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "无法更改 %1$@ 是第几张碟：%2$@"
+            "value" : "无法更改 %1$@ 所在的面或碟片：%2$@"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "無法變更 %1$@ 是第幾張碟：%2$@"
+            "value" : "無法更改 %1$@ 所在的面或碟片：%2$@"
           }
         }
       }
@@ -173046,175 +173046,175 @@
         }
       }
     },
-    "Disc" : {
-      "comment" : "Import mapping table: what assistive technology calls the pop-up that says which disc of the release a CUE sheet is",
+    "Side or disc" : {
+      "comment" : "Import mapping table and the release editor: what assistive technology calls the pop-up that says which side or disc of the release a CUE sheet is on",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "القرص"
+            "value" : "الوجه أو القرص"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Диск"
+            "value" : "Страна или диск"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Disk"
+            "value" : "Strana nebo disk"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Disk"
+            "value" : "Side eller disk"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "CD"
+            "value" : "Seite oder CD"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Δίσκος"
+            "value" : "Πλευρά ή δίσκος"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Disc"
+            "value" : "Side or disc"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Disco"
+            "value" : "Cara o disco"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Levy"
+            "value" : "Puoli tai levy"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Disque"
+            "value" : "Face ou disque"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "דיסק"
+            "value" : "צד או דיסק"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Disk"
+            "value" : "Strana ili disk"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lemez"
+            "value" : "Oldal vagy lemez"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Disco"
+            "value" : "Lato o disco"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ディスク"
+            "value" : "面またはディスク"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "디스크"
+            "value" : "면 또는 디스크"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Plate"
+            "value" : "Side eller plate"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Schijf"
+            "value" : "Kant of schijf"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Płyta"
+            "value" : "Strona lub płyta"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Disco"
+            "value" : "Lado ou disco"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Disco"
+            "value" : "Lado ou disco"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Disc"
+            "value" : "Fața sau discul"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Disk"
+            "value" : "Strana alebo disk"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Skiva"
+            "value" : "Sida eller skiva"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Disk"
+            "value" : "Yüz veya disk"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Диск"
+            "value" : "Сторона або диск"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "碟片"
+            "value" : "面或碟片"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "碟片"
+            "value" : "面或碟片"
           }
         }
       }

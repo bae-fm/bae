@@ -841,7 +841,7 @@ Tags edited after an import are not read again: the library holds the values
 the import wrote, and the release editor changes them (§3.8).
 
 The hash covers files, never decisions. Carol tells bae which disc each CUE
-sheet is; that is stored under the candidate's hash, and a hash that moved with
+sheet is on; that is stored under the candidate's hash, and a hash that moved with
 it would lose the very decision it keys. No decision removes a file from a
 release.
 
@@ -1783,8 +1783,8 @@ tags numbers it 7, and a catalog's tracklist lays its seventh track on it.
 **Mediums and places.** Applying a source writes the draft's mediums and each
 track's place. The library editor shows a track's position and edits only
 its title and artists; what changes mediums and places afterwards is applying
-another source in it, its CUE sheets' *Disc* pop-up (§3.8), which moves a
-sheet's tracks to another disc, and, before an import, the pane's file
+another source in it, its CUE sheets' place pop-up (§3.8), which moves a
+sheet's tracks to another side or disc, and, before an import, the pane's file
 decisions below.
 
 - A MusicBrainz release gives each medium it reads its format; a record or
@@ -1803,14 +1803,16 @@ decisions below.
 - A track whose source states no number is one more than the tracks before it
   on its own side.
 
-A file decision that gains a track, or moves a CUE sheet to another disc,
-places that audio as the folder lays it out, adding a medium of unstated
-carrier where the draft holds fewer; a medium no track sits on any more is
-dropped. The library editor's *Disc* pop-up moves a sheet's tracks onto a disc
-the release holds: they go after the tracks already on that disc, on its last
-side, each numbered one more than the highest number on that side, so no two
-tracks of a side share a number; the medium the sheet left is dropped if no
-track sits on it any more, and the mediums after it move up. A file decision is kept under the files' hash, so it settles every
+A file decision that gains a track places that audio as the folder lays it
+out, adding a medium of unstated carrier where the draft holds fewer; a medium
+no track sits on any more is dropped. A CUE sheet's place pop-up, in the pane
+and in the library editor, moves the sheet's tracks onto a side or disc: they
+go after the tracks already on that side, each numbered one more than the
+highest number on that side, so no two tracks of a side share a number; the
+medium the sheet left is dropped if no track sits on it any more, and the
+mediums after it move up. In the pane, a sheet moved onto a disc the draft
+lacks is laid out as the folder lays it out, on a medium of unstated carrier
+added for it. A file decision is kept under the files' hash, so it settles every
 folder holding the same files in one write, each found by that hash.
 
 **What the files' tags say.** The tags are read whole: a tag stating a value
@@ -1902,7 +1904,7 @@ record sides, each is headed once, however many runs of rows it holds: the
 loose files on it, and under its name each CUE sheet's entries on it (a sheet
 the release splits across sides names itself again on the next side). For a
 CUE sheet, the person can bind each `FILE` line to an audio file and say which
-disc each sheet is, or ignore a sheet. The table also counts the tracks nobody
+side or disc each sheet is on, or ignore a sheet. The table also counts the tracks nobody
 has named yet, and the pane states that count beside Import without blocking
 it: importing titles each of them after its file.
 
@@ -2182,12 +2184,12 @@ reported and stops for the session, as it does when the library closes.
   and given its disc by the rules a folder's scan applies, so it hashes the
   discs its folder did. Importing stores with the release what the person
   decided in the import pane about a sheet (`release_sheet_bindings` and
-  `release_sheet_discs`, A.5): the audio they bound a `FILE` line to, or that
-  they cleared it, and the disc they said the sheet is, or that bae should
-  ignore it. A save in the release's editor (§3.8) that changes a sheet's disc
-  or audio file rewrites those rows in the save's own transaction. Identifying the release again binds a sheet they bound to the file
-  they chose, leaves one they cleared unbound, and gives a sheet they numbered
-  the disc they gave it or skips one they ignored; it reads a sheet they decided
+  `release_sheet_places`, A.5): the audio they bound a `FILE` line to, or that
+  they cleared it, and the side or disc they said the sheet is on, or that bae
+  should ignore it. A save in the release's editor (§3.8) that changes a
+  sheet's side or audio file rewrites those rows in the save's own transaction. Identifying the release again binds a sheet they bound to the file
+  they chose, leaves one they cleared unbound, and puts a sheet they placed on
+  the disc of the side they gave it or skips one they ignored; it reads a sheet they decided
   nothing about by the scan's rules. Its track lengths come from its stored
   tracks. The person searches from the release editor (§3.8) and picks its
   pressing, which the editor applies to its form at once, with no confirm
@@ -2242,8 +2244,8 @@ applied one first) and the album those name — none of which is written yet;
 the cover stays the release's own. Saving writes the whole form in one
 transaction: the edited fields, and where a catalog was applied, its every
 value too, each track's listed length among them, so nothing a previous
-source credited survives, the discs the person picked for CUE sheets
-(each move of a sheet's tracks, with the sheet's disc as its disc decision),
+source credited survives, the sides the person picked for CUE sheets
+(each move of a sheet's tracks, with the sheet's side as its place decision),
 and the audio files they picked for sheets' `FILE` lines, each as the line's
 binding. For such a sheet, the save writes each track's format, segments,
 length, loudness and scrub points from the files the sheet's lines then play
@@ -2290,8 +2292,10 @@ returns to Found with its draft (A.5, `import_candidate_edit`).
 The editor lays the tracks out as the import's mapping table does: a heading
 for each disc or record side where the release has several, and two or more
 consecutive tracks a CUE sheet carves from one file under the sheet's caption,
-once, as the import pane heads them: the *Disc* pop-up of which of the
-release's discs the sheet is (no *Ignored*), the sheet's name, and the *Audio
+once, as the import pane heads them: the place pop-up of which of the
+release's sides and discs the sheet is on (no *Ignored*), each named by its
+heading (*Side A*, *Side B* on a record or cassette, *Disc 1* elsewhere, even
+on a release of one disc), the sheet's name, and the *Audio
 file* pop-up of which of the release's audio files on this device the sheet
 carves (no *Choose audio…*, since the editor adds and removes no tracks): the
 file the sheet's line plays from, the one it played from when the editor
@@ -6073,7 +6077,7 @@ Keyed by the candidate's content hash.
 | `import_candidate_edit`, `import_candidate_edit_label`, `import_candidate_edit_barcode`, `import_candidate_album_artist_assignment`, `import_candidate_track`, `import_candidate_track_artist_assignment` | the draft's editable fields, its label and barcode rows as typed (a label row with the catalog ids its applied release gave it), each track's place and listed length (§3.6). Each draft row also holds whether the draft is blank and whether it would import. Every state of a folder this device did not import holds a draft row: the scan writes the blank one, and the write that deletes this device's release of the folder writes it again, from the folder's stored audio units; an imported one holds no draft, which the import deleted with its source, cover and link (§3.7) |
 | `import_candidate_medium` | the draft's mediums |
 | `import_candidate_track_role`, `import_candidate_release_role`, `import_candidate_work`, `import_candidate_work_credit`, `import_candidate_work_part`, `import_candidate_track_work` | the draft's roles and works, as values, each credit with its role, qualifiers and the name its catalog printed |
-| `import_candidate_sheet_disc`, `import_candidate_sheet_reference` | the person's CUE decisions |
+| `import_candidate_sheet_place`, `import_candidate_sheet_reference` | the person's CUE decisions |
 | `import_candidate_cover`, `import_candidate_cover_copy` | the chosen cover, a catalog's with the bytes it served on the same row, so a catalog's cover is never stored without them and no other cover holds any; a cover that names a file or embedded artwork its scan did not store is a damaged row; for embedded artwork a row carries the source file's version and names the artwork by candidate and file, never its bytes |
 | `import_candidate_album_pick` | the library album the person picked for it to join |
 | `import_candidate_draft_provenance` | where the draft was read from |
@@ -6105,7 +6109,7 @@ Beside them, keyed by the release an import made:
 | Table | One row per |
 |---|---|
 | `local_release_origin` | release this device imported, keyed by the release: the hash of the folder's files it read (§2.7), unique, so one hash is one release here. Importing writes it in the release's own transaction; deleting the release deletes it |
-| `release_sheet_discs` | the disc the person said a release's CUE sheet is, or that the release ignores it, keyed by the sheet's `release_files` row; only a sheet the person decided has a row. Importing writes its rows, a save in the release's editor (§3.8) rewrites the row of a sheet whose disc it changes, and identifying the release again reads them, as for `release_sheet_bindings`; deleting the sheet deletes it. The table syncs (Appendix B) |
+| `release_sheet_places` | the side or disc the person said a release's CUE sheet is on, or that the release ignores it, keyed by the sheet's `release_files` row; only a sheet the person decided has a row. Importing writes its rows, a save in the release's editor (§3.8) rewrites the row of a sheet whose side it changes, and identifying the release again reads them, as for `release_sheet_bindings`; deleting the sheet deletes it. The table syncs (Appendix B) |
 | `release_sheet_bindings` | the audio the person bound a `FILE` line of a release's CUE sheet to in the import pane or the release's editor, or cleared (no audio), keyed by the sheet's `release_files` row and the `FILE` line's text; only a line the person decided has a row. Importing writes the rows in the release's own transaction, from the candidate's stored decisions (naming each file by its path in the release); a save in the release's editor (§3.8) rewrites the row of a `FILE` line it binds to another audio file, in the save's own transaction; identifying the release again reads them. Deleting either file deletes the row. The table syncs (Appendix B) |
 
 ### A.6 Identification
@@ -6196,13 +6200,13 @@ Never synced (§4.7).
 
 ## Appendix B. Synced tables
 
-The table below lists the synced tables: the library's, the people's and the import's two, `release_sheet_bindings` and `release_sheet_discs`. *Shared key* rows take an id computed
+The table below lists the synced tables: the library's, the people's and the import's two, `release_sheet_bindings` and `release_sheet_places`. *Shared key* rows take an id computed
 from their fact (§2.6); *independent* rows a fresh id. Every synced table's
 rows reach every device that can read their audience: a local release's rows
 too (§4.2). *Audience* is the store unless the table names one (§5.3); *owner*
 tables are changed only by their author's devices (§5.5). *File* names the
 column that references a coven file, whether the reference is trailing or
-bound (§6.3), and the namespace its files are in. bae declares no other table: `local_release_origin`, the import tables (A.4–A.8) other than `release_sheet_bindings` and `release_sheet_discs`,
+bound (§6.3), and the namespace its files are in. bae declares no other table: `local_release_origin`, the import tables (A.4–A.8) other than `release_sheet_bindings` and `release_sheet_places`,
 `import_candidate_standing`, `import_identification_batch`,
 `import_identification_count`, `import_identify_run` and `import_catalog_apply_step` among them, or the
 transfer queues (A.9), so they never sync.
@@ -6236,7 +6240,7 @@ transfer queues (A.9), so they never sync.
 | `audio_segment_scrub_points` | independent: its segment | store | | |
 | `carved_tracks` | independent: its track | store | | |
 | `release_sheet_bindings` | shared key: the sheet's file and the `FILE` line | store | | |
-| `release_sheet_discs` | shared key: the sheet's file | store | | |
+| `release_sheet_places` | shared key: the sheet's file | store | | |
 | `covers` | shared key: the release | store | | `file`, bound, in `covers`: bae's own; read on first use |
 | `artist_images` | shared key: the artist | store | | `file`, bound, in `artist_images`: bae's own; read on first use; shared by two merged artists |
 | `people` | shared key: the person's `MemberId` | store | yes | `avatar_id`, bound, in `avatars`: bae's own; read on first use |

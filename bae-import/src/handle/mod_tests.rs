@@ -215,10 +215,10 @@ pub(super) async fn three_track_draft() -> (StoredCandidate, String) {
     .await;
     fixture
         .handle
-        .set_sheet_disc(
+        .set_sheet_place(
             fixture.key.clone(),
             "Disc.cue".to_string(),
-            crate::folder_scanner::SheetDisc::Disc { number: 1 },
+            crate::folder_scanner::SheetPlace::On(bae_types::mediums::MediumSide::first_of(1)),
         )
         .await
         .unwrap();

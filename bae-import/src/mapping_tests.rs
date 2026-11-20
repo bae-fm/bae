@@ -1,7 +1,7 @@
 use super::*;
 use crate::folder_scanner::{
     collect_release_candidate_files_with_scope, CandidateFileEdits, CategorizedFiles,
-    SheetBindingOffer, SheetBindingOption, SheetDiscEdits, StoredCandidateEdits,
+    SheetBindingOffer, SheetBindingOption, SheetPlace, SheetPlaceEdits, StoredCandidateEdits,
 };
 use crate::pane::blank_candidate_draft;
 use crate::tables::watched_path::host_root;
@@ -64,12 +64,15 @@ pub(crate) fn scan(root: &Path) -> CategorizedFiles {
 }
 
 fn assign_discs(files: &mut CategorizedFiles, assignments: &[(&str, u32)]) {
-    let mut sheet_discs = SheetDiscEdits::default();
+    let mut sheet_places = SheetPlaceEdits::default();
     for (sheet_id, number) in assignments {
-        sheet_discs.set((*sheet_id).to_string(), SheetDisc::Disc { number: *number });
+        sheet_places.set(
+            (*sheet_id).to_string(),
+            SheetPlace::On(bae_types::mediums::MediumSide::first_of(*number)),
+        );
     }
     files
-        .apply_candidate_file_edits(&CandidateFileEdits { sheet_discs, ..Default::default() })
+        .apply_candidate_file_edits(&CandidateFileEdits { sheet_places, ..Default::default() })
         .expect("disc assignments preserve a valid candidate");
 }
 
@@ -374,7 +377,10 @@ async fn a_sheet_s_entries_carry_their_starts_and_bind_to_its_slices() {
         panic!("the sheet is the folder's only run, got {:?}", table.track_sides);
     };
     assert_eq!(sheet.sheet_id, "CDImage.cue");
-    assert_eq!(sheet.assignment, SheetDisc::Disc { number: 1 });
+    assert_eq!(
+        sheet.assigned.as_ref().map(|choice| choice.side),
+        Some(bae_types::mediums::MediumSide::first_of(1))
+    );
     assert_eq!(
         sheet.bound_audio,
         SheetBoundAudio::One(SheetReferenceOptions {
@@ -718,45 +724,6 @@ async fn invalid_cue_times_are_not_reported_as_missing_audio() {
 }
 
 #[tokio::test]
-async fn a_sheet_disc_menu_keeps_the_assigned_disc_available() {
-    let tmp = TestFolder::new();
-    write_flac(&tmp, "disc.flac");
-    tmp.write("disc.cue", cue_sheet_text("disc.flac", 2));
-    let mut files = scan(tmp.path());
-    assign_discs(&mut files, &[("disc.cue", 2)]);
-    let table = blank_table(&files).await;
-    let [MappingTrackRun::Sheet { sheet, .. }] = runs(&table).as_slice() else {
-        panic!("the selected CUE groups its tracks");
-    };
-    assert!(sheet.disc_options.contains(&2));
-}
-
-/// Each resolved sheet's disc menu offers every disc from 1 up to the count of
-/// resolved sheets, and any disc a sheet is assigned beyond those.
-#[tokio::test]
-async fn a_sheet_disc_menu_counts_up_to_the_resolved_sheets() {
-    let tmp = TestFolder::new();
-    for stem in ["alpha", "beta", "gamma"] {
-        write_flac(&tmp, format!("{stem}.flac"));
-        tmp.write(
-            tmp.path().join(format!("{stem}.cue")),
-            cue_sheet_text(&format!("{stem}.flac"), 2),
-        );
-    }
-    let mut files = scan(tmp.path());
-    assign_discs(&mut files, &[("alpha.cue", 1), ("beta.cue", 2), ("gamma.cue", 5)]);
-    let table = blank_table(&files).await;
-    let menus: Vec<Vec<u32>> = runs(&table)
-        .into_iter()
-        .map(|run| match run {
-            MappingTrackRun::Sheet { sheet, .. } => sheet.disc_options.clone(),
-            MappingTrackRun::Tracks(_) => panic!("each CUE groups its tracks"),
-        })
-        .collect();
-    assert_eq!(menus, vec![vec![1, 2, 3, 5]; 3]);
-}
-
-#[tokio::test]
 async fn partial_sheet_keeps_assigned_and_missing_references_even_without_choices() {
     let tmp = TestFolder::new();
     write_flac(&tmp, "first.flac");
@@ -834,7 +801,7 @@ async fn the_first_of_competing_sheets_carves_and_the_rest_stay_listed() {
         panic!("the competing CUE remains listed: {:?}", table.files);
     };
     assert_eq!(sheet.sheet_id, "second.cue");
-    assert_eq!(sheet.assignment, SheetDisc::Ignored);
+    assert_eq!(sheet.assigned, None);
     assert!(
         matches!(&sheet.bound, SheetBound::Describes(container) if container.file_id == "disc.flac")
     );
@@ -907,16 +874,16 @@ async fn a_multi_file_sheet_stays_described_when_ignored_without_probing() {
     assert_eq!(sheet.unbound_references, None);
     assert_eq!(entries.len(), 3);
 
-    let mut sheet_discs = SheetDiscEdits::default();
-    sheet_discs.set("album.cue".into(), SheetDisc::Ignored);
+    let mut sheet_places = SheetPlaceEdits::default();
+    sheet_places.set("album.cue".into(), SheetPlace::Ignored);
     files
-        .apply_candidate_file_edits(&CandidateFileEdits { sheet_discs, ..Default::default() })
+        .apply_candidate_file_edits(&CandidateFileEdits { sheet_places, ..Default::default() })
         .unwrap();
     let table = blank_table(&files).await;
     let MappingFileRow::Sheet(sheet) = &table.files[0] else {
         panic!("ignored CUE remains a file");
     };
-    assert_eq!(sheet.assignment, SheetDisc::Ignored);
+    assert_eq!(sheet.assigned, None);
     assert_eq!(sheet.bound, SheetBound::DescribesFiles { audio_file_count: 2 });
     assert_eq!(sheet.bound_audio, SheetBoundAudio::Several(expected.clone()));
     assert_eq!(sheet.unbound_references, None);
@@ -947,3 +914,6 @@ fn a_mapping_file_s_audition_target_survives_its_json() {
         assert_eq!(serde_json::from_str::<MappingFile>(&json).unwrap(), file);
     }
 }
+
+#[path = "mapping_sheet_place_tests.rs"]
+mod sheet_places;

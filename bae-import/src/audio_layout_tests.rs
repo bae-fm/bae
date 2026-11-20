@@ -1,7 +1,7 @@
 use super::*;
 use crate::folder_scanner::{
-    collect_release_candidate_files_with_scope, CandidateFileEdits, SheetBindingOffer, SheetDisc,
-    SheetDiscEdits, StoredCandidateEdits,
+    collect_release_candidate_files_with_scope, CandidateFileEdits, SheetBindingOffer, SheetPlace,
+    SheetPlaceEdits, StoredCandidateEdits,
 };
 use crate::probe::source_durations;
 use bae_util::test_files::TestFolder;
@@ -189,13 +189,13 @@ fn discs_are_laid_down_in_natural_order() {
 }
 
 /// Settle `files` as if the user had made these disc assignments.
-fn assign_discs(files: &mut CategorizedFiles, assignments: &[(&str, SheetDisc)]) {
-    let mut sheet_discs = SheetDiscEdits::default();
+fn assign_discs(files: &mut CategorizedFiles, assignments: &[(&str, SheetPlace)]) {
+    let mut sheet_places = SheetPlaceEdits::default();
     for (sheet_id, disc) in assignments {
-        sheet_discs.set((*sheet_id).to_string(), *disc);
+        sheet_places.set((*sheet_id).to_string(), *disc);
     }
     files
-        .apply_candidate_file_edits(&CandidateFileEdits { sheet_discs, ..Default::default() })
+        .apply_candidate_file_edits(&CandidateFileEdits { sheet_places, ..Default::default() })
         .expect("the folder stays valid");
 }
 
@@ -214,8 +214,8 @@ fn the_disc_assignment_orders_the_units_the_filenames_do_not() {
     assign_discs(
         &mut files,
         &[
-            ("alpha.cue", SheetDisc::Disc { number: 2 }),
-            ("beta.cue", SheetDisc::Disc { number: 1 }),
+            ("alpha.cue", SheetPlace::On(bae_types::mediums::MediumSide::first_of(2))),
+            ("beta.cue", SheetPlace::On(bae_types::mediums::MediumSide::first_of(1))),
         ],
     );
 
@@ -249,7 +249,7 @@ fn an_ignored_sheet_leaves_its_container_a_track_of_its_own() {
     let mut files = scan(tmp.path());
     assert_eq!(audio_units(&files).len(), 4, "three slices and the bonus");
 
-    assign_discs(&mut files, &[("CDImage.cue", SheetDisc::Ignored)]);
+    assign_discs(&mut files, &[("CDImage.cue", SheetPlace::Ignored)]);
 
     assert_eq!(
         audio_units(&files),

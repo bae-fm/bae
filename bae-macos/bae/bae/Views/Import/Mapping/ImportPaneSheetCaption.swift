@@ -1,13 +1,14 @@
 import BaeKit
 import SwiftUI
 
-/// A track sheet's caption: its disc, its name and the audio it describes.
+/// A track sheet's caption: its side or disc, its name and the audio it
+/// describes.
 /// A FILE reference with no audio bound is chosen from the caption's amber
 /// menu; bound references are changed from the summary's menu.
 struct ImportPaneSheetCaption: View {
     let sheet: BridgeSheetGroup
-    /// Whether this surface offers the CUE selection and disc control.
-    let showsDiscMenu: Bool
+    /// Whether this surface offers the CUE selection and place control.
+    let showsPlaceMenu: Bool
     let actions: ImportMappingActions
 
     @State
@@ -17,13 +18,13 @@ struct ImportPaneSheetCaption: View {
         MacImportSheetCaption(
             name: sheet.name,
             onOpen: { actions.openDocument(sheet.name, sheet.sheetId) },
-            disc: {
-                if showsDiscMenu {
-                    SheetDiscMenu(
-                        discs: sheet.discOptions,
-                        assignment: sheet.assignment,
+            place: {
+                if showsPlaceMenu {
+                    SheetPlaceMenu(
+                        choices: sheet.sideChoices,
+                        assigned: sheet.assigned,
                         offersIgnored: true,
-                        onAssign: { actions.setSheetDisc(sheet.sheetId, $0) }
+                        onAssign: { actions.setSheetPlace(sheet.sheetId, $0) }
                     )
                 }
             },

@@ -1,33 +1,38 @@
-//! The columns that store a track sheet's disc and the person's binding of
+//! The columns that store a track sheet's place and the person's binding of
 //! one of its `FILE` references. The scan's files, the candidate's decisions
 //! and the release's decisions all store them this way, so each table's
 //! writer and reader go through the one pair of conversions here.
 //!
-//! A [`SheetDisc`] is a `disc` column, `'disc'` or `'ignored'`, beside a disc
-//! number that only a disc has. A [`UserSheetBinding`] is the file that the
+//! A [`SheetPlace`] is a `place` column, `'side'` or `'ignored'`, beside a
+//! medium and a side that only a side has. A [`UserSheetBinding`] is the file that the
 //! reference describes, absent when the person cleared the binding.
 
 use super::*;
-use crate::folder_scanner::{SheetDisc, UserSheetBinding};
+use crate::folder_scanner::{SheetPlace, UserSheetBinding};
+use bae_types::mediums::MediumSide;
 
-impl SheetDisc {
-    /// The `disc` and disc number columns that store this disc.
-    pub(super) fn columns(self) -> (&'static str, Option<u32>) {
+impl SheetPlace {
+    /// The `place`, medium and side columns that store this place.
+    pub(super) fn columns(self) -> (&'static str, Option<u32>, Option<u32>) {
         match self {
-            Self::Disc { number } => ("disc", Some(number)),
-            Self::Ignored => ("ignored", None),
+            Self::On(side) => ("side", Some(side.medium), Some(side.side)),
+            Self::Ignored => ("ignored", None, None),
         }
     }
 
-    /// The disc that `disc` and `number`, read as `what`, store.
+    /// The place that `place`, `medium` and `side`, read as `what`, store.
     pub(super) fn from_columns(
         what: &str,
-        disc: &str,
-        number: Option<i64>,
+        place: &str,
+        medium: Option<i64>,
+        side: Option<i64>,
     ) -> Result<Self, DbError> {
-        match (disc, number) {
-            ("disc", Some(number)) => Ok(Self::Disc { number: to_u32(number, what)? }),
-            ("ignored", None) => Ok(Self::Ignored),
+        match (place, medium, side) {
+            ("side", Some(medium), Some(side)) => Ok(Self::On(MediumSide {
+                medium: to_u32(medium, what)?,
+                side: to_u32(side, what)?,
+            })),
+            ("ignored", None, None) => Ok(Self::Ignored),
             stored => Err(DbError::unreadable(what, stored)),
         }
     }

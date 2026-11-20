@@ -84,38 +84,40 @@ impl ImportServiceHandle {
         .await
     }
 
-    /// Set which disc of the release one of a candidate's track sheets holds,
-    /// or take the sheet out of the tracklist with
-    /// [`SheetDisc::Ignored`](crate::folder_scanner::SheetDisc::Ignored).
+    /// Put one of a candidate's track sheets on a side or disc of the
+    /// release, or take the sheet out of the tracklist with
+    /// [`SheetPlace::Ignored`](crate::folder_scanner::SheetPlace::Ignored).
     ///
     /// Cue filenames are arbitrary (`CD1.cue` may hold disc two), so this is
     /// the person's decision. Like a binding, it clears the stored identify
-    /// verdict. Giving a sheet a disc ignores every other sheet that shares its
-    /// audio. Disc zero and numbers above `i32::MAX` are refused.
-    pub async fn set_sheet_disc(
+    /// verdict. Putting a sheet on a side ignores every other sheet that
+    /// shares its audio. Medium or side zero, and numbers above `i32::MAX`,
+    /// are refused.
+    pub async fn set_sheet_place(
         &self,
         candidate_key: crate::CandidateKey,
         sheet_file_id: String,
-        disc: crate::folder_scanner::SheetDisc,
+        place: crate::folder_scanner::SheetPlace,
     ) -> Result<(), crate::ImportError> {
         let this = self.clone();
         self.committed(async move {
-            this.set_sheet_disc_write(candidate_key, sheet_file_id, disc).await
+            this.set_sheet_place_write(candidate_key, sheet_file_id, place).await
         })
         .await
     }
 
-    async fn set_sheet_disc_write(
+    async fn set_sheet_place_write(
         &self,
         candidate_key: crate::CandidateKey,
         sheet_file_id: String,
-        disc: crate::folder_scanner::SheetDisc,
+        place: crate::folder_scanner::SheetPlace,
     ) -> Result<(), crate::ImportError> {
-        use crate::folder_scanner::SheetDisc;
+        use crate::folder_scanner::SheetPlace;
 
-        if matches!(disc, SheetDisc::Disc { number } if number == 0 || number > i32::MAX as u32) {
+        let out_of_range = |number: u32| number == 0 || number > i32::MAX as u32;
+        if place.side().is_some_and(|side| out_of_range(side.medium) || out_of_range(side.side)) {
             return Err(crate::ImportError::SheetBinding {
-                detail: format!("{sheet_file_id} has an invalid disc number"),
+                detail: format!("{sheet_file_id} has an invalid side or disc"),
             });
         }
         let (files, offered_revision) = self.folder_files_for_binding(&candidate_key).await?;
@@ -126,16 +128,16 @@ impl ImportServiceHandle {
                 detail: format!("{candidate_key} has no track sheet {sheet_file_id}"),
             });
         };
-        // The menu fires even when the current disc is picked again; writing
+        // The menu fires even when the current place is picked again; writing
         // would clear the verdict of a folder whose shape did not change.
-        if selected.disc == disc {
-            let _commit = self.services.folder_state_commit.lock("check a sheet disc").await;
+        if selected.place == place {
+            let _commit = self.services.folder_state_commit.lock("check a sheet place").await;
             self.editable_candidate_for_commit(&candidate_key).await?;
-            debug!("{sheet_file_id} is already disc {disc:?}; nothing to write");
+            debug!("{sheet_file_id} is already on {place:?}; nothing to write");
             return Ok(());
         }
 
-        let competing = if matches!(disc, SheetDisc::Disc { .. }) {
+        let competing = if matches!(place, SheetPlace::On(_)) {
             if !selected.binding.is_resolved() {
                 return Err(crate::ImportError::SheetBinding {
                     detail: format!("{sheet_file_id} cannot be selected until every FILE reference has usable audio"),
@@ -158,9 +160,9 @@ impl ImportServiceHandle {
         };
         self.write_file_edits(&candidate_key, files, offered_revision, |edits| {
             for other in competing {
-                edits.sheet_discs.set(other, SheetDisc::Ignored);
+                edits.sheet_places.set(other, SheetPlace::Ignored);
             }
-            edits.sheet_discs.set(sheet_file_id, disc);
+            edits.sheet_places.set(sheet_file_id, place);
         })
         .await
     }
@@ -266,13 +268,15 @@ impl ImportServiceHandle {
                     .map(|seed| seed.draft)
                 })
                 .await??;
-            let draft = crate::pane::redraw_draft_for_files(
+            let redrawn = crate::pane::redraw_draft_for_files(
                 current_files,
                 settled_files,
                 initialized,
                 &preparation.metadata.draft,
                 self.services.ids.as_ref(),
             );
+            let layout = self.services.tables.lay_out_sheet_moves(&redrawn).await?;
+            let draft = redrawn.laid_out(layout)?;
 
             let commit = self
                 .commit_lock_for_revision(

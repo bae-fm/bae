@@ -2,7 +2,7 @@
 
 use super::*;
 use crate::cover_art::PreparedCover;
-use crate::folder_scanner::{CandidateFileEdits, SheetDisc};
+use crate::folder_scanner::{CandidateFileEdits, SheetPlace};
 use crate::tables::import_state::tests::*;
 use crate::tables::tests::*;
 use crate::tables::watched_path::host_root;
@@ -456,7 +456,7 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
         .await
         .unwrap();
     let mut file_edits = CandidateFileEdits::default();
-    file_edits.sheet_discs.set("CDImage.cue".to_string(), SheetDisc::Ignored);
+    file_edits.sheet_places.set("CDImage.cue".to_string(), SheetPlace::Ignored);
     let mut settled = files;
     settled.apply_candidate_file_edits(&file_edits).unwrap();
     let (metadata_revision, draft) = current_draft(&db, &hash).await;
@@ -512,8 +512,8 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
         "the source brought no image of its own, so the folder's cover stands"
     );
     assert_eq!(
-        tables.load_import_candidate_state(&hash).await.unwrap().unwrap().file_edits.sheet_discs,
-        file_edits.sheet_discs
+        tables.load_import_candidate_state(&hash).await.unwrap().unwrap().file_edits.sheet_places,
+        file_edits.sheet_places
     );
 
     let chosen = PreparedCover::Remote {
@@ -570,7 +570,7 @@ async fn stale_metadata_revision_cannot_replace_prepared_file_mappings() {
         .unwrap();
 
     let mut edits = CandidateFileEdits::default();
-    edits.sheet_discs.set("CDImage.cue".to_string(), SheetDisc::Ignored);
+    edits.sheet_places.set("CDImage.cue".to_string(), SheetPlace::Ignored);
     let mut settled = files;
     settled.apply_candidate_file_edits(&edits).unwrap();
     let error = crate::tables::ImportTables::new(db.clone())
@@ -652,7 +652,7 @@ async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
         .await
         .unwrap();
     let mut edits = CandidateFileEdits::default();
-    edits.sheet_discs.set("CDImage.cue".to_string(), SheetDisc::Ignored);
+    edits.sheet_places.set("CDImage.cue".to_string(), SheetPlace::Ignored);
     let mut settled = files;
     settled.apply_candidate_file_edits(&edits).unwrap();
     let (metadata_revision, draft) = current_draft(&db, &hash).await;

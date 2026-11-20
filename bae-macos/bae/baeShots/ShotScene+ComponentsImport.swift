@@ -306,7 +306,7 @@ extension ShotScene {
                             container: PreviewData.fieldRecordingsContainer
                         )
                     ),
-                    showsDiscMenu: true,
+                    showsPlaceMenu: true,
                     actions: inertMappingActions()
                 )
                 ImportPaneSheetCaption(
@@ -316,7 +316,7 @@ extension ShotScene {
                             requested: ["Field Recordings CD2.flac"]
                         )
                     ),
-                    showsDiscMenu: true,
+                    showsPlaceMenu: true,
                     actions: inertMappingActions()
                 )
             }

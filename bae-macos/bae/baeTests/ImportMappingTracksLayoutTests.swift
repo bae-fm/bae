@@ -239,7 +239,7 @@ extension ImportMappingTracksLayoutTests {
         try await SnapshotTestSupport.withHostedWindow(
             ImportPaneSheetCaption(
                 sheet: sheet(associated: associated),
-                showsDiscMenu: true,
+                showsPlaceMenu: true,
                 actions: actions(recording: MappingTrackActionRecorder())
             )
             .padding(.horizontal, ImportMappingColumns.rowPadding)
@@ -278,7 +278,7 @@ extension ImportMappingTracksLayoutTests {
         try await SnapshotTestSupport.withHostedWindow(
             ImportPaneSheetCaption(
                 sheet: sheet(associated: true),
-                showsDiscMenu: false,
+                showsPlaceMenu: false,
                 actions: actions(recording: MappingTrackActionRecorder())
             )
             .frame(width: size.width, height: size.height, alignment: .leading),
@@ -425,8 +425,8 @@ extension ImportMappingTracksLayoutTests {
             boundAudio: reference.fileId == nil
                 ? .none : .one(reference: reference),
             unboundReferences: reference.fileId == nil ? [reference] : nil,
-            assignment: .disc(number: 1),
-            discOptions: [1, 2]
+            assigned: .disc(1),
+            sideChoices: BridgeSheetSideChoice.discs(2)
         )
     }
 
@@ -528,7 +528,7 @@ extension ImportMappingTracksLayoutTests {
     ) -> ImportMappingActions {
         ImportMappingActions(
             bindSheet: { _, _, _ in },
-            setSheetDisc: { _, _ in },
+            setSheetPlace: { _, _ in },
             openDocument: { _, _ in },
             openImages: { _ in },
             preview: { target in

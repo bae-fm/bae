@@ -112,7 +112,7 @@ struct MacImportTable: View {
     private func sheetCaptionRow(_ sheet: BridgeSheetGroup) -> some View {
         ImportPaneSheetCaption(
             sheet: sheet,
-            showsDiscMenu: true,
+            showsPlaceMenu: true,
             actions: actions,
         )
     }

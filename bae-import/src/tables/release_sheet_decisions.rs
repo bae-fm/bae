@@ -1,6 +1,6 @@
 //! What the person decided about a release's CUE sheets in the import pane:
 //! which audio each `FILE` line describes (`release_sheet_bindings`) and which
-//! disc each sheet is (`release_sheet_discs`). The import's commit writes them
+//! side or disc each sheet is on (`release_sheet_places`). The import's commit writes them
 //! from the candidate's decisions; identifying the release again reads them,
 //! so its sheets bind and number as the person chose. Both tables sync with
 //! the release's files.
@@ -16,7 +16,7 @@ fn synced_tables() -> Vec<coven::SyncedTable> {
     vec![
         coven::SyncedTable::new("release_sheet_bindings", coven::RowIdentity::SharedKey)
             .key_columns(["sheet_file_id", "file_reference"]),
-        coven::SyncedTable::new("release_sheet_discs", coven::RowIdentity::SharedKey)
+        coven::SyncedTable::new("release_sheet_places", coven::RowIdentity::SharedKey)
             .key_columns(["sheet_file_id"]),
     ]
 }
@@ -26,7 +26,7 @@ fn no_namespaces() -> Vec<coven::Namespace> {
 }
 
 use super::*;
-use crate::folder_scanner::{CandidateFileEdits, SheetDisc, UserSheetBinding};
+use crate::folder_scanner::{CandidateFileEdits, SheetPlace, UserSheetBinding};
 
 /// Write the sheet decisions in `decided`, which name files by their path in
 /// the release, as rows over the release's files `file_ids` (each path with
@@ -44,12 +44,13 @@ pub(super) fn store_on(
             .copied()
             .ok_or_else(|| DbError::unreadable("a candidate's sheet decisions", path))
     };
-    for (sheet, disc) in decided.sheet_discs.iter() {
+    for (sheet, place) in decided.sheet_places.iter() {
         let sheet_file_id = file_id(sheet)?;
-        let (kind, number) = disc.columns();
+        let (kind, medium, side) = place.columns();
         sql.execute(
-            "INSERT INTO release_sheet_discs (sheet_file_id, disc, disc_number) VALUES (?, ?, ?)",
-            params![sheet_file_id, kind, number],
+            "INSERT INTO release_sheet_places (sheet_file_id, place, medium, side) \
+             VALUES (?, ?, ?, ?)",
+            params![sheet_file_id, kind, medium, side],
         )?;
     }
     for (sheet, references) in decided.sheet_bindings.iter() {
@@ -66,22 +67,22 @@ pub(super) fn store_on(
     Ok(())
 }
 
-/// Store the discs the person picked for CUE sheets in a release editor,
-/// each a sheet's file id with the disc, as the sheet's disc decision: a
-/// sheet decided before takes the new disc. The editor's save calls it
+/// Store the sides the person picked for CUE sheets in a release editor,
+/// each a sheet's file id with the side, as the sheet's place decision: a
+/// sheet decided before takes the new side. The editor's save calls it
 /// through `store_release_edit_sheet_decisions_on`.
-pub(super) fn store_sheet_disc_decisions_on(
+pub(super) fn store_sheet_place_decisions_on(
     sql: &CovenWrite<'_>,
-    discs: &[(String, u32)],
+    places: &[(String, bae_types::mediums::MediumSide)],
 ) -> Result<(), DbError> {
-    for (sheet_file_id, disc_number) in discs {
-        let (kind, number) = SheetDisc::Disc { number: *disc_number }.columns();
+    for (sheet_file_id, side) in places {
+        let (kind, medium, side) = SheetPlace::On(*side).columns();
         sql.execute(
-            "INSERT INTO release_sheet_discs (sheet_file_id, disc, disc_number) \
-             VALUES (?, ?, ?) \
-             ON CONFLICT (sheet_file_id) DO UPDATE SET disc = excluded.disc, \
-                                                       disc_number = excluded.disc_number",
-            params![sheet_file_id, kind, number],
+            "INSERT INTO release_sheet_places (sheet_file_id, place, medium, side) \
+             VALUES (?, ?, ?, ?) \
+             ON CONFLICT (sheet_file_id) DO UPDATE SET place = excluded.place, \
+                 medium = excluded.medium, side = excluded.side",
+            params![sheet_file_id, kind, medium, side],
         )?;
     }
     Ok(())
@@ -117,7 +118,7 @@ impl ImportTables {
         release_id: &str,
     ) -> Result<CandidateFileEdits, DbError> {
         let release_id = release_id.to_string();
-        let (binding_rows, disc_rows) = self
+        let (binding_rows, place_rows) = self
             .store
             .read(move |sql| {
                 let bindings = sql.query(
@@ -136,10 +137,10 @@ impl ImportTables {
                         ))
                     },
                 )?;
-                let discs = sql.query(
-                    "SELECT sheet.original_filename, disc.disc, disc.disc_number \
+                let places = sql.query(
+                    "SELECT sheet.original_filename, place.place, place.medium, place.side \
                      FROM release_files AS sheet \
-                     JOIN release_sheet_discs AS disc ON disc.sheet_file_id = sheet.id \
+                     JOIN release_sheet_places AS place ON place.sheet_file_id = sheet.id \
                      WHERE sheet.release_id = ?",
                     [&release_id],
                     |row| {
@@ -147,10 +148,11 @@ impl ImportTables {
                             row.get::<_, String>(0)?,
                             row.get::<_, String>(1)?,
                             row.get::<_, Option<i64>>(2)?,
+                            row.get::<_, Option<i64>>(3)?,
                         ))
                     },
                 )?;
-                Ok((bindings, discs))
+                Ok((bindings, places))
             })
             .await?;
         let mut edits = CandidateFileEdits::default();
@@ -161,13 +163,14 @@ impl ImportTables {
                 UserSheetBinding::from_stored_file(audio),
             );
         }
-        for (sheet, kind, number) in disc_rows {
-            let disc = SheetDisc::from_columns(
-                &format!("the release_sheet_discs row of {sheet}"),
+        for (sheet, kind, medium, side) in place_rows {
+            let place = SheetPlace::from_columns(
+                &format!("the release_sheet_places row of {sheet}"),
                 &kind,
-                number,
+                medium,
+                side,
             )?;
-            edits.sheet_discs.set(sheet, disc);
+            edits.sheet_places.set(sheet, place);
         }
         Ok(edits)
     }

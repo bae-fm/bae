@@ -391,8 +391,8 @@ fn insert_file(
               size, modified_at_ns, audio_content_type, audio_container, audio_duration_ms, \
               audio_sample_rate_hz, audio_bits_per_sample, audio_bitrate_kbps, audio_channels, \
               file_name, role, document_kind, sheet_binding, \
-              sheet_binding_codec, sheet_disc, sheet_disc_number) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+              sheet_binding_codec, sheet_place, sheet_medium, sheet_side) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         params![
             coven::path_bytes(watched_folder_path),
             candidate_path,
@@ -417,8 +417,9 @@ fn insert_file(
             columns.document_kind,
             columns.sheet_binding,
             columns.sheet_binding_codec,
-            columns.sheet_disc,
-            columns.sheet_disc_number,
+            columns.sheet_place,
+            columns.sheet_medium,
+            columns.sheet_side,
         ],
     )?;
     if let FileRole::TrackSheet { sheet, .. } = &file.role {

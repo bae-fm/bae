@@ -1,4 +1,4 @@
-//! A candidate's file decisions as rows: which disc each sheet is, and which
+//! A candidate's file decisions as rows: which side or disc each sheet is on, and which
 //! audio each of its `FILE` references describes (an absent row is no
 //! decision at all); read back by the next scan, and settled onto every
 //! scanned release reading the same files.
@@ -7,7 +7,7 @@
 pub(super) const SQL: &str = include_str!("file_decision_rows.sql");
 
 use super::*;
-use crate::folder_scanner::{CandidateFileEdits, SheetDisc, UserSheetBinding};
+use crate::folder_scanner::{CandidateFileEdits, SheetPlace, UserSheetBinding};
 use crate::tables::FinishRead;
 
 pub(super) fn delete_file_edits(sql: &CovenWrite<'_>, content_hash: &str) -> Result<(), DbError> {
@@ -15,7 +15,7 @@ pub(super) fn delete_file_edits(sql: &CovenWrite<'_>, content_hash: &str) -> Res
         "DELETE FROM import_candidate_sheet_reference WHERE content_hash = ?",
         [content_hash],
     )?;
-    sql.execute("DELETE FROM import_candidate_sheet_disc WHERE content_hash = ?", [content_hash])?;
+    sql.execute("DELETE FROM import_candidate_sheet_place WHERE content_hash = ?", [content_hash])?;
     Ok(())
 }
 
@@ -26,12 +26,12 @@ pub(super) fn insert_file_edits(
     content_hash: &str,
     edits: &CandidateFileEdits,
 ) -> Result<(), DbError> {
-    for (sheet_id, disc) in edits.sheet_discs.iter() {
-        let (kind, number) = disc.columns();
+    for (sheet_id, place) in edits.sheet_places.iter() {
+        let (kind, medium, side) = place.columns();
         sql.execute(
-            "INSERT INTO import_candidate_sheet_disc \
-                 (content_hash, sheet_id, disc, disc_number) VALUES (?, ?, ?, ?)",
-            params![content_hash, sheet_id, kind, number],
+            "INSERT INTO import_candidate_sheet_place \
+                 (content_hash, sheet_id, place, medium, side) VALUES (?, ?, ?, ?, ?)",
+            params![content_hash, sheet_id, kind, medium, side],
         )?;
     }
     for (sheet_id, references) in edits.sheet_bindings.iter() {
@@ -44,14 +44,14 @@ pub(super) fn insert_file_edits(
 }
 
 /// A candidate's file decisions as columns of a read that joins its state
-/// row as `state`: the revision they stand at, and the sheet discs and the
+/// row as `state`: the revision they stand at, and the sheet places and the
 /// `FILE` reference bindings riding on it as JSON arrays.
 pub(super) const FILE_EDITS_COLUMNS: &str = "state.edit_revision AS edits_revision, \
      (SELECT json_group_array(json_object( \
-          'sheet_id', disc.sheet_id, 'disc', disc.disc, 'disc_number', disc.disc_number) \
-          ORDER BY disc.sheet_id) \
-      FROM import_candidate_sheet_disc AS disc \
-      WHERE disc.content_hash = state.content_hash) AS edits_sheet_discs, \
+          'sheet_id', place.sheet_id, 'place', place.place, 'medium', place.medium, \
+          'side', place.side) ORDER BY place.sheet_id) \
+      FROM import_candidate_sheet_place AS place \
+      WHERE place.content_hash = state.content_hash) AS edits_sheet_places, \
      (SELECT json_group_array(json_object( \
           'sheet_id', binding.sheet_id, 'file_reference', binding.file_reference, \
           'file_id', binding.file_id) ORDER BY binding.sheet_id, binding.file_reference) \
@@ -63,7 +63,7 @@ pub(super) const FILE_EDITS_COLUMNS: &str = "state.edit_revision AS edits_revisi
 pub(super) struct StoredFileEdits {
     content_hash: String,
     revision: i64,
-    sheet_discs: String,
+    sheet_places: String,
     sheet_references: String,
 }
 
@@ -72,17 +72,18 @@ pub(super) fn read_file_edits(row: &Row<'_>) -> rusqlite::Result<StoredFileEdits
     Ok(StoredFileEdits {
         content_hash: row.get("content_hash")?,
         revision: row.get("edits_revision")?,
-        sheet_discs: row.get("edits_sheet_discs")?,
+        sheet_places: row.get("edits_sheet_places")?,
         sheet_references: row.get("edits_sheet_references")?,
     })
 }
 
-/// One sheet's disc as [`FILE_EDITS_COLUMNS`] holds it.
+/// One sheet's place as [`FILE_EDITS_COLUMNS`] holds it.
 #[derive(serde::Deserialize)]
-struct StoredSheetDisc {
+struct StoredSheetPlace {
     sheet_id: String,
-    disc: String,
-    disc_number: Option<i64>,
+    place: String,
+    medium: Option<i64>,
+    side: Option<i64>,
 }
 
 /// One `FILE` reference binding as [`FILE_EDITS_COLUMNS`] holds it.
@@ -108,15 +109,16 @@ impl StoredFileEdits {
             revision: to_u64(self.revision, &format!("{content_hash}'s file edit revision"))?,
             ..CandidateFileEdits::default()
         };
-        let discs: Vec<StoredSheetDisc> = serde_json::from_str(&self.sheet_discs)
-            .map_err(|error| unreadable_json("sheet discs", &self.sheet_discs, error))?;
-        for stored in discs {
-            let disc = SheetDisc::from_columns(
-                &format!("the import_candidate_sheet_disc row of {}", stored.sheet_id),
-                &stored.disc,
-                stored.disc_number,
+        let places: Vec<StoredSheetPlace> = serde_json::from_str(&self.sheet_places)
+            .map_err(|error| unreadable_json("sheet places", &self.sheet_places, error))?;
+        for stored in places {
+            let place = SheetPlace::from_columns(
+                &format!("the import_candidate_sheet_place row of {}", stored.sheet_id),
+                &stored.place,
+                stored.medium,
+                stored.side,
             )?;
-            edits.sheet_discs.set(stored.sheet_id, disc);
+            edits.sheet_places.set(stored.sheet_id, place);
         }
         let references: Vec<StoredSheetReference> = serde_json::from_str(&self.sheet_references)
             .map_err(|error| unreadable_json("sheet references", &self.sheet_references, error))?;
@@ -274,7 +276,7 @@ pub(crate) fn load_stored_candidate_edits_on(
             "SELECT state.content_hash, {FILE_EDITS_COLUMNS} \
              FROM import_candidate_state AS state \
              WHERE state.edit_revision > 0 \
-                OR EXISTS (SELECT 1 FROM import_candidate_sheet_disc AS decided \
+                OR EXISTS (SELECT 1 FROM import_candidate_sheet_place AS decided \
                            WHERE decided.content_hash = state.content_hash) \
                 OR EXISTS (SELECT 1 FROM import_candidate_sheet_reference AS decided \
                            WHERE decided.content_hash = state.content_hash)"

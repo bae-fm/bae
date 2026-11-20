@@ -165,14 +165,18 @@ CREATE TABLE IF NOT EXISTS scan_candidate_file (
     document_kind         TEXT CHECK (document_kind IS NULL OR document_kind IN ('cue_sheet', 'rip_log', 'accuraterip_report', 'playlist', 'text')),
     sheet_binding         TEXT CHECK (sheet_binding IS NULL OR sheet_binding IN ('resolved', 'unresolved', 'refused_timing', 'refused_codec')),
     sheet_binding_codec   TEXT,
-    sheet_disc            TEXT CHECK (sheet_disc IS NULL OR sheet_disc IN ('disc', 'ignored')),
-    sheet_disc_number     INTEGER CHECK (sheet_disc_number IS NULL OR sheet_disc_number >= 1),
+    -- Where a track sheet's entries go: on side `sheet_side` of the
+    -- release's medium `sheet_medium`, or out of the tracklist.
+    sheet_place           TEXT CHECK (sheet_place IS NULL OR sheet_place IN ('side', 'ignored')),
+    sheet_medium          INTEGER CHECK (sheet_medium IS NULL OR sheet_medium >= 1),
+    sheet_side            INTEGER CHECK (sheet_side IS NULL OR sheet_side >= 1),
     PRIMARY KEY (watched_folder_path, candidate_path, relative_path),
     FOREIGN KEY (watched_folder_path, candidate_path) REFERENCES scan_candidate (watched_folder_path, path) ON DELETE CASCADE,
-    CHECK ((role = 'track_sheet') = (sheet_binding IS NOT NULL AND sheet_disc IS NOT NULL)),
+    CHECK ((role = 'track_sheet') = (sheet_binding IS NOT NULL AND sheet_place IS NOT NULL)),
     CHECK ((role = 'document') = (document_kind IS NOT NULL)),
     CHECK ((sheet_binding = 'refused_codec') = (sheet_binding_codec IS NOT NULL)),
-    CHECK ((sheet_disc = 'disc') = (sheet_disc_number IS NOT NULL)),
+    CHECK ((sheet_place = 'side') = (sheet_medium IS NOT NULL)),
+    CHECK ((sheet_place = 'side') = (sheet_side IS NOT NULL)),
     CHECK (
         (role <> 'audio' AND audio_content_type IS NULL AND audio_container IS NULL
             AND audio_duration_ms IS NULL

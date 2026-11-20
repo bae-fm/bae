@@ -162,10 +162,10 @@ async fn a_file_decision_makes_the_tags_read_again() {
     pick_file_tags(&mut handle, &key, reader.clone()).await.unwrap();
 
     handle
-        .set_sheet_disc(
+        .set_sheet_place(
             key.clone(),
             "Disc.cue".to_string(),
-            crate::folder_scanner::SheetDisc::Ignored,
+            crate::folder_scanner::SheetPlace::Ignored,
         )
         .await
         .unwrap();
@@ -188,10 +188,10 @@ async fn file_tags_cannot_restore_mappings_read_before_a_file_decision() {
         .unwrap()
         .expect("the candidate starts prepared");
     handle
-        .set_sheet_disc(
+        .set_sheet_place(
             key.clone(),
             "Disc.cue".to_string(),
-            crate::folder_scanner::SheetDisc::Ignored,
+            crate::folder_scanner::SheetPlace::Ignored,
         )
         .await
         .unwrap();

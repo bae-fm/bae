@@ -207,8 +207,8 @@ mirror_struct! {
     fields: {
         file_id,
         name,
-        disc_number,
-        disc_options,
+        place: (BridgeSheetSideChoice),
+        side_choices: (each BridgeSheetSideChoice),
         file_reference,
         audio_options: (each BridgeReleaseEditAudioOption),
     },

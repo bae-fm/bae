@@ -5,7 +5,7 @@
 //! pairs unit `i` with draft track `i`. Surfaces render this projection without
 //! joining separate lists.
 
-use crate::folder_scanner::{AudioDamage, SheetDisc, SheetReferenceOptions};
+use crate::folder_scanner::{AudioDamage, SheetReferenceOptions};
 use crate::types::RawTrackEdit;
 
 /// The mapping table: every source unit the folder offers, alongside the track
@@ -233,9 +233,14 @@ pub struct SheetGroup {
     /// The sheet's FILE lines that play no audio, in the sheet's order, each
     /// offered from a menu of its own; `None` where every line plays audio.
     pub unbound_references: Option<Vec<SheetReferenceOptions>>,
-    pub assignment: SheetDisc,
-    /// The discs this sheet may be assigned to, counting from one.
-    pub disc_options: Vec<u32>,
+    /// The side or disc the sheet is on, with its heading, which the
+    /// caption's place pop-up names; `None` where the sheet is ignored.
+    pub assigned: Option<bae_records::DbSheetSideChoice>,
+    /// The sides and discs this sheet can be put on, in order: the sides
+    /// of the draft's mediums, and a disc at each position up to the count of
+    /// the folder's bound sheets that the draft lacks, so that each sheet can
+    /// go on a disc of its own.
+    pub side_choices: Vec<bae_records::DbSheetSideChoice>,
 }
 
 /// The FILE lines of a track sheet that play audio, by how the caption's

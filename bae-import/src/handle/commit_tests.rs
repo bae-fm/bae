@@ -266,10 +266,10 @@ async fn a_pane_edit_lands_while_a_file_decision_reads_another_folders_tags() {
         let handle = handle.clone();
         async move {
             handle
-                .set_sheet_disc(
+                .set_sheet_place(
                     held_key,
                     "Disc.cue".to_string(),
-                    crate::folder_scanner::SheetDisc::Ignored,
+                    crate::folder_scanner::SheetPlace::Ignored,
                 )
                 .await
         }

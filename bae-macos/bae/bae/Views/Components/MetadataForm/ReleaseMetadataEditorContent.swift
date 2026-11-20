@@ -111,8 +111,8 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
                     sheet: sheet,
                     source: source,
                     onOpenDocument: onOpenDocument,
-                    onPickDisc: {
-                        session.pickSheetDisc(sheet.fileId, disc: $0)
+                    onPickSide: {
+                        session.pickSheetSide(sheet.fileId, side: $0)
                     },
                     onPickFile: {
                         session.pickSheetFile(

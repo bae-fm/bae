@@ -61,7 +61,7 @@ carved (relative_path) AS (
        AND bound.candidate_path = candidate.path
     JOIN f AS sheet ON sheet.relative_path = bound.sheet_relative_path
     JOIN sheet_tracks ON sheet_tracks.relative_path = sheet.relative_path
-    WHERE sheet.sheet_binding = 'resolved' AND sheet.sheet_disc = 'disc'
+    WHERE sheet.sheet_binding = 'resolved' AND sheet.sheet_place = 'side'
 ),
 entries AS (
     SELECT f.position, f.role,

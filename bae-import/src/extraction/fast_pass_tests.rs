@@ -38,7 +38,9 @@ fn enumerate_filename_inputs_skips_all_audio_and_cue() {
                             file_id: "Album.flac".to_string(),
                         }],
                     },
-                    disc: crate::folder_scanner::SheetDisc::Disc { number: 1 },
+                    place: crate::folder_scanner::SheetPlace::On(
+                        bae_types::mediums::MediumSide::first_of(1),
+                    ),
                 },
             },
             CandidateFile { file: flac.clone(), role: FileRole::Audio },

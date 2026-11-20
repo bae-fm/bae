@@ -467,11 +467,18 @@ impl Records {
 /// segments they hold, and the first main segment's file id and where it
 /// starts in that file, with the name and audio layout of the release file
 /// of that id when the release holds one, and the CUE sheet that carves it,
-/// with the sheet's name and disc, the sheet's `FILE` line it is under and
+/// with the sheet's name and the side its first track sits on (the first side
+/// of a medium that is not played side by side, whose sides share its one
+/// heading), the sheet's `FILE` line it is under and
 /// the audio files that line can play from (`sheet_audio_options`, see
 /// [`super::sheet_files::sheet_audio_options_ctes`]). A track on a line moved to another file plays to that file's end where
 /// it played to the end of the file before. [`release_edit_track_of_row`]
 /// reads each row.
+/// Whether the medium a `place` row of the editor's statement sits on is
+/// played side by side.
+#[cfg(desktop)]
+const SIDED: &str = "place.side_kind = 'sided'";
+
 #[cfg(desktop)]
 pub fn release_edit_tracks_sql(release: &str, source: MediumsSource<'_>, picks: &str) -> String {
     format!(
@@ -495,7 +502,8 @@ pub fn release_edit_tracks_sql(release: &str, source: MediumsSource<'_>, picks: 
                f.id IS NOT NULL AS main_file_found, f.original_filename AS main_file_name, \
                f.source_audio_layout AS main_file_layout, \
                carved.sheet_file_id, carved.file_reference AS sheet_file_reference, \
-               sheet_file.original_filename AS sheet_name, p.sheet_disc AS sheet_disc_number, \
+               sheet_file.original_filename AS sheet_name, p.sheet_medium, p.sheet_side, \
+               p.sheet_kind, p.sheet_ordinal, \
                options.options AS sheet_audio_options \
             FROM tracks t JOIN placed p ON p.id = t.id \
             LEFT JOIN main ON main.track_id = t.id AND main.n = 1 \
@@ -515,9 +523,21 @@ pub fn release_edit_tracks_sql(release: &str, source: MediumsSource<'_>, picks: 
         placed = super::release_tracks::placed_tracks_ctes(
             release,
             source,
-            ", place.stated_length_ms AS place_stated_length_ms, \
-               FIRST_VALUE(place.medium_position) OVER ( \
-                   PARTITION BY sheet_carved.sheet_file_id ORDER BY place.position) AS sheet_disc",
+            &format!(
+                ", place.stated_length_ms AS place_stated_length_ms, \
+                 FIRST_VALUE(place.medium_position) OVER {first} AS sheet_medium, \
+                 FIRST_VALUE({side}) OVER {first} AS sheet_side, \
+                 FIRST_VALUE({kind}) OVER {first} AS sheet_kind, \
+                 FIRST_VALUE({ordinal}) OVER {first} AS sheet_ordinal",
+                first = "(PARTITION BY sheet_carved.sheet_file_id ORDER BY place.position)",
+                side = super::release_tracks::sheet_side_sql(SIDED, "place.side"),
+                kind = super::release_tracks::sheet_side_kind_sql(SIDED),
+                ordinal = super::release_tracks::sheet_side_ordinal_sql(
+                    SIDED,
+                    "place.side_ordinal",
+                    "place.medium_position"
+                ),
+            ),
             "LEFT JOIN carved_tracks sheet_carved ON sheet_carved.track_id = track.id"
         ),
         sheet_files = super::sheet_files::sheet_files_ctes(release, picks),
@@ -580,7 +600,18 @@ pub fn release_edit_track_of_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Db
             Ok::<_, rusqlite::Error>(DbReleaseEditSheet {
                 file_id,
                 name: row.get("sheet_name")?,
-                disc_number: row.get("sheet_disc_number")?,
+                place: {
+                    let kind: String = row.get("sheet_kind")?;
+                    DbSheetSideChoice::of_columns(
+                        row.get("sheet_medium")?,
+                        row.get("sheet_side")?,
+                        &kind,
+                        row.get("sheet_ordinal")?,
+                    )
+                    .map_err(|reason| {
+                        bae_store::read::column_conversion_error(row, "sheet_kind", reason)
+                    })?
+                },
                 file_reference: row.get("sheet_file_reference")?,
                 audio_options: {
                     let options: String = row.get("sheet_audio_options")?;

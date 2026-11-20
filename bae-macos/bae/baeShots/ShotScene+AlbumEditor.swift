@@ -71,8 +71,8 @@ extension ShotScene {
         let sheet = BridgeReleaseEditSheet(
             fileId: "Northbound.cue",
             name: "Northbound.cue",
-            discNumber: 1,
-            discOptions: [1],
+            place: .disc(1),
+            sideChoices: BridgeSheetSideChoice.discs(1),
             fileReference: cueImage.name,
             audioOptions: [cueImage, cueRip]
                 .map { file in

@@ -21,7 +21,7 @@ private final class Recorder {
     }
 
     var bindCalls: [BindingCall] = []
-    var discCalls: [(sheetFileId: String, disc: BridgeSheetDisc)] = []
+    var placeCalls: [(sheetFileId: String, place: BridgeSheetPlace)] = []
     var trackEdits: [(key: Data, track: BridgeRawTrackEdit)] = []
     var editFields: [(field: BridgeCandidateEditField, value: String)] = []
     var externalMetadata: [BridgePressingLink] = []
@@ -59,9 +59,9 @@ private final class Recorder {
                     return .done
                 }
             },
-            setSheetDisc: { [self] _, sheetFileId, disc in
+            setSheetPlace: { [self] _, sheetFileId, place in
                 await MainActor.run {
-                    discCalls.append((sheetFileId: sheetFileId, disc: disc))
+                    placeCalls.append((sheetFileId: sheetFileId, place: place))
                 }
             },
             setCandidateEditField: { [self] _, field, value in
@@ -442,8 +442,8 @@ extension ImportMappingPaneTests {
         #expect(recorder.stops == 1)
     }
 
-    // 6. Cue filenames are arbitrary, so which disc a sheet is is the user's to
-    //    say. Saying it is one write; the tracklist it re-shapes arrives as the
+    // 6. Cue filenames are arbitrary, so which side or disc a sheet is on is
+    //    the user's to say. Saying it is one write; the tracklist it re-shapes arrives as the
     //    candidate's next value.
     @MainActor
     @Test("assigning a cue to a disc is written")
@@ -452,21 +452,21 @@ extension ImportMappingPaneTests {
             mapping: MappingFixtures.boundSheetTable()
         )
         let recorder = Recorder()
-        await ImportMappingFlow.setSheetDisc(
+        await ImportMappingFlow.setSheetPlace(
             key: MappingFixtures.candidateKey,
             sheetFileId: MappingFixtures.sheetId,
-            disc: .disc(number: 2),
+            place: .on(side: .firstOf(2)),
             services: recorder.services(store)
         )
 
-        #expect(recorder.discCalls.count == 1)
-        #expect(recorder.discCalls.first?.disc == .disc(number: 2))
+        #expect(recorder.placeCalls.count == 1)
+        #expect(recorder.placeCalls.first?.place == .on(side: .firstOf(2)))
 
         store.applyCandidateDetail(
             key: MappingFixtures.candidateKey,
             detail: MappingFixtures.detail(
                 mapping: MappingFixtures.boundSheetTable(
-                    assignment: .disc(number: 2)
+                    assigned: .disc(2)
                 )
             )
         )
@@ -477,7 +477,7 @@ extension ImportMappingPaneTests {
             Issue.record("expected a sheet row")
             return
         }
-        #expect(sheet.assignment == .disc(number: 2))
+        #expect(sheet.assigned == .disc(2))
     }
 
     // 7. An ignored cue contributes nothing to the tracklist, and its container
@@ -489,14 +489,14 @@ extension ImportMappingPaneTests {
             mapping: MappingFixtures.boundSheetTable()
         )
         let recorder = Recorder()
-        await ImportMappingFlow.setSheetDisc(
+        await ImportMappingFlow.setSheetPlace(
             key: MappingFixtures.candidateKey,
             sheetFileId: MappingFixtures.sheetId,
-            disc: .ignored,
+            place: .ignored,
             services: recorder.services(store)
         )
 
-        #expect(recorder.discCalls.first?.disc == .ignored)
+        #expect(recorder.placeCalls.first?.place == .ignored)
 
         store.applyCandidateDetail(
             key: MappingFixtures.candidateKey,
@@ -509,7 +509,7 @@ extension ImportMappingPaneTests {
             Issue.record("expected an unassociated sheet file")
             return
         }
-        #expect(sheet.assignment == .ignored)
+        #expect(sheet.assigned == nil)
         #expect(mapping.trackMappings.count == 1)
     }
 

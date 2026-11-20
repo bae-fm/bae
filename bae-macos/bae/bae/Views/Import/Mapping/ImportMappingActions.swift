@@ -10,7 +10,7 @@ struct ImportMappingActions {
     let bindSheet: (String, String, String?) -> Void
     /// Say which disc of the release a track sheet's entries are, or take them
     /// out of the tracklist: the sheet's file id, then the assignment.
-    let setSheetDisc: (String, BridgeSheetDisc) -> Void
+    let setSheetPlace: (String, BridgeSheetPlace) -> Void
     /// Open a document (a log, a text file, a track sheet) in the viewer: the
     /// file's name, then its file id.
     let openDocument: (String, String) -> Void

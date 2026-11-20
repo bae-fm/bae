@@ -46,6 +46,24 @@ impl TrackPlace {
     }
 }
 
+/// One side of one of a release's mediums, each counted from one: a medium
+/// played side by side (a record, a cassette) has its sides, and every other
+/// medium has one. A CUE sheet's entries are put on one.
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
+pub struct MediumSide {
+    pub medium: u32,
+    pub side: u32,
+}
+
+impl MediumSide {
+    /// The first side of the release's medium `medium`: a disc's only side.
+    pub fn first_of(medium: u32) -> Self {
+        Self { medium, side: 1 }
+    }
+}
+
 /// Places tracks in play order: a track whose source states a number keeps
 /// it, and one whose source states none is one more than the tracks before it
 /// on its own side.

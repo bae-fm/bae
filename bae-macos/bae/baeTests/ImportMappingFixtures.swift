@@ -155,7 +155,7 @@ extension MappingFixtures {
 
     static func sheetGroup(
         container: BridgeMappingContainer?,
-        assignment: BridgeSheetDisc
+        assigned: BridgeSheetSideChoice?
     ) -> BridgeSheetGroup {
         let reference = BridgeSheetReferenceOptions(
             fileReference: containerId,
@@ -176,8 +176,8 @@ extension MappingFixtures {
             boundAudio: reference.fileId == nil
                 ? .none : .one(reference: reference),
             unboundReferences: reference.fileId == nil ? [reference] : nil,
-            assignment: assignment,
-            discOptions: [1, 2]
+            assigned: assigned,
+            sideChoices: BridgeSheetSideChoice.discs(2)
         )
     }
 
@@ -211,7 +211,7 @@ extension MappingFixtures {
             .sheet(
                 sheet: sheetGroup(
                     container: nil,
-                    assignment: .ignored
+                    assigned: nil
                 )
             )
         ],
@@ -225,7 +225,7 @@ extension MappingFixtures {
         trackSides: looseContainerTrackSides,
         files: [
             .sheet(
-                sheet: sheetGroup(container: container, assignment: .ignored)
+                sheet: sheetGroup(container: container, assigned: nil)
             )
         ],
         untitledTrackCount: 0
@@ -273,7 +273,7 @@ extension MappingFixtures {
 
     /// The same folder once the sheet is bound: twelve entries out of one file.
     static func boundSheetTable(
-        assignment: BridgeSheetDisc = .disc(number: 1)
+        assigned: BridgeSheetSideChoice? = .disc(1)
     ) -> BridgeMappingTable {
         BridgeMappingTable(
             images: [],
@@ -284,7 +284,7 @@ extension MappingFixtures {
                         .sheet(
                             sheet: sheetGroup(
                                 container: container,
-                                assignment: assignment
+                                assigned: assigned
                             ),
                             entries: (0..<12).map(entry)
                         )

@@ -6,6 +6,7 @@
 //! else on the release's own, each beside the form row that edits it with its
 //! picked artists as the library holds them.
 
+use super::super::layout_bindings::{json, mediums_json, moves_json, places_json};
 use super::form_assignments::{assignment_rows, assignment_rows_sql};
 use super::*;
 use crate::tables::draft_rows::{
@@ -59,38 +60,6 @@ struct FormTrackJson<'a> {
     kind: &'static str,
 }
 
-/// One medium of the applied catalog's layout as `:mediums` binds it.
-#[derive(serde::Serialize)]
-struct MediumJson {
-    position: u16,
-    carrier: Option<&'static str>,
-    sides: u8,
-}
-
-/// Where the applied catalog places a form track, the length it lists for it
-/// and its playing position, as `:places` binds it.
-#[derive(serde::Serialize)]
-struct PlaceJson<'a> {
-    track_id: &'a str,
-    medium: u16,
-    side: u8,
-    number: u32,
-    stated_length_ms: Option<u64>,
-    position: usize,
-}
-
-/// The disc picked for a CUE sheet, as `:moves` binds it.
-#[derive(serde::Serialize)]
-struct MoveJson<'a> {
-    sheet_file_id: &'a str,
-    disc: u32,
-}
-
-/// `value` as the JSON a statement binds.
-fn json(value: &impl serde::Serialize, what: &str) -> Result<String, DbError> {
-    serde_json::to_string(value).map_err(|error| DbError::encode(what, error))
-}
-
 impl FormParams {
     pub(super) fn of(form: &ReleaseEditForm) -> Result<Self, DbError> {
         let edit = &form.edit;
@@ -116,32 +85,7 @@ impl FormParams {
                 kind: assignment_kind_column(&track.artist_assignments),
             })
             .collect();
-        let mut mediums = Vec::new();
-        let mut places = Vec::new();
-        if let Some(applied) = &form.applied {
-            for (index, medium) in applied.draft.mediums.iter().enumerate() {
-                mediums.push(MediumJson {
-                    position: bae_types::mediums::medium_position(index).get(),
-                    carrier: medium.carrier.map(bae_types::pressing::Medium::key),
-                    sides: medium.sides.get(),
-                });
-            }
-            for (position, track) in applied.draft.tracks.iter().enumerate() {
-                places.push(PlaceJson {
-                    track_id: &track.edit.id,
-                    medium: track.place.medium.get(),
-                    side: track.place.side.get(),
-                    number: track.place.number.get(),
-                    stated_length_ms: track.stated_length_ms,
-                    position,
-                });
-            }
-        }
-        let moves: Vec<_> = form
-            .sheet_discs
-            .iter()
-            .map(|(sheet_file_id, disc)| MoveJson { sheet_file_id, disc: *disc })
-            .collect();
+        let applied = form.applied.as_ref().map(|applied| &applied.draft);
         let (pick_kind, pick_album) = match &form.album_pick {
             AlbumPick::Records => ("records", None),
             AlbumPick::New => ("new", None),
@@ -153,9 +97,12 @@ impl FormParams {
             album_artists: json(&album_artists, "a release editor's album artists")?,
             track_artists: json(&track_artists, "a release editor's track artists")?,
             form_tracks: json(&form_tracks, "a release editor's tracks")?,
-            mediums: json(&mediums, "a release editor's applied mediums")?,
-            places: json(&places, "a release editor's applied track places")?,
-            moves: json(&moves, "a release editor's picked sheet discs")?,
+            mediums: mediums_json(applied, "a release editor's applied mediums")?,
+            places: places_json(applied, "a release editor's applied track places")?,
+            moves: moves_json(
+                form.sheet_places.iter().map(|(sheet, side)| (sheet.as_str(), *side)),
+                "a release editor's picked sheet sides",
+            )?,
             sheet_files: bae_records::records::sheet_files::sheet_file_picks_json(
                 &form.sheet_files,
             )?,
@@ -170,10 +117,11 @@ impl FormParams {
     /// What the layout's statements read of the form.
     pub(super) fn layout(&self) -> LayoutParams<'_> {
         LayoutParams {
-            release_id: &self.release,
+            release_id: Some(&self.release),
             applied: self.applied,
             mediums: &self.mediums,
             places: &self.places,
+            carving: "[]",
             moves: &self.moves,
         }
     }
@@ -243,8 +191,9 @@ pub(crate) struct ReleaseEditDraftRows {
     album: DraftAlbum,
     cover_version: Option<String>,
     tracks: Vec<DraftTrackRow>,
-    /// How many discs the release has once the form's layout is written.
-    disc_count: usize,
+    /// The sides and discs a CUE sheet can go on once the form's layout is
+    /// written.
+    side_choices: Vec<bae_records::DbSheetSideChoice>,
     /// The names of the files a save reads first; `None` when it reads none.
     files_to_read: Option<Vec<String>>,
     has_tracks: bool,
@@ -319,7 +268,10 @@ pub(crate) fn release_edit_draft_rows_on(
             |row| row.get(0),
         )?,
         tracks: draft_tracks_on(sql, &params)?,
-        disc_count: bae_records::records::layout::laid_disc_count_on(sql, &params.layout())?,
+        side_choices: bae_records::records::layout::laid_sheet_side_choices_on(
+            sql,
+            &params.layout(),
+        )?,
         files_to_read: bae_records::records::sheet_files::sheet_files_to_read_on(
             sql,
             ":release",
@@ -429,7 +381,7 @@ impl ReleaseEditDraftRows {
             album,
             cover_version,
             tracks,
-            disc_count,
+            side_choices,
             files_to_read,
             has_tracks,
             files,
@@ -442,8 +394,6 @@ impl ReleaseEditDraftRows {
         let unreadable = |error: crate::ReleaseEditLoadError| {
             DbError::unreadable(format!("the tracks of release {release_id}"), error)
         };
-        let disc_count = u32::try_from(disc_count).expect("a release holds fewer than 2^32 discs");
-        let disc_options: Vec<u32> = (1..=disc_count).collect();
         let rows = tracks
             .into_iter()
             .map(|track| track.table_row(&unreadable))
@@ -451,7 +401,7 @@ impl ReleaseEditDraftRows {
         Ok(ReleaseEditDraft {
             cover: bae_records::cover_ref(&release_id, cover_version),
             source_audio: files.source_audio.clone(),
-            sides: has_tracks.then(|| crate::ReleaseEditTrackSide::lay_out(rows, &disc_options)),
+            sides: has_tracks.then(|| crate::ReleaseEditTrackSide::lay_out(rows, &side_choices)),
             files: files
                 .has_others
                 .then(|| crate::ReleaseEditDisplayContext::carried_files(&files)),

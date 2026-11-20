@@ -65,15 +65,16 @@ pub struct DbReleaseEditTrack {
 }
 
 /// A CUE sheet that carves a track out of an image, as the release editor
-/// names it: its file's id and name, the disc of the release the import
-/// read it as, the text of the sheet's `FILE` line the track is under, and
+/// names it: its file's id and name, the side of the release its first
+/// track sits on with that side's heading, as the release's choices of side
+/// name it, the text of the sheet's `FILE` line the track is under, and
 /// the audio files of the release that line can play from, in file name
 /// order.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct DbReleaseEditSheet {
     pub file_id: String,
     pub name: String,
-    pub disc_number: u32,
+    pub place: DbSheetSideChoice,
     pub file_reference: String,
     pub audio_options: Vec<DbSheetAudioOption>,
 }
@@ -91,6 +92,16 @@ pub struct DbSheetAudioOption {
     /// Whether the file is long enough for every track the line carves: no
     /// track's body ends, or the last one starts, past the file's end.
     pub fits: bool,
+}
+
+/// One side or disc a CUE sheet's entries can be put on: the side of the
+/// medium, and the heading the release's screens name it by. A disc of a
+/// release of one medium, which no heading names, is "Disc 1" here, since
+/// the choice needs a name.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct DbSheetSideChoice {
+    pub side: bae_types::mediums::MediumSide,
+    pub heading: bae_types::mediums::TrackSide,
 }
 
 /// A track's main segment as the release editor reads it: the file it names,

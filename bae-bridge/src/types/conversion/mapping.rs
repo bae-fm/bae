@@ -86,11 +86,27 @@ mirror_enum! {
     },
 }
 
-mirror_enum! {
-    BridgeSheetDisc = bae_import::folder_scanner::SheetDisc,
-    from_core: fn,
+mirror_struct! {
+    BridgeMediumSide = bae_types::mediums::MediumSide,
+    from_core: pub(crate) fn,
     into_core: pub(crate) fn,
-    variants: { Disc { number }, Ignored },
+    fields: { medium, side },
+}
+
+impl BridgeSheetPlace {
+    pub(crate) fn into_core(self) -> bae_import::folder_scanner::SheetPlace {
+        use bae_import::folder_scanner::SheetPlace;
+        match self {
+            Self::On { side } => SheetPlace::On(side.into_core()),
+            Self::Ignored => SheetPlace::Ignored,
+        }
+    }
+}
+
+mirror_struct! {
+    BridgeSheetSideChoice = bae_records::DbSheetSideChoice,
+    from_core: pub(crate) fn,
+    fields: { side: (BridgeMediumSide), heading: (BridgeTrackSide) },
 }
 
 mirror_enum! {
@@ -185,8 +201,8 @@ impl BridgeSheetGroup {
             bound,
             bound_audio,
             unbound_references,
-            assignment,
-            disc_options,
+            assigned,
+            side_choices,
         } = sheet;
         BridgeSheetGroup {
             sheet_id,
@@ -197,8 +213,8 @@ impl BridgeSheetGroup {
             unbound_references: unbound_references.map(|references| {
                 references.into_iter().map(BridgeSheetReferenceOptions::from_core).collect()
             }),
-            assignment: BridgeSheetDisc::from_core(assignment),
-            disc_options,
+            assigned: assigned.map(BridgeSheetSideChoice::from_core),
+            side_choices: side_choices.into_iter().map(BridgeSheetSideChoice::from_core).collect(),
         }
     }
 }

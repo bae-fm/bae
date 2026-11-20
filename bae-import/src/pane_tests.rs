@@ -116,3 +116,41 @@ fn metadata_with_a_different_track_count_is_refused() {
         Err(ImportError::MetadataTrackCount { folder_tracks: 3, release_tracks: 2 })
     ));
 }
+
+/// A sheet the files put on a side the draft holds moves there by the
+/// library's layout statement: after the tracks on that side, numbered on
+/// from the highest, and the disc it left goes.
+#[tokio::test]
+async fn a_sheet_moves_onto_a_side_the_draft_holds_by_the_library_rule() {
+    let (db, _folder) = bae_store::test_fixtures::empty_db(crate::TEST_SCHEMA).await;
+    let tables = crate::tables::ImportTables::new(db);
+    let record = bae_types::mediums::ReleaseMedium {
+        carrier: Some(bae_types::pressing::Medium::Vinyl),
+        sides: std::num::NonZeroU8::new(2).expect("two sides"),
+    };
+    let mut current = draft(4);
+    current.mediums = vec![record, bae_types::mediums::ReleaseMedium::one_sided(None)];
+    for (index, at) in
+        [place(1, 1, 1), place(1, 2, 1), place(2, 1, 1), place(2, 1, 2)].into_iter().enumerate()
+    {
+        current.tracks[index].place = at;
+    }
+    for (index, track) in current.tracks.iter_mut().enumerate().skip(2) {
+        track.edit.file = crate::AudioFile::SheetSlice {
+            file_id: "image.flac".into(),
+            sheet_id: "b.cue".into(),
+            index: u32::try_from(index).unwrap(),
+        };
+    }
+    let redrawn = RedrawnDraft {
+        draft: current,
+        sheet_moves: vec![("b.cue".into(), bae_types::mediums::MediumSide { medium: 1, side: 2 })],
+    };
+    let layout = tables.lay_out_sheet_moves(&redrawn).await.unwrap();
+    let laid = redrawn.laid_out(layout).unwrap();
+    assert_eq!(laid.mediums, [record]);
+    assert_eq!(
+        laid.tracks.iter().map(|track| track.place).collect::<Vec<_>>(),
+        [place(1, 1, 1), place(1, 2, 1), place(1, 2, 2), place(1, 2, 3)]
+    );
+}

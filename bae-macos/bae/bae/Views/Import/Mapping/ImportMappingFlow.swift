@@ -125,7 +125,7 @@ extension ImportMappingFlow {
     ) -> ImportMappingActions {
         ImportMappingActions(
             bindSheet: bindingAction(key: key, services: services),
-            setSheetDisc: discAction(key: key, services: services),
+            setSheetPlace: placeAction(key: key, services: services),
             openDocument: { name, fileId in
                 services.openDocument(key, name, fileId)
             },
@@ -183,16 +183,16 @@ extension ImportMappingFlow {
     }
 
     @MainActor
-    private static func discAction(
+    private static func placeAction(
         key: Data,
         services: ImportMappingServices
-    ) -> (String, BridgeSheetDisc) -> Void {
-        { sheetFileId, disc in
+    ) -> (String, BridgeSheetPlace) -> Void {
+        { sheetFileId, place in
             start {
-                await setSheetDisc(
+                await setSheetPlace(
                     key: key,
                     sheetFileId: sheetFileId,
-                    disc: disc,
+                    place: place,
                     services: services
                 )
             }
@@ -241,18 +241,19 @@ extension ImportMappingFlow {
         }
     }
 
-    /// Say which disc of the release a sheet's entries are, or take them out of
-    /// the tracklist. Re-shapes the tracklist exactly as a binding does.
+    /// Say which side or disc of the release a sheet's entries are on, or take
+    /// them out of the tracklist. Re-shapes the tracklist exactly as a binding
+    /// does.
     @MainActor
-    static func setSheetDisc(
+    static func setSheetPlace(
         key: Data,
         sheetFileId: String,
-        disc: BridgeSheetDisc,
+        place: BridgeSheetPlace,
         services: ImportMappingServices
     ) async {
         await services.endEditing()
         do {
-            try await services.importer.setSheetDisc(key, sheetFileId, disc)
+            try await services.importer.setSheetPlace(key, sheetFileId, place)
         }
         catch is CancellationError {
             return
@@ -262,7 +263,7 @@ extension ImportMappingFlow {
                 .rewording({
                     String(
                         localized:
-                            "Could not change which disc \(sheetFileId) is: \($0)"
+                            "Could not change which side or disc \(sheetFileId) is on: \($0)"
                     )
                 })
             {

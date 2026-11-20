@@ -85,8 +85,8 @@ extension ImportMappingTracksLayoutTests {
                 ? .several(references: references)
                 : .one(reference: references[0]),
             unboundReferences: secondAssigned ? nil : [references[1]],
-            assignment: secondAssigned ? .disc(number: 1) : .ignored,
-            discOptions: secondAssigned ? [1] : []
+            assigned: secondAssigned ? .disc(1) : nil,
+            sideChoices: secondAssigned ? BridgeSheetSideChoice.discs(1) : []
         )
     }
 
@@ -164,8 +164,8 @@ extension ImportMappingTracksLayoutTests {
             bound: .describesFiles(audioFileCount: 2),
             boundAudio: .several(references: references),
             unboundReferences: nil,
-            assignment: .disc(number: 1),
-            discOptions: [1]
+            assigned: .disc(1),
+            sideChoices: BridgeSheetSideChoice.discs(1)
         )
         let size = NSSize(width: 900, height: 180)
         try await withHostedSheet(group, size: size) { _, host in
@@ -187,7 +187,7 @@ extension ImportMappingTracksLayoutTests {
         try await SnapshotTestSupport.withHostedWindow(
             ImportPaneSheetCaption(
                 sheet: sheet,
-                showsDiscMenu: false,
+                showsPlaceMenu: false,
                 actions: actions(recording: MappingTrackActionRecorder())
             )
             .padding(20)

@@ -374,24 +374,25 @@ forward! {
                 .await?)
         }
 
-        /// Say which disc of the release one of a candidate's track sheets holds,
-        /// or take it out of the tracklist with `BridgeSheetDisc::Ignored`.
+        /// Put one of a candidate's track sheets on a side or disc of the
+        /// release, one of the sheet's `side_choices`, or take it out of the
+        /// tracklist with `BridgeSheetPlace::Ignored`.
         ///
         /// Cue filenames are arbitrary — `CD1.cue` may hold disc two — so the
-        /// assignment is the truth about which cue is which disc, and no UI reads
-        /// it off a name. Discs count from one.
+        /// place is the truth about which cue is which side or disc, and no UI
+        /// reads it off a name.
         ///
         /// Persists the decision and clears the candidate's stored identify
-        /// verdict, because a re-assigned or ignored sheet is a different
-        /// tracklist. The candidate subscription carries it to the import view.
-        fn set_sheet_disc(
+        /// verdict, because a moved or ignored sheet is a different tracklist.
+        /// The candidate subscription carries it to the import view.
+        fn set_sheet_place(
             candidate_key: Vec<u8>,
             sheet_file_id: String,
-            disc: crate::types::BridgeSheetDisc,
+            place: crate::types::BridgeSheetPlace,
         ) -> () {
             Ok(this
                 .services
-                .import_set_sheet_disc(candidate_key.into(), sheet_file_id, disc.into_core())
+                .import_set_sheet_place(candidate_key.into(), sheet_file_id, place.into_core())
                 .await?)
         }
 

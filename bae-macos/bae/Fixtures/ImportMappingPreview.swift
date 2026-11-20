@@ -108,7 +108,7 @@ enum ImportMappingPreview {
 func inertMappingActions() -> ImportMappingActions {
     ImportMappingActions(
         bindSheet: { _, _, _ in },
-        setSheetDisc: { _, _ in },
+        setSheetPlace: { _, _ in },
         openDocument: { _, _ in },
         openImages: { _ in },
         preview: { _ in },

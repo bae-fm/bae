@@ -251,8 +251,8 @@ extension PreviewData {
         ),
         boundAudio: .one(reference: sheetReferenceOptions),
         unboundReferences: nil,
-        assignment: .disc(number: 1),
-        discOptions: [1, 2]
+        assigned: .disc(1),
+        sideChoices: BridgeSheetSideChoice.discs(2)
     )
 
     /// Every row kind the table draws, with the folder's gallery beside it:
@@ -547,5 +547,27 @@ extension PreviewData {
                     )
                 }
         )
+    }
+}
+
+extension BridgeMediumSide {
+    /// The first side of the medium `medium`, the one side of a disc that is
+    /// not a record or cassette.
+    static func firstOf(_ medium: UInt32) -> BridgeMediumSide {
+        BridgeMediumSide(medium: medium, side: 1)
+    }
+}
+
+extension BridgeSheetSideChoice {
+    /// The disc `number` of a release whose mediums are not records or
+    /// cassettes, named as core names it.
+    static func disc(_ number: UInt32) -> BridgeSheetSideChoice {
+        BridgeSheetSideChoice(side: .firstOf(number), heading: .disc(disc: number))
+    }
+
+    /// The choices of a release of `count` discs that are not records or
+    /// cassettes, each named as its disc, as core offers them.
+    static func discs(_ count: UInt32) -> [BridgeSheetSideChoice] {
+        (1...count).map(disc)
     }
 }

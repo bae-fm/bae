@@ -248,9 +248,9 @@ pub(super) fn settle_sheet_bindings(
     Ok(SettledBindings::Settled)
 }
 
-/// Settle every parsed sheet's disc assignment: the user's decision where they
-/// made one, and the sheet's own position among the folder's carving sheets
-/// where they made none.
+/// Settle every parsed sheet's place: the user's decision where they made
+/// one, and the first side of the disc of the sheet's own position among the
+/// folder's carving sheets where they made none.
 ///
 /// Total over the folder's parsed sheets, and run after
 /// [`settle_sheet_bindings`] at every call site, because the position it hands
@@ -262,17 +262,17 @@ pub(super) fn settle_sheet_bindings(
 /// same audio the first in the folder's file order carves it and the rest are
 /// ignored — a sheet the user assigned a disc to claims its audio ahead of
 /// any the scan proposed, and one the user ignored claims none.
-pub(super) fn settle_sheet_discs(
+pub(super) fn settle_sheet_places(
     files: &mut [CandidateFile],
     parts: &[ReleasePart],
-    edits: &SheetDiscEdits,
+    edits: &SheetPlaceEdits,
 ) {
     let mut claimed: std::collections::HashSet<&str> = std::collections::HashSet::new();
     for entry in files.iter() {
         if let FileRole::TrackSheet { binding: SheetBinding::Resolved { files: audio }, .. } =
             &entry.role
         {
-            if matches!(edits.get(&entry.file.relative_path), Some(SheetDisc::Disc { .. })) {
+            if matches!(edits.get(&entry.file.relative_path), Some(SheetPlace::On(_))) {
                 claimed.extend(audio.iter().map(|file| file.file_id.as_str()));
             }
         }
@@ -285,8 +285,8 @@ pub(super) fn settle_sheet_discs(
             continue;
         };
         match edits.get(&entry.file.relative_path) {
-            Some(SheetDisc::Disc { .. }) => continue,
-            Some(SheetDisc::Ignored) => {
+            Some(SheetPlace::On(_)) => continue,
+            Some(SheetPlace::Ignored) => {
                 ignored.insert(entry.file.relative_path.clone());
                 continue;
             }
@@ -306,17 +306,16 @@ pub(super) fn settle_sheet_discs(
     };
     let layout = DiscLayout::of(files, parts, carving);
     for entry in files.iter_mut() {
-        let FileRole::TrackSheet { binding, disc, .. } = &mut entry.role else {
+        let FileRole::TrackSheet { binding, place, .. } = &mut entry.role else {
             continue;
         };
         if !binding.is_resolved() || ignored.contains(&entry.file.relative_path) {
-            *disc = SheetDisc::Ignored;
+            *place = SheetPlace::Ignored;
             continue;
         }
-        *disc = edits
-            .get(&entry.file.relative_path)
-            .copied()
-            .unwrap_or(SheetDisc::Disc { number: layout.sheet_disc(&entry.file.relative_path) });
+        *place = edits.get(&entry.file.relative_path).copied().unwrap_or(SheetPlace::On(
+            bae_types::mediums::MediumSide::first_of(layout.sheet_disc(&entry.file.relative_path)),
+        ));
     }
 }
 
@@ -460,7 +459,7 @@ pub struct TrackSheetFile<'a> {
     pub file: &'a ScannedFile,
     pub sheet: &'a crate::cue_sheet::CueSheet,
     pub binding: &'a SheetBinding,
-    pub disc: SheetDisc,
+    pub place: SheetPlace,
 }
 
 /// A track sheet whose `FILE` directives resolved, paired with the audio it
@@ -472,7 +471,7 @@ pub struct BoundTrackSheet<'a> {
     /// Every CUE `FILE` reference paired with the physical audio it resolved
     /// to, in the sheet's reference order.
     pub audio_files: Vec<(&'a str, &'a ScannedFile)>,
-    pub disc: SheetDisc,
+    pub place: SheetPlace,
 }
 
 /// The audio a sheet track plays from, among the sheet's `FILE` references
@@ -498,19 +497,10 @@ impl<'a> BoundTrackSheet<'a> {
     ///
     /// One rule, stated once, so "bound but ignored" and "assigned but unbound"
     /// cannot mean two different things: a sheet speaks for its container only
-    /// when it is bound, assigned to a disc, and describes something. A sheet
-    /// that carves nothing leaves its container a track of its own.
+    /// when it is bound, put on a side or disc, and describes something. A
+    /// sheet that carves nothing leaves its container a track of its own.
     pub fn carves(&self) -> bool {
-        self.disc_number().is_some() && self.sheet.playable_track_count() > 0
-    }
-
-    /// The disc this sheet's entries become, or `None` when it is out of the
-    /// tracklist.
-    pub fn disc_number(&self) -> Option<u32> {
-        match self.disc {
-            SheetDisc::Disc { number } => Some(number),
-            SheetDisc::Ignored => None,
-        }
+        self.place.side().is_some() && self.sheet.playable_track_count() > 0
     }
 }
 
@@ -636,7 +626,7 @@ impl CategorizedFiles {
         .expect("a fresh cancellation token cannot be cancelled")
         {
             SettledBindings::Settled => {
-                settle_sheet_discs(&mut self.files, &self.parts, &edits.sheet_discs);
+                settle_sheet_places(&mut self.files, &self.parts, &edits.sheet_places);
                 Ok(())
             }
             SettledBindings::CorruptAudio { path } => Err(UnreadableAudio { path }),

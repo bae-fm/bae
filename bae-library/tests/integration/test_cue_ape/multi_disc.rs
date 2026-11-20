@@ -316,8 +316,9 @@ async fn test_editor_moves_a_sheet_to_a_disc_that_holds_other_tracks() {
 
     let form = manager.open_release_edit(&release_id).await.unwrap();
     let drafts = manager.subscribe_release_edit_draft();
-    let moved = form.clone().with_sheet_disc(first.clone(), 2);
-    let put_back = moved.clone().with_sheet_disc(first.clone(), 1);
+    let disc = bae_types::mediums::MediumSide::first_of;
+    let moved = form.clone().with_sheet_side(first.clone(), disc(2));
+    let put_back = moved.clone().with_sheet_side(first.clone(), disc(1));
     assert!(!put_back.changed(), "a sheet picked back onto its own disc is no change");
     drafts.set(Some(moved.clone())).expect("the draft takes the form");
     let draft = drafts.next().await.expect("read the draft").expect("the library holds it");
@@ -329,14 +330,14 @@ async fn test_editor_moves_a_sheet_to_a_disc_that_holds_other_tracks() {
         .iter()
         .map(|run| match run {
             bae_import::ReleaseEditTrackRun::Sheet { sheet, rows, .. } => {
-                (sheet.file_id.clone(), sheet.disc_number, rows.len())
+                (sheet.file_id.clone(), sheet.place.side, rows.len())
             }
             bae_import::ReleaseEditTrackRun::Track(_) => panic!("a sheet carves each track"),
         })
         .collect();
     assert_eq!(
         runs,
-        [(second.clone(), 1, 3), (first.clone(), 1, 3)],
+        [(second.clone(), disc(1), 3), (first.clone(), disc(1), 3)],
         "the sheet the release kept leads, and the moved sheet follows it on the same disc"
     );
     assert!(draft.changed);
@@ -355,7 +356,7 @@ async fn test_editor_moves_a_sheet_to_a_disc_that_holds_other_tracks() {
         .display
         .tracks
         .iter()
-        .map(|track| track.sheet.as_ref().map(|sheet| sheet.disc_number))
+        .map(|track| track.sheet.as_ref().map(|sheet| sheet.place.side))
         .collect();
-    assert_eq!(discs, [Some(1); 6], "each sheet is the disc its tracks are on");
+    assert_eq!(discs, [Some(disc(1)); 6], "each sheet is on the side its tracks are on");
 }

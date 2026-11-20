@@ -197,6 +197,16 @@ pub(crate) fn keep_row_identities(
     Ok(())
 }
 
+/// The draft over the folder's new audio units, before the library's layout
+/// statement moves the CUE sheets the files now put on another side, and
+/// those moves.
+pub(crate) struct RedrawnDraft {
+    pub(crate) draft: CandidateDraft,
+    /// Each CUE sheet the files now put on another side the draft holds,
+    /// with that side.
+    pub(crate) sheet_moves: Vec<(String, bae_types::mediums::MediumSide)>,
+}
+
 /// The draft over the folder's new audio units: a unit the draft already
 /// had keeps its track, with every value it holds, and a new one takes the
 /// track `initialized` read for it, which no source states anything about.
@@ -204,25 +214,44 @@ pub(crate) fn keep_row_identities(
 /// file happens to occupy. The draft keeps only the works its tracks still
 /// perform.
 ///
-/// A new track, and a retained slice whose sheet the files now put on another
-/// disc, take the place the folder's layout gives them: the draft's medium at
-/// that disc's position, the draft gaining mediums of unstated carrier up to
-/// it when it holds fewer. A medium no track sits on any more is dropped.
+/// A new track takes the place the folder's layout gives it: the draft's
+/// medium at its disc's position, the draft gaining mediums of unstated
+/// carrier up to it when it holds fewer. A sheet the files now put on
+/// another side the draft's mediums hold is one of the redrawn draft's
+/// moves, which the library's layout statement makes; where the draft's medium
+/// has no such side, the sheet's retained slices take the place the
+/// folder's layout gives them.
 pub(crate) fn redraw_draft_for_files(
     previous_files: &CategorizedFiles,
     files: &CategorizedFiles,
     initialized: CandidateDraft,
     draft: &CandidateDraft,
     ids: &dyn coven::IdSource,
-) -> CandidateDraft {
+) -> RedrawnDraft {
+    use bae_types::mediums::{MediumSide, TrackPlace};
     let mut mediums = draft.mediums.clone();
-    let mut laid_out = |place: bae_types::mediums::TrackPlace| {
+    let mut laid_out = |place: TrackPlace| {
         while mediums.len() <= place.medium_index() {
             mediums.push(bae_types::mediums::ReleaseMedium::one_sided(None));
         }
         place
     };
-    let tracks = initialized
+    let side_of = |files: &CategorizedFiles, sheet_id: &str| {
+        files
+            .carving_sheets()
+            .into_iter()
+            .find(|sheet| sheet.file.relative_path == sheet_id)
+            .and_then(|sheet| sheet.place.side())
+    };
+    // Whether the draft's mediums hold the side.
+    let held = |side: MediumSide| {
+        usize::try_from(side.medium)
+            .ok()
+            .and_then(|medium| draft.mediums.get(medium.checked_sub(1)?))
+            .is_some_and(|held| side.side >= 1 && side.side <= u32::from(held.sides.get()))
+    };
+    let mut sheet_moves: Vec<(String, MediumSide)> = Vec::new();
+    let tracks: Vec<CandidateTrack> = initialized
         .tracks
         .into_iter()
         .map(|fresh| {
@@ -230,15 +259,16 @@ pub(crate) fn redraw_draft_for_files(
             if let Some(existing) = draft.tracks.iter().find(|track| &track.edit.file == audio) {
                 let mut retained = existing.clone();
                 if let crate::AudioFile::SheetSlice { sheet_id, .. } = audio {
-                    let disc_of = |files: &CategorizedFiles| {
-                        files
-                            .carving_sheets()
-                            .into_iter()
-                            .find(|sheet| sheet.file.relative_path == *sheet_id)
-                            .and_then(|sheet| sheet.disc_number())
-                    };
-                    if disc_of(previous_files) != disc_of(files) {
-                        retained.place = laid_out(fresh.place);
+                    let side = side_of(files, sheet_id);
+                    if side_of(previous_files, sheet_id) != side {
+                        match side.filter(|side| held(*side)) {
+                            Some(side) => {
+                                if sheet_moves.iter().all(|(moved, _)| moved != sheet_id) {
+                                    sheet_moves.push((sheet_id.clone(), side));
+                                }
+                            }
+                            None => retained.place = laid_out(fresh.place),
+                        }
                     }
                 }
                 return retained;
@@ -248,8 +278,32 @@ pub(crate) fn redraw_draft_for_files(
             CandidateTrack::unsourced(edit, laid_out(fresh.place))
         })
         .collect();
-    let (mediums, tracks) = without_empty_mediums(mediums, tracks);
-    CandidateDraft { mediums, ..draft.with_tracks(tracks) }
+    RedrawnDraft { draft: CandidateDraft { mediums, ..draft.with_tracks(tracks) }, sheet_moves }
+}
+
+impl RedrawnDraft {
+    /// The draft with its tracks at the places `layout`, the library's
+    /// layout statement over the draft and its sheet moves, gives them, and
+    /// only the mediums a track sits on. A layout that misses a track of the
+    /// draft is refused.
+    pub(crate) fn laid_out(
+        self,
+        layout: bae_records::records::layout::ReleaseLayout,
+    ) -> Result<CandidateDraft, ImportError> {
+        let mediums = layout.mediums;
+        let mut tracks = self.draft.tracks.clone();
+        for track in &mut tracks {
+            let laid = layout.tracks.iter().find(|laid| laid.track_id == track.edit.id);
+            let Some(laid) = laid else {
+                return Err(ImportError::Internal {
+                    detail: format!("the layout of an import draft misses track {}", track.edit.id),
+                });
+            };
+            track.place = laid.place;
+        }
+        let (mediums, tracks) = without_empty_mediums(mediums, tracks);
+        Ok(CandidateDraft { mediums, ..self.draft.with_tracks(tracks) })
+    }
 }
 
 /// `mediums` with only the ones a track of `tracks` sits on, in order, and

@@ -1,6 +1,6 @@
 //! These tests check how the release sheet decisions part declares its
 //! tables. Both tables sync:
-//! `release_sheet_discs` is keyed by the sheet file, and
+//! `release_sheet_places` is keyed by the sheet file, and
 //! `release_sheet_bindings` by the sheet file and the `FILE` reference.
 
 use std::collections::BTreeSet;
@@ -19,7 +19,7 @@ fn the_sheet_decision_tables_are_the_part_s_synced_tables() {
         .collect();
     let tables = schema.synced_tables();
     let declared: BTreeSet<&str> = tables.iter().map(coven::SyncedTable::name).collect();
-    assert_eq!(created, BTreeSet::from(["release_sheet_bindings", "release_sheet_discs"]));
+    assert_eq!(created, BTreeSet::from(["release_sheet_bindings", "release_sheet_places"]));
     assert_eq!(declared, created);
     for table in &tables {
         assert_eq!(table.identity(), &coven::RowIdentity::SharedKey);
@@ -36,14 +36,15 @@ fn the_sheet_decision_tables_are_the_part_s_synced_tables() {
 /// write, whether the path is the sheet's or the audio a binding names.
 #[tokio::test]
 async fn a_decision_naming_a_path_outside_the_release_fails_its_write() {
-    use crate::folder_scanner::{CandidateFileEdits, SheetDisc, UserSheetBinding};
+    use crate::folder_scanner::{CandidateFileEdits, SheetPlace, UserSheetBinding};
     use std::collections::HashMap;
 
     let (db, _dir) = bae_store::test_fixtures::empty_db(crate::TEST_SCHEMA).await;
     let tables = crate::tables::ImportTables::new(db);
 
     let mut disc = CandidateFileEdits::default();
-    disc.sheet_discs.set("CD2.cue".to_string(), SheetDisc::Disc { number: 1 });
+    disc.sheet_places
+        .set("CD2.cue".to_string(), SheetPlace::On(bae_types::mediums::MediumSide::first_of(1)));
     let error = tables.store_release_sheet_decisions_for_test(disc, HashMap::new()).await;
     assert!(
         matches!(&error, Err(bae_store::DbError::Unreadable { stored, .. }) if stored.contains("CD2.cue")),

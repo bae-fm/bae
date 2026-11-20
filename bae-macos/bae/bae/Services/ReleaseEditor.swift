@@ -179,9 +179,9 @@ final class ReleaseEditor: Observable {
                 setAlbum: { pick in
                     _ = try await form.change { $0.withAlbum(pick: pick) }
                 },
-                setSheetDisc: { sheetFileId, disc in
+                setSheetSide: { sheetFileId, side in
                     _ = try await form.change {
-                        $0.withSheetDisc(sheetFileId: sheetFileId, disc: disc)
+                        $0.withSheetSide(sheetFileId: sheetFileId, side: side)
                     }
                 },
                 setSheetFile: { sheetFileId, fileReference, audioFileId in

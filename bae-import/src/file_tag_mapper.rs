@@ -288,7 +288,7 @@ pub(crate) fn file_metadata_values(
             }
             UnitContribution::Runs(sheets) => {
                 for bound in sheets {
-                    let disc = bound.disc_number().expect("carving sheet has a disc number");
+                    let disc = bound.place.side().expect("a carving sheet is on a side").medium;
                     tracks
                         .extend(bound.sheet.playable_tracks().map(|track| cue_track(track, disc)));
                 }

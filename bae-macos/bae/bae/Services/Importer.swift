@@ -24,8 +24,8 @@ private struct ImportOperations: Sendable {
     let unlinkCandidateRelease:
         @Sendable (Data) async throws -> BridgePaneOutcome
     let clearCandidateMetadata: @Sendable (Data) async throws -> UInt64
-    let setSheetDisc:
-        @Sendable (Data, String, BridgeSheetDisc) async throws -> Void
+    let setSheetPlace:
+        @Sendable (Data, String, BridgeSheetPlace) async throws -> Void
     let autoIdentifyRelease: @Sendable (String) async throws -> Void
     let editReleaseLookupChoices:
         @Sendable (String, BridgeLookupChoiceEdit) async throws -> Void
@@ -132,11 +132,11 @@ extension ImportOperations {
             clearCandidateMetadata: {
                 try await handle.clearCandidateMetadata(candidateKey: $0)
             },
-            setSheetDisc: {
-                try await handle.setSheetDisc(
+            setSheetPlace: {
+                try await handle.setSheetPlace(
                     candidateKey: $0,
                     sheetFileId: $1,
-                    disc: $2
+                    place: $2
                 )
             },
             autoIdentifyRelease: {
@@ -323,8 +323,8 @@ final class Importer: Sendable, Observable {
             @escaping @Sendable (Data) async throws -> UInt64 = { _ in
                 throw StubError.notImplemented
             },
-        setSheetDisc:
-            @escaping @Sendable (Data, String, BridgeSheetDisc) async throws
+        setSheetPlace:
+            @escaping @Sendable (Data, String, BridgeSheetPlace) async throws
             -> Void = { _, _, _ in },
         autoIdentifyRelease:
             @escaping @Sendable (String) async throws -> Void = { _ in },
@@ -423,7 +423,7 @@ final class Importer: Sendable, Observable {
             linkCandidateSharedAlbum: linkCandidateSharedAlbum,
             unlinkCandidateRelease: unlinkCandidateRelease,
             clearCandidateMetadata: clearCandidateMetadata,
-            setSheetDisc: setSheetDisc,
+            setSheetPlace: setSheetPlace,
             autoIdentifyRelease: autoIdentifyRelease,
             editReleaseLookupChoices: editReleaseLookupChoices,
             endReleaseIdentification: endReleaseIdentification,
@@ -563,12 +563,12 @@ extension Importer {
         try await operations.clearCandidateMetadata(candidateKey)
     }
 
-    func setSheetDisc(
+    func setSheetPlace(
         _ candidateKey: Data,
         _ sheetFileId: String,
-        _ disc: BridgeSheetDisc
+        _ place: BridgeSheetPlace
     ) async throws {
-        try await operations.setSheetDisc(candidateKey, sheetFileId, disc)
+        try await operations.setSheetPlace(candidateKey, sheetFileId, place)
     }
 
     /// Re-identify a library release, asking about what core holds for this

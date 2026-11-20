@@ -186,10 +186,11 @@ pub struct ReleaseEditForm {
     pub edit: RawReleaseEdit,
     pub applied: Option<AppliedCatalog>,
     pub album_pick: AlbumPick,
-    /// The disc the person picked for each CUE sheet, by the sheet's file
-    /// id, that moves the sheet's tracks there. A catalog applied after a
-    /// pick lays the tracks out at its own places and clears the picks.
-    pub sheet_discs: std::collections::BTreeMap<String, u32>,
+    /// The side or disc the person picked for each CUE sheet, by the
+    /// sheet's file id, that moves the sheet's tracks there. A catalog
+    /// applied after a pick lays the tracks out at its own places and clears
+    /// the picks.
+    pub sheet_places: std::collections::BTreeMap<String, bae_types::mediums::MediumSide>,
     /// The audio file the person picked for each `FILE` line of a CUE
     /// sheet, by the sheet's file id and the line's text: a save binds the
     /// line to that file, reading it first. A catalog applied after a pick
@@ -208,7 +209,7 @@ impl ReleaseEditForm {
             opened: seed,
             applied: None,
             album_pick: AlbumPick::Records,
-            sheet_discs: std::collections::BTreeMap::new(),
+            sheet_places: std::collections::BTreeMap::new(),
             sheet_files: Vec::new(),
         }
     }
@@ -218,37 +219,42 @@ impl ReleaseEditForm {
         self.edit != self.opened.edit
             || self.applied.is_some()
             || self.album_pick != AlbumPick::Records
-            || !self.sheet_discs.is_empty()
+            || !self.sheet_places.is_empty()
             || !self.sheet_files.is_empty()
     }
 
     /// The form with `applied`'s values in place of the form's and of the
-    /// catalog applied before, and no disc picked for any CUE sheet, since
+    /// catalog applied before, and no side picked for any CUE sheet, since
     /// the catalog places the tracks; the album the person picked stays
     /// picked.
     pub fn applying(self, applied: AppliedCatalog) -> Self {
         Self {
             edit: applied.draft.release_edit(),
             applied: Some(applied),
-            sheet_discs: std::collections::BTreeMap::new(),
+            sheet_places: std::collections::BTreeMap::new(),
             ..self
         }
     }
 
-    /// The form with the CUE sheet `sheet_file_id` picked onto `disc`, counted
-    /// from one; a disc the release lacks moves nothing. A pick of the disc
-    /// the editor opened the sheet on, with no catalog applied, is no pick.
-    pub fn with_sheet_disc(mut self, sheet_file_id: String, disc: u32) -> Self {
+    /// The form with the CUE sheet `sheet_file_id` picked onto `side`; a
+    /// side the release lacks moves nothing. A pick of the side the editor
+    /// opened the sheet on, with no catalog applied, is no pick.
+    pub fn with_sheet_side(
+        mut self,
+        sheet_file_id: String,
+        side: bae_types::mediums::MediumSide,
+    ) -> Self {
         let opened = self.applied.is_none()
             && self.opened.display.tracks.iter().any(|track| {
-                track.sheet.as_ref().is_some_and(|sheet| {
-                    sheet.file_id == sheet_file_id && sheet.disc_number == disc
-                })
+                track
+                    .sheet
+                    .as_ref()
+                    .is_some_and(|sheet| sheet.file_id == sheet_file_id && sheet.place.side == side)
             });
         if opened {
-            self.sheet_discs.remove(&sheet_file_id);
+            self.sheet_places.remove(&sheet_file_id);
         } else {
-            self.sheet_discs.insert(sheet_file_id, disc);
+            self.sheet_places.insert(sheet_file_id, side);
         }
         self
     }

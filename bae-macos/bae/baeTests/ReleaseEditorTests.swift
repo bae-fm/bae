@@ -234,8 +234,8 @@ struct ReleaseEditorTests {
                             sheet: BridgeReleaseEditSheet(
                                 fileId: "disc.cue",
                                 name: "Disc audio.cue",
-                                discNumber: 1,
-                                discOptions: [1, 2],
+                                place: .disc(1),
+                                sideChoices: BridgeSheetSideChoice.discs(2),
                                 fileReference: "Disc audio.wav",
                                 audioOptions: [
                                     BridgeReleaseEditAudioOption(
@@ -288,8 +288,8 @@ extension ReleaseEditorTests {
 
 extension ReleaseEditorTests {
     @MainActor
-    @Test("a disc picked for a sheet reaches the form and shows in the draft")
-    func discPickedForASheetShowsInTheDraft() async throws {
+    @Test("a side picked for a sheet reaches the form and shows in the draft")
+    func sidePickedForASheetShowsInTheDraft() async throws {
         let release = twoTrackRelease(layout: .cue, shared: true)
         let session = PreviewData.releaseEditSession(
             releaseId: "release-test",
@@ -297,14 +297,14 @@ extension ReleaseEditorTests {
         )
         try await Wait.until { session.draft != nil }
 
-        session.pickSheetDisc("disc.cue", disc: 2)
+        session.pickSheetSide("disc.cue", side: .firstOf(2))
         try await Wait.until { !session.isBusy }
         try await Wait.until {
             guard
                 case .sheet(let sheet, _, _) = session.draft?.sides?.first?
                     .runs.first
             else { return false }
-            return sheet.discNumber == 2
+            return sheet.place == .disc(2)
         }
     }
 }
@@ -398,7 +398,7 @@ extension ReleaseEditorTests {
                     setTrack: preview.setTrack,
                     apply: preview.apply,
                     setAlbum: preview.setAlbum,
-                    setSheetDisc: preview.setSheetDisc,
+                    setSheetSide: preview.setSheetSide,
                     setSheetFile: preview.setSheetFile,
                     cancel: preview.cancel,
                     save: preview.save

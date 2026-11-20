@@ -271,10 +271,10 @@
       h('span', { className: 'bae-m-itable-cell' }, h(MacAlbumArtistField, { artist: props.artist, chip: props.artistChip, inherited: props.inherited, placeholder: 'Artist', column: true })),
       h('span', { className: 'bae-num', style: { textAlign: 'right' } }, props.length, props.listed ? h('span', { className: 'bae-warning', title: 'Listed length' }, ' ' + props.listed) : null));
   }
-  // A CUE sheet's caption: the pop-up of which disc the sheet is, CUE, the sheet's name (a button that opens it in the viewer), → and the pop-up of the audio its FILE line is bound to.
+  // A CUE sheet's caption: the pop-up of which side or disc the sheet is on (Side A on a record or cassette, Disc 1 elsewhere), CUE, the sheet's name (a button that opens it in the viewer), → and the pop-up of the audio its FILE line is bound to.
   function MacImportSheetCaption(props) {
     return h('div', { className: 'bae-m-icue' },
-      h('button', { type: 'button', role: 'combobox', 'aria-label': 'Disc', 'aria-expanded': false, className: 'bae-plainbtn bae-m-icue-disc' }, h('span', { className: 'bae-strong' }, props.disc), h(Glyph, { set: 'mac', name: 'down', size: 8 })),
+      h('button', { type: 'button', role: 'combobox', 'aria-label': 'Side or disc', 'aria-expanded': false, className: 'bae-plainbtn bae-m-icue-disc' }, h('span', { className: 'bae-strong' }, props.disc), h(Glyph, { set: 'mac', name: 'down', size: 8 })),
       h(StatusChip, { tone: 'accent' }, 'CUE'),
       h('button', { type: 'button', className: 'bae-plainbtn bae-mono' }, props.sheet),
       h('span', { className: 'bae-m-tertiary', 'aria-hidden': true }, '→'),

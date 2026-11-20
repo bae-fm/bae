@@ -1,22 +1,35 @@
 //! The person's decisions about a folder's files, which a scan applies over
 //! what it proposes: which audio each track sheet's `FILE` references
-//! describe and which disc each sheet's entries become.
+//! describe and which side or disc of the release each sheet's entries
+//! become.
 
 use super::*;
+use bae_types::mediums::MediumSide;
 
-/// Which disc of the release one track sheet's entries become.
+/// Which side or disc of the release one track sheet's entries become.
 ///
 /// Cue filenames are arbitrary — `CD1.cue` may hold disc two — so the mapping
 /// cannot read the order off the names. This is the answer, and like a sheet's
 /// binding it is the user's to overrule and it survives a restart.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
-pub enum SheetDisc {
-    /// The sheet's entries are the release's disc `number`, counting from one.
-    Disc { number: u32 },
+pub enum SheetPlace {
+    /// The sheet's entries are on this side of one of the release's mediums.
+    On(MediumSide),
     /// The sheet contributes nothing to the tracklist. Its container is loose
     /// audio again, exactly as an unbound sheet leaves it.
     Ignored,
+}
+
+impl SheetPlace {
+    /// The side the sheet's entries are on, or `None` when it is out of the
+    /// tracklist.
+    pub fn side(self) -> Option<MediumSide> {
+        match self {
+            Self::On(side) => Some(side),
+            Self::Ignored => None,
+        }
+    }
 }
 
 /// Every decision of one kind the user has made for one candidate, keyed by
@@ -59,11 +72,11 @@ impl<V> Edits<V> {
     }
 }
 
-/// Every disc assignment the user has decided for one candidate.
+/// Every side or disc the user has put one candidate's sheets on.
 ///
 /// A sheet *absent* from this is not a decision — it takes its own position
 /// among the folder's bound sheets, in `relative_path` order.
-pub type SheetDiscEdits = Edits<SheetDisc>;
+pub type SheetPlaceEdits = Edits<SheetPlace>;
 
 /// One track sheet's binding as the *user* set it — the second writer of
 /// [`SheetBinding`], alongside the scan.
@@ -101,8 +114,8 @@ impl SheetBindingEdits {
 }
 
 /// Everything the user has settled about one candidate's track sheets: which
-/// audio each `FILE` reference describes, and which disc each sheet's entries
-/// become.
+/// audio each `FILE` reference describes, and which side or disc each sheet's
+/// entries become.
 ///
 /// One value because they settle together — both are keyed by the same
 /// content hash and read by the same scan, and asking for them separately
@@ -110,7 +123,7 @@ impl SheetBindingEdits {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct CandidateFileEdits {
     pub sheet_bindings: SheetBindingEdits,
-    pub sheet_discs: SheetDiscEdits,
+    pub sheet_places: SheetPlaceEdits,
     pub revision: u64,
 }
 
@@ -122,12 +135,12 @@ impl CandidateFileEdits {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.sheet_bindings.is_empty() && self.sheet_discs.is_empty()
+        self.sheet_bindings.is_empty() && self.sheet_places.is_empty()
     }
 
     /// These decisions as a release holding the files under `prefix` reads
-    /// them: every file named by its path under the prefix, and every disc a
-    /// sheet was assigned renumbered by `disc` into the run the release gives
+    /// them: every file named by its path under the prefix, and every medium
+    /// a sheet was put on renumbered by `disc` into the run the release gives
     /// this folder. The revision is not carried: it is the release's own.
     pub(crate) fn under_prefix(&self, prefix: &str, disc: impl Fn(u32) -> u32) -> Self {
         let named = |file_id: &str| format!("{prefix}{file_id}");
@@ -147,12 +160,14 @@ impl CandidateFileEdits {
                 );
             }
         }
-        for (sheet_id, assigned) in self.sheet_discs.iter() {
+        for (sheet_id, assigned) in self.sheet_places.iter() {
             let assigned = match assigned {
-                SheetDisc::Disc { number } => SheetDisc::Disc { number: disc(*number) },
-                SheetDisc::Ignored => SheetDisc::Ignored,
+                SheetPlace::On(side) => {
+                    SheetPlace::On(MediumSide { medium: disc(side.medium), side: side.side })
+                }
+                SheetPlace::Ignored => SheetPlace::Ignored,
             };
-            edits.sheet_discs.set(named(sheet_id), assigned);
+            edits.sheet_places.set(named(sheet_id), assigned);
         }
         edits
     }
@@ -169,8 +184,8 @@ impl CandidateFileEdits {
                 );
             }
         }
-        for (sheet_id, assigned) in over.sheet_discs.iter() {
-            self.sheet_discs.set(sheet_id.to_string(), *assigned);
+        for (sheet_id, assigned) in over.sheet_places.iter() {
+            self.sheet_places.set(sheet_id.to_string(), *assigned);
         }
         self.revision = over.revision;
     }

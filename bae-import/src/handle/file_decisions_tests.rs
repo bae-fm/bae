@@ -42,10 +42,10 @@ async fn a_file_decision_keeps_the_retained_tracks_values_and_gives_a_new_track_
 
     fixture
         .handle
-        .set_sheet_disc(
+        .set_sheet_place(
             fixture.key.clone(),
             "Disc.cue".to_string(),
-            crate::folder_scanner::SheetDisc::Ignored,
+            crate::folder_scanner::SheetPlace::Ignored,
         )
         .await
         .unwrap();
@@ -78,10 +78,10 @@ async fn the_pane_shows_each_tracks_stated_length_after_a_file_decision() {
     let (fixture, _hash) = three_track_draft().await;
     fixture
         .handle
-        .set_sheet_disc(
+        .set_sheet_place(
             fixture.key.clone(),
             "Disc.cue".to_string(),
-            crate::folder_scanner::SheetDisc::Ignored,
+            crate::folder_scanner::SheetPlace::Ignored,
         )
         .await
         .unwrap();
@@ -106,14 +106,14 @@ async fn the_pane_shows_each_tracks_stated_length_after_a_file_decision() {
 async fn sheet_disc_of(
     handle: &ImportServiceHandle,
     key: &crate::CandidateKey,
-) -> (crate::folder_scanner::SheetDisc, u64) {
+) -> (crate::folder_scanner::SheetPlace, u64) {
     let candidate = handle.get_release_candidate(key).await.unwrap().unwrap();
     let disc = candidate
         .files
         .track_sheets()
         .find(|sheet| sheet.file.relative_path == "Disc.cue")
         .expect("the candidate holds its sheet")
-        .disc;
+        .place;
     (disc, candidate.file_edit_revision)
 }
 
@@ -147,10 +147,10 @@ async fn a_file_decision_settles_every_folder_holding_the_same_files() {
     let (unsettled, _) = sheet_disc_of(&handle, &other_key).await;
 
     handle
-        .set_sheet_disc(
+        .set_sheet_place(
             original_key.clone(),
             "Disc.cue".to_string(),
-            crate::folder_scanner::SheetDisc::Ignored,
+            crate::folder_scanner::SheetPlace::Ignored,
         )
         .await
         .unwrap();
@@ -158,7 +158,7 @@ async fn a_file_decision_settles_every_folder_holding_the_same_files() {
     for key in [&original_key, &copy_key] {
         assert_eq!(
             sheet_disc_of(&handle, key).await,
-            (crate::folder_scanner::SheetDisc::Ignored, 1),
+            (crate::folder_scanner::SheetPlace::Ignored, 1),
             "{key}"
         );
     }
@@ -180,7 +180,7 @@ async fn changing_audio_preserves_the_metadata_of_surviving_tracks() {
     handle.set_candidate_track_edit(&key, tracks[0].clone()).await.unwrap();
 
     handle
-        .set_sheet_disc(key, "Disc.cue".to_string(), crate::folder_scanner::SheetDisc::Ignored)
+        .set_sheet_place(key, "Disc.cue".to_string(), crate::folder_scanner::SheetPlace::Ignored)
         .await
         .unwrap();
 
@@ -215,7 +215,7 @@ async fn a_gained_track_whose_tags_do_not_parse_is_titled_by_its_name() {
     handle.services.file_tags = std::sync::Arc::new(CountingFileTagReader::unparseable(1));
 
     handle
-        .set_sheet_disc(key, "Disc.cue".to_string(), crate::folder_scanner::SheetDisc::Ignored)
+        .set_sheet_place(key, "Disc.cue".to_string(), crate::folder_scanner::SheetPlace::Ignored)
         .await
         .expect("the decision stands though the gained track's tags do not parse");
     let draft = stored_draft(&handle, &hash).await;
@@ -238,10 +238,10 @@ async fn sheet_decisions_leave_the_draft_drawn_over_the_settled_audio() {
     let hash = candidate.files.content_hash();
 
     for disc in [
-        crate::folder_scanner::SheetDisc::Ignored,
-        crate::folder_scanner::SheetDisc::Disc { number: 1 },
+        crate::folder_scanner::SheetPlace::Ignored,
+        crate::folder_scanner::SheetPlace::On(bae_types::mediums::MediumSide::first_of(1)),
     ] {
-        handle.set_sheet_disc(key.clone(), "Disc.cue".to_string(), disc).await.unwrap();
+        handle.set_sheet_place(key.clone(), "Disc.cue".to_string(), disc).await.unwrap();
         let settled = handle.get_release_candidate(&key).await.unwrap().unwrap();
         let preparation = crate::preparations::stored_preparation(&handle.services.tables, &hash)
             .await
@@ -285,10 +285,10 @@ async fn ignoring_a_cue_replaces_its_song_rows_with_whole_audio() {
 
     fixture
         .import
-        .set_sheet_disc(
+        .set_sheet_place(
             crate::CandidateKey::folder(&dir),
             "Test Album.cue".to_string(),
-            crate::folder_scanner::SheetDisc::Ignored,
+            crate::folder_scanner::SheetPlace::Ignored,
         )
         .await
         .unwrap();
@@ -320,10 +320,10 @@ async fn ignoring_a_cue_replaces_its_song_rows_with_whole_audio() {
     assert!(!image.edit.title.is_empty());
     fixture
         .import
-        .set_sheet_disc(
+        .set_sheet_place(
             crate::CandidateKey::folder(&dir),
             "Test Album.cue".into(),
-            crate::folder_scanner::SheetDisc::Disc { number: 1 },
+            crate::folder_scanner::SheetPlace::On(bae_types::mediums::MediumSide::first_of(1)),
         )
         .await
         .unwrap();
@@ -357,10 +357,10 @@ async fn a_claimed_candidate_refuses_sheet_decisions() {
     for result in [
         fixture
             .import
-            .set_sheet_disc(
+            .set_sheet_place(
                 key.clone(),
                 "Test Album.cue".to_string(),
-                crate::folder_scanner::SheetDisc::Disc { number: 1 },
+                crate::folder_scanner::SheetPlace::On(bae_types::mediums::MediumSide::first_of(1)),
             )
             .await,
         fixture
@@ -480,10 +480,10 @@ async fn changing_a_cues_disc_preserves_titles_but_updates_its_group() {
         .draft;
     fixture
         .import
-        .set_sheet_disc(
+        .set_sheet_place(
             key,
             "Test Album.cue".into(),
-            crate::folder_scanner::SheetDisc::Disc { number: 2 },
+            crate::folder_scanner::SheetPlace::On(bae_types::mediums::MediumSide::first_of(2)),
         )
         .await
         .unwrap();
@@ -524,10 +524,10 @@ async fn restating_a_file_decision_changes_nothing() {
     // The sheet already carves disc one and already binds its own container.
     fixture
         .import
-        .set_sheet_disc(
+        .set_sheet_place(
             key.clone(),
             "Test Album.cue".to_string(),
-            crate::folder_scanner::SheetDisc::Disc { number: 1 },
+            crate::folder_scanner::SheetPlace::On(bae_types::mediums::MediumSide::first_of(1)),
         )
         .await
         .unwrap();
@@ -555,10 +555,10 @@ async fn restating_a_file_decision_changes_nothing() {
     // A genuinely different decision still lands and still clears.
     fixture
         .import
-        .set_sheet_disc(
+        .set_sheet_place(
             key,
             "Test Album.cue".to_string(),
-            crate::folder_scanner::SheetDisc::Ignored,
+            crate::folder_scanner::SheetPlace::Ignored,
         )
         .await
         .unwrap();
@@ -616,10 +616,10 @@ async fn file_decision_rewrites_the_units_with_the_files() {
 
     fixture
         .handle
-        .set_sheet_disc(
+        .set_sheet_place(
             fixture.key.clone(),
             "Disc.cue".to_string(),
-            crate::folder_scanner::SheetDisc::Ignored,
+            crate::folder_scanner::SheetPlace::Ignored,
         )
         .await
         .unwrap();

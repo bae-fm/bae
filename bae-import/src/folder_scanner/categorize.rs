@@ -347,7 +347,7 @@ pub(super) fn categorize_files_from_tree(
             )))
         }
     }
-    settle_sheet_discs(&mut files, parts, &stored.sheet_discs);
+    settle_sheet_places(&mut files, parts, &stored.sheet_places);
 
     Ok(CategorizeOutcome::Valid(CategorizedFiles { files, parts: parts.to_vec() }))
 }
@@ -355,13 +355,13 @@ pub(super) fn categorize_files_from_tree(
 /// A parsed sheet before its binding and disc settle. Neither is proposed
 /// here: a person's decisions come first, so `settle_sheet_bindings` binds
 /// every parsed sheet once those have landed; and a cue filename says nothing
-/// about which disc it holds, so `settle_sheet_discs` assigns every parsed
+/// about which disc it holds, so `settle_sheet_places` assigns every parsed
 /// sheet against the bindings that end up in force.
 fn unsettled_sheet(sheet: crate::cue_sheet::CueSheet) -> FileRole {
     FileRole::TrackSheet {
         sheet,
         binding: SheetBinding::Unresolved { files: Vec::new() },
-        disc: SheetDisc::Disc { number: 1 },
+        place: SheetPlace::On(bae_types::mediums::MediumSide::first_of(1)),
     }
 }
 

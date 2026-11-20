@@ -1,5 +1,5 @@
 use super::*;
-use crate::folder_scanner::{CandidateFile, CandidateFileEdits, ScannedFile, SheetDisc};
+use crate::folder_scanner::{CandidateFile, CandidateFileEdits, ScannedFile, SheetPlace};
 use crate::tables::watched_path::host_root;
 
 /// A folder of two FLAC tracks at `relative` under the watched root `root`.
@@ -207,7 +207,7 @@ fn with_a_sheet_over_its_first_file(mut folder: FolderCandidate) -> FolderCandid
                     file_id: "01.flac".into(),
                 }],
             },
-            disc: SheetDisc::Disc { number: 1 },
+            place: SheetPlace::On(bae_types::mediums::MediumSide::first_of(1)),
         },
     });
     folder
@@ -219,7 +219,7 @@ fn with_a_sheet_over_its_first_file(mut folder: FolderCandidate) -> FolderCandid
 fn a_members_file_decisions_carry_into_the_release() {
     let first = with_a_sheet_over_its_first_file(folder_at("/music", "Album/Disc 1"));
     let mut decided = CandidateFileEdits::default();
-    decided.sheet_discs.set("01.flac.cue".into(), SheetDisc::Ignored);
+    decided.sheet_places.set("01.flac.cue".into(), SheetPlace::Ignored);
     let members = vec![
         (first, decided),
         (folder_at("/music", "Album/Disc 2"), CandidateFileEdits::default()),

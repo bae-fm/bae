@@ -597,7 +597,7 @@ async fn a_library_sheet_the_person_ignored_hashes_no_disc() {
     assert_eq!(both, scanned);
 
     let mut decided = crate::folder_scanner::CandidateFileEdits::default();
-    decided.sheet_discs.set("Second.cue".to_string(), crate::folder_scanner::SheetDisc::Ignored);
+    decided.sheet_places.set("Second.cue".to_string(), crate::folder_scanner::SheetPlace::Ignored);
     let (_, ignored) = folder_and_library_disc_ids_with_decisions(folder.path(), decided).await;
     assert_eq!(ignored.len(), 1, "re-identify reads the person's ignored sheet: {ignored:?}");
 }

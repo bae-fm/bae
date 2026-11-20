@@ -363,10 +363,11 @@ actor PreviewReleaseLibrary {
         }
     }
 
-    /// Move the CUE sheet `sheetFileId` of `session`'s draft to `disc`.
+    /// Move the CUE sheet `sheetFileId` of `session`'s draft to `picked`, one
+    /// of the sheet's choices, as core lays it out.
     nonisolated func putSheet(
         _ sheetFileId: String,
-        onDisc disc: UInt32,
+        onSide picked: BridgeMediumSide,
         in session: PreviewReleaseEditSession
     ) async {
         _ = await session.change { release in
@@ -376,9 +377,12 @@ actor PreviewReleaseLibrary {
                     side.runs = side.runs.map { run in
                         guard
                             case .sheet(var sheet, let source, let rows) = run,
-                            sheet.fileId == sheetFileId
+                            sheet.fileId == sheetFileId,
+                            let choice = sheet.sideChoices.first(where: {
+                                $0.side == picked
+                            })
                         else { return run }
-                        sheet.discNumber = disc
+                        sheet.place = choice
                         return .sheet(sheet: sheet, source: source, rows: rows)
                     }
                     return side
@@ -467,8 +471,8 @@ actor PreviewReleaseLibrary {
             setAlbum: { pick in
                 await self.putAlbum(pick, in: session)
             },
-            setSheetDisc: { sheetFileId, disc in
-                await self.putSheet(sheetFileId, onDisc: disc, in: session)
+            setSheetSide: { sheetFileId, side in
+                await self.putSheet(sheetFileId, onSide: side, in: session)
             },
             setSheetFile: { sheetFileId, _, audioFileId in
                 await self.putSheet(

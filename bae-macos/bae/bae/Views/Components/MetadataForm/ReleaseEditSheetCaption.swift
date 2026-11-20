@@ -2,16 +2,16 @@ import BaeKit
 import SwiftUI
 
 /// The caption over the tracks one CUE sheet carves from one file: the
-/// import pane's sheet caption, with the Disc pop-up of which of the
-/// release's discs the sheet is, the sheet, and the Audio file pop-up of
+/// import pane's sheet caption, with the place pop-up of which of the
+/// release's sides and discs the sheet is on, the sheet, and the Audio file pop-up of
 /// which of the release's audio files on this device the sheet's FILE line
 /// plays from.
 struct ReleaseEditSheetCaption: View {
     let sheet: BridgeReleaseEditSheet
     let source: BridgeReleaseEditTrackSource
     let onOpenDocument: (String, String) -> Void
-    /// The person picked a disc for the sheet.
-    let onPickDisc: (UInt32) -> Void
+    /// The person picked a side or disc for the sheet.
+    let onPickSide: (BridgeMediumSide) -> Void
     /// The person picked an audio file for the sheet's FILE line, by the
     /// file's id.
     let onPickFile: (String) -> Void
@@ -23,14 +23,14 @@ struct ReleaseEditSheetCaption: View {
         MacImportSheetCaption(
             name: sheet.name,
             onOpen: { onOpenDocument(sheet.name, sheet.fileId) },
-            disc: {
-                SheetDiscMenu(
-                    discs: sheet.discOptions,
-                    assignment: .disc(number: sheet.discNumber),
+            place: {
+                SheetPlaceMenu(
+                    choices: sheet.sideChoices,
+                    assigned: sheet.place,
                     offersIgnored: false,
                     onAssign: { assignment in
-                        if case .disc(let number) = assignment {
-                            onPickDisc(number)
+                        if case .on(let side) = assignment {
+                            onPickSide(side)
                         }
                     }
                 )

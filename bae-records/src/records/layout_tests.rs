@@ -10,14 +10,14 @@ use std::num::{NonZeroU16, NonZeroU32, NonZeroU8};
 /// Built through the records' own writes. The folder holds the sheets'
 /// originals.
 async fn release(
-    mediums: &[u8],
+    mediums: &[(Option<bae_types::pressing::Medium>, u8)],
     tracks: &[(&str, u16, u8, u32)],
     carved: &[(&str, &str)],
 ) -> (Store, bae_util::test_files::TestFolder) {
     let (db, folder) = bae_store::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     let records = crate::test_fixtures::test_records(&db);
     crate::test_fixtures::album_with_releases(&records, ALBUM_A, "Album", &[RELEASE_A]).await;
-    for (index, sides) in mediums.iter().enumerate() {
+    for (index, (carrier, sides)) in mediums.iter().enumerate() {
         let position = u16::try_from(index + 1).unwrap();
         records
             .insert_release_medium(&DbReleaseMedium {
@@ -25,7 +25,7 @@ async fn release(
                 release_id: RELEASE_A.to_string(),
                 position: NonZeroU16::new(position).unwrap(),
                 medium: ReleaseMedium {
-                    carrier: None,
+                    carrier: *carrier,
                     sides: NonZeroU8::new(*sides).expect("a medium has a side"),
                 },
                 created_at: time::UtcDateTime::now(),
@@ -69,13 +69,21 @@ fn uuid(label: &str) -> String {
     bae_util::test_ids::test_uuid(label)
 }
 
-/// The tracks as the layout places them for the discs picked: each with its
-/// medium, side and number, in playing order, and how many mediums remain.
-async fn laid(db: &Store, picks: &[(&str, u32)]) -> (Vec<(String, u16, u8, u32)>, usize) {
+/// Mediums of unstated carrier, each of `sides` sides.
+fn plain(sides: &[u8]) -> Vec<(Option<bae_types::pressing::Medium>, u8)> {
+    sides.iter().map(|sides| (None, *sides)).collect()
+}
+
+/// The tracks as the layout places them for the sides picked, each a sheet
+/// with a medium and a side: each track with its medium, side and number, in
+/// playing order, and how many mediums remain.
+async fn laid(db: &Store, picks: &[(&str, u32, u32)]) -> (Vec<(String, u16, u8, u32)>, usize) {
     let moves = serde_json::to_string(
         &picks
             .iter()
-            .map(|(sheet, disc)| serde_json::json!({ "sheet_file_id": uuid(sheet), "disc": disc }))
+            .map(|(sheet, medium, side)| {
+                serde_json::json!({ "sheet_file_id": uuid(sheet), "medium": medium, "side": side })
+            })
             .collect::<Vec<_>>(),
     )
     .unwrap();
@@ -84,10 +92,11 @@ async fn laid(db: &Store, picks: &[(&str, u32)]) -> (Vec<(String, u16, u8, u32)>
             laid_out_on(
                 &sql,
                 &LayoutParams {
-                    release_id: RELEASE_A,
+                    release_id: Some(RELEASE_A),
                     applied: false,
                     mediums: "[]",
                     places: "[]",
+                    carving: "[]",
                     moves: &moves,
                 },
             )
@@ -118,12 +127,12 @@ fn place(id: &str, medium: u16, side: u8, number: u32) -> (String, u16, u8, u32)
 #[tokio::test]
 async fn a_sheet_moves_after_the_tracks_of_its_new_disc() {
     let (db, _folder) = release(
-        &[1, 1],
+        &plain(&[1, 1]),
         &[("a1", 1, 1, 1), ("a2", 1, 1, 2), ("b1", 2, 1, 1), ("b2", 2, 1, 2)],
         &[("sheet-a", "a1"), ("sheet-a", "a2")],
     )
     .await;
-    let (places, mediums) = laid(&db, &[("sheet-a", 2)]).await;
+    let (places, mediums) = laid(&db, &[("sheet-a", 2, 1)]).await;
     assert_eq!(
         places,
         [place("b1", 1, 1, 1), place("b2", 1, 1, 2), place("a1", 1, 1, 3), place("a2", 1, 1, 4)]
@@ -136,12 +145,12 @@ async fn a_sheet_moves_after_the_tracks_of_its_new_disc() {
 #[tokio::test]
 async fn moved_tracks_number_past_the_highest_number_of_the_side() {
     let (db, _folder) = release(
-        &[1, 1],
+        &plain(&[1, 1]),
         &[("a1", 1, 1, 1), ("b1", 2, 1, 1), ("b2", 2, 1, 5)],
         &[("sheet-a", "a1")],
     )
     .await;
-    let (places, _) = laid(&db, &[("sheet-a", 2)]).await;
+    let (places, _) = laid(&db, &[("sheet-a", 2, 1)]).await;
     assert_eq!(places, [place("b1", 1, 1, 1), place("b2", 1, 1, 5), place("a1", 1, 1, 6)]);
 }
 
@@ -149,46 +158,100 @@ async fn moved_tracks_number_past_the_highest_number_of_the_side() {
 /// after it move up.
 #[tokio::test]
 async fn the_mediums_after_an_emptied_one_move_up() {
-    let (db, _folder) =
-        release(&[1, 1, 1], &[("a", 1, 1, 1), ("b", 2, 1, 1), ("c", 3, 1, 1)], &[("sheet-b", "b")])
-            .await;
-    let (places, mediums) = laid(&db, &[("sheet-b", 1)]).await;
+    let (db, _folder) = release(
+        &plain(&[1, 1, 1]),
+        &[("a", 1, 1, 1), ("b", 2, 1, 1), ("c", 3, 1, 1)],
+        &[("sheet-b", "b")],
+    )
+    .await;
+    let (places, mediums) = laid(&db, &[("sheet-b", 1, 1)]).await;
     assert_eq!(places, [place("a", 1, 1, 1), place("b", 1, 1, 2), place("c", 2, 1, 1)]);
     assert_eq!(mediums, 2);
 }
 
-/// A pick of a disc the release lacks, and of the disc a sheet is on
+/// A pick of a side the release lacks, and of the side a sheet is on
 /// already, change nothing, not even the order of the tracks.
 #[tokio::test]
 async fn a_move_that_goes_nowhere_leaves_the_layout_alone() {
     let (db, _folder) =
-        release(&[1, 1], &[("b1", 2, 1, 1), ("a1", 1, 1, 1)], &[("sheet-a", "a1")]).await;
+        release(&plain(&[1, 1]), &[("b1", 2, 1, 1), ("a1", 1, 1, 1)], &[("sheet-a", "a1")]).await;
     let stored = laid(&db, &[]).await;
-    for disc in [0, 1, 3, 70_000] {
-        assert_eq!(laid(&db, &[("sheet-a", disc)]).await, stored, "a pick of disc {disc}");
+    for (medium, side) in [(0, 1), (1, 1), (3, 1), (70_000, 1), (2, 2), (2, 0)] {
+        assert_eq!(
+            laid(&db, &[("sheet-a", medium, side)]).await,
+            stored,
+            "a pick of side {side} of medium {medium}"
+        );
     }
 }
 
-/// A medium played side by side takes the moved tracks on its last side.
+/// A sheet moves onto the side it is picked onto, after that side's tracks.
 #[tokio::test]
-async fn a_sided_medium_takes_the_tracks_on_its_last_side() {
-    let (db, _folder) =
-        release(&[1, 2], &[("a", 1, 1, 1), ("s1", 2, 1, 1), ("s2", 2, 2, 1)], &[("sheet-a", "a")])
-            .await;
-    let (places, _) = laid(&db, &[("sheet-a", 2)]).await;
+async fn a_sheet_moves_onto_the_side_picked() {
+    let (db, _folder) = release(
+        &plain(&[1, 2]),
+        &[("a", 1, 1, 1), ("s1", 2, 1, 1), ("s2", 2, 2, 1)],
+        &[("sheet-a", "a")],
+    )
+    .await;
+    let (places, _) = laid(&db, &[("sheet-a", 2, 1)]).await;
+    assert_eq!(places, [place("s1", 1, 1, 1), place("a", 1, 1, 2), place("s2", 1, 2, 1)]);
+    let (places, _) = laid(&db, &[("sheet-a", 2, 2)]).await;
     assert_eq!(places, [place("s1", 1, 1, 1), place("s2", 1, 2, 1), place("a", 1, 2, 2)]);
+}
+
+/// A sheet can go on each side of a medium played side by side, lettered
+/// as the release's tracks are, and on the one side of every other medium,
+/// numbered as its disc.
+#[tokio::test]
+async fn a_sheet_can_go_on_each_side_of_a_record_and_on_each_disc() {
+    use bae_types::mediums::{MediumSide, TrackSide};
+    use bae_types::pressing::Medium;
+    let (db, _folder) = release(
+        &[(Some(Medium::Vinyl), 2), (None, 1), (Some(Medium::Vinyl), 2)],
+        &[("a", 1, 1, 1)],
+        &[],
+    )
+    .await;
+    let choices = db
+        .read(|sql| {
+            laid_sheet_side_choices_on(
+                &sql,
+                &LayoutParams {
+                    release_id: Some(RELEASE_A),
+                    applied: false,
+                    mediums: "[]",
+                    places: "[]",
+                    carving: "[]",
+                    moves: "[]",
+                },
+            )
+        })
+        .await
+        .unwrap();
+    let sided = |letter: &str| TrackSide::Sided { side_letter: letter.to_string() };
+    assert_eq!(
+        choices.iter().map(|choice| (choice.side, choice.heading.clone())).collect::<Vec<_>>(),
+        [
+            (MediumSide { medium: 1, side: 1 }, sided("A")),
+            (MediumSide { medium: 1, side: 2 }, sided("B")),
+            (MediumSide::first_of(2), TrackSide::Disc { disc: 2 }),
+            (MediumSide { medium: 3, side: 1 }, sided("C")),
+            (MediumSide { medium: 3, side: 2 }, sided("D")),
+        ]
+    );
 }
 
 /// Two sheets going to one disc keep the order of their first tracks.
 #[tokio::test]
 async fn two_sheets_on_one_disc_keep_their_order() {
     let (db, _folder) = release(
-        &[1, 1, 1],
+        &plain(&[1, 1, 1]),
         &[("a", 1, 1, 1), ("b", 2, 1, 1), ("c", 3, 1, 1)],
         &[("sheet-a", "a"), ("sheet-b", "b")],
     )
     .await;
-    let (places, mediums) = laid(&db, &[("sheet-b", 3), ("sheet-a", 3)]).await;
+    let (places, mediums) = laid(&db, &[("sheet-b", 3, 1), ("sheet-a", 3, 1)]).await;
     assert_eq!(places, [place("c", 1, 1, 1), place("a", 1, 1, 2), place("b", 1, 1, 3)]);
     assert_eq!(mediums, 1);
 }

@@ -157,8 +157,9 @@ pub(super) struct RoleColumns<'a> {
     pub(super) document_kind: Option<&'static str>,
     pub(super) sheet_binding: Option<&'static str>,
     pub(super) sheet_binding_codec: Option<&'a str>,
-    pub(super) sheet_disc: Option<&'static str>,
-    pub(super) sheet_disc_number: Option<u32>,
+    pub(super) sheet_place: Option<&'static str>,
+    pub(super) sheet_medium: Option<u32>,
+    pub(super) sheet_side: Option<u32>,
 }
 
 pub(super) fn role_columns(role: &FileRole) -> RoleColumns<'_> {
@@ -167,8 +168,9 @@ pub(super) fn role_columns(role: &FileRole) -> RoleColumns<'_> {
         document_kind: None,
         sheet_binding: None,
         sheet_binding_codec: None,
-        sheet_disc: None,
-        sheet_disc_number: None,
+        sheet_place: None,
+        sheet_medium: None,
+        sheet_side: None,
     };
     match role {
         FileRole::Audio => plain("audio"),
@@ -178,21 +180,22 @@ pub(super) fn role_columns(role: &FileRole) -> RoleColumns<'_> {
             RoleColumns { document_kind: Some(kind.as_str()), ..plain("document") }
         }
         FileRole::Other => plain("other"),
-        FileRole::TrackSheet { binding, disc, .. } => {
+        FileRole::TrackSheet { binding, place, .. } => {
             let (sheet_binding, sheet_binding_codec) = match binding {
                 SheetBinding::Resolved { .. } => ("resolved", None),
                 SheetBinding::Unresolved { .. } => ("unresolved", None),
                 SheetBinding::RefusedTiming { .. } => ("refused_timing", None),
                 SheetBinding::RefusedCodec { codec } => ("refused_codec", Some(codec.as_str())),
             };
-            let (sheet_disc, sheet_disc_number) = disc.columns();
+            let (sheet_place, sheet_medium, sheet_side) = place.columns();
             RoleColumns {
                 role: "track_sheet",
                 document_kind: None,
                 sheet_binding: Some(sheet_binding),
                 sheet_binding_codec,
-                sheet_disc: Some(sheet_disc),
-                sheet_disc_number,
+                sheet_place: Some(sheet_place),
+                sheet_medium,
+                sheet_side,
             }
         }
     }

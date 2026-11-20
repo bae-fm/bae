@@ -58,7 +58,7 @@ struct MacReleaseFiles: View {
             if let sheetActions {
                 ImportPaneSheetCaption(
                     sheet: sheet,
-                    showsDiscMenu: true,
+                    showsPlaceMenu: true,
                     actions: sheetActions
                 )
             }

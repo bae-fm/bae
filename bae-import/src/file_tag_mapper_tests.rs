@@ -15,7 +15,7 @@ fn cue_and_loose_audio_both_keep_their_metadata_in_playback_order() {
     use crate::file_tag_snapshot::{FileObservation, FileTagFact};
     use crate::folder_scanner::{
         CandidateFile, CategorizedFiles, FileRole, ScannedFile, SheetAudioFile, SheetBinding,
-        SheetDisc,
+        SheetPlace,
     };
     let audio = |name: &str| CandidateFile {
         file: ScannedFile::new(PathBuf::from("/source").join(name), name.into(), 123, 1)
@@ -45,7 +45,7 @@ fn cue_and_loose_audio_both_keep_their_metadata_in_playback_order() {
                             file_id: "image.flac".into(),
                         }],
                     },
-                    disc: SheetDisc::Disc { number: 2 },
+                    place: SheetPlace::On(bae_types::mediums::MediumSide::first_of(2)),
                 },
             },
         ],
@@ -163,7 +163,7 @@ pub(super) fn map_cue_folder(sheets: Vec<CueSheet>, folder_name: Option<&str>) -
     use crate::file_tag_snapshot::{FileObservation, FileTagFact};
     use crate::folder_scanner::{
         CandidateFile, CategorizedFiles, FileRole, ScannedFile, SheetAudioFile, SheetBinding,
-        SheetDisc,
+        SheetPlace,
     };
     let mut entries = Vec::new();
     for (index, sheet) in sheets.into_iter().enumerate() {
@@ -184,7 +184,7 @@ pub(super) fn map_cue_folder(sheets: Vec<CueSheet>, folder_name: Option<&str>) -
                         file_id: image,
                     }],
                 },
-                disc: SheetDisc::Disc { number: index as u32 + 1 },
+                place: SheetPlace::On(bae_types::mediums::MediumSide::first_of(index as u32 + 1)),
             },
         });
     }

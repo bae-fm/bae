@@ -1213,7 +1213,7 @@ tables = [
     "import_candidate_work_credit",
     "import_candidate_work_part",
     "import_candidate_track_work",
-    "import_candidate_sheet_disc",
+    "import_candidate_sheet_place",
     "import_candidate_sheet_reference",
     "import_candidate_cover",
     "import_candidate_album_pick",
@@ -1346,7 +1346,7 @@ homes = [
     "bae-import/src/tables/release_sheet_decisions.rs",
     "bae-import/src/tables/release_sheet_decisions.sql",
 ]
-tables = ["release_sheet_bindings", "release_sheet_discs"]
+tables = ["release_sheet_bindings", "release_sheet_places"]
 
 [[database.domains]]
 name = "import list"

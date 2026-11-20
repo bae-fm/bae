@@ -2,14 +2,14 @@ import BaeKit
 import SwiftUI
 
 /// A CUE sheet's caption, the design system's MacImportSheetCaption: the
-/// sheet's disc, CUE, the sheet's name as a button that opens it in the
-/// viewer, then the audio its FILE lines are bound to. Each surface gives
-/// the disc and the audio as it offers them.
-struct MacImportSheetCaption<Disc: View, Audio: View>: View {
+/// side or disc the sheet is on, CUE, the sheet's name as a button that
+/// opens it in the viewer, then the audio its FILE lines are bound to. Each
+/// surface gives the place and the audio as it offers them.
+struct MacImportSheetCaption<Place: View, Audio: View>: View {
     let name: String
     let onOpen: () -> Void
     @ViewBuilder
-    let disc: Disc
+    let place: Place
     @ViewBuilder
     let audio: Audio
 
@@ -18,7 +18,7 @@ struct MacImportSheetCaption<Disc: View, Audio: View>: View {
 
     var body: some View {
         HStack(spacing: ThemeSpace.related) {
-            disc
+            place
             // A format name, so it is not translated.
             StatusChip(verbatim: "CUE", tone: .accent)
                 .fixedSize()

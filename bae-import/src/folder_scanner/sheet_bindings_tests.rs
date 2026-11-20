@@ -259,12 +259,12 @@ fn bound_sheets_take_their_positions_as_discs_by_default() {
     assert_eq!(
         files
             .track_sheets()
-            .map(|sheet| (sheet.file.relative_path.as_str(), sheet.disc))
+            .map(|sheet| (sheet.file.relative_path.as_str(), sheet.place))
             .collect::<Vec<_>>(),
         vec![
-            ("alpha.cue", SheetDisc::Disc { number: 1 }),
-            ("beta.cue", SheetDisc::Disc { number: 2 }),
-            ("zeta.cue", SheetDisc::Ignored),
+            ("alpha.cue", SheetPlace::On(bae_types::mediums::MediumSide::first_of(1))),
+            ("beta.cue", SheetPlace::On(bae_types::mediums::MediumSide::first_of(2))),
+            ("zeta.cue", SheetPlace::Ignored),
         ],
     );
 }
@@ -284,10 +284,11 @@ fn a_stored_disc_assignment_overrules_the_default_position() {
 
     let scanned = scan_files(root);
 
-    let mut sheet_discs = SheetDiscEdits::default();
-    sheet_discs.set("alpha.cue".to_string(), SheetDisc::Disc { number: 2 });
-    sheet_discs.set("beta.cue".to_string(), SheetDisc::Ignored);
-    let edits = CandidateFileEdits { sheet_discs, ..Default::default() };
+    let mut sheet_places = SheetPlaceEdits::default();
+    sheet_places
+        .set("alpha.cue".to_string(), SheetPlace::On(bae_types::mediums::MediumSide::first_of(2)));
+    sheet_places.set("beta.cue".to_string(), SheetPlace::Ignored);
+    let edits = CandidateFileEdits { sheet_places, ..Default::default() };
 
     let reopened = collect_release_candidate_files_with_scope(
         root,
@@ -299,9 +300,12 @@ fn a_stored_disc_assignment_overrules_the_default_position() {
     assert_eq!(
         reopened
             .track_sheets()
-            .map(|sheet| (sheet.file.relative_path.as_str(), sheet.disc))
+            .map(|sheet| (sheet.file.relative_path.as_str(), sheet.place))
             .collect::<Vec<_>>(),
-        vec![("alpha.cue", SheetDisc::Disc { number: 2 }), ("beta.cue", SheetDisc::Ignored),],
+        vec![
+            ("alpha.cue", SheetPlace::On(bae_types::mediums::MediumSide::first_of(2))),
+            ("beta.cue", SheetPlace::Ignored),
+        ],
     );
     // The ignored sheet carves nothing: its container is loose audio alongside
     // the two tracks carved by the other sheet.

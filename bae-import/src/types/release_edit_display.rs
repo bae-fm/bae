@@ -73,17 +73,17 @@ pub struct ReleaseEditTrackSide {
 }
 
 /// The CUE sheet over a run of the editor's tracks, as its caption names it:
-/// the sheet's file id and name, the disc of the release the editor's form
-/// puts its tracks on and the discs the release holds, which its Disc pop-up
-/// offers, and the text of its `FILE` line with the audio files the line can
-/// play from, which its Audio file pop-up offers.
+/// the sheet's file id and name, the side of the release the editor's form
+/// puts its first track on, with its heading, which the place pop-up names,
+/// and the sides and discs the release holds, which the pop-up offers, and the text of its `FILE` line with the audio files
+/// the line can play from, which its Audio file pop-up offers.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReleaseEditSheet {
     pub file_id: String,
     pub name: String,
-    pub disc_number: u32,
-    /// The discs the release holds, counted from one.
-    pub disc_options: Vec<u32>,
+    pub place: bae_records::DbSheetSideChoice,
+    /// The sides and discs of the release, in order.
+    pub side_choices: Vec<bae_records::DbSheetSideChoice>,
     pub file_reference: String,
     pub audio_options: Vec<ReleaseEditAudioOption>,
 }
@@ -101,18 +101,18 @@ pub struct ReleaseEditAudioOption {
 
 #[cfg(desktop)]
 impl ReleaseEditSheet {
-    /// The caption of the library's sheet `sheet` on a release whose discs
-    /// are `disc_options`: a file whose codec bae can't carve tracks out of
-    /// is refused naming the codec, and one shorter than the line's tracks
-    /// is refused for its timing, as the import pane refuses them.
-    fn of(sheet: DbReleaseEditSheet, disc_options: &[u32]) -> Self {
-        let DbReleaseEditSheet { file_id, name, disc_number, file_reference, audio_options } =
-            sheet;
+    /// The caption of the library's sheet `sheet` on a release whose sides
+    /// and discs are `side_choices`: a file whose codec bae can't carve
+    /// tracks out of is refused naming the codec, and one shorter than the
+    /// line's tracks is refused for its timing, as the import pane refuses
+    /// them.
+    fn of(sheet: DbReleaseEditSheet, side_choices: &[bae_records::DbSheetSideChoice]) -> Self {
+        let DbReleaseEditSheet { file_id, name, place, file_reference, audio_options } = sheet;
         Self {
             file_id,
             name,
-            disc_number,
-            disc_options: disc_options.to_vec(),
+            place,
+            side_choices: side_choices.to_vec(),
             file_reference,
             audio_options: audio_options
                 .into_iter()
@@ -157,16 +157,16 @@ impl ReleaseEditTrackSide {
     /// Lay out `rows`, in release order: a side per run of tracks on one
     /// side, and within it a run per `FILE` line of a sheet that carves
     /// several consecutive tracks from one file, whose caption offers the
-    /// discs `disc_options`; every other track is a run of its own.
+    /// sides and discs `side_choices`; every other track is a run of its own.
     #[cfg(desktop)]
     pub(crate) fn lay_out(
         rows: impl IntoIterator<Item = ReleaseEditTrackRow>,
-        disc_options: &[u32],
+        side_choices: &[bae_records::DbSheetSideChoice],
     ) -> Vec<Self> {
         let mut sides: Vec<Self> = Vec::new();
         for row in rows {
             match sides.last_mut() {
-                Some(last) if last.side == row.context.side => last.append(row, disc_options),
+                Some(last) if last.side == row.context.side => last.append(row, side_choices),
                 _ => sides.push(Self {
                     side: row.context.side.clone(),
                     runs: vec![ReleaseEditTrackRun::Track(row)],
@@ -180,7 +180,11 @@ impl ReleaseEditTrackSide {
     /// from under the same `FILE` line and from the same file, else as a run
     /// of its own.
     #[cfg(desktop)]
-    fn append(&mut self, row: ReleaseEditTrackRow, disc_options: &[u32]) {
+    fn append(
+        &mut self,
+        row: ReleaseEditTrackRow,
+        side_choices: &[bae_records::DbSheetSideChoice],
+    ) {
         let line = |sheet_file_id: &str, file_reference: &str, source: &ReleaseEditTrackSource| {
             row.context.carved_from().is_some_and(|(next_sheet, next_source)| {
                 next_sheet.file_id == sheet_file_id
@@ -203,7 +207,7 @@ impl ReleaseEditTrackSide {
                 let (sheet, source) =
                     last.context.carved_from().expect("the guard read the track's sheet");
                 let (sheet, source) =
-                    (ReleaseEditSheet::of(sheet.clone(), disc_options), source.clone());
+                    (ReleaseEditSheet::of(sheet.clone(), side_choices), source.clone());
                 self.runs.push(ReleaseEditTrackRun::Sheet { sheet, source, rows: vec![last, row] });
             }
             last => {
