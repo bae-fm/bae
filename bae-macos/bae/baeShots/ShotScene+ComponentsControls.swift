@@ -35,6 +35,10 @@ extension ShotScene {
         component("mac.component.button.borderless", height: 50) {
             MacButton("Set up", kind: .borderless) {}
         },
+        component("mac.component.button.borderless-neutral", height: 50) {
+            MacButton("Cancel", kind: .borderless) {}
+                .neutral()
+        },
         component("mac.component.button.off", height: 50) {
             MacButton("Set up", kind: .primary) {}
                 .disabled(true)

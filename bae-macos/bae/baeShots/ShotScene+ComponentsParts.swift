@@ -330,6 +330,16 @@ extension ShotScene {
             }
             .frame(width: 380, alignment: .leading)
         },
+        component("mac.component.sheet-footer.two-on-the-left", height: 60) {
+            MacSheetFooter {
+                Button("New folder…") {}
+                Button("Look again") {}
+            } trailing: {
+                Button("Cancel") {}
+                Button("Set up") {}.buttonStyle(PrimaryButtonStyle())
+            }
+            .frame(width: 380, alignment: .leading)
+        },
     ]
 
     /// `MacSortCriteria`, one pill per sort field.
