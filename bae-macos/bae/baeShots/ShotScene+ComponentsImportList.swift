@@ -169,24 +169,6 @@ extension ShotScene {
         ),
     ]
 
-    // MARK: Filter row
-
-    /// What the filter row shows beyond its field: the text typed and the
-    /// count it narrows to, the work that runs and whether a filter is on.
-    private struct FilterRowState {
-        var typed = ""
-        var narrowed: BridgeNarrowedCount?
-        var identifying = false
-        var importing = false
-        var scanning = false
-        var filtered = false
-    }
-
-    /// The buttons at the end of the filter row, as the import list's
-    /// sidebar puts them.
-    @ViewBuilder
-    // MARK: Sidebar
-
     // MARK: Bulk pane
 
     private static func bulkActionRowScene(
