@@ -734,7 +734,7 @@ private struct PageLinkRow: View {
             }
         }
         .value(value)
-        .note(problem.map { Text(verbatim: $0) }, tone: .danger)
+        .problem(problem.map { Text(verbatim: $0) })
         .chip(tag)
         .strong(verbatimTitle != nil)
         .pressing(opens ? .opens(action) : nil)
@@ -836,11 +836,10 @@ private struct RefusedInviteRow: View {
         } label: {
             Text(verbatim: refused.address)
         }
-        .note(
+        .problem(
             Text(
                 "Could not invite: \(localizedCoreString(refused.reasonKey))"
-            ),
-            tone: .danger
+            )
         )
         .strong()
     }

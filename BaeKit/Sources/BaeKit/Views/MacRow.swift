@@ -9,7 +9,7 @@ public enum MacRowPress {
 }
 
 /// A settings row, as the design system's `MacRow` draws one: a lead such as
-/// a person's picture, the row's name with a note under it, then its value in
+/// a person's picture, the row's name with what went wrong under it, then its value in
 /// secondary text and its controls at the right, a group's space apart.
 /// Inside a settings box the row is one line of the box.
 public struct MacRow<Lead: View, Label: View, Content: View>: View {
@@ -20,8 +20,7 @@ public struct MacRow<Lead: View, Label: View, Content: View>: View {
     private let label: Label
     private let content: Content
     private var value: String?
-    private var note: Text?
-    private var noteTone: StatusTone?
+    private var problem: Text?
     private var chip: String?
     private var isStrong = false
     private var press: Press?
@@ -45,8 +44,7 @@ public struct MacRow<Lead: View, Label: View, Content: View>: View {
             content: content
         )
         row.value = value
-        row.note = note
-        row.noteTone = noteTone
+        row.problem = problem
         row.chip = chip
         row.isStrong = isStrong
         row.press = press
@@ -61,12 +59,11 @@ public struct MacRow<Lead: View, Label: View, Content: View>: View {
         return copy
     }
 
-    /// A line under the row's name, in secondary text, or in `tone`'s colour
-    /// when it says something in that tone, such as why an invite failed.
-    public func note(_ text: Text?, tone: StatusTone? = nil) -> MacRow {
+    /// What went wrong with the row's subject, such as why an invite
+    /// failed: a line under its name in the danger colour.
+    public func problem(_ text: Text?) -> MacRow {
         var copy = self
-        copy.note = text
-        copy.noteTone = tone
+        copy.problem = text
         return copy
     }
 
@@ -105,7 +102,7 @@ public struct MacRow<Lead: View, Label: View, Content: View>: View {
             .buttonStyle(.accentPlain)
             .placesItselfInRow()
         case nil:
-            // The row reads its name, and the note under it, before the
+            // The row reads its name, and the line under it, before the
             // controls at its end: VoiceOver orders a window's elements by
             // where they are, and a control centred on two lines sits
             // between them.
@@ -160,13 +157,10 @@ public struct MacRow<Lead: View, Label: View, Content: View>: View {
                             StatusChip(verbatim: chip)
                         }
                     }
-                    if let note {
-                        note
+                    if let problem {
+                        problem
                             .themeText(.detail)
-                            .foregroundStyle(
-                                noteTone.map { AnyShapeStyle($0.color) }
-                                    ?? AnyShapeStyle(.secondary)
-                            )
+                            .foregroundStyle(Theme.danger)
                     }
                 }
                 .accessibilitySortPriority(1)
