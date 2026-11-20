@@ -20,9 +20,9 @@ extension FormStyle where Self == SettingsFormStyle {
 ///
 /// The system's grouped form fixes its boxes' fill, row height and spacing, so
 /// none of them can be set to the boards' values; this style lays the
-/// sections out itself. The controls a form's rows hold take their form look
-/// from the style they are given, so it also sets the ones the panes use: a
-/// switch with its label to the left, a label with its value at the right.
+/// sections out itself. A form's rows take their form look from the style
+/// they are given, so it also sets the one the panes use: a label with its
+/// value at the right.
 struct SettingsFormStyle: FormStyle {
     /// The page margin at each side of the sections.
     var sideInset = SettingsPaneMetrics.sideInset

@@ -57,15 +57,13 @@ extension ShotScene {
         },
     ]
 
-    /// `MacSwitch`, on and off, in the form's switch look.
+    /// `MacSwitch`, on and off.
     private static let switchScenes: [ShotScene] = [
         component("mac.component.switch.on", height: 50) {
             MacSwitch("Restore on launch", isOn: .constant(true))
-                .settingsRowControls()
         },
         component("mac.component.switch.off", height: 50) {
             MacSwitch("Restore on launch", isOn: .constant(false))
-                .settingsRowControls()
         },
     ]
 

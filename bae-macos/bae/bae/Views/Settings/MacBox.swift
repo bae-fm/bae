@@ -41,13 +41,11 @@ extension View {
 }
 
 extension View {
-    /// Draws the controls in a settings box's rows as the boards do: a switch
-    /// with its label to the left, a label with its value or control at the
-    /// right. A form takes its controls' form look from its style, so the
-    /// style sets these; a box outside a form sets them itself.
+    /// Draws the rows of a settings box as the boards do: a label with its
+    /// value or control at the right. A form takes its rows' form look from
+    /// its style, so the style sets it; a box outside a form sets it itself.
     func settingsRowControls() -> some View {
-        toggleStyle(SettingsSwitchStyle())
-            .labeledContentStyle(SettingsLabeledContentStyle())
+        labeledContentStyle(SettingsLabeledContentStyle())
     }
 }
 
@@ -127,24 +125,6 @@ struct MacBoxRows: View {
             Theme.surface,
             in: RoundedRectangle(cornerRadius: ThemeRadius.card)
         )
-    }
-}
-
-/// A switch the size the boards draw (the mini one), its label to the left in
-/// the row's own text size: a control size also sets the label's. This style
-/// fills a switch that is on with the chosen accent's swatch colour, the
-/// design system's `accent-fill`, not with the system accent, which is the
-/// standard accent's selection colour whichever accent the person chose.
-private struct SettingsSwitchStyle: ToggleStyle {
-    @Environment(\.accentChoice)
-    private var accent
-
-    func makeBody(configuration: Configuration) -> some View {
-        Toggle(configuration)
-            .toggleStyle(.switch)
-            .controlSize(.mini)
-            .tint(accent.fillColor)
-            .themeText(.body)
     }
 }
 
