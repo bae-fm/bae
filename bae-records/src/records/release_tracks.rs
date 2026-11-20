@@ -430,3 +430,16 @@ pub fn side_headings_on(
         },
     )?)
 }
+
+impl Records {
+    /// The heading of each side of the mediums numbered `numbered` of a
+    /// release no table holds, which holds `mediums` in order, as
+    /// [`side_headings_on`] gives them.
+    pub async fn side_headings(
+        &self,
+        mediums: Vec<bae_types::mediums::ReleaseMedium>,
+        numbered: Vec<u32>,
+    ) -> Result<Vec<bae_types::mediums::SideHeading>, DbError> {
+        self.store.read(move |sql| side_headings_on(&sql, &mediums, &numbered)).await
+    }
+}

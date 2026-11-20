@@ -394,6 +394,35 @@ impl ImportError {
     }
 }
 
+impl ImportError {
+    /// The refusal `refusal` of the catalog release `release` as the
+    /// import's error. A tie names every side and disc of the tied mediums by
+    /// its heading on `release`, which `records` gives through the library's
+    /// placement statement, so the error names them as a stored release's
+    /// tracklist would.
+    pub async fn of_reading_refusal(
+        records: &bae_records::Records,
+        release: &bae_catalogs::source_release::SourceRelease,
+        refusal: bae_catalogs::reading::ReadingRefusal,
+    ) -> Self {
+        use bae_catalogs::reading::ReadingRefusal as R;
+        match refusal {
+            R::TrackCount { folder, release } => {
+                Self::MetadataTrackCount { folder_tracks: folder, release_tracks: release }
+            }
+            R::Tied { mediums } => {
+                match records.side_headings(release.held_mediums(), mediums).await {
+                    Ok(sides) => Self::TiedMediums { sides },
+                    Err(error) => Self::Database(error),
+                }
+            }
+            R::Unreadable { catalog, detail } => {
+                bae_catalogs::CatalogError::SourceData { catalog, detail }.into()
+            }
+        }
+    }
+}
+
 /// An import's write to the library's records failed: credits or labels
 /// that cannot be written, or the store.
 #[cfg(desktop)]

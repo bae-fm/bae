@@ -93,7 +93,8 @@ impl LibraryManager {
             Ok(values) => values,
             Err(refusal) => {
                 return Err(LibraryError::from(
-                    self.import_tables.reading_refusal(&release, refusal).await,
+                    bae_import::ImportError::of_reading_refusal(&self.records, &release, refusal)
+                        .await,
                 ))
             }
         };

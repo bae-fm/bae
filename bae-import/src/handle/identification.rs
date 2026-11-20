@@ -13,6 +13,7 @@ impl ImportServiceHandle {
             self.clone(),
             self.services.store.clone(),
             self.services.tables.clone(),
+            self.services.records.clone(),
             self.services.diagnostics.clone(),
             self.services.catalogs.clone(),
         )

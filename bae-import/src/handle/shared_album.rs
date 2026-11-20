@@ -72,7 +72,12 @@ impl ImportServiceHandle {
             let values = match release.read(&audio) {
                 Ok(values) => values,
                 Err(refusal) => {
-                    return Err(self.services.tables.reading_refusal(release, refusal).await)
+                    return Err(crate::ImportError::of_reading_refusal(
+                        &self.services.records,
+                        release,
+                        refusal,
+                    )
+                    .await)
                 }
             };
             offered.push(crate::shared_album::OfferedReading::of(&values));

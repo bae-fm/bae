@@ -296,7 +296,12 @@ impl ImportServiceHandle {
         let values = match reading {
             Ok(values) => values,
             Err(refusal) => {
-                return Err(self.services.tables.reading_refusal(release, refusal).await)
+                return Err(crate::ImportError::of_reading_refusal(
+                    &self.services.records,
+                    release,
+                    refusal,
+                )
+                .await)
             }
         };
         // A partner that fails to load fails the pick, leaving the previous

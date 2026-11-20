@@ -224,7 +224,9 @@ async fn lead_metadata(
     }
     let reading = match release.read(audio) {
         Ok(values) => Ok(values),
-        Err(refusal) => Err(context.tables.reading_refusal(release, refusal).await),
+        Err(refusal) => {
+            Err(crate::ImportError::of_reading_refusal(&context.records, release, refusal).await)
+        }
     };
     let source_draft = reading
         .and_then(|values| {
