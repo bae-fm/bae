@@ -27,7 +27,6 @@ final class EditMenuSelectAllTests: XCTestCase {
             )
         )
         let selectedAll = app.staticTexts["\(Self.albumCount) selected"]
-        let last = "Album \(Self.albumCount - 1)"
 
         // The section switch, which the window shows once the library is
         // open, not while it opens it.
@@ -35,25 +34,15 @@ final class EditMenuSelectAllTests: XCTestCase {
         XCTAssertTrue(importSection.waitForExistence(timeout: 20))
         importSection.click()
         let list = app.tables["import-list"]
-        // The first and the last of the folder's candidates: then every one is
-        // in the list, whichever order it lists them in. The list draws only
-        // the rows on screen, so the last shows once the list is scrolled to
-        // its end, and the first once it is back at the top.
-        var reachedLast = false
-        for _ in 0..<20 where !reachedLast {
-            list.scroll(byDeltaX: 0, deltaY: -3000)
-            reachedLast = list.staticTexts[last].waitForExistence(timeout: 3)
-        }
-        XCTAssertTrue(reachedLast)
-        var reachedFirst = false
-        for _ in 0..<20 where !reachedFirst {
-            list.scroll(byDeltaX: 0, deltaY: 3000)
-            reachedFirst = list.staticTexts["Album 000"]
-                .waitForExistence(
-                    timeout: 3
+        // The list draws only the rows on screen, and the count it reaches
+        // with Select All is the check that it lists every candidate.
+        XCTAssertTrue(
+            list.staticTexts
+                .matching(
+                    NSPredicate(format: "label BEGINSWITH %@", "Album ")
                 )
-        }
-        XCTAssertTrue(reachedFirst)
+                .firstMatch.waitForExistence(timeout: 20)
+        )
         // The top row, wherever the list's order put it.
         let topRow = list.coordinate(withNormalizedOffset: .zero)
             .withOffset(CGVector(dx: 120, dy: 30))
@@ -69,6 +58,11 @@ final class EditMenuSelectAllTests: XCTestCase {
         app.menuBars.menuItems["Select All"].click()
         XCTAssertTrue(selectedAll.waitForExistence(timeout: 10))
 
+        // One row selected again: the import screen shows its filter field
+        // beside the list, which it does not with several rows selected in a
+        // window as narrow as the CI runner's.
+        topRow.click()
+        XCTAssertTrue(selectedAll.waitForNonExistence(timeout: 10))
         let filter = app.textFields
             .matching(
                 NSPredicate(format: "placeholderValue == %@", "Filter")
