@@ -25,26 +25,15 @@ struct MacStorageUsage: View {
     }
 
     private var bar: some View {
-        GeometryReader { proxy in
-            HStack(spacing: 0) {
-                ForEach(usage.segments) { segment in
-                    Rectangle()
-                        .fill(segment.kind.color)
-                        .frame(
-                            width: max(
-                                Self.thinnest,
-                                proxy.size.width * segment.share
-                            )
-                        )
-                        // Each segment's edges give up half a gap, so two
-                        // neighbours leave one gap between them.
-                        .mask {
-                            Rectangle().padding(.horizontal, Self.gap / 2)
-                        }
-                }
+        ShareStack(spacing: Self.gap, thinnest: Self.thinnest) {
+            ForEach(usage.segments) { segment in
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(segment.kind.color)
+                    .layoutValue(key: ShareKey.self, value: segment.share)
             }
-            .clipShape(RoundedRectangle(cornerRadius: 4))
         }
+        // The bar's own ends are rounder than the gaps between segments.
+        .clipShape(RoundedRectangle(cornerRadius: 4))
         .frame(height: 8)
         // VoiceOver reads the bar as one image, labelled with each kind and
         // its size.
@@ -68,6 +57,46 @@ struct MacStorageUsage: View {
                     size: segment.bytes.fileSizeText
                 )
             }
+        }
+    }
+}
+
+private struct ShareKey: LayoutValueKey {
+    static let defaultValue: Double = 0
+}
+
+/// A row that gives each child `ShareKey`'s part of the width left after the
+/// spacing, at least `thinnest` wide.
+private struct ShareStack: Layout {
+    let spacing: CGFloat
+    let thinnest: CGFloat
+
+    func sizeThatFits(
+        proposal: ProposedViewSize,
+        subviews: Subviews,
+        cache: inout ()
+    ) -> CGSize {
+        CGSize(width: proposal.width ?? 0, height: proposal.height ?? 0)
+    }
+
+    func placeSubviews(
+        in bounds: CGRect,
+        proposal: ProposedViewSize,
+        subviews: Subviews,
+        cache: inout ()
+    ) {
+        let room = max(
+            bounds.width - spacing * CGFloat(max(subviews.count - 1, 0)),
+            0
+        )
+        var x = bounds.minX
+        for subview in subviews {
+            let width = max(thinnest, room * subview[ShareKey.self])
+            subview.place(
+                at: CGPoint(x: x, y: bounds.minY),
+                proposal: ProposedViewSize(width: width, height: bounds.height)
+            )
+            x += width + spacing
         }
     }
 }
