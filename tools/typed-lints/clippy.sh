@@ -45,6 +45,14 @@ for arg in "$@"; do
     clippy_args+="${arg}__CLIPPY_HACKERY__"
 done
 
+# Without the builds tool (CI), sccache would answer a workspace crate's compile
+# from its cache and skip the driver, which writes the read rule's record of the
+# crate beside its metadata, so a later crate's compile finds no record. The run
+# goes without sccache. A machine with builds is left as it is.
+if [ ! -x "$HOME/.local/bin/builds" ]; then
+    export RUSTC_WRAPPER=
+fi
+
 BUILDS_CARGO_BEFORE="${BUILDS_CARGO_BEFORE:-tools/typed-lints/driver.sh}" \
     RUSTC_WORKSPACE_WRAPPER="$top/tools/typed-lints/built/typed-lints-rustc$exe" \
     CLIPPY_ARGS="$clippy_args" \
