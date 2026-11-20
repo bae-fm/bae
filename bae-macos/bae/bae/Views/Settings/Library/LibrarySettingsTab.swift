@@ -260,33 +260,10 @@ private struct SyncSettingsPage: View {
                 )
             }
             if let location = configStore.storage {
-                MacSection {
-                    MacCloudHome(location: location)
-                    if case .s3 = location,
-                        case .s3AccessKey(let keyId) = configStore.config
-                            .storageAccess
-                    {
-                        MacRow("Access key ID") {
-                            HStack {
-                                Text(verbatim: keyId)
-                                    .foregroundStyle(.secondary)
-                                Button("Replace key…") { keyReplacement.open() }
-                            }
-                        }
-                    }
-                    if let folder = location.folderLabel {
-                        OpenFolderInBrowserRow(folder: folder)
-                    }
-                } header: {
-                    Text("Cloud home")
-                } footer: {
-                    if let line = keyReplacement.line {
-                        S3KeyLineNotice(
-                            line: line,
-                            onDismiss: { keyReplacement.dismissLine() }
-                        )
-                    }
-                }
+                MacCloudHomeContainer(
+                    location: location,
+                    keyReplacement: keyReplacement
+                )
                 LibraryRestoreCodeSection(
                     reveal: restoreCode,
                     location: location
@@ -346,38 +323,5 @@ private struct LibraryRestoreCodeSection: View {
                 )
             }
         )
-    }
-}
-
-/// The page's line after an S3 key call, until the person dismisses it: a
-/// saved key, with the old key to delete in the provider's console when the
-/// library recorded one, or why using the key failed after its sheet closed.
-private struct S3KeyLineNotice: View {
-    let line: S3KeyReplacement.Line
-    let onDismiss: () -> Void
-
-    var body: some View {
-        switch line {
-        case .saved(let oldKey):
-            MacNotice(
-                title: String(localized: "Saved the new S3 key."),
-                advice: oldKey.map { oldKey in
-                    String(
-                        localized:
-                            "Delete the old key, \(oldKey), in your S3 provider’s console."
-                    )
-                },
-                error: nil,
-                tone: .info,
-                onDismiss: onDismiss
-            )
-        case .failed(let error):
-            MacNotice(
-                title: String(localized: "Could not use this key"),
-                advice: error.line,
-                error: error,
-                onDismiss: onDismiss
-            )
-        }
     }
 }

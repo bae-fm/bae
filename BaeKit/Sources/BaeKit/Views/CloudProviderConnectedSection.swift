@@ -1,12 +1,12 @@
 import SwiftUI
 import os.log
 
-private let logger = Logger.bae("MacCloudHome")
+private let logger = Logger.bae("CloudProviderConnectedSection")
 
-/// The library's storage as coven records it, one row per field. Welcome's
-/// library details show it as it is; the Sync page adds
-/// [OpenFolderInBrowserRow] after it.
-public struct MacCloudHome: View {
+/// The library's storage as coven records it, one row per field: what
+/// `MacCloudHome` draws under its heading, and what Welcome's library
+/// details show alone.
+public struct CloudProviderConnectedSection: View {
     public let location: BridgeStorageLocation
 
     public init(location: BridgeStorageLocation) {

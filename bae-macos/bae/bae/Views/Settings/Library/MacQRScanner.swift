@@ -8,20 +8,27 @@ private let logger = Logger.bae("QRScanner")
 /// A live camera QR-code scanner that calls `onScan` with the first decoded
 /// code, or explains why the camera isn't available.
 struct MacQRScanner: View {
-    let onScan: (String) -> Void
-    /// False keeps the view on its "Starting camera…" placeholder without
-    /// asking for the camera, for a screenshot of the sheet.
-    var startsCamera = true
-
-    private enum CameraState {
+    /// What the scanner shows: the camera's picture, or why there is none.
+    enum CameraState {
         case requesting
         case ready(CameraCapture)
         case denied
         case unavailable
     }
 
+    let onScan: (String) -> Void
+    /// A state to hold instead of asking for the camera, for a shot of the
+    /// area; nil asks for the camera and shows what comes of it.
+    private let held: CameraState?
+
+    init(onScan: @escaping (String) -> Void, showing held: CameraState? = nil) {
+        self.onScan = onScan
+        self.held = held
+        _state = State(initialValue: held ?? .requesting)
+    }
+
     @State
-    private var state: CameraState = .requesting
+    private var state: CameraState
 
     var body: some View {
         Group {
@@ -47,7 +54,7 @@ struct MacQRScanner: View {
             }
         }
         .task {
-            if startsCamera { await start() }
+            if held == nil { await start() }
         }
         .onDisappear { stop() }
     }
@@ -137,7 +144,7 @@ struct MacQRScanner: View {
 
 /// Owns the capture session and runs its blocking start/stop calls in order,
 /// so closing the scanner can't leave the camera running.
-private final class CameraCapture: @unchecked Sendable {
+final class CameraCapture: @unchecked Sendable {
     let session: AVCaptureSession
     let output: AVCaptureVideoDataOutput
 
@@ -173,11 +180,12 @@ private final class CameraCapture: @unchecked Sendable {
 struct CodeScannerSheet: View {
     let onScan: (String) -> Void
     let onDismiss: () -> Void
-    var startsCamera = true
+    /// A state to hold instead of asking for the camera, for a shot.
+    var showing: MacQRScanner.CameraState?
 
     var body: some View {
         MacSheet("Scan a code", width: 400) {
-            MacQRScanner(onScan: onScan, startsCamera: startsCamera)
+            MacQRScanner(onScan: onScan, showing: showing)
                 .frame(height: 300)
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.card))
         } footer: {

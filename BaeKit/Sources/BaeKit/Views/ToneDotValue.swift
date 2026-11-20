@@ -1,13 +1,17 @@
-import BaeKit
 import SwiftUI
 
 /// A row's value in its tone: a dot and the words in the tone's colour, and
 /// plain secondary words for the neutral tone, which has no dot.
-struct ToneDotValue: View {
-    let text: String
-    let tone: StatusTone
+public struct ToneDotValue: View {
+    public let text: String
+    public let tone: StatusTone
 
-    var body: some View {
+    public init(text: String, tone: StatusTone) {
+        self.text = text
+        self.tone = tone
+    }
+
+    public var body: some View {
         HStack(spacing: ThemeSpace.compact) {
             if tone != .neutral {
                 Circle()

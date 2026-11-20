@@ -38,3 +38,14 @@ extension MacRow where Label == Text, Content == Text {
         self.init(title) { Text(value) }
     }
 }
+
+extension MacRow where Label == Text, Content == ToneDotValue {
+    /// A row whose right side is `value` in `tone`, after a dot of it.
+    public init(
+        _ title: LocalizedStringKey,
+        value: String,
+        tone: StatusTone
+    ) {
+        self.init(title) { ToneDotValue(text: value, tone: tone) }
+    }
+}

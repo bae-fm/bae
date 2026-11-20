@@ -319,7 +319,7 @@ extension ShotScene {
                 CodeScannerSheet(
                     onScan: { _ in },
                     onDismiss: {},
-                    startsCamera: false
+                    showing: .requesting
                 )
                 .frame(width: 400)
                 .fixedSize(horizontal: false, vertical: true),

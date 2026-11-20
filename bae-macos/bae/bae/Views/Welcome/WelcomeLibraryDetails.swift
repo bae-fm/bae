@@ -47,20 +47,16 @@ struct WelcomeLibraryDetails: View {
             case .failed(let failure):
                 MacNotice(error: failure)
             case .loaded(let status):
-                MacRow("Status") {
-                    HStack(spacing: ThemeSpace.related) {
-                        Circle()
-                            .fill(status.statusTone.color)
-                            .frame(width: 7, height: 7)
-                        Text(status.statusLine)
-                            .foregroundStyle(status.statusTone.color)
-                    }
-                }
+                MacRow(
+                    "Status",
+                    value: status.statusLine,
+                    tone: status.statusTone
+                )
                 if let lastSynced = status.lastSynced {
                     MacRow("Last synced", value: lastSynced.agoLine)
                 }
             }
-            MacCloudHome(location: storage)
+            MacCloudHome(location: storage, shown: .bare)
         }
         else {
             MacRow("Status", value: String(localized: "Not synced"))
