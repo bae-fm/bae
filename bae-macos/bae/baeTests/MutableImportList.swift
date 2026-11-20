@@ -22,7 +22,6 @@ final class MutableImportList: @unchecked Sendable {
     private var counts: [ImportFeed<BridgeListCount>] = []
     private var deliveredIds: Set<String> = []
     private var answered: (shown: ClosedRange<Int>, start: Int)?
-    private let ended = Counter()
 
     init(items: [BridgeImportListItem]) {
         self.items = items
@@ -65,17 +64,6 @@ final class MutableImportList: @unchecked Sendable {
         let window = delivery(of: shown)
         lock.withLock { answered = (shown, window.start) }
         return window
-    }
-
-    /// How many reads have ended with a cancellation.
-    var endedReads: Int { ended.value }
-
-    /// Cancel every open read, as a cancelled task ends the bridge's calls:
-    /// each throws `CancellationError`.
-    func cancelReads() {
-        let open = lock.withLock { (views.filter { !$0.stopped }, counts) }
-        for view in open.0 { view.feed.finish(onEnd: ended) }
-        for feed in open.1 { feed.finish(onEnd: ended) }
     }
 
     /// Replace the list's items and deliver the change to everything open.
@@ -180,28 +168,10 @@ final class ImportFeed<Value: Sendable>: @unchecked Sendable {
 
     func emit(_ value: Value) { continuation.yield(value) }
 
-    private var onEnd: Counter?
-
-    /// End the feed: the read that waits on it throws `CancellationError`,
-    /// and `onEnd` counts it.
-    func finish(onEnd: Counter) {
-        self.onEnd = onEnd
-        continuation.finish()
-    }
-
     func next() async throws -> Value {
         guard let value = await iterator.next() else {
-            onEnd?.increment()
-            Wait.happened()
             throw CancellationError()
         }
         return value
     }
-}
-
-final class Counter: @unchecked Sendable {
-    private let lock = NSLock()
-    private var count = 0
-    var value: Int { lock.withLock { count } }
-    func increment() { lock.withLock { count += 1 } }
 }

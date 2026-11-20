@@ -9,23 +9,6 @@ import Testing
 /// playback state it renders.
 @Suite("Playback.playPause(for:)")
 struct PlaybackPlayPauseTests {
-    private final class Counter: @unchecked Sendable {
-        private let lock = NSLock()
-        private var value = 0
-
-        func increment() {
-            lock.lock()
-            value += 1
-            lock.unlock()
-        }
-
-        var count: Int {
-            lock.lock()
-            defer { lock.unlock() }
-            return value
-        }
-    }
-
     private static func track() -> BridgeNowPlayingTrack {
         BridgeNowPlayingTrack(
             track: BridgePlayingTrack(

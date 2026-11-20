@@ -558,7 +558,7 @@ struct ImageStoreContentIdentityTests {
             size: 1_000,
             modifiedAtNs: 1_000
         )
-        let fetches = FetchCounter()
+        let fetches = Counter()
         let store = ImageStore(fetchEmbeddedCover: { _, _ in
             fetches.increment()
             return bytes
@@ -601,15 +601,6 @@ struct ImageStoreContentIdentityTests {
             "the file's embedded artwork is not the file"
         )
     }
-}
-
-private final class FetchCounter: @unchecked Sendable {
-    private let lock = NSLock()
-    private var fetched = 0
-
-    var count: Int { lock.withLock { fetched } }
-
-    func increment() { lock.withLock { fetched += 1 } }
 }
 
 private func temporaryDirectory() throws -> URL {
