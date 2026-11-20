@@ -142,7 +142,7 @@ struct PlaybackStoreUpcomingListTests {
 
         #expect(opened.openedOrders == [false, true])
         #expect(store.upcomingEpoch != before)
-        #expect(store.upcomingTotal == 5)
+        try await Wait.until { store.upcomingTotal == 5 }
     }
 
     @MainActor
@@ -178,10 +178,8 @@ struct PlaybackStoreUpcomingListTests {
         try await Wait.until { opened.openedOrders.count == 2 }
         opened.latest.show([queueEntry("n0")])
         await second.value
-        #expect(
-            store.upcomingTotal == 1,
-            "a new context opens a list again"
-        )
+        // A new context opens a list again; its count arrives after its rows.
+        try await Wait.until { store.upcomingTotal == 1 }
     }
 
     @MainActor
@@ -240,7 +238,7 @@ struct PlaybackStoreUpcomingFailureTests {
         opened.latest.show((0..<3).map { queueEntry("e\($0)") })
         await retry.value
         #expect(store.upcomingFailure == nil)
-        #expect(store.upcomingTotal == 3)
+        try await Wait.until { store.upcomingTotal == 3 }
     }
 
     @MainActor

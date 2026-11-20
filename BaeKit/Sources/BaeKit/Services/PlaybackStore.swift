@@ -180,9 +180,10 @@ extension PlaybackStore {
     }
 
     /// Open the upcoming list in the lane's current order, shuffled or not,
-    /// while a context plays, and wait for its count and first rows. The lane
-    /// keeps showing the list in the other order until the new list's first
-    /// read returns, so turning shuffle on or off does not empty the lane.
+    /// while a context plays, and wait for its first rows; its count arrives
+    /// after them (`upcomingTotal`). The lane keeps showing the list in the
+    /// other order until the new list's first read returns, so turning
+    /// shuffle on or off does not empty the lane.
     @MainActor
     public func showUpcoming(queue: Queue) async {
         guard queueContext != nil else {
