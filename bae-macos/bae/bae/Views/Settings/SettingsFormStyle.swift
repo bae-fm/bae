@@ -76,10 +76,10 @@ private struct SettingsFormSection: View {
                         .themeText(.detail)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, ThemeSpace.inline)
-                        // The section's space between its parts, then the
-                        // note's own space above it.
-                        .padding(.top, ThemeSpace.compact * 2)
+                        // The note's text starts where the rows' labels start,
+                        // 8pt under the box.
+                        .padding(.horizontal, RowMetrics.inset)
+                        .padding(.top, ThemeSpace.related)
                 }
             }
         }
