@@ -522,7 +522,9 @@ extension ShotScene {
                 AnyView(
                     ZStack(alignment: .topLeading) {
                         framed
-                        openMenu()
+                        // The app's menu is a window of its own, read after
+                        // the window it opens from.
+                        openMenu().accessibilitySortPriority(-1)
                     }
                 )
             } ?? framed
