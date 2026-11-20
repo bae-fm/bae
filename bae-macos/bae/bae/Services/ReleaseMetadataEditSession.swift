@@ -259,60 +259,24 @@ final class ReleaseMetadataEditSession {
     /// tracks and the album show becomes what it gives, unsaved until Save.
     func apply(_ link: BridgePressingLink) {
         let apply = commands.catalogApply()
-        let serial = begin(.applying(apply))
-        failure = nil
-        operationTask = Task { @MainActor in
-            await editingCommands.commitActiveEdits()
-            guard !Task.isCancelled else {
-                finish(serial)
-                return
-            }
-            do {
-                values = try await serially { [form] in
-                    try await form.apply(link, apply?.bridgeApply)
-                }
-            }
-            catch is CancellationError {}
-            catch {
-                failure = DisplayError(error)
-            }
-            finish(serial)
+        replaceValues(.applying(apply)) {
+            try await $0.apply(link, apply?.bridgeApply)
         }
     }
 
     /// Record what the person picked for the album a save files the release
     /// under.
     func pickAlbum(_ pick: BridgeAlbumPick) {
-        let serial = begin(.pickingAlbum)
-        failure = nil
-        operationTask = Task { @MainActor in
-            do {
-                try await serially { [form] in try await form.setAlbum(pick) }
-            }
-            catch is CancellationError {}
-            catch {
-                failure = DisplayError(error)
-            }
-            finish(serial)
+        run(.pickingAlbum, committingEdits: false) {
+            try await $0.setAlbum(pick)
         }
     }
 
     /// Record the side or disc the person picked for the CUE sheet
     /// `sheetFileId`.
     func pickSheetSide(_ sheetFileId: String, side: BridgeMediumSide) {
-        let serial = begin(.pickingSheetSide)
-        failure = nil
-        operationTask = Task { @MainActor in
-            do {
-                try await serially { [form] in
-                    try await form.setSheetSide(sheetFileId, side)
-                }
-            }
-            catch is CancellationError {}
-            catch {
-                failure = DisplayError(error)
-            }
-            finish(serial)
+        run(.pickingSheetSide, committingEdits: false) {
+            try await $0.setSheetSide(sheetFileId, side)
         }
     }
 
@@ -393,39 +357,44 @@ extension ReleaseMetadataEditSession {
     /// Drop the release's catalog records; Save writes the release with
     /// none.
     func unlink() {
-        let serial = begin(.unlinking)
-        failure = nil
-        operationTask = Task { @MainActor in
-            do {
-                try await serially { [form] in try await form.unlink() }
-            }
-            catch is CancellationError {}
-            catch {
-                failure = DisplayError(error)
-            }
-            finish(serial)
-        }
+        run(.unlinking, committingEdits: false) { try await $0.unlink() }
     }
 
     /// Run `command`, which replaces the form's values, as `operation`, once
-    /// the fields have committed what the person typed.
+    /// the fields have committed what the person typed, and hold the values
+    /// it returns.
     private func replaceValues(
         _ operation: Operation,
         _ command:
             @escaping @MainActor (ReleaseEditFormCommands) async throws ->
             BridgeRawReleaseEdit
     ) {
+        run(operation, committingEdits: true) { form in
+            self.values = try await command(form)
+        }
+    }
+
+    /// Run `step` on the form as `operation`, after the change made before
+    /// it, first committing what the person typed in the fields when
+    /// `committingEdits`. A failure shows under the action row.
+    private func run(
+        _ operation: Operation,
+        committingEdits: Bool,
+        _ step:
+            @escaping @MainActor (ReleaseEditFormCommands) async throws -> Void
+    ) {
         let serial = begin(operation)
         failure = nil
         operationTask = Task { @MainActor in
-            await editingCommands.commitActiveEdits()
-            guard !Task.isCancelled else {
-                finish(serial)
-                return
+            if committingEdits {
+                await editingCommands.commitActiveEdits()
+                guard !Task.isCancelled else {
+                    finish(serial)
+                    return
+                }
             }
             do {
-                values = try await serially { [form] in try await command(form)
-                }
+                try await serially { [form] in try await step(form) }
             }
             catch is CancellationError {}
             catch {
@@ -442,23 +411,8 @@ extension ReleaseMetadataEditSession {
         fileReference: String,
         audioFileId: String
     ) {
-        let serial = begin(.pickingSheetFile)
-        failure = nil
-        operationTask = Task { @MainActor in
-            do {
-                try await serially { [form] in
-                    try await form.setSheetFile(
-                        sheetFileId,
-                        fileReference,
-                        audioFileId
-                    )
-                }
-            }
-            catch is CancellationError {}
-            catch {
-                failure = DisplayError(error)
-            }
-            finish(serial)
+        run(.pickingSheetFile, committingEdits: false) {
+            try await $0.setSheetFile(sheetFileId, fileReference, audioFileId)
         }
     }
 

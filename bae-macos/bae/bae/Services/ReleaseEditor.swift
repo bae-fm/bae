@@ -286,28 +286,27 @@ final class HeldReleaseEditForm {
     func apply(link: BridgePressingLink, apply: BridgeCatalogApply?)
         async throws -> BridgeRawReleaseEdit
     {
-        form = try await handle.applyReleaseEditCatalog(
-            form: form,
-            link: link,
-            apply: apply
-        )
-        try showDraft()
-        return values
+        try await hold { [handle] form in
+            try await handle.applyReleaseEditCatalog(
+                form: form,
+                link: link,
+                apply: apply
+            )
+        }
     }
 
     /// Hold the form with what the release's own files say in place of its
     /// values; returns them.
     func applyFileTags() async throws -> BridgeRawReleaseEdit {
-        form = try await handle.applyReleaseEditFileTags(form: form)
-        try showDraft()
-        return values
+        try await hold { [handle] in
+            try await handle.applyReleaseEditFileTags(form: $0)
+        }
     }
 
     /// Hold the form with its metadata cleared; returns its values.
     func clear() async throws -> BridgeRawReleaseEdit {
-        form = try await handle.clearReleaseEdit(form: form)
-        try showDraft()
-        return values
+        try await hold { [handle] in try await handle.clearReleaseEdit(form: $0)
+        }
     }
 
     /// Save the form held now, then hold the form opened on what the save
@@ -323,7 +322,17 @@ final class HeldReleaseEditForm {
     /// Hold the form opened again on the release as the library holds it
     /// now, which drops every change; returns its values.
     func reopen() async throws -> BridgeRawReleaseEdit {
-        form = try await handle.openReleaseEdit(releaseId: form.releaseId())
+        try await hold { [handle] in
+            try await handle.openReleaseEdit(releaseId: $0.releaseId())
+        }
+    }
+
+    /// Hold the form core returns for the one held now, and point the draft
+    /// read at it; returns its values.
+    private func hold(
+        _ next: (BridgeReleaseEditForm) async throws -> BridgeReleaseEditForm
+    ) async throws -> BridgeRawReleaseEdit {
+        form = try await next(form)
         try showDraft()
         return values
     }
