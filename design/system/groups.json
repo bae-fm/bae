@@ -568,7 +568,7 @@
     ]
   },
   {
-    "name": "Playing and casting",
+    "name": "Playing",
     "about": "What plays now and where: the now playing bar and full player, their controls, the seek bar, the pause between sides, and the receivers.",
     "subgroups": [
       {
@@ -610,8 +610,8 @@
         ]
       },
       {
-        "name": "Casting",
-        "about": "The receivers bae casts to, and the line while it connects.",
+        "name": "Play on",
+        "about": "The receivers bae plays on, and the line while it connects.",
         "components": [
           "MacCastPopover",
           "MacCastConnectingLine",

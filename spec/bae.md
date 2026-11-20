@@ -95,7 +95,7 @@ releases. A phone browses, downloads and plays them.
 | Edit a release's metadata | yes | no |
 | Browse, search, play | yes | yes |
 | Pin a release for offline play | yes | yes |
-| Cast to AirPlay, Chromecast, UPnP | yes | yes |
+| Play on AirPlay, Chromecast, UPnP receivers | yes | yes |
 | Subsonic and MCP servers | yes | no |
 | Export and save files | yes | no |
 
@@ -266,7 +266,7 @@ many albums credit it ("1 album", "3 albums"), in the viewer's language.
 (album titles and artists in the grid, the artist and composer lists, a
 composer's page, the Storage manager's album and artist columns, and the
 order of library search's results and of an artist's albums and other printed
-names, the playlists, the people and the cast picker's receivers) orders them as a reader of the device's language
+names, the playlists, the people and the Play on picker's receivers) orders them as a reader of the device's language
 expects, by Unicode collation with that language's tailoring: in Swedish å, ä
 and ö come after z, in Spanish ñ after n, in Russian "я" and "Я" sit together,
 and in the root order accented letters sort with their base letter. Names
@@ -275,7 +275,7 @@ holds its language in one local row, set by the app (macOS: its first
 preferred language, Android: its locale) at launch and when its language
 changes, and a collation key of every listed name written in that
 language beside the name; lists order by the keys. A change of language
-reorders every list, the playlists, the people and the cast receivers among
+reorders every list, the playlists, the people and the receivers among
 them. A change of language, or of the collation data the keys were written with
 (which bae checks when it opens the library, before any list shows), rewrites
 every key in one write, so a list is in one order or the other and never
@@ -2499,7 +2499,7 @@ Other devices go on showing the release without playing it.
   file keeps its place; changes to the library still sync. Neither limits
   speed.
 - **Transfers on Android.** Settings lists Appearance, Library, Playback,
-  Transfers, Storage (§4.7), Casting and About as rows on one card, each opening a page, in the
+  Transfers, Storage (§4.7) and About as rows on one card, each opening a page, in the
   order of the Mac's sidebar. Transfers opens a page with Pin over
   Wi-Fi only, the setting above, and Pins at once, how many files are pinned at a time. A phone
   never uploads release files, so Android has no pause.
@@ -4961,8 +4961,8 @@ Switching to a receiver keeps the queue and sends the current track at its
 current position. Ending the session returns to this device, paused where it
 was, at the volume and mute last set: there is one volume, whatever plays.
 However a session on a Chromecast or UPnP receiver ends, the receiver is told
-to stop once, unless the link to it is already lost, and bae then closes the
-cast's connections to a Chromecast.
+to stop once, unless the link to it is already lost, and bae then closes its
+connections to a Chromecast.
 It runs from silent to full, and a level asked for past either is held to it
 where it is set, so this device, the receiver, the stored row and every screen
 hold the same level. A volume slider moves this device and the receiver as it
@@ -5016,7 +5016,7 @@ where it was until its next status.
 
 **AirPlay** receivers of both generations play. An AirPlay 2 receiver that asks
 for no PIN or password pairs with the password-less transient pairing. A
-receiver that asks for a PIN (on every cast, or once), a password, or AirPlay 1
+receiver that asks for a PIN (every time it plays, or once), a password, or AirPlay 1
 device verification pairs when the person enters the code it asks for, as
 described under Pairing below. bae refuses a receiver that offers only an
 encryption it does not implement, with that reason, before it connects, and
@@ -5029,19 +5029,19 @@ advertisement arrives first. An AirPlay 1 receiver is connected at the port and
 with the encryption its RAOP advertisement states; its AirPlay advertisement
 states neither, so a receiver seen only there is not offered.
 
-**Pairing.** bae pairs with an AirPlay receiver when the cast starts, before
+**Pairing.** bae pairs with an AirPlay receiver when playback on it starts, before
 playback moves. Every request bae sends an AirPlay receiver, to pair or to
 play, gives the receiver this device's name as Your devices lists it. A
 receiver that shows a PIN shows that name with it, and a receiver that asks
-its owner to accept the cast, as a Mac's AirPlay Receiver does, names this
+its owner to accept the connection, as a Mac's AirPlay Receiver does, names this
 device in that prompt.
-A receiver that asks for a PIN or a password does not fail the
-cast: bae asks the person for the code in a sheet (macOS) or a dialog
-(Android), and the cast goes on when the receiver accepts it. On macOS the
-sheet sits on the main window, since the cast connecting is the app's. On
-Android the dialog sits over the cast picker or the Casting page, whichever is
-open, and otherwise over the app. Closing the picker or the page leaves it
-open. Cancel closes it, casts nothing, and leaves the receiver showing its PIN
+A receiver that asks for a PIN or a password does not fail
+playing on it: bae asks the person for the code in a sheet (macOS) or a dialog
+(Android), and playback on it goes on when the receiver accepts the code. On macOS the
+sheet sits on the main window, since the connection is the app's. On
+Android the dialog sits over the Play on picker or the Playback settings, whichever is
+open, and otherwise over the app. Closing the picker or the settings leaves it
+open. Cancel closes it, plays nothing, and leaves the receiver showing its PIN
 until the receiver ends it.
 
 The sheet is titled Pair with and the receiver's name, with a line under the
@@ -5071,37 +5071,37 @@ ends, with "Pairing…" showing until then. bae refuses a code of the wrong
 shape before it connects, with "Enter the 4-digit PIN." or "Enter the
 password." under the field.
 
-A receiver that refuses fails the cast with a line that says what is wrong and
-what to do. macOS shows it in an alert titled "Could not cast to" and the
-receiver's name, with OK, wherever the person is. Android shows it in the cast
+A receiver that refuses fails playing on it with a line that says what is wrong and
+what to do. macOS shows it in an alert titled "Could not play on" and the
+receiver's name, with OK, wherever the person is. Android shows it in the Play on
 picker while the picker is open, as a notice with the same title, and in a
 snackbar otherwise. The lines are:
 
 - locked after too many wrong PINs: "Kitchen refuses more PIN attempts. Reset
-  it, then cast again."
+  it, then try again."
 - busy pairing with another device: "Kitchen is pairing with another device.
-  Cast again when it is done."
-- asking to wait a stated time before another cast: "Kitchen asks to wait 30
-  seconds before another try. Cast again after that."
+  Try again when it is done."
+- asking to wait a stated time before another try: "Kitchen asks to wait 30
+  seconds before another try. Try again after that."
 - not accepting new pairings: "Kitchen is not accepting new pairings. Allow
-  pairing on it, then cast again."
+  pairing on it, then try again."
 - paired with as many devices as it allows: "Kitchen is paired with as many
-  devices as it allows. Remove one in its settings, then cast again."
+  devices as it allows. Remove one in its settings, then try again."
 - plays only from people in its home: "Kitchen plays only from people in its
-  home. Join that home to cast to it."
+  home. Join that home to play on it."
 - plays only from the admins of its home: "Kitchen plays only from the admins
   of its home. Change who can play on it in its settings."
 - plays only from the account that set it up: "Kitchen plays only from the
   account that set it up. Change who can play on it in its settings."
-- a reply that doesn't check out: "Kitchen did not complete the pairing. Cast
-  to it again."
+- a reply that doesn't check out: "Kitchen did not complete the pairing. Try
+  again."
 - a receiver that can't be reached: "Kitchen did not answer. Check that it is
-  on and on this network, then cast again."
+  on and on this network, then try again."
 
-A receiver that forgets this device while casting ends the session on this
+A receiver that forgets this device while playing ends the session on this
 device with the playback error "The AirPlay speaker no longer accepts this
-device.": on macOS in an alert titled "Could not cast", with Pair again… and
-Cancel, and on Android in a snackbar with Pair again…. Pair again… casts to the
+device.": on macOS in an alert titled "Could not play on the receiver", with Pair again… and
+Cancel, and on Android in a snackbar with Pair again…. Pair again… plays on the
 speaker again, which opens the pairing sheet. A receiver that answers the first pairing step
 with HTTP 470 asks for a PIN, and so does an AirPlay 1 receiver whose
 advertisement asks for nothing but that answers bae's first request
@@ -5113,7 +5113,7 @@ account that set it up.
 bae keeps its pairing with a receiver that asks for a PIN once (AirPlay 1
 device verification included), or for a password, in this device's
 keychain, one entry per receiver and kind of code, for every
-library on the device: later casts to the receiver pair with it and ask
+library on the device: later playback on the receiver pairs with it and asks
 nothing. For an AirPlay 2 receiver with a password, bae keeps the password
 beside the pairing, since the receiver asks for it again on each connection.
 An AirPlay 1 receiver with a password has no pairing of its own, so bae keeps
@@ -5121,11 +5121,11 @@ its password in an entry of its own. One that verifies the device and has a
 password asks for the PIN, then the password, and bae keeps each in its own
 entry. When the receiver no longer accepts a kept pairing or password, bae asks
 for the code with "no longer knows this device", and the new pairing replaces the kept one once the
-receiver accepts it. A PIN that a receiver asks for on every cast covers every
-connection bae makes to it during that cast, and bae keeps nothing of it
+receiver accepts it. A PIN that a receiver asks for every time it plays covers every
+connection bae makes to it during that session, and bae keeps nothing of it
 after. Once bae sends the code, the pairing and the keychain write run to
-their end even when the cast is called off meanwhile, and a write the
-keychain refuses fails the cast.
+their end even when playing on the receiver is called off meanwhile, and a write the
+keychain refuses fails playing on it.
 
 bae sends audio ahead of what the receiver plays by the delay the receiver
 reports when the connection is set up, or two seconds when it reports none.
@@ -5177,15 +5177,15 @@ without colons, in capitals, whether it came from the AirPlay `deviceid` or the
 MAC that begins the RAOP name, and it shows once, at the AirPlay 2 dialect when
 it has one.
 
-**Finding receivers.** Casting is off by default: it browses the local network
+**Finding receivers.** Play on other devices is off by default: it browses the local network
 and serves audio from this machine. While on, devices are searched for only
-while the picker or the Casting settings page is open, and on Android the page
-counts as open only while the app is on screen. The two share one search: the
+while the Play on picker or the Playback settings are open, and on Android the settings
+count as open only while the app is on screen. The two share one search: the
 second to open joins it and keeps what it found, and it ends when the last of
-them closes or casting is turned off. Desktops and Android browse the network
+them closes or Play on other devices is turned off. Desktops and Android browse the network
 themselves.
-The picker and the page list the receivers found, by name, after the receiver
-playback is cast to, which stays listed while a new search hasn't found it
+The picker and the settings list the receivers found, by name, after the receiver
+playback is on, which stays listed while a new search hasn't found it
 again. bae keeps what discovery found in a device-local table, which it empties
 as the library opens, since no discovery outlives the process that ran it. A
 receiver carries, besides its
@@ -5194,46 +5194,57 @@ found it at. The model is the Cast `md` record, the AirPlay `model` record
 (`am` on a RAOP service), or the UPnP description's `modelName`; a receiver that
 states none has none. The address is the IP address a Cast or AirPlay service
 resolved to, or the host a UPnP description was fetched from. Once the person
-picks a receiver, the picker or the page names it while bae connects, until
-the cast starts or fails. On macOS the cast connecting is the app's, not the
-picker's or the page's: both name it, so does the Cast button's tooltip, and
-closing either leaves it connecting; a cast that fails says why in an alert,
-wherever the person is. A cast that connects closes the picker that started
+picks a receiver, the picker or the settings name it while bae connects, until
+playback on it starts or fails. On macOS the connection is the app's, not the
+picker's or the settings': both name it, so does the Play on button's tooltip, and
+closing either leaves it connecting; a failure says why in an alert,
+wherever the person is. A connection that succeeds closes the picker that started
 it, never one opened after. On Android it is the open library's too: closing the
-picker or the page leaves it connecting, both name it, and a cast that fails
-says why in the picker while it is open and in a snackbar otherwise. A cast that
-connects closes the picker that started it, never one opened after.
-Stopping casting, turning it off, or picking another
+picker or the settings leaves it connecting, both name it, and a failure
+says why in the picker while it is open and in a snackbar otherwise. A connection that
+succeeds closes the picker that started it, never one opened after.
+Stopping playback on the receiver, turning Play on other devices off, or picking another
 receiver while one connects calls that connect off: it moves nothing, and
 nothing says it failed. A connect to a Chromecast already under way runs to
 its end and is closed, which leaves the receiver as an ended session does.
+Turning Play on other devices off while a receiver plays asks "Stop playing on
+Kitchen?", with no line under it.
 
-**The Casting page.** While casting is on, the page lists each receiver found,
-with its name and kind: Chromecast, AirPlay or UPnP. They are the picker's
-rows and work the same: picking one casts to it, and the one being cast to says
-Casting in place of its kind. Each row ends in a ⋮ menu (⋯ on macOS) holding
-Details…, and Disconnect on the receiver being cast to. Details is a sheet on
+**The Play on picker.** The button that opens it is named "Play on…", and
+"Playing on Kitchen" while a receiver plays. The picker's header is "Play on".
+A list with no receiver says "No receivers found". The receiver playing says
+"Playing" in place of its kind.
+
+**Play on in the Playback settings.** Settings has no Casting section: the
+receivers sit in Playback, as a group under the pause and restore settings. The
+group holds the switch Play on other devices with its help text, "Scan for Cast,
+AirPlay, and UPnP receivers on your network.", and, while the switch is on, each
+receiver found, with its name and kind (Chromecast, AirPlay or UPnP), and below
+them Convert to, which sets the format of tracks a receiver can't play as they
+are. The receivers are the picker's
+rows and work the same: picking one plays on it, and the one playing says
+Playing in place of its kind. Each row ends in a ⋮ menu (⋯ on macOS) holding
+Details…, and Disconnect on the receiver playing. Details is a sheet on
 Android and a popover off the ⋯ on macOS, titled with the receiver's name and
 showing its Type, its Model, left out when it states none, and its Address; it
-shows no status, since the row already says Casting. The picker shows each
-receiver once the same way, with no separate row for the cast under way, and
-keeps Disconnect on the row of the receiver cast to, with no menu on any row.
+shows no status, since the row already says Playing. The picker shows each
+receiver once the same way, with no separate row for the connection under way, and
+keeps Disconnect on the row of the receiver playing, with no menu on any row.
 Until the first answers it shows a spinner and says it is looking; there is no
-end state, since the search runs for as long as the page is open. On Android, Settings opens Casting as a
-page of its own.
+end state, since the search runs for as long as the settings are open.
 
 A UPnP renderer is known by its UDN, so it stays the same entry when its
 address changes. One that states no UDN is left out of the picker, and the
 log names its address. A receiver with several zones lists each zone as a
 renderer of its own, with its own name and controls.
 
-**When casting breaks.** A panic in casting's own work is a bug, reported to
+**When playing on a receiver breaks.** A panic in the work of playing on a receiver is a bug, reported to
 the crash reporter, and ends only what it was doing. A thread sending audio,
 sync or timing to an AirPlay receiver that panics ends the session the way a
 receiver that stops answering does: playback comes back to this device,
 paused, and the picker says the receiver was lost. The server a Chromecast or
-UPnP renderer fetches from that panics ends the cast, and the next cast starts
-a new one. Connecting to a Chromecast that panics fails the cast as bae's own
+UPnP renderer fetches from that panics ends the session, and the next session starts
+a new one. Connecting to a Chromecast that panics fails playing on it as bae's own
 error, not as an unreachable device. An advertisement or search answer whose
 reading panics is left out of the picker, and browsing goes on. bae waits at most
 ten seconds on an AirPlay receiver's control connection — to connect, send a
@@ -5624,7 +5635,7 @@ where playback is going (a receiver by its id, name, kind, model, address and
 whether it takes a volume), the preview, and why playback last failed, until
 it next plays or the person dismisses the failure notice. A failure because an
 AirPlay speaker no longer accepts this device names that speaker as a
-receiver is named above, and Pair again… casts to it. Starting playback with the library resets
+receiver is named above, and Pair again… plays on it. Starting playback with the library resets
 the row to stopped, keeping the volume and mute only when it resumes what it
 played. A track the library no longer holds shows as a
 removed track (§7.1).
@@ -5776,7 +5787,7 @@ the desktop's secret service.
 | bae-library | the library, files, outputs, sync integration and settings: the library manager and the long-lived parts it drives, and the library's schema, assembled from each crate's parts of it (a phone's without import's) |
 | bae-views | the library's views: what the album, artist and composer lists, the detail views, library search, the artist picker, the Storage manager and its inspector, the sync activity and the open invites read, as live queries over the store, and the shapes a screen shows them in, with the tables those lists read, kept by triggers in the write that changes what they come from |
 | bae-import | import, desktop only: watched folders and their scans, the candidates they hold, the drafts a person shapes and the pane's session over them, identification runs against the catalogs and the queue that admits them, cue sheets, loudness measurement, and the import that writes a candidate's release into the store, with import's own tables and the watched folders' paths as the store keys them |
-| bae-playback | playback: the service that plays the queue on this device's output or a remote renderer, the queue, its resume point and play history as the store keeps them, the outputs it plays on, the preview player, and the renderer session a connected cast or UPnP device is driven through |
+| bae-playback | playback: the service that plays the queue on this device's output or a remote renderer, the queue, its resume point and play history as the store keeps them, the outputs it plays on, the preview player, and the renderer session a connected Cast or UPnP device is driven through |
 | bae-identify | identification, desktop only: the reducer that asks every key a candidate's signals put in effect and ranks what the catalogs return, the release groups and pressing evidence it ranks by, the view a surface shows of a run, and the verdict a finished run stores |
 | bae-track-audio | reading a track's stored audio for a decode, for playback, a save or export, import's loudness pass and a transcode: the readers that fill a sparse buffer from a release file or a local file its caller opened, what of the buffers a decode reads, the stretch of a file a preview plays, and why a read failed |
 | bae-preferences | this device's preferences for a library: the `preferences` row and its save presets, the values they hold, which catalogs a lookup asks, and the transfer concurrency the setters accept |
@@ -5981,7 +5992,7 @@ All sync (§5), except `admin_operations`.
 | `playback_state` | the one row of what this device was playing (§7.8) |
 | `playback_now` | the one row of what this device's playback is doing: track and phase, whether a load waits on storage, pause prompt, volume, mute, receiver and its kind, preview, and the last failure, with the AirPlay receiver that no longer accepts this device (§9.4) |
 | `playback_timeline` | the one row of where this device's playback is, for the surfaces that move the position on themselves: the playing track's line and the preview's, each a position and whether it moves on from there, and whether playback started the track's line at a seek (§9.4) |
-| `cast_receiver` | receiver the cast picker lists, as discovery last found it: its id, name, kind (Cast, UPnP or AirPlay) and whether it takes a volume |
+| `cast_receiver` | receiver the Play on picker lists, as discovery last found it: its id, name, kind (Cast, UPnP or AirPlay) and whether it takes a volume |
 
 ### A.4 Watched folders and scans
 
@@ -6200,8 +6211,8 @@ reset over this device's copy — starts at the defaults below; nothing carries
 the settings of a copy it replaces. Each change writes the row in one write,
 and a setting takes effect when what it decides next acts: playback as it
 loads a track or reaches a side's end, an import as it starts, an identification run
-as it starts and as it settles, casting as the picker or its settings page
-opens, as the setting changes, or as a cast starts,
+as it starts and as it settles, playing on other devices as the picker or the Playback settings
+open, as the setting changes, or as playback on a receiver starts,
 the MCP and Subsonic servers as the row changes, and the store's transfer
 limits as the library opens and as either limit changes. The schema
 refuses what no setter writes: a last-used format that
@@ -6233,7 +6244,7 @@ Replay gain has no control in the apps.
 | `identify_automatically` | on | identifying found releases on their own |
 | `import_when_identified` | off | importing what any run picks unattended |
 | `ask_musicbrainz`, `ask_discogs` | both on | which catalogs are asked |
-| `cast_enabled` | off | casting to receivers |
+| `cast_enabled` | off | playing on other devices, the switch Play on other devices |
 | `cast_transcode_format` | MP3 | what a receiver gets when a track needs converting |
 | `mcp_enabled`, `mcp_port` | off, 47777 | the MCP server; its token is in the keyring |
 | `subsonic_enabled`, `_port`, `_username`, `_network` | off, 4533, none, this machine only | the Subsonic server; `_network` is this machine only, one network by its interface, or every network; its password is in the keyring |
@@ -6269,7 +6280,7 @@ menu; the arrows, Return, Escape and typed letters move through them, a click
 outside closes them, and VoiceOver reads them as menus. VoiceOver reads each
 control that opens one of them as a pop-up that opens a menu, and pressing it
 opens the menu. The Mac's popovers (the
-cast picker, Activity, the ⓘ and ? tips) are drawn the same way, in the raised
+Play on picker, Activity, the ⓘ and ? tips) are drawn the same way, in the raised
 colour with a hairline edge and macOS's arrow. On the Mac a symbol
 that a control or the words beside it already name (the ⓘ, a close or remove
 cross, the folder, speaker or arrow beside a name) is hidden from VoiceOver; a
@@ -6286,10 +6297,10 @@ selected row show the chosen accent and never the Mac's own accent colour. On
 the Mac Theme and Tone are pop-up buttons; on Android the Appearance page has no
 heading over its card, the top bar names it. Android's Settings rows each say
 where that setting stands under their title: Appearance's theme, tone and
-accent, the library's name and its sync state, which of pausing between sides
-and restoring on launch are on, how many pins run at once, the total this phone
+accent, the library's name and its sync state, which of pausing between sides,
+restoring on launch and playing on other devices are on, how many pins run at once, the total this phone
 keeps for the library (§4.7, "3.9 GB on this phone", nothing until the first
-measurement), whether casting is on, and the version. The Mac's Settings is one
+measurement), and the version. The Mac's Settings is one
 window with no title bar: its panes' names, as text alone, down a sidebar that
 holds the window's buttons at its top, inset 12 points from the panel's top left
 corner, and each pane's title in bold at the top left of the pane. A page inside

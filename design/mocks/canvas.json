@@ -194,26 +194,18 @@
    "x": 0,
    "y": 1556
   },
-  "android.settings.casting.off.dc.html": {
+  "android.settings.playback.receivers.looking.dc.html": {
    "h": 916,
    "page": "settings",
-   "title": "Casting: off",
-   "w": 412,
-   "x": 0,
-   "y": 5444
-  },
-  "android.settings.casting.looking.dc.html": {
-   "h": 916,
-   "page": "settings",
-   "title": "Casting: on, looking",
+   "title": "Playback: looking for receivers",
    "w": 412,
    "x": 492,
    "y": 5444
   },
-  "android.settings.casting.found.dc.html": {
+  "android.settings.playback.receivers.found.dc.html": {
    "h": 916,
    "page": "settings",
-   "title": "Casting: on, found",
+   "title": "Playback: receivers found",
    "w": 412,
    "x": 984,
    "y": 5444
@@ -1218,26 +1210,18 @@
    "x": 652,
    "y": 1556
   },
-  "mac.settings.casting.off.dc.html": {
+  "mac.settings.playback.receivers.looking.dc.html": {
    "h": 600,
    "page": "settings",
-   "title": "macOS: Casting: off",
-   "w": 690,
-   "x": 1476,
-   "y": 5444
-  },
-  "mac.settings.casting.looking.dc.html": {
-   "h": 600,
-   "page": "settings",
-   "title": "macOS: Casting: on, looking",
+   "title": "macOS: Playback: looking for receivers",
    "w": 690,
    "x": 2246,
    "y": 5444
   },
-  "mac.settings.casting.found.dc.html": {
+  "mac.settings.playback.receivers.found.dc.html": {
    "h": 600,
    "page": "settings",
-   "title": "macOS: Casting: on, found",
+   "title": "macOS: Playback: receivers found",
    "w": 690,
    "x": 3016,
    "y": 5444
@@ -2237,7 +2221,7 @@
   "android.playback.cast-picker.dc.html": {
    "h": 916,
    "page": "loading",
-   "title": "The cast picker",
+   "title": "The Play on picker",
    "w": 412,
    "x": 984,
    "y": 2876
@@ -2245,7 +2229,7 @@
   "android.playback.casting.dc.html": {
    "h": 916,
    "page": "loading",
-   "title": "Casting",
+   "title": "Playing on a receiver",
    "w": 412,
    "x": 492,
    "y": 240
@@ -2293,7 +2277,7 @@
   "mac.playback.cast-picker.dc.html": {
    "h": 760,
    "page": "loading",
-   "title": "macOS: the cast popover",
+   "title": "macOS: the Play on popover",
    "w": 1200,
    "x": 3840,
    "y": 4272
@@ -2301,7 +2285,7 @@
   "mac.playback.casting.dc.html": {
    "h": 760,
    "page": "loading",
-   "title": "macOS: casting",
+   "title": "macOS: playing on a receiver",
    "w": 1200,
    "x": 1280,
    "y": 1636
@@ -3242,34 +3226,34 @@
    "x": 980,
    "y": 12192
   },
-  "android.settings.casting.receiver-menu.dc.html": {
+  "android.settings.playback.receivers.receiver-menu.dc.html": {
    "h": 916,
    "page": "settings",
-   "title": "Casting: a receiver’s menu",
+   "title": "Playback: a receiver’s menu",
    "w": 412,
    "x": 4286,
    "y": 5444
   },
-  "android.settings.casting.receiver-details.dc.html": {
+  "android.settings.playback.receivers.receiver-details.dc.html": {
    "h": 916,
    "page": "settings",
-   "title": "Casting: a receiver’s details",
+   "title": "Playback: a receiver’s details",
    "w": 412,
    "x": 4778,
    "y": 5444
   },
-  "mac.settings.casting.receiver-menu.dc.html": {
+  "mac.settings.playback.receivers.receiver-menu.dc.html": {
    "h": 600,
    "page": "settings",
-   "title": "macOS: Casting: a receiver’s menu",
+   "title": "macOS: Playback: a receiver’s menu",
    "w": 690,
    "x": 5270,
    "y": 5444
   },
-  "mac.settings.casting.receiver-details.dc.html": {
+  "mac.settings.playback.receivers.receiver-details.dc.html": {
    "h": 600,
    "page": "settings",
-   "title": "macOS: Casting: a receiver’s details",
+   "title": "macOS: Playback: a receiver’s details",
    "w": 690,
    "x": 6040,
    "y": 5444
@@ -3861,7 +3845,7 @@
   "mac.playback.casting.no-volume.dc.html": {
    "h": 760,
    "page": "loading",
-   "title": "macOS: casting, receiver with no volume control",
+   "title": "macOS: playing on a receiver with no volume control",
    "w": 1200,
    "x": 0,
    "y": 5432
@@ -3869,7 +3853,7 @@
   "android.playback.full-player.no-volume.dc.html": {
    "h": 916,
    "page": "loading",
-   "title": "The full player, casting to a receiver with no volume control",
+   "title": "The full player, playing on a receiver with no volume control",
    "w": 412,
    "x": 1296,
    "y": 5432
@@ -4013,7 +3997,7 @@
   "android.playback.cast-pin.pairing-lost.dc.html": {
    "h": 916,
    "page": "loading",
-   "title": "A pairing lost while casting",
+   "title": "A pairing lost while playing on a receiver",
    "w": 412,
    "x": 3444,
    "y": 6828
@@ -4053,7 +4037,7 @@
   "android.playback.cast-pin.refused-snackbar.dc.html": {
    "h": 916,
    "page": "loading",
-   "title": "A receiver refuses the cast: in a snackbar",
+   "title": "A receiver refuses to play: in a snackbar",
    "w": 412,
    "x": 2952,
    "y": 6828
@@ -4061,7 +4045,7 @@
   "android.playback.cast-pin.refused.dc.html": {
    "h": 916,
    "page": "loading",
-   "title": "A receiver refuses the cast: in the cast picker",
+   "title": "A receiver refuses to play: in the Play on picker",
    "w": 412,
    "x": 2460,
    "y": 6828
@@ -4069,7 +4053,7 @@
   "android.playback.cast-pin.dc.html": {
    "h": 916,
    "page": "loading",
-   "title": "Pair, asking for the PIN: over the cast picker",
+   "title": "Pair, asking for the PIN: over the Play on picker",
    "w": 412,
    "x": 0,
    "y": 6828
@@ -4093,7 +4077,7 @@
   "mac.playback.cast-pin.refused.dc.html": {
    "h": 760,
    "page": "loading",
-   "title": "macOS: a receiver refuses the cast",
+   "title": "macOS: a receiver refuses to play",
    "w": 1200,
    "x": 5120,
    "y": 8224
@@ -4101,7 +4085,7 @@
   "mac.playback.cast-pin.pairing-lost.dc.html": {
    "h": 760,
    "page": "loading",
-   "title": "macOS: a pairing lost while casting",
+   "title": "macOS: a pairing lost while playing on a receiver",
    "w": 1200,
    "x": 6400,
    "y": 8224
@@ -4608,7 +4592,7 @@
   "code-casting": {
    "page": "settings",
    "size": 24,
-   "text": "What the code needs for these boards:\n- While casting is on, the Casting page lists the receivers bae finds with the picker’s own rows (tap to cast; the one being cast to says Casting), from the same device-local table the picker reads, and browses only while the page is open, as the picker does. spec/bae.md §7 “Finding receivers” says devices are searched for only while the picker is open; it changes to the picker or this page. Today the page has no list (CastingSettingsTab.swift, SettingsCastSection.kt). bae change.\n- Until the first receiver answers, the list shows a spinner and “Looking for receivers…” (MacSpinner, AndroidSpinner); it fills in as receivers answer, with no end state, since browsing runs while the page is open.\n- Convert to shows while casting is on, as today (CastTranscodeFormatPicker).\n- Turning casting off while a cast plays asks “Turn off casting?” / “This will stop casting to <device>.” as today; not drawn.\n- Android: the switch's explanation is a caption under the card, not the row's second line, which cut it off.\n- The page's rows end in ⋮ (Android) or a ⋯ button (macOS) in place of Disconnect, as Welcome's library rows do: Details… on every row, and Disconnect on the one being cast to. The picker keeps Disconnect on its row. spec/bae.md §7 “The Casting page” changes with it. bae change.\n- Details: a sheet (Android) or a popover off the ⋯ (macOS) titled with the receiver's name: Type (Chromecast, AirPlay, UPnP), Model, and Address. No status: the row already says Casting. The receiver list carries only id, name and kind today (BridgeCastReceiver); the model comes from what the receiver advertises (a Cast or AirPlay TXT record, a UPnP device description) and the address from where discovery found it (RendererDevice's connection), so both reach the device-local receiver table and the bridge. A receiver that states no model leaves the row out. bae change.",
+   "text": "What the code needs for these boards:\n- Playback settings hold the receivers as a group: the switch Play on other devices, its help text, and, while it is on, the receivers bae finds, drawn with the picker’s own rows (tap to play on one; the one playing says Playing). They come from the same device-local table the picker reads, and bae browses only while the Playback settings or the picker is open. spec/bae.md §7 “Finding receivers” says devices are searched for only while the picker is open; it changes to the picker or the Playback settings. Today the Casting page has the list’s switch and no list (CastingSettingsTab.swift, SettingsCastSection.kt); the page goes and its contents move into Playback. bae change.\n- Until the first receiver answers, the list shows a spinner and “Looking for receivers…” (MacSpinner, AndroidSpinner); it fills in as receivers answer, with no end state, since browsing runs while the settings are open.\n- Convert to shows while Play on other devices is on, as today (CastTranscodeFormatPicker).\n- Turning Play on other devices off while a receiver plays asks “Stop playing on <device>?” with no second line; not drawn.\n- Android: the switch's explanation is a caption under the card, not the row's second line, which cut it off. Settings no longer has a Casting row; the Playback row's second line says whether Play on other devices is on.\n- The rows end in ⋮ (Android) or a ⋯ button (macOS) in place of Disconnect, as Welcome's library rows do: Details… on every row, and Disconnect on the one playing. The picker keeps Disconnect on its row. spec/bae.md §7 “Play on in the Playback settings” changes with it. bae change.\n- Details: a sheet (Android) or a popover off the ⋯ (macOS) titled with the receiver's name: Type (Chromecast, AirPlay, UPnP), Model, and Address. No status: the row already says Playing. The receiver list carries only id, name and kind today (BridgeCastReceiver); the model comes from what the receiver advertises (a Cast or AirPlay TXT record, a UPnP device description) and the address from where discovery found it (RendererDevice's connection), so both reach the device-local receiver table and the bridge. A receiver that states no model leaves the row out. bae change.",
    "w": 420,
    "x": 3786,
    "y": 5444
@@ -5242,7 +5226,7 @@
    "kind": "title1",
    "maxW": 1888,
    "page": "loading",
-   "text": "Queue, full player, cast picker, pause between sides: Android",
+   "text": "Queue, full player, Play on picker, pause between sides: Android",
    "w": 240,
    "x": 0,
    "y": 2636
@@ -5251,7 +5235,7 @@
    "kind": "title1",
    "maxW": 7600,
    "page": "loading",
-   "text": "Queue, cast, pause between sides: macOS",
+   "text": "Queue, Play on, pause between sides: macOS",
    "w": 240,
    "x": 0,
    "y": 4032
@@ -5431,7 +5415,7 @@
    "kind": "title1",
    "maxW": 4206,
    "page": "settings",
-   "text": "Casting",
+   "text": "Play on other devices",
    "w": 240,
    "x": 0,
    "y": 5204
@@ -5819,7 +5803,7 @@
    "w": 420,
    "x": 3936,
    "y": 6828,
-   "text": "What the code needs for these boards:\n- A cast to an AirPlay receiver that asks for a PIN or a password does not fail: core answers with the code it needs and why, and the app opens the sheet (macOS, on the main window, since the cast connecting is the app's) or the dialog (Android: over the picker or the Casting page, whichever is open, else over the app). Closing either picker leaves the sheet open. Cancel closes it, casts nothing and asks core nothing.\n- The PIN field is PinField: one box per digit, the digit count from core (4 today), digits shown as typed, digits only, leading zeros kept. Pair is off until every box is filled; a password's Pair is off while the field is empty. The password field is a secure text field. Android uses the number pad for the PIN.\n- The line under the title comes from core with the request, in every language: first pairing, asks every cast, no longer knows this device, and the PIN or password variants. The title is Pair with and the receiver's name.\n- A wrong code keeps the sheet open: the line becomes Enter the PIN that Kitchen shows now, the boxes and the line under them turn red, the typed digits stay for the person to correct. A new PIN is on the receiver by then.\n- Pairing in progress: the field is off, a spinner and Pairing… show under it, Pair is off, Cancel works. The sheet closes when the cast connects, or becomes the next state (a wrong code, or a refusal as an alert or in the picker).\n- Refusals are alerts on macOS titled Could not cast to the receiver's name, with core's line as the message and OK. On Android the same title and line are a quiet danger notice at the top of the picker while it is open, and the line alone is a snackbar otherwise. Each line is a core string in every language; Back off carries its duration formatted for the language.\n- A pairing lost while casting is the playback error line, shown as every playback error is.\nEvery locale."
+   "text": "What the code needs for these boards:\n- Playing on an AirPlay receiver that asks for a PIN or a password does not fail: core answers with the code it needs and why, and the app opens the sheet (macOS, on the main window, since the connection is the app's) or the dialog (Android: over the picker or the Playback settings, whichever is open, else over the app). Closing either picker leaves the sheet open. Cancel closes it, plays nothing and asks core nothing.\n- The PIN field is PinField: one box per digit, the digit count from core (4 today), digits shown as typed, digits only, leading zeros kept. Pair is off until every box is filled; a password's Pair is off while the field is empty. The password field is a secure text field. Android uses the number pad for the PIN.\n- The line under the title comes from core with the request, in every language: first pairing, asks every time, no longer knows this device, and the PIN or password variants. The title is Pair with and the receiver's name.\n- A wrong code keeps the sheet open: the line becomes Enter the PIN that Kitchen shows now, the boxes and the line under them turn red, the typed digits stay for the person to correct. A new PIN is on the receiver by then.\n- Pairing in progress: the field is off, a spinner and Pairing… show under it, Pair is off, Cancel works. The sheet closes when the receiver connects, or becomes the next state (a wrong code, or a refusal as an alert or in the picker).\n- Refusals are alerts on macOS titled Could not play on and then the receiver's name, as in Could not play on Kitchen, with core's line as the message and OK. On Android the same title and line are a quiet danger notice at the top of the picker while it is open, and the line alone is a snackbar otherwise. Each line is a core string in every language; Back off carries its duration formatted for the language.\n- A pairing lost while playing on a receiver is the playback error line, shown as every playback error is.\nEvery locale."
   },
   "row-library-s3-key": {
    "kind": "title1",
@@ -5871,11 +5855,9 @@
   "mac.settings.window.sync-problem.dc.html",
   "android.settings.appearance.dc.html",
   "android.settings.playback.dc.html",
-  "android.settings.casting.off.dc.html",
   "android.settings.about.dc.html",
   "mac.settings.appearance.dc.html",
   "mac.settings.playback.dc.html",
-  "mac.settings.casting.off.dc.html",
   "mac.settings.about.dc.html",
   "mac.settings.transfers.dc.html",
   "android.settings.transfers.dc.html",
@@ -6044,14 +6026,14 @@
   "mac.settings.devices.cut-off-other.dc.html",
   "mac.settings.devices.cut-off-running.dc.html",
   "mac.settings.devices.cut-off-not-here.dc.html",
-  "android.settings.casting.found.dc.html",
-  "mac.settings.casting.found.dc.html",
-  "android.settings.casting.looking.dc.html",
-  "mac.settings.casting.looking.dc.html",
-  "mac.settings.casting.receiver-details.dc.html",
-  "mac.settings.casting.receiver-menu.dc.html",
-  "android.settings.casting.receiver-details.dc.html",
-  "android.settings.casting.receiver-menu.dc.html",
+  "android.settings.playback.receivers.found.dc.html",
+  "mac.settings.playback.receivers.found.dc.html",
+  "android.settings.playback.receivers.looking.dc.html",
+  "mac.settings.playback.receivers.looking.dc.html",
+  "mac.settings.playback.receivers.receiver-details.dc.html",
+  "mac.settings.playback.receivers.receiver-menu.dc.html",
+  "android.settings.playback.receivers.receiver-details.dc.html",
+  "android.settings.playback.receivers.receiver-menu.dc.html",
   "android.library.albums.dc.html",
   "android.album.page.dc.html",
   "android.library.artist.dc.html",

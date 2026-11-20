@@ -116,7 +116,7 @@
       h(MacIconButton, { icon: 'repeat', label: 'Repeat', active: props.repeat }));
   }
 
-  // Mute and the volume slider, filled to `volume` (0 to 1). `noVolume`: casting to a receiver that takes no volume from bae (a UPnP renderer with no volume control): no Mute and no slider, and a line naming where the volume is set.
+  // Mute and the volume slider, filled to `volume` (0 to 1). `noVolume`: playing on a receiver that takes no volume from bae (a UPnP renderer with no volume control): no Mute and no slider, and a line naming where the volume is set.
   function MacVolumeSlider(props) {
     if (props.noVolume) return h('span', { className: 'bae-m-np-novolume' }, 'Volume is set on ' + props.noVolume);
     return h('div', { className: 'bae-m-volumeslider' },
@@ -135,7 +135,7 @@
         h(MacTransport, { playing: props.playing, waiting: props.waiting, shuffle: props.shuffle, repeat: props.repeat }),
         h(MacSeekBar, { position: props.position, held: props.held, elapsed: props.elapsed, duration: props.duration, off: none })),
       h('div', { className: 'bae-m-np-right' },
-        h(MacIconButton, { icon: 'cast', label: props.casting ? 'Casting to ' + props.casting : 'Cast', active: !!props.casting }),
+        h(MacIconButton, { icon: 'cast', label: props.casting ? 'Playing on ' + props.casting : 'Play on…', active: !!props.casting }),
         h(MacIconButton, { icon: 'queue', label: 'Queue', active: props.queueOpen }),
         h(MacVolumeSlider, { volume: props.volume, noVolume: props.noVolume })));
   }
@@ -425,7 +425,7 @@
       h('div', { className: 'bae-a-np-row' },
         props.error ? h('div', { className: 'bae-a-np-info bae-a-np-error' }, props.error) : h(AndroidNowPlayingTrack, { title: props.title, artist: props.artist, album: props.album, noCover: props.noCover }),
         h(AndroidTransport, { playing: props.playing, waiting: props.waiting }),
-        props.castOff ? null : h(AndroidIconButton, { box: 40, icon: 'cast', label: 'Cast', tone: props.casting ? 'accent' : 'muted' }),
+        props.castOff ? null : h(AndroidIconButton, { box: 40, icon: 'cast', label: 'Play on…', tone: props.casting ? 'accent' : 'muted' }),
         h(AndroidIconButton, { box: 40, icon: 'queue', label: 'Queue' }),
         h(AndroidIconButton, { box: 40, icon: 'repeat', label: 'Repeat', tone: props.repeat ? 'accent' : 'muted' })),
       h(AndroidSeekBar, { position: props.position, held: props.held, elapsed: props.elapsed, duration: props.duration }));

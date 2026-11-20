@@ -37,6 +37,10 @@ a{color:var(--accent)}a:hover{color:#F6BFD9}
       <x-import component-from-global-scope="Bae.AndroidSwitch" on="{{yes}}" label="Restore on launch"></x-import>
     </x-import>
   </x-import>
+  <x-import component-from-global-scope="Bae.AndroidCard">
+    <x-import component-from-global-scope="Bae.AndroidRow" title="Play on other devices"><x-import component-from-global-scope="Bae.AndroidSwitch" label="Play on other devices"></x-import></x-import>
+  </x-import>
+  <x-import component-from-global-scope="Bae.AndroidNote">Scan for Cast, AirPlay, and UPnP receivers on your network.</x-import>
 </x-import>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":412,"height":916}}'>

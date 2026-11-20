@@ -262,7 +262,7 @@
 /* A receiver row: a box row's inset around MacItem, which spans it, so Disconnect sits at the right edge. */
 .bae-m-castrow { padding: 10px var(--space-group); }
 .bae-m-castpop-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-/* As on Android, a long receiver name wraps to a second line, then ends in an ellipsis; the receiver being cast to says Casting under its name. */
+/* As on Android, a long receiver name wraps to a second line, then ends in an ellipsis; the receiver playing says Playing under its name. */
 .bae-m-castpop-name { font-weight: 500; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
 .bae-m-castpop-state { font-size: 11.5px; color: var(--accent); }
 .bae-m-castpop-kind { font-size: 11.5px; color: var(--text-secondary); }

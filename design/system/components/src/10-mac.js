@@ -1,6 +1,6 @@
   // ---- macOS ----
 
-  var PANES = ['Appearance', 'Library', 'Playback', 'Transfers', 'Storage', 'Import', 'Save as', 'Casting', 'Subsonic', 'Automation', 'About'];
+  var PANES = ['Appearance', 'Library', 'Playback', 'Transfers', 'Storage', 'Import', 'Save as', 'Subsonic', 'Automation', 'About'];
 
   // The traffic lights at a window's top left: close, minimize, zoom.
   // `inset`: over an inset sidebar, which sits 8pt in from the window's edge, so the lights keep their place on the sidebar's corner.

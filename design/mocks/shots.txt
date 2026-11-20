@@ -61,11 +61,6 @@ android.settings.add-device.added
 android.settings.add-device.ended
 android.settings.add-device.request
 android.settings.appearance
-android.settings.casting.found
-android.settings.casting.looking
-android.settings.casting.off
-android.settings.casting.receiver-details
-android.settings.casting.receiver-menu
 android.settings.devices
 android.settings.devices.cut-off
 android.settings.devices.cut-off-not-here
@@ -255,11 +250,6 @@ mac.settings.appearance
 mac.settings.automation.off
 mac.settings.automation.running
 mac.settings.automation.start-failed
-mac.settings.casting.found
-mac.settings.casting.looking
-mac.settings.casting.off
-mac.settings.casting.receiver-details
-mac.settings.casting.receiver-menu
 mac.settings.devices
 mac.settings.devices.cut-off
 mac.settings.devices.cut-off-not-here

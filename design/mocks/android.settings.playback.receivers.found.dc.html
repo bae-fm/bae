@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Casting: on</title>
+<title>Playback: receivers found</title>
 <script src="./support.js"></script>
 <link rel="stylesheet" href="ds/bae/tokens.css">
 <link rel="stylesheet" href="ds/bae/components/bundle.css">
@@ -27,9 +27,18 @@ a{color:var(--accent)}a:hover{color:#F6BFD9}
 .card{margin:0 16px;border-radius:16px;background:var(--surface);overflow:hidden}.card:first-child{margin-top:16px}:not(h2)+.card{margin-top:8px}.card>*+*{border-top:1px solid var(--hairline)}
 </style>
 </helmet>
-<x-import component-from-global-scope="Bae.AndroidScreen" title="Casting" back="{{yes}}">
+<x-import component-from-global-scope="Bae.AndroidScreen" title="Playback" back="{{yes}}">
   <x-import component-from-global-scope="Bae.AndroidCard">
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Enable casting"><x-import component-from-global-scope="Bae.AndroidSwitch" label="Enable casting" on="{{ true }}"></x-import></x-import>
+    <x-import component-from-global-scope="Bae.AndroidRow" title="Pause between sides and discs">
+      <x-import component-from-global-scope="Bae.AndroidSwitch" on="{{yes}}" label="Pause between sides and discs"></x-import>
+    </x-import>
+    <x-import component-from-global-scope="Bae.AndroidRow" title="Resume automatically" subtitle="Never" nested="{{yes}}" button="{{yes}}"></x-import>
+    <x-import component-from-global-scope="Bae.AndroidRow" title="Restore on launch" subtitle="Restores the last session’s track, position, queue and volume when the app opens.">
+      <x-import component-from-global-scope="Bae.AndroidSwitch" on="{{yes}}" label="Restore on launch"></x-import>
+    </x-import>
+  </x-import>
+  <x-import component-from-global-scope="Bae.AndroidCard">
+    <x-import component-from-global-scope="Bae.AndroidRow" title="Play on other devices"><x-import component-from-global-scope="Bae.AndroidSwitch" label="Play on other devices" on="{{ true }}"></x-import></x-import>
   </x-import>
   <x-import component-from-global-scope="Bae.AndroidNote">Scan for Cast, AirPlay, and UPnP receivers on your network.</x-import>
   <x-import component-from-global-scope="Bae.AndroidSection" title="Receivers on your network"></x-import>

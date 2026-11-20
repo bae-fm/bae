@@ -7,7 +7,7 @@ A macOS push button: `kind="primary"` for the action a screen is for, secondary 
 - `kind="borderless"` draws the words in the accent with no fill: a notice's Details, a text button in a row.
 - `neutral` draws a borderless button's words in primary text: a step's Cancel beside its default button, as Create and Join draw it.
 - `muted` draws the label in secondary text, for buttons under quiet words: a failed view's centred notice.
-- `tinted` is a secondary button on a filled notice: its fill is the notice's text at 12%, so it reads on every tone (`MacNotice` passes it to its action). `size` is small, regular (unset) or large, the system's control sizes; a cast row's Disconnect is small. `size="alert"` is the button of a `MacAlert`: full width, 28pt high.
+- `tinted` is a secondary button on a filled notice: its fill is the notice's text at 12%, so it reads on every tone (`MacNotice` passes it to its action). `size` is small, regular (unset) or large, the system's control sizes; a receiver row's Disconnect is small. `size="alert"` is the button of a `MacAlert`: full width, 28pt high.
 
 `label` names a button whose words don't say what it does: the import draft's ⋯ is named Metadata.
 

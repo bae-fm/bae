@@ -93,24 +93,24 @@
       h('div', { className: 'bae-m-sidepause-buttons' }, h(MacButton, null, 'Close'), h(MacButton, { kind: 'primary' }, 'Play'))));
   }
 
-  // A receiver, wherever bae lists them (the cast popover, Settings → Casting): its kind's icon, its name, then its kind, or Casting in the accent for the one being cast to, which ends in Disconnect. Clicking any other casts to it. One row per receiver. `menu` (Settings → Casting) puts a ⋯ at the end of every row in place of Disconnect: Details… and, on the one being cast to, Disconnect.
+  // A receiver, wherever bae lists them (the Play on popover, Settings → Playback): its kind's icon, its name, then its kind, or Playing in the accent for the one playing, which ends in Disconnect. Clicking any other plays on it. One row per receiver. `menu` (Settings → Playback) puts a ⋯ at the end of every row in place of Disconnect: Details… and, on the one playing, Disconnect.
   var CAST_KIND = { cast: 'Chromecast', airplay: 'AirPlay', upnp: 'UPnP' };
   function MacCastRow(props) {
     var glyph = { cast: 'cast', airplay: 'airplay', upnp: 'tv' }[props.kind || 'cast'];
     return h('div', { className: 'bae-m-castrow' }, h(MacItem, { lead: h(Glyph, { set: 'mac', name: glyph, size: 15, className: props.active ? 'bae-accent' : 'bae-muted' }), trail: props.menu ? h(MacMoreMenu, {}) : props.active ? h(MacButton, { kind: 'borderless', neutral: true, size: 'small' }, 'Disconnect') : null },
-      h('span', { className: 'bae-m-castpop-text' }, h('span', { className: 'bae-m-castpop-name' }, props.name), h('span', { className: props.active ? 'bae-m-castpop-state' : 'bae-m-castpop-kind' }, props.active ? 'Casting' : CAST_KIND[props.kind || 'cast']))));
+      h('span', { className: 'bae-m-castpop-text' }, h('span', { className: 'bae-m-castpop-name' }, props.name), h('span', { className: props.active ? 'bae-m-castpop-state' : 'bae-m-castpop-kind' }, props.active ? 'Playing' : CAST_KIND[props.kind || 'cast']))));
   }
-  // The cast popover's line while bae connects to a receiver (`name`): a spinner and Connecting to … .
+  // The Play on popover's line while bae connects to a receiver (`name`): a spinner and Connecting to … .
   function MacCastConnectingLine(props) {
     return h('div', { className: 'bae-m-castpop-wait' }, h(MacSpinner, { size: 14 }), 'Connecting to ' + props.name + '…');
   }
-  // The Cast button's popover: while bae connects (`connecting`, the receiver's name) the connecting line and a hairline, then the receivers (`devices`, "Name:kind" entries, `casting` the one playing), or No Cast devices found when there are none.
+  // The Play on button's popover: while bae connects (`connecting`, the receiver's name) the connecting line and a hairline, then the receivers (`devices`, "Name:kind" entries, `casting` the one playing), or No receivers found when there are none.
   function MacCastPopover(props) {
     var devices = String(props.devices || '').split(',').filter(Boolean).map(function (d) { var p = d.trim().split(':'); return { name: p[0], kind: p[1] || 'cast' }; });
     return h('div', { className: 'bae-m-castpop', style: { position: 'absolute', right: Number(props.right != null ? props.right : 120), bottom: Number(props.bottom != null ? props.bottom : 92) } },
       props.connecting ? [h(MacCastConnectingLine, { key: 'c', name: props.connecting }), h(MacHairline, { key: 'h' })] : null,
       devices.length ? devices.map(function (d, i) { return h(MacCastRow, { key: i, name: d.name, kind: d.kind, active: d.name === props.casting }); })
-        : h('div', { className: 'bae-m-castpop-none' }, 'No Cast devices found'));
+        : h('div', { className: 'bae-m-castpop-none' }, 'No receivers found'));
   }
 
   // ---- Queue and playback (Android) ----
@@ -153,10 +153,10 @@
   }
   function AndroidCastRow(props) {
     if (props.waiting) return h('div', { className: 'bae-a-castrow' }, h(AndroidSpinner, { size: 20 }), h('span', { className: 'bae-muted', style: { fontSize: 14 } }, props.waiting));
-    // A receiver, in the picker and on the Casting page alike: under its name its kind, or Casting for the one being cast to, which ends in Disconnect. Tapping any other casts to it. No separate "Casting to" row, and no check: the row says it. `menu` (the Casting page) ends every row in ⋮ in place of Disconnect: Details… and, on the one being cast to, Disconnect; `menuOpen` draws that menu open under it.
+    // A receiver, in the picker and in the Playback settings alike: under its name its kind, or Playing for the one playing, which ends in Disconnect. Tapping any other plays on it. No separate "Playing on" row, and no check: the row says it. `menu` (the Playback settings) ends every row in ⋮ in place of Disconnect: Details… and, on the one playing, Disconnect; `menuOpen` draws that menu open under it.
     var icon = { cast: 'cast', airplay: 'speakerbox', upnp: 'tv' }[props.kind || 'cast'];
     return h('div', { className: 'bae-a-castrow' }, h(Glyph, { name: icon, size: 24, className: props.active ? 'bae-accent' : 'bae-muted' }),
-      h('span', { className: 'bae-a-castrow-text' }, h('span', { className: 'bae-a-castrow-name' }, props.name), h('span', { className: props.active ? 'bae-a-castrow-state' : 'bae-a-castrow-kind' }, props.active ? 'Casting' : CAST_KIND[props.kind || 'cast'])),
+      h('span', { className: 'bae-a-castrow-text' }, h('span', { className: 'bae-a-castrow-name' }, props.name), h('span', { className: props.active ? 'bae-a-castrow-state' : 'bae-a-castrow-kind' }, props.active ? 'Playing' : CAST_KIND[props.kind || 'cast'])),
       props.menu ? h(AndroidMoreMenu, { open: props.menuOpen, items: props.active ? 'Details…,Disconnect' : 'Details…' }) : props.active ? h(AndroidButton, { kind: 'text' }, 'Disconnect') : null);
   }
   function AndroidCheckbox(props) {

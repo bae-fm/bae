@@ -3,7 +3,7 @@ import type * as React from 'react';
 // ---- macOS ----
 
 /** The Settings window: the pane list on the left, the pane on the right. title heads the pane; back names the pane a Back button returns to. status puts a short status beside statusPane in the pane list, in statusTone. A MacSheet with overlay inside covers the whole window. The window is 600 pt tall; a pane taller than that runs under its bottom edge, and scroll (px) draws it scrolled that far, and the heading stays in place. */
-export interface MacSettingsWindowProps { pane: 'Appearance' | 'Library' | 'Playback' | 'Transfers' | 'Storage' | 'Import' | 'Save as' | 'Casting' | 'Subsonic' | 'Automation' | 'About'; title: string; back?: string; statusPane?: string; status?: string; statusTone?: 'warning' | 'danger' | 'success' | 'activity'; width?: number; height?: number; front?: boolean; children?: React.ReactNode }
+export interface MacSettingsWindowProps { pane: 'Appearance' | 'Library' | 'Playback' | 'Transfers' | 'Storage' | 'Import' | 'Save as' | 'Subsonic' | 'Automation' | 'About'; title: string; back?: string; statusPane?: string; status?: string; statusTone?: 'warning' | 'danger' | 'success' | 'activity'; width?: number; height?: number; front?: boolean; children?: React.ReactNode }
 export declare function MacSettingsWindow(props: MacSettingsWindowProps): React.ReactElement;
 
 /** A plain macOS window with traffic lights and no sidebar (the welcome window). A MacAlert inside covers it. */
