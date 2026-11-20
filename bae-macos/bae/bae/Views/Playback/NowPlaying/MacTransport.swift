@@ -4,6 +4,13 @@ import SwiftUI
 /// The transport row: shuffle, previous, play and pause, next, repeat. While
 /// core has not said the repeat mode, repeat's place stays empty.
 struct MacTransport: View {
+    /// The room one icon control takes, holding a control's place while
+    /// there is nothing to show in it.
+    static var controlSpace: some View {
+        Color.clear
+            .frame(width: ThemeSize.hitTarget, height: ThemeSize.hitTarget)
+    }
+
     let isPlaying: Bool
     /// Whether the loading track waits on storage.
     let waitsOnStorage: Bool
@@ -44,11 +51,7 @@ struct MacTransport: View {
                 repeatButton(repeatMode)
             }
             else {
-                Color.clear
-                    .frame(
-                        width: ThemeSize.hitTarget,
-                        height: ThemeSize.hitTarget
-                    )
+                Self.controlSpace
             }
         }
     }

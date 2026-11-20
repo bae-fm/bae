@@ -66,12 +66,12 @@ enum OutputTarget {
         let picker = SaveFormatPicker(
             configStore: configStore,
             outputs: outputs,
-            frame: NSRect(x: 54, y: 5, width: 190, height: 24),
+            frame: MacSavePanelFormat.popupFrame,
             openFormats: openFormats,
             onChange: { _ in }
         )
         defer { picker.stop() }
-        panel.accessoryView = formatAccessoryView(popup: picker.popup)
+        panel.accessoryView = MacSavePanelFormat(popup: picker.popup)
         let response = await withCheckedContinuation { continuation in
             panel.begin { continuation.resume(returning: $0) }
         }
@@ -101,17 +101,5 @@ enum OutputTarget {
             panel.directoryURL = URL(fileURLWithPath: last)
         }
         return panel
-    }
-
-    @MainActor
-    private static func formatAccessoryView(popup: NSPopUpButton) -> NSView {
-        let accessoryContainer = NSView(
-            frame: NSRect(x: 0, y: 0, width: 250, height: 34)
-        )
-        let label = NSTextField(labelWithString: String(localized: "Format"))
-        label.frame = NSRect(x: 0, y: 7, width: 50, height: 20)
-        accessoryContainer.addSubview(label)
-        accessoryContainer.addSubview(popup)
-        return accessoryContainer
     }
 }

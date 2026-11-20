@@ -1,54 +1,6 @@
 import BaeKit
 import SwiftUI
 
-/// A command in the card's metadata menu. Each replaces what the person has,
-/// so the card asks before running it.
-enum ImportDraftCommand: CaseIterable, Identifiable {
-    /// Replace the draft with what the candidate's own files say.
-    case resetToFileMetadata
-    case clearMetadata
-
-    var id: Self { self }
-
-    var title: String {
-        switch self {
-        case .resetToFileMetadata: String(localized: "Reset to file metadata")
-        case .clearMetadata: String(localized: "Clear metadata")
-        }
-    }
-
-    /// What the confirmation asks.
-    var question: String {
-        switch self {
-        case .resetToFileMetadata: String(localized: "Reset to file metadata?")
-        case .clearMetadata: String(localized: "Clear metadata?")
-        }
-    }
-
-    /// What the confirmation says the command changes and keeps.
-    var consequence: String {
-        switch self {
-        case .resetToFileMetadata:
-            String(
-                localized:
-                    "Replace metadata with what the files, sheets and folder say about the release. Tracks and audio assignments will remain unchanged."
-            )
-        case .clearMetadata:
-            String(
-                localized:
-                    "The candidate files and mapping choices will remain unchanged."
-            )
-        }
-    }
-
-    func run(with actions: ImportReleaseSourceActions) {
-        switch self {
-        case .resetToFileMetadata: actions.resetToFileMetadata()
-        case .clearMetadata: actions.clearMetadata()
-        }
-    }
-}
-
 /// The bar of identify entries: the Identify label, Automatic and Search,
 /// the Metadata menu where the caller offers its commands, and the caller's
 /// own trailing controls at the far end.

@@ -137,13 +137,6 @@ struct MacNowPlayingBar: View {
         }
     }
 
-    /// The room one icon control takes, holding a control's place while
-    /// there is nothing to show in it.
-    fileprivate var controlSpace: some View {
-        Color.clear
-            .frame(width: ThemeSize.hitTarget, height: ThemeSize.hitTarget)
-    }
-
     /// The seek bar, which draws the parts of the track whose bytes are here
     /// under the played part.
     private var progressBar: some View {
@@ -186,7 +179,7 @@ extension MacNowPlayingBar {
                 .frame(width: volumeWidth)
                 .accessibilityLabel("Volume")
             case .waitingForCore:
-                controlSpace
+                MacTransport.controlSpace
 
                 Color.clear.frame(width: volumeWidth, height: 1)
             }
