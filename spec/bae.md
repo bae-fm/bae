@@ -3020,7 +3020,9 @@ name. Once a device has loaded the library, it shows the store's name.
 
 Every member can change the library. There is no play-only role, since coven
 checks no permission on library writes, and a rule only the UI enforced would
-not hold: any member's device could write around it.
+not hold: any member's device could write around it. The one exception is the
+library's rating systems (§5.3), an admin-only table: coven refuses a write to
+it by anyone but an admin on every device.
 
 Which edits a platform's UI offers is a separate choice. The mobile apps don't
 gain library editing because their devices can write.
@@ -3049,6 +3051,21 @@ pressing (§2.7) are rated apart. An album's page shows the person's own stars
 for it and a line naming who rated it: *You* when they did, then each other
 person who did, with their stars, by name. A track's stars on the page are the
 person's own.
+
+**Rating systems.** A library rates albums one way and tracks one way: each
+with *Stars*, *Heart* or *None*. The choice belongs to the library, not to a
+person or a device: one row of the `rating_systems` table in the store, which
+every device reads to draw ratings, and which only an admin can change. coven
+refuses a member's write to it on every device (an admin-only table). Each
+person's rating stays one to five stars or none, whatever the system. With
+*Heart*, an album or track the person rated three stars or more shows a heart;
+turning the heart on stores five stars, and turning it off clears the rating.
+Ana rated *Album Title* one star; with *Heart* it shows no heart, and her one
+star stays. She hearts it, which stores five stars, then unhearts it, which
+clears it: with *Stars* again it is unrated. Changing the system writes no
+rating, so a rating nobody touched shows as it was when the system changes
+back. *None* hides ratings and keeps them. Sorting by rating under *Heart*
+puts the hearted first and orders nothing by the stars it hides.
 
 On macOS the album's stars sit above its tracks: clicking a star rates the album
 with that many stars, and clicking the star the person already gave clears the
@@ -5781,11 +5798,20 @@ devices". A library with no storage has one row in place of those two,
 is only on this Mac. Removing the library is not in Settings; it is on the
 first screen's list (§6.4).
 
+For an admin, a **Ratings** section follows, with an **Albums** and a
+**Tracks** pop-up, each *Stars*, *Heart* or *None*, and the note "Applies to
+everyone in this library". A member's Library settings has no Ratings section.
+
 On Android, Settings has one **Library** row that opens the Library page. Its
 card holds **Name**, with an edit mark and *Rename* for an admin, **Sync**
 with the same state, and **People and devices**: a phone's library always has
 storage. Each row opens its page. Settings keeps the switch to
 another library on this device under the Library row.
+
+For an admin, the Library page has a **Ratings** card under it, with an
+**Albums** and a **Tracks** row, each showing its system and opening *Stars*,
+*Heart* or *None*, and the note "Applies to everyone in this library". A
+member's Library page has no Ratings card.
 
 ### 9.6 Errors
 
@@ -6046,6 +6072,7 @@ All sync (§5), except `admin_operations`.
 |---|---|
 | `people` | person, keyed by their `MemberId`: name, private circle, history setting (private or household), and the coven file of their avatar (`avatar_id`), with an index by it |
 | `ratings` | rating by a person of an album or of a track, one to five stars |
+| `rating_systems` | the library's one row: the rating system for albums and for tracks, each Stars, Heart or None; admin-only |
 | `history` | play: person, track, when it started, the day it was played on, how much was played, audience |
 | `playlists` | playlist: whose it is, its name and its audience |
 | `playlist_entries` | place in a playlist, keyed by the playlist and a position id: the track there and its position |
@@ -6222,7 +6249,8 @@ The table below lists the synced tables: the library's, the people's and the imp
 from their fact (§2.6); *independent* rows a fresh id. Every synced table's
 rows reach every device that can read their audience: a local release's rows
 too (§4.2). *Audience* is the store unless the table names one (§5.3); *owner*
-tables are changed only by their author's devices (§5.5). *File* names the
+tables are changed only by their author's devices (§5.5), and an *admins only*
+table only by an admin's devices (§5.2). *File* names the
 column that references a coven file, whether the reference is trailing or
 bound (§6.3), and the namespace its files are in. bae declares no other table: `local_release_origin`, the import tables (A.4–A.8) other than `release_sheet_bindings` and `release_sheet_places`,
 `import_candidate_standing`, `import_identification_batch`,
@@ -6263,6 +6291,7 @@ transfer queues (A.9), so they never sync.
 | `artist_images` | shared key: the artist | store | | `file`, bound, in `artist_images`: bae's own; read on first use; shared by two merged artists |
 | `people` | shared key: the person's `MemberId` | store | yes | `avatar_id`, bound, in `avatars`: bae's own; read on first use |
 | `ratings` | shared key: the person, and the album or track | store | yes | |
+| `rating_systems` | shared key: the library's one row | store | admins only | |
 | `history` | independent, one per play | per row: the person's circle or the store, by their setting | yes | |
 | `playlists` | independent | per row: the person's circle or the store | yes | |
 | `playlist_entries` | shared key: the playlist and a position id | its playlist's | yes | |
