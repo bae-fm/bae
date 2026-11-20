@@ -146,7 +146,8 @@ source states, in order, each product once, and the editor shows one row per
 barcode, each removable, as it does labels. Each list in the editor adds an
 entry with the same Add button, a + before its words: under the last label row
 and the last barcode row, on a line of its own, *Add label* or *Add barcode*
-adds an empty row; after the last medium and the last detail, on their line,
+adds an empty row (with no label or no barcode yet, it sits beside the heading
+alone, and the editor draws no empty row); after the last medium and the last detail, on their line,
 *Add* opens a menu of what can be added. Its
 media are a list of carriers, each with how many of it there are (two CDs, one
 vinyl record). Its labels are a list of library labels (§2.3), each with the

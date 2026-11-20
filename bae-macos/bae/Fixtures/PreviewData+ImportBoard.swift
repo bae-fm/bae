@@ -219,8 +219,8 @@ extension PreviewData {
             pressing: pressing
                 ?? BridgeRawPressingEdit(
                     year: year,
-                    labels: [.blank],
-                    barcodes: [.blank],
+                    labels: [],
+                    barcodes: [],
                     facts: pressingFacts()
                 ),
             tracks: tracks.map {
@@ -245,7 +245,7 @@ extension PreviewData {
                 labels: [
                     .alone(name: "Harbor Records", catalogNumber: "HR-0412")
                 ],
-                barcodes: [.blank],
+                barcodes: [],
                 facts: pressingFacts(
                     country: "US",
                     media: media(.cd),

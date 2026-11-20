@@ -420,7 +420,7 @@ extension PreviewData {
                 labels: [
                     .alone(name: "Harbor Records", catalogNumber: "HR-0779")
                 ],
-                barcodes: [.blank],
+                barcodes: [],
                 facts: pressingFacts(
                     country: "US",
                     media: media(.cd, 2),

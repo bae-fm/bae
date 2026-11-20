@@ -24,7 +24,7 @@ extension ShotScene {
                 labels: [
                     .alone(name: "Harbor Records", catalogNumber: "HR-1042")
                 ],
-                barcodes: [.blank],
+                barcodes: [],
                 facts: PreviewData.pressingFacts(
                     country: "US",
                     media: PreviewData.media(.cd),
@@ -345,7 +345,7 @@ extension ShotScene {
             labels: [
                 .alone(name: label, catalogNumber: catalog)
             ],
-            barcodes: barcode.map { [.alone($0)] } ?? [.blank],
+            barcodes: barcode.map { [.alone($0)] } ?? [],
             facts: PreviewData.pressingFacts(
                 country: "US",
                 media: PreviewData.media(.cd),

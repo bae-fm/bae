@@ -135,7 +135,7 @@ extension ShotScene {
                         catalogNumber: "HR-0412-A-DELUXE"
                     )
                 ],
-                barcodes: [.blank],
+                barcodes: [],
                 facts: PreviewData.pressingFacts(
                     country: "US",
                     media: PreviewData.media(.cd),

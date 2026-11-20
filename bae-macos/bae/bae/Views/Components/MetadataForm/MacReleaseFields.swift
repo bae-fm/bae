@@ -81,12 +81,18 @@ struct MacReleaseFields: View {
         }
     }
 
-    /// One row per label, name beside number, as core hands them: a blank row
-    /// when there is none, and each row with the heading and remove button
-    /// it carries, and Add on its own line under the last row.
+    /// One row per label, name beside number, each with its remove button
+    /// and the heading on the first. Add is on its own line under the last
+    /// row, or beside the heading while there is none.
     @ViewBuilder
     private var labelRows: some View {
         let rows = values.pressing.labels
+        if rows.isEmpty {
+            GridRow {
+                rowLabel(String(localized: "Label"))
+                addLabel(rows: rows)
+            }
+        }
         ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
             GridRow {
                 rowLabel(row.place.labelled ? String(localized: "Label") : "")
@@ -109,24 +115,22 @@ struct MacReleaseFields: View {
                         next[index].catalogNumber = number
                         await writer.setLabels(next)
                     }
-                    if row.place.removable {
-                        let named =
-                            row.label.name.isEmpty
-                            ? row.label.catalogNumber : row.label.name
-                        Button {
-                            var next = rows.map(\.label)
-                            next.remove(at: index)
-                            Task { await writer.setLabels(next) }
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundStyle(.tertiary)
-                        }
-                        .buttonStyle(.accentPlain)
-                        .help(String(localized: "Remove \(named)"))
-                        .accessibilityLabel(
-                            String(localized: "Remove \(named)")
-                        )
+                    let named =
+                        row.label.name.isEmpty
+                        ? row.label.catalogNumber : row.label.name
+                    Button {
+                        var next = rows.map(\.label)
+                        next.remove(at: index)
+                        Task { await writer.setLabels(next) }
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.tertiary)
                     }
+                    .buttonStyle(.accentPlain)
+                    .help(String(localized: "Remove \(named)"))
+                    .accessibilityLabel(
+                        String(localized: "Remove \(named)")
+                    )
                 }
                 .themeIcon(.small)
             }
@@ -149,12 +153,18 @@ struct MacReleaseFields: View {
         .buttonStyle(.accentPlain)
     }
 
-    /// One row per barcode, as core hands them: a blank row when there is
-    /// none, and each row with the heading and remove button it carries, and
-    /// Add on its own line under the last row.
+    /// One row per barcode, each with its remove button and the heading on
+    /// the first. Add is on its own line under the last row, or beside the
+    /// heading while there is none.
     @ViewBuilder
     private var barcodeRows: some View {
         let rows = values.pressing.barcodes
+        if rows.isEmpty {
+            GridRow {
+                rowLabel(String(localized: "Barcode"))
+                addBarcode(rows: rows)
+            }
+        }
         ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
             GridRow {
                 rowLabel(row.place.labelled ? String(localized: "Barcode") : "")
@@ -168,21 +178,19 @@ struct MacReleaseFields: View {
                         next[index] = barcode
                         await writer.setBarcodes(next)
                     }
-                    if row.place.removable {
-                        Button {
-                            var next = rows.map(\.barcode)
-                            next.remove(at: index)
-                            Task { await writer.setBarcodes(next) }
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundStyle(.tertiary)
-                        }
-                        .buttonStyle(.accentPlain)
-                        .help(String(localized: "Remove \(row.barcode)"))
-                        .accessibilityLabel(
-                            String(localized: "Remove \(row.barcode)")
-                        )
+                    Button {
+                        var next = rows.map(\.barcode)
+                        next.remove(at: index)
+                        Task { await writer.setBarcodes(next) }
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.tertiary)
                     }
+                    .buttonStyle(.accentPlain)
+                    .help(String(localized: "Remove \(row.barcode)"))
+                    .accessibilityLabel(
+                        String(localized: "Remove \(row.barcode)")
+                    )
                 }
                 .themeIcon(.small)
             }

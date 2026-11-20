@@ -105,35 +105,29 @@ pub struct RawPressingEdit {
     pub facts: bae_types::pressing::PressingFacts,
 }
 
-/// One row of the form's label or barcode list as the editor draws it. A list
-/// with no stored row draws one blank row; the row that opens the list carries
-/// its heading, the row that closes it carries the control that adds another
-/// row, and a row can be removed unless it is the one blank row.
+/// One row of the form's label or barcode list as the editor draws it: one per
+/// stored row, so a list with none draws no row. The first row carries the
+/// list's heading and the last the control that adds another row; every row
+/// can be removed.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ListRow<T> {
     pub row: T,
     /// Whether the row carries the list's heading.
     pub labelled: bool,
-    /// Whether the row has a remove control.
-    pub removable: bool,
     /// Whether the row carries the control that adds another row.
     pub adds_row: bool,
 }
 
 impl<T: Clone> ListRow<T> {
-    /// The rows the editor draws of the stored `rows`: the stored rows, or
-    /// `blank` alone when none is stored.
-    fn list(rows: &[T], blank: T, is_blank: impl Fn(&T) -> bool) -> Vec<Self> {
-        let shown = if rows.is_empty() { vec![blank] } else { rows.to_vec() };
-        let count = shown.len();
-        shown
-            .into_iter()
+    /// The rows the editor draws of the stored `rows`.
+    fn list(rows: &[T]) -> Vec<Self> {
+        let count = rows.len();
+        rows.iter()
             .enumerate()
             .map(|(position, row)| Self {
                 labelled: position == 0,
-                removable: count > 1 || !is_blank(&row),
                 adds_row: position + 1 == count,
-                row,
+                row: row.clone(),
             })
             .collect()
     }
@@ -142,14 +136,14 @@ impl<T: Clone> ListRow<T> {
 impl ListRow<RawLabelEdit> {
     /// The rows the editor draws of the stored label rows `labels`.
     pub fn of_labels(labels: &[RawLabelEdit]) -> Vec<Self> {
-        Self::list(labels, RawLabelEdit::default(), RawLabelEdit::is_blank)
+        Self::list(labels)
     }
 }
 
 impl ListRow<String> {
     /// The rows the editor draws of the stored barcode rows `barcodes`.
     pub fn of_barcodes(barcodes: &[String]) -> Vec<Self> {
-        Self::list(barcodes, String::new(), |barcode| barcode.trim().is_empty())
+        Self::list(barcodes)
     }
 }
 

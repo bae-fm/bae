@@ -529,8 +529,8 @@ extension PreviewData {
             albumYear: "",
             pressing: BridgeRawPressingEdit(
                 year: "",
-                labels: [.blank],
-                barcodes: [.blank],
+                labels: [],
+                barcodes: [],
                 facts: PreviewData.pressingFacts()
             ),
             tracks: files.enumerated()
@@ -558,7 +558,10 @@ extension BridgeSheetSideChoice {
     /// The disc `number` of a release whose mediums are not records or
     /// cassettes, named as core names it.
     static func disc(_ number: UInt32) -> BridgeSheetSideChoice {
-        BridgeSheetSideChoice(side: .firstOf(number), heading: .disc(disc: number))
+        BridgeSheetSideChoice(
+            side: .firstOf(number),
+            heading: .disc(disc: number)
+        )
     }
 
     /// The choices of a release of `count` discs that are not records or

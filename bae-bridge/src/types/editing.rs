@@ -817,7 +817,7 @@ pub struct BridgeReleaseEditTrackSide {
 /// `bae_import::RawPressingEdit`: each text field is the text the user
 /// typed, empty meaning "not set"; `year` is text (parsed at shape time).
 /// `labels` and `barcodes` are the rows the editor draws: one per label or
-/// barcode, or one blank row when there is none. `facts` is what the person
+/// barcode, none when there is none. `facts` is what the person
 /// chose with the form's pickers.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeRawPressingEdit {
@@ -828,13 +828,11 @@ pub struct BridgeRawPressingEdit {
 }
 
 /// What a row of a list the editor draws carries: the list's heading on the
-/// first row, the control that adds a row on the last, and a remove control
-/// on every row but a lone blank one. Mirrors the flags of
-/// `bae_import::ListRow`.
+/// first row and the control that adds a row on the last. Mirrors the flags
+/// of `bae_import::ListRow`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeListPlace {
     pub labelled: bool,
-    pub removable: bool,
     pub adds_row: bool,
 }
 

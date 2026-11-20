@@ -120,7 +120,7 @@ impl BridgeRawPressingEdit {
 
 impl BridgeListPlace {
     fn of_row<T>(row: &bae_import::ListRow<T>) -> Self {
-        Self { labelled: row.labelled, removable: row.removable, adds_row: row.adds_row }
+        Self { labelled: row.labelled, adds_row: row.adds_row }
     }
 }
 
