@@ -307,7 +307,9 @@ enum ShotError: Error, CustomStringConvertible {
     case pngEncodingFailed(String)
     case windowNotShared(String)
     case windowNotDrawn(String, CGRect)
-    case windowNotKey(String)
+    /// The scene's window never became key; `focus` is the app macOS named
+    /// as the front app when the wait ended.
+    case windowNotKey(String, focus: FocusHolder)
     case noScreen(String)
     case noShotDisplay(String)
     case noContentView(String)
@@ -334,8 +336,18 @@ enum ShotError: Error, CustomStringConvertible {
         case .windowNotDrawn(let id, let frame):
             "the window server shows scene \(id)'s window with frame "
                 + "\(frame), off the screen or empty"
-        case .windowNotKey(let id):
-            "another app kept the focus, so scene \(id) would draw inactive"
+        case .windowNotKey(let id, .other(.some(let name), let pid)):
+            "\(name) (pid \(pid)) kept the focus, so scene \(id) would draw "
+                + "inactive"
+        case .windowNotKey(let id, .other(nil, let pid)):
+            "an app with no name (pid \(pid)) kept the focus, so scene \(id) "
+                + "would draw inactive"
+        case .windowNotKey(let id, .thisApp):
+            "the shot test is the front app, but scene \(id)'s window never "
+                + "became key, so it would draw inactive"
+        case .windowNotKey(let id, .noApp):
+            "macOS names no front app, and scene \(id)'s window never became "
+                + "key, so it would draw inactive"
         case .noScreen(let id):
             "ScreenCaptureKit shares no shot display for scene \(id)'s window"
         case .noContentView(let id):

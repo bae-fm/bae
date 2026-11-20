@@ -42,7 +42,8 @@ extension ShotRenderer {
     /// Wait for `window`, or an alert over it, to be the key window of the active app, asking for
     /// that again whenever the app or the window loses it: the window server
     /// draws a title bar and toolbar as inactive otherwise, which the app
-    /// never shows in use. Fails when another app keeps the focus.
+    /// never shows in use. Fails, naming the front app, when the window
+    /// never becomes key, as when another app keeps the focus.
     static func becomeKey(
         _ window: NSWindow,
         scene: ShotScene
@@ -67,7 +68,7 @@ extension ShotRenderer {
             }
         }
         catch is Wait.TimedOut {
-            throw ShotError.windowNotKey(scene.id)
+            throw ShotError.windowNotKey(scene.id, focus: .now())
         }
         // Draw the frame as active and hand it to the window server.
         window.displayIfNeeded()
