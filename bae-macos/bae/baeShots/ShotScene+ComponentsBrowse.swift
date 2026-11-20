@@ -333,6 +333,7 @@ extension ShotScene {
     private static let trackColumnsScenes: [ShotScene] = [
         component(
             "mac.component.track-columns.default",
+            page: true,
             width: 580,
             height: 100
         ) {
@@ -403,6 +404,7 @@ extension ShotScene {
     private static let detailHeaderScenes: [ShotScene] = [
         component(
             "mac.component.detail-header.default",
+            page: true,
             height: 100,
             images: coverStore()
         ) {
@@ -415,6 +417,7 @@ extension ShotScene {
     private static let workDetailScenes: [ShotScene] = [
         component(
             "mac.component.work-detail.default",
+            page: true,
             height: 260,
             images: coverStore()
         ) {
@@ -603,7 +606,11 @@ extension ShotScene {
     /// `MacSearchSection` and `MacSearchCard` with an Albums and a Tracks
     /// section.
     private static let searchScenes: [ShotScene] = [
-        component("mac.component.search-section.default", height: 60) {
+        component(
+            "mac.component.search-section.default",
+            page: true,
+            height: 60
+        ) {
             MacSearchSection("Albums")
                 .frame(width: 380, alignment: .leading)
         },

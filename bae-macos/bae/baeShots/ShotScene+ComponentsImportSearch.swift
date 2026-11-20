@@ -662,6 +662,7 @@ extension ShotScene {
     private static let findOnlineScenes: [ShotScene] = [
         component(
             "mac.component.find-online.default",
+            page: true,
             width: 580,
             height: 360,
             images: PreviewData.artImageStore()

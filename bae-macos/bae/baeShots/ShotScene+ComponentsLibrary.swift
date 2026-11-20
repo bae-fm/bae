@@ -13,11 +13,15 @@ extension ShotScene {
 
     /// `MacSectionHeader` and `MacEyebrow`.
     private static let headingScenes: [ShotScene] = [
-        component("mac.component.section-header.default", height: 70) {
+        component(
+            "mac.component.section-header.default",
+            page: true,
+            height: 70
+        ) {
             MacSectionHeader(title: "Works")
                 .frame(width: 380, alignment: .leading)
         },
-        component("mac.component.eyebrow.default", height: 50) {
+        component("mac.component.eyebrow.default", page: true, height: 50) {
             MacEyebrow(verbatim: "Side A")
         },
     ]
@@ -43,6 +47,7 @@ extension ShotScene {
         albumTileScene("mac.component.album-tile.no-year", year: nil),
         component(
             "mac.component.artist-album-tile.default",
+            page: true,
             width: 524,
             height: 250,
             images: coverStore()

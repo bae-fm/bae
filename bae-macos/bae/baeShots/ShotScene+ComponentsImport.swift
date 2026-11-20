@@ -17,7 +17,11 @@ extension ShotScene {
         + importSidebarComponentScenes
 
     private static let importValueScenes: [ShotScene] = [
-        component("mac.component.import-folder-line.default", height: 50) {
+        component(
+            "mac.component.import-folder-line.default",
+            page: true,
+            height: 50
+        ) {
             MacImportFolderLine(
                 tab: .pending,
                 folderName: "Mara Quill - Low Tide Hours (1992) [FLAC]",
@@ -26,7 +30,11 @@ extension ShotScene {
             )
             .frame(width: 380, alignment: .leading)
         },
-        component("mac.component.import-group-header.default", height: 60) {
+        component(
+            "mac.component.import-group-header.default",
+            page: true,
+            height: 60
+        ) {
             MacImportGroupHeader(
                 group: BridgeTriageGroup(
                     key: PreviewData.releaseQueueGroupKey,
@@ -185,6 +193,7 @@ extension ShotScene {
         [
             component(
                 "mac.component.import-table.default",
+                page: true,
                 width: 580,
                 height: 130
             ) {
@@ -292,6 +301,7 @@ extension ShotScene {
     private static let importSheetScenes: [ShotScene] = [
         component(
             "mac.component.import-sheet-caption.default",
+            page: true,
             width: 580,
             height: 110
         ) {

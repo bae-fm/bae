@@ -17,7 +17,7 @@ extension ShotScene {
 
     /// `MacNote`, a loose paragraph between boxes.
     private static let noteScenes: [ShotScene] = [
-        component("mac.component.note.default", height: 72) {
+        component("mac.component.note.default", page: true, height: 72) {
             MacNote(
                 "A shared folder is required to invite people to the library."
             )
@@ -259,14 +259,18 @@ extension ShotScene {
 
     /// `MacBackButton`, back to the page before.
     private static let backButtonScenes: [ShotScene] = [
-        component("mac.component.back-button.default", height: 60) {
+        component("mac.component.back-button.default", page: true, height: 60) {
             MacBackButton(backTitle: "Playlists", onBack: {})
         }
     ]
 
     /// `MacQueueInsertLine`, where a dragged track will land.
     private static let queueInsertLineScenes: [ShotScene] = [
-        component("mac.component.queue-insert-line.default", height: 40) {
+        component(
+            "mac.component.queue-insert-line.default",
+            page: true,
+            height: 40
+        ) {
             MacQueueInsertLine().frame(width: 380)
         }
     ]

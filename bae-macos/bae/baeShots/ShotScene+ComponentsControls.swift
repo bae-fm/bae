@@ -188,7 +188,7 @@ extension ShotScene {
 
     /// `MacSection` over its box, and `MacBox` holding rows.
     private static let sectionAndBoxScenes: [ShotScene] = [
-        component("mac.component.section.default", height: 110) {
+        component("mac.component.section.default", page: true, height: 110) {
             ShotForm {
                 MacSection("People") {
                     Text("The section’s content")
@@ -243,11 +243,15 @@ extension ShotScene {
         component("mac.component.icon-button.active", height: 60) {
             MacIconButton(symbol: "repeat", label: "Repeat", active: true) {}
         },
-        component("mac.component.hairline.default", height: 60) {
+        component("mac.component.hairline.default", page: true, height: 60) {
             MacHairline()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         },
-        component("mac.component.content-unavailable.default", height: 200) {
+        component(
+            "mac.component.content-unavailable.default",
+            page: true,
+            height: 200
+        ) {
             MacContentUnavailable(title: "Composers")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         },

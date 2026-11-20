@@ -48,6 +48,7 @@ extension ShotScene {
     private static let releaseCellScenes: [ShotScene] = [
         component(
             "mac.component.release-cell.default",
+            page: true,
             height: 50,
             images: coverStore()
         ) {
@@ -122,7 +123,7 @@ extension ShotScene {
     /// `MacScanCode`, the QR code of a short code with the buttons that copy
     /// and share it.
     private static let scanCodeScenes: [ShotScene] = [
-        component("mac.component.scan-code.default", height: 330) {
+        component("mac.component.scan-code.default", page: true, height: 330) {
             MacScanCode(
                 instruction:
                     "Scan the QR code on their device, or share the code.",

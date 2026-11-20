@@ -117,21 +117,30 @@ extension ShotScene {
         }
     }
 
-    /// A component's state: `view` at the top left of a frame `width` points
-    /// wide, over the elevated surface the preview draws every component on.
-    /// The board is the preview's cell, which holds the component at its top
-    /// left with no margin, so the frame adds none either. `height` is room
-    /// for the state; the picture's comparison ends at the board's height.
+    /// A component's state: `view` in a column `width` points wide, over
+    /// the elevated surface the preview draws every component on. A state's
+    /// board is its preview row's cell, which holds the component at its top
+    /// left with no margin. A `page` state is a preview with no rows, whose
+    /// board is the whole page: the page sets the component in by its edge
+    /// space, so the frame does too. `height` is room for the state; the
+    /// picture's comparison ends at the board's height.
     static func component<Content: View>(
         _ id: String,
+        page: Bool = false,
         width: CGFloat = 380,
         height: CGFloat,
         images: ImageStore? = nil,
         isReady: @escaping @MainActor () -> Bool = { true },
         @ViewBuilder view: @escaping @MainActor () -> Content
     ) -> ShotScene {
-        ShotScene(id: id, size: CGSize(width: width, height: height)) {
+        let margin = page ? ThemeSpace.edge : 0
+        let size = CGSize(
+            width: width + 2 * margin,
+            height: height + 2 * margin
+        )
+        return ShotScene(id: id, size: size) {
             let content = view()
+                .padding(margin)
                 .frame(
                     maxWidth: .infinity,
                     maxHeight: .infinity,
