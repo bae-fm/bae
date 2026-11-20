@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import fm.bae.app.R
 import fm.bae.app.creditLineText
@@ -36,7 +37,7 @@ internal fun AndroidAlbumCredits(credits: List<BridgeCreditRow>) {
     val context = LocalContext.current
     Column {
         AndroidEyebrow(
-            text = context.getString(R.string.search_section_credits),
+            text = stringResource(R.string.search_section_credits),
             modifier = Modifier.padding(bottom = ThemeSpace.inline),
             spaceAbove = ThemeSpace.inline,
         )
