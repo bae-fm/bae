@@ -35,6 +35,7 @@ class CastPinBoardShots : BoardShot() {
                     receiver("Kitchen", BridgeRendererKind.AIR_PLAY),
                     receiver("Den receiver", BridgeRendererKind.DLNA),
                 ),
+            isEmpty = false,
         )
 
     private val pin =

@@ -28,7 +28,7 @@ fn cast_to(receiver: &CastReceiver) -> PlaybackChange {
 
 /// A list with nothing cast to.
 fn found(found: Vec<CastReceiver>) -> CastReceiverList {
-    CastReceiverList { casting: None, found }
+    CastReceiverList::new(None, found)
 }
 
 /// A write replaces the whole list; the list reads by name, then id.
@@ -82,7 +82,7 @@ async fn model_address_and_volume_read_back() {
     PlaybackNowRow::new(db).apply(&cast_to(&modelled)).await.unwrap();
     assert_eq!(
         picker.receivers().await.unwrap(),
-        CastReceiverList { casting: Some(modelled), found: vec![bare] }
+        CastReceiverList::new(Some(modelled), vec![bare])
     );
 }
 
@@ -101,10 +101,8 @@ async fn the_receiver_cast_to_comes_first_even_before_discovery_finds_it() {
     picker.show(vec![kitchen.clone(), den.clone()]).await.unwrap();
 
     playback.apply(&cast_to(&living_room)).await.unwrap();
-    let casting = CastReceiverList {
-        casting: Some(living_room.clone()),
-        found: vec![den.clone(), kitchen.clone()],
-    };
+    let casting =
+        CastReceiverList::new(Some(living_room.clone()), vec![den.clone(), kitchen.clone()]);
     assert_eq!(picker.receivers().await.unwrap(), casting);
 
     picker.show(vec![kitchen.clone(), living_room, den.clone()]).await.unwrap();
@@ -139,10 +137,7 @@ async fn the_followed_list_changes_as_playback_moves_to_a_receiver() {
 
     PlaybackNowRow::new(db).apply(&cast_to(&living_room)).await.unwrap();
 
-    assert_eq!(
-        next(&mut listed).await,
-        CastReceiverList { casting: Some(living_room), found: Vec::new() }
-    );
+    assert_eq!(next(&mut listed).await, CastReceiverList::new(Some(living_room), Vec::new()));
 }
 
 /// Opening the library empties the list: no discovery outlives the process

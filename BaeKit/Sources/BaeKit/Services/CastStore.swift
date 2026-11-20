@@ -10,7 +10,11 @@ import Observation
 @Observable
 public final class CastStore {
     public var status: BridgeRemotePlayback = .local
-    public var receivers = BridgeCastReceiverList(casting: nil, found: [])
+    public var receivers = BridgeCastReceiverList(
+        casting: nil,
+        found: [],
+        isEmpty: true
+    )
 
     public init() {}
 
@@ -55,12 +59,5 @@ public final class CastStore {
     /// Apply the retained playback value.
     public func applyStatus(_ remote: BridgeRemotePlayback) {
         status = remote
-    }
-}
-
-extension BridgeCastReceiverList {
-    /// Whether the list holds no receiver: none cast to, and none found.
-    public var isEmpty: Bool {
-        casting == nil && found.isEmpty
     }
 }

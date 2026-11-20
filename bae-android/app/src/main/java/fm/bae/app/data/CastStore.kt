@@ -20,7 +20,8 @@ class CastStore {
     private val _status = MutableStateFlow<BridgeRemotePlayback>(BridgeRemotePlayback.Local)
     val status: StateFlow<BridgeRemotePlayback> = _status.asStateFlow()
 
-    private val _receivers = MutableStateFlow(BridgeCastReceiverList(casting = null, found = emptyList()))
+    private val _receivers =
+        MutableStateFlow(BridgeCastReceiverList(casting = null, found = emptyList(), isEmpty = true))
     val receivers: StateFlow<BridgeCastReceiverList> = _receivers.asStateFlow()
 
     /**
@@ -38,10 +39,6 @@ class CastStore {
         _receivers.value = receivers
     }
 }
-
-/** Whether the list holds no receiver: none cast to, and none found. */
-val BridgeCastReceiverList.isEmpty: Boolean
-    get() = casting == null && found.isEmpty()
 
 /** The device playback is on, else null. */
 fun castingDevice(status: BridgeRemotePlayback): BridgeCastReceiver? =

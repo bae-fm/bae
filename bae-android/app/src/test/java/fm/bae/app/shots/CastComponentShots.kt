@@ -38,7 +38,7 @@ class CastComponentShots : BoardShot() {
         component("android.component.cast-row.looking", wide = true) {
             CastReceiverRows(
                 place = CastReceiverPlace.PICKER,
-                receivers = BridgeCastReceiverList(casting = null, found = emptyList()),
+                receivers = BridgeCastReceiverList(casting = null, found = emptyList(), isEmpty = true),
                 connectingName = null,
                 onCast = {},
                 onDisconnect = {},

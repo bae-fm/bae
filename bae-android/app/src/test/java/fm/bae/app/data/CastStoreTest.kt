@@ -86,6 +86,7 @@ class CastStoreTest {
                         BridgeFixtures.castReceiver(id = "cast-1", name = "Kitchen"),
                         BridgeFixtures.castReceiver(id = "cast-3", name = "Study"),
                     ),
+                isEmpty = false,
             ),
         )
         assertEquals(device, store.receivers.value.casting)
@@ -95,7 +96,7 @@ class CastStoreTest {
                 .map { it.name },
         )
 
-        store.setReceivers(BridgeCastReceiverList(casting = null, found = emptyList()))
+        store.setReceivers(BridgeCastReceiverList(casting = null, found = emptyList(), isEmpty = true))
         assertTrue(store.receivers.value.isEmpty)
     }
 }

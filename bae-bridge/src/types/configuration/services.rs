@@ -393,6 +393,9 @@ pub struct BridgeCastReceiverList {
     pub casting: Option<BridgeCastReceiver>,
     /// The other receivers discovery found, by name.
     pub found: Vec<BridgeCastReceiver>,
+    /// Whether the list holds no receiver, cast to or found. The apps show a
+    /// spinner while it does.
+    pub is_empty: bool,
 }
 
 /// The protocol flavor of a receiver.
@@ -419,7 +422,7 @@ mirror_struct! {
     #[cfg(feature = "cast")]
     BridgeCastReceiverList = bae_playback::renderer::CastReceiverList,
     from_core: pub(crate) fn,
-    fields: { casting: (opt BridgeCastReceiver), found: (each BridgeCastReceiver) },
+    fields: { casting: (opt BridgeCastReceiver), found: (each BridgeCastReceiver), is_empty },
 }
 
 /// A place that lists the receivers bae finds, and so asks it to browse.

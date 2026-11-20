@@ -21,7 +21,7 @@ use rusqlite::{params, OptionalExtension, Row};
 use super::receiver::{CastReceiver, RendererKind};
 use crate::tables::{receiver_from_row, CAST_RECEIVER};
 
-/// What the picker and the Casting page list: the receiver playback is cast
+/// What the Play on picker and the Playback settings list: the receiver playback is cast
 /// to, listed while a new search hasn't found it again, and every other
 /// receiver discovery found.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -30,6 +30,17 @@ pub struct CastReceiverList {
     pub casting: Option<CastReceiver>,
     /// The other receivers discovery found, by name, then id.
     pub found: Vec<CastReceiver>,
+    /// Whether the list holds no receiver, cast to or found. The apps show a
+    /// spinner while it does.
+    pub is_empty: bool,
+}
+
+impl CastReceiverList {
+    /// The list of `casting` and `found`, saying whether it is empty.
+    pub fn new(casting: Option<CastReceiver>, found: Vec<CastReceiver>) -> Self {
+        let is_empty = casting.is_none() && found.is_empty();
+        Self { casting, found, is_empty }
+    }
 }
 
 /// `kind` as a `kind` column holds it.
@@ -90,7 +101,7 @@ fn cast_receivers_on(sql: &SqlReadContext<'_>) -> Result<CastReceiverList, DbErr
             })
         },
     )?;
-    Ok(CastReceiverList { casting, found })
+    Ok(CastReceiverList::new(casting, found))
 }
 
 /// The picker's list in the library's store: the receivers discovery last

@@ -30,7 +30,8 @@ struct CastPickerTests {
                             address: "192.168.1.41",
                             takesVolume: true
                         )
-                    ]
+                    ],
+                    isEmpty: false
                 ),
                 endedFailure: nil,
                 connectingName: connectingName,

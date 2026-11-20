@@ -50,7 +50,8 @@ class CastReceiverRowsTest {
             takesVolume = true,
         )
 
-    private fun found(vararg receivers: BridgeCastReceiver) = BridgeCastReceiverList(casting = null, found = receivers.toList())
+    private fun found(vararg receivers: BridgeCastReceiver) =
+        BridgeCastReceiverList(casting = null, found = receivers.toList(), isEmpty = receivers.isEmpty())
 
     private fun setRows(
         receivers: BridgeCastReceiverList,
@@ -77,7 +78,7 @@ class CastReceiverRowsTest {
 
     @Test
     fun theReceiverPlayingSaysPlayingAndOffersDisconnect() {
-        setRows(BridgeCastReceiverList(casting = livingRoom, found = listOf(kitchen)))
+        setRows(BridgeCastReceiverList(casting = livingRoom, found = listOf(kitchen), isEmpty = false))
 
         compose.onNodeWithText("Playing").assertIsDisplayed()
         compose.onAllNodesWithText("Disconnect").assertCountEquals(1)
@@ -86,7 +87,7 @@ class CastReceiverRowsTest {
 
     @Test
     fun thePickerHasNoMenuOnItsRows() {
-        setRows(BridgeCastReceiverList(casting = livingRoom, found = listOf(kitchen)))
+        setRows(BridgeCastReceiverList(casting = livingRoom, found = listOf(kitchen), isEmpty = false))
 
         compose.onAllNodesWithContentDescription("More").assertCountEquals(0)
     }
@@ -95,7 +96,7 @@ class CastReceiverRowsTest {
     fun everyRowOnThePageHasAMenuWithDetailsAndOnlyTheCastToRowOffersDisconnect() {
         var disconnected = 0
         setRows(
-            BridgeCastReceiverList(casting = livingRoom, found = listOf(kitchen)),
+            BridgeCastReceiverList(casting = livingRoom, found = listOf(kitchen), isEmpty = false),
             place = CastReceiverPlace.PAGE,
             onDisconnect = { disconnected++ },
         )
@@ -121,7 +122,7 @@ class CastReceiverRowsTest {
     fun theCastToRowsMenuDisconnects() {
         var disconnected = 0
         setRows(
-            BridgeCastReceiverList(casting = livingRoom, found = emptyList()),
+            BridgeCastReceiverList(casting = livingRoom, found = emptyList(), isEmpty = false),
             place = CastReceiverPlace.PAGE,
             onDisconnect = { disconnected++ },
         )
@@ -136,7 +137,7 @@ class CastReceiverRowsTest {
     @Test
     fun detailsShowAStatedModel() {
         setRows(
-            BridgeCastReceiverList(casting = null, found = listOf(livingRoom.copy(model = "Nest Audio"))),
+            BridgeCastReceiverList(casting = null, found = listOf(livingRoom.copy(model = "Nest Audio")), isEmpty = false),
             place = CastReceiverPlace.PAGE,
         )
 
@@ -151,7 +152,7 @@ class CastReceiverRowsTest {
     @Test
     fun tappingAnotherReceiverCastsToIt() {
         val cast = mutableListOf<String>()
-        setRows(BridgeCastReceiverList(casting = livingRoom, found = listOf(kitchen))) { cast += it.id }
+        setRows(BridgeCastReceiverList(casting = livingRoom, found = listOf(kitchen), isEmpty = false)) { cast += it.id }
 
         compose.onNodeWithText("Living Room").performClick()
         assertEquals(emptyList<String>(), cast)

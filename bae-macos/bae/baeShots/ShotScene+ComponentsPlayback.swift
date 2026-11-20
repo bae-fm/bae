@@ -750,7 +750,8 @@ extension ShotScene {
             MacCastPopover(
                 receivers: BridgeCastReceiverList(
                     casting: casting,
-                    found: found
+                    found: found,
+                    isEmpty: casting == nil && found.isEmpty
                 ),
                 endedFailure: nil,
                 connectingName: connecting,

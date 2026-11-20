@@ -54,13 +54,14 @@ fun castToggleAction(
 /**
  * The Play on group of the Playback page: the switch Play on other devices, which core enforces, and, while it is on,
  * the receivers bae finds and what a track a receiver can't play directly is converted to. The config subscription
- * moves the switch, so a refused flip leaves it in place.
+ * moves the switch, so a refused flip leaves it in place. [receivers] and [connectingName] read their state here, so a
+ * receiver found recomposes this group and not the page around it.
  */
 @Composable
 internal fun SettingsPlayOn(
     enabled: Boolean,
-    receivers: BridgeCastReceiverList,
-    connectingName: String?,
+    receivers: () -> BridgeCastReceiverList,
+    connectingName: () -> String?,
     transcodeFormat: BridgeCastTranscodeFormat,
     onEnabledChange: (Boolean) -> Unit,
     onCast: (BridgeCastReceiver) -> Unit,
@@ -79,8 +80,8 @@ internal fun SettingsPlayOn(
         AndroidCard {
             CastReceiverRows(
                 place = CastReceiverPlace.PAGE,
-                receivers = receivers,
-                connectingName = connectingName,
+                receivers = receivers(),
+                connectingName = connectingName(),
                 onCast = onCast,
                 onDisconnect = onDisconnect,
                 looking = stringResource(R.string.settings_receivers_looking),

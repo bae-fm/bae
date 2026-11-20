@@ -12,8 +12,6 @@ struct PlaybackSettingsTab: View {
     private var cast
     @Environment(CastStore.self)
     private var castStore
-    @Environment(CastStart.self)
-    private var start
     @Environment(ConfigStore.self)
     private var configStore
     @Environment(UiStore.self)
@@ -69,14 +67,7 @@ struct PlaybackSettingsTab: View {
                     )
                 }
                 if configStore.config.castEnabled {
-                    CastReceiversSection(
-                        receivers: castStore.receivers,
-                        connectingName: start.connecting?.name,
-                        onCast: { receiver in
-                            start.cast(to: receiver)
-                        },
-                        onDisconnect: cast.stopCasting
-                    )
+                    CastReceiversSection()
                 }
                 if CastTranscodeFormatPicker.isShown(for: configStore.config) {
                     MacSection {
@@ -146,27 +137,30 @@ struct PlaybackSettingsTab: View {
 /// The receivers bae has found, one row each, the one playing first, or a
 /// spinner until the first one answers. Browsing has no end while the pane is
 /// open, so an empty list is still looking.
+/// It reads the receivers and the connection itself, so a receiver found
+/// redraws this section and not the pane around it.
 private struct CastReceiversSection: View {
-    let receivers: BridgeCastReceiverList
-    /// The receiver bae is connecting to, while it does.
-    let connectingName: String?
-    let onCast: (BridgeCastReceiver) -> Void
-    let onDisconnect: () -> Void
+    @Environment(Cast.self)
+    private var cast
+    @Environment(CastStore.self)
+    private var castStore
+    @Environment(CastStart.self)
+    private var start
 
     var body: some View {
         MacSection {
-            if let connectingName {
-                MacCastConnectingLine(name: connectingName)
+            if let connecting = start.connecting {
+                MacCastConnectingLine(name: connecting.name)
             }
-            if receivers.isEmpty {
+            if castStore.receivers.isEmpty {
                 MacSpinner("Looking for receivers…")
             }
             else {
                 MacCastRows(
                     place: .page,
-                    receivers: receivers,
-                    onCast: onCast,
-                    onDisconnect: onDisconnect
+                    receivers: castStore.receivers,
+                    onCast: { receiver in start.cast(to: receiver) },
+                    onDisconnect: cast.stopCasting
                 )
             }
         } header: {
