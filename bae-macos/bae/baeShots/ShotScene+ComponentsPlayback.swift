@@ -494,7 +494,7 @@ extension ShotScene {
         hover: Bool = false,
         current: Bool = false,
         picked: Bool = false,
-        rating: MacTrackRow.Rating? = nil
+        stars: BridgeStars? = nil
     ) -> ShotScene {
         component(id, height: 70) {
             MacTrackRow(
@@ -505,7 +505,7 @@ extension ShotScene {
                 isPlaying: current,
                 hover: hover,
                 picked: picked,
-                rating: rating,
+                stars: stars,
                 onPlay: {},
                 onTogglePlayPause: {}
             )
@@ -580,36 +580,34 @@ extension ShotScene {
             current: true,
             picked: true
         ),
-        ratedTrackRow("mac.component.track-row.rated", stars: .four),
-        ratedTrackRow(
-            "mac.component.track-row.not-rated-in-a-rated-list",
-            stars: nil
-        ),
-        ratedTrackRow(
-            "mac.component.track-row.rated-and-hover",
-            stars: .four,
-            hover: true
-        ),
-    ]
-
-    /// A track of an album's list, with the slot for the person's `stars`
-    /// after it.
-    private static func ratedTrackRow(
-        _ id: String,
-        stars: BridgeStars?,
-        hover: Bool = false
-    ) -> ShotScene {
         trackRow(
-            id,
+            "mac.component.track-row.rated",
             track: PreviewData.previewTrack(
                 title: "Low Tide Hours",
                 position: "4",
                 durationMs: 303_000
             ),
-            hover: hover,
-            rating: MacTrackRow.Rating(stars: stars)
-        )
-    }
+            stars: .four
+        ),
+        trackRow(
+            "mac.component.track-row.not-rated-in-a-rated-list",
+            track: PreviewData.previewTrack(
+                title: "Low Tide Hours",
+                position: "4",
+                durationMs: 303_000
+            )
+        ),
+        trackRow(
+            "mac.component.track-row.rated-and-hover",
+            track: PreviewData.previewTrack(
+                title: "Low Tide Hours",
+                position: "4",
+                durationMs: 303_000
+            ),
+            hover: true,
+            stars: .four
+        ),
+    ]
 
     /// One of Mara Quill's tracks in the queue, as the boards list it, with
     /// its album's cover unless `covered` is false.

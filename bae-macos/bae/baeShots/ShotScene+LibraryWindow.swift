@@ -72,19 +72,7 @@ extension ShotScene {
                     detail.releases.first { $0.id == id }
                 }
             },
-            playlists: {
-                .fixed(
-                    BridgePlaylistListing(
-                        listed: playlists,
-                        addTargets: playlists.filter(\.yours),
-                        total: UInt64(playlists.count),
-                        addTargetCount: UInt64(
-                            playlists.filter(\.yours).count
-                        ),
-                        canCreate: true
-                    )
-                )
-            },
+            playlists: { .fixed(playlistListing(playlists)) },
             playlistDetail: {
                 .fixed(answers: UnansweredCount()) { playlistDetails[$0] }
             },
@@ -114,6 +102,20 @@ extension ShotScene {
 
     /// History's menu of whose plays as core counts it under `person`:
     /// `people` in their order, and whose plays it shows.
+    /// The Playlists list of `playlists`, for a person with a profile, who
+    /// can add to their own.
+    nonisolated static func playlistListing(
+        _ playlists: [BridgePlaylistSummary]
+    ) -> BridgePlaylistListing {
+        BridgePlaylistListing(
+            listed: playlists,
+            addTargets: playlists.filter(\.yours),
+            total: UInt64(playlists.count),
+            addTargetCount: UInt64(playlists.filter(\.yours).count),
+            canCreate: true
+        )
+    }
+
     nonisolated static func boardHistoryMenu(
         _ people: [(id: String, name: String)],
         person: String?

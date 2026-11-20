@@ -71,13 +71,7 @@ extension ShotScene {
                 cover: .single(cover: cover("Copper Sky"))
             ),
         ]
-        return BridgePlaylistListing(
-            listed: playlists,
-            addTargets: playlists.filter(\.yours),
-            total: UInt64(playlists.count),
-            addTargetCount: UInt64(playlists.filter(\.yours).count),
-            canCreate: true
-        )
+        return playlistListing(playlists)
     }
 
     /// History's choice of whose plays, offering Ana and Ben, on the plays

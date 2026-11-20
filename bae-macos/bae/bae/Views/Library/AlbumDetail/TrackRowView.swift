@@ -48,7 +48,7 @@ struct TrackRowView: View {
             hover: isHovered,
             picked: picked,
             highlight: highlightOpacity,
-            rating: MacTrackRow.Rating(stars: track.myStars),
+            stars: track.myStars,
             onPlay: onPlay,
             onTogglePlayPause: onTogglePlayPause
         )

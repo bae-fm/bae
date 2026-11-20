@@ -70,6 +70,7 @@ struct RedundantIconsHiddenTests {
                 positionWidth: MacTrackRow.leadingSlotMinWidth,
                 isCurrent: true,
                 isPlaying: true,
+                stars: nil,
                 onPlay: {},
                 onTogglePlayPause: {}
             )
