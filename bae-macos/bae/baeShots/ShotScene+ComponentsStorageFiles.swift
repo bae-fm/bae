@@ -425,15 +425,14 @@ extension ShotScene {
 
     /// `MacReleaseFileRow`, a file of a release at the width the preview
     /// gives it: a document that opens, a file that opens nothing, a damaged
-    /// one, and a long name. The component's `audio` row, a track with a Play
-    /// button, has no state in the app: a release's tracks are rows of the
-    /// track table, and this row lists only the files that are no track.
+    /// one, an audio file with its Play button, and a long name.
     private static func releaseFileRow(
         _ id: String,
         name: String,
         size: String,
         damage: String? = nil,
-        opens: Bool = false
+        opens: Bool = false,
+        plays: Bool = false
     ) -> ShotScene {
         component(
             id,
@@ -444,7 +443,8 @@ extension ShotScene {
                 name: name,
                 size: size,
                 damage: damage,
-                onOpen: opens ? {} : nil
+                onOpen: opens ? {} : nil,
+                onPlay: plays ? {} : nil
             )
             .frame(width: 480, alignment: .leading)
         }
@@ -467,6 +467,12 @@ extension ShotScene {
             name: "02 Margins.flac",
             size: "31.8 MB",
             damage: "Cannot decode"
+        ),
+        releaseFileRow(
+            "mac.component.release-file-row.audio",
+            name: "01 Northbound.flac",
+            size: "33 MB",
+            plays: true
         ),
         releaseFileRow(
             "mac.component.release-file-row.long-name",

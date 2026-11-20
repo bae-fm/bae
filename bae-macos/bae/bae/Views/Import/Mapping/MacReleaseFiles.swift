@@ -4,7 +4,8 @@ import SwiftUI
 /// The files a release carries that are no track, such as a rip log or a
 /// cover image's sibling files: a ruled Files heading, then one line per
 /// file, its name in mono and its size at the right, a hairline between
-/// lines. A document opens when clicked.
+/// lines. A document opens when clicked, and an audio file plays through the
+/// second player from its Play button.
 ///
 /// The one way a release's files show, under its tracks.
 struct MacReleaseFiles: View {
@@ -15,6 +16,10 @@ struct MacReleaseFiles: View {
     /// given a disc, the actions that do it; `nil` where the sheets are
     /// read-only.
     var sheetActions: ImportMappingActions?
+    /// Where an audio file can play before import: the source window the
+    /// second player plays now, and the actions that start and stop it.
+    /// `nil` where the files play nothing.
+    var playing: (target: BridgePreviewTarget?, actions: ImportMappingActions)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
@@ -44,7 +49,10 @@ struct MacReleaseFiles: View {
                 size: file.sizeText,
                 damage: file.damageText,
                 onOpen: file.role == .document
-                    ? { onOpenDocument(file.name, file.fileId) } : nil
+                    ? { onOpenDocument(file.name, file.fileId) } : nil,
+                onPlay: playAction(file),
+                isPlaying: file.previewTarget != nil
+                    && file.previewTarget == playing?.target
             )
         case .sheet(let sheet):
             if let sheetActions {
@@ -62,5 +70,12 @@ struct MacReleaseFiles: View {
                 )
             }
         }
+    }
+
+    private func playAction(_ file: BridgeMappingFile) -> (() -> Void)? {
+        guard let playing, let target = file.previewTarget else { return nil }
+        return target == playing.target
+            ? { playing.actions.stopPreview() }
+            : { playing.actions.preview(target) }
     }
 }

@@ -332,7 +332,6 @@ extension ImportMappingTracksLayoutTests {
                 rootView: ImportMappingSourceCell(
                     source: sheetEntryMapping(number: number).source,
                     previewingTarget: nil,
-                    showsFileSize: true,
                     actions: actions(recording: MappingTrackActionRecorder())
                 )
                 .fixedSize()
@@ -508,7 +507,6 @@ extension ImportMappingTracksLayoutTests {
             rootView: ImportMappingSourceCell(
                 source: source,
                 previewingTarget: previewing,
-                showsFileSize: true,
                 actions: actions(recording: MappingTrackActionRecorder())
             )
             .frame(width: 180, alignment: .leading)

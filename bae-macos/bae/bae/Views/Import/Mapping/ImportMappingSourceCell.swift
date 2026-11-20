@@ -8,8 +8,6 @@ struct ImportMappingSourceCell: View {
 
     let source: BridgeMappingSource
     let previewingTarget: BridgePreviewTarget?
-    /// Files rows show the file size; track rows don't.
-    let showsFileSize: Bool
     let actions: ImportMappingActions
 
     private var isPreviewing: Bool {
@@ -35,14 +33,6 @@ struct ImportMappingSourceCell: View {
                 auditionButton(target: previewTarget)
             }
             nameCell(file)
-            if showsFileSize {
-                Text(file.sizeText)
-                    .themeText(.fine)
-                    .foregroundStyle(.tertiary)
-                    // A squeezed column must truncate the name, never wrap the
-                    // size mid-digit.
-                    .fixedSize()
-            }
             if let damage = file.damageText {
                 Text(damage)
                     .themeText(.fine)

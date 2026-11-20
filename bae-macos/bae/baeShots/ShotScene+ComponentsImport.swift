@@ -156,16 +156,26 @@ extension ShotScene {
     private static func fileRow(
         _ name: String,
         size: UInt64,
-        role: BridgeMappingRole
+        role: BridgeMappingRole,
+        plays: Bool = false
     ) -> BridgeMappingFileRow {
         .file(
             file: BridgeMappingFile(
                 fileId: name,
                 name: name,
                 size: size,
-                previewTarget: nil,
+                previewTarget: plays ? previewTarget(name) : nil,
                 role: role
             )
+        )
+    }
+
+    private static func previewTarget(_ name: String) -> BridgePreviewTarget {
+        BridgePreviewTarget(
+            path: Data(name.utf8),
+            name: name,
+            startSample: 0,
+            endSample: nil
         )
     }
 
@@ -325,7 +335,12 @@ extension ShotScene {
             "mac.component.release-files.skipped-folder",
             height: 200,
             rows: [
-                fileRow("01 Northbound.flac", size: 33_000_000, role: .audio),
+                fileRow(
+                    "01 Northbound.flac",
+                    size: 33_000_000,
+                    role: .audio,
+                    plays: true
+                ),
                 fileRow(
                     "02 Margins.flac",
                     size: 31_800_000,
@@ -379,8 +394,12 @@ extension ShotScene {
             width: 536,
             height: height
         ) {
-            MacReleaseFiles(rows: rows, onOpenDocument: { _, _ in })
-                .frame(width: 520, alignment: .leading)
+            MacReleaseFiles(
+                rows: rows,
+                onOpenDocument: { _, _ in },
+                playing: (nil, inertMappingActions())
+            )
+            .frame(width: 520, alignment: .leading)
         }
     }
 }

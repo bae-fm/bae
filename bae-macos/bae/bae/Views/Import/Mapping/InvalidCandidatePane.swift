@@ -41,29 +41,13 @@ struct InvalidCandidatePane: View {
         }
     }
 
-    /// Every file that is not an image, under the heading the mapping table
-    /// gives its own files.
+    /// Every file that is not an image, under the heading every release's
+    /// files have.
     private var files: some View {
-        VStack(spacing: 0) {
-            MacEyebrow(
-                verbatim: localizedCoreString("ui.import.mapping.files_title")
-            )
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, ImportMappingColumns.rowPadding)
-            .padding(.top, ThemeSpace.inline)
-            .padding(.bottom, ThemeSpace.compact)
-            ForEach(detail.files, id: \.fileId) { file in
-                ImportMappingFileRow(
-                    file: file,
-                    previewingTarget: previewingTarget,
-                    actions: mappingActions
-                )
-                .mappingRowChrome(
-                    background: file.previewTarget != nil
-                        && file.previewTarget == previewingTarget
-                        ? Theme.accentSoft : .clear
-                )
-            }
-        }
+        MacReleaseFiles(
+            rows: detail.files.map { .file(file: $0) },
+            onOpenDocument: mappingActions.openDocument,
+            playing: (previewingTarget, mappingActions)
+        )
     }
 }

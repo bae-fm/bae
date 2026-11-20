@@ -37,7 +37,6 @@ struct MacImportTrackRow: View {
         ImportMappingSourceCell(
             source: mapping.source,
             previewingTarget: previewingTarget,
-            showsFileSize: false,
             actions: actions,
         )
         .frame(width: columns.source, alignment: .leading)
