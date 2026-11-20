@@ -6,17 +6,17 @@ import Testing
 
 @testable import bae
 
-@Suite("SaveNameTokenField")
+@Suite("SaveNameField")
 @MainActor
-struct SaveNameTokenFieldTests {
-    typealias Field = SaveNameTokenField<BridgeSaveFilenamePiece>
+struct SaveNameFieldTests {
+    typealias Field = SaveNameField<BridgeSaveFilenamePiece>
 
     /// A field in a window, holding `pieces`, with the patterns the store is
     /// handed recorded in order.
     @MainActor
     final class Bench {
         let coordinator = Field.Coordinator()
-        let field: Field.TokenField
+        let field: SaveNameFieldView
         let window: NSWindow
         var stored: [[BridgeSaveFilenamePiece]] = []
 
@@ -36,8 +36,8 @@ struct SaveNameTokenFieldTests {
 
         /// The field being typed in.
         func edit() throws -> NSTextView {
-            window.makeFirstResponder(field)
-            return try #require(field.currentEditor() as? NSTextView)
+            #expect(window.makeFirstResponder(field))
+            return field
         }
 
         func settle() async {
@@ -176,6 +176,82 @@ struct SaveNameTokenFieldTests {
         #expect(bench.coordinator.pieces(in: bench.field) == Self.defaultPieces)
     }
 
+    @Test("typing between two chips is stored between them")
+    func typedTextBetweenChipsIsStoredBetweenThem() async throws {
+        let bench = Bench(Self.defaultPieces)
+        let editor = try bench.edit()
+        // After the first chip, before the space.
+        editor.setSelectedRange(NSRange(location: 1, length: 0))
+        editor.insertText("-", replacementRange: editor.selectedRange())
+        await bench.settle()
+        #expect(
+            bench.stored.last == [
+                .value(value: .trackNumber), .text(text: "- "),
+                .value(value: .title),
+            ]
+        )
+    }
+
+    @Test("a dragged chip lands as the chip where it is dropped")
+    func aDraggedChipComesBackAsTheChip() async throws {
+        let bench = Bench(Self.defaultPieces)
+        let editor = try bench.edit()
+        let pasteboard = NSPasteboard(name: .init("save-name-chip-test"))
+        pasteboard.clearContents()
+        // The second chip.
+        editor.setSelectedRange(NSRange(location: 2, length: 1))
+        #expect(
+            bench.field.writablePasteboardTypes == [SaveNameFieldView.chipType]
+        )
+        #expect(
+            bench.field.writeSelection(
+                to: pasteboard,
+                type: SaveNameFieldView.chipType
+            )
+        )
+        editor.setSelectedRange(NSRange(location: 0, length: 0))
+        #expect(
+            bench.field.readSelection(
+                from: pasteboard,
+                type: SaveNameFieldView.chipType
+            )
+        )
+        await bench.settle()
+        #expect(
+            bench.stored.last == [
+                .value(value: .title), .value(value: .trackNumber),
+                .text(text: " "), .value(value: .title),
+            ]
+        )
+    }
+
+    @Test("pasted text comes in as text on one line")
+    func pastedTextIsPlainTextOnOneLine() async throws {
+        let bench = Bench(Self.defaultPieces)
+        let editor = try bench.edit()
+        let pasteboard = NSPasteboard(name: .init("save-name-text-test"))
+        pasteboard.clearContents()
+        pasteboard.setString("a\nb", forType: .string)
+        editor.setSelectedRange(NSRange(location: 3, length: 0))
+        #expect(bench.field.readSelection(from: pasteboard, type: .string))
+        await bench.settle()
+        #expect(
+            bench.stored.last == Self.defaultPieces + [.text(text: "a b")]
+        )
+    }
+
+    @Test("VoiceOver reads each chip by its value's name")
+    func aChipReadsAsItsValue() throws {
+        let bench = Bench(Self.defaultPieces)
+        let storage = try #require(bench.field.textStorage)
+        let chip = try #require(
+            storage.attribute(.attachment, at: 0, effectiveRange: nil)
+                as? NSTextAttachment
+        )
+        let cell = try #require(chip.attachmentCell as? NSCell)
+        #expect(cell.accessibilityLabel() == "Track №")
+    }
+
     struct RefusedWrite: Error {}
 }
 
@@ -195,18 +271,18 @@ struct MacFileNameFieldLayoutTests {
         ) { window, host in
             try await SnapshotTestSupport.settle(host)
             let fields = SnapshotTestSupport.descendants(of: host)
-                .compactMap { $0 as? NSTokenField }
+                .compactMap { $0 as? SaveNameFieldView }
             #expect(fields.count == 2)
             for field in fields {
                 window.makeFirstResponder(field)
                 try await SnapshotTestSupport.settle(host)
-                #expect(field.currentEditor() != nil)
+                #expect(field.isEditing)
             }
         }
     }
 }
 
-extension SaveNameTokenField.Coordinator
+extension SaveNameField.Coordinator
 where Piece == BridgeSaveFilenamePiece {
     /// Whether every pattern handed over has been stored or refused.
     var isIdle: Bool {

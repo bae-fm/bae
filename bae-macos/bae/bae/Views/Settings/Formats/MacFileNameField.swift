@@ -79,7 +79,7 @@ struct MacFileNameField<Piece: SaveNamePiece>: View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
             Text(title)
                 .themeText(.body)
-            SaveNameTokenField(
+            SaveNameField(
                 pieces: pieces,
                 handle: handle,
                 focused: $focused,
