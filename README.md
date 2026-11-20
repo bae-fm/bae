@@ -21,7 +21,7 @@ device in the household.
 - **Shares the library.** Several people use one library, each with their own
   devices, ratings, listening history and playlists, kept private or shared.
 - **Plays on other devices.** Phones browse, stream and pin releases for
-  offline play; the apps cast to AirPlay, Chromecast and UPnP receivers; a
+  offline play; the apps play on AirPlay, Chromecast and UPnP receivers; a
   desktop can serve the library to Subsonic apps.
 
 ## Sync
