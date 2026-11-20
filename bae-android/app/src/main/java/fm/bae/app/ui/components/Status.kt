@@ -243,17 +243,14 @@ internal fun AndroidItem(
  * trail of an [AndroidItem] sit in one, on the first line of its text.
  */
 @Composable
-internal fun FirstLine(
-    modifier: Modifier = Modifier,
-    content: @Composable BoxScope.() -> Unit,
-) {
+internal fun FirstLine(content: @Composable BoxScope.() -> Unit) {
     val measurer = rememberTextMeasurer()
     val style = ThemeText.body.style
     val lineHeight =
         with(LocalDensity.current) {
             remember(measurer, style) { measurer.measure("A", style).size.height }.toDp()
         }
-    Box(modifier.height(lineHeight), contentAlignment = Alignment.Center) {
+    Box(Modifier.height(lineHeight), contentAlignment = Alignment.Center) {
         Box(Modifier.wrapContentHeight(unbounded = true), content = content)
     }
 }

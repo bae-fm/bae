@@ -67,8 +67,7 @@ class ScreenComponentShots : BoardShot() {
             ) {
                 DialogParts(
                     title = "Remove library from this device?",
-                    message = "The library will remain in the cloud and on your other devices.",
-                    action = DialogAction("Remove", {}, destructive = true),
+                    action = DialogAction("Remove", {}),
                     dismiss = DialogAction("Cancel", {}),
                 )
             }
