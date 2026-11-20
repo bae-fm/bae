@@ -854,6 +854,7 @@ task_types = [
 "bae-import/src/lib.rs" = ["ImportServices::new"]
 "bae-import/src/loudness.rs" = [
     "LoudnessProgress::new",
+    "LoudnessProgress::unreported",
     "LoudnessProgressSink::new",
 ]
 "bae-import/src/release_reads.rs" = ["ReleaseReads::new"]

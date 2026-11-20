@@ -22,7 +22,7 @@ use bae_track_audio::track_sources::{run_tracks_over_sources, SourceStream};
 use bae_track_audio::{SegmentDecodeParams, StreamDecodeParams};
 
 /// The album loudness/peak and the scrub points the decodes gave.
-pub(super) struct LoudnessResult {
+pub(crate) struct LoudnessResult {
     pub album_loudness_lufs: Option<f64>,
     pub album_peak_linear: Option<f64>,
     /// The frames a scrub starts its decode at, for every segment whose file
@@ -60,10 +60,9 @@ enum TrackOutcome {
 /// call, and never moves backward when tracks finish out of order.
 #[derive(Clone)]
 struct LoudnessProgress {
-    event_tx: crate::ImportEventBus,
-    candidate_key: crate::CandidateKey,
-    release_id: String,
-    import_id: String,
+    /// The import whose row shows the pass's percent; `None` for a pass no
+    /// row shows.
+    report: Option<ProgressReport>,
     /// Expected frames across the whole candidate, absent when any track's
     /// frame count cannot be established; the bar is then indeterminate.
     scan_total_frames: Option<u64>,
@@ -74,6 +73,15 @@ struct LoudnessProgress {
     last_percent: Arc<std::sync::Mutex<u8>>,
 }
 
+/// The import whose candidate row shows a loudness pass's percent.
+#[derive(Clone)]
+struct ProgressReport {
+    event_tx: crate::ImportEventBus,
+    candidate_key: crate::CandidateKey,
+    release_id: String,
+    import_id: String,
+}
+
 impl LoudnessProgress {
     fn new(
         event_tx: &crate::ImportEventBus,
@@ -82,11 +90,19 @@ impl LoudnessProgress {
         import_id: &str,
         scan_total_frames: Option<u64>,
     ) -> Self {
-        Self {
+        let report = ProgressReport {
             event_tx: event_tx.clone(),
             candidate_key: candidate_key.clone(),
             release_id: release_id.to_string(),
             import_id: import_id.to_string(),
+        };
+        Self { report: Some(report), ..Self::unreported(scan_total_frames) }
+    }
+
+    /// The progress of a pass no row shows.
+    fn unreported(scan_total_frames: Option<u64>) -> Self {
+        Self {
+            report: None,
             scan_total_frames,
             frames_done: Arc::new(AtomicU64::new(0)),
             last_percent: Arc::new(std::sync::Mutex::new(0)),
@@ -117,13 +133,16 @@ impl LoudnessProgress {
     }
 
     fn send(&self, percent: Option<u8>) {
-        self.event_tx.send(crate::ImportEvent::ImportProgress {
-            candidate_key: self.candidate_key.clone(),
+        let Some(report) = &self.report else {
+            return;
+        };
+        report.event_tx.send(crate::ImportEvent::ImportProgress {
+            candidate_key: report.candidate_key.clone(),
             progress: crate::types::ImportProgress::Progress {
-                id: self.release_id.clone(),
+                id: report.release_id.clone(),
                 percent,
                 phase: crate::types::ImportPhase::MeasuringLoudness,
-                import_id: self.import_id.clone(),
+                import_id: report.import_id.clone(),
             },
         });
     }
@@ -517,9 +536,61 @@ pub(super) async fn measure_loudness(
         })?;
         sources.insert(file_id.clone(), (path.clone(), size));
     }
+    let tracks: Vec<LoudnessTrack> = tracks_to_files
+        .iter()
+        .map(|track| LoudnessTrack {
+            title: track.db_track.title.clone(),
+            duration_ms: track.db_track.duration_ms,
+        })
+        .collect();
+    measure_tracks(
+        files,
+        parallelism,
+        audio_formats,
+        audio_segments,
+        &tracks,
+        |file_id| sources.contains_key(file_id),
+        |file_id: String, lease: coven::FileLease| {
+            let (path, size) = sources[&file_id].clone();
+            let diagnostics = diagnostics.clone();
+            async move { open_source_stream(path, size, lease, diagnostics).await }
+        },
+        |total| LoudnessProgress::new(event_tx, candidate_key, release_id, import_id, total),
+        diagnostics,
+    )
+    .await
+}
 
+/// One track a loudness pass measures, as the pass names it, and its length,
+/// which counts the frames the pass expects of it when its segments don't
+/// say.
+pub(crate) struct LoudnessTrack {
+    pub title: String,
+    pub duration_ms: u64,
+}
+
+/// Measure each of `tracks`, whose formats are `audio_formats` and whose
+/// segments are among `audio_segments` (all index-aligned), as
+/// [`measure_loudness`] says, reading each file `readable` says the pass
+/// has a source for through the stream `open` starts, and reporting the
+/// pass's percent as the progress `progress` makes of the frames it expects
+/// does. A track reading a file the pass has no source for stays unmeasured.
+async fn measure_tracks<Opening>(
+    files: &coven::FileBudget,
+    parallelism: NonZeroUsize,
+    audio_formats: &mut [bae_records::DbAudioFormat],
+    audio_segments: &[bae_records::DbAudioSegment],
+    tracks: &[LoudnessTrack],
+    readable: impl Fn(&str) -> bool,
+    open: impl Fn(String, coven::FileLease) -> Opening,
+    progress: impl FnOnce(Option<u64>) -> LoudnessProgress,
+    diagnostics: &bae_diagnostics::Diagnostics,
+) -> Result<LoudnessResult, crate::ImportError>
+where
+    Opening: std::future::Future<Output = SourceStream> + Send,
+{
     // Each track's segments in play order. `audio_formats` and
-    // `tracks_to_files` are index-aligned (the formats are built from the same
+    // `tracks` are index-aligned (the formats are built from the same
     // tracks), so an index keys all three.
     let track_segments: Vec<Vec<&bae_records::DbAudioSegment>> = audio_formats
         .iter()
@@ -538,9 +609,9 @@ pub(super) async fn measure_loudness(
     // duration denominator.
     let track_total_frames: Vec<Option<u64>> = audio_formats
         .iter()
-        .zip(tracks_to_files)
+        .zip(tracks)
         .zip(&track_segments)
-        .map(|((audio_format, track_file), segments)| {
+        .map(|((audio_format, track), segments)| {
             let sample_rate = u64::from(audio_format.sample_rate.get());
             segments
                 .iter()
@@ -550,7 +621,7 @@ pub(super) async fn measure_loudness(
                         .map(|end| total.saturating_add(end.saturating_sub(segment.start_sample)))
                 })
                 .or_else(|| {
-                    let ms = track_file.db_track.duration_ms;
+                    let ms = track.duration_ms;
                     (ms > 0 && sample_rate > 0).then(|| ms * sample_rate / 1000)
                 })
         })
@@ -559,11 +630,10 @@ pub(super) async fn measure_loudness(
         track_total_frames.iter().copied().try_fold(0u64, |total, track_total| {
             track_total.map(|frames| total.saturating_add(frames))
         });
-    let progress =
-        LoudnessProgress::new(event_tx, candidate_key, release_id, import_id, scan_total_frames);
+    let progress = progress(scan_total_frames);
     progress.report_initial();
 
-    // A track with no segments, or one reading a file the import holds no
+    // A track with no segments, or one reading a file the pass holds no
     // source for, stays unmeasured; its frames count as done.
     let mut measured_tracks = Vec::new();
     for (index, segments) in track_segments.iter().enumerate() {
@@ -575,9 +645,7 @@ pub(super) async fn measure_loudness(
             progress.advance(track_total_frames[index].unwrap_or(0));
             continue;
         }
-        if let Some(segment) =
-            segments.iter().find(|segment| !sources.contains_key(&segment.file_id))
-        {
+        if let Some(segment) = segments.iter().find(|segment| !readable(&segment.file_id)) {
             warn!(
                 "loudness: cannot read segment source file {} for track {}; track stays unmeasured",
                 segment.file_id,
@@ -588,7 +656,7 @@ pub(super) async fn measure_loudness(
         }
         measured_tracks.push(MeasuredTrack {
             index,
-            title: tracks_to_files[index].db_track.title.clone(),
+            title: tracks[index].title.clone(),
             total_frames: track_total_frames[index],
             segments: segments.iter().map(|segment| (*segment).clone()).collect(),
             byte_seekable: bae_audio::byte_jump_keeps_place(&audio_formats[index].content_type),
@@ -602,11 +670,7 @@ pub(super) async fn measure_loudness(
         |track: &MeasuredTrack| {
             track.segments.iter().map(|segment| segment.file_id.clone()).collect()
         },
-        |file_id: String, lease: coven::FileLease| {
-            let (path, size) = sources[&file_id].clone();
-            let diagnostics = diagnostics.clone();
-            async move { open_source_stream(path, size, lease, diagnostics).await }
-        },
+        open,
         |track, streams| {
             let progress = progress.clone();
             let diagnostics = diagnostics.clone();
@@ -651,11 +715,7 @@ pub(super) async fn measure_loudness(
         }
         if let Some(reason) = broken {
             warn!("import verify: track source for track {} looks broken: {reason}", index + 1);
-            broken_tracks.push(format!(
-                "{} (track {}): {reason}",
-                tracks_to_files[index].db_track.title,
-                index + 1
-            ));
+            broken_tracks.push(format!("{} (track {}): {reason}", tracks[index].title, index + 1));
         }
     }
 
@@ -671,6 +731,58 @@ pub(super) async fn measure_loudness(
         album_peak_linear: album_peak,
         scrub_points: all_scrub_points,
     })
+}
+
+/// Measure the loudness of a library release's tracks, whose formats are
+/// `audio_formats` and whose segments are among `audio_segments`, as
+/// [`measure_loudness`] measures an import's, with as many tracks at once as
+/// there are cores. coven reads each file the segments name, of the size
+/// `file_sizes` gives, from wherever it has it; a file `file_sizes` doesn't
+/// name leaves its tracks unmeasured. No row shows the pass's percent.
+pub(crate) async fn measure_library_tracks(
+    records: &bae_records::Records,
+    files: &coven::FileBudget,
+    runtime: &tokio::runtime::Handle,
+    audio_formats: &mut [bae_records::DbAudioFormat],
+    audio_segments: &[bae_records::DbAudioSegment],
+    tracks: &[LoudnessTrack],
+    file_sizes: &HashMap<String, u64>,
+    diagnostics: &bae_diagnostics::Diagnostics,
+) -> Result<LoudnessResult, crate::ImportError> {
+    let parallelism = std::thread::available_parallelism().unwrap_or_else(|error| {
+        warn!("could not read the available parallelism ({error}); measuring one track at a time");
+        NonZeroUsize::MIN
+    });
+    measure_tracks(
+        files,
+        parallelism,
+        audio_formats,
+        audio_segments,
+        tracks,
+        |file_id| file_sizes.contains_key(file_id),
+        |file_id: String, lease: coven::FileLease| {
+            let size = file_sizes[&file_id];
+            let reader = bae_track_audio::data_source::CovenFileReader::new(
+                runtime.clone(),
+                records.clone(),
+                file_id.clone(),
+                diagnostics.clone(),
+                lease,
+            );
+            async move {
+                SourceStream::start(
+                    Box::new(reader),
+                    size,
+                    Box::new(move |error| {
+                        warn!("loudness: streaming release file {file_id} failed: {error}");
+                    }),
+                )
+            }
+        },
+        LoudnessProgress::unreported,
+        diagnostics,
+    )
+    .await
 }
 
 /// Open the source file at `path` in a place of `lease` and start streaming
