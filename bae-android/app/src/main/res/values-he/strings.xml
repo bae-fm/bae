@@ -546,4 +546,12 @@
     <string name="s3_key_saved">מפתח ה-S3 החדש נשמר.</string>
     <string name="s3_key_delete_old">מחק את המפתח הישן, %1$s, במסוף של ספק ה-S3 שלך.</string>
     <string name="sync_fix_sign_in_s3">היכנס ל-S3</string>
+    <string name="your_menu">התפריט שלך</string>
+    <string name="person_menu_invite">הזמנת מישהו</string>
+    <string name="history">היסטוריה</string>
+    <string name="history_empty">עדיין אין השמעות</string>
+    <string name="history_empty_person">אין השמעות של %1$s</string>
+    <string name="history_today">היום</string>
+    <string name="history_yesterday">אתמול</string>
+    <string name="history_everyone">כולם</string>
 </resources>

@@ -72,8 +72,8 @@ internal fun LibraryGridScene(
                 state = state,
                 collapse = { collapse.value },
                 onShuffleLibrary = {},
-                onSettings = {},
                 syncActivity = syncActivity,
+                person = {},
             )
             Box(modifier = Modifier.weight(1f)) {
                 when (grid) {
@@ -111,7 +111,11 @@ private fun BoxScope.SceneMenu(
         Column(modifier = Modifier.padding(vertical = ThemeSpace.related).width(IntrinsicSize.Max)) {
             when (menu) {
                 LibraryHeaderMenu.VIEWS -> LibraryViewMenuItems(state)
-                LibraryHeaderMenu.MORE -> LibraryMoreMenuItems(state = state, onShuffleLibrary = {}, onSettings = {})
+
+                LibraryHeaderMenu.MORE -> LibraryMoreMenuItems(state = state, onShuffleLibrary = {})
+
+                // This scene has no person's picture, so no menu under it.
+                LibraryHeaderMenu.PERSON -> Unit
             }
         }
     }

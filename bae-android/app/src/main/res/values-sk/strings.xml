@@ -553,4 +553,12 @@
     <string name="s3_key_saved">Nový kľúč S3 je uložený.</string>
     <string name="s3_key_delete_old">Starý kľúč %1$s vymaž v konzole svojho poskytovateľa S3.</string>
     <string name="sync_fix_sign_in_s3">Prihlásiť sa do S3</string>
+    <string name="your_menu">Vaša ponuka</string>
+    <string name="person_menu_invite">Pozvať niekoho</string>
+    <string name="history">História</string>
+    <string name="history_empty">Zatiaľ žiadne prehratia</string>
+    <string name="history_empty_person">Žiadne prehratia od %1$s</string>
+    <string name="history_today">Dnes</string>
+    <string name="history_yesterday">Včera</string>
+    <string name="history_everyone">Všetci</string>
 </resources>

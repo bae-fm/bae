@@ -528,4 +528,12 @@
     <string name="s3_key_saved">新しい S3 キーを保存しました。</string>
     <string name="s3_key_delete_old">S3 プロバイダのコンソールで古いキー %1$s を削除してください。</string>
     <string name="sync_fix_sign_in_s3">S3 にサインイン</string>
+    <string name="your_menu">あなたのメニュー</string>
+    <string name="person_menu_invite">誰かを招待</string>
+    <string name="history">履歴</string>
+    <string name="history_empty">まだ再生履歴はありません</string>
+    <string name="history_empty_person">%1$s の再生履歴はありません</string>
+    <string name="history_today">今日</string>
+    <string name="history_yesterday">昨日</string>
+    <string name="history_everyone">全員</string>
 </resources>

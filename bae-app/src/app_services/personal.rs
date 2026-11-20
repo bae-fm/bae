@@ -25,6 +25,62 @@ impl AppServices {
     delegate_async!(people, move_playlist_entry => move_playlist_entry(playlist: uuid::Uuid, position: uuid::Uuid, place: bae_people::collections::EntryPlace) -> Result<(), CollectionError>);
 }
 
+impl AppServices {
+    /// History's reads under `filter`: everyone's plays, or one person's.
+    pub fn history_list(
+        &self,
+        filter: bae_views::history::HistoryFilter,
+    ) -> bae_views::list_view::ListReads {
+        super::list_reads::list_reads(
+            self,
+            move |services, window| services.subscribe_history_window(filter, window),
+            move |services, key| services.subscribe_history_position(filter, key),
+            move |services, position| async move {
+                services.inner.views.history_key_at(filter, position).await
+            },
+        )
+    }
+
+    /// One window of History's plays under `filter`, newest first.
+    pub fn subscribe_history_window(
+        &self,
+        filter: bae_views::history::HistoryFilter,
+        window: bae_store::ListWindow,
+    ) -> bae_views::LiveListWindow {
+        super::list_reads::list_window(
+            &self.inner.manager,
+            self.inner.views.subscribe_history_window(filter, window),
+            bae_views::history::resolve_history_window,
+        )
+    }
+
+    /// How many plays History shows under `filter`, with its menu of whose
+    /// plays.
+    pub fn subscribe_history_count(
+        &self,
+        filter: bae_views::history::HistoryFilter,
+    ) -> bae_store::live_query::LiveValues<bae_views::ListCount> {
+        self.inner.manager.values_until_closed(
+            self.inner
+                .views
+                .subscribe_history_count(filter)
+                .process(|count| Ok(bae_views::history::resolve_history_count(count))),
+        )
+    }
+
+    /// How many plays History shows under `filter` before the row at `key`.
+    pub fn subscribe_history_position(
+        &self,
+        filter: bae_views::history::HistoryFilter,
+        key: bae_store::list_windows::OrderKey,
+    ) -> bae_views::LiveListPosition {
+        super::list_reads::list_position(
+            &self.inner.manager,
+            self.inner.views.subscribe_history_position(filter, key),
+        )
+    }
+}
+
 /// Why a playlist play has no outcome to tell.
 #[derive(Debug, thiserror::Error)]
 pub enum PlayPlaylistError {

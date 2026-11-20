@@ -535,4 +535,12 @@
     <string name="s3_key_saved">Az új S3-kulcs mentve.</string>
     <string name="s3_key_delete_old">Töröld a régi kulcsot (%1$s) az S3-szolgáltatód konzoljában.</string>
     <string name="sync_fix_sign_in_s3">Bejelentkezés: S3</string>
+    <string name="your_menu">Saját menü</string>
+    <string name="person_menu_invite">Valaki meghívása</string>
+    <string name="history">Előzmények</string>
+    <string name="history_empty">Még nincs lejátszás</string>
+    <string name="history_empty_person">%1$s még nem játszott le semmit</string>
+    <string name="history_today">Ma</string>
+    <string name="history_yesterday">Tegnap</string>
+    <string name="history_everyone">Mindenki</string>
 </resources>

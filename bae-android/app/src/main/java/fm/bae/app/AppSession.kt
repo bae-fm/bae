@@ -13,6 +13,7 @@ import fm.bae.app.data.ImageStore
 import fm.bae.app.data.Library
 import fm.bae.app.data.LibraryQueryStores
 import fm.bae.app.data.OpenLibraryStores
+import fm.bae.app.data.PersonStore
 import fm.bae.app.data.SessionMessages
 import fm.bae.app.data.SyncActivityStore
 import fm.bae.app.data.SyncStatusStore
@@ -84,6 +85,9 @@ class OpenLibrary internal constructor(
     val library = Library(appHandle)
     internal val browserPages = BrowserPageStores(library, appContext, runtime.errors, runtime.scope)
     internal val libraryQueries = LibraryQueryStores(library, runtime.scope)
+
+    /** This device's person, whose picture ends the library's top bar. */
+    internal val person = PersonStore(appHandle, runtime.scope)
     val playback: BaeCorePlayer get() = runtime.playback
 
     // Every image the app shows resolves through this store, and its cache entries
@@ -162,6 +166,7 @@ class OpenLibrary internal constructor(
     fun wireUp(scope: CoroutineScope) {
         subscribeToValues(scope)
         appHandle.setLocalTimeZone(DeviceTimeZone())
+        person.start()
         memoryRelease = MemoryRelease(appContext, scope, appHandle::releaseMemory).also(MemoryRelease::start)
         sortLanguage = SortLanguage(appContext, scope, appHandle::setSortLanguage).also(SortLanguage::start)
         observeNowPlayingForWidget(scope)
@@ -362,6 +367,7 @@ class OpenLibrary internal constructor(
         sortLanguage = null
         browserPages.cancel()
         libraryQueries.cancel()
+        person.stop()
         // Detach the audio-focus listener + becoming-noisy receiver: they call
         // appHandle.pause()/resume() on their own (system-driven, no user
         // action), so they must stop touching the handle before it's closed. The

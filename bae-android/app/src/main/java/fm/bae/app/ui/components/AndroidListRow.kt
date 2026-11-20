@@ -14,10 +14,10 @@ import androidx.compose.ui.unit.dp
 import uniffi.bae_bridge.BridgeImageRef
 
 /**
- * A playlist's track row: the track's cover, title and [subtitle], its [trailing] length, and the row's
- * [menu] (its ⋮) at the end when it has one. A tap on the row runs [onClick]. A row that is [dragging] is the one under
- * the owner's finger as they move it to a new place: raised over the rows on the elevated colour, with a shadow and
- * rounded corners.
+ * A playlist's track row or a play of History: the track's cover, title and [subtitle], whose it is in [who], its
+ * [trailing] length or time, and the row's [menu] (its ⋮) at the end when it has one. A tap on the row runs [onClick],
+ * when it has one. A row that is [dragging] is the one under the owner's finger as they move it to a new place: raised
+ * over the rows on the elevated colour, with a shadow and rounded corners.
  */
 @Composable
 internal fun AndroidListRow(
@@ -25,8 +25,9 @@ internal fun AndroidListRow(
     subtitle: String,
     trailing: String,
     art: BridgeImageRef?,
-    onClick: () -> Unit,
+    onClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    who: AvatarFace? = null,
     menu: (@Composable () -> Unit)? = null,
     dragging: Boolean = false,
 ) {
@@ -43,7 +44,14 @@ internal fun AndroidListRow(
         modifier = lift.then(modifier).fillMaxWidth().padding(end = if (menu != null) MENU_END_PADDING else 0.dp),
     ) {
         Box(modifier = Modifier.weight(1f)) {
-            AndroidLibraryRow(title = title, subtitle = subtitle, trailing = trailing, art = art, onClick = onClick)
+            AndroidLibraryRow(
+                title = title,
+                subtitle = subtitle,
+                trailing = trailing,
+                art = art,
+                who = who,
+                onClick = onClick,
+            )
         }
         menu?.invoke()
     }

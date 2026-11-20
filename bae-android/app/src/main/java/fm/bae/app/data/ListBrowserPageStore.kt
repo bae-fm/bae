@@ -63,16 +63,19 @@ internal abstract class ListBrowserPageStore<Parameter, Row>(
             return ListPageState.Counted(count.rows.toInt())
         }
 
+    /** What the list's count carries besides the number of rows, such as History's choice of whose plays. */
+    val countExtra: BridgeListCountExtra?
+        get() =
+            shown
+                ?.list
+                ?.count
+                ?.answer
+                ?.extra
+
     /** Whether the album grid's count says the grid groups its rows by artist; other lists never do. */
     val grouped: Boolean
         get() =
-            (
-                shown
-                    ?.list
-                    ?.count
-                    ?.answer
-                    ?.extra as? BridgeListCountExtra.AlbumGrid
-            )?.grouped == true
+            (countExtra as? BridgeListCountExtra.AlbumGrid)?.grouped == true
 
     /** The artist headings of the album grid grouped by artist; none until they answer and after they fail. */
     val sections: List<BridgeLibraryBrowseSection> get() = shown?.sections?.answer.orEmpty()

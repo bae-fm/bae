@@ -65,9 +65,9 @@ class LibraryNavigatorTest {
     fun settingsThenMembersStacksBothLevels() {
         val navigator = LibraryNavigator()
         navigator.push(LibraryDestination.Settings)
-        navigator.push(LibraryDestination.Members)
+        navigator.push(LibraryDestination.Members())
 
-        assertEquals(LibraryDestination.Members, navigator.pop()?.destination)
+        assertEquals(LibraryDestination.Members(), navigator.pop()?.destination)
         assertEquals(LibraryDestination.Settings, navigator.top?.destination)
     }
 }

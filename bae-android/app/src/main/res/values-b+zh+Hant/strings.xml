@@ -528,4 +528,12 @@
     <string name="s3_key_saved">已儲存新的 S3 金鑰。</string>
     <string name="s3_key_delete_old">請在 S3 供應商的主控台中刪除舊金鑰 %1$s。</string>
     <string name="sync_fix_sign_in_s3">登入 S3</string>
+    <string name="your_menu">你的選單</string>
+    <string name="person_menu_invite">邀請他人</string>
+    <string name="history">歷史紀錄</string>
+    <string name="history_empty">還沒有播放紀錄</string>
+    <string name="history_empty_person">%1$s 沒有播放紀錄</string>
+    <string name="history_today">今天</string>
+    <string name="history_yesterday">昨天</string>
+    <string name="history_everyone">所有人</string>
 </resources>

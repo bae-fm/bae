@@ -537,4 +537,12 @@
     <string name="s3_key_saved">Der neue S3-Schlüssel ist gespeichert.</string>
     <string name="s3_key_delete_old">Lösche den alten Schlüssel %1$s in der Konsole deines S3-Anbieters.</string>
     <string name="sync_fix_sign_in_s3">Bei S3 anmelden</string>
+    <string name="your_menu">Dein Menü</string>
+    <string name="person_menu_invite">Jemanden einladen</string>
+    <string name="history">Verlauf</string>
+    <string name="history_empty">Noch keine Wiedergaben</string>
+    <string name="history_empty_person">Keine Wiedergaben von %1$s</string>
+    <string name="history_today">Heute</string>
+    <string name="history_yesterday">Gestern</string>
+    <string name="history_everyone">Alle</string>
 </resources>

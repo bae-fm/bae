@@ -14,6 +14,7 @@ import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeDownloadOp
 import uniffi.bae_bridge.BridgeException
+import uniffi.bae_bridge.BridgeHistoryPlay
 import uniffi.bae_bridge.BridgeSortCriterion
 
 internal class PageError(
@@ -144,6 +145,25 @@ internal class DownloadPageStore(
     override fun open(parameter: Unit): ListReads<BridgeDownloadOp> = library.downloadList()
 }
 
+/** Whose plays History lists: everyone's with a null [person], else those of the person with that member id. */
+internal data class HistoryOf(
+    val person: String?,
+)
+
+/** History's plays, newest first, under the days they were played. */
+internal class HistoryPageStore(
+    private val library: Library,
+    appContext: Context,
+    errors: ErrorDisplays,
+    scope: CoroutineScope,
+) : ListBrowserPageStore<HistoryOf, BridgeHistoryPlay>(
+        appContext,
+        errors,
+        scope,
+    ) {
+    override fun open(parameter: HistoryOf): ListReads<BridgeHistoryPlay> = library.historyList(parameter.person)
+}
+
 internal class BrowserPageStores(
     library: Library,
     appContext: Context,
@@ -155,6 +175,7 @@ internal class BrowserPageStores(
     val composers = ComposerPageStore(library, appContext, errors, scope)
     val composerRows = ComposerDetailRowsPageStore(library, appContext, errors, scope)
     val downloads = DownloadPageStore(library, appContext, errors, scope)
+    val history = HistoryPageStore(library, appContext, errors, scope)
     val playlists = PlaylistListingStore(library::playlists, appContext, errors, scope)
 
     fun cancel() {
@@ -163,6 +184,7 @@ internal class BrowserPageStores(
         composers.deactivate()
         composerRows.deactivate()
         downloads.deactivate()
+        history.deactivate()
         playlists.deactivate()
     }
 }

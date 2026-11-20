@@ -9,6 +9,7 @@ import fm.bae.app.ui.albumdetail.AlbumDetailScreen
 import fm.bae.app.ui.downloads.DownloadsScreen
 import fm.bae.app.ui.settings.CastingSettingsScreen
 import fm.bae.app.ui.settings.LibrarySettingsScreen
+import fm.bae.app.ui.settings.MembersOpening
 import fm.bae.app.ui.settings.MembersScreen
 import fm.bae.app.ui.settings.SettingsScreen
 import fm.bae.app.ui.settings.StorageScreen
@@ -42,12 +43,21 @@ internal sealed interface LibraryDestination {
         val playlistId: String,
     ) : LibraryDestination
 
+    /** Every playlist this device holds. */
+    data object Playlists : LibraryDestination
+
+    /** The plays this device holds, newest first, under the days they were played. */
+    data object History : LibraryDestination
+
     /** Settings and the screens it opens. */
     sealed interface Setting : LibraryDestination
 
     data object Casting : Setting
 
-    data object Members : Setting
+    /** The library's people and devices, with a dialog open at once when the person asked for it. */
+    data class Members(
+        val opening: MembersOpening? = null,
+    ) : Setting
 
     /** The open library: its name, sync, people and devices, and restore code. */
     data object Library : Setting
@@ -160,8 +170,8 @@ internal fun LibraryDestinationScreen(
             )
         }
 
-        is LibraryDestination.Playlist -> {
-            PlaylistScreen(session, destination.playlistId, onBack, backLabel)
+        is LibraryDestination.Playlist, LibraryDestination.Playlists, LibraryDestination.History -> {
+            PersonalDestinationScreen(session, destination, onBack, backLabel, onPush)
         }
 
         is LibraryDestination.Setting -> {
@@ -170,6 +180,39 @@ internal fun LibraryDestinationScreen(
 
         LibraryDestination.Downloads -> {
             DownloadsScreen(session = session, onBack = onBack)
+        }
+    }
+}
+
+/** The playlists, a playlist's page and History. */
+@Composable
+private fun PersonalDestinationScreen(
+    session: OpenLibrary,
+    destination: LibraryDestination,
+    onBack: () -> Unit,
+    backLabel: String,
+    onPush: (LibraryDestination) -> Unit,
+) {
+    when (destination) {
+        is LibraryDestination.Playlist -> {
+            PlaylistScreen(session, destination.playlistId, onBack, backLabel)
+        }
+
+        LibraryDestination.Playlists -> {
+            PlaylistsScreen(
+                session = session,
+                onBack = onBack,
+                backLabel = backLabel,
+                onSelectPlaylist = { onPush(LibraryDestination.Playlist(it)) },
+            )
+        }
+
+        LibraryDestination.History -> {
+            HistoryScreen(session = session, onBack = onBack, backLabel = backLabel)
+        }
+
+        else -> {
+            error("$destination is not a playlist or History")
         }
     }
 }
@@ -199,8 +242,8 @@ private fun SettingsDestinationScreen(
             CastingSettingsScreen(session = session, onBack = onBack)
         }
 
-        LibraryDestination.Members -> {
-            MembersScreen(session = session, onBack = onBack)
+        is LibraryDestination.Members -> {
+            MembersScreen(session = session, onBack = onBack, opening = destination.opening)
         }
 
         LibraryDestination.Library -> {

@@ -258,7 +258,7 @@ fn flat_albums() -> crate::types::BridgeList {
 #[test]
 fn an_album_view_answers_with_the_rows_from_the_top() {
     let handle = fresh_bridge_handle();
-    let subscription = handle.handle().subscribe_list_view(flat_albums(), 0, 9);
+    let subscription = handle.handle().subscribe_list_view(flat_albums(), 0, 9).unwrap();
 
     let value =
         handle.handle().runtime.block_on(subscription.clone().next()).expect("album view value");
@@ -272,7 +272,7 @@ fn an_album_view_answers_with_the_rows_from_the_top() {
 #[test]
 fn an_album_count_pulls_before_any_window() {
     let handle = fresh_bridge_handle();
-    let count = handle.handle().subscribe_list_count(flat_albums());
+    let count = handle.handle().subscribe_list_count(flat_albums()).unwrap();
     let value = handle.handle().runtime.block_on(count.clone().next()).expect("album count");
     assert_eq!(value.rows, 0);
     assert_eq!(value.items, 0);
@@ -285,7 +285,7 @@ fn an_album_count_pulls_before_any_window() {
 #[test]
 fn cancelling_an_album_view_finishes_pending_next() {
     let handle = fresh_bridge_handle();
-    let subscription = handle.handle().subscribe_list_view(flat_albums(), 0, 9);
+    let subscription = handle.handle().subscribe_list_view(flat_albums(), 0, 9).unwrap();
     handle
         .handle()
         .runtime

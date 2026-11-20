@@ -535,4 +535,12 @@
     <string name="s3_key_saved">Den nya S3-nyckeln är sparad.</string>
     <string name="s3_key_delete_old">Radera den gamla nyckeln, %1$s, i konsolen hos din S3-leverantör.</string>
     <string name="sync_fix_sign_in_s3">Logga in på S3</string>
+    <string name="your_menu">Din meny</string>
+    <string name="person_menu_invite">Bjud in någon</string>
+    <string name="history">Historik</string>
+    <string name="history_empty">Inga uppspelningar än</string>
+    <string name="history_empty_person">Inga uppspelningar från %1$s</string>
+    <string name="history_today">I dag</string>
+    <string name="history_yesterday">I går</string>
+    <string name="history_everyone">Alla</string>
 </resources>

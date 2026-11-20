@@ -535,4 +535,12 @@
     <string name="s3_key_saved">Den nye S3-nøkkelen er lagret.</string>
     <string name="s3_key_delete_old">Slett den gamle nøkkelen, %1$s, i konsollen til S3-leverandøren din.</string>
     <string name="sync_fix_sign_in_s3">Logg inn på S3</string>
+    <string name="your_menu">Din meny</string>
+    <string name="person_menu_invite">Inviter noen</string>
+    <string name="history">Historikk</string>
+    <string name="history_empty">Ingen avspillinger ennå</string>
+    <string name="history_empty_person">Ingen avspillinger fra %1$s</string>
+    <string name="history_today">I dag</string>
+    <string name="history_yesterday">I går</string>
+    <string name="history_everyone">Alle</string>
 </resources>

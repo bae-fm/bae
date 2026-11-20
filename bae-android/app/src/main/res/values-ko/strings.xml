@@ -528,4 +528,12 @@
     <string name="s3_key_saved">새 S3 키를 저장했습니다.</string>
     <string name="s3_key_delete_old">S3 제공업체의 콘솔에서 이전 키 %1$s을(를) 삭제하세요.</string>
     <string name="sync_fix_sign_in_s3">S3에 로그인</string>
+    <string name="your_menu">내 메뉴</string>
+    <string name="person_menu_invite">다른 사람 초대</string>
+    <string name="history">기록</string>
+    <string name="history_empty">아직 재생 기록이 없습니다</string>
+    <string name="history_empty_person">%1$s 님의 재생 기록이 없습니다</string>
+    <string name="history_today">오늘</string>
+    <string name="history_yesterday">어제</string>
+    <string name="history_everyone">모든 사람</string>
 </resources>

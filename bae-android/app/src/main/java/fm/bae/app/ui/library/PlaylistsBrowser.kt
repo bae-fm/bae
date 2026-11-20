@@ -25,6 +25,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidLibraryRow
 import fm.bae.app.ui.components.ButtonKind
+import uniffi.bae_bridge.BridgePlaylistSummary
 
 @Composable
 internal fun rememberPlaylistListing(session: OpenLibrary): PlaylistListingStore {
@@ -48,7 +49,6 @@ internal fun PlaylistListContent(
     listState: LazyListState,
     onSelectPlaylist: (String) -> Unit,
 ) {
-    val context = LocalContext.current
     val listing = page.listing
     val canCreate = listing?.canCreate == true
     var creating by remember { mutableStateOf(false) }
@@ -66,31 +66,48 @@ internal fun PlaylistListContent(
             ),
         emptyAction = if (canCreate) newPlaylistButton else null,
     ) {
-        LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-            items(listing?.listed.orEmpty(), key = { it.id }) { playlist ->
-                AndroidLibraryRow(
-                    title = playlist.name,
-                    subtitle =
-                        context.factsLine(
-                            listOf(
-                                context.coreString(playlist.trackCount),
-                                stringResource(playlist.sharing.labelRes()),
-                            ),
-                        ),
-                    playlistCover = playlist.cover,
-                    onClick = { onSelectPlaylist(playlist.id) },
-                )
-            }
-            if (canCreate) {
-                item {
-                    Box(modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related)) {
-                        newPlaylistButton()
-                    }
-                }
-            }
-        }
+        PlaylistRows(
+            playlists = listing?.listed.orEmpty(),
+            listState = listState,
+            onSelectPlaylist = onSelectPlaylist,
+            newPlaylistButton = if (canCreate) newPlaylistButton else null,
+        )
     }
     if (creating) {
         NewPlaylistDialog(session = session, onDismiss = { creating = false }, onCreated = onSelectPlaylist)
+    }
+}
+
+/** The playlists, each opening its page, then [newPlaylistButton] where the person can make one. */
+@Composable
+internal fun PlaylistRows(
+    playlists: List<BridgePlaylistSummary>,
+    listState: LazyListState,
+    onSelectPlaylist: (String) -> Unit,
+    newPlaylistButton: (@Composable () -> Unit)?,
+) {
+    val context = LocalContext.current
+    LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+        items(playlists, key = { it.id }) { playlist ->
+            AndroidLibraryRow(
+                title = playlist.name,
+                subtitle =
+                    context.factsLine(
+                        listOf(
+                            context.coreString(playlist.trackCount),
+                            stringResource(playlist.sharing.labelRes()),
+                        ),
+                    ),
+                playlistCover = playlist.cover,
+                onClick = { onSelectPlaylist(playlist.id) },
+            )
+        }
+        if (newPlaylistButton != null) {
+            item {
+                Box(modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related)) {
+                    newPlaylistButton()
+                }
+            }
+        }
     }
 }

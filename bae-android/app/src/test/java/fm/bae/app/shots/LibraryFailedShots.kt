@@ -25,7 +25,7 @@ class LibraryFailedShots : BoardShot() {
                 AndroidLibraryScreen(
                     state = state,
                     onShuffleLibrary = {},
-                    onSettings = {},
+                    person = {},
                     syncActivity = {},
                     nowPlayingBar = {},
                 ) { modifier -> Box(modifier) { LibraryReadFailed(failure) } }

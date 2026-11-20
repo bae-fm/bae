@@ -555,4 +555,12 @@
     <string name="s3_key_saved">Nový klíč S3 je uložen.</string>
     <string name="s3_key_delete_old">Starý klíč %1$s smažte v konzoli svého poskytovatele S3.</string>
     <string name="sync_fix_sign_in_s3">Přihlásit se k S3</string>
+    <string name="your_menu">Vaše nabídka</string>
+    <string name="person_menu_invite">Pozvat někoho</string>
+    <string name="history">Historie</string>
+    <string name="history_empty">Zatím žádná přehrání</string>
+    <string name="history_empty_person">Žádná přehrání od %1$s</string>
+    <string name="history_today">Dnes</string>
+    <string name="history_yesterday">Včera</string>
+    <string name="history_everyone">Všichni</string>
 </resources>

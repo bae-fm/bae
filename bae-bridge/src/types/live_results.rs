@@ -73,6 +73,9 @@ pub enum BridgeList {
         filter: crate::types::BridgeStorageFilter,
         search: String,
     },
+    /// History's plays, newest first: everyone's, or the plays of the person
+    /// whose member id `person` names.
+    History { person: Option<String> },
 }
 
 /// Which list a media browser reads a page or the count of: the lists it
@@ -131,6 +134,9 @@ pub enum BridgeListRows {
     SearchAlbums {
         rows: Vec<crate::types::BridgeAlbumSearchResult>,
     },
+    History {
+        rows: Vec<crate::types::BridgeHistoryPlay>,
+    },
     /// The import list's items.
     #[cfg(desktop)]
     Import {
@@ -176,6 +182,12 @@ pub enum BridgeListCountExtra {
     Storage {
         total_size: u64,
         searching: bool,
+    },
+    /// History's menu of whose plays: the people it offers, this device's
+    /// person first and the others by name, and whose plays it shows.
+    History {
+        people: Vec<super::BridgeHistoryPerson>,
+        shown: super::BridgeHistoryShown,
     },
     /// How many of the import list's tab entries its filters keep, while
     /// they narrow it, and every tab's count, which the tab bar shows.

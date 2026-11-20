@@ -535,4 +535,12 @@
     <string name="s3_key_saved">Den nye S3-nøgle er gemt.</string>
     <string name="s3_key_delete_old">Slet den gamle nøgle, %1$s, i din S3-udbyders konsol.</string>
     <string name="sync_fix_sign_in_s3">Log ind på S3</string>
+    <string name="your_menu">Din menu</string>
+    <string name="person_menu_invite">Inviter nogen</string>
+    <string name="history">Historik</string>
+    <string name="history_empty">Ingen afspilninger endnu</string>
+    <string name="history_empty_person">Ingen afspilninger fra %1$s</string>
+    <string name="history_today">I dag</string>
+    <string name="history_yesterday">I går</string>
+    <string name="history_everyone">Alle</string>
 </resources>

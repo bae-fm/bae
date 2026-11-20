@@ -537,4 +537,12 @@
     <string name="s3_key_saved">De nieuwe S3-sleutel is opgeslagen.</string>
     <string name="s3_key_delete_old">Verwijder de oude sleutel, %1$s, in de console van je S3-aanbieder.</string>
     <string name="sync_fix_sign_in_s3">Aanmelden bij S3</string>
+    <string name="your_menu">Jouw menu</string>
+    <string name="person_menu_invite">Iemand uitnodigen</string>
+    <string name="history">Geschiedenis</string>
+    <string name="history_empty">Nog niets afgespeeld</string>
+    <string name="history_empty_person">Niets afgespeeld door %1$s</string>
+    <string name="history_today">Vandaag</string>
+    <string name="history_yesterday">Gisteren</string>
+    <string name="history_everyone">Iedereen</string>
 </resources>

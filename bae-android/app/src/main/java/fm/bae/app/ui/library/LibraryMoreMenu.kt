@@ -90,7 +90,6 @@ private fun BridgeSortDirection.reversed(): BridgeSortDirection =
 internal fun LibraryMoreMenu(
     state: LibraryBrowserState,
     onShuffleLibrary: () -> Unit,
-    onSettings: () -> Unit,
 ) {
     val close = { state.openMenu = null }
     Box {
@@ -100,7 +99,7 @@ internal fun LibraryMoreMenu(
             onClick = { state.openMenu = LibraryHeaderMenu.MORE },
         )
         AndroidMenu(expanded = state.openMenu == LibraryHeaderMenu.MORE, onDismissRequest = close) {
-            LibraryMoreMenuItems(state = state, onShuffleLibrary = onShuffleLibrary, onSettings = onSettings)
+            LibraryMoreMenuItems(state = state, onShuffleLibrary = onShuffleLibrary)
         }
     }
 }
@@ -114,34 +113,24 @@ internal fun LibraryMoreMenu(
 internal fun LibraryMoreMenuItems(
     state: LibraryBrowserState,
     onShuffleLibrary: () -> Unit,
-    onSettings: () -> Unit,
 ) {
     val close = { state.openMenu = null }
-    if (state.mode.sortable) {
-        Text(
-            text = stringResource(R.string.sort_by),
-            style = ThemeText.detail.style,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier =
-                Modifier
-                    .padding(horizontal = ThemeSpace.group, vertical = ThemeSpace.inline)
-                    .semantics { heading() },
-        )
-        ViewSortItems(state = state, close = close)
-        AndroidDivider(modifier = Modifier.padding(vertical = ThemeSpace.related))
-    }
+    Text(
+        text = stringResource(R.string.sort_by),
+        style = ThemeText.detail.style,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier =
+            Modifier
+                .padding(horizontal = ThemeSpace.group, vertical = ThemeSpace.inline)
+                .semantics { heading() },
+    )
+    ViewSortItems(state = state, close = close)
+    AndroidDivider(modifier = Modifier.padding(vertical = ThemeSpace.related))
     DropdownMenuItem(
         text = { Text(stringResource(R.string.shuffle_library)) },
         onClick = {
             close()
             onShuffleLibrary()
-        },
-    )
-    DropdownMenuItem(
-        text = { Text(stringResource(R.string.settings)) },
-        onClick = {
-            close()
-            onSettings()
         },
     )
 }
@@ -201,9 +190,6 @@ private fun ViewSortItems(
                 },
             )
         }
-
-        // The playlists have one order, by name, and offer no sort.
-        LibraryBrowserMode.PLAYLISTS -> {}
     }
 }
 

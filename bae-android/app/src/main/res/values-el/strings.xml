@@ -535,4 +535,12 @@
     <string name="s3_key_saved">Το νέο κλειδί S3 αποθηκεύτηκε.</string>
     <string name="s3_key_delete_old">Διαγράψτε το παλιό κλειδί, %1$s, στην κονσόλα του παρόχου S3.</string>
     <string name="sync_fix_sign_in_s3">Σύνδεση στο S3</string>
+    <string name="your_menu">Το μενού σας</string>
+    <string name="person_menu_invite">Πρόσκληση ατόμου</string>
+    <string name="history">Ιστορικό</string>
+    <string name="history_empty">Καμία αναπαραγωγή ακόμα</string>
+    <string name="history_empty_person">Καμία αναπαραγωγή από %1$s</string>
+    <string name="history_today">Σήμερα</string>
+    <string name="history_yesterday">Χθες</string>
+    <string name="history_everyone">Όλοι</string>
 </resources>

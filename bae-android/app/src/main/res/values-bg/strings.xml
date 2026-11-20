@@ -537,4 +537,12 @@
     <string name="s3_key_saved">Новият ключ за S3 е запазен.</string>
     <string name="s3_key_delete_old">Изтрийте стария ключ %1$s в конзолата на доставчика на S3.</string>
     <string name="sync_fix_sign_in_s3">Влизане в S3</string>
+    <string name="your_menu">Вашето меню</string>
+    <string name="person_menu_invite">Поканете някого</string>
+    <string name="history">История</string>
+    <string name="history_empty">Още няма възпроизвеждания</string>
+    <string name="history_empty_person">Няма възпроизвеждания от %1$s</string>
+    <string name="history_today">Днес</string>
+    <string name="history_yesterday">Вчера</string>
+    <string name="history_everyone">Всички</string>
 </resources>

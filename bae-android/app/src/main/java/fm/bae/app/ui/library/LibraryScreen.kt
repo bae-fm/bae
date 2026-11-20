@@ -14,6 +14,7 @@ import fm.bae.app.R
 import fm.bae.app.data.SyncActivityStore
 import fm.bae.app.ui.AppProblem
 import fm.bae.app.ui.SessionActions
+import fm.bae.app.ui.settings.MembersOpening
 import fm.bae.app.ui.sync.activityProblems
 import kotlinx.coroutines.flow.StateFlow
 
@@ -55,8 +56,11 @@ internal fun LibraryScreen(
                 onSelectComposer = { navigator.push(LibraryDestination.Composer(it)) },
                 onSelectArtist = { navigator.push(LibraryDestination.Artist(it)) },
                 onSelectWork = { navigator.push(LibraryDestination.Work(it)) },
-                onSelectPlaylist = { navigator.push(LibraryDestination.Playlist(it)) },
                 onSettings = { navigator.push(LibraryDestination.Settings) },
+                onPlaylists = { navigator.push(LibraryDestination.Playlists) },
+                onHistory = { navigator.push(LibraryDestination.History) },
+                onAddDevice = { navigator.push(LibraryDestination.Members(MembersOpening.ADD_DEVICE)) },
+                onInvite = { navigator.push(LibraryDestination.Members(MembersOpening.INVITE)) },
                 onDownloads = { navigator.push(LibraryDestination.Downloads) },
                 onSyncStatus = { navigator.push(LibraryDestination.Sync) },
             )

@@ -53,8 +53,11 @@ internal enum class LibraryHeaderMenu {
     /** The heading's own menu, switching between the library's views. */
     VIEWS,
 
-    /** The ⋮ menu: the view's sort, Shuffle library and Settings. */
+    /** The ⋮ menu: the view's sort and Shuffle library. */
     MORE,
+
+    /** The person's menu, under their picture. */
+    PERSON,
 }
 
 /** How far the list scrolls while the heading shrinks from full size into the slim bar, as on macOS. */
@@ -106,16 +109,16 @@ private fun rememberHeadingCollapse(
 
 /**
  * The library home's header: the view's name as the page's heading, whose menu
- * switches views, and the actions at its end. It shrinks from the full heading
- * at the top of the list into a slim bar by [collapse], 0 to 1.
+ * switches views, and the actions at its end, the last of them the [person]'s picture and menu. It shrinks from the
+ * full heading at the top of the list into a slim bar by [collapse], 0 to 1.
  */
 @Composable
 internal fun AndroidLibraryHeader(
     state: LibraryBrowserState,
     collapse: () -> Float,
     onShuffleLibrary: () -> Unit,
-    onSettings: () -> Unit,
     syncActivity: @Composable () -> Unit,
+    person: @Composable () -> Unit,
 ) {
     val progress = collapse()
     Row(
@@ -134,7 +137,8 @@ internal fun AndroidLibraryHeader(
         LibraryViewHeading(state = state, progress = progress, modifier = Modifier.weight(1f))
         AndroidIconButton(Icons.Filled.Search, stringResource(R.string.search), onClick = { state.searchOpen = true })
         syncActivity()
-        LibraryMoreMenu(state = state, onShuffleLibrary = onShuffleLibrary, onSettings = onSettings)
+        LibraryMoreMenu(state = state, onShuffleLibrary = onShuffleLibrary)
+        person()
     }
 }
 

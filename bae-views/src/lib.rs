@@ -24,6 +24,7 @@ pub mod artist_search;
 mod browse;
 pub mod composer;
 pub mod composer_detail;
+pub mod history;
 mod invites;
 pub mod list_view;
 pub use invites::{InviteEntry, OpenInvite, RefusedInvite};
@@ -95,6 +96,13 @@ use coven::SqlReadContext;
 use rusqlite::{params, OptionalExtension, Row};
 use std::collections::BTreeSet;
 use time::UtcDateTime;
+
+/// The UUID column `column` (its name or index) of `row` holds as text,
+/// surfacing text that is no UUID as a column-conversion error.
+fn uuid_column<I: rusqlite::RowIndex + Copy>(row: &Row, column: I) -> rusqlite::Result<uuid::Uuid> {
+    let value: String = row.get(column)?;
+    uuid::Uuid::parse_str(&value).map_err(|error| column_conversion_error(row, column, error))
+}
 
 /// The library views' part of the library's schema: one domain, its files in
 /// the order each runs after the files creating the tables its triggers fire

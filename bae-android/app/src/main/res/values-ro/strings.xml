@@ -544,4 +544,12 @@
     <string name="s3_key_saved">Noua cheie S3 a fost salvată.</string>
     <string name="s3_key_delete_old">Șterge cheia veche, %1$s, din consola furnizorului tău S3.</string>
     <string name="sync_fix_sign_in_s3">Conectează-te la S3</string>
+    <string name="your_menu">Meniul tău</string>
+    <string name="person_menu_invite">Invită pe cineva</string>
+    <string name="history">Istoric</string>
+    <string name="history_empty">Încă nicio redare</string>
+    <string name="history_empty_person">Nicio redare de la %1$s</string>
+    <string name="history_today">Astăzi</string>
+    <string name="history_yesterday">Ieri</string>
+    <string name="history_everyone">Toată lumea</string>
 </resources>

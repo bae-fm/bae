@@ -62,4 +62,9 @@ CREATE TABLE history (
     played_ms INTEGER NOT NULL CHECK (played_ms > 0),
     audience TEXT NOT NULL
 ) STRICT;
-CREATE INDEX history_started_at ON history(started_at);
+-- History lists everyone's plays newest first, and finds each day's newest
+-- play, along these indexes; one person's plays along their own runs.
+CREATE INDEX history_order ON history(started_at, id);
+CREATE INDEX history_day ON history(played_on, started_at, id);
+CREATE INDEX history_person_order ON history(person_id, started_at, id);
+CREATE INDEX history_person_day ON history(person_id, played_on, started_at, id);

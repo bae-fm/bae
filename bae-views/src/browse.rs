@@ -45,6 +45,8 @@ pub enum ListRows {
     WorkChildren(Vec<crate::album_detail::WorkChild>),
     /// The albums a library search lists, in title order.
     SearchAlbums(Vec<crate::album_detail::AlbumSearchResult>),
+    /// History's plays, newest first.
+    History(Vec<crate::history::HistoryRow>),
     /// The import list's items.
     #[cfg(desktop)]
     Import(Vec<bae_import::ImportListItem>),
@@ -101,6 +103,12 @@ pub enum ListCountExtra {
     Storage {
         total_size: u64,
         searching: bool,
+    },
+    /// History's menu of whose plays: the people it offers, and whose plays
+    /// it shows.
+    History {
+        people: Vec<crate::history::HistoryPerson>,
+        shown: crate::history::HistoryShown,
     },
     /// The import list's count while filters narrow it: how many of its
     /// tab's entries the filters keep. The variant also holds the count of

@@ -546,4 +546,12 @@
     <string name="s3_key_saved">Novi S3 ključ je spremljen.</string>
     <string name="s3_key_delete_old">Izbrišite stari ključ %1$s u konzoli svog S3 pružatelja.</string>
     <string name="sync_fix_sign_in_s3">Prijava na S3</string>
+    <string name="your_menu">Vaš izbornik</string>
+    <string name="person_menu_invite">Pozovi nekoga</string>
+    <string name="history">Povijest</string>
+    <string name="history_empty">Još nema reprodukcija</string>
+    <string name="history_empty_person">Nema reprodukcija od %1$s</string>
+    <string name="history_today">Danas</string>
+    <string name="history_yesterday">Jučer</string>
+    <string name="history_everyone">Svi</string>
 </resources>

@@ -15,6 +15,7 @@ import uniffi.bae_bridge.BridgeComposerDetailRow
 import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeDownloadOp
+import uniffi.bae_bridge.BridgeHistoryPlay
 import uniffi.bae_bridge.BridgeLibraryBrowseSection
 import uniffi.bae_bridge.BridgeLibrarySearchSnapshot
 import uniffi.bae_bridge.BridgeList
@@ -175,6 +176,12 @@ class Library(
     internal fun artistList(sortCriterion: BridgeArtistSortCriterion): ListReads<BridgeArtistSummary> =
         listReads(BridgeList.Artists(listOf(sortCriterion))) { rows ->
             (rows as? BridgeListRows.Artists)?.rows ?: error("the artist list delivered rows of another list")
+        }
+
+    /** History's plays, newest first: everyone's with a null [person], else those of the person with that member id. */
+    internal fun historyList(person: String?): ListReads<BridgeHistoryPlay> =
+        listReads(BridgeList.History(person)) { rows ->
+            (rows as? BridgeListRows.History)?.rows ?: error("History delivered rows of another list")
         }
 
     /** The download queue as the Downloads screen draws it, in the order queued. */

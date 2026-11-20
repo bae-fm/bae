@@ -537,4 +537,12 @@
     <string name="s3_key_saved">Yeni S3 anahtarı kaydedildi.</string>
     <string name="s3_key_delete_old">Eski anahtarı (%1$s) S3 sağlayıcınızın konsolunda silin.</string>
     <string name="sync_fix_sign_in_s3">S3 hesabında oturum aç</string>
+    <string name="your_menu">Menünüz</string>
+    <string name="person_menu_invite">Birini davet et</string>
+    <string name="history">Geçmiş</string>
+    <string name="history_empty">Henüz çalma yok</string>
+    <string name="history_empty_person">%1$s için çalma yok</string>
+    <string name="history_today">Bugün</string>
+    <string name="history_yesterday">Dün</string>
+    <string name="history_everyone">Herkes</string>
 </resources>

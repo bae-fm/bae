@@ -535,4 +535,12 @@
     <string name="s3_key_saved">Uusi S3-avain on tallennettu.</string>
     <string name="s3_key_delete_old">Poista vanha avain %1$s S3-palveluntarjoajasi konsolissa.</string>
     <string name="sync_fix_sign_in_s3">Kirjaudu palveluun S3</string>
+    <string name="your_menu">Oma valikko</string>
+    <string name="person_menu_invite">Kutsu joku</string>
+    <string name="history">Historia</string>
+    <string name="history_empty">Ei vielä toistoja</string>
+    <string name="history_empty_person">Ei toistoja: %1$s</string>
+    <string name="history_today">Tänään</string>
+    <string name="history_yesterday">Eilen</string>
+    <string name="history_everyone">Kaikki</string>
 </resources>

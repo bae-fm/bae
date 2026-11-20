@@ -29,8 +29,8 @@ class AndroidLibraryHeaderTest {
                     state = state,
                     collapse = { 0f },
                     onShuffleLibrary = {},
-                    onSettings = {},
                     syncActivity = {},
+                    person = {},
                 )
             }
         }
@@ -68,44 +68,38 @@ class AndroidLibraryHeaderTest {
     }
 
     @Test
-    fun thePlaylistsViewIsAfterComposersAndItsMoreMenuOffersNoSort() {
+    fun theViewsAreAlbumsArtistsAndComposers() {
         val state = LibraryBrowserState()
         showHeader(state)
 
         compose.onNodeWithText("Albums").performClick()
-        compose.onNodeWithText("Playlists").performClick()
-        assertEquals(LibraryBrowserMode.PLAYLISTS, state.mode)
-        assertEquals(LibraryBrowserMode.COMPOSERS, LibraryBrowserMode.entries[LibraryBrowserMode.PLAYLISTS.ordinal - 1])
-
-        compose.onNodeWithContentDescription("More options").performClick()
-        compose.onNodeWithText("Sort by").assertDoesNotExist()
-        compose.onNodeWithText("Shuffle library").assertExists()
-        compose.onNodeWithText("Settings").assertExists()
+        compose.onNodeWithText("Playlists").assertDoesNotExist()
+        assertEquals(
+            listOf(LibraryBrowserMode.ALBUMS, LibraryBrowserMode.ARTISTS, LibraryBrowserMode.COMPOSERS),
+            LibraryBrowserMode.entries,
+        )
     }
 
     @Test
-    fun theMoreMenuOpensSettingsAndShufflesTheLibrary() {
+    fun theMoreMenuShufflesTheLibraryAndHasNoSettings() {
         val state = LibraryBrowserState()
         var shuffled = false
-        var settingsOpened = false
         compose.setContent {
             TestTheme {
                 AndroidLibraryHeader(
                     state = state,
                     collapse = { 0f },
                     onShuffleLibrary = { shuffled = true },
-                    onSettings = { settingsOpened = true },
                     syncActivity = {},
+                    person = {},
                 )
             }
         }
 
         compose.onNodeWithContentDescription("More options").performClick()
+        compose.onNodeWithText("Settings").assertDoesNotExist()
         compose.onNodeWithText("Shuffle library").performClick()
         assertTrue(shuffled)
-        compose.onNodeWithContentDescription("More options").performClick()
-        compose.onNodeWithText("Settings").performClick()
-        assertTrue(settingsOpened)
     }
 
     @Test

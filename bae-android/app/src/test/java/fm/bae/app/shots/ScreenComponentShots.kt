@@ -63,15 +63,20 @@ class ScreenComponentShots : BoardShot() {
         }
 }
 
-/** The library screen on Albums with a track playing in the bar, as the boards draw it behind what opens over it. */
+/**
+ * The library screen on Albums with a track playing in the bar, as the boards draw it behind what opens over it,
+ * with [person] at the end of its header.
+ */
 @Composable
-internal fun PlayingLibraryScreen() {
+internal fun PlayingLibraryScreen(
+    state: LibraryBrowserState = remember { LibraryBrowserState() },
+    person: @Composable () -> Unit = {},
+) {
     Images {
-        val state = remember { LibraryBrowserState() }
         AndroidLibraryScreen(
             state = state,
             onShuffleLibrary = {},
-            onSettings = {},
+            person = person,
             syncActivity = {},
             nowPlayingBar = { Bar(playing) },
         ) { modifier ->

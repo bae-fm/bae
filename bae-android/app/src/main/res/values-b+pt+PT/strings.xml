@@ -537,4 +537,12 @@
     <string name="s3_key_saved">A nova chave S3 foi guardada.</string>
     <string name="s3_key_delete_old">Elimine a chave antiga, %1$s, na consola do seu fornecedor de S3.</string>
     <string name="sync_fix_sign_in_s3">Iniciar sessão no S3</string>
+    <string name="your_menu">O seu menu</string>
+    <string name="person_menu_invite">Convidar alguém</string>
+    <string name="history">Histórico</string>
+    <string name="history_empty">Ainda sem reproduções</string>
+    <string name="history_empty_person">Sem reproduções de %1$s</string>
+    <string name="history_today">Hoje</string>
+    <string name="history_yesterday">Ontem</string>
+    <string name="history_everyone">Todos</string>
 </resources>

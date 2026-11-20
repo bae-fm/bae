@@ -555,4 +555,12 @@
     <string name="s3_key_saved">Новий ключ S3 збережено.</string>
     <string name="s3_key_delete_old">Видаліть старий ключ %1$s у консолі свого постачальника S3.</string>
     <string name="sync_fix_sign_in_s3">Увійти в S3</string>
+    <string name="your_menu">Ваше меню</string>
+    <string name="person_menu_invite">Запросити когось</string>
+    <string name="history">Історія</string>
+    <string name="history_empty">Ще немає прослуховувань</string>
+    <string name="history_empty_person">Немає прослуховувань від %1$s</string>
+    <string name="history_today">Сьогодні</string>
+    <string name="history_yesterday">Учора</string>
+    <string name="history_everyone">Усі</string>
 </resources>

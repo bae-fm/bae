@@ -15,14 +15,15 @@ fn artist_search_answers_its_view_and_count_and_blank_finds_nothing() {
     let handle = super::super::tests::fresh_bridge_handle();
     let runtime = &handle.handle().runtime;
 
-    let window = handle.handle().subscribe_list_view(searching("  Placeholder Query  "), 0, 9);
+    let window =
+        handle.handle().subscribe_list_view(searching("  Placeholder Query  "), 0, 9).unwrap();
     let value = runtime.block_on(window.clone().next()).expect("search view value");
     assert_eq!(value.start, 0);
     assert!(matches!(value.rows, BridgeListRows::ArtistSearch { ref rows } if rows.is_empty()));
-    let count = handle.handle().subscribe_list_count(searching("Placeholder Query"));
+    let count = handle.handle().subscribe_list_count(searching("Placeholder Query")).unwrap();
     assert_eq!(runtime.block_on(count.clone().next()).expect("search count").rows, 0);
 
-    let blank = handle.handle().subscribe_list_view(searching("   "), 0, 9);
+    let blank = handle.handle().subscribe_list_view(searching("   "), 0, 9).unwrap();
     let nothing = runtime.block_on(blank.clone().next()).expect("blank search view value");
     assert!(matches!(nothing.rows, BridgeListRows::ArtistSearch { ref rows } if rows.is_empty()));
 

@@ -88,6 +88,16 @@ impl BridgeList {
     }
 }
 
+impl BridgeList {
+    /// The filter History's `person` names: everyone's plays, or one
+    /// person's.
+    pub(crate) fn history_filter(
+        person: Option<String>,
+    ) -> Result<bae_views::history::HistoryFilter, BridgeError> {
+        person.as_deref().map(crate::from_app::member).transpose()
+    }
+}
+
 impl BridgeListView {
     pub(crate) fn from_core(value: ListViewValue) -> Self {
         Self { start: value.start, rows: BridgeListRows::from_core(value.rows) }
@@ -145,6 +155,9 @@ impl BridgeListRows {
                     .map(crate::types::BridgeAlbumSearchResult::from_core)
                     .collect(),
             },
+            bae_views::ListRows::History(rows) => BridgeListRows::History {
+                rows: rows.into_iter().map(crate::types::BridgeHistoryPlay::from_core).collect(),
+            },
             #[cfg(desktop)]
             bae_views::ListRows::Import(items) => BridgeListRows::Import {
                 items: items
@@ -168,6 +181,15 @@ impl BridgeListCount {
                 }
                 bae_views::ListCountExtra::Storage { total_size, searching } => {
                     BridgeListCountExtra::Storage { total_size, searching }
+                }
+                bae_views::ListCountExtra::History { people, shown } => {
+                    BridgeListCountExtra::History {
+                        people: people
+                            .into_iter()
+                            .map(crate::types::BridgeHistoryPerson::from_core)
+                            .collect(),
+                        shown: crate::types::BridgeHistoryShown::from_core(shown),
+                    }
                 }
                 #[cfg(desktop)]
                 bae_views::ListCountExtra::Import { narrowed, tabs } => {

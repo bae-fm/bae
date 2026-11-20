@@ -597,4 +597,13 @@
     <string name="s3_key_saved">Saved the new S3 key.</string>
     <string name="s3_key_delete_old">Delete the old key, %1$s, in your S3 provider’s console.</string>
     <string name="sync_fix_sign_in_s3">Sign in to S3</string>
+    <string name="your_menu">Your menu</string>
+    <string name="person_menu_invite">Invite someone</string>
+    <string name="history">History</string>
+    <string name="history_everyone">Everyone</string>
+    <string name="history_empty">No plays yet</string>
+    <!-- %1$s = the name of the person whose plays History shows -->
+    <string name="history_empty_person">No plays from %1$s</string>
+    <string name="history_today">Today</string>
+    <string name="history_yesterday">Yesterday</string>
 </resources>

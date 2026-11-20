@@ -10,13 +10,14 @@ use super::*;
 impl AppHandle {
     /// Read `list` through its view, which keeps one live window of the list
     /// around the rows from position `first` to position `last` on screen,
-    /// and moves it as the screen reports other rows.
+    /// and moves it as the screen reports other rows. Fails for a list whose
+    /// request names a person by an id that is no member id.
     pub fn subscribe_list_view(
         &self,
         list: BridgeList,
         first: u64,
         last: u64,
-    ) -> Arc<crate::ListViewSubscription> {
+    ) -> Result<Arc<crate::ListViewSubscription>, BridgeError> {
         let services = &self.services;
         let reads = match list {
             BridgeList::AlbumGrid { sort, group_by_artist } => {
@@ -35,11 +36,14 @@ impl AppHandle {
             BridgeList::ArtistSearch { text } => {
                 services.artist_search_list(BridgeList::search_query(&text))
             }
+            BridgeList::History { person } => {
+                services.history_list(BridgeList::history_filter(person)?)
+            }
         };
-        crate::screens::list_view(
+        Ok(crate::screens::list_view(
             services.open_list_view(reads, bae_views::list_view::Visible::new(first, last)),
             self.runtime.clone(),
-        )
+        ))
     }
 
     /// Read live the `limit` rows of `list` from position `offset`: core reads
@@ -104,8 +108,12 @@ impl AppHandle {
     }
 
     /// Read live how many rows `list` has, with the values its count carries
-    /// (`BridgeListCountExtra`).
-    pub fn subscribe_list_count(&self, list: BridgeList) -> Arc<crate::ListCountSubscription> {
+    /// (`BridgeListCountExtra`). Fails for a list whose request names a
+    /// person by an id that is no member id.
+    pub fn subscribe_list_count(
+        &self,
+        list: BridgeList,
+    ) -> Result<Arc<crate::ListCountSubscription>, BridgeError> {
         let live = match list {
             BridgeList::AlbumGrid { group_by_artist, .. } => {
                 self.services.subscribe_album_count(group_by_artist)
@@ -123,8 +131,11 @@ impl AppHandle {
             BridgeList::ArtistSearch { text } => {
                 self.services.subscribe_artist_search_count(BridgeList::search_query(&text))
             }
+            BridgeList::History { person } => {
+                self.services.subscribe_history_count(BridgeList::history_filter(person)?)
+            }
         };
-        crate::screens::list_count(live, self.runtime.clone())
+        Ok(crate::screens::list_count(live, self.runtime.clone()))
     }
 
     /// The artist sections of the album grid grouped by artist under

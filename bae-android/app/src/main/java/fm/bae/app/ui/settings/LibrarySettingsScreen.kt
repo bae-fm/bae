@@ -78,7 +78,7 @@ internal fun LibrarySettingsScreen(
         onBack = onBack,
         onRename = { renaming = true },
         onOpenSync = { onPush(LibraryDestination.Sync) },
-        onOpenPeople = { onPush(LibraryDestination.Members) },
+        onOpenPeople = { onPush(LibraryDestination.Members()) },
     ) {
         if (!hasStorage) SomethingWentWrongNotice()
         LibraryNameFailures(model = model, members = members)

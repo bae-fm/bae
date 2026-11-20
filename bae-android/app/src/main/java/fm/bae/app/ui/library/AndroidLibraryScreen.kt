@@ -53,7 +53,6 @@ internal class LibraryBrowserState {
     val gridState = LazyGridState()
     val artistListState = LazyListState()
     val composerListState = LazyListState()
-    val playlistListState = LazyListState()
 
     fun closeSearch() {
         searchOpen = false
@@ -71,8 +70,11 @@ internal fun AndroidLibraryScreenContainer(
     onSelectComposer: (String) -> Unit,
     onSelectArtist: (String) -> Unit,
     onSelectWork: (String) -> Unit,
-    onSelectPlaylist: (String) -> Unit,
     onSettings: () -> Unit,
+    onPlaylists: () -> Unit,
+    onHistory: () -> Unit,
+    onAddDevice: () -> Unit,
+    onInvite: () -> Unit,
     onDownloads: () -> Unit,
     onSyncStatus: () -> Unit,
 ) {
@@ -81,7 +83,17 @@ internal fun AndroidLibraryScreenContainer(
         onShuffleLibrary = {
             session.messages.play("play the library shuffled") { session.appHandle.playLibraryShuffled() }
         },
-        onSettings = onSettings,
+        person = {
+            PersonMenu(
+                state = state,
+                person = session.person,
+                onAddDevice = onAddDevice,
+                onInvite = onInvite,
+                onPlaylists = onPlaylists,
+                onHistory = onHistory,
+                onSettings = onSettings,
+            )
+        },
         syncActivity = {
             AndroidActivityButton(
                 store = session.syncActivityStore,
@@ -107,7 +119,6 @@ internal fun AndroidLibraryScreenContainer(
             onSelectComposer = onSelectComposer,
             onSelectArtist = onSelectArtist,
             onSelectWork = onSelectWork,
-            onSelectPlaylist = onSelectPlaylist,
         )
     }
 }
@@ -115,13 +126,13 @@ internal fun AndroidLibraryScreenContainer(
 /**
  * The library's screen: its header, or the search bar when search is open, over the [content] (given
  * the room that is left), then the [nowPlayingBar]. [syncActivity] fills the header's place for the
- * Activity button.
+ * Activity button, and [person] its place for the person's picture and menu.
  */
 @Composable
 internal fun AndroidLibraryScreen(
     state: LibraryBrowserState,
     onShuffleLibrary: () -> Unit,
-    onSettings: () -> Unit,
+    person: @Composable () -> Unit,
     syncActivity: @Composable () -> Unit,
     nowPlayingBar: @Composable () -> Unit,
     content: @Composable (Modifier) -> Unit,
@@ -140,8 +151,8 @@ internal fun AndroidLibraryScreen(
                 state = state,
                 collapse = { collapse.value },
                 onShuffleLibrary = onShuffleLibrary,
-                onSettings = onSettings,
                 syncActivity = syncActivity,
+                person = person,
             )
         }
         content(Modifier.fillMaxWidth().weight(1f))
@@ -156,7 +167,6 @@ private fun rememberHeadingCollapse(state: LibraryBrowserState): State<Float> =
         LibraryBrowserMode.ALBUMS -> rememberHeadingCollapse(state.gridState)
         LibraryBrowserMode.ARTISTS -> rememberHeadingCollapse(state.artistListState)
         LibraryBrowserMode.COMPOSERS -> rememberHeadingCollapse(state.composerListState)
-        LibraryBrowserMode.PLAYLISTS -> rememberHeadingCollapse(state.playlistListState)
     }
 
 @Composable
@@ -168,7 +178,6 @@ private fun LibraryBrowserContent(
     onSelectComposer: (String) -> Unit,
     onSelectArtist: (String) -> Unit,
     onSelectWork: (String) -> Unit,
-    onSelectPlaylist: (String) -> Unit,
 ) {
     Box(modifier = modifier) {
         if (state.searchQuery.isNotBlank()) {
@@ -208,15 +217,6 @@ private fun LibraryBrowserContent(
                         sortCriterion = state.composerSortCriterion,
                         listState = state.composerListState,
                         onSelectComposer = onSelectComposer,
-                    )
-                }
-
-                LibraryBrowserMode.PLAYLISTS -> {
-                    PlaylistListContent(
-                        session = session,
-                        page = rememberPlaylistListing(session),
-                        listState = state.playlistListState,
-                        onSelectPlaylist = onSelectPlaylist,
                     )
                 }
             }

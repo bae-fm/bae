@@ -220,21 +220,40 @@ internal class MembersModel(
     }
 }
 
+/** The dialog the person's menu asks the People and devices screen to open at once. */
+internal enum class MembersOpening(
+    /** The page that holds the dialog's button. */
+    val page: PeoplePage,
+) {
+    /** The pairing of a new device, from Your devices. */
+    ADD_DEVICE(PeoplePage.Devices),
+
+    /** The invite of a person, from People. */
+    INVITE(PeoplePage.People),
+}
+
 /**
  * The library's people and devices, on pages: the first holds You and People, a person's page and this person's own
  * devices open from it. Admins invite people, change roles and remove people; each person adds and removes their own
  * devices, and an admin removes anyone's.
  */
 @Composable
-fun MembersScreen(
+internal fun MembersScreen(
     session: OpenLibrary,
     onBack: () -> Unit,
+    opening: MembersOpening? = null,
 ) {
     val scope = rememberScreenScope()
     val model = remember(session) { MembersModel(session.appHandle, session.errors, scope) }
     DisposableEffect(model) { onDispose(model.subscribe()) }
-    val dialogs = remember { MembersDialogs() }
-    var pageKey by rememberSaveable { mutableStateOf(PeoplePage.People.key()) }
+    val dialogs =
+        remember {
+            MembersDialogs().apply {
+                addingDevice = opening == MembersOpening.ADD_DEVICE
+                inviting = opening == MembersOpening.INVITE
+            }
+        }
+    var pageKey by rememberSaveable { mutableStateOf((opening?.page ?: PeoplePage.People).key()) }
     val requested = peoplePage(pageKey)
     val shownMember = (requested as? PeoplePage.Person)?.memberId
     DisposableEffect(model, shownMember) {

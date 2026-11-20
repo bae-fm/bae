@@ -33,10 +33,11 @@ import uniffi.bae_bridge.BridgePlaylistCover
  * or a credit has no picture ([noArt]); an artist or composer with none is a plain tile ([missing]).
  * A playlist draws its [playlistCover] where the others draw [art]. A [part] is indented under its
  * group's heading work; an [inset] row, on the composer and work pages, sets its text further in,
- * in a taller row. A row with an [onClick] opens something.
+ * in a taller row. A row with a [who] names whose it is with that person's picture before the [trailing] label. A
+ * row with an [onClick] opens something.
  */
 @Composable
-fun AndroidLibraryRow(
+internal fun AndroidLibraryRow(
     title: String,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
@@ -47,6 +48,7 @@ fun AndroidLibraryRow(
     missing: Boolean = false,
     part: Boolean = false,
     inset: Boolean = false,
+    who: AvatarFace? = null,
     onClick: (() -> Unit)? = null,
 ) {
     Row(
@@ -90,6 +92,10 @@ fun AndroidLibraryRow(
                 )
             }
         }
+        if (who != null) {
+            Spacer(modifier = Modifier.width(ThemeSpace.group))
+            Avatar(face = who, size = WHO_PICTURE)
+        }
         if (trailing != null) {
             Spacer(modifier = Modifier.width(ThemeSpace.group))
             Text(
@@ -100,6 +106,9 @@ fun AndroidLibraryRow(
         }
     }
 }
+
+/** The side of the picture of whose a row is. */
+private val WHO_PICTURE = 24.dp
 
 /** The row's picture, or a plain tile where there is none. */
 @Composable

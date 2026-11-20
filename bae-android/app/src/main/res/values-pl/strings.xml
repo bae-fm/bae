@@ -555,4 +555,12 @@
     <string name="s3_key_saved">Zapisano nowy klucz S3.</string>
     <string name="s3_key_delete_old">Usuń stary klucz %1$s w konsoli swojego dostawcy S3.</string>
     <string name="sync_fix_sign_in_s3">Zaloguj się do S3</string>
+    <string name="your_menu">Twoje menu</string>
+    <string name="person_menu_invite">Zaproś kogoś</string>
+    <string name="history">Historia</string>
+    <string name="history_empty">Brak odtworzeń</string>
+    <string name="history_empty_person">Brak odtworzeń od %1$s</string>
+    <string name="history_today">Dzisiaj</string>
+    <string name="history_yesterday">Wczoraj</string>
+    <string name="history_everyone">Wszyscy</string>
 </resources>

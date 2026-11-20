@@ -17,6 +17,8 @@ android.album.page.two-releases-pinning
 android.errors.snackbar.bug
 android.errors.snackbar.play-failed
 android.errors.snackbar.retry
+android.history.empty
+android.history.none-from-person
 android.library.albums
 android.library.albums.empty
 android.library.albums.failed
@@ -25,6 +27,7 @@ android.library.albums.grouped-scrolled
 android.library.albums.no-covers
 android.library.albums.scrolled
 android.library.artist
+android.library.avatar-menu
 android.library.composer
 android.library.composer.failed
 android.library.composers
@@ -46,6 +49,7 @@ android.playback.full-player.no-volume
 android.playback.full-player.track-removed
 android.playback.queue
 android.playback.queue.failed
+android.playlists.list
 android.search.open
 android.search.results
 android.search.results.failed

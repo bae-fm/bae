@@ -573,4 +573,12 @@
     <string name="s3_key_saved">تم حفظ مفتاح S3 الجديد.</string>
     <string name="s3_key_delete_old">احذف المفتاح القديم %1$s من وحدة تحكم مزوّد S3.</string>
     <string name="sync_fix_sign_in_s3">تسجيل الدخول إلى S3</string>
+    <string name="your_menu">قائمتك</string>
+    <string name="person_menu_invite">دعوة شخص</string>
+    <string name="history">السجل</string>
+    <string name="history_empty">لا توجد مرات تشغيل بعد</string>
+    <string name="history_empty_person">لا توجد مرات تشغيل من %1$s</string>
+    <string name="history_today">اليوم</string>
+    <string name="history_yesterday">أمس</string>
+    <string name="history_everyone">الجميع</string>
 </resources>
