@@ -352,7 +352,7 @@
       h('span', { className: 'bae-m-filename-label' }, props.label),
       h('div', { className: cx('bae-m-tokenfield', props.error && 'bae-m-tokenfield-error'), role: 'textbox', 'aria-label': props.label, 'aria-invalid': props.error ? true : null }, pieces.map(function (t, i) { return t.charAt(0) === '[' ? h(MacToken, { key: i }, t.slice(1, -1)) : h('span', { key: i, className: 'bae-m-tokentext' }, t); })),
       props.error ? h(MacErrorLine, null, props.error)
-        : props.preview ? h('div', { className: 'bae-m-filename-preview', role: 'text', 'aria-label': 'Preview: ' + props.preview }, h('span', { 'aria-hidden': true }, 'Preview: '), h('span', { 'aria-hidden': true, className: 'bae-mono' }, props.preview)) : null,
+        : props.preview ? h('div', { className: 'bae-m-filename-preview' }, 'Preview: ', h('span', { className: 'bae-mono' }, props.preview)) : null,
       h('div', { className: 'bae-m-filename-add' }, 'Add:', split(props.add).map(function (t) { return h('button', { key: t, type: 'button', className: 'bae-plainbtn bae-m-tokenadd' }, t); })));
   }
 
