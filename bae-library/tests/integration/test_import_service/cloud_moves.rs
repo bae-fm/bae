@@ -186,12 +186,11 @@ async fn a_release_moved_to_this_device_moves_back_to_the_cloud() {
 
     let local = f.temp.path().join("Moved to This Device");
     f.temp.create_folder(&local);
-    f.library.manager().move_releases_to_this_device(vec![id.clone()], &local).await.unwrap();
-    tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
-        while !f.library.manager().download_snapshot().await.unwrap().rows.is_empty() {
-            tokio::time::sleep(std::time::Duration::from_millis(20)).await;
-        }
-    })
+    bae_library::test_libraries::move_to_this_device_and_wait(
+        f.library.manager(),
+        std::slice::from_ref(&id),
+        &local,
+    )
     .await
     .expect("the download queue makes the release local");
     let copies = local.join(

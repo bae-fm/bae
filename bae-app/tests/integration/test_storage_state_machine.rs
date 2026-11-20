@@ -3,6 +3,7 @@
 //! A release becomes Remote when attached, including while uploads are pending.
 //! Pins independently keep its audio available offline; covers remain shared.
 
+use bae_library::test_libraries::move_to_this_device_and_wait;
 use bae_library::LibraryManager;
 use bae_store::Store;
 use bae_util::test_channels::HANG_GUARD;
@@ -88,35 +89,6 @@ async fn create_remote_cloud_only_release_in_folder(
         "release is in storage once the transition is accepted"
     );
     (release_id, captured)
-}
-
-/// Queue `release_ids` to be moved to this device into `folder` and wait until the
-/// download queue has run them: `Ok` when it holds none waiting or running
-/// and none failed, else the first failure's error.
-async fn move_to_this_device_and_wait(
-    mgr: &bae_library::test_libraries::TestLibrary,
-    release_ids: &[String],
-    folder: &std::path::Path,
-) -> Result<(), String> {
-    mgr.manager().move_releases_to_this_device(release_ids.to_vec(), folder).await.unwrap();
-    tokio::time::timeout(HANG_GUARD, async {
-        loop {
-            let rows = mgr.manager().download_snapshot().await.unwrap().rows;
-            if rows
-                .iter()
-                .all(|row| matches!(row.op.state, bae_transfers::DownloadPhase::Failed { .. }))
-            {
-                return rows.into_iter().find_map(|row| match row.op.state {
-                    bae_transfers::DownloadPhase::Failed { error } => Some(Err(error)),
-                    _ => None,
-                });
-            }
-            tokio::time::sleep(std::time::Duration::from_millis(20)).await;
-        }
-    })
-    .await
-    .expect("the download queue runs the moves-to-this-device")
-    .unwrap_or(Ok(()))
 }
 
 // ---------------------------------------------------------------------------
@@ -321,7 +293,9 @@ async fn detaching_audio_updates_summary_and_original_paths() {
     .await;
 
     let new_path = tmp.create_folder("exported");
-    move_to_this_device_and_wait(&mgr, std::slice::from_ref(&release_id), &new_path).await.unwrap();
+    move_to_this_device_and_wait(mgr.manager(), std::slice::from_ref(&release_id), &new_path)
+        .await
+        .unwrap();
 
     // Release is Local, and each file's original path names its new copy in
     // the release's own folder.
@@ -359,7 +333,7 @@ async fn moving_two_releases_to_this_device_puts_each_in_its_own_folder() {
 
     let folder = tmp.create_folder("exported");
     let ids: Vec<String> = releases.iter().map(|(release_id, _)| release_id.clone()).collect();
-    move_to_this_device_and_wait(&mgr, &ids, &folder).await.unwrap();
+    move_to_this_device_and_wait(mgr.manager(), &ids, &folder).await.unwrap();
 
     for ((release_id, name), bytes) in releases.iter().zip([b"first".as_slice(), b"second"]) {
         assert_eq!(tmp.read(folder.join(name).join("01.flac")), bytes, "{name} has its own folder");
@@ -391,7 +365,8 @@ async fn detaching_audio_with_a_missing_file_fails_leaving_summary_remote() {
 
     let new_path = tmp.create_folder("exported");
     let result =
-        move_to_this_device_and_wait(&mgr, std::slice::from_ref(&release_id), &new_path).await;
+        move_to_this_device_and_wait(mgr.manager(), std::slice::from_ref(&release_id), &new_path)
+            .await;
     assert!(result.is_err(), "missing file must fail the entry");
 
     assert_eq!(
@@ -420,9 +395,10 @@ async fn detaching_audio_whose_names_write_as_one_is_refused() {
     .await;
 
     let new_path = tmp.create_folder("exported");
-    let error = move_to_this_device_and_wait(&mgr, std::slice::from_ref(&release_id), &new_path)
-        .await
-        .expect_err("two copies at one path can't both be made");
+    let error =
+        move_to_this_device_and_wait(mgr.manager(), std::slice::from_ref(&release_id), &new_path)
+            .await
+            .expect_err("two copies at one path can't both be made");
 
     assert!(error.contains("name one path"), "{error}");
     assert_eq!(

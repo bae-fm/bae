@@ -4,6 +4,7 @@
 
 use super::*;
 use crate::test_libraries::TestLibrary;
+pub(super) use crate::test_libraries::{download_queue_until, move_to_this_device_and_wait};
 use crate::LibraryError;
 use bae_diagnostics::UiErrorCategory;
 use bae_import::ImportError;
@@ -133,24 +134,6 @@ pub(super) async fn download_queue_now(
     manager: &LibraryManager,
 ) -> bae_transfers::DownloadSnapshot {
     manager.download_snapshot().await.unwrap()
-}
-
-/// Wait until the download queue's live read holds what `done` looks for.
-pub(super) async fn download_queue_until(
-    manager: &LibraryManager,
-    done: impl Fn(&bae_transfers::DownloadSnapshot) -> bool,
-) -> bae_transfers::DownloadSnapshot {
-    let mut values = manager.subscribe_download_snapshot();
-    tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
-        loop {
-            let queue = values.next_inline().await.expect("the query stays open").unwrap();
-            if done(&queue) {
-                return queue;
-            }
-        }
-    })
-    .await
-    .expect("the download queue reaches the state waited for")
 }
 
 pub(super) async fn insert_release(manager: &LibraryManager, release: &DbRelease) {
@@ -556,34 +539,6 @@ pub(super) async fn started_pin_entry(
         .unwrap();
     assert!(activated, "the pin's release is in the download queue");
     bae_transfers::tables::worker_moves::active_entry::<bae_transfers::DownloadRequest>(release_id)
-}
-
-/// Queue `release_ids` to be moved to this device into `folder` and wait until the
-/// download queue has run them: `Ok` when it holds none waiting or running
-/// and none failed, else the first failure's error.
-pub(super) async fn move_to_this_device_and_wait(
-    manager: &LibraryManager,
-    release_ids: &[String],
-    folder: &std::path::Path,
-) -> Result<(), String> {
-    manager
-        .move_releases_to_this_device(release_ids.to_vec(), folder)
-        .await
-        .map_err(|e| e.to_string())?;
-    let queue = download_queue_until(manager, |queue| {
-        queue
-            .rows
-            .iter()
-            .all(|row| matches!(row.op.state, bae_transfers::DownloadPhase::Failed { .. }))
-    })
-    .await;
-    match queue.rows.into_iter().find_map(|row| match row.op.state {
-        bae_transfers::DownloadPhase::Failed { error } => Some(error),
-        _ => None,
-    }) {
-        Some(error) => Err(error),
-        None => Ok(()),
-    }
 }
 
 /// Insert `n` plain track rows on the release's one CD. Mirrors the row shape
