@@ -36,21 +36,28 @@ final class SettingsNavigation {
         selectedTab = tab
         present()
     }
+
+    /// Moves the chosen pane `step` panes down the sidebar's list, stopping at
+    /// its ends.
+    func step(by step: Int) {
+        let tabs = SettingsTab.allCases
+        guard let index = tabs.firstIndex(of: selectedTab) else { return }
+        selectedTab = tabs[min(max(index + step, 0), tabs.count - 1)]
+    }
 }
 
 /// The settings window's frame: the sidebar down the side and `pane` beside
 /// it. The settings window and the screenshots of it both draw this, so a
 /// shot shows the window the app opens.
 struct SettingsWindowLayout<Pane: View>: View {
-    @Binding
-    var selection: SettingsTab
+    let navigation: SettingsNavigation
     let pane: Pane
 
     init(
-        selection: Binding<SettingsTab>,
+        navigation: SettingsNavigation,
         @ViewBuilder pane: () -> Pane
     ) {
-        _selection = selection
+        self.navigation = navigation
         self.pane = pane()
     }
 
@@ -58,7 +65,7 @@ struct SettingsWindowLayout<Pane: View>: View {
         // No title bar and no sidebar toggle: the window's buttons sit in the
         // sidebar's top, and each pane puts its own title at its top left.
         HStack(spacing: 0) {
-            MacSettingsSidebar(selection: $selection)
+            MacSettingsSidebar(navigation: navigation)
             pane
                 .scrollContentBackground(.hidden)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -93,9 +100,7 @@ struct MacSettingsWindow: View {
     private var navigation
 
     var body: some View {
-        @Bindable
-        var navigation = navigation
-        SettingsWindowLayout(selection: $navigation.selectedTab) {
+        SettingsWindowLayout(navigation: navigation) {
             pane(for: navigation.selectedTab)
         }
     }

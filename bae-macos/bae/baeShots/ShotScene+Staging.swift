@@ -82,7 +82,7 @@ struct SettingsWindowShot<Page: View>: View {
 
     /// The pane the window is on, as the person left it.
     @State
-    private var selection: SettingsTab
+    private var navigation: SettingsNavigation
 
     init(
         tab: SettingsTab = .library,
@@ -93,11 +93,13 @@ struct SettingsWindowShot<Page: View>: View {
         self.shown = shown
         self.undoneSetup = undoneSetup
         self.page = page
-        _selection = State(initialValue: tab)
+        let navigation = SettingsNavigation()
+        navigation.selectedTab = tab
+        _navigation = State(initialValue: navigation)
     }
 
     var body: some View {
-        SettingsWindowLayout(selection: $selection) { page }
+        SettingsWindowLayout(navigation: navigation) { page }
             .environment(DownloadStore())
             .environment(OutboxStore(uploadsPaused: false))
             .environment(SubsonicStore())

@@ -44,8 +44,7 @@ private struct SubsonicBadge: View {
 /// `List`'s selection: macOS draws that in its own accent, which the app can
 /// declare once (the AccentColor asset) and cannot change while it runs.
 struct MacSettingsSidebar: View {
-    @Binding
-    var selection: SettingsTab
+    let navigation: SettingsNavigation
 
     @Environment(DownloadStore.self)
     private var downloadStore
@@ -74,8 +73,8 @@ struct MacSettingsSidebar: View {
         .focusable()
         .focused($focused)
         .focusEffectDisabled()
-        .onKeyPress(.upArrow) { move(by: -1) }
-        .onKeyPress(.downArrow) { move(by: 1) }
+        .onKeyPress(.upArrow) { step(by: -1) }
+        .onKeyPress(.downArrow) { step(by: 1) }
         // Room for the window's buttons, which sit in the sidebar's top.
         .padding(.top, MacSettingsSidebar.buttonsRoom)
         .frame(width: MacSettingsSidebar.width)
@@ -89,9 +88,9 @@ struct MacSettingsSidebar: View {
     }
 
     private func row(_ tab: SettingsTab) -> some View {
-        let chosen = tab == selection
+        let chosen = tab == navigation.selectedTab
         return Button {
-            selection = tab
+            navigation.selectedTab = tab
         } label: {
             HStack(spacing: ThemeSpace.related) {
                 Text(tab.title)
@@ -128,14 +127,8 @@ struct MacSettingsSidebar: View {
         .accessibilityAddTraits(chosen ? .isSelected : [])
     }
 
-    /// Moves the chosen pane `step` panes down the list, stopping at its ends.
-    private func move(by step: Int) -> KeyPress.Result {
-        let tabs = SettingsTab.allCases
-        guard let index = tabs.firstIndex(of: selection) else {
-            return .ignored
-        }
-        let target = min(max(index + step, 0), tabs.count - 1)
-        selection = tabs[target]
+    private func step(by step: Int) -> KeyPress.Result {
+        navigation.step(by: step)
         return .handled
     }
 
