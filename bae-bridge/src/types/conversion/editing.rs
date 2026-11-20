@@ -195,37 +195,21 @@ mirror_struct! {
     },
 }
 
-/// `mirror_struct` takes no optional list, so this conversion names each
-/// field by hand.
-impl BridgeReleaseEditDraft {
-    pub(crate) fn from_core(draft: bae_import::ReleaseEditDraft) -> Self {
-        let bae_import::ReleaseEditDraft {
-            cover,
-            source_audio,
-            sides,
-            files,
-            album,
-            records,
-            pressing_offers,
-            album_artists,
-            changed,
-            files_to_read,
-            invalid,
-        } = draft;
-        Self {
-            cover: cover.map(BridgeImageRef::from_core),
-            source_audio: source_audio.map(BridgeSourceAudioSummary::from_core),
-            sides: sides
-                .map(|sides| sides.into_iter().map(BridgeTrackTableSide::from_core).collect()),
-            files: files.map(|files| files.into_iter().map(BridgeMappingFile::from_core).collect()),
-            album: BridgeDraftAlbum::from_core(album),
-            records: records
-                .map(|records| records.into_iter().map(BridgeReleaseRecord::from_core).collect()),
-            pressing_offers: BridgePressingOffers::from_core(pressing_offers),
-            album_artists: album_artists.map(BridgeArtistField::from_core),
-            changed,
-            files_to_read,
-            invalid: invalid.map(BridgeValidationReason::from_core),
-        }
-    }
+mirror_struct! {
+    #[cfg(desktop)]
+    BridgeReleaseEditDraft = bae_import::ReleaseEditDraft,
+    from_core: pub(crate) fn,
+    fields: {
+        cover: (opt BridgeImageRef),
+        source_audio: (opt BridgeSourceAudioSummary),
+        sides: (opt each BridgeTrackTableSide),
+        files: (opt each BridgeMappingFile),
+        album: (BridgeDraftAlbum),
+        records: (opt each BridgeReleaseRecord),
+        pressing_offers: (BridgePressingOffers),
+        album_artists: (opt BridgeArtistField),
+        changed,
+        files_to_read,
+        invalid: (opt BridgeValidationReason),
+    },
 }

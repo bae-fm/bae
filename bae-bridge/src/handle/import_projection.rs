@@ -687,11 +687,7 @@ impl crate::types::BridgeCandidatePanePlacement {
     /// Not a copy: the folder check crosses with `rate`, the rate of the
     /// audio's files.
     fn from_core(placement: bae_import::CandidatePanePlacement, rate: Option<u32>) -> Self {
-        let records = |records: Option<Vec<bae_catalogs::records::ReleaseRecord>>| {
-            records.map(|records| {
-                records.into_iter().map(crate::types::BridgeReleaseRecord::from_core).collect()
-            })
-        };
+        let records = |records: Option<Vec<bae_catalogs::records::ReleaseRecord>>| mirror_from!(records, (opt each crate::types::BridgeReleaseRecord));
         match placement {
             bae_import::CandidatePanePlacement::Pending { folder_check, records: pending } => {
                 Self::Pending {
@@ -766,9 +762,7 @@ impl crate::types::BridgeCandidateStage {
             }
             bae_import::CandidateStage::Imported { release } => Self::Imported {
                 release: crate::types::BridgeImportedRelease::from_core(release),
-                images: images.map(|images| {
-                    images.into_iter().map(crate::types::BridgeMappingImage::from_core).collect()
-                }),
+                images: mirror_from!(images, (opt each crate::types::BridgeMappingImage)),
             },
         }
     }
