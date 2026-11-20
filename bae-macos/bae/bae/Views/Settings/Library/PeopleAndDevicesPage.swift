@@ -537,12 +537,16 @@ extension PeopleAndDevicesPage {
                         }
                         .disabled(task != nil)
                     }
-                    else if device.isSelf {
-                        Text("This device")
-                            .foregroundStyle(.secondary)
-                    }
                 } label: {
-                    Text(verbatim: device.name)
+                    // This Mac's row says so on its second line.
+                    VStack(alignment: .leading, spacing: ThemeSpace.inline) {
+                        Text(verbatim: device.name)
+                        if device.isSelf {
+                            Text("This device")
+                                .themeText(.detail)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
                 }
             }
         } header: {
