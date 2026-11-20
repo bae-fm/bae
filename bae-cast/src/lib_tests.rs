@@ -798,16 +798,17 @@ fn token_of(url: &str) -> String {
 fn dropping_the_controller_ends_it_and_its_tasks() {
     let (runtime, controller, _services, _tmp) = test_controller(RendererDiscovery::reported());
     let weak = Arc::downgrade(&controller);
+    // The controller's own watch closes when the controller drops: a task
+    // writing a list may hold it until that write ends.
+    let mut decided = controller.browsing_decided.subscribe();
     drop(controller);
     runtime.block_on(async {
-        tokio::time::timeout(HANG_GUARD, async {
-            while weak.upgrade().is_some() {
-                tokio::task::yield_now().await;
-            }
-        })
-        .await
-        .expect("no task keeps the dropped controller alive");
+        tokio::time::timeout(HANG_GUARD, decided.wait_for(|_| false))
+            .await
+            .expect("no task keeps the dropped controller alive")
+            .expect_err("nothing but the controller's drop ends the wait");
     });
+    assert!(weak.upgrade().is_none());
 }
 
 /// The first LOAD the receiver is sent after `fake` last returned from this.
