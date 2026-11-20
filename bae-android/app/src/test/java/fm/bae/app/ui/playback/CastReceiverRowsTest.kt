@@ -76,10 +76,10 @@ class CastReceiverRowsTest {
     }
 
     @Test
-    fun theReceiverCastToSaysCastingAndOffersDisconnect() {
+    fun theReceiverPlayingSaysPlayingAndOffersDisconnect() {
         setRows(BridgeCastReceiverList(casting = livingRoom, found = listOf(kitchen)))
 
-        compose.onNodeWithText("Casting").assertIsDisplayed()
+        compose.onNodeWithText("Playing").assertIsDisplayed()
         compose.onAllNodesWithText("Disconnect").assertCountEquals(1)
         compose.onNodeWithText("AirPlay").assertIsDisplayed()
     }
