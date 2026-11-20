@@ -48,7 +48,7 @@ export declare function MacPinField(props: MacPinFieldProps): React.ReactElement
 export declare function MacPortField(props: { value?: string; label?: string; state?: 'normal' | 'focused' | 'error' | 'off' }): React.ReactElement;
 /** Text someone may paste elsewhere (an address): selectable, with a copy button after it while the pointer is over it. `hover` draws that state. */
 export declare function MacCopyText(props: { text?: string; after?: string; label?: string; hover?: boolean; children?: React.ReactNode }): React.ReactElement;
-export declare function MacItem(props: { lead?: React.ReactNode; trail?: React.ReactNode; children?: React.ReactNode }): React.ReactElement;
+export declare function MacItem(props: { lead?: React.ReactNode; trail?: React.ReactNode; centerLead?: boolean; centerTrail?: boolean; wide?: boolean; children?: React.ReactNode }): React.ReactElement;
 
 /** A MacBox row holding a field: the label in a column labelWidth px wide (90), the field filling the rest, then any controls. Leave out label for a field with its label inside. alignText moves the field left by its inner padding so its text lines up with the rows around it. */
 export interface MacFieldRowProps { label?: string; labelWidth?: number; alignText?: boolean; children?: React.ReactNode }
@@ -313,9 +313,9 @@ export declare function AndroidQueuePlaceholderRow(): React.ReactElement;
 export declare function MacQueueInsertLine(props: {}): React.ReactElement;
 export interface SidePauseProps { kind?: 'side' | 'disc'; label?: string; countdown?: number; unchecked?: boolean }
 export declare function MacSidePause(props: SidePauseProps): React.ReactElement;
-export interface MacCastPopoverProps { devices?: string; casting?: string; connecting?: string; right?: number; bottom?: number }
+export interface MacCastPopoverProps { devices?: string; casting?: string; connecting?: string; ownerDeciding?: boolean; right?: number; bottom?: number }
 export declare function MacCastPopover(props: MacCastPopoverProps): React.ReactElement;
-export interface MacCastRowProps { name: string; kind?: 'cast' | 'airplay' | 'upnp'; active?: boolean; menu?: boolean }
+export interface MacCastRowProps { name: string; kind?: 'cast' | 'airplay' | 'upnp'; active?: boolean; menu?: boolean; /** The words of a wait on this receiver, such as Connecting…: a spinner at the row's end and the words in place of its kind. */ waiting?: string }
 export declare function MacCastRow(props: MacCastRowProps): React.ReactElement;
 export declare function AndroidSheet(props: { top?: number; title?: string; children?: React.ReactNode }): React.ReactElement;
 export interface AndroidQueueSectionProps { title: string; clear?: boolean; shuffle?: boolean }
@@ -324,7 +324,7 @@ export interface AndroidQueueRowProps { title: string; artist?: string; album?: 
 export declare function AndroidQueueRow(props: AndroidQueueRowProps): React.ReactElement;
 export interface AndroidFullPlayerProps { title: string; artist?: string; album?: string; playing?: boolean; waiting?: boolean; position?: number; held?: number | string; elapsed?: string; duration?: string; repeat?: boolean; noCover?: boolean; noVolume?: string; volume?: number | string }
 export declare function AndroidFullPlayer(props: AndroidFullPlayerProps): React.ReactElement;
-export interface AndroidCastRowProps { name?: string; kind?: 'cast' | 'airplay' | 'upnp'; active?: boolean; menu?: boolean; menuOpen?: boolean; waiting?: string }
+export interface AndroidCastRowProps { name?: string; kind?: 'cast' | 'airplay' | 'upnp'; active?: boolean; menu?: boolean; menuOpen?: boolean; /** The words of a wait. On a receiver (`name`): a spinner at the row's end and the words in place of its kind, such as Connecting…. With no receiver: the list's own wait, such as Looking for devices…. */ waiting?: string }
 export declare function AndroidCastRow(props: AndroidCastRowProps): React.ReactElement;
 export interface AndroidCheckboxProps { label: string; on?: boolean }
 export declare function AndroidCheckbox(props: AndroidCheckboxProps): React.ReactElement;
@@ -562,8 +562,6 @@ export interface AndroidTopBarProps { title?: string; back?: boolean; backLabel?
 export declare function AndroidTopBar(props: AndroidTopBarProps): React.ReactElement;
 export interface MacSidePaneHeaderProps { tab?: 'Queue' | 'Playlists' | 'History'; back?: string }
 export declare function MacSidePaneHeader(props: MacSidePaneHeaderProps): React.ReactElement;
-export interface MacCastConnectingLineProps { name: string }
-export declare function MacCastConnectingLine(props: MacCastConnectingLineProps): React.ReactElement;
 export interface AndroidVolumeSliderProps { value?: number | string }
 export declare function AndroidVolumeSlider(props: AndroidVolumeSliderProps): React.ReactElement;
 export interface AndroidPlaceholderLineProps { width: number | string; height: number | string; radius?: number | string; fixed?: boolean }

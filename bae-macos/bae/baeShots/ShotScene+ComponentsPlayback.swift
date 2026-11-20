@@ -12,7 +12,7 @@ extension ShotScene {
         + seekBarScenes + playPauseScenes + queueRowScenes
         + queueSectionScenes + textFieldScenes + pinFieldScenes
         + trackLeadScenes + trackRowScenes + queuePanelScenes
-        + castScenes + sidePauseScenes
+        + castPopoverScenes + sidePauseScenes
 
     /// What the bar's seek bar shows of the track.
     private struct BarLoad {
@@ -817,31 +817,6 @@ extension ShotScene {
         ),
         castPopover("mac.component.cast-popover.no-receivers"),
     ]
-
-    private static func castConnectingLine(
-        _ id: String,
-        name: String
-    ) -> ShotScene {
-        component(id, width: 300, height: 60) {
-            MacCastConnectingLine(name: name)
-                .frame(width: 284, alignment: .leading)
-        }
-    }
-
-    /// `MacCastConnectingLine`, with a short receiver name and a long one.
-    private static let castConnectingLineScenes: [ShotScene] = [
-        castConnectingLine(
-            "mac.component.cast-connecting-line.connecting",
-            name: "Living room"
-        ),
-        castConnectingLine(
-            "mac.component.cast-connecting-line.long-name",
-            name: "Upstairs study speaker by the window"
-        ),
-    ]
-
-    private static let castScenes: [ShotScene] =
-        castPopoverScenes + castConnectingLineScenes
 
     // MARK: - MacSidePause
 

@@ -158,7 +158,8 @@
   // The row piece every Mac row with a leading icon is built from: `lead` in the leading column (size-lead wide, centred on the first line, kept even when empty so the text edge holds), the content, then `trail`. It has no inset of its own: the row it sits in places it.
   function MacItem(props) {
     var trail = kids(props.trail);
-    return h('div', { className: 'bae-m-item' }, h('span', { className: 'bae-m-item-lead' }, props.lead), h('div', { className: 'bae-m-item-body' }, props.children), trail.length ? h('span', { className: 'bae-m-item-trail' }, trail) : null);
+    // `centerLead`, `centerTrail`: the lead or the trail sits at the middle of the body's lines, not on its first line. `wide`: the content starts 10px (`space-group` less `space-line`) after the lead, not `space-related`.
+    return h('div', { className: cx('bae-m-item', props.centerLead && 'bae-m-item-center-lead', props.centerTrail && 'bae-m-item-center-trail', props.wide && 'bae-m-item-wide') }, h('span', { className: 'bae-m-item-lead' }, props.lead), h('div', { className: 'bae-m-item-body' }, props.children), trail.length ? h('span', { className: 'bae-m-item-trail' }, trail) : null);
   }
   // A row of a MacBox whose label takes a column labelWidth wide and whose field fills the rest.
   function MacFieldRow(props) {

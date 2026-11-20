@@ -1,4 +1,4 @@
-<!-- @dsCard group="Playing" height=1600 -->
+<!-- @dsCard group="Playing" height=1760 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>MacCastPopover</title></head>
@@ -13,8 +13,8 @@
     W('Casting', h('div', { style: { position: 'relative', height: 260 } }, h(B.MacCastPopover, { right: 0, bottom: 0, casting: 'Living Room', devices: 'Living Room:cast, Kitchen:airplay, Den receiver:upnp' }))),
     W('Long names', h('div', { style: { position: 'relative', height: 260 } }, h(B.MacCastPopover, { right: 0, bottom: 0, casting: 'Upstairs Living Room Soundbar', devices: 'Upstairs Living Room Soundbar:cast, Kitchen:airplay, Home theater receiver in the basement:upnp' }))),
     W('Not casting', h('div', { style: { position: 'relative', height: 260 } }, h(B.MacCastPopover, { right: 0, bottom: 0, devices: 'Living Room:cast, Kitchen:airplay' }))),
-    W('Connecting', h('div', { style: { position: 'relative', height: 260 } }, h(B.MacCastPopover, { right: 0, bottom: 0, connecting: 'Living Room', devices: 'Living Room:cast, Kitchen:airplay' }))),
-    W('Connecting, no receivers', h('div', { style: { position: 'relative', height: 120 } }, h(B.MacCastPopover, { right: 0, bottom: 0, connecting: 'Living Room' }))),
+    W('Connecting', h('div', { style: { position: 'relative', height: 260 } }, h(B.MacCastPopover, { right: 0, bottom: 0, connecting: 'Kitchen', devices: 'Living Room:cast, Kitchen:airplay' }))),
+    W('Owner deciding', h('div', { style: { position: 'relative', height: 260 } }, h(B.MacCastPopover, { right: 0, bottom: 0, connecting: 'Kitchen', ownerDeciding: true, devices: 'Living Room:cast, Kitchen:airplay' }))),
     W('No receivers', h('div', { style: { position: 'relative', height: 260 } }, h(B.MacCastPopover, { right: 0, bottom: 0 })))));
 </script>
 </body>

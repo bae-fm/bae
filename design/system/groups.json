@@ -611,10 +611,9 @@
       },
       {
         "name": "Play on",
-        "about": "The receivers bae plays on, and the line while it connects.",
+        "about": "The receivers bae plays on.",
         "components": [
           "MacCastPopover",
-          "MacCastConnectingLine",
           "MacCastRow",
           "AndroidCastRow"
         ]

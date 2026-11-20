@@ -5224,7 +5224,11 @@ found it at. The model is the Cast `md` record, the AirPlay `model` record
 states none has none. The address is the IP address a Cast or AirPlay service
 resolved to, or the host a UPnP description was fetched from. Once the person
 picks a receiver, the picker or the settings name it while bae connects, until
-playback on it starts or fails. On macOS the connection is the app's, not the
+playback on it starts or fails: the receiver's own row shows a spinner at its
+end and says "Connecting…" in place of its kind. Once an AirPlay receiver has
+held bae's request for 5 seconds while its owner decides whether to accept it,
+the row says "Accept on Kitchen…" instead, in italic on macOS, until the
+receiver answers. On macOS the connection is the app's, not the
 picker's or the settings': both name it, so does the Play on button's tooltip, and
 closing either leaves it connecting; a failure says why in an alert,
 wherever the person is. A connection that succeeds closes the picker that started

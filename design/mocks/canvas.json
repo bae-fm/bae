@@ -4377,6 +4377,38 @@
    "w": 900,
    "x": 1000,
    "y": 6240
+  },
+  "mac.playback.cast-picker.owner-deciding.dc.html": {
+   "h": 760,
+   "page": "loading",
+   "title": "macOS: the Play on popover, while the receiver's owner decides",
+   "w": 1200,
+   "x": 3840,
+   "y": 5112
+  },
+  "android.playback.cast-picker.owner-deciding.dc.html": {
+   "h": 916,
+   "page": "loading",
+   "title": "The Play on picker, while the receiver's owner decides",
+   "w": 412,
+   "x": 2952,
+   "y": 2876
+  },
+  "mac.settings.playback.receivers-owner-deciding.dc.html": {
+   "h": 600,
+   "page": "settings",
+   "title": "macOS: Playback: while a receiver's owner decides",
+   "w": 690,
+   "x": 6810,
+   "y": 5444
+  },
+  "android.settings.playback.receivers-owner-deciding.dc.html": {
+   "h": 916,
+   "page": "settings",
+   "title": "Playback: while a receiver's owner decides",
+   "w": 412,
+   "x": 7580,
+   "y": 5444
   }
  },
  "createdOnFiles": {
@@ -5829,6 +5861,14 @@
    "x": 6308,
    "y": 1720,
    "text": "What the code needs for these boards:\n- A History screen listing plays, with the whose-plays choice at the end of its top bar; Android has none today. With no plays to show it says No plays yet, or No plays from and the person's name, as the library pages' EmptyList draws its line (bae-android/app/src/main/java/fm/bae/app/ui/library/LibraryPageContent.kt). Core has no live query of plays for the bridge: bae-people's history read (bae-people/src/people/history.rs) reaches no app. bae change."
+  },
+  "code-cast-owner-wait": {
+   "page": "loading",
+   "size": 24,
+   "text": "What the code needs for these boards:\n- While bae connects to a receiver, that receiver's own row shows a small spinner at its end, where Disconnect sits on the row of the receiver playing, and says Connecting… under its name in place of its kind. Once an AirPlay receiver has held bae's request for 5 seconds, the row says Accept on Kitchen… until the receiver answers, in italic on the Mac. This holds in the Play on popover or picker and in the Playback settings, on the Mac and on Android. Today the Mac draws a line over the receivers that says Connecting to Kitchen… (MacCastConnectingLine, bae-macos/bae/bae/Views/Playback/NowPlaying/MacCastConnectingLine.swift), Android draws a separate row that says the same (WaitingRow in bae-android/app/src/main/java/fm/bae/app/ui/playback/AndroidCastRow.kt), and bae waits 10 seconds for any AirPlay reply (bae-cast/src/airplay). bae change.",
+   "w": 420,
+   "x": 5120,
+   "y": 5112
   }
  },
  "order": [
