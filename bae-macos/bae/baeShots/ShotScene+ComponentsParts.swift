@@ -58,7 +58,7 @@ extension ShotScene {
         _ id: String,
         collapse: Double
     ) -> ShotScene {
-        component(id, width: 596, height: 110) {
+        component(id, width: 580, height: 110) {
             MacLibraryHeading(collapseProgress: collapse, fullWidth: false) {
                 EmptyView()
             }
@@ -376,7 +376,7 @@ extension ShotScene {
 
     /// `MacStep` and `MacStepActions`, a step of joining.
     private static let stepScenes: [ShotScene] = [
-        component("mac.component.step.with-a-code", width: 596, height: 376) {
+        component("mac.component.step.with-a-code", width: 580, height: 376) {
             MacStep("Tell Ana this code") {
                 MacMatchCode(
                     code: "412 778",

@@ -80,7 +80,6 @@ extension ShotScene {
                 width: 4 * 200 + 3 * ThemeSpace.page
                     + 2 * LibraryContentContainer.horizontalPadding,
                 height: 330,
-                inset: 0,
                 images: images
             ) {
                 MacAlbumGrid(
@@ -111,7 +110,7 @@ extension ShotScene {
     private static let artistGroupHeadingScenes: [ShotScene] = [
         component(
             "mac.component.artist-group-heading.default",
-            width: 3 * 200 + 2 * ThemeSpace.page + 16,
+            width: 3 * 200 + 2 * ThemeSpace.page,
             height: 200,
             images: coverStore()
         ) {
@@ -225,7 +224,7 @@ extension ShotScene {
     ) -> ShotScene {
         component(
             id,
-            width: 820,
+            width: 804,
             height: 480,
             images: browsePanelImages
         ) {
@@ -334,7 +333,7 @@ extension ShotScene {
     private static let trackColumnsScenes: [ShotScene] = [
         component(
             "mac.component.track-columns.default",
-            width: 596,
+            width: 580,
             height: 100
         ) {
             MacTrackColumns(
@@ -378,7 +377,6 @@ extension ShotScene {
             "mac.component.browse-split.default",
             width: 700,
             height: 360,
-            inset: 0,
             images: coverStore()
         ) {
             MacBrowseSplit {
@@ -558,7 +556,7 @@ extension ShotScene {
         _ id: String,
         current: Int
     ) -> ShotScene {
-        component(id, width: 560, height: 90, inset: 0, images: coverStore()) {
+        component(id, width: 560, height: 90, images: coverStore()) {
             let items = lightboxItems()
             MacThumbnailStrip(
                 items: items,
@@ -684,7 +682,7 @@ extension ShotScene {
         height: CGFloat,
         results: SearchResults
     ) -> ShotScene {
-        component(id, width: 456, height: height, images: coverStore()) {
+        component(id, width: 440, height: height, images: coverStore()) {
             MacSearchCard(
                 results: results,
                 onSelectAlbum: { _ in },
@@ -733,7 +731,7 @@ extension ShotScene {
         summary: BridgePlaylistSummary,
         optionsOpen: Bool = false
     ) -> ShotScene {
-        component(id, width: 420, height: 240, images: coverStore()) {
+        component(id, width: 404, height: 240, images: coverStore()) {
             let backing = boardLibraryBacking(uiStore: UiStore())
             MacPlaylistPage(
                 detail: BridgePlaylistDetail(
@@ -812,7 +810,7 @@ extension ShotScene {
         height: CGFloat = 110,
         optionsOpen: Bool = false
     ) -> ShotScene {
-        component(id, width: 420, height: height, images: coverStore()) {
+        component(id, width: 404, height: height, images: coverStore()) {
             MacPlaylistHeader(summary: summary, onEdit: {}, onDelete: {})
                 .environment(Playback.stub())
                 .frame(width: 404, alignment: .leading)

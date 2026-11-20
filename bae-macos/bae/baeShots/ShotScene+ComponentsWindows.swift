@@ -137,16 +137,14 @@ extension ShotScene {
         component(
             "mac.component.page-heading.pane",
             width: 500,
-            height: 70,
-            inset: 0
+            height: 70
         ) {
             MacPageHeading(title: Text("Library"))
         },
         component(
             "mac.component.page-heading.page-in-a-pane",
             width: 500,
-            height: 70,
-            inset: 0
+            height: 70
         ) {
             MacPageHeading(
                 title: Text("Sync"),
@@ -160,7 +158,7 @@ extension ShotScene {
         tab: SettingsTab,
         shown: BridgeSyncShown
     ) -> ShotScene {
-        component(id, width: 220, height: 400, inset: 0) {
+        component(id, width: 220, height: 400) {
             SettingsSidebarShot(tab: tab, shown: shown)
         }
     }

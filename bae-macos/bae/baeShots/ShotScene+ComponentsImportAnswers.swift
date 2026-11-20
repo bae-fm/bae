@@ -80,7 +80,7 @@ extension ShotScene {
 
     /// `MacModalHeader`, a sheet's title with its second line and button.
     private static let modalHeaderScenes: [ShotScene] = [
-        component("mac.component.modal-header.default", width: 560, height: 80)
+        component("mac.component.modal-header.default", width: 544, height: 80)
         {
             MacModalHeader(
                 title: "Edit release",

@@ -185,7 +185,7 @@ extension ShotScene {
         [
             component(
                 "mac.component.import-table.default",
-                width: 596,
+                width: 580,
                 height: 130
             ) {
                 importTable(
@@ -268,7 +268,7 @@ extension ShotScene {
     ) -> ShotScene {
         component(
             id,
-            width: 836,
+            width: 820,
             height: 80
         ) {
             importStores(
@@ -292,7 +292,7 @@ extension ShotScene {
     private static let importSheetScenes: [ShotScene] = [
         component(
             "mac.component.import-sheet-caption.default",
-            width: 596,
+            width: 580,
             height: 110
         ) {
             VStack(alignment: .leading, spacing: ThemeSpace.related) {
@@ -365,7 +365,7 @@ extension ShotScene {
         let art = ["cover": "", "back": " back", "disc": " disc"]
         return component(
             id,
-            width: 596,
+            width: 580,
             height: 190,
             images: PreviewData.artImageStore()
         ) {
@@ -390,7 +390,7 @@ extension ShotScene {
     ) -> ShotScene {
         component(
             id,
-            width: 536,
+            width: 520,
             height: height
         ) {
             MacReleaseFiles(

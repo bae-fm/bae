@@ -114,7 +114,7 @@ extension ShotScene {
         _ id: String,
         _ state: MacQRScanner.CameraState
     ) -> ShotScene {
-        component(id, width: 376, height: 316) {
+        component(id, width: 360, height: 316) {
             MacQRScanner(onScan: { _ in }, showing: state)
                 .frame(width: 360, height: 300)
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.card))

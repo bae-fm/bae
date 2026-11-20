@@ -169,7 +169,7 @@ extension ShotScene {
     ) -> ShotScene {
         component(
             id,
-            width: 656,
+            width: 640,
             height: 50
         ) {
             importStores(
@@ -266,7 +266,7 @@ extension ShotScene {
     ) -> ShotScene {
         component(
             id,
-            width: 576,
+            width: 560,
             height: height,
             images: PreviewData.artImageStore()
         ) {
@@ -362,7 +362,7 @@ extension ShotScene {
     ) -> ShotScene {
         component(
             id,
-            width: 576,
+            width: 560,
             height: 300
         ) {
             importStores(
@@ -426,7 +426,7 @@ extension ShotScene {
     ) -> ShotScene {
         component(
             id,
-            width: 400,
+            width: 384,
             height: open ? 146 : 40
         ) {
             ZStack(alignment: .topLeading) {
@@ -459,7 +459,7 @@ extension ShotScene {
     ) -> ShotScene {
         component(
             id,
-            width: 300,
+            width: 284,
             height: 40
         ) {
             importStores(
@@ -502,7 +502,7 @@ extension ShotScene {
     ) -> ShotScene {
         component(
             id,
-            width: 276,
+            width: 260,
             height: large ? 46 : 38
         ) {
             MacInlineField(

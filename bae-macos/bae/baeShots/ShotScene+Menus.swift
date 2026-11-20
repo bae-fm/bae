@@ -48,7 +48,7 @@ extension ShotScene {
                 (backing.session.albums.list?.positionCount ?? 0) > 0
             }
         },
-        component("mac.component.popover.default", width: 300, height: 150) {
+        component("mac.component.popover.default", width: 284, height: 150) {
             MacPopoverInPlace(arrowSide: .top, arrowOffset: 150) {
                 VStack(alignment: .leading, spacing: ThemeSpace.compact) {
                     Text("Living Room")

@@ -107,7 +107,6 @@ extension ShotScene {
             "mac.component.import-row.default",
             width: 420,
             height: 260,
-            inset: 0,
             images: PreviewData.artImageStore()
         ) {
             importStores(importRows())
@@ -143,7 +142,7 @@ extension ShotScene {
     ) -> ShotScene {
         component(
             id,
-            width: 436,
+            width: 420,
             height: 60
         ) {
             importStores(
@@ -179,7 +178,7 @@ extension ShotScene {
     ) -> ShotScene {
         component(
             id,
-            width: 456,
+            width: 440,
             height: 60
         ) {
             importStores(
@@ -269,14 +268,14 @@ extension ShotScene {
     private static let importBulkScenes: [ShotScene] = [
         component(
             "mac.component.import-bulk.several",
-            width: 596,
+            width: 580,
             height: 620
         ) {
             importBulk()
         },
         component(
             "mac.component.import-bulk.to-the-cloud",
-            width: 596,
+            width: 580,
             height: 620
         ) {
             importBulk(syncs: true)
@@ -296,7 +295,7 @@ extension ShotScene {
         return [
             component(
                 "mac.component.import-bulk.running",
-                width: 596,
+                width: 580,
                 height: 716,
                 isReady: { running.selection?.running != nil }
             ) {

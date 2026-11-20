@@ -43,7 +43,7 @@ extension ShotScene {
         albumTileScene("mac.component.album-tile.no-year", year: nil),
         component(
             "mac.component.artist-album-tile.default",
-            width: 540,
+            width: 524,
             height: 250,
             images: coverStore()
         ) {
@@ -64,7 +64,7 @@ extension ShotScene {
     ) -> ShotScene {
         component(
             id,
-            width: 190,
+            width: 174,
             height: 260,
             images: coverStore()
         ) {
@@ -92,7 +92,7 @@ extension ShotScene {
         _ id: String,
         _ rating: BridgeAlbumRating
     ) -> ShotScene {
-        component(id, width: 300, height: 50) {
+        component(id, width: 284, height: 50) {
             MacAlbumRating(rating: rating, onRate: { _ in })
         }
     }
@@ -130,7 +130,7 @@ extension ShotScene {
         height: CGFloat,
         _ rows: [BridgeCreditRow]
     ) -> ShotScene {
-        component(id, width: 496, height: height) {
+        component(id, width: 480, height: height) {
             MacAlbumCredits(credits: rows)
                 .frame(width: 480, alignment: .leading)
         }
@@ -177,7 +177,7 @@ extension ShotScene {
         height: CGFloat,
         _ tracks: [Track]
     ) -> ShotScene {
-        component(id, width: 496, height: height) {
+        component(id, width: 480, height: height) {
             MacAlbumWorks(tracks: tracks, onOpenWork: { _ in })
                 .frame(width: 480, alignment: .leading)
         }
@@ -205,7 +205,7 @@ extension ShotScene {
         _ names: [String],
         shown: Int
     ) -> ShotScene {
-        component(id, width: 300, height: 60) {
+        component(id, width: 284, height: 60) {
             MacReleasePicker(
                 detail: panelDetail(releases: names, shown: shown),
                 currentReleaseId: nil,
@@ -235,7 +235,7 @@ extension ShotScene {
         height: CGFloat = 250,
         optionsOpen: Bool = false
     ) -> ShotScene {
-        component(id, width: 556, height: height) {
+        component(id, width: 540, height: height) {
             MacAlbumHeader(
                 detail: detail,
                 currentReleaseId: nil,
@@ -310,7 +310,7 @@ extension ShotScene {
     private static let artistPageScenes: [ShotScene] = [
         component(
             "mac.component.artist-album-grid.three-albums",
-            width: 540,
+            width: 524,
             height: 250,
             images: coverStore()
         ) {
@@ -369,7 +369,7 @@ extension ShotScene {
     private static let libraryHeadingControlsScenes: [ShotScene] = [
         component(
             "mac.component.library-heading.controls",
-            width: 596,
+            width: 580,
             height: 110
         ) {
             MacLibraryHeading(collapseProgress: 1, fullWidth: false) {

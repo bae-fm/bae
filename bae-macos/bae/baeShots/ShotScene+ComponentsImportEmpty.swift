@@ -56,7 +56,7 @@ extension ShotScene {
         _ id: String,
         _ summary: @escaping @MainActor () -> ImportReleaseSummary
     ) -> ShotScene {
-        component(id, width: 396, height: 110) {
+        component(id, width: 380, height: 110) {
             MacImportReleaseSummary(summary: summary(), style: .card)
                 .frame(width: 360, alignment: .leading)
         }
@@ -157,7 +157,7 @@ extension ShotScene {
         _ id: String,
         discogsUsable: Bool
     ) -> ShotScene {
-        component(id, width: 560, height: 396, inset: 0) {
+        component(id, width: 560, height: 396) {
             MacImportEmptyState()
                 .environment(UiStore())
                 .environment(SettingsNavigation())

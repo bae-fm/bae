@@ -84,8 +84,7 @@ extension ShotScene {
         ),
     ]
 
-    /// One state of `MacLibraryRow`, in the preview's 380pt column with the
-    /// 8pt a page row's fill reaches past it.
+    /// One state of `MacLibraryRow`, in the preview's 380pt column.
     private static func libraryRow(
         _ id: String,
         title: String? = nil,
@@ -99,55 +98,40 @@ extension ShotScene {
         credit: Bool = false,
         part: Bool = false
     ) -> ShotScene {
-        ShotScene(
-            id: id,
-            size: CGSize(width: 396, height: 76)
-        ) {
-            let images = ImageStore(
-                fetchLibraryImageBytes: { PreviewData.previewArtData($0.id) }
+        component(id, height: 76, images: coverStore()) {
+            MacLibraryRow(
+                picture: art.map {
+                    BridgeImageRef(id: $0, version: "1", imageType: .cover)
+                },
+                title: title,
+                subtitle: subtitle,
+                trailing: trailing,
+                hover: hover,
+                selected: selected,
+                loading: loading,
+                bleed: bleed,
+                credit: credit,
+                part: part
             )
-            return ShotStage(
-                MacLibraryRow(
-                    picture: art.map {
-                        BridgeImageRef(id: $0, version: "1", imageType: .cover)
-                    },
-                    title: title,
-                    subtitle: subtitle,
-                    trailing: trailing,
-                    hover: hover,
-                    selected: selected,
-                    loading: loading,
-                    bleed: bleed,
-                    credit: credit,
-                    part: part
-                )
-                .frame(width: 380, alignment: .leading)
-                .frame(
-                    maxWidth: .infinity,
-                    maxHeight: .infinity,
-                    alignment: .top
-                )
-                .environment(images),
-                images: images
-            )
+            .frame(width: 380, alignment: .leading)
         }
     }
 
     /// A component's state: `view` at the top left of a frame `width` points
-    /// wide, which is the preview's column with the 8pt it leaves round a
-    /// row, over the elevated surface the preview draws every component on.
+    /// wide, over the elevated surface the preview draws every component on.
+    /// The board is the preview's cell, which holds the component at its top
+    /// left with no margin, so the frame adds none either. `height` is room
+    /// for the state; the picture's comparison ends at the board's height.
     static func component<Content: View>(
         _ id: String,
-        width: CGFloat = 396,
+        width: CGFloat = 380,
         height: CGFloat,
-        inset: CGFloat = 8,
         images: ImageStore? = nil,
         isReady: @escaping @MainActor () -> Bool = { true },
         @ViewBuilder view: @escaping @MainActor () -> Content
     ) -> ShotScene {
         ShotScene(id: id, size: CGSize(width: width, height: height)) {
             let content = view()
-                .padding(inset)
                 .frame(
                     maxWidth: .infinity,
                     maxHeight: .infinity,

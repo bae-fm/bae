@@ -155,8 +155,7 @@ extension ShotScene {
         component(
             "mac.component.alert.default",
             width: 600,
-            height: 764,
-            inset: 0
+            height: 764
         ) {
             VStack(spacing: ThemeSpace.group) {
                 alertOver(
@@ -213,8 +212,7 @@ extension ShotScene {
         component(
             "mac.component.sheet.default",
             width: 600,
-            height: 240,
-            inset: 0
+            height: 240
         ) {
             OverWindow.sheet(
                 MacSheet("Set up sync", width: 460) {

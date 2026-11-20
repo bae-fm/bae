@@ -13,7 +13,7 @@ extension ShotScene {
 
     // MARK: - MacActivity
 
-    /// `MacActivity` in the 360pt panel's 14pt inset.
+    /// `MacActivity` at the width the 360pt panel's 14pt inset leaves it.
     private static let activityScenes: [ShotScene] = [
         activityPanel("mac.component.activity.up-to-date", height: 90),
         activityPanel(
@@ -120,7 +120,7 @@ extension ShotScene {
         readError: (any Error)? = nil,
         app: [AppProblem] = []
     ) -> ShotScene {
-        component(id, width: 360, height: height, inset: 14) {
+        component(id, width: 332, height: height) {
             let store = activityStore(
                 activity,
                 bars: bars,
@@ -194,7 +194,7 @@ extension ShotScene {
         queue: MacTransferLine.Queue?,
         share: Double?
     ) -> ShotScene {
-        component(id, width: 360, height: 80, inset: 14) {
+        component(id, width: 332, height: 80) {
             MacTransferLine(
                 title: title,
                 count: count,
@@ -268,7 +268,7 @@ extension ShotScene {
         _ id: String,
         _ activity: BridgeSyncActivity
     ) -> ShotScene {
-        component(id, width: 80, height: 60) {
+        component(id, width: 64, height: 60) {
             MacActivityButton()
                 .environment(activityStore(activity))
                 .environment(SubsonicStore())
@@ -280,11 +280,11 @@ extension ShotScene {
 
     /// `MacSectionTabs` on each section.
     private static let sectionTabsScenes: [ShotScene] = [
-        component("mac.component.section-tabs.library", width: 240, height: 60)
+        component("mac.component.section-tabs.library", width: 224, height: 60)
         {
             MacSectionTabs(selection: .library, onSelect: { _ in })
         },
-        component("mac.component.section-tabs.import", width: 240, height: 60) {
+        component("mac.component.section-tabs.import", width: 224, height: 60) {
             MacSectionTabs(selection: .importing, onSelect: { _ in })
         },
     ]
@@ -326,7 +326,7 @@ extension ShotScene {
         section: MainSection,
         activity: BridgeSyncActivity? = nil
     ) -> ShotScene {
-        component(id, width: 1_100, height: 56, inset: 0) {
+        component(id, width: 1_100, height: 56) {
             let uiStore = storeShowing(section)
             let backing = boardLibraryBacking(uiStore: uiStore)
             MacTitleBar(

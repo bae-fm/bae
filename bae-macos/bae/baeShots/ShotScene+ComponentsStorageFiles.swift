@@ -35,7 +35,7 @@ extension ShotScene {
     ) -> ShotScene {
         component(
             id,
-            width: 456,
+            width: 440,
             height: height
         ) {
             MacFailedTransferRow(entry: entry, onCancel: {})
@@ -465,7 +465,7 @@ extension ShotScene {
     ) -> ShotScene {
         component(
             id,
-            width: 496,
+            width: 480,
             height: 40
         ) {
             MacReleaseFileRow(
@@ -526,7 +526,7 @@ extension ShotScene {
     ) -> ShotScene {
         component(
             id,
-            width: 560,
+            width: 544,
             height: height
         ) {
             MacReleaseFileTable(

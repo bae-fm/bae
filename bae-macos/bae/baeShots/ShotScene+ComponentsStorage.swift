@@ -19,7 +19,7 @@ extension ShotScene {
         _ storage: BridgeDeviceStorage,
         height: CGFloat
     ) -> ShotScene {
-        component(id, width: 596, height: height) {
+        component(id, width: 580, height: height) {
             MacStorageUsage(usage: StorageUsage(storage))
         }
     }
@@ -192,8 +192,7 @@ extension ShotScene {
         component(
             id,
             width: 596,
-            height: height,
-            inset: 0
+            height: height
         ) {
             var bridge = PreviewData.storageBridgeRelease(
                 storageState: state,

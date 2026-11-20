@@ -8,8 +8,8 @@ import SwiftUI
 extension ShotScene {
     static let importCardScenes: [ShotScene] = invalidCandidateCardScenes
 
-    /// The preview's 720pt box, with the 8pt it leaves round a row.
-    private static let cardWidth: CGFloat = 736
+    /// The preview's 720pt box.
+    private static let cardWidth: CGFloat = 720
 
     // MARK: Skipped folder
 

@@ -102,7 +102,7 @@ extension ShotScene {
         _ id: String,
         _ state: ColumnState
     ) -> ShotScene {
-        component(id, width: 436, height: 52) {
+        component(id, width: 420, height: 52) {
             importStores(
                 MacImportFilterRow(
                     filterText: .constant(state.typed),
@@ -196,7 +196,6 @@ extension ShotScene {
             id,
             width: 420,
             height: 360,
-            inset: 0,
             images: PreviewData.artImageStore()
         ) {
             importStores(
@@ -291,7 +290,6 @@ extension ShotScene {
             "mac.component.import-window.folder-picked",
             width: 1_000,
             height: 420,
-            inset: 0,
             images: PreviewData.artImageStore()
         ) {
             importWindow(.found(northbound: .identified, opening: .copperSky))
@@ -300,7 +298,6 @@ extension ShotScene {
             "mac.component.import-window.no-selection",
             width: 1_000,
             height: 420,
-            inset: 0,
             images: PreviewData.artImageStore()
         ) {
             importWindow(.found(northbound: .identified, opening: nil))

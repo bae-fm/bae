@@ -178,7 +178,7 @@ extension ShotScene {
         openFailure: LoadError? = nil,
         unreadableInstallation: String? = nil
     ) -> ShotScene {
-        component(id, width: 436, height: height) {
+        component(id, width: 420, height: height) {
             let standing = PreviewData.standingSynced
             MacWelcomeLibraries(
                 libraries: PreviewData.boardLibraries + extra,
@@ -215,7 +215,7 @@ extension ShotScene {
     private static let welcomeActionsScenes: [ShotScene] = [
         component(
             "mac.component.welcome-actions.resting",
-            width: 260,
+            width: 244,
             height: 130
         ) {
             MacWelcomeActions(

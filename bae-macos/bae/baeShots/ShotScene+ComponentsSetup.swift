@@ -26,7 +26,7 @@ extension ShotScene {
         _ id: String,
         failing failure: BridgeStorageFailure?
     ) -> ShotScene {
-        component(id, width: 520, height: 470, inset: 0) {
+        component(id, width: 520, height: 470) {
             MacS3Form(staged: s3Fields(failing: failure))
                 .environment(Sync.stub())
                 .environment(StorageSetupRun())
@@ -83,7 +83,7 @@ extension ShotScene {
         secretKey: String = "",
         refused: Bool = false
     ) -> ShotScene {
-        component(id, width: 420, height: height) {
+        component(id, width: 404, height: height) {
             MacS3KeyFields(
                 accessKey: .constant(accessKey),
                 secretKey: .constant(secretKey)
@@ -194,7 +194,7 @@ extension ShotScene {
             newFolderName: String = "",
             notEmpty: String? = nil
         ) -> ShotScene {
-            component(id, width: 480, height: 440, inset: 0) {
+            component(id, width: 480, height: 440) {
                 let named = { (name: String?) in
                     listing.folders.first { $0.name == name }
                 }
@@ -243,7 +243,7 @@ extension ShotScene {
         _ storage: InviteStorage,
         usesOwnKey: Bool = false
     ) -> ShotScene {
-        component(id, width: 456, height: 400) {
+        component(id, width: 440, height: 400) {
             MacInviteFields(
                 storage: storage,
                 email: .constant("dan@example.com"),
@@ -297,7 +297,7 @@ extension ShotScene {
         fix: BridgeSyncFix? = nil,
         lastSynced: Date? = nil
     ) -> ShotScene {
-        component(id, width: 500, height: height) {
+        component(id, width: 484, height: height) {
             ShotBox {
                 MacSyncStatus(
                     location: nil,
@@ -369,7 +369,7 @@ extension ShotScene {
         state: RestoreCodeReveal.State,
         storage: BridgeStorageLocation? = nil
     ) -> ShotScene {
-        component(id, width: 500, height: height) {
+        component(id, width: 484, height: height) {
             ShotForm {
                 MacRestoreCode(
                     reveal: RestoreCodeReveal(previewState: state),

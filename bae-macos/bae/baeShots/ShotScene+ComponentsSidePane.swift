@@ -97,7 +97,7 @@ extension ShotScene {
         lead: SidePaneLead = .none,
         @ViewBuilder content: @escaping @MainActor () -> Content
     ) -> ShotScene {
-        component(id, width: 436, height: 616, images: coverStore()) {
+        component(id, width: 420, height: 616, images: coverStore()) {
             // The tabs' content reads the library, the window's state and
             // the grid's order for what a click or a drop does.
             let uiStore = UiStore()

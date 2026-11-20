@@ -83,7 +83,7 @@ extension ShotScene {
         note: String? = nil,
         checked: Bool = true
     ) -> ShotScene {
-        component(id, width: 596, height: 100) {
+        component(id, width: 580, height: 100) {
             ShotBox {
                 MacRadio(
                     title: Text("iCloud"),
@@ -98,41 +98,41 @@ extension ShotScene {
     /// something, a strong name, a chip, a row that removes, controls, and the
     /// row under a switch.
     private static let rowScenes: [ShotScene] = [
-        component("mac.component.box.empty", width: 596, height: 70) {
+        component("mac.component.box.empty", width: 580, height: 70) {
             ShotForm {
                 MacSection {}.empty("No shared folders yet")
             }
         },
-        component("mac.component.row.label", width: 596, height: 70) {
+        component("mac.component.row.label", width: 580, height: 70) {
             ShotBox {
                 MacRow("Sync") {}
             }
         },
-        component("mac.component.row.value", width: 596, height: 70) {
+        component("mac.component.row.value", width: 580, height: 70) {
             ShotBox {
                 MacRow("Sync", value: "Synced")
             }
         },
-        component("mac.component.row.tone", width: 596, height: 70) {
+        component("mac.component.row.tone", width: 580, height: 70) {
             ShotBox {
                 MacRow("Sync") {
                     ToneDotValue(text: "Synced", tone: .success)
                 }
             }
         },
-        component("mac.component.row.opens-something", width: 596, height: 70) {
+        component("mac.component.row.opens-something", width: 580, height: 70) {
             ShotBox {
                 MacRow("Sync") {}
                     .pressing(.opens {})
             }
         },
-        component("mac.component.row.strong", width: 596, height: 70) {
+        component("mac.component.row.strong", width: 580, height: 70) {
             ShotBox {
                 MacRow("Sync") {}
                     .strong()
             }
         },
-        component("mac.component.row.tag", width: 596, height: 70) {
+        component("mac.component.row.tag", width: 580, height: 70) {
             ShotBox {
                 MacRow("Sync") {}
                     .chip("Member")
@@ -140,7 +140,7 @@ extension ShotScene {
         },
         component(
             "mac.component.row.destructive-action",
-            width: 596,
+            width: 580,
             height: 70
         ) {
             ShotBox {
@@ -148,7 +148,7 @@ extension ShotScene {
                     .pressing(.removes {})
             }
         },
-        component("mac.component.row.controls", width: 596, height: 70) {
+        component("mac.component.row.controls", width: 580, height: 70) {
             ShotBox {
                 MacRow("Sync") {
                     MacButton("Set up") {}
@@ -162,7 +162,7 @@ extension ShotScene {
     /// The Pause row and Resume automatically under it, which is off while
     /// the pause is.
     private static func pauseRows(_ id: String, off: Bool) -> ShotScene {
-        component(id, width: 596, height: 120) {
+        component(id, width: 580, height: 120) {
             ShotBox {
                 MacRow("Pause between sides and discs") {
                     MacSwitch(
@@ -195,7 +195,7 @@ extension ShotScene {
                 }
             }
         },
-        component("mac.component.box.rows", width: 596, height: 160) {
+        component("mac.component.box.rows", width: 580, height: 160) {
             ShotBox {
                 MacRow("This Mac") {}
                 MacRow("Phone") {}
@@ -209,7 +209,7 @@ extension ShotScene {
     private static let nestedScenes: [ShotScene] = [
         component(
             "mac.component.nested.field-and-notice",
-            width: 596,
+            width: 580,
             height: 220
         ) {
             ShotBox {
@@ -383,7 +383,7 @@ extension ShotScene {
         component("mac.component.error-line.error", height: 50) {
             MacErrorLine("The pattern needs at least one value.")
         },
-        component("mac.component.error-line.long-error", width: 596, height: 70)
+        component("mac.component.error-line.long-error", width: 580, height: 70)
         {
             MacErrorLine(
                 "A name cannot contain “/” or “:”, because macOS uses them to separate folders. Take them out of the typed text."
@@ -394,7 +394,7 @@ extension ShotScene {
 
     /// `MacFormHeading`, a ruled heading over a part of a form.
     private static let formHeadingScenes: [ShotScene] = [
-        component("mac.component.form-heading.heading", width: 596, height: 50)
+        component("mac.component.form-heading.heading", width: 580, height: 50)
         {
             MacFormHeading(title: "Release")
                 .frame(width: 480)
@@ -427,7 +427,7 @@ extension ShotScene {
     private static let factsGridScenes: [ShotScene] = [
         component(
             "mac.component.facts-grid.file-facts",
-            width: 596,
+            width: 580,
             height: 110
         ) {
             MacFactsGrid {
@@ -440,7 +440,7 @@ extension ShotScene {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         },
-        component("mac.component.facts-grid.some-facts", width: 596, height: 70)
+        component("mac.component.facts-grid.some-facts", width: 580, height: 70)
         {
             MacFactsGrid {
                 MacFact("Kind") { Text(verbatim: "Rip log") }
@@ -450,7 +450,7 @@ extension ShotScene {
         },
         component(
             "mac.component.facts-grid.long-value",
-            width: 596,
+            width: 580,
             height: 100
         ) {
             MacFactsGrid {
@@ -464,7 +464,7 @@ extension ShotScene {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         },
-        component("mac.component.facts-grid.wide", width: 596, height: 90) {
+        component("mac.component.facts-grid.wide", width: 580, height: 90) {
             MacFactsGrid(wide: true) {
                 MacFact("Producer") { Text(verbatim: "Ines Varga") }
                 MacFact("Engineer") { Text(verbatim: "Tomas Brell") }
@@ -576,20 +576,20 @@ extension ShotScene {
 
     /// `MacMoreMenu` off, boxed and over a cover, at the end of a row.
     private static let moreMenuStateScenes: [ShotScene] = [
-        component("mac.component.more-menu.off", width: 596, height: 60) {
+        component("mac.component.more-menu.off", width: 580, height: 60) {
             MacMoreMenu {
                 MacMenuItem("Details…") {}
             }
             .disabled(true)
             .frame(maxWidth: .infinity, alignment: .trailing)
         },
-        component("mac.component.more-menu.boxed", width: 596, height: 60) {
+        component("mac.component.more-menu.boxed", width: 580, height: 60) {
             MacMoreMenu(look: .boxed) {
                 MacMenuItem("Details…") {}
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
         },
-        component("mac.component.more-menu.overlay", width: 596, height: 60) {
+        component("mac.component.more-menu.overlay", width: 580, height: 60) {
             MacMoreMenu(look: .overlay) {
                 MacMenuItem("Details…") {}
             }

@@ -235,7 +235,7 @@ extension ShotScene {
     ) -> ShotScene {
         component(
             id,
-            width: 576,
+            width: 560,
             height: height
         ) {
             pressingRow(bridge, agreements: agreements)
@@ -311,7 +311,7 @@ extension ShotScene {
     ) -> ShotScene {
         component(
             id,
-            width: 300,
+            width: 284,
             height: 40
         ) {
             if strong {
@@ -355,7 +355,7 @@ extension ShotScene {
     ) -> ShotScene {
         component(
             id,
-            width: 360,
+            width: 344,
             height: 40
         ) {
             chip()
@@ -432,7 +432,7 @@ extension ShotScene {
     private static func identifierBandScene(
         _ id: String,
         _ run: BridgeIdentifyRun,
-        width: CGFloat = 596,
+        width: CGFloat = 580,
         height: CGFloat = 70
     ) -> ShotScene {
         component(
@@ -466,7 +466,7 @@ extension ShotScene {
         identifierBandScene(
             "mac.component.identifier-band.wrapped",
             PreviewData.identifyRunBandBoard,
-            width: 316,
+            width: 300,
             height: 130
         ),
     ]
@@ -525,7 +525,7 @@ extension ShotScene {
         )
     }
 
-    /// The preview's wide column, with the 8pt it leaves round a row.
+    /// The preview's wide column.
     private static let wideColumn: CGFloat = 842
 
     private static func releaseCardScene(
@@ -534,7 +534,7 @@ extension ShotScene {
     ) -> ShotScene {
         component(
             id,
-            width: wideColumn + 16,
+            width: wideColumn,
             height: 70,
             images: coverGalleryImages()
         ) {
@@ -600,7 +600,7 @@ extension ShotScene {
     ) -> ShotScene {
         component(
             id,
-            width: wideColumn + 16,
+            width: wideColumn,
             height: height,
             images: coverGalleryImages()
         ) {
@@ -662,7 +662,7 @@ extension ShotScene {
     private static let findOnlineScenes: [ShotScene] = [
         component(
             "mac.component.find-online.default",
-            width: 596,
+            width: 580,
             height: 360,
             images: PreviewData.artImageStore()
         ) {

@@ -149,7 +149,7 @@ extension ShotScene {
         shuffled: Bool = false,
         repeatMode: BridgeRepeatMode = .off
     ) -> ShotScene {
-        component(id, width: 280, height: 60) {
+        component(id, width: 264, height: 60) {
             MacTransport(
                 isPlaying: playing,
                 waitsOnStorage: waiting,
@@ -182,7 +182,7 @@ extension ShotScene {
         _ id: String,
         _ controls: MacVolumeSlider.Controls
     ) -> ShotScene {
-        component(id, width: 200, height: 60) {
+        component(id, width: 184, height: 60) {
             MacVolumeSlider(
                 controls: controls,
                 onDrag: { _ in },
@@ -461,7 +461,7 @@ extension ShotScene {
         current: Bool = false,
         hover: Bool = false
     ) -> ShotScene {
-        component(id, width: 100, height: 50) {
+        component(id, width: 84, height: 50) {
             MacTrackLead(
                 text: "4",
                 isCurrent: current,
@@ -664,7 +664,7 @@ extension ShotScene {
         let isActive = queue != nil
         return component(
             id,
-            width: 436,
+            width: 420,
             height: 616,
             images: coverStore()
         ) {
@@ -767,7 +767,7 @@ extension ShotScene {
         found: [BridgeCastReceiver] = [],
         connecting: CastStart.Connecting? = nil
     ) -> ShotScene {
-        component(id, width: 300, height: 280) {
+        component(id, width: 284, height: 280) {
             MacCastPopover(
                 receivers: BridgeCastReceiverList(
                     casting: casting,
