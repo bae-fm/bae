@@ -217,7 +217,7 @@ extension SnapshotTestSupport {
     }
 }
 
-private final class SnapshotTestWindow: NSWindow {
+final class SnapshotTestWindow: NSWindow {
     /// A sheet — a confirmation dialog, an alert — brings the window it is
     /// on onto a display, sliding it in from past the edge, and shows
     /// itself there. Both stay transparent to the eye and to the pointer:
@@ -236,10 +236,14 @@ private final class SnapshotTestWindow: NSWindow {
 
     /// Whether the window server has said where it placed this window.
     private(set) var isPlaced = false
+    /// How many times the window server has said where it placed or moved
+    /// this window.
+    private(set) var moves = 0
 
     override func sendEvent(_ event: NSEvent) {
         if event.type == .appKitDefined, event.subtype == .windowMoved {
             isPlaced = true
+            moves += 1
         }
         super.sendEvent(event)
     }
