@@ -146,7 +146,7 @@
       // `avatar`: a person's name, whose picture (`avatarImage`) or initials lead the row.
       props.avatar != null ? h('span', { className: 'bae-m-row-lead' }, h(Avatar, { name: props.avatar, image: props.avatarImage, size: 28 })) : null,
       props.label == null ? null : h('span', Object.assign({ className: 'bae-m-row-label' }, trail.length ? press : null, trail.length && labelName ? { 'aria-label': labelName } : null),
-        h('span', { className: 'bae-m-row-title' }, h('span', { className: props.strong ? 'bae-m-row-strong' : null }, props.label), props.tag ? h(StatusChip, null, props.tag) : null, props.info ? h(MacInfoTip, { label: 'About ' + props.label }) : null),
+        h('span', { className: 'bae-m-row-title' }, h('span', { className: props.strong ? 'bae-m-row-strong' : null }, props.label), props.tag ? h(StatusChip, null, props.tag) : null, props.info ? h(MacInfoTip, { label: props.infoLabel || 'About ' + props.label }) : null),
         props.note || copies.length ? h('span', { className: cx('bae-m-row-note', props.noteTone && 'bae-tone-' + props.noteTone) },
           copies.length > 1 ? [props.note ? props.note + ':' : null, h('ul', { key: 'l', className: 'bae-m-row-notelist' }, copies.map(function (c, i) { return h('li', { key: i }, h(MacCopyText, { hover: props.copyHover, after: c.after }, c.text)); }))]
             : [props.note, copies.length && props.note ? ' ' : null, copies.length ? h(MacCopyText, { key: 'c', hover: props.copyHover, after: copies[0].after }, copies[0].text) : null]) : null),

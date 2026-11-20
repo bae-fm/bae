@@ -6,4 +6,7 @@
 
 A row the person clicks reads as one button named by its words: one with `chevron`, `action` or `destructive` is, and `button` marks the rest, such as a Welcome library. A row that ends in controls of its own (a ⋯ menu) gives the button to its label alone. The button's name is its texts joined with a comma and a space, as macOS names it: “Devices, 2 devices”.
 
+
+`info` adds an ⓘ after the name, named “About ” and the label. `infoLabel` names it when the label says more than what the tip explains: “About Discogs” on “Search Discogs”.
+
 **In the code:** macOS: BaeKit's `MacRow` (`BaeKit/Sources/BaeKit/Views/MacRow.swift`).
