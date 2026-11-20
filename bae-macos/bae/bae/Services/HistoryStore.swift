@@ -10,10 +10,18 @@ import Observation
 @MainActor
 @Observable
 final class HistoryStore {
+    /// A list on screen and whose plays it shows.
+    struct Shown {
+        let list: HistoryList
+        /// A member id, or `nil` for everyone's.
+        let person: String?
+    }
+
+    /// What is on screen, `nil` until the first list answers.
+    private(set) var shown: Shown?
+
     /// The list on screen, `nil` until the first one answers.
-    private(set) var list: HistoryList?
-    /// Whose plays `list` shows: a member id, or `nil` for everyone's.
-    private(set) var shownPerson: String?
+    var list: HistoryList? { shown?.list }
 
     @ObservationIgnored
     private let library: Library
@@ -35,14 +43,8 @@ final class HistoryStore {
     }
 
     /// Show the plays of the person with member id `person`, or everyone's
-    /// for `nil`.
+    /// for `nil`. The view calls it when the choice changes.
     func show(person: String?) {
-        if let opening {
-            if opening.person == person { return }
-        }
-        else if list != nil, shownPerson == person {
-            return
-        }
         opening?.task.cancel()
         opening?.list.cancel()
         let newList = HistoryList(
@@ -52,9 +54,8 @@ final class HistoryStore {
         let task = Task { [weak self] in
             await newList.loadInitial()
             guard !Task.isCancelled, let self else { return }
-            self.list?.cancel()
-            self.list = newList
-            self.shownPerson = person
+            self.shown?.list.cancel()
+            self.shown = Shown(list: newList, person: person)
             self.opening = nil
         }
         opening = Opening(person: person, list: newList, task: task)
@@ -65,7 +66,7 @@ final class HistoryStore {
         opening?.task.cancel()
         opening?.list.cancel()
         opening = nil
-        list?.cancel()
-        list = nil
+        shown?.list.cancel()
+        shown = nil
     }
 }

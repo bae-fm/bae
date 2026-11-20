@@ -215,9 +215,12 @@ enum HistoryWords {
         if calendar.isDate(date, inSameDayAs: today) {
             return String(localized: "Today")
         }
-        if let yesterday = calendar.date(byAdding: .day, value: -1, to: today),
-            calendar.isDate(date, inSameDayAs: yesterday)
-        {
+        guard
+            let yesterday = calendar.date(byAdding: .day, value: -1, to: today)
+        else {
+            preconditionFailure("no calendar holds the day before \(today)")
+        }
+        if calendar.isDate(date, inSameDayAs: yesterday) {
             return String(localized: "Yesterday")
         }
         return date.formatted(date: .complete, time: .omitted)

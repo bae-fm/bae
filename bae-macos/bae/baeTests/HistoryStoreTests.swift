@@ -99,16 +99,12 @@ struct HistoryStoreTests {
         let everyone = store.list
 
         store.show(person: "ben")
-        store.show(person: "ben")
-        #expect(
-            reads.people == [nil, "ben"],
-            "showing a choice again opens no read"
-        )
+        #expect(reads.people == [nil, "ben"])
         #expect(store.list === everyone)
-        #expect(store.shownPerson == nil)
+        #expect(store.shown?.person == nil)
 
         reads.release()
-        try await Wait.until { store.shownPerson == "ben" }
+        try await Wait.until { store.shown?.person == "ben" }
         #expect(store.list?.count?.rows == 1)
         store.cancel()
         #expect(store.list == nil)
