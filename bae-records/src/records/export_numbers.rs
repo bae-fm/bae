@@ -9,21 +9,24 @@ use super::*;
 
 /// Each track of the release `?1` in playing order, with its number among
 /// its medium's tracks and, for a release of several mediums, its medium's
-/// position.
-const EXPORT_NUMBERS_SQL: &str = "SELECT t.id AS track_id, \
-        ROW_NUMBER() OVER (PARTITION BY t.medium_id ORDER BY t.position) AS number, \
-        CASE WHEN (SELECT COUNT(*) FROM release_mediums WHERE release_id = ?1) > 1 \
-             THEN m.position END AS disc \
-     FROM tracks t JOIN release_mediums m ON m.id = t.medium_id \
-     WHERE t.release_id = ?1 \
-     ORDER BY t.position";
+/// position, as [`track_places_ctes`] places the release's tracks.
+fn export_numbers_sql() -> String {
+    format!(
+        "WITH {places} \
+         SELECT id AS track_id, \
+                ROW_NUMBER() OVER (PARTITION BY medium_position ORDER BY position) AS number, \
+                CASE WHEN (SELECT COUNT(*) FROM medium) > 1 THEN medium_position END AS disc \
+         FROM place ORDER BY position",
+        places = track_places_ctes(MediumsSource::Release, "m.release_id = ?1"),
+    )
+}
 
 /// How a surface outside bae numbers each track of `release_id`.
 pub(super) fn export_numbers_on(
     sql: &impl coven::SqlRead,
     release_id: &str,
 ) -> Result<DbExportNumbers, DbError> {
-    Ok(DbExportNumbers(sql.query(EXPORT_NUMBERS_SQL, params![release_id], |row| {
+    Ok(DbExportNumbers(sql.query(&export_numbers_sql(), params![release_id], |row| {
         Ok(DbExportNumber {
             track_id: row.get("track_id")?,
             number: row.get("number")?,
