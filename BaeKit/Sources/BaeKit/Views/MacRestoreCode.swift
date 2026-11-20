@@ -82,7 +82,11 @@ public struct MacRestoreCode: View {
                 .themeText(.mono)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                // A picture of the code, not words to read out: the dots
+                // say nothing, and the code stays hidden until Show.
+                .accessibilityElement(children: .ignore)
                 .accessibilityLabel("Restore code, partly hidden")
+                .accessibilityAddTraits(.isImage)
             }
             // Borderless, so a list row holding the buttons sends each tap to
             // the button under it.
