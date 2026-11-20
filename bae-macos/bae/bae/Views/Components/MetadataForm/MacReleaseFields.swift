@@ -127,34 +127,34 @@ struct MacReleaseFields: View {
                             String(localized: "Remove \(named)")
                         )
                     }
-                    if row.place.addsRow {
-                        Button {
-                            let blank = BridgeRawLabelEdit(
-                                name: "",
-                                catalogNumber: ""
-                            )
-                            Task {
-                                await writer.setLabels(
-                                    rows.map(\.label) + [blank]
-                                )
-                            }
-                        } label: {
-                            Image(systemName: "plus")
-                                .foregroundStyle(.secondary)
-                        }
-                        .buttonStyle(.accentPlain)
-                        .help(String(localized: "Add label"))
-                        .accessibilityLabel(String(localized: "Add label"))
+                    if row.place.addsRow && !row.place.removable {
+                        addLabel(rows: rows)
                     }
                 }
                 .themeIcon(.small)
             }
+            if row.place.addsRow && row.place.removable {
+                GridRow {
+                    rowLabel("")
+                    addLabel(rows: rows)
+                }
+            }
         }
     }
 
+    private func addLabel(rows: [BridgeLabelRow]) -> some View {
+        Button {
+            let blank = BridgeRawLabelEdit(name: "", catalogNumber: "")
+            Task { await writer.setLabels(rows.map(\.label) + [blank]) }
+        } label: {
+            AddEntryLabel(words: String(localized: "Add label"))
+        }
+        .buttonStyle(.accentPlain)
+    }
+
     /// One row per barcode, as core hands them: a blank row when there is
-    /// none, and each row with the heading, remove button and add button it
-    /// carries.
+    /// none, and each row with the heading and remove button it carries, and
+    /// Add on its own line under the last row (beside the one blank row).
     @ViewBuilder
     private var barcodeRows: some View {
         let rows = values.pressing.barcodes
@@ -186,25 +186,28 @@ struct MacReleaseFields: View {
                             String(localized: "Remove \(row.barcode)")
                         )
                     }
-                    if row.place.addsRow {
-                        Button {
-                            Task {
-                                await writer.setBarcodes(
-                                    rows.map(\.barcode) + [""]
-                                )
-                            }
-                        } label: {
-                            Image(systemName: "plus")
-                                .foregroundStyle(.secondary)
-                        }
-                        .buttonStyle(.accentPlain)
-                        .help(String(localized: "Add barcode"))
-                        .accessibilityLabel(String(localized: "Add barcode"))
+                    if row.place.addsRow && !row.place.removable {
+                        addBarcode(rows: rows)
                     }
                 }
                 .themeIcon(.small)
             }
+            if row.place.addsRow && row.place.removable {
+                GridRow {
+                    rowLabel("")
+                    addBarcode(rows: rows)
+                }
+            }
         }
+    }
+
+    private func addBarcode(rows: [BridgeBarcodeRow]) -> some View {
+        Button {
+            Task { await writer.setBarcodes(rows.map(\.barcode) + [""]) }
+        } label: {
+            AddEntryLabel(words: String(localized: "Add barcode"))
+        }
+        .buttonStyle(.accentPlain)
     }
 
     /// A field as wide as its value, or `emptyValueWidth` when empty, when

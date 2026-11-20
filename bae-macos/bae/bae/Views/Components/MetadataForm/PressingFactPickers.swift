@@ -91,10 +91,7 @@ struct MediaCountsEditor: View {
                     }
                 }
             ) {
-                FactMenuLabel(
-                    text: media.isEmpty ? nil : String(localized: "Add"),
-                    systemImage: media.isEmpty ? nil : "plus"
-                )
+                AddEntryLabel(words: String(localized: "Add"))
             }
             .fixedSize()
         }
@@ -268,10 +265,12 @@ struct DiscogsDetailsEditor: View {
                     }
                 }
             ) {
-                FactMenuLabel(
-                    text: details.isEmpty ? nil : String(localized: "Add"),
-                    systemImage: details.isEmpty ? nil : "plus"
-                )
+                if details.isEmpty {
+                    FactMenuLabel(text: nil)
+                }
+                else {
+                    AddEntryLabel(words: String(localized: "Add"))
+                }
             }
             .fixedSize()
         }
@@ -285,7 +284,6 @@ struct DiscogsDetailsEditor: View {
 /// A picker's face: the chosen value, or the form's empty mark.
 private struct FactMenuLabel: View {
     let text: String?
-    var systemImage: String?
 
     /// The words the face shows: the value, or the form's dash.
     static func shown(_ text: String?) -> String {
@@ -293,13 +291,8 @@ private struct FactMenuLabel: View {
     }
 
     var body: some View {
-        HStack(spacing: ThemeSpace.inline) {
-            if let systemImage {
-                Image(systemName: systemImage)
-            }
-            Text(Self.shown(text))
-        }
-        .themeText(.body)
-        .foregroundStyle(text == nil ? .tertiary : .primary)
+        Text(Self.shown(text))
+            .themeText(.body)
+            .foregroundStyle(text == nil ? .tertiary : .primary)
     }
 }
