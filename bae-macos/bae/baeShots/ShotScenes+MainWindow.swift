@@ -34,6 +34,7 @@ extension ShotScenes {
         outbox: OutboxStore? = nil,
         importPercents: LatestStream<UInt32>? = nil,
         projections: LibraryProjectionStore? = nil,
+        history: HistoryStore? = nil,
         size: CGSize = CGSize(width: 1280, height: 800)
     ) -> some View {
         let slot =
@@ -73,6 +74,10 @@ extension ShotScenes {
                         libraryFullWidth: false,
                         castEnabled: true
                     )
+            )
+            .environment(
+                history
+                    ?? HistoryStore(library: backing.library, onError: { _ in })
             )
             .environmentIfGiven(images)
             .environmentIfGiven(releaseEditor)

@@ -313,4 +313,16 @@ struct UiStoreSidePaneTests {
         store.closePlaylist("playlist-a")
         #expect(store.openPlaylistId == nil)
     }
+
+    @Test("History keeps whose plays it shows across tabs and closing")
+    func historyKeepsItsChoice() {
+        let store = UiStore()
+        store.openSidePane(.history)
+        store.showHistory(of: "member-b")
+        store.selectSidePaneTab(.queue)
+        store.setSidePanePresented(false)
+        store.openSidePane(.history)
+        #expect(store.sidePaneTab == .history)
+        #expect(store.historyPerson == "member-b")
+    }
 }

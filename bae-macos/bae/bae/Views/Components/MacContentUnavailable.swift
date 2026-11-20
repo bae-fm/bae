@@ -1,21 +1,61 @@
 import SwiftUI
 
-/// The message of a pane with nothing to show: a title, and a line under it
-/// where there is something to add, centred in the space the pane has.
-struct MacContentUnavailable: View {
-    let title: LocalizedStringKey
-    var description: LocalizedStringKey?
+/// The message of a pane with nothing to show: a title, a line under it where
+/// there is something to add, and `actions` under that where the person can
+/// act on it, centred in the space the pane has.
+struct MacContentUnavailable<Actions: View>: View {
+    let title: Text
+    let description: Text?
+    @ViewBuilder
+    let actions: () -> Actions
+
+    init(
+        title: LocalizedStringKey,
+        description: LocalizedStringKey? = nil,
+        @ViewBuilder actions: @escaping () -> Actions
+    ) {
+        self.title = Text(title)
+        self.description = description.map { Text($0) }
+        self.actions = actions
+    }
+
+    /// A title that is already in the person's language, such as one that
+    /// names a person.
+    init(
+        verbatimTitle title: String,
+        @ViewBuilder actions: @escaping () -> Actions
+    ) {
+        self.title = Text(verbatim: title)
+        self.description = nil
+        self.actions = actions
+    }
 
     var body: some View {
         if let description {
             ContentUnavailableView {
-                Text(title)
+                title
             } description: {
-                Text(description)
+                description
+            } actions: {
+                actions()
             }
         }
         else {
-            ContentUnavailableView { Text(title) }
+            ContentUnavailableView {
+                title
+            } actions: {
+                actions()
+            }
         }
+    }
+}
+
+extension MacContentUnavailable where Actions == EmptyView {
+    init(title: LocalizedStringKey, description: LocalizedStringKey? = nil) {
+        self.init(
+            title: title,
+            description: description,
+            actions: { EmptyView() }
+        )
     }
 }

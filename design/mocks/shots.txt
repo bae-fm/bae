@@ -230,6 +230,9 @@ mac.playback.queue.dropping
 mac.playback.queue.nothing-up-next
 mac.playback.queue.tail-failed
 mac.playback.queue.track-removed
+mac.playback.side-history
+mac.playback.side-history.empty
+mac.playback.side-history.none-from-person
 mac.playback.side-playlists
 mac.playlists.delete
 mac.playlists.edit

@@ -42,6 +42,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
     /// Tells core the language names are ordered in.
     private let sortLanguage: SortLanguage
     private let storageManagerStore: StorageManagerStore
+    private let historyStore: HistoryStore
     private let settingsNavigation = SettingsNavigation()
     /// The library's name, read while a screen shows it.
     let libraryNameStore: LibraryNameStore
@@ -148,6 +149,10 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             library: library,
             onError: { uiStore.showError($0) }
         )
+        historyStore = HistoryStore(
+            library: library,
+            onError: { uiStore.showError($0) }
+        )
         desktopSubscriptions = DesktopSubscriptions(
             appHandle: appHandle,
             importStore: importStore,
@@ -226,6 +231,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             .environment(desktopSubscriptions.importSelection)
             .environment(libraryBrowseSession)
             .environment(storageManagerStore)
+            .environment(historyStore)
             .environment(settingsNavigation)
             .environment(libraryNameStore)
             .environment(deviceStorageStore)
