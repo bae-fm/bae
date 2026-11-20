@@ -72,16 +72,25 @@ fn a_cover_asked_for_at_launch_waits_for_storage_and_then_reads() {
         );
 
         b.manager().start_sync_at_startup().await.unwrap();
-        let mut read = std::pin::pin!(b.manager().read_cover_image_bytes(&release.id));
-        assert!(
-            tokio::time::timeout(std::time::Duration::from_millis(300), &mut read).await.is_err(),
-            "the read waits while storage connects"
-        );
+        let mut waiting_reads = b.manager().store.reads_awaiting_connection();
+        let read = bae_util::test_spawn::task({
+            let manager = b.manager().clone();
+            let release_id = release.id.clone();
+            async move { manager.read_cover_image_bytes(&release_id).await }
+        });
+        tokio::time::timeout(
+            bae_util::test_channels::HANG_GUARD,
+            waiting_reads.wait_for(|reads| *reads == 1),
+        )
+        .await
+        .expect("the read waits while storage connects")
+        .unwrap();
         b.storage().set_online(true);
         drop(b.manager().retry_now().await.unwrap());
         let bytes = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, read)
             .await
             .expect("the read ends once storage connects")
+            .unwrap()
             .unwrap()
             .expect("the cover's bytes");
         assert_eq!(bytes, b"the cover");

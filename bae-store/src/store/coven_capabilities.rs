@@ -362,6 +362,13 @@ impl Store {
         self.inner.handle.subscribe_local_bytes()
     }
 
+    /// Follow how many reads of files wait for the storage connection that
+    /// is coming, for a test that goes on once a read waits.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn reads_awaiting_connection(&self) -> tokio::sync::watch::Receiver<usize> {
+        self.inner.handle.test_reads_awaiting_connection()
+    }
+
     /// Delete the installations resets kept on this device.
     pub async fn delete_discarded_devices(&self) -> Result<(), DbError> {
         self.reported(self.inner.handle.delete_discarded_devices().await).map_err(DbError::from)
