@@ -266,7 +266,10 @@ SELECT json_object(
         track_artists = super::track_artist_field_sql("n.track_id"),
         side_choices = bae_records::records::sheet_side_choices_sql(PANE_MEDIUMS),
         unplayed = bae_records::records::files::unplayed_files_cte(
-            "(SELECT relative_path AS file_id, role = 'artwork' AND bae_supported_cover(relative_path) AS showable_image FROM f)",
+            &format!(
+                "(SELECT f.relative_path AS file_id, {showable} AS showable_image FROM f)",
+                showable = crate::tables::import_list::showable_artwork_sql("f")
+            ),
             "(SELECT unit_file_id AS audio_file_id, sheet_id AS sheet_file_id FROM rows)",
         ),
         places = bae_records::records::track_places_ctes(

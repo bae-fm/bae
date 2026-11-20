@@ -64,12 +64,13 @@ listed (rank, pos, kind, key, item) AS (
     FROM scan_candidate_file AS f
     JOIN c ON f.watched_folder_path = c.watched_folder_path AND f.candidate_path = c.path
     WHERE :filter IN ('all', 'release_files')
-      AND f.role = 'artwork' AND bae_supported_cover(f.relative_path)
+      AND {showable}
 ),
 items (rank, pos, kind, key, preferred, item) AS (
     SELECT rank, pos, kind, key, EXISTS (SELECT 1 FROM chosen WHERE (chosen.kind, chosen.key) = (listed.kind, listed.key)), item
     FROM listed
 ){walk}",
+        showable = crate::tables::import_list::showable_artwork_sql("f"),
         link = link_sql("c.content_hash"),
         current = current_at_scan_sql("state"),
         offered = offered_covers_sql("c"),

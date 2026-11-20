@@ -82,6 +82,14 @@ const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] = &[
     &pane_files::SUPPORTED_COVER,
 ];
 
+/// The SQL condition that the scanned file `file` (a table alias over
+/// `scan_candidate_file`'s columns) is an image the gallery shows: artwork of
+/// a format a cover can be made from. The cover picker, the pane's images and
+/// the Files list all read it from here.
+pub(crate) fn showable_artwork_sql(file: &str) -> String {
+    format!("({file}.role = 'artwork' AND bae_supported_cover({file}.relative_path))")
+}
+
 /// The collations the import list's SQL names.
 const SQL_COLLATIONS: &[&bae_store::SchemaCollation] = &[&bae_store::NATURAL_ORDER];
 

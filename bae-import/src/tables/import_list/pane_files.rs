@@ -65,7 +65,7 @@ carved (relative_path) AS (
 ),
 entries AS (
     SELECT f.position, f.role,
-           f.role = 'artwork' AND bae_supported_cover(f.relative_path) AS cover,
+           {showable} AS cover,
            json_object(
                'name', f.relative_path, 'size', f.size,
                'file_name', f.file_name, 'path', hex(f.absolute_path),
@@ -88,6 +88,7 @@ SELECT json_object(
                         ON unit.watched_folder_path = candidate.watched_folder_path
                        AND unit.candidate_path = candidate.path),
     'source_audio', {source_audio})",
+        showable = super::showable_artwork_sql("f"),
         source_audio = source_audio_summary_sql(
             "SELECT f.position,
                     CASE WHEN carved.relative_path IS NULL THEN 'file' ELSE 'cue' END AS layout,
