@@ -50,10 +50,10 @@ extension ShotScene {
 
     /// The release the editor opens on: Northbound as its import made it,
     /// with a change made, so the editor offers Cancel and Save, and the rip
-    /// log and front cover its folder carried.
+    /// log its folder carried.
     private static var editedRelease: PreviewReleaseEdit {
         var release = PreviewData.northboundRelease()
-        release.draft.files = Array(PreviewData.carriedBoardFiles.prefix(2))
+        release.draft.files = PreviewData.carriedBoardFiles
         release.draft.cover = BridgeImageRef(
             id: editedReleaseId,
             version: "1",
@@ -126,7 +126,6 @@ extension ShotScene {
                 ),
                 role: .document
             ),
-            PreviewData.carriedBoardFiles[1],
         ]
         return release
     }
