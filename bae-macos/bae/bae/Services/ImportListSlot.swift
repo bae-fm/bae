@@ -128,7 +128,7 @@ final class ImportListSlot {
     /// so the next change has to build a new list rather than read under
     /// the list whose reads have ended.
     @ObservationIgnored
-    private var sourceFailed = false
+    private(set) var sourceFailed = false
 
     /// Why the list could not be read, for as long as that stands.
     ///
