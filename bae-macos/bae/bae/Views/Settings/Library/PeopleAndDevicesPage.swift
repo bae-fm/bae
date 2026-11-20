@@ -185,7 +185,7 @@ struct PeopleAndDevicesPage: View {
                     }
                 }
             }
-            .formStyle(.grouped)
+            .formStyle(.settings)
         }
         .onChange(of: subpage, initial: true) { old, page in
             if case .person(let memberId) = page {

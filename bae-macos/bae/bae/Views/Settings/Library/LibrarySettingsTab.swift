@@ -68,13 +68,12 @@ struct LibrarySettingsTab: View {
                 MacSection {
                     syncRow
                     if configStore.syncs {
-                        NavigationLink(value: Page.people) {
-                            MacRow("People and devices") {
-                                if let count = peopleAndDevices {
-                                    Text(count)
-                                }
+                        MacRow("People and devices") {
+                            if let count = peopleAndDevices {
+                                Text(count)
                             }
                         }
+                        .pressing(.opens { path.append(.people) })
                     }
                 } footer: {
                     if !configStore.syncs, !setupRunning {
@@ -82,7 +81,7 @@ struct LibrarySettingsTab: View {
                     }
                 }
             }
-            .formStyle(.grouped)
+            .formStyle(.settings)
             // The pane's title over the first page; the pages inside it have
             // their own.
             .safeAreaInset(edge: .top, spacing: 0) {
@@ -152,29 +151,27 @@ struct LibrarySettingsTab: View {
     @ViewBuilder
     private var syncRow: some View {
         if configStore.syncs || setupRunning {
-            NavigationLink(value: Page.sync) {
-                MacRow("Sync") {
-                    if let shown = syncStatus.shown {
-                        ToneDotValue(
-                            text: shown.statusLine,
-                            tone: shown.statusTone
-                        )
-                    }
+            MacRow("Sync") {
+                if let shown = syncStatus.shown {
+                    ToneDotValue(
+                        text: shown.statusLine,
+                        tone: shown.statusTone
+                    )
                 }
             }
+            .pressing(.opens { path.append(.sync) })
         }
         else {
-            NavigationLink(value: Page.sync) {
-                MacRow("Sync") {
-                    HStack {
-                        Text("Not synced")
-                            .foregroundStyle(.secondary)
-                        Button("Set up a cloud home…") {
-                            showSyncSetup = true
-                        }
+            MacRow("Sync") {
+                HStack {
+                    Text("Not synced")
+                        .foregroundStyle(.secondary)
+                    Button("Set up a cloud home…") {
+                        showSyncSetup = true
                     }
                 }
             }
+            .pressing(.opens { path.append(.sync) })
         }
     }
 
@@ -270,7 +267,7 @@ private struct SyncSettingsPage: View {
                 )
             }
         }
-        .formStyle(.grouped)
+        .formStyle(.settings)
     }
 }
 
