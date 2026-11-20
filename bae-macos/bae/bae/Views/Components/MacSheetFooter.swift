@@ -23,7 +23,9 @@ struct MacSheetFooter<Lead: View, Trailing: View>: View {
             Spacer()
             trailing
         }
+        .themeText(.body)
         .padding(.top, ThemeSpace.inline)
+        .containerValue(\.isSectionButtons, true)
     }
 }
 

@@ -125,9 +125,9 @@ struct FormatsSettingsTab: View {
         } header: {
             Text("Formats")
         } footer: {
-            Button("Add format…", action: addPreset)
-                .themeText(.body)
-                .frame(maxWidth: .infinity, alignment: .trailing)
+            MacSheetFooter {
+                Button("Add format…", action: addPreset)
+            }
         }
     }
 

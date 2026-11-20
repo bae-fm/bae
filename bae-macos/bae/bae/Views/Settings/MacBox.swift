@@ -23,6 +23,11 @@ extension ContainerValues {
     /// as tall as its field, so it takes less than a row of text.
     @Entry
     var rowVerticalInset: CGFloat = RowMetrics.padding
+
+    /// Whether a section's footer is its row of buttons, such as Invite…,
+    /// and not a note: set by `MacSheetFooter`.
+    @Entry
+    var isSectionButtons = false
 }
 
 extension View {

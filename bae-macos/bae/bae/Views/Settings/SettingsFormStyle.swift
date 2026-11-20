@@ -50,7 +50,8 @@ struct SettingsFormStyle: FormStyle {
     }
 }
 
-/// One section: its heading, its rows in a box, and its footer.
+/// One section: its heading, its rows in a box, and under it its footer: a
+/// note, or a row of buttons (`MacSheetFooter`).
 private struct SettingsFormSection: View {
     let section: SectionConfiguration
 
@@ -64,15 +65,22 @@ private struct SettingsFormSection: View {
                     .accessibilityRemoveTraits(.isHeader)
             }
             MacBoxRows(rows: section.content)
-            if !section.footer.isEmpty {
-                section.footer
-                    .themeText(.detail)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, ThemeSpace.inline)
-                    // The section's space between its parts, then the
-                    // note's own space above it.
-                    .padding(.top, ThemeSpace.compact * 2)
+            ForEach(section.footer) { footer in
+                if footer.containerValues.isSectionButtons {
+                    // The section's space between its parts; the buttons
+                    // keep their own space above them.
+                    footer.padding(.top, ThemeSpace.compact)
+                }
+                else {
+                    footer
+                        .themeText(.detail)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, ThemeSpace.inline)
+                        // The section's space between its parts, then the
+                        // note's own space above it.
+                        .padding(.top, ThemeSpace.compact * 2)
+                }
             }
         }
     }
