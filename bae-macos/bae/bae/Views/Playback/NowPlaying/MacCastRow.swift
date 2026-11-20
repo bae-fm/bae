@@ -60,23 +60,41 @@ struct MacCastRow: View {
     var body: some View {
         switch role {
         case .casting:
-            row
+            ownOrder(item)
         case .found(let onCast):
             switch place {
             case .picker:
                 Button(action: onCast) {
-                    row.contentShape(Rectangle())
+                    item.contentShape(Rectangle())
                 }
                 .buttonStyle(.accentPlain)
             case .page:
                 // The row holds the ⋯ menu, which a button around the row
                 // would take in as part of its own label.
-                row
+                ownOrder(item)
                     .contentShape(Rectangle())
                     .onTapGesture(perform: onCast)
                     .accessibilityAction(named: Text("Play on"), onCast)
             }
         }
+    }
+
+    /// Whether the row's elements are read on their own, and not as a
+    /// button's label.
+    private var readsOwnElements: Bool {
+        if case .found = role, place == .picker {
+            false
+        }
+        else {
+            true
+        }
+    }
+
+    /// The row read in its own order: name, kind, then what ends it. The
+    /// end sits centred on the two lines, and VoiceOver orders a window's
+    /// elements by where they are, so it would read the end between them.
+    private func ownOrder(_ row: some View) -> some View {
+        row.accessibilityElement(children: .contain)
     }
 
     private var casting: Bool {
@@ -85,19 +103,6 @@ struct MacCastRow: View {
         }
         else {
             false
-        }
-    }
-
-    @ViewBuilder
-    private var row: some View {
-        switch place {
-        case .picker:
-            item
-        case .page:
-            // The ⋯ sits centred on the row's two lines, and VoiceOver
-            // orders a window's elements by where they are, so it would read
-            // the ⋯ between them; the row keeps its own order instead.
-            item.accessibilityElement(children: .contain)
         }
     }
 
@@ -131,8 +136,8 @@ struct MacCastRow: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            // Read before the ⋯ in a row that orders its own elements.
-            .accessibilitySortPriority(place == .page ? 1 : 0)
+            // Read before the row's end in a row read in its own order.
+            .accessibilitySortPriority(readsOwnElements ? 1 : 0)
         } trail: {
             switch place {
             case .picker:
