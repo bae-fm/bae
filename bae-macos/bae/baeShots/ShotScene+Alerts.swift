@@ -359,15 +359,15 @@ extension ShotScene {
                     )
                 ]
             )
-            let manager = storageManagerEnvironment(
-                MacStorageWindow(
-                    initialSelection: pinned,
-                    initialInspectorPresented: fixture
-                        .initialInspectorPresented
-                ),
-                fixture: fixture
-            )
-            .frame(width: 1_100, height: 660)
+            let manager =
+                fixture.environment(
+                    of: MacStorageWindow(
+                        initialSelection: pinned,
+                        initialInspectorPresented: fixture
+                            .initialInspectorPresented
+                    )
+                )
+                .frame(width: 1_100, height: 660)
             return ShotStage(
                 OverWindow.alert(
                     UnpinConfirmation.alert(

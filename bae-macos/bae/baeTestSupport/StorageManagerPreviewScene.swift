@@ -39,14 +39,13 @@ struct StorageManagerPreviewScene: View {
     var store: StorageManagerStore { fixture.storageManagerStore }
 
     var body: some View {
-        storageManagerEnvironment(
-            MacStorageWindow(
+        fixture.environment(
+            of: MacStorageWindow(
                 initialSearch: fixture.initialSearch,
                 initialSelection: fixture.initialSelection,
                 initialInspectorPresented: fixture.initialInspectorPresented,
                 initialSelectedFileId: fixture.initialSelectedFileId
-            ),
-            fixture: fixture
+            )
         )
     }
 }

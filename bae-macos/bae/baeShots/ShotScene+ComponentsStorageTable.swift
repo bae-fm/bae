@@ -152,9 +152,8 @@ extension ShotScene {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Theme.surfaceElevated)
             return ShotStage(
-                storageManagerEnvironment(
-                    table,
-                    fixture: fixture,
+                fixture.environment(
+                    of: table,
                     outbox: uploading.map(uploadingOutbox)
                 )
             ) {
@@ -218,9 +217,8 @@ extension ShotScene {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .background(Theme.surfaceElevated)
             return ShotStage(
-                storageManagerEnvironment(
-                    footer,
-                    fixture: fixture,
+                fixture.environment(
+                    of: footer,
                     downloads: DownloadStore(
                         releaseProgress: .downloads(
                             holding: [
@@ -379,7 +377,7 @@ extension ShotScene {
             height: storageWindowSize.height
         )
         return ShotStage(
-            storageManagerEnvironment(window, fixture: fixture)
+            fixture.environment(of: window)
         ) {
             fixture.storageManagerStore.list != nil
         }
