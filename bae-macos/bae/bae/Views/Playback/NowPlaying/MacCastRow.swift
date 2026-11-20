@@ -62,10 +62,20 @@ struct MacCastRow: View {
         case .casting:
             row
         case .found(let onCast):
-            Button(action: onCast) {
-                row.contentShape(Rectangle())
+            switch place {
+            case .picker:
+                Button(action: onCast) {
+                    row.contentShape(Rectangle())
+                }
+                .buttonStyle(.accentPlain)
+            case .page:
+                // The row holds the ⋯ menu, which a button around the row
+                // would take in as part of its own label.
+                row
+                    .contentShape(Rectangle())
+                    .onTapGesture(perform: onCast)
+                    .accessibilityAction(named: Text("Play on…"), onCast)
             }
-            .buttonStyle(.accentPlain)
         }
     }
 

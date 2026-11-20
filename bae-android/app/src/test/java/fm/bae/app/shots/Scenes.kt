@@ -17,6 +17,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.AccentChoice
@@ -93,7 +96,7 @@ private fun SheetWithHandle(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        BottomSheetDefaults.DragHandle()
+        BottomSheetDefaults.DragHandle(modifier = Modifier.semantics { role = Role.Button })
         Column(modifier = Modifier.fillMaxWidth()) { AndroidSheetBody(title, content) }
     }
 }

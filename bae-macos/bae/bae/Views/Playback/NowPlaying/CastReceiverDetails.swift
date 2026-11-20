@@ -7,6 +7,8 @@ struct CastReceiverDetails: View {
     let receiver: BridgeCastReceiver
 
     private let popoverInset: CGFloat = 14
+    /// The width of the box of rows, as the boards draw it.
+    private let contentWidth: CGFloat = 320
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.compact) {
@@ -29,6 +31,6 @@ struct CastReceiverDetails: View {
         .padding(.horizontal, popoverInset)
         .padding(.top, popoverInset + ThemeSpace.inline)
         .padding(.bottom, popoverInset)
-        .frame(width: 320)
+        .frame(width: contentWidth + 2 * popoverInset)
     }
 }

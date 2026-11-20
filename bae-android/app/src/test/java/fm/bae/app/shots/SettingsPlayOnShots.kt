@@ -59,7 +59,7 @@ class SettingsPlayOnShots : BoardShot() {
                         color = MenuDefaults.containerColor,
                         tonalElevation = MenuDefaults.TonalElevation,
                         shadowElevation = MenuDefaults.ShadowElevation,
-                        modifier = Modifier.align(Alignment.TopEnd).padding(top = MENU_TOP, end = ThemeSpace.edge),
+                        modifier = Modifier.align(Alignment.TopEnd).padding(top = MENU_TOP, end = MENU_END),
                     ) {
                         Column(modifier = Modifier.padding(vertical = ThemeSpace.related).width(MENU_WIDTH)) {
                             CastReceiverMenuItems(role = CastReceiverRole.Casting(onDisconnect = {}), onDetails = {}, close = {})
@@ -70,7 +70,8 @@ class SettingsPlayOnShots : BoardShot() {
         }
 }
 
-private val MENU_TOP = 560.dp
+private val MENU_TOP = 485.dp
+private val MENU_END = 32.dp
 private val MENU_WIDTH = 200.dp
 
 /** The Playback page with Play on other devices on and [receivers] listed, as the boards draw it. */
