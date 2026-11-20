@@ -181,11 +181,17 @@ async fn a_pin_waits_while_the_network_is_down() {
     manager.start().unwrap();
 
     test.installation.lose_network();
+    let mut counts = manager.subscribe_download_counts();
+    tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
+        while counts.next_inline().await.expect("the query stays open").unwrap().wait
+            != Some(bae_transfers::QueueWait::Offline)
+        {}
+    })
+    .await
+    .expect("the queue hears that the network is down");
     manager.enqueue_pins(vec![release_id.clone()]).await.unwrap();
-    // The worker has had every chance to take the entry.
-    for _ in 0..200 {
-        tokio::task::yield_now().await;
-    }
+    // The worker has read the queue the enqueue woke it to, and taken nothing.
+    settled_download_worker(manager).await;
     let queue = download_queue_now(manager).await;
     assert_eq!(
         queue.rows.iter().map(|row| &row.op.state).collect::<Vec<_>>(),
