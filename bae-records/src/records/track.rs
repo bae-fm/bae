@@ -70,10 +70,20 @@ impl Records {
         self.store.call_sql(move |sql| insert_track_row(&sql, &track)).await
     }
 
-    /// A release's mediums, in order.
+    /// A release's mediums, in order, for a test that reads a release's
+    /// rows back.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn get_release_mediums(&self, release_id: &str) -> Result<DbReleaseMediums, DbError> {
         let release_id = release_id.to_string();
         self.store.read(move |sql| release_mediums_on(&sql, &release_id)).await
+    }
+
+    /// How a surface outside bae numbers each track of `release_id`.
+    pub async fn export_numbers(&self, release_id: &str) -> Result<DbExportNumbers, DbError> {
+        let release_id = release_id.to_string();
+        self.store
+            .read(move |sql| super::export_numbers::export_numbers_on(&sql, &release_id))
+            .await
     }
 
     /// Where each of `track_ids` sits on its release, in their order, leaving

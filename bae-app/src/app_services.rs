@@ -517,7 +517,7 @@ impl AppServices {
 
     delegate_lib!(records, get_release_records => get_release_records(release_id: &str) -> Vec<bae_catalogs::records::ReleaseRecord>);
     delegate_lib!(records, get_tracks_for_release => get_tracks_for_release(release_id: &str) -> Vec<bae_records::DbTrack>);
-    delegate_lib!(records, get_release_mediums => get_release_mediums(release_id: &str) -> bae_records::DbReleaseMediums);
+    delegate_lib!(records, get_export_numbers => export_numbers(release_id: &str) -> bae_records::DbExportNumbers);
     delegate_async!(manager, get_files_for_release => get_files_for_release(release_id: &str) -> Result<Vec<bae_records::DbFile>, bae_library::LibraryError>);
     delegate_lib!(records, get_file_by_id => find_file_by_id(file_id: &str) -> Option<bae_records::DbFile>);
     delegate_lib!(records, get_library_image => find_library_image(id: &str, image_type: &bae_records::LibraryImageType) -> Option<bae_records::DbLibraryImage>);

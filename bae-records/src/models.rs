@@ -414,30 +414,6 @@ impl DbReleaseMedium {
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct DbReleaseMediums(pub Vec<DbReleaseMedium>);
 
-impl DbReleaseMediums {
-    /// Where `track`, one of this release's, sits. Its medium is one of these:
-    /// the schema refuses a track whose medium row is missing or is another
-    /// release's.
-    pub fn place(&self, track: &DbTrack) -> bae_types::mediums::TrackPlace {
-        let medium = self
-            .0
-            .iter()
-            .find(|medium| medium.id == track.medium_id)
-            .expect("a track's medium row is its release's");
-        bae_types::mediums::TrackPlace {
-            medium: medium.position,
-            side: track.side,
-            number: track.track_number,
-        }
-    }
-
-    /// The disc number a surface outside bae states for `track` (a saved
-    /// file's disc tag, a Subsonic song's disc): its medium's position, for a
-    /// release of several mediums, and none for a release of one.
-    pub fn disc_number(&self, track: &DbTrack) -> Option<u32> {
-        (self.0.len() > 1).then(|| u32::from(self.place(track).medium.get()))
-    }
-}
 /// A physical file belonging to a release — not to an album, and not to a track
 /// (some files are metadata like cover.jpg or .cue sheets that no track owns).
 /// Holds enough of the original file's information to reconstruct the folder

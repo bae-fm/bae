@@ -146,17 +146,19 @@ async fn one_filename_pattern_names_every_format() {
     let flac = presets.iter().find(|preset| preset.id == "flac").unwrap().clone();
     let mp3 = presets.iter().find(|preset| preset.id == "mp3").unwrap().clone();
 
-    // A new library names files by track number, a space, then title.
+    // A new library names files by track number, a space, then title. Both
+    // files are tagged track 1; a save numbers them by their place in the
+    // release.
     let default_pattern = manager.preferences().await.unwrap().save_filename_pattern;
     assert_eq!(default_pattern, SaveFilenamePattern::default());
     assert_eq!(manager.save_track_suggested_name(&tracks[0].id).await.unwrap(), "01 Track One");
     assert_eq!(
         saved_names(flac.clone(), default_pattern.clone()).await,
-        vec!["01 Track One.flac", "01 Track Two.flac"]
+        vec!["01 Track One.flac", "02 Track Two.flac"]
     );
     assert_eq!(
         saved_names(mp3.clone(), default_pattern).await,
-        vec!["01 Track One.mp3", "01 Track Two.mp3"]
+        vec!["01 Track One.mp3", "02 Track Two.mp3"]
     );
 
     // Set once, the new pattern names a track's suggestion and both formats'
@@ -171,11 +173,11 @@ async fn one_filename_pattern_names_every_format() {
     assert_eq!(manager.save_track_suggested_name(&tracks[0].id).await.unwrap(), "01 -  Track One");
     assert_eq!(
         saved_names(flac.clone(), pattern.clone()).await,
-        vec!["01 -  Track One.flac", "01 -  Track Two.flac"]
+        vec!["01 -  Track One.flac", "02 -  Track Two.flac"]
     );
     assert_eq!(
         saved_names(mp3.clone(), pattern).await,
-        vec!["01 -  Track One.mp3", "01 -  Track Two.mp3"]
+        vec!["01 -  Track One.mp3", "02 -  Track Two.mp3"]
     );
 
     // A pattern that can't make a name is kept as typed, and saves are refused

@@ -2876,9 +2876,10 @@ Two ways put a release back on disk, from desktop:
   lossless format's codec at the depth the format writes (WAV and AIFF count
   at 16 or 24 bits), is copied without re-encoding, its tags, cover and name
   written fresh; a lossy format always encodes.
-  Each file's track number is the track's number on its side, and its disc
-  number the track's medium's position, written only for a release of several
-  mediums, and its YEAR the pressing's year, else the album's. Three
+  Each file's track number counts its medium's tracks in playing order across
+  the medium's sides, so side B of a record goes on from side A, and its disc
+  number is the track's medium's position, written only for a release of
+  several mediums, and its YEAR the pressing's year, else the album's. Three
   settings serve every format, all on to start: embedding the cover in each
   file; a release save adding the cover as `cover.jpg` in its folder; and
   loudness tags, each file's ReplayGain track and album gain and peak from
@@ -5405,7 +5406,10 @@ connects to his laptop, lists the artists, opens an album and plays it.
   search, streaming, cover art (Appendix D). A Subsonic album is a bae release.
   bae has no folder tree, so it shows one folder holding everything. An album,
   and each of its songs, shows the release's year: its pressing's, else its
-  album's.
+  album's. A song numbers its medium's tracks as a saved file does (§4.6):
+  its track counts them in playing order across the medium's sides, and its
+  disc is its medium's position, stated only for a release of several
+  mediums.
 - **Streaming.** A track that is one whole file is served as that file, with
   byte ranges, under the type of its container (a WAV file is `audio/wav`,
   whatever codec it holds); its song's `contentType` says the same. Any other

@@ -125,11 +125,11 @@ pub(crate) async fn get_album(
 
     let tracks = services.get_tracks_for_release(&release_id).await.map_err(lib_err)?;
     let files = services.get_files_for_release(&release_id).await.map_err(lib_err)?;
-    let mediums = services.get_release_mediums(&release_id).await.map_err(lib_err)?;
+    let numbers = services.get_export_numbers(&release_id).await.map_err(lib_err)?;
 
     let mut songs = Vec::with_capacity(tracks.len());
     for track in &tracks {
-        songs.push(track_child(services, track, &release, &album, &files, &mediums).await?);
+        songs.push(track_child(services, track, &release, &album, &files, &numbers).await?);
     }
     Ok(Some(album.with_songs(songs)))
 }

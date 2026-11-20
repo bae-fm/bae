@@ -383,6 +383,7 @@ pub fn row_to_track_with_prefix(row: &Row, prefix: &str) -> rusqlite::Result<DbT
     })
 }
 
+#[cfg(any(test, feature = "test-utils"))]
 pub(super) fn row_to_release_medium(row: &Row) -> rusqlite::Result<DbReleaseMedium> {
     let medium: Option<String> = row.get("medium")?;
     let carrier = medium
@@ -402,6 +403,7 @@ pub(super) fn row_to_release_medium(row: &Row) -> rusqlite::Result<DbReleaseMedi
 }
 
 /// A release's mediums, in order.
+#[cfg(any(test, feature = "test-utils"))]
 pub fn release_mediums_on(
     sql: &impl coven::SqlRead,
     release_id: &str,

@@ -34,7 +34,13 @@ impl LibraryManager {
         );
 
         let total_tracks = self.records.count_tracks_for_release(&release.id).await?;
-        let disc = self.records.get_release_mediums(&release.id).await?.disc_number(track);
+        let numbers = self.records.export_numbers(&release.id).await?;
+        let number = numbers.of(&track.id).ok_or_else(|| {
+            LibraryError::Internal(format!(
+                "track {} is not one of release {}'s tracks",
+                track.id, release.id
+            ))
+        })?;
 
         let year = release.shown_year(album.year);
 
@@ -45,10 +51,10 @@ impl LibraryManager {
             album: album.title,
             album_year: album.year,
             year,
-            disc,
+            disc: number.disc,
         };
 
-        Ok(ResolvedSaveTags { tags, track_number: track.track_number.get(), total_tracks })
+        Ok(ResolvedSaveTags { tags, track_number: number.number, total_tracks })
     }
 
     /// One track's save plan under `window`: its tag data and stored audio,

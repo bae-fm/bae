@@ -151,10 +151,10 @@ pub(crate) async fn get_song(state: AppState, params: Params) -> Result<Option<E
     let tracks = services.get_tracks_for_release(&info.release_id).await.map_err(lib_err)?;
     let track = tracks.iter().find(|t| t.id == track_id).ok_or_else(SubError::not_found)?;
     let files = services.get_files_for_release(&info.release_id).await.map_err(lib_err)?;
-    let mediums = services.get_release_mediums(&info.release_id).await.map_err(lib_err)?;
+    let numbers = services.get_export_numbers(&info.release_id).await.map_err(lib_err)?;
     let album = release_album_id3_with(services, &release).await?;
 
-    let child = track_child(services, track, &release, &album, &files, &mediums).await?;
+    let child = track_child(services, track, &release, &album, &files, &numbers).await?;
     Ok(Some(child.to_element()))
 }
 

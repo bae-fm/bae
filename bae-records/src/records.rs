@@ -101,6 +101,7 @@ pub use release_detail::{
     release_detail_rows_on, release_details_on, DbReleaseDetailRows, OtherDeviceError, ReleaseSet,
     NO_STARS,
 };
+mod export_numbers;
 mod release_file;
 mod release_locality;
 mod release_tracks;
