@@ -748,7 +748,13 @@ extension ShotScene {
                     // Under the ⋯ at the page's right: the page's margin and
                     // the picture's height down, the button's height further.
                     MacMenuInPlace {
-                        PlaylistOptionsMenu(onEdit: {}, onDelete: {})
+                        PlaylistOptionsMenu(
+                            onShuffle: {},
+                            owner: PlaylistOptionsMenu.OwnerActions(
+                                edit: {},
+                                delete: {}
+                            )
+                        )
                     }
                     .padding(.top, ThemeSpace.section + 50 + 4)
                     .padding(.trailing, ThemeSpace.section)
@@ -813,7 +819,13 @@ extension ShotScene {
                         // Under the ⋯ at the header's right, which is centred
                         // beside the 72pt picture.
                         MacMenuInPlace {
-                            PlaylistOptionsMenu(onEdit: {}, onDelete: {})
+                            PlaylistOptionsMenu(
+                                onShuffle: {},
+                                owner: PlaylistOptionsMenu.OwnerActions(
+                                    edit: {},
+                                    delete: {}
+                                )
+                            )
                         }
                         .padding(.top, 54)
                     }
@@ -862,7 +874,9 @@ extension ShotScene {
 
     // MARK: - MacListRow
 
-    /// `MacListRow`, a track on a playlist's page.
+    /// `MacListRow`, a play or a playlist's track, its leading column hung
+    /// in the margin: at rest, with a person at its end, left faint and
+    /// raised while the owner drags it, and with a playlist's number.
     private static let listRowScenes: [ShotScene] = [
         component(
             "mac.component.list-row.resting",
@@ -877,8 +891,53 @@ extension ShotScene {
                 duration: "4:32"
             )
             .frame(width: 380, alignment: .leading)
-        }
+        },
+        hangingListRow("mac.component.list-row.who"),
+        hangingListRow("mac.component.list-row.lifted", lifted: true),
+        hangingListRow("mac.component.list-row.dragging", dragging: true),
+        component(
+            "mac.component.list-row.hanging",
+            height: 70,
+            images: coverStore()
+        ) {
+            MacListRow(
+                lead: "1",
+                cover: cover("Low Tide Hours"),
+                title: "Harbor Lights",
+                subtitle: "Mara Quill",
+                duration: "4:32"
+            )
+            .padding(.leading, MacListRow.hang(leadWidth: 20))
+            .frame(width: 380, alignment: .leading)
+        },
     ]
+
+    private static func hangingListRow(
+        _ id: String,
+        lifted: Bool = false,
+        dragging: Bool = false
+    ) -> ShotScene {
+        component(id, height: 70, images: coverStore()) {
+            MacListRow(
+                lead: "21:04",
+                leadWidth: 56,
+                cover: cover("Low Tide Hours"),
+                title: "Harbor Lights",
+                subtitle: "Mara Quill · Low Tide Hours",
+                who: BridgePlaylistOwner(
+                    person: "person-mara",
+                    name: "Mara",
+                    initials: "M",
+                    avatarVersion: nil
+                ),
+                duration: "4:32",
+                lifted: lifted,
+                dragging: dragging
+            )
+            .padding(.leading, MacListRow.hang(leadWidth: 56))
+            .frame(width: 380, alignment: .leading)
+        }
+    }
 
     // MARK: - MacSavePanelFormat
 

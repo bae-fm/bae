@@ -40,8 +40,6 @@ struct LibraryView: View {
                     composerContent
                 case .artists:
                     artistContent
-                case .playlists:
-                    playlistContent
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -56,8 +54,6 @@ struct LibraryView: View {
                 await session.composers.ensureLoaded()
             case .artists:
                 await session.artists.ensureLoaded()
-            case .playlists:
-                break
             }
         }
         .task { libraryProjections.activatePlaylists() }
@@ -81,23 +77,6 @@ struct LibraryView: View {
         }
         .onChange(of: libraryProjections.work.error?.line) { _, line in
             if let line { uiStore.showError(line) }
-        }
-        .sheet(
-            item: Binding(
-                get: { uiStore.newPlaylistSheet },
-                set: { uiStore.newPlaylistSheet = $0 }
-            )
-        ) { sheet in
-            NewPlaylistSheet(
-                // While the sheet closes, it shows the state it had before
-                // `newPlaylistSheet` became nil.
-                state: Binding(
-                    get: { uiStore.newPlaylistSheet ?? sheet },
-                    set: { uiStore.newPlaylistSheet = $0 }
-                ),
-                onCancel: { uiStore.newPlaylistSheet = nil },
-                onCreate: createPlaylist
-            )
         }
         // Opening an album's detail clears the multi-selection.
         .onChange(of: uiStore.selectedAlbumId) { _, selected in
@@ -145,29 +124,6 @@ extension LibraryView {
         }
     }
 
-    /// Make the playlist `sheet` describes and open it; a failure stays in
-    /// the sheet, which stays open.
-    private func createPlaylist(_ sheet: NewPlaylistSheetState) {
-        let library = library
-        let session = session
-        let uiStore = uiStore
-        Task {
-            do {
-                let playlistId = try await library.playlistWrites
-                    .createOfPicked(
-                        sheet.name,
-                        sheet.sharing,
-                        sheet.pickedTrackIds
-                    )
-                session.selectPlaylist(playlistId)
-                uiStore.newPlaylistSheet = nil
-            }
-            catch {
-                uiStore.newPlaylistSheet?.error = DisplayError(error)
-            }
-        }
-    }
-
     private var queueActions: QueueActions {
         QueueActions(library: library, queue: queue, uiStore: uiStore)
     }
@@ -197,12 +153,6 @@ extension LibraryView {
                 sortControls(session.composers)
             case .artists:
                 sortControls(session.artists)
-            case .playlists:
-                if libraryProjections.playlists.value?.canCreate == true {
-                    Button("New playlist…") {
-                        uiStore.presentNewPlaylist(pickedTrackIds: [])
-                    }
-                }
             }
         }
     }
@@ -367,28 +317,6 @@ extension LibraryView {
                 Color.clear
             }
         }
-    }
-
-    private var playlistContent: some View {
-        PlaylistsContent(
-            listing: libraryProjections.playlists.value,
-            error: libraryProjections.playlists.error,
-            detail: selectedPlaylistDetail,
-            fullWidth: fullWidth
-        )
-        .detailRead(
-            id: session.selectedPlaylistId,
-            activate: libraryProjections.activatePlaylist,
-            deactivate: libraryProjections.deactivatePlaylist
-        )
-    }
-
-    private var selectedPlaylistDetail: BridgePlaylistDetail? {
-        let playlistDetail = libraryProjections.playlist.value
-        guard
-            playlistDetail?.summary.id == session.selectedPlaylistId
-        else { return nil }
-        return playlistDetail
     }
 
     private func artistRow(at index: Int, list: ArtistList) -> some View {

@@ -10,7 +10,9 @@ import SwiftUI
 /// headings. `credit` is the text-only row of a credit or recording, which
 /// opens nothing. `part` indents a work under its group's heading work.
 /// `hover` fills the row, `selected` tints it while its page is open beside
-/// the list, and `loading` is the row before it has arrived.
+/// the list, `dropping` draws it in the accent while tracks dragged over it
+/// would go into it when let go (a playlist in the side pane), and `loading`
+/// is the row before it has arrived.
 struct MacLibraryRow: View {
     var picture: BridgeImageRef?
     /// A playlist's picture, in place of `picture`.
@@ -20,6 +22,7 @@ struct MacLibraryRow: View {
     var trailing: String?
     var hover = false
     var selected = false
+    var dropping = false
     var loading = false
     var bleed = false
     var credit = false
@@ -34,6 +37,11 @@ struct MacLibraryRow: View {
                 RoundedRectangle(cornerRadius: ThemeRadius.control)
                     .fill(fill)
             )
+            .overlay {
+                RoundedRectangle(cornerRadius: ThemeRadius.control)
+                    .strokeBorder(Theme.accent, lineWidth: 2)
+                    .opacity(dropping ? 1 : 0)
+            }
             .contentShape(RoundedRectangle(cornerRadius: ThemeRadius.control))
             .padding(.horizontal, bleed ? -ThemeSpace.related : 0)
             .padding(.leading, part ? ThemeSpace.edge : 0)
@@ -116,7 +124,7 @@ struct MacLibraryRow: View {
         if credit || loading {
             return .clear
         }
-        if selected {
+        if selected || dropping {
             return Theme.accentSoft
         }
         return hover ? Theme.hover : .clear
@@ -132,6 +140,7 @@ struct MacLibraryRowButton: View {
     var subtitle: String?
     var trailing: String?
     var selected = false
+    var dropping = false
     var loading = false
     var bleed = false
     var part = false
@@ -150,6 +159,7 @@ struct MacLibraryRowButton: View {
                 trailing: trailing,
                 hover: hovering,
                 selected: selected,
+                dropping: dropping,
                 loading: loading,
                 bleed: bleed,
                 part: part

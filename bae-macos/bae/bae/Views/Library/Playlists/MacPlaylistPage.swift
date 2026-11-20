@@ -1,13 +1,14 @@
 import BaeKit
 import SwiftUI
 
-/// A playlist's page: its picture, name and owner over Play, then its tracks
-/// in order.
+/// A playlist's page inside the side pane's Playlists tab: its picture beside
+/// its name, owner and facts over Play and its ⋯ menu, then its tracks in
+/// order.
 struct MacPlaylistPage: View {
+    /// The playlist as its read last delivered it; nil until the read of the
+    /// open playlist delivers it.
     let detail: BridgePlaylistDetail?
 
-    @Environment(LibraryBrowseSession.self)
-    private var session
     @Environment(Playback.self)
     private var playback
     @Environment(Queue.self)
@@ -22,18 +23,11 @@ struct MacPlaylistPage: View {
     @State
     private var deleting: BridgePlaylistSummary?
 
-    var body: some View {
-        if detail == nil, session.selectedPlaylistId == nil {
-            // Nothing chosen: the placeholder fills the pane, centred.
-            PlaceholderTitle("Playlists")
-                .background(Theme.surface)
-        }
-        else {
-            page
-        }
-    }
+    /// The width of the column the entries' numbers hang in, left of the
+    /// picture's edge.
+    static let numberWidth: CGFloat = 20
 
-    private var page: some View {
+    var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: ThemeSpace.section) {
                 if let detail {
@@ -59,14 +53,21 @@ struct MacPlaylistPage: View {
                         move: { await move($0, to: $1, in: detail.summary) }
                     )
                 }
-                // A selected playlist's read is local: nothing shows until it
+                // The open playlist's read is local: nothing shows until it
                 // lands.
             }
-            .padding(ThemeSpace.section)
+            .padding(.top, ThemeSpace.group)
+            .padding(.bottom, ThemeSpace.section)
+            // The margin holds the entries' numbers, which hang left of the
+            // picture's edge.
+            .padding(
+                .horizontal,
+                ThemeSpace.related
+                    + MacListRow.hang(leadWidth: Self.numberWidth)
+            )
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .reportsHeaderScroll(id: "playlistDetail")
-        .background(Theme.surface)
+        .scrollIndicators(.never)
         .sheet(item: $editing) { sheet in
             EditPlaylistSheet(
                 // While the sheet closes, it shows the state it had before
@@ -105,16 +106,15 @@ struct MacPlaylistPage: View {
         }
     }
 
-    /// Delete `playlist` and clear the selection if it names that playlist.
-    /// When the delete fails, show the error.
+    /// Delete `playlist` and go back to the list when it is open. When the
+    /// delete fails, show the error.
     private func delete(_ playlist: BridgePlaylistSummary) {
         let library = library
         let uiStore = uiStore
-        let session = session
         Task {
             do {
                 try await library.playlistWrites.delete(playlist.id)
-                session.deselectPlaylist(playlist.id)
+                uiStore.closePlaylist(playlist.id)
             }
             catch {
                 uiStore.showError(error)

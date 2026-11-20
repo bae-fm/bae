@@ -640,54 +640,55 @@ extension ShotScene {
             height: 616,
             images: coverStore()
         ) {
-            MacQueuePanel(
-                manual: manual,
-                upNextCount: UInt32(manual.count),
-                isEmpty: !isActive,
-                context: isActive
-                    ? QueuePlaybackContext(
-                        bridge: BridgePlaybackContext(
-                            kind: .release,
-                            sourceTitle: "Low Tide Hours"
+            MacQueuePanel(tab: .queue, onSelectTab: { _ in }, onClose: {}) {
+                QueueTabContent(
+                    manual: manual,
+                    upNextCount: UInt32(manual.count),
+                    isEmpty: !isActive,
+                    context: isActive
+                        ? QueuePlaybackContext(
+                            bridge: BridgePlaybackContext(
+                                kind: .release,
+                                sourceTitle: "Low Tide Hours"
+                            )
+                        ) : nil,
+                    shuffled: false,
+                    upcoming: QueueUpcoming(
+                        total: upcoming.count,
+                        itemAt: {
+                            upcoming.indices.contains($0) ? upcoming[$0] : nil
+                        },
+                        epoch: nil,
+                        holdRow: { _ in },
+                        failure: nil,
+                        onRetry: {}
+                    ),
+                    nowPlaying: queue.map { playing in
+                        QueueNowPlaying(
+                            title: "Low Tide Hours",
+                            artist: "Mara Quill",
+                            cover: playing.covered
+                                ? .libraryImage(cover("Low Tide Hours")) : nil,
+                            position: PreviewData.trackPosition(
+                                positionMs: 102_000,
+                                durationMs: 303_000
+                            )
                         )
-                    ) : nil,
-                shuffled: false,
-                upcoming: QueueUpcoming(
-                    total: upcoming.count,
-                    itemAt: {
-                        upcoming.indices.contains($0) ? upcoming[$0] : nil
                     },
-                    epoch: nil,
-                    holdRow: { _ in },
-                    failure: nil,
-                    onRetry: {}
-                ),
-                nowPlaying: queue.map { playing in
-                    QueueNowPlaying(
-                        title: "Low Tide Hours",
-                        artist: "Mara Quill",
-                        cover: playing.covered
-                            ? .libraryImage(cover("Low Tide Hours")) : nil,
-                        position: PreviewData.trackPosition(
-                            positionMs: 102_000,
-                            durationMs: 303_000
-                        )
-                    )
-                },
-                onShowUpcoming: {},
-                isPlaying: isPlaying,
-                onClose: {},
-                onGoToNowPlaying: {},
-                onPlayPause: {},
-                onClearUpNext: {},
-                onClearPlayingFrom: {},
-                onSkipTo: { _ in },
-                onRemove: { _ in },
-                onReorder: { _, _, _ in true },
-                onReorderFailed: { _ in },
-                onInsertTracks: { _, _ in },
-                onSetShuffle: { _ in }
-            )
+                    onShowUpcoming: {},
+                    isPlaying: isPlaying,
+                    onGoToNowPlaying: {},
+                    onPlayPause: {},
+                    onClearUpNext: {},
+                    onClearPlayingFrom: {},
+                    onSkipTo: { _ in },
+                    onRemove: { _ in },
+                    onReorder: { _, _, _ in true },
+                    onReorderFailed: { _ in },
+                    onInsertTracks: { _, _ in },
+                    onSetShuffle: { _ in }
+                )
+            }
         }
     }
 

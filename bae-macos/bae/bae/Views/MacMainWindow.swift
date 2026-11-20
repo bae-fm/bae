@@ -1,12 +1,12 @@
 import SwiftUI
 
-/// How the queue panel springs in beside the active section and out again.
+/// How the side pane springs in beside the active section and out again.
 enum QueuePanelMotion {
     static let spring = Animation.spring(duration: 0.24, bounce: 0.12)
 }
 
 /// The main window's layout: the title bar, the active section beside the
-/// docked queue, and the now playing bar along the bottom. The caller supplies
+/// docked side pane, and the now playing bar along the bottom. The caller supplies
 /// each part; `MacMainWindowContainer` reads the stores for them.
 struct MacMainWindow<
     TitleBar: View,
@@ -14,8 +14,8 @@ struct MacMainWindow<
     QueuePanel: View,
     NowPlayingBar: View
 >: View {
-    /// Whether the queue panel is docked beside the content.
-    let showQueue: Bool
+    /// Whether the side pane is docked beside the content.
+    let showSidePane: Bool
     @ViewBuilder
     let titleBar: () -> TitleBar
     @ViewBuilder
@@ -34,12 +34,12 @@ struct MacMainWindow<
                     .frame(maxWidth: .infinity)
 
                 // Docked so the content reflows beside it during drags.
-                if showQueue {
+                if showSidePane {
                     queuePanel()
                         .transition(.move(edge: .trailing))
                 }
             }
-            .animation(QueuePanelMotion.spring, value: showQueue)
+            .animation(QueuePanelMotion.spring, value: showSidePane)
 
             nowPlayingBar()
         }

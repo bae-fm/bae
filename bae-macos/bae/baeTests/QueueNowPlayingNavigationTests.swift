@@ -34,7 +34,7 @@ struct QueueNowPlayingNavigationTests {
         let ui = UiStore()
         ui.navigateToImport()
         ui.setLibraryBrowserMode(.artists)
-        ui.setQueuePresented(true)
+        ui.setSidePanePresented(true)
         let store = PlaybackStore()
         store.apply(
             .playing(
@@ -62,6 +62,7 @@ struct QueueNowPlayingNavigationTests {
                 .environment(store)
                 .environment(Queue.stub())
                 .environment(ImageStore.stub())
+                .environment(LibraryProjectionStore(library: .stub()))
                 .environment(ui),
             size: NSSize(width: 420, height: 720)
         ) { window, host in
@@ -90,7 +91,7 @@ struct QueueNowPlayingNavigationTests {
                 ui.selectedReleaseIdByAlbum["playing-album"]
                     == "playing-release"
             )
-            #expect(ui.showQueue)
+            #expect(ui.showSidePane)
         }
     }
 

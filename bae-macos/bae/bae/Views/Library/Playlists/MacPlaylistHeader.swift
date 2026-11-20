@@ -1,9 +1,9 @@
 import BaeKit
 import SwiftUI
 
-/// A playlist page's head: the picture, the name over the owner and the
-/// facts with the sharing chip, then Play, Shuffle and, for the person's own
-/// playlist, the options menu.
+/// A playlist page's head in the side pane: the picture beside a column of the
+/// name, the owner, the count and length, and Play with the ⋯ menu, as an
+/// album's page lays its header out.
 struct MacPlaylistHeader: View {
     let summary: BridgePlaylistSummary
     let onEdit: () -> Void
@@ -12,17 +12,17 @@ struct MacPlaylistHeader: View {
     @Environment(Playback.self)
     private var playback
 
-    private static var pictureSize: CGFloat { 72 }
+    private static var pictureSize: CGFloat { 103 }
 
     var body: some View {
-        HStack(spacing: ThemeSpace.edge) {
+        HStack(alignment: .top, spacing: ThemeSpace.edge) {
             PlaylistPicture(cover: summary.cover, size: Self.pictureSize)
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.cover))
             VStack(alignment: .leading, spacing: ThemeSpace.inline) {
                 Text(summary.name)
                     .themeText(.title)
                     .lineLimit(2)
-                HStack(spacing: ThemeSpace.inline) {
+                HStack(spacing: ThemeSpace.compact) {
                     Avatar(
                         initials: summary.owner.initials,
                         picture: summary.owner.avatarVersion.map {
@@ -30,28 +30,57 @@ struct MacPlaylistHeader: View {
                         },
                         size: 16
                     )
-                    Text(
-                        FactList.joined([
-                            summary.owner.name,
-                            summary.trackCount.localizedLine,
-                            summary.totalDuration?.text,
-                        ]) + " " + FactList.glyph
-                    )
-                    StatusChip(verbatim: summary.sharing.label)
+                    Text(verbatim: summary.owner.name)
+                        .themeText(.strong)
+                        .lineLimit(1)
                 }
-                .themeText(.detail)
                 .foregroundStyle(.secondary)
-            }
-            Spacer(minLength: ThemeSpace.related)
-            MacButton("Play", kind: .primary) {
-                playback.playPlaylist(summary.id, nil, false)
-            }
-            Button("Shuffle") { playback.playPlaylist(summary.id, nil, true) }
-            if summary.yours {
-                MacMoreMenu(look: .boxed) {
-                    PlaylistOptionsMenu(onEdit: onEdit, onDelete: onDelete)
+                facts
+                    .padding(.top, ThemeSpace.inline)
+                HStack(spacing: ThemeSpace.related) {
+                    MacButton("Play", kind: .primary) {
+                        playback.playPlaylist(summary.id, nil, false)
+                    }
+                    MacMoreMenu(look: .boxed, label: Text("Playlist options")) {
+                        PlaylistOptionsMenu(
+                            onShuffle: {
+                                playback.playPlaylist(summary.id, nil, true)
+                            },
+                            owner: summary.yours
+                                ? PlaylistOptionsMenu.OwnerActions(
+                                    edit: onEdit,
+                                    delete: onDelete
+                                ) : nil
+                        )
+                    }
                 }
+                .padding(.top, ThemeSpace.line)
             }
         }
+    }
+
+    /// The count and length; on the person's own playlist, who sees it as a
+    /// glyph after them. A playlist someone else made says nothing about
+    /// sharing, since it is shared to be seen at all.
+    private var facts: some View {
+        HStack(spacing: ThemeSpace.compact) {
+            Text(
+                FactList.joined([
+                    summary.trackCount.localizedLine,
+                    summary.totalDuration?.text,
+                ])
+            )
+            .themeText(.detail)
+            .lineLimit(1)
+            if summary.yours {
+                Image(
+                    systemName: summary.sharing == .household
+                        ? "person.2.fill" : "lock.fill"
+                )
+                .font(.system(size: 10))
+                .accessibilityLabel(Text(verbatim: summary.sharing.label))
+            }
+        }
+        .foregroundStyle(.tertiary)
     }
 }

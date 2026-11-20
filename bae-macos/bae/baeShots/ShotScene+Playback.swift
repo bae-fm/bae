@@ -12,7 +12,7 @@ extension ShotScene {
             size: CGSize(width: 1200, height: 760)
         ) {
             let uiStore = UiStore()
-            uiStore.setQueuePresented(true)
+            uiStore.setSidePanePresented(true)
             let backing = boardLibraryBacking(uiStore: uiStore)
             let playbackStore = boardPlayback(removedFromLibrary: true)
             playbackStore.applyQueueSnapshot(

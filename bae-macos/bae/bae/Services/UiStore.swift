@@ -13,13 +13,25 @@ enum LibraryBrowserMode: CaseIterable {
     case albums
     case artists
     case composers
-    case playlists
 
     var displayName: String {
         switch self {
         case .albums: String(localized: "Albums")
         case .artists: String(localized: "Artists")
         case .composers: String(localized: "Composers")
+        }
+    }
+}
+
+/// The tabs of the side pane docked beside the library: the queue and the
+/// playlists.
+enum SidePaneTab: CaseIterable {
+    case queue
+    case playlists
+
+    var title: String {
+        switch self {
+        case .queue: String(localized: "Queue")
         case .playlists: String(localized: "Playlists")
         }
     }
@@ -57,7 +69,14 @@ class UiStore: @unchecked Sendable {
     private(set) var selectedAlbumId: String?
     /// The tracks picked on the open album's page.
     let pickedTracks = PickedTracks()
-    private(set) var showQueue: Bool = false
+    /// Whether the side pane is docked beside the content.
+    private(set) var showSidePane: Bool = false
+    /// The side pane's tab, which it keeps while it is closed.
+    private(set) var sidePaneTab: SidePaneTab = .queue
+    /// The playlist open in the side pane's Playlists tab, which the tab
+    /// shows again whenever the person comes back to it; `nil` shows the
+    /// list of playlists.
+    private(set) var openPlaylistId: String?
 
     /// The requests to show an album in the album grid, which the grid takes
     /// as they come.
@@ -217,8 +236,38 @@ class UiStore: @unchecked Sendable {
         activeSection = section
     }
 
-    func setQueuePresented(_ presented: Bool) {
-        showQueue = presented
+    func setSidePanePresented(_ presented: Bool) {
+        showSidePane = presented
+    }
+
+    /// Show the side pane on `tab`.
+    func openSidePane(_ tab: SidePaneTab) {
+        sidePaneTab = tab
+        showSidePane = true
+    }
+
+    func selectSidePaneTab(_ tab: SidePaneTab) {
+        sidePaneTab = tab
+    }
+
+    /// Open the playlist `playlistId`'s page in the side pane, on its
+    /// Playlists tab.
+    func openPlaylist(_ playlistId: String) {
+        openPlaylistId = playlistId
+        openSidePane(.playlists)
+    }
+
+    /// Go back from the open playlist to the list of playlists.
+    func closePlaylist() {
+        openPlaylistId = nil
+    }
+
+    /// Go back to the list of playlists when the open playlist is
+    /// `playlistId`, as when the person deletes it.
+    func closePlaylist(_ playlistId: String) {
+        if openPlaylistId == playlistId {
+            openPlaylistId = nil
+        }
     }
 
     func setImportCandidateTab(_ tab: BridgeTriageTab) {

@@ -282,3 +282,35 @@ struct UiStoreNewPlaylistSheetTests {
         )
     }
 }
+
+@Suite("UiStore side pane")
+struct UiStoreSidePaneTests {
+    @Test("opening a playlist shows the side pane on Playlists with it open")
+    func openingAPlaylistShowsItInThePane() {
+        let store = UiStore()
+        store.openPlaylist("playlist-a")
+        #expect(store.showSidePane)
+        #expect(store.sidePaneTab == .playlists)
+        #expect(store.openPlaylistId == "playlist-a")
+    }
+
+    @Test("the Playlists tab keeps its open playlist across tabs and closing")
+    func theOpenPlaylistOutlivesTabsAndClosing() {
+        let store = UiStore()
+        store.openPlaylist("playlist-a")
+        store.selectSidePaneTab(.queue)
+        store.setSidePanePresented(false)
+        store.openSidePane(.playlists)
+        #expect(store.openPlaylistId == "playlist-a")
+    }
+
+    @Test("deleting another playlist keeps the open one; deleting it goes back")
+    func deletingTheOpenPlaylistGoesBackToTheList() {
+        let store = UiStore()
+        store.openPlaylist("playlist-a")
+        store.closePlaylist("playlist-b")
+        #expect(store.openPlaylistId == "playlist-a")
+        store.closePlaylist("playlist-a")
+        #expect(store.openPlaylistId == nil)
+    }
+}

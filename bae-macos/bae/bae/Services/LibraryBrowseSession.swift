@@ -127,9 +127,6 @@ final class LibraryBrowseSession {
     /// The selected artist in the artists browser, or `nil` before any
     /// selection. Views read it and call `selectArtist(_:)`.
     private(set) var selectedArtistId: String?
-    /// The selected playlist in the playlists browser, or `nil` before any
-    /// selection. Views read it and call `selectPlaylist(_:)`.
-    private(set) var selectedPlaylistId: String?
     /// Takes the navigations `UiStore.libraryNavigations` sends, for as long
     /// as the session lives.
     @ObservationIgnored
@@ -258,19 +255,6 @@ final class LibraryBrowseSession {
     /// release credit or from another work's detail).
     func selectWork(_ workId: String) {
         detailSelection = .work(workId: workId)
-    }
-
-    /// Select an artist in the artists browser.
-    func selectPlaylist(_ playlistId: String?) {
-        selectedPlaylistId = playlistId
-    }
-
-    /// Select no playlist when the selected one is `playlistId`, as when the
-    /// person deletes that playlist.
-    func deselectPlaylist(_ playlistId: String) {
-        if selectedPlaylistId == playlistId {
-            selectedPlaylistId = nil
-        }
     }
 
     func selectArtist(_ artistId: String) {

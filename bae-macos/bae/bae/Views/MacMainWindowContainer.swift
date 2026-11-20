@@ -54,7 +54,7 @@ struct MacMainWindowContainer: View {
 
     var body: some View {
         ZStack {
-            MacMainWindow(showQueue: uiStore.showQueue) {
+            MacMainWindow(showSidePane: uiStore.showSidePane) {
                 MacTitleBar(
                     searchText: $searchText,
                     onSearchFieldFrame: { searchFieldFrame = $0 }
@@ -71,7 +71,7 @@ struct MacMainWindowContainer: View {
             } queuePanel: {
                 MacQueuePanelContainer(
                     onClose: {
-                        uiStore.setQueuePresented(false)
+                        uiStore.setSidePanePresented(false)
                     },
                     onInsertTracks: { dropped, index in
                         queueActions.insertDropped(
@@ -205,6 +205,7 @@ struct MacMainWindowContainer: View {
             )
         }
         .castRefusalAlert(castStart)
+        .newPlaylistSheet()
         .fileImporter(
             isPresented: Binding(
                 get: { uiStore.isImportFolderPickerPresented },

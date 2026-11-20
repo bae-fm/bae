@@ -4,7 +4,8 @@ import SwiftUI
 /// The ⋯ button of a row, with the row's actions in its menu: a row offers
 /// its actions here, not as a button of each. `overlay` draws the button
 /// round on a dark fill, for a place on a cover; `boxed` draws it on the
-/// push button's fill, beside a page's Play.
+/// push button's fill, beside a page's Play. `label` names it to screen
+/// readers.
 struct MacMoreMenu: View {
     /// How the button looks.
     enum Look {
@@ -14,6 +15,7 @@ struct MacMoreMenu: View {
     }
 
     let look: Look
+    let label: Text
     /// True while the menu is open.
     let isOpen: Binding<Bool>?
     let items: () -> [MacMenuEntry]
@@ -23,10 +25,12 @@ struct MacMoreMenu: View {
 
     init(
         look: Look = .plain,
+        label: Text = Text("More"),
         isOpen: Binding<Bool>? = nil,
         @MacMenuBuilder items: @escaping () -> [MacMenuEntry]
     ) {
         self.look = look
+        self.label = label
         self.isOpen = isOpen
         self.items = items
     }
@@ -41,7 +45,7 @@ struct MacMoreMenu: View {
         }
         .fixedSize()
         .onHover { isHovered = $0 }
-        .accessibilityLabel(Text("More"))
+        .accessibilityLabel(label)
     }
 
     private var dots: some View {

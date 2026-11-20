@@ -1,20 +1,65 @@
 import BaeKit
 import SwiftUI
 
-/// Reads the stores for `MacQueuePanel`: now-playing and the lanes come off the
-/// `PlaybackStore`, and every command goes to `Queue` and `Playback`.
+/// Reads the stores for `MacQueuePanel`: the tab and what starts the pane's
+/// top come off the `UiStore`, and each tab's content reads its own.
 struct MacQueuePanelContainer: View {
+    @Environment(UiStore.self)
+    private var uiStore
+    @Environment(LibraryProjectionStore.self)
+    private var libraryProjections
+
+    let onClose: () -> Void
+    let onInsertTracks: ([String], Int) -> Void
+
+    var body: some View {
+        MacQueuePanel(
+            tab: uiStore.sidePaneTab,
+            onSelectTab: { uiStore.selectSidePaneTab($0) },
+            lead: lead,
+            onClose: onClose,
+            content: {
+                switch uiStore.sidePaneTab {
+                case .queue:
+                    QueueTabContainer(onInsertTracks: onInsertTracks)
+                case .playlists:
+                    PlaylistsContent()
+                }
+            }
+        )
+    }
+
+    /// On Playlists, the back button to the list while a playlist is open,
+    /// else the + that makes a playlist, which a person with no profile
+    /// cannot.
+    private var lead: SidePaneLead {
+        guard uiStore.sidePaneTab == .playlists else { return .none }
+        if uiStore.openPlaylistId != nil {
+            return .back(to: String(localized: "Playlists")) {
+                uiStore.closePlaylist()
+            }
+        }
+        guard libraryProjections.playlists.value?.canCreate == true else {
+            return .none
+        }
+        return .newPlaylist {
+            uiStore.presentNewPlaylist(pickedTrackIds: [])
+        }
+    }
+}
+
+/// Reads the stores for `QueueTabContent`: now-playing and the lanes come off
+/// the `PlaybackStore`, and every command goes to `Queue` and `Playback`.
+private struct QueueTabContainer: View {
     @Environment(Playback.self)
     private var playback
     @Environment(PlaybackStore.self)
     private var playbackStore
     @Environment(Queue.self)
     private var queue
-
     @Environment(UiStore.self)
     private var uiStore
 
-    let onClose: () -> Void
     let onInsertTracks: ([String], Int) -> Void
 
     var body: some View {
@@ -31,7 +76,7 @@ struct MacQueuePanelContainer: View {
             .map {
                 .libraryImage($0)
             }
-        MacQueuePanel(
+        QueueTabContent(
             manual: playbackStore.manualQueue,
             upNextCount: playbackStore.upNextCount,
             isEmpty: playbackStore.queueIsEmpty,
@@ -47,7 +92,6 @@ struct MacQueuePanelContainer: View {
                 ) : nil,
             onShowUpcoming: { await playbackStore.showUpcoming(queue: queue) },
             isPlaying: np.isPlaying,
-            onClose: onClose,
             onGoToNowPlaying: onGoToNowPlaying,
             onPlayPause: {
                 playback.playPause(for: playbackStore.nowPlaying)
