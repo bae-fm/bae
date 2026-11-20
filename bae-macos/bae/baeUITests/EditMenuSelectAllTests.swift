@@ -39,16 +39,21 @@ final class EditMenuSelectAllTests: XCTestCase {
         // in the list, whichever order it lists them in. The list draws only
         // the rows on screen, so the last shows once the list is scrolled to
         // its end, and the first once it is back at the top.
-        for _ in 0..<20 where !list.staticTexts[last].exists {
-            list.scroll(byDeltaX: 0, deltaY: -2000)
+        var reachedLast = false
+        for _ in 0..<20 where !reachedLast {
+            list.scroll(byDeltaX: 0, deltaY: -3000)
+            reachedLast = list.staticTexts[last].waitForExistence(timeout: 3)
         }
-        XCTAssertTrue(list.staticTexts[last].waitForExistence(timeout: 20))
-        for _ in 0..<20 {
-            list.scroll(byDeltaX: 0, deltaY: 2000)
+        XCTAssertTrue(reachedLast)
+        var reachedFirst = false
+        for _ in 0..<20 where !reachedFirst {
+            list.scroll(byDeltaX: 0, deltaY: 3000)
+            reachedFirst = list.staticTexts["Album 000"]
+                .waitForExistence(
+                    timeout: 3
+                )
         }
-        XCTAssertTrue(
-            list.staticTexts["Album 000"].waitForExistence(timeout: 20)
-        )
+        XCTAssertTrue(reachedFirst)
         // The top row, wherever the list's order put it.
         let topRow = list.coordinate(withNormalizedOffset: .zero)
             .withOffset(CGVector(dx: 120, dy: 30))
