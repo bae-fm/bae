@@ -281,14 +281,18 @@ struct PreviewReleaseEdit: Sendable {
 }
 
 /// A release's library as an editor's form commands meet it: opening reads
-/// what it holds, and a save becomes that.
+/// what it holds, and a save becomes that, or never finishes in a library
+/// that holds its saves.
 actor PreviewReleaseLibrary {
     /// What the library held before anything was saved to it.
     nonisolated let opening: PreviewReleaseEdit
+    /// Whether a save never finishes, so an editor stays on its wait.
+    nonisolated let holdsSaves: Bool
     private var saved: PreviewReleaseEdit
 
-    init(release: PreviewReleaseEdit) {
+    init(release: PreviewReleaseEdit, holdsSaves: Bool = false) {
         opening = release
+        self.holdsSaves = holdsSaves
         saved = release
     }
 
@@ -475,7 +479,10 @@ actor PreviewReleaseLibrary {
                 )
             },
             cancel: { await session.replace(with: await self.open()) },
-            save: { await self.save(session) }
+            save: {
+                if self.holdsSaves { try await Task.neverAnswers() }
+                return await self.save(session)
+            }
         )
     }
 }

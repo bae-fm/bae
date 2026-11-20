@@ -6,7 +6,9 @@ import SwiftUI
 extension ShotScene {
     /// The library's release editor over the album page, as the boards draw
     /// it: on its own, with Change cover over it, with its album pop-up open
-    /// over its row, and over a release a CUE sheet carves from one image.
+    /// over its row, over a release a CUE sheet carves from one image, and
+    /// saving that release after its sheet's Audio file pop-up picked the
+    /// rip, while the save reads the rip.
     static let albumEditorScenes: [ShotScene] = [
         albumEditorScene(id: "mac.album.edit", stage: .editor),
         albumEditorScene(id: "mac.album.edit.cover", stage: .coverSheet),
@@ -19,12 +21,19 @@ extension ShotScene {
             stage: .editor,
             release: editedCueRelease
         ),
+        albumEditorScene(
+            id: "mac.album.edit.reading-file",
+            stage: .saving,
+            release: reboundCueRelease
+        ),
     ]
 
     private enum AlbumEditorStage {
         case editor
         case coverSheet
         case albumMenu
+        /// The editor's Save runs and never finishes.
+        case saving
     }
 
     /// The image the edited release's sheet carves, and the rip of it the
@@ -123,6 +132,42 @@ extension ShotScene {
         return release
     }
 
+    /// The CUE release with its sheet's FILE line moved onto the rip: the run
+    /// names the rip, the pop-up checks it, the Files list holds the image
+    /// in its place, and a save reads the rip first.
+    private static var reboundCueRelease: PreviewReleaseEdit {
+        var release = editedCueRelease
+        let rip = BridgeReleaseEditTrackSource(
+            fileId: cueRip.id,
+            name: cueRip.name,
+            layout: .cue
+        )
+        release.draft.sides = release.draft.sides?
+            .map { side in
+                var side = side
+                side.runs = side.runs.map { run in
+                    guard case .sheet(var sheet, _, let rows) = run else {
+                        return run
+                    }
+                    sheet.audioOptions = sheet.audioOptions.map {
+                        var option = $0
+                        option.bound = option.fileId == cueRip.id
+                        return option
+                    }
+                    let moved = rows.map { row in
+                        var row = row
+                        row.context.source = rip
+                        return row
+                    }
+                    return .sheet(sheet: sheet, source: rip, rows: moved)
+                }
+                return side
+            }
+        release.draft.files?[0] = carriedAudio(cueImage.name)
+        release.draft.filesToRead = [cueRip.name]
+        return release
+    }
+
     /// The audio file `name` of the release, which no track plays from.
     private static func carriedAudio(_ name: String) -> BridgeMappingFile {
         PreviewData.mappingFile(
@@ -145,7 +190,11 @@ extension ShotScene {
             let uiStore = UiStore()
             let backing = boardLibraryBacking(uiStore: uiStore, openAlbum: true)
             let images = coverGalleryImages(of: "Northbound")
-            presentEditor(on: uiStore, images: images, release: release)
+            let session = editorSession(
+                release: release,
+                saving: stage == .saving
+            )
+            presentEditor(on: uiStore, images: images, session: session)
             if stage == .coverSheet {
                 presentCoverSheet(on: uiStore, images: images)
             }
@@ -164,23 +213,42 @@ extension ShotScene {
                 images: images
             ) {
                 (backing.session.albums.list?.positionCount ?? 0) > 0
+                    && (stage != .saving || session.readingLine != nil)
             }
         }
+    }
+
+    /// An editor's session on a library holding `release`; when `saving`,
+    /// the session's Save runs and never finishes.
+    @MainActor
+    private static func editorSession(
+        release: PreviewReleaseEdit,
+        saving: Bool
+    ) -> ReleaseMetadataEditSession {
+        let session = PreviewData.releaseEditSession(
+            releaseId: editedReleaseId,
+            release: release,
+            library: PreviewReleaseLibrary(
+                release: release,
+                holdsSaves: saving
+            )
+        )
+        if saving {
+            session.save { _ in }
+        }
+        return session
     }
 
     @MainActor
     private static func presentEditor(
         on uiStore: UiStore,
         images: ImageStore,
-        release: PreviewReleaseEdit
+        session: ReleaseMetadataEditSession
     ) {
-        let library = PreviewReleaseLibrary(release: release)
         uiStore.presentModal {
             ReleaseEditorSheet(
-                releaseId: editedReleaseId,
+                session: session,
                 displayName: "Northbound · CD · Harbor Records HR-0412 · 1974",
-                opened: library.opened(),
-                commands: library.commands(),
                 onSaved: { _ in },
                 onClose: {}
             )

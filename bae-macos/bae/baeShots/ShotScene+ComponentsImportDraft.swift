@@ -297,6 +297,7 @@ extension ShotScene {
                     ReleaseEditControls(
                         changed: changed,
                         isBusy: false,
+                        reading: nil,
                         onCancel: {},
                         onSave: {}
                     )

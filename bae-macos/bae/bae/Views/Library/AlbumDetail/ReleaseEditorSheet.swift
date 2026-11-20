@@ -22,16 +22,30 @@ struct ReleaseEditorSheet: View {
         onSaved: @escaping @MainActor @Sendable (String) -> Void,
         onClose: @escaping @MainActor @Sendable () -> Void
     ) {
-        self.displayName = displayName
-        self.onClose = onClose
-        self.onSaved = onSaved
-        _session = State(
-            initialValue: ReleaseMetadataEditSession(
+        self.init(
+            session: ReleaseMetadataEditSession(
                 releaseId: releaseId,
                 opened: opened,
                 commands: commands
-            )
+            ),
+            displayName: displayName,
+            onSaved: onSaved,
+            onClose: onClose
         )
+    }
+
+    /// The sheet over `session`, the editor of the release `displayName`
+    /// names.
+    init(
+        session: ReleaseMetadataEditSession,
+        displayName: String,
+        onSaved: @escaping @MainActor @Sendable (String) -> Void,
+        onClose: @escaping @MainActor @Sendable () -> Void
+    ) {
+        self.displayName = displayName
+        self.onClose = onClose
+        self.onSaved = onSaved
+        _session = State(initialValue: session)
     }
 
     var body: some View {
