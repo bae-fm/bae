@@ -250,6 +250,13 @@ struct SaveNameFieldTests {
         )
         let cell = try #require(chip.attachmentCell as? NSCell)
         #expect(cell.accessibilityLabel() == "Track №")
+        #expect(bench.field.accessibilityValue() == "Track № Title")
+        #expect(
+            bench.field.accessibilityString(
+                for: NSRange(location: 1, length: 2)
+            )
+                == " Title"
+        )
     }
 
     struct RefusedWrite: Error {}

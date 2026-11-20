@@ -417,6 +417,38 @@ final class SaveNameFieldView: NSTextView {
         return ceil(max(used, line))
     }
 
+    /// The text in `range` as the person sees it: each chip by its value's
+    /// name, where the text holds one attachment character for it.
+    func readableText(in range: NSRange) -> String {
+        guard let storage = textStorage else { return "" }
+        var text = ""
+        storage.enumerateAttribute(.attachment, in: range) {
+            attachment,
+            run,
+            _ in
+            if let cell = (attachment as? NSTextAttachment)?.attachmentCell
+                as? NSCell,
+                let label = cell.accessibilityLabel()
+            {
+                text += label
+            }
+            else {
+                text += (storage.string as NSString).substring(with: run)
+            }
+        }
+        return text
+    }
+
+    /// VoiceOver reads the field as the person sees it, each chip by its
+    /// value's name among the typed text.
+    override func accessibilityValue() -> String? {
+        readableText(in: NSRange(location: 0, length: textStorage?.length ?? 0))
+    }
+
+    override func accessibilityString(for range: NSRange) -> String? {
+        readableText(in: range)
+    }
+
     /// A name is one line of text: Return ends the typing, as it does in
     /// a text field.
     override func insertNewline(_: Any?) {
