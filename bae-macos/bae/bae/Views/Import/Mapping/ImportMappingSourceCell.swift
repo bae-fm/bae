@@ -82,33 +82,12 @@ struct ImportMappingSourceCell: View {
     }
 
     private func auditionButton(target: BridgePreviewTarget) -> some View {
-        Button {
+        MacAuditionButton(
+            isPlaying: isPreviewing,
+            hitSize: Self.auditionTargetSize
+        ) {
             isPreviewing ? actions.stopPreview() : actions.preview(target)
-        } label: {
-            Image(systemName: isPreviewing ? "stop.fill" : "play.fill")
-                .themeIcon(.small)
-                .foregroundStyle(
-                    isPreviewing
-                        ? AnyShapeStyle(Theme.accent)
-                        : AnyShapeStyle(.secondary)
-                )
-                .frame(
-                    width: Self.auditionTargetSize,
-                    height: Self.auditionTargetSize
-                )
-                .contentShape(Rectangle())
         }
-        .buttonStyle(.accentPlain)
-        .help(
-            isPreviewing
-                ? localizedCoreString("ui.import.slots.stop")
-                : localizedCoreString("ui.import.slots.play")
-        )
-        .accessibilityLabel(
-            isPreviewing
-                ? localizedCoreString("ui.import.slots.stop")
-                : localizedCoreString("ui.import.slots.play")
-        )
     }
 }
 

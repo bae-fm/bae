@@ -43,7 +43,7 @@ struct MacReleaseFileRow: View {
             }
             Spacer(minLength: 0)
             if let onPlay {
-                playButton(onPlay)
+                MacAuditionButton(isPlaying: isPlaying, action: onPlay)
             }
             Text(size)
                 .themeText(.fine)
@@ -52,24 +52,5 @@ struct MacReleaseFileRow: View {
                 .fixedSize()
         }
         .contentShape(Rectangle())
-    }
-
-    private func playButton(_ action: @escaping () -> Void) -> some View {
-        let label = localizedCoreString(
-            isPlaying ? "ui.import.slots.stop" : "ui.import.slots.play"
-        )
-        return Button(action: action) {
-            Image(systemName: isPlaying ? "stop.fill" : "play.fill")
-                .themeIcon(.small)
-                .foregroundStyle(
-                    isPlaying
-                        ? AnyShapeStyle(Theme.accent)
-                        : AnyShapeStyle(.secondary)
-                )
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.accentPlain)
-        .help(label)
-        .accessibilityLabel(label)
     }
 }
