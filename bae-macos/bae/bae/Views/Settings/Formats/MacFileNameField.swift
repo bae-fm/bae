@@ -119,11 +119,15 @@ struct MacFileNameField<Piece: SaveNamePiece>: View {
     }
 
     private var addRow: some View {
-        FlowLayout(spacing: ThemeSpace.compact) {
+        let values = availableValues
+        // VoiceOver reads the values in the order the row lays them out,
+        // which it does not take from the flow layout on its own.
+        return FlowLayout(spacing: ThemeSpace.compact) {
             Text("Add:")
                 .themeText(.detail)
                 .foregroundStyle(.secondary)
-            ForEach(availableValues, id: \.self) { value in
+                .accessibilitySortPriority(Double(values.count + 1))
+            ForEach(Array(values.enumerated()), id: \.element) { index, value in
                 Button(value.label) {
                     handle.append(value)
                 }
@@ -138,8 +142,10 @@ struct MacFileNameField<Piece: SaveNamePiece>: View {
                             style: StrokeStyle(lineWidth: 1, dash: [3, 2])
                         )
                 )
+                .accessibilitySortPriority(Double(values.count - index))
             }
         }
+        .accessibilityElement(children: .contain)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
