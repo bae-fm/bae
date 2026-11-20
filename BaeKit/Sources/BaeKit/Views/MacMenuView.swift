@@ -77,6 +77,17 @@
         private var accent
 
         var body: some View {
+            // Hidden only in a panel: an explicit `accessibilityHidden(false)`
+            // would show the marks each line hides too.
+            if readsLines {
+                face
+            }
+            else {
+                face.accessibilityHidden(true)
+            }
+        }
+
+        private var face: some View {
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(level.entries.indices, id: \.self) { index in
                     line(index)
@@ -100,7 +111,6 @@
                 RoundedRectangle(cornerRadius: MacMenuMetrics.cornerRadius)
                     .strokeBorder(Theme.hairlineStrong, lineWidth: 1)
             )
-            .accessibilityHidden(!readsLines)
         }
 
         private func accessoryColor(
