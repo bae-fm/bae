@@ -66,7 +66,8 @@ extension ShotScene {
                     audioFormat: nil
                 ),
                 upload: nil,
-                pin: nil
+                pin: nil,
+                problem: nil
             )
         )
     }

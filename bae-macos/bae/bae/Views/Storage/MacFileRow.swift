@@ -6,7 +6,10 @@ import SwiftUI
 /// has no mark; one queued to upload, or waiting to be kept while its
 /// release pins, a dashed circle, its name dimmed; one being sent or
 /// downloaded to be kept a ring that fills as it goes, its name in the
-/// transfer's colour. A file waiting on a reason says why in its tooltip.
+/// transfer's colour. A file whose original is missing, so that its upload
+/// waits for it, has a warning mark; one whose original changed, so that its
+/// move failed, a danger mark. A file waiting on a reason says why in its
+/// tooltip.
 struct MacFileRow: View {
     let row: BridgeStorageInspectorFile
 
@@ -35,12 +38,16 @@ struct MacFileRow: View {
     /// mark reads that alone, by its file.
     private enum Place {
         case stored
+        case stopped(BridgeFileProblem)
         case queued(StorageTransferKind)
         case sending(fileId: String)
         case pinning(fileId: String)
     }
 
     private var place: Place {
+        if let problem = row.problem {
+            return .stopped(problem)
+        }
         if let upload = row.upload {
             switch upload.state {
             case .waiting: return .queued(.upload)
@@ -58,6 +65,7 @@ struct MacFileRow: View {
     private var mark: some View {
         switch place {
         case .stored: StorageFileMark(state: .stored)
+        case .stopped(let problem): StorageFileMark(state: .stopped(problem))
         case .queued(let kind): StorageFileMark(state: .queued(kind))
         case .sending(let fileId): StorageSendingFileMark(fileId: fileId)
         case .pinning(let fileId): StoragePinningFileMark(fileId: fileId)
@@ -66,16 +74,19 @@ struct MacFileRow: View {
 
     private var nameStyle: AnyShapeStyle {
         switch place {
-        case .stored: AnyShapeStyle(.primary)
+        case .stored, .stopped: AnyShapeStyle(.primary)
         case .queued: AnyShapeStyle(.secondary)
         case .sending: AnyShapeStyle(StorageTransferKind.upload.color)
         case .pinning: AnyShapeStyle(StorageTransferKind.pin.color)
         }
     }
 
-    /// Why a waiting upload waits, as coven says; otherwise the file's name,
-    /// which the row may cut short.
+    /// What a stopped file's mark says; why a waiting upload waits, as coven
+    /// says; otherwise the file's name, which the row may cut short.
     private var help: String {
+        if let problem = row.problem {
+            return problem.words
+        }
         if let pending = row.upload?.pending {
             return localizedCoreString(pending.reason.key)
         }
@@ -112,11 +123,13 @@ private struct StoragePinningFileMark: View {
 }
 
 /// A file row's mark: nothing for a file at rest, a dashed circle for one
-/// waiting its turn, a ring filling as far as its transfer has come, which
+/// waiting its turn, a tone's glyph for a file whose original is missing or
+/// changed, a ring filling as far as its transfer has come, which
 /// the ring's own view sets from the file's stream.
 struct StorageFileMark: View {
     enum State {
         case stored
+        case stopped(BridgeFileProblem)
         case queued(StorageTransferKind)
         case moving(StorageTransferKind, LatestSource<Double>)
     }
@@ -127,6 +140,10 @@ struct StorageFileMark: View {
         switch state {
         case .stored:
             Color.clear.accessibilityHidden(true)
+        case .stopped(let problem):
+            StatusGlyph(problem.tone)
+                .accessibilityElement()
+                .accessibilityLabel(Text(verbatim: problem.words))
         case .queued(let kind):
             Circle()
                 .inset(by: TransferRingNSView.lineWidth)
@@ -158,6 +175,27 @@ struct StorageFileMark: View {
         switch kind {
         case .upload: Text("Uploading")
         case .pin: Text("Pinning")
+        }
+    }
+}
+
+/// A stopped file's mark: its tone and what it says.
+extension BridgeFileProblem {
+    /// A missing original holds its upload, a warning; a changed one fails
+    /// its move, a danger.
+    fileprivate var tone: StatusTone {
+        switch self {
+        case .originalMissing: .warning
+        case .originalChanged: .danger
+        }
+    }
+
+    /// What the mark says: the words of the inspector's notice for the same
+    /// file.
+    fileprivate var words: String {
+        switch self {
+        case .originalMissing: String(localized: "Waiting for a file")
+        case .originalChanged: String(localized: "Could not move to the cloud")
         }
     }
 }

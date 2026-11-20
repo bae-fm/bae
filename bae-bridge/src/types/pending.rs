@@ -83,11 +83,16 @@ impl BridgePendingReason {
             R::AccessRemains { .. } => K::AccessRemains,
             R::FileUnavailable(coven::FileMissingReason::Source(_)) => K::FileUnavailable,
             R::FileUnavailable(coven::FileMissingReason::Lost) => K::FileLost,
-            R::Original { failure: coven::FileSourceFailure::Missing, .. } => K::FileUnavailable,
-            R::Original {
-                failure: coven::FileSourceFailure::Changed | coven::FileSourceFailure::Integrity,
-                ..
-            } => K::FileChanged,
+            R::Original { .. } => {
+                match bae_views::storage_inspector::FileProblem::of_reason(&reason) {
+                    Some(bae_views::storage_inspector::FileProblem::OriginalMissing) | None => {
+                        K::FileUnavailable
+                    }
+                    Some(bae_views::storage_inspector::FileProblem::OriginalChanged) => {
+                        K::FileChanged
+                    }
+                }
+            }
             R::Failed(_) => K::Failed,
             R::Rejected(_) => K::Rejected,
             R::Cleanup { .. } => K::Cleanup,

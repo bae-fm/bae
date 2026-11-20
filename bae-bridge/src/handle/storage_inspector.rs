@@ -38,13 +38,24 @@ impl crate::types::BridgeStorageInspectorTransfer {
                 total_size: release.total_size,
                 upload: crate::types::BridgeReleaseUpload::from_core(upload),
             },
+            StorageInspectorTransfer::MoveFailed { release_id, release, file_name, cause } => {
+                Self::MoveFailed {
+                    release_id,
+                    title: release.title,
+                    file_count: release.file_count,
+                    total_size: release.total_size,
+                    changed: file_name,
+                    detail: cause,
+                }
+            }
         }
     }
 }
 
 impl crate::types::BridgeStorageInspectorFile {
     fn from_core(row: bae_views::storage_inspector::StorageInspectorFile) -> Self {
-        let bae_views::storage_inspector::StorageInspectorFile { file, upload, pin } = row;
+        use bae_views::storage_inspector::FileProblem;
+        let bae_views::storage_inspector::StorageInspectorFile { file, upload, pin, problem } = row;
         Self {
             file: BridgeFile::from_core(file),
             upload: upload.map(|upload| crate::types::BridgeFileUpload {
@@ -62,6 +73,10 @@ impl crate::types::BridgeStorageInspectorFile {
                     crate::types::BridgeFilePin::Downloading { file_id: file.to_string() }
                 }
                 bae_views::album_detail::FilePin::Waiting => crate::types::BridgeFilePin::Waiting,
+            }),
+            problem: problem.map(|problem| match problem {
+                FileProblem::OriginalMissing => crate::types::BridgeFileProblem::OriginalMissing,
+                FileProblem::OriginalChanged => crate::types::BridgeFileProblem::OriginalChanged,
             }),
         }
     }

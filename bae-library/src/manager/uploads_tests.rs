@@ -605,11 +605,12 @@ async fn an_upload_whose_release_is_deleted_leaves_the_queue() {
     assert!(manager.library.store().pending().await.unwrap().is_empty());
 }
 
-/// When a queued file's original is missing, the inspector shows the file
-/// with the move's record of the missing original. The inspector's query
-/// matches the record to the file by the original's path.
+/// When a queued file's original is missing, the inspector marks the file's
+/// original missing. The inspector's query matches the move's record to the
+/// file by the original's path.
 #[tokio::test]
-async fn the_inspector_shows_a_missing_originals_move_record_on_its_file() {
+async fn the_inspector_marks_a_missing_original_on_its_file() {
+    use bae_views::storage_inspector::FileProblem;
     let (manager, temp, release, _file_id) = queued_upload_fixture("inspector-move").await;
     temp.remove("inspector-move/a.flac");
     assert_eq!(manager.library.manager().drain_uploads_expecting_work().await.unwrap(), 0);
@@ -621,26 +622,15 @@ async fn the_inspector_shows_a_missing_originals_move_record_on_its_file() {
             let event = inspector.next_inline().await.expect("the inspector's read runs");
             let value = event.result.unwrap().expect("the library holds the release");
             last = Some(value.files.clone());
-            let waits: Vec<_> = value
-                .files
-                .iter()
-                .filter_map(|file| file.upload.as_ref()?.pending.as_ref())
-                .map(|wait| wait.reason.clone())
-                .collect();
-            if !waits.is_empty() {
-                break waits;
+            let problems: Vec<_> = value.files.iter().filter_map(|file| file.problem).collect();
+            if !problems.is_empty() {
+                break problems;
             }
         }
     })
     .await
     .unwrap_or_else(|_| panic!("the move's record reaches the inspector: {last:?}"));
-    assert!(
-        shown.iter().any(|reason| matches!(
-            reason,
-            coven::PendingReason::Original { failure: coven::FileSourceFailure::Missing, .. }
-        )),
-        "the missing original is why the file waits: {shown:?}"
-    );
+    assert_eq!(shown, vec![FileProblem::OriginalMissing]);
 }
 
 /// A release's cover, carried by the `covers` row whose key is the release

@@ -43,25 +43,7 @@ struct StorageTransferControls: View {
                 }
             }
         case .download(let operation, nil):
-            // A failed download: the row says why and offers its retry and
-            // its cancel.
-            MacFailedTransferRow(
-                entry: .download(
-                    operation,
-                    onRetry: {
-                        run {
-                            try await downloads.retryDownload(
-                                operation.releaseId
-                            )
-                        }
-                    }
-                ),
-                onCancel: {
-                    run {
-                        try await downloads.cancelDownload(operation.releaseId)
-                    }
-                }
-            )
+            failedDownload(operation)
         case .output(let operation):
             // The row's native label alone follows the percent the export
             // reaches.
@@ -81,6 +63,56 @@ struct StorageTransferControls: View {
             let upload
         ):
             uploadTransfer(releaseId, title, fileCount, totalSize, upload)
+        case .moveFailed(
+            let releaseId,
+            let title,
+            let fileCount,
+            let totalSize,
+            let changed,
+            let detail
+        ):
+            moveFailedTransfer(
+                releaseId,
+                MacFailedTransferRow.Entry.moveFailed(
+                    title: title,
+                    fileCount: fileCount,
+                    totalSize: totalSize,
+                    changed: changed,
+                    reason: DisplayError(
+                        line: String(localized: "Could not move to the cloud"),
+                        detail: detail
+                    )
+                )
+            )
+        }
+    }
+
+    /// A failed download: the row says why and offers its retry and its
+    /// cancel.
+    private func failedDownload(_ operation: BridgeDownloadOp) -> some View {
+        MacFailedTransferRow(
+            entry: .download(
+                operation,
+                onRetry: {
+                    run {
+                        try await downloads.retryDownload(operation.releaseId)
+                    }
+                }
+            ),
+            onCancel: {
+                run { try await downloads.cancelDownload(operation.releaseId) }
+            }
+        )
+    }
+
+    /// The release's move to the cloud that failed: the file whose original
+    /// changed, with Details and the cancel that ends the move.
+    private func moveFailedTransfer(
+        _ releaseId: String,
+        _ entry: MacFailedTransferRow.Entry
+    ) -> some View {
+        MacFailedTransferRow(entry: entry) {
+            run { try await sync.cancelReleaseTransition(releaseId) }
         }
     }
 

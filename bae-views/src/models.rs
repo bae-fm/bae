@@ -396,8 +396,20 @@ pub struct DbStorageInspector {
     pub pins: Option<DbPinCounts>,
     /// What of the release waits in this device's upload queue.
     pub upload: Option<DbReleaseUpload>,
+    /// The release's failed move: the file whose original changed, and the
+    /// text of the error behind the failure when coven kept it.
+    pub failed_move: Option<DbFailedMove>,
     /// The release's entries in the download and export queues.
     pub entries: bae_transfers::ReleaseQueueEntries,
+}
+
+/// A move to the cloud that failed because the original of `file_name`
+/// changed, with the text of the error behind the failure when coven kept it.
+#[cfg(desktop)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DbFailedMove {
+    pub file_name: String,
+    pub cause: Option<String>,
 }
 
 /// The release the inspector is set to, as a row of its transfers names it:
@@ -422,14 +434,19 @@ pub struct DbPinCounts {
 
 /// One file of a release as the Storage Manager's inspector reads it: the
 /// file, where this device's pin of it stands (`None` while the download
-/// queue is not pinning its release), and its upload while it waits in this
-/// device's upload queue.
+/// queue is not pinning its release), its upload while it waits in this
+/// device's upload queue, and the record of the move that found its original
+/// missing or changed.
 #[cfg(desktop)]
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbStorageInspectorFile {
     pub file: DbFile,
     pub pin: Option<crate::album_detail::FilePin>,
     pub upload: Option<DbFileUpload>,
+    /// The pending record of the move whose upload found this file's
+    /// original missing or changed, matched to the file by the original's
+    /// path; the file needs no upload of its own for it.
+    pub move_record: Option<coven::PendingRecord>,
 }
 
 /// One release file waiting in this device's upload queue, read with its

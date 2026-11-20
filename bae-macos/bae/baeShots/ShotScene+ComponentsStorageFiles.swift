@@ -42,11 +42,9 @@ extension ShotScene {
         }
     }
 
-    /// `MacFailedTransferRow`: a pin and a move to This Mac that failed, and
-    /// an upload held by a missing original. The component's row for a move
-    /// to the cloud that failed has no state in the app: an upload that
-    /// fails retries by itself, and none ends in a notice with Cancel
-    /// upload.
+    /// `MacFailedTransferRow`: a pin and a move to This Mac that failed, an
+    /// upload held by a missing original, and a move to the cloud that
+    /// failed because an original changed.
     private static let failedTransferRowScenes: [ShotScene] = [
         failedTransferRow(
             "mac.component.failed-transfer-row.pin",
@@ -65,6 +63,20 @@ extension ShotScene {
                 fileCount: 9,
                 totalSize: 356_000_000,
                 missing: "01 Harbor Lights.flac"
+            ),
+            height: 150
+        ),
+        failedTransferRow(
+            "mac.component.failed-transfer-row.move-to-the-cloud-failed",
+            entry: .moveFailed(
+                title: "Glass Harbor",
+                fileCount: 9,
+                totalSize: 356_000_000,
+                changed: "01 Harbor Lights.flac",
+                reason: DisplayError(
+                    line: "Could not move to the cloud",
+                    detail: "The original changed after the move began."
+                )
             ),
             height: 150
         ),
@@ -153,12 +165,14 @@ extension ShotScene {
         size: UInt64,
         kind: BridgeFileKind,
         upload: BridgeFileUpload? = nil,
-        pin: BridgeFilePin? = nil
+        pin: BridgeFilePin? = nil,
+        problem: BridgeFileProblem? = nil
     ) -> BridgeStorageInspectorFile {
         BridgeStorageInspectorFile(
             file: releaseFile(name, size: size, kind: kind),
             upload: upload,
-            pin: pin
+            pin: pin,
+            problem: problem
         )
     }
 
@@ -202,12 +216,9 @@ extension ShotScene {
         }
     }
 
-    /// `MacFileRow`, a file of the inspector at rest, waiting, moving and
-    /// selected. The component's rows for the file a move stopped on
-    /// (`error`) and a file an upload waits for (`waiting`) have no state in
-    /// the app: the file row has no failure, and its upload's wait reason
-    /// names no class, so the row cannot tell a missing original from other
-    /// waits.
+    /// `MacFileRow`, a file of the inspector at rest, waiting, moving,
+    /// selected, the file a move stopped on because its original changed,
+    /// and the file an upload waits for because its original is missing.
     private static let fileRowScenes: [ShotScene] = [
         fileRow(
             "mac.component.file-row.at-rest",
@@ -250,6 +261,24 @@ extension ShotScene {
                 size: 28_200_000,
                 kind: .audio(format: "FLAC"),
                 pin: .downloading(fileId: "03 Second Floor.flac")
+            )
+        ),
+        fileRow(
+            "mac.component.file-row.error",
+            inspectorFile(
+                "01 Harbor Lights.flac",
+                size: 34_100_000,
+                kind: .audio(format: "FLAC"),
+                problem: .originalChanged
+            )
+        ),
+        fileRow(
+            "mac.component.file-row.waiting",
+            inspectorFile(
+                "01 Evening Lines.flac",
+                size: 31_000_000,
+                kind: .audio(format: "FLAC"),
+                problem: .originalMissing
             )
         ),
         fileRow(

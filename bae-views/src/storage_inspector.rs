@@ -17,13 +17,41 @@ pub struct StorageInspector {
 }
 
 /// One row of the inspector's file list: a release file and its upload,
-/// if one is queued; and while the download queue pins the release, where the
-/// file's pin stands.
+/// if one is queued; while the download queue pins the release, where the
+/// file's pin stands; and what is wrong with its original, when a move found
+/// it missing or changed.
 #[derive(Debug, Clone, PartialEq)]
 pub struct StorageInspectorFile {
     pub file: FileDetail,
     pub upload: Option<StorageInspectorUpload>,
     pub pin: Option<FilePin>,
+    pub problem: Option<FileProblem>,
+}
+
+/// What a move found wrong with a file's original.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FileProblem {
+    /// The original is gone, so the move's upload waits for it.
+    OriginalMissing,
+    /// The original changed since import, so the move failed.
+    OriginalChanged,
+}
+
+impl FileProblem {
+    /// What coven's `reason` says of a file's original; `None` for any other
+    /// reason. The one place coven's `FileSourceFailure` is sorted into
+    /// missing and changed.
+    pub fn of_reason(reason: &coven::PendingReason) -> Option<Self> {
+        match reason {
+            coven::PendingReason::Original { failure, .. } => Some(match failure {
+                coven::FileSourceFailure::Missing => Self::OriginalMissing,
+                coven::FileSourceFailure::Changed | coven::FileSourceFailure::Integrity => {
+                    Self::OriginalChanged
+                }
+            }),
+            _ => None,
+        }
+    }
 }
 
 /// A release file's queued upload as the inspector shows it: which file,
@@ -58,6 +86,16 @@ pub enum StorageInspectorTransfer {
         release: crate::DbInspectorRelease,
         upload: ReleaseUpload,
     },
+    /// The release's move to the cloud, failed because the original of
+    /// `file_name` changed, with the release's album title and its files'
+    /// count and size and the text of the error behind the failure when coven
+    /// kept it. coven keeps the move failed until the person cancels it.
+    MoveFailed {
+        release_id: String,
+        release: crate::DbInspectorRelease,
+        file_name: String,
+        cause: Option<String>,
+    },
 }
 
 impl StorageInspector {
@@ -66,7 +104,15 @@ impl StorageInspector {
     /// in each queue and its files waiting to upload; and, while its download
     /// pins it, the download's count of its files by where their pins stand.
     pub fn read(rows: crate::DbStorageInspector) -> Self {
-        let crate::DbStorageInspector { release_id, release, files, pins, upload, entries } = rows;
+        let crate::DbStorageInspector {
+            release_id,
+            release,
+            files,
+            pins,
+            upload,
+            failed_move,
+            entries,
+        } = rows;
         let files: Vec<StorageInspectorFile> = files
             .into_iter()
             .map(|file| StorageInspectorFile {
@@ -76,6 +122,10 @@ impl StorageInspector {
                     pending: upload.pending.map(|record| PendingWait::of(&record)),
                 }),
                 pin: file.pin,
+                problem: file
+                    .move_record
+                    .as_ref()
+                    .and_then(|record| FileProblem::of_reason(&record.reason)),
                 file: FileDetail::from_raw(file.file),
             })
             .collect();
@@ -89,20 +139,29 @@ impl StorageInspector {
         });
         let upload = upload.map(ReleaseUpload::from_raw);
         Self {
-            transfers: storage_inspector_transfers(&release_id, release, &entries, upload, pins),
+            transfers: storage_inspector_transfers(
+                &release_id,
+                release,
+                &entries,
+                upload,
+                failed_move,
+                pins,
+            ),
             files,
         }
     }
 }
 
 /// The release's entry in each queue, downloads first, then exports, then
-/// its files waiting to upload (`upload`), named by `release`; `pins` summarizes its files for
-/// the download that pins them.
+/// its files waiting to upload (`upload`), named by `release`, then its
+/// failed move (the file whose original changed, with the text of the error
+/// behind it); `pins` summarizes its files for the download that pins them.
 fn storage_inspector_transfers(
     release_id: &str,
     release: crate::DbInspectorRelease,
     entries: &ReleaseQueueEntries,
     upload: Option<ReleaseUpload>,
+    failed_move: Option<crate::DbFailedMove>,
     pins: Option<Vec<bae_transfers::TransferCount>>,
 ) -> Vec<StorageInspectorTransfer> {
     let mut items = Vec::new();
@@ -118,8 +177,16 @@ fn storage_inspector_transfers(
     if let Some(upload) = upload {
         items.push(StorageInspectorTransfer::Upload {
             release_id: release_id.to_string(),
-            release,
+            release: release.clone(),
             upload,
+        });
+    }
+    if let Some(crate::DbFailedMove { file_name, cause }) = failed_move {
+        items.push(StorageInspectorTransfer::MoveFailed {
+            release_id: release_id.to_string(),
+            release,
+            file_name,
+            cause,
         });
     }
     items
@@ -147,6 +214,11 @@ fn storage_inspector_on(
         files: inspector_files_on(sql, release_id)?,
         pins: pin_counts_on(sql, release_id)?,
         upload: bae_records::records::queued_uploads::release_upload_on(sql, release_id)?,
+        failed_move: sql
+            .query_row(FAILED_MOVE, params![release_id], |row| {
+                Ok(crate::DbFailedMove { file_name: row.get(0)?, cause: row.get(1)? })
+            })
+            .optional()?,
         entries: bae_transfers::tables::release_queue_entries_on(sql, release_id)?,
     }))
 }
@@ -160,6 +232,18 @@ const INSPECTOR_RELEASE: &str = "SELECT a.title AS title, storage.file_count AS 
      JOIN albums AS a ON a.id = r.album_id \
      JOIN release_storage AS storage ON storage.release_id = r.id \
      WHERE r.id = ?1";
+
+/// The release `?1`'s failed move: the name of the file whose original
+/// changed, as the move's pending record names it by path, and the text of
+/// the error behind that record; no row while no move failed. The same rows
+/// `release_storage.failed_move_file` is refreshed from.
+const FAILED_MOVE: &str = "SELECT f.original_filename, pending.cause FROM release_files f \
+     JOIN coven_moves moves ON moves.file = f.file \
+     JOIN coven_pending pending ON pending.move = moves.move \
+     JOIN coven_user_files original \
+         ON original.file = f.file AND original.path = pending.original_path \
+     WHERE f.release_id = ?1 AND moves.state = 'failed' AND pending.reason_kind = 'original' \
+     ORDER BY f.id LIMIT 1";
 
 /// One row of [`INSPECTOR_RELEASE`].
 fn inspector_release(row: &Row<'_>) -> rusqlite::Result<crate::DbInspectorRelease> {
@@ -244,18 +328,18 @@ macro_rules! file_pins {
 /// and its upload while it waits in this device's queue, from coven's `coven_pins`,
 /// `coven_downloading` and `coven_uploads`, each joined by the coven file the
 /// row references, the text of the error behind the upload's record when
-/// coven keeps one (`coven_pending`); a file with no upload record of its own
-/// shows the record of the move whose upload found its original, named by its
-/// path, missing or changed. Each file's pin is the one `file_pins!` states.
+/// coven keeps one (`coven_pending`); and, apart from its upload, the record
+/// of the move whose upload found its original, named by its path, missing or
+/// changed, with the text of the error behind it. A file whose move failed
+/// has no upload. Each file's pin is the one `file_pins!` states.
 pub(crate) const INSPECTOR_FILES: &str = concat!(
     file_pins!(),
     "SELECT ",
     bae_records::release_file_columns!(),
     ", pins.pin_state AS pin_state, \
         upload.file AS upload_file, upload.sending AS upload_sending, \
-        COALESCE(upload.pending, move_record.record) AS upload_pending, \
-        CASE WHEN upload.pending IS NOT NULL THEN upload_record.cause \
-             ELSE move_record.cause END AS upload_cause \
+        upload.pending AS upload_pending, upload_record.cause AS upload_cause, \
+        move_record.record AS move_pending, move_record.cause AS move_cause \
      FROM release_files AS f \
      JOIN pins ON pins.file_row = f.id \
      LEFT JOIN coven_uploads AS upload ON upload.file = f.file \
@@ -324,6 +408,10 @@ fn inspector_files_on(
             }),
             None => None,
         };
-        Ok(DbStorageInspectorFile { file, pin, upload })
+        let mut move_record = row.get::<_, Option<coven::PendingRecord>>("move_pending")?;
+        if let Some(record) = &mut move_record {
+            record.cause = row.get("move_cause")?;
+        }
+        Ok(DbStorageInspectorFile { file, pin, upload, move_record })
     })?)
 }

@@ -12,13 +12,23 @@ pub struct BridgeStorageInspector {
 }
 
 /// One release file in the inspector, beside its upload while one waits,
-/// and while the release is pinning, where its pin stands. Mirrors
-/// `StorageInspectorFile`.
+/// while the release is pinning, where its pin stands, and what a move found
+/// wrong with its original. Mirrors `StorageInspectorFile`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeStorageInspectorFile {
     pub file: BridgeFile,
     pub upload: Option<BridgeFileUpload>,
     pub pin: Option<BridgeFilePin>,
+    pub problem: Option<BridgeFileProblem>,
+}
+
+/// What a move found wrong with a file's original. Mirrors `FileProblem`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeFileProblem {
+    /// The original is gone, so the move's upload waits for it.
+    OriginalMissing,
+    /// The original changed since import, so the move failed.
+    OriginalChanged,
 }
 
 /// Where a pinning release's file stands: kept whole on this device,
@@ -63,5 +73,17 @@ pub enum BridgeStorageInspectorTransfer {
         file_count: u64,
         total_size: u64,
         upload: super::BridgeReleaseUpload,
+    },
+    /// The release's move to the cloud, which failed because the original of
+    /// the file named `changed` changed since import, with the album's title
+    /// and its files' count and total size, and the text of the error behind
+    /// the failure when coven kept it.
+    MoveFailed {
+        release_id: String,
+        title: String,
+        file_count: u64,
+        total_size: u64,
+        changed: String,
+        detail: Option<String>,
     },
 }

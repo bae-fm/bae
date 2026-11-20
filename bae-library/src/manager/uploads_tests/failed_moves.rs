@@ -109,3 +109,33 @@ async fn a_release_in_a_failed_move_is_named_and_the_rest_of_the_selection_moves
         assert_eq!(moving_file_count(library, &release.id).await, 1);
     }
 }
+
+/// The inspector of a release whose move failed because an original changed
+/// shows the failed move with the file's name, and marks that file's original
+/// changed; cancelling the move ends both.
+#[tokio::test]
+async fn the_inspector_shows_a_failed_move_and_its_changed_file_until_cancelled() {
+    use bae_views::storage_inspector::{FileProblem, StorageInspectorTransfer};
+    let (manager, temp, release, _file_id) = queued_upload_fixture("failed-inspector").await;
+    let library = manager.library.manager();
+    temp.write("failed-inspector/a.flac", b"changed after the move");
+    library.drain_uploads_expecting_work().await.unwrap();
+    let mut inspector = bae_views::LibraryViews::new(library.store.clone())
+        .subscribe_storage_inspector(Some(release.id.clone()));
+    let failed = crate::manager::tests::rows_until(&mut inspector, |_| true).await;
+    let [StorageInspectorTransfer::MoveFailed { file_name, release: named, .. }] =
+        failed.transfers.as_slice()
+    else {
+        panic!("the failed move is the release's only transfer: {:?}", failed.transfers);
+    };
+    assert_eq!(file_name, "a.flac");
+    assert_eq!((named.file_count, named.total_size), (1, 1000));
+    assert_eq!(
+        failed.files.iter().map(|file| file.problem).collect::<Vec<_>>(),
+        vec![Some(FileProblem::OriginalChanged)]
+    );
+    library.cancel_release_transition(&release.id).await.unwrap();
+    let cancelled =
+        crate::manager::tests::rows_until(&mut inspector, |value| value.transfers.is_empty()).await;
+    assert_eq!(cancelled.files.iter().map(|file| file.problem).collect::<Vec<_>>(), vec![None]);
+}

@@ -53,6 +53,7 @@ fn file(id: &str, pin: Option<FilePin>) -> crate::DbStorageInspectorFile {
         },
         pin,
         upload: None,
+        move_record: None,
     }
 }
 
@@ -77,6 +78,7 @@ fn shown(
         files,
         pins,
         upload,
+        failed_move: None,
         entries: entries.clone(),
     })
 }
@@ -106,6 +108,9 @@ fn each_queue_shows_the_selected_releases_entry() {
                 StorageInspectorTransfer::Upload { release_id, .. } => {
                     ("upload", release_id.as_str())
                 }
+                StorageInspectorTransfer::MoveFailed { release_id, .. } => {
+                    ("move failed", release_id.as_str())
+                }
             })
             .collect::<Vec<_>>(),
         vec![("download", "selected"), ("output", "selected"), ("upload", "selected"),]
@@ -133,6 +138,78 @@ fn an_upload_names_its_release() {
             total_size: 356_000_000,
         }
     );
+}
+
+fn original_record(failure: coven::FileSourceFailure, cause: Option<&str>) -> coven::PendingRecord {
+    let mut record = coven::PendingRecord::new(
+        coven::PendingSubject::Connection,
+        coven::PendingReason::Original { failure, path: "/music/a.flac".into() },
+    );
+    record.cause = cause.map(str::to_string);
+    record
+}
+
+/// A file whose move found its original missing, or changed, shows it as its
+/// problem; a file with no such record shows none.
+#[test]
+fn a_file_shows_what_its_moves_record_says_of_its_original() {
+    let problems = |failure| {
+        let mut stopped = file("stopped", None);
+        stopped.move_record = Some(original_record(failure, None));
+        let whole = file("whole", None);
+        shown(
+            vec![stopped, whole],
+            &ReleaseQueueEntries { download: None, output: None },
+            None,
+            None,
+        )
+        .files
+        .into_iter()
+        .map(|file| file.problem)
+        .collect::<Vec<_>>()
+    };
+    assert_eq!(
+        problems(coven::FileSourceFailure::Missing),
+        vec![Some(FileProblem::OriginalMissing), None]
+    );
+    assert_eq!(
+        problems(coven::FileSourceFailure::Changed),
+        vec![Some(FileProblem::OriginalChanged), None]
+    );
+}
+
+/// A release whose move failed shows the failed move, naming the file and
+/// carrying the text of the error behind it, with its album and its files'
+/// count and size.
+#[test]
+fn a_failed_move_names_its_file_and_the_error_behind_it() {
+    let mut changed = file("changed", None);
+    changed.move_record =
+        Some(original_record(coven::FileSourceFailure::Changed, Some("size differs")));
+    let inspector = StorageInspector::read(crate::DbStorageInspector {
+        release_id: "selected".to_string(),
+        release: crate::DbInspectorRelease {
+            title: "Album Title".to_string(),
+            file_count: 9,
+            total_size: 356_000_000,
+        },
+        files: vec![file("other", None), changed],
+        pins: None,
+        upload: None,
+        failed_move: Some(crate::DbFailedMove {
+            file_name: "changed.flac".to_string(),
+            cause: Some("size differs".to_string()),
+        }),
+        entries: ReleaseQueueEntries { download: None, output: None },
+    });
+    let [StorageInspectorTransfer::MoveFailed { file_name, cause, release, .. }] =
+        inspector.transfers.as_slice()
+    else {
+        panic!("only the failed move is shown: {:?}", inspector.transfers);
+    };
+    assert_eq!(file_name, "changed.flac");
+    assert_eq!(cause.as_deref(), Some("size differs"));
+    assert_eq!(release.title, "Album Title");
 }
 
 #[test]

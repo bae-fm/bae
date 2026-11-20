@@ -713,13 +713,22 @@ extension PreviewData {
         }
         return BridgeStorageInspector(
             transfers: transfers,
-            files: files.map {
-                BridgeStorageInspectorFile(
-                    file: $0,
-                    upload: upload?.files[$0.id],
-                    pin: pin($0)
-                )
-            }
+            files: files.map { inspectorFile($0, upload: upload, pin: pin($0)) }
+        )
+    }
+
+    /// `file` as core's inspector read delivers it: beside its upload and
+    /// pin, with nothing wrong with its original.
+    private static func inspectorFile(
+        _ file: BridgeFile,
+        upload: PreviewReleaseUpload?,
+        pin: BridgeFilePin?
+    ) -> BridgeStorageInspectorFile {
+        BridgeStorageInspectorFile(
+            file: file,
+            upload: upload?.files[file.id],
+            pin: pin,
+            problem: nil
         )
     }
 

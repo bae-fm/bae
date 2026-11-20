@@ -7,7 +7,9 @@ import SwiftUI
 /// for their words; the notice of a failed download says why and offers
 /// Retry, which queues every failed download again. An upload held by a
 /// missing original names the file and offers Restore source file…, whose
-/// sheet says to put the file back and retries the upload.
+/// sheet says to put the file back and retries the upload. A move to the
+/// cloud that failed because a file's original changed names the file and
+/// offers Details and Cancel upload, which ends the move.
 struct MacFailedTransferRow: View {
     /// What the row shows.
     enum Entry {
@@ -22,6 +24,18 @@ struct MacFailedTransferRow: View {
             fileCount: UInt64,
             totalSize: UInt64,
             missing: String
+        )
+        /// A move to the cloud that failed because the original of the file
+        /// `changed` is no longer what was imported, with the release's
+        /// album title and its files' count and size, and the failure
+        /// Details opens, whose detail is the text of the error behind it
+        /// when coven kept one.
+        case moveFailed(
+            title: String,
+            fileCount: UInt64,
+            totalSize: UInt64,
+            changed: String,
+            reason: DisplayError
         )
     }
 
@@ -66,7 +80,7 @@ struct MacFailedTransferRow: View {
     private var icon: String {
         switch entry {
         case .download(let op, _): op.kind == .pin ? "pin" : "folder"
-        case .uploadWaiting: "arrow.up"
+        case .uploadWaiting, .moveFailed: "arrow.up"
         }
     }
 
@@ -74,6 +88,7 @@ struct MacFailedTransferRow: View {
         switch entry {
         case .download(let op, _): op.titleText
         case .uploadWaiting(let title, _, _, _): title
+        case .moveFailed(let title, _, _, _, _): title
         }
     }
 
@@ -81,7 +96,8 @@ struct MacFailedTransferRow: View {
         switch entry {
         case .download(let op, _):
             op.detailText
-        case .uploadWaiting(_, let fileCount, let totalSize, _):
+        case .uploadWaiting(_, let fileCount, let totalSize, _),
+            .moveFailed(_, let fileCount, let totalSize, _, _):
             BridgeQueuedRelease.filesText(
                 fileCount: fileCount,
                 totalSize: totalSize
@@ -89,7 +105,8 @@ struct MacFailedTransferRow: View {
         }
     }
 
-    /// The failed download's notice, or the waiting upload's, under the row.
+    /// The failed download's notice, the waiting upload's, or the failed
+    /// move's, under the row.
     @ViewBuilder
     private var notice: some View {
         switch entry {
@@ -115,6 +132,17 @@ struct MacFailedTransferRow: View {
                 action: ErrorAction("Restore source file…") {
                     restoring = true
                 },
+                buttons: .below
+            )
+        case .moveFailed(_, _, _, let changed, let reason):
+            MacNotice(
+                title: String(localized: "Could not move to the cloud"),
+                advice: String(
+                    localized: "\(changed) changed since import."
+                ),
+                error: reason,
+                look: .quiet,
+                action: ErrorAction("Cancel upload", perform: onCancel),
                 buttons: .below
             )
         }
