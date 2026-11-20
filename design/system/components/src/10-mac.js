@@ -345,7 +345,7 @@
     var pieces = String(props.pattern || '').split(/(\[[^\]]*\])/).filter(function (x) { return x !== ''; });
     // `label` sits above the field, at the row's leading edge where a MacRow's title sits, so the field runs the box's full width.
     return h('div', { className: 'bae-m-filename' },
-      props.label == null ? null : h('span', { className: 'bae-m-filename-label' }, props.label),
+      h('span', { className: 'bae-m-filename-label' }, props.label),
       h('div', { className: cx('bae-m-tokenfield', props.error && 'bae-m-tokenfield-error'), 'aria-label': props.label, 'aria-invalid': props.error ? true : null }, pieces.map(function (t, i) { return t.charAt(0) === '[' ? h(MacToken, { key: i }, t.slice(1, -1)) : h('span', { key: i, className: 'bae-m-tokentext' }, t); })),
       props.error ? h(MacErrorLine, null, props.error)
         : props.preview ? h('div', { className: 'bae-m-filename-preview' }, 'Preview: ', h('span', { className: 'bae-mono' }, props.preview)) : null,
