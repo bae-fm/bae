@@ -59,6 +59,37 @@ impl SourceStream {
         Self { buffer: StopOnDrop(buffer), fill }
     }
 
+    /// Start streaming the release file `file_id`, of the stored size
+    /// `size`, start to finish for `work` nobody listens to while it reads
+    /// (a save, a loudness pass): coven reads it from wherever it has it, in
+    /// a place of `lease`, with prefetches on `runtime`. A failed read, or a
+    /// file shorter than `size`, fails the stream's readers, and bae logs it
+    /// naming `work` and the file.
+    pub fn of_release_file(
+        runtime: tokio::runtime::Handle,
+        records: bae_records::Records,
+        file_id: String,
+        size: u64,
+        diagnostics: bae_diagnostics::Diagnostics,
+        lease: FileLease,
+        work: &'static str,
+    ) -> Self {
+        let reader = crate::data_source::CovenFileReader::new(
+            runtime,
+            records,
+            file_id.clone(),
+            diagnostics,
+            lease,
+        );
+        Self::start(
+            Box::new(reader),
+            size,
+            Box::new(move |error| {
+                tracing::warn!("{work}: streaming release file {file_id} failed: {error}");
+            }),
+        )
+    }
+
     /// Stop the stream and wait for its fill to end, so the file is closed
     /// when this returns.
     async fn close(self) {

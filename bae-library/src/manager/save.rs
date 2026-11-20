@@ -94,14 +94,14 @@ impl LibraryManager {
         file: &bae_records::DbFile,
         lease: &coven::FileLease,
     ) -> SourceStream {
-        let reader = self.create_audio_reader(&file.id, lease.clone());
-        let file_id = file.id.clone();
-        SourceStream::start(
-            reader,
+        SourceStream::of_release_file(
+            self.runtime_handle.clone(),
+            self.records.clone(),
+            file.id.clone(),
             file.file_size,
-            Box::new(move |error| {
-                tracing::warn!("save: streaming release file {file_id} failed: {error}");
-            }),
+            self.diagnostics.clone(),
+            lease.clone(),
+            "save",
         )
     }
 

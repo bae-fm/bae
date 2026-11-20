@@ -750,23 +750,16 @@ pub(crate) async fn measure_library_tracks(
         tracks,
         |file_id| file_sizes.contains_key(file_id),
         |file_id: String, lease: coven::FileLease| {
-            let size = file_sizes[&file_id];
-            let reader = bae_track_audio::data_source::CovenFileReader::new(
+            let stream = SourceStream::of_release_file(
                 runtime.clone(),
                 records.clone(),
                 file_id.clone(),
+                file_sizes[&file_id],
                 diagnostics.clone(),
                 lease,
+                "loudness",
             );
-            async move {
-                SourceStream::start(
-                    Box::new(reader),
-                    size,
-                    Box::new(move |error| {
-                        warn!("loudness: streaming release file {file_id} failed: {error}");
-                    }),
-                )
-            }
+            async move { stream }
         },
         LoudnessProgress::unreported,
         diagnostics,
