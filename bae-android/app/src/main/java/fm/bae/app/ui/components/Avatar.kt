@@ -30,7 +30,7 @@ internal fun BridgePersonProfile.face(): AvatarFace =
     AvatarFace(initials, avatarVersion?.let { ImageContent.Avatar(person = id, version = it) })
 
 /** The face of a person who may have no profile: a plain tile, with no initials, while there is none. */
-internal fun BridgePersonProfile?.face(): AvatarFace = this?.face() ?: AvatarFace(initials = "", picture = null)
+internal fun BridgePersonProfile?.faceOrTile(): AvatarFace = this?.face() ?: AvatarFace(initials = "", picture = null)
 
 /** A person's picture, or their initials in the accent on its tint while they have none. Round. */
 @Composable

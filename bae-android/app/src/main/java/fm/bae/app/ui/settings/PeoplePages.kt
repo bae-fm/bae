@@ -22,7 +22,7 @@ import fm.bae.app.ui.components.AndroidCard
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidSection
 import fm.bae.app.ui.components.RowIcon
-import fm.bae.app.ui.components.face
+import fm.bae.app.ui.components.faceOrTile
 import uniffi.bae_bridge.BridgeAdminChanges
 import uniffi.bae_bridge.BridgeHistorySharing
 import uniffi.bae_bridge.BridgeInviteEntry
@@ -167,7 +167,7 @@ private fun PeopleCard(
             val name = person.profile?.name ?: stringResource(R.string.members_unnamed)
             AndroidRow(
                 title = name,
-                avatar = person.profile.face(),
+                avatar = person.profile.faceOrTile(),
                 subtitle =
                     stringResource(
                         R.string.people_role_and_devices,

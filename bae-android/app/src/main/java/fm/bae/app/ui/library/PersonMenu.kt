@@ -18,7 +18,7 @@ import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.AndroidMenu
 import fm.bae.app.ui.components.Avatar
 import fm.bae.app.ui.components.AvatarFace
-import fm.bae.app.ui.components.face
+import fm.bae.app.ui.components.faceOrTile
 
 /** The side of the person's picture in the header. */
 private val PERSON_PICTURE = 32.dp
@@ -40,7 +40,7 @@ internal fun PersonMenu(
     val isAdmin = person.isAdmin ?: return
     PersonButton(
         state = state,
-        face = person.profile.face(),
+        face = person.profile.faceOrTile(),
         isAdmin = isAdmin,
         onAddDevice = onAddDevice,
         onInvite = onInvite,
