@@ -228,26 +228,15 @@ pub struct DbTrackPlace {
     pub on: bae_types::mediums::TrackSide,
 }
 
-/// How a surface outside bae numbers one track.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DbExportNumber {
-    pub track_id: String,
+/// A track with how a surface outside bae numbers it: a saved file's track
+/// and disc tags and file name, and a Subsonic song.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DbNumberedTrack {
+    pub track: DbTrack,
     /// The track's number among its medium's tracks, from one.
     pub number: u32,
     /// Its medium's position, for a release of several mediums.
     pub disc: Option<u32>,
-}
-
-/// How a surface outside bae numbers each track of a release, in playing
-/// order.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DbExportNumbers(pub Vec<DbExportNumber>);
-
-impl DbExportNumbers {
-    /// The numbers of `track_id`, one of the release's tracks.
-    pub fn of(&self, track_id: &str) -> Option<&DbExportNumber> {
-        self.0.iter().find(|number| number.track_id == track_id)
-    }
 }
 
 /// One row of a release's credits: a role, the names of the artists who hold

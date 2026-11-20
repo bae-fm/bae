@@ -247,7 +247,7 @@ impl Records {
         links: crate::test_fixtures::library::LibraryRows,
     ) -> Result<(), super::ReleaseEditSaveError> {
         let metadata = self.release_metadata_for_test(release_id).await?;
-        let mediums = self.get_release_mediums(release_id).await?.0;
+        let mediums = self.get_release_mediums(release_id).await?;
         let mut artists = metadata.credits;
         let linked = links
             .release_artist_roles

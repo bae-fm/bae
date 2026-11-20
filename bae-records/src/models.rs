@@ -410,10 +410,6 @@ impl DbReleaseMedium {
     }
 }
 
-/// A release's mediums in order, which its tracks' places are read against.
-#[derive(Debug, Clone, PartialEq, Default)]
-pub struct DbReleaseMediums(pub Vec<DbReleaseMedium>);
-
 /// A physical file belonging to a release — not to an album, and not to a track
 /// (some files are metadata like cover.jpg or .cue sheets that no track owns).
 /// Holds enough of the original file's information to reconstruct the folder

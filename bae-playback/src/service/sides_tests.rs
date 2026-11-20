@@ -79,34 +79,16 @@ fn side_pause_prompt_carries_its_countdown() {
 /// `mediums`, on the side or disc `on`.
 fn info_on(
     track_id: &str,
-    mediums: &bae_records::DbReleaseMediums,
+    mediums: &[bae_types::mediums::ReleaseMedium],
     medium: usize,
     on: bae_types::mediums::TrackSide,
 ) -> PlaybackTrackInfo {
     PlaybackTrackInfo::of(bae_records::DbTrackPlace {
         track_id: track_id.to_string(),
         release_id: "release-id".to_string(),
-        carrier: mediums.0[medium - 1].medium.carrier,
+        carrier: mediums[medium - 1].carrier,
         on,
     })
-}
-
-fn release_of(mediums: &[bae_types::mediums::ReleaseMedium]) -> bae_records::DbReleaseMediums {
-    bae_records::DbReleaseMediums(
-        mediums
-            .iter()
-            .enumerate()
-            .map(|(index, medium)| {
-                bae_records::DbReleaseMedium::new(
-                    &coven::UuidIds,
-                    "release-id",
-                    bae_types::mediums::medium_position(index),
-                    *medium,
-                    time::UtcDateTime::now(),
-                )
-            })
-            .collect(),
-    )
 }
 
 /// A CD release pauses where its discs change and nowhere else, the pause
@@ -114,7 +96,7 @@ fn release_of(mediums: &[bae_types::mediums::ReleaseMedium]) -> bae_records::DbR
 #[test]
 fn a_cd_release_pauses_at_disc_changes_only() {
     let cd = bae_types::mediums::ReleaseMedium::one_sided(Some(bae_types::pressing::Medium::Cd));
-    let mediums = release_of(&[cd, cd]);
+    let mediums = [cd, cd];
     let disc = |disc| bae_types::mediums::TrackSide::Disc { disc };
     let first = info_on("first", &mediums, 1, disc(1));
     let second = info_on("second", &mediums, 1, disc(1));
@@ -131,7 +113,7 @@ fn a_two_record_release_pauses_at_each_side() {
         carrier: Some(bae_types::pressing::Medium::Vinyl),
         sides: std::num::NonZeroU8::new(2).expect("two sides"),
     };
-    let mediums = release_of(&[record, record]);
+    let mediums = [record, record];
     let places = [(1, "A"), (1, "B"), (2, "C"), (2, "D")];
     let infos: Vec<_> = places
         .iter()
@@ -152,7 +134,7 @@ fn a_two_record_release_pauses_at_each_side() {
 #[test]
 fn a_medium_of_no_carrier_never_pauses() {
     let unstated = bae_types::mediums::ReleaseMedium::one_sided(None);
-    let mediums = release_of(&[unstated, unstated]);
+    let mediums = [unstated, unstated];
     let disc = |disc| bae_types::mediums::TrackSide::Disc { disc };
     let first = info_on("first", &mediums, 1, disc(1));
     let second = info_on("second", &mediums, 2, disc(2));

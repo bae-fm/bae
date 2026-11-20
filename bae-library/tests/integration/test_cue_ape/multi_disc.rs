@@ -220,7 +220,7 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestinati
         files.iter().map(|f| (f.id.clone(), f.original_filename.clone())).collect();
 
     let mediums = library.records().get_release_mediums(&release_id).await.expect("mediums");
-    let [disc_one, disc_two] = [&mediums.0[0].id, &mediums.0[1].id];
+    let [disc_one, disc_two] = [&mediums[0].id, &mediums[1].id];
     for track in &tracks {
         let resolved = bae_records::ResolvedTrackAudio::resolve(library.records(), &track.id)
             .await
@@ -344,7 +344,7 @@ async fn test_editor_moves_a_sheet_to_a_disc_that_holds_other_tracks() {
     manager.save_release_edit(moved, bae_library::GonePick::Refuse).await.expect("save the form");
 
     let mediums = library.records().get_release_mediums(&release_id).await.unwrap();
-    assert_eq!(mediums.0.len(), 1, "the disc the sheet left is gone");
+    assert_eq!(mediums.len(), 1, "the disc the sheet left is gone");
     let tracks = library.records().get_tracks_for_release(&release_id).await.unwrap();
     let places: Vec<_> =
         tracks.iter().map(|track| (track.side.get(), track.track_number.get())).collect();

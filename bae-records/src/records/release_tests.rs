@@ -83,7 +83,7 @@ async fn a_medium_still_holding_a_track_cannot_be_removed() {
     .await
     .unwrap();
     assert_eq!(
-        records.get_release_mediums(RELEASE).await.unwrap().0.len(),
+        records.get_release_mediums(RELEASE).await.unwrap().len(),
         1,
         "the emptied disc is gone"
     );

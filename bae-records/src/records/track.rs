@@ -73,17 +73,36 @@ impl Records {
     /// A release's mediums, in order, for a test that reads a release's
     /// rows back.
     #[cfg(any(test, feature = "test-utils"))]
-    pub async fn get_release_mediums(&self, release_id: &str) -> Result<DbReleaseMediums, DbError> {
+    pub async fn get_release_mediums(
+        &self,
+        release_id: &str,
+    ) -> Result<Vec<DbReleaseMedium>, DbError> {
         let release_id = release_id.to_string();
         self.store.read(move |sql| release_mediums_on(&sql, &release_id)).await
     }
 
-    /// How a surface outside bae numbers each track of `release_id`.
-    pub async fn export_numbers(&self, release_id: &str) -> Result<DbExportNumbers, DbError> {
+    /// Each track of `release_id` in playing order, with how a surface
+    /// outside bae numbers it.
+    pub async fn get_numbered_tracks_for_release(
+        &self,
+        release_id: &str,
+    ) -> Result<Vec<DbNumberedTrack>, DbError> {
         let release_id = release_id.to_string();
         self.store
-            .read(move |sql| super::export_numbers::export_numbers_on(&sql, &release_id))
+            .read(move |sql| {
+                super::export_numbers::numbered_tracks_of_release_on(&sql, &release_id)
+            })
             .await
+    }
+
+    /// The track `track_id`, with how a surface outside bae numbers it, or
+    /// `None` when the library holds no such track.
+    pub async fn get_numbered_track(
+        &self,
+        track_id: &str,
+    ) -> Result<Option<DbNumberedTrack>, DbError> {
+        let track_id = track_id.to_string();
+        self.store.read(move |sql| super::export_numbers::numbered_track_on(&sql, &track_id)).await
     }
 
     /// Where each of `track_ids` sits on its release, in their order, leaving

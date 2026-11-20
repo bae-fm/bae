@@ -40,7 +40,7 @@ async fn a_save_is_refused_once_the_release_changed_after_the_editor_opened() {
         let rows = ReleaseRows {
             album: DbAlbum { title: "Renamed".to_string(), ..album },
             release,
-            mediums: records.get_release_mediums(RELEASE_A).await.unwrap().0,
+            mediums: records.get_release_mediums(RELEASE_A).await.unwrap(),
             tracks: Vec::new(),
             artists: Vec::new(),
             album_artists: Vec::new(),

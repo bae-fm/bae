@@ -407,12 +407,12 @@ pub(super) fn row_to_release_medium(row: &Row) -> rusqlite::Result<DbReleaseMedi
 pub fn release_mediums_on(
     sql: &impl coven::SqlRead,
     release_id: &str,
-) -> Result<DbReleaseMediums, DbError> {
-    Ok(DbReleaseMediums(sql.query(
+) -> Result<Vec<DbReleaseMedium>, DbError> {
+    Ok(sql.query(
         "SELECT * FROM release_mediums WHERE release_id = ? ORDER BY position",
         params![release_id],
         row_to_release_medium,
-    )?))
+    )?)
 }
 
 /// A `SELECT` of the `releases` rows `condition` names (and orders), each with

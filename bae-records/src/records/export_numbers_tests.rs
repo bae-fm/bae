@@ -46,13 +46,18 @@ async fn numbers_of(records: u16, places: &[(u16, u8, u32)]) -> Vec<(u32, Option
         })
         .write(&crate::test_fixtures::test_records(&db))
         .await;
-    db.read(|sql| export_numbers_on(&sql, RELEASE))
-        .await
-        .unwrap()
-        .0
-        .into_iter()
-        .map(|number| (number.number, number.disc))
-        .collect()
+    let numbered = db.read(|sql| numbered_tracks_of_release_on(&sql, RELEASE)).await.unwrap();
+    for track in &numbered {
+        let id = track.track.id.clone();
+        let one = db.read(move |sql| numbered_track_on(&sql, &id)).await.unwrap();
+        assert_eq!(one.as_ref(), Some(track), "one track reads as its release's list has it");
+    }
+    assert_eq!(
+        numbered.iter().map(|track| track.track.id.clone()).collect::<Vec<_>>(),
+        ids,
+        "the release's tracks come in playing order"
+    );
+    numbered.into_iter().map(|track| (track.number, track.disc)).collect()
 }
 
 /// A single record's tracks number on across its two sides, so side B's

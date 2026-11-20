@@ -187,22 +187,18 @@ async fn resolve_audio_fields(
 }
 
 /// The `Child` (song) for a track on `release`. The release's `AlbumID3`,
-/// whose title, year and `coverArt` its songs show, and its files and
-/// tracks' export numbers are passed in so a whole-album build resolves them
-/// once rather than per track. Its number counts its medium's tracks across
-/// the medium's sides, and its disc is its medium's position, stated only
-/// for a release of several mediums.
+/// whose title, year and `coverArt` its songs show, and its files are passed
+/// in so a whole-album build resolves them once rather than per track. Its
+/// number counts its medium's tracks across the medium's sides, and its disc
+/// is its medium's position, stated only for a release of several mediums.
 pub(crate) async fn track_child(
     services: &AppServices,
-    track: &DbTrack,
+    numbered: &bae_records::DbNumberedTrack,
     release: &DbRelease,
     album: &AlbumId3,
     files: &[DbFile],
-    numbers: &bae_records::DbExportNumbers,
 ) -> Result<Child, SubError> {
-    let number = numbers.of(&track.id).ok_or_else(|| {
-        SubError::generic(format!("track {} is not one of its release's tracks", track.id))
-    })?;
+    let track = &numbered.track;
     let audio = resolve_audio_fields(services, &track.id, Some(files)).await?;
 
     let credits = shown_track_credits(services, &track.id).await?;
@@ -214,7 +210,7 @@ pub(crate) async fn track_child(
         album: Some(album.name.clone()),
         artist: Some(bae_records::credits::library_line(&credits).plain_text())
             .filter(|line| !line.is_empty()),
-        track: Some(number.number),
+        track: Some(numbered.number),
         year: album.year,
         cover_art: album.cover_art.clone(),
         size: audio.size,
@@ -222,7 +218,7 @@ pub(crate) async fn track_child(
         suffix: audio.suffix,
         duration: audio.duration_secs,
         bit_rate: None,
-        disc_number: number.disc,
+        disc_number: numbered.disc,
         created: Some(track.created_at.to_rfc3339()),
         album_id: Some(album_wire_id(&release.id)),
         artist_id: credits.first().map(|credit| artist_wire_id(&credit.artist.id)),

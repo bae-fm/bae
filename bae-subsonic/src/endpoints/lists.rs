@@ -132,29 +132,20 @@ pub(crate) async fn get_song(state: AppState, params: Params) -> Result<Option<E
     let services = &state.services;
     let track_id = SubId::parse(params.require("id")?)?.expect_track()?.to_string();
 
-    // The song must exist. `filter_existing_track_ids` gives a clean absence
-    // (→ not found) instead of a generic error from a downstream resolve.
-    let existing = services
-        .filter_existing_track_ids(std::slice::from_ref(&track_id))
-        .await
-        .map_err(lib_err)?;
-    if existing.is_empty() {
-        return Err(SubError::not_found());
-    }
-
-    let info = services.get_playback_track_info(&track_id).await.map_err(lib_err)?;
-    let release = services
-        .get_release_by_id(&info.release_id)
+    let track = services
+        .get_numbered_track(&track_id)
         .await
         .map_err(lib_err)?
         .ok_or_else(SubError::not_found)?;
-    let tracks = services.get_tracks_for_release(&info.release_id).await.map_err(lib_err)?;
-    let track = tracks.iter().find(|t| t.id == track_id).ok_or_else(SubError::not_found)?;
-    let files = services.get_files_for_release(&info.release_id).await.map_err(lib_err)?;
-    let numbers = services.get_export_numbers(&info.release_id).await.map_err(lib_err)?;
+    let release = services
+        .get_release_by_id(&track.track.release_id)
+        .await
+        .map_err(lib_err)?
+        .ok_or_else(SubError::not_found)?;
+    let files = services.get_files_for_release(&release.id).await.map_err(lib_err)?;
     let album = release_album_id3_with(services, &release).await?;
 
-    let child = track_child(services, track, &release, &album, &files, &numbers).await?;
+    let child = track_child(services, &track, &release, &album, &files).await?;
     Ok(Some(child.to_element()))
 }
 
