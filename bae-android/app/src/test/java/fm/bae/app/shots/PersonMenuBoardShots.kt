@@ -1,20 +1,12 @@
 package fm.bae.app.shots
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.MenuDefaults
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
@@ -38,9 +30,7 @@ import fm.bae.app.ui.library.PlaylistRows
 import fm.bae.app.ui.library.WhoseMenu
 import fm.bae.app.ui.library.historyEmptyText
 import org.junit.Test
-import uniffi.bae_bridge.BridgeHistoryPerson
 import uniffi.bae_bridge.BridgeHistoryShown
-import uniffi.bae_bridge.BridgeListCountExtra
 import uniffi.bae_bridge.BridgePlaylistCover
 import uniffi.bae_bridge.BridgeSharing
 
@@ -72,16 +62,7 @@ class PersonMenuBoardShots : BoardShot() {
                     )
                 },
             )
-            // layoutlib draws an open menu's popup blank, so the menu's contents are drawn in a surface like its own.
-            Surface(
-                shape = MenuDefaults.shape,
-                color = MenuDefaults.containerColor,
-                tonalElevation = MenuDefaults.TonalElevation,
-                shadowElevation = MenuDefaults.ShadowElevation,
-                modifier = Modifier.align(Alignment.TopEnd).padding(end = end).offset(y = MENU_TOP),
-            ) {
-                Column(modifier = Modifier.padding(vertical = ThemeSpace.related).width(IntrinsicSize.Max)) { menu() }
-            }
+            OpenMenu(top = MENU_TOP, end = end) { menu() }
         }
     }
 

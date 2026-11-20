@@ -1,20 +1,14 @@
 package fm.bae.app.shots
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MenuDefaults
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,19 +44,11 @@ class RowControlComponentShots : BoardShot() {
         component("android.component.more-menu.open", wide = true) {
             Box(modifier = Modifier.fillMaxWidth().height(OPEN_MENU_HEIGHT)) {
                 Box(modifier = Modifier.align(Alignment.TopEnd)) { AndroidMoreMenu {} }
-                Surface(
-                    shape = MenuDefaults.shape,
-                    color = MenuDefaults.containerColor,
-                    tonalElevation = MenuDefaults.TonalElevation,
-                    shadowElevation = MenuDefaults.ShadowElevation,
-                    modifier = Modifier.align(Alignment.TopEnd).offset(y = MENU_TOP),
-                ) {
-                    Column(modifier = Modifier.padding(vertical = ThemeSpace.related).width(IntrinsicSize.Max)) {
-                        DropdownMenuItem(text = { Text("Details…") }, onClick = {})
-                        DropdownMenuItem(text = { Text("Rename…") }, onClick = {})
-                        HorizontalDivider(modifier = Modifier.padding(vertical = ThemeSpace.related))
-                        DropdownMenuItem(text = { Text("Remove from this phone…") }, onClick = {})
-                    }
+                OpenMenu(top = MENU_TOP) {
+                    DropdownMenuItem(text = { Text("Details…") }, onClick = {})
+                    DropdownMenuItem(text = { Text("Rename…") }, onClick = {})
+                    HorizontalDivider(modifier = Modifier.padding(vertical = ThemeSpace.related))
+                    DropdownMenuItem(text = { Text("Remove from this phone…") }, onClick = {})
                 }
             }
         }

@@ -3,16 +3,20 @@ package fm.bae.app.shots
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -20,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.AccentChoice
@@ -266,3 +271,26 @@ internal val sceneLibrary =
             ),
         isActive = false,
     )
+
+/**
+ * An open menu's [items] on the menu's surface, [end] in from the box's right edge and [top] down from its top:
+ * layoutlib draws an open menu's popup blank, so the menu's contents are drawn in a surface like its own. A menu is a
+ * window of its own, which TalkBack reads after the page it opens over, so a scene draws it after the page in the
+ * same box.
+ */
+@Composable
+internal fun BoxScope.OpenMenu(
+    top: Dp,
+    end: Dp = 0.dp,
+    items: @Composable ColumnScope.() -> Unit,
+) {
+    Surface(
+        shape = MenuDefaults.shape,
+        color = MenuDefaults.containerColor,
+        tonalElevation = MenuDefaults.TonalElevation,
+        shadowElevation = MenuDefaults.ShadowElevation,
+        modifier = Modifier.align(Alignment.TopEnd).padding(end = end).offset(y = top),
+    ) {
+        Column(modifier = Modifier.padding(vertical = ThemeSpace.related).width(IntrinsicSize.Max), content = items)
+    }
+}
