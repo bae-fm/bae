@@ -132,17 +132,13 @@ private struct MediumCountRow: View {
             Text(verbatim: "\u{00D7}\(counted.count.formatted())")
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
-            Stepper(
+            MacStepper(
+                label: String(localized: "Number of \(name)"),
                 value: Binding(
                     get: { Int(counted.count) },
                     set: { setCount(UInt32($0)) }
-                ),
-                in: 1...99
-            ) {
-                EmptyView()
-            }
-            .labelsHidden()
-            .accessibilityLabel(String(localized: "Number of \(name)"))
+                )
+            )
             Button(action: remove) {
                 Image(systemName: "xmark.circle.fill")
                     .foregroundStyle(.tertiary)
