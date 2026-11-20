@@ -21,16 +21,20 @@ import fm.bae.app.ui.albumdetail.AndroidReleaseFiles
 import fm.bae.app.ui.albumdetail.AndroidTrackLead
 import fm.bae.app.ui.albumdetail.AndroidUnplayableLine
 import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidDivider
 import fm.bae.app.ui.components.AndroidErrorLine
 import fm.bae.app.ui.components.AndroidIconButton
+import fm.bae.app.ui.components.AndroidItem
 import fm.bae.app.ui.components.AndroidListRow
 import fm.bae.app.ui.components.AndroidSegmentedControl
 import fm.bae.app.ui.components.AndroidUsageKey
 import fm.bae.app.ui.components.AvatarFace
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.IconTone
+import fm.bae.app.ui.components.StatusGlyph
+import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.StorageUsageSegment
 import fm.bae.app.ui.components.TrackOptionsMenu
 import fm.bae.app.ui.downloads.AndroidPinsAtOnce
@@ -41,7 +45,7 @@ import uniffi.bae_bridge.BridgeMessage
 import uniffi.bae_bridge.BridgeMessageArg
 import uniffi.bae_bridge.BridgeStorageKind
 
-/** The component shots of the small pieces: divider, error line, usage key, track lead, placeholder line, list row, segmented control, pins at once, release files and gallery caption. */
+/** The component shots of the small pieces: divider, error line, usage key, track lead, placeholder line, list row, item, segmented control, pins at once, release files and gallery caption. */
 class ElementComponentShots : BoardShot() {
     @Test
     fun androidComponentDividerDivider() =
@@ -132,6 +136,29 @@ class ElementComponentShots : BoardShot() {
         }
 
     @Test
+    fun androidComponentItemOneLine() =
+        component("android.component.item.one-line", wide = true) {
+            AndroidItem(lead = { StatusGlyph(StatusTone.SUCCESS) }) { ItemText("Pinned on this phone") }
+        }
+
+    @Test
+    fun androidComponentItemTwoLines() =
+        component("android.component.item.two-lines", wide = true) {
+            AndroidItem(lead = { StatusGlyph(StatusTone.SUCCESS) }) {
+                ItemText("Pinned on this phone. bae plays it from this phone without the network.")
+            }
+        }
+
+    @Test
+    fun androidComponentItemWithTrail() =
+        component("android.component.item.with-trail", wide = true) {
+            AndroidItem(
+                lead = { StatusGlyph(StatusTone.DANGER) },
+                trail = { AndroidButton(kind = ButtonKind.TEXT, onClick = {}) { Text("Retry") } },
+            ) { ItemText("Couldn’t pin") }
+        }
+
+    @Test
     fun androidComponentSegmentedControlChoice() =
         component("android.component.segmented-control.choice", wide = true) {
             AndroidSegmentedControl(options = (1..6).map { "$it" }, selected = 2, onSelect = {})
@@ -216,6 +243,9 @@ class ElementComponentShots : BoardShot() {
 
 @Composable
 private fun OnTheBackdrop(content: @Composable () -> Unit) = Row(modifier = Modifier.background(BaeTheme.colors.backdrop)) { content() }
+
+@Composable
+private fun ItemText(text: String) = Text(text, style = ThemeText.body.style)
 
 @Composable
 private fun Elsewhere(device: String) =

@@ -271,23 +271,33 @@ private fun FramedNotice(
     NoticeFrame(tone = tone, modifier = modifier, look = look) {
         // The top row holds the words, the × and the buttons that fit on that line; the column puts any buttons
         // below the words after the ×.
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(ThemeSpace.line)) {
+        Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.line)) {
             Row(
                 verticalAlignment = Alignment.Top,
                 horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
             ) {
-                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(ThemeSpace.line)) {
+                AndroidItem(
+                    modifier = Modifier.weight(1f),
+                    // The buttons' own padding overhangs: a label's right edge is the notice's.
+                    trail =
+                        if (hasButtons && buttons == NoticeButtons.INLINE) {
+                            { NoticeButtonRow(hasDetails, onDetails, action, Modifier.offset(x = ThemeSpace.related)) }
+                        } else {
+                            null
+                        },
+                ) {
                     Text(
                         text = title,
                         style = (if (advice != null) ThemeText.strong else ThemeText.body).style,
                         color = LocalContentColor.current,
                     )
-                    advice?.let { Text(text = it, style = ThemeText.body.style, color = onNoticeSecondary) }
-                }
-                if (hasButtons && buttons == NoticeButtons.INLINE) {
-                    // The buttons' own padding overhangs: a label's right edge is the notice's.
-                    AndroidItem {
-                        NoticeButtonRow(hasDetails, onDetails, action, Modifier.offset(x = ThemeSpace.related))
+                    advice?.let {
+                        Text(
+                            text = it,
+                            style = ThemeText.body.style,
+                            color = onNoticeSecondary,
+                            modifier = Modifier.padding(top = ThemeSpace.line),
+                        )
                     }
                 }
                 onDismiss?.let { DismissButton(it, quiet = look == NoticeLook.QUIET) }

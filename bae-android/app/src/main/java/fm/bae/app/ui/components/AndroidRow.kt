@@ -224,7 +224,7 @@ private fun Subtitle(
         verticalAlignment = Alignment.Top,
     ) {
         val color = tone?.color ?: MaterialTheme.colorScheme.onSurfaceVariant
-        if (tone != null) AndroidItem { Box(modifier = Modifier.size(DOT).background(color, CircleShape)) }
+        if (tone != null) FirstLine { Box(modifier = Modifier.size(DOT).background(color, CircleShape)) }
         Text(
             text = text,
             style = ThemeText.body.style,
