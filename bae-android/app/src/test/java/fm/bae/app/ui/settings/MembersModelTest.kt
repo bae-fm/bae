@@ -270,6 +270,7 @@ class MembersModelTest {
             BridgeRefusedInvite(
                 operation = 7L,
                 address = "dan@example.com",
+                addressInitials = "D",
                 refusal = BridgeSharingRefusal.INVALID_ADDRESS,
                 reasonKey = "core.invite.refused.invalid_address",
             )

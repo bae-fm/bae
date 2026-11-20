@@ -42,6 +42,7 @@ extension ShotScene {
                 BridgeRefusedInvite(
                     operation: 7,
                     address: "dan@example.com",
+                    addressInitials: "D",
                     refusal: .invalidAddress,
                     reasonKey: "core.invite.refused.invalid_address"
                 )

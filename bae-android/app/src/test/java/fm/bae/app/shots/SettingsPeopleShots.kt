@@ -66,6 +66,7 @@ class SettingsPeopleShots : BoardShot() {
                             BridgeRefusedInvite(
                                 11L,
                                 "dan@example.com",
+                                "D",
                                 BridgeSharingRefusal.INVALID_ADDRESS,
                                 "core.invite.refused.invalid_address",
                             ),

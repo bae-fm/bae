@@ -836,6 +836,7 @@ private struct RefusedInviteRow: View {
         } label: {
             Text(verbatim: refused.address)
         }
+        .lead { Avatar(initials: refused.addressInitials, size: 28) }
         .problem(
             Text(
                 "Could not invite: \(localizedCoreString(refused.reasonKey))"

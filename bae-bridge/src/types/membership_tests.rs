@@ -44,6 +44,7 @@ fn a_refused_invite_crosses_with_its_address_and_a_string_for_its_refusal() {
         BridgeRefusedInvite {
             operation: 7,
             address: "dan@example.com".into(),
+            address_initials: "D".into(),
             refusal: BridgeSharingRefusal::EmailUnverified,
             reason_key: BridgeSharingRefusal::EmailUnverified.loc_key().to_string(),
         }

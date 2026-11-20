@@ -266,6 +266,8 @@ pub struct BridgeRefusedInvite {
     pub operation: i64,
     /// The address the invite was to share with.
     pub address: String,
+    /// The letters an avatar draws for the address.
+    pub address_initials: String,
     pub refusal: BridgeSharingRefusal,
     /// The core string that says what the refusal went wrong on and what to
     /// fix; it follows "Couldn’t invite: " on the notice.
@@ -275,7 +277,13 @@ impl BridgeRefusedInvite {
     pub(crate) fn from_core(value: bae_views::RefusedInvite) -> Self {
         let bae_views::RefusedInvite { operation, address, refusal } = value;
         let refusal = BridgeSharingRefusal::from_core(refusal);
-        Self { operation: operation.0, address, reason_key: refusal.loc_key().to_string(), refusal }
+        Self {
+            operation: operation.0,
+            address_initials: bae_people::people::initials(&address),
+            address,
+            reason_key: refusal.loc_key().to_string(),
+            refusal,
+        }
     }
 }
 /// A row of People's invites: an open invite, or one a sharing refusal ended.
