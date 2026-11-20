@@ -149,8 +149,9 @@ extension ShotScene {
         }
     ]
 
-    /// `MacAlert`, `MacSheet` and `MacModal`, each hung from the top of a
-    /// window background as the design's previews draw them.
+    /// `MacAlert` and `MacSheet`, each hung from the top of a window
+    /// background as the design's previews draw them, and `MacModal` over
+    /// the page.
     private static let dialogScenes: [ShotScene] = [
         component(
             "mac.component.alert.default",
@@ -238,6 +239,16 @@ extension ShotScene {
                 },
                 over: Rectangle().fill(Theme.background)
             )
+        },
+        component("mac.component.modal.default", width: 1_000, height: 260) {
+            MacModal(onDismiss: {}) {
+                MacModalHeader(title: "Storage") {
+                    MacButton("Done") {}
+                }
+                .frame(width: 360, height: 200, alignment: .top)
+                .background(Theme.background)
+            }
+            .frame(height: 260)
         },
     ]
 
