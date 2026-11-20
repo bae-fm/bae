@@ -19,7 +19,7 @@ struct MacStorageWindow: View {
     private var uiStore
 
     @State
-    private var filter: BridgeStorageFilter = .all
+    private var filter: BridgeStorageFilter
     @State
     private var sort = BridgeStorageSort(
         field: .albumTitle,
@@ -53,11 +53,13 @@ struct MacStorageWindow: View {
     private let initialSelectedFileId: String?
 
     init(
+        initialFilter: BridgeStorageFilter = .all,
         initialSearch: String = "",
         initialSelection: Set<String> = [],
         initialInspectorPresented: Bool = false,
         initialSelectedFileId: String? = nil
     ) {
+        _filter = State(initialValue: initialFilter)
         _search = State(initialValue: initialSearch)
         _selection = State(initialValue: initialSelection)
         _inspectorPresented = State(

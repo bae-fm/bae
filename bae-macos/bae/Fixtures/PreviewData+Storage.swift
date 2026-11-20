@@ -451,14 +451,19 @@ extension PreviewData {
     /// with its entry in `downloads`, `outputs` and `uploads`.
     /// The fixture's library, its reads answered off the main thread and
     /// counted in `answers`. The selection read answers a set of several
-    /// releases with its entry in `selections`.
+    /// releases with its entry in `selections`. With `unloaded`, the list
+    /// counts `rows` but no page of them lands, so every row draws its
+    /// placeholder. `queues` replaces the transfer queues derived from
+    /// `downloads`, `outputs` and `uploads`.
     static func storageLibrary(
         answers: UnansweredCount,
         rows: [BridgeStorageRow] = storageRows,
         downloads: [BridgeDownloadOp] = downloadOps,
         outputs: [BridgeOutputOp] = outputOps,
         uploads: [PreviewReleaseUpload] = defaultUploads,
-        selections: [Set<String>: BridgeStorageSelection] = [:]
+        selections: [Set<String>: BridgeStorageSelection] = [:],
+        unloaded: Bool = false,
+        queues: BridgeStorageQueues? = nil
     ) -> Library {
         let rows = storageRows(rows, uploading: uploads)
         let details = Dictionary(
@@ -472,24 +477,24 @@ extension PreviewData {
             outputs: outputs,
             uploads: uploads
         )
-        let queues = storageQueues(
-            downloads: downloads,
-            outputs: outputs,
-            uploads: uploads
-        )
+        let queues =
+            queues
+            ?? storageQueues(
+                downloads: downloads,
+                outputs: outputs,
+                uploads: uploads
+            )
+        let totalSize = rows.reduce(UInt64(0)) { $0 + $1.release.totalSize }
         return Library(
             releaseDetail: { .fixed(answers: answers) { details[$0] } },
             storageList: { _, _, search in
-                .fixed(
-                    rows,
-                    answers: answers,
-                    extra: .storage(
-                        totalSize: rows.reduce(UInt64(0)) {
-                            $0 + $1.release.totalSize
-                        },
-                        searching: !search.isEmpty
-                    )
+                let extra = BridgeListCountExtra.storage(
+                    totalSize: totalSize,
+                    searching: !search.isEmpty
                 )
+                return unloaded
+                    ? unloadedStorageList(count: rows.count, extra: extra)
+                    : .fixed(rows, answers: answers, extra: extra)
             },
             storageSelection: { _, _ in
                 .fixed(answers: answers) { ids in
@@ -506,6 +511,33 @@ extension PreviewData {
                         .first { $0.file.id == fileId }?
                         .file
                 }
+            }
+        )
+    }
+
+    /// A list that has counted `count` rows but whose rows no page delivers,
+    /// as a list is while its first page is on the way.
+    nonisolated private static func unloadedStorageList(
+        count: Int,
+        extra: BridgeListCountExtra
+    ) -> BridgeListQueries<BridgeStorageRow> {
+        BridgeListQueries(
+            view: { _, _ in
+                ListViewQuery(
+                    setVisible: { _, _ in },
+                    values: PulledValues<ListViewDelivery<BridgeStorageRow>>
+                        .fixed(ListViewDelivery(start: 0, rows: []))
+                )
+            },
+            count: {
+                PulledValues<BridgeListCount>
+                    .fixed(
+                        BridgeListCount(
+                            rows: UInt64(count),
+                            items: UInt64(count),
+                            extra: extra
+                        )
+                    )
             }
         )
     }

@@ -5,7 +5,7 @@ import Foundation
 
 extension ShotScene {
     /// One of the board's Storage Manager rows.
-    private struct BoardRow {
+    struct BoardRow {
         let title: String
         let artist: String
         let media: [BridgeMediaCount]
@@ -143,40 +143,57 @@ extension ShotScene {
     /// `rel-row-n` in the order the board lists them.
     static let boardStorageRows: [BridgeStorageRow] = boardRows.enumerated()
         .map { offset, row in
-            let index = offset + 1
-            let releaseId = "rel-row-\(index)"
-            let albumId = "album-row-\(index)"
-            let transitioning =
-                row.status == .uploading
-                || row.status == .pinning(step: .running)
-            return BridgeStorageRow(
-                release: BridgeReleaseSummary(
-                    id: releaseId,
-                    albumId: albumId,
-                    media: row.media,
-                    mediaTerms: bridgeMediaTerms(media: row.media),
-                    storageState: row.state,
-                    storageActions: [],
-                    upload: nil,
-                    transitioning: transitioning,
-                    fileCount: row.files,
-                    totalSize: row.megabytes * 1_000_000,
-                    cover: nil
-                ),
-                album: BridgeAlbum(
-                    id: albumId,
-                    title: row.title,
-                    year: nil,
-                    isCompilation: false,
-                    artistLine: .named(row.artist),
-                    releaseIds: [releaseId],
-                    primaryReleaseId: releaseId,
-                    cover: nil
-                ),
-                status: row.status,
-                cancelOnly: transitioning,
-                dateAdded: ISO8601DateFormatter()
-                    .date(from: "\(row.added)T12:00:00Z") ?? Date()
+            storageRow(
+                row,
+                releaseId: "rel-row-\(offset + 1)",
+                albumId: "album-row-\(offset + 1)"
             )
         }
+
+    /// A row of the Storage Manager's table: `row` as release `releaseId` of
+    /// album `albumId`, with `upload` where its files are being sent.
+    static func storageRow(
+        _ row: BoardRow,
+        releaseId: String,
+        albumId: String,
+        upload: BridgeReleaseUpload? = nil
+    ) -> BridgeStorageRow {
+        let transitioning =
+            upload != nil || row.status == .uploading
+            || row.status == .pinning(step: .running)
+        guard
+            let added = ISO8601DateFormatter()
+                .date(from: "\(row.added)T12:00:00Z")
+        else {
+            preconditionFailure("the row's date is written as YYYY-MM-DD")
+        }
+        return BridgeStorageRow(
+            release: BridgeReleaseSummary(
+                id: releaseId,
+                albumId: albumId,
+                media: row.media,
+                mediaTerms: bridgeMediaTerms(media: row.media),
+                storageState: row.state,
+                storageActions: [],
+                upload: upload,
+                transitioning: transitioning,
+                fileCount: row.files,
+                totalSize: row.megabytes * 1_000_000,
+                cover: nil
+            ),
+            album: BridgeAlbum(
+                id: albumId,
+                title: row.title,
+                year: nil,
+                isCompilation: false,
+                artistLine: .named(row.artist),
+                releaseIds: [releaseId],
+                primaryReleaseId: releaseId,
+                cover: nil
+            ),
+            status: row.status,
+            cancelOnly: transitioning,
+            dateAdded: added
+        )
+    }
 }

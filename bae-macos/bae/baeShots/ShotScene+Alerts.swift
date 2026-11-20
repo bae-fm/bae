@@ -359,25 +359,14 @@ extension ShotScene {
                     )
                 ]
             )
-            let manager = MacStorageWindow(
-                initialSelection: pinned,
-                initialInspectorPresented: fixture.initialInspectorPresented
+            let manager = storageManagerEnvironment(
+                MacStorageWindow(
+                    initialSelection: pinned,
+                    initialInspectorPresented: fixture
+                        .initialInspectorPresented
+                ),
+                fixture: fixture
             )
-            .environment(fixture.library)
-            .environment(fixture.storageManagerStore)
-            .environment(ImageStore.stub())
-            .environment(ReleaseEditor.stub())
-            .environment(Sync.stub())
-            .environment(Downloads.stub())
-            .environment(Outputs.stub())
-            .environment(PreviewData.configStore())
-            .environment(Importer.stub())
-            .environment(fixture.uiStore)
-            .environment(SettingsNavigation())
-            .environment(\.openSettingsWindow, OpenSettingsWindowAction {})
-            .environment(fixture.downloadStore)
-            .environment(fixture.outputStore)
-            .environment(fixture.outboxStore)
             .frame(width: 1_100, height: 660)
             return ShotStage(
                 OverWindow.alert(
