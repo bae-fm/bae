@@ -59,3 +59,32 @@ struct StorageManagerPreviewFixture {
         outboxStore = PreviewData.outboxStore()
     }
 }
+
+/// The environment the Storage Manager's views read, as the app's window
+/// installs it, over `fixture`'s stores unless `downloads`, `outputs` or
+/// `outbox` replace the transfer streams.
+@MainActor
+func storageManagerEnvironment(
+    _ view: some View,
+    fixture: StorageManagerPreviewFixture,
+    downloads: DownloadStore? = nil,
+    outputs: OutputStore? = nil,
+    outbox: OutboxStore? = nil
+) -> some View {
+    view
+        .environment(fixture.library)
+        .environment(fixture.storageManagerStore)
+        .environment(ImageStore.stub())
+        .environment(ReleaseEditor.stub())
+        .environment(Sync.stub())
+        .environment(Downloads.stub())
+        .environment(Outputs.stub())
+        .environment(PreviewData.configStore())
+        .environment(Importer.stub())
+        .environment(fixture.uiStore)
+        .environment(SettingsNavigation())
+        .environment(\.openSettingsWindow, OpenSettingsWindowAction {})
+        .environment(downloads ?? fixture.downloadStore)
+        .environment(outputs ?? fixture.outputStore)
+        .environment(outbox ?? fixture.outboxStore)
+}

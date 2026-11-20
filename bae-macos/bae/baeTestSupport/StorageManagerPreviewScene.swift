@@ -39,24 +39,14 @@ struct StorageManagerPreviewScene: View {
     var store: StorageManagerStore { fixture.storageManagerStore }
 
     var body: some View {
-        MacStorageWindow(
-            initialSearch: fixture.initialSearch,
-            initialSelection: fixture.initialSelection,
-            initialInspectorPresented: fixture.initialInspectorPresented,
-            initialSelectedFileId: fixture.initialSelectedFileId
+        storageManagerEnvironment(
+            MacStorageWindow(
+                initialSearch: fixture.initialSearch,
+                initialSelection: fixture.initialSelection,
+                initialInspectorPresented: fixture.initialInspectorPresented,
+                initialSelectedFileId: fixture.initialSelectedFileId
+            ),
+            fixture: fixture
         )
-        .environment(fixture.library)
-        .environment(fixture.storageManagerStore)
-        .environment(ImageStore.stub())
-        .environment(ReleaseEditor.stub())
-        .environment(Sync.stub())
-        .environment(Downloads.stub())
-        .environment(Outputs.stub())
-        .environment(PreviewData.configStore())
-        .environment(fixture.uiStore)
-        .environment(SettingsNavigation())
-        .environment(fixture.downloadStore)
-        .environment(fixture.outputStore)
-        .environment(fixture.outboxStore)
     }
 }
