@@ -49,7 +49,7 @@ struct PlaylistsContent: View {
 
 /// The playlists by name, each opening its page in the pane and taking the
 /// tracks dropped on it.
-private struct PlaylistList: View {
+struct PlaylistList: View {
     let listing: BridgePlaylistListing
 
     @Environment(Library.self)

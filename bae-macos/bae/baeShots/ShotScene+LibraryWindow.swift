@@ -114,7 +114,7 @@ extension ShotScene {
 
     /// History's menu of whose plays as core counts it under `person`:
     /// `people` in their order, and whose plays it shows.
-    nonisolated private static func boardHistoryMenu(
+    nonisolated static func boardHistoryMenu(
         _ people: [(id: String, name: String)],
         person: String?
     ) -> BridgeListCountExtra {

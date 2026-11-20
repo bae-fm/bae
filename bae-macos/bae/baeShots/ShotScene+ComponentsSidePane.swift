@@ -4,133 +4,114 @@ import SwiftUI
 @testable import bae
 
 extension ShotScene {
-    /// `MacQueuePanel` on its Playlists and History tabs, as
-    /// `MacQueuePanelContainer` draws them from the stores: the playlists,
-    /// one open, the day's plays, no plays, and no plays from Ben.
+    /// `MacQueuePanel` on its Playlists and History tabs, as its preview
+    /// draws them: the playlists, one open with its page left out, the
+    /// first day's heading with the plays left out, no plays, and no plays
+    /// from Ben.
     static let sidePaneComponentScenes: [ShotScene] = [
-        playlistsPanel(
+        sidePanel(
             "mac.component.queue-panel.playlists",
-            openPlaylist: nil
-        ),
-        playlistsPanel(
+            tab: .playlists,
+            lead: .newPlaylist {}
+        ) {
+            PlaylistList(listing: panelPlaylists)
+        },
+        sidePanel(
             "mac.component.queue-panel.playlist-open",
-            openPlaylist: "playlist-late-night"
-        ),
-        historyPanel(
-            "mac.component.queue-panel.history",
-            plays: boardPlays
-        ),
-        historyPanel("mac.component.queue-panel.history-empty", plays: []),
-        historyPanel(
+            tab: .playlists,
+            lead: .back(to: String(localized: "Playlists")) {}
+        ) {
+            Color.clear
+        },
+        sidePanel("mac.component.queue-panel.history", tab: .history) {
+            MacQueueSection(
+                title: String(localized: "Today"),
+                kind: .day(
+                    menu: historyMenu(person: nil)
+                        .inlineMenu(action: false) { _ in }
+                )
+            )
+            // The margin the plays' times hang into, which the preview
+            // leaves 40pt wide.
+            .padding(
+                .leading,
+                ThemeSpace.related + MacListRow.hang(leadWidth: 40)
+            )
+            .padding(.trailing, ThemeSpace.related)
+        },
+        sidePanel(
+            "mac.component.queue-panel.history-empty",
+            tab: .history
+        ) {
+            HistoryEmpty(menu: historyMenu(person: nil)) { _ in }
+        },
+        sidePanel(
             "mac.component.queue-panel.history-empty-for-a-person",
-            plays: [],
-            person: benMemberId
-        ),
+            tab: .history
+        ) {
+            HistoryEmpty(menu: historyMenu(person: benMemberId)) { _ in }
+        },
     ]
 
     /// The playlists the panel's preview lists: Ana's and one Ben shared.
-    private static let panelPlaylists: [BridgePlaylistSummary] = [
-        boardPlaylistListing[0],
-        BridgePlaylistSummary(
-            id: "playlist-sunday-mornings",
-            name: "Sunday mornings",
-            sharing: .household,
-            owner: BridgePersonRef(
-                person: "person-Ben",
-                name: "Ben",
-                initials: "B",
-                avatarVersion: nil
+    private static var panelPlaylists: BridgePlaylistListing {
+        let playlists = [
+            boardPlaylistListing[0],
+            BridgePlaylistSummary(
+                id: "playlist-sunday-mornings",
+                name: "Sunday mornings",
+                sharing: .household,
+                owner: owner("Ben"),
+                yours: false,
+                trackCount: BridgeCountLabel(
+                    key: "core.library.track_count",
+                    count: 1
+                ),
+                totalDuration: .minutesOnly(minutes: 4),
+                cover: .single(cover: cover("Copper Sky"))
             ),
-            yours: false,
-            trackCount: BridgeCountLabel(
-                key: "core.library.track_count",
-                count: 1
-            ),
-            totalDuration: .minutesOnly(minutes: 4),
-            cover: .single(cover: cover("Copper Sky"))
-        ),
-    ]
-
-    /// The panel on Playlists, listing the playlists, or with the playlist
-    /// `openPlaylist` open, whose page the slot leaves empty.
-    private static func playlistsPanel(
-        _ id: String,
-        openPlaylist: String?
-    ) -> ShotScene {
-        let uiStore = UiStore()
-        uiStore.openSidePane(.playlists)
-        if let openPlaylist {
-            uiStore.openPlaylist(openPlaylist)
-        }
-        let backing = boardLibraryBacking(
-            uiStore: uiStore,
-            playlists: panelPlaylists
+        ]
+        return BridgePlaylistListing(
+            listed: playlists,
+            addTargets: playlists.filter(\.yours),
+            total: UInt64(playlists.count),
+            addTargetCount: UInt64(playlists.filter(\.yours).count),
+            canCreate: true
         )
-        let projections = LibraryProjectionStore(library: backing.library)
-        return sidePanel(
-            id,
-            uiStore: uiStore,
-            backing: backing,
-            stores: (
-                projections,
-                HistoryStore(library: backing.library, onError: { _ in })
+    }
+
+    /// History's choice of whose plays, offering Ana and Ben, on the plays
+    /// of the person with member id `person`, or everyone's for `nil`.
+    private static func historyMenu(person: String?) -> HistoryMenu {
+        HistoryMenu(
+            count: BridgeListCount(
+                rows: 0,
+                items: 0,
+                extra: boardHistoryMenu(
+                    [(anaMemberId, "Ana"), (benMemberId, "Ben")],
+                    person: person
+                )
             )
-        ) {
-            openPlaylist == nil
-                ? projections.playlists.delivered
-                : projections.playlist.delivered
-        }
-    }
-
-    /// The panel on History, showing `plays`, the plays of the person with
-    /// member id `person` when one is picked.
-    private static func historyPanel(
-        _ id: String,
-        plays: [BridgeHistoryPlay],
-        person: String? = nil
-    ) -> ShotScene {
-        let uiStore = UiStore()
-        uiStore.openSidePane(.history)
-        uiStore.showHistory(of: person)
-        let backing = boardLibraryBacking(
-            uiStore: uiStore,
-            history: plays,
-            historyPeople: [(anaMemberId, "Ana"), (benMemberId, "Ben")]
         )
-        let history = HistoryStore(library: backing.library, onError: { _ in })
-        return sidePanel(
-            id,
-            uiStore: uiStore,
-            backing: backing,
-            stores: (LibraryProjectionStore(library: backing.library), history)
-        ) {
-            history.list?.count != nil
-        }
     }
 
-    /// `MacQueuePanelContainer` in the preview's 600pt-tall frame, reading
-    /// the stores a window passes it.
-    private static func sidePanel(
+    /// The panel on `tab`, starting its top with `lead`, holding `content`,
+    /// in the preview's 600pt-tall frame.
+    private static func sidePanel<Content: View>(
         _ id: String,
-        uiStore: UiStore,
-        backing: (library: Library, session: LibraryBrowseSession),
-        stores: (projections: LibraryProjectionStore, history: HistoryStore),
-        isReady: @escaping @MainActor () -> Bool
+        tab: SidePaneTab,
+        lead: SidePaneLead = .none,
+        @ViewBuilder content: @escaping @MainActor () -> Content
     ) -> ShotScene {
-        component(
-            id,
-            width: 436,
-            height: 616,
-            images: coverStore(),
-            isReady: isReady
-        ) {
-            MacQueuePanelContainer(onClose: {}, onInsertTracks: { _, _ in })
-                .environment(uiStore)
-                .environment(backing.library)
-                .environment(backing.session)
-                .environment(stores.projections)
-                .environment(stores.history)
-                .frame(height: 600)
+        component(id, width: 436, height: 616, images: coverStore()) {
+            MacQueuePanel(
+                tab: tab,
+                onSelectTab: { _ in },
+                lead: lead,
+                onClose: {},
+                content: { content() }
+            )
+            .frame(height: 600)
         }
     }
 }

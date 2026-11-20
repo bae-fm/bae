@@ -5,7 +5,8 @@ import SwiftUI
 
 /// One row in an album's track list, as drawn: the position, the title and
 /// artist, the duration, the hover fill and the flash that marks the track a
-/// jump arrived at. `TrackRowView` owns what moves them.
+/// jump arrived at, and, in a list that keeps one, the slot for the track's
+/// stars after it. `TrackRowView` owns what moves them.
 struct MacTrackRow: View {
     let track: Track
     /// The artist to show, or `nil` for none — core's decision.
@@ -21,6 +22,10 @@ struct MacTrackRow: View {
     var picked = false
     /// How much of the accent the jump's flash fills the row with.
     var highlight: Double = 0
+    /// The slot after the row for the stars the person gave the track, which
+    /// an album's list keeps so every row's duration lines up; `nil` for a
+    /// row with no slot.
+    var rating: Rating?
     let onPlay: () -> Void
     let onTogglePlayPause: () -> Void
 
@@ -28,7 +33,27 @@ struct MacTrackRow: View {
     /// glyph that take the number's place.
     static let leadingSlotMinWidth: CGFloat = 22
 
+    /// The stars' slot: the stars the person gave the track, or `nil` for a
+    /// track they did not rate, which leaves the slot empty.
+    struct Rating {
+        let stars: BridgeStars?
+    }
+
     var body: some View {
+        if let rating {
+            HStack(spacing: ThemeSpace.compact) {
+                row
+                Stars(value: rating.stars?.number ?? 0, size: 10)
+                    .opacity(rating.stars == nil ? 0 : 1)
+                    .accessibilityHidden(rating.stars == nil)
+            }
+        }
+        else {
+            row
+        }
+    }
+
+    private var row: some View {
         HStack(spacing: ThemeSpace.group) {
             MacTrackLead(
                 text: track.positionText,

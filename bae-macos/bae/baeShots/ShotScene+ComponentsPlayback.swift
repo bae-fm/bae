@@ -493,7 +493,8 @@ extension ShotScene {
         artist: String? = nil,
         hover: Bool = false,
         current: Bool = false,
-        picked: Bool = false
+        picked: Bool = false,
+        rating: MacTrackRow.Rating? = nil
     ) -> ShotScene {
         component(id, height: 70) {
             MacTrackRow(
@@ -504,6 +505,7 @@ extension ShotScene {
                 isPlaying: current,
                 hover: hover,
                 picked: picked,
+                rating: rating,
                 onPlay: {},
                 onTogglePlayPause: {}
             )
@@ -590,33 +592,23 @@ extension ShotScene {
         ),
     ]
 
-    /// `MacRatedTrackRow`: a track of an album's list with the slot for the
-    /// person's `stars` after it.
+    /// A track of an album's list, with the slot for the person's `stars`
+    /// after it.
     private static func ratedTrackRow(
         _ id: String,
         stars: BridgeStars?,
         hover: Bool = false
     ) -> ShotScene {
-        component(id, height: 70) {
-            MacRatedTrackRow(
-                row: MacTrackRow(
-                    track: PreviewData.previewTrack(
-                        title: "Low Tide Hours",
-                        position: "4",
-                        durationMs: 303_000
-                    ),
-                    artist: nil,
-                    positionWidth: MacTrackRow.leadingSlotMinWidth,
-                    isCurrent: false,
-                    isPlaying: false,
-                    hover: hover,
-                    onPlay: {},
-                    onTogglePlayPause: {}
-                ),
-                stars: stars
-            )
-            .frame(width: 380, height: 40)
-        }
+        trackRow(
+            id,
+            track: PreviewData.previewTrack(
+                title: "Low Tide Hours",
+                position: "4",
+                durationMs: 303_000
+            ),
+            hover: hover,
+            rating: MacTrackRow.Rating(stars: stars)
+        )
     }
 
     /// One of Mara Quill's tracks in the queue, as the boards list it, with

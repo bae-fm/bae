@@ -39,20 +39,18 @@ struct TrackRowView: View {
         // The body reads the pick once, and the tap handler gets the value
         // the row draws, so the handler never reads the picks it writes.
         let picked = isPicked
-        MacRatedTrackRow(
-            row: MacTrackRow(
-                track: track,
-                artist: artist,
-                positionWidth: positionWidth,
-                isCurrent: isCurrent,
-                isPlaying: isPlaying,
-                hover: isHovered,
-                picked: picked,
-                highlight: highlightOpacity,
-                onPlay: onPlay,
-                onTogglePlayPause: onTogglePlayPause
-            ),
-            stars: track.myStars
+        MacTrackRow(
+            track: track,
+            artist: artist,
+            positionWidth: positionWidth,
+            isCurrent: isCurrent,
+            isPlaying: isPlaying,
+            hover: isHovered,
+            picked: picked,
+            highlight: highlightOpacity,
+            rating: MacTrackRow.Rating(stars: track.myStars),
+            onPlay: onPlay,
+            onTogglePlayPause: onTogglePlayPause
         )
         .revealsAsTrackRow(track.id)
         .onReceive(uiStore.trackFlashes) { trackId in

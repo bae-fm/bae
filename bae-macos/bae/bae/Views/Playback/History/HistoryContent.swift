@@ -32,12 +32,7 @@ struct HistoryContent: View {
                 else if let count = list.count {
                     let menu = HistoryMenu(count: count)
                     if count.rows == 0 {
-                        MacContentUnavailable(verbatimTitle: menu.emptyTitle) {
-                            menu.inlineMenu(action: true) {
-                                uiStore.showHistory(of: $0)
-                            }
-                        }
-                        .frame(maxHeight: .infinity)
+                        HistoryEmpty(menu: menu) { uiStore.showHistory(of: $0) }
                     }
                     else {
                         HistoryPlays(
@@ -72,7 +67,7 @@ struct HistoryContent: View {
 
 /// History's choice of whose plays, as its list's count hands it over: the
 /// people it offers and whose plays it shows.
-private struct HistoryMenu {
+struct HistoryMenu {
     let people: [BridgeHistoryPerson]
     let shown: BridgeHistoryShown
 
@@ -117,6 +112,21 @@ private struct HistoryMenu {
                 }
             }
         }
+    }
+}
+
+/// History with no plays from whoever `menu` shows: the line that says so,
+/// with the choice of whose plays under it, which `choose` takes as the
+/// person's member id, or `nil` for everyone's.
+struct HistoryEmpty: View {
+    let menu: HistoryMenu
+    let choose: (String?) -> Void
+
+    var body: some View {
+        MacContentUnavailable(verbatimTitle: menu.emptyTitle) {
+            menu.inlineMenu(action: true, choose: choose)
+        }
+        .frame(maxHeight: .infinity)
     }
 }
 
