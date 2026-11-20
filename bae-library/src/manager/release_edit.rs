@@ -6,11 +6,12 @@
 //! person applied, which replaces every value the release holds (titles,
 //! credits, mediums and places, roles and works, its records and the album
 //! they name), and the library album the person picked to file it under.
-//! Core keeps no form: opening reads one, applying a catalog returns the form
-//! with the catalog's values, the editor's draft is one live query whose
-//! request is the form, and saving writes the form whole and returns the
-//! form opened on what it saved. Nothing re-reads a catalog or the files'
-//! tags: the form holds what the apply read.
+//! Core keeps no form: opening reads one, applying a catalog, the files'
+//! tags or the cleared values returns the form with those values, the
+//! editor's draft is one live query whose request is the form, and saving
+//! writes the form whole and returns the form opened on what it saved.
+//! Nothing re-reads a catalog or the files' tags: the form holds what the
+//! apply read.
 //!
 //! A save checks, in its one write, the release against what its form
 //! opened on: the save refuses a release the library no longer holds as it
@@ -113,6 +114,20 @@ impl LibraryManager {
         Ok(form.applying(applied))
     }
 
+    /// `form` with its metadata cleared: no album title, artist or year, a
+    /// blank pressing, and each track untitled, credited to the album's
+    /// artists and with no listed length, role or work, on the mediums and
+    /// at the places the library holds for the release. The records, the
+    /// sides picked for CUE sheets and the album pick stay as they are, and
+    /// nothing is written until a save.
+    pub async fn clear_release_edit(
+        &self,
+        form: bae_import::ReleaseEditForm,
+    ) -> Result<bae_import::ReleaseEditForm, LibraryError> {
+        let cleared = self.import_tables.cleared_release_edit_values(&form).await?;
+        Ok(form.applying_values(cleared))
+    }
+
     /// Save `form`: in one write, the form as the person left it, every
     /// value the catalog the person applied gives (its mediums and places,
     /// roles and works), its records, and the album the release lands in:
@@ -140,8 +155,8 @@ impl LibraryManager {
         let shaped = form.edit.shape()?;
         shaped.validate()?;
         let opened = self.load_release_for_edit(&release_id).await?;
-        let records = match &form.applied {
-            Some(applied) => applied.records.clone(),
+        let records = match &form.records {
+            Some(records) => records.clone(),
             None => self.records.get_release_records(&release_id).await?,
         };
         let plan =
@@ -216,7 +231,7 @@ impl LibraryManager {
         let release_id = form.release_id.as_str();
         let edit = &form.edit;
         let (current_album_id, release, current_album, existing_tracks) = opened;
-        let change = match (pick, &form.applied) {
+        let change = match (pick, &form.records) {
             (bae_import::AlbumPick::Album { album_id }, _) => Some(bae_records::RecordsChange {
                 release_id: release_id.to_string(),
                 records: records.to_vec(),
@@ -234,8 +249,19 @@ impl LibraryManager {
                     new_album: Some(new_album),
                 })
             }
-            (bae_import::AlbumPick::Records, Some(applied)) => {
-                Some(self.records_change(release_id, applied.records.clone()).await?)
+            // Unlinked, the release drops its records and stays in its
+            // album.
+            (bae_import::AlbumPick::Records, Some(records)) if records.is_empty() => {
+                Some(bae_records::RecordsChange {
+                    release_id: release_id.to_string(),
+                    records: Vec::new(),
+                    current_album_id: current_album_id.clone(),
+                    target_album_id: current_album_id.clone(),
+                    new_album: None,
+                })
+            }
+            (bae_import::AlbumPick::Records, Some(records)) => {
+                Some(self.records_change(release_id, records.clone()).await?)
             }
             (bae_import::AlbumPick::Records, None) => None,
         };
@@ -252,7 +278,7 @@ impl LibraryManager {
         };
         let write = match &form.applied {
             Some(applied) => {
-                let mut draft = applied.draft.clone();
+                let mut draft = applied.clone();
                 draft.album_title = edit.album_title.clone();
                 draft.album_artist_assignments = edit.album_artist_assignments.clone();
                 draft.album_year = edit.album_year.clone();

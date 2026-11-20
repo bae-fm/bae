@@ -539,7 +539,7 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
     }
 
     private func runCommand(
-        _ command: ImportDraftCommand,
+        _ command: ReleaseMetadataCommand,
         recording recorder: MetadataCardActionRecorder
     ) {
         command.run(
@@ -624,15 +624,15 @@ extension ImportMetadataCardLayoutTests {
     /// command runs its own action and no other.
     func testEachDraftCommandRunsOnlyItsOwnAction() {
         XCTAssertEqual(
-            ImportDraftCommand.allCases.map(\.title),
+            ReleaseMetadataCommand.allCases.map(\.title),
             ["Reset to file metadata", "Clear metadata"]
         )
         // Each command's runs of reset to tags, and clear.
-        let runs: [ImportDraftCommand: [Int]] = [
+        let runs: [ReleaseMetadataCommand: [Int]] = [
             .resetToFileMetadata: [1, 0],
             .clearMetadata: [0, 1],
         ]
-        for command in ImportDraftCommand.allCases {
+        for command in ReleaseMetadataCommand.allCases {
             let recorder = MetadataCardActionRecorder()
             runCommand(command, recording: recorder)
             XCTAssertEqual(

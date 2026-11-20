@@ -82,6 +82,59 @@ struct ReleaseSaveRow {
     let notice: DisplayError?
 }
 
+/// A command in the release editor's Metadata menu, in both of its hosts.
+/// Each replaces the values the person has, so the editor asks before
+/// running it.
+enum ReleaseMetadataCommand: CaseIterable, Identifiable {
+    /// Replace the values with what the release's own files say.
+    case resetToFileMetadata
+    case clearMetadata
+
+    var id: Self { self }
+
+    var title: String {
+        switch self {
+        case .resetToFileMetadata: String(localized: "Reset to file metadata")
+        case .clearMetadata: String(localized: "Clear metadata")
+        }
+    }
+
+    /// What the confirmation asks.
+    var question: String {
+        switch self {
+        case .resetToFileMetadata: String(localized: "Reset to file metadata?")
+        case .clearMetadata: String(localized: "Clear metadata?")
+        }
+    }
+
+    /// What the confirmation says the command changes and keeps.
+    var consequence: String {
+        switch self {
+        case .resetToFileMetadata:
+            String(
+                localized:
+                    "Replace metadata with what the files, sheets and folder say about the release. Tracks and audio assignments will remain unchanged."
+            )
+        case .clearMetadata:
+            String(
+                localized:
+                    "The candidate files and mapping choices will remain unchanged."
+            )
+        }
+    }
+
+    /// Run the command through the host's action for it.
+    func run(
+        resetToFileMetadata: () -> Void,
+        clearMetadata: () -> Void
+    ) {
+        switch self {
+        case .resetToFileMetadata: resetToFileMetadata()
+        case .clearMetadata: clearMetadata()
+        }
+    }
+}
+
 /// What the editor's own controls do, beside the fields: identify the
 /// release, run the Metadata menu's commands, and unlink its records.
 struct ReleaseEditorCommands {
@@ -89,11 +142,10 @@ struct ReleaseEditorCommands {
     let identifyAutomatically: () -> Void
     /// Show the typed search, starting nothing.
     let search: () -> Void
-    /// Run a command of the Metadata menu once the person confirms it;
-    /// `nil` draws no menu.
-    let metadataCommand: ((ImportDraftCommand) -> Void)?
-    /// Drop the link and its records; `nil` offers no Unlink.
-    let unlink: (() -> Void)?
+    /// Run a command of the Metadata menu once the person confirms it.
+    let metadataCommand: (ReleaseMetadataCommand) -> Void
+    /// Drop the link and its records.
+    let unlink: () -> Void
     /// Whether a read or a save in flight disables Automatic, Search and
     /// the menu.
     let identifyDisabled: Bool
@@ -163,7 +215,7 @@ private struct ReleaseEditorCardView: View {
     private var library
     /// The Metadata menu's command the card is asking about.
     @State
-    private var confirming: ImportDraftCommand?
+    private var confirming: ReleaseMetadataCommand?
 
     var body: some View {
         VStack(alignment: .leading, spacing: ReleaseMetadataLayout.blockSpacing)
@@ -173,9 +225,7 @@ private struct ReleaseEditorCardView: View {
                 identifyDisabled: commands.identifyDisabled,
                 onAutomatic: commands.identifyAutomatically,
                 onSearch: commands.search,
-                onMetadataCommand: commands.metadataCommand.map { _ in
-                    { (command: ImportDraftCommand) in confirming = command }
-                },
+                onMetadataCommand: { confirming = $0 },
                 trailing: { trailing }
             )
             .disabled(!editable)
@@ -208,7 +258,7 @@ private struct ReleaseEditorCardView: View {
                     MacAlertButton(
                         Text(command.title),
                         role: .destructive
-                    ) { commands.metadataCommand?(command) },
+                    ) { commands.metadataCommand(command) },
                     MacAlertButton(Text("Cancel"), role: .cancel),
                 ]
             )
@@ -262,13 +312,11 @@ private struct ReleaseEditorCardView: View {
                     .fixedSize()
             }
             Spacer(minLength: ThemeSpace.group)
-            if let unlink = commands.unlink {
-                MacButton("Unlink", kind: .borderless, action: unlink)
-                    .help(
-                        "Stop treating the folder as this release. The metadata stays as it is."
-                    )
-                    .disabled(!editable)
-            }
+            MacButton("Unlink", kind: .borderless, action: commands.unlink)
+                .help(
+                    "Stop treating the folder as this release. The metadata stays as it is."
+                )
+                .disabled(!editable)
         }
     }
 }

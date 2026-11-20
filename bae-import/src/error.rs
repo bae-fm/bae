@@ -51,6 +51,12 @@ pub enum ImportError {
     #[error("file tags cannot be read: {detail}")]
     FileTags { detail: String },
 
+    /// A release editor reads the files' tags from the release's audio on
+    /// this device, and this device holds no original of the file `name`.
+    #[cfg(desktop)]
+    #[error("{name} is not on this device, so bae can't read its tags")]
+    FileNotOnThisDevice { name: String },
+
     /// A file the import must read cannot be used: audio that will not decode,
     /// a codec bae can't play, bytes that could not be hashed, or audio a track
     /// named that is no longer in the folder.
@@ -760,6 +766,7 @@ impl ImportError {
             | Self::InvalidFolder(_)
             | Self::UnreadableAudio(_)
             | Self::FileTags { .. }
+            | Self::FileNotOnThisDevice { .. }
             | Self::UnusableFile { .. }
             | Self::DocumentRead { .. }
             | Self::DiscIdCalculation { .. }

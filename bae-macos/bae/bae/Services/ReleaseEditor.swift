@@ -176,6 +176,9 @@ final class ReleaseEditor: Observable {
                     try await form.change { try $0.withTrack(track: track) }
                 },
                 apply: { try await form.apply(link: $0, apply: $1) },
+                applyFileTags: { try await form.applyFileTags() },
+                clear: { try await form.clear() },
+                unlink: { _ = try await form.change { $0.unlinked() } },
                 setAlbum: { pick in
                     _ = try await form.change { $0.withAlbum(pick: pick) }
                 },
@@ -288,6 +291,21 @@ final class HeldReleaseEditForm {
             link: link,
             apply: apply
         )
+        try showDraft()
+        return values
+    }
+
+    /// Hold the form with what the release's own files say in place of its
+    /// values; returns them.
+    func applyFileTags() async throws -> BridgeRawReleaseEdit {
+        form = try await handle.applyReleaseEditFileTags(form: form)
+        try showDraft()
+        return values
+    }
+
+    /// Hold the form with its metadata cleared; returns its values.
+    func clear() async throws -> BridgeRawReleaseEdit {
+        form = try await handle.clearReleaseEdit(form: form)
         try showDraft()
         return values
     }

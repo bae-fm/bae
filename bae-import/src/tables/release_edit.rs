@@ -105,6 +105,58 @@ impl ImportTables {
             .await
     }
 
+    /// The values clearing `form` puts in its place: no album title, artist
+    /// or year, a blank pressing, and each track untitled, credited to the
+    /// album's artists and with no listed length, role or work, on the
+    /// mediums and at the places the library holds for the release.
+    pub async fn cleared_release_edit_values(
+        &self,
+        form: &ReleaseEditForm,
+    ) -> Result<crate::LibraryDraft, DbError> {
+        let release_id = form.release_id.clone();
+        let layout = self
+            .store
+            .read(move |sql| {
+                bae_records::records::layout::laid_out_on(
+                    &sql,
+                    &bae_records::records::layout::LayoutParams {
+                        release_id: Some(&release_id),
+                        applied: false,
+                        mediums: "[]",
+                        places: "[]",
+                        carving: "[]",
+                        moves: "[]",
+                    },
+                )
+            })
+            .await?;
+        Ok(crate::LibraryDraft {
+            album_title: String::new(),
+            album_artist_assignments: Vec::new(),
+            album_year: String::new(),
+            pressing: crate::RawPressingEdit::from_pressing(&bae_types::pressing::Pressing::blank()),
+            mediums: layout.mediums,
+            tracks: layout
+                .tracks
+                .into_iter()
+                .map(|track| crate::DraftTrack {
+                    edit: crate::RawTrackEdit {
+                        id: track.track_id.clone(),
+                        title: String::new(),
+                        artist_assignments: crate::TrackArtistAssignments::AlbumArtists,
+                        file: crate::LibraryTrack(track.track_id),
+                    },
+                    place: track.place,
+                    stated_length_ms: None,
+                    roles: Vec::new(),
+                    works: Vec::new(),
+                })
+                .collect(),
+            release_roles: Vec::new(),
+            works: Default::default(),
+        })
+    }
+
     /// The draft of the form the request names, live: it reruns after each
     /// write that changes what it read. It reads nothing until a form is
     /// set, and `None` once the form's release is gone.

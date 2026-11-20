@@ -420,6 +420,25 @@ actor PreviewReleaseLibrary {
         }
     }
 
+    /// `release` with its metadata cleared, as core's clear leaves a form.
+    private static func clear(_ release: inout PreviewReleaseEdit) {
+        release.values.albumTitle = ""
+        release.values.albumYear = ""
+        release.values.albumArtistAssignments = []
+        release.values.tracks = release.values.tracks.map {
+            var track = $0
+            track.title = ""
+            track.artistAssignments = .albumArtists
+            return track
+        }
+    }
+
+    /// `release` linked to no record, as core's Unlink leaves a form.
+    private static func unlink(_ release: inout PreviewReleaseEdit) {
+        release.draft.records = []
+        release.draft.hasRecords = false
+    }
+
     /// What `session` does with each command.
     nonisolated func commands(
         of session: PreviewReleaseEditSession
@@ -461,6 +480,9 @@ actor PreviewReleaseLibrary {
                 }
             },
             apply: { _, _ in await session.change { _ in } },
+            applyFileTags: { await session.change { _ in } },
+            clear: { await session.change { Self.clear(&$0) } },
+            unlink: { _ = await session.change { Self.unlink(&$0) } },
             setAlbum: { pick in
                 await self.putAlbum(pick, in: session)
             },

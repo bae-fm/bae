@@ -32,10 +32,17 @@ fn form_track_json_sql() -> String {
 }
 
 /// The form as the draft's statements bind it: the release, whether the
-/// person applied a catalog, and each list as a JSON array.
+/// person applied values and whether they replaced its records, and each
+/// list as a JSON array.
 pub(super) struct FormParams {
     release: String,
     applied: bool,
+    /// Whether the form links the release to records of its own, an
+    /// apply's or none, in place of the release's.
+    relinked: bool,
+    /// Whether those records name any, so they name the album a save files
+    /// the release under.
+    linked: bool,
     album_artists: String,
     track_artists: String,
     form_tracks: String,
@@ -85,7 +92,7 @@ impl FormParams {
                 kind: assignment_kind_column(&track.artist_assignments),
             })
             .collect();
-        let applied = form.applied.as_ref().map(|applied| &applied.draft);
+        let applied = form.applied.as_ref();
         let (pick_kind, pick_album) = match &form.album_pick {
             AlbumPick::Records => ("records", None),
             AlbumPick::New => ("new", None),
@@ -94,6 +101,8 @@ impl FormParams {
         Ok(Self {
             release: form.release_id.clone(),
             applied: form.applied.is_some(),
+            relinked: form.records.is_some(),
+            linked: form.records.as_ref().is_some_and(|records| !records.is_empty()),
             album_artists: json(&album_artists, "a release editor's album artists")?,
             track_artists: json(&track_artists, "a release editor's track artists")?,
             form_tracks: json(&form_tracks, "a release editor's tracks")?,
@@ -107,7 +116,7 @@ impl FormParams {
                 &form.sheet_files,
             )?,
             records: bae_records::records::release_records::records_json(
-                form.applied.as_ref().map_or(&[], |applied| applied.records.as_slice()),
+                form.records.as_deref().unwrap_or_default(),
             ),
             pick_kind,
             pick_album,
@@ -137,9 +146,10 @@ impl FormParams {
 
 /// The album a save of the form files its release under, which one
 /// statement reads: the library album the person picked while the library
-/// holds it, or the new album they picked; else, once they applied a
-/// catalog, the album its records name (a new one where they name none the
-/// library holds); else the album the release is in.
+/// holds it, or the new album they picked; else, once an applied catalog
+/// linked the release to its records, the album they name (a new one where
+/// they name none the library holds); else, with the release's own records
+/// or none, the album the release is in.
 fn release_edit_album_on(
     sql: &impl coven::SqlRead,
     form: &FormParams,
@@ -159,10 +169,10 @@ fn release_edit_album_on(
                  SELECT CASE WHEN target.target_album_id IS NULL THEN 'none' ELSE 'named' END, \
                         target.target_album_id \
                  FROM ({target}) AS target \
-                 WHERE NOT EXISTS (SELECT 1 FROM pick) AND :applied \
+                 WHERE NOT EXISTS (SELECT 1 FROM pick) AND :linked \
                  UNION ALL \
                  SELECT 'named', r.album_id FROM releases AS r \
-                 WHERE r.id = :release AND NOT EXISTS (SELECT 1 FROM pick) AND NOT :applied) \
+                 WHERE r.id = :release AND NOT EXISTS (SELECT 1 FROM pick) AND NOT :linked) \
              SELECT choice.kind, a.id, a.title, {credits} \
              FROM choice LEFT JOIN albums AS a ON a.id = choice.album_id",
             credits = bae_records::records::query::album_credits_json_sql(),
@@ -170,7 +180,7 @@ fn release_edit_album_on(
         named_params! {
             ":pick_kind": form.pick_kind,
             ":pick_album": form.pick_album,
-            ":applied": form.applied,
+            ":linked": form.linked,
             ":release": form.release,
             ":records": form.records,
         },
@@ -289,15 +299,15 @@ pub(crate) fn release_edit_draft_rows_on(
             ":sheet_files",
             named_params! { ":release": params.release, ":sheet_files": params.sheet_files },
         )?,
-        records: match &form.applied {
-            Some(applied) => applied.records.clone(),
+        records: match &form.records {
+            Some(records) => records.clone(),
             None => bae_records::records::read::get_release_records_on(sql, &params.release)?,
         },
         has_records: sql.query_row(
-            "SELECT CASE WHEN :applied THEN json_array_length(:records) > 0 \
+            "SELECT CASE WHEN :relinked THEN json_array_length(:records) > 0 \
                     ELSE EXISTS (SELECT 1 FROM release_records WHERE release_id = :release) END",
             named_params! {
-                ":applied": params.applied,
+                ":relinked": params.relinked,
                 ":records": params.records,
                 ":release": params.release,
             },

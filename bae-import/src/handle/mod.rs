@@ -25,6 +25,7 @@ mod list;
 mod lookup_choices;
 mod pane_commands;
 mod picks;
+mod release_file_tags;
 mod release_identification;
 mod runtime;
 mod search;

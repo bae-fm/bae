@@ -163,7 +163,7 @@ pub struct ReleaseEditSeed {
 
 /// What applying a catalog release in a release editor read: every value,
 /// which the apply lays onto the release's tracks in order, and the records
-/// the pick names, the applied one first.
+/// the pick names, the applied one first, which link the release to it.
 #[cfg(desktop)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AppliedCatalog {
@@ -173,8 +173,9 @@ pub struct AppliedCatalog {
 
 /// The form a library release's editor holds, and every read and save of
 /// the editor takes: what the editor opened on, the form with each change
-/// the person made, the catalog release the person applied and the album
-/// they picked. Each change makes a new form; nothing in core keeps one.
+/// the person made, the values the person applied, the records a save
+/// links the release to and the album they picked. Each change makes a new
+/// form; nothing in core keeps one.
 #[cfg(desktop)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReleaseEditForm {
@@ -184,7 +185,15 @@ pub struct ReleaseEditForm {
     /// longer holds so.
     pub opened: ReleaseEditSeed,
     pub edit: RawReleaseEdit,
-    pub applied: Option<AppliedCatalog>,
+    /// Every value the person applied over the release's own: a catalog
+    /// release's, the files' tags, or the cleared values. A save writes each
+    /// one, so nothing the release held before survives. `None` while the
+    /// form holds the release's own values.
+    pub applied: Option<crate::LibraryDraft>,
+    /// The records a save links the release to in place of its own: an
+    /// applied catalog's, the applied one first, or none once the person
+    /// unlinked the release. `None` keeps the release's own.
+    pub records: Option<Vec<bae_catalogs::records::ReleaseRecord>>,
     pub album_pick: AlbumPick,
     /// The side or disc the person picked for each CUE sheet, by the
     /// sheet's file id, that moves the sheet's tracks there. A catalog
@@ -208,6 +217,7 @@ impl ReleaseEditForm {
             edit: seed.edit.clone(),
             opened: seed,
             applied: None,
+            records: None,
             album_pick: AlbumPick::Records,
             sheet_places: std::collections::BTreeMap::new(),
             sheet_files: Vec::new(),
@@ -218,22 +228,37 @@ impl ReleaseEditForm {
     pub fn changed(&self) -> bool {
         self.edit != self.opened.edit
             || self.applied.is_some()
+            || self.records.is_some()
             || self.album_pick != AlbumPick::Records
             || !self.sheet_places.is_empty()
             || !self.sheet_files.is_empty()
     }
 
     /// The form with `applied`'s values in place of the form's and of the
-    /// catalog applied before, and no side picked for any CUE sheet, since
-    /// the catalog places the tracks; the album the person picked stays
-    /// picked.
+    /// values applied before, linked to its records, and no side picked for
+    /// any CUE sheet, since the catalog places the tracks; the album the
+    /// person picked stays picked.
     pub fn applying(self, applied: AppliedCatalog) -> Self {
         Self {
             edit: applied.draft.release_edit(),
-            applied: Some(applied),
+            applied: Some(applied.draft),
+            records: Some(applied.records),
             sheet_places: std::collections::BTreeMap::new(),
             ..self
         }
+    }
+
+    /// The form with `values` in place of the form's and of the values
+    /// applied before: the files' tags, or the cleared values. The records,
+    /// the sides picked for CUE sheets and the album pick stay as they are.
+    pub fn applying_values(self, values: crate::LibraryDraft) -> Self {
+        Self { edit: values.release_edit(), applied: Some(values), ..self }
+    }
+
+    /// The form linked to no record: a save drops the release's records,
+    /// and every value stays as the form holds it.
+    pub fn unlinked(self) -> Self {
+        Self { records: Some(Vec::new()), ..self }
     }
 
     /// The form with the CUE sheet `sheet_file_id` picked onto `side`; a

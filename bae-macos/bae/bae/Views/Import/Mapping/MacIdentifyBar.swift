@@ -11,8 +11,8 @@ struct MacIdentifyBar<Trailing: View>: View {
     let identifyDisabled: Bool
     let onAutomatic: () -> Void
     let onSearch: () -> Void
-    /// Runs the command the Metadata menu picks; `nil` draws no menu.
-    let onMetadataCommand: ((ImportDraftCommand) -> Void)?
+    /// Runs the command the Metadata menu picks.
+    let onMetadataCommand: (ReleaseMetadataCommand) -> Void
     @ViewBuilder
     let trailing: () -> Trailing
 
@@ -42,21 +42,19 @@ struct MacIdentifyBar<Trailing: View>: View {
                 .buttonStyle(.accentBordered)
             Button("Search") { onSearch() }
                 .buttonStyle(.accentBordered)
-            if let onMetadataCommand {
-                metadataMenu(onMetadataCommand)
-            }
+            metadataMenu(onMetadataCommand)
         }
         .disabled(identifyDisabled)
     }
 
     /// Commands that replace the draft's metadata.
     private func metadataMenu(
-        _ run: @escaping (ImportDraftCommand) -> Void
+        _ run: @escaping (ReleaseMetadataCommand) -> Void
     ) -> some View {
         MacButton(
             kind: .secondary,
             menu: {
-                for command in ImportDraftCommand.allCases {
+                for command in ReleaseMetadataCommand.allCases {
                     MacMenuItem(verbatim: command.title) {
                         run(command)
                     }

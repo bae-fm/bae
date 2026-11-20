@@ -839,7 +839,10 @@ place of the relative one: a file whose path, size and modification time are
 the ones the last scan stored is the file that scan read (§3.1).
 
 Tags edited after an import are not read again: the library holds the values
-the import wrote, and the release editor changes them (§3.8).
+the import wrote, and the release editor changes them (§3.8). The one
+exception is the release editor's command that applies the files' tags,
+which reads them again from the release's files on this device when the
+person runs it (decision #963).
 
 The hash covers files, never decisions. Carol tells bae which disc each CUE
 sheet is on; that is stored under the candidate's hash, and a hash that moved with
@@ -2229,7 +2232,9 @@ a spinner and *Reading <file name>…* sit before *Cancel* and *Save*, which
 stay disabled until the read ends. The card ends
 with the release's catalog records, the applied catalog's first while the form
 holds one, then *Unlink*, as the import pane's draft ends: it drops the link and
-its records, and a save then writes the release with none.
+its records and keeps every value, and a save then writes the release with
+none and leaves it in its album unless the person picked another. A catalog
+applied after Unlink links the release to that catalog's records.
 
 The editor opens with a *form* that holds the release's values as the
 library holds them, and the editor holds its form: bae stores none of the
@@ -2276,7 +2281,16 @@ picks at once, and the form keeps what the person applied and picked.
 Cancelling discards the form's changes; bae reads no source again, since the
 library holds no pointer back into one. The editor offers the import pane's two
 commands for starting over (§3.6): applying the files' tags and clearing the
-metadata. Each changes the form and writes nothing until a save. A release with nothing
+metadata. Each changes the form and writes nothing until a save, and each
+keeps the form's records, its CUE sheets' picked sides and files, and its
+album pick. Applying the files' tags reads the release's audio files and CUE
+sheets on this device as the import reads a folder's (§3.6), and lays what
+they say onto the release's tracks; bae refuses it, naming the file, when
+this device holds no original of one of them. Clearing the metadata empties
+the album's title, artists and year, the pressing, and each track's title,
+artists, listed length, roles and works, and keeps the mediums and the
+tracks' places as the library holds them; a save stays refused until the
+album has a title and an artist. A release with nothing
 applied saves its edited fields alone, its mediums, roles and works as stored.
 A save decides each label as an import does (§2.3), and a label the person
 left as it was keeps the library label it named.

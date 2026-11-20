@@ -51,8 +51,13 @@ struct ReleaseEditorView: View {
                     commands: ReleaseEditorCommands(
                         identifyAutomatically: identifyAutomatically,
                         search: { openSearch(.search) },
-                        metadataCommand: nil,
-                        unlink: nil,
+                        metadataCommand: { command in
+                            command.run(
+                                resetToFileMetadata: session.applyFileTags,
+                                clearMetadata: session.clearMetadata
+                            )
+                        },
+                        unlink: session.unlink,
                         identifyDisabled: session.isBusy
                     ),
                     card: card(draft),

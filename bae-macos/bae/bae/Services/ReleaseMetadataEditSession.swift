@@ -27,6 +27,15 @@ struct ReleaseEditFormCommands: Sendable {
     let apply:
         @Sendable (BridgePressingLink, BridgeCatalogApply?) async throws ->
             BridgeRawReleaseEdit
+    /// Replace the form's values with what the release's audio files and
+    /// CUE sheets on this device say, held until the save.
+    let applyFileTags: @Sendable () async throws -> BridgeRawReleaseEdit
+    /// Clear the form's metadata, keeping its tracks' places and records,
+    /// held until the save.
+    let clear: @Sendable () async throws -> BridgeRawReleaseEdit
+    /// Drop the form's catalog records: a save writes the release with
+    /// none.
+    let unlink: @Sendable () async throws -> Void
     /// Record what the person picked for the album a save files the release
     /// under.
     let setAlbum: @Sendable (BridgeAlbumPick) async throws -> Void
@@ -94,6 +103,9 @@ final class ReleaseMetadataEditSession {
         case pickingAlbum
         case pickingSheetSide
         case pickingSheetFile
+        case readingFileTags
+        case clearing
+        case unlinking
         /// Applying a catalog release. The editor's step line shows the
         /// network read the apply waits on; `nil` when no apply runs.
         case applying((any CatalogApplySource)?)
@@ -366,6 +378,63 @@ final class ReleaseMetadataEditSession {
 }
 
 extension ReleaseMetadataEditSession {
+    /// Replace every value with what the release's own files say, unsaved
+    /// until Save.
+    func applyFileTags() {
+        replaceValues(.readingFileTags) { try await $0.applyFileTags() }
+    }
+
+    /// Clear the metadata, keeping the tracks' places and the records,
+    /// unsaved until Save.
+    func clearMetadata() {
+        replaceValues(.clearing) { try await $0.clear() }
+    }
+
+    /// Drop the release's catalog records; Save writes the release with
+    /// none.
+    func unlink() {
+        let serial = begin(.unlinking)
+        failure = nil
+        operationTask = Task { @MainActor in
+            do {
+                try await serially { [form] in try await form.unlink() }
+            }
+            catch is CancellationError {}
+            catch {
+                failure = DisplayError(error)
+            }
+            finish(serial)
+        }
+    }
+
+    /// Run `command`, which replaces the form's values, as `operation`, once
+    /// the fields have committed what the person typed.
+    private func replaceValues(
+        _ operation: Operation,
+        _ command:
+            @escaping @MainActor (ReleaseEditFormCommands) async throws ->
+            BridgeRawReleaseEdit
+    ) {
+        let serial = begin(operation)
+        failure = nil
+        operationTask = Task { @MainActor in
+            await editingCommands.commitActiveEdits()
+            guard !Task.isCancelled else {
+                finish(serial)
+                return
+            }
+            do {
+                values = try await serially { [form] in try await command(form)
+                }
+            }
+            catch is CancellationError {}
+            catch {
+                failure = DisplayError(error)
+            }
+            finish(serial)
+        }
+    }
+
     /// Record the audio file `audioFileId` the person picked for the FILE
     /// line `fileReference` of the CUE sheet `sheetFileId`.
     func pickSheetFile(

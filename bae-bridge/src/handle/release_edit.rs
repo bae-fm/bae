@@ -134,6 +134,14 @@ impl BridgeReleaseEditForm {
         })
     }
 
+    /// The form linked to no catalog record: a save drops the release's
+    /// records and keeps it in its album, and every value stays as the form
+    /// holds it. Applying a catalog afterwards links the release to that
+    /// catalog's records.
+    pub fn unlinked(&self) -> std::sync::Arc<Self> {
+        self.changed(|form| *form = form.clone().unlinked())
+    }
+
     /// The form with `pick` as the album a save files the release under: a
     /// library album, a new one, or the album its records name.
     pub fn with_album(&self, pick: crate::types::BridgeAlbumPick) -> std::sync::Arc<Self> {
@@ -167,6 +175,28 @@ forward! {
                     .apply_release_edit_catalog(form.inner.clone(), &link.into_core(), &steps)
                     .await?,
             ))
+        }
+
+        /// `form` with what the release's audio files and CUE sheets on
+        /// this device say about it in place of its values, held until a
+        /// save. Core refuses when this device holds no original of one of
+        /// the release's audio files or sheets.
+        fn apply_release_edit_file_tags(
+            form: std::sync::Arc<BridgeReleaseEditForm>,
+        ) -> std::sync::Arc<BridgeReleaseEditForm> {
+            Ok(BridgeReleaseEditForm::of(
+                this.services.apply_release_edit_file_tags(form.inner.clone()).await?,
+            ))
+        }
+
+        /// `form` with its metadata cleared: no album title, artist, year or
+        /// pressing, and each track untitled, with no role, work or listed
+        /// length, at the places the release holds. The records stay, and
+        /// nothing is written until a save.
+        fn clear_release_edit(
+            form: std::sync::Arc<BridgeReleaseEditForm>,
+        ) -> std::sync::Arc<BridgeReleaseEditForm> {
+            Ok(BridgeReleaseEditForm::of(this.services.clear_release_edit(form.inner.clone()).await?))
         }
 
         /// Save `form` into the album it files the release under: every
