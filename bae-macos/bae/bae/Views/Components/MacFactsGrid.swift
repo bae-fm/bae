@@ -28,7 +28,9 @@ struct MacFactsGrid<Facts: View>: View {
 }
 
 extension EnvironmentValues {
-    /// Whether the `MacFactsGrid` around a fact draws its wide look.
+    // swiftui-environment-audit: optional
+    /// Whether the `MacFactsGrid` around a fact draws its wide look. A fact
+    /// outside a grid draws the narrow look, which is this default.
     @Entry
     var factsGridWide = false
 }
