@@ -22,6 +22,8 @@
             coverFile: true,
             loudnessTags: true
         )
+        /// The formats the Save as boards list: FLAC, MP3 and one the person
+        /// named for their phone.
         static let savePresets: [BridgeSavePreset] = [
             BridgeSavePreset(
                 id: "flac",
@@ -32,6 +34,11 @@
                 id: "mp3",
                 name: "MP3",
                 codec: .mp3(bitrateKbps: 320)
+            ),
+            BridgeSavePreset(
+                id: "phone",
+                name: "Phone",
+                codec: .aac(bitrateKbps: 256)
             ),
         ]
 
