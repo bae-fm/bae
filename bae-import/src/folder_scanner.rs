@@ -42,6 +42,7 @@ pub(crate) use folder_times::FolderTimes;
 pub use release_decision::*;
 pub(crate) use scan::file_modified_at_ns;
 pub use scan::*;
+pub(crate) use sheet_bindings::codec_backs_cue;
 use sheet_bindings::*;
 pub use sheet_bindings::{
     BoundTrackSheet, DiscLayout, SheetAudioFile, SheetBinding, SheetBindingOffer,

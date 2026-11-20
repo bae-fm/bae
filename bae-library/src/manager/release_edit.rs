@@ -112,7 +112,10 @@ impl LibraryManager {
     /// roles and works), its records, and the album the release lands in:
     /// the one the person picked, else the one the applied records name. A
     /// form where the person applied no catalog writes the fields, and moves
-    /// the release only to an album the person picked. When the library no
+    /// the release only to an album the person picked. A form that binds
+    /// CUE sheets' `FILE` lines to other audio files reads those files
+    /// first, and the write replaces the audio rows of the sheets' tracks
+    /// (see [`bae_import::service::rebound_sheet_audio`]). When the library no
     /// longer holds a library artist or album the person picked, `gone` says
     /// what the save does. The same write reads the release as this save
     /// wrote it, and the method returns the form opened on that.
@@ -155,6 +158,17 @@ impl LibraryManager {
             }
             (GonePick::Unpick, _) => bae_records::GonePicks::Unpick { unpicked: None },
         };
+        let rebound = bae_import::service::rebound_sheet_audio(
+            &self.import_tables,
+            &self.records,
+            &self.files,
+            &self.diagnostics,
+            &self.runtime_handle,
+            self.clock.clone(),
+            self.ids.clone(),
+            &form,
+        )
+        .await?;
         let saved_id = release_id.clone();
         let (opened_form, layout_form, decisions_form) = (form.clone(), form.clone(), form);
         let still_as_opened = move |sql: &coven::CovenWrite<'_>| {
@@ -170,7 +184,15 @@ impl LibraryManager {
             bae_import::tables::release_edit_form_on(sql, &saved_id)
         };
         self.records
-            .save_release_edit_atomic(plan, gone, still_as_opened, layout, sheet_decisions, saved)
+            .save_release_edit_atomic(
+                plan,
+                gone,
+                still_as_opened,
+                layout,
+                rebound,
+                sheet_decisions,
+                saved,
+            )
             .await
             .map_err(|error| release_edit_save_error(error, &release_id))
     }

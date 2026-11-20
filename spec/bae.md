@@ -2206,8 +2206,9 @@ reads a release from its catalog, the editor names the catalog it reads from,
 as an import's pick does (§3.5); saving, cancelling and picking an album are
 local and show no spinner, their controls disabled until they end, except a
 save that binds a CUE sheet to another of the release's audio files: it reads
-that file first, and a spinner and *Reading <file name>…* sit before *Cancel*
-and *Save*, which stay disabled until the read ends. The card ends
+that file, and every other file the sheet's lines then play from, first, and
+a spinner and *Reading <file name>…* sit before *Cancel* and *Save*, which
+stay disabled until the read ends. The card ends
 with the release's catalog records, the applied catalog's first while the form
 holds one, as the import pane's draft ends with its own, but with no *Unlink*:
 nothing unlinks a library release.
@@ -2232,8 +2233,14 @@ applied one first) and the album those name — none of which is written yet;
 the cover stays the release's own. Saving writes the whole form in one
 transaction: the edited fields, and where a catalog was applied, its every
 value too, each track's listed length among them, so nothing a previous
-source credited survives, and the discs the person picked for CUE sheets:
-each move of a sheet's tracks, with the sheet's disc as its disc decision. The release lands
+source credited survives, the discs the person picked for CUE sheets
+(each move of a sheet's tracks, with the sheet's disc as its disc decision),
+and the audio files they picked for sheets' `FILE` lines, each as the line's
+binding. For such a sheet, the save writes each track's format, segments,
+length, loudness and scrub points from the files the sheet's lines then play
+from, as the import reads them (§3.7), and keeps no row of the file a line
+played from before. The save also measures the album's loudness again over
+all the release's tracks, which coven reads from wherever it has them. The release lands
 in the album its records name (§3.7), or in a library album the person
 picked, which keeps its own title and artists. The editor names that album
 with the import pane's album picker: the album the release is in, the one an
@@ -2275,11 +2282,19 @@ consecutive tracks a CUE sheet carves from one file under the sheet's caption,
 once, as the import pane heads them: the *Disc* pop-up of which of the
 release's discs the sheet is (no *Ignored*), the sheet's name, and the *Audio
 file* pop-up of which of the release's audio files on this device the sheet
-carves (no *Choose audio…*, since the editor adds and removes no tracks). The
+carves (no *Choose audio…*, since the editor adds and removes no tracks): the
+file the sheet's line plays from, the one it played from when the editor
+opened, and each other audio file of the release on this device that no track
+plays from, with the import pane's reason beside one it refuses, a codec bae
+can't carve tracks out of or a file a track of the line ends, or its last
+track starts, past the end of. The
 rows show a new choice at once, from the editor's draft, before *Save* writes
 it (a catalog applied after a disc pick lays the tracks out at its own places
 and clears the picks, so the pop-up then shows the catalog's disc; a pick made
-after it moves the sheet again); every other track names in its row the file its body, from its
+after it moves the sheet again, and a file pick stays). After a file pick the
+caption names the new file, the line's last track plays to its end, the
+listed lengths' warnings follow those lengths, and the *Files* list shows the
+file the line no longer plays from in the new file's place. Every other track names in its row the file its body, from its
 INDEX 01 on, plays from. Each row's listed length is the one the library
 stores for the track, or the one the catalog applied in the session lists. A pregap stored at the tail of the file before
 (§2.2) is not named: a row names one file. An applied catalog lays them out

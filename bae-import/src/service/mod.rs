@@ -30,6 +30,8 @@ pub use format_prep::{build_audio_formats, BuiltAudioFormats};
 mod importing;
 mod progress;
 mod reconcile;
+mod sheet_rebind;
+pub use sheet_rebind::rebound_sheet_audio;
 mod track_files;
 mod worker;
 

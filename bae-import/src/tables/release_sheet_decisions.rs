@@ -87,6 +87,26 @@ pub(super) fn store_sheet_disc_decisions_on(
     Ok(())
 }
 
+/// Store the audio files the person picked for `FILE` lines of CUE sheets in
+/// a release editor, each as the line's binding: a line decided before
+/// takes the new file. The editor's save calls it through
+/// `store_release_edit_sheet_decisions_on`.
+pub(super) fn store_sheet_binding_decisions_on(
+    sql: &CovenWrite<'_>,
+    picks: &[bae_records::records::sheet_files::SheetFilePick],
+) -> Result<(), DbError> {
+    for pick in picks {
+        sql.execute(
+            "INSERT INTO release_sheet_bindings (sheet_file_id, file_reference, audio_file_id) \
+             VALUES (?, ?, ?) \
+             ON CONFLICT (sheet_file_id, file_reference) \
+             DO UPDATE SET audio_file_id = excluded.audio_file_id",
+            params![pick.sheet_file_id, pick.file_reference, pick.audio_file_id],
+        )?;
+    }
+    Ok(())
+}
+
 impl ImportTables {
     /// The decisions the person made about `release_id`'s sheets, naming each
     /// file by its path in the release, as the import's decisions did. The

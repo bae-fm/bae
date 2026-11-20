@@ -99,7 +99,7 @@ pub fn release_details_on<X>(
         credits = release_credits_json_sql("rel.id"),
         has_credits = super::release_credits::release_has_credits_sql("rel.id"),
         performs_works = performs_works_sql("rel.id"),
-        files = release_files_json_sql("rel.id"),
+        files = release_files_json_sql("rel.id", "release_files"),
         records = release_records_json_sql("rel.id"),
         elsewhere = ELSEWHERE_OF_RELEASE,
         upload_columns = super::queued_uploads::RELEASE_UPLOAD_COLUMNS,
@@ -188,12 +188,13 @@ fn performs_works_sql(release: &str) -> String {
     )
 }
 
-/// The release `release` (an SQL expression naming its id)'s files, and among
+/// The release `release` (an SQL expression naming its id)'s files, as the
+/// table `table` with the columns of `release_files` holds them, and among
 /// them the images, the images bae can make a cover from, and the files no
 /// track plays from, each in the release's file order, with the number of
 /// files, the number of images, the files' total size and the summary of
 /// their audio, as one JSON object for [`release_files_column`].
-fn release_files_json_sql(release: &str) -> String {
+fn release_files_json_sql(release: &str, table: &str) -> String {
     let covers: Vec<String> = ContentType::SUPPORTED_COVERS
         .iter()
         .map(|content_type| format!("'{}'", content_type.as_str()))
@@ -216,7 +217,7 @@ fn release_files_json_sql(release: &str) -> String {
               'source_audio', {source_audio}) \
           FROM (SELECT f.id, f.original_filename, f.content_type, f.source_audio_layout, \
                        coven.size AS size, {file_json} AS file_json \
-                FROM release_files AS f \
+                FROM {table} AS f \
                 JOIN coven_files AS coven ON coven.id = f.file \
                 WHERE f.release_id = {release}) AS listed)",
         files = list("1"),
@@ -234,22 +235,28 @@ fn release_files_json_sql(release: &str) -> String {
                     f.source_audio_bitrate_kbps AS bitrate_kbps, \
                     f.source_audio_channels AS channels, \
                     f.source_audio_duration_ms AS duration_ms \
-             FROM release_files AS f WHERE f.release_id = {release}"
+             FROM {table} AS f WHERE f.release_id = {release}"
         )),
         release = release,
     )
 }
 
 /// The files of the release `release` (an SQL expression over `params`
-/// naming its id), as its detail reads them.
+/// naming its id), as its detail reads them, each audio file laid out as
+/// the picks `picks` lay it (see [`super::sheet_files::sheet_files_ctes`]).
 #[cfg(desktop)]
 pub fn release_files_on(
     sql: &impl coven::SqlRead,
     release: &str,
+    picks: &str,
     params: impl rusqlite::Params,
 ) -> Result<DbReleaseFiles, DbError> {
     Ok(sql.query_row(
-        &format!("SELECT {} AS files", release_files_json_sql(release)),
+        &format!(
+            "WITH {} SELECT {} AS files",
+            super::sheet_files::sheet_files_ctes(release, picks),
+            release_files_json_sql(release, "laid_files")
+        ),
         params,
         |row| release_files_column(row, "files"),
     )?)

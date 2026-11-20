@@ -89,6 +89,8 @@ pub use release_edit_save::{
 };
 mod emptied;
 pub mod layout;
+#[cfg(desktop)]
+pub mod sheet_files;
 use emptied::Emptiable;
 mod release_credits;
 mod release_deletion;

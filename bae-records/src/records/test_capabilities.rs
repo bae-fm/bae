@@ -300,6 +300,7 @@ impl Records {
             super::GonePicks::Refuse,
             |_| Ok(Ok(())),
             |_| Ok(None),
+            None,
             |_| Ok(()),
             |_| Ok(()),
         )

@@ -203,10 +203,26 @@ mirror_struct! {
 
 impl BridgeReleaseEditSheet {
     fn from_core(sheet: bae_import::ReleaseEditSheet) -> Self {
-        let bae_import::ReleaseEditSheet { sheet, disc_options } = sheet;
-        let bae_records::DbReleaseEditSheet { file_id, name, disc_number } = sheet;
-        Self { file_id, name, disc_number, disc_options }
+        let bae_import::ReleaseEditSheet { sheet, disc_options, audio_options } = sheet;
+        let bae_records::DbReleaseEditSheet { file_id, name, disc_number, file_reference } = sheet;
+        Self {
+            file_id,
+            name,
+            disc_number,
+            disc_options,
+            file_reference,
+            audio_options: audio_options
+                .into_iter()
+                .map(BridgeReleaseEditAudioOption::from_core)
+                .collect(),
+        }
     }
+}
+
+mirror_struct! {
+    BridgeReleaseEditAudioOption = bae_import::ReleaseEditAudioOption,
+    from_core: fn,
+    fields: { file_id, name, bound, offer: (crate::types::BridgeSheetBindingOffer) },
 }
 
 impl BridgeReleaseEditTrackContext {
@@ -286,6 +302,7 @@ impl BridgeReleaseEditDraft {
             pressing_offers,
             album_artists,
             changed,
+            files_to_read,
             invalid,
         } = draft;
         Self {
@@ -301,6 +318,7 @@ impl BridgeReleaseEditDraft {
             pressing_offers: BridgePressingOffers::from_core(pressing_offers),
             album_artists: album_artists.map(BridgeArtistField::from_core),
             changed,
+            files_to_read,
             invalid: invalid.map(BridgeValidationReason::from_core),
         }
     }

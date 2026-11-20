@@ -487,7 +487,7 @@ pub(super) struct FileColumns {
 }
 
 /// The names of [`FileColumns`] that come from `release_files` itself.
-const FILE_ROW_COLUMNS: [&str; 16] = [
+pub(super) const FILE_ROW_COLUMNS: [&str; 16] = [
     "id",
     "release_id",
     "original_filename",

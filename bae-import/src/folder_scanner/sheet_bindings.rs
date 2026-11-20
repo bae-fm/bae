@@ -32,15 +32,26 @@ pub(super) fn cue_pair_codec_label(audio: &ScannedFile) -> CueCodecLabel {
     let Some(probe) = &audio.source_audio else {
         return CueCodecLabel::Unprobeable;
     };
-    match &probe.content_type {
-        bae_util::content_type::ContentType::Flac
-        | bae_util::content_type::ContentType::Ape
-        | bae_util::content_type::ContentType::Alac
-        | bae_util::content_type::ContentType::Pcm
-        | bae_util::content_type::ContentType::WavPack
-        | bae_util::content_type::ContentType::Dsd => CueCodecLabel::Supported,
-        other => CueCodecLabel::Unsupported(other.display_name().to_string()),
+    if codec_backs_cue(&probe.content_type) {
+        CueCodecLabel::Supported
+    } else {
+        CueCodecLabel::Unsupported(probe.content_type.display_name().to_string())
     }
+}
+
+/// Whether bae can carve a CUE sheet's tracks out of audio in the codec
+/// `content_type`.
+pub(crate) fn codec_backs_cue(content_type: &bae_util::content_type::ContentType) -> bool {
+    use bae_util::content_type::ContentType;
+    matches!(
+        content_type,
+        ContentType::Flac
+            | ContentType::Ape
+            | ContentType::Alac
+            | ContentType::Pcm
+            | ContentType::WavPack
+            | ContentType::Dsd
+    )
 }
 
 pub(super) fn sheet_reference_fits_audio(

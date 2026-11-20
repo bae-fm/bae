@@ -73,20 +73,80 @@ pub struct ReleaseEditTrackSide {
 }
 
 /// The CUE sheet over a run of the editor's tracks, with the discs the
-/// release holds, which its Disc pop-up offers.
+/// release holds, which its Disc pop-up offers, and the audio files its
+/// `FILE` line can play from, which its Audio file pop-up offers.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReleaseEditSheet {
     /// The library's sheet, on the disc the editor's form puts its tracks.
     pub sheet: DbReleaseEditSheet,
     /// The discs the release holds, counted from one.
     pub disc_options: Vec<u32>,
+    pub audio_options: Vec<ReleaseEditAudioOption>,
 }
 
-impl ReleaseEditSheet {
-    /// `sheet` on a release of `disc_count` discs.
-    fn of(sheet: DbReleaseEditSheet, disc_count: usize) -> Self {
+/// One audio file of the release as a choice for a sheet's `FILE` line:
+/// the file, whether the line plays from it in the editor's form, and
+/// whether it can back the line.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReleaseEditAudioOption {
+    pub file_id: String,
+    pub name: String,
+    pub bound: bool,
+    pub offer: crate::folder_scanner::SheetBindingOffer,
+}
+
+/// What the editor's sheet captions offer: the discs of the release, and
+/// the audio files each sheet's `FILE` line can play from, by the sheet's
+/// file id and the line's text.
+pub(crate) struct ReleaseEditSheetChoices {
+    disc_options: Vec<u32>,
+    audio_options: std::collections::HashMap<(String, String), Vec<ReleaseEditAudioOption>>,
+}
+
+#[cfg(desktop)]
+impl ReleaseEditSheetChoices {
+    /// The choices of a release of `disc_count` discs whose lines can play
+    /// from `options`: a file whose codec bae can't carve tracks out of is
+    /// refused naming the codec, and one shorter than the line's tracks is
+    /// refused for its timing, as the import pane refuses them.
+    pub(crate) fn of(
+        disc_count: usize,
+        options: Vec<bae_records::records::sheet_files::DbSheetAudioOption>,
+    ) -> Self {
         let disc_count = u32::try_from(disc_count).expect("a release holds fewer than 2^32 discs");
-        Self { sheet, disc_options: (1..=disc_count).collect() }
+        let mut audio_options: std::collections::HashMap<_, Vec<_>> =
+            std::collections::HashMap::new();
+        for option in options {
+            use crate::folder_scanner::SheetBindingOffer;
+            let offer = if !crate::folder_scanner::codec_backs_cue(&option.content_type) {
+                SheetBindingOffer::RefusedCodec {
+                    codec: option.content_type.display_name().to_string(),
+                }
+            } else if option.fits {
+                SheetBindingOffer::Offered
+            } else {
+                SheetBindingOffer::RefusedTiming
+            };
+            audio_options.entry((option.sheet_file_id, option.file_reference)).or_default().push(
+                ReleaseEditAudioOption {
+                    file_id: option.file_id,
+                    name: option.name,
+                    bound: option.bound,
+                    offer,
+                },
+            );
+        }
+        Self { disc_options: (1..=disc_count).collect(), audio_options }
+    }
+
+    /// The caption of `sheet`.
+    fn sheet(&self, sheet: DbReleaseEditSheet) -> ReleaseEditSheet {
+        let audio_options = self
+            .audio_options
+            .get(&(sheet.file_id.clone(), sheet.file_reference.clone()))
+            .cloned()
+            .unwrap_or_default();
+        ReleaseEditSheet { sheet, disc_options: self.disc_options.clone(), audio_options }
     }
 }
 
@@ -115,17 +175,18 @@ impl ReleaseEditTrackRun {
 
 impl ReleaseEditTrackSide {
     /// Lay out `rows`, in release order: a side per run of tracks on one
-    /// side, and within it a run per file a sheet carves several consecutive
-    /// tracks from; every other track is a run of its own.
+    /// side, and within it a run per `FILE` line of a sheet that carves
+    /// several consecutive tracks from one file, captioned with `choices`;
+    /// every other track is a run of its own.
     #[cfg(desktop)]
     pub(crate) fn lay_out(
         rows: impl IntoIterator<Item = ReleaseEditTrackRow>,
-        disc_count: usize,
+        choices: &ReleaseEditSheetChoices,
     ) -> Vec<Self> {
         let mut sides: Vec<Self> = Vec::new();
         for row in rows {
             match sides.last_mut() {
-                Some(last) if last.side == row.context.side => last.append(row, disc_count),
+                Some(last) if last.side == row.context.side => last.append(row, choices),
                 _ => sides.push(Self {
                     side: row.context.side.clone(),
                     runs: vec![ReleaseEditTrackRun::Track(row)],
@@ -136,34 +197,30 @@ impl ReleaseEditTrackSide {
     }
 
     /// Add the next row: onto the last run when one sheet carves both tracks
-    /// from the same file, else as a run of its own.
+    /// from under the same `FILE` line and from the same file, else as a run
+    /// of its own.
     #[cfg(desktop)]
-    fn append(&mut self, row: ReleaseEditTrackRow, disc_count: usize) {
-        let carved_with = |(sheet, source): (&str, &str)| {
+    fn append(&mut self, row: ReleaseEditTrackRow, choices: &ReleaseEditSheetChoices) {
+        let carved_with = |(sheet, source): (&DbReleaseEditSheet, &ReleaseEditTrackSource)| {
             row.context.carved_from().is_some_and(|(next_sheet, next_source)| {
-                next_sheet.file_id == sheet && next_source.file_id == source
+                next_sheet.file_id == sheet.file_id
+                    && next_sheet.file_reference == sheet.file_reference
+                    && next_source.file_id == source.file_id
             })
-        };
-        let of = |(sheet, source): (&DbReleaseEditSheet, &ReleaseEditTrackSource)| {
-            (sheet.file_id.clone(), source.file_id.clone())
         };
         match self.runs.pop() {
             Some(ReleaseEditTrackRun::Sheet { sheet, source, mut rows })
-                if carved_with((&sheet.sheet.file_id, &source.file_id)) =>
+                if carved_with((&sheet.sheet, &source)) =>
             {
                 rows.push(row);
                 self.runs.push(ReleaseEditTrackRun::Sheet { sheet, source, rows });
             }
             Some(ReleaseEditTrackRun::Track(last))
-                if last.context.carved_from().is_some_and(|from| {
-                    let (sheet, source) = of(from);
-                    carved_with((&sheet, &source))
-                }) =>
+                if last.context.carved_from().is_some_and(carved_with) =>
             {
                 let (sheet, source) =
                     last.context.carved_from().expect("the guard read the track's sheet");
-                let (sheet, source) =
-                    (ReleaseEditSheet::of(sheet.clone(), disc_count), source.clone());
+                let (sheet, source) = (choices.sheet(sheet.clone()), source.clone());
                 self.runs.push(ReleaseEditTrackRun::Sheet { sheet, source, rows: vec![last, row] });
             }
             last => {

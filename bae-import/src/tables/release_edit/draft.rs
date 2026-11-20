@@ -43,6 +43,9 @@ pub(super) struct FormParams {
     mediums: String,
     places: String,
     moves: String,
+    /// The audio files picked for CUE sheets' `FILE` lines, as the sheet
+    /// files' statements bind them.
+    sheet_files: String,
     records: String,
     pick_kind: &'static str,
     pick_album: Option<String>,
@@ -153,6 +156,9 @@ impl FormParams {
             mediums: json(&mediums, "a release editor's applied mediums")?,
             places: json(&places, "a release editor's applied track places")?,
             moves: json(&moves, "a release editor's picked sheet discs")?,
+            sheet_files: bae_records::records::sheet_files::sheet_file_picks_json(
+                &form.sheet_files,
+            )?,
             records: bae_records::records::release_records::records_json(
                 form.applied.as_ref().map_or(&[], |applied| applied.records.as_slice()),
             ),
@@ -239,6 +245,11 @@ pub(crate) struct ReleaseEditDraftRows {
     tracks: Vec<DraftTrackRow>,
     /// How many discs the release has once the form's layout is written.
     disc_count: usize,
+    /// The audio files each `FILE` line of the release's sheets can play
+    /// from, once the form's picks are written.
+    audio_options: Vec<bae_records::records::sheet_files::DbSheetAudioOption>,
+    /// The names of the files a save reads first.
+    files_to_read: Vec<String>,
     has_tracks: bool,
     files: bae_records::DbReleaseFiles,
     records: Vec<bae_catalogs::records::ReleaseRecord>,
@@ -312,12 +323,29 @@ pub(crate) fn release_edit_draft_rows_on(
         )?,
         tracks: draft_tracks_on(sql, &params)?,
         disc_count: bae_records::records::layout::laid_disc_count_on(sql, &params.layout())?,
+        audio_options: bae_records::records::sheet_files::sheet_audio_options_on(
+            sql,
+            ":release",
+            ":sheet_files",
+            named_params! { ":release": params.release, ":sheet_files": params.sheet_files },
+        )?,
+        files_to_read: bae_records::records::sheet_files::sheet_files_to_read_on(
+            sql,
+            ":release",
+            ":sheet_files",
+            named_params! { ":release": params.release, ":sheet_files": params.sheet_files },
+        )?,
         has_tracks: sql.query_row(
             "SELECT EXISTS (SELECT 1 FROM tracks WHERE release_id = :release)",
             release,
             |row| row.get(0),
         )?,
-        files: bae_records::records::release_files_on(sql, ":release", release)?,
+        files: bae_records::records::release_files_on(
+            sql,
+            ":release",
+            ":sheet_files",
+            named_params! { ":release": params.release, ":sheet_files": params.sheet_files },
+        )?,
         records: match &form.applied {
             Some(applied) => applied.records.clone(),
             None => bae_records::records::read::get_release_records_on(sql, &params.release)?,
@@ -350,6 +378,7 @@ fn draft_tracks_on(
     let credits = form.credits();
     let mut params = credits.params();
     params.push((":form_tracks", &form.form_tracks as &dyn rusqlite::ToSql));
+    params.push((":sheet_files", &form.sheet_files as &dyn rusqlite::ToSql));
     params.extend(layout.named());
     Ok(sql.query(
         &format!(
@@ -364,6 +393,7 @@ fn draft_tracks_on(
             tracks = bae_records::records::release_edit_tracks_sql(
                 ":release",
                 bae_records::records::MediumsSource::Draft { mediums: &mediums, places: &places },
+                ":sheet_files",
             ),
         ),
         params.as_slice(),
@@ -409,6 +439,8 @@ impl ReleaseEditDraftRows {
             cover_version,
             tracks,
             disc_count,
+            audio_options,
+            files_to_read,
             has_tracks,
             files,
             records,
@@ -427,7 +459,12 @@ impl ReleaseEditDraftRows {
         Ok(ReleaseEditDraft {
             cover: bae_records::cover_ref(&release_id, cover_version),
             source_audio: files.source_audio.clone(),
-            sides: has_tracks.then(|| crate::ReleaseEditTrackSide::lay_out(rows, disc_count)),
+            sides: has_tracks.then(|| {
+                crate::ReleaseEditTrackSide::lay_out(
+                    rows,
+                    &crate::ReleaseEditSheetChoices::of(disc_count, audio_options),
+                )
+            }),
             files: files
                 .has_others
                 .then(|| crate::ReleaseEditDisplayContext::carried_files(&files)),
@@ -437,6 +474,7 @@ impl ReleaseEditDraftRows {
             pressing_offers: form.edit.pressing.offers(),
             album_artists,
             changed,
+            files_to_read,
             invalid,
         })
     }

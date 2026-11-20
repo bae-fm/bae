@@ -115,8 +115,9 @@ impl Records {
     /// editor opened on it, then write `plan`: move the release and replace
     /// its records where its change says (see `set_records_on`), then write
     /// its rows, then the layout of the tracks `layout` reads, when it reads
-    /// one, then what `sheet_decisions` writes of the person's choices about
-    /// CUE sheets.
+    /// one, then the audio of the tracks `rebound` moves to other files,
+    /// then what `sheet_decisions` writes of the person's choices about CUE
+    /// sheets.
     /// `gone` says what the save does with a picked artist or
     /// album the library no longer holds. Last it reads what `saved` reads
     /// of the release as this save wrote it, and returns that.
@@ -137,6 +138,7 @@ impl Records {
             ) -> Result<Option<super::layout::ReleaseLayout>, DbError>
             + Send
             + 'static,
+        rebound: Option<super::sheet_files::ReboundAudio>,
         sheet_decisions: impl for<'ctx> FnOnce(&CovenWrite<'ctx>) -> Result<(), DbError>
             + Send
             + 'static,
@@ -190,6 +192,9 @@ impl Records {
                 .map_err(|error| error.map_refusal(ReleaseEditRefusal::Identity))?;
                 if let Some(layout) = layout(&sql)? {
                     super::layout::write_layout_on(&sql, plan.release_id(), &layout, &*ids, &now)?;
+                }
+                if let Some(rebound) = &rebound {
+                    super::sheet_files::write_rebound_audio_on(&sql, plan.release_id(), rebound)?;
                 }
                 sheet_decisions(&sql)?;
                 emptiable.remove_emptied(&sql)?;

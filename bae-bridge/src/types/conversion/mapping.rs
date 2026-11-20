@@ -29,7 +29,7 @@ impl BridgeCandidateFile {
 
 mirror_enum! {
     BridgeSheetBindingOffer = bae_import::folder_scanner::SheetBindingOffer,
-    from_core: fn,
+    from_core: pub(crate) fn,
     variants: { Offered, RefusedCodec { codec }, RefusedTiming, RefusedUnreadable },
 }
 

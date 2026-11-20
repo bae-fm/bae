@@ -555,6 +555,7 @@ mod conversion_roundtrip {
                 pressing_offers: edit.pressing.offers(),
                 album_artists: None,
                 changed: true,
+                files_to_read: Vec::new(),
                 invalid: Some(bae_import::EditValidationError::NoAlbumArtist),
             });
             assert!(bridge.changed);

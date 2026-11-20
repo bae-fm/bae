@@ -20,6 +20,7 @@ fn context(side: TrackSide, id: &str, file: &str, sheet: Option<&str>) -> Releas
             file_id: sheet.to_string(),
             name: format!("{sheet}.cue"),
             disc_number: 1,
+            file_reference: format!("{file}.flac"),
         }),
     }
 }
@@ -54,7 +55,7 @@ fn lay_out_on_discs(
             context,
             artists: None,
         }),
-        disc_count,
+        &ReleaseEditSheetChoices::of(disc_count, Vec::new()),
     )
 }
 
@@ -281,6 +282,7 @@ fn a_track_keeps_its_listed_length_and_its_sheet() {
         file_id: "id-disc.cue".to_string(),
         name: "disc.cue".to_string(),
         disc_number: 2,
+        file_reference: "disc.flac".to_string(),
     };
     let mut tracks = one_track(1, Some(segment("id-disc.flac")));
     tracks[0].listed_length_ms = Some(183_001);

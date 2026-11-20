@@ -190,6 +190,11 @@ pub struct ReleaseEditForm {
     /// id, that moves the sheet's tracks there. A catalog applied after a
     /// pick lays the tracks out at its own places and clears the picks.
     pub sheet_discs: std::collections::BTreeMap<String, u32>,
+    /// The audio file the person picked for each `FILE` line of a CUE
+    /// sheet, by the sheet's file id and the line's text: a save binds the
+    /// line to that file, reading it first. A catalog applied after a pick
+    /// keeps it.
+    pub sheet_files: Vec<bae_records::records::sheet_files::SheetFilePick>,
 }
 
 #[cfg(desktop)]
@@ -204,6 +209,7 @@ impl ReleaseEditForm {
             applied: None,
             album_pick: AlbumPick::Records,
             sheet_discs: std::collections::BTreeMap::new(),
+            sheet_files: Vec::new(),
         }
     }
 
@@ -213,6 +219,7 @@ impl ReleaseEditForm {
             || self.applied.is_some()
             || self.album_pick != AlbumPick::Records
             || !self.sheet_discs.is_empty()
+            || !self.sheet_files.is_empty()
     }
 
     /// The form with `applied`'s values in place of the form's and of the
@@ -245,14 +252,43 @@ impl ReleaseEditForm {
         }
         self
     }
+
+    /// The form with the `FILE` line `file_reference` of the CUE sheet
+    /// `sheet_file_id` picked onto the release's audio file
+    /// `audio_file_id`. A pick of the file the editor opened the line on is
+    /// no pick.
+    pub fn with_sheet_file(
+        mut self,
+        sheet_file_id: String,
+        file_reference: String,
+        audio_file_id: String,
+    ) -> Self {
+        let opened = self.opened.display.tracks.iter().any(|track| {
+            track.source.file_id == audio_file_id
+                && track.sheet.as_ref().is_some_and(|sheet| {
+                    sheet.file_id == sheet_file_id && sheet.file_reference == file_reference
+                })
+        });
+        self.sheet_files.retain(|pick| {
+            pick.sheet_file_id != sheet_file_id || pick.file_reference != file_reference
+        });
+        if !opened {
+            self.sheet_files.push(bae_records::records::sheet_files::SheetFilePick {
+                sheet_file_id,
+                file_reference,
+                audio_file_id,
+            });
+        }
+        self
+    }
 }
 
 /// A library release's editor's draft, as the editor shows it beside one
 /// form, which the editor draws itself: the release's cover as it is now,
 /// the tracks beside their form rows, the album a save files the release
 /// under, how the form's album artists stand to the library, whether a save
-/// would write anything the editor did not open on, and why the form can't
-/// be saved, when it can't.
+/// would write anything the editor did not open on, the files it reads
+/// first, and why the form can't be saved, when it can't.
 #[cfg(desktop)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReleaseEditDraft {
@@ -280,5 +316,8 @@ pub struct ReleaseEditDraft {
     /// this read found them; `None` when the form names no album artist.
     pub album_artists: Option<crate::ArtistField>,
     pub changed: bool,
+    /// The names of the audio files a save reads before it writes, the ones
+    /// the form binds CUE sheets' `FILE` lines to, in name order.
+    pub files_to_read: Vec<String>,
     pub invalid: Option<EditValidationError>,
 }

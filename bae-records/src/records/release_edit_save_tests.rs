@@ -64,6 +64,7 @@ async fn a_save_is_refused_once_the_release_changed_after_the_editor_opened() {
                 GonePicks::Refuse,
                 check,
                 |_| Ok(None),
+                None,
                 |_| Ok(()),
                 |_| Ok(()),
             )
@@ -117,6 +118,7 @@ async fn save_crediting_a_gone_artist(
             gone,
             |_| Ok(Ok(())),
             |_| Ok(None),
+            None,
             |_| Ok(()),
             |_| Ok(()),
         )

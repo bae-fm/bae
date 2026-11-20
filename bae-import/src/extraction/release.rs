@@ -150,7 +150,7 @@ pub async fn resolve_release_identity(
 
 /// A release file as the file at `path`, its place in the release's staged
 /// folder, with the audio facts the import stored and the role it stored.
-fn library_file(
+pub(crate) fn library_file(
     file: bae_records::DbFile,
     path: PathBuf,
 ) -> (crate::folder_scanner::ScannedFile, bae_records::ReleaseFileRole) {
@@ -236,12 +236,12 @@ impl StagedFiles {
         clippy::disallowed_methods,
         reason = "file system: temporary copies of a release's files for readers that open a path, which coven does not own"
     )]
-    fn create() -> std::io::Result<Self> {
+    pub(crate) fn create() -> std::io::Result<Self> {
         Ok(Self { dir: tempfile::tempdir()? })
     }
 
     /// Where the release file named `name` in its release is staged.
-    fn release_file(&self, name: &str) -> PathBuf {
+    pub(crate) fn release_file(&self, name: &str) -> PathBuf {
         self.dir.path().join("files").join(bae_records::stored_name::file_path(name).local_path())
     }
 
@@ -252,7 +252,7 @@ impl StagedFiles {
 
     /// Write `bytes` to `path`, one of this folder's paths, making the
     /// folders above it.
-    async fn write(
+    pub(crate) async fn write(
         &self,
         diagnostics: &Diagnostics,
         path: PathBuf,
@@ -260,6 +260,58 @@ impl StagedFiles {
     ) -> Result<std::io::Result<()>, TaskFailed> {
         diagnostics.blocking("stage a release's file", move || write_file(&path, &bytes)).await
     }
+
+    /// Copy the release file `file_id` to `path`, one of this folder's
+    /// paths, making the folders above it: coven reads it from wherever it
+    /// has it, in one place of `lease`, a window at a time, so no more than
+    /// a window of it is in memory.
+    pub(crate) async fn copy(
+        &self,
+        diagnostics: &Diagnostics,
+        records: &Records,
+        file_id: &str,
+        path: PathBuf,
+        lease: &coven::FileLease,
+    ) -> Result<std::io::Result<()>, crate::ImportError> {
+        const WINDOW: u64 = 8 * 1024 * 1024;
+        let stream = records.open_release_file(file_id, lease).await?;
+        let size = stream.plaintext_size();
+        let mut file =
+            match diagnostics.blocking("stage a release's file", move || create_file(&path)).await?
+            {
+                Ok(file) => file,
+                Err(error) => return Ok(Err(error)),
+            };
+        let mut offset = 0;
+        while offset < size {
+            let len = WINDOW.min(size - offset);
+            let bytes = stream.read_at(offset, len).await.map_err(bae_store::DbError::from)?;
+            file = match diagnostics
+                .blocking("stage a release's file", move || {
+                    use std::io::Write as _;
+                    file.write_all(&bytes).map(|()| file)
+                })
+                .await?
+            {
+                Ok(file) => file,
+                Err(error) => return Ok(Err(error)),
+            };
+            offset += len;
+        }
+        Ok(Ok(()))
+    }
+}
+
+/// Create a file at `path`, making the folders above it. Blocking.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: temporary copies of a release's files for readers that open a path, which coven does not own"
+)]
+fn create_file(path: &Path) -> std::io::Result<std::fs::File> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    std::fs::File::create(path)
 }
 
 /// Write `bytes` to a file at `path`, making the folders above it.

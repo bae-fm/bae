@@ -682,6 +682,10 @@ pub struct BridgeReleaseEditDraft {
     /// `None` when the form names no album artist.
     pub album_artists: Option<BridgeArtistField>,
     pub changed: bool,
+    /// The names of the audio files a save reads before it writes, the ones
+    /// the form binds CUE sheets' `FILE` lines to, in name order; empty when
+    /// a save reads none.
+    pub files_to_read: Vec<String>,
     pub invalid: Option<BridgeValidationReason>,
 }
 
@@ -706,6 +710,25 @@ pub struct BridgeReleaseEditSheet {
     pub disc_number: u32,
     /// The discs the release holds, which the caption's Disc pop-up offers.
     pub disc_options: Vec<u32>,
+    /// The text of the sheet's `FILE` line the run's tracks are under.
+    pub file_reference: String,
+    /// The audio files the line can play from, which the caption's Audio
+    /// file pop-up offers, in file name order.
+    pub audio_options: Vec<BridgeReleaseEditAudioOption>,
+}
+
+/// One audio file of the release as a choice for a CUE sheet's `FILE` line
+/// in the release editor. Mirrors `bae_import::ReleaseEditAudioOption`.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeReleaseEditAudioOption {
+    pub file_id: String,
+    /// The file's name, as the release's files name it.
+    pub name: String,
+    /// Whether the line plays from this file in the editor's form.
+    pub bound: bool,
+    /// Whether the file can back the line, and why not when it can't, as
+    /// the import pane's Audio file pop-up words it.
+    pub offer: crate::types::BridgeSheetBindingOffer,
 }
 
 /// Persisted, read-only context beside one editable track row.

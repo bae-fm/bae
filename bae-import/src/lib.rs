@@ -306,6 +306,8 @@ pub use tables::{
     CoverGallerySnapshot, CoverKey, CoverSection, FolderImageFocus, FolderImages,
     FolderImagesRequest, FolderImagesSnapshot, GalleryCover, GalleryFocus, GalleryLabel, Neighbors,
 };
+#[cfg(desktop)]
+pub(crate) use types::ReleaseEditSheetChoices;
 
 /// The schema this crate's tests open their stores on: the catalogs' part,
 /// records' and release storage's parts, preferences' and import's.
@@ -333,9 +335,10 @@ pub use types::{
     ArtistsStanding, AudioFile, CandidateDraft, CandidateEditField, CandidateTrack, Credited,
     DraftAlbum, DraftFieldEdit, DraftTrack, EditValidationError, LibraryDraft, LibraryTrack,
     ListRow, MetadataProvenance, PressingFactEdit, PressingOffers, RawLabelEdit, RawPressingEdit,
-    RawReleaseEdit, RawTrackEdit, ReleaseDraft, ReleaseEditLoadError, ReleaseEditSheet,
-    ReleaseEditTrackContext, ReleaseEditTrackRow, ReleaseEditTrackRun, ReleaseEditTrackSide, ReleaseEditTrackSource,
-    ReleaseUserEdit, StandingCredit, TrackArtistAssignments, TrackBinding, TrackUserEdit,
+    RawReleaseEdit, RawTrackEdit, ReleaseDraft, ReleaseEditAudioOption, ReleaseEditLoadError,
+    ReleaseEditSheet, ReleaseEditTrackContext, ReleaseEditTrackRow, ReleaseEditTrackRun,
+    ReleaseEditTrackSide, ReleaseEditTrackSource, ReleaseUserEdit, StandingCredit,
+    TrackArtistAssignments, TrackBinding, TrackUserEdit,
 };
 #[cfg(desktop)]
 pub use types::{

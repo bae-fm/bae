@@ -1,6 +1,6 @@
 -- This table records the audio file the person bound each `FILE` reference
--- of a release's CUE sheet to in the import pane, or that they cleared the
--- reference. When bae identifies the release again, it binds the sheets the
+-- of a release's CUE sheet to in the import pane or the release's editor,
+-- or that they cleared the reference in the import pane. When bae identifies the release again, it binds the sheets the
 -- same way. The sheet and the audio are the release's own files, and
 -- deleting either file deletes its rows here. Only a reference the person
 -- decided has a row, and the scan binds every other reference.

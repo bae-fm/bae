@@ -116,6 +116,20 @@ impl BridgeReleaseEditForm {
         self.changed(|form| *form = form.clone().with_sheet_disc(sheet_file_id, disc))
     }
 
+    /// The form with the `FILE` line `file_reference` of the CUE sheet
+    /// `sheet_file_id` on the release's audio file `audio_file_id`: a save
+    /// reads that file and binds the line to it.
+    pub fn with_sheet_file(
+        &self,
+        sheet_file_id: String,
+        file_reference: String,
+        audio_file_id: String,
+    ) -> std::sync::Arc<Self> {
+        self.changed(|form| {
+            *form = form.clone().with_sheet_file(sheet_file_id, file_reference, audio_file_id)
+        })
+    }
+
     /// The form with `pick` as the album a save files the release under: a
     /// library album, a new one, or the album its records name.
     pub fn with_album(&self, pick: crate::types::BridgeAlbumPick) -> std::sync::Arc<Self> {

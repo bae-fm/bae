@@ -458,45 +458,55 @@ impl Records {
 }
 
 /// Each track of the release `release` (an SQL expression naming its id) in
-/// release order, on the mediums `source` names for it: its side's kind and
-/// ordinal and its number there, the length `source` lists for it where that
-/// length disagrees with the track's measured one (`bae_lengths_disagree`), how many
-/// audio formats it stores, how many main segments they hold, and the first
-/// main segment's file id and where it starts in that file, with the name
-/// and stored audio layout of the release file of that id when the release
-/// holds one, and the CUE sheet that carves it, with the sheet's name and
-/// disc. [`release_edit_track_of_row`] reads each row.
+/// release order, on the mediums `source` names for it and on the files the
+/// picks `picks` (an SQL expression, see
+/// [`super::sheet_files::sheet_files_ctes`]) lay its sheets' lines on: its
+/// side's kind and ordinal and its number there, its length, the length
+/// `source` lists for it where that length disagrees with the track's own
+/// (`bae_lengths_disagree`), how many audio formats it stores, how many main
+/// segments they hold, and the first main segment's file id and where it
+/// starts in that file, with the name and audio layout of the release file
+/// of that id when the release holds one, and the CUE sheet that carves it,
+/// with the sheet's name and disc and the sheet's `FILE` line it is under.
+/// A track on a line moved to another file plays to that file's end where
+/// it played to the end of the file before. [`release_edit_track_of_row`]
+/// reads each row.
 #[cfg(desktop)]
-pub fn release_edit_tracks_sql(release: &str, source: MediumsSource<'_>) -> String {
+pub fn release_edit_tracks_sql(release: &str, source: MediumsSource<'_>, picks: &str) -> String {
     format!(
-        "WITH {placed}, \
+        "WITH {placed}, {sheet_files}, \
          main AS ( \
-            SELECT af.track_id, s.file_id, s.start_sample * 1000 / af.sample_rate AS start_ms, \
-                   ROW_NUMBER() OVER (PARTITION BY af.track_id ORDER BY s.segment_index) AS n, \
-                   COUNT(*) OVER (PARTITION BY af.track_id) AS main_count \
-            FROM audio_formats af \
-            JOIN audio_format_segments s ON s.audio_format_id = af.id \
-            JOIN tracks t ON t.id = af.track_id \
-            WHERE t.release_id = {release} AND s.role = 'main') \
-     SELECT t.*, p.position AS placed_position, p.side_kind, p.side_ordinal, \
-        p.number AS place_number, \
-        CASE WHEN p.place_stated_length_ms IS NOT NULL \
-                  AND bae_lengths_disagree(t.duration_ms, p.place_stated_length_ms) \
-             THEN p.place_stated_length_ms END AS listed_length_ms, \
-        (SELECT COUNT(*) FROM audio_formats af WHERE af.track_id = t.id) AS audio_format_count, \
-        COALESCE(main.main_count, 0) AS main_count, main.file_id AS main_file_id, \
-        main.start_ms AS main_start_ms, \
-        f.id IS NOT NULL AS main_file_found, f.original_filename AS main_file_name, \
-        f.source_audio_layout AS main_file_layout, \
-        carved.sheet_file_id, sheet_file.original_filename AS sheet_name, \
-        p.sheet_disc AS sheet_disc_number \
-     FROM tracks t JOIN placed p ON p.id = t.id \
-     LEFT JOIN main ON main.track_id = t.id AND main.n = 1 \
-     LEFT JOIN release_files f ON f.id = main.file_id \
-     LEFT JOIN (carved_tracks carved \
-        JOIN release_files sheet_file ON sheet_file.id = carved.sheet_file_id) \
-        ON carved.track_id = t.id \
-     WHERE t.release_id = {release} ORDER BY p.position",
+            SELECT s.track_id, s.file_id, s.start_sample * 1000 / s.sample_rate AS start_ms, \
+                   s.end_sample IS NULL AND s.moved AS to_new_end, \
+                   ROW_NUMBER() OVER (PARTITION BY s.track_id ORDER BY s.segment_index) AS n, \
+                   COUNT(*) OVER (PARTITION BY s.track_id) AS main_count \
+            FROM laid_segments s WHERE s.role = 'main'), \
+         laid AS ( \
+            SELECT t.*, p.position AS placed_position, p.side_kind, p.side_ordinal, \
+               p.number AS place_number, p.place_stated_length_ms, \
+               CASE WHEN main.to_new_end \
+                    THEN f.source_audio_duration_ms - main.start_ms \
+                    ELSE t.duration_ms END AS laid_duration_ms, \
+               (SELECT COUNT(*) FROM audio_formats af WHERE af.track_id = t.id) \
+                   AS audio_format_count, \
+               COALESCE(main.main_count, 0) AS main_count, main.file_id AS main_file_id, \
+               main.start_ms AS main_start_ms, \
+               f.id IS NOT NULL AS main_file_found, f.original_filename AS main_file_name, \
+               f.source_audio_layout AS main_file_layout, \
+               carved.sheet_file_id, carved.file_reference AS sheet_file_reference, \
+               sheet_file.original_filename AS sheet_name, p.sheet_disc AS sheet_disc_number \
+            FROM tracks t JOIN placed p ON p.id = t.id \
+            LEFT JOIN main ON main.track_id = t.id AND main.n = 1 \
+            LEFT JOIN laid_files f ON f.id = main.file_id \
+            LEFT JOIN (carved_tracks carved \
+               JOIN release_files sheet_file ON sheet_file.id = carved.sheet_file_id) \
+               ON carved.track_id = t.id \
+            WHERE t.release_id = {release}) \
+     SELECT laid.*, \
+        CASE WHEN laid.place_stated_length_ms IS NOT NULL \
+                  AND bae_lengths_disagree(laid.laid_duration_ms, laid.place_stated_length_ms) \
+             THEN laid.place_stated_length_ms END AS listed_length_ms \
+     FROM laid ORDER BY laid.placed_position",
         placed = super::release_tracks::placed_tracks_ctes(
             release,
             source,
@@ -505,12 +515,14 @@ pub fn release_edit_tracks_sql(release: &str, source: MediumsSource<'_>) -> Stri
                    PARTITION BY sheet_carved.sheet_file_id ORDER BY place.position) AS sheet_disc",
             "LEFT JOIN carved_tracks sheet_carved ON sheet_carved.track_id = track.id"
         ),
+        sheet_files = super::sheet_files::sheet_files_ctes(release, picks),
     )
 }
 
 /// The tracks of the release `release` (an SQL expression over `params`
 /// naming its id) as the release editor reads their audio, in release order,
-/// each on the mediums `source` names for it.
+/// each on the mediums `source` names for it and on the files the library
+/// holds them on.
 #[cfg(desktop)]
 pub fn release_edit_tracks_on(
     sql: &impl coven::SqlRead,
@@ -518,7 +530,11 @@ pub fn release_edit_tracks_on(
     source: MediumsSource<'_>,
     params: impl rusqlite::Params,
 ) -> Result<Vec<DbReleaseEditTrack>, DbError> {
-    Ok(sql.query(&release_edit_tracks_sql(release, source), params, release_edit_track_of_row)?)
+    Ok(sql.query(
+        &release_edit_tracks_sql(release, source, "'[]'"),
+        params,
+        release_edit_track_of_row,
+    )?)
 }
 
 /// One row of [`release_edit_tracks_sql`]: a track as the release editor
@@ -559,6 +575,7 @@ pub fn release_edit_track_of_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Db
                 file_id,
                 name: row.get("sheet_name")?,
                 disc_number: row.get("sheet_disc_number")?,
+                file_reference: row.get("sheet_file_reference")?,
             })
         })
         .transpose()?;
@@ -568,8 +585,10 @@ pub fn release_edit_track_of_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Db
         row.get("place_number")?,
     )
     .map_err(|reason| bae_store::read::column_conversion_error(row, "side_kind", reason))?;
+    let mut track = row_to_track(row)?;
+    track.duration_ms = count_column(row, "laid_duration_ms")?;
     Ok(DbReleaseEditTrack {
-        track: row_to_track(row)?,
+        track,
         position,
         listed_length_ms: row.get("listed_length_ms")?,
         audio_format_count: row.get("audio_format_count")?,
