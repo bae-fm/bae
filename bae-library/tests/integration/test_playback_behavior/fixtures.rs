@@ -394,19 +394,14 @@ impl SidePauseTestFixture {
         self.wait_for_playing_track(track_id, "track before side boundary should start").await;
     }
 
-    pub(super) async fn wait_for_side_pause(
-        &mut self,
-        expected_side_label: &str,
-        expected_boundary: PlaybackPauseBoundary,
-    ) -> PlaybackState {
+    pub(super) async fn wait_for_side_pause(&mut self, expected_ended: TrackSide) -> PlaybackState {
         self.wait_for_state(|s| {
             matches!(
                 s,
                 PlaybackState::Paused {
                     reason: PlaybackPauseReason::SideEnded(prompt),
                     ..
-                } if prompt.side_label == expected_side_label
-                    && prompt.boundary == expected_boundary
+                } if prompt.ended == expected_ended
             )
         })
         .await
@@ -416,12 +411,11 @@ impl SidePauseTestFixture {
     pub(super) async fn play_to_side_pause(
         &mut self,
         track_id: &str,
-        expected_side_label: &str,
-        expected_boundary: PlaybackPauseBoundary,
+        expected_ended: TrackSide,
     ) -> PlaybackState {
         self.play_track_and_wait(track_id).await;
         self.play_out_from_near_the_end().await;
-        self.wait_for_side_pause(expected_side_label, expected_boundary).await
+        self.wait_for_side_pause(expected_ended).await
     }
 }
 

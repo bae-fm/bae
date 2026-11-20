@@ -19,13 +19,15 @@ CREATE TABLE IF NOT EXISTS playback_now (
     -- The prepared track's length; NULL when it is unknown.
     duration_ms INTEGER CHECK (duration_ms >= 0),
     -- Why it is paused: by hand, or at the end of a side or disc, which the
-    -- pause prompt names by its boundary's id, kind and label, with when the
+    -- pause prompt names by its boundary's id and the side that ended
+    -- (`bae_types::mediums::TrackSide`: a lettered side, with its letters, a
+    -- disc, with its number, or a flat side, with neither), with when the
     -- next side starts on its own (milliseconds since the epoch), NULL when
     -- it waits for Play.
     pause_reason       TEXT CHECK (pause_reason IN ('manual', 'side_ended')),
     side_boundary_id   TEXT,
-    side_boundary_kind TEXT CHECK (side_boundary_kind IN ('side', 'disc')),
-    side_label         TEXT,
+    ended_side_kind    TEXT CHECK (ended_side_kind IN ('sided', 'disc', 'flat')),
+    ended_side         TEXT,
     side_resumes_at    INTEGER,
     volume      REAL NOT NULL CHECK (volume BETWEEN 0 AND 1),
     is_muted    INTEGER NOT NULL CHECK (is_muted IN (0, 1)),
@@ -79,8 +81,8 @@ CREATE TABLE IF NOT EXISTS playback_now (
     CHECK (duration_ms IS NULL OR state IN ('playing', 'paused') OR prepared = 1),
     CHECK ((state = 'paused') = (pause_reason IS NOT NULL)),
     CHECK ((pause_reason IS 'side_ended') = (side_boundary_id IS NOT NULL)),
-    CHECK ((side_boundary_id IS NULL) = (side_boundary_kind IS NULL)
-        AND (side_boundary_id IS NULL) = (side_label IS NULL)),
+    CHECK ((side_boundary_id IS NULL) = (ended_side_kind IS NULL)
+        AND (ended_side IS NULL) = (ended_side_kind IS NULL OR ended_side_kind = 'flat')),
     CHECK (side_resumes_at IS NULL OR side_boundary_id IS NOT NULL),
     CHECK ((remote = 'local') = (cast_receiver_id IS NULL)
         AND (remote = 'local') = (cast_receiver_name IS NULL)

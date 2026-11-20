@@ -299,7 +299,6 @@ extension ImportMappingTracksLayoutTests {
             trackSides: [
                 BridgeMappingTrackSide(
                     side: .flat,
-                    headerKey: nil,
                     runs: [
                         .sheet(
                             sheet: sheet(associated: true),

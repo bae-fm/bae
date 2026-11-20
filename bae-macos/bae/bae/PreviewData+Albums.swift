@@ -69,8 +69,6 @@
                     tracks,
                     BridgeTrackGroup(
                         side: groupSide,
-                        headerKey: isVinyl
-                            ? "core.track.side" : "core.track.disc",
                         tracks: tracks,
                         totalDuration: groupDuration(tracks),
                         showsTime: true,
@@ -136,7 +134,6 @@
                     [
                         BridgeTrackGroup(
                             side: .flat,
-                            headerKey: nil,
                             tracks: tracks,
                             totalDuration: groupDuration(tracks),
                             showsTime: false,
@@ -310,7 +307,6 @@
             release.trackGroups = [
                 BridgeTrackGroup(
                     side: .flat,
-                    headerKey: nil,
                     tracks: release.tracks,
                     totalDuration: groupDuration(release.tracks),
                     showsTime: false,

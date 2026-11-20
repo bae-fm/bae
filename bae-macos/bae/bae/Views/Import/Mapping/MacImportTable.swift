@@ -59,8 +59,8 @@ struct MacImportTable: View {
                     Array(table.trackSides.enumerated()),
                     id: \.offset
                 ) { index, side in
-                    if !side.sideHeaderText.isEmpty {
-                        sideHeader(side.sideHeaderText, index: index)
+                    if !side.side.headingText.isEmpty {
+                        sideHeader(side.side.headingText, index: index)
                     }
                     ForEach(Array(side.runs.enumerated()), id: \.offset) {
                         _,

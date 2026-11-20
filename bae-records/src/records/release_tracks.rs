@@ -89,17 +89,17 @@ fn medium_cte(mediums: &str, release_filter: &str) -> String {
 /// mediums with whether it is played side by side, how many sided sides come
 /// before it on its release, and how many mediums its release holds. `place`
 /// is each track on them, with the columns `id`, `release_id`, `position`
-/// (its playing order), `number` (its number on its side), `side` (its side
-/// on its medium), `stated_length_ms`, `medium_position`, `carrier` (its
-/// medium's carrier key, where the source states one), `side_kind` (`sided`,
-/// `disc` or `flat`) and `side_ordinal` (the side's number among the sided
-/// sides, the disc's number, or zero). [`track_position_of`] reads a
-/// `place` row's kind, ordinal and number.
+/// (its playing order), `number` (its number on its side),
+/// `stated_length_ms`, `medium_position`, `carrier` (its medium's carrier
+/// key, where the source states one), `side_kind` (`sided`, `disc` or
+/// `flat`) and `side_ordinal` (the side's number among the sided sides, the
+/// disc's number, or zero). [`track_position_of`] reads a `place` row's
+/// kind, ordinal and number.
 pub fn track_places_ctes(source: MediumsSource<'_>, release_filter: &str) -> String {
     format!(
         "{medium}, \
          place AS ( \
-            SELECT p.id, p.release_id, p.position, p.track_number AS number, p.side, \
+            SELECT p.id, p.release_id, p.position, p.track_number AS number, \
                    p.stated_length_ms, m.position AS medium_position, m.medium AS carrier, \
                    CASE WHEN m.sided THEN 'sided' \
                         WHEN m.medium_count > 1 THEN 'disc' \
@@ -316,7 +316,6 @@ fn track_places_sql() -> String {
         "WITH wanted AS (SELECT j.key AS ord, j.value AS track_id FROM json_each(?1) j), \
          {places} \
          SELECT place.id AS track_id, place.release_id AS release_id, \
-                place.medium_position AS medium_position, place.side AS side, \
                 place.carrier AS carrier, place.side_kind AS side_kind, \
                 place.side_ordinal AS side_ordinal \
          FROM wanted w \
@@ -348,8 +347,6 @@ pub fn track_places_on(
             Ok(DbTrackPlace {
                 track_id: row.get("track_id")?,
                 release_id: row.get("release_id")?,
-                medium: row.get("medium_position")?,
-                side: row.get("side")?,
                 carrier: carrier
                     .map(|key| {
                         bae_types::pressing::Medium::from_key(&key)

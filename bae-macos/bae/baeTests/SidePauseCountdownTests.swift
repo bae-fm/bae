@@ -21,12 +21,11 @@ struct SidePauseCountdownTests {
     }
 
     private static func prompt(
-        _ boundary: BridgePauseBoundary
+        _ ended: BridgeTrackSide
     ) -> BridgeSidePausePrompt {
         BridgeSidePausePrompt(
             id: "pause-1",
-            boundary: boundary,
-            sideLabel: "A",
+            ended: ended,
             countdown: nil
         )
     }
@@ -110,8 +109,20 @@ struct SidePauseCountdownTests {
 
     @Test("the card's checkbox names the kind of boundary that ended")
     func checkboxNamesTheBoundary() {
-        #expect(Self.prompt(.side).keepPausingLabel() == "Pause between sides")
-        #expect(Self.prompt(.disc).keepPausingLabel() == "Pause between discs")
+        #expect(
+            Self.prompt(.sided(sideLetter: "A")).keepPausingLabel()
+                == "Pause between sides"
+        )
+        #expect(
+            Self.prompt(.disc(disc: 1)).keepPausingLabel()
+                == "Pause between discs"
+        )
+    }
+
+    @Test("the card's title names the side or disc that ended by its heading")
+    func titleNamesTheHeading() {
+        #expect(Self.prompt(.sided(sideLetter: "C")).title() == "Side C ended")
+        #expect(Self.prompt(.disc(disc: 2)).title() == "Disc 2 ended")
     }
 
     @Test("the countdown settings strings ship in every locale")

@@ -1,8 +1,8 @@
 package fm.bae.app
 
 import android.content.Context
-import uniffi.bae_bridge.BridgeTrackGroup
 import uniffi.bae_bridge.BridgeTrackSide
+import uniffi.bae_bridge.bridgeTrackSideHeadingKey
 
 // Locale rendering of the structured `Bridge*` shapes bae-library emits. The core
 // owns the structure (the side discriminant); these compose and format them for
@@ -11,27 +11,16 @@ import uniffi.bae_bridge.BridgeTrackSide
 // Source audio has its own file, `SourceAudioFormat.kt`.
 
 /**
- * The localized track-group header ("Side A" / "Disc 2"), or empty for the flat
- * single-disc case (no header). bae-library decides the case and the side letter /
- * disc number, and hands over the header word's catalog key on the group
- * (`headerKey`); this resolves the word and substitutes the letter / number.
- * Mirrors macOS `TrackGroup.sideHeaderText`.
+ * The localized heading of a side or disc ("Side A", "Disc 2"), or empty for a
+ * flat side, which has no heading. Core names the catalog key; every screen,
+ * prompt and error that names a side or disc words it here. Mirrors macOS
+ * `BridgeTrackSide.headingText`.
  */
-fun BridgeTrackGroup.sideHeaderText(context: Context): String {
-    val key = headerKey ?: return ""
-    return when (val s = side) {
-        is BridgeTrackSide.Sided -> {
-            context.coreString(key, mapOf("letter" to s.sideLetter))
-        }
-
-        is BridgeTrackSide.Disc -> {
-            context.coreString(key, mapOf("disc" to s.disc.toLong()))
-        }
-
-        // Unreachable: headerKey is null for Flat, so the elvis above already
-        // returned. Kept for exhaustiveness.
-        is BridgeTrackSide.Flat -> {
-            ""
-        }
+fun BridgeTrackSide.headingText(context: Context): String {
+    val key = bridgeTrackSideHeadingKey(this) ?: return ""
+    return when (this) {
+        is BridgeTrackSide.Sided -> context.coreString(key, mapOf("letter" to sideLetter))
+        is BridgeTrackSide.Disc -> context.coreString(key, mapOf("disc" to disc.toLong()))
+        is BridgeTrackSide.Flat -> ""
     }
 }

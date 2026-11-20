@@ -30,10 +30,6 @@ extension BridgeMappingTrackSide {
     var mappings: [BridgeTrackMapping] {
         runs.flatMap(\.mappings)
     }
-
-    var sideHeaderText: String {
-        side.headerText(key: headerKey)
-    }
 }
 
 extension BridgeMappingTable {

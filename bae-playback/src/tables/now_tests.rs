@@ -6,9 +6,8 @@ use crate::renderer::RendererKind;
 use crate::tables::tests::*;
 use crate::{AudioOutputProblem, PlaybackErrorReason};
 use crate::{
-    LoadingTrack, PlaybackChange, PlaybackPauseBoundary, PlaybackPauseReason,
-    PlaybackSideCountdown, PlaybackSidePausePrompt, PlaybackState, PlayingTrack, PreviewState,
-    RemotePlayback,
+    LoadingTrack, PlaybackChange, PlaybackPauseReason, PlaybackSideCountdown,
+    PlaybackSidePausePrompt, PlaybackState, PlayingTrack, PreviewState, RemotePlayback,
 };
 use bae_track_audio::PreviewTarget;
 
@@ -77,8 +76,7 @@ async fn each_change_reads_back_as_written() {
             track: track.clone(),
             reason: PlaybackPauseReason::SideEnded(PlaybackSidePausePrompt {
                 id: "side-a".to_string(),
-                boundary: PlaybackPauseBoundary::Disc,
-                side_label: "Disc 1".to_string(),
+                ended: bae_types::mediums::TrackSide::Disc { disc: 1 },
                 countdown: Some(PlaybackSideCountdown { resumes_at }),
             }),
         },

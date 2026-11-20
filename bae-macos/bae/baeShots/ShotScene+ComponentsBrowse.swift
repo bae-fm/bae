@@ -178,7 +178,6 @@ extension ShotScene {
         release.trackGroups = [
             BridgeTrackGroup(
                 side: .sided(sideLetter: "A"),
-                headerKey: "core.track.side",
                 tracks: tracks,
                 totalDuration: nil,
                 showsTime: false,
@@ -322,7 +321,6 @@ extension ShotScene {
         release.trackGroups = [
             BridgeTrackGroup(
                 side: .flat,
-                headerKey: nil,
                 tracks: tracks,
                 totalDuration: nil,
                 showsTime: false,

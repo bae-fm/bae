@@ -35,7 +35,6 @@ import uniffi.bae_bridge.BridgeMedium
 import uniffi.bae_bridge.BridgeMember
 import uniffi.bae_bridge.BridgeMemberAccess
 import uniffi.bae_bridge.BridgeMemberRole
-import uniffi.bae_bridge.BridgePauseBoundary
 import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgePersonProfile
 import uniffi.bae_bridge.BridgePressingFacts
@@ -118,7 +117,6 @@ object PreviewData {
     ): BridgeTrackGroup =
         BridgeTrackGroup(
             side = BridgeTrackSide.Flat,
-            headerKey = null,
             tracks = tracks,
             totalDuration = null,
             showsTime = false,
@@ -305,28 +303,26 @@ object PreviewData {
             throughputBps = 4_800_000uL,
         )
 
-    /** The prompt after side B of a record ends, with the keys the bridge gives a side. */
+    /** The prompt after side A of a record ends, with the keys the bridge gives a side. */
     fun sidePausePrompt(): SidePausePrompt =
         SidePausePrompt(
             prompt =
                 BridgeSidePausePrompt(
                     id = "prompt-1",
-                    boundary = BridgePauseBoundary.SIDE,
-                    sideLabel = "B",
+                    ended = BridgeTrackSide.Sided(sideLetter = "A"),
                     countdown = null,
                 ),
             titleKey = "core.playback.pause.side_ended.title",
             keepPausingKey = "core.playback.pause.side_ended.keep_pausing",
         )
 
-    /** The prompt after disc 1 of a CD ends, with the keys the bridge gives a disc. */
+    /** The prompt after disc 2 of a CD box ends, with the keys the bridge gives a disc. */
     fun discPausePrompt(): SidePausePrompt =
         SidePausePrompt(
             prompt =
                 BridgeSidePausePrompt(
                     id = "prompt-2",
-                    boundary = BridgePauseBoundary.DISC,
-                    sideLabel = "1",
+                    ended = BridgeTrackSide.Disc(disc = 2u),
                     countdown = null,
                 ),
             titleKey = "core.playback.pause.disc_ended.title",

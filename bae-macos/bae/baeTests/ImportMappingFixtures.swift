@@ -91,7 +91,6 @@ extension MappingFixtures {
     ) -> BridgeMappingTrackSide {
         BridgeMappingTrackSide(
             side: .flat,
-            headerKey: nil,
             runs: [.tracks(mappings: mappings)]
         )
     }
@@ -281,7 +280,6 @@ extension MappingFixtures {
             trackSides: [
                 BridgeMappingTrackSide(
                     side: .flat,
-                    headerKey: nil,
                     runs: [
                         .sheet(
                             sheet: sheetGroup(

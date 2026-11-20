@@ -205,25 +205,17 @@ async fn track_infos_follow_the_ids_asked_across_releases_and_leave_out_the_miss
 
     let facts: Vec<_> = infos
         .iter()
-        .map(|info| {
-            let side = info.side.as_ref().expect("a carrier with sides");
-            (
-                info.track_id.as_str(),
-                side.medium.get(),
-                side.side.get(),
-                side.boundary,
-                &side.label[..],
-            )
-        })
+        .map(|info| (info.track_id.as_str(), info.side.clone().expect("a carrier with sides")))
         .collect();
-    use crate::PlaybackPauseBoundary::{Disc, Side};
+    use bae_types::mediums::TrackSide;
+    let sided = |letter: &str| TrackSide::Sided { side_letter: letter.to_string() };
     assert_eq!(
         facts,
         [
-            (INFO_SECOND_DISC, 2, 1, Disc, "2"),
-            (INFO_SIDE_B, 1, 2, Side, "B"),
-            (INFO_SIDE_C, 2, 1, Side, "C"),
-            (INFO_SIDE_A, 1, 1, Side, "A"),
+            (INFO_SECOND_DISC, TrackSide::Disc { disc: 2 }),
+            (INFO_SIDE_B, sided("B")),
+            (INFO_SIDE_C, sided("C")),
+            (INFO_SIDE_A, sided("A")),
         ]
     );
 }

@@ -58,7 +58,6 @@ use crate::track_buffered::{PlayingBytes, TrackBytes};
 use crate::PlayingTrack;
 use bae_audio::sparse_buffer::{create_sparse_buffer, SharedSparseBuffer};
 use bae_audio::track_stream::TrackStream;
-use bae_types::pressing::PhysicalMedium;
 use bae_types::track_time::TrackTime;
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
@@ -106,10 +105,7 @@ use library_follow::LibraryFollow;
 use renderer::{RemoteConnect, RemoteEnd, Renderer};
 use segment_start::segment_start;
 use sides::{side_boundary_between, SideBoundary, SidePauseDecision};
-pub use sides::{
-    PlaybackPauseBoundary, PlaybackSideCountdown, PlaybackSidePausePrompt, PlaybackTrackInfo,
-    PlaybackTrackSide,
-};
+pub use sides::{PlaybackSideCountdown, PlaybackSidePausePrompt, PlaybackTrackInfo};
 use slot::{LoadGeneration, PausePhase, PlayIntent, PlayTarget, PlaybackSlot, TrackPhase};
 use starvation::StarvationEpisode;
 pub(crate) use thread::{dispatch_command, OwnCommands, PlaybackMessage};

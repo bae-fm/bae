@@ -12,6 +12,7 @@ import fm.bae.app.DisplayError
 import fm.bae.app.coreString
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
+import fm.bae.app.headingText
 import fm.bae.app.playback.SidePausePrompt
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeIcon
@@ -77,18 +78,18 @@ class PlaybackComponentShots : BoardShot() {
 
     @Test
     fun androidComponentSidePauseCountingDown() =
-        component("android.component.side-pause.counting-down", wide = true) { SidePause(side(), "A", secondsLeft = 12) }
+        component("android.component.side-pause.counting-down", wide = true) { SidePause(side(), secondsLeft = 12) }
 
     @Test
-    fun androidComponentSidePausePaused() = component("android.component.side-pause.paused", wide = true) { SidePause(side(), "A") }
+    fun androidComponentSidePausePaused() = component("android.component.side-pause.paused", wide = true) { SidePause(side()) }
 
     @Test
     fun androidComponentSidePauseBoxCleared() =
-        component("android.component.side-pause.box-cleared", wide = true) { SidePause(side(), "A", keepPausing = false) }
+        component("android.component.side-pause.box-cleared", wide = true) { SidePause(side(), keepPausing = false) }
 
     @Test
     fun androidComponentSidePauseDisc() =
-        component("android.component.side-pause.disc", wide = true) { SidePause(PreviewData.discPausePrompt(), "2", secondsLeft = 12) }
+        component("android.component.side-pause.disc", wide = true) { SidePause(PreviewData.discPausePrompt(), secondsLeft = 12) }
 
     @Test
     fun androidComponentSeekBarPlaying() = component("android.component.seek-bar.playing", wide = true) { playing.SeekRow() }
@@ -214,18 +215,18 @@ internal fun FullPlayer(
 
 private fun side() = PreviewData.sidePausePrompt()
 
-/** The side-pause dialog for [wording], naming [label], with [secondsLeft] to the next start when it has a countdown. */
+/** The side-pause dialog for [wording], naming the side that ended by its heading, with [secondsLeft] to the next start
+ *  when it has a countdown. */
 @Composable
 private fun SidePause(
     wording: SidePausePrompt,
-    label: String,
     secondsLeft: Long? = null,
     keepPausing: Boolean = true,
 ) {
     val context = LocalContext.current
     InPlaceDialog(
         sidePauseParts(
-            title = context.coreString(wording.titleKey, mapOf("label" to label)),
+            title = context.coreString(wording.titleKey, mapOf("heading" to wording.prompt.ended.headingText(context))),
             countdown =
                 secondsLeft?.let {
                     BridgeCountdown(key = wording.titleKey.replace(".title", ".countdown"), until = Instant.ofEpochSecond(it))

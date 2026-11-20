@@ -24,33 +24,28 @@ fn track_detail(
 }
 
 #[test]
-fn track_group_precomputes_header_key_per_side() {
+fn track_group_carries_its_side_and_time() {
     use bae_types::mediums::{TrackPosition, TrackSide};
 
     let cases = [
         (
             TrackSide::Sided { side_letter: "A".to_string() },
             TrackPosition::Sided { side_letter: "A".to_string(), number: 1 },
-            Some("core.track.side"),
         ),
-        (
-            TrackSide::Disc { disc: 2 },
-            TrackPosition::Disc { disc: 2, number: 1 },
-            Some("core.track.disc"),
-        ),
-        (TrackSide::Flat, TrackPosition::Flat { number: 1 }, None),
+        (TrackSide::Disc { disc: 2 }, TrackPosition::Disc { disc: 2, number: 1 }),
+        (TrackSide::Flat, TrackPosition::Flat { number: 1 }),
     ];
 
-    for (side, position, expected) in cases {
+    for (side, position) in cases {
         let group =
             crate::types::BridgeTrackGroup::from_core(bae_views::album_detail::TrackGroup {
-                side,
+                side: side.clone(),
                 tracks: vec![track_detail(position, 187_000)],
                 total_duration_ms: 187_000,
                 shows_time: true,
                 second_column_start: None,
             });
-        assert_eq!(group.header_key.as_deref(), expected);
+        assert_eq!(group.side, crate::types::BridgeTrackSide::from_core(side));
         assert_eq!(
             group.total_duration,
             Some(crate::types::BridgeDurationUnits::MinutesOnly { minutes: 3 })

@@ -112,7 +112,6 @@ extension PreviewData {
         trackSides: [
             BridgeMappingTrackSide(
                 side: .flat,
-                headerKey: nil,
                 runs: [
                     .tracks(
                         mappings: (1...9).map(mappingTrackRow)
@@ -177,7 +176,6 @@ extension PreviewData {
         trackSides: [
             BridgeMappingTrackSide(
                 side: .flat,
-                headerKey: nil,
                 runs: [
                     .tracks(mappings: [
                         BridgeTrackMapping(
@@ -269,7 +267,6 @@ extension PreviewData {
         trackSides: [
             BridgeMappingTrackSide(
                 side: .flat,
-                headerKey: nil,
                 runs: [
                     .sheet(
                         sheet: previewSheetGroup,

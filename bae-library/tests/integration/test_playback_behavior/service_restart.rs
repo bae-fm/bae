@@ -148,7 +148,7 @@ async fn a_service_that_ends_in_mid_session_is_reported_once_and_the_next_play_p
         async |fixture| {
             let side_a_track_id = fixture.track_ids[1].clone();
             let first_track_id = fixture.track_ids[0].clone();
-            fixture.play_to_side_pause(&side_a_track_id, "A", PlaybackPauseBoundary::Side).await;
+            fixture.play_to_side_pause(&side_a_track_id, side("A")).await;
 
             // The countdown's wait broke the loop: playback stopped with why.
             let mut failures = 0;

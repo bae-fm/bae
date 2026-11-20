@@ -97,7 +97,7 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
         if index == 0 {
             headerRow
         }
-        let headerText = side.side.headerText(key: side.headerKey)
+        let headerText = side.side.headingText
         if !headerText.isEmpty {
             sideHeader(headerText, index: index)
         }

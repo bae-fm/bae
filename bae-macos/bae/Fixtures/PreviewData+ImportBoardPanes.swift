@@ -83,7 +83,6 @@ extension PreviewData {
             sides: [
                 BridgeReleaseEditTrackSide(
                     side: .flat,
-                    headerKey: nil,
                     runs: northboundTracks.enumerated()
                         .map { index, track in
                             .track(
@@ -488,7 +487,6 @@ extension PreviewData {
                 trackSides: [
                     BridgeMappingTrackSide(
                         side: .flat,
-                        headerKey: nil,
                         runs: [
                             .sheet(
                                 sheet: sheetOne,

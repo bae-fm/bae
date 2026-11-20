@@ -43,7 +43,7 @@ async fn cd_disc_pause_resumes_at_next_disc() {
         async |fixture| {
             let first = fixture.track_ids[0].clone();
             let second = fixture.track_ids[1].clone();
-            let paused = fixture.play_to_side_pause(&first, "1", PlaybackPauseBoundary::Disc).await;
+            let paused = fixture.play_to_side_pause(&first, disc(1)).await;
             match paused {
                 PlaybackState::Paused {
                     track,
@@ -51,7 +51,7 @@ async fn cd_disc_pause_resumes_at_next_disc() {
                     ..
                 } => {
                     assert_eq!(track.track_id, first);
-                    assert_eq!(prompt.boundary, PlaybackPauseBoundary::Disc);
+                    assert_eq!(prompt.ended, disc(1));
                 }
                 other => panic!("expected disc-ended pause, got {other:?}"),
             }
@@ -79,7 +79,7 @@ async fn cd_setting_changes_mid_track_apply_at_disc_boundary() {
                 fixture.set_pause_between_sides_mid_track(enabled).await;
                 fixture.play_out_from_near_the_end().await;
                 if enabled {
-                    fixture.wait_for_side_pause("1", PlaybackPauseBoundary::Disc).await;
+                    fixture.wait_for_side_pause(disc(1)).await;
                 } else {
                     fixture
                         .wait_for_playing_track(

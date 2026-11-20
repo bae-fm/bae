@@ -511,8 +511,10 @@ pub struct BridgeRelease {
     pub cover: Option<BridgeImageRef>,
 }
 
-/// A track group's side discriminant — the header the UI renders ("Side A" /
-/// "Disc 2"). `Flat` means no header (single-disc digital).
+/// The side or disc a release's tracks sit on, which every screen, error and
+/// prompt names by one heading ("Side A", "Disc 2"):
+/// [`bridge_track_side_heading_key`] gives its words. `Flat` has no heading:
+/// the tracks of a release of one medium that is not a record or a cassette.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeTrackSide {
     Sided { side_letter: String },
@@ -528,31 +530,22 @@ mirror_enum! {
     variants: { Sided { side_letter }, Disc { disc }, Flat },
 }
 
-impl BridgeTrackSide {
-    /// Localization key for this side's header word ("Side" / "Disc"), or `None`
-    /// for `Flat` (single-disc digital has no header). Pre-computed onto
-    /// [`BridgeTrackGroup::header_key`] at conversion; the UI resolves the key
-    /// and substitutes the side letter / disc number `side` carries.
-    pub(crate) fn header_key(&self) -> Option<&'static str> {
-        match self {
-            Self::Sided { .. } => Some("core.track.side"),
-            Self::Disc { .. } => Some("core.track.disc"),
-            Self::Flat => None,
-        }
+/// The catalog key of `side`'s heading, which takes the side's letters as
+/// `letter` ("Side A") or the disc's number as `disc` ("Disc 2"), or `None`
+/// for a flat side, which has no heading.
+#[uniffi::export]
+pub fn bridge_track_side_heading_key(side: BridgeTrackSide) -> Option<String> {
+    match side {
+        BridgeTrackSide::Sided { .. } => Some("core.track.side".to_owned()),
+        BridgeTrackSide::Disc { .. } => Some("core.track.disc".to_owned()),
+        BridgeTrackSide::Flat => None,
     }
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeTrackGroup {
-    /// The group's side discriminant; the UI substitutes the letter / disc
-    /// number into the header format (`Flat` means no header).
+    /// The side or disc the group's tracks sit on, which heads the group.
     pub side: BridgeTrackSide,
-    /// Localization key for the group header word ("core.track.side" /
-    /// "core.track.disc"), or `None` for `Flat`. Core-rendered at conversion so
-    /// a track list reads a field per group instead of an FFI call per group;
-    /// the UI resolves the key against the `Core` table and interpolates the
-    /// letter / number `side` carries.
-    pub header_key: Option<String>,
     pub tracks: Vec<BridgeTrack>,
     /// Playing time of this group's tracks, in the same words as
     /// `BridgeRelease::total_duration`, or `None` when no track reports a

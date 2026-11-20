@@ -365,8 +365,7 @@ struct PlaybackStoreNowPlayingTests {
 struct PlaybackStoreSidePausePromptTests {
     private static let prompt = BridgeSidePausePrompt(
         id: "side-pause-1",
-        boundary: .side,
-        sideLabel: "A",
+        ended: .sided(sideLetter: "A"),
         countdown: nil
     )
 
@@ -414,8 +413,7 @@ struct PlaybackStoreSidePausePromptTests {
         let track = makeTrack("track-1")
         let next = BridgeSidePausePrompt(
             id: "side-pause-2",
-            boundary: .side,
-            sideLabel: "B",
+            ended: .sided(sideLetter: "B"),
             countdown: nil
         )
 

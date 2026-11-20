@@ -93,9 +93,9 @@ pub use queue_values::{QueueItem, ResolvedContext, ResolvedQueueSnapshot};
 pub use repeat_mode::RepeatMode;
 pub use replay_gain::{loudness_gain_db, loudness_gain_linear, replay_gain_linear};
 pub use service::{
-    LoadingTrack, PlayError, PlayOutcome, PlaybackHandle, PlaybackPauseBoundary,
-    PlaybackPauseReason, PlaybackService, PlaybackSideCountdown, PlaybackSidePausePrompt,
-    PlaybackState, PlaybackTrackInfo, PlaybackTrackSide, QueueEditError, SetVolumeError,
+    LoadingTrack, PlayError, PlayOutcome, PlaybackHandle, PlaybackPauseReason, PlaybackService,
+    PlaybackSideCountdown, PlaybackSidePausePrompt, PlaybackState, PlaybackTrackInfo,
+    QueueEditError, SetVolumeError,
 };
 pub use source::{TrackCrossing, TrackFmt};
 pub use timeline::{StreamPosition, TrackTimeline};

@@ -36,8 +36,8 @@ struct MacTrackColumns: View {
             ForEach(Array(groups.enumerated()), id: \.offset) {
                 groupIndex,
                 group in
-                if !group.sideHeaderText.isEmpty {
-                    MacEyebrow(verbatim: group.sideHeaderText)
+                if !group.side.headingText.isEmpty {
+                    MacEyebrow(verbatim: group.side.headingText)
                         .padding(.top, groupIndex == 0 ? 0 : ThemeSpace.edge)
                         .padding(.bottom, ThemeSpace.compact)
                 }

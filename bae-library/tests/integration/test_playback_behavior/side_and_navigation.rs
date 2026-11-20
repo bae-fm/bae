@@ -3,35 +3,25 @@ use crate::test_playback_behavior::support::*;
 
 #[tokio::test]
 async fn sided_vinyl_boundary_pauses_on_auto_advance() {
-    assert_sided_boundary_pauses("Vinyl", ["A1", "A2", "B1"], 1, "A", PlaybackPauseBoundary::Side)
-        .await;
+    assert_sided_boundary_pauses("Vinyl", ["A1", "A2", "B1"], 1, side("A")).await;
 }
 
 #[tokio::test]
 async fn sided_cassette_boundary_pauses_on_auto_advance() {
-    assert_sided_boundary_pauses(
-        "Cassette",
-        ["A1", "B1", "B2"],
-        0,
-        "A",
-        PlaybackPauseBoundary::Side,
-    )
-    .await;
+    assert_sided_boundary_pauses("Cassette", ["A1", "B1", "B2"], 0, side("A")).await;
 }
 
 async fn assert_sided_boundary_pauses(
     format: &str,
     positions: [&str; 3],
     start_track_index: usize,
-    expected_side_label: &str,
-    expected_boundary: PlaybackPauseBoundary,
+    expected_ended: TrackSide,
 ) {
     let mut fixture =
         SidePauseTestFixture::new(format, positions, true).await.expect("side-pause fixture");
     let side_track_id = fixture.track_ids[start_track_index].clone();
 
-    let paused =
-        fixture.play_to_side_pause(&side_track_id, expected_side_label, expected_boundary).await;
+    let paused = fixture.play_to_side_pause(&side_track_id, expected_ended).await;
 
     match paused {
         PlaybackState::Paused { track, .. } => {
@@ -67,8 +57,7 @@ async fn same_side_auto_advance_does_not_side_pause() {
 
 #[tokio::test]
 async fn cd_multi_disc_boundary_pauses_on_auto_advance() {
-    assert_sided_boundary_pauses("CD", ["1-1", "2-1", "2-2"], 0, "1", PlaybackPauseBoundary::Disc)
-        .await;
+    assert_sided_boundary_pauses("CD", ["1-1", "2-1", "2-2"], 0, disc(1)).await;
 }
 
 #[tokio::test]
@@ -117,7 +106,7 @@ async fn enabling_setting_mid_track_pauses_at_the_imminent_boundary() {
 
             fixture.play_out_from_near_the_end().await;
 
-            fixture.wait_for_side_pause("A", PlaybackPauseBoundary::Side).await;
+            fixture.wait_for_side_pause(side("A")).await;
         },
     )
     .await;
@@ -197,7 +186,7 @@ async fn resume_from_side_pause_starts_next_side() {
             let side_a_track_id = fixture.track_ids[1].clone();
             let next_side_track_id = fixture.track_ids[2].clone();
 
-            fixture.play_to_side_pause(&side_a_track_id, "A", PlaybackPauseBoundary::Side).await;
+            fixture.play_to_side_pause(&side_a_track_id, side("A")).await;
 
             fixture.playback_handle.resume();
 
@@ -228,7 +217,7 @@ async fn side_boundary_pause_prevents_gapless_stream_handoff() {
             let _side_a_stream = fixture.next_capture_stream().await;
 
             fixture.play_out_from_near_the_end().await;
-            fixture.wait_for_side_pause("A", PlaybackPauseBoundary::Side).await;
+            fixture.wait_for_side_pause(side("A")).await;
 
             fixture.playback_handle.resume();
             let _side_b_stream = fixture.next_capture_stream().await;

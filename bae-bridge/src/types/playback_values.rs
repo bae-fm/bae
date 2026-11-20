@@ -116,9 +116,10 @@ mirror_struct! {
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeSidePausePrompt {
     pub id: String,
-    /// Whether a side or a disc ended, which every line of the prompt names.
-    pub boundary: BridgePauseBoundary,
-    pub side_label: String,
+    /// The side or disc that ended. The title names it by its heading
+    /// ("Side A ended"), and the prompt's other lines by its kind (the next
+    /// side, or the next disc). Core never pauses after a flat side.
+    pub ended: crate::types::BridgeTrackSide,
     /// The countdown to the next side starting on its own, or `None` when the
     /// pause waits for Play.
     pub countdown: Option<BridgeCountdown>,
@@ -126,64 +127,56 @@ pub struct BridgeSidePausePrompt {
 
 impl BridgeSidePausePrompt {
     pub(crate) fn from_core(prompt: bae_playback::PlaybackSidePausePrompt) -> Self {
-        let bae_playback::PlaybackSidePausePrompt { id, boundary, side_label, countdown } = prompt;
-        let boundary = BridgePauseBoundary::from_core(boundary);
+        let bae_playback::PlaybackSidePausePrompt { id, ended, countdown } = prompt;
+        let ended = crate::types::BridgeTrackSide::from_core(ended);
         Self {
             id,
-            boundary,
-            side_label,
             countdown: countdown.map(|bae_playback::PlaybackSideCountdown { resumes_at }| {
-                BridgeCountdown {
-                    key: bridge_pause_boundary_countdown_key(boundary),
-                    until: resumes_at.into(),
-                }
+                BridgeCountdown { key: side_pause_countdown_key(&ended), until: resumes_at.into() }
             }),
+            ended,
         }
     }
 }
 
-/// Whether a pause between sides stopped after a side or a disc.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgePauseBoundary {
-    Side,
-    Disc,
+/// Whether the side that ended is a record's or cassette's side, which the
+/// prompt words as a side, or a disc. A flat side words as a disc: core never
+/// pauses after one, and a disc is the medium a flat side is on.
+fn ended_a_side(ended: &crate::types::BridgeTrackSide) -> bool {
+    matches!(ended, crate::types::BridgeTrackSide::Sided { .. })
 }
 
-mirror_enum! {
-    BridgePauseBoundary = bae_playback::PlaybackPauseBoundary,
-    from_core: fn,
-    variants: {
-        Side,
-        Disc,
-    },
-}
-
-/// The prompt's title, which takes the side or disc that ended as `label`.
+/// The prompt's title for the side or disc `ended`, which takes the side's
+/// heading (`bridge_track_side_heading_key`) as `heading`.
 #[uniffi::export]
-pub fn bridge_pause_boundary_title_key(boundary: BridgePauseBoundary) -> String {
-    match boundary {
-        BridgePauseBoundary::Side => "core.playback.pause.side_ended.title",
-        BridgePauseBoundary::Disc => "core.playback.pause.disc_ended.title",
+pub fn bridge_side_pause_title_key(ended: crate::types::BridgeTrackSide) -> String {
+    if ended_a_side(&ended) {
+        "core.playback.pause.side_ended.title"
+    } else {
+        "core.playback.pause.disc_ended.title"
     }
     .to_string()
 }
 
 /// The line counting down to the next side, which takes the whole seconds
 /// left, rounded up, as `seconds`.
-pub(crate) fn bridge_pause_boundary_countdown_key(boundary: BridgePauseBoundary) -> String {
-    match boundary {
-        BridgePauseBoundary::Side => "core.playback.pause.side_ended.countdown",
-        BridgePauseBoundary::Disc => "core.playback.pause.disc_ended.countdown",
+pub(crate) fn side_pause_countdown_key(ended: &crate::types::BridgeTrackSide) -> String {
+    if ended_a_side(ended) {
+        "core.playback.pause.side_ended.countdown"
+    } else {
+        "core.playback.pause.disc_ended.countdown"
     }
     .to_string()
 }
 
-/// The prompt's checkbox that keeps pausing at boundaries of this kind.
+/// The prompt's checkbox that keeps pausing at boundaries like the one that
+/// ended.
 #[uniffi::export]
-pub fn bridge_pause_boundary_keep_pausing_key(boundary: BridgePauseBoundary) -> String {
-    match boundary {
-        BridgePauseBoundary::Side => "core.playback.pause.side_ended.keep_pausing",
-        BridgePauseBoundary::Disc => "core.playback.pause.disc_ended.keep_pausing",
+pub fn bridge_side_pause_keep_pausing_key(ended: crate::types::BridgeTrackSide) -> String {
+    if ended_a_side(&ended) {
+        "core.playback.pause.side_ended.keep_pausing"
+    } else {
+        "core.playback.pause.disc_ended.keep_pausing"
     }
     .to_string()
 }

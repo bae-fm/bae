@@ -266,20 +266,17 @@ extension BridgePlaybackPauseReason {
 }
 
 extension BridgeSidePausePrompt {
+    /// "Side A ended", from the heading of the side or disc that ended.
     public func title() -> String {
         String(
-            format: localizedCoreString(
-                bridgePauseBoundaryTitleKey(boundary: boundary)
-            ),
-            sideLabel
+            format: localizedCoreString(bridgeSidePauseTitleKey(ended: ended)),
+            ended.headingText
         )
     }
 
-    /// The checkbox that keeps pausing at this kind of boundary.
+    /// The checkbox that keeps pausing at boundaries like the one that ended.
     public func keepPausingLabel() -> String {
-        localizedCoreString(
-            bridgePauseBoundaryKeepPausingKey(boundary: boundary)
-        )
+        localizedCoreString(bridgeSidePauseKeepPausingKey(ended: ended))
     }
 }
 

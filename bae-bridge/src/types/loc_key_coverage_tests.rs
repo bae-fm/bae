@@ -174,17 +174,13 @@ fn produced_keys() -> Vec<String> {
     }
     assert!(bridge_sheet_binding_offer_key(BridgeSheetBindingOffer::Offered).is_none());
 
-    // BridgeTrackSide::header_key — this is what BridgeTrackGroup::header_key
-    // is built from at conversion.
-    for s in [
-        BridgeTrackSide::Sided { side_letter: "A".to_string() },
-        BridgeTrackSide::Disc { disc: 1 },
-        BridgeTrackSide::Flat,
-    ] {
-        keys.extend(s.header_key().map(str::to_string));
+    // bridge_track_side_heading_key — a flat side has no heading to word.
+    for s in
+        [BridgeTrackSide::Sided { side_letter: "A".to_string() }, BridgeTrackSide::Disc { disc: 1 }]
+    {
+        keys.extend(bridge_track_side_heading_key(s));
     }
-    // A flat track list has no header to word.
-    assert!(BridgeTrackSide::Flat.header_key().is_none());
+    assert!(bridge_track_side_heading_key(BridgeTrackSide::Flat).is_none());
 
     // bridge_audio_channels_key — only 1 and 2 carry words.
     for channels in [1_i64, 2] {
@@ -623,10 +619,12 @@ fn produced_keys() -> Vec<String> {
     keys.extend(playability_messages().into_iter().map(|message| message.key));
     keys.extend(catalog_apply_step_lines().into_iter().map(|message| message.key));
 
-    for boundary in [BridgePauseBoundary::Side, BridgePauseBoundary::Disc] {
-        keys.push(bridge_pause_boundary_title_key(boundary));
-        keys.push(bridge_pause_boundary_countdown_key(boundary));
-        keys.push(bridge_pause_boundary_keep_pausing_key(boundary));
+    for ended in
+        [BridgeTrackSide::Sided { side_letter: "A".to_string() }, BridgeTrackSide::Disc { disc: 1 }]
+    {
+        keys.push(bridge_side_pause_title_key(ended.clone()));
+        keys.push(side_pause_countdown_key(&ended));
+        keys.push(bridge_side_pause_keep_pausing_key(ended));
     }
 
     // The pressing vocabularies — every region, status and packaging carries

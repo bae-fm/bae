@@ -244,18 +244,13 @@ mirror_enum! {
     },
 }
 
-/// Not a `mirror_struct`: `header_key` is derived from the side rather than
-/// carried by core, so a side reads a field instead of asking.
-impl BridgeMappingTrackSide {
-    fn from_core(side: bae_import::MappingTrackSide) -> Self {
-        let bae_import::MappingTrackSide { side, runs } = side;
-        let side = BridgeTrackSide::from_core(side);
-        Self {
-            header_key: side.header_key().map(str::to_string),
-            side,
-            runs: runs.into_iter().map(BridgeMappingTrackRun::from_core).collect(),
-        }
-    }
+mirror_struct! {
+    BridgeMappingTrackSide = bae_import::MappingTrackSide,
+    from_core: fn,
+    fields: {
+        side: (BridgeTrackSide),
+        runs: (each BridgeMappingTrackRun),
+    },
 }
 
 mirror_enum! {

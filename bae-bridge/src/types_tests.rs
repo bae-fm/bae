@@ -210,23 +210,21 @@ mod conversion_roundtrip {
     }
 
     #[test]
-    fn side_pause_prompt_carries_its_kind_and_a_countdown_to_the_next_disc() {
-        use bae_playback::{PlaybackPauseBoundary, PlaybackSideCountdown, PlaybackSidePausePrompt};
+    fn side_pause_prompt_carries_the_ended_disc_and_a_countdown_to_the_next() {
+        use bae_playback::{PlaybackSideCountdown, PlaybackSidePausePrompt};
 
         let resumes_at = bae_util::timestamp::parse_rfc3339("2026-01-01T00:00:05Z").unwrap();
         let prompt = BridgeSidePausePrompt::from_core(PlaybackSidePausePrompt {
-            id: "next:1:Cd".to_string(),
-            boundary: PlaybackPauseBoundary::Disc,
-            side_label: "1".to_string(),
+            id: "next:disc 1".to_string(),
+            ended: bae_types::mediums::TrackSide::Disc { disc: 1 },
             countdown: Some(PlaybackSideCountdown { resumes_at }),
         });
 
         assert_eq!(
             prompt,
             BridgeSidePausePrompt {
-                id: "next:1:Cd".to_string(),
-                boundary: BridgePauseBoundary::Disc,
-                side_label: "1".to_string(),
+                id: "next:disc 1".to_string(),
+                ended: BridgeTrackSide::Disc { disc: 1 },
                 countdown: Some(BridgeCountdown {
                     key: "core.playback.pause.disc_ended.countdown".to_string(),
                     until: std::time::UNIX_EPOCH + std::time::Duration::from_secs(1_767_225_605),
@@ -573,7 +571,7 @@ mod conversion_roundtrip {
                 }
             );
             let side = &bridge.sides.as_ref().expect("the release has tracks")[0];
-            assert_eq!(side.header_key.as_deref(), Some("core.track.disc"));
+            assert_eq!(side.side, BridgeTrackSide::Disc { disc: 2 });
             let BridgeReleaseEditTrackRun::Track { row } = &side.runs[0] else {
                 panic!("the side's one run is its track");
             };

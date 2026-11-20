@@ -99,10 +99,8 @@ impl BridgeTrackGroup {
             shows_time,
             second_column_start,
         } = g;
-        let side = crate::types::BridgeTrackSide::from_core(side);
         BridgeTrackGroup {
-            header_key: side.header_key().map(str::to_string),
-            side,
+            side: crate::types::BridgeTrackSide::from_core(side),
             tracks: tracks.into_iter().map(BridgeTrack::from_core).collect(),
             total_duration: bae_util::duration::DurationUnits::from_millis(total_duration_ms)
                 .map(crate::types::BridgeDurationUnits::from_core),

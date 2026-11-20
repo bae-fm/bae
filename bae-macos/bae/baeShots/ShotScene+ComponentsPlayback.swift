@@ -847,16 +847,14 @@ extension ShotScene {
 
     private static func sidePause(
         _ id: String,
-        boundary: BridgePauseBoundary,
-        label: String,
+        ended: BridgeTrackSide,
         countdownKey: String?
     ) -> ShotScene {
         ShotScene(id: id, size: CGSize(width: 560, height: 340)) {
             let store = PlaybackStore()
             let prompt = BridgeSidePausePrompt(
                 id: "side-pause",
-                boundary: boundary,
-                sideLabel: label,
+                ended: ended,
                 countdown: countdownKey.map {
                     BridgeCountdown(
                         key: $0,
@@ -901,20 +899,17 @@ extension ShotScene {
     private static let sidePauseScenes: [ShotScene] = [
         sidePause(
             "mac.component.side-pause.counting-down",
-            boundary: .side,
-            label: "A",
+            ended: .sided(sideLetter: "A"),
             countdownKey: "core.playback.pause.side_ended.countdown"
         ),
         sidePause(
             "mac.component.side-pause.paused",
-            boundary: .side,
-            label: "A",
+            ended: .sided(sideLetter: "A"),
             countdownKey: nil
         ),
         sidePause(
             "mac.component.side-pause.disc",
-            boundary: .disc,
-            label: "2",
+            ended: .disc(disc: 2),
             countdownKey: "core.playback.pause.disc_ended.countdown"
         ),
     ]

@@ -271,7 +271,6 @@ extension PreviewData {
         [
             BridgeMappingTrackSide(
                 side: .flat,
-                headerKey: nil,
                 runs: [
                     .tracks(
                         mappings: tracks.enumerated()

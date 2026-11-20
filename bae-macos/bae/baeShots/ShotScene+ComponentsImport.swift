@@ -195,7 +195,6 @@ extension ShotScene {
                     mappingTable(sides: [
                         BridgeMappingTrackSide(
                             side: .disc(disc: 1),
-                            headerKey: "core.track.disc",
                             runs: [.tracks(mappings: [harborLights])]
                         )
                     ])
@@ -280,7 +279,6 @@ extension ShotScene {
                     table: mappingTable(sides: [
                         BridgeMappingTrackSide(
                             side: .flat,
-                            headerKey: nil,
                             runs: [.tracks(mappings: [track])]
                         )
                     ]),

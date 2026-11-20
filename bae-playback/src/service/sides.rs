@@ -2,8 +2,6 @@
 //! side a track is on, the boundary between two tracks, and the prompt a pause
 //! there shows.
 
-use super::*;
-
 /// What the playback service decides a side or disc pause with about a track:
 /// the release and side it plays on, read from the library when the decision
 /// is made.
@@ -11,7 +9,9 @@ use super::*;
 pub struct PlaybackTrackInfo {
     pub track_id: String,
     pub release_id: String,
-    pub side: Option<PlaybackTrackSide>,
+    /// The side or disc the track plays on, as its heading names it, for a
+    /// track on a physical carrier; `None` for any other.
+    pub side: Option<bae_types::mediums::TrackSide>,
 }
 
 impl PlaybackTrackInfo {
@@ -25,58 +25,25 @@ impl PlaybackTrackInfo {
     }
 
     /// The facts of the track at `place`. A track on a medium with no
-    /// physical carrier — a download, a disc of unstated carrier — is on no
+    /// physical carrier (a download, a disc of unstated carrier) is on no
     /// side playback pauses at.
     pub(crate) fn of(place: bae_records::DbTrackPlace) -> Self {
-        let side = place.carrier.and_then(bae_types::pressing::Medium::physical).map(|physical| {
-            let boundary = match physical {
-                PhysicalMedium::Record | PhysicalMedium::Cassette => PlaybackPauseBoundary::Side,
-                PhysicalMedium::Cd => PlaybackPauseBoundary::Disc,
-            };
-            let label = match place.on {
-                bae_types::mediums::TrackSide::Sided { side_letter } => side_letter,
-                bae_types::mediums::TrackSide::Disc { disc } => disc.to_string(),
-                bae_types::mediums::TrackSide::Flat => place.medium.to_string(),
-            };
-            PlaybackTrackSide { medium: place.medium, side: place.side, boundary, label }
-        });
+        let side = place.carrier.and_then(bae_types::pressing::Medium::physical).map(|_| place.on);
         Self { track_id: place.track_id, release_id: place.release_id, side }
     }
 }
 
-/// The side or disc a track is on, which decides where playback pauses: a
-/// change of medium or of side is a boundary.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PlaybackTrackSide {
-    /// The medium's position among its release's.
-    pub medium: std::num::NonZeroU16,
-    /// The side of that medium.
-    pub side: std::num::NonZeroU8,
-    /// What ends there: a record's or cassette's side, or a CD.
-    pub boundary: PlaybackPauseBoundary,
-    /// How the side reads ("B", or the disc's number).
-    pub label: String,
-}
-
-/// What the side/disc pause prompt shows: which boundary playback stopped at,
-/// and whether the next side starts on its own.
+/// What the side/disc pause prompt shows: the side or disc that ended, which
+/// its title names by the side's heading and its other lines by the kind of
+/// side, and whether the next side starts on its own.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlaybackSidePausePrompt {
     pub id: String,
-    /// Whether a side or a disc ended; the prompt's wording follows it.
-    pub boundary: PlaybackPauseBoundary,
-    pub side_label: String,
+    /// The side or disc that ended: never a flat side, which has no heading.
+    pub ended: bae_types::mediums::TrackSide,
     /// The countdown to the next side starting on its own, or `None` when the
     /// pause waits for Play.
     pub countdown: Option<PlaybackSideCountdown>,
-}
-
-/// The kind of boundary a pause between sides stopped at: a record's or a
-/// cassette's side, or a CD.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PlaybackPauseBoundary {
-    Side,
-    Disc,
 }
 
 /// A running side-pause countdown. Every UI counts down to `resumes_at`, so
@@ -86,12 +53,12 @@ pub struct PlaybackSideCountdown {
     pub resumes_at: time::UtcDateTime,
 }
 
-/// The side or disc boundary between two tracks.
+/// The side or disc boundary between two tracks: the pause's id and the side
+/// or disc that ends there.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct SideBoundary {
     pub(super) id: String,
-    pub(super) kind: PlaybackPauseBoundary,
-    pub(super) side_label: String,
+    pub(super) ended: bae_types::mediums::TrackSide,
 }
 
 /// A pause at a side boundary, resuming into `track_id` on Play or, when set,
@@ -105,35 +72,39 @@ pub(super) struct SidePauseDecision {
 
 impl SidePauseDecision {
     pub(super) fn prompt(&self) -> PlaybackSidePausePrompt {
-        let SideBoundary { id, kind, side_label } = &self.boundary;
+        let SideBoundary { id, ended } = &self.boundary;
         PlaybackSidePausePrompt {
             id: id.clone(),
-            boundary: *kind,
-            side_label: side_label.clone(),
+            ended: ended.clone(),
             countdown: self.resumes_at.map(|resumes_at| PlaybackSideCountdown { resumes_at }),
         }
     }
 }
 
-/// The side or disc boundary between `current` and `next`, or `None` when they
-/// play on the same side (or aren't on one release's sides at all).
+/// The side or disc boundary between `current` and `next`: where the heading
+/// of the side changes between two tracks of one release on physical
+/// carriers. `None` when they play under one heading, aren't on one
+/// release's sides at all, or `current` is on a flat side, which has no
+/// heading to name.
 pub(super) fn side_boundary_between(
     current: &PlaybackTrackInfo,
     next: &PlaybackTrackInfo,
 ) -> Option<SideBoundary> {
+    use bae_types::mediums::TrackSide;
     if current.release_id != next.release_id {
         return None;
     }
-    let current_side = current.side.as_ref()?;
+    let ended = current.side.as_ref()?;
     let next_side = next.side.as_ref()?;
-    if (current_side.medium, current_side.side) == (next_side.medium, next_side.side) {
+    if ended == next_side {
         return None;
     }
-    Some(SideBoundary {
-        id: format!("{}:{}:{}", next.track_id, current_side.medium, current_side.side),
-        kind: current_side.boundary,
-        side_label: current_side.label.clone(),
-    })
+    let heading = match ended {
+        TrackSide::Sided { side_letter } => format!("side {side_letter}"),
+        TrackSide::Disc { disc } => format!("disc {disc}"),
+        TrackSide::Flat => return None,
+    };
+    Some(SideBoundary { id: format!("{}:{heading}", next.track_id), ended: ended.clone() })
 }
 
 #[cfg(test)]

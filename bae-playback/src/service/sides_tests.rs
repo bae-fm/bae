@@ -1,5 +1,6 @@
 use super::*;
 use crate::service::tests::*;
+use bae_types::mediums::TrackSide;
 
 fn test_track_info(track_id: &str) -> PlaybackTrackInfo {
     PlaybackTrackInfo {
@@ -9,42 +10,46 @@ fn test_track_info(track_id: &str) -> PlaybackTrackInfo {
     }
 }
 
-/// Two tracks of one release, the first on `last` = (medium, side) and the
-/// second on `next`, each side ending `boundary` and labelled as given.
-fn tracks_across(
-    boundary: PlaybackPauseBoundary,
-    last: (u16, u8, &str),
-    next: (u16, u8, &str),
-) -> (PlaybackTrackInfo, PlaybackTrackInfo) {
-    let on = |track_id: &str, (medium, side, label): (u16, u8, &str)| PlaybackTrackInfo {
-        side: Some(PlaybackTrackSide {
-            medium: std::num::NonZeroU16::new(medium).expect("mediums count from one"),
-            side: std::num::NonZeroU8::new(side).expect("sides count from one"),
-            boundary,
-            label: label.to_string(),
-        }),
+fn sided(letter: &str) -> TrackSide {
+    TrackSide::Sided { side_letter: letter.to_string() }
+}
+
+/// Two tracks of one release on physical carriers, the first on the side or
+/// disc `last` and the second on `next`.
+fn tracks_across(last: TrackSide, next: TrackSide) -> (PlaybackTrackInfo, PlaybackTrackInfo) {
+    let on = |track_id: &str, side: TrackSide| PlaybackTrackInfo {
+        side: Some(side),
         ..test_track_info(track_id)
     };
     (on("last", last), on("next", next))
 }
 
-/// A record's side ends at the next side of it, and a CD at the next disc;
-/// the prompt carries which kind ended and the label of the side that did.
+/// A record's side ends at the next side, and a CD at the next disc; the
+/// prompt carries the side or disc that ended.
 #[test]
-fn a_pause_carries_the_kind_of_boundary_that_ended() {
-    for (kind, last, next, side_label) in [
-        (PlaybackPauseBoundary::Side, (1, 2, "B"), (2, 1, "C"), "B"),
-        (PlaybackPauseBoundary::Side, (1, 1, "A"), (1, 2, "B"), "A"),
-        (PlaybackPauseBoundary::Disc, (2, 1, "2"), (3, 1, "3"), "2"),
+fn a_pause_carries_the_side_that_ended() {
+    for (last, next) in [
+        (sided("B"), sided("C")),
+        (sided("A"), sided("B")),
+        (TrackSide::Disc { disc: 2 }, TrackSide::Disc { disc: 3 }),
     ] {
-        let (last, next) = tracks_across(kind, last, next);
-        let boundary = side_boundary_between(&last, &next).expect("the side ends");
-        assert_eq!(boundary.kind, kind, "{side_label}");
-        assert_eq!(boundary.side_label, side_label);
+        let (last_track, next_track) = tracks_across(last.clone(), next);
+        let boundary = side_boundary_between(&last_track, &next_track).expect("the side ends");
+        assert_eq!(boundary.ended, last);
         let prompt =
             SidePauseDecision { track_id: "next".to_string(), boundary, resumes_at: None }.prompt();
-        assert_eq!(prompt.boundary, kind, "{side_label}");
+        assert_eq!(prompt.ended, last);
     }
+}
+
+/// Two tracks under one heading play on, and a flat side, which has no
+/// heading to name, never ends in a pause.
+#[test]
+fn no_pause_under_one_heading_or_after_a_flat_side() {
+    let (first, second) = tracks_across(sided("A"), sided("A"));
+    assert_eq!(side_boundary_between(&first, &second), None);
+    let (flat, disc) = tracks_across(TrackSide::Flat, TrackSide::Disc { disc: 2 });
+    assert_eq!(side_boundary_between(&flat, &disc), None);
 }
 
 #[test]
@@ -52,9 +57,8 @@ fn side_pause_prompt_carries_its_countdown() {
     let decision = SidePauseDecision {
         track_id: "next".to_string(),
         boundary: SideBoundary {
-            id: "next:1:Cd".to_string(),
-            kind: PlaybackPauseBoundary::Disc,
-            side_label: "1".to_string(),
+            id: "next:disc 1".to_string(),
+            ended: TrackSide::Disc { disc: 1 },
         },
         resumes_at: Some(countdown_deadline()),
     };
@@ -62,34 +66,26 @@ fn side_pause_prompt_carries_its_countdown() {
     assert_eq!(
         decision.prompt(),
         PlaybackSidePausePrompt {
-            id: "next:1:Cd".to_string(),
-            boundary: PlaybackPauseBoundary::Disc,
-            side_label: "1".to_string(),
+            id: "next:disc 1".to_string(),
+            ended: TrackSide::Disc { disc: 1 },
             countdown: Some(PlaybackSideCountdown { resumes_at: countdown_deadline() }),
         }
     );
     assert_eq!(SidePauseDecision { resumes_at: None, ..decision }.prompt().countdown, None);
 }
 
-/// What playback reads of a track on a release of `mediums`, its place given
-/// as (medium, side), and on the side or disc `on`.
+/// What playback reads of a track on medium `medium` of a release of
+/// `mediums`, on the side or disc `on`.
 fn info_on(
     track_id: &str,
     mediums: &bae_records::DbReleaseMediums,
-    (medium, side): (u16, u8),
+    medium: usize,
     on: bae_types::mediums::TrackSide,
 ) -> PlaybackTrackInfo {
-    let place = bae_types::mediums::TrackPlace {
-        medium: std::num::NonZeroU16::new(medium).expect("mediums count from one"),
-        side: std::num::NonZeroU8::new(side).expect("sides count from one"),
-        number: std::num::NonZeroU32::MIN,
-    };
     PlaybackTrackInfo::of(bae_records::DbTrackPlace {
         track_id: track_id.to_string(),
         release_id: "release-id".to_string(),
-        medium: place.medium,
-        side: place.side,
-        carrier: mediums.0[usize::from(medium) - 1].medium.carrier,
+        carrier: mediums.0[medium - 1].medium.carrier,
         on,
     })
 }
@@ -119,13 +115,12 @@ fn a_cd_release_pauses_at_disc_changes_only() {
     let cd = bae_types::mediums::ReleaseMedium::one_sided(Some(bae_types::pressing::Medium::Cd));
     let mediums = release_of(&[cd, cd]);
     let disc = |disc| bae_types::mediums::TrackSide::Disc { disc };
-    let first = info_on("first", &mediums, (1, 1), disc(1));
-    let second = info_on("second", &mediums, (1, 1), disc(1));
-    let third = info_on("third", &mediums, (2, 1), disc(2));
+    let first = info_on("first", &mediums, 1, disc(1));
+    let second = info_on("second", &mediums, 1, disc(1));
+    let third = info_on("third", &mediums, 2, disc(2));
     assert_eq!(side_boundary_between(&first, &second), None);
     let boundary = side_boundary_between(&second, &third).expect("disc 1 ends");
-    assert_eq!(boundary.kind, PlaybackPauseBoundary::Disc);
-    assert_eq!(boundary.side_label, "1");
+    assert_eq!(boundary.ended, disc(1));
 }
 
 /// A 2×LP rip pauses at each side, named by its letter across both records.
@@ -136,24 +131,19 @@ fn a_two_record_release_pauses_at_each_side() {
         sides: std::num::NonZeroU8::new(2).expect("two sides"),
     };
     let mediums = release_of(&[record, record]);
-    let places = [((1, 1), "A"), ((1, 2), "B"), ((2, 1), "C"), ((2, 2), "D")];
+    let places = [(1, "A"), (1, "B"), (2, "C"), (2, "D")];
     let infos: Vec<_> = places
         .iter()
         .enumerate()
-        .map(|(index, (place, letter))| {
-            let on = bae_types::mediums::TrackSide::Sided { side_letter: letter.to_string() };
-            info_on(&format!("track-{index}"), &mediums, *place, on)
+        .map(|(index, (medium, letter))| {
+            info_on(&format!("track-{index}"), &mediums, *medium, sided(letter))
         })
         .collect();
     let labels: Vec<_> = infos
         .windows(2)
-        .map(|pair| {
-            let boundary = side_boundary_between(&pair[0], &pair[1]).expect("a side ends");
-            assert_eq!(boundary.kind, PlaybackPauseBoundary::Side);
-            boundary.side_label
-        })
+        .map(|pair| side_boundary_between(&pair[0], &pair[1]).expect("a side ends").ended)
         .collect();
-    assert_eq!(labels, ["A", "B", "C"]);
+    assert_eq!(labels, [sided("A"), sided("B"), sided("C")]);
 }
 
 /// A medium of no physical carrier never pauses.
@@ -162,8 +152,8 @@ fn a_medium_of_no_carrier_never_pauses() {
     let unstated = bae_types::mediums::ReleaseMedium::one_sided(None);
     let mediums = release_of(&[unstated, unstated]);
     let disc = |disc| bae_types::mediums::TrackSide::Disc { disc };
-    let first = info_on("first", &mediums, (1, 1), disc(1));
-    let second = info_on("second", &mediums, (2, 1), disc(2));
+    let first = info_on("first", &mediums, 1, disc(1));
+    let second = info_on("second", &mediums, 2, disc(2));
     assert_eq!(first.side, None);
     assert_eq!(side_boundary_between(&first, &second), None);
 }

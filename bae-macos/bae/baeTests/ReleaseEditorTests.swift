@@ -228,7 +228,6 @@ struct ReleaseEditorTests {
         release.draft.sides = [
             BridgeReleaseEditTrackSide(
                 side: .flat,
-                headerKey: nil,
                 runs: shared
                     ? [
                         .sheet(

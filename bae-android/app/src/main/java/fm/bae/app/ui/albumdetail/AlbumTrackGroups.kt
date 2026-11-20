@@ -10,7 +10,7 @@ import androidx.compose.ui.unit.Dp
 import fm.bae.app.creditLineText
 import fm.bae.app.durationClockLabel
 import fm.bae.app.durationUnitsText
-import fm.bae.app.sideHeaderText
+import fm.bae.app.headingText
 import fm.bae.app.text
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
@@ -29,7 +29,7 @@ internal fun LazyListScope.albumTrackGroups(
     context: android.content.Context,
 ) {
     release.trackGroups.forEach { group ->
-        val header = group.sideHeaderText(context)
+        val header = group.side.headingText(context)
         if (header.isNotEmpty()) {
             item {
                 AndroidEyebrow(text = header)

@@ -8,8 +8,8 @@ import uniffi.bae_bridge.BridgePlaybackSourceKind
 import uniffi.bae_bridge.BridgeQueueEntry
 import uniffi.bae_bridge.BridgeSidePausePrompt
 import uniffi.bae_bridge.BridgeTrackDisplay
-import uniffi.bae_bridge.bridgePauseBoundaryKeepPausingKey
-import uniffi.bae_bridge.bridgePauseBoundaryTitleKey
+import uniffi.bae_bridge.bridgeSidePauseKeepPausingKey
+import uniffi.bae_bridge.bridgeSidePauseTitleKey
 
 /** The track the in-app player shows: its id, what the library shows of it or that the library no longer holds it,
  *  and the prompt of a pause between sides. */
@@ -35,8 +35,8 @@ fun BridgeNowPlayingDisplay.artist(context: Context): String? = library?.let { c
 
 /**
  * A side-pause prompt with the catalog keys its title and checkbox are worded
- * from, looked up from the kind of boundary that ended when the
- * player receives it, so the dialog renders without calling the bridge.
+ * from, looked up from the side or disc that ended when the player receives
+ * it. The title takes that side's heading.
  */
 data class SidePausePrompt(
     val prompt: BridgeSidePausePrompt,
@@ -47,8 +47,8 @@ data class SidePausePrompt(
         fun of(prompt: BridgeSidePausePrompt): SidePausePrompt =
             SidePausePrompt(
                 prompt = prompt,
-                titleKey = bridgePauseBoundaryTitleKey(prompt.boundary),
-                keepPausingKey = bridgePauseBoundaryKeepPausingKey(prompt.boundary),
+                titleKey = bridgeSidePauseTitleKey(prompt.ended),
+                keepPausingKey = bridgeSidePauseKeepPausingKey(prompt.ended),
             )
     }
 }

@@ -17,9 +17,10 @@ use crate::renderer::CastReceiver;
 use crate::{AudioOutputProblem, PlaybackDiagnostic, PlaybackErrorReason};
 use crate::{
     LoadingTrack, NowPlayingDisplay, NowPlayingTrack, NowPlayingValues, PlaybackChange,
-    PlaybackPauseBoundary, PlaybackPauseReason, PlaybackSideCountdown, PlaybackSidePausePrompt,
-    PlaybackState, PlaybackValues, PlayingTrack, PreviewState, RemotePlayback,
+    PlaybackPauseReason, PlaybackSideCountdown, PlaybackSidePausePrompt, PlaybackState,
+    PlaybackValues, PlayingTrack, PreviewState, RemotePlayback,
 };
+use bae_types::mediums::TrackSide;
 use bae_util::timestamp::StoredTimestamp as _;
 
 /// The `playback_now` row, as playback writes it.
@@ -85,7 +86,7 @@ fn apply_on(sql: &CovenWrite<'_>, change: &PlaybackChange) -> rusqlite::Result<(
             sql.execute(
                 "UPDATE playback_now SET state = ?, track_id = ?, prepared = ?, \
                      waits_on_storage = ?, duration_ms = ?, pause_reason = ?, \
-                     side_boundary_id = ?, side_boundary_kind = ?, side_label = ?, \
+                     side_boundary_id = ?, ended_side_kind = ?, ended_side = ?, \
                      side_resumes_at = ?",
                 params![
                     columns.state,
@@ -95,8 +96,8 @@ fn apply_on(sql: &CovenWrite<'_>, change: &PlaybackChange) -> rusqlite::Result<(
                     columns.duration_ms,
                     columns.pause_reason,
                     columns.side_boundary_id,
-                    columns.side_boundary_kind,
-                    columns.side_label,
+                    columns.ended_side_kind,
+                    columns.ended_side,
                     columns.side_resumes_at,
                 ],
             )?;
@@ -215,7 +216,7 @@ pub(super) fn reset_playback_now_on(
     sql.execute(
         "UPDATE playback_now SET state = 'stopped', track_id = NULL, prepared = NULL, \
              waits_on_storage = NULL, duration_ms = NULL, pause_reason = NULL, side_boundary_id = NULL, \
-             side_boundary_kind = NULL, side_label = NULL, side_resumes_at = NULL, \
+             ended_side_kind = NULL, ended_side = NULL, side_resumes_at = NULL, \
              remote = 'local', cast_receiver_id = NULL, cast_receiver_name = NULL, \
              cast_receiver_kind = NULL, cast_receiver_model = NULL, \
              cast_receiver_address = NULL, cast_receiver_takes_volume = NULL, \
@@ -243,8 +244,8 @@ struct StateColumns<'a> {
     duration_ms: Option<i64>,
     pause_reason: Option<&'static str>,
     side_boundary_id: Option<&'a str>,
-    side_boundary_kind: Option<&'static str>,
-    side_label: Option<&'a str>,
+    ended_side_kind: Option<&'static str>,
+    ended_side: Option<String>,
     side_resumes_at: Option<i64>,
 }
 
@@ -258,8 +259,8 @@ impl<'a> StateColumns<'a> {
             duration_ms: None,
             pause_reason: None,
             side_boundary_id: None,
-            side_boundary_kind: None,
-            side_label: None,
+            ended_side_kind: None,
+            ended_side: None,
             side_resumes_at: None,
         };
         let prepared_track = |columns: &mut Self, track: &'a PlayingTrack| {
@@ -294,11 +295,15 @@ impl<'a> StateColumns<'a> {
                     PlaybackPauseReason::SideEnded(prompt) => {
                         columns.pause_reason = Some("side_ended");
                         columns.side_boundary_id = Some(&prompt.id);
-                        columns.side_boundary_kind = Some(match prompt.boundary {
-                            PlaybackPauseBoundary::Side => "side",
-                            PlaybackPauseBoundary::Disc => "disc",
-                        });
-                        columns.side_label = Some(&prompt.side_label);
+                        let (kind, ended) = match &prompt.ended {
+                            TrackSide::Sided { side_letter } => {
+                                ("sided", Some(side_letter.clone()))
+                            }
+                            TrackSide::Disc { disc } => ("disc", Some(disc.to_string())),
+                            TrackSide::Flat => ("flat", None),
+                        };
+                        columns.ended_side_kind = Some(kind);
+                        columns.ended_side = ended;
                         columns.side_resumes_at = prompt
                             .countdown
                             .as_ref()
@@ -456,16 +461,21 @@ fn state_from_row(row: &Row<'_>) -> rusqlite::Result<PlaybackState> {
             let reason = match reason.as_str() {
                 "manual" => PlaybackPauseReason::Manual,
                 "side_ended" => {
-                    let kind: String = row.get("side_boundary_kind")?;
+                    let kind: String = row.get("ended_side_kind")?;
+                    let ended: Option<String> = row.get("ended_side")?;
                     let resumes_at: Option<i64> = row.get("side_resumes_at")?;
                     PlaybackPauseReason::SideEnded(PlaybackSidePausePrompt {
                         id: row.get("side_boundary_id")?,
-                        boundary: match kind.as_str() {
-                            "side" => PlaybackPauseBoundary::Side,
-                            "disc" => PlaybackPauseBoundary::Disc,
-                            other => return Err(unknown(row, "side_boundary_kind", other)),
+                        ended: match (kind.as_str(), ended) {
+                            ("sided", Some(side_letter)) => TrackSide::Sided { side_letter },
+                            ("disc", Some(disc)) => TrackSide::Disc {
+                                disc: disc
+                                    .parse()
+                                    .map_err(|_not_a_number| unknown(row, "ended_side", &disc))?,
+                            },
+                            ("flat", None) => TrackSide::Flat,
+                            (other, _) => return Err(unknown(row, "ended_side_kind", other)),
                         },
-                        side_label: row.get("side_label")?,
                         countdown: resumes_at
                             .map(|millis| {
                                 bae_util::timestamp::from_unix_timestamp_millis(millis)

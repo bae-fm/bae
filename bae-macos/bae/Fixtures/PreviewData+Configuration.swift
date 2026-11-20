@@ -138,7 +138,6 @@ extension PreviewData {
             sides: [
                 BridgeReleaseEditTrackSide(
                     side: .flat,
-                    headerKey: nil,
                     runs: edit.tracks.enumerated()
                         .map { index, track in
                             .track(

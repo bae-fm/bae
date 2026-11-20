@@ -222,10 +222,6 @@ pub struct DbPerformedWork {
 pub struct DbTrackPlace {
     pub track_id: String,
     pub release_id: String,
-    /// The track's medium's position among its release's.
-    pub medium: std::num::NonZeroU16,
-    /// The side of that medium.
-    pub side: std::num::NonZeroU8,
     /// The medium's carrier, where the source states one.
     pub carrier: Option<bae_types::pressing::Medium>,
     /// The side or disc the release shows the track on.

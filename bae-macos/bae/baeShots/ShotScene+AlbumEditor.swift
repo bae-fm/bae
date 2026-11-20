@@ -113,7 +113,6 @@ extension ShotScene {
         release.draft.sides = [
             BridgeReleaseEditTrackSide(
                 side: .flat,
-                headerKey: nil,
                 runs: [.sheet(sheet: sheet, source: image, rows: rows)]
             )
         ]

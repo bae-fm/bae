@@ -432,9 +432,6 @@ pub enum BridgeMappingTrackRun {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeMappingTrackSide {
     pub side: BridgeTrackSide,
-    /// Localization key for the side's header word, or `None` when the side
-    /// has no heading.
-    pub header_key: Option<String>,
     pub runs: Vec<BridgeMappingTrackRun>,
 }
 
@@ -788,9 +785,6 @@ pub enum BridgeReleaseEditTrackRun {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeReleaseEditTrackSide {
     pub side: BridgeTrackSide,
-    /// Localization key for the side's header word, or `None` when the side
-    /// has no heading.
-    pub header_key: Option<String>,
     pub runs: Vec<BridgeReleaseEditTrackRun>,
 }
 

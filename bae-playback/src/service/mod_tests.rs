@@ -504,9 +504,8 @@ pub(super) fn side_paused_between(
         TrackPhase::Paused(PausePhase::SideEnded(SidePauseDecision {
             track_id: next.to_string(),
             boundary: SideBoundary {
-                id: format!("{next}:1:Vinyl"),
-                kind: PlaybackPauseBoundary::Side,
-                side_label: "A".to_string(),
+                id: format!("{next}:side A"),
+                ended: bae_types::mediums::TrackSide::Sided { side_letter: "A".to_string() },
             },
             resumes_at,
         })),

@@ -4845,11 +4845,11 @@ open; once it is closed, the bar's second line says "Side A ended".
 - **When it pauses.** Only between two tracks of one release, on different
   sides, while playing that release in order. Up next entries and a shuffled
   list never pause: they aren't a record being played.
-- **Side or disc.** A boundary is a change of medium or of side, and the
-  current track's medium says what it is: a record or cassette pauses at a
-  side, named by its letter; a CD at a disc, named by its number among the
-  release's mediums. A medium with no physical carrier, a download or a disc
-  of unstated carrier, never pauses.
+- **Side or disc.** A boundary is where the heading of the tracks' side or
+  disc changes (§2.2), and the prompt names the side or disc that ended by its
+  heading: a record or cassette pauses at a side ("Side A ended"), a CD at a
+  disc ("Disc 2 ended"). A medium with no physical carrier, a download or a
+  disc of unstated carrier, never pauses.
 - **The countdown.** The pause can end on its own after 5, 15, 30, 45 or 60
   seconds. Every device counts down to the same moment, so they show the same
   number. Closing the prompt stops the countdown and waits for Play.
