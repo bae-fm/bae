@@ -88,7 +88,20 @@ struct MacCastRow: View {
         }
     }
 
+    @ViewBuilder
     private var row: some View {
+        switch place {
+        case .picker:
+            item
+        case .page:
+            // The ⋯ sits centred on the row's two lines, and VoiceOver
+            // orders a window's elements by where they are, so it would read
+            // the ⋯ between them; the row keeps its own order instead.
+            item.accessibilityElement(children: .contain)
+        }
+    }
+
+    private var item: some View {
         MacItem {
             Image(systemName: icon)
                 .font(.system(size: 15))
@@ -118,6 +131,8 @@ struct MacCastRow: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            // Read before the ⋯ in a row that orders its own elements.
+            .accessibilitySortPriority(place == .page ? 1 : 0)
         } trail: {
             switch place {
             case .picker:
