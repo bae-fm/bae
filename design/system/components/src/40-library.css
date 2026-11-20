@@ -213,7 +213,7 @@
 .bae-m-checkbox-on { background: var(--accent-fill); box-shadow: none; }
 .bae-m-checkbox-box svg { width: 10px; height: 10px; }
 .bae-m-groupheading { grid-column: 1 / -1; padding: 0 6px; margin-bottom: -16px; font: 500 13px var(--font-sans); }
-.bae-a-menu { z-index: 5; padding: 8px 0; border-radius: 4px; background: var(--elevated); box-shadow: 0 2px 6px var(--shadow), 0 1px 2px var(--shadow); font-family: var(--font-android); }
+.bae-a-menu { z-index: 5; width: max-content; padding: 8px 0; border-radius: 4px; background: var(--elevated); box-shadow: 0 2px 6px var(--shadow), 0 1px 2px var(--shadow); font-family: var(--font-android); }
 .bae-a-menu-item { height: 48px; display: flex; align-items: center; gap: 12px; padding: 0 12px; font: 500 14px var(--font-android); color: var(--text-primary); }
 .bae-a-menu-item > span:first-child { flex: 1; }
 .bae-a-menu-item-on { color: var(--accent); font-weight: 600; }
