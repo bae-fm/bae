@@ -6,6 +6,12 @@ import Foundation
 extension PreviewData {
     // MARK: - Config and edit-metadata fixtures
 
+    /// The catalog number core's read would hand for the draft's summary line:
+    /// the first label row that has one.
+    static func summaryCatalogNumber(of edit: BridgeRawReleaseEdit) -> String? {
+        edit.pressing.labels.first { !$0.catalogNumber.isEmpty }?.catalogNumber
+    }
+
     /// The Add menus' choices core's read would hand beside `edit`.
     static func pressingOffers(for edit: BridgeRawReleaseEdit)
         -> BridgePressingOffers

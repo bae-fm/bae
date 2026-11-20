@@ -403,6 +403,7 @@ extension PreviewData {
                         album: album,
                         metadataDraft: edit,
                         pressingOffers: pressingOffers(for: edit.pressing),
+                        summaryCatalogNumber: summaryCatalogNumber(of: edit),
                         albumArtistStanding: albumArtistStanding,
                         metadataDraftIsBlank: edit.albumTitle.isEmpty,
                         metadataProvenance: metadataProvenance,

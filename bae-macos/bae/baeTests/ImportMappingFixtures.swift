@@ -415,6 +415,9 @@ extension MappingFixtures {
                     pressingOffers: PreviewData.pressingOffers(
                         for: edit.pressing
                     ),
+                    summaryCatalogNumber: PreviewData.summaryCatalogNumber(
+                        of: edit
+                    ),
                     albumArtistStanding: nil,
                     metadataDraftIsBlank: edit.albumTitle.isEmpty,
                     metadataProvenance: metadataProvenance,

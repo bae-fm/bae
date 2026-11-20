@@ -114,6 +114,9 @@ private func detail(
                 pressingOffers: PreviewData.pressingOffers(
                     for: MappingFixtures.albumEdit.pressing
                 ),
+                summaryCatalogNumber: PreviewData.summaryCatalogNumber(
+                    of: MappingFixtures.albumEdit
+                ),
                 albumArtistStanding: nil,
                 metadataDraftIsBlank: false,
                 metadataProvenance: MappingFixtures.provenance,

@@ -339,3 +339,26 @@ fn offers_leave_out_the_media_and_details_the_pressing_holds() {
     assert!(!offers.discogs_details.contains(&DiscogsDetail::ALL[0]));
     assert_eq!(offers.discogs_details.len(), DiscogsDetail::ALL.len() - 1);
 }
+
+#[test]
+fn the_summary_catalog_number_is_the_first_one_a_label_row_has() {
+    let mut pressing = valid_form().pressing;
+    pressing.labels = vec![
+        RawLabelEdit { name: "No Number".to_string(), ..Default::default() },
+        RawLabelEdit {
+            name: "First".to_string(),
+            catalog_number: "AB 100".to_string(),
+            ..Default::default()
+        },
+        RawLabelEdit {
+            name: "Second".to_string(),
+            catalog_number: "CD 200".to_string(),
+            ..Default::default()
+        },
+    ];
+
+    assert_eq!(pressing.summary_catalog_number().as_deref(), Some("AB 100"));
+
+    pressing.labels.clear();
+    assert_eq!(pressing.summary_catalog_number(), None);
+}

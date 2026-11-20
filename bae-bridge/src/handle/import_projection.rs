@@ -777,6 +777,7 @@ impl crate::types::BridgeCandidateDraftPane {
             album,
             metadata_draft,
             pressing_offers,
+            summary_catalog_number,
             album_artist_standing,
             metadata_draft_is_blank,
             metadata_provenance,
@@ -796,6 +797,7 @@ impl crate::types::BridgeCandidateDraftPane {
             album: crate::types::BridgeDraftAlbum::from_core(album),
             metadata_draft: crate::types::BridgeRawReleaseEdit::from_core(metadata_draft),
             pressing_offers: crate::types::BridgePressingOffers::from_core(pressing_offers),
+            summary_catalog_number,
             album_artist_standing: album_artist_standing
                 .map(crate::types::BridgeArtistFieldStanding::from_core),
             metadata_draft_is_blank,

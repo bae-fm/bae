@@ -28,9 +28,7 @@ struct ImportReleaseSummary {
                 PressingText.media(values.pressing.facts.media),
                 values.pressing.year,
                 values.pressing.facts.area?.text,
-                // One line has room for one number: the first label's.
-                values.pressing.labels.first { !$0.catalogNumber.isEmpty }?
-                    .catalogNumber,
+                candidate.draft?.summaryCatalogNumber,
                 trackText,
             ])
         case .fileMetadata:
