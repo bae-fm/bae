@@ -10,18 +10,8 @@ import Observation
 @MainActor
 @Observable
 final class HistoryStore {
-    /// A list on screen and whose plays it shows.
-    struct Shown {
-        let list: HistoryList
-        /// A member id, or `nil` for everyone's.
-        let person: String?
-    }
-
-    /// What is on screen, `nil` until the first list answers.
-    private(set) var shown: Shown?
-
     /// The list on screen, `nil` until the first one answers.
-    var list: HistoryList? { shown?.list }
+    private(set) var list: HistoryList?
 
     @ObservationIgnored
     private let library: Library
@@ -29,7 +19,6 @@ final class HistoryStore {
     private let onError: (any Error) -> Void
     /// A list opened for a new choice that has not answered yet.
     private struct Opening {
-        let person: String?
         let list: HistoryList
         let task: Task<Void, Never>
     }
@@ -54,11 +43,11 @@ final class HistoryStore {
         let task = Task { [weak self] in
             await newList.loadInitial()
             guard !Task.isCancelled, let self else { return }
-            self.shown?.list.cancel()
-            self.shown = Shown(list: newList, person: person)
+            self.list?.cancel()
+            self.list = newList
             self.opening = nil
         }
-        opening = Opening(person: person, list: newList, task: task)
+        opening = Opening(list: newList, task: task)
     }
 
     /// End every read the store holds, once History no longer shows.
@@ -66,7 +55,7 @@ final class HistoryStore {
         opening?.task.cancel()
         opening?.list.cancel()
         opening = nil
-        shown?.list.cancel()
-        shown = nil
+        list?.cancel()
+        list = nil
     }
 }
