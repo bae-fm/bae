@@ -162,15 +162,12 @@ struct LibrarySettingsTab: View {
             .pressing(.opens { path.append(.sync) })
         }
         else {
-            MacRow("Sync") {
-                HStack {
-                    Text("Not synced")
-                        .foregroundStyle(.secondary)
-                    MacButton("Set up a cloud home…") {
-                        showSyncSetup = true
-                    }
+            MacRow("Sync", value: String(localized: "Not synced")) {
+                MacButton("Set up a cloud home…") {
+                    showSyncSetup = true
                 }
             }
+            .note(Text("This library is only on this Mac."))
             .pressing(.opens { path.append(.sync) })
         }
     }
