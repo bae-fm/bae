@@ -283,6 +283,10 @@
                 hover: { _, _ in },
                 pick: { _ in }
             )
+            // An open menu is a window of its own, which VoiceOver reads
+            // after the window it opens over, and after a sheet or popover
+            // there (which a shot reads at -1).
+            .accessibilitySortPriority(-2)
         }
     }
 #endif

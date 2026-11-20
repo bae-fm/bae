@@ -74,9 +74,6 @@ extension ShotScene {
                     }
                     .padding(.top, 346)
                     .padding(.trailing, 30)
-                    // The app's menu is a window of its own, read after the
-                    // window it opens from.
-                    .accessibilitySortPriority(-1)
                 }
             }
         },
