@@ -99,7 +99,8 @@ extension ShotScene {
                             .environment(
                                 PreviewData.makeConfigStore(
                                     libraryFullWidth: false,
-                                    importWhenIdentified: true
+                                    importWhenIdentified: true,
+                                    storage: PreviewData.previewStorage
                                 )
                             )
                             .environment(Discogs.stub())
