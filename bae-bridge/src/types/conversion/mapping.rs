@@ -203,21 +203,14 @@ impl BridgeSheetGroup {
     }
 }
 
-impl BridgeSheetBoundAudio {
-    fn from_core(audio: bae_import::SheetBoundAudio) -> Self {
-        match audio {
-            bae_import::SheetBoundAudio::None => Self::None,
-            bae_import::SheetBoundAudio::One(reference) => {
-                Self::One { reference: BridgeSheetReferenceOptions::from_core(reference) }
-            }
-            bae_import::SheetBoundAudio::Several(references) => Self::Several {
-                references: references
-                    .into_iter()
-                    .map(BridgeSheetReferenceOptions::from_core)
-                    .collect(),
-            },
-        }
-    }
+mirror_enum! {
+    BridgeSheetBoundAudio = bae_import::SheetBoundAudio,
+    from_core: fn,
+    variants: {
+        None,
+        One(reference: (BridgeSheetReferenceOptions)),
+        Several(references: (each BridgeSheetReferenceOptions)),
+    },
 }
 
 mirror_enum! {
