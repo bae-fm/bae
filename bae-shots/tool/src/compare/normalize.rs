@@ -4,7 +4,6 @@
 //! are structure, or pictures the regions check covers) left out.
 
 use crate::shots::{words, Bounds, Element, Role};
-use std::collections::HashMap;
 
 /// An element as the comparison sees it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -52,63 +51,12 @@ fn name(element: &Element) -> String {
     }
 }
 
-/// The character a macOS token field's value holds in each token's place.
-const TOKEN: char = '\u{FFFC}';
-
-/// The token fields of `list`: a macOS token field is a field whose value
-/// holds one [`TOKEN`] for each token, with what is typed between them, and
-/// whose children are an unlabelled field for each token, holding its words.
-/// Each entry maps a token field's index to its value with each token's words
-/// in that token's place, as a board writes the pattern; the token children
-/// are in `tokens`.
-fn token_fields(list: &[Element], tokens: &mut [bool]) -> HashMap<usize, String> {
-    let mut fields = HashMap::new();
-    for (index, element) in list.iter().enumerate() {
-        let Some(value) = element.value.as_deref().filter(|v| v.contains(TOKEN)) else {
-            continue;
-        };
-        if element.role != Role::Field {
-            continue;
-        }
-        let children: Vec<usize> = (index + 1..list.len())
-            .filter(|&c| {
-                let child = &list[c];
-                child.parent == Some(index)
-                    && child.role == Role::Field
-                    && child.label.as_deref().is_none_or(|l| words(l).is_empty())
-            })
-            .collect();
-        if children.len() != value.matches(TOKEN).count() {
-            continue;
-        }
-        let mut words_of = children.iter().map(|&c| list[c].value.clone().unwrap_or_default());
-        let joined: String = value
-            .chars()
-            .map(
-                |ch| if ch == TOKEN { words_of.next().unwrap_or_default() } else { ch.to_string() },
-            )
-            .collect();
-        for &child in &children {
-            tokens[child] = true;
-        }
-        fields.insert(index, joined);
-    }
-    fields
-}
-
-/// The entries of `list`, in its order. A macOS token field is one field
-/// whose value is its pattern with each token's words (see
-/// [`token_fields`]), so a missing or extra token still shows in its value.
+/// The entries of `list`, in its order.
 pub(crate) fn entries(list: &[Element]) -> Vec<Entry> {
-    let mut tokens = vec![false; list.len()];
-    let token_values = token_fields(list, &mut tokens);
     // Whether a named control holds the element, directly or further up.
     let mut inside_control = vec![false; list.len()];
     let mut entries = Vec::new();
     for (index, element) in list.iter().enumerate() {
-        if tokens[index] {
-            continue;
-        }
         let words = name(element);
         if let Some(parent) = element.parent.filter(|p| *p < index) {
             let holder = &list[parent];
@@ -127,12 +75,7 @@ pub(crate) fn entries(list: &[Element]) -> Vec<Entry> {
             folded: Vec::new(),
             kind: element.role,
             words,
-            value: token_values
-                .get(&index)
-                .map(String::as_str)
-                .or(element.value.as_deref())
-                .map(crate::shots::words)
-                .unwrap_or_default(),
+            value: element.value.as_deref().map(crate::shots::words).unwrap_or_default(),
             enabled: element.enabled,
             selected: element.selected.unwrap_or(false),
         });
