@@ -402,7 +402,8 @@ the CUE sheet, the rip log, scans of the booklet. A release's folder comes back
 whole on export (§4.6).
 
 A release's detail lists the files no track plays from, by the rule of the
-release's *Files* list (§3.6), in the release's file order.
+release's *Files* list (§3.6), in the release's file order. An image bae can
+show is in the release's images, never in that list.
 
 ### 2.3 Artists and credits
 
@@ -1902,10 +1903,13 @@ has named yet, and the pane states that count beside Import without blocking
 it: importing titles each of them after its file.
 
 A release's *Files* list is one list, the same in the import pane and in the
-release editor (§3.8): the files no track plays from, such as a rip log, its
-images (which its gallery above the tracks also shows), a track sheet that
+release editor (§3.8): the files no track plays from, such as a rip log, a track sheet that
 carves no tracks, or an audio file no track plays from. A CUE sheet that
-carves tracks plays, so it is not listed. The list sits under the tracks
+carves tracks plays, so it is not listed. The list holds no image bae can
+show: a JPEG, PNG, GIF or WebP image that bae can read appears only in the
+release's gallery above the tracks. An image in another format (a BMP or an
+SVG, for example), and an image in one of those four formats that bae finds
+damaged, stays in the list like any other file no track plays from. The list sits under the tracks
 beneath a ruled *Files* heading, one line per file: its name in monospace, its size at the right, a
 hairline between lines, a damaged file marked with why: *Empty file* for a file that holds no bytes, *No audio bae can read* for one that holds no audio bae can play. Every size bae shows, here
 and elsewhere, is in decimal units with at most one decimal and none when whole
@@ -1913,7 +1917,7 @@ and elsewhere, is in decimal units with at most one decimal and none when whole
 A document opens in the
 viewer when clicked, over whatever else is open. A library release's editor
 (§3.8), on an imported folder's pane and in the album's *Edit release* sheet,
-lists the release's files, images included, the same way, under its tracks, and
+lists the release's files the same way, under its tracks, and
 an imported folder's pane puts the folder's images above its tracks; a
 release's files show the same way in all three. On the Mac, a click on one of
 the folder's images opens the lightbox over the folder's images at that image.

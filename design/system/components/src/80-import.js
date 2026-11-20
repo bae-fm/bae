@@ -220,7 +220,7 @@
     return h('div', { className: 'bae-m-ifiles' }, h(MacFormHeading, null, 'Images'),
       h('div', { className: 'bae-m-iimages' }, list(props.images).map(function (t) { var p = t.split('|'); return h('button', { key: t, type: 'button', className: 'bae-plainbtn bae-m-iimage', 'aria-label': p[1] }, h(Artwork, { title: p[0], size: 128, radius: 6 })); })));
   }
-  // One file of a release: its name in mono and its size at the right. `kind`: `opens` (the default), a document, a track sheet or an image, a button named by its file that opens it; `audio`, a track that plays, with its Play button before the size; `other`, a file that opens nothing. `damaged`: why the file is damaged, marked in the warning colour; a damaged file opens nothing.
+  // One file of a release: its name in mono and its size at the right. `kind`: `opens` (the default), a document or a track sheet, a button named by its file that opens it; `audio`, a track that plays, with its Play button before the size; `other`, a file that opens nothing. `damaged`: why the file is damaged, marked in the warning colour; a damaged file opens nothing.
   function MacReleaseFileRow(props) {
     var kind = props.kind || 'opens', opens = kind === 'opens' && !props.damaged;
     return h(opens ? 'button' : 'div', { type: opens ? 'button' : null, className: cx(opens && 'bae-plainbtn', 'bae-m-ifile'), 'aria-label': opens ? props.name : null },
@@ -229,7 +229,7 @@
       kind === 'audio' ? h('button', { type: 'button', className: 'bae-plainbtn bae-muted bae-m-ifile-play', 'aria-label': 'Play' }, h(Sym, { name: 'play', size: 10 })) : null,
       h('span', { className: 'bae-m-tertiary bae-m-ifile-size' }, props.size || ''));
   }
-  // The release's files that are no track (a rip log, a cover image), or on a skipped folder's pane every file but its images: a ruled Files heading, then a row per file (`files`: "name|size[|kind]", comma-separated, where kind is `other`, `audio` or `damaged:why`, and a file with none opens).
+  // The release's files that are no track (a rip log, a track sheet that carves no tracks; never an image bae can show), or on a skipped folder's pane every file but its images: a ruled Files heading, then a row per file (`files`: "name|size[|kind]", comma-separated, where kind is `other`, `audio` or `damaged:why`, and a file with none opens).
   function MacReleaseFiles(props) {
     return h('div', { className: 'bae-m-ifiles' }, h(MacFormHeading, null, 'Files'),
       h('div', null, list(props.files).map(function (f) {
