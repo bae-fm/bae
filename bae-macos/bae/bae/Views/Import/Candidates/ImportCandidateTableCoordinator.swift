@@ -34,9 +34,6 @@ final class ImportCandidateTableCoordinator: NSObject, NSTableViewDataSource,
     /// Each row drawn for display before its page landed asking for the
     /// page, by row, for as long as the table draws it.
     private var drawnHolds: [Int: Task<Void, Never>] = [:]
-    /// Each row drawn off screen before its page landed asking for the page,
-    /// by row, until the page answers.
-    private var offScreenAsks: [Int: Task<Void, Never>] = [:]
     /// The key of the row the person last pointed at without Shift.
     var anchorKey: Data?
     /// Set while an update moves the rows and scrolls to keep the place, so
@@ -482,24 +479,19 @@ extension ImportCandidateTableCoordinator {
     /// view take their holds, asks for its page while the table draws it: a
     /// row a fast scroll carries past stops being drawn a frame later and
     /// lets its page go. A row drawn off screen is one accessibility reads,
-    /// which the table stops drawing as soon as it is made, so it asks until
-    /// its page answers.
+    /// and it asks for nothing: the list holds one window, which follows the
+    /// rows on screen, so a page asked for off screen would move the window
+    /// away from them. Such a row draws as a placeholder until the person or
+    /// accessibility scrolls it into view.
     private func askForPage(ofDrawnRow row: Int, in tableView: NSTableView) {
+        guard
+            tableView.preparedContentRect.intersects(
+                tableView.rect(ofRow: row)
+            ),
+            drawnHolds[row] == nil
+        else { return }
         let list = list
-        if tableView.preparedContentRect.intersects(tableView.rect(ofRow: row))
-        {
-            if drawnHolds[row] == nil {
-                drawnHolds[row] = Task { await list.holdPage(containing: row) }
-            }
-        }
-        else if offScreenAsks[row] == nil {
-            offScreenAsks[row] = Task { [weak self] in
-                await list.withPage(containing: row) {}
-                // A cancelled ask was taken out with its list's holds.
-                guard !Task.isCancelled else { return }
-                self?.offScreenAsks.removeValue(forKey: row)
-            }
-        }
+        drawnHolds[row] = Task { await list.holdPage(containing: row) }
     }
 
     /// A row the table stops drawing lets its page go.
@@ -518,10 +510,6 @@ extension ImportCandidateTableCoordinator {
             hold.cancel()
         }
         drawnHolds.removeAll()
-        for ask in offScreenAsks.values {
-            ask.cancel()
-        }
-        offScreenAsks.removeAll()
     }
 }
 

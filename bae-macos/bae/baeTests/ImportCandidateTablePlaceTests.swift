@@ -180,12 +180,12 @@ struct ImportCandidateTablePlaceTests {
         }
     }
 
-    /// Accessibility reads rows off screen, and the table draws them for it:
-    /// a row drawn before its page lands asks for the page, so what it reads
-    /// is the row and not a blank.
+    /// Accessibility reads rows off screen, and the table draws them for it.
+    /// The list holds one window, which follows the rows on screen, so a row
+    /// drawn off screen asks for no page: the rows on screen keep theirs.
     @MainActor
-    @Test("a row drawn off screen loads its page")
-    func rowDrawnOffScreenLoadsItsPage() async throws {
+    @Test("a row drawn off screen leaves the window on the rows on screen")
+    func rowDrawnOffScreenLeavesTheWindow() async throws {
         let source = MutableImportList(
             items: (0..<200).map(Self.candidateItem)
         )
@@ -198,11 +198,18 @@ struct ImportCandidateTablePlaceTests {
             uiStore: uiStore,
             size: Self.size
         ) { table in
-            _ = table.view(atColumn: 0, row: 150, makeIfNecessary: true)
-            // The list releases the page after the source delivers it, so the
-            // test waits for the source to deliver the window that holds row
-            // 150.
-            try await Wait.until { source.hasDelivered(Self.stableKey(150)) }
+            try await Self.untilRowsDrawn(table, slot)
+            let list = try #require(slot.list)
+            let top = list.topPosition
+            for row in [100, 150, 199] {
+                _ = table.view(atColumn: 0, row: row, makeIfNecessary: true)
+            }
+            // A page asked for here would move the list's window within a
+            // few idles of the run loop.
+            try await Wait.untilSteady { list.topPosition }
+            #expect(list.topPosition == top)
+            #expect(list.idAt(0) != nil)
+            #expect(!source.hasDelivered(Self.stableKey(150)))
             #expect(Self.topRow(of: table) == 0)
         }
     }
