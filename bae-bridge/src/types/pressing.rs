@@ -693,12 +693,6 @@ pub fn bridge_regions() -> Vec<BridgeRegion> {
     bae_types::pressing::Region::ALL.iter().map(|region| BridgeRegion::from_core(*region)).collect()
 }
 
-/// Every medium, for a picker.
-#[uniffi::export]
-pub fn bridge_media() -> Vec<BridgeMedium> {
-    bae_types::pressing::Medium::ALL.iter().map(|medium| BridgeMedium::from_core(*medium)).collect()
-}
-
 /// Every release status, for a picker.
 #[uniffi::export]
 pub fn bridge_release_statuses() -> Vec<BridgeReleaseStatus> {
@@ -714,15 +708,6 @@ pub fn bridge_packagings() -> Vec<BridgePackaging> {
     bae_types::pressing::Packaging::ALL
         .iter()
         .map(|packaging| BridgePackaging::from_core(*packaging))
-        .collect()
-}
-
-/// Every Discogs detail, for a picker.
-#[uniffi::export]
-pub fn bridge_discogs_details() -> Vec<BridgeDiscogsDetail> {
-    bae_types::pressing::DiscogsDetail::ALL
-        .iter()
-        .map(|detail| BridgeDiscogsDetail::from_core(*detail))
         .collect()
 }
 

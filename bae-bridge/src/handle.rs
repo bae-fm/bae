@@ -303,7 +303,10 @@ fn end(ending: Ending, closing: impl std::future::Future<Output = Closing>) -> O
 }
 
 #[cfg(desktop)]
-pub use editing_projection::{bridge_validation_reason_key, shape_release_edit};
+pub use editing_projection::{
+    bridge_pressing_offers, bridge_summary_catalog_number, bridge_validation_reason_key,
+    shape_release_edit,
+};
 
 impl AppHandle {
     /// Start the handle over a library `host` opened. `diagnostics` is where

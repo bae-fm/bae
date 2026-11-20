@@ -635,10 +635,14 @@ fn produced_keys() -> Vec<String> {
     keys.extend(bridge_regions().into_iter().map(bridge_region_key));
     keys.extend(bridge_release_statuses().into_iter().map(bridge_release_status_key));
     keys.extend(bridge_packagings().into_iter().map(bridge_packaging_key));
-    for label in bridge_media()
-        .into_iter()
-        .map(bridge_medium_label)
-        .chain(bridge_discogs_details().into_iter().map(bridge_discogs_detail_label))
+    for label in bae_types::pressing::Medium::ALL
+        .iter()
+        .map(|medium| bridge_medium_label(BridgeMedium::from_core(*medium)))
+        .chain(
+            bae_types::pressing::DiscogsDetail::ALL
+                .iter()
+                .map(|detail| bridge_discogs_detail_label(BridgeDiscogsDetail::from_core(*detail))),
+        )
     {
         if let BridgeTermLabel::Localized { key } = label {
             keys.push(key);

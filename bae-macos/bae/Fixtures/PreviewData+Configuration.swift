@@ -6,10 +6,9 @@ import Foundation
 extension PreviewData {
     // MARK: - Config and edit-metadata fixtures
 
-    /// The catalog number core's read would hand for the draft's summary line:
-    /// the first label row that has one.
+    /// The catalog number core's read would hand for the draft's summary line.
     static func summaryCatalogNumber(of edit: BridgeRawReleaseEdit) -> String? {
-        edit.pressing.labels.first { !$0.catalogNumber.isEmpty }?.catalogNumber
+        bridgeSummaryCatalogNumber(pressing: edit.pressing)
     }
 
     /// The Add menus' choices core's read would hand beside `edit`.
@@ -19,21 +18,11 @@ extension PreviewData {
         pressingOffers(for: edit.pressing)
     }
 
-    /// The Add menus' choices core's read would hand beside `pressing`: every
-    /// medium and Discogs detail it does not hold yet.
+    /// The Add menus' choices core's read would hand beside `pressing`.
     static func pressingOffers(
         for pressing: BridgeRawPressingEdit
     ) -> BridgePressingOffers {
-        BridgePressingOffers(
-            media: bridgeMedia()
-                .filter { medium in
-                    !pressing.facts.media.contains { $0.medium == medium }
-                },
-            discogsDetails: bridgeDiscogsDetails()
-                .filter {
-                    !pressing.facts.discogsDetails.contains($0)
-                }
-        )
+        bridgePressingOffers(pressing: pressing)
     }
 
     /// A raw release edit for metadata-editor shots: the album and
