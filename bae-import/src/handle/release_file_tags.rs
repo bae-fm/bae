@@ -20,21 +20,21 @@ impl ImportServiceHandle {
     ) -> Result<crate::LibraryDraft, crate::ImportError> {
         let release_id = form.release_id.as_str();
         let records = &self.services.records;
-        let files = records.get_files_for_release(release_id).await?;
+        let files = records.release_audio_and_sheet_originals(release_id).await?;
         let decisions = self.services.tables.load_release_sheet_decisions(release_id).await?;
-        let mut library_files = Vec::new();
-        for file in files.iter().filter(|file| {
-            matches!(
-                file.role,
-                bae_records::ReleaseFileRole::Audio | bae_records::ReleaseFileRole::TrackSheet
-            )
-        }) {
-            let original = records.external_file(&file.id).await?.ok_or_else(|| {
-                crate::ImportError::FileNotOnThisDevice { name: file.original_filename.clone() }
-            })?;
-            library_files
-                .push(crate::extraction::release::library_file(file.clone(), original.path));
-        }
+        let names: HashMap<String, String> = files
+            .iter()
+            .map(|(file, _)| (file.id.clone(), file.original_filename.clone()))
+            .collect();
+        let library_files = files
+            .into_iter()
+            .map(|(file, original)| match original {
+                Some(path) => Ok(crate::extraction::release::library_file(file, path)),
+                None => {
+                    Err(crate::ImportError::FileNotOnThisDevice { name: file.original_filename })
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()?;
         let reader = self.services.file_tags.clone();
         let lease = bae_store::lease_one(&self.services.files).await;
         let (values, units) = self
@@ -62,8 +62,6 @@ impl ImportServiceHandle {
                 ))
             })
             .await??;
-        let names: HashMap<&str, &str> =
-            files.iter().map(|file| (file.id.as_str(), file.original_filename.as_str())).collect();
         let order = tracks_by_unit(form, &names, &units)?;
         Ok(crate::reading_draft::library_draft(
             in_release_order(values, &order),
@@ -79,7 +77,7 @@ impl ImportServiceHandle {
 /// differ in number.
 fn tracks_by_unit(
     form: &crate::ReleaseEditForm,
-    names: &HashMap<&str, &str>,
+    names: &HashMap<String, String>,
     units: &[crate::AudioFile],
 ) -> Result<Vec<usize>, crate::ImportError> {
     let mut units_of: HashMap<&str, Vec<usize>> = HashMap::new();
@@ -89,7 +87,7 @@ fn tracks_by_unit(
     let tracks = &form.opened.display.tracks;
     let mut tracks_of: HashMap<&str, Vec<usize>> = HashMap::new();
     for (index, track) in tracks.iter().enumerate() {
-        let name = names.get(track.source.file_id.as_str()).copied().ok_or_else(|| {
+        let name = names.get(&track.source.file_id).map(String::as_str).ok_or_else(|| {
             crate::ImportError::Internal {
                 detail: format!(
                     "release {} holds no file {}",

@@ -117,11 +117,45 @@ impl Records {
     /// release local again wrote. `None` when there is no such row or this
     /// device records no original for it, as for a release another device
     /// imported.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn external_file(&self, file_id: &str) -> Result<Option<coven::UserFile>, DbError> {
         let Some(row) = self.find_file_by_id(file_id).await? else {
             return Ok(None);
         };
         self.store.user_file(row.file).await
+    }
+
+    /// The audio files and track sheets of the release `release_id`, in the
+    /// release's file order, each with the path of the original this device
+    /// records for its coven file: the person's file it was imported from,
+    /// or the copy making the release local again wrote. The path is `None`
+    /// for a file with no original here, as for a release another device
+    /// imported.
+    pub async fn release_audio_and_sheet_originals(
+        &self,
+        release_id: &str,
+    ) -> Result<Vec<(DbFile, Option<std::path::PathBuf>)>, DbError> {
+        let release_id = release_id.to_string();
+        self.store
+            .read(move |sql| {
+                sql.query(AUDIO_AND_SHEET_ORIGINALS, params![release_id], |row| {
+                    let file = super::read::row_to_file(row)?;
+                    let path = row
+                        .get::<_, Option<Vec<u8>>>("original_path")?
+                        .map(coven::path_from_bytes)
+                        .transpose()
+                        .map_err(|error| {
+                            rusqlite::Error::FromSqlConversionFailure(
+                                0,
+                                rusqlite::types::Type::Blob,
+                                Box::new(error),
+                            )
+                        })?;
+                    Ok((file, path))
+                })
+                .map_err(DbError::from)
+            })
+            .await
     }
 
     /// The coven file a library image's row names, as this device reads it
@@ -155,6 +189,19 @@ impl Records {
             .await
     }
 }
+
+/// The audio and track sheet rows of the release `?1`, in its file order,
+/// with the path of each one's original on this device (`coven_user_files`
+/// lists only those), NULL where it has none.
+const AUDIO_AND_SHEET_ORIGINALS: &str = concat!(
+    "SELECT ",
+    release_file_columns!(),
+    ", original.path AS original_path \
+     FROM release_files AS f \
+     LEFT JOIN coven_user_files AS original ON original.file = f.file \
+     WHERE f.release_id = ?1 AND f.role IN ('audio', 'track_sheet') \
+     ORDER BY f.original_filename COLLATE natural_order, f.id"
+);
 
 /// The version of the cover of the release `release_id` (a SQL expression),
 /// found by the covers' key; NULL when the release has no cover.

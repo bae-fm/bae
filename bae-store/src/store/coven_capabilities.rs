@@ -279,6 +279,7 @@ impl Store {
     /// The original coven records on this device for `file`: the person's
     /// file it was imported from, or the copy making a release local again
     /// wrote.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn user_file(&self, file: coven::FileId) -> Result<Option<coven::UserFile>, DbError> {
         Ok(self.reported(self.inner.handle.user_file(file).await)?)
     }
