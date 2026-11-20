@@ -19,7 +19,7 @@ use chromiumoxide::cdp::browser_protocol::dom::ResolveNodeParams;
 use chromiumoxide::cdp::js_protocol::runtime::CallFunctionOnParams;
 use chromiumoxide::Page;
 use serde::Deserialize;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum ReadError {
@@ -101,14 +101,27 @@ fn nonempty(text: Option<&str>) -> Option<String> {
 /// The elements of `raw`, in reading order (the tree's order from its first
 /// node). Ignored nodes (hidden, `aria-hidden`, presentational) are left out,
 /// their visible children kept; a text inside a named control is the
-/// control's name, not an element of its own.
+/// control's name, not an element of its own. An open menu (`role=menu`) is a
+/// window of its own on both platforms, which the shots read after the window
+/// it opens over, so its elements come after the rest of the page's, in the
+/// order the page opens its menus.
 pub(crate) fn build(raw: &[Raw], platform: Platform) -> Result<Vec<Element>, ReadError> {
     let by_id: HashMap<&str, &Raw> = raw.iter().map(|n| (n.id.as_str(), n)).collect();
     let Some(first) = raw.first() else { return Ok(Vec::new()) };
     let mut elements = Vec::new();
     // (node, index of the nearest kept ancestor, a named control above it)
     let mut pending = vec![(first, None, false)];
-    while let Some((node, parent, folded)) = pending.pop() {
+    // The open menus the page holds, each read once the page before it is.
+    let mut menus = VecDeque::new();
+    let mut reading_menu = false;
+    while let Some((node, parent, folded)) = pending.pop().or_else(|| {
+        reading_menu = true;
+        menus.pop_front()
+    }) {
+        if node.chrome_role == "menu" && !node.ignored && !std::mem::take(&mut reading_menu) {
+            menus.push_back((node, parent, folded));
+            continue;
+        }
         let role = Role::for_node(node, platform);
         let label = nonempty(node.name.as_deref()).filter(|_| role != Role::Other);
         let kept = !node.ignored && !STRUCTURE.contains(&node.chrome_role.as_str());

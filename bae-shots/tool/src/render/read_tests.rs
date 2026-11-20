@@ -85,6 +85,22 @@ fn ignored_nodes_are_left_out_and_their_children_attach_to_the_next_kept_ancesto
 }
 
 #[test]
+fn an_open_menu_is_read_after_the_page_it_opens_over() {
+    let raw = [
+        node("1", "list", &["2", "3", "5"]),
+        named(node("2", "button", &[]), "Kitchen"),
+        node("3", "menu", &["4"]),
+        named(node("4", "button", &[]), "Details"),
+        named(node("5", "button", &[]), "Den"),
+    ];
+    let elements = build(&raw, Platform::Android).unwrap();
+    let order: Vec<_> = elements.iter().map(|e| e.label.as_deref().unwrap_or(&e.native)).collect();
+    assert_eq!(order, ["list", "Kitchen", "Den", "menu", "Details"]);
+    assert_eq!(elements[3].parent, Some(0));
+    assert_eq!(elements[4].parent, Some(3));
+}
+
+#[test]
 fn a_button_that_opens_a_menu_is_a_popup() {
     let mut menu = named(node("2", "button", &[]), "Never");
     menu.has_popup = true;
