@@ -23,7 +23,6 @@
       h(Artwork, { title: props.album || props.title, size: props.cover ? Number(props.cover) : 32, radius: props.cover ? 6 : 4 }),
       h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { className: 'bae-ellipsis', style: { fontWeight: 500 } }, props.title), h('div', { className: 'bae-muted bae-ellipsis bae-m-lrow-sub', style: { fontSize: 11.5 } }, props.sub)),
       props.who ? h(MacPersonTag, { name: props.who }) : null,
-      props.stars ? h(Stars, { value: props.stars, size: 11 }) : null,
       props.duration ? h('span', { className: 'bae-muted bae-num', style: { width: 40, textAlign: 'right', fontSize: 11.5 } }, props.duration) : null);
   }
   // `menu`: the row ends in ⋮, the row's actions, labelled with `menu`'s text (More unless given).

@@ -219,8 +219,8 @@
         h('div', { className: cx('bae-m-track-title', props.current && 'bae-accent') }, props.title),
         props.artist ? h('div', { className: 'bae-m-track-artist' }, props.artist) : null),
       h('span', { className: 'bae-m-track-time' }, props.duration));
-    if (props.rating == null || props.rating === '') return row;
-    var n = Number(props.rating);
+    // Every album list keeps a slot for the track's stars after the row, empty when you gave it none, so every row's duration lines up.
+    var n = Number(props.rating || 0);
     return h('div', { className: 'bae-m-track-rated' }, h('div', { className: 'bae-m-track-rated-row' }, row),
       h('span', { className: cx('bae-m-track-stars', !n && 'bae-m-track-stars-none'), 'aria-hidden': !n || null }, h(Stars, { value: n, size: 10 })));
   }

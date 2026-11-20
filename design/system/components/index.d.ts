@@ -235,7 +235,7 @@ export interface MacAlbumGridProps { columns?: number; children?: React.ReactNod
 export declare function MacAlbumGrid(props: MacAlbumGridProps): React.ReactElement;
 export interface MacAlbumTileProps { title: string; artist?: string; year?: string; noCover?: boolean; hover?: boolean; open?: boolean; selected?: boolean }
 export declare function MacAlbumTile(props: MacAlbumTileProps): React.ReactElement;
-export interface MacTrackRowProps { position?: string; title: string; artist?: string; duration?: string; current?: boolean; playing?: boolean; hover?: boolean; /** Among the tracks picked together. */ picked?: boolean; /** The stars' slot after the row: 1 to 5, or 0 for an empty slot. */ rating?: number | string }
+export interface MacTrackRowProps { position?: string; title: string; artist?: string; duration?: string; current?: boolean; playing?: boolean; hover?: boolean; /** Among the tracks picked together. */ picked?: boolean; /** The stars you gave the track, 1 to 5; the row keeps their slot after it, empty without them. */ rating?: number | string }
 export declare function MacTrackRow(props: MacTrackRowProps): React.ReactElement;
 export declare function MacEyebrow(props: { children?: React.ReactNode }): React.ReactElement;
 export interface MacDetailHeaderProps { name: string; count?: string; noImage?: boolean }
@@ -390,7 +390,7 @@ export declare function MacLightbox(props: { title?: string; label?: string; sou
 export declare function MacStorageBand(props: { state?: 'local' | 'pinned' | 'cloud' | 'uploading' | 'waiting'; missing?: string; download?: 'queued' | 'downloading' | 'failed'; moveToThisDevice?: 'queued' | 'moving' | 'failed'; progress?: number; why?: string; actions?: string }): React.ReactElement;
 export declare function Stars(props: { value?: number; size?: number; who?: string }): React.ReactElement;
 export declare function Avatar(props: { name: string; image?: string; size?: number }): React.ReactElement;
-export declare function MacListRow(props: { /** the cover's size, 32pt unless given */ cover?: number; lead?: string; title: string; sub?: string; album?: string; who?: string; stars?: number; duration?: string; wide?: boolean; hanging?: boolean; leadWidth?: number; lifted?: boolean; dragging?: boolean }): React.ReactElement;
+export declare function MacListRow(props: { /** the cover's size, 32pt unless given */ cover?: number; lead?: string; title: string; sub?: string; album?: string; who?: string; duration?: string; wide?: boolean; hanging?: boolean; leadWidth?: number; lifted?: boolean; dragging?: boolean }): React.ReactElement;
 export declare function AndroidListRow(props: { title: string; sub?: string; album?: string; who?: string; trailing?: string; /** The copy under the finger while the owner drags the row to a new place: raised over the rows. */ dragging?: boolean; /** Ends the row in ⋮; a text value labels the button. */ menu?: boolean | string }): React.ReactElement;
 
 // ---- Logo and app icons ----

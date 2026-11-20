@@ -590,14 +590,6 @@ extension ShotScene {
             stars: .four
         ),
         trackRow(
-            "mac.component.track-row.not-rated-in-a-rated-list",
-            track: PreviewData.previewTrack(
-                title: "Low Tide Hours",
-                position: "4",
-                durationMs: 303_000
-            )
-        ),
-        trackRow(
             "mac.component.track-row.rated-and-hover",
             track: PreviewData.previewTrack(
                 title: "Low Tide Hours",
