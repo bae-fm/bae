@@ -37,7 +37,8 @@
 .bae-m-isplit { display: flex; height: 100%; }
 .bae-m-ipane-empty { flex: 1; display: flex; }
 .bae-m-idraft { display: flex; flex-direction: column; gap: 12px; padding: 16px 24px; }
-.bae-m-idraft-actions { display: flex; align-items: center; gap: 8px; }
+.bae-m-idraft-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.bae-m-idraft-trail { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 .bae-m-idraft-reading { display: flex; align-items: center; gap: 8px; margin-right: 4px; }
 .bae-m-idraft-head { display: flex; gap: 12px; }
 .bae-m-idraft-id { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
@@ -49,8 +50,9 @@
 .bae-linkout { display: inline-flex; align-items: center; height: 1lh; }
 .bae-m-reclinks { display: flex; flex-wrap: wrap; gap: 4px 12px; min-width: 0; }
 .bae-m-reclink { display: inline-flex; align-items: center; gap: 3px; font: 600 10.5px var(--font-sans); color: var(--text-secondary); }
-.bae-m-itable { display: flex; flex-direction: column; font: 400 13px var(--font-sans); }
-.bae-m-itable-row { display: grid; grid-template-columns: minmax(180px, 1.2fr) 52px 1fr 1fr 88px; gap: 10px; align-items: center; }
+.bae-m-itable-scroll { overflow-x: auto; }
+.bae-m-itable { display: flex; flex-direction: column; min-width: 560px; font: 400 13px var(--font-sans); }
+.bae-m-itable-row { display: grid; grid-template-columns: minmax(160px, 1.2fr) 52px minmax(120px, 1fr) minmax(100px, 1fr) 88px; gap: 10px; align-items: center; }
 .bae-m-itable-head { padding-bottom: 6px; }
 .bae-m-itable-track { min-height: 40px; border-top: 1px solid var(--hairline); }
 .bae-m-itable-playing { background: var(--accent-tint); }

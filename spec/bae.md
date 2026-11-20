@@ -1095,6 +1095,8 @@ A tab reads *Nothing here yet* only once its list has been read and holds no
 rows (*No matches* when the filter narrows it to none); until the list has
 first been read, it is a plain surface.
 
+On macOS the Import section is a list beside a pane, and both fit in the main window at its smallest width, 900 points, whatever the selection. The list is 410 to 460 points wide and keeps at least 410, which its four tabs and their counts need on one line. The pane keeps at least what the list leaves, 489 points at that width. Where the pane has less room than its contents need, the identify bar wraps its destination and Import button onto a second line, and the track table scrolls sideways inside the pane.
+
 Imported lists first the releases that still have files in coven's upload queue,
 the first queued first, and then the rest in the list's order. Only a
 release's own files count, as the Storage manager counts them (§4.2).

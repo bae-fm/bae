@@ -4393,6 +4393,22 @@
    "w": 1200,
    "x": 12908,
    "y": 21244
+  },
+  "mac.import.narrow.folder.dc.html": {
+   "h": 1260,
+   "page": "import",
+   "title": "macOS: Import at 900 wide, one folder",
+   "w": 900,
+   "x": 0,
+   "y": 6240
+  },
+  "mac.import.narrow.several.dc.html": {
+   "h": 900,
+   "page": "import",
+   "title": "macOS: Import at 900 wide, several selected",
+   "w": 900,
+   "x": 1000,
+   "y": 6240
   }
  },
  "createdOnFiles": {
@@ -6210,6 +6226,8 @@
   "mac.import.folder.already-in-library.dc.html",
   "mac.import.folder.cue-sheets.dc.html",
   "mac.import.several.dc.html",
+  "mac.import.narrow.folder.dc.html",
+  "mac.import.narrow.several.dc.html",
   "mac.import.several.identifying.dc.html",
   "mac.import.folder.importing.dc.html",
   "mac.import.folder.imported.dc.html",

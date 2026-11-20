@@ -41,7 +41,7 @@
   }
   // The left column: the tabs, the filter row, then the rows, or `empty`, the line an empty list shows.
   function MacImportSidebar(props) {
-    return h('div', { className: 'bae-m-isb' },
+    return h('div', { className: 'bae-m-isb', style: props.narrow ? { width: 410 } : null },
       h(MacImportTabs, { tab: props.tab, found: props.found, imported: props.imported, skipped: props.skipped }),
       h('div', { className: 'bae-divider' }),
       h(MacImportFilterRow, { filter: props.filter, narrowed: props.narrowed, identifying: props.identifying, importing: props.importing, scanning: props.scanning, filtered: props.filtered }),
@@ -132,11 +132,11 @@
   function MacIdentifyBar(props) {
     return h('div', { className: 'bae-m-idraft-actions' },
       h('span', { className: 'bae-strong bae-muted' }, 'Identify'), h(MacButton, null, 'Automatic'), h(MacButton, null, 'Search'), props.editor ? null : h(MacButton, { menu: true, label: 'Metadata' }, '⋯'),
-      h('span', { style: { flex: 1 } }),
+      h('span', { className: 'bae-m-idraft-trail' },
       props.cloud ? h(MacImportDestination, { to: props.to }) : null,
       // `reading`: in the editor, the line a save shows while it reads a file on this device before it writes (the audio file a CUE sheet is newly bound to), with Cancel and Save off until the read ends.
       props.editor && props.reading ? h('span', { key: 'r', className: 'bae-m-idraft-reading bae-muted' }, h(MacSpinner, { size: 14 }), props.reading) : null,
-      props.editor ? [props.changed ? h(MacButton, { key: 'c', off: !!props.reading }, 'Cancel') : null, h(MacButton, { key: 's', kind: 'primary', off: !!props.reading }, 'Save')] : props.blank ? null : h(MacButton, { kind: 'primary' }, props.retry ? 'Retry import' : 'Import'));
+      props.editor ? [props.changed ? h(MacButton, { key: 'c', off: !!props.reading }, 'Cancel') : null, h(MacButton, { key: 's', kind: 'primary', off: !!props.reading }, 'Save')] : props.blank ? null : h(MacButton, { kind: 'primary' }, props.retry ? 'Retry import' : 'Import')));
   }
   // An artist field, a button that opens the artist picker, drawn as its value until the pointer is over it, like MacInlineField: the artists (`artist`) and their chip (`chip`), Library for an artist the library has, New for one the import adds; `placeholder` in the tertiary colour while it names none (Album artist unless given). `inherited`: a track that takes the album's artists shows Album artist in the tertiary colour. `secondary` draws the artists in secondary text, as the album identity does; `column` fills its column, as a track row's does.
   function MacAlbumArtistField(props) {
@@ -240,7 +240,7 @@
   }
   // The mapping table: Source | Track | Title | Artist | Length, a side's eyebrow, CUE captions and rows.
   function MacImportTable(props) {
-    return h('div', { className: 'bae-m-itable' }, h('div', { className: 'bae-m-itable-row bae-m-itable-head' }, ['Source', 'Track', 'Title', 'Artist', 'Length'].map(function (t) { return h('span', { key: t, className: 'bae-m-eyebrowtxt' }, t); })), props.children);
+    return h('div', { className: 'bae-m-itable-scroll' }, h('div', { className: 'bae-m-itable' }, h('div', { className: 'bae-m-itable-row bae-m-itable-head' }, ['Source', 'Track', 'Title', 'Artist', 'Length'].map(function (t) { return h('span', { key: t, className: 'bae-m-eyebrowtxt' }, t); })), props.children));
   }
   // `start`: a CUE image's track, its source cell where the track starts in the image (the sheet's caption names the image once). `listed`: the length the source lists, after the measured `length` in the warning colour, when the two are over 3 s apart, so the row says what disagrees. The title and the artist are fields; an artist the track inherits from the album leaves its field empty, showing Album artist.
   function MacImportTrackRow(props) {
@@ -341,7 +341,7 @@
     var row = function (icon, label, n, strong, extra) { return h(MacBulkActionRow, { key: label, icon: icon, label: label, count: n, strong: strong }, extra); };
     var grp = function (eyebrow, rows) { return h('div', { className: 'bae-m-bulkgrp' }, eyebrow ? h('div', { className: 'bae-m-eyebrowtxt', style: { padding: '8px 12px 2px' } }, eyebrow) : null, rows); };
     var n = Number(props.count || 5);
-    return h('div', { className: 'bae-m-bulk' }, h('div', { className: 'bae-m-card', style: { width: 440, padding: 24, display: 'flex', flexDirection: 'column', gap: 12 } },
+    return h('div', { className: 'bae-m-bulk' }, h('div', { className: 'bae-m-card', style: { width: 440, boxSizing: 'border-box', padding: 24, display: 'flex', flexDirection: 'column', gap: 12 } },
       h('div', { style: { font: '700 22px var(--font-sans)' } }, n + ' selected'), h('div', { className: 'bae-muted' }, 'Each action applies only to eligible selected folders.'),
       h('div', { className: 'bae-m-bulklist' },
         grp('Import', [row('saveAs', 'Import', props.ready || 3, true, props.cloud ? h(MacImportDestination, { to: props.to }) : null), row('xcircle', 'Cancel import of selected', 0), row('grid', 'Combine as one release', 0, true), row('grid', 'Keep as separate releases', 0)]),
