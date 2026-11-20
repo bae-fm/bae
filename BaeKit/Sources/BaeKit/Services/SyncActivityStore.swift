@@ -10,10 +10,15 @@ public final class SyncActivityStore {
     /// Why the activity couldn't be read, until it is read again.
     public private(set) var error: DisplayError?
     /// The share of each transfer line's batch bytes done, by line.
-    public nonisolated let bars: LatestStream<Double> = .activityBars()
+    public nonisolated let bars: LatestStream<Double>
 
-    public init(activity: BridgeSyncActivity? = nil) {
+    /// `bars` holds the share of each line's batch a preview shows.
+    public init(
+        activity: BridgeSyncActivity? = nil,
+        bars: LatestStream<Double> = .activityBars()
+    ) {
         self.activity = activity
+        self.bars = bars
     }
 
     /// The latest share of a transfer line's batch bytes done, for the native

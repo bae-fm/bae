@@ -387,19 +387,37 @@ extension ShotScene {
         unreadableInstallation: String? = nil
     ) -> ShotScene {
         ShotScene(id: id, size: WelcomeWindow.size) {
-            let reads = CountedReads(
+            welcomeStage(
                 libraries: libraries,
                 savedCodes: savedCodes,
+                loadError: loadError,
                 unreadableInstallation: unreadableInstallation
             )
-            return ShotStage(
-                ShotScenes.welcome(
-                    initialMode: .choose,
-                    setup: reads.setup,
-                    loadError: loadError
-                )
-            ) { reads.answered == reads.reads }
         }
+    }
+
+    /// What `welcomeWindow` shows, for a scene shown in its window, with
+    /// `removals` as the removals the window has under way.
+    static func welcomeStage(
+        libraries: [BridgeLibrary],
+        savedCodes: [BridgeSavedRestoreEntry] = [],
+        loadError: LoadError? = nil,
+        unreadableInstallation: String? = nil,
+        removals: LibraryRemovals = PreviewData.welcomeRemovals()
+    ) -> ShotStage {
+        let reads = CountedReads(
+            libraries: libraries,
+            savedCodes: savedCodes,
+            unreadableInstallation: unreadableInstallation
+        )
+        return ShotStage(
+            ShotScenes.welcome(
+                initialMode: .choose,
+                setup: reads.setup,
+                removals: removals,
+                loadError: loadError
+            )
+        ) { reads.answered == reads.reads }
     }
 
     /// The welcome window over `libraries`, with the dialog `laid` over it.

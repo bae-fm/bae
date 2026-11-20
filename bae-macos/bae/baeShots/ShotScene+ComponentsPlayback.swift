@@ -8,9 +8,11 @@ extension ShotScene {
     /// bar and the controls in it, the queue's rows and headings, the
     /// labelled text field and the PIN field.
     static let playbackComponentScenes: [ShotScene] =
-        nowPlayingBarScenes + seekBarScenes + playPauseScenes
-        + queueRowScenes + queueSectionScenes + textFieldScenes
-        + pinFieldScenes + trackRowScenes + queuePanelScenes
+        nowPlayingBarScenes + transportScenes + volumeSliderScenes
+        + seekBarScenes + playPauseScenes + queueRowScenes
+        + queueSectionScenes + textFieldScenes + pinFieldScenes
+        + trackLeadScenes + trackRowScenes + queuePanelScenes
+        + castScenes + sidePauseScenes
 
     /// What the bar's seek bar shows of the track.
     private struct BarLoad {
@@ -20,11 +22,19 @@ extension ShotScene {
         var hasPosition = true
     }
 
+    /// What the bar's track and its right edge show beside the seek bar.
+    private struct BarShow {
+        var covered = true
+        var casting: BridgeCastReceiver?
+        var queueOpen = false
+    }
+
     private static func nowPlayingBar(
         _ id: String,
         title: String?,
         playing: Bool,
-        load: BarLoad
+        load: BarLoad,
+        show: BarShow = BarShow()
     ) -> ShotScene {
         ShotScene(
             id: id,
@@ -37,8 +47,13 @@ extension ShotScene {
                 NowPlayingBarPreview(
                     trackTitle: title,
                     artistNames: title == nil ? nil : "Mara Quill",
-                    cover: title.map {
-                        BridgeImageRef(id: $0, version: "1", imageType: .cover)
+                    cover: title.flatMap { title in
+                        show.covered
+                            ? BridgeImageRef(
+                                id: title,
+                                version: "1",
+                                imageType: .cover
+                            ) : nil
                     },
                     isPlaying: playing,
                     held: load.held,
@@ -46,7 +61,9 @@ extension ShotScene {
                     repeatMode: .off,
                     shuffled: false,
                     hasPosition: load.hasPosition,
-                    progress: load.progress
+                    progress: load.progress,
+                    casting: show.casting,
+                    queueOpen: show.queueOpen
                 )
                 .environment(images)
                 .environment(PreviewData.queueStore(manualCount: 2))
@@ -57,33 +74,139 @@ extension ShotScene {
         }
     }
 
-    /// `MacNowPlayingBar`, playing, waiting on the cloud, and with nothing
-    /// played.
-    private static let nowPlayingBarScenes: [ShotScene] = [
-        nowPlayingBar(
-            "mac.component.now-playing-bar.playing",
-            title: "Low Tide Hours",
-            playing: true,
-            load: BarLoad(
-                held: [BridgeTrackSpan(start: 0, end: 0.6)],
-                progress: 102.0 / 303.0
+    /// `MacNowPlayingBar`: playing, waiting on the cloud, with nothing
+    /// played, with no cover, casting to a receiver that takes the volume and
+    /// to one that does not, and with the queue open.
+    private static let nowPlayingBarScenes: [ShotScene] = {
+        let playing = BarLoad(
+            held: [BridgeTrackSpan(start: 0, end: 0.6)],
+            progress: 102.0 / 303.0
+        )
+        return [
+            nowPlayingBar(
+                "mac.component.now-playing-bar.playing",
+                title: "Low Tide Hours",
+                playing: true,
+                load: playing
+            ),
+            nowPlayingBar(
+                "mac.component.now-playing-bar.waiting-on-the-cloud",
+                title: "Low Tide Hours",
+                playing: true,
+                load: BarLoad(
+                    held: [BridgeTrackSpan(start: 0, end: 0.04)],
+                    waiting: true,
+                    progress: 5.4 / 303.0
+                )
+            ),
+            nowPlayingBar(
+                "mac.component.now-playing-bar.nothing-played",
+                title: nil,
+                playing: false,
+                load: BarLoad(held: [], progress: 0, hasPosition: false)
+            ),
+            nowPlayingBar(
+                "mac.component.now-playing-bar.no-cover",
+                title: "Low Tide Hours",
+                playing: true,
+                load: playing,
+                show: BarShow(covered: false)
+            ),
+            nowPlayingBar(
+                "mac.component.now-playing-bar.casting",
+                title: "Low Tide Hours",
+                playing: true,
+                load: playing,
+                show: BarShow(casting: castReceiver("Living Room", .cast))
+            ),
+            nowPlayingBar(
+                "mac.component.now-playing-bar.no-volume",
+                title: "Low Tide Hours",
+                playing: true,
+                load: playing,
+                show: BarShow(
+                    casting: castReceiver(
+                        "Living Room",
+                        .dlna,
+                        takesVolume: false
+                    )
+                )
+            ),
+            nowPlayingBar(
+                "mac.component.now-playing-bar.queue-open",
+                title: "Low Tide Hours",
+                playing: true,
+                load: playing,
+                show: BarShow(queueOpen: true)
+            ),
+        ]
+    }()
+
+    private static func transport(
+        _ id: String,
+        playing: Bool = false,
+        waiting: Bool = false,
+        shuffled: Bool = false,
+        repeatMode: BridgeRepeatMode = .off
+    ) -> ShotScene {
+        component(id, width: 280, height: 60) {
+            MacTransport(
+                isPlaying: playing,
+                waitsOnStorage: waiting,
+                shuffled: shuffled,
+                repeatMode: repeatMode,
+                onPlayPause: {},
+                onNext: {},
+                onPrevious: {},
+                onSetShuffle: { _ in },
+                onSetRepeatMode: { _ in }
             )
-        ),
-        nowPlayingBar(
-            "mac.component.now-playing-bar.waiting-on-the-cloud",
-            title: "Low Tide Hours",
+        }
+    }
+
+    /// `MacTransport`: paused, playing, waiting on storage, with shuffle on
+    /// and with repeat on.
+    private static let transportScenes: [ShotScene] = [
+        transport("mac.component.transport.paused"),
+        transport("mac.component.transport.playing", playing: true),
+        transport(
+            "mac.component.transport.waiting",
             playing: true,
-            load: BarLoad(
-                held: [BridgeTrackSpan(start: 0, end: 0.04)],
-                waiting: true,
-                progress: 5.4 / 303.0
-            )
+            waiting: true
         ),
-        nowPlayingBar(
-            "mac.component.now-playing-bar.nothing-played",
-            title: nil,
-            playing: false,
-            load: BarLoad(held: [], progress: 0, hasPosition: false)
+        transport("mac.component.transport.shuffle", shuffled: true),
+        transport("mac.component.transport.repeat", repeatMode: .context),
+    ]
+
+    private static func volumeSlider(
+        _ id: String,
+        _ controls: MacVolumeSlider.Controls
+    ) -> ShotScene {
+        component(id, width: 200, height: 60) {
+            MacVolumeSlider(
+                controls: controls,
+                onDrag: { _ in },
+                onChange: { _ in },
+                onSetMuted: { _ in }
+            )
+        }
+    }
+
+    private static func volume(_ level: Float) -> MacVolumeSlider.Controls {
+        .controls(
+            PlaybackSettings(volume: level, isMuted: false, repeatMode: .off)
+        )
+    }
+
+    /// `MacVolumeSlider` at 70 %, silent and full, and the line that says
+    /// where a receiver without volume sets it.
+    private static let volumeSliderScenes: [ShotScene] = [
+        volumeSlider("mac.component.volume-slider.resting", volume(0.7)),
+        volumeSlider("mac.component.volume-slider.silent", volume(0)),
+        volumeSlider("mac.component.volume-slider.full", volume(1)),
+        volumeSlider(
+            "mac.component.volume-slider.no-volume",
+            .setOnReceiver("Living Room")
         ),
     ]
 
@@ -326,6 +449,37 @@ extension ShotScene {
         pinField("mac.component.pin-field.six-digits", digits: 6, value: "482"),
     ]
 
+    private static func trackLead(
+        _ id: String,
+        current: Bool = false,
+        hover: Bool = false
+    ) -> ShotScene {
+        component(id, width: 100, height: 50) {
+            MacTrackLead(
+                text: "4",
+                isCurrent: current,
+                isPlaying: current,
+                hover: hover,
+                width: MacTrackRow.leadingSlotMinWidth,
+                onPlay: {},
+                onTogglePlayPause: {}
+            )
+        }
+    }
+
+    /// `MacTrackLead`: the number, Play under the pointer, the speaker on the
+    /// current track and Pause under the pointer on it.
+    private static let trackLeadScenes: [ShotScene] = [
+        trackLead("mac.component.track-lead.number"),
+        trackLead("mac.component.track-lead.hover", hover: true),
+        trackLead("mac.component.track-lead.current", current: true),
+        trackLead(
+            "mac.component.track-lead.pause",
+            current: true,
+            hover: true
+        ),
+    ]
+
     private static func trackRow(
         _ id: String,
         track: Track,
@@ -377,6 +531,16 @@ extension ShotScene {
             current: true
         ),
         trackRow(
+            "mac.component.track-row.hover-on-current",
+            track: PreviewData.previewTrack(
+                title: "Low Tide Hours",
+                position: "4",
+                durationMs: 303_000
+            ),
+            hover: true,
+            current: true
+        ),
+        trackRow(
             "mac.component.track-row.compilation",
             track: PreviewData.previewTrack(
                 title: "Low Tide Hours",
@@ -411,38 +575,61 @@ extension ShotScene {
         )
     }
 
-    /// `MacQueuePanel`, docked at the window's right with a track playing, one
-    /// track up next and one playing from the album.
-    private static let queuePanelScenes: [ShotScene] = [
-        component(
-            "mac.component.queue-panel.playing",
-            width: 436,
-            height: 616,
-            images: coverStore()
-        ) {
-            let upcoming = [
-                queueEntry(
+    /// A queue with a track playing: the lanes it holds, whether the track
+    /// plays and whether it has a cover.
+    @MainActor
+    private struct QueuePlaying {
+        let upcoming: [BridgeQueueEntry]
+        let manual: [BridgeQueueEntry]
+        let isPlaying: Bool
+        let covered: Bool
+
+        init(isPlaying: Bool, covered: Bool) {
+            upcoming = [
+                ShotScene.queueEntry(
                     "Tin Roof",
                     album: "Low Tide Hours",
                     duration: 341_000
                 )
             ]
+            manual = [
+                ShotScene.queueEntry(
+                    "Margins",
+                    album: "Northbound",
+                    duration: 295_000
+                )
+            ]
+            self.isPlaying = isPlaying
+            self.covered = covered
+        }
+    }
+
+    /// The queue panel over what plays, or empty with `nil`.
+    private static func queuePanel(
+        _ id: String,
+        _ queue: QueuePlaying?
+    ) -> ShotScene {
+        let upcoming = queue?.upcoming ?? []
+        let manual = queue?.manual ?? []
+        let isPlaying = queue?.isPlaying ?? false
+        let isActive = queue != nil
+        return component(
+            id,
+            width: 436,
+            height: 616,
+            images: coverStore()
+        ) {
             MacQueuePanel(
-                manual: [
-                    queueEntry(
-                        "Margins",
-                        album: "Northbound",
-                        duration: 295_000
-                    )
-                ],
-                upNextCount: 1,
-                isEmpty: false,
-                context: QueuePlaybackContext(
-                    bridge: BridgePlaybackContext(
-                        kind: .release,
-                        sourceTitle: "Low Tide Hours"
-                    )
-                ),
+                manual: manual,
+                upNextCount: UInt32(manual.count),
+                isEmpty: !isActive,
+                context: isActive
+                    ? QueuePlaybackContext(
+                        bridge: BridgePlaybackContext(
+                            kind: .release,
+                            sourceTitle: "Low Tide Hours"
+                        )
+                    ) : nil,
                 shuffled: false,
                 upcoming: QueueUpcoming(
                     total: upcoming.count,
@@ -454,17 +641,20 @@ extension ShotScene {
                     failure: nil,
                     onRetry: {}
                 ),
-                nowPlaying: QueueNowPlaying(
-                    title: "Low Tide Hours",
-                    artist: "Mara Quill",
-                    cover: .libraryImage(cover("Low Tide Hours")),
-                    position: PreviewData.trackPosition(
-                        positionMs: 102_000,
-                        durationMs: 303_000
+                nowPlaying: queue.map { playing in
+                    QueueNowPlaying(
+                        title: "Low Tide Hours",
+                        artist: "Mara Quill",
+                        cover: playing.covered
+                            ? .libraryImage(cover("Low Tide Hours")) : nil,
+                        position: PreviewData.trackPosition(
+                            positionMs: 102_000,
+                            durationMs: 303_000
+                        )
                     )
-                ),
+                },
                 onShowUpcoming: {},
-                isPlaying: true,
+                isPlaying: isPlaying,
                 onClose: {},
                 onGoToNowPlaying: {},
                 onPlayPause: {},
@@ -478,5 +668,197 @@ extension ShotScene {
                 onSetShuffle: { _ in }
             )
         }
+    }
+
+    /// `MacQueuePanel`, docked at the window's right: with a track playing,
+    /// paused, with a track that has no cover, and with an empty queue.
+    private static let queuePanelScenes: [ShotScene] = [
+        queuePanel(
+            "mac.component.queue-panel.playing",
+            QueuePlaying(isPlaying: true, covered: true)
+        ),
+        queuePanel(
+            "mac.component.queue-panel.paused",
+            QueuePlaying(isPlaying: false, covered: true)
+        ),
+        queuePanel(
+            "mac.component.queue-panel.no-cover",
+            QueuePlaying(isPlaying: true, covered: false)
+        ),
+        queuePanel("mac.component.queue-panel.empty", nil),
+    ]
+
+    // MARK: - MacCastPopover, MacCastConnectingLine
+
+    static func castReceiver(
+        _ name: String,
+        _ kind: BridgeRendererKind,
+        takesVolume: Bool = true
+    ) -> BridgeCastReceiver {
+        BridgeCastReceiver(
+            id: name,
+            name: name,
+            kind: kind,
+            model: nil,
+            address: "192.168.1.41",
+            takesVolume: takesVolume
+        )
+    }
+
+    private static func castPopover(
+        _ id: String,
+        casting: BridgeCastReceiver? = nil,
+        found: [BridgeCastReceiver] = [],
+        connecting: String? = nil
+    ) -> ShotScene {
+        component(id, width: 300, height: 280) {
+            MacCastPopover(
+                receivers: BridgeCastReceiverList(
+                    casting: casting,
+                    found: found
+                ),
+                endedFailure: nil,
+                connectingName: connecting,
+                onDisconnect: {}
+            )
+            .environment(CastStart.stub())
+        }
+    }
+
+    /// `MacCastPopover`: over a receiver cast to, with long names, with
+    /// nothing cast to, while a cast connects, and with no receivers.
+    private static let castPopoverScenes: [ShotScene] = [
+        castPopover(
+            "mac.component.cast-popover.casting",
+            casting: castReceiver("Living Room", .cast),
+            found: [
+                castReceiver("Kitchen", .airPlay),
+                castReceiver("Den receiver", .dlna),
+            ]
+        ),
+        castPopover(
+            "mac.component.cast-popover.long-names",
+            casting: castReceiver("Upstairs Living Room Soundbar", .cast),
+            found: [
+                castReceiver("Kitchen", .airPlay),
+                castReceiver(
+                    "Home theater receiver in the basement",
+                    .dlna
+                ),
+            ]
+        ),
+        castPopover(
+            "mac.component.cast-popover.not-casting",
+            found: [
+                castReceiver("Living Room", .cast),
+                castReceiver("Kitchen", .airPlay),
+            ]
+        ),
+        castPopover(
+            "mac.component.cast-popover.connecting",
+            connecting: "Living Room"
+        ),
+        castPopover("mac.component.cast-popover.no-receivers"),
+    ]
+
+    private static func castConnectingLine(
+        _ id: String,
+        name: String
+    ) -> ShotScene {
+        component(id, width: 300, height: 60) {
+            MacCastConnectingLine(name: name)
+                .frame(width: 284, alignment: .leading)
+        }
+    }
+
+    /// `MacCastConnectingLine`, with a short receiver name and a long one.
+    private static let castConnectingLineScenes: [ShotScene] = [
+        castConnectingLine(
+            "mac.component.cast-connecting-line.connecting",
+            name: "Living room"
+        ),
+        castConnectingLine(
+            "mac.component.cast-connecting-line.long-name",
+            name: "Upstairs study speaker by the window"
+        ),
+    ]
+
+    private static let castScenes: [ShotScene] =
+        castPopoverScenes + castConnectingLineScenes
+
+    // MARK: - MacSidePause
+
+    private static func sidePause(
+        _ id: String,
+        boundary: BridgePauseBoundary,
+        label: String,
+        countdownKey: String?
+    ) -> ShotScene {
+        ShotScene(id: id, size: CGSize(width: 560, height: 340)) {
+            let store = PlaybackStore()
+            let prompt = BridgeSidePausePrompt(
+                id: "side-pause",
+                boundary: boundary,
+                sideLabel: label,
+                countdown: countdownKey.map {
+                    BridgeCountdown(
+                        key: $0,
+                        until: Date().addingTimeInterval(11.95)
+                    )
+                }
+            )
+            store.apply(
+                .paused(
+                    track: BridgeNowPlayingTrack(
+                        track: BridgePlayingTrack(
+                            trackId: "t-harbor-lights",
+                            durationMs: nil
+                        ),
+                        display: .library(
+                            display: BridgeTrackDisplay(
+                                title: "Harbor Lights",
+                                artistLine: .named("Mara Quill"),
+                                albumId: "a-01",
+                                releaseId: "r-01",
+                                albumTitle: "Low Tide Hours",
+                                coverImage: nil
+                            )
+                        )
+                    ),
+                    reason: .sideEnded(prompt: prompt)
+                )
+            )
+            return ShotStage(
+                Color.clear
+                    .background(Theme.surface)
+                    .sidePausePromptAlert(showError: { _ in })
+                    .environment(store)
+                    .environment(Playback.stub())
+            )
+        }
+    }
+
+    /// `MacSidePause`, the card that hangs from the top of the window: the
+    /// side's end with the countdown running, the side's end without one, and
+    /// the end of a disc.
+    private static let sidePauseScenes: [ShotScene] = [
+        sidePause(
+            "mac.component.side-pause.counting-down",
+            boundary: .side,
+            label: "A",
+            countdownKey: "core.playback.pause.side_ended.countdown"
+        ),
+        sidePause(
+            "mac.component.side-pause.paused",
+            boundary: .side,
+            label: "A",
+            countdownKey: nil
+        ),
+        sidePause(
+            "mac.component.side-pause.disc",
+            boundary: .disc,
+            label: "2",
+            countdownKey: "core.playback.pause.disc_ended.countdown"
+        ),
     ]
 }

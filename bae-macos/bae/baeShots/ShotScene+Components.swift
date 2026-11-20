@@ -11,7 +11,8 @@ extension ShotScene {
         libraryRowScenes + settingsComponentScenes + partsComponentScenes
         + playbackComponentScenes + libraryComponentScenes
         + storageComponentScenes + importComponentScenes + basicsComponentScenes
-        + browseComponentScenes + controlsComponentScenes
+        + browseComponentScenes + windowComponentScenes
+        + controlsComponentScenes
 
     /// `MacLibraryRow`'s states.
     private static let libraryRowScenes: [ShotScene] = [

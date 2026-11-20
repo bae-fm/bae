@@ -49,36 +49,22 @@ extension ShotScene {
         },
     ]
 
-    private static func receiver(
-        _ name: String,
-        _ kind: BridgeRendererKind
-    ) -> BridgeCastReceiver {
-        BridgeCastReceiver(
-            id: name,
-            name: name,
-            kind: kind,
-            model: nil,
-            address: "192.168.1.41",
-            takesVolume: true
-        )
-    }
-
     /// `MacCastRow` in the cast popover.
     private static let castRowScenes: [ShotScene] = [
         component("mac.component.cast-row.receivers", height: 270) {
             ShotBox {
                 MacCastRow(
-                    receiver: receiver("Living Room", .cast),
+                    receiver: castReceiver("Living Room", .cast),
                     role: .casting(onDisconnect: {}),
                     place: .picker
                 )
                 MacCastRow(
-                    receiver: receiver("Kitchen", .airPlay),
+                    receiver: castReceiver("Kitchen", .airPlay),
                     role: .found(onCast: {}),
                     place: .picker
                 )
                 MacCastRow(
-                    receiver: receiver("Den receiver", .dlna),
+                    receiver: castReceiver("Den receiver", .dlna),
                     role: .found(onCast: {}),
                     place: .picker
                 )
@@ -87,7 +73,7 @@ extension ShotScene {
         component("mac.component.cast-row.long-name", height: 140) {
             ShotBox {
                 MacCastRow(
-                    receiver: receiver(
+                    receiver: castReceiver(
                         "Denon AVR-X3800H Home Theater Receiver (Basement)",
                         .dlna
                     ),

@@ -24,6 +24,17 @@ struct MacS3Form: View {
         self.onConnected = onConnected
     }
 
+    #if DEBUG
+        // periphery:ignore - called by baeShots
+        /// The form with `fields` typed in, and any reason a failed setup
+        /// gave under the field it names.
+        init(staged fields: S3SetupFields) {
+            _fields = State(initialValue: fields)
+            leave = {}
+            onConnected = { _ in }
+        }
+    #endif
+
     var body: some View {
         @Bindable
         var fields = fields

@@ -23,8 +23,10 @@ struct NowPlayingBarPreview: View {
     /// The seek bar's position: how far through a track, or none.
     var hasPosition = true
     var progress = 0.25
-    /// The receiver playback is on when it takes no volume from bae.
-    var receiverWithoutVolume: String?
+    /// The receiver playback is on, when it is on one.
+    var casting: BridgeCastReceiver?
+    /// Whether the queue is open beside the bar.
+    var queueOpen = false
 
     @State
     private var showQueue = false
@@ -33,8 +35,17 @@ struct NowPlayingBarPreview: View {
     @State
     private var isMuted = false
 
+    private var castStore: CastStore {
+        let store = CastStore()
+        if let casting {
+            store.applyStatus(.on(device: casting))
+        }
+        return store
+    }
+
     var body: some View {
-        MacNowPlayingBar(
+        let castStore = castStore
+        return MacNowPlayingBar(
             trackTitle: trackTitle,
             secondaryLine: artistNames,
             cover: cover.map { .libraryImage($0) },
@@ -60,9 +71,9 @@ struct NowPlayingBarPreview: View {
                 isMuted: isMuted,
                 repeatMode: repeatMode
             ),
-            receiverWithoutVolume: receiverWithoutVolume,
+            receiverWithoutVolume: castStore.receiverWithoutVolume,
             shuffled: shuffled,
-            showQueue: showQueue,
+            showQueue: showQueue || queueOpen,
             onPlayPause: {},
             onNext: {},
             onPrevious: {},
@@ -81,7 +92,7 @@ struct NowPlayingBarPreview: View {
         )
         .environment(Cast.stub())
         .environment(CastStart.stub())
-        .environment(CastStore())
+        .environment(castStore)
         .frame(width: 1100)
     }
 }

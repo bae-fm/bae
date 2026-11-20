@@ -6,10 +6,10 @@ import SwiftUI
 extension ShotScene {
     /// The Mac components of Settings → Storage and the storage inspector
     /// that draw from values: the usage part, a release's cell, a transfer's
-    /// summary, and the cast picker's popover.
+    /// summary and a playlist's track row.
     static let storageComponentScenes: [ShotScene] =
         storageUsageScenes + releaseCellScenes + transferSummaryScenes
-        + castPopoverScenes + listRowScenes + scanCodeScenes
+        + listRowScenes + scanCodeScenes
         + storageBandScenes
 
     private static func storageUsage(
@@ -114,60 +114,6 @@ extension ShotScene {
                 )
             )
             .environment(DownloadStore())
-        }
-    ]
-
-    private static func castReceiver(
-        _ name: String,
-        _ kind: BridgeRendererKind
-    ) -> BridgeCastReceiver {
-        BridgeCastReceiver(
-            id: name,
-            name: name,
-            kind: kind,
-            model: nil,
-            address: "192.168.1.41",
-            takesVolume: true
-        )
-    }
-
-    /// `MacCastPopover`, the cast button's popover, over a receiver
-    /// cast to with a short name and with a long one.
-    private static let castPopoverScenes: [ShotScene] = [
-        component("mac.component.cast-popover.casting", height: 560) {
-            VStack(alignment: .leading, spacing: 20) {
-                MacCastPopover(
-                    receivers: BridgeCastReceiverList(
-                        casting: castReceiver("Living Room", .cast),
-                        found: [
-                            castReceiver("Kitchen", .airPlay),
-                            castReceiver("Den receiver", .dlna),
-                        ]
-                    ),
-                    endedFailure: nil,
-                    connectingName: nil,
-                    onDisconnect: {}
-                )
-                MacCastPopover(
-                    receivers: BridgeCastReceiverList(
-                        casting: castReceiver(
-                            "Upstairs Living Room Sonos Arc Soundbar",
-                            .cast
-                        ),
-                        found: [
-                            castReceiver("Kitchen", .airPlay),
-                            castReceiver(
-                                "Denon AVR-X3800H Home Theater Receiver (Basement)",
-                                .dlna
-                            ),
-                        ]
-                    ),
-                    endedFailure: nil,
-                    connectingName: nil,
-                    onDisconnect: {}
-                )
-            }
-            .environment(CastStart.stub())
         }
     ]
 
