@@ -423,8 +423,7 @@ extension PeopleAndDevicesPage {
                     title: displayName(person),
                     avatar: person.profile.map { Avatar(profile: $0, size: 28) }
                         ?? Avatar(initials: "", size: 28),
-                    tag: member.role.label,
-                    value: deviceCount(member),
+                    value: roleAndDevices(member),
                     opens: store.selfIsAdmin,
                     action: { subpage = .person(memberId: member.id) }
                 )
@@ -472,6 +471,15 @@ extension PeopleAndDevicesPage {
         String(
             localized: "\(Int(member.activeDeviceCount)) devices",
             comment: "How many devices a person has in the library"
+        )
+    }
+
+    /// "Member · 1 device": a person's role and how many devices they have.
+    private func roleAndDevices(_ member: BridgeMember) -> String {
+        String(
+            localized: "\(member.role.label) · \(deviceCount(member))",
+            comment:
+                "A person's role and device count, such as Member · 1 device"
         )
     }
 
@@ -700,7 +708,7 @@ private struct PageLinkRow: View {
     init(
         title: String,
         avatar: Avatar,
-        tag: String,
+        tag: String? = nil,
         value: String,
         opens: Bool,
         action: @escaping () -> Void

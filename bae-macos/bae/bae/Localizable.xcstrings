@@ -100327,7 +100327,7 @@
       }
     },
     "%@ · %@" : {
-      "comment" : "A storage provider and the account a library is in, such as Dropbox · ana@example.com",
+      "comment" : "Two values joined by a dot: a storage provider and the account a library is in, such as Dropbox · ana@example.com, or a person's role and device count, such as Member · 1 device",
       "extractionState" : "manual",
       "localizations" : {
         "ar" : {
