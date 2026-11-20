@@ -11,7 +11,7 @@ extension ShotScene {
     static let importComponentScenes: [ShotScene] =
         importValueScenes + importMappingScenes + importListComponentScenes
         + importSearchScenes + importDraftScenes + importCoverGalleryScenes
-        + importSheetScenes + importAnswerScenes
+        + importSheetScenes + importAnswerScenes + importSummaryScenes
 
     private static let importValueScenes: [ShotScene] = [
         component("mac.component.import-folder-line.default", height: 50) {
