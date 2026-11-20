@@ -63,9 +63,9 @@ async fn a_row_reads_as_the_state_it_names() {
         found,
         [
             (Role::Text, Some("Pause between sides and discs"), None),
-            (Role::Toggle, Some("Pause"), Some("off")),
+            (Role::Toggle, Some("Pause between sides and discs"), Some("off")),
             (Role::Text, Some("Resume automatically"), None),
-            (Role::Popup, Some("Never"), None),
+            (Role::Popup, Some("Resume automatically"), Some("Never")),
         ]
     );
     let switch = &row.elements[1];
