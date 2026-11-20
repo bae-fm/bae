@@ -5,20 +5,21 @@ import Testing
 @testable import bae
 
 /// Captures every registered scene to `<board>@macos.png`, with the elements
-/// its view lists beside it as `<board>@macos.json`, in the directory the
-/// bae-shots tool passes through `TEST_RUNNER_BAE_SHOTS_OUT`. Every scene is
+/// its view lists beside it as `<board>@macos.json`, in the directory
+/// `BUILDS_SHOTS_OUT` names, which builds-shots passes to the test process
+/// through Xcode as `TEST_RUNNER_BUILDS_SHOTS_OUT`. Every scene is
 /// attempted; any failure — a scene that fails to render, encode, or write —
 /// fails the run with the full list, so a broken scene can never be a silent
 /// skip.
 ///
 /// Each scene is drawn once, in the look the boards draw: dark, Midnight, Pink.
-/// `BAE_SHOTS_SCENES` (comma-separated board-name prefixes) narrows the run to
+/// `BUILDS_SHOTS_SELECT` (comma-separated board-name prefixes) narrows the run to
 /// the scenes a change touches; unset, every scene renders.
 ///
 /// A scene shown in its window brings the app to the front and makes its
 /// window key, taking the focus from whatever the person at the machine is
-/// doing, so those scenes render only when `BAE_SHOTS_WINDOWS` is `1`, as the
-/// screenshot workflow sets it.
+/// doing, so those scenes render only when `BUILDS_SHOTS_WINDOWS` is `1`, as
+/// builds-shots sets it for a run given `--windows`.
 @MainActor
 struct CaptureSceneTests {
     @Test
@@ -50,7 +51,7 @@ struct CaptureSceneTests {
         #expect(failures.isEmpty, "scene capture failed: \(failures)")
     }
 
-    /// The scenes whose id starts with one of `BAE_SHOTS_SCENES`'s prefixes,
+    /// The scenes whose id starts with one of `BUILDS_SHOTS_SELECT`'s prefixes,
     /// or every scene when it is unset. A prefix matching no scene fails loud.
     static func selectedScenes() throws -> [ShotScene] {
         let rendered = ShotScene.all.filter { scene in
@@ -59,7 +60,7 @@ struct CaptureSceneTests {
             case .window: Self.rendersWindows
             }
         }
-        guard let prefixes = Self.listed("BAE_SHOTS_SCENES") else {
+        guard let prefixes = Self.listed("BUILDS_SHOTS_SELECT") else {
             return rendered
         }
         for prefix in prefixes
@@ -73,7 +74,7 @@ struct CaptureSceneTests {
 
     /// Whether the run renders the scenes shown in their windows.
     private static var rendersWindows: Bool {
-        ProcessInfo.processInfo.environment["BAE_SHOTS_WINDOWS"] == "1"
+        ProcessInfo.processInfo.environment["BUILDS_SHOTS_WINDOWS"] == "1"
     }
 
     private static func listed(_ variable: String) -> [String]? {
@@ -83,10 +84,11 @@ struct CaptureSceneTests {
         return value.split(separator: ",").map { String($0) }
     }
 
-    /// The output directory, from `BAE_SHOTS_OUT`. Absent → fail loud: the
+    /// The output directory, from `BUILDS_SHOTS_OUT`. Absent → fail loud: the
     /// harness has nowhere to write and must not silently no-op.
     static func outputDirectory() throws -> URL {
-        guard let path = ProcessInfo.processInfo.environment["BAE_SHOTS_OUT"],
+        guard
+            let path = ProcessInfo.processInfo.environment["BUILDS_SHOTS_OUT"],
             !path.isEmpty
         else {
             throw ShotError.missingOutputDir

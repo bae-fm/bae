@@ -208,6 +208,8 @@ jobs:
       uses: ./.github/actions/setup-rust
 
     - uses: ./.github/actions/install-builds
+      with:
+        program: builds
 
     - name: Run the tests of the checkers this push touched
       run: |

@@ -214,7 +214,7 @@ extensions.configure<ApplicationAndroidComponentsExtension> {
     }
 }
 
-// bae-shots passes -Pbae.shotsDir=<dir>: the shot tests then write
+// bae-android/shots-capture.sh passes -Pbae.shotsDir=<dir>: the shot tests then write
 // <board>@android.png there; without it they skip, so the ordinary unit test run
 // draws nothing. -Pbae.shotsSelect=<prefixes> (comma-separated board names' starts)
 // limits the boards drawn.

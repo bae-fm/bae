@@ -224,7 +224,7 @@ targets:
   # `@testable import bae` and reach the app's views; the scene builders
   # (ShotScenes) are its own, and the fixtures are the folder it shares with
   # baeTests. Kept out of the `bae` scheme's test action — it runs only via its
-  # own `baeShots` scheme, which the bae-shots tool drives with an output
+  # own `baeShots` scheme, which bae-macos/shots-capture.sh runs with an output
   # directory; run without one it fails loud.
   baeShots:
     type: bundle.unit-test
@@ -268,7 +268,7 @@ schemes:
       config: Debug
     archive:
       config: Release
-  # Screenshot capture only. The bae-shots tool runs
+  # Screenshot capture only. bae-macos/shots-capture.sh runs
   # `xcodebuild -scheme baeShots test`; the test writes one PNG and element
   # list per scene.
   baeShots:

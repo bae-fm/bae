@@ -1,10 +1,13 @@
 mac build ./bae-macos/run.sh --no-open
 mac app bae-macos/bae/.build/runApp/Build/Products/Debug/bae.app
 mac bundle fm.bae.desktop
-shots-source bae-shots
+shots-capture mac ./bae-macos/shots-capture.sh
+shots-capture android ./bae-android/shots-capture.sh
 shots-declared mac bae-macos/bae/baeShots
 shots-declared android bae-android/app/src/test/java/fm/bae/app/shots
+shots-preview .bae-preview-row .bae-preview-name .bae-preview-cell
 shots-preview-calls N W
+shots-unshot .bae-a-keyboard
 here macos
 results mac shots/mac
 results android shots/android bae-android/app/build/test-results
@@ -18,9 +21,9 @@ on bae-android/ android-bridge android
 on bae-bridge/ macos-tests android-bridge android
 # The shot scenes' scheme compiles the app again in its own tree, so a build
 # that compiled both schemes would take twice as long as one that compiles the
-# app's. An app build compiles the scenes only for a change to them. bae-shots
-# compiles them for a --shots run, and the `test mac:shots` line for a --test
-# run of a scenes' class.
+# app's. An app build compiles the scenes only for a change to them.
+# bae-macos/shots-capture.sh compiles them for a --shots run, and the
+# `test mac:shots` line for a --test run of a scenes' class.
 on bae-macos/bae/baeShots/ macos-shots-tests
 # What a --test or --shots run needs built when the branch changes nothing its
 # lane builds.
@@ -47,8 +50,8 @@ step android android-tests ./bae-android/test-unit.sh
 # builds app-build refuses them: an app build runs only the test classes of
 # the screens a change touches.
 ci-only macos-tests-run macos-tests-all android-tests
-shots mac scripts/cargo.sh run -p bae-shots -- run --platform mac --windows --select {select}
-shots android scripts/cargo.sh run -p bae-shots -- run --platform android --select {select}
+shots mac builds shots run --platform mac --windows --select {select}
+shots android builds shots run --platform android --select {select}
 
 limit macos 20m
 limit macos-tests 20m

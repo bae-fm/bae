@@ -58,7 +58,7 @@ android_rust_target() {
 
 # android_host_abi: the ABI of this machine's emulator, arm64-v8a on Apple
 # silicon and x86_64 on an Intel Mac. A local build that installs on no
-# particular device (the full local check, bae-shots)
+# particular device (the full local check, bae-android/shots-capture.sh)
 # builds only this one; run.sh builds the connected device's, and CI every ABI
 # in bae.abis.
 android_host_abi() {

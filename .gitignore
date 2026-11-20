@@ -56,7 +56,7 @@ BaeKit/.build
 BaeKit/.swiftpm/
 BaeKit/Package.resolved
 
-# bae-shots output: the shots each platform wrote, the boards rendered and
+# builds-shots output: the shots each platform wrote, the boards rendered and
 # the report.
 /shots/
 

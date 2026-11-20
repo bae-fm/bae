@@ -1,19 +1,41 @@
-name: 'Install builds'
-description: 'Install the builds tool from agent-instructions and put it on PATH'
+name: 'Install a builds program'
+description: 'Install builds or builds-shots from agent-instructions at the commit bae pins, and put it on PATH'
+
+inputs:
+  program:
+    description: 'The program to install: builds or builds-shots'
+    required: true
 
 runs:
   using: 'composite'
   steps:
+    # The agent-instructions commit every builds program bae installs comes
+    # from, so builds and builds-shots always match.
+    - name: Name the agent-instructions commit
+      id: pin
+      shell: bash
+      run: echo "rev=79579746d6183dd009ab031ea130aba6c595410b" >> "$GITHUB_OUTPUT"
     # builds uses macOS process and file-lock calls, so it compiles only on a
-    # Mac. It goes outside ~/.local/bin, so scripts/cargo.sh still runs cargo
-    # itself on CI.
-    - name: Install builds
+    # Mac; builds-shots compiles on Linux too. Each goes in a folder of its own
+    # outside ~/.local/bin, so scripts/cargo.sh still runs cargo itself on CI.
+    - name: Restore ${{ inputs.program }}
+      id: cache
+      uses: actions/cache@v5
+      with:
+        path: ${{ runner.temp }}/${{ inputs.program }}
+        key: ${{ inputs.program }}-${{ runner.os }}-${{ runner.arch }}-${{ steps.pin.outputs.rev }}
+    - name: Install ${{ inputs.program }}
+      if: steps.cache.outputs.cache-hit != 'true'
       shell: bash
       env:
-        # The agent-instructions commit builds is installed from.
-        BUILDS_REV: 51b234ee1f28fb8069c5b29ee965cb9e999a4588
+        PROGRAM: ${{ inputs.program }}
+        BUILDS_REV: ${{ steps.pin.outputs.rev }}
       run: |
-        cargo install --locked --root "$RUNNER_TEMP/builds" \
+        cargo install --locked --root "$RUNNER_TEMP/$PROGRAM" \
           --git https://github.com/hideselfview/agent-instructions \
-          --rev "$BUILDS_REV" builds
-        echo "$RUNNER_TEMP/builds/bin" >> "$GITHUB_PATH"
+          --rev "$BUILDS_REV" "$PROGRAM"
+    - name: Put ${{ inputs.program }} on PATH
+      shell: bash
+      env:
+        PROGRAM: ${{ inputs.program }}
+      run: echo "$RUNNER_TEMP/$PROGRAM/bin" >> "$GITHUB_PATH"

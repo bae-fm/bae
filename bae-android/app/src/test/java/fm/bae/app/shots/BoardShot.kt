@@ -19,8 +19,9 @@ import java.io.File
 /**
  * A board's shot: the real composable drawn at a current phone size in the boards' look (dark, Midnight,
  * Pink), to `<board>@android.png` and its element list `<board>@android.json` in the directory
- * `-Pbae.shotsDir` names (bae-shots passes it). Without it the shot is skipped, and so is a board no
- * prefix of `-Pbae.shotsSelect` (comma-separated board-name prefixes) starts, when that is given.
+ * `-Pbae.shotsDir` names (`bae-android/shots-capture.sh` passes it). Without it the shot is skipped, and
+ * so is a board no prefix of `-Pbae.shotsSelect` (comma-separated board-name prefixes) starts, when that
+ * is given.
  *
  * A shot is a test function named by its board in PascalCase (`AndroidWelcomeLibraries` is
  * `android.welcome.libraries`), written as camelCase; [shot] refuses a board its function doesn't spell.

@@ -325,8 +325,8 @@ enum ShotError: Error, CustomStringConvertible {
     var description: String {
         switch self {
         case .missingOutputDir:
-            "BAE_SHOTS_OUT is unset — pass the output directory through "
-                + "TEST_RUNNER_BAE_SHOTS_OUT."
+            "BUILDS_SHOTS_OUT is unset — pass the output directory through "
+                + "TEST_RUNNER_BUILDS_SHOTS_OUT."
         case .bitmapAllocationFailed(let id):
             "failed to allocate the capture bitmap for scene \(id)"
         case .pngEncodingFailed(let id):

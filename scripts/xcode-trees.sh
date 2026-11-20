@@ -21,7 +21,8 @@
 #                   would otherwise replace run.sh's bundle with an unsigned
 #                   one.
 #   macos-shots     the baeShots scheme, built the same way as macos-unsigned:
-#                   bae-macos/test.sh's baeShots build and run, and bae-shots.
+#                   bae-macos/test.sh's baeShots build and run, and
+#                   bae-macos/shots-capture.sh.
 #                   Xcode puts a hosted test bundle in its host app's PlugIns,
 #                   and a Swift Testing exit test in baeTests relaunches the
 #                   app, which loads the newest bundle there. With baeShots in
