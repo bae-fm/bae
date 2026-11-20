@@ -278,22 +278,6 @@ extension ShotScene {
             height: 100
         ),
         pressingRowScene(
-            "mac.component.pressing-row.note",
-            cdPressing(),
-            agreements: BridgeAgreements(
-                discId: false,
-                barcode: false,
-                catalog: false,
-                label: false,
-                year: false,
-                country: false,
-                notes: [
-                    BridgeTextStatement(text: "first pressing", catalogs: [])
-                ]
-            ),
-            height: 90
-        ),
-        pressingRowScene(
             "mac.component.pressing-row.notes",
             cdPressing(),
             agreements: agreements(

@@ -39,7 +39,7 @@ export declare function MacNested(props: { children?: React.ReactNode }): React.
 /** An ⓘ after a row's name that opens a popover saying what the name can't. */
 export declare function MacInfoTip(props: { label?: string }): React.ReactElement;
 /** How Save as… names each track's file, one pattern for every format: chips, pieces to add, a preview. */
-export declare function MacFileNameField(props: { label?: string; /** The pattern's text, each value in brackets: "[Artist] - [Album]". */ pattern?: string; add?: string; preview?: string; /** Why the typed text makes no name; shown under the field, in place of the preview. */ error?: string }): React.ReactElement;
+export declare function MacFileNameField(props: { label: string; /** The pattern's text, each value in brackets: "[Artist] - [Album]". */ pattern?: string; add?: string; preview?: string; /** Why the typed text makes no name; shown under the field, in place of the preview. */ error?: string }): React.ReactElement;
 export declare function MacRow(props: MacRowProps): React.ReactElement;
 /** A port number: a field five digits wide, digits only, its label hidden. What's wrong with it goes on the row's second line. */
 /** A PIN as one box per digit (digits, from core); value is what the person has typed so far. The field shows error under the boxes when state is error. */
@@ -272,7 +272,7 @@ export interface MacAlbumPanelProps { title: string; artist?: string; year?: str
 /** A line of progress: the phase, a bar filling the rest of the line, an optional count. No `value` is a wait of no known length. */
 export declare function MacProgressLine(props: { label: string; value?: number | string; detail?: string; activity?: boolean }): React.ReactElement;
 /** Every catalog that describes a release, as a wrapped row of links (`records`: catalog names, comma-separated). */
-export declare function MacRecordLinks(props: { records: string }): React.ReactElement;
+export declare function MacRecordLinks(props: { records: string; /** Each catalog is a button, as on a found album's card. */ buttons?: boolean }): React.ReactElement;
 /** A row's ⋯ / ⋮ button with the row's actions in its menu; `open` draws the menu, `items` its entries ("-" for a line). */
 export interface MoreMenuProps { open?: boolean; items?: string; highlighted?: string; off?: boolean; label?: string; /** macOS: draws the button on a control's fill, beside a page's Play. */ boxed?: boolean; /** macOS: round on a dark fill, for a place on a cover. */ overlay?: boolean }
 export declare function MacMoreMenu(props: MoreMenuProps): React.ReactElement;
@@ -382,7 +382,7 @@ export declare function MacIdentifierBand(props: { chips: string }): React.React
 export declare function MacReleaseCard(props: { title: string; artist?: string; label?: string; sources?: string }): React.ReactElement;
 /** A found album with its pressings on a rule under it. */
 export declare function MacReleaseGroup(props: { title: string; artist?: string; label?: string; sources?: string; children?: React.ReactNode }): React.ReactElement;
-export declare function MacPressingRow(props: { year?: string; labels?: string; catalog?: string; badges?: string; summary?: string; note?: string; /** The notes the folder's records carry, shown on the Notes badge's hover. */ notes?: string; sources?: string; inLibrary?: boolean; selected?: boolean }): React.ReactElement;
+export declare function MacPressingRow(props: { year?: string; labels?: string; catalog?: string; badges?: string; summary?: string; /** The notes of the pressing's records: the line under the summary and the Notes badge, with the same notes shown on the badge's hover. */ notes?: string; sources?: string; inLibrary?: boolean; selected?: boolean }): React.ReactElement;
 export declare function MacImportBulk(props: { count?: number; ready?: number; running?: string; cloud?: boolean; to?: 'This Mac' | 'Cloud' }): React.ReactElement;
 export declare function MacModal(props: { width?: number; height?: number; children?: React.ReactNode }): React.ReactElement;
 export declare function MacModalHeader(props: { title: string; subtitle?: string; large?: boolean; children?: React.ReactNode }): React.ReactElement;

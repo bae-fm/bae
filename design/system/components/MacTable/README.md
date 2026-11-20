@@ -9,6 +9,8 @@ The Storage Manager's release table: the header, then one row a release, every o
 | `selected` | The numbers of the selected rows, counting from 1 and separated by commas: the one the inspector shows, or several the person picked together. |
 | `loading` | How many rows are still on their way after the given ones: each draws a placeholder bar in its Release column. |
 
+The columns keep their widths: a table narrower than its columns, as beside the inspector, scrolls sideways. Each header is a button that sorts by its column. The date added reads `Oct 4, 2026`, in the platform's own date format.
+
 `MacStorageWindow` says No matches over the table when the filter matches nothing.
 
 **In the code:** macOS: `MacTable` (`Views/Storage/MacTable.swift`), AppKit's `NSTableView`, with one hosted cell a column.

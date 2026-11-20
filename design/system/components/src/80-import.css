@@ -97,6 +97,7 @@
 .bae-m-fo-back { display: flex; align-items: center; gap: 4px; }
 .bae-m-fo-close { flex: none; display: inline-flex; align-items: flex-start; }
 .bae-m-reclink { text-decoration: none; }
+.bae-m-reclink-button { padding: 0; border: 0; background: none; cursor: default; }
 /* A field drawn as the value it holds: the field's fill shows under the pointer and while it has focus. It pulls out by its padding so its words keep the column's edge. */
 .bae-m-icell { box-sizing: border-box; min-width: 0; width: calc(100% + 6px); height: 22px; margin: 0 0 0 -6px; padding: 0 6px; border: 0; border-radius: 5px; background: none; outline: none; color: var(--text-primary); font: inherit; text-overflow: ellipsis; }
 .bae-m-icell::placeholder { color: var(--text-tertiary); }

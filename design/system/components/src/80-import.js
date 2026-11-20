@@ -289,12 +289,13 @@
     }));
   }
   // Every catalog that describes a release, as a wrapped row of links to each catalog's page, in the order core lists them (`records`: catalog names, comma-separated).
+  // `buttons`: each is a button that opens the page, as on a found album's card, rather than a link.
   function MacRecordLinks(props) {
-    return h('span', { className: 'bae-m-reclinks' }, list(props.records).map(function (s) { return h('a', { key: s, href: '#', className: 'bae-m-reclink' }, s, h('span', { className: 'bae-linkout' }, h(Sym, { name: 'external', size: 12 }))); }));
+    return h('span', { className: 'bae-m-reclinks' }, list(props.records).map(function (s) { return h(props.buttons ? 'button' : 'a', props.buttons ? { key: s, type: 'button', className: 'bae-m-reclink bae-m-reclink-button' } : { key: s, href: '#', className: 'bae-m-reclink' }, s, h('span', { className: 'bae-linkout' }, h(Sym, { name: 'external', size: 12 }))); }));
   }
-  // A found album: cover, title, artist · label, a link per catalog that has answered (`sources`).
+  // A found album: cover, title, artist · label, a button per catalog that has answered (`sources`) that opens the album on that catalog.
   function MacReleaseCard(props) {
-    return h('div', { className: 'bae-m-rcard-head' }, h(Artwork, { title: props.title, size: 44, radius: 6 }), h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { className: 'bae-strong', style: { fontSize: 15 } }, props.title), h('div', { className: 'bae-muted' }, props.artist + (props.label ? ' · ' + props.label : ''))), props.sources ? h(MacRecordLinks, { records: props.sources }) : null);
+    return h('div', { className: 'bae-m-rcard-head' }, h(Artwork, { title: props.title, size: 44, radius: 6 }), h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { className: 'bae-strong', style: { fontSize: 15 } }, props.title), h('div', { className: 'bae-muted' }, props.artist + (props.label ? ' · ' + props.label : ''))), props.sources ? h(MacRecordLinks, { records: props.sources, buttons: true }) : null);
   }
   // A found album with its pressings: the MacReleaseCard (`title`, `artist`, `label`, `sources`), then its pressings, the children, on a rule under it.
   function MacReleaseGroup(props) {
@@ -306,21 +307,24 @@
   function MacSourcedValue(props) {
     var text = props.value;
     if (String(text).indexOf('|') < 0) return text;
-    return String(text).split('|').map(function (v, i) {
-      var at = v.lastIndexOf(':');
-      return h(React.Fragment, { key: i }, i ? h('span', { className: 'bae-m-tertiary' }, ' / ') : null, v.slice(0, at), h('span', { className: 'bae-m-tertiary bae-m-prow-catalog' }, ' ' + v.slice(at + 1)));
+    return sourcedParts(text).map(function (p, i) {
+      return h(React.Fragment, { key: i }, i ? h('span', { className: 'bae-m-tertiary' }, ' / ') : null, p.value, h('span', { className: 'bae-m-tertiary bae-m-prow-catalog' }, ' ' + p.catalog));
     });
   }
-  // A found pressing: its year, labels, catalog number, barcode and badges, then `summary` (" · "-separated facts) and `note` (the records' notes, a release's disambiguation), each fact a MacSourcedValue; In library, dimmed whole, for one the library has; `sources`, the catalogs whose records it holds, only those that have answered; the chevron.
+  // The values of a sourced fact with the catalog each names, from "1992:MusicBrainz|1993:Discogs".
+  function sourcedParts(text) {
+    return String(text).split('|').map(function (v) { var at = v.lastIndexOf(':'); return { value: v.slice(0, at), catalog: v.slice(at + 1) }; });
+  }
+  // A found pressing: its year, labels, catalog number, barcode and badges, then `summary` (" · "-separated facts) and `notes` (the records' notes, a release's disambiguation, with the Notes badge), each fact a MacSourcedValue; In library, dimmed whole, for one the library has; `sources`, the catalogs whose records it holds, only those that have answered; the chevron.
   function MacPressingRow(props) {
     var sv = function (v) { return h(MacSourcedValue, { value: v }); };
     var summary = props.summary ? String(props.summary).split(' · ').map(function (part, i) { return h(React.Fragment, { key: i }, i ? ' · ' : null, sv(part)); }) : null;
     return h('div', { className: cx('bae-m-prow', props.selected && 'bae-m-prow-selected'), style: props.inLibrary ? { opacity: 0.55 } : null },
       h('div', { style: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 } },
-        h('div', { style: { display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' } }, props.year ? h('span', { className: 'bae-strong bae-num' }, sv(props.year)) : h('span', { className: 'bae-m-tertiary' }, 'Year unknown'), h('span', { className: 'bae-muted' }, props.labels), props.catalog ? h(StatusChip, null, sv(props.catalog)) : null, props.barcode ? h('span', { className: 'bae-muted bae-num' }, sv(props.barcode)) : null, list(props.badges).map(function (b) { return h(StatusChip, { key: b, tone: 'accent' }, b); }), props.notes ? h('span', { title: props.notes }, h(StatusChip, { tone: 'accent' }, 'Notes')) : null),
+        h('div', { style: { display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' } }, props.year ? h('span', { className: 'bae-strong bae-num' }, sv(props.year)) : h('span', { className: 'bae-m-tertiary' }, 'Year unknown'), h('span', { className: 'bae-muted' }, props.labels), props.catalog ? h(StatusChip, null, sv(props.catalog)) : null, props.barcode ? h('span', { className: 'bae-muted bae-num' }, sv(props.barcode)) : null, list(props.badges).map(function (b) { return h(StatusChip, { key: b, tone: 'accent' }, b); }), props.notes ? h('span', { title: String(props.notes).indexOf('|') < 0 ? props.notes : sourcedParts(props.notes).map(function (p) { return p.value + ' ' + p.catalog; }).join(' / ') }, h(StatusChip, { tone: 'accent' }, 'Notes')) : null),
         summary ? h('div', { className: 'bae-m-tertiary', style: { fontSize: 11.5 } }, summary) : null,
-        // `note`: the records' notes (a release's disambiguation), every record's that states one, each with its catalog when they differ.
-        props.note ? h('div', { className: 'bae-m-tertiary', style: { fontSize: 11.5, fontStyle: 'italic' } }, sv(props.note)) : null),
+        // `notes`: the records' notes (a release's disambiguation), every record's that states one, each with its catalog when they differ. The Notes badge and this line come from the same records, so they show together.
+        props.notes ? h('div', { className: 'bae-m-tertiary', style: { fontSize: 11.5, fontStyle: 'italic' } }, sv(props.notes)) : null),
       props.inLibrary ? h('span', { style: { display: 'flex', alignItems: 'center', gap: 4, fontSize: 11.5 }, className: 'bae-m-tertiary' }, h(Sym, { name: 'check', size: 11, className: 'bae-success' }), 'In library') : null,
       // `sources`: the catalogs whose records the pressing holds, only those that have answered.
       props.sources ? h('span', { className: 'bae-m-tertiary', style: { fontSize: 11.5 } }, props.sources) : null,
