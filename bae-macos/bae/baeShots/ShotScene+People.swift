@@ -4,32 +4,6 @@ import SwiftUI
 @testable import bae
 
 extension ShotScene {
-    /// The Add device sheet when a new device has asked to join, the board
-    /// `mac.settings.add-device.request`.
-    static let addDeviceScenes: [ShotScene] = [
-        ShotScene(
-            id: "mac.settings.add-device.request",
-            size: CGSize(width: 440, height: 220)
-        ) {
-            ShotStage(
-                AddDeviceSheetContent(
-                    result: nil,
-                    face: .request(
-                        deviceName: "Tablet",
-                        confirmation: "412 778"
-                    ),
-                    busy: false,
-                    error: nil,
-                    onApprove: {},
-                    onDecline: {},
-                    onDismiss: {}
-                )
-            )
-        }
-    ]
-}
-
-extension ShotScene {
     /// People and devices over the Settings window, as the boards draw it:
     /// the first page for an admin and for a member, an invite that is
     /// listed, waiting, joining or refused, a person's page, this person's
@@ -143,6 +117,31 @@ extension ShotScene {
                                 )
                             ),
                             face: .code,
+                            busy: false,
+                            error: nil,
+                            onApprove: {},
+                            onDecline: {},
+                            onDismiss: {}
+                        )
+                    )
+                }
+            )
+        },
+        ShotScene(
+            id: "mac.settings.add-device.request",
+            size: CGSize(width: 690, height: 600),
+            frame: .window(title: "Settings", titleBar: .hidden)
+        ) {
+            peopleStage(
+                subpage: .devices,
+                sheet: {
+                    AnyView(
+                        AddDeviceSheetContent(
+                            result: nil,
+                            face: .request(
+                                deviceName: "Tablet",
+                                confirmation: "412 778"
+                            ),
                             busy: false,
                             error: nil,
                             onApprove: {},
