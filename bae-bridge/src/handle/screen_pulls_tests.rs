@@ -74,6 +74,28 @@ fn each_pull_answers_at_once_with_the_creator_s_profile() {
 
     let name = handle.subscribe_library_name();
     pull_until(&handle, || Box::pin(name.clone().next()), |_| true);
+    // The library starts with stars, and its creator, an admin, changes
+    // how it shows the ratings of its tracks.
+    use crate::types::{BridgeRatedItems, BridgeRatingSystem, BridgeRatingSystems};
+    let systems = handle.subscribe_rating_systems();
+    let stars = BridgeRatingSystems {
+        albums: BridgeRatingSystem::Stars,
+        tracks: BridgeRatingSystem::Stars,
+    };
+    assert_eq!(pull_until(&handle, || Box::pin(systems.clone().next()), |_| true), stars);
+    handle
+        .runtime
+        .block_on(
+            handle.clone().set_rating_system(BridgeRatedItems::Tracks, BridgeRatingSystem::Heart),
+        )
+        .unwrap();
+    pull_until(
+        &handle,
+        || Box::pin(systems.clone().next()),
+        |shown| {
+            shown.tracks == BridgeRatingSystem::Heart && shown.albums == BridgeRatingSystem::Stars
+        },
+    );
     // The creator's own page follows them by member id.
     let page = handle.subscribe_person(creator.membership.id.clone()).unwrap();
     let shown = pull_until(&handle, || Box::pin(page.clone().next()), Option::is_some).unwrap();

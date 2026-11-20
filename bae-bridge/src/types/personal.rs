@@ -75,14 +75,10 @@ pub struct BridgeRatingSystems {
     pub albums: BridgeRatingSystem,
     pub tracks: BridgeRatingSystem,
 }
-impl BridgeRatingSystems {
-    pub(crate) fn from_core(value: bae_people::people::RatingSystems) -> Self {
-        let bae_people::people::RatingSystems { albums, tracks } = value;
-        Self {
-            albums: BridgeRatingSystem::from_core(albums),
-            tracks: BridgeRatingSystem::from_core(tracks),
-        }
-    }
+mirror_struct! {
+    BridgeRatingSystems = bae_people::people::RatingSystems,
+    from_core: pub(crate) fn,
+    fields: { albums: (BridgeRatingSystem), tracks: (BridgeRatingSystem) },
 }
 
 /// A place in a playlist beside one of its entries, named by its position
