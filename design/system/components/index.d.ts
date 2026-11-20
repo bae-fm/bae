@@ -392,7 +392,7 @@ export declare function MacStorageBand(props: { state?: 'local' | 'pinned' | 'cl
 export declare function Stars(props: { value?: number; size?: number; who?: string }): React.ReactElement;
 export declare function Avatar(props: { name: string; image?: string; size?: number }): React.ReactElement;
 export declare function MacListRow(props: { /** the cover's size, 32pt unless given */ cover?: number; lead?: string; title: string; sub?: string; album?: string; who?: string; stars?: number; duration?: string; wide?: boolean; hanging?: boolean; leadWidth?: number; lifted?: boolean; dragging?: boolean }): React.ReactElement;
-export declare function AndroidListRow(props: { title: string; sub?: string; album?: string; who?: string; trailing?: string; selected?: boolean; /** The copy under the finger while the owner drags the row to a new place: raised over the rows. */ dragging?: boolean; /** Ends the row in ⋮; a text value labels the button. */ menu?: boolean | string }): React.ReactElement;
+export declare function AndroidListRow(props: { title: string; sub?: string; album?: string; who?: string; trailing?: string; /** The copy under the finger while the owner drags the row to a new place: raised over the rows. */ dragging?: boolean; /** Ends the row in ⋮; a text value labels the button. */ menu?: boolean | string }): React.ReactElement;
 
 // ---- Logo and app icons ----
 

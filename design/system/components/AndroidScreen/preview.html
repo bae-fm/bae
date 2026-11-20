@@ -10,7 +10,6 @@
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
-    W('Title', h(B.AndroidScreen, { title: 'Library', height: 360 }, slot('The screen’s content'))),
     W('Back', h(B.AndroidScreen, { title: 'Storage', back: true, height: 360 }, slot('The screen’s content'))),
     W('Menu', h(B.AndroidScreen, { title: 'History', back: true, menu: 'Everyone', height: 360 }, slot('The screen’s content'))),
     W('No title', h(B.AndroidScreen, { height: 360 }, slot('The screen’s content'))),

@@ -8,7 +8,6 @@
 .bae-m-lrow-lifted { opacity: .45; }
 .bae-m-lrow-dragging { opacity: .75; background: var(--elevated); box-shadow: 0 8px 24px var(--shadow); pointer-events: none; }
 .bae-a-lrow { display: flex; align-items: center; gap: 12px; padding: 8px 16px; font-family: var(--font-android); }
-.bae-a-lrow-selected { background: var(--accent-tint); }
 .bae-a-lrow-dragging { position: relative; z-index: 1; background: var(--elevated); box-shadow: 0 6px 18px var(--shadow); border-radius: 12px; }
 .bae-m-chips { display: inline-flex; align-items: center; gap: var(--space-inline); }
 .bae-m-dlrow { display: flex; flex-direction: column; gap: 6px; padding: 8px 16px; font: 400 13px var(--font-sans); border-bottom: 1px solid var(--hairline); }
