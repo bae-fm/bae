@@ -28,20 +28,19 @@ fn an_approved_join_whose_load_is_refused_opens_the_library() {
         let guest_dir = bae_util::test_files::TestFolder::new();
         let guest = installation_in(&guest_dir);
         let control = bae_library::JoinControl::new();
-        let joining = household.join(&invite.code, &guest, &control);
+        // The refusal is in place before the join starts, so the guest meets
+        // it however soon it hears of its approval.
         let first_slot = coven::ObjectPath::slot(household.owner.store_id(), 1.try_into().unwrap());
-        let approving = async {
-            household.approve().await;
-            household
-                .storage
-                .set_faults(coven::Faults {
-                    read_failures: [(first_slot, coven::StorageFailure::PermissionDenied)].into(),
-                    ..coven::Faults::none()
-                })
-                .await;
-        };
+        household
+            .storage
+            .set_faults(coven::Faults {
+                read_failures: [(first_slot, coven::StorageFailure::PermissionDenied)].into(),
+                ..coven::Faults::none()
+            })
+            .await;
+        let joining = household.join(&invite.code, &guest, &control);
         let (joined, ()) = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
-            tokio::join!(joining, approving)
+            tokio::join!(joining, household.approve())
         })
         .await
         .unwrap();
@@ -90,20 +89,19 @@ fn a_join_whose_load_is_refused_gets_the_profile_when_the_library_loads() {
         let guest_dir = bae_util::test_files::TestFolder::new();
         let guest = installation_in(&guest_dir);
         let control = bae_library::JoinControl::new();
-        let joining = household.join(&invite.code, &guest, &control);
+        // The refusal is in place before the join starts, so the guest meets
+        // it however soon it hears of its approval.
         let first_slot = coven::ObjectPath::slot(household.owner.store_id(), 1.try_into().unwrap());
-        let approving = async {
-            household.approve().await;
-            household
-                .storage
-                .set_faults(coven::Faults {
-                    read_failures: [(first_slot, coven::StorageFailure::PermissionDenied)].into(),
-                    ..coven::Faults::none()
-                })
-                .await;
-        };
+        household
+            .storage
+            .set_faults(coven::Faults {
+                read_failures: [(first_slot, coven::StorageFailure::PermissionDenied)].into(),
+                ..coven::Faults::none()
+            })
+            .await;
+        let joining = household.join(&invite.code, &guest, &control);
         let (joined, ()) = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
-            tokio::join!(joining, approving)
+            tokio::join!(joining, household.approve())
         })
         .await
         .unwrap();
