@@ -384,25 +384,27 @@ fn a_paused_download_asks_for_frames_only_for_the_quiet_time() {
 /// whatever feed writes it: a share that stops changing rests as a stalled
 /// download's does, and the pull returns its key.
 #[test]
-#[expect(
-    clippy::disallowed_methods,
-    reason = "test code: the runtime it builds ends with the test"
-)]
 fn a_pull_rests_a_key_left_unchanged_for_the_quiet_time() {
-    let runtime = tokio::runtime::Runtime::new().unwrap();
+    // The runtime's clock moves only when every task waits, straight to the
+    // next timer, so the pull's wait is measured on it exactly.
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_time()
+        .start_paused(true)
+        .build()
+        .unwrap();
     let (stream, writer, values) = fed_stream(&runtime);
     runtime.block_on(async {
+        let written = Instant::now();
         writer.set_only(share(0.5));
         assert_eq!(values.next().await, Ok(vec![Vec::new()]));
         assert!(stream.moving(Vec::new()));
 
-        let started = Instant::now();
         assert_eq!(
             values.next().await,
             Ok(vec![Vec::new()]),
             "the pull returns the key when it comes to rest"
         );
-        assert!(started.elapsed() >= QUIET - Duration::from_millis(50));
+        assert_eq!(written.elapsed(), QUIET);
         assert!(!stream.moving(Vec::new()));
     });
 }

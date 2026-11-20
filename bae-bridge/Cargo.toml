@@ -107,6 +107,8 @@ bae-util = { workspace = true, features = ["test-utils"] }
 bae-cast = { workspace = true, features = ["test-utils"] }
 # The diagnostics test reads the fields of an event it was handed.
 serde_json = { workspace = true }
+# A test runs a pull on a paused clock, which moves only when every task waits.
+tokio = { workspace = true, features = ["test-util"] }
 # Builds the native keychain refusal coven wraps in `KeychainError`, for the
 # tests of how a missing keychain entitlement is reported.
 keyring-core = { workspace = true }
