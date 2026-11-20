@@ -213,17 +213,17 @@ public struct MacNotice: View {
     /// or under the words when the notice puts them `below`.
     private var titleLine: some View {
         HStack(alignment: .firstTextBaseline, spacing: ThemeSpace.group) {
+            // VoiceOver reads the words, then the buttons at the line's
+            // end, then the buttons below; by where they sit, it would read
+            // the line's end between the title and the line under it.
             VStack(alignment: .leading, spacing: ThemeSpace.inline) {
                 words
+                    .accessibilitySortPriority(2)
                 if buttons == .below, hasChoiceButtons {
                     choiceButtons.padding(.top, ThemeSpace.inline)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            // The words are read before the buttons at the line's end,
-            // which VoiceOver would otherwise read between the title and
-            // the line under it, by where they sit.
-            .accessibilitySortPriority(1)
             if (buttons == .inline && hasChoiceButtons) || onDismiss != nil {
                 HStack(spacing: ThemeSpace.related) {
                     if buttons == .inline {
@@ -234,6 +234,7 @@ public struct MacNotice: View {
                     }
                 }
                 .fixedSize()
+                .accessibilitySortPriority(1)
             }
         }
         .accessibilityElement(children: .contain)
