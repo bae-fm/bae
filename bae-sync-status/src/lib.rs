@@ -4,7 +4,7 @@
 //! `SyncStatus` owner.
 
 mod pending_item;
-pub use pending_item::{PendingItem, PendingSubjectName, PendingWait};
+pub use pending_item::{FileProblem, PendingItem, PendingSubjectName, PendingWait};
 mod sync_status;
 pub use sync_status::{
     copy_behind, sync_status_on, CopyResetNotice, SetupDismissError, StartFailureRecordError,

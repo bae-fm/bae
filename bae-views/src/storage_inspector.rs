@@ -3,6 +3,7 @@
 
 use super::*;
 use crate::album_detail::{FileDetail, FilePin, ReleaseUpload};
+pub use bae_sync_status::FileProblem;
 use bae_sync_status::PendingWait;
 use bae_transfers::{DownloadRow, OutputPhaseRow, ReleaseQueueEntries};
 
@@ -26,32 +27,6 @@ pub struct StorageInspectorFile {
     pub upload: Option<StorageInspectorUpload>,
     pub pin: Option<FilePin>,
     pub problem: Option<FileProblem>,
-}
-
-/// What a move found wrong with a file's original.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum FileProblem {
-    /// The original is gone, so the move's upload waits for it.
-    OriginalMissing,
-    /// The original changed since import, so the move failed.
-    OriginalChanged,
-}
-
-impl FileProblem {
-    /// What coven's `reason` says of a file's original; `None` for any other
-    /// reason. The one place coven's `FileSourceFailure` is sorted into
-    /// missing and changed.
-    pub fn of_reason(reason: &coven::PendingReason) -> Option<Self> {
-        match reason {
-            coven::PendingReason::Original { failure, .. } => Some(match failure {
-                coven::FileSourceFailure::Missing => Self::OriginalMissing,
-                coven::FileSourceFailure::Changed | coven::FileSourceFailure::Integrity => {
-                    Self::OriginalChanged
-                }
-            }),
-            _ => None,
-        }
-    }
 }
 
 /// A release file's queued upload as the inspector shows it: which file,
