@@ -13,12 +13,19 @@ pub enum RatingTarget {
     Track(String),
 }
 
-/// Where a move puts a playlist entry: just before or just after another
-/// entry, named by its position id, or one place up or down.
+/// A place in a playlist beside one of its entries, named by its position
+/// id: just before it or just after it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum EntryPlace {
+pub enum BesideEntry {
     Before(uuid::Uuid),
     After(uuid::Uuid),
+}
+
+/// Where a move puts a playlist entry: beside another entry, or one place up
+/// or down.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EntryPlace {
+    Beside(BesideEntry),
     Up,
     Down,
 }

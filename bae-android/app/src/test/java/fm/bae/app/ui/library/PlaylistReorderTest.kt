@@ -4,6 +4,7 @@ import androidx.compose.runtime.mutableStateOf
 import fm.bae.app.BridgeFixtures
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import uniffi.bae_bridge.BridgeBesideEntry
 import uniffi.bae_bridge.BridgeEntryPlace
 import uniffi.bae_bridge.BridgePlaylistEntryRow
 
@@ -70,7 +71,7 @@ class PlaylistReorderTest {
         reorder.finish()
         assertEquals(
             "the page asks core to put the dragged entry just before the entry it last passed",
-            listOf("c" to BridgeEntryPlace.Before("a")),
+            listOf("c" to BridgeEntryPlace.Beside(BridgeBesideEntry.Before("a"))),
             moves,
         )
         assertEquals(listOf("c", "a", "b"), reorder.order())
@@ -82,7 +83,7 @@ class PlaylistReorderTest {
         reorder.start("a")
         reorder.step(onto = "b", down = true)
         reorder.finish()
-        assertEquals(listOf("a" to BridgeEntryPlace.After("b")), moves)
+        assertEquals(listOf("a" to BridgeEntryPlace.Beside(BridgeBesideEntry.After("b"))), moves)
         assertEquals(listOf("b", "a", "c"), reorder.order())
     }
 

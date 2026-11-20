@@ -44,12 +44,32 @@ mirror_enum! { BridgeRatingTarget = bae_people::collections::RatingTarget,
     variants: { Album(id), Track(id) },
 }
 
-/// Where a move puts a playlist entry: just before or just after another
-/// entry, named by its position id, or one place up or down.
+/// A place in a playlist beside one of its entries, named by its position
+/// id: just before it or just after it.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeEntryPlace {
+pub enum BridgeBesideEntry {
     Before { position_id: String },
     After { position_id: String },
+}
+
+impl BridgeBesideEntry {
+    pub(crate) fn into_core(self) -> Result<bae_people::collections::BesideEntry, BridgeError> {
+        use bae_people::collections::BesideEntry;
+        let id = |position_id: String| -> Result<_, BridgeError> {
+            position_id.parse().map_err(BridgeError::config)
+        };
+        Ok(match self {
+            Self::Before { position_id } => BesideEntry::Before(id(position_id)?),
+            Self::After { position_id } => BesideEntry::After(id(position_id)?),
+        })
+    }
+}
+
+/// Where a move puts a playlist entry: beside another entry, or one place up
+/// or down.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeEntryPlace {
+    Beside { place: BridgeBesideEntry },
     Up,
     Down,
 }
@@ -57,12 +77,8 @@ pub enum BridgeEntryPlace {
 impl BridgeEntryPlace {
     pub(crate) fn into_core(self) -> Result<bae_people::collections::EntryPlace, BridgeError> {
         use bae_people::collections::EntryPlace;
-        let id = |position_id: String| -> Result<_, BridgeError> {
-            position_id.parse().map_err(BridgeError::config)
-        };
         Ok(match self {
-            Self::Before { position_id } => EntryPlace::Before(id(position_id)?),
-            Self::After { position_id } => EntryPlace::After(id(position_id)?),
+            Self::Beside { place } => EntryPlace::Beside(place.into_core()?),
             Self::Up => EntryPlace::Up,
             Self::Down => EntryPlace::Down,
         })

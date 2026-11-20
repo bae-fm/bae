@@ -33,36 +33,8 @@ struct QueueDropDelegate: DropDelegate {
             return false
         }
 
-        // Load string IDs from the pasteboard.
-        let providers = info.itemProviders(for: [UTType.plainText])
-        guard !providers.isEmpty else {
-            dropInsertIndex = nil
-            return false
-        }
-
         let insertAt = targetIndex
-        let serialQueue = DispatchQueue(label: "bae.queue-drop-collect")
-        nonisolated(unsafe) var collectedIds: [String] = []
-        let group = DispatchGroup()
-
-        for provider in providers {
-            group.enter()
-            provider.loadItem(forTypeIdentifier: UTType.plainText.identifier) {
-                item,
-                _ in
-                if let data = item as? Data,
-                    let str = String(data: data, encoding: .utf8)
-                {
-                    serialQueue.sync { collectedIds.append(str) }
-                }
-                else if let str = item as? String {
-                    serialQueue.sync { collectedIds.append(str) }
-                }
-                group.leave()
-            }
-        }
-
-        group.notify(queue: .main) {
+        info.loadPlainText { collectedIds in
             // Each dropped string as it came: an album drag's payload, which
             // the receiver has core order, or a track's id.
             if !collectedIds.isEmpty {

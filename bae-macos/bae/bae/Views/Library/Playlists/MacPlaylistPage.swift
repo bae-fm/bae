@@ -1,5 +1,8 @@
 import BaeKit
+import OSLog
 import SwiftUI
+
+private let logger = Logger.bae("MacPlaylistPage")
 
 /// A playlist's page inside the side pane's Playlists tab: its picture beside
 /// its name, owner and facts over Play and its ⋯ menu, then its tracks in
@@ -17,6 +20,8 @@ struct MacPlaylistPage: View {
     private var library
     @Environment(UiStore.self)
     private var uiStore
+    @Environment(LibraryBrowseSession.self)
+    private var session
 
     @State
     private var editing: EditPlaylistSheetState?
@@ -50,7 +55,10 @@ struct MacPlaylistPage: View {
                         playNext: { queue.addNext([$0.trackId]) },
                         addToQueue: { queue.addToQueue([$0.trackId]) },
                         remove: { removeEntry($0, from: detail.summary) },
-                        move: { await move($0, to: $1, in: detail.summary) }
+                        move: { await move($0, to: $1, in: detail.summary) },
+                        insert: {
+                            await insert($0, at: $1, in: detail.summary)
+                        }
                     )
                 }
                 // The open playlist's read is local: nothing shows until it
@@ -138,6 +146,36 @@ struct MacPlaylistPage: View {
             catch {
                 uiStore.showError(error)
             }
+        }
+    }
+
+    /// Put the tracks `dropped` names at `place` in `playlist`, an album's in
+    /// the grid's order, and show the error when the write fails.
+    private func insert(
+        _ dropped: [String],
+        at place: BridgeBesideEntry,
+        in playlist: BridgePlaylistSummary
+    ) async {
+        do {
+            let trackIds = try await DroppedTracks.trackIds(
+                dropped,
+                order: AlbumGridOrder(session: session),
+                in: library
+            )
+            guard !trackIds.isEmpty else {
+                logger.warning(
+                    "a drop on playlist \(playlist.id) held no tracks: \(dropped.joined(separator: ", "))"
+                )
+                return
+            }
+            try await library.playlistWrites.insertPicked(
+                playlist.id,
+                trackIds,
+                place
+            )
+        }
+        catch {
+            uiStore.showError(error)
         }
     }
 

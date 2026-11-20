@@ -3113,7 +3113,8 @@ recording their plays the same way, the private ones under *Only me* included
 household, each playlist on its own. Its entries are rows keyed by the playlist
 and a *position id*, a fresh id per entry, so the same track can sit in a
 playlist twice. Each entry also has a position number that orders it: an
-append takes the next number, and a move renumbers every entry from 0.
+append takes the next number, and a move or an insert at a place renumbers
+every entry from 0.
 Playlists list by name, and profiles list by name too. A name a person gives
 a library, a profile, a playlist or another printed name of an artist is kept
 without its leading and trailing spaces, and a blank one is refused; a Create
@@ -3160,8 +3161,12 @@ it, whether after switching tabs, after closing and reopening the pane, or
 from *Playlists* in the person's menu. Deleting the open playlist returns the pane to the list.
 Dragging tracks onto a playlist in the pane adds them to its end: while they
 are held over it the playlist is drawn in the accent. Dragging tracks or an
-album from the window onto an open playlist's tracks adds them where the
-person lets go, a line between the rows marking the spot.
+album from the window onto the tracks of the person's own open playlist adds
+them where the person lets go, a line between the rows marking the spot: just
+before or just after the track under the pointer. bae adds them there in one
+write, in the order their release lists them, and when the library lacks any
+of them, or the playlist no longer holds the track beside the spot, bae adds
+none and shows why. The line stays until the write returns.
 On Android the Playlists screen, opened from the person's menu, lists the playlists with a *New playlist* button
 under them, or under *No playlists yet* when there are none, which opens a
 dialog for the name and who sees it, and the playlist made opens; a person

@@ -104,6 +104,7 @@ async_cancellable = [
     "AppHandle.get_uploads_paused",
     "AppHandle.identify_automatically",
     "AppHandle.insert_in_queue",
+    "AppHandle.insert_picked_into_playlist",
     "AppHandle.invite_person",
     "AppHandle.keep_candidate_draft",
     "AppHandle.library_name",

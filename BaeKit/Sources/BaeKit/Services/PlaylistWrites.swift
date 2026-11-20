@@ -1,7 +1,7 @@
 import Foundation
 
 /// The writes that make a playlist and change one, as this device's person:
-/// make it, add to it, rename it, choose who sees it, take an entry out,
+/// make it, add to it at its end or at a place, rename it, choose who sees it, take an entry out,
 /// move an entry, delete it.
 public struct PlaylistWrites: Sendable {
     /// Make a playlist holding the tracks a person picked, `trackIds` in no
@@ -18,6 +18,16 @@ public struct PlaylistWrites: Sendable {
     public let appendPicked:
         @Sendable (_ playlistId: String, _ trackIds: [String]) async throws
             -> Void
+    /// Add the tracks a person picked, `trackIds` in no order, at `place` in
+    /// a playlist, in the order their release lists them. A failed write,
+    /// such as one naming a track the library lacks or an entry the playlist
+    /// no longer holds, adds none.
+    public let insertPicked:
+        @Sendable (
+            _ playlistId: String,
+            _ trackIds: [String],
+            _ place: BridgeBesideEntry
+        ) async throws -> Void
     /// Set a playlist's name and who sees it, in one write.
     public let edit:
         @Sendable (
@@ -27,8 +37,8 @@ public struct PlaylistWrites: Sendable {
     public let removeEntry:
         @Sendable (_ playlistId: String, _ positionId: String) async throws
             -> Void
-    /// Move the entry `positionId` of a playlist to `place`: just before or
-    /// just after another entry, or one place up or down.
+    /// Move the entry `positionId` of a playlist to `place`: beside another
+    /// entry, or one place up or down.
     public let moveEntry:
         @Sendable (
             _ playlistId: String,
@@ -46,6 +56,11 @@ public struct PlaylistWrites: Sendable {
             @escaping @Sendable (String, [String]) async throws -> Void = {
                 _,
                 _ in throw StubError.notImplemented
+            },
+        insertPicked:
+            @escaping @Sendable (String, [String], BridgeBesideEntry)
+            async throws -> Void = { _, _, _ in
+                throw StubError.notImplemented
             },
         edit:
             @escaping @Sendable (String, String, BridgeSharing) async throws
@@ -69,6 +84,7 @@ public struct PlaylistWrites: Sendable {
     ) {
         self.createOfPicked = createOfPicked
         self.appendPicked = appendPicked
+        self.insertPicked = insertPicked
         self.edit = edit
         self.removeEntry = removeEntry
         self.moveEntry = moveEntry
@@ -92,6 +108,13 @@ public struct PlaylistWrites: Sendable {
                     try await handle.appendPickedToPlaylist(
                         playlist: $0,
                         trackIds: $1
+                    )
+                },
+                insertPicked: {
+                    try await handle.insertPickedIntoPlaylist(
+                        playlist: $0,
+                        trackIds: $1,
+                        place: $2
                     )
                 },
                 edit: {

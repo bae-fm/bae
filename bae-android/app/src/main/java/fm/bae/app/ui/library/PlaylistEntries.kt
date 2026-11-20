@@ -24,6 +24,7 @@ import fm.bae.app.ui.components.TrackOptionsMenu
 import sh.calvin.reorderable.ReorderableCollectionItemScope
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.ReorderableLazyListState
+import uniffi.bae_bridge.BridgeBesideEntry
 import uniffi.bae_bridge.BridgeEntryPlace
 import uniffi.bae_bridge.BridgePlaylistDetail
 import uniffi.bae_bridge.BridgePlaylistEntryRow
@@ -92,7 +93,8 @@ internal class PlaylistReorder(
         val order = drag.order.filter { it != drag.positionId }.toMutableList()
         val at = order.indexOf(onto).takeIf { it >= 0 } ?: return
         order.add(if (down) at + 1 else at, drag.positionId)
-        val place = if (down) BridgeEntryPlace.After(onto) else BridgeEntryPlace.Before(onto)
+        val beside = if (down) BridgeBesideEntry.After(onto) else BridgeBesideEntry.Before(onto)
+        val place = BridgeEntryPlace.Beside(beside)
         dragging = drag.copy(order = order, place = place)
     }
 

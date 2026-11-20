@@ -38,7 +38,7 @@ CREATE TABLE playlists (
 
 -- The position id is the entry's own id, so the same track can sit in a
 -- playlist twice. `position` orders the entries: an append takes the next
--- number and a reorder renumbers them from 0.
+-- number, and a reorder or an insert at a place renumbers them from 0.
 CREATE TABLE playlist_entries (
     playlist_id TEXT NOT NULL REFERENCES playlists(id) ON DELETE CASCADE,
     position_id TEXT NOT NULL,

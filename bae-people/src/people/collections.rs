@@ -2,8 +2,8 @@ use super::*;
 #[cfg(any(test, feature = "test-utils"))]
 use crate::collections::Rating;
 use crate::collections::{
-    AlbumRatings, CollectionError, EntryPlace, OtherRating, Playlist, PlaylistEntry, RatingTarget,
-    Stars,
+    AlbumRatings, BesideEntry, CollectionError, EntryPlace, OtherRating, Playlist, PlaylistEntry,
+    RatingTarget, Stars,
 };
 use crate::people::Sharing;
 
@@ -190,6 +190,48 @@ impl People {
         .await
     }
 
+    /// Adds an entry for each of `tracks` at `place` in the playlist, in the
+    /// list's order, with the fresh position ids `positions` (one per track),
+    /// and renumbers every entry from 0 in the resulting order, in one write.
+    /// Fails as missing when the playlist holds no entry `place` names; a
+    /// track the library lacks fails the write.
+    pub async fn insert_playlist_entries(
+        &self,
+        playlist: uuid::Uuid,
+        positions: Vec<uuid::Uuid>,
+        tracks: bae_records::TrackList,
+        place: BesideEntry,
+    ) -> Result<(), CollectionError> {
+        self.change_playlist(playlist, move |sql| {
+            let Some(at) = entries_before_on(sql, playlist, place, None)? else {
+                return Ok(Err(CollectionError::Missing));
+            };
+            let track_ids = tracks.ordered_on(sql, bae_records::TrackReading::Named)?;
+            assert_eq!(positions.len(), track_ids.len(), "a playlist entry for each track");
+            sql.execute(
+                "WITH placed AS ( \
+                     SELECT position_id, ROW_NUMBER() OVER (ORDER BY position) - 1 AS place \
+                     FROM playlist_entries WHERE playlist_id = ?1) \
+                 UPDATE playlist_entries \
+                 SET position = CASE WHEN placed.place >= ?2 THEN placed.place + ?3 \
+                                     ELSE placed.place END \
+                 FROM placed \
+                 WHERE playlist_entries.playlist_id = ?1 \
+                   AND playlist_entries.position_id = placed.position_id",
+                params![playlist.to_string(), at, track_ids.len() as i64],
+            )?;
+            for (offset, (position, track)) in positions.iter().zip(&track_ids).enumerate() {
+                sql.execute(
+                    "INSERT INTO playlist_entries (playlist_id, position_id, track_id, position) \
+                     VALUES (?1, ?2, ?3, ?4)",
+                    params![playlist.to_string(), position.to_string(), track, at + offset as i64],
+                )?;
+            }
+            Ok(Ok(()))
+        })
+        .await
+    }
+
     async fn change_playlist(
         &self,
         id: uuid::Uuid,
@@ -324,30 +366,8 @@ fn place_among_others_on(
     moved: uuid::Uuid,
     place: EntryPlace,
 ) -> Result<Option<i64>, DbError> {
-    // The entries before `beside`, other than the moved one; `after` counts
-    // `beside` itself as well.
-    let before_entry = |beside: uuid::Uuid, after: bool| -> Result<Option<i64>, DbError> {
-        Ok(sql
-            .query_row(
-                &format!(
-                    "SELECT (SELECT COUNT(*) FROM playlist_entries AS other \
-                             WHERE other.playlist_id = ?1 AND other.position_id <> ?2 \
-                               AND other.position {compare} beside.position) \
-                     FROM playlist_entries AS beside \
-                     WHERE beside.playlist_id = ?1 AND beside.position_id = ?3 \
-                       AND beside.position_id <> ?2 \
-                       AND EXISTS (SELECT 1 FROM playlist_entries \
-                                   WHERE playlist_id = ?1 AND position_id = ?2)",
-                    compare = if after { "<=" } else { "<" },
-                ),
-                params![playlist.to_string(), moved.to_string(), beside.to_string()],
-                |row| row.get(0),
-            )
-            .optional()?)
-    };
     match place {
-        EntryPlace::Before(beside) => before_entry(beside, false),
-        EntryPlace::After(beside) => before_entry(beside, true),
+        EntryPlace::Beside(beside) => entries_before_on(sql, playlist, beside, Some(moved)),
         EntryPlace::Up | EntryPlace::Down => {
             let own: Option<i64> = sql
                 .query_row(
@@ -362,4 +382,36 @@ fn place_among_others_on(
             Ok(own.map(|own| if place == EntryPlace::Up { (own - 1).max(0) } else { own + 1 }))
         }
     }
+}
+
+/// How many of the playlist's entries, other than `moved`, sit before the
+/// place `beside` names; none when the playlist holds no entry `beside`
+/// names, `beside` names `moved`, or the playlist holds no `moved`.
+fn entries_before_on(
+    sql: &CovenWrite<'_>,
+    playlist: uuid::Uuid,
+    beside: BesideEntry,
+    moved: Option<uuid::Uuid>,
+) -> Result<Option<i64>, DbError> {
+    // An entry just after `beside` follows every entry up to `beside` itself.
+    let (entry, compare) = match beside {
+        BesideEntry::Before(entry) => (entry, "<"),
+        BesideEntry::After(entry) => (entry, "<="),
+    };
+    Ok(sql
+        .query_row(
+            &format!(
+                "SELECT (SELECT COUNT(*) FROM playlist_entries AS other \
+                         WHERE other.playlist_id = ?1 AND other.position_id IS NOT ?2 \
+                           AND other.position {compare} beside.position) \
+                 FROM playlist_entries AS beside \
+                 WHERE beside.playlist_id = ?1 AND beside.position_id = ?3 \
+                   AND beside.position_id IS NOT ?2 \
+                   AND (?2 IS NULL OR EXISTS (SELECT 1 FROM playlist_entries \
+                                              WHERE playlist_id = ?1 AND position_id = ?2))"
+            ),
+            params![playlist.to_string(), moved.map(|moved| moved.to_string()), entry.to_string()],
+            |row| row.get(0),
+        )
+        .optional()?)
 }

@@ -41,4 +41,17 @@ impl LibraryManager {
         let positions = (0..tracks.track_count()).map(|_| self.ids.new_id()).collect();
         self.people.append_playlist_entries(playlist, positions, tracks).await
     }
+
+    /// Adds `tracks` at `place` in the playlist in the list's order, in one
+    /// write.
+    pub async fn insert_playlist_entries(
+        &self,
+        playlist: uuid::Uuid,
+        tracks: impl Into<bae_records::TrackList>,
+        place: bae_people::collections::BesideEntry,
+    ) -> Result<(), CollectionError> {
+        let tracks = tracks.into();
+        let positions = (0..tracks.track_count()).map(|_| self.ids.new_id()).collect();
+        self.people.insert_playlist_entries(playlist, positions, tracks, place).await
+    }
 }

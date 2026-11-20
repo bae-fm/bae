@@ -66,17 +66,23 @@ async fn ratings_and_playlist_edits_preserve_identity_order_and_audience() {
     // it names, or one place up or down, and keeps it in the playlist at
     // either end. It refuses a move that names an entry the playlist lacks,
     // and the order stays as it was.
-    use bae_people::collections::EntryPlace;
-    people.move_playlist_entry(id, b, EntryPlace::Before(a)).await.unwrap();
+    use bae_people::collections::{BesideEntry, EntryPlace};
+    people.move_playlist_entry(id, b, EntryPlace::Beside(BesideEntry::Before(a))).await.unwrap();
     assert_eq!(order(people.playlist_entries(id).await.unwrap()), vec![b, a, c]);
-    people.move_playlist_entry(id, b, EntryPlace::After(c)).await.unwrap();
+    people.move_playlist_entry(id, b, EntryPlace::Beside(BesideEntry::After(c))).await.unwrap();
     assert_eq!(order(people.playlist_entries(id).await.unwrap()), vec![a, c, b]);
     people.move_playlist_entry(id, b, EntryPlace::Down).await.unwrap();
     assert_eq!(order(people.playlist_entries(id).await.unwrap()), vec![a, c, b]);
     let nil = uuid::Uuid::nil();
     assert!(people.move_playlist_entry(id, nil, EntryPlace::Up).await.is_err());
-    assert!(people.move_playlist_entry(id, a, EntryPlace::After(nil)).await.is_err());
-    assert!(people.move_playlist_entry(id, nil, EntryPlace::Before(a)).await.is_err());
+    assert!(people
+        .move_playlist_entry(id, a, EntryPlace::Beside(BesideEntry::After(nil)))
+        .await
+        .is_err());
+    assert!(people
+        .move_playlist_entry(id, nil, EntryPlace::Beside(BesideEntry::Before(a)))
+        .await
+        .is_err());
     assert_eq!(order(people.playlist_entries(id).await.unwrap()), vec![a, c, b]);
     people.move_playlist_entry(id, c, EntryPlace::Up).await.unwrap();
     assert_eq!(order(people.playlist_entries(id).await.unwrap()), vec![c, a, b]);
@@ -265,6 +271,95 @@ async fn picked_tracks_go_into_a_playlist_in_their_release_s_order() {
     library.manager().close().await.unwrap();
 }
 
+/// Inserting picked tracks puts them just before or just after the entry the
+/// place names, in their release's order; a place beside an entry the
+/// playlist lacks, or a pick the library lacks, adds none of them.
+#[tokio::test]
+async fn picked_tracks_go_into_a_playlist_at_the_place_they_are_dropped() {
+    use bae_people::collections::BesideEntry;
+    let directory = bae_util::test_files::TestFolder::new();
+    let (library, _storage) = storage_library(
+        directory.path(),
+        bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
+        bae_util::http::Http::for_test(),
+    )
+    .await;
+    let people = bae_people::People::new(library.store().clone(), coven::FileBudget::for_test());
+    let first = test_uuid("inserted-first");
+    let second = test_uuid("inserted-second");
+    let third = test_uuid("inserted-third");
+    bae_records::test_fixtures::album_with_tracks(
+        library.records(),
+        (&test_uuid("inserted-album"), "Inserted"),
+        &test_uuid("inserted-release"),
+        &[(&first, "First"), (&second, "Second"), (&third, "Third")],
+    )
+    .await;
+    let picked = |ids: &[&String]| {
+        bae_records::TrackList::Picked(ids.iter().map(|id| id.to_string()).collect())
+    };
+    let id = library
+        .manager()
+        .create_playlist("Evening", Sharing::Private, vec![third.clone(), third.clone()])
+        .await
+        .unwrap();
+    let entries = || async { people.playlist_entries(id).await.unwrap() };
+    let tracks =
+        || async { entries().await.into_iter().map(|entry| entry.track_id).collect::<Vec<_>>() };
+    let made = entries().await;
+    let (top, bottom) = (made[0].position_id, made[1].position_id);
+
+    library
+        .manager()
+        .insert_playlist_entries(id, picked(&[&second, &first]), BesideEntry::After(top))
+        .await
+        .unwrap();
+    assert_eq!(tracks().await, vec![third.clone(), first.clone(), second.clone(), third.clone()]);
+    library
+        .manager()
+        .insert_playlist_entries(id, picked(&[&first]), BesideEntry::Before(top))
+        .await
+        .unwrap();
+    library
+        .manager()
+        .insert_playlist_entries(id, picked(&[&second]), BesideEntry::After(bottom))
+        .await
+        .unwrap();
+    assert_eq!(
+        tracks().await,
+        vec![
+            first.clone(),
+            third.clone(),
+            first.clone(),
+            second.clone(),
+            third.clone(),
+            second.clone()
+        ]
+    );
+
+    let unknown = test_uuid("inserted-unknown");
+    let missing_place = library
+        .manager()
+        .insert_playlist_entries(id, picked(&[&first]), BesideEntry::Before(uuid::Uuid::nil()))
+        .await;
+    assert!(matches!(missing_place, Err(bae_people::collections::CollectionError::Missing)));
+    let missing_track = library
+        .manager()
+        .insert_playlist_entries(id, picked(&[&first, &unknown]), BesideEntry::After(top))
+        .await;
+    assert!(missing_track.is_err());
+    assert_eq!(tracks().await.len(), 6);
+    library
+        .manager()
+        .insert_playlist_entries(id, picked(&[&third]), BesideEntry::Before(bottom))
+        .await
+        .unwrap();
+    let after = entries().await;
+    assert_eq!(after[5].position_id, bottom);
+    assert_eq!(after[4].track_id, third);
+    library.manager().close().await.unwrap();
+}
+
 /// The playlists query computes each playlist's summary in SQL from its
 /// entries: it counts them, adds up their time, and picks the covers of the
 /// first four different releases when its entries are on that many, else its
@@ -416,7 +511,13 @@ async fn the_playlist_reads_follow_each_change_to_a_playlist() {
     let mut order: Vec<_> = grown.entries.iter().map(|entry| entry.position_id).collect();
     order.rotate_right(1);
     people
-        .move_playlist_entry(id, appended, bae_people::collections::EntryPlace::Before(order[1]))
+        .move_playlist_entry(
+            id,
+            appended,
+            bae_people::collections::EntryPlace::Beside(
+                bae_people::collections::BesideEntry::Before(order[1]),
+            ),
+        )
         .await
         .unwrap();
     let reordered = detail_matching(&mut detail, |detail| {

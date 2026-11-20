@@ -1,5 +1,6 @@
 package fm.bae.app.playback
 
+import uniffi.bae_bridge.BridgeBesideEntry
 import uniffi.bae_bridge.BridgeEntryPlace
 import uniffi.bae_bridge.BridgePlayOutcome
 import uniffi.bae_bridge.BridgeSharing
@@ -54,6 +55,12 @@ internal abstract class PlaylistFakeAppHandle : EditionFakeAppHandle() {
     ) {
         unfaked("removePlaylistEntry")
     }
+
+    override suspend fun insertPickedIntoPlaylist(
+        playlist: String,
+        trackIds: List<String>,
+        place: BridgeBesideEntry,
+    ): Unit = unfaked("insertPickedIntoPlaylist")
 
     override suspend fun movePlaylistEntry(
         playlist: String,
