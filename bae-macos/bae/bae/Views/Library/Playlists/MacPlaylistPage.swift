@@ -1,8 +1,5 @@
 import BaeKit
-import OSLog
 import SwiftUI
-
-private let logger = Logger.bae("MacPlaylistPage")
 
 /// A playlist's page inside the side pane's Playlists tab: its picture beside
 /// its name, owner and facts over Play and its ⋯ menu, then its tracks in
@@ -156,26 +153,18 @@ struct MacPlaylistPage: View {
         at place: BridgeInsertPlace,
         in playlist: BridgePlaylistSummary
     ) async {
-        do {
-            let trackIds = try await DroppedTracks.trackIds(
-                dropped,
-                order: AlbumGridOrder(session: session),
-                in: library
-            )
-            guard !trackIds.isEmpty else {
-                logger.warning(
-                    "a drop on playlist \(playlist.id) held no tracks: \(dropped.joined(separator: ", "))"
-                )
-                return
-            }
+        let library = library
+        await DroppedTracks.write(
+            dropped,
+            order: AlbumGridOrder(session: session),
+            library: library,
+            uiStore: uiStore
+        ) {
             try await library.playlistWrites.insertPicked(
                 playlist.id,
-                trackIds,
+                $0,
                 place
             )
-        }
-        catch {
-            uiStore.showError(error)
         }
     }
 

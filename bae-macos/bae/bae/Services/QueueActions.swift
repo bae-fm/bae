@@ -1,5 +1,8 @@
 import BaeKit
 import Foundation
+import OSLog
+
+private let logger = Logger.bae("DroppedTracks")
 
 /// Resolves album/track ids to flat track ids and applies a queue mutation,
 /// surfacing resolve failures through the shared error path. Shared by the
@@ -120,6 +123,32 @@ enum DroppedTracks {
             }
         }
         return try await library.resolveToTrackIds(ids)
+    }
+
+    /// Write the tracks `dropped` names, read as `trackIds` reads them, into
+    /// a playlist through `write`, and show the error when reading or
+    /// writing them fails.
+    @MainActor
+    static func write(
+        _ dropped: [String],
+        order: AlbumGridOrder,
+        library: Library,
+        uiStore: UiStore,
+        through write: (_ trackIds: [String]) async throws -> Void
+    ) async {
+        do {
+            let ids = try await trackIds(dropped, order: order, in: library)
+            guard !ids.isEmpty else {
+                logger.warning(
+                    "a drop on a playlist held no tracks: \(dropped.joined(separator: ", "))"
+                )
+                return
+            }
+            try await write(ids)
+        }
+        catch {
+            uiStore.showError(error)
+        }
     }
 }
 

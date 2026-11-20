@@ -1,8 +1,5 @@
 import BaeKit
-import OSLog
 import SwiftUI
-
-private let logger = Logger.bae("PlaylistsContent")
 
 /// The side pane's Playlists tab: every playlist this device holds, each a
 /// place to drop tracks, or the open playlist's page.
@@ -119,25 +116,13 @@ private struct PlaylistList: View {
         let uiStore = uiStore
         let order = AlbumGridOrder(session: session)
         Task {
-            do {
-                let trackIds = try await DroppedTracks.trackIds(
-                    dropped,
-                    order: order,
-                    in: library
-                )
-                guard !trackIds.isEmpty else {
-                    logger.warning(
-                        "a drop on playlist \(playlistId) held no tracks: \(dropped.joined(separator: ", "))"
-                    )
-                    return
-                }
-                try await library.playlistWrites.appendPicked(
-                    playlistId,
-                    trackIds
-                )
-            }
-            catch {
-                uiStore.showError(error)
+            await DroppedTracks.write(
+                dropped,
+                order: order,
+                library: library,
+                uiStore: uiStore
+            ) {
+                try await library.playlistWrites.appendPicked(playlistId, $0)
             }
         }
     }
