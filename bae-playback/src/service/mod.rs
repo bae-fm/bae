@@ -555,6 +555,8 @@ pub struct PlaybackService {
     /// The time source for the side-pause countdown's deadline and the wait for
     /// it.
     clock: crate::PlaybackClockRef,
+    /// The time zone the app last told playback, which a play's day is read in.
+    local_zone: tokio::sync::watch::Receiver<Option<crate::LocalZoneRef>>,
     /// The sides of the staged crossing's tracks, whose crossing is taken back
     /// when an edit puts a side or disc boundary between them.
     staged_sides: LibraryFollow<Vec<String>, Vec<PlaybackTrackInfo>>,

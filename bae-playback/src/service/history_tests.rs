@@ -66,6 +66,75 @@ async fn listening_counts_consumed_audio_across_decoder_replacement_and_pause() 
     assert!(!drained_a_playback_error(&mut progress));
 }
 
+/// The zone a test's host tells playback: a fixed offset from UTC.
+#[derive(Debug)]
+struct FixedZone(i8);
+
+impl crate::LocalZone for FixedZone {
+    fn offset_at(&self, _at: time::UtcDateTime) -> Result<time::UtcOffset, crate::LocalZoneError> {
+        Ok(time::UtcOffset::from_hms(self.0, 0, 0).unwrap())
+    }
+}
+
+/// A play takes its day in the zone the app last told playback, not in UTC:
+/// the test clock starts at midnight UTC on January 1, which is still the
+/// 31st of December five hours behind.
+#[tokio::test]
+async fn a_play_takes_its_day_in_the_zone_the_app_told() {
+    const RELEASE: &str = "c61a9e19-f3ba-4728-842c-c59dbc82e238";
+    let (_home, mut service, _progress) = seeded_playback_service(&[(RELEASE, &[TRACK_T])]).await;
+    let mut prepared = test_prepared_track(TRACK_T, create_sparse_buffer(1024));
+    prepared.sample_rate = 100;
+    prepared.channels = 1;
+    let fmt = prepared.track_fmt(StreamPosition::START);
+    let (mut sink, stream, _) =
+        bae_audio::track_stream::create_track_stream_pair_with_capacity(100, 1, 400);
+    sink.push_samples(&vec![0.25; 400]);
+    let source = Arc::new(Mutex::new(source::PlaybackSource::new(stream, fmt)));
+    let (_audio_tx, audio_rx) = audio_event_channel(&bae_diagnostics::Diagnostics::noop()).unwrap();
+    service.output = Some(test_output(source, audio_rx));
+    service.local_zone =
+        tokio::sync::watch::channel::<Option<crate::LocalZoneRef>>(Some(Arc::new(FixedZone(-5)))).1;
+    let generation = service.next_load_generation();
+    service.slot =
+        active_slot(prepared, TrackPhase::Loading { generation, target: PlayTarget::Playing });
+
+    service.resolve_track_ready(TRACK_T.to_string(), generation).await;
+
+    let listening = service.listening.as_ref().expect("the play began");
+    assert_eq!(listening.play.entry().started_at, test_clock_start());
+    assert_eq!(
+        listening.play.entry().played_on,
+        time::Date::from_calendar_date(2025, time::Month::December, 31).unwrap()
+    );
+}
+
+/// A play that begins before the app told playback a time zone is a bug: it
+/// records no row, and the track still plays.
+#[tokio::test]
+async fn a_play_with_no_time_zone_told_records_no_row() {
+    const RELEASE: &str = "c61a9e19-f3ba-4728-842c-c59dbc82e238";
+    let (_home, mut service, _progress) = seeded_playback_service(&[(RELEASE, &[TRACK_T])]).await;
+    let mut prepared = test_prepared_track(TRACK_T, create_sparse_buffer(1024));
+    prepared.sample_rate = 100;
+    prepared.channels = 1;
+    let fmt = prepared.track_fmt(StreamPosition::START);
+    let (mut sink, stream, _) =
+        bae_audio::track_stream::create_track_stream_pair_with_capacity(100, 1, 400);
+    sink.push_samples(&vec![0.25; 400]);
+    let source = Arc::new(Mutex::new(source::PlaybackSource::new(stream, fmt)));
+    let (_audio_tx, audio_rx) = audio_event_channel(&bae_diagnostics::Diagnostics::noop()).unwrap();
+    service.output = Some(test_output(source, audio_rx));
+    service.local_zone = tokio::sync::watch::channel::<Option<crate::LocalZoneRef>>(None).1;
+    let generation = service.next_load_generation();
+    service.slot =
+        active_slot(prepared, TrackPhase::Loading { generation, target: PlayTarget::Playing });
+
+    service.resolve_track_ready(TRACK_T.to_string(), generation).await;
+
+    assert!(service.listening.is_none());
+}
+
 /// Each save is a synced library write. Once a play counts as played, audio
 /// progress alone must not save it again; the next boundary saves it.
 #[tokio::test]

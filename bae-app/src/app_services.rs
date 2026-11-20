@@ -643,6 +643,7 @@ impl AppServices {
     delegate_sync!(playback, playback_seek_by_ratio => seek_by_ratio(ratio: f64) -> ());
     delegate_sync!(playback, playback_set_volume_live => set_volume_live(volume: f32) -> ());
     delegate_sync!(playback, playback_set_muted => set_muted(muted: bool) -> ());
+    delegate_sync!(playback, playback_set_local_zone => set_local_zone(zone: bae_playback::LocalZoneRef) -> ());
     delegate_sync!(playback, playback_play_on => play_on(link: bae_playback::renderer::RendererLink, device: bae_playback::renderer::CastReceiver, media_source: bae_playback::renderer::RendererMediaSource) -> ());
     delegate_sync!(playback, playback_play_on_airplay => play_on_airplay(sink: Box<dyn bae_playback::airplay_output::AirPlaySink>, device: bae_playback::renderer::CastReceiver) -> ());
     delegate_sync!(playback, playback_stop_remote => stop_remote() -> ());

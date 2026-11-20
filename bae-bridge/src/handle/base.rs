@@ -398,6 +398,15 @@ forward! { sync this => {
         this.services.playback_set_muted(muted);
     }
 
+    /// Tell core the time zone this device is in, which each play that begins
+    /// afterwards takes its day in. The app hands it right after it opens the
+    /// library; until then plays take their UTC day.
+    fn set_local_time_zone(zone: Box<dyn crate::BridgeLocalTimeZone>) {
+        this.services.playback_set_local_zone(std::sync::Arc::new(
+            crate::local_time_zone::HostZone::new(zone, this.diagnostics.clone()),
+        ));
+    }
+
     fn preview_play(target: BridgePreviewTarget) -> Result<(), BridgeError> {
         this.services.playback_preview_play(target.into_core()?);
         Ok(())

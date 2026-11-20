@@ -576,6 +576,9 @@ task_types = [
     "AppHandle::register_artwork_analyzer",
     "AppHandle::cast_to",
 ]
+# The app hands in the device's time zone once after it opens a library, and
+# the adapter is built where it arrives.
+"bae-bridge/src/handle/base.rs" = ["AppHandle::set_local_time_zone"]
 # The app makes a cancel for each call it may stop while the call runs, and
 # the call takes the cancel's signal with the guard that sends it when the
 # call's future drops.
@@ -749,6 +752,7 @@ task_types = [
     "StreamValues::new",
     "StreamWriter::new",
 ]
+"bae-bridge/src/local_time_zone.rs" = ["HostZone::new"]
 "bae-bridge/src/oauth.rs" = ["NativeOAuthPresenter::new"]
 "bae-bridge/src/operation_runtime.rs" = ["OperationRuntime::new"]
 "bae-bridge/src/screens/setup.rs" = ["SetupStateWatch::new"]

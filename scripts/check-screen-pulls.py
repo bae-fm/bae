@@ -55,6 +55,10 @@ ALLOWED_CALLBACKS = {
         "a phone's playback asks the platform for the speaker before it "
         "starts and gives it back when it stops"
     ),
+    "BridgeLocalTimeZone": (
+        "core asks the platform which time zone the device is in when a play "
+        "begins, to name the day the play was played on"
+    ),
     "OAuthPresenterCallback": (
         "a phone shows a storage provider's sign-in page and hands back "
         "where it redirected"

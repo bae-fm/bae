@@ -150,6 +150,9 @@ struct PlaybackThread {
     audio_device: ServiceAudioDevice,
     arbiter: Arc<FetchArbiter>,
     playing_bytes: tokio::sync::watch::Sender<Option<PlayingBytes>>,
+    /// The time zone the app last told playback, which each service takes its
+    /// plays' days in.
+    local_zone: tokio::sync::watch::Receiver<Option<crate::LocalZoneRef>>,
 }
 
 impl PlaybackThread {
@@ -308,6 +311,7 @@ impl PlaybackThread {
             first_audio_pending: None,
             renderer: Renderer::Local,
             clock: self.clock.clone(),
+            local_zone: self.local_zone.clone(),
             staged_sides: advance::track_infos_follow(
                 &self.store,
                 "the staged crossing's sides",
@@ -402,6 +406,8 @@ impl PlaybackService {
         let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
         let arbiter = FetchArbiter::new();
         let (playing_bytes, playing_bytes_rx) = tokio::sync::watch::channel(None);
+        let (local_zone_tx, local_zone) =
+            tokio::sync::watch::channel::<Option<crate::LocalZoneRef>>(None);
         let progress_handle = PlaybackProgressHandle::new(
             progress_rx,
             runtime_handle.clone(),
@@ -428,6 +434,7 @@ impl PlaybackService {
             audio_device,
             arbiter: arbiter.clone(),
             playing_bytes,
+            local_zone,
         };
         #[expect(
             clippy::disallowed_methods,
@@ -436,7 +443,7 @@ impl PlaybackService {
         let worker = WorkerThread::spawn(PLAYBACK_THREAD, bugs, move |channel, messages| {
             thread.run(channel, messages, restore_playback)
         });
-        PlaybackHandle::new(worker, progress_handle, playing_bytes_rx)
+        PlaybackHandle::new(worker, progress_handle, playing_bytes_rx, Arc::new(local_zone_tx))
     }
 
     /// Serve `starter`, then `commands`, and what else wakes the loop, until

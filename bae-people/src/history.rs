@@ -7,6 +7,9 @@ pub struct HistoryEntry {
     pub id: uuid::Uuid,
     pub track_id: String,
     pub started_at: time::UtcDateTime,
+    /// The calendar day the playing device's clock showed where it was when
+    /// the play began, which History groups the play under.
+    pub played_on: time::Date,
     pub played: Duration,
     /// The person the play began as.
     pub person: coven::MemberId,

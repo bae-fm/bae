@@ -70,7 +70,10 @@ pub use capture_output::{
 };
 #[cfg(any(test, feature = "test-utils"))]
 pub use clock::ManualPlaybackClock;
+#[cfg(any(test, feature = "test-utils"))]
+pub use clock::UtcZone;
 pub use clock::WallPlaybackClock;
+pub use clock::{LocalZone, LocalZoneError, LocalZoneRef};
 pub use clock::{PlaybackClock, PlaybackClockRef, PlaybackSleep};
 pub use context::ContextSource;
 pub use error::read_failure_reason;

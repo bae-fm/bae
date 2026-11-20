@@ -5,6 +5,7 @@ use std::time::Duration;
 
 impl People {
     /// Capture the person's setting once. A later setting change cannot publish this play.
+    /// `played_on` is the calendar day the playing device showed when the play began.
     /// `None` when the setting is Off. A device with no person, or a person
     /// with no profile, is a bug: every registered member has a profile, so
     /// the play is refused, never dropped. A device the library removed still
@@ -15,6 +16,7 @@ impl People {
         track_id: &str,
         duration: Option<Duration>,
         started_at: UtcDateTime,
+        played_on: time::Date,
     ) -> Result<Option<HistoryPlay>, PlayRecordError> {
         let person = self.writing_person().await?.ok_or(PlayRecordError::NoPerson)?;
         let crate::people::Person { profile, membership } = person;
@@ -27,6 +29,7 @@ impl People {
                 id,
                 track_id: track_id.to_owned(),
                 started_at,
+                played_on,
                 played: Duration::ZERO,
                 person: membership.id,
                 audience,
@@ -46,7 +49,8 @@ impl People {
         }
         let played_ms = bae_store::query::to_i64(entry.played.as_millis(), "played_ms")?;
         Ok(self.inner.store.call(move |sql| {
-            sql.execute("INSERT INTO history (id, person_id, track_id, started_at, played_ms, audience) VALUES (?1, ?2, ?3, ?4, ?5, ?6) ON CONFLICT(id) DO UPDATE SET played_ms = MAX(history.played_ms, excluded.played_ms)", params![entry.id.to_string(), entry.person.to_string(), entry.track_id, entry.started_at.to_rfc3339(), played_ms, entry.audience])?;
+            // The first write stores the day, and the play keeps it.
+            sql.execute("INSERT INTO history (id, person_id, track_id, started_at, played_on, played_ms, audience) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7) ON CONFLICT(id) DO UPDATE SET played_ms = MAX(history.played_ms, excluded.played_ms)", params![entry.id.to_string(), entry.person.to_string(), entry.track_id, entry.started_at.to_rfc3339(), entry.played_on.to_string(), played_ms, entry.audience])?;
             Ok(true)
         }).await?)
     }
@@ -61,12 +65,15 @@ impl People {
 
 #[cfg(any(test, feature = "test-utils"))]
 fn history_rows(sql: &SqlReadContext<'_>) -> rusqlite::Result<Vec<HistoryEntry>> {
-    sql.query("SELECT id, track_id, started_at, played_ms, person_id, audience FROM history ORDER BY started_at DESC, id", [], |row| {
+    sql.query("SELECT id, track_id, started_at, played_ms, person_id, audience, played_on FROM history ORDER BY started_at DESC, id", [], |row| {
         let started_at = bae_store::read::rfc3339_column(row, "started_at")?;
         let played_ms: i64 = row.get(3)?;
         #[expect(clippy::map_err_ignore, reason = "the out-of-range error carries the column and the value itself")]
         let played_ms = u64::try_from(played_ms).map_err(|_| rusqlite::Error::IntegralValueOutOfRange(3, played_ms))?;
-        Ok(HistoryEntry { id: uuid_column(row, 0)?, track_id: row.get(1)?, started_at, played: Duration::from_millis(played_ms), person: coven::MemberId(uuid_column(row, 4)?), audience: row.get(5)? })
+        let played_on: String = row.get(6)?;
+        let played_on = time::Date::parse(&played_on, &time::format_description::well_known::Iso8601::DATE)
+            .map_err(|error| rusqlite::Error::FromSqlConversionFailure(6, rusqlite::types::Type::Text, Box::new(error)))?;
+        Ok(HistoryEntry { id: uuid_column(row, 0)?, track_id: row.get(1)?, started_at, played_on, played: Duration::from_millis(played_ms), person: coven::MemberId(uuid_column(row, 4)?), audience: row.get(5)? })
     })
 }
 

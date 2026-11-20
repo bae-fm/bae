@@ -15,12 +15,13 @@ mod dev_reset;
 mod from_app;
 mod handle;
 mod host;
-// A phone calls into its host for its audio focus and sign-in presenter, and
-// every casting host for the code an AirPlay receiver asks for.
-#[cfg(any(test, not(desktop), feature = "cast"))]
+// A phone calls into its host for its audio focus and sign-in presenter, every
+// casting host for the code an AirPlay receiver asks for, and every host for
+// the device's time zone.
 mod host_calls;
 mod init;
 mod keyed_values;
+mod local_time_zone;
 mod oauth;
 mod operation_runtime;
 mod screens;
@@ -41,6 +42,7 @@ pub use handle::*;
 pub use host::*;
 pub use init::*;
 pub use keyed_values::*;
+pub use local_time_zone::*;
 pub use oauth::*;
 pub use screens::*;
 pub use setup::*;

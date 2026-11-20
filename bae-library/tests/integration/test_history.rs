@@ -30,6 +30,7 @@ async fn qualifying_plays_keep_their_identity_and_original_audience() {
             &track,
             Some(Duration::from_secs(40)),
             started,
+            started.date(),
         )
         .await
         .unwrap()
@@ -56,6 +57,7 @@ async fn qualifying_plays_keep_their_identity_and_original_audience() {
             &track,
             Some(Duration::from_secs(100)),
             started,
+            started.date(),
         )
         .await
         .unwrap()
@@ -75,7 +77,7 @@ async fn qualifying_plays_keep_their_identity_and_original_audience() {
     assert_eq!(row.played, Duration::from_secs(62));
     assert_ne!(row.id, private_play.entry().id);
     let mut unknown = people
-        .begin_play(coven::IdSource::new_id(&coven::UuidIds), &track, None, started)
+        .begin_play(coven::IdSource::new_id(&coven::UuidIds), &track, None, started, started.date())
         .await
         .unwrap()
         .expect("recorded");
@@ -110,14 +112,14 @@ async fn off_records_no_new_plays_and_earlier_plays_keep_their_audience() {
     let person = own_profile(library.people()).await;
     let started = bae_util::timestamp::parse_rfc3339("2026-10-18T16:30:00Z").unwrap();
     let mut before = people
-        .begin_play(coven::IdSource::new_id(&coven::UuidIds), &track, None, started)
+        .begin_play(coven::IdSource::new_id(&coven::UuidIds), &track, None, started, started.date())
         .await
         .unwrap()
         .expect("a private setting keeps plays");
 
     library.people().set_history_sharing(HistorySharing::Off).await.unwrap();
     let off = people
-        .begin_play(coven::IdSource::new_id(&coven::UuidIds), &track, None, started)
+        .begin_play(coven::IdSource::new_id(&coven::UuidIds), &track, None, started, started.date())
         .await
         .unwrap();
     assert!(off.is_none());
@@ -132,7 +134,7 @@ async fn off_records_no_new_plays_and_earlier_plays_keep_their_audience() {
 
     library.people().set_history_sharing(HistorySharing::Household).await.unwrap();
     assert!(people
-        .begin_play(coven::IdSource::new_id(&coven::UuidIds), &track, None, started)
+        .begin_play(coven::IdSource::new_id(&coven::UuidIds), &track, None, started, started.date())
         .await
         .unwrap()
         .is_some());

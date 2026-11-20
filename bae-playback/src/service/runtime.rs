@@ -716,7 +716,7 @@ impl PlaybackService {
         clock: crate::PlaybackClockRef,
     ) -> PlaybackHandle {
         let audio_device: Arc<dyn AudioOutputDevice> = Arc::from(audio_device);
-        Self::start_inner(
+        let handle = Self::start_inner(
             store,
             records,
             people,
@@ -733,7 +733,10 @@ impl PlaybackService {
             clock,
             // These tests play on the desktop, where nothing shares the speaker.
             crate::AudioFocus::Unshared,
-        )
+        );
+        // These tests have no app to tell a time zone.
+        handle.set_local_zone(Arc::new(crate::UtcZone));
+        handle
     }
 }
 

@@ -45,6 +45,7 @@ import uniffi.bae_bridge.BridgeLibraryRemoval
 import uniffi.bae_bridge.BridgeLibrarySetup
 import uniffi.bae_bridge.BridgeList
 import uniffi.bae_bridge.BridgeListRows
+import uniffi.bae_bridge.BridgeLocalTimeZone
 import uniffi.bae_bridge.BridgeLookupCatalog
 import uniffi.bae_bridge.BridgeMemberRole
 import uniffi.bae_bridge.BridgeOutboxFeeds
@@ -558,6 +559,10 @@ internal open class FakeAppHandle(
 
     override suspend fun setDownloadsPaused(paused: Boolean) {
         unfaked("setDownloadsPaused")
+    }
+
+    override fun setLocalTimeZone(zone: BridgeLocalTimeZone) {
+        // The session tells every handle its time zone as it wires up, and no test reads it.
     }
 
     override fun setMuted(muted: Boolean) {

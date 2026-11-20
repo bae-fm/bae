@@ -18,6 +18,7 @@ import fm.bae.app.data.SyncActivityStore
 import fm.bae.app.data.SyncStatusStore
 import fm.bae.app.data.castEndedFailure
 import fm.bae.app.playback.BaeCorePlayer
+import fm.bae.app.playback.DeviceTimeZone
 import fm.bae.app.playback.PlaybackService
 import fm.bae.app.widget.NowPlayingWidget
 import fm.bae.fastvalues.LatestFeed
@@ -160,6 +161,7 @@ class OpenLibrary internal constructor(
 
     fun wireUp(scope: CoroutineScope) {
         subscribeToValues(scope)
+        appHandle.setLocalTimeZone(DeviceTimeZone())
         memoryRelease = MemoryRelease(appContext, scope, appHandle::releaseMemory).also(MemoryRelease::start)
         sortLanguage = SortLanguage(appContext, scope, appHandle::setSortLanguage).also(SortLanguage::start)
         observeNowPlayingForWidget(scope)

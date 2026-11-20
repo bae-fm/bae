@@ -100,7 +100,21 @@ impl PlaybackService {
         let position = cur.position;
         let duration = cur.prepared.timeline.duration();
         let now = self.clock.now();
-        match self.people.begin_play(self.ids.new_id(), &track, duration, now).await {
+        let zone = self.local_zone.borrow().clone();
+        let offset = zone
+            .ok_or_else(|| crate::LocalZoneError("the app told playback no time zone".into()))
+            .and_then(|zone| zone.offset_at(now));
+        let played_on = match offset {
+            Ok(offset) => now.to_offset(offset).date(),
+            // A bug: the app tells its zone when it opens the library, and
+            // answers with an offset. It reaches the crash reporter, and the
+            // track plays without a history row.
+            Err(error) => {
+                self.diagnostics.report_bug("take a play's day in the device's time zone", &error);
+                return true;
+            }
+        };
+        match self.people.begin_play(self.ids.new_id(), &track, duration, now, played_on).await {
             // The person keeps no listening history: nothing of this play is metered.
             Ok(None) => true,
             // A bug: every registered member has a profile. It reaches the

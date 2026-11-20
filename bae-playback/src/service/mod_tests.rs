@@ -323,6 +323,10 @@ pub(super) fn playback_service_and_commands_over(
         first_audio_pending: None,
         renderer: Renderer::Local,
         clock: Arc::new(crate::ManualPlaybackClock::new(test_clock_start())),
+        local_zone: tokio::sync::watch::channel::<Option<crate::LocalZoneRef>>(Some(Arc::new(
+            crate::UtcZone,
+        )))
+        .1,
         staged_sides,
         held_tracks,
     };

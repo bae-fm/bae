@@ -414,14 +414,23 @@ pub struct PlaybackHandle {
     worker: WorkerThread<PlaybackMessage>,
     progress_handle: PlaybackProgressHandle,
     playing_bytes: tokio::sync::watch::Receiver<Option<crate::track_buffered::PlayingBytes>>,
+    local_zone: Arc<tokio::sync::watch::Sender<Option<crate::LocalZoneRef>>>,
 }
 impl PlaybackHandle {
     pub(super) fn new(
         worker: WorkerThread<PlaybackMessage>,
         progress_handle: PlaybackProgressHandle,
         playing_bytes: tokio::sync::watch::Receiver<Option<crate::track_buffered::PlayingBytes>>,
+        local_zone: Arc<tokio::sync::watch::Sender<Option<crate::LocalZoneRef>>>,
     ) -> Self {
-        Self { worker, progress_handle, playing_bytes }
+        Self { worker, progress_handle, playing_bytes, local_zone }
+    }
+
+    /// Tell playback the time zone this device is in, which each play that
+    /// begins afterwards takes its day in. A play that begins before the app
+    /// tells one is a bug, reported, and records no row.
+    pub fn set_local_zone(&self, zone: crate::LocalZoneRef) {
+        self.local_zone.send_replace(Some(zone));
     }
 
     /// The parts of the playing track whose bytes this device holds, as

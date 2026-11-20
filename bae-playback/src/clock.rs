@@ -23,6 +23,32 @@ pub trait PlaybackClock: Send + Sync {
 
 pub type PlaybackClockRef = Arc<dyn PlaybackClock>;
 
+/// The time zone the device is in, which the app tells playback: the offset
+/// from UTC its clock shows at a moment, daylight saving time included.
+pub trait LocalZone: Send + Sync + std::fmt::Debug {
+    fn offset_at(&self, at: UtcDateTime) -> Result<time::UtcOffset, LocalZoneError>;
+}
+
+/// The device's time zone gave no usable offset: the app told none yet, or the
+/// app's answer was not an offset.
+#[derive(Debug, thiserror::Error)]
+#[error("{0}")]
+pub struct LocalZoneError(pub String);
+
+pub type LocalZoneRef = Arc<dyn LocalZone>;
+
+/// UTC as a device's zone, for tests that have no app to tell one.
+#[cfg(any(test, feature = "test-utils"))]
+#[derive(Debug)]
+pub struct UtcZone;
+
+#[cfg(any(test, feature = "test-utils"))]
+impl LocalZone for UtcZone {
+    fn offset_at(&self, _at: UtcDateTime) -> Result<time::UtcOffset, LocalZoneError> {
+        Ok(time::UtcOffset::UTC)
+    }
+}
+
 /// Production: the library's wall clock for "now", the service runtime's timer
 /// for the wait. The wait is measured once, when it starts, as the time left
 /// until the deadline, so a wall-clock correction during a countdown doesn't

@@ -12,9 +12,8 @@
 use bae_util::task_failure::Bug;
 
 /// Make the host call `call`. A throw comes back as the failure of
-/// `operation`, handed to `bug` to report first. Only a phone's host answers
-/// at once: its audio focus.
-#[cfg(any(test, not(desktop)))]
+/// `operation`, handed to `bug` to report first. A host answers at once with
+/// its audio focus on a phone and its time zone everywhere.
 pub(crate) fn host_call<T>(
     bug: impl FnOnce(Bug) -> Bug,
     operation: &'static str,

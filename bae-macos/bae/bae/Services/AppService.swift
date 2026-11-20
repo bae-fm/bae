@@ -79,6 +79,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         seed: LibrarySessionSeed,
         host: BridgeHost
     ) {
+        appHandle.tellDeviceTimeZone()
         let playbackStore = PlaybackStore()
         let configStore = ConfigStore(
             config: Config(bridge: config)
