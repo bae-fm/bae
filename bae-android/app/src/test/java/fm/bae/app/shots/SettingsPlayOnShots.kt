@@ -1,8 +1,14 @@
 package fm.bae.app.shots
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import fm.bae.app.data.CastStart
 import fm.bae.app.ui.playback.CastReceiverDetailsRows
+import fm.bae.app.ui.playback.CastReceiverMenuItems
+import fm.bae.app.ui.playback.CastReceiverRole
 import fm.bae.app.ui.settings.AndroidSettingsPlayback
 import org.junit.Test
 import uniffi.bae_bridge.BridgeCastReceiver
@@ -31,6 +37,20 @@ class SettingsPlayOnShots : BoardShot() {
     fun androidSettingsPlaybackReceiversLooking() =
         shot("android.settings.playback.receivers-looking") {
             ScreenScene { Playback(BridgeCastReceiverList(casting = null, found = emptyList(), isEmpty = true)) }
+        }
+
+    /** The ⋮ menu of the receiver playing, open over the Playback page: Details and Disconnect. */
+    @Test
+    fun androidSettingsPlaybackReceiverMenu() =
+        shot("android.settings.playback.receiver-menu") {
+            ScreenScene {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Playback(receivers())
+                    OpenMenu(top = RECEIVER_MENU_TOP, end = RECEIVER_MENU_END) {
+                        CastReceiverMenuItems(role = CastReceiverRole.Casting(onDisconnect = {}), onDetails = {}, close = {})
+                    }
+                }
+            }
         }
 
     /** The Details sheet of the receiver playing, over the Playback page. */
@@ -81,3 +101,7 @@ private fun receivers() =
             ),
         isEmpty = false,
     )
+
+/** Where the board opens the menu: under the ⋮ of the receiver playing. */
+private val RECEIVER_MENU_TOP = 478.dp
+private val RECEIVER_MENU_END = 32.dp
