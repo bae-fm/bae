@@ -137,10 +137,7 @@ struct QueueTabContent: View {
                                 ? nil : String(localized: "Up next"),
                             shuffled: false,
                             count: Int(upNextCount),
-                            itemAt: { index in
-                                manual.indices.contains(index)
-                                    ? manual[index] : nil
-                            },
+                            itemAt: { manual[$0] },
                             loadEpoch: nil,
                             holdRow: nil,
                             acceptsExternalDrops: true,
