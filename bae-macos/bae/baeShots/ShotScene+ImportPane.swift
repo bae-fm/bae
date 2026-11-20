@@ -67,6 +67,18 @@ extension ShotScene {
                 }
             )
         },
+        importPaneScene(
+            "mac.import.narrow.folder",
+            width: 900,
+            height: 1_260,
+            .found(northbound: .identified, opening: .northbound)
+        ),
+        importPaneScene(
+            "mac.import.narrow.several",
+            width: 900,
+            height: 900,
+            .several
+        ),
         importPaneScene("mac.import.folder.skipped", height: 900, .skipped),
         importPaneScene(
             "mac.import.identify.search",
@@ -88,13 +100,14 @@ extension ShotScene {
     /// A board shot of `board` with nothing else to state.
     private static func importPaneScene(
         _ id: String,
+        width: CGFloat = 1_400,
         height: CGFloat,
         _ board: PreviewData.ImportBoard
     ) -> ShotScene {
-        ShotScene(id: id, size: CGSize(width: 1_400, height: height)) {
+        ShotScene(id: id, size: CGSize(width: width, height: height)) {
             importPaneStage(
                 board,
-                size: CGSize(width: 1_400, height: height)
+                size: CGSize(width: width, height: height)
             )
         }
     }

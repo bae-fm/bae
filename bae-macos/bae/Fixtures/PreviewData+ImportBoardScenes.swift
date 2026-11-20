@@ -12,6 +12,9 @@ extension PreviewData {
         /// The Found tab, Northbound as `northbound` has it, and `opening`
         /// opened in the pane; with none, the pane asks for a folder.
         case found(northbound: NorthboundStanding, opening: FoundPane?)
+        /// The Found tab with Northbound importing, and five other folders
+        /// selected together.
+        case several
         /// The Imported tab, Northbound opened.
         case imported
         /// The Skipped tab, Harbor Waltz opened.
@@ -19,7 +22,7 @@ extension PreviewData {
 
         var tab: BridgeTriageTab {
             switch self {
-            case .found: .pending
+            case .found, .several: .pending
             case .imported: .done
             case .skipped: .skipped
             }
@@ -29,7 +32,7 @@ extension PreviewData {
         var northbound: NorthboundStanding {
             switch self {
             case .found(let standing, _): standing
-            case .imported, .skipped: .importing
+            case .several, .imported, .skipped: .importing
             }
         }
     }
@@ -126,7 +129,7 @@ extension PreviewData {
                     providers: [.musicBrainz]
                 )
             ]
-        case .found, .imported, .skipped:
+        case .found, .several, .imported, .skipped:
             [:]
         }
     }
@@ -166,6 +169,42 @@ extension PreviewData {
         return selection
     }
 
+    /// The five folders the several-selected board has chosen, and what the
+    /// selection offers: two to import, one identification to retry, and the
+    /// rest every folder can be told.
+    @MainActor
+    static var boardSeveralSelection: ImportSelection {
+        let selection = ImportSelection()
+        selection.select(
+            Set(
+                [
+                    BoardFolder.lowTideHours, .copperSky, .smallHours,
+                    .winterKitchen, .saltAndCedar,
+                ]
+                .map(\.key)
+            )
+        )
+        let offers: [(BridgeCandidateAction, UInt64)] = [
+            (.import, 2), (.identify, 5), (.retryIdentification, 1),
+            (.resetToFileMetadata, 5), (.clearMetadata, 5), (.skip, 5),
+            (.revealFolder, 5),
+        ]
+        selection.apply(
+            BridgeSelectionSummary(
+                count: 5,
+                single: nil,
+                offers: offers.map {
+                    BridgeSelectionOffer(
+                        action: $0.0,
+                        count: $0.1,
+                        enabled: true
+                    )
+                }
+            )
+        )
+        return selection
+    }
+
     /// Opens the folder `board` opens: its read in `store`, and the
     /// selection of its row.
     @MainActor
@@ -176,6 +215,8 @@ extension PreviewData {
         switch board {
         case .found(_, nil):
             return ImportSelection()
+        case .several:
+            return boardSeveralSelection
         case .found(let northbound, let pane?):
             let opened = openedCandidate(pane, northbound: northbound)
             store.selectedCandidates[opened.key] = opened
@@ -210,9 +251,14 @@ extension PreviewData {
         store.applySummary(
             importQueueSummary(hasWatchedFolders: true, hasGroups: true)
         )
-        if case .found = board {
+        switch board {
+        case .found:
             store.identificationProgress = (identified: 4, total: 10)
             store.importsInFlight = 2
+        case .several:
+            store.identificationProgress = (identified: 4, total: 10)
+        case .imported, .skipped:
+            break
         }
         let selection = openBoardFolder(board, in: store)
         return ImportBoardScene(

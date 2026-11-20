@@ -4,6 +4,11 @@ import SwiftUI
 // MARK: - Body layout
 
 extension MacImportWindow {
+    /// What the pane beside the list keeps when the main window is at its
+    /// smallest width, 900 points, and the list is at its 410-point floor.
+    /// Whatever the pane holds fits this width, or wraps or scrolls inside it.
+    static let paneFloor: CGFloat = 489
+
     @ViewBuilder
     var splitContent: some View {
         HSplitView {
@@ -18,19 +23,19 @@ extension MacImportWindow {
                     onPerform: requestCandidateAction
                 )
                 .frame(
-                    minWidth: 620,
+                    minWidth: Self.paneFloor,
                     maxWidth: .infinity,
                     maxHeight: .infinity
                 )
             }
             else if let candidate = selectedCandidate {
                 mainPane(for: candidate)
-                    // The floor is the identity card's and the commit bar's.
-                    // The mapping table keeps its own — it is laid out at
-                    // whatever its columns need and scrolls sideways inside the
+                    // The identify bar wraps its destination and Import onto a
+                    // second line when the pane is narrow. The mapping table
+                    // keeps its columns' floors and scrolls sideways inside the
                     // pane when the pane has less than that.
                     .frame(
-                        minWidth: 620,
+                        minWidth: Self.paneFloor,
                         maxWidth: .infinity,
                         maxHeight: .infinity
                     )
@@ -48,7 +53,7 @@ extension MacImportWindow {
                     }
                 )
                 .frame(
-                    minWidth: 620,
+                    minWidth: Self.paneFloor,
                     maxWidth: .infinity,
                     maxHeight: .infinity
                 )
@@ -61,7 +66,7 @@ extension MacImportWindow {
                 // the selected key, which holds nothing until this one lands.
                 Color.clear
                     .frame(
-                        minWidth: 620,
+                        minWidth: Self.paneFloor,
                         maxWidth: .infinity,
                         maxHeight: .infinity
                     )

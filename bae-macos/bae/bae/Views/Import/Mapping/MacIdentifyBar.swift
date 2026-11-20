@@ -17,23 +17,36 @@ struct MacIdentifyBar<Trailing: View>: View {
     let trailing: () -> Trailing
 
     var body: some View {
-        HStack(alignment: .center, spacing: spacing) {
-            HStack(spacing: ThemeSpace.related) {
-                Text("Identify")
-                    .themeText(.strong)
-                    .foregroundStyle(.secondary)
-                Button("Automatic") { onAutomatic() }
-                    .buttonStyle(.accentBordered)
-                Button("Search") { onSearch() }
-                    .buttonStyle(.accentBordered)
-                if let onMetadataCommand {
-                    metadataMenu(onMetadataCommand)
-                }
+        // The trailing controls wrap onto a second line, at the right, when
+        // the pane has no room for them beside the identify group.
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .center, spacing: spacing) {
+                identifyGroup
+                Spacer(minLength: ThemeSpace.group)
+                trailing()
             }
-            .disabled(identifyDisabled)
-            Spacer(minLength: ThemeSpace.group)
-            trailing()
+            VStack(alignment: .trailing, spacing: ThemeSpace.related) {
+                identifyGroup
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                trailing()
+            }
         }
+    }
+
+    private var identifyGroup: some View {
+        HStack(spacing: ThemeSpace.related) {
+            Text("Identify")
+                .themeText(.strong)
+                .foregroundStyle(.secondary)
+            Button("Automatic") { onAutomatic() }
+                .buttonStyle(.accentBordered)
+            Button("Search") { onSearch() }
+                .buttonStyle(.accentBordered)
+            if let onMetadataCommand {
+                metadataMenu(onMetadataCommand)
+            }
+        }
+        .disabled(identifyDisabled)
     }
 
     /// Commands that replace the draft's metadata.
