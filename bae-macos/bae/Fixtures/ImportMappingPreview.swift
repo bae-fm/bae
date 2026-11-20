@@ -16,6 +16,7 @@ extension View {
         self
             .environment(PreviewData.artImageStore())
             .importPreviewStores()
+            .windowBackground()
     }
 
     /// [`importPreviewEnvironment()`] with its images from `images`, for
@@ -24,18 +25,21 @@ extension View {
         self
             .environment(images)
             .importPreviewStores()
+            .windowBackground()
     }
 
     /// Every store of [`importPreviewEnvironment()`] but its images. The
     /// images are injected where the modifier names them, so the
     /// environment audit can read their type off the call it sees.
-    private func importPreviewStores() -> some View {
+    func importPreviewStores(syncs: Bool = true) -> some View {
         self
             .environment(UiStore())
             .environment(ImportSelection())
             .environment(OutboxStore(uploadsPaused: false))
             .environment(
-                PreviewData.configStore(storage: PreviewData.previewStorage)
+                PreviewData.configStore(
+                    storage: syncs ? PreviewData.previewStorage : nil
+                )
             )
             .environment(Importer.stub())
             .environment(Library.stub())
@@ -43,7 +47,6 @@ extension View {
             .environment(PreviewData.releaseEditor())
             .environment(SettingsNavigation())
             .mainWindowPreviewEnvironment()
-            .windowBackground()
     }
 }
 

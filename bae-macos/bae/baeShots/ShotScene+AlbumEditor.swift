@@ -103,18 +103,7 @@ extension ShotScene {
         return ShotScene(id: id, size: size) {
             let uiStore = UiStore()
             let backing = boardLibraryBacking(uiStore: uiStore, openAlbum: true)
-            let images = ImageStore(
-                fetchLibraryImageBytes: { PreviewData.previewArtData($0.id) },
-                fetchReleaseImageBytes: { _, source in
-                    switch source {
-                    case .cover: PreviewData.previewArtData("Northbound")
-                    case .releaseFile(let id): PreviewData.previewArtData(id)
-                    }
-                },
-                fetchRemoteImage: { image, _ in
-                    PreviewData.previewArtData(image.url)
-                }
-            )
+            let images = coverGalleryImages(of: "Northbound")
             presentEditor(on: uiStore, images: images, release: release)
             if stage == .coverSheet {
                 presentCoverSheet(on: uiStore, images: images)

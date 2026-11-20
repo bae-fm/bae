@@ -28,18 +28,7 @@ extension ShotScene {
                 linked
                 ? boardCoverGallery()
                 : boardCoverGallery(remotes: [], linked: false)
-            let images = ImageStore(
-                fetchLibraryImageBytes: { PreviewData.previewArtData($0.id) },
-                fetchReleaseImageBytes: { _, source in
-                    switch source {
-                    case .cover: PreviewData.previewArtData("Low Tide Hours")
-                    case .releaseFile(let id): PreviewData.previewArtData(id)
-                    }
-                },
-                fetchRemoteImage: { image, _ in
-                    PreviewData.previewArtData(image.url)
-                }
-            )
+            let images = coverGalleryImages(of: "Low Tide Hours")
             let lightboxLoad = LightboxImageLoad()
             uiStore.presentModal {
                 CoverGalleryFrame {
