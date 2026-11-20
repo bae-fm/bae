@@ -293,7 +293,12 @@ impl ImportServiceHandle {
         // nothing either way and is applied.
         let reading = release.read(&audio);
         let listed = bae_catalogs::reading::listing(&reading, &audio);
-        let values = reading?;
+        let values = match reading {
+            Ok(values) => values,
+            Err(refusal) => {
+                return Err(self.services.tables.reading_refusal(release, refusal).await)
+            }
+        };
         // A partner that fails to load fails the pick, leaving the previous
         // one in place.
         let prepared_partners = self

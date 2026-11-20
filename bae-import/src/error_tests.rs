@@ -2,31 +2,6 @@ use super::*;
 use bae_catalogs::musicbrainz::MusicBrainzError;
 use bae_catalogs::CatalogError;
 
-/// Each reason a release cannot be read onto the audio is the import's
-/// own refusal, naming what it names.
-#[test]
-fn a_reading_refusal_is_the_import_refusal_it_names() {
-    use bae_catalogs::reading::ReadingRefusal;
-    assert!(matches!(
-        ImportError::from(ReadingRefusal::Tied { mediums: vec![1, 3] }),
-        ImportError::TiedMediums { mediums } if mediums == vec![1, 3]
-    ));
-    assert!(matches!(
-        ImportError::from(ReadingRefusal::TrackCount { folder: 2, release: 7 }),
-        ImportError::MetadataTrackCount { folder_tracks: 2, release_tracks: 7 }
-    ));
-    assert!(matches!(
-        ImportError::from(ReadingRefusal::Unreadable {
-            catalog: bae_catalogs::catalog::Catalog::Discogs,
-            detail: "a track with no title".to_string(),
-        }),
-        ImportError::Catalog(CatalogError::SourceData {
-            catalog: bae_catalogs::catalog::Catalog::Discogs,
-            ..
-        })
-    ));
-}
-
 /// A remote-image fetch that failed shows as an import failure when the
 /// artwork host answered or could not be reached, as unusable import
 /// data when the bytes are no image, and as bae's own failure when bae

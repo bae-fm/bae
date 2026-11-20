@@ -544,6 +544,7 @@ pub enum BridgeSideHeading {
 mirror_enum! {
     BridgeSideHeading = bae_types::mediums::SideHeading,
     from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
     variants: { Sided { side_letter }, Disc { disc } },
 }
 

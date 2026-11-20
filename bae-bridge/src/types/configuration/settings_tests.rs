@@ -79,8 +79,12 @@ fn an_import_refusal_inside_a_library_error_crosses_as_itself() {
             BridgeErrorCategory::MetadataTrackCount { folder_tracks: 10, release_tracks: 12 },
         ),
         (
-            ImportError::TiedMediums { mediums: vec![1, 3] },
-            BridgeErrorCategory::TiedMediums { mediums: vec![1, 3] },
+            ImportError::TiedMediums {
+                sides: vec![bae_types::mediums::SideHeading::Disc { disc: 1 }],
+            },
+            BridgeErrorCategory::TiedMediums {
+                sides: vec![crate::types::BridgeSideHeading::Disc { disc: 1 }],
+            },
         ),
     ];
     for (error, category) in cases {

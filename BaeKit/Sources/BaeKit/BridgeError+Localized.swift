@@ -15,16 +15,11 @@ extension BridgeErrorCategory {
                 Int(folderTracks),
                 Int(releaseTracks)
             )
-        case .tiedMediums(let mediums):
-            let discs = ListFormatter.localizedString(
-                byJoining: mediums.map {
-                    NumberFormatter.localizedString(
-                        from: NSNumber(value: $0),
-                        number: .none
-                    )
-                }
+        case .tiedMediums(let sides):
+            let headings = ListFormatter.localizedString(
+                byJoining: sides.map(\.text)
             )
-            return String(format: line, locale: Locale.current, discs)
+            return String(format: line, locale: Locale.current, headings)
         case .airPlayBackOff(let receiver, let seconds):
             // The wait the receiver asked for, as a length of time in the
             // current locale ("30 seconds", "2 minutes").

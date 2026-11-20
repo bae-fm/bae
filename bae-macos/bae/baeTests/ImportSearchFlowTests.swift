@@ -216,13 +216,15 @@ extension ImportSearchFlowMetadataApplicationTests {
     @Test("a release failure whose line says it all shows no diagnostic")
     func failureLineSayingItAllHasNoDiagnostic() async throws {
         let store = unsettledStore()
-        let tied = BridgeErrorCategory.tiedMediums(mediums: [2, 4])
+        let tied = BridgeErrorCategory.tiedMediums(
+            sides: [.disc(disc: 2), .disc(disc: 4)]
+        )
         let importer = Importer(
             applyCandidateExternalMetadata: { _, _, _ in
                 throw BridgeError.Diagnostic(
                     category: tied,
                     detail:
-                        "discs [2, 4] of the release fit the folder's audio equally"
+                        "the release's [Disc { disc: 2 }, Disc { disc: 4 }] fit the folder's audio equally"
                 )
             }
         )

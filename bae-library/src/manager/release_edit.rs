@@ -89,9 +89,14 @@ impl LibraryManager {
             .map(|partner| partner.release)
             .collect();
         let audio = self.release_read_audio(release_id).await?;
-        let values = release
-            .read(&audio)
-            .map_err(|refusal| LibraryError::from(bae_import::ImportError::from(refusal)))?;
+        let values = match release.read(&audio) {
+            Ok(values) => values,
+            Err(refusal) => {
+                return Err(LibraryError::from(
+                    self.import_tables.reading_refusal(&release, refusal).await,
+                ))
+            }
+        };
         if values.tracks.is_empty() {
             return Err(LibraryError::from(bae_import::ImportError::MetadataTrackCount {
                 folder_tracks: audio.track_count(),

@@ -3,7 +3,6 @@ package fm.bae.app
 import android.content.Context
 import android.icu.text.ListFormatter
 import android.icu.text.MeasureFormat
-import android.icu.text.NumberFormat
 import android.icu.util.Measure
 import android.icu.util.MeasureUnit
 import kotlinx.coroutines.CancellationException
@@ -56,9 +55,8 @@ fun Context.localizedLine(error: BridgeException): String? =
             }
 
             is BridgeErrorCategory.TiedMediums -> {
-                val numbers = NumberFormat.getIntegerInstance(currentLocale())
-                val discs = category.mediums.map { numbers.format(it.toLong()) }
-                coreString(key, mapOf("discs" to ListFormatter.getInstance(currentLocale()).format(discs)))
+                val headings = category.sides.map { it.text(this) }
+                coreString(key, mapOf("headings" to ListFormatter.getInstance(currentLocale()).format(headings)))
             }
 
             is BridgeErrorCategory.AirPlayBackOff -> {

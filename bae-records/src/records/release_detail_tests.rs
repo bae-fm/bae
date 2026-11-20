@@ -66,10 +66,11 @@ fn a_read_names_the_device_coven_registers_under_its_id() {
     });
 }
 
-/// The track statements, the release editor's among them, place each track by
-/// one rule: a CD or a download among several mediums is a disc, numbered by
-/// its position among them, and a record's or cassette's sides get letters
-/// across the release's sided mediums.
+/// The track statements, the release editor's among them, and the headings of
+/// a release no table holds place each track by one rule: a CD or a download
+/// among several mediums is a disc, numbered by its position among them, and
+/// a record's or cassette's sides get letters across the release's sided
+/// mediums.
 #[tokio::test]
 async fn the_statements_place_tracks_by_one_rule() {
     use crate::test_fixtures::library::RecordsFixture;
@@ -186,6 +187,19 @@ async fn the_statements_place_tracks_by_one_rule() {
     assert_eq!(read, expected);
     let sides: Vec<_> = places.iter().map(|place| place.on.clone()).collect();
     assert_eq!(sides, expected_sides);
+    let listed: Vec<ReleaseMedium> = carriers
+        .iter()
+        .map(|(carrier, sides)| ReleaseMedium {
+            carrier: Some(*carrier),
+            sides: std::num::NonZeroU8::new(*sides).unwrap(),
+        })
+        .collect();
+    let headings = db
+        .read(move |sql| release_tracks::side_headings_on(&sql, &listed, &[1, 2, 3, 4, 5]))
+        .await
+        .unwrap();
+    let expected_headings: Vec<_> = expected_sides.iter().filter_map(TrackSide::heading).collect();
+    assert_eq!(headings, expected_headings, "a catalog's release names its sides as a stored one");
     #[cfg(desktop)]
     {
         let edited = db
@@ -203,6 +217,31 @@ async fn the_statements_place_tracks_by_one_rule() {
             edited.into_iter().map(|track| (track.track.id, track.position)).collect();
         assert_eq!(edited, expected);
     }
+}
+
+/// The headings of some of a release's mediums count the sides of the
+/// mediums before them: the second of two records holds sides C and D, and
+/// the second of two CDs is disc 2.
+#[tokio::test]
+async fn side_headings_of_a_later_medium_count_the_mediums_before_it() {
+    use bae_types::mediums::{ReleaseMedium, SideHeading};
+    use bae_types::pressing::Medium;
+    let (db, _temp) = bae_store::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;
+    let record =
+        ReleaseMedium { carrier: Some(Medium::Vinyl), sides: std::num::NonZeroU8::new(2).unwrap() };
+    let cd = ReleaseMedium::one_sided(Some(Medium::Cd));
+    let (records, cds) = db
+        .read(move |sql| {
+            Ok((
+                release_tracks::side_headings_on(&sql, &[record, record], &[2])?,
+                release_tracks::side_headings_on(&sql, &[cd, cd], &[2])?,
+            ))
+        })
+        .await
+        .unwrap();
+    let sided = |letter: &str| SideHeading::Sided { side_letter: letter.to_owned() };
+    assert_eq!(records, [sided("C"), sided("D")]);
+    assert_eq!(cds, [SideHeading::Disc { disc: 2 }]);
 }
 
 /// Reads `release`'s detail from `store` and returns the other device it

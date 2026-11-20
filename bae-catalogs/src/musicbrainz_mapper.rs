@@ -121,12 +121,7 @@ pub(crate) fn medium_sides(
     if !medium.medium.is_some_and(Medium::is_sided) {
         return Ok(one_side());
     }
-    let letters: Vec<Option<u8>> = medium
-        .entries
-        .iter()
-        .map(|track| track.position.as_deref().and_then(crate::release_values::side_letter))
-        .collect();
-    let Some(sides) = crate::release_values::sides_by_letter(&letters) else {
+    let Some(sides) = crate::release_values::sides_by_letter(&medium.side_letters()) else {
         return Ok(one_side());
     };
     let count = *sides.iter().max().expect("a medium with tracks has a side");

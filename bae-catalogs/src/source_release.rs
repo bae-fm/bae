@@ -163,6 +163,32 @@ pub struct SourceMedium {
     pub entries: Vec<TracklistEntry>,
 }
 
+impl SourceMedium {
+    /// The side letter each of its rows' positions names, in row order:
+    /// `A` of `A1`, none for a position that names none.
+    pub(crate) fn side_letters(&self) -> Vec<Option<u8>> {
+        self.entries
+            .iter()
+            .map(|entry| entry.position.as_deref().and_then(crate::release_values::side_letter))
+            .collect()
+    }
+
+    /// The medium as bae holds one: its carrier, and, for a record or a
+    /// cassette, as many sides as its positions name letters, counted from
+    /// its lowest; any other medium, and one whose positions name no letter,
+    /// is one side.
+    fn held(&self) -> bae_types::mediums::ReleaseMedium {
+        let sides = self
+            .medium
+            .is_some_and(Medium::is_sided)
+            .then(|| crate::release_values::sides_by_letter(&self.side_letters()))
+            .flatten()
+            .and_then(|sides| sides.into_iter().max())
+            .unwrap_or(std::num::NonZeroU8::MIN);
+        bae_types::mediums::ReleaseMedium { carrier: self.medium, sides }
+    }
+}
+
 /// One row of a tracklist, as its catalog lists it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct TracklistEntry {
@@ -360,6 +386,13 @@ impl SourceRelease {
     /// order.
     pub fn records(&self) -> Vec<ReleaseRecord> {
         release_records(&self.release, self.source_group_id.clone(), self.other_records.clone())
+    }
+
+    /// Each of the release's mediums as bae holds one, in release order: its
+    /// carrier and its sides, which name its sides and discs before any of
+    /// them is read onto audio.
+    pub fn held_mediums(&self) -> Vec<bae_types::mediums::ReleaseMedium> {
+        self.mediums.iter().map(SourceMedium::held).collect()
     }
 
     /// The mediums the coverage names, in release order.

@@ -174,11 +174,13 @@ struct ReleaseSelectionFailureTests {
                 .pressings.first
         )
         let detail =
-            "discs [1, 3] of the release fit the folder's audio equally"
+            "the release's [Disc { disc: 1 }, Disc { disc: 3 }] fit the folder's audio equally"
         let failure = try await failedSelection(
             pressing: pressing,
             error: .Diagnostic(
-                category: .tiedMediums(mediums: [1, 3]),
+                category: .tiedMediums(
+                    sides: [.disc(disc: 1), .disc(disc: 3)]
+                ),
                 detail: detail
             )
         )

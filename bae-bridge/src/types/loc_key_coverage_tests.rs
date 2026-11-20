@@ -334,7 +334,7 @@ fn produced_keys() -> Vec<String> {
         BridgeErrorCategory::Import,
         BridgeErrorCategory::ImportData,
         BridgeErrorCategory::MetadataTrackCount { folder_tracks: 12, release_tracks: 10 },
-        BridgeErrorCategory::TiedMediums { mediums: vec![2, 4] },
+        BridgeErrorCategory::TiedMediums { sides: vec![BridgeSideHeading::Disc { disc: 2 }] },
         BridgeErrorCategory::ReleaseChangedSinceOpened,
         BridgeErrorCategory::ChangedMeanwhile,
         BridgeErrorCategory::InvalidEdit { reason: BridgeValidationReason::EmptyArtistName },

@@ -38,11 +38,12 @@ pub enum ImportError {
 
     /// Several sets of the release's mediums fit the folder's audio equally —
     /// by Disc ID, carrier and lengths — and read as different tracks, so
-    /// which of them the folder is a rip of is not known. `mediums` names
-    /// every medium of those sets as the release numbers them, ascending.
+    /// which of them the folder is a rip of is not known. `sides` names
+    /// every side and disc of those sets by its heading on the release, in
+    /// release order.
     #[cfg(desktop)]
-    #[error("discs {mediums:?} of the release fit the folder's audio equally")]
-    TiedMediums { mediums: Vec<u32> },
+    #[error("the release's {sides:?} fit the folder's audio equally")]
+    TiedMediums { sides: Vec<bae_types::mediums::SideHeading> },
 
     /// Local file-tag evidence can't seed a file-metadata import (no audio files,
     /// a file failed to open / parse, embedded-cover read failure).
@@ -628,7 +629,7 @@ impl ImportError {
                 release_tracks: *release_tracks,
             },
             #[cfg(desktop)]
-            Self::TiedMediums { mediums } => C::TiedMediums { mediums: mediums.clone() },
+            Self::TiedMediums { sides } => C::TiedMediums { sides: sides.clone() },
             Self::CoverArt { .. } => C::ImportData,
             Self::Catalog(error) => catalog_category(error),
             Self::Internal { .. } => C::Internal,
@@ -813,24 +814,6 @@ fn catalog_category(error: &bae_catalogs::CatalogError) -> bae_diagnostics::UiEr
             | RemoteImageError::NoImage { .. } => C::Import,
             RemoteImageError::CacheTask(_) | RemoteImageError::CacheStore(_) => C::Internal,
         },
-    }
-}
-
-/// A release that cannot be read onto the audio refuses the import that
-/// would apply it.
-#[cfg(desktop)]
-impl From<bae_catalogs::reading::ReadingRefusal> for ImportError {
-    fn from(refusal: bae_catalogs::reading::ReadingRefusal) -> Self {
-        use bae_catalogs::reading::ReadingRefusal;
-        match refusal {
-            ReadingRefusal::TrackCount { folder, release } => {
-                Self::MetadataTrackCount { folder_tracks: folder, release_tracks: release }
-            }
-            ReadingRefusal::Tied { mediums } => Self::TiedMediums { mediums },
-            ReadingRefusal::Unreadable { catalog, detail } => {
-                bae_catalogs::CatalogError::SourceData { catalog, detail }.into()
-            }
-        }
     }
 }
 

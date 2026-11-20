@@ -69,9 +69,13 @@ impl ImportServiceHandle {
                 .await?;
             let release = &prepared.release;
             records.push(bae_catalogs::search::MetadataResult::of_release(release));
-            offered.push(crate::shared_album::OfferedReading::of(
-                &release.read(&audio).map_err(crate::ImportError::from)?,
-            ));
+            let values = match release.read(&audio) {
+                Ok(values) => values,
+                Err(refusal) => {
+                    return Err(self.services.tables.reading_refusal(release, refusal).await)
+                }
+            };
+            offered.push(crate::shared_album::OfferedReading::of(&values));
             releases.push(prepared.stored);
         }
         let draft = crate::shared_album::shared_draft(

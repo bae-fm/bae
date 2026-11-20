@@ -52,9 +52,10 @@ pub enum UiErrorCategory {
         release_tracks: u32,
     },
     /// Several sets of the release's mediums fit the candidate's audio
-    /// equally and read differently; the line names every medium of them.
+    /// equally and read differently; the line names every side and disc of
+    /// them by its heading.
     TiedMediums {
-        mediums: Vec<u32>,
+        sides: Vec<bae_types::mediums::SideHeading>,
     },
     /// A release editor's save found the release changed since the editor
     /// opened on it (another editor saved it, or another device's edit

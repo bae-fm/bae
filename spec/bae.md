@@ -1580,8 +1580,10 @@ A CD rip of a box of records and CDs reads the CDs, and a record stating no
 lengths never beats a CD whose lengths agree. Sets still tied that read the
 same tracks, such as a hybrid SACD's two layers, are one answer. Sets that
 read different tracks are not chosen between, and never by which comes first:
-the release can't be applied, the error naming every disc of those sets, and
-the person picks another release or uses the file metadata. A release no set
+the release can't be applied, the error naming every side and disc of those
+sets by its heading, counted across all the release's mediums ("Disc 2 and
+Disc 4", "Side C, Side D, Side G and Side H"), and the person picks another
+release or uses the file metadata. A release no set
 of whose mediums holds the folder's tracks is refused, naming the folder's
 count and every track the release lists; one whose chosen tracks can't be read
 (a track with no title, an album credited to no one) is no match.

@@ -222,9 +222,11 @@ async fn lead_metadata(
     if !current.file_edits.is_at_revision(candidate.file_edit_revision) {
         return Err(Settled::Abandoned);
     }
-    let source_draft = release
-        .read(audio)
-        .map_err(crate::ImportError::from)
+    let reading = match release.read(audio) {
+        Ok(values) => Ok(values),
+        Err(refusal) => Err(context.tables.reading_refusal(release, refusal).await),
+    };
+    let source_draft = reading
         .and_then(|values| {
             crate::pane::external_candidate_draft(values, &current.metadata.draft, pressing_year)
         })

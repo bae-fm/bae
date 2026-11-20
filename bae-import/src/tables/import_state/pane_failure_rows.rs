@@ -8,6 +8,7 @@ use super::*;
 use crate::{PaneCommand, PaneFailure};
 use bae_diagnostics::{GroupingBlockReason, UiError, UiErrorCategory};
 use bae_types::edit_validation::EditValidationError;
+use bae_types::mediums::SideHeading;
 
 fn command_column(command: PaneCommand) -> &'static str {
     match command {
@@ -65,8 +66,15 @@ fn category_column(category: UiErrorCategory) -> String {
         C::MetadataTrackCount { folder_tracks, release_tracks } => {
             format!("{class}.{folder_tracks}.{release_tracks}")
         }
-        C::TiedMediums { mediums } => {
-            format!("{class}.{}", mediums.iter().map(u32::to_string).collect::<Vec<_>>().join("."))
+        C::TiedMediums { sides } => {
+            let sides: Vec<String> = sides
+                .iter()
+                .map(|side| match side {
+                    SideHeading::Sided { side_letter } => format!("side:{side_letter}"),
+                    SideHeading::Disc { disc } => format!("disc:{disc}"),
+                })
+                .collect();
+            format!("{class}.{}", sides.join("."))
         }
         C::AirPlayBackOff { receiver, seconds } => format!("{class}.{seconds}.{receiver}"),
         C::AirPlayPairingFailed { receiver }
@@ -210,9 +218,18 @@ fn category_of(column: &str) -> Result<UiErrorCategory, DbError> {
             C::UnfinishedInstallationUnreadable { library_id: stored.to_owned() }
         }
         K::TiedMediums => C::TiedMediums {
-            mediums: stored
+            sides: stored
                 .split('.')
-                .map(|medium| medium.parse().map_err(|error| unreadable_because(&error)))
+                .map(|side| match side.split_once(':') {
+                    Some(("side", side_letter)) => {
+                        Ok(SideHeading::Sided { side_letter: side_letter.to_owned() })
+                    }
+                    Some(("disc", disc)) => disc
+                        .parse()
+                        .map(|disc| SideHeading::Disc { disc })
+                        .map_err(|error| unreadable_because(&error)),
+                    _ => Err(unreadable()),
+                })
                 .collect::<Result<_, _>>()?,
         },
         K::AirPlayBackOff => {

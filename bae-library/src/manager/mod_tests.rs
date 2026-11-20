@@ -583,8 +583,9 @@ pub(super) fn mb_identity(group: &str, release: &str) -> bae_catalogs::records::
 /// import met is the library's store failure.
 #[test]
 pub(super) fn an_import_error_keeps_its_kind_through_a_library_error() {
-    let library = LibraryError::from(ImportError::TiedMediums { mediums: vec![1, 3] });
-    assert_eq!(library.category(), UiErrorCategory::TiedMediums { mediums: vec![1, 3] });
+    let sides = vec![bae_types::mediums::SideHeading::Disc { disc: 1 }];
+    let library = LibraryError::from(ImportError::TiedMediums { sides: sides.clone() });
+    assert_eq!(library.category(), UiErrorCategory::TiedMediums { sides });
 
     let library = LibraryError::from(ImportError::MetadataTrackCount {
         folder_tracks: 10,

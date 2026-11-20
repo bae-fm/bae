@@ -40,9 +40,10 @@ pub enum BridgeErrorCategory {
         release_tracks: u32,
     },
     /// Several sets of the release's mediums fit the candidate's audio
-    /// equally and read differently; the line names every medium of them.
+    /// equally and read differently; the line names every side and disc of
+    /// them by its heading, as a list.
     TiedMediums {
-        mediums: Vec<u32>,
+        sides: Vec<crate::types::BridgeSideHeading>,
     },
     /// A release editor's save found the release changed since the editor
     /// opened on it, and wrote nothing.
@@ -341,7 +342,7 @@ mirror_enum! {
         FilesAlreadyImported,
         AlbumGone,
         MetadataTrackCount { folder_tracks, release_tracks },
-        TiedMediums { mediums },
+        TiedMediums { sides: (each crate::types::BridgeSideHeading) },
         ReleaseChangedSinceOpened,
         ChangedMeanwhile,
         InvalidEdit(reason: (BridgeValidationReason)),
