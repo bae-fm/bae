@@ -1769,11 +1769,11 @@ the library lists the release's files in. Ben's download names its files by titl
 tags numbers it 7, and a catalog's tracklist lays its seventh track on it.
 
 **Mediums and places.** Applying a source writes the draft's mediums and each
-track's place. Only two things edit them afterwards: applying another source
-in the library editor, and the *Disc* pop-up of a CUE sheet in the library
-editor (§3.8), which moves the sheet's tracks to another disc. The pane and
-the library editor show a track's position and edit only its title and
-artists.
+track's place. The library editor shows a track's position and edits only
+its title and artists; what changes mediums and places afterwards is applying
+another source in it, its CUE sheets' *Disc* pop-up (§3.8), which moves a
+sheet's tracks to another disc, and, before an import, the pane's file
+decisions below.
 
 - A MusicBrainz release gives each medium it reads its format; a record or
   cassette has as many sides as its positions name letters, read as a Discogs
