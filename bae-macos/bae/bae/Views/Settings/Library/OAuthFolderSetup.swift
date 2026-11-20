@@ -64,7 +64,7 @@
                 .frame(maxWidth: .infinity, alignment: .leading)
                 Spacer(minLength: 0)
                 MacSheetFooter {
-                    Button("Cancel") { leave() }
+                    MacButton("Cancel") { leave() }
                     if !browser.isWorking {
                         MacButton("Sign in…", kind: .primary) {
                             browser.signIn()
@@ -100,9 +100,9 @@
                 checkedFolder: browser.target?.name,
                 leading: {
                     HStack(spacing: ThemeSpace.related) {
-                        Button("New folder…") { browser.startNaming() }
+                        MacButton("New folder…") { browser.startNaming() }
                             .disabled(browser.isNaming || browser.isWorking)
-                        Button("Look again") { browser.lookAgain() }
+                        MacButton("Look again") { browser.lookAgain() }
                             .disabled(browser.isNaming || browser.isWorking)
                     }
                 },

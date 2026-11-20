@@ -232,7 +232,7 @@ struct S3KeySheet: View {
             }
         } footer: {
             MacSheetFooter {
-                Button("Cancel") { replacement.cancel() }
+                MacButton("Cancel") { replacement.cancel() }
                     .keyboardShortcut(.cancelAction)
                 if replacement.sheet != .checking {
                     MacButton("Save", kind: .primary) {

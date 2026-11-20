@@ -143,7 +143,7 @@ struct InviteCodeSheetContent: View {
             }
         } footer: {
             MacSheetFooter {
-                Button("Cancel invite", action: onCancelInvite)
+                MacButton("Cancel invite", action: onCancelInvite)
                     .disabled(busy)
                 MacButton("Done", kind: .primary, action: onDone)
                     .keyboardShortcut(.defaultAction)

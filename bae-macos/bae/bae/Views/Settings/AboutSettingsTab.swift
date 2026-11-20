@@ -27,7 +27,7 @@ struct AboutSettingsTab: View {
                     .themeText(.mono)
                     .foregroundStyle(.tertiary)
             }
-            Button("Check for updates…") {
+            MacButton("Check for updates…") {
                 onCheckForUpdates()
             }
             .disabled(!canCheckForUpdates)

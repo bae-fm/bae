@@ -89,7 +89,7 @@ struct StorageSettingsForm: View {
                 }
                 MacSection("Cache") {
                     MacRow {
-                        Button("Clear cache", action: onClearCache)
+                        MacButton("Clear cache", action: onClearCache)
                             .disabled(!storage.canClearCache)
                     } label: {
                         row(

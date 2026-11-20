@@ -11,6 +11,16 @@ enum RowMetrics {
     static let padding = ThemeSpace.related + ThemeSpace.line
     /// The space between a section and the one above.
     static let sectionGap: CGFloat = 14
+    /// Where a box puts a row of text that is not nested.
+    static let placement = MacRowPlacement(
+        insets: EdgeInsets(
+            top: padding,
+            leading: inset,
+            bottom: padding,
+            trailing: inset
+        ),
+        minHeight: height
+    )
 }
 
 extension ContainerValues {
@@ -47,10 +57,14 @@ extension View {
 
 extension View {
     /// Draws the rows of a settings box as the boards do: a label with its
-    /// value or control at the right. A form takes its rows' form look from
-    /// its style, so the style sets it; a box outside a form sets it itself.
+    /// value or control at the right, and a row that is a button placed
+    /// inside its button. A form takes its rows' form look from its style,
+    /// so the style sets it; a box outside a form sets it itself. A row reads
+    /// its placement from where its box declares its rows, not from where
+    /// the box puts it, so this goes round that declaration.
     func settingsRowControls() -> some View {
         labeledContentStyle(SettingsLabeledContentStyle())
+            .environment(\.macRowPlacement, RowMetrics.placement)
     }
 }
 
@@ -112,17 +126,26 @@ struct MacBoxRows: View {
                     MacHairline()
                         .padding(.horizontal, RowMetrics.inset)
                 }
-                row
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, RowMetrics.inset)
-                    .padding(
-                        .top,
-                        joins ? 0 : row.containerValues.rowVerticalInset
+                // A row that is a button places itself, in the placement
+                // `settingsRowControls` gives it: such a row holds text, and
+                // nests under no other.
+                if row.containerValues.placesItselfInRow {
+                    row
+                }
+                else {
+                    let inset = row.containerValues.rowVerticalInset
+                    row.placedInRow(
+                        MacRowPlacement(
+                            insets: EdgeInsets(
+                                top: joins ? 0 : inset,
+                                leading: RowMetrics.inset,
+                                bottom: inset,
+                                trailing: RowMetrics.inset
+                            ),
+                            minHeight: joins ? 0 : RowMetrics.height
+                        )
                     )
-                    .padding(.bottom, row.containerValues.rowVerticalInset)
-                    .frame(
-                        minHeight: joins ? 0 : RowMetrics.height
-                    )
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

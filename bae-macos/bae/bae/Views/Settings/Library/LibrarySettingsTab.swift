@@ -50,12 +50,12 @@ struct LibrarySettingsTab: View {
                             Text(libraryName.name ?? "")
                                 .foregroundStyle(.secondary)
                             if canRename {
-                                Button("Rename…", action: onRenameLibrary)
+                                MacButton("Rename…", action: onRenameLibrary)
                             }
                         }
                     }
                     MacRow("Library folder") {
-                        Button("Show in Finder") {
+                        MacButton("Show in Finder") {
                             SystemActions.revealInFinder(
                                 path: configStore.config.libraryPath
                             )
@@ -166,7 +166,7 @@ struct LibrarySettingsTab: View {
                 HStack {
                     Text("Not synced")
                         .foregroundStyle(.secondary)
-                    Button("Set up a cloud home…") {
+                    MacButton("Set up a cloud home…", kind: .primary) {
                         showSyncSetup = true
                     }
                 }

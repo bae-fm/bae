@@ -1,28 +1,73 @@
 import SwiftUI
 
-/// A settings row: a label at the left and its value or controls at the
-/// right. Inside a settings box or form the row is one line of the box.
-public struct MacRow<Label: View, Content: View>: View {
-    /// What pressing the row does, which also says how it reads.
-    public enum Press {
-        /// The row opens something: a chevron ends it.
-        case opens(() -> Void)
-        /// The row is itself an action that removes something.
-        case removes(() -> Void)
-    }
+/// What pressing a `MacRow` does, which also says how it reads.
+public enum MacRowPress {
+    /// The row opens something: a chevron ends it.
+    case opens(() -> Void)
+    /// The row is itself an action that removes something.
+    case removes(() -> Void)
+}
 
+/// A settings row, as the design system's `MacRow` draws one: a lead such as
+/// a person's picture, the row's name with a note under it, then its value in
+/// secondary text and its controls at the right, a group's space apart.
+/// Inside a settings box the row is one line of the box.
+public struct MacRow<Lead: View, Label: View, Content: View>: View {
+    /// What pressing the row does, which also says how it reads.
+    public typealias Press = MacRowPress
+
+    private let lead: Lead
     private let label: Label
     private let content: Content
+    private var value: String?
+    private var note: Text?
+    private var noteTone: StatusTone?
     private var chip: String?
     private var isStrong = false
     private var press: Press?
 
-    public init(
-        @ViewBuilder content: () -> Content,
-        @ViewBuilder label: () -> Label
-    ) {
-        self.content = content()
-        self.label = label()
+    @Environment(\.macRowPlacement)
+    private var placement
+
+    private init(lead: Lead, label: Label, content: Content) {
+        self.lead = lead
+        self.label = label
+        self.content = content
+    }
+
+    /// The row with `lead` before its name, such as a person's picture.
+    public func lead<NewLead: View>(
+        @ViewBuilder _ lead: () -> NewLead
+    ) -> MacRow<NewLead, Label, Content> where Lead == EmptyView {
+        var row = MacRow<NewLead, Label, Content>(
+            lead: lead(),
+            label: label,
+            content: content
+        )
+        row.value = value
+        row.note = note
+        row.noteTone = noteTone
+        row.chip = chip
+        row.isStrong = isStrong
+        row.press = press
+        return row
+    }
+
+    /// The row's value, in secondary text before its controls; nil or empty
+    /// draws none.
+    public func value(_ words: String?) -> MacRow {
+        var copy = self
+        copy.value = words
+        return copy
+    }
+
+    /// A line under the row's name, in secondary text, or in `tone`'s colour
+    /// when it says something in that tone, such as why an invite failed.
+    public func note(_ text: Text?, tone: StatusTone? = nil) -> MacRow {
+        var copy = self
+        copy.note = text
+        copy.noteTone = tone
+        return copy
     }
 
     /// A chip after the row's name, such as a person's role.
@@ -50,13 +95,15 @@ public struct MacRow<Label: View, Content: View>: View {
     public var body: some View {
         switch press {
         case .opens(let action)?:
-            Button(action: action) { row(chevron: true) }
+            Button(action: action) { pressable(chevron: true) }
                 .buttonStyle(.accentPlain)
+                .placesItselfInRow()
         case .removes(let action)?:
             Button(role: .destructive, action: action) {
-                row(chevron: false).foregroundStyle(Theme.danger)
+                pressable(chevron: false).foregroundStyle(Theme.danger)
             }
             .buttonStyle(.accentPlain)
+            .placesItselfInRow()
         case nil:
             // The row reads its name, and the note under it, before the
             // controls at its end: VoiceOver orders a window's elements by
@@ -67,51 +114,106 @@ public struct MacRow<Label: View, Content: View>: View {
         }
     }
 
+    /// The row inside its button: the button takes the whole row, its
+    /// box's space round the content included, so the row presses from its
+    /// edges.
+    @ViewBuilder
+    private func pressable(chevron: Bool) -> some View {
+        if let placement {
+            row(chevron: chevron).placedInRow(placement)
+                .contentShape(Rectangle())
+        }
+        else {
+            row(chevron: chevron)
+        }
+    }
+
     private func row(chevron: Bool) -> some View {
-        LabeledContent {
-            HStack(spacing: ThemeSpace.related) {
-                content
-                if chevron {
-                    Image(systemName: "chevron.forward")
-                        .themeIcon(.small)
-                        .foregroundStyle(.secondary)
+        HStack(spacing: ThemeSpace.group) {
+            lead
+            LabeledContent {
+                HStack(spacing: ThemeSpace.group) {
+                    if let value, !value.isEmpty {
+                        Text(verbatim: value)
+                            .foregroundStyle(.secondary)
+                    }
+                    content
+                    if chevron {
+                        Image(systemName: "chevron.forward")
+                            .themeIcon(.small)
+                            .foregroundStyle(.secondary)
+                    }
                 }
+            } label: {
+                VStack(alignment: .leading, spacing: ThemeSpace.inline) {
+                    HStack(spacing: ThemeSpace.compact) {
+                        if isStrong {
+                            label.themeText(.strong)
+                        }
+                        else {
+                            label
+                        }
+                        if let chip {
+                            StatusChip(verbatim: chip)
+                        }
+                    }
+                    if let note {
+                        note
+                            .themeText(.detail)
+                            .foregroundStyle(
+                                noteTone.map { AnyShapeStyle($0.color) }
+                                    ?? AnyShapeStyle(.secondary)
+                            )
+                    }
+                }
+                .accessibilitySortPriority(1)
             }
-        } label: {
-            HStack(spacing: ThemeSpace.related) {
-                if isStrong {
-                    label.themeText(.rowTitle)
-                }
-                else {
-                    label
-                }
-                if let chip {
-                    StatusChip(verbatim: chip)
-                }
-            }
-            .accessibilitySortPriority(1)
         }
         .contentShape(Rectangle())
     }
 }
 
-extension MacRow where Label == Text {
+extension MacRow where Lead == EmptyView {
+    public init(
+        @ViewBuilder content: () -> Content,
+        @ViewBuilder label: () -> Label
+    ) {
+        self.init(lead: EmptyView(), label: label(), content: content())
+    }
+}
+
+extension MacRow where Lead == EmptyView, Label == Text {
     public init(
         _ title: LocalizedStringKey,
         @ViewBuilder content: () -> Content
     ) {
         self.init(content: content) { Text(title) }
     }
-}
 
-extension MacRow where Label == Text, Content == Text {
-    /// A row whose right side is a line of text.
-    public init<S: StringProtocol>(_ title: LocalizedStringKey, value: S) {
-        self.init(title) { Text(value) }
+    /// A row whose right side is `value` in secondary text, then its
+    /// controls.
+    public init<S: StringProtocol>(
+        _ title: LocalizedStringKey,
+        value: S,
+        @ViewBuilder content: () -> Content
+    ) {
+        self = MacRow(title, content: content).value(String(value))
     }
 }
 
-extension MacRow where Label == Text, Content == ToneDotValue {
+extension MacRow where Lead == EmptyView, Label == Text, Content == EmptyView {
+    /// A row whose right side is `value` in secondary text.
+    public init<S: StringProtocol>(_ title: LocalizedStringKey, value: S) {
+        self.init(title, value: value) {}
+    }
+}
+
+extension MacRow
+where
+    Lead == EmptyView,
+    Label == Text,
+    Content == ToneDotValue
+{
     /// A row whose right side is `value` in `tone`, after a dot of it.
     public init(
         _ title: LocalizedStringKey,

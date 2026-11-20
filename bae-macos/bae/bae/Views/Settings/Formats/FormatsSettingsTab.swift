@@ -126,7 +126,7 @@ struct FormatsSettingsTab: View {
             Text("Formats")
         } footer: {
             MacSheetFooter {
-                Button("Add format…", action: addPreset)
+                MacButton("Add format…", action: addPreset)
             }
         }
     }

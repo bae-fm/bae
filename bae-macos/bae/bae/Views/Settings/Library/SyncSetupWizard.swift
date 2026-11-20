@@ -134,7 +134,7 @@ struct SyncSetupWizard: View {
             .formStyle(.grouped)
 
             MacSheetFooter {
-                Button("Cancel") { onDone() }
+                MacButton("Cancel") { onDone() }
                 MacButton("Continue", kind: .primary) {
                     withAnimation(.easeInOut(duration: 0.15)) {
                         step = .configure(choice)
@@ -367,7 +367,7 @@ struct SetupStep<Fields: View, Leading: View>: View {
                 lead: { if !run.isRunning { leading } },
                 trailing: {
                     if let cancel {
-                        Button("Cancel") { cancel() }
+                        MacButton("Cancel") { cancel() }
                             .disabled(run.isCancelling)
                     }
                     if !run.isRunning {

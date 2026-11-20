@@ -46,17 +46,19 @@ struct MacInviteFields: View {
                 lead: {
                     if storage == .s3 {
                         if usesOwnKey {
-                            Button("Use their own key instead") {
+                            MacButton("Use their own key instead") {
                                 usesOwnKey = false
                             }
                         }
                         else {
-                            Button("Use my key instead") { usesOwnKey = true }
+                            MacButton("Use my key instead") {
+                                usesOwnKey = true
+                            }
                         }
                     }
                 },
                 trailing: {
-                    Button("Cancel", action: onCancel)
+                    MacButton("Cancel", action: onCancel)
                         .keyboardShortcut(.cancelAction)
                     MacButton("Create invite", kind: .primary, action: onCreate)
                         .keyboardShortcut(.defaultAction)

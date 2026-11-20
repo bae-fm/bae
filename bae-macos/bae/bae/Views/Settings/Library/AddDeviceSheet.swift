@@ -139,7 +139,7 @@ struct AddDeviceSheetContent: View {
                 }
             } footer: {
                 MacSheetFooter {
-                    Button("Decline", action: onDecline)
+                    MacButton("Decline", action: onDecline)
                         .disabled(busy)
                     MacButton("Add", kind: .primary, action: onApprove)
                         .keyboardShortcut(.defaultAction)

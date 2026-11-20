@@ -115,7 +115,7 @@ struct AutomationSettingsContent: View {
                             if digits != typed { portText = digits }
                         }
                         .onSubmit(applyPort)
-                    Button("Save", action: applyPort)
+                    MacButton("Save", action: applyPort)
                         .disabled(isWorking)
                 }
                 statusRow
@@ -143,8 +143,8 @@ struct AutomationSettingsContent: View {
             }
             MacSection {
                 HStack(spacing: ThemeSpace.related) {
-                    Button("Copy token", action: copyToken)
-                    Button("Rotate token", action: rotateToken)
+                    MacButton("Copy token", action: copyToken)
+                    MacButton("Rotate token", action: rotateToken)
                 }
                 .disabled(isWorking)
             }
@@ -338,7 +338,7 @@ extension AutomationSettingsContent {
                     Text("Not running")
                         .foregroundStyle(.secondary)
                 }
-                Button("Refresh", action: refreshStatus)
+                MacButton("Refresh", action: refreshStatus)
                     .disabled(isWorking)
             }
         }

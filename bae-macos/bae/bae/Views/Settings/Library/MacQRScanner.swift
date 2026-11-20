@@ -190,7 +190,7 @@ struct CodeScannerSheet: View {
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.card))
         } footer: {
             MacSheetFooter {
-                Button("Cancel", action: onDismiss)
+                MacButton("Cancel", action: onDismiss)
                     .keyboardShortcut(.cancelAction)
             }
         }

@@ -19,23 +19,19 @@ struct PictureRow: View {
     private var sync
 
     var body: some View {
-        MacRow {
+        MacRow("Picture") {
             HStack(spacing: ThemeSpace.related) {
                 if profile.avatarVersion != nil {
-                    Button("Remove") {
+                    MacButton("Remove") {
                         run { try await sync.setAvatar(nil) }
                     }
                     .disabled(busy)
                 }
-                Button("Choose…") { choose() }
+                MacButton("Choose…") { choose() }
                     .disabled(busy)
             }
-        } label: {
-            HStack(spacing: ThemeSpace.related) {
-                Avatar(profile: profile, size: 28)
-                Text("Picture")
-            }
         }
+        .lead { Avatar(profile: profile, size: 28) }
     }
 
     private func choose() {

@@ -365,12 +365,8 @@ extension PeopleAndDevicesPage {
         MacSection {
             if let profile = store.selfProfile {
                 PictureRow(profile: profile, busy: task != nil, run: run)
-                MacRow("Name") {
-                    HStack(spacing: ThemeSpace.related) {
-                        Text(verbatim: profile.name)
-                            .foregroundStyle(.secondary)
-                        Button("Change…") { renaming = true }
-                    }
+                MacRow("Name", value: profile.name) {
+                    MacButton("Change…") { renaming = true }
                 }
             }
             if let me = selfPerson {
@@ -456,7 +452,7 @@ extension PeopleAndDevicesPage {
             // Settings puts "Add Account…".
             if store.selfIsAdmin {
                 MacSheetFooter {
-                    Button("Invite…") { inviteSheet = .form }
+                    MacButton("Invite…") { inviteSheet = .form }
                 }
             }
         }
@@ -490,17 +486,13 @@ extension PeopleAndDevicesPage {
         let member = person.membership
         AdminChangesSection(place: .person(member: String(member.id)))
         MacSection {
-            MacRow("Role") {
-                HStack(spacing: ThemeSpace.related) {
-                    Text(verbatim: member.role.label)
-                        .foregroundStyle(.secondary)
-                    if store.selfIsAdmin && !member.isSelf {
-                        switch member.role {
-                        case .admin:
-                            Button("Make member") { setRole(member, .member) }
-                        case .member:
-                            Button("Make admin") { setRole(member, .admin) }
-                        }
+            MacRow("Role", value: member.role.label) {
+                if store.selfIsAdmin && !member.isSelf {
+                    switch member.role {
+                    case .admin:
+                        MacButton("Make member") { setRole(member, .member) }
+                    case .member:
+                        MacButton("Make admin") { setRole(member, .admin) }
                     }
                 }
             }
@@ -566,7 +558,7 @@ extension PeopleAndDevicesPage {
         } footer: {
             if member.isSelf {
                 MacSheetFooter {
-                    Button("Add device…") { showAddDevice = true }
+                    MacButton("Add device…") { showAddDevice = true }
                 }
             }
         }
@@ -691,6 +683,8 @@ private struct PageLinkRow: View {
     var avatar: Avatar?
     var tag: String?
     let value: String
+    /// Why the row's invite waits, in the danger tone under its name.
+    var problem: String?
     var opens = true
     let action: () -> Void
 
@@ -710,6 +704,7 @@ private struct PageLinkRow: View {
         avatar: Avatar,
         tag: String? = nil,
         value: String,
+        problem: String? = nil,
         opens: Bool,
         action: @escaping () -> Void
     ) {
@@ -718,18 +713,14 @@ private struct PageLinkRow: View {
         self.avatar = avatar
         self.tag = tag
         self.value = value
+        self.problem = problem
         self.opens = opens
         self.action = action
     }
 
     var body: some View {
         MacRow {
-            Text(verbatim: value)
-                .foregroundStyle(.secondary)
         } label: {
-            if let avatar {
-                avatar
-            }
             if let title {
                 Text(title)
             }
@@ -737,6 +728,13 @@ private struct PageLinkRow: View {
                 Text(verbatim: verbatimTitle)
             }
         }
+        .lead {
+            if let avatar {
+                avatar
+            }
+        }
+        .value(value)
+        .note(problem.map { Text(verbatim: $0) }, tone: .danger)
         .chip(tag)
         .strong(verbatimTitle != nil)
         .pressing(opens ? .opens(action) : nil)
@@ -793,7 +791,7 @@ private struct RenameProfileSheet: View {
             }
         } footer: {
             MacSheetFooter {
-                Button("Cancel", action: onDismiss)
+                MacButton("Cancel", action: onDismiss)
                     .keyboardShortcut(.cancelAction)
                 MacButton("Save", kind: .primary, action: save)
                     .keyboardShortcut(.defaultAction)
@@ -836,17 +834,15 @@ private struct RefusedInviteRow: View {
         MacRow {
             MacButton("Dismiss", kind: .borderless, action: onDismiss)
         } label: {
-            VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                Text(verbatim: refused.address)
-                    .themeText(.rowTitle)
-                MacErrorLine(
-                    String(
-                        localized:
-                            "Could not invite: \(localizedCoreString(refused.reasonKey))"
-                    )
-                )
-            }
+            Text(verbatim: refused.address)
         }
+        .note(
+            Text(
+                "Could not invite: \(localizedCoreString(refused.reasonKey))"
+            ),
+            tone: .danger
+        )
+        .strong()
     }
 }
 
@@ -862,33 +858,30 @@ private struct InviteRow: View {
     let onOpen: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.line) {
-            if case .code(_, .joining(let name, let initials)) = invite.shown {
-                PageLinkRow(
-                    title: name,
-                    avatar: Avatar(initials: initials, size: 28),
-                    tag: String(localized: "Joining"),
-                    value: invite.label,
-                    opens: false,
-                    action: {}
-                )
-            }
-            else {
-                PageLinkRow(
-                    title: invite.label,
-                    avatar: Avatar(initials: invite.labelInitials, size: 28),
-                    tag: String(localized: "Invited"),
-                    value: waitsForSharing
-                        ? String(localized: "Shares access once online") : "",
-                    opens: true,
-                    action: onOpen
-                )
-                if let held = invite.held {
-                    MacErrorLine(localizedCoreString(held.reason.key))
-                }
-            }
+        if case .code(_, .joining(let name, let initials)) = invite.shown {
+            PageLinkRow(
+                title: name,
+                avatar: Avatar(initials: initials, size: 28),
+                tag: String(localized: "Joining"),
+                value: invite.label,
+                opens: false,
+                action: {}
+            )
         }
-        .padding(.vertical, ThemeSpace.line)
+        else {
+            PageLinkRow(
+                title: invite.label,
+                avatar: Avatar(initials: invite.labelInitials, size: 28),
+                tag: String(localized: "Invited"),
+                value: waitsForSharing
+                    ? String(localized: "Shares access once online") : "",
+                problem: invite.held.map {
+                    localizedCoreString($0.reason.key)
+                },
+                opens: true,
+                action: onOpen
+            )
+        }
     }
 
     /// Sync can't share the library with the address while this Mac is
@@ -926,11 +919,11 @@ struct JoinRequestSheet: View {
         } footer: {
             MacSheetFooter(
                 lead: {
-                    Button("Close", action: onClose)
+                    MacButton("Close", action: onClose)
                         .keyboardShortcut(.cancelAction)
                 },
                 trailing: {
-                    Button("Decline", action: onDecline)
+                    MacButton("Decline", action: onDecline)
                         .disabled(busy)
                     MacButton("Approve", kind: .primary, action: onApprove)
                         .disabled(busy)

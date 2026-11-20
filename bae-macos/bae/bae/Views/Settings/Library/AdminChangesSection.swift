@@ -102,7 +102,7 @@ private struct AdminChangeRow: View {
     }
 
     private var dismissButton: some View {
-        Button("Dismiss", action: onDismiss)
+        MacButton("Dismiss", action: onDismiss)
             .disabled(busy)
     }
 
