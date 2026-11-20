@@ -3,9 +3,17 @@ import SwiftUI
 
 /// The ⋯ button of a row, with the row's actions in its menu: a row offers
 /// its actions here, not as a button of each. `overlay` draws the button
-/// round on a dark fill, for a place on a cover.
+/// round on a dark fill, for a place on a cover; `boxed` draws it on the
+/// push button's fill, beside a page's Play.
 struct MacMoreMenu: View {
-    let overlay: Bool
+    /// How the button looks.
+    enum Look {
+        case plain
+        case boxed
+        case overlay
+    }
+
+    let look: Look
     /// True while the menu is open.
     let isOpen: Binding<Bool>?
     let items: () -> [MacMenuEntry]
@@ -14,22 +22,21 @@ struct MacMoreMenu: View {
     private var isHovered = false
 
     init(
-        overlay: Bool = false,
+        look: Look = .plain,
         isOpen: Binding<Bool>? = nil,
         @MacMenuBuilder items: @escaping () -> [MacMenuEntry]
     ) {
-        self.overlay = overlay
+        self.look = look
         self.isOpen = isOpen
         self.items = items
     }
 
     var body: some View {
         MacButton(kind: .plain, isOpen: isOpen, menu: items) {
-            if overlay {
-                overlayDots
-            }
-            else {
-                dots
+            switch look {
+            case .plain: dots
+            case .boxed: boxedDots
+            case .overlay: overlayDots
             }
         }
         .fixedSize()
@@ -47,6 +54,15 @@ struct MacMoreMenu: View {
                 height: ThemeSize.hitTarget
             )
             .contentShape(Rectangle())
+    }
+
+    /// The dots on the push button's boxed face, as the design draws a boxed
+    /// icon button.
+    private var boxedDots: some View {
+        BoxedIconFace(size: .control, isPressed: false) {
+            Image(systemName: "ellipsis")
+                .font(.system(size: 15, weight: ThemeIcon.medium.weight))
+        }
     }
 
     /// The dots on a round fill that turns to the accent under the pointer.

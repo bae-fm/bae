@@ -48,7 +48,7 @@ struct MacPlaylistHeader: View {
             }
             Button("Shuffle") { playback.playPlaylist(summary.id, nil, true) }
             if summary.yours {
-                MacMoreMenu {
+                MacMoreMenu(look: .boxed) {
                     PlaylistOptionsMenu(onEdit: onEdit, onDelete: onDelete)
                 }
             }

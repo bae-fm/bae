@@ -459,7 +459,7 @@ extension ShotScene {
         }
     }
 
-    /// `MacMoreMenu` off and over a cover, at the end of a row.
+    /// `MacMoreMenu` off, boxed and over a cover, at the end of a row.
     private static let moreMenuStateScenes: [ShotScene] = [
         component("mac.component.more-menu.off", width: 596, height: 60) {
             MacMoreMenu {
@@ -468,8 +468,14 @@ extension ShotScene {
             .disabled(true)
             .frame(maxWidth: .infinity, alignment: .trailing)
         },
+        component("mac.component.more-menu.boxed", width: 596, height: 60) {
+            MacMoreMenu(look: .boxed) {
+                MacMenuItem("Details…") {}
+            }
+            .frame(maxWidth: .infinity, alignment: .trailing)
+        },
         component("mac.component.more-menu.overlay", width: 596, height: 60) {
-            MacMoreMenu(overlay: true) {
+            MacMoreMenu(look: .overlay) {
                 MacMenuItem("Details…") {}
             }
             .frame(maxWidth: .infinity, alignment: .trailing)

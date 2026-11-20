@@ -78,22 +78,7 @@ struct MacAlbumHeader: View {
             }
             HStack(spacing: ThemeSpace.related) {
                 MacButton("Play", kind: .primary, action: onPlay)
-                MacButton(kind: .plain, menu: menu) {
-                    Image(systemName: "ellipsis")
-                        .themeIcon(.medium)
-                        .foregroundStyle(.secondary)
-                        .frame(
-                            width: ThemeSize.hitTarget,
-                            height: ThemeSize.hitTarget
-                        )
-                        .background(
-                            Theme.hover,
-                            in: RoundedRectangle(
-                                cornerRadius: ThemeRadius.control
-                            )
-                        )
-                }
-                .fixedSize()
+                MacMoreMenu(look: .boxed, items: menu)
             }
             .padding(.top, ThemeSpace.group)
             MacAlbumRating(rating: detail.rating, onRate: onRate)
