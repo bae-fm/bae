@@ -20,10 +20,7 @@ pub struct HistoryRow {
     /// opens the day's heading.
     pub opens_day: bool,
     /// Whose play it is.
-    pub person: coven::MemberId,
-    pub person_name: String,
-    /// The version of the person's avatar; `None` without one.
-    pub avatar_version: Option<String>,
+    pub person: crate::playlists::PlaylistOwner,
 }
 
 /// Whose plays History shows: everyone's, or one person's.
@@ -122,9 +119,11 @@ fn history_row(row: &Row<'_>) -> rusqlite::Result<HistoryRow> {
         started_at: rfc3339_column(row, "started_at")?,
         played_on,
         opens_day: row.get("opens_day")?,
-        person: coven::MemberId(uuid_column(row, "person_id")?),
-        person_name: row.get("person_name")?,
-        avatar_version: row.get("avatar")?,
+        person: crate::playlists::PlaylistOwner {
+            person: coven::MemberId(uuid_column(row, "person_id")?),
+            name: row.get("person_name")?,
+            avatar_version: row.get("avatar")?,
+        },
     })
 }
 

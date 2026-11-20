@@ -83,7 +83,7 @@ internal fun PersonButton(
         AndroidMenu(
             expanded = state.openMenu == LibraryHeaderMenu.PERSON,
             onDismissRequest = close,
-            minWidth = 220.dp,
+            minWidth = 0.dp,
         ) {
             PersonMenuItems(
                 isAdmin = isAdmin,

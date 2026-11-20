@@ -60,13 +60,15 @@ internal fun HistoryScreen(
 ) {
     var person by rememberSaveable { mutableStateOf<String?>(null) }
     val page = rememberHistoryPage(session, HistoryOf(person))
-    val menu = (page.countExtra as? BridgeListCountExtra.History)
     var menuOpen by remember { mutableStateOf(false) }
+    // Read once here, so every row agrees on today and on the zone the times show in.
+    val today = remember { LocalDate.now() }
+    val zone = remember { TimeZone.getDefault() }
     Column(modifier = Modifier.fillMaxSize()) {
         HistoryTopBar(
             onBack = onBack,
             backLabel = backLabel,
-            menu = menu,
+            menu = { page.countExtra as? BridgeListCountExtra.History },
             menuOpen = menuOpen,
             onMenuOpen = { menuOpen = it },
             onChoose = { chosen ->
@@ -74,7 +76,7 @@ internal fun HistoryScreen(
                 person = chosen
             },
         )
-        HistoryContent(session = session, page = page, shown = menu?.shown, listState = rememberLazyListState())
+        HistoryContent(session = session, page = page, today = today, zone = zone, listState = rememberLazyListState())
     }
 }
 
@@ -83,7 +85,7 @@ internal fun HistoryScreen(
 internal fun HistoryTopBar(
     onBack: () -> Unit,
     backLabel: String,
-    menu: BridgeListCountExtra.History?,
+    menu: () -> BridgeListCountExtra.History?,
     menuOpen: Boolean,
     onMenuOpen: (Boolean) -> Unit,
     onChoose: (String?) -> Unit,
@@ -93,9 +95,8 @@ internal fun HistoryTopBar(
         backLabel = backLabel,
         title = stringResource(R.string.history),
         actions = {
-            if (menu != null) {
-                WhoseMenu(menu = menu, open = menuOpen, onOpen = onMenuOpen, onChoose = onChoose)
-            }
+            // The bar's own action reads the count, so only the bar redraws when it changes.
+            menu()?.let { WhoseMenu(menu = it, open = menuOpen, onOpen = onMenuOpen, onChoose = onChoose) }
         },
     )
 }
@@ -137,11 +138,11 @@ private fun RowScope.WhoseMenu(
                     .padding(horizontal = ThemeSpace.group, vertical = ThemeSpace.related),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(text = label, style = ThemeText.rowTitle.style, color = MaterialTheme.colorScheme.primary)
+            Text(text = label, style = ThemeText.rowTitle.style, color = MaterialTheme.colorScheme.onSurface)
             Icon(
                 imageVector = Icons.Filled.KeyboardArrowDown,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
+                tint = MaterialTheme.colorScheme.onSurface,
             )
         }
         AndroidMenu(expanded = open, onDismissRequest = { onOpen(false) }) {
@@ -166,27 +167,32 @@ internal fun WhoseMenuItems(
     }
 }
 
+/** The words an empty History says, naming the person whose plays it shows when it shows one person's. */
+@Composable
+internal fun historyEmptyText(shown: BridgeHistoryShown?): String =
+    when (shown) {
+        is BridgeHistoryShown.Person -> stringResource(R.string.history_empty_person, shown.name)
+        else -> stringResource(R.string.history_empty)
+    }
+
 /** History's plays as rows under their days' headings, each row on screen keeping the list loading it. */
 @Composable
 private fun HistoryContent(
     session: OpenLibrary,
     page: HistoryPageStore,
-    shown: BridgeHistoryShown?,
+    today: LocalDate,
+    zone: TimeZone,
     listState: LazyListState,
 ) {
-    val empty =
-        when (shown) {
-            is BridgeHistoryShown.Person -> stringResource(R.string.history_empty_person, shown.name)
-            else -> stringResource(R.string.history_empty)
-        }
-    LibraryPageContent(session = session, page = page, emptyMessage = empty) {
+    val shown = (page.countExtra as? BridgeListCountExtra.History)?.shown
+    LibraryPageContent(session = session, page = page, emptyMessage = historyEmptyText(shown)) {
         LaunchedEffect(page, listState) {
             snapshotFlow {
                 val visible = listState.layoutInfo.visibleItemsInfo
                 (visible.firstOrNull()?.index ?: 0) to (visible.lastOrNull()?.index ?: 0)
             }.distinctUntilChanged().collect { (first, last) -> page.reportVisibleRange(first, last) }
         }
-        HistoryPlays(count = page.totalCount, rowAt = page::rowAt, listState = listState)
+        HistoryPlays(count = page.totalCount, rowAt = page::rowAt, today = today, zone = zone, listState = listState)
     }
 }
 
@@ -195,12 +201,14 @@ private fun HistoryContent(
 private fun HistoryPlays(
     count: Int,
     rowAt: (Int) -> BridgeHistoryPlay?,
+    today: LocalDate,
+    zone: TimeZone,
     listState: LazyListState,
 ) {
     val context = LocalContext.current
     LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
         items(count, key = { index -> rowAt(index)?.id ?: "play-slot-$index" }) { index ->
-            rowAt(index)?.let { play -> PlayRow(context, play) }
+            rowAt(index)?.let { play -> PlayRow(context, play, today, zone) }
         }
     }
 }
@@ -209,17 +217,19 @@ private fun HistoryPlays(
 private fun PlayRow(
     context: Context,
     play: BridgeHistoryPlay,
+    today: LocalDate,
+    zone: TimeZone,
 ) {
     Column {
         if (play.opensDay) {
             Box(modifier = Modifier.padding(horizontal = ThemeSpace.edge)) {
-                AndroidSection(text = dayHeading(context, play.playedOn, LocalDate.now()))
+                AndroidSection(text = dayHeading(context, play.playedOn, today))
             }
         }
         AndroidListRow(
             title = play.title,
             subtitle = context.creditLineText(play.artistLine),
-            trailing = timeOf(context, play.startedAt, TimeZone.getDefault()),
+            trailing = timeOf(context, play.startedAt, zone),
             art = play.cover,
             onClick = null,
             who = play.person.face(),

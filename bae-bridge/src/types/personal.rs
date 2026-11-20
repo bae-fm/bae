@@ -152,6 +152,17 @@ pub struct BridgePlaylistOwner {
     pub avatar_version: Option<String>,
 }
 
+impl BridgePlaylistOwner {
+    pub(crate) fn from_core(owner: bae_views::playlists::PlaylistOwner) -> Self {
+        Self {
+            person: owner.person.0.to_string(),
+            initials: bae_people::people::initials(&owner.name),
+            name: owner.name,
+            avatar_version: owner.avatar_version,
+        }
+    }
+}
+
 /// The picture a playlist is drawn with.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgePlaylistCover {
@@ -208,12 +219,7 @@ impl BridgePlaylistSummary {
             id: id.to_string(),
             name,
             sharing: BridgeSharing::from_core(sharing),
-            owner: BridgePlaylistOwner {
-                person: owner.person.0.to_string(),
-                initials: bae_people::people::initials(&owner.name),
-                name: owner.name,
-                avatar_version: owner.avatar_version,
-            },
+            owner: BridgePlaylistOwner::from_core(owner),
             yours,
             track_count: BridgeCountLabel::from_core(track_count),
             total_duration: bae_util::duration::DurationUnits::from_millis(total_duration_ms)
@@ -378,8 +384,6 @@ impl BridgeHistoryPlay {
             played_on,
             opens_day,
             person,
-            person_name,
-            avatar_version,
         } = value;
         Self {
             id: id.to_string(),
@@ -389,12 +393,7 @@ impl BridgeHistoryPlay {
             started_at: started_at.unix_timestamp_millis(),
             played_on: BridgeDay::from_core(played_on),
             opens_day,
-            person: BridgePlaylistOwner {
-                person: person.to_string(),
-                initials: bae_people::people::initials(&person_name),
-                name: person_name,
-                avatar_version,
-            },
+            person: BridgePlaylistOwner::from_core(person),
         }
     }
 }

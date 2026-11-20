@@ -142,7 +142,7 @@ private fun RetryIndicator(
 
 /** Stands in for rows as one viewport-sized [LazyColumn] item, so the pull still reaches [PullToRefreshBox]. */
 @Composable
-private fun ListPlaceholder(content: @Composable () -> Unit) {
+internal fun ListPlaceholder(content: @Composable () -> Unit) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         item {
             Box(

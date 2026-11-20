@@ -32,9 +32,11 @@ import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.library.HistoryTopBar
 import fm.bae.app.ui.library.LibraryBrowserState
 import fm.bae.app.ui.library.LibraryMoreMenuItems
+import fm.bae.app.ui.library.ListPlaceholder
 import fm.bae.app.ui.library.PersonButton
 import fm.bae.app.ui.library.PersonMenuItems
 import fm.bae.app.ui.library.PlaylistRows
+import fm.bae.app.ui.library.historyEmptyText
 import org.junit.Test
 import uniffi.bae_bridge.BridgeHistoryPerson
 import uniffi.bae_bridge.BridgeHistoryShown
@@ -175,7 +177,7 @@ class PersonMenuBoardShots : BoardShot() {
                 HistoryTopBar(
                     onBack = {},
                     backLabel = stringResource(R.string.back_to_library),
-                    menu = menu(shown),
+                    menu = { menu(shown) },
                     menuOpen = false,
                     onMenuOpen = {},
                     onChoose = {},
@@ -191,9 +193,7 @@ class PersonMenuBoardShots : BoardShot() {
         shot("android.history.empty") {
             ScreenScene {
                 HistoryScene(BridgeHistoryShown.Everyone) {
-                    Box(modifier = Modifier.fillMaxSize().padding(ThemeSpace.page), contentAlignment = Alignment.Center) {
-                        AndroidContentUnavailable(stringResource(R.string.history_empty))
-                    }
+                    ListPlaceholder { AndroidContentUnavailable(historyEmptyText(BridgeHistoryShown.Everyone)) }
                 }
             }
         }
@@ -204,9 +204,7 @@ class PersonMenuBoardShots : BoardShot() {
         shot("android.history.none-from-person") {
             ScreenScene {
                 HistoryScene(BridgeHistoryShown.Person("Ben")) {
-                    Box(modifier = Modifier.fillMaxSize().padding(ThemeSpace.page), contentAlignment = Alignment.Center) {
-                        AndroidContentUnavailable(stringResource(R.string.history_empty_person, "Ben"))
-                    }
+                    ListPlaceholder { AndroidContentUnavailable(historyEmptyText(BridgeHistoryShown.Person("Ben"))) }
                 }
             }
         }

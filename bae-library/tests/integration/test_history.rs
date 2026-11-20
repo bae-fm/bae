@@ -208,8 +208,8 @@ async fn history_lists_plays_newest_first_under_their_days() {
         ]
     );
     let newest = &everyone.rows[0].0;
-    assert_eq!(newest.person, person.id);
-    assert_eq!(newest.person_name, person.name);
+    assert_eq!(newest.person.person, person.id);
+    assert_eq!(newest.person.name, person.name);
     let count = views.subscribe_history_count(None).next_inline().await.unwrap().unwrap();
     let menu = |chosen| {
         vec![bae_views::history::HistoryPerson {

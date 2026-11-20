@@ -87,7 +87,7 @@ class OpenLibrary internal constructor(
     internal val libraryQueries = LibraryQueryStores(library, runtime.scope)
 
     /** This device's person, whose picture ends the library's top bar. */
-    internal val person = PersonStore(appHandle, runtime.scope)
+    internal val person = PersonStore(appHandle, runtime.scope, runtime.bugs)
     val playback: BaeCorePlayer get() = runtime.playback
 
     // Every image the app shows resolves through this store, and its cache entries
