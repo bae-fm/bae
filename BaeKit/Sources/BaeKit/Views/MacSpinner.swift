@@ -43,12 +43,16 @@ public struct MacSpinner: View {
 }
 
 #if canImport(AppKit)
-    /// macOS's own small spinner, which AppKit draws and names a busy
-    /// indicator with no value. SwiftUI's indeterminate progress view draws
-    /// its own and reports a progress of 0.
+    /// macOS's own small spinner, which AppKit draws. A wait of no known
+    /// length has no amount done, so VoiceOver reads no value: SwiftUI's
+    /// indeterminate progress view reports 0, and AppKit's spinner 1.
     private struct SystemSpinner: NSViewRepresentable {
+        final class Indicator: NSProgressIndicator {
+            override func accessibilityValue() -> NSNumber? { nil }
+        }
+
         func makeNSView(context: Context) -> NSProgressIndicator {
-            let indicator = NSProgressIndicator()
+            let indicator = Indicator()
             indicator.style = .spinning
             indicator.isIndeterminate = true
             indicator.controlSize = .small
