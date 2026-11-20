@@ -296,7 +296,7 @@ extension ShotScene {
             height: 110
         ) {
             VStack(alignment: .leading, spacing: ThemeSpace.related) {
-                MacImportSheetCaption(
+                ImportPaneSheetCaption(
                     sheet: PreviewData.fieldRecordingsSheet(
                         1,
                         bound: .describes(
@@ -306,7 +306,7 @@ extension ShotScene {
                     showsDiscMenu: true,
                     actions: inertMappingActions()
                 )
-                MacImportSheetCaption(
+                ImportPaneSheetCaption(
                     sheet: PreviewData.fieldRecordingsSheet(
                         2,
                         bound: .unresolved(

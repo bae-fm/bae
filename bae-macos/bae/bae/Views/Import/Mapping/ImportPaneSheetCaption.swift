@@ -4,7 +4,7 @@ import SwiftUI
 /// A track sheet's caption: its disc, its name and the audio it describes.
 /// A FILE reference with no audio bound is chosen from the caption's amber
 /// menu; bound references are changed from the summary's menu.
-struct MacImportSheetCaption: View {
+struct ImportPaneSheetCaption: View {
     let sheet: BridgeSheetGroup
     /// Whether this surface offers the CUE selection and disc control.
     let showsDiscMenu: Bool
@@ -14,7 +14,7 @@ struct MacImportSheetCaption: View {
     private var hoveringBound = false
 
     var body: some View {
-        SheetCaption(
+        MacImportSheetCaption(
             name: sheet.name,
             onOpen: { actions.openDocument(sheet.name, sheet.sheetId) },
             disc: {

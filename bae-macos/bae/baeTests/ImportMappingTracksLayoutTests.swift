@@ -237,7 +237,7 @@ extension ImportMappingTracksLayoutTests {
     ) async throws {
         let size = NSSize(width: tableWidth, height: 90)
         try await SnapshotTestSupport.withHostedWindow(
-            MacImportSheetCaption(
+            ImportPaneSheetCaption(
                 sheet: sheet(associated: associated),
                 showsDiscMenu: true,
                 actions: actions(recording: MappingTrackActionRecorder())
@@ -276,7 +276,7 @@ extension ImportMappingTracksLayoutTests {
             height: 90
         )
         try await SnapshotTestSupport.withHostedWindow(
-            MacImportSheetCaption(
+            ImportPaneSheetCaption(
                 sheet: sheet(associated: true),
                 showsDiscMenu: false,
                 actions: actions(recording: MappingTrackActionRecorder())

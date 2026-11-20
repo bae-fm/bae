@@ -5,7 +5,7 @@ import SwiftUI
 /// sheet's disc, CUE, the sheet's name as a button that opens it in the
 /// viewer, then the audio its FILE lines are bound to. Each surface gives
 /// the disc and the audio as it offers them.
-struct SheetCaption<Disc: View, Audio: View>: View {
+struct MacImportSheetCaption<Disc: View, Audio: View>: View {
     let name: String
     let onOpen: () -> Void
     @ViewBuilder

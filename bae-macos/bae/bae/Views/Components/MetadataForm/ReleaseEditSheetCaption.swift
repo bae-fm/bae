@@ -10,7 +10,7 @@ struct ReleaseEditSheetCaption: View {
     let onOpenDocument: (String, String) -> Void
 
     var body: some View {
-        SheetCaption(
+        MacImportSheetCaption(
             name: sheet.name,
             onOpen: { onOpenDocument(sheet.name, sheet.fileId) },
             disc: {
