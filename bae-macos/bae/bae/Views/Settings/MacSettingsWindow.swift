@@ -41,7 +41,9 @@ final class SettingsNavigation {
     /// its ends.
     func step(by step: Int) {
         let tabs = SettingsTab.allCases
-        guard let index = tabs.firstIndex(of: selectedTab) else { return }
+        guard let index = tabs.firstIndex(of: selectedTab) else {
+            preconditionFailure("SettingsTab.allCases holds every tab")
+        }
         selectedTab = tabs[min(max(index + step, 0), tabs.count - 1)]
     }
 }
