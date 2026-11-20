@@ -68,7 +68,8 @@ rows AS (
            u.position IS NOT NULL
                AND u.file_kind IS t.file_kind AND u.file_id IS t.file_id
                AND u.sheet_id IS t.sheet_id AND u.slice_index IS t.slice_index AS unit_matches,
-           u.file_kind, u.sheet_id, u.slice_index, u.duration_ms AS unit_ms,
+           u.file_kind, u.sheet_id, u.file_id AS unit_file_id, u.slice_index,
+           u.duration_ms AS unit_ms,
            u.start_sample, u.end_sample, a.json AS audio,
            ct.number AS cue_number, ct.start_cue_frames * 1000 / 75 AS cue_start_ms,
            CASE WHEN t.stated_length_ms IS NOT NULL AND u.duration_ms IS NOT NULL
@@ -241,12 +242,9 @@ SELECT json_object(
                                'size', f.size, 'role', f.role))
                        END ORDER BY f.position)
                    FROM f LEFT JOIN sheets AS s ON s.relative_path = f.relative_path
-                   WHERE f.role <> 'audio'
-                     AND NOT (f.role = 'track_sheet'
-                              AND EXISTS (SELECT 1 FROM scan_candidate_unit AS u
-                                          WHERE u.watched_folder_path = (SELECT watched_folder_path FROM candidate)
-                                            AND u.candidate_path = :key
-                                            AND u.sheet_id = f.relative_path)))),
+                   WHERE NOT EXISTS (SELECT 1 FROM rows AS r
+                                     WHERE r.sheet_id = f.relative_path
+                                        OR r.unit_file_id = f.relative_path))),
     'untitled', (SELECT COUNT(*) FILTER (WHERE bae_trim(title) = '') FROM rows),
     'tracks', (SELECT COUNT(*) FROM rows),
     'units', (SELECT COUNT(*) FROM scan_candidate_unit
@@ -534,13 +532,14 @@ fn track_side(
 
 fn carried_role(role: &str) -> Result<MappingRole, ImportError> {
     match role {
+        "audio" => Ok(MappingRole::Audio),
         "artwork" => Ok(MappingRole::Image),
         "document" => Ok(MappingRole::Document),
         "damaged_image" => Ok(MappingRole::DamagedImage),
         "other" => Ok(MappingRole::Other),
         other => Err(ImportError::Internal {
             detail: format!(
-                "the statement returned an unknown role {other} for a file that is not audio"
+                "the statement returned an unknown role {other} for a file no track plays from"
             ),
         }),
     }

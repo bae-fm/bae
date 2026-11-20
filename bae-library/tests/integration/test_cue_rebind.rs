@@ -121,7 +121,18 @@ async fn a_cue_sheet_moves_to_another_audio_file_of_its_release() {
             ("Test Album.flac", true, SheetBindingOffer::Offered),
         ]
     );
-    assert_eq!(listed_files(&opened), ["Test Album (rip).flac", "Test Album.cue"]);
+    assert_eq!(listed_files(&opened), ["Test Album (rip).flac"]);
+    // The release's detail lists its files by the same rule: the sheet that
+    // carves the tracks plays, so only the rip no track plays from is listed.
+    let detail = bae_views::LibraryViews::new(library.store().clone())
+        .find_db_release_detail(&imported.release_id)
+        .await
+        .unwrap()
+        .expect("the library holds the release");
+    assert_eq!(
+        detail.files.others.iter().map(|file| file.original_filename.as_str()).collect::<Vec<_>>(),
+        ["Test Album (rip).flac"]
+    );
     assert_eq!(opened.files_to_read, None);
     let image = source.file_id.clone();
 
@@ -129,7 +140,7 @@ async fn a_cue_sheet_moves_to_another_audio_file_of_its_release() {
         form.with_sheet_file(sheet.file_id.clone(), sheet.file_reference.clone(), rip.clone());
     let draft = draft_where(&drafts, &picked, |draft| sheet_run(draft).1.file_id == rip).await;
     assert_eq!(sheet_run(&draft).1.name, "Test Album (rip).flac");
-    assert_eq!(listed_files(&draft), ["Test Album.cue", "Test Album.flac"]);
+    assert_eq!(listed_files(&draft), ["Test Album.flac"]);
     assert_eq!(draft.files_to_read, Some(vec!["Test Album (rip).flac".to_string()]));
 
     let records = library.records();
@@ -177,7 +188,7 @@ async fn a_cue_sheet_moves_to_another_audio_file_of_its_release() {
     assert_eq!((layout(&rip), layout(&image)), (Some(SourceAudioLayout::Cue), None));
     let reopened = draft_where(&drafts, &saved, |_| true).await;
     assert_eq!(sheet_run(&reopened).1.file_id, rip);
-    assert_eq!(listed_files(&reopened), ["Test Album.cue", "Test Album.flac"]);
+    assert_eq!(listed_files(&reopened), ["Test Album.flac"]);
 }
 
 /// An audio file shorter than where the sheet's last track starts can't

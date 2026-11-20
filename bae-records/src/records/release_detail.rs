@@ -99,7 +99,7 @@ pub fn release_details_on<X>(
         credits = release_credits_json_sql("rel.id"),
         has_credits = super::release_credits::release_has_credits_sql("rel.id"),
         performs_works = performs_works_sql("rel.id"),
-        files = release_files_json_sql("rel.id", "release_files"),
+        files = release_files_json_sql("rel.id", "release_files", "audio_format_segments"),
         records = release_records_json_sql("rel.id"),
         elsewhere = ELSEWHERE_OF_RELEASE,
         upload_columns = super::queued_uploads::RELEASE_UPLOAD_COLUMNS,
@@ -193,8 +193,11 @@ fn performs_works_sql(release: &str) -> String {
 /// them the images, the images bae can make a cover from, and the files no
 /// track plays from, each in the release's file order, with the number of
 /// files, the number of images, the files' total size and the summary of
-/// their audio, as one JSON object for [`release_files_column`].
-fn release_files_json_sql(release: &str, table: &str) -> String {
+/// their audio, as one JSON object for [`release_files_column`]. A track
+/// plays from each file a segment of the table `segments` (with the column
+/// `file_id` of `audio_format_segments`) reads, and from each CUE sheet that
+/// carves it.
+fn release_files_json_sql(release: &str, table: &str, segments: &str) -> String {
     let covers: Vec<String> = ContentType::SUPPORTED_COVERS
         .iter()
         .map(|content_type| format!("'{}'", content_type.as_str()))
@@ -211,11 +214,14 @@ fn release_files_json_sql(release: &str, table: &str) -> String {
         "(SELECT json_object( \
               'files', json({files}), 'images', json({images}), 'covers', json({covers}), \
               'others', json({others}), \
-              'has_others', COALESCE(SUM(listed.source_audio_layout IS NULL), 0) > 0, \
+              'has_others', COALESCE(SUM(NOT listed.played), 0) > 0, \
               'count', COUNT(*), 'image_count', COUNT(*) FILTER (WHERE {image}), \
               'total_size', COALESCE(SUM(listed.size), 0), \
               'source_audio', {source_audio}) \
-          FROM (SELECT f.id, f.original_filename, f.content_type, f.source_audio_layout, \
+          FROM (SELECT f.id, f.original_filename, f.content_type, \
+                       EXISTS (SELECT 1 FROM {segments} AS s WHERE s.file_id = f.id) \
+                       OR EXISTS (SELECT 1 FROM carved_tracks AS c \
+                                  WHERE c.sheet_file_id = f.id) AS played, \
                        coven.size AS size, {file_json} AS file_json \
                 FROM {table} AS f \
                 JOIN coven_files AS coven ON coven.id = f.file \
@@ -223,7 +229,7 @@ fn release_files_json_sql(release: &str, table: &str) -> String {
         files = list("1"),
         images = list(image),
         covers = list(&format!("listed.content_type IN ({})", covers.join(", "))),
-        others = list("listed.source_audio_layout IS NULL"),
+        others = list("NOT listed.played"),
         file_json = file_json_sql("coven.size", "coven.hash IS NOT NULL"),
         source_audio = crate::source_audio::source_audio_summary_sql(&format!(
             "SELECT ROW_NUMBER() OVER (ORDER BY f.original_filename COLLATE natural_order, \
@@ -255,7 +261,7 @@ pub fn release_files_on(
         &format!(
             "WITH {} SELECT {} AS files",
             super::sheet_files::sheet_files_ctes(release, picks),
-            release_files_json_sql(release, "laid_files")
+            release_files_json_sql(release, "laid_files", "laid_segments")
         ),
         params,
         |row| release_files_column(row, "files"),

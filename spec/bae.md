@@ -401,9 +401,8 @@ The files of a release include everything in its folder, not only the audio:
 the CUE sheet, the rip log, scans of the booklet. A release's folder comes back
 whole on export (§4.6).
 
-A release's detail lists the files no track plays from, as the editor's Files
-section does (§3.8): every file the scan did not read as audio a track plays
-from, in the release's file order.
+A release's detail lists the files no track plays from, by the rule of the
+release's *Files* list (§3.6), in the release's file order.
 
 ### 2.3 Artists and credits
 

@@ -255,7 +255,8 @@ pub struct DbReleaseFiles {
     pub images: Vec<DbFile>,
     /// The images bae can make a cover from.
     pub covers: Vec<DbFile>,
-    /// The files no track plays from.
+    /// The files no track plays from: a file a track's segment reads, and a
+    /// CUE sheet that carves a track, are played.
     pub others: Vec<DbFile>,
     /// Whether any file is one no track plays from.
     pub has_others: bool,
