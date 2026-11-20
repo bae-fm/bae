@@ -62,8 +62,8 @@ internal enum class CastReceiverPlace {
 }
 
 /**
- * A receiver as the cast picker and the Casting page list it: its kind's icon, its name over its kind, or over
- * "Casting" when playback is on it, which is also the one row that offers Disconnect. Any other row casts to it.
+ * A receiver as the Play on picker and the Playback settings list it: its kind's icon, its name over its kind, or over
+ * "Playing" when playback is on it, which is also the one row that offers Disconnect. Any other row plays on it.
  * On the page every row also has a ⋮ menu whose Details opens a sheet on the receiver.
  */
 @Composable
@@ -107,7 +107,7 @@ internal fun AndroidCastRow(
     }
 }
 
-/** A receiver's name, medium as the design sets it, over its kind, or over "Casting" when playback is on it. */
+/** A receiver's name, medium as the design sets it, over its kind, or over "Playing" when playback is on it. */
 @Composable
 private fun CastReceiverLabel(
     receiver: BridgeCastReceiver,
@@ -197,8 +197,8 @@ internal fun CastReceiverDetailsRows(receiver: BridgeCastReceiver) {
 }
 
 /**
- * What the cast picker and the Casting page list: the receiver a cast is connecting to, while one is,
- * then each receiver once, the one cast to first, or [looking] while none has answered. Browsing has no
+ * What the Play on picker and the Playback settings list: the receiver bae is connecting to, while one is,
+ * then each receiver once, the one playing first, or [looking] while none has answered. Browsing has no
  * end while either is open.
  */
 @Composable

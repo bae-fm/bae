@@ -20,7 +20,7 @@ private val logger = BaeLogger("bae.CastStart")
 
 /**
  * The cast the person started last, while it connects. There is one for the open library, not one per
- * place that lists receivers: the picker and the Casting page show the same start, and closing the one
+ * place that lists receivers: the picker and the Playback settings show the same start, and closing the one
  * that began it leaves it connecting. A newer start calls off the one before it. A start that connects
  * shows as [started]; a place that began one closes itself when [didStart] says it is the [Attempt] it
  * was given, so a place opened later never closes for a start it did not ask for.

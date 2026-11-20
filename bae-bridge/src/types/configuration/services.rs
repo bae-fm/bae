@@ -383,8 +383,8 @@ pub struct BridgeCastReceiver {
     pub takes_volume: bool,
 }
 
-/// What the cast picker and the Casting page list: the receiver playback is
-/// cast to, then the rest discovery found, by name. One list, tagged by
+/// What the Play on picker and the Playback settings list: the receiver
+/// playback is on, then the rest discovery found, by name. One list, tagged by
 /// `kind`; the picker doesn't segregate by protocol. Mirrors
 /// `bae_playback::renderer::CastReceiverList`.
 #[derive(Debug, Clone, uniffi::Record)]
