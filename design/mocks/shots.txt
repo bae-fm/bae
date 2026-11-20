@@ -294,6 +294,10 @@ mac.settings.person.admin
 mac.settings.person.make-admin-done
 mac.settings.person.make-admin-waiting
 mac.settings.playback
+mac.settings.playback.receiver-details
+mac.settings.playback.receiver-menu
+mac.settings.playback.receivers-found
+mac.settings.playback.receivers-looking
 mac.settings.save-as
 mac.settings.save-as.bit-depth-menu
 mac.settings.save-as.bitrate-menu
