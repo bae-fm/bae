@@ -208,17 +208,11 @@ const INSPECTOR_RELEASE: &str = "SELECT a.title AS title, storage.file_count AS 
      JOIN release_storage AS storage ON storage.release_id = r.id \
      WHERE r.id = ?1";
 
-/// The release `?1`'s failed move: the name of the file whose original
-/// changed, as the move's pending record names it by path, and the text of
-/// the error behind that record; no row while no move failed. The same rows
-/// `release_storage.failed_move_file` is refreshed from.
-const FAILED_MOVE: &str = "SELECT f.original_filename, pending.cause FROM release_files f \
-     JOIN coven_moves moves ON moves.file = f.file \
-     JOIN coven_pending pending ON pending.move = moves.move \
-     JOIN coven_user_files original \
-         ON original.file = f.file AND original.path = pending.original_path \
-     WHERE f.release_id = ?1 AND moves.state = 'failed' AND pending.reason_kind = 'original' \
-     ORDER BY f.id LIMIT 1";
+/// The release `?1`'s failed move as `release_storage` keeps it: the name of
+/// the file whose original changed and the text of the error behind the
+/// failure; no row while no move failed.
+const FAILED_MOVE: &str = "SELECT failed_move_file, failed_move_cause FROM release_storage \
+     WHERE release_id = ?1 AND failed_move_file IS NOT NULL";
 
 /// One row of [`INSPECTOR_RELEASE`].
 fn inspector_release(row: &Row<'_>) -> rusqlite::Result<crate::DbInspectorRelease> {

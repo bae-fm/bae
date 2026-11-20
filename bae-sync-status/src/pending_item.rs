@@ -94,17 +94,22 @@ pub enum FileProblem {
 }
 
 impl FileProblem {
+    /// What `failure` says of a file's original: the one place coven's
+    /// `FileSourceFailure` is sorted into missing and changed.
+    pub fn of_failure(failure: coven::FileSourceFailure) -> Self {
+        match failure {
+            coven::FileSourceFailure::Missing => Self::OriginalMissing,
+            coven::FileSourceFailure::Changed | coven::FileSourceFailure::Integrity => {
+                Self::OriginalChanged
+            }
+        }
+    }
+
     /// What coven's `reason` says of a file's original; `None` for any other
-    /// reason. The one place coven's `FileSourceFailure` is sorted into
-    /// missing and changed.
+    /// reason.
     pub fn of_reason(reason: &coven::PendingReason) -> Option<Self> {
         match reason {
-            coven::PendingReason::Original { failure, .. } => Some(match failure {
-                coven::FileSourceFailure::Missing => Self::OriginalMissing,
-                coven::FileSourceFailure::Changed | coven::FileSourceFailure::Integrity => {
-                    Self::OriginalChanged
-                }
-            }),
+            coven::PendingReason::Original { failure, .. } => Some(Self::of_failure(*failure)),
             _ => None,
         }
     }

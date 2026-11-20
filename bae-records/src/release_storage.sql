@@ -7,7 +7,8 @@
 -- `first_queued_position`, how many of them coven's `coven_upload_queue`
 -- lists and the place of the first (NULL with none); `failed_move_file`,
 -- the name of the file whose original changed, so that a move of the release
--- failed; `missing_original_file`, the name of the file whose original is
+-- failed, and `failed_move_cause`, the text of the error behind that failure
+-- when coven kept it; `missing_original_file`, the name of the file whose original is
 -- missing, so that a move of the release waits for it; and
 -- `audio_elsewhere_device`, the device that alone holds the release's audio
 -- file with the lowest id among those another device alone holds, as
@@ -27,6 +28,7 @@ CREATE TABLE IF NOT EXISTS release_storage (
     queued_count INTEGER NOT NULL,
     first_queued_position INTEGER,
     failed_move_file TEXT,
+    failed_move_cause TEXT,
     missing_original_file TEXT,
     audio_elsewhere_device BLOB,
     CHECK ((queued_count = 0) = (first_queued_position IS NULL))
@@ -46,7 +48,7 @@ CREATE TRIGGER IF NOT EXISTS release_storage_refresh INSTEAD OF INSERT ON releas
 BEGIN
     INSERT INTO release_storage (
         release_id, file_count, total_size, stored, pinned_count,
-        queued_count, first_queued_position, failed_move_file,
+        queued_count, first_queued_position, failed_move_file, failed_move_cause,
         missing_original_file, audio_elsewhere_device)
     SELECT r.id,
            (SELECT COUNT(*) FROM release_files f WHERE f.release_id = r.id),
@@ -66,14 +68,7 @@ BEGIN
            (SELECT MIN(queued.position) FROM release_files f
             JOIN coven_upload_queue queued ON queued.file = f.file
             WHERE f.release_id = r.id),
-           (SELECT f.original_filename FROM release_files f
-            JOIN coven_moves moves ON moves.file = f.file
-            JOIN coven_pending pending ON pending.move = moves.move
-            JOIN coven_user_files original
-                ON original.file = f.file AND original.path = pending.original_path
-            WHERE f.release_id = r.id AND moves.state = 'failed'
-              AND pending.reason_kind = 'original'
-            ORDER BY f.id LIMIT 1),
+           failed.file_name, failed.cause,
            (SELECT f.original_filename FROM release_files f
             JOIN coven_moves moves ON moves.file = f.file
             JOIN coven_pending pending ON pending.move = moves.move
@@ -90,6 +85,15 @@ BEGIN
               AND reads.source IS NULL
             ORDER BY f.id LIMIT 1)
     FROM releases r
+    LEFT JOIN (SELECT f.original_filename AS file_name, pending.cause AS cause
+               FROM release_files f
+               JOIN coven_moves moves ON moves.file = f.file
+               JOIN coven_pending pending ON pending.move = moves.move
+               JOIN coven_user_files original
+                   ON original.file = f.file AND original.path = pending.original_path
+               WHERE f.release_id = NEW.release_id AND moves.state = 'failed'
+                 AND pending.reason_kind = 'original'
+               ORDER BY f.id LIMIT 1) failed
     WHERE r.id = NEW.release_id
     ON CONFLICT (release_id) DO UPDATE SET
         file_count = excluded.file_count,
@@ -99,6 +103,7 @@ BEGIN
         queued_count = excluded.queued_count,
         first_queued_position = excluded.first_queued_position,
         failed_move_file = excluded.failed_move_file,
+        failed_move_cause = excluded.failed_move_cause,
         missing_original_file = excluded.missing_original_file,
         audio_elsewhere_device = excluded.audio_elsewhere_device;
 END;
@@ -109,9 +114,9 @@ CREATE TRIGGER IF NOT EXISTS release_storage_release_added AFTER INSERT ON relea
 BEGIN
     INSERT INTO release_storage (
         release_id, file_count, total_size, stored, pinned_count,
-        queued_count, first_queued_position, failed_move_file,
+        queued_count, first_queued_position, failed_move_file, failed_move_cause,
         missing_original_file, audio_elsewhere_device)
-    VALUES (NEW.id, 0, 0, 0, 0, 0, NULL, NULL, NULL, NULL);
+    VALUES (NEW.id, 0, 0, 0, 0, 0, NULL, NULL, NULL, NULL, NULL);
 END;
 
 CREATE TRIGGER IF NOT EXISTS release_storage_file_added AFTER INSERT ON release_files

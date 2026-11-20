@@ -83,9 +83,10 @@ impl BridgePendingReason {
             R::AccessRemains { .. } => K::AccessRemains,
             R::FileUnavailable(coven::FileMissingReason::Source(_)) => K::FileUnavailable,
             R::FileUnavailable(coven::FileMissingReason::Lost) => K::FileLost,
-            R::Original { .. } => match bae_sync_status::FileProblem::of_reason(&reason) {
-                Some(bae_sync_status::FileProblem::OriginalMissing) | None => K::FileUnavailable,
-                Some(bae_sync_status::FileProblem::OriginalChanged) => K::FileChanged,
+            R::Original { failure, .. } => match bae_sync_status::FileProblem::of_failure(*failure)
+            {
+                bae_sync_status::FileProblem::OriginalMissing => K::FileUnavailable,
+                bae_sync_status::FileProblem::OriginalChanged => K::FileChanged,
             },
             R::Failed(_) => K::Failed,
             R::Rejected(_) => K::Rejected,
