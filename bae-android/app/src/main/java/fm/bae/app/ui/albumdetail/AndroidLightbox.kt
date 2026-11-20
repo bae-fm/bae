@@ -57,7 +57,6 @@ import androidx.core.view.WindowCompat
 import fm.bae.app.BaeLogger
 import fm.bae.app.R
 import fm.bae.app.coreString
-import fm.bae.app.countText
 import fm.bae.app.data.DecodeSize
 import fm.bae.app.data.ImageContent
 import fm.bae.app.data.LocalImageStore
@@ -103,47 +102,61 @@ fun AndroidLightbox(
             ),
     ) {
         FullDisplayDialogWindow()
-        val pagerState = rememberPagerState(pageCount = { items.size })
-        val scope = rememberScreenScope()
-        var offsetY by remember { mutableFloatStateOf(0f) }
-        val dismissThresholdPx = with(LocalDensity.current) { DISMISS_THRESHOLD_DP.dp.toPx() }
-        // Fade the backdrop as the viewer is dragged down toward dismissal.
-        val dragProgress = (offsetY / (dismissThresholdPx * DRAG_FADE_DISTANCE_MULTIPLIER)).coerceIn(0f, 1f)
-        val backdrop = BaeTheme.colors.backdrop
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = backdrop.copy(alpha = backdrop.alpha * (1f - dragProgress * DRAG_BACKDROP_FADE)),
-        ) {
-            // The outer box handles swipe-to-dismiss and only the inner box moves,
-            // so the gesture's coordinates stay fixed.
-            Box(
-                modifier =
-                    Modifier.fillMaxSize().pointerInput(Unit) {
-                        detectVerticalDragGestures(
-                            onVerticalDrag = { change, dragAmount ->
-                                offsetY = (offsetY + dragAmount).coerceAtLeast(0f)
-                                change.consume()
-                            },
-                            onDragEnd = {
-                                if (offsetY > dismissThresholdPx) {
-                                    onDismiss()
-                                } else {
-                                    scope.launch { animate(offsetY, 0f) { value, _ -> offsetY = value } }
-                                }
-                            },
-                            onDragCancel = {
+        GalleryViewer(releaseId = releaseId, items = items, count = count, onDismiss = onDismiss)
+    }
+}
+
+/**
+ * The viewer inside the lightbox's window: the gallery's items on the dark backdrop, Close at the top end and the
+ * caption at the foot. It holds no window, so a shot can draw it.
+ */
+@Composable
+internal fun GalleryViewer(
+    releaseId: String,
+    items: List<BridgeGalleryItem>,
+    count: UInt,
+    onDismiss: () -> Unit,
+) {
+    val pagerState = rememberPagerState(pageCount = { items.size })
+    val scope = rememberScreenScope()
+    var offsetY by remember { mutableFloatStateOf(0f) }
+    val dismissThresholdPx = with(LocalDensity.current) { DISMISS_THRESHOLD_DP.dp.toPx() }
+    // Fade the backdrop as the viewer is dragged down toward dismissal.
+    val dragProgress = (offsetY / (dismissThresholdPx * DRAG_FADE_DISTANCE_MULTIPLIER)).coerceIn(0f, 1f)
+    val backdrop = BaeTheme.colors.backdrop
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = backdrop.copy(alpha = backdrop.alpha * (1f - dragProgress * DRAG_BACKDROP_FADE)),
+    ) {
+        // The outer box handles swipe-to-dismiss and only the inner box moves,
+        // so the gesture's coordinates stay fixed.
+        Box(
+            modifier =
+                Modifier.fillMaxSize().pointerInput(Unit) {
+                    detectVerticalDragGestures(
+                        onVerticalDrag = { change, dragAmount ->
+                            offsetY = (offsetY + dragAmount).coerceAtLeast(0f)
+                            change.consume()
+                        },
+                        onDragEnd = {
+                            if (offsetY > dismissThresholdPx) {
+                                onDismiss()
+                            } else {
                                 scope.launch { animate(offsetY, 0f) { value, _ -> offsetY = value } }
-                            },
-                        )
-                    },
-            ) {
-                Box(modifier = Modifier.fillMaxSize().graphicsLayer { translationY = offsetY }) {
-                    HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
-                        GalleryPage(releaseId = releaseId, item = items[page])
-                    }
-                    GalleryCloseButton(onDismiss = onDismiss)
-                    GalleryFoot(items = items, count = count, pagerState = pagerState)
+                            }
+                        },
+                        onDragCancel = {
+                            scope.launch { animate(offsetY, 0f) { value, _ -> offsetY = value } }
+                        },
+                    )
+                },
+        ) {
+            Box(modifier = Modifier.fillMaxSize().graphicsLayer { translationY = offsetY }) {
+                HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
+                    GalleryPage(releaseId = releaseId, item = items[page])
                 }
+                GalleryCloseButton(onDismiss = onDismiss)
+                GalleryFoot(items = items, count = count, pagerState = pagerState)
             }
         }
     }
@@ -231,41 +244,6 @@ private fun BoxScope.GalleryFoot(
         count = count,
         modifier = Modifier.align(Alignment.BottomCenter),
     )
-}
-
-/**
- * The gallery's caption on the dark backdrop: the shown image's [label] and, when there are several images, its
- * [page] of [count].
- */
-@Composable
-internal fun AndroidGalleryCaption(
-    label: String,
-    page: Int,
-    count: UInt,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier =
-            modifier
-                .windowInsetsPadding(
-                    WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
-                ).padding(ThemeSpace.edge),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(text = label, style = ThemeText.body.style, color = BaeTheme.colors.onFill)
-        if (count > 1u) {
-            Text(
-                text =
-                    stringResource(
-                        R.string.gallery_page_counter,
-                        LocalContext.current.countText(page),
-                        LocalContext.current.countText(count),
-                    ),
-                style = ThemeText.body.style,
-                color = BaeTheme.colors.onFillSecondary,
-            )
-        }
-    }
 }
 
 /**

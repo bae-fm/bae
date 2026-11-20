@@ -1,20 +1,30 @@
 package fm.bae.app.shots
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import fm.bae.app.BridgeFixtures
+import fm.bae.app.BugReports
+import fm.bae.app.LocalBugReports
 import fm.bae.app.creditLineNamed
+import fm.bae.app.data.ImageStore
+import fm.bae.app.data.LocalImageStore
+import fm.bae.app.data.TestImages
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.albumdetail.AndroidAlbumCredits
 import fm.bae.app.ui.albumdetail.AndroidRecordLinks
 import fm.bae.app.ui.albumdetail.AndroidReleasePicker
+import fm.bae.app.ui.albumdetail.GalleryViewer
 import fm.bae.app.ui.library.AndroidArtistOtherNames
 import fm.bae.app.ui.library.AndroidPlaylistHeader
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.awaitCancellation
 import org.junit.Test
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeCatalog
 import uniffi.bae_bridge.BridgeCountLabel
 import uniffi.bae_bridge.BridgeCreditRole
 import uniffi.bae_bridge.BridgeCreditRow
+import uniffi.bae_bridge.BridgeGalleryLabel
 import uniffi.bae_bridge.BridgePlaylistCover
 import uniffi.bae_bridge.BridgePlaylistOwner
 import uniffi.bae_bridge.BridgePlaylistSummary
@@ -23,7 +33,7 @@ import uniffi.bae_bridge.BridgeReleaseRecord
 import uniffi.bae_bridge.BridgeSharing
 import uniffi.bae_bridge.BridgeTermLabel
 
-/** The component shots of the album page's pieces: record links, release picker, credits, and the artist page's other names. */
+/** The component shots of the album page's pieces: record links, release picker, lightbox, credits, and the artist page's other names. */
 class AlbumPieceComponentShots : BoardShot() {
     @Test
     fun androidComponentRecordLinksOneCatalog() =
@@ -54,6 +64,15 @@ class AlbumPieceComponentShots : BoardShot() {
     @Test
     fun androidComponentReleasePickerSecondShown() =
         component("android.component.release-picker.second-shown", wide = true) { Picker(shown = 1) }
+
+    @Test
+    fun androidComponentLightboxImage() = shot("android.component.lightbox.image") { Lightbox(shownImage(), count = 4u) }
+
+    @Test
+    fun androidComponentLightboxLoading() = shot("android.component.lightbox.loading") { Lightbox(neverLoaded(), count = 4u) }
+
+    @Test
+    fun androidComponentLightboxOneImage() = shot("android.component.lightbox.one-image") { Lightbox(shownImage(), count = 1u) }
 
     @Test
     fun androidComponentAlbumCreditsCredits() =
@@ -107,6 +126,37 @@ class AlbumPieceComponentShots : BoardShot() {
             )
         }
 }
+
+/** The lightbox on one gallery item, the release's cover.jpg, of [count] images, reading its bytes from [store]. */
+@Composable
+private fun Lightbox(
+    store: ImageStore,
+    count: UInt,
+) = ScreenScene {
+    CompositionLocalProvider(LocalImageStore provides store, LocalBugReports provides BugReports()) {
+        GalleryViewer(
+            releaseId = "rel-1",
+            items = listOf(PreviewData.galleryItem(label = BridgeGalleryLabel.File("cover.jpg"))),
+            count = count,
+            onDismiss = {},
+        )
+    }
+}
+
+/** A store whose release image is a picture. */
+private fun shownImage() =
+    ImageStore(
+        fetchReleaseImageBytes = {
+            _,
+            _,
+            ->
+            TestImages.quadrantsJpeg(400, listOf(0xFF2D4A6B.toInt(), 0xFF6B8EAD.toInt(), 0xFFC9A66B.toInt(), 0xFF8C3B4A.toInt()))
+        },
+        dispatcher = Dispatchers.Unconfined,
+    )
+
+/** A store whose bytes never arrive, so the lightbox stays on its load. */
+private fun neverLoaded() = ImageStore(fetchReleaseImageBytes = { _, _ -> awaitCancellation() }, dispatcher = Dispatchers.Unconfined)
 
 @Composable
 private fun Header(summary: BridgePlaylistSummary) = Images { AndroidPlaylistHeader(summary, onPlay = {}, onShuffle = {}) }
