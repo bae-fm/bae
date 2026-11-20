@@ -10,8 +10,12 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import fm.bae.app.data.ImageContent
+import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.albumdetail.AndroidAlbumHeader
 import fm.bae.app.ui.albumdetail.AndroidTrackRow
@@ -19,13 +23,17 @@ import fm.bae.app.ui.albumdetail.TrackRowCallbacks
 import fm.bae.app.ui.albumdetail.TrackRowData
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidLibraryRow
+import fm.bae.app.ui.components.AvatarFace
 import fm.bae.app.ui.library.AlbumGridLayout
 import fm.bae.app.ui.library.AndroidAlbumGrid
 import fm.bae.app.ui.library.AndroidAlbumTile
 import fm.bae.app.ui.library.AndroidArtistGroupHeading
+import fm.bae.app.ui.library.AndroidLibraryHeader
 import fm.bae.app.ui.library.AndroidMenuItem
 import fm.bae.app.ui.library.AndroidSearchSection
 import fm.bae.app.ui.library.GroupByArtistItem
+import fm.bae.app.ui.library.LibraryBrowserState
+import fm.bae.app.ui.library.PersonButton
 import org.junit.Test
 import uniffi.bae_bridge.BridgeAlbumAppearance
 import uniffi.bae_bridge.BridgeAlbumDetail
@@ -35,14 +43,47 @@ import uniffi.bae_bridge.BridgeLibraryBrowseSection
 import uniffi.bae_bridge.BridgeMediaCount
 import uniffi.bae_bridge.BridgeMedium
 import uniffi.bae_bridge.BridgeRelease
+import uniffi.bae_bridge.BridgeSyncActivity
 import uniffi.bae_bridge.BridgeTermLabel
 import uniffi.bae_bridge.BridgeTrackWork
 
 private val callbacks = TrackRowCallbacks(onClick = {}, onPlayNext = {}, onAddToQueue = {})
 private val section = BridgeLibraryBrowseSection("artist-1", "Mara Quill", null, 0uL, 12uL)
 
-/** The component shots of the library's parts: the album grid and its tiles, the artist heading, the album header and track rows. */
+/**
+ * The component shots of the library's parts: its header, the album grid and its tiles, the artist heading, the album header
+ * and track rows.
+ */
 class LibraryComponentShots : BoardShot() {
+    @Test
+    fun androidComponentLibraryHeaderTop() = component("android.component.library-header.top", wide = true) { LibraryHeader() }
+
+    @Test
+    fun androidComponentLibraryHeaderScrolled() =
+        component("android.component.library-header.scrolled", wide = true) { LibraryHeader(collapse = 1f) }
+
+    @Test
+    fun androidComponentLibraryHeaderMoving() =
+        component("android.component.library-header.moving", wide = true) {
+            LibraryHeader(activity = PreviewData.syncActivity(needsAttention = false))
+        }
+
+    @Test
+    fun androidComponentLibraryHeaderAttention() =
+        component("android.component.library-header.attention", wide = true) {
+            LibraryHeader(activity = idleActivity.copy(failure = PreviewData.syncActivity(needsAttention = true).failure))
+        }
+
+    @Test
+    fun androidComponentLibraryHeaderPaused() =
+        component("android.component.library-header.paused", wide = true) { LibraryHeader(activity = idleActivity.copy(held = true)) }
+
+    @Test
+    fun androidComponentLibraryHeaderPicture() =
+        component("android.component.library-header.picture", wide = true) {
+            LibraryHeader(face = AvatarFace(initials = "A", picture = ImageContent.Avatar(person = "ana", version = "1")))
+        }
+
     @Test
     fun androidComponentAlbumTileDefault() =
         component("android.component.album-tile.default") {
@@ -250,3 +291,36 @@ internal val previewAlbums =
 
 @Composable
 private fun TrackRowShot(data: TrackRowData) = AndroidTrackRow(data, callbacks, positionColumnWidth = 40.dp)
+
+/**
+ * The library's header on Albums, [collapse] of the way to its slim bar, with the Activity button over [activity] and Ana's
+ * [face] at its end, which opens her menu.
+ */
+@Composable
+private fun LibraryHeader(
+    collapse: Float = 0f,
+    activity: BridgeSyncActivity = idleActivity,
+    face: AvatarFace = AvatarFace(initials = "A", picture = null),
+) {
+    val state = remember { LibraryBrowserState() }
+    CompositionLocalProvider(LocalImageStore provides avatarStore()) {
+        AndroidLibraryHeader(
+            state = state,
+            collapse = { collapse },
+            onShuffleLibrary = {},
+            syncActivity = { ActivityButton(activity) },
+            person = {
+                PersonButton(
+                    state = state,
+                    face = face,
+                    isAdmin = true,
+                    onAddDevice = {},
+                    onInvite = {},
+                    onPlaylists = {},
+                    onHistory = {},
+                    onSettings = {},
+                )
+            },
+        )
+    }
+}

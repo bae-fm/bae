@@ -19,7 +19,8 @@ import uniffi.bae_bridge.BridgeTransferBatch
 /** The component shots of the Activity sheet's list: up to date, syncing, uploading and pinning, pinning held, and a status it cannot read. */
 class ActivityComponentShots : BoardShot() {
     @Test
-    fun androidComponentActivityUpToDate() = component("android.component.activity.up-to-date", wide = true) { Sheet(activity = idle) }
+    fun androidComponentActivityUpToDate() =
+        component("android.component.activity.up-to-date", wide = true) { Sheet(activity = idleActivity) }
 
     @Test
     fun androidComponentActivityTransfers() =
@@ -31,7 +32,7 @@ class ActivityComponentShots : BoardShot() {
     fun androidComponentActivityPinningPaused() =
         component("android.component.activity.pinning-paused", wide = true) {
             val paused =
-                idle.copy(
+                idleActivity.copy(
                     held = true,
                     pins = BridgeDownloadQueueActivity(BridgeTransferBatch(done = 1u, total = 3u), wait = null, paused = true),
                 )
@@ -46,18 +47,24 @@ class ActivityComponentShots : BoardShot() {
 
     @Test
     fun androidComponentActivityButtonMoving() =
-        component("android.component.activity-button.moving") { Button(PreviewData.syncActivity(needsAttention = false)) }
+        component("android.component.activity-button.moving") { ActivityButton(PreviewData.syncActivity(needsAttention = false)) }
 
     @Test
     fun androidComponentActivityButtonAttention() =
-        component("android.component.activity-button.attention") { Button(idle.copy(failure = PreviewData.syncActivity(true).failure)) }
+        component("android.component.activity-button.attention") {
+            ActivityButton(idleActivity.copy(failure = PreviewData.syncActivity(true).failure))
+        }
 
     @Test
-    fun androidComponentActivityButtonPaused() = component("android.component.activity-button.paused") { Button(idle.copy(held = true)) }
+    fun androidComponentActivityButtonPaused() =
+        component("android.component.activity-button.paused") {
+            ActivityButton(idleActivity.copy(held = true))
+        }
 }
 
+/** The Activity button over [activity], as the library's header holds it. */
 @Composable
-private fun Button(activity: BridgeSyncActivity) {
+internal fun ActivityButton(activity: BridgeSyncActivity) {
     val store = remember { SyncActivityStore().also { it.apply(activity) } }
     AndroidActivityButton(
         store = store,
@@ -70,7 +77,8 @@ private fun Button(activity: BridgeSyncActivity) {
     )
 }
 
-private val idle =
+/** Sync with nothing moving, held or failing. */
+internal val idleActivity =
     BridgeSyncActivity(
         moving = false,
         held = false,

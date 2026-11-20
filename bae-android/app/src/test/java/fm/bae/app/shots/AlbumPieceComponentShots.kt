@@ -11,6 +11,7 @@ import fm.bae.app.data.LocalImageStore
 import fm.bae.app.data.TestImages
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.albumdetail.AndroidAlbumCredits
+import fm.bae.app.ui.albumdetail.AndroidAlbumRating
 import fm.bae.app.ui.albumdetail.AndroidRecordLinks
 import fm.bae.app.ui.albumdetail.AndroidReleasePicker
 import fm.bae.app.ui.albumdetail.GalleryViewer
@@ -20,6 +21,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.awaitCancellation
 import org.junit.Test
 import uniffi.bae_bridge.BridgeAlbumDetail
+import uniffi.bae_bridge.BridgeAlbumRating
 import uniffi.bae_bridge.BridgeCatalog
 import uniffi.bae_bridge.BridgeCountLabel
 import uniffi.bae_bridge.BridgeCreditRole
@@ -28,13 +30,31 @@ import uniffi.bae_bridge.BridgeGalleryLabel
 import uniffi.bae_bridge.BridgePersonRef
 import uniffi.bae_bridge.BridgePlaylistCover
 import uniffi.bae_bridge.BridgePlaylistSummary
+import uniffi.bae_bridge.BridgeRater
 import uniffi.bae_bridge.BridgeReleaseName
 import uniffi.bae_bridge.BridgeReleaseRecord
 import uniffi.bae_bridge.BridgeSharing
+import uniffi.bae_bridge.BridgeStars
 import uniffi.bae_bridge.BridgeTermLabel
 
-/** The component shots of the album page's pieces: record links, release picker, lightbox, credits, and the artist page's other names. */
+/**
+ * The component shots of the album page's pieces: rating, record links, release picker, lightbox, credits, and the artist page's
+ * other names.
+ */
 class AlbumPieceComponentShots : BoardShot() {
+    @Test
+    fun androidComponentAlbumRatingNotRated() = component("android.component.album-rating.not-rated") { Rating(mine = null) }
+
+    @Test
+    fun androidComponentAlbumRatingRated() = component("android.component.album-rating.rated") { Rating(BridgeStars.FOUR, BridgeRater.You) }
+
+    @Test
+    fun androidComponentAlbumRatingRatedByOthers() =
+        component("android.component.album-rating.rated-by-others") { Rating(BridgeStars.FOUR, BridgeRater.You, anaRatedFive) }
+
+    @Test
+    fun androidComponentAlbumRatingOthersOnly() = component("android.component.album-rating.others-only") { Rating(null, anaRatedFive) }
+
     @Test
     fun androidComponentRecordLinksOneCatalog() =
         component("android.component.record-links.one-catalog", wide = true) { Links(BridgeCatalog.MUSIC_BRAINZ) }
@@ -157,6 +177,15 @@ private fun shownImage() =
 
 /** A store whose bytes never arrive, so the lightbox stays on its load. */
 private fun neverLoaded() = ImageStore(fetchReleaseImageBytes = { _, _ -> awaitCancellation() }, dispatcher = Dispatchers.Unconfined)
+
+/** The album's stars at [mine], over the line that names the [raters]. */
+@Composable
+private fun Rating(
+    mine: BridgeStars?,
+    vararg raters: BridgeRater,
+) = AndroidAlbumRating(BridgeAlbumRating(mine = mine, raters = raters.toList()), onRate = {})
+
+private val anaRatedFive = BridgeRater.Person("Ana", BridgeStars.FIVE)
 
 @Composable
 private fun Header(summary: BridgePlaylistSummary) = Images { AndroidPlaylistHeader(summary, onPlay = {}, onShuffle = {}) }

@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -13,6 +14,7 @@ import fm.bae.app.DisplayError
 import fm.bae.app.ui.appearance.AccentChoice
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidCard
+import fm.bae.app.ui.components.AndroidContentUnavailable
 import fm.bae.app.ui.components.AndroidDisclosure
 import fm.bae.app.ui.components.AndroidErrorDetails
 import fm.bae.app.ui.components.AndroidNote
@@ -22,10 +24,14 @@ import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.NoticeButtons
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.StatusTone
+import fm.bae.app.ui.library.ListPlaceholder
 import fm.bae.app.ui.settings.AndroidAccentPicker
 import org.junit.Test
 
-/** The component shots of the notices and what hangs off them: the notice, its error details and banner, notes, disclosures and the accent picker. */
+/**
+ * The component shots of the notices and what hangs off them: the notice, its error details and banner, notes, disclosures,
+ * the accent picker, and the line an empty screen says.
+ */
 class NoticeComponentShots : BoardShot() {
     @Test
     fun androidComponentNoticeNeutral() =
@@ -164,6 +170,13 @@ class NoticeComponentShots : BoardShot() {
                 AndroidRow(title = "Odile’s phone", subtitle = "Removed")
                 AndroidRow(title = "Kitchen tablet", subtitle = "Replaced")
             }
+        }
+
+    @Test
+    fun androidComponentContentUnavailableDefault() =
+        component("android.component.content-unavailable.default") {
+            // The preview's box, 412 by 140, in which the library pages' placeholder centres the line.
+            Box(Modifier.size(412.dp, 140.dp)) { ListPlaceholder { AndroidContentUnavailable("No plays yet") } }
         }
 
     @Test

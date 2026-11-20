@@ -66,7 +66,7 @@ internal fun PeoplePageScene(
 }
 
 /** The store that hands every avatar the same picture, as the boards' people all have one. */
-private fun avatarStore() = ImageStore(fetchAvatarBytes = { TestImages.png(64) }, dispatcher = Dispatchers.Unconfined)
+internal fun avatarStore() = ImageStore(fetchAvatarBytes = { TestImages.png(64) }, dispatcher = Dispatchers.Unconfined)
 
 /** [person]'s page, as an admin sees it, with the [adminChanges] this phone asked for. */
 @Composable

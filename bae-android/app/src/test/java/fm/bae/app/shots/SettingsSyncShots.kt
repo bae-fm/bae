@@ -46,13 +46,13 @@ class SettingsSyncShots : BoardShot() {
 
     /** Sync over an S3 bucket, synced, with the key the library records for the person. */
     @Test
-    fun androidSettingsSyncS3() = shot("android.settings.sync.s3") { Sync(synced, s3) }
+    fun androidSettingsSyncS3() = shot("android.settings.sync.s3") { Sync(synced, sceneS3) }
 
     /** The line after a saved S3 key, naming the old key to delete. */
     @Test
     fun androidSettingsSyncS3KeyReplaced() =
         shot("android.settings.sync.s3-key-replaced") {
-            Sync(synced, s3, key = "AKIA4EXAMPLENEW", keyLine = S3KeyReplacement.Line.Saved("AKIA4EXAMPLEOLD"))
+            Sync(synced, sceneS3, key = "AKIA4EXAMPLENEW", keyLine = S3KeyReplacement.Line.Saved("AKIA4EXAMPLEOLD"))
         }
 
     /** Sync over a Dropbox folder after Dropbox signed this device out. */
@@ -75,7 +75,7 @@ class SettingsSyncShots : BoardShot() {
 
     /** Sync over an S3 bucket whose storage refuses the key. */
     @Test
-    fun androidSettingsSyncSignedOutS3() = shot("android.settings.sync.signed-out-s3") { Sync(signedOutOfS3, s3) }
+    fun androidSettingsSyncSignedOutS3() = shot("android.settings.sync.signed-out-s3") { Sync(signedOutOfS3, sceneS3) }
 
     /** The S3 key dialog that Replace key opens, its fields empty. */
     @Test
@@ -135,7 +135,7 @@ private fun S3KeyDialogOverSync(
     sheet: S3KeyReplacement.Sheet,
     line: SyncLine = synced,
     typed: Pair<String, String> = "" to "",
-) = InPlaceDialogScene(behind = { SyncPage(line, s3) }, keyboardUp = sheet is S3KeyReplacement.Sheet.Fields) {
+) = InPlaceDialogScene(behind = { SyncPage(line, sceneS3) }, keyboardUp = sheet is S3KeyReplacement.Sheet.Fields) {
     s3KeyDialogParts(
         sheet = sheet,
         accessKeyId = typed.first,
@@ -156,7 +156,7 @@ private val folder =
         folderLabel = BridgeFolderLabel(name = "Music", webUrl = "https://www.dropbox.com/home/Music"),
     )
 
-private val s3 = BridgeStorageLocation.S3("my-bucket", "us-east-1", "https://s3.home.lan", null)
+internal val sceneS3 = BridgeStorageLocation.S3("my-bucket", "us-east-1", "https://s3.home.lan", null)
 
 /** The Sync page over [location] as a screen of its own; [SyncPage] says what it shows. */
 @Composable
