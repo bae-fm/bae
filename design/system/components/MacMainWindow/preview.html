@@ -8,7 +8,7 @@
   var B = window.Bae, h = React.createElement;
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
-  function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
+  function slot(t) { return h('div', { className: 'bae-preview-slot', style: { margin: 'var(--space-group)' } }, t || 'Content'); }
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
     W('Library', h(B.MacMainWindow, { width: 1100, height: 520, trackTitle: 'Low Tide Hours', trackArtist: 'Mara Quill', trackAlbum: 'Low Tide Hours', playing: true, position: 0.35, held: 0.6, elapsed: '1:42', duration: '5:03' }, slot('The section’s content'))),
     W('Import', h(B.MacMainWindow, Object.assign({ width: 1100, height: 520, trackTitle: 'Low Tide Hours', trackArtist: 'Mara Quill', trackAlbum: 'Low Tide Hours', playing: true, position: 0.35, held: 0.6, elapsed: '1:42', duration: '5:03' }, { section: 'Import' }), slot('The section’s content'))),
