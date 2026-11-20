@@ -110,7 +110,7 @@ struct MacStorageBand: View {
             ForEach(release.storageActions, id: \.self) { action in
                 if action == .pin && pinQueued {
                     MacButton(
-                        BridgeReleaseStorageAction.cancelPinningLabel,
+                        verbatim: BridgeReleaseStorageAction.cancelPinningLabel,
                         action: onCancelPin
                     )
                 }
