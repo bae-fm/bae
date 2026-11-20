@@ -114,6 +114,11 @@ enum OverWindow {
                 .shadow(color: .black.opacity(0.3), radius: 15, y: 5)
                 .padding(edge == .top ? .top : .bottom, distance)
                 .padding(.trailing, trailing)
+                // The app's popover is a window of its own. The boards read
+                // one hung from the top after the window it opens from, not
+                // among the rows it covers, and one opening upward where it
+                // sits, before the player bar under it.
+                .accessibilitySortPriority(edge == .top ? -1 : 0)
         }
     }
 }
