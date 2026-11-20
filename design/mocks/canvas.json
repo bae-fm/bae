@@ -194,7 +194,7 @@
    "x": 0,
    "y": 1556
   },
-  "android.settings.playback.receivers.looking.dc.html": {
+  "android.settings.playback.receivers-looking.dc.html": {
    "h": 916,
    "page": "settings",
    "title": "Playback: looking for receivers",
@@ -202,7 +202,7 @@
    "x": 492,
    "y": 5444
   },
-  "android.settings.playback.receivers.found.dc.html": {
+  "android.settings.playback.receivers-found.dc.html": {
    "h": 916,
    "page": "settings",
    "title": "Playback: receivers found",
@@ -1210,7 +1210,7 @@
    "x": 652,
    "y": 1556
   },
-  "mac.settings.playback.receivers.looking.dc.html": {
+  "mac.settings.playback.receivers-looking.dc.html": {
    "h": 600,
    "page": "settings",
    "title": "macOS: Playback: looking for receivers",
@@ -1218,7 +1218,7 @@
    "x": 2246,
    "y": 5444
   },
-  "mac.settings.playback.receivers.found.dc.html": {
+  "mac.settings.playback.receivers-found.dc.html": {
    "h": 600,
    "page": "settings",
    "title": "macOS: Playback: receivers found",
@@ -3226,7 +3226,7 @@
    "x": 980,
    "y": 12192
   },
-  "android.settings.playback.receivers.receiver-menu.dc.html": {
+  "android.settings.playback.receiver-menu.dc.html": {
    "h": 916,
    "page": "settings",
    "title": "Playback: a receiver’s menu",
@@ -3234,7 +3234,7 @@
    "x": 4286,
    "y": 5444
   },
-  "android.settings.playback.receivers.receiver-details.dc.html": {
+  "android.settings.playback.receiver-details.dc.html": {
    "h": 916,
    "page": "settings",
    "title": "Playback: a receiver’s details",
@@ -3242,7 +3242,7 @@
    "x": 4778,
    "y": 5444
   },
-  "mac.settings.playback.receivers.receiver-menu.dc.html": {
+  "mac.settings.playback.receiver-menu.dc.html": {
    "h": 600,
    "page": "settings",
    "title": "macOS: Playback: a receiver’s menu",
@@ -3250,7 +3250,7 @@
    "x": 5270,
    "y": 5444
   },
-  "mac.settings.playback.receivers.receiver-details.dc.html": {
+  "mac.settings.playback.receiver-details.dc.html": {
    "h": 600,
    "page": "settings",
    "title": "macOS: Playback: a receiver’s details",
@@ -6026,14 +6026,14 @@
   "mac.settings.devices.cut-off-other.dc.html",
   "mac.settings.devices.cut-off-running.dc.html",
   "mac.settings.devices.cut-off-not-here.dc.html",
-  "android.settings.playback.receivers.found.dc.html",
-  "mac.settings.playback.receivers.found.dc.html",
-  "android.settings.playback.receivers.looking.dc.html",
-  "mac.settings.playback.receivers.looking.dc.html",
-  "mac.settings.playback.receivers.receiver-details.dc.html",
-  "mac.settings.playback.receivers.receiver-menu.dc.html",
-  "android.settings.playback.receivers.receiver-details.dc.html",
-  "android.settings.playback.receivers.receiver-menu.dc.html",
+  "android.settings.playback.receivers-found.dc.html",
+  "mac.settings.playback.receivers-found.dc.html",
+  "android.settings.playback.receivers-looking.dc.html",
+  "mac.settings.playback.receivers-looking.dc.html",
+  "mac.settings.playback.receiver-details.dc.html",
+  "mac.settings.playback.receiver-menu.dc.html",
+  "android.settings.playback.receiver-details.dc.html",
+  "android.settings.playback.receiver-menu.dc.html",
   "android.library.albums.dc.html",
   "android.album.page.dc.html",
   "android.library.artist.dc.html",
