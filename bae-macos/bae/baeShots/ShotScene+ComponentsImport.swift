@@ -9,9 +9,9 @@ extension ShotScene {
     /// list's column, the search's cards and pressings, the draft card and
     /// its parts, and the cover gallery.
     static let importComponentScenes: [ShotScene] =
-        importValueScenes + importMappingScenes + importSearchScenes
-        + importDraftScenes + importCoverGalleryScenes + importSheetScenes
-        + importAnswerScenes
+        importValueScenes + importMappingScenes + importListComponentScenes
+        + importSearchScenes + importDraftScenes + importCoverGalleryScenes
+        + importSheetScenes + importAnswerScenes
 
     private static let importValueScenes: [ShotScene] = [
         component("mac.component.import-folder-line.default", height: 50) {
