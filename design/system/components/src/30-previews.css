@@ -24,6 +24,7 @@
 .bae-m-menu-item { display: flex; align-items: center; gap: var(--space-compact); padding: 4px var(--space-related); border-radius: 6px; }
 .bae-m-menu-item-on { background: var(--accent-selection); color: var(--on-fill); }
 .bae-m-menu-item-off { color: var(--text-tertiary); }
+.bae-m-menu-more { text-align: center; font-size: 10px; line-height: 14px; color: var(--text-secondary); }
 .bae-m-menu-check { width: 11px; display: flex; }
 
 /* Scan code: what to do, the QR code, its buttons, then when it ends. */

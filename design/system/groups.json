@@ -131,7 +131,7 @@
       },
       {
         "name": "Choices",
-        "about": "The controls a person sets: checkboxes, switches, radios, segmented controls, pop-ups, the sort and the accent.",
+        "about": "The controls a person sets: checkboxes, switches, radios, segmented controls, steppers, pop-ups, the sort and the accent.",
         "components": [
           "MacCheckbox",
           "AndroidCheckbox",
@@ -141,6 +141,7 @@
           "AndroidRadio",
           "MacSegmentedControl",
           "AndroidSegmentedControl",
+          "MacStepper",
           "MacPopUpButton",
           "MacSortCriteria",
           "MacSortPill",

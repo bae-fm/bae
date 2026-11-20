@@ -43,8 +43,9 @@
 .bae-m-idraft-reading { display: flex; align-items: center; gap: 8px; margin-right: 4px; }
 .bae-m-idraft-head { display: flex; gap: 12px; }
 .bae-m-idraft-id { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.bae-m-idraft-grid { display: grid; grid-template-columns: 64px 1fr; align-items: center; gap: 6px 12px; font: 400 13px var(--font-sans); }
-.bae-m-idraft-grid > .bae-muted { text-align: right; font-size: 11.5px; }
+.bae-m-idraft-grid { display: grid; grid-template-columns: 64px 1fr; align-items: start; gap: 6px 12px; font: 400 13px var(--font-sans); }
+/* A label sits level with its value's first line, so a list fact's name heads its first row. */
+.bae-m-idraft-grid > .bae-muted { text-align: right; font-size: 11.5px; line-height: 24px; }
 .bae-m-relfields { display: flex; flex-direction: column; gap: 12px; }
 .bae-m-idraft-records { display: flex; gap: 10px; align-items: center; padding-top: 8px; border-top: 1px solid var(--hairline); }
 /* The link-out arrow is larger than the text beside it; held to the text's line height, it never makes the line taller. */
@@ -107,8 +108,17 @@
 .bae-m-icell:hover, .bae-m-icell:focus { background: var(--field); box-shadow: inset 0 0 0 1px var(--field-edge); }
 .bae-m-icell.bae-m-icell-large { height: 30px; font: 700 22px var(--font-sans); }
 .bae-m-icell.bae-m-icell-quiet { color: var(--text-tertiary); }
-.bae-m-idraft-cell { display: flex; align-items: center; min-width: 0; }
-.bae-m-idraft-labelrow { flex: 1; min-width: 0; display: flex; gap: var(--space-related); }
+/* A field in a list row is as wide as its value, and 96pt while empty, so there is somewhere to click. */
+.bae-m-icell.bae-m-icell-fit { flex: none; width: auto; field-sizing: content; min-width: 2ch; }
+.bae-m-icell.bae-m-icell-fit:placeholder-shown { min-width: 96px; }
+.bae-m-icell.bae-m-icell-mono { font: 400 13px var(--font-mono); }
+.bae-m-idraft-entry { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.bae-m-idraft-media { gap: 14px; }
+.bae-m-idraft-add { flex: none; display: inline-flex; align-items: center; gap: 2px; }
+/* The Country menu drawn open (`countryOpen`), under its face as a pull-down menu. */
+.bae-m-idraft-pop { position: relative; display: inline-flex; }
+.bae-m-idraft-popmenu { position: absolute; top: 100%; left: -8px; margin-top: 4px; z-index: 5; }
+.bae-m-idraft-cell { display: flex; align-items: center; min-width: 0; min-height: 24px; }
 .bae-m-itable-cell { display: flex; align-items: center; min-width: 0; }
 .bae-m-ifile-damaged { flex: none; display: inline-flex; align-items: center; gap: var(--space-inline); font: 400 11.5px var(--font-sans); color: var(--warning); }
 .bae-m-ifile-play { flex: none; margin-left: auto; display: inline-flex; align-items: center; }

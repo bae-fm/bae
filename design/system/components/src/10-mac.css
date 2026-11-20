@@ -123,6 +123,10 @@
 .bae-m-segmented { display: inline-flex; height: 28px; box-sizing: border-box; padding: 3px; border-radius: 999px; background: var(--tile); }
 .bae-m-segment { display: flex; align-items: center; padding: 0 14px; border-radius: 999px; font: 400 13px var(--font-sans); color: var(--text-primary); cursor: pointer; }
 .bae-m-segment-on { background: var(--hover); box-shadow: inset 0 0 0 100px var(--hairline-strong); }
+/* The system stepper: an up and a down arrow in a small rounded box. */
+.bae-m-stepper { flex: none; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; width: 16px; height: 22px; border-radius: 5px; background: var(--control); box-shadow: 0 0 0 0.5px var(--control-edge); fill: var(--text-secondary); }
+.bae-m-stepper > button { display: flex; height: 11px; align-items: center; padding: 0; }
+.bae-m-stepper-up { transform: rotate(180deg); }
 .bae-m-popupbutton:disabled { opacity: var(--opacity-off); }
 
 /* macOS's disclosure: its own box; the chevron leads inside the row and turns down when open; the rows it shows line up with the label. */

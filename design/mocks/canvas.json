@@ -4362,6 +4362,14 @@
    "x": 12908,
    "y": 21244
   },
+  "mac.album.edit.country.dc.html": {
+   "h": 1300,
+   "page": "home",
+   "title": "macOS: Edit…: the Country menu",
+   "w": 1200,
+   "x": 14204,
+   "y": 21244
+  },
   "mac.import.narrow.folder.dc.html": {
    "h": 1260,
    "page": "import",
@@ -6374,6 +6382,7 @@
   "mac.album.edit.cover.dc.html",
   "mac.album.edit.cue-image.dc.html",
   "mac.album.edit.reading-file.dc.html",
+  "mac.album.edit.country.dc.html",
   "mac.import.identify.records-differ.dc.html",
   "mac.import.list.folder-not-watched.dc.html",
   "mac.playback.casting.no-volume.dc.html",

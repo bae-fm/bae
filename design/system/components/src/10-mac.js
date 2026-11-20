@@ -272,6 +272,13 @@
       }));
   }
 
+  // The system stepper: a small rounded box of an up and a down arrow beside a count, named by what it counts (`label`).
+  function MacStepper(props) {
+    return h('span', { className: 'bae-m-stepper', role: 'group', 'aria-label': props.label },
+      h('button', { type: 'button', className: 'bae-plainbtn', 'aria-label': 'Increment' }, h(Glyph, { set: 'mac', name: 'down', size: 11, className: 'bae-m-stepper-up' })),
+      h('button', { type: 'button', className: 'bae-plainbtn', 'aria-label': 'Decrement' }, h(Glyph, { set: 'mac', name: 'down', size: 11 })));
+  }
+
   // DisclosureGroup in a grouped form: its own box, the chevron leading inside the label row and turning down when open; the rows it shows are indented to the label.
   function MacDisclosure(props) {
     var s = React.useState(!!props.open);
@@ -380,8 +387,9 @@
   var MacAccentPicker = accentPicker('bae-m-accents');
   var AndroidAccentPicker = accentPicker('bae-a-accents');
 
+  // `more`: the menu runs past the screen's bottom edge, and NSMenu's scroll arrow ends it.
   function MacMenu(props) {
-    return h('div', { className: 'bae-m-menu', role: 'menu' }, props.children);
+    return h('div', { className: 'bae-m-menu', role: 'menu' }, props.children, props.more ? h('div', { className: 'bae-m-menu-more', 'aria-hidden': true }, '▾') : null);
   }
 
   // `divider`: a line between groups of items, as NSMenu's separator item. `off`: an item that can't be chosen now, greyed, as NSMenu disables one.

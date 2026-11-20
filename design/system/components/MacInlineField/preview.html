@@ -1,4 +1,4 @@
-<!-- @dsCard group="Import" height=340 -->
+<!-- @dsCard group="Import" height=490 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>MacInlineField</title></head>
@@ -17,7 +17,10 @@
     N('Large', box(260, h(B.MacInlineField, { label: 'Album title', value: 'Low Tide Hours', placeholder: 'Album title', large: true }))),
     N('Large empty', box(260, h(B.MacInlineField, { label: 'Album title', placeholder: 'Album title', large: true }))),
     N('Quiet', box(260, h(B.MacInlineField, { label: 'Album year', value: '1992', placeholder: 'Album year', quiet: true }))),
-    N('Quiet empty', box(260, h(B.MacInlineField, { label: 'Album year', placeholder: 'Album year', quiet: true })))));
+    N('Quiet empty', box(260, h(B.MacInlineField, { label: 'Album year', placeholder: 'Album year', quiet: true }))),
+    N('Fits its value', box(260, h(B.MacInlineField, { label: 'Label', value: 'Harbor Records', placeholder: '—', fit: true }))),
+    N('Fits, empty', box(260, h(B.MacInlineField, { label: 'Label', placeholder: '—', fit: true }))),
+    N('Mono', box(260, h(B.MacInlineField, { label: 'Label', value: 'Harbor Records', placeholder: '—', mono: true })))));
 </script>
 </body>
 </html>

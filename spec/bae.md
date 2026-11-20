@@ -143,7 +143,11 @@ country as its ISO 3166-1 code (Appendix H), and the apps show the country's
 name in the device's language wherever they print it. A pressing can be
 printed with more than one barcode (an EAN and a UPC): it keeps every one its
 source states, in order, each product once, and the editor shows one row per
-barcode, each removable, with a row to add another, as it does labels. Its
+barcode, each removable, as it does labels. Each list in the editor adds an
+entry with the same Add button, a + before its words: under the last label row
+and the last barcode row, on a line of its own, *Add label* or *Add barcode*
+adds an empty row; after the last medium and the last detail, on their line,
+*Add* opens a menu of what can be added. Its
 media are a list of carriers, each with how many of it there are (two CDs, one
 vinyl record). Its labels are a list of library labels (§2.3), each with the
 catalog number it gives the pressing; a place may state a catalog number

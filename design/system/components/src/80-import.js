@@ -123,8 +123,9 @@
   // Where an import goes, one choice of two, as the person last chose it: This Mac or Cloud. One stored choice, shown wherever Import is (the draft card, the bulk pane's Import row) and in Settings → Import, so changing it in one place changes it in all.
   function MacImportDestination(props) { return h(MacPopUpButton, { label: 'Import to', value: props.to, off: props.off }); }
   // A field drawn as the value it holds until the pointer is over it or it has focus, for the draft's values and a track's cells: `label` names it, `placeholder` shows while it is empty. `large` sets it in the album title's size; `quiet` draws its value in the tertiary colour, as the album year.
+  // `fit`: as wide as its value, and 96pt while empty, for a field in a list row; `mono`: its value in the mono face, as a catalog number or a barcode.
   function MacInlineField(props) {
-    return h('input', { type: 'text', className: cx('bae-m-icell', props.large && 'bae-m-icell-large', props.quiet && 'bae-m-icell-quiet'), defaultValue: props.value || '', placeholder: props.placeholder, 'aria-label': props.label, spellCheck: false });
+    return h('input', { type: 'text', className: cx('bae-m-icell', props.large && 'bae-m-icell-large', props.quiet && 'bae-m-icell-quiet', props.fit && 'bae-m-icell-fit', props.mono && 'bae-m-icell-mono'), defaultValue: props.value || '', placeholder: props.placeholder, 'aria-label': props.label, spellCheck: false });
   }
   // A ruled heading over a part of a form: Release, Images, Files, Credits.
   function MacFormHeading(props) { return h('div', { className: 'bae-m-formhead' }, props.children); }
@@ -164,24 +165,44 @@
   // The folder's audio as the scan read it (spec §3.6: codec, sample rate, bit depth or bitrate, channels), the identity's line under the year.
   function audioLine(audio) { return audio ? h('div', { key: 'audio', className: 'bae-m-tertiary bae-m-idraft-audio' }, audio) : null; }
   // What Discogs says about the pressing that no other field holds: each detail with its remove button, then the menu that adds one more, showing — while there are none and + Add after.
+  // ⊗, which removes one entry of a list, named for the entry (`what`), as xmark.circle.fill in the editor.
+  function removeEntry(what) { return h(MacIconButton, { icon: 'removefill', size: 14, small: true, faint: true, label: 'Remove ' + what }); }
+  // + and the words, in the accent: the one control every list of the Release grid adds an entry with. `menu`: it opens a menu of what can be added, and says Add.
+  function addEntry(label, menu) {
+    return h('button', { type: 'button', 'aria-haspopup': menu ? 'menu' : null, 'aria-label': label, title: label, className: 'bae-plainbtn bae-accent bae-m-idraft-add' }, h(Glyph, { set: 'mac', name: 'add', size: 11 }), menu ? 'Add' : label);
+  }
   function discogsDetails(details) {
     return h('span', { className: 'bae-m-idraft-details' },
-      details.map(function (d) { return h('span', { key: d, className: 'bae-m-idraft-detail' }, d, h('button', { type: 'button', className: 'bae-plainbtn bae-m-tertiary', 'aria-label': 'Remove' }, h(Sym, { name: 'xcircle', size: 12 }))); }),
+      details.map(function (d) { return h('span', { key: d, className: 'bae-m-idraft-detail' }, d, removeEntry(d)); }),
       h('button', { type: 'button', className: cx('bae-plainbtn', 'bae-m-idraft-detail', !details.length && 'bae-m-tertiary'), 'aria-haspopup': 'menu', 'aria-label': 'Details' }, details.length ? [h(Glyph, { key: 'p', set: 'mac', name: 'add', size: 11 }), 'Add'] : '—'));
   }
   // The release's fields under a Release heading: Year, Media, Label with its catalog number, Country, Barcode, Status, Packaging and Details, the typed ones as fields and the chosen ones as pop-ups, each showing — while empty.
   function MacReleaseFields(props) {
-    var dash = function (v) { return v || '—'; };
-    var field = function (label, value) { return h(MacInlineField, { label: label, value: value, placeholder: '—' }); };
-    var grid = [
-      ['Year', field('Year', props.year)],
-      ['Media', h(MacPopUpButton, { label: 'Media', value: dash(props.media) })],
-      ['Label', h('span', { className: 'bae-m-idraft-labelrow' }, field('Label', props.labelName), field('Catalog number', props.catalog))],
-      ['Country', h(MacPopUpButton, { label: 'Country', value: dash(props.country) })],
-      ['Barcode', field('Barcode', props.barcode)],
-      ['Status', h(MacPopUpButton, { label: 'Status', value: dash(props.status) })],
-      ['Packaging', h(MacPopUpButton, { label: 'Packaging', value: dash(props.packaging) })],
-      ['Details', discogsDetails(list(props.details))]];
+    // A fact chosen from a menu shows its value as plain text, or the form's dash.
+    var face = function (label, value) { return h('button', { type: 'button', 'aria-haspopup': 'menu', 'aria-label': label, className: cx('bae-plainbtn', !value && 'bae-m-tertiary') }, value || '—'); };
+    var field = function (label, value, mono) { return h(MacInlineField, { label: label, value: value, placeholder: '—', fit: true, mono: mono }); };
+    // A list kept one row per entry (labels, barcodes): its name on the first row only, each entry with ⊗, then Add on its own line under the last row; with none, Add alone beside the name.
+    var rows = function (name, entries, draw, noun) {
+      var addLine = addEntry('Add ' + name.toLowerCase(), false);
+      if (!entries.length) return [[name, addLine]];
+      return entries.map(function (e, i) { return [i === 0 ? name : '', h('span', { className: 'bae-m-idraft-entry' }, draw(e), removeEntry(noun(e)))]; }).concat([['', addLine]]);
+    };
+    // `media`: each carrier with how many of it there are, as "2×CD", comma-separated; a carrier alone is one. Each is its name, ×count, a MacStepper and ⊗, on one line, then Add, a menu of the carriers not yet listed.
+    var media = list(props.media).map(function (m) { var p = m.split('×'); return p.length > 1 ? { count: p[0], carrier: p[1] } : { count: '1', carrier: p[0] }; });
+    var mediaLine = h('span', { className: 'bae-m-idraft-entry bae-m-idraft-media' },
+      media.map(function (m) { return h('span', { key: m.carrier, className: 'bae-m-idraft-entry' }, h('span', null, m.carrier), h('span', { className: 'bae-muted bae-num' }, '×' + m.count), h(MacStepper, { label: 'Number of ' + m.carrier }), removeEntry(m.carrier)); }),
+      addEntry('Add medium', true));
+    // `countryOpen`: the countries the Country menu lists, drawn open under its face, with the dash for none first and NSMenu's scroll arrow at its foot.
+    var country = props.countryOpen
+      ? h('span', { className: 'bae-m-idraft-pop' }, face('Country', props.country), h('div', { className: 'bae-m-idraft-popmenu' }, h(MacMenu, { more: true }, h(MacMenuItem, null, '—'), list(props.countryOpen).map(function (c) { return h(MacMenuItem, { key: c, checked: c === props.country, highlighted: c === props.country }, c); }))))
+      : face('Country', props.country);
+    var grid = [['Year', field('Year', props.year)], ['Media', mediaLine]]
+      // `labels`: each label with the catalog number it gives the pressing, as "Name|Catalog", comma-separated.
+      .concat(rows('Label', list(props.labels), function (l) { var p = l.split('|'); return [h(React.Fragment, { key: 'n' }, field('Label', p[0])), h(React.Fragment, { key: 'c' }, field('Catalog number', p[1] || '', true))]; }, function (l) { var p = l.split('|'); return p[0] || p[1]; }))
+      .concat([['Country', country]])
+      // `barcodes`: comma-separated, each a row.
+      .concat(rows('Barcode', list(props.barcodes), function (b) { return field('Barcode', b, true); }, function (b) { return b; }))
+      .concat([['Status', face('Status', props.status)], ['Packaging', face('Packaging', props.packaging)], ['Details', discogsDetails(list(props.details))]]);
     return h('div', { className: 'bae-m-relfields' },
       h(MacFormHeading, null, 'Release'),
       h('div', { className: 'bae-m-idraft-grid' }, grid.map(function (r, i) { return [h('span', { key: 'l' + i, className: 'bae-muted' }, r[0]), h('span', { key: 'v' + i, className: 'bae-m-idraft-cell' }, r[1])]; })));
@@ -192,7 +213,7 @@
       h(MacReleaseIdentity, { key: 'id', cover: props.cover, title: props.title, artist: props.artist, artistChip: props.artistChip, year: props.year },
         audioLine(props.audio),
         props.album ? h(MacAlbumPicker, { key: 'album', album: props.album, inLibrary: props.albumInLibrary, picked: props.albumPicked, open: props.albumOpen }) : null),
-      h(MacReleaseFields, { key: 'fields', year: props.pressingYear, media: props.media, labelName: props.labelName, catalog: props.catalog, country: props.country, barcode: props.barcode, status: props.status, packaging: props.packaging, details: props.details })];
+      h(MacReleaseFields, { key: 'fields', year: props.pressingYear, media: props.media, labels: props.labels, country: props.country, countryOpen: props.countryOpen, barcodes: props.barcodes, status: props.status, packaging: props.packaging, details: props.details })];
   }
   // The release editor, one component in the import pane and in the album's Edit release sheet; its `actions` row is the only difference. `actions` `import`: where the import goes (`cloud`, `to`) and Import, or Retry import (`retry`), or neither while the folder has nothing to import (`blank`), with the folder's `check` in a warning notice under that row. `actions` `save`: Cancel once something changed (`changed`), and Save. `reading`: the file a save or an import reads before it writes. Then, in both: the release's identity and fields; the records under a rule, with Unlink; the folder's or release's images (`images`); the track table, the children (side headings, CUE captions and track rows); the Files list (`files`).
   function MacReleaseEditor(props) {

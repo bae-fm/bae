@@ -81,8 +81,10 @@ export interface MacAccentPickerProps { selected?: 'blue' | 'orchid' | 'pink' | 
 export declare function MacAccentPicker(props: MacAccentPickerProps): React.ReactElement;
 
 /** A menu as it shows when open: MacMenuItems in a panel. */
-export interface MacMenuProps { children?: React.ReactNode }
+export interface MacMenuProps { /** The menu runs past the screen's bottom edge and ends in the scroll arrow. */ more?: boolean; children?: React.ReactNode }
 export declare function MacMenu(props: MacMenuProps): React.ReactElement;
+/** The system stepper: an up and a down arrow in a small rounded box, named by what it counts (label). */
+export declare function MacStepper(props: { label: string }): React.ReactElement;
 
 /** One choice in a MacMenu: checked marks the current choice, highlighted the one under the pointer. */
 export interface MacMenuItemProps { checked?: boolean; highlighted?: boolean; divider?: boolean; children?: React.ReactNode; /** Can't be chosen now: greyed, as NSMenu disables an item. */ off?: boolean; /** Heads the group below. */ heading?: boolean; /** A › opens more items. */ submenu?: boolean; /** On a submenu, the glyph before the ›. */ accessory?: 'problem' | 'scanning' | 'network'; /** The accessory's hover text. */ help?: string }
@@ -370,7 +372,7 @@ export declare function MacImportFolderLine(props: { tab?: string; folder: strin
 /** Where an import goes: This Mac or Cloud. One stored choice, wherever it shows. */
 export declare function MacImportDestination(props: { to: 'This Mac' | 'Cloud'; off?: boolean }): React.ReactElement;
 /** The release editor, in the import pane and in the album's Edit release sheet: Identify and the action row (`actions`: import with where it goes, or save with Cancel and Save); the identity and fields; the records with Unlink; the images; the track table, its children; the Files list. */
-export declare function MacReleaseEditor(props: { title?: string; artist?: string; artistChip?: string; year?: string; audio?: string; album?: string; albumInLibrary?: boolean; albumPicked?: boolean; albumOpen?: boolean; cover?: string; pressingYear?: string; media?: string; labelName?: string; catalog?: string; country?: string; barcode?: string; status?: string; packaging?: string; details?: string; records?: string; images?: string; files?: string; reading?: string; children?: React.ReactNode } & ({ actions: 'import'; check?: string; cloud?: boolean; to?: 'This Mac' | 'Cloud'; retry?: boolean; blank?: boolean } | { actions: 'save'; changed?: boolean })): React.ReactElement;
+export declare function MacReleaseEditor(props: { title?: string; artist?: string; artistChip?: string; year?: string; audio?: string; album?: string; albumInLibrary?: boolean; albumPicked?: boolean; albumOpen?: boolean; cover?: string; pressingYear?: string; media?: string; labels?: string; country?: string; countryOpen?: string; barcodes?: string; status?: string; packaging?: string; details?: string; records?: string; images?: string; files?: string; reading?: string; children?: React.ReactNode } & ({ actions: 'import'; check?: string; cloud?: boolean; to?: 'This Mac' | 'Cloud'; retry?: boolean; blank?: boolean } | { actions: 'save'; changed?: boolean })): React.ReactElement;
 /** A skipped folder's card, read-only: why bae can't import it, then its cover and what its tags call the release, or its folder's name. */
 export declare function MacInvalidCandidateCard(props: { reason: string; cover?: string; title?: string; artist?: string; folder?: string }): React.ReactElement;
 export declare function MacImportTable(props: { children?: React.ReactNode }): React.ReactElement;
@@ -481,7 +483,7 @@ export declare function MacImportEmptyState(props: { discogs?: boolean }): React
 /** The Import window's content: the list column (the first child) beside the pane (the other children). noSelection draws the pane's Select a folder state instead. */
 export declare function MacImportWindow(props: { noSelection?: boolean; children?: React.ReactNode }): React.ReactElement;
 /** A field drawn as its value until the pointer is over it or it has focus. large sets it in the album title's size; quiet draws its value in the tertiary colour. */
-export declare function MacInlineField(props: { label: string; value?: string; placeholder?: string; large?: boolean; quiet?: boolean }): React.ReactElement;
+export declare function MacInlineField(props: { label: string; value?: string; placeholder?: string; large?: boolean; quiet?: boolean; fit?: boolean; mono?: boolean }): React.ReactElement;
 /** A ruled heading over a part of a form: Release, Images, Files, Credits. */
 export declare function MacFormHeading(props: { children?: React.ReactNode }): React.ReactElement;
 /** The release editor's top row: Identify with Automatic, Search and the Metadata menu, then the action row: where the import goes and Import or Retry import, or Cancel once something changed and Save. */
@@ -493,7 +495,7 @@ export declare function MacAlbumPicker(props: { album: string; inLibrary?: boole
 /** The release's cover beside its album title, album artist and album year, then its children: the audio line and the album picker. */
 export declare function MacReleaseIdentity(props: { cover?: string; title?: string; artist?: string; artistChip?: 'Library' | 'New'; year?: string; children?: React.ReactNode }): React.ReactElement;
 /** The release's fields under a Release heading: Year, Media, Label with catalog number, Country, Barcode, Status, Packaging and Details. */
-export declare function MacReleaseFields(props: { year?: string; media?: string; labelName?: string; catalog?: string; country?: string; barcode?: string; status?: string; packaging?: string; details?: string }): React.ReactElement;
+export declare function MacReleaseFields(props: { year?: string; media?: string; labels?: string; country?: string; countryOpen?: string; barcodes?: string; status?: string; packaging?: string; details?: string }): React.ReactElement;
 /** One file of a release: name and size; kind opens (a button that opens it), audio (with Play) or other; damaged says why the file is damaged. */
 export declare function MacReleaseFileRow(props: { name: string; size?: string; kind?: 'opens' | 'audio' | 'other'; damaged?: string }): React.ReactElement;
 /** One identifier the files state: label and value, or a dash, with the catalogs searched for it ("MusicBrainz=2,Discogs=0"). */
