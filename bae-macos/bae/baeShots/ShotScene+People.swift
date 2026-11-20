@@ -99,7 +99,7 @@ extension ShotScene {
             size: CGSize(width: 690, height: 600),
             frame: .window(title: "Settings", titleBar: .hidden)
         ) {
-            peopleStage(subpage: .devices)
+            peopleStage(subpage: .devices, ownRemovedDevices: true)
         },
         ShotScene(
             id: "mac.settings.invite.request",
@@ -318,14 +318,19 @@ extension ShotScene {
     ]
 
     /// The shot people with the other person named Ben, who has a tablet
-    /// and no removed devices.
+    /// and no removed devices, and this person's own removed devices only
+    /// when `ownRemovedDevices`: the boards draw them on Your devices alone.
     private static func peopleWithBen(
         role: BridgeMemberRole,
-        ownPicture: Bool = false
+        ownPicture: Bool = false,
+        ownRemovedDevices: Bool = false
     ) -> BridgePeople {
         var people = PreviewData.members(
             reaching: PreviewData.previewDropboxStorage
         )
+        if !ownRemovedDevices {
+            people = people.ownRemovedDevicesLeftOut()
+        }
         if ownPicture {
             people.own?.profile?.avatarVersion = "1"
         }
@@ -346,6 +351,7 @@ extension ShotScene {
                 )
             ]
             ben.membership.formerDevices = []
+            ben.membership.formerDeviceCount = 0
             return ben
         }
         return people
@@ -452,6 +458,7 @@ extension ShotScene {
         subpage: PeopleAndDevicesPage.Subpage = .people,
         asAdmin: Bool = true,
         ownPicture: Bool = false,
+        ownRemovedDevices: Bool = false,
         invites: [BridgeInvite] = [],
         refusedInvites: [BridgeRefusedInvite] = [],
         shown: BridgeSyncShown = .fixtureSynced,
@@ -459,7 +466,11 @@ extension ShotScene {
         menu: (@MainActor () -> AnyView)? = nil
     ) -> ShotStage {
         let membership = MembershipStore.stub(
-            people: peopleWithBen(role: .member, ownPicture: ownPicture),
+            people: peopleWithBen(
+                role: .member,
+                ownPicture: ownPicture,
+                ownRemovedDevices: ownRemovedDevices
+            ),
             selfIsAdmin: asAdmin,
             invites: invites,
             refusedInvites: refusedInvites
@@ -542,5 +553,16 @@ extension ShotScene {
                 onDone: {}
             )
         )
+    }
+}
+
+extension BridgePeople {
+    /// These people without this person's removed devices, as the boards
+    /// draw every devices page but Your devices on its own.
+    func ownRemovedDevicesLeftOut() -> BridgePeople {
+        var people = self
+        people.own?.membership.formerDevices = []
+        people.own?.membership.formerDeviceCount = 0
+        return people
     }
 }

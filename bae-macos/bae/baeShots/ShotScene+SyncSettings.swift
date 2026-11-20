@@ -273,9 +273,11 @@ func peopleSettingsWindow(
     alert: (MacAlertWords, [MacAlertButton])
 ) -> some View {
     let membership = MembershipStore.stub(
-        people: PreviewData.members(
-            reaching: PreviewData.previewDropboxStorage
-        ),
+        people:
+            PreviewData.members(
+                reaching: PreviewData.previewDropboxStorage
+            )
+            .ownRemovedDevicesLeftOut(),
         selfIsAdmin: true,
         invites: invites
     )
