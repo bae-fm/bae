@@ -143,9 +143,11 @@ extension SnapshotTestSupport {
         window.close()
     }
 
-    /// A window origin past the right edge of every display, so a hosted
-    /// view is never on the screen of the person running the suite: nothing
-    /// flashes while it runs, and their pointer never hovers a hosted row.
+    /// A window origin past the right edge of every display the Mac has as
+    /// the window opens, so nothing flashes on the screen of the person
+    /// running the suite and their pointer never hovers a hosted row. When
+    /// the displays change, the window server can move the window onto one
+    /// (`NoticePools`).
     @MainActor
     private static var offscreenOrigin: NSPoint {
         let right = NSScreen.screens.map(\.frame.maxX).max() ?? 0
@@ -173,10 +175,16 @@ final class SnapshotTestWindow: NSWindow {
     /// How many times the window server has said where it placed or moved
     /// this window.
     private(set) var moves = 0
+    /// How many times the pointer's tracking has said it entered or left
+    /// this window.
+    private(set) var crossings = 0
 
     override func sendEvent(_ event: NSEvent) {
         if event.type == .appKitDefined, event.subtype == .windowMoved {
             moves += 1
+        }
+        if event.type == .mouseEntered || event.type == .mouseExited {
+            crossings += 1
         }
         super.sendEvent(event)
     }
@@ -185,16 +193,22 @@ final class SnapshotTestWindow: NSWindow {
     override var canBecomeMain: Bool { false }
 }
 
-/// Hands each notice the window server sends the app to AppKit inside an
-/// autorelease pool of its own, whoever takes it off the queue.
+/// Hands each notice the window server sends the app, and each event of the
+/// pointer's tracking, to AppKit inside an autorelease pool of its own,
+/// whoever takes it off the queue.
 ///
-/// Handling a notice autoreleases the window it names. A notice that comes
-/// while a Swift Testing test waits is handled by XCTest's waiter, which runs
-/// the test host's run loop from inside a pool that drains only when the
-/// whole run ends, so the window it named would outlive its test. Installed
-/// once, for the rest of the run: AppKit calls the monitor from inside its
-/// handling of each notice, and the monitor hands the notice back to AppKit
-/// in a pool and stops AppKit's own handling.
+/// Handling one autoreleases the window it names. One that comes while a
+/// Swift Testing test waits is handled by XCTest's waiter, which runs the
+/// test host's run loop from inside a pool that drains only when the whole
+/// run ends, so the window it named would outlive its test. The pointer's
+/// tracking reaches a hosted window when the displays change, as when
+/// another build's shots add or remove the display they draw on: the window
+/// server then moves windows that are past every display onto one, and the
+/// pointer enters and leaves them. Installed once, for the rest of the run:
+/// AppKit calls the monitor from inside its handling of each event, and the
+/// monitor hands the event back to AppKit in a pool and stops AppKit's own
+/// handling. The monitor leaves clicks and keys alone: the app's own monitors
+/// watch them, and the tests send them to a window themselves.
 @MainActor
 private enum NoticePools {
     private static var monitor: Any?
@@ -204,8 +218,12 @@ private enum NoticePools {
 
     static func install() {
         guard monitor == nil else { return }
-        monitor = NSEvent.addLocalMonitorForEvents(matching: .appKitDefined) {
-            notice in
+        monitor = NSEvent.addLocalMonitorForEvents(
+            matching: [
+                .appKitDefined, .mouseEntered, .mouseExited, .mouseMoved,
+                .cursorUpdate,
+            ]
+        ) { notice in
             let handed = MainActor.assumeIsolated { hand(notice) }
             return handed ? nil : notice
         }
