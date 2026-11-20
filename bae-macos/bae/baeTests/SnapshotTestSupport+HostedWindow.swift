@@ -23,17 +23,13 @@ extension SnapshotTestSupport {
         line: UInt = #line,
         _ body: (NSWindow, NSHostingView<V>) async throws -> Value
     ) async throws -> Value {
+        NoticePools.install()
         weak var released: NSWindow?
         var retired = false
         let result: Value
         do {
-            let (window, host) = try autoreleasepool {
-                try openWindow(
-                    hosting: view,
-                    size: size,
-                    file: file,
-                    line: line
-                )
+            let (window, host) = autoreleasepool {
+                openWindow(hosting: view, size: size)
             }
             released = window
             Wait.announceRelease(of: window)
@@ -66,10 +62,8 @@ extension SnapshotTestSupport {
     @MainActor
     private static func openWindow<V: View>(
         hosting view: V,
-        size: NSSize,
-        file: StaticString,
-        line: UInt
-    ) throws -> (window: NSWindow, host: NSHostingView<V>) {
+        size: NSSize
+    ) -> (window: NSWindow, host: NSHostingView<V>) {
         let host = NSHostingView(rootView: view)
         host.frame = NSRect(origin: .zero, size: size)
         let window = SnapshotTestWindow(
@@ -90,70 +84,13 @@ extension SnapshotTestSupport {
         window.contentView = host
         window.orderFront(nil)
         host.layoutSubtreeIfNeeded()
-        if Test.current != nil {
-            try takePlacementNotice(for: window, file: file, line: line)
-        }
         return (window, host)
     }
 
-    /// Wait for the notice the window server sends once it has placed a
-    /// window ordered in, handling it and anything else it sends meanwhile
-    /// in the caller's autorelease pool.
-    ///
-    /// Handling the notice autoreleases the window. Left to the test host's
-    /// run loop it is handled in the pool the test runner holds for the whole
-    /// run, which Swift Testing never drains, and the window then outlived
-    /// its test. XCTest drains a pool after each of its tests, so a window
-    /// hosted there needs no wait. The wait ends on this window's notice,
-    /// however late the window server sends it; only the hang guard ends it
-    /// otherwise, and fails the test.
-    @MainActor
-    private static func takePlacementNotice(
-        for window: SnapshotTestWindow,
-        file: StaticString,
-        line: UInt
-    ) throws {
-        let end = Date(timeIntervalSinceNow: HangGuard.seconds)
-        while !window.isPlaced,
-            let notice = NSApp.nextEvent(
-                matching: .appKitDefined,
-                until: end,
-                inMode: .default,
-                dequeue: true
-            )
-        {
-            NSApp.sendEvent(notice)
-        }
-        if !window.isPlaced {
-            throw Wait.TimedOut(file: file, line: line)
-        }
-    }
-
-    /// Handle, in a pool of their own, the notices the window server has
-    /// already sent, without waiting for more. Handled by the run loop
-    /// instead, each is autoreleased with the window it names into the pool
-    /// the test runner holds for the whole run, which Swift Testing never
-    /// drains: a hosted window a sheet was begun or ended on, or that was
-    /// made key, then outlived its test.
-    @MainActor
-    private static func handlePendingNotices() {
-        autoreleasepool {
-            while let notice = NSApp.nextEvent(
-                matching: .appKitDefined,
-                until: .distantPast,
-                inMode: .default,
-                dequeue: true
-            ) {
-                NSApp.sendEvent(notice)
-            }
-        }
-    }
-
     /// Return once `condition` holds of AppKit's windows, which send no
-    /// change notice: it is read at once and at each idle of the run loop.
-    /// The window server's notices that come meanwhile are handled here, in
-    /// a pool of their own (see [`handlePendingNotices`]), as they come. The
-    /// wait ends on the windows' own state, not on a stretch with no notices.
+    /// change notice: it is read at once and at each idle of the run loop,
+    /// in a pool of its own. The wait ends on the windows' own state, not on
+    /// a stretch with no notices.
     @MainActor
     static func untilWindows(
         file: StaticString = #filePath,
@@ -162,7 +99,6 @@ extension SnapshotTestSupport {
     ) async throws {
         let end = ContinuousClock.now.advanced(by: HangGuard.duration)
         while true {
-            handlePendingNotices()
             if autoreleasepool(invoking: condition) { return }
             try await Wait.nextIdle(
                 before: end,
@@ -234,15 +170,12 @@ final class SnapshotTestWindow: NSWindow {
         super.beginSheet(sheetWindow, completionHandler: handler)
     }
 
-    /// Whether the window server has said where it placed this window.
-    private(set) var isPlaced = false
     /// How many times the window server has said where it placed or moved
     /// this window.
     private(set) var moves = 0
 
     override func sendEvent(_ event: NSEvent) {
         if event.type == .appKitDefined, event.subtype == .windowMoved {
-            isPlaced = true
             moves += 1
         }
         super.sendEvent(event)
@@ -250,4 +183,41 @@ final class SnapshotTestWindow: NSWindow {
 
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
+}
+
+/// Hands each notice the window server sends the app to AppKit inside an
+/// autorelease pool of its own, whoever takes it off the queue.
+///
+/// Handling a notice autoreleases the window it names. A notice that comes
+/// while a Swift Testing test waits is handled by XCTest's waiter, which runs
+/// the test host's run loop from inside a pool that drains only when the
+/// whole run ends, so the window it named would outlive its test. Installed
+/// once, for the rest of the run: AppKit calls the monitor from inside its
+/// handling of each notice, and the monitor hands the notice back to AppKit
+/// in a pool and stops AppKit's own handling.
+@MainActor
+private enum NoticePools {
+    private static var monitor: Any?
+    /// Whether the monitor is handing a notice back to AppKit, which calls
+    /// the monitor again for it.
+    private static var handing = false
+
+    static func install() {
+        guard monitor == nil else { return }
+        monitor = NSEvent.addLocalMonitorForEvents(matching: .appKitDefined) {
+            notice in
+            let handed = MainActor.assumeIsolated { hand(notice) }
+            return handed ? nil : notice
+        }
+    }
+
+    /// Hand `notice` to AppKit in a pool of its own; false when the notice
+    /// is the one being handed now, which AppKit then handles as it is.
+    private static func hand(_ notice: NSEvent) -> Bool {
+        if handing { return false }
+        handing = true
+        defer { handing = false }
+        autoreleasepool { NSApp.sendEvent(notice) }
+        return true
+    }
 }
