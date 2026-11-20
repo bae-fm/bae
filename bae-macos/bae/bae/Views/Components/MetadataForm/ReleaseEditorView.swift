@@ -235,6 +235,7 @@ struct ReleaseEditorLead: View {
                     ReleaseEditControls(
                         changed: session.draft?.changed == true,
                         isBusy: session.isBusy,
+                        reading: session.readingLine,
                         onCancel: onCancel,
                         onSave: onSave
                     )

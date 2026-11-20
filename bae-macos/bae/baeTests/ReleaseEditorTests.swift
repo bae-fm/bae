@@ -236,7 +236,22 @@ struct ReleaseEditorTests {
                                 fileId: "disc.cue",
                                 name: "Disc audio.cue",
                                 discNumber: 1,
-                                discOptions: [1, 2]
+                                discOptions: [1, 2],
+                                fileReference: "Disc audio.wav",
+                                audioOptions: [
+                                    BridgeReleaseEditAudioOption(
+                                        fileId: rows[0].context.source.fileId,
+                                        name: rows[0].context.source.name,
+                                        bound: true,
+                                        offer: .offered
+                                    ),
+                                    BridgeReleaseEditAudioOption(
+                                        fileId: "disc-rip.flac",
+                                        name: "Disc audio (rip).flac",
+                                        bound: false,
+                                        offer: .offered
+                                    ),
+                                ]
                             ),
                             source: rows[0].context.source,
                             rows: rows
@@ -292,6 +307,34 @@ extension ReleaseEditorTests {
             else { return false }
             return sheet.discNumber == 2
         }
+    }
+}
+
+extension ReleaseEditorTests {
+    @MainActor
+    @Test("a file picked for a sheet reaches the form and shows in the draft")
+    func filePickedForASheetShowsInTheDraft() async throws {
+        let release = twoTrackRelease(layout: .cue, shared: true)
+        let session = PreviewData.releaseEditSession(
+            releaseId: "release-test",
+            release: release
+        )
+        try await Wait.until { session.draft != nil }
+
+        session.pickSheetFile(
+            "disc.cue",
+            fileReference: "Disc audio.wav",
+            audioFileId: "disc-rip.flac"
+        )
+        try await Wait.until { !session.isBusy }
+        try await Wait.until {
+            guard
+                case .sheet(_, let source, _) = session.draft?.sides?.first?
+                    .runs.first
+            else { return false }
+            return source.name == "Disc audio (rip).flac"
+        }
+        #expect(session.draft?.filesToRead == ["Disc audio (rip).flac"])
     }
 }
 
@@ -357,6 +400,7 @@ extension ReleaseEditorTests {
                     apply: preview.apply,
                     setAlbum: preview.setAlbum,
                     setSheetDisc: preview.setSheetDisc,
+                    setSheetFile: preview.setSheetFile,
                     cancel: preview.cancel,
                     save: preview.save
                 )

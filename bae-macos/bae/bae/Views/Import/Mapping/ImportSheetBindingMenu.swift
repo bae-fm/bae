@@ -70,7 +70,7 @@ enum ImportSheetBindingChoice: Hashable {
         for reference: BridgeSheetReferenceOptions
     ) -> [Self] {
         reference.options.map { option in
-            if let reason = option.refusalLine {
+            if let reason = option.offer.refusalLine {
                 return .refused(fileId: option.fileId, reason: reason)
             }
             return .offered(

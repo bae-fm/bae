@@ -33,6 +33,10 @@ struct ReleaseEditFormCommands: Sendable {
     /// Record the disc the person picked for a CUE sheet, by the sheet's
     /// file id: a save moves the sheet's tracks there.
     let setSheetDisc: @Sendable (String, UInt32) async throws -> Void
+    /// Record the audio file the person picked for a CUE sheet's FILE line:
+    /// the sheet's file id, the line's text and the audio file's id. A save
+    /// reads the file and binds the line to it.
+    let setSheetFile: @Sendable (String, String, String) async throws -> Void
     /// Discard every change: the editor opens its form again on the release
     /// as the library holds it now.
     let cancel: @Sendable () async throws -> BridgeRawReleaseEdit
@@ -89,6 +93,7 @@ final class ReleaseMetadataEditSession {
         case cancelling
         case pickingAlbum
         case pickingSheetDisc
+        case pickingSheetFile
         /// Applying a catalog release. The editor's step line shows the
         /// network read the apply waits on; `nil` when no apply runs.
         case applying((any CatalogApplySource)?)
@@ -360,6 +365,33 @@ final class ReleaseMetadataEditSession {
 }
 
 extension ReleaseMetadataEditSession {
+    /// Record the audio file `audioFileId` the person picked for the FILE
+    /// line `fileReference` of the CUE sheet `sheetFileId`.
+    func pickSheetFile(
+        _ sheetFileId: String,
+        fileReference: String,
+        audioFileId: String
+    ) {
+        let serial = begin(.pickingSheetFile)
+        failure = nil
+        operationTask = Task { @MainActor in
+            do {
+                try await serially { [form] in
+                    try await form.setSheetFile(
+                        sheetFileId,
+                        fileReference,
+                        audioFileId
+                    )
+                }
+            }
+            catch is CancellationError {}
+            catch {
+                failure = DisplayError(error)
+            }
+            finish(serial)
+        }
+    }
+
     /// Why the form can't be saved, as core says; `nil` while it can.
     var validationMessage: String? {
         draft?.invalid?.localizedMessage
@@ -367,6 +399,18 @@ extension ReleaseMetadataEditSession {
 
     var isBusy: Bool {
         operation != nil
+    }
+
+    /// The line a save shows while it reads the audio files the form binds
+    /// CUE sheets' FILE lines to; `nil` while no such save runs.
+    var readingLine: String? {
+        guard case .saving = operation,
+            let names = draft?.filesToRead, !names.isEmpty
+        else { return nil }
+        return localizedCoreString(
+            "ui.release_edit.reading_files",
+            names.formatted(.list(type: .and))
+        )
     }
 
     /// The catalog apply that runs, for the line that names the network

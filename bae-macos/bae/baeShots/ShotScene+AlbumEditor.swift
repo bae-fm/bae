@@ -27,6 +27,16 @@ extension ShotScene {
         case albumMenu
     }
 
+    /// The image the edited release's sheet carves, and the rip of it the
+    /// release carries beside it.
+    private static let cueImage = (
+        id: "Northbound.flac", name: "Northbound.flac"
+    )
+    private static let cueRip = (
+        id: "Northbound (2019 rip).flac",
+        name: "Northbound (2019 rip).flac"
+    )
+
     private static let editedReleaseId = "rel-board-0"
 
     /// The release the editor opens on: Northbound as its import made it,
@@ -53,11 +63,21 @@ extension ShotScene {
             fileId: "Northbound.cue",
             name: "Northbound.cue",
             discNumber: 1,
-            discOptions: [1]
+            discOptions: [1],
+            fileReference: cueImage.name,
+            audioOptions: [cueImage, cueRip]
+                .map { file in
+                    BridgeReleaseEditAudioOption(
+                        fileId: file.id,
+                        name: file.name,
+                        bound: file.id == cueImage.id,
+                        offer: .offered
+                    )
+                }
         )
         let image = BridgeReleaseEditTrackSource(
-            fileId: "Northbound.flac",
-            name: "Northbound.flac",
+            fileId: cueImage.id,
+            name: cueImage.name,
             layout: .cue
         )
         var startMs: UInt64 = 0
@@ -89,6 +109,7 @@ extension ShotScene {
             )
         ]
         release.draft.files = [
+            carriedAudio(cueRip.name),
             PreviewData.mappingFile(
                 PreviewData.previewFile(
                     name: "Northbound.log",
@@ -100,6 +121,18 @@ extension ShotScene {
             PreviewData.carriedBoardFiles[1],
         ]
         return release
+    }
+
+    /// The audio file `name` of the release, which no track plays from.
+    private static func carriedAudio(_ name: String) -> BridgeMappingFile {
+        PreviewData.mappingFile(
+            PreviewData.previewFile(
+                name: name,
+                size: 121_000_000,
+                role: .audio
+            ),
+            role: .audio
+        )
     }
 
     private static func albumEditorScene(

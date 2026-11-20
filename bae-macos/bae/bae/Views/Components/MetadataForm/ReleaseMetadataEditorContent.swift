@@ -113,6 +113,13 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
                     onOpenDocument: onOpenDocument,
                     onPickDisc: {
                         session.pickSheetDisc(sheet.fileId, disc: $0)
+                    },
+                    onPickFile: {
+                        session.pickSheetFile(
+                            sheet.fileId,
+                            fileReference: sheet.fileReference,
+                            audioFileId: $0
+                        )
                     }
                 )
                 .frame(width: tableWidth, alignment: .leading)

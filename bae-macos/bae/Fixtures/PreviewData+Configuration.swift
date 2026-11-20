@@ -172,6 +172,7 @@ extension PreviewData {
             pressingOffers: pressingOffers,
             albumArtists: editMetadataAlbumArtists,
             changed: false,
+            filesToRead: [],
             invalid: nil
         )
         return PreviewReleaseEdit(values: edit, draft: draft)
@@ -382,6 +383,43 @@ actor PreviewReleaseLibrary {
         }
     }
 
+    /// Bind the FILE line of the CUE sheet `sheetFileId` in `session`'s draft
+    /// to the audio file `audioFileId`, one of the line's options: the run
+    /// names it, the pop-up checks it, and a save reads it first.
+    nonisolated func putSheet(
+        _ sheetFileId: String,
+        onFile audioFileId: String,
+        in session: PreviewReleaseEditSession
+    ) async {
+        _ = await session.change { release in
+            var picked: [String] = []
+            release.draft.sides = release.draft.sides?
+                .map { side in
+                    var side = side
+                    side.runs = side.runs.map { run in
+                        guard
+                            case .sheet(var sheet, var source, let rows) = run,
+                            sheet.fileId == sheetFileId,
+                            let option = sheet.audioOptions.first(where: {
+                                $0.fileId == audioFileId
+                            })
+                        else { return run }
+                        sheet.audioOptions = sheet.audioOptions.map {
+                            var option = $0
+                            option.bound = option.fileId == audioFileId
+                            return option
+                        }
+                        source.fileId = option.fileId
+                        source.name = option.name
+                        picked.append(option.name)
+                        return .sheet(sheet: sheet, source: source, rows: rows)
+                    }
+                    return side
+                }
+            release.draft.filesToRead = picked
+        }
+    }
+
     /// What `session` does with each command.
     nonisolated func commands(
         of session: PreviewReleaseEditSession
@@ -428,6 +466,13 @@ actor PreviewReleaseLibrary {
             },
             setSheetDisc: { sheetFileId, disc in
                 await self.putSheet(sheetFileId, onDisc: disc, in: session)
+            },
+            setSheetFile: { sheetFileId, _, audioFileId in
+                await self.putSheet(
+                    sheetFileId,
+                    onFile: audioFileId,
+                    in: session
+                )
             },
             cancel: { await session.replace(with: await self.open()) },
             save: { await self.save(session) }

@@ -6,8 +6,10 @@ import Testing
 @testable import bae
 
 /// The release editor's save, cancel and album pick are local and show no
-/// spinner; applying a catalog release can wait on the network, so the editor
-/// shows the step the apply's row holds to name what it waits on.
+/// spinner, except a save that reads the audio files the form binds CUE
+/// sheets to, which names them beside one; applying a catalog release can
+/// wait on the network, so the editor shows the step the apply's row holds
+/// to name what it waits on.
 @MainActor
 @Suite("Release editor waits")
 struct ReleaseEditorWaitTests {
@@ -21,6 +23,21 @@ struct ReleaseEditorWaitTests {
             let spinners = SnapshotTestSupport.descendants(of: host)
                 .filter { $0 is NSProgressIndicator }
             #expect(spinners.isEmpty, "drew \(spinners)")
+            session.cancelTasks()
+        }
+    }
+
+    @Test("a save that reads an audio file names it beside a spinner")
+    func savingThatReadsAFileNamesIt() async throws {
+        let session = heldSession(filesToRead: ["Album Title (rip).flac"])
+        try await hosted(session) { host in
+            session.save { _ in }
+            try await Wait.until { session.isBusy }
+            #expect(session.readingLine == "Reading Album Title (rip).flac…")
+            try await Wait.untilLaidOut(host) {
+                SnapshotTestSupport.descendants(of: host)
+                    .contains { $0 is NSProgressIndicator }
+            }
             session.cancelTasks()
         }
     }
@@ -41,9 +58,12 @@ struct ReleaseEditorWaitTests {
     }
 
     /// A session whose save and apply never finish, so the editor stays on
-    /// its wait.
-    private func heldSession() -> ReleaseMetadataEditSession {
-        let release = PreviewData.releaseEdit(trackCount: 2)
+    /// its wait, and whose save reads `filesToRead` first.
+    private func heldSession(
+        filesToRead: [String] = []
+    ) -> ReleaseMetadataEditSession {
+        var release = PreviewData.releaseEdit(trackCount: 2)
+        release.draft.filesToRead = filesToRead
         let values = release.values
         let held = ReleaseEditFormCommands(
             setField: { _, _ in values },
@@ -55,6 +75,7 @@ struct ReleaseEditorWaitTests {
             apply: { _, _ in try await Task.neverAnswers() },
             setAlbum: { _ in },
             setSheetDisc: { _, _ in },
+            setSheetFile: { _, _, _ in },
             cancel: { values },
             save: { try await Task.neverAnswers() }
         )

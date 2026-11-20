@@ -68,7 +68,7 @@ extension ImportMappingTracksLayoutTests {
         )
         return .refused(
             fileId: fileId,
-            reason: try #require(option.refusalLine)
+            reason: try #require(option.offer.refusalLine)
         )
     }
 

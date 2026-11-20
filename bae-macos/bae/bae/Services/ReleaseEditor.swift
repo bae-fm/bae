@@ -184,6 +184,15 @@ final class ReleaseEditor: Observable {
                         $0.withSheetDisc(sheetFileId: sheetFileId, disc: disc)
                     }
                 },
+                setSheetFile: { sheetFileId, fileReference, audioFileId in
+                    _ = try await form.change {
+                        $0.withSheetFile(
+                            sheetFileId: sheetFileId,
+                            fileReference: fileReference,
+                            audioFileId: audioFileId
+                        )
+                    }
+                },
                 cancel: { try await form.reopen() },
                 save: { try await form.save() }
             )
