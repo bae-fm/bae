@@ -129,9 +129,8 @@ struct FindOnlineSectionGlyphView: View {
             case .empty:
                 StatusChip(verbatim: 0.formatted())
             case .failed:
-                Image(systemName: "exclamationmark.circle")
+                StatusGlyph(.warning)
                     .themeIcon(.small)
-                    .foregroundStyle(Theme.warning)
                     .accessibilityLabel("Failed")
             case .nothing:
                 IdentifierDash()

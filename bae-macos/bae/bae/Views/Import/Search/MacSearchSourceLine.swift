@@ -33,8 +33,7 @@ struct MacSearchSourceLine: View {
                 }
             case .failed(let reason):
                 HStack(spacing: ThemeSpace.compact) {
-                    Image(systemName: "exclamationmark.circle")
-                        .foregroundStyle(Theme.warning)
+                    StatusGlyph(.warning)
                         .accessibilityLabel("Failed")
                     Text(catalog)
                         .foregroundStyle(.tertiary)
