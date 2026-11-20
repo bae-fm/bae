@@ -131,7 +131,7 @@
    "y": 15812
   },
   "mac.album.edit.dc.html": {
-   "h": 1120,
+   "h": 1300,
    "page": "home",
    "title": "macOS: Edit…",
    "w": 1200,
@@ -3803,7 +3803,7 @@
    "y": 11864
   },
   "mac.album.edit.album-picker.dc.html": {
-   "h": 1120,
+   "h": 1300,
    "page": "home",
    "title": "macOS: Edit…: the album picker",
    "w": 1200,
@@ -3811,7 +3811,7 @@
    "y": 21244
   },
   "mac.album.edit.cover.dc.html": {
-   "h": 1120,
+   "h": 1300,
    "page": "home",
    "title": "macOS: Edit…: its cover",
    "w": 1200,
@@ -3819,7 +3819,7 @@
    "y": 21244
   },
   "mac.album.edit.cue-image.dc.html": {
-   "h": 1120,
+   "h": 1300,
    "page": "home",
    "title": "macOS: Edit…: a release from a CUE image",
    "w": 1200,
@@ -4371,7 +4371,7 @@
    "y": 1720
   },
   "mac.album.edit.reading-file.dc.html": {
-   "h": 1120,
+   "h": 1300,
    "page": "home",
    "title": "macOS: Edit…: a release from a CUE image: reading a newly chosen audio file",
    "w": 1200,
