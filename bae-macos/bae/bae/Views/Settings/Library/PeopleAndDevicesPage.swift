@@ -825,7 +825,9 @@ private struct RefusedInviteRow: View {
     let onDismiss: () -> Void
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: ThemeSpace.related) {
+        MacRow {
+            MacButton("Dismiss", kind: .borderless, action: onDismiss)
+        } label: {
             VStack(alignment: .leading, spacing: ThemeSpace.line) {
                 Text(verbatim: refused.address)
                     .themeText(.rowTitle)
@@ -836,10 +838,7 @@ private struct RefusedInviteRow: View {
                     )
                 )
             }
-            Spacer()
-            MacButton("Dismiss", kind: .borderless, action: onDismiss)
         }
-        .padding(.vertical, ThemeSpace.line)
     }
 }
 
