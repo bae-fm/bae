@@ -87,3 +87,33 @@ fn state_is_the_value_enabled_and_selected() {
     );
     assert_eq!((entries[1].value.as_str(), entries[1].selected), ("", false));
 }
+
+fn valued(mut element: Element, value: &str) -> Element {
+    element.value = Some(value.to_string());
+    element
+}
+
+#[test]
+fn a_token_field_reads_as_its_pattern_with_each_tokens_words() {
+    let list = [
+        valued(element(Role::Field, Some("Folder name"), None), "\u{FFFC} - \u{FFFC}"),
+        valued(element(Role::Field, None, Some(0)), "Artist"),
+        valued(element(Role::Field, None, Some(0)), "Album"),
+        element(Role::Text, Some("Preview"), None),
+    ];
+    let kept: Vec<_> = entries(&list).iter().map(|e| (e.index, e.kind, e.value.clone())).collect();
+    assert_eq!(
+        kept,
+        [(0, Role::Field, "Artist - Album".to_string()), (3, Role::Text, String::new())]
+    );
+}
+
+#[test]
+fn a_field_whose_tokens_do_not_add_up_stays_as_it_is() {
+    let list = [
+        valued(element(Role::Field, Some("File name"), None), "\u{FFFC} \u{FFFC}"),
+        valued(element(Role::Field, None, Some(0)), "Title"),
+    ];
+    let kept: Vec<_> = entries(&list).iter().map(|e| e.index).collect();
+    assert_eq!(kept, [0, 1]);
+}
