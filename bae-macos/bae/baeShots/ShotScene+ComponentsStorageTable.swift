@@ -4,22 +4,27 @@ import SwiftUI
 @testable import bae
 
 extension ShotScene {
-    /// The Mac components of the Storage Manager: its table, a row of the
+    /// The Mac components of the Storage Manager: its table, a cell of the
     /// table, the footer, the toolbar and the window.
     static let storageTableComponentScenes: [ShotScene] =
-        tableScenes + storageFooterScenes
+        tableScenes + storageCellScenes + storageFooterScenes
         + storageToolbarScenes + storageWindowScenes
 
     // MARK: Rows
 
-    private static func glassHarborRow(_ number: Int) -> BridgeStorageRow {
+    /// Glass Harbor, in the cloud unless `state` and `status` say otherwise.
+    private static func glassHarborRow(
+        _ number: Int,
+        state: BridgeReleaseStorageState = .inStorage(pinned: false),
+        status: BridgeStorageRowStatus = .inStorage
+    ) -> BridgeStorageRow {
         storageRow(
             BoardRow(
                 title: "Glass Harbor",
                 artist: "Ines Varga Trio",
                 media: PreviewData.media(.cd),
-                state: .inStorage(pinned: false),
-                status: .inStorage,
+                state: state,
+                status: status,
                 files: 9,
                 megabytes: 356,
                 added: "2026-08-30"
@@ -164,24 +169,99 @@ extension ShotScene {
 
     private static let fullTableWidth: CGFloat = 1_080
 
-    /// `MacTable`: three releases, the second uploading and selected; three
-    /// rows whose releases have not loaded yet; and the message over a search
-    /// that finds nothing.
+    private static func threeReleases() -> [BridgeStorageRow] {
+        [copperSkyRow(1), fieldRecordingsRow(2), glassHarborRow(3)]
+    }
+
+    /// `MacTable`: three releases, the second uploading; the same with the
+    /// second selected; the same in the room the inspector leaves the table,
+    /// which keeps every column at its width and scrolls; and three rows
+    /// whose releases have not loaded yet.
     private static let tableScenes: [ShotScene] = [
         storageTable(
             "mac.component.table.rows",
             size: CGSize(width: fullTableWidth, height: 150),
-            rows: [
-                copperSkyRow(1), fieldRecordingsRow(2), glassHarborRow(3),
-            ],
+            rows: threeReleases(),
+            uploading: "rel-shot-2"
+        ),
+        storageTable(
+            "mac.component.table.selected",
+            size: CGSize(width: fullTableWidth, height: 150),
+            rows: threeReleases(),
             selected: ["rel-shot-2"],
+            uploading: "rel-shot-2"
+        ),
+        storageTable(
+            "mac.component.table.beside-the-inspector",
+            size: CGSize(width: 560, height: 150),
+            rows: threeReleases(),
             uploading: "rel-shot-2"
         ),
         storageTable(
             "mac.component.table.loading",
             size: CGSize(width: fullTableWidth, height: 150),
-            rows: [copperSkyRow(1), fieldRecordingsRow(2), glassHarborRow(3)],
+            rows: threeReleases(),
             unloaded: true
+        ),
+    ]
+
+    // MARK: Cell
+
+    /// `MacStorageCell`: `row`'s cell in `column`, `width` points wide, over
+    /// the upload of Field Recordings (`rel-shot-2`), 62 percent sent.
+    private static func storageCell(
+        _ id: String,
+        _ row: BridgeStorageRow,
+        _ column: StorageTableColumn,
+        width: CGFloat = 380
+    ) -> ShotScene {
+        component(id, height: 40) {
+            MacStorageCell(
+                release: ReleaseSummary(from: row.release),
+                album: row.album,
+                status: row.status,
+                dateAdded: row.dateAdded,
+                column: column
+            )
+            .frame(width: width, alignment: .leading)
+            .environment(uploadingOutbox("rel-shot-2"))
+            .environment(DownloadStore())
+        }
+    }
+
+    /// `MacStorageCell`: an artist, a size at the end of its column, and
+    /// the storage column pinned, uploading and failed to pin.
+    private static let storageCellScenes: [ShotScene] = [
+        storageCell(
+            "mac.component.storage-cell.text",
+            glassHarborRow(1),
+            .artist
+        ),
+        storageCell(
+            "mac.component.storage-cell.number",
+            glassHarborRow(1),
+            .size,
+            width: 100
+        ),
+        storageCell(
+            "mac.component.storage-cell.storage-at-rest",
+            glassHarborRow(1, state: .inStorage(pinned: true), status: .pinned),
+            .storage
+        ),
+        storageCell(
+            "mac.component.storage-cell.storage-moving",
+            fieldRecordingsRow(2),
+            .storage
+        ),
+        storageCell(
+            "mac.component.storage-cell.storage-failed",
+            glassHarborRow(
+                1,
+                status: .downloadFailed(
+                    error: "The network connection was lost."
+                )
+            ),
+            .storage
         ),
     ]
 
@@ -379,13 +459,14 @@ extension ShotScene {
         return ShotStage(
             fixture.environment(of: window)
         ) {
-            fixture.storageManagerStore.list != nil
+            fixture.storageManagerStore.list?.count != nil
         }
     }
 
     /// `MacStorageWindow`: the release list; the inspector open on a
-    /// selected release; the Cloud filter and a search; and, with no library
-    /// open, the window the app shows in its place.
+    /// selected release; the Cloud filter and a search; a search that
+    /// matches nothing; and, with no library open, the window the app shows
+    /// in its place.
     private static let storageWindowScenes: [ShotScene] = [
         ShotScene(
             id: "mac.component.storage-window.release-list",
@@ -411,6 +492,13 @@ extension ShotScene {
                 filter: .remote,
                 search: "harbor"
             )
+        },
+        ShotScene(
+            id: "mac.component.storage-window.no-matches",
+            size: storageWindowSize,
+            frame: .window(title: "Storage Manager")
+        ) {
+            storageWindow(rows: [], search: "zzz")
         },
         ShotScene(
             id: "mac.component.storage-window.no-library",

@@ -512,9 +512,16 @@ extension ShotScene {
         ),
     ]
 
+    private static let byName = KeyPathComparator(
+        \BridgeFile.originalFilename,
+        comparator: .localizedStandard
+    )
+
+    /// `files` in the order core returns them for `sort`.
     private static func releaseFileTable(
         _ id: String,
         _ files: [BridgeFile],
+        sort: KeyPathComparator<BridgeFile> = byName,
         height: CGFloat
     ) -> ShotScene {
         component(
@@ -524,12 +531,7 @@ extension ShotScene {
         ) {
             MacReleaseFileTable(
                 files: files,
-                sortOrder: .constant([
-                    KeyPathComparator(
-                        \BridgeFile.originalFilename,
-                        comparator: .localizedStandard
-                    )
-                ])
+                sortOrder: .constant([sort])
             )
             .frame(width: 544, alignment: .leading)
         }
@@ -543,43 +545,49 @@ extension ShotScene {
         channels: 2
     )
 
+    private static let harborLightsFile = releaseFile(
+        "01 Harbor Lights.flac",
+        audio: flac1644,
+        size: 34_100_000,
+        contentType: "audio/flac"
+    )
+    private static let longWayHomeFile = releaseFile(
+        "02 The Long Way Home.flac",
+        audio: flac1644,
+        size: 38_900_000,
+        contentType: "audio/flac"
+    )
+    private static let coverFile = releaseFile(
+        "cover.jpg",
+        size: 1_200_000,
+        contentType: "image/jpeg"
+    )
+    private static let cueFile = releaseFile(
+        "Low Tide Hours.cue",
+        size: 2_000,
+        contentType: "application/x-cue"
+    )
+    private static let logFile = releaseFile(
+        "Low Tide Hours.log",
+        size: 6_000,
+        contentType: "text/plain"
+    )
+
     /// `MacReleaseFileTable`, a release's files as a table of name, audio
-    /// format, size and kind. The component draws a Files heading over an
-    /// AppKit table; the app draws the heading in the Storage sheet, over a
-    /// SwiftUI table, whose sortable columns the component's table does not
-    /// have.
+    /// format, size and kind, sorted by name and by size, largest first. The
+    /// component draws a Files heading over an AppKit table; the app draws
+    /// the heading in the Storage sheet, over a SwiftUI table, whose sortable
+    /// columns the component's table does not have.
     private static let releaseFileTableScenes: [ShotScene] = [
         releaseFileTable(
             "mac.component.release-file-table.files",
-            [
-                releaseFile(
-                    "01 Harbor Lights.flac",
-                    audio: flac1644,
-                    size: 34_100_000,
-                    contentType: "audio/flac"
-                ),
-                releaseFile(
-                    "02 The Long Way Home.flac",
-                    audio: flac1644,
-                    size: 38_900_000,
-                    contentType: "audio/flac"
-                ),
-                releaseFile(
-                    "cover.jpg",
-                    size: 1_200_000,
-                    contentType: "image/jpeg"
-                ),
-                releaseFile(
-                    "Low Tide Hours.cue",
-                    size: 2_000,
-                    contentType: "application/x-cue"
-                ),
-                releaseFile(
-                    "Low Tide Hours.log",
-                    size: 6_000,
-                    contentType: "text/plain"
-                ),
-            ],
+            [harborLightsFile, longWayHomeFile, coverFile, cueFile, logFile],
+            height: 190
+        ),
+        releaseFileTable(
+            "mac.component.release-file-table.sorted-by-size",
+            [longWayHomeFile, harborLightsFile, coverFile, logFile, cueFile],
+            sort: KeyPathComparator(\BridgeFile.fileSize, order: .reverse),
             height: 190
         ),
         releaseFileTable(
