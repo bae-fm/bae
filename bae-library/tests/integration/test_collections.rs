@@ -415,6 +415,10 @@ async fn picked_tracks_go_into_an_empty_playlist_from_its_start() {
         .create_playlist("Evening", Sharing::Private, Vec::<String>::new())
         .await
         .unwrap();
+    let views = bae_views::LibraryViews::new(library.store().clone());
+    let mut detail = views.subscribe_playlist_detail(Some(id.to_string()));
+    let shown = detail_matching(&mut detail, |detail| detail.is_some()).await.unwrap();
+    assert!(shown.empty, "the page of a playlist with no entries takes drops at its start");
     let tracks = || async {
         people
             .playlist_entries(id)
@@ -431,6 +435,8 @@ async fn picked_tracks_go_into_an_empty_playlist_from_its_start() {
         .await
         .unwrap();
     assert_eq!(tracks().await, vec![first.clone(), second.clone()]);
+    detail_matching(&mut detail, |detail| detail.as_ref().is_some_and(|detail| !detail.empty))
+        .await;
     library
         .manager()
         .insert_playlist_entries(id, picked(&[&second]), InsertPlace::Start)

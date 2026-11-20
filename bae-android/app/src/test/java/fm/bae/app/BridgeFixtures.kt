@@ -243,7 +243,7 @@ object BridgeFixtures {
     fun playlistDetail(
         summary: BridgePlaylistSummary = playlistSummary(),
         entries: List<BridgePlaylistEntryRow> = emptyList(),
-    ): BridgePlaylistDetail = BridgePlaylistDetail(summary = summary, entries = entries)
+    ): BridgePlaylistDetail = BridgePlaylistDetail(summary = summary, entries = entries, empty = entries.isEmpty())
 
     fun composerSummary(
         artistId: String = "artist-1",

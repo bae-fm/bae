@@ -1,3 +1,4 @@
+import BaeKit
 import Foundation
 import SwiftUI
 import UniformTypeIdentifiers
@@ -16,6 +17,8 @@ struct QueueDropDelegate: DropDelegate {
     @Binding
     var dropInsertIndex: Int?
     let onInsertTracks: ([String], Int) -> Void
+    /// Shows that a drop's items failed to load.
+    let onDropFailed: @MainActor (DisplayError) -> Void
 
     func dropEntered(info _: DropInfo) {
         if acceptsExternalDrops {
@@ -34,7 +37,7 @@ struct QueueDropDelegate: DropDelegate {
         }
 
         let insertAt = targetIndex
-        info.loadPlainText { collectedIds in
+        info.loadPlainText(failed: onDropFailed) { collectedIds in
             // Each dropped string as it came: an album drag's payload, which
             // the receiver has core order, or a track's id.
             if !collectedIds.isEmpty {

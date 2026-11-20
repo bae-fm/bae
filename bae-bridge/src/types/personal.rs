@@ -361,13 +361,17 @@ impl BridgePlaylistEntryRow {
 pub struct BridgePlaylistDetail {
     pub summary: BridgePlaylistSummary,
     pub entries: Vec<BridgePlaylistEntryRow>,
+    /// Whether the playlist holds no entries, so its start is the one place
+    /// its page takes dropped tracks.
+    pub empty: bool,
 }
 impl BridgePlaylistDetail {
     pub(crate) fn from_core(value: bae_views::playlists::PlaylistDetail) -> Self {
-        let bae_views::playlists::PlaylistDetail { summary, entries } = value;
+        let bae_views::playlists::PlaylistDetail { summary, entries, empty } = value;
         Self {
             summary: BridgePlaylistSummary::from_core(summary),
             entries: entries.into_iter().map(BridgePlaylistEntryRow::from_core).collect(),
+            empty,
         }
     }
 }

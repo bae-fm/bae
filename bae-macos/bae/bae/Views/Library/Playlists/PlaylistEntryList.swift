@@ -22,6 +22,9 @@ struct PlaylistEntryList: View {
     /// payload or a track's id, returning when the write returns.
     let insert: (_ dropped: [String], _ place: BridgeInsertPlace) async -> Void
 
+    @Environment(UiStore.self)
+    private var uiStore
+
     @State
     private var drag: PlaylistEntryDrag?
     /// The order the list wrote, which it draws until the write returns. Then
@@ -84,7 +87,7 @@ struct PlaylistEntryList: View {
         // where it takes dropped tracks.
         .frame(
             maxWidth: .infinity,
-            minHeight: detail.entries.isEmpty ? Self.emptyDropHeight : nil,
+            minHeight: detail.empty ? Self.emptyDropHeight : nil,
             alignment: .top
         )
         .onPreferenceChange(PlaylistEntryFramesKey.self) { rowFrames = $0 }
@@ -92,10 +95,11 @@ struct PlaylistEntryList: View {
             of: [UTType.plainText],
             delegate: PlaylistDropDelegate(
                 accepts: canChange,
-                empty: detail.entries.isEmpty,
+                empty: detail.empty,
                 frames: rowFrames,
                 dropping: $dropping,
-                drop: drop
+                drop: drop,
+                failed: { uiStore.showError($0) }
             )
         )
         .overlay(alignment: .topLeading) {
@@ -287,8 +291,10 @@ private struct PlaylistDropDelegate: DropDelegate {
     /// location is too.
     let frames: [String: CGRect]
     @Binding
-    var dropping: PlaylistEntryTarget?
+    var dropping: PlaylistDropTarget?
     let drop: (_ dropped: [String], _ target: PlaylistDropTarget) -> Void
+    /// Shows that a drop's items failed to load.
+    let failed: @MainActor (DisplayError) -> Void
 
     /// Where tracks at `y` would go.
     private func target(at y: CGFloat) -> PlaylistDropTarget? {
@@ -315,7 +321,7 @@ private struct PlaylistDropDelegate: DropDelegate {
         let target = target(at: info.location.y)
         dropping = nil
         guard let target else { return false }
-        info.loadPlainText { dropped in
+        info.loadPlainText(failed: failed) { dropped in
             drop(dropped, target)
         }
         return true

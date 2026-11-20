@@ -86,6 +86,9 @@ pub struct PlaylistEntryRow {
 pub struct PlaylistDetail {
     pub summary: PlaylistSummary,
     pub entries: Vec<PlaylistEntryRow>,
+    /// Whether the playlist holds no entries, so its start is the one place
+    /// its page takes dropped tracks.
+    pub empty: bool,
 }
 
 /// The playlists, with the columns [`playlist_row`] reads, over `playlists pl`
@@ -236,7 +239,8 @@ fn playlist_detail_on(
             can_move_down: row.get("can_move_down")?,
         })
     })?;
-    Ok(Some(PlaylistDetail { summary, entries }))
+    let empty = summary.track_count.count == 0;
+    Ok(Some(PlaylistDetail { summary, entries, empty }))
 }
 
 impl LibraryViews {

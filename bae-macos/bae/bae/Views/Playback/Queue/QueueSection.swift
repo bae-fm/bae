@@ -65,6 +65,9 @@ struct QueueSection: View {
     /// Sets this lane's shuffle; `nil` on the manual lane, which has none.
     let onSetShuffle: ((Bool) -> Void)?
 
+    @Environment(UiStore.self)
+    private var uiStore
+
     /// The hovered row by entry id, not slot, so the hover stays on its row
     /// when a removal above shifts the lane without new hover events.
     @State
@@ -152,6 +155,7 @@ struct QueueSection: View {
                                 acceptsExternalDrops: acceptsExternalDrops,
                                 dropInsertIndex: $dropInsertIndex,
                                 onInsertTracks: onInsertTracks,
+                                onDropFailed: { uiStore.showError($0) },
                             )
                         )
                 }
@@ -193,6 +197,7 @@ struct QueueSection: View {
                         acceptsExternalDrops: acceptsExternalDrops,
                         dropInsertIndex: $dropInsertIndex,
                         onInsertTracks: onInsertTracks,
+                        onDropFailed: { uiStore.showError($0) },
                     )
                 )
         }

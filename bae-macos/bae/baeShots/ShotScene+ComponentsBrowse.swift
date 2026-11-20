@@ -738,7 +738,11 @@ extension ShotScene {
         component(id, width: 420, height: 240, images: coverStore()) {
             let backing = boardLibraryBacking(uiStore: UiStore())
             MacPlaylistPage(
-                detail: BridgePlaylistDetail(summary: summary, entries: [])
+                detail: BridgePlaylistDetail(
+                    summary: summary,
+                    entries: [],
+                    empty: true
+                )
             )
             .albumDetailPreviewEnvironment()
             .environment(backing.session)

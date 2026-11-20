@@ -313,7 +313,8 @@ extension ShotScene {
                         canMoveUp: index > 0,
                         canMoveDown: index < boardEntries.count - 1
                     )
-                }
+                },
+            empty: false
         )
     ]
 }
