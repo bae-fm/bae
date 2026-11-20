@@ -116,7 +116,7 @@ PLAN
 # that way, and a `pub use` of a test-only item without its `#[cfg]` gate
 # compiles in a build with `test-utils` and fails in theirs. A check with no
 # target named builds each crate's library and binaries, and `--lib` refuses a
-# crate with only binaries, such as bae-shots.
+# crate with only binaries, such as bae-uniffi-bindgen.
 library_check_args() {
     echo check
     local kind value

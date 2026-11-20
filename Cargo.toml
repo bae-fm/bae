@@ -29,8 +29,6 @@ members = [
     "bae-types",
     "bae-uniffi-bindgen",
     "bae-util",
-    "bae-shots/lint",
-    "bae-shots/tool",
     "bae-views",
 ]
 resolver = "2"
@@ -100,7 +98,6 @@ bae-library = { path = "bae-library" }
 bae-people = { path = "bae-people" }
 bae-sync-status = { path = "bae-sync-status" }
 bae-records = { path = "bae-records" }
-bae-shots-lint = { path = "bae-shots/lint" }
 bae-store = { path = "bae-store" }
 bae-desktop = { path = "bae-desktop" }
 bae-desktop-cfg = { path = "bae-desktop-cfg" }
@@ -129,8 +126,6 @@ bytes = "1"
 cbc = "0.1"
 chacha20poly1305 = "0.10"
 chardetng = "0.1"
-chromiumoxide = "0.9"
-clap = { version = "4", features = ["derive"] }
 coreaudio-rs = { version = "0.14", default-features = false }
 cpal = "0.18.2"
 ctr = "0.9"
@@ -139,7 +134,6 @@ ed25519-dalek = { version = "3.0.0", default-features = false }
 encoding_rs = "0.8"
 ffmpeg-next = { version = "8.1", default-features = false }
 ffmpeg-sys-next = { version = "8.1", default-features = false }
-futures = "0.3"
 getrandom = "0.2"
 hex = "0.4"
 hkdf = "0.12"

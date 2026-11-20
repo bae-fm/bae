@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
 # The one definition of where the apps' Xcode builds go. Source it for the
 # paths and the xcodebuild arguments that name them; run it with a tree's name
-# (`scripts/xcode-trees.sh macos-run`) to print a tree's path, or
-# `macos-shots-args` to print the xcodebuild arguments that name the shots tree
-# and the packages, one per line, for a program that is not shell. No other
-# file passes -derivedDataPath (scripts/check-xcode-trees.py).
+# (`scripts/xcode-trees.sh macos-run`) to print a tree's path. No other file
+# passes -derivedDataPath (scripts/check-xcode-trees.py).
 #
 # The macOS app has three trees because its kinds of build differ in what they
 # produce, not only in where:
@@ -78,12 +76,9 @@ if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
         macos-run) printf '%s\n' "$XCODE_MACOS_RUN_TREE" ;;
         macos-unsigned) printf '%s\n' "$XCODE_MACOS_UNSIGNED_TREE" ;;
         macos-packages) printf '%s\n' "$XCODE_MACOS_PACKAGES" ;;
-        macos-shots-args)
-            printf '%s\n' "${XCODE_MACOS_SHOTS_ARGS[@]}" "${XCODE_MACOS_PACKAGES_ARGS[@]}"
-            ;;
         ios) printf '%s\n' "$XCODE_IOS_TREE" ;;
         *)
-            echo "usage: $0 macos-run|macos-unsigned|macos-packages|macos-shots-args|ios" >&2
+            echo "usage: $0 macos-run|macos-unsigned|macos-packages|ios" >&2
             exit 1
             ;;
     esac

@@ -31,8 +31,6 @@ crate_order = [
     "bae-theme",
     "bae-types",
     "bae-util",
-    "bae-shots-lint",
-    "bae-shots",
     "bae-audio",
     "bae-diagnostics",
     "bae-app-dir",
@@ -634,12 +632,6 @@ task_types = [
     "BridgeBootstrapResult::joined",
     "BridgeBootstrapResult::failure",
 ]
-# The design-board renderer builds its runtime, serves its pages and starts its
-# browser once around all the boards it draws; they run in the caller's
-# futures and end with the call.
-"bae-shots/tool/src/render.rs" = ["boards"]
-"bae-shots/tool/src/render/chrome.rs" = ["with_chrome"]
-"bae-shots/tool/src/render/serve.rs" = ["with_server"]
 # A protocol's discovery starts not browsing and listing no device.
 "bae-cast/src/renderer/protocol_discovery.rs" = ["ProtocolDiscovery::new"]
 # The folder-state commit lock is built once with the import services; clones share it.
