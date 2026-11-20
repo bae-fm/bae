@@ -514,10 +514,13 @@ extension PeopleAndDevicesPage {
                     .textSelection(.enabled)
             }
             if member.canRemove {
-                Button("Remove from library…", role: .destructive) {
-                    removal = .person(member, name: displayName(person))
-                }
-                .disabled(task != nil)
+                MacRow("Remove from library…") {}
+                    .pressing(
+                        .removes {
+                            removal = .person(member, name: displayName(person))
+                        }
+                    )
+                    .disabled(task != nil)
             }
         }
         devicesSections(person)
@@ -737,17 +740,10 @@ private struct PageLinkRow: View {
     }
 
     var body: some View {
-        if opens {
-            Button(action: action) { row }
-                .buttonStyle(.accentPlain)
-        }
-        else {
-            row
-        }
-    }
-
-    private var row: some View {
-        HStack(spacing: ThemeSpace.related) {
+        MacRow {
+            Text(verbatim: value)
+                .foregroundStyle(.secondary)
+        } label: {
             if let avatar {
                 avatar
             }
@@ -756,21 +752,11 @@ private struct PageLinkRow: View {
             }
             else if let verbatimTitle {
                 Text(verbatim: verbatimTitle)
-                    .themeText(.rowTitle)
-            }
-            if let tag {
-                StatusChip(verbatim: tag)
-            }
-            Spacer()
-            Text(verbatim: value)
-                .foregroundStyle(.secondary)
-            if opens {
-                Image(systemName: "chevron.forward")
-                    .themeIcon(.small)
-                    .foregroundStyle(.tertiary)
             }
         }
-        .contentShape(Rectangle())
+        .chip(tag)
+        .strong(verbatimTitle != nil)
+        .pressing(opens ? .opens(action) : nil)
     }
 }
 

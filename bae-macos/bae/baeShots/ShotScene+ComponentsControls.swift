@@ -96,8 +96,9 @@ extension ShotScene {
         }
     }
 
-    /// `MacRow` in a box: its label, a value, a toned value, controls, and
-    /// the row under a switch.
+    /// `MacRow` in a box: its label, a value, a toned value, a row that opens
+    /// something, a strong name, a chip, a row that removes, controls, and the
+    /// row under a switch.
     private static let rowScenes: [ShotScene] = [
         component("mac.component.row.label", width: 596, height: 70) {
             ShotBox {
@@ -114,6 +115,34 @@ extension ShotScene {
                 MacRow("Sync") {
                     ToneDotValue(text: "Synced", tone: .success)
                 }
+            }
+        },
+        component("mac.component.row.opens-something", width: 596, height: 70) {
+            ShotBox {
+                MacRow("Sync") {}
+                    .pressing(.opens {})
+            }
+        },
+        component("mac.component.row.strong", width: 596, height: 70) {
+            ShotBox {
+                MacRow("Sync") {}
+                    .strong()
+            }
+        },
+        component("mac.component.row.tag", width: 596, height: 70) {
+            ShotBox {
+                MacRow("Sync") {}
+                    .chip("Member")
+            }
+        },
+        component(
+            "mac.component.row.destructive-action",
+            width: 596,
+            height: 70
+        ) {
+            ShotBox {
+                MacRow("Sync") {}
+                    .pressing(.removes {})
             }
         },
         component("mac.component.row.controls", width: 596, height: 70) {
