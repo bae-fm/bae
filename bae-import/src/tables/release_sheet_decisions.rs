@@ -75,11 +75,13 @@ pub(super) fn store_sheet_disc_decisions_on(
     discs: &[(String, u32)],
 ) -> Result<(), DbError> {
     for (sheet_file_id, disc_number) in discs {
+        let (kind, number) = SheetDisc::Disc { number: *disc_number }.columns();
         sql.execute(
             "INSERT INTO release_sheet_discs (sheet_file_id, disc, disc_number) \
-             VALUES (?, 'disc', ?) \
-             ON CONFLICT (sheet_file_id) DO UPDATE SET disc = 'disc', disc_number = excluded.disc_number",
-            params![sheet_file_id, disc_number],
+             VALUES (?, ?, ?) \
+             ON CONFLICT (sheet_file_id) DO UPDATE SET disc = excluded.disc, \
+                                                       disc_number = excluded.disc_number",
+            params![sheet_file_id, kind, number],
         )?;
     }
     Ok(())

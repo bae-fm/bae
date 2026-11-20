@@ -2004,9 +2004,8 @@ Ana clicks Import. bae:
    length that audio measures, so no track is ever stored without one, and
    with the length the draft's source lists for it, where it lists one. A track
    left untitled takes its file's name. The same write stores what the draft
-   worked out and the pane showed about the folder's CUE sheets: each sheet
-   that carves tracks out of an image, with the disc its first track sits on, and
-   the sheet that carves each such track. The release editor (§3.8) reads
+   worked out and the pane showed about the folder's CUE sheets: the sheet
+   that carves each track out of an image. The release editor (§3.8) reads
    these rows and never reads a `.cue` file again to show them. An existing album is checked in that
    same write: one deleted since the import was prepared, because a later
    write took its last release (§2.1), fails the import, which writes nothing
@@ -5908,8 +5907,7 @@ All sync.
 | `track_works` | work a track performs, in order |
 | `audio_formats` | track's format, pregap, loudness and peak |
 | `audio_format_segments` | span of a file a track reads: pregap or main, samples and bytes; one main and at most one pregap per format, each kept to one by a unique index |
-| `release_carving_sheets` | CUE sheet of a release that carves tracks out of an image, keyed by the sheet's `release_files` row: the disc of the release the sheet is, which is the disc its first track sits on; deleting the sheet's file deletes it |
-| `carved_tracks` | track a CUE sheet carves out of an image, keyed by the track: the sheet (`release_carving_sheets`); deleting the track or the sheet deletes it |
+| `carved_tracks` | track a CUE sheet carves out of an image, keyed by the track: the sheet, one of the release's files; deleting the track or the sheet's file deletes it. A sheet is the disc its first track sits on, which the table does not store |
 | `audio_segment_scrub_points` | frames a seek inside a segment can start its decode at, one row per segment that has any, keyed by the segment: each frame's first sample, its byte, and the first sample a decode from it plays exactly, packed in sample order in one blob; for a FLAC whose seektable is missing or sparser than the points' 10-second spacing, and for every MP3 (§3.7) |
 
 Beside them, device-local tables:
@@ -6172,7 +6170,6 @@ transfer queues (A.9), so they never sync.
 | `audio_formats` | independent | store | | |
 | `audio_format_segments` | independent | store | | |
 | `audio_segment_scrub_points` | independent: its segment | store | | |
-| `release_carving_sheets` | independent: the sheet's file | store | | |
 | `carved_tracks` | independent: its track | store | | |
 | `release_sheet_bindings` | shared key: the sheet's file and the `FILE` line | store | | |
 | `release_sheet_discs` | shared key: the sheet's file | store | | |

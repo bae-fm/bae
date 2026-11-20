@@ -201,10 +201,12 @@ mirror_struct! {
     fields: { file_id, name, layout: (BridgeSourceAudioLayout) },
 }
 
-mirror_struct! {
-    BridgeReleaseEditSheet = bae_import::ReleaseEditSheet,
-    from_core: fn,
-    fields: { file_id, name, disc_number, disc_options },
+impl BridgeReleaseEditSheet {
+    fn from_core(sheet: bae_import::ReleaseEditSheet) -> Self {
+        let bae_import::ReleaseEditSheet { sheet, disc_options } = sheet;
+        let bae_records::DbReleaseEditSheet { file_id, name, disc_number } = sheet;
+        Self { file_id, name, disc_number, disc_options }
+    }
 }
 
 impl BridgeReleaseEditTrackContext {

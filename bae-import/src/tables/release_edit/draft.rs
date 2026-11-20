@@ -237,9 +237,6 @@ pub(crate) struct ReleaseEditDraftRows {
     album: DraftAlbum,
     cover_version: Option<String>,
     tracks: Vec<DraftTrackRow>,
-    /// The disc each CUE sheet is on once the form's layout is written, by
-    /// the sheet's file id; empty where the form changes no place.
-    sheet_discs: std::collections::BTreeMap<String, u32>,
     /// How many discs the release has once the form's layout is written.
     disc_count: usize,
     has_tracks: bool,
@@ -314,9 +311,6 @@ pub(crate) fn release_edit_draft_rows_on(
             |row| row.get(0),
         )?,
         tracks: draft_tracks_on(sql, &params)?,
-        sheet_discs: bae_records::records::layout::laid_sheet_discs_on(sql, &params.layout())?
-            .into_iter()
-            .collect(),
         disc_count: bae_records::records::layout::laid_disc_count_on(sql, &params.layout())?,
         has_tracks: sql.query_row(
             "SELECT EXISTS (SELECT 1 FROM tracks WHERE release_id = :release)",
@@ -414,7 +408,6 @@ impl ReleaseEditDraftRows {
             album,
             cover_version,
             tracks,
-            sheet_discs,
             disc_count,
             has_tracks,
             files,
@@ -427,15 +420,10 @@ impl ReleaseEditDraftRows {
         let unreadable = |error: crate::ReleaseEditLoadError| {
             DbError::unreadable(format!("the tracks of release {release_id}"), error)
         };
-        let mut rows = tracks
+        let rows = tracks
             .into_iter()
             .map(|track| track.table_row(&unreadable))
             .collect::<Result<Vec<_>, _>>()?;
-        for sheet in rows.iter_mut().filter_map(|row| row.context.sheet.as_mut()) {
-            if let Some(disc) = sheet_discs.get(&sheet.file_id) {
-                sheet.disc_number = *disc;
-            }
-        }
         Ok(ReleaseEditDraft {
             cover: bae_records::cover_ref(&release_id, cover_version),
             source_audio: files.source_audio.clone(),

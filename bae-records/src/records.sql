@@ -806,24 +806,16 @@ CREATE TABLE IF NOT EXISTS audio_segment_scrub_points (
     FOREIGN KEY (audio_format_segment_id) REFERENCES audio_format_segments (id) ON DELETE CASCADE
 ) STRICT;
 
--- Each CUE sheet of a release that carves some of its tracks out of an
--- image, as the import read it: the sheet's file, and the disc of the
--- release the import read the sheet as, counted from one. Deleting the
--- sheet's file deletes its row.
-CREATE TABLE IF NOT EXISTS release_carving_sheets (
-    file_id TEXT PRIMARY KEY NOT NULL,
-    disc_number INTEGER NOT NULL CHECK (disc_number >= 1),
-    FOREIGN KEY (file_id) REFERENCES release_files (id) ON DELETE CASCADE
-) STRICT;
-
--- The sheet that carves each track a CUE sheet carves out of an image, as
--- the import read it. A track that plays a whole file has no row. Deleting
--- the track or the sheet deletes the row.
+-- The CUE sheet that carves each track a CUE sheet carves out of an image,
+-- as the import read it: the sheet's file in the release's files. A track
+-- that plays a whole file has no row. Deleting the track or the sheet's
+-- file deletes the row. The disc a sheet is, is the disc its first track
+-- sits on.
 CREATE TABLE IF NOT EXISTS carved_tracks (
     track_id TEXT PRIMARY KEY NOT NULL,
     sheet_file_id TEXT NOT NULL,
     FOREIGN KEY (track_id) REFERENCES tracks (id) ON DELETE CASCADE,
-    FOREIGN KEY (sheet_file_id) REFERENCES release_carving_sheets (file_id) ON DELETE CASCADE
+    FOREIGN KEY (sheet_file_id) REFERENCES release_files (id) ON DELETE CASCADE
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS idx_carved_tracks_sheet ON carved_tracks (sheet_file_id);

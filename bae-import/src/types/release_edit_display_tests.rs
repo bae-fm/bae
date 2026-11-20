@@ -78,7 +78,7 @@ fn sheet_runs(side: &ReleaseEditTrackSide) -> Vec<SheetRun<'_>> {
             let source = match run {
                 ReleaseEditTrackRun::Track(_) => None,
                 ReleaseEditTrackRun::Sheet { sheet, source, .. } => {
-                    Some((sheet.file_id.as_str(), source.file_id.as_str()))
+                    Some((sheet.sheet.file_id.as_str(), source.file_id.as_str()))
                 }
             };
             (source, run.rows().iter().map(|row| row.context.track_id.as_str()).collect())
@@ -128,7 +128,7 @@ fn a_sheet_run_offers_every_disc_of_the_release() {
     let [ReleaseEditTrackRun::Sheet { sheet, .. }] = sides[0].runs.as_slice() else {
         panic!("the sheet carves both tracks: {:?}", sides[0].runs);
     };
-    assert_eq!((sheet.disc_number, sheet.disc_options.as_slice()), (1, [1, 2, 3].as_slice()));
+    assert_eq!((sheet.sheet.disc_number, sheet.disc_options.as_slice()), (1, [1, 2, 3].as_slice()));
 }
 
 #[test]

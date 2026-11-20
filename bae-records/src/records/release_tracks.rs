@@ -112,6 +112,7 @@ pub(super) fn placed_tracks_ctes(
     release: &str,
     source: MediumsSource<'_>,
     extra_columns: &str,
+    extra_joins: &str,
 ) -> String {
     format!(
         "{medium}, \
@@ -125,6 +126,7 @@ pub(super) fn placed_tracks_ctes(
             JOIN releases r ON r.id = track.release_id \
             JOIN albums a ON a.id = r.album_id \
             JOIN medium m ON m.id = place.medium_id \
+            {extra_joins} \
             WHERE track.release_id = {release})",
         medium = medium_cte(source.mediums(), &format!("m.release_id = {release}")),
         side_ordinal = side_ordinal_sql("place.side"),
@@ -228,7 +230,8 @@ pub(super) fn track_groups_json_sql(release: &str, my_stars: &str) -> String {
                 own = track_own_credits_json_sql("track"),
                 shown = track_credits_json_sql("track"),
                 composer_names = work_composer_names_sql("w.id"),
-            )
+            ),
+            ""
         ),
     )
 }

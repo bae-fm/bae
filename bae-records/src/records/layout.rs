@@ -162,19 +162,6 @@ pub fn laid_places_source() -> String {
     )
 }
 
-/// The disc each CUE sheet of the release is on once the layout is written,
-/// by the sheet's file id.
-pub fn laid_sheet_discs_on(
-    sql: &impl coven::SqlRead,
-    layout: &LayoutParams<'_>,
-) -> Result<Vec<(String, u32)>, DbError> {
-    Ok(sql.query(
-        &format!("WITH {} SELECT sheet_file_id, disc FROM laid_sheets", layout_ctes()),
-        layout.named().as_slice(),
-        |row| Ok((row.get(0)?, row.get(1)?)),
-    )?)
-}
-
 /// The discs picked for CUE sheets that the layout gave the sheets: each a
 /// sheet's file id with the disc.
 pub fn honored_picks_on(
@@ -309,22 +296,6 @@ pub(super) fn write_layout_on(
     {
         tx.execute("DELETE FROM release_mediums WHERE id = ?", params![stale])?;
     }
-    Ok(())
-}
-
-/// Make each CUE sheet of `release_id` the disc its first track sits on.
-#[cfg(desktop)]
-pub(super) fn refresh_sheet_discs_on(tx: &CovenWrite<'_>, release_id: &str) -> Result<(), DbError> {
-    tx.execute(
-        "UPDATE release_carving_sheets SET disc_number = ( \
-             SELECT m.position FROM carved_tracks c \
-             JOIN tracks t ON t.id = c.track_id \
-             JOIN release_mediums m ON m.id = t.medium_id \
-             WHERE c.sheet_file_id = release_carving_sheets.file_id \
-             ORDER BY t.position LIMIT 1) \
-         WHERE file_id IN (SELECT id FROM release_files WHERE release_id = ?)",
-        params![release_id],
-    )?;
     Ok(())
 }
 

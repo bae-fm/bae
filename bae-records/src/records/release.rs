@@ -489,19 +489,21 @@ pub fn release_edit_tracks_sql(release: &str, source: MediumsSource<'_>) -> Stri
         f.id IS NOT NULL AS main_file_found, f.original_filename AS main_file_name, \
         f.source_audio_layout AS main_file_layout, \
         carved.sheet_file_id, sheet_file.original_filename AS sheet_name, \
-        sheet.disc_number AS sheet_disc_number \
+        p.sheet_disc AS sheet_disc_number \
      FROM tracks t JOIN placed p ON p.id = t.id \
      LEFT JOIN main ON main.track_id = t.id AND main.n = 1 \
      LEFT JOIN release_files f ON f.id = main.file_id \
      LEFT JOIN (carved_tracks carved \
-        JOIN release_carving_sheets sheet ON sheet.file_id = carved.sheet_file_id \
         JOIN release_files sheet_file ON sheet_file.id = carved.sheet_file_id) \
         ON carved.track_id = t.id \
      WHERE t.release_id = {release} ORDER BY p.position",
         placed = super::release_tracks::placed_tracks_ctes(
             release,
             source,
-            ", place.stated_length_ms AS place_stated_length_ms"
+            ", place.stated_length_ms AS place_stated_length_ms, \
+               FIRST_VALUE(m.position) OVER ( \
+                   PARTITION BY sheet_carved.sheet_file_id ORDER BY place.position) AS sheet_disc",
+            "LEFT JOIN carved_tracks sheet_carved ON sheet_carved.track_id = track.id"
         ),
     )
 }

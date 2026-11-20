@@ -177,6 +177,7 @@ pub(super) fn release_credits_json_sql(release_expr: &str) -> String {
             release_expr,
             super::release_tracks::MediumsSource::Release,
             "",
+            "",
         ),
         release = release.select(),
         track = track.select(),

@@ -73,13 +73,11 @@ pub struct ReleaseEditTrackSide {
 }
 
 /// The CUE sheet over a run of the editor's tracks, with the discs the
-/// release has, which its Disc pop-up offers: the library's sheet, whose disc
-/// is the one the form puts it on.
+/// release holds, which its Disc pop-up offers.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReleaseEditSheet {
-    pub file_id: String,
-    pub name: String,
-    pub disc_number: u32,
+    /// The library's sheet, on the disc the editor's form puts its tracks.
+    pub sheet: DbReleaseEditSheet,
     /// The discs the release holds, counted from one.
     pub disc_options: Vec<u32>,
 }
@@ -88,12 +86,7 @@ impl ReleaseEditSheet {
     /// `sheet` on a release of `disc_count` discs.
     fn of(sheet: DbReleaseEditSheet, disc_count: usize) -> Self {
         let disc_count = u32::try_from(disc_count).expect("a release holds fewer than 2^32 discs");
-        Self {
-            file_id: sheet.file_id,
-            name: sheet.name,
-            disc_number: sheet.disc_number,
-            disc_options: (1..=disc_count).collect(),
-        }
+        Self { sheet, disc_options: (1..=disc_count).collect() }
     }
 }
 
@@ -156,7 +149,7 @@ impl ReleaseEditTrackSide {
         };
         match self.runs.pop() {
             Some(ReleaseEditTrackRun::Sheet { sheet, source, mut rows })
-                if carved_with((&sheet.file_id, &source.file_id)) =>
+                if carved_with((&sheet.sheet.file_id, &source.file_id)) =>
             {
                 rows.push(row);
                 self.runs.push(ReleaseEditTrackRun::Sheet { sheet, source, rows });

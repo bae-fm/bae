@@ -191,9 +191,6 @@ impl Records {
                 if let Some(layout) = layout(&sql)? {
                     super::layout::write_layout_on(&sql, plan.release_id(), &layout, &*ids, &now)?;
                 }
-                // A sheet is on the disc its first track sits on, whatever
-                // moved the tracks.
-                super::layout::refresh_sheet_discs_on(&sql, plan.release_id())?;
                 sheet_decisions(&sql)?;
                 emptiable.remove_emptied(&sql)?;
                 Ok(saved(&sql)?)
