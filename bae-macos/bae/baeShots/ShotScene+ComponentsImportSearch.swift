@@ -9,7 +9,8 @@ import SwiftUI
 extension ShotScene {
     static let importSearchScenes: [ShotScene] =
         identifierChipScenes + identifierBandScenes + sourcedValueScenes
-        + pressingRowScenes + findOnlineScenes
+        + pressingRowScenes + releaseCardScenes + releaseGroupScenes
+        + findOnlineScenes
 
     // MARK: Pressings
 
@@ -293,6 +294,16 @@ extension ShotScene {
             height: 90
         ),
         pressingRowScene(
+            "mac.component.pressing-row.notes",
+            cdPressing(),
+            agreements: agreements(
+                notes: [
+                    BridgeTextStatement(text: "first pressing", catalogs: [])
+                ]
+            ),
+            height: 90
+        ),
+        pressingRowScene(
             "mac.component.pressing-row.year-unknown",
             pressing(
                 releaseId: "hrlp-1042",
@@ -476,7 +487,183 @@ extension ShotScene {
         ),
     ]
 
-    // MARK: Release card and Find online
+    // MARK: Release card and group
+
+    /// The album's cover, which the catalog serves under the album's title.
+    private static let lowTideHoursCover: BridgeRemoteCover = {
+        let image = BridgeRemoteImageSet(url: "Low Tide Hours", downscaled: [])
+        return BridgeRemoteCover(
+            coverChoice: BridgeCoverChoice(
+                selection: .remoteCover(
+                    selection: BridgeRemoteCoverSelection(
+                        image: image,
+                        source: .musicBrainz
+                    )
+                ),
+                image: .remote(image: image)
+            ),
+            sourceName: "Cover Art Archive",
+            label: .lead(releaseGroup: true)
+        )
+    }()
+
+    /// Low Tide Hours by Mara Quill on Harbor Records, as the catalogs
+    /// `sources` list it, with `pressings` under it.
+    private static func lowTideHoursGroup(
+        titles: [String] = ["Low Tide Hours"],
+        sources: [BridgeCatalog] = [.musicBrainz, .discogs],
+        pressings: [BridgePressing] = []
+    ) -> ReleaseGroup {
+        ReleaseGroup(
+            bridge: BridgeReleaseGroup(
+                id: "component-low-tide-hours",
+                titles: titles,
+                artists: [.named("Mara Quill")],
+                labels: ["Harbor Records"],
+                coverArt: lowTideHoursCover,
+                sources: sources.map {
+                    BridgeReleaseGroupSource(
+                        source: $0,
+                        groupUrl: $0 == .musicBrainz
+                            ? "https://musicbrainz.org/release-group/component-low-tide-hours"
+                            : "https://www.discogs.com/master/component-low-tide-hours",
+                        albumLinksUnread: false
+                    )
+                },
+                sections: [
+                    BridgePressingSection(
+                        album: nil,
+                        pressings: pressings,
+                        narrowedOut: []
+                    )
+                ]
+            )
+        )
+    }
+
+    /// The preview's wide column, with the 8pt it leaves round a row.
+    private static let wideColumn: CGFloat = 842
+
+    private static func releaseCardScene(
+        _ id: String,
+        _ group: ReleaseGroup
+    ) -> ShotScene {
+        component(
+            id,
+            width: wideColumn + 16,
+            height: 70,
+            images: coverGalleryImages()
+        ) {
+            MacReleaseCard(group: group)
+                .frame(width: wideColumn, alignment: .leading)
+        }
+    }
+
+    /// `MacReleaseCard`: both catalogs, none yet, and two titles in one line.
+    private static let releaseCardScenes: [ShotScene] = [
+        releaseCardScene(
+            "mac.component.release-card.two-catalogs",
+            lowTideHoursGroup()
+        ),
+        releaseCardScene(
+            "mac.component.release-card.no-catalog-yet",
+            lowTideHoursGroup(sources: [])
+        ),
+        releaseCardScene(
+            "mac.component.release-card.long-title",
+            lowTideHoursGroup(
+                titles: ["Low Tide Hours", "Low Tide Hours (Remastered)"],
+                sources: [.musicBrainz]
+            )
+        ),
+    ]
+
+    /// The 1992 CD as Europe's pressing, which the folder's catalog number
+    /// agrees with.
+    private static func europeanCdPressing() -> BridgePressing {
+        pressing(
+            releaseId: "hr-1042-eu",
+            year: 1992,
+            catalog: "HR-1042",
+            facts: PreviewData.pressingFacts(
+                region: .europe,
+                media: PreviewData.media(.cd)
+            ),
+            sources: [.musicBrainz, .discogs]
+        )
+    }
+
+    /// The 2014 LP reissue, which the library holds.
+    private static func lpReissuePressing() -> BridgePressing {
+        pressing(
+            releaseId: "hrlp-1042",
+            year: 2014,
+            catalog: "HRLP-1042",
+            facts: PreviewData.pressingFacts(
+                media: PreviewData.media(.vinyl),
+                discogsDetails: [.reissue]
+            ),
+            sources: [.musicBrainz, .discogs],
+            inLibrary: true
+        )
+    }
+
+    private static func releaseGroupScene(
+        _ id: String,
+        _ group: ReleaseGroup,
+        agreements: [String: BridgeAgreements],
+        height: CGFloat
+    ) -> ShotScene {
+        component(
+            id,
+            width: wideColumn + 16,
+            height: height,
+            images: coverGalleryImages()
+        ) {
+            MacReleaseGroup(
+                group: group,
+                isImporting: false,
+                agreements: agreements,
+                onSelect: { _ in }
+            )
+            .frame(width: wideColumn, alignment: .leading)
+        }
+    }
+
+    /// `MacReleaseGroup`: the album over its one pressing, picked, and over
+    /// three, the last in the library.
+    private static let releaseGroupScenes: [ShotScene] = [
+        releaseGroupScene(
+            "mac.component.release-group.one-pressing",
+            lowTideHoursGroup(pressings: [
+                cdPressing(chosen: true, barcode: nil)
+            ]),
+            agreements: [recordId("hr-1042", .musicBrainz): agreements()],
+            height: 150
+        ),
+        releaseGroupScene(
+            "mac.component.release-group.several-pressings",
+            lowTideHoursGroup(pressings: [
+                cdPressing(barcode: nil), europeanCdPressing(),
+                lpReissuePressing(),
+            ]),
+            agreements: [
+                recordId("hr-1042", .musicBrainz): agreements(),
+                recordId("hr-1042-eu", .musicBrainz): BridgeAgreements(
+                    discId: false,
+                    barcode: false,
+                    catalog: true,
+                    label: false,
+                    year: false,
+                    country: false,
+                    notes: []
+                ),
+            ],
+            height: 270
+        ),
+    ]
+
+    // MARK: Find online
 
     private static func findOnline() -> some View {
         importStores(

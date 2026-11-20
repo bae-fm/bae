@@ -432,6 +432,14 @@ extension ShotScene {
                 audio: true
             ) { coverWell(true) }
         },
+        identityScene("mac.component.release-identity.nothing-under-it") {
+            identity(
+                lowTideEdit(),
+                standing: PreviewData.boardLibraryArtistStanding,
+                album: nil,
+                audio: false
+            ) { coverWell(true) }
+        },
         identityScene("mac.component.release-identity.empty") {
             identity(
                 blankEdit(),
@@ -496,6 +504,16 @@ extension ShotScene {
                     barcode: "0 41234 56789 2",
                     packaging: .jewelCase,
                     details: [.remastered]
+                )
+            )
+        ),
+        releaseFieldsScene(
+            "mac.component.release-fields.several-details",
+            release(
+                pressing: pressing(
+                    barcode: "0 41234 56789 2",
+                    packaging: .jewelCase,
+                    details: [.remastered, .limitedEdition]
                 )
             )
         ),
