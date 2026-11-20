@@ -4,4 +4,4 @@ The sort beside the library heading: one pill per criterion (`criteria`, "Field:
 
 Each criterion is a `MacSortPill`.
 
-**In the code:** macOS: `MacSortCriteria` and `SortCriterionPill` (`Views/Library/Sort/`).
+**In the code:** macOS: `MacSortCriteria` and `MacSortPill` (`Views/Library/Sort/`).

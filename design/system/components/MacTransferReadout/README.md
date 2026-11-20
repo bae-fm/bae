@@ -9,4 +9,4 @@ A transfer's bytes and rate over its 4pt bar, filled in the transfer's colour: a
 | `rate` | The rate (6.4 MB/s), or for a move to This Mac the current file's bytes. |
 | `progress` | How far the transfer has got, from 0 to 1. |
 
-**In the code:** macOS: `TransferReadoutNSView` (`Views/Storage/TransferReadout.swift`), an `NSView` with two `NSTextField`s and a `ProgressTrackNSView`.
+**In the code:** macOS: `MacTransferReadout` (`Views/Storage/MacTransferReadout.swift`), which hosts `TransferReadoutNSView`, an `NSView` with two `NSTextField`s and a `ProgressTrackNSView`.

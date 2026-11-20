@@ -4,4 +4,4 @@ The album opened in the grid, in a panel under its row: the 340pt cover (opens t
 
 The panel draws its head with `MacAlbumHeader`, which takes the same props: `releases` and `release` for `MacReleasePicker`, `options`, `optionsOpen` and `highlighted` for the album's ⋯ (`MacMoreMenu`), and `rating` (0 while no one has rated it) and `ratingWho` for `MacAlbumRating`, under Play. A board gives the album's tracks, credits and works as children.
 
-**In the code:** macOS: `AlbumExpansionContent` (`Views/Library/AlbumDetail/AlbumExpansionContent.swift`) inside `AlbumDetailView`.
+**In the code:** macOS: `MacAlbumPanel` (`Views/Library/AlbumDetail/MacAlbumPanel.swift`) inside `AlbumDetailView`.

@@ -8,4 +8,4 @@ A grey bar where a line of text or a picture will be while it loads: the loading
 | `radius` | A picture's corners (a cover's 6pt); a bar has the bar radius otherwise. |
 | `fixed` | Keeps its width in a row that shrinks its other parts. |
 
-**In the code:** macOS: `StorageRowPlaceholderCell` (`Views/Storage/Table/`) and the bars in `QueuePlaceholderRow` (`Views/Playback/Queue/QueuePlaceholderRow.swift`).
+**In the code:** macOS: `MacPlaceholderLine` (`Views/Components/MacPlaceholderLine.swift`), in `MacQueuePlaceholderRow`, `MacLibraryRow` and the Storage Manager's `StorageListCell` (`Views/Storage/Table/StorageListCell.swift`).

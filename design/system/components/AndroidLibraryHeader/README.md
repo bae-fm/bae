@@ -9,4 +9,4 @@ The library's header on Android: the view's title (`view`), which opens the view
 | `sync` | The Activity button's state: moving, attention or paused. |
 | `avatar`, `avatarImage` | The person's name and picture. |
 
-**In the code:** Android: `LibraryHeader` (`ui/library/LibraryHeader.kt`).
+**In the code:** Android: `AndroidLibraryHeader` (`ui/library/AndroidLibraryHeader.kt`).

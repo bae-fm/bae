@@ -2,4 +2,4 @@
 
 The Pinning screen's bar: Back, Pinning, Retry (on when something failed), Pause or Resume.
 
-**In the code:** Android: `AndroidDownloadsBar` (`ui/downloads/DownloadsScreen.kt`).
+**In the code:** Android: `AndroidPinningBar` (`ui/downloads/AndroidPinningBar.kt`).

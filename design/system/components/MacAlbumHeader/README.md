@@ -9,4 +9,4 @@ The open album's head, beside its cover, from the top:
 - Play and the album's ⋯ (`MacMoreMenu`, boxed), whose menu holds `options`; `optionsOpen` draws it open, `highlighted` the item under the pointer;
 - the rating row (`MacAlbumRating`), always: the stars (`rating`, empty while no one has rated it) and `ratingWho`, the line of who else rated it.
 
-**In the code:** macOS: none yet; `AlbumExpansionContent` (`Views/Library/AlbumDetail/AlbumExpansionContent.swift`) draws it with `ReleaseFactsLine`.
+**In the code:** macOS: `MacAlbumHeader` (`Views/Library/AlbumDetail/MacAlbumHeader.swift`), with `ReleaseFactsLine` for the release's facts, inside `MacAlbumPanel`.

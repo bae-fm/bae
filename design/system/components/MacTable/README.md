@@ -11,4 +11,4 @@ The Storage Manager's release table: the header, then one row a release, every o
 
 `MacStorageWindow` says No matches over the table when the filter matches nothing.
 
-**In the code:** macOS: `StorageTableView` (`Views/Storage/StorageTableView.swift`), AppKit's `NSTableView`, with one hosted cell a column; `StorageRowPlaceholderCell` draws a row still on its way.
+**In the code:** macOS: `MacTable` (`Views/Storage/MacTable.swift`), AppKit's `NSTableView`, with one hosted cell a column.

@@ -4,4 +4,4 @@ The row piece every macOS row with a leading icon is built from: `lead` (an icon
 
 `MacFileRow`, `MacFailedTransferRow`, the Activity panel's rows and `MacNotice`'s glyph are all built on it, so wherever they sit together, their words share one edge.
 
-**In the code:** macOS: `RowItem` (BaeKit `Views/RowItem.swift`).
+**In the code:** macOS: BaeKit's `MacItem` (`BaeKit/Sources/BaeKit/Views/MacItem.swift`).

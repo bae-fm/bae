@@ -2,4 +2,4 @@
 
 The round back button before a page's heading, named Back to and where it goes back to (`to`): a Settings page under another (`MacSettingsWindow`'s `back`), and the side pane's top while a playlist is open (`MacQueuePanel`'s `back`), where it takes the + button's place and goes back to the playlists.
 
-**In the code:** macOS: the back button of `SettingsPageHeader` (`Views/Settings/SettingsPageHeader.swift`); the side pane has none yet.
+**In the code:** macOS: `MacBackButton` (`Views/Settings/MacBackButton.swift`), in `MacPageHeading`; the side pane has none yet.

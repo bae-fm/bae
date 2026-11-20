@@ -7,4 +7,4 @@ The invite form's fields: the email of the person's account on Dropbox, OneDrive
 | `storage` | `s3` (the default), `dropbox`, `onedrive` or `icloud`. |
 | `keyOwner` | On S3: `theirs` (the default), their own key in two fields, or `mine`, a note that they use your key. |
 
-**In the code:** macOS: the `fields` and `choices` of `InvitePersonForm` (`bae-macos/bae/bae/Views/Settings/Library/InvitePersonSheet.swift`); the form's `MacSheet` and `MacSheetFooter` hold them.
+**In the code:** macOS: `MacInviteFields` (`bae-macos/bae/bae/Views/Settings/Library/MacInviteFields.swift`), in `InvitePersonSheet`.

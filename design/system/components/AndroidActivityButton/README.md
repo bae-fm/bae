@@ -8,4 +8,4 @@ The library header's Activity button, which opens Activity. `state` says what th
 
 With nothing moving or held, the header has no Activity button.
 
-**In the code:** Android: `ActivityButton` (`ui/sync/Activity.kt`).
+**In the code:** Android: `AndroidActivityButton` (`ui/sync/Activity.kt`), in the library's header (`ui/library/AndroidLibraryScreen.kt`).

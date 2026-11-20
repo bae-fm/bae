@@ -6,4 +6,4 @@ An album page's Files: the release's files that no track plays from, under the F
 |---|---|
 | `files` | The files, as `name|kind` entries separated by semicolons. |
 
-**In the code:** Android: `albumFiles` (`ui/albumdetail/AlbumFiles.kt`).
+**In the code:** Android: `AndroidReleaseFiles` (`ui/albumdetail/AndroidReleaseFiles.kt`).

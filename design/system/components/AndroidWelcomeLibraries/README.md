@@ -6,4 +6,4 @@ The libraries on this device, as the welcome screen lists them: a row for each l
 | --- | --- |
 | `state` | `''` (the default), `removing`, `unreadable` or `damaged-join`, as `MacWelcomeLibraries` draws them. |
 
-**In the code:** Android: `WelcomeLibrariesSection` (`bae-android/app/src/main/java/fm/bae/app/ui/onboarding/WelcomeLibrariesSection.kt`).
+**In the code:** Android: `AndroidWelcomeLibraries` (`bae-android/app/src/main/java/fm/bae/app/ui/onboarding/AndroidWelcomeLibraries.kt`).

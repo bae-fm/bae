@@ -4,4 +4,4 @@ The person types the PIN that an AirPlay receiver shows on its own screen. The f
 
 When the PIN is wrong, the field draws every box in red and puts one line under them, in red. While the field waits for the receiver (`off`), it dims and takes nothing. The field sits in the pairing dialog (`AndroidDialog`) beneath the dialog's message; a password receiver's dialog uses `AndroidTextField` with `secret` in its place.
 
-**In the code:** Android: none yet; the pairing dialog needs a `PinField` taking the digit count, the typed text, and the error line.
+**In the code:** Android: `AndroidPinField` (`ui/components/AndroidPinField.kt`), in the pairing dialog (`ui/playback/CastCodeDialog.kt`).

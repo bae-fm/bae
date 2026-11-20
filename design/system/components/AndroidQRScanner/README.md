@@ -6,4 +6,4 @@ The camera screen that scans a restore code or an invite. The camera's picture f
 |---|---|
 | `instructions` | What to scan. The screen shows no words when this is unset. |
 
-**In the code:** Android: `QRScannerScreen` (`ui/components/QRScannerScreen.kt`).
+**In the code:** Android: `AndroidQRScanner` (`ui/components/AndroidQRScanner.kt`).

@@ -4,4 +4,4 @@ Several rows selected: the count, then the actions in groups with how many each 
 
 Each action is a `MacBulkActionRow`.
 
-**In the code:** macOS: `ImportCandidateBulkSelectionPane`.
+**In the code:** macOS: `MacImportBulk` (`Views/Import/MacImportBulk.swift`).

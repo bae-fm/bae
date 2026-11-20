@@ -10,4 +10,4 @@ One transfer in Android's Activity sheet (`AndroidActivity`), as `MacTransferLin
 | `pausable`, `paused` | A tonal Pause, or Resume while `paused`. Only Pinning has one: a phone never uploads release files. |
 | `opens` | The line opens a screen when tapped: Pinning opens the Pinning screen. |
 
-**In the code:** Android: the private `TransferLine` (`ui/sync/ActivityTransfers.kt`).
+**In the code:** Android: `AndroidTransferLine` (`ui/sync/ActivityTransfers.kt`).

@@ -4,4 +4,4 @@ The identifier chips: `chips` as "Label|value|filled|outlined|struck|dash|Source
 
 Each chip is a `MacIdentifierChip`.
 
-**In the code:** macOS: `MacIdentifierBand` and `IdentifierChip` (`Views/Import/Search/`).
+**In the code:** macOS: `MacIdentifierBand` and `MacIdentifierChip` (`Views/Import/Search/`).

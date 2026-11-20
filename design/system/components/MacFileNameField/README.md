@@ -6,4 +6,4 @@ Typed text that can't make a name turns the field red, and the preview line beco
 
 `pattern` is the field's text with each value in brackets: `[Artist] - [Album]`. `label` sits above the field, at the leading edge where a row's title sits, and the field runs the box's full width; the preview sits right under it as the field's help line, then the Add line.
 
-**In the code:** macOS: `SaveNameField` (`Views/Settings/Formats/`): the label, the field, the preview or its error, and the Add line. The field inside it is `SaveNameTokenField`, an `NSTokenField`, which has no component of its own.
+**In the code:** macOS: `MacFileNameField` (`Views/Settings/Formats/MacFileNameField.swift`): the label, the field, the preview or its error, and the Add line. The field inside it is `SaveNameTokenField`, an `NSTokenField`, which has no component of its own.

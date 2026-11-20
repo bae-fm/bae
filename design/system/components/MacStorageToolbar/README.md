@@ -9,4 +9,4 @@ The Storage Manager's toolbar, past the traffic lights: the window's title, All,
 | `inspector` | The Inspector toggle is on while the inspector shows. |
 | `disabled` | No library is open: the filter, the field and the toggle are off. |
 
-**In the code:** macOS: the toolbar of `StorageManagerView` (`Views/Storage/View+StorageManagerToolbar.swift`).
+**In the code:** macOS: `MacStorageToolbar` (`Views/Storage/MacStorageToolbar.swift`).

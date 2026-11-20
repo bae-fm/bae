@@ -4,4 +4,4 @@ The cover gallery shows a Source pop-up button, tiles under Current cover, Remot
 
 Each tile is a `MacCoverTile`, and the preview is a `MacCoverPreview`.
 
-**In the code:** macOS: `CoverGalleryView` (`Views/Import/Confirmation/CoverGalleryView.swift`) in `CoverSheetView`.
+**In the code:** macOS: `MacCoverGallery` (`Views/Import/Confirmation/MacCoverGallery.swift`) in `CoverSheetView`.

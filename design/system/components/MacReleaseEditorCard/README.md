@@ -4,4 +4,4 @@ A library release's editor card, in the album's Edit release sheet and on an imp
 
 It takes the same values as `MacImportDraft`: `cover`, `title`, `artist`, `artistChip`, `year`, `audio`, `album` (with `albumInLibrary`, `albumPicked` and `albumOpen`), the Release grid's `pressingYear`, `media`, `labelName`, `catalog`, `country`, `barcode`, `status`, `packaging` and `details`, and `records`.
 
-**In the code:** macOS: the draft card of `ReleaseMetadataEditorContent` (`Views/Components/MetadataForm/ReleaseMetadataEditorContent.swift`), with the action row of `ReleaseEditorView` as its lead.
+**In the code:** macOS: `MacReleaseEditorCard` (`Views/Components/MetadataForm/MacReleaseEditorCard.swift`), which `ReleaseMetadataEditorContent` places.

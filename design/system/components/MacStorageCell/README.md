@@ -9,4 +9,4 @@ A cell of the Storage Manager's table in every column but Release: the release's
 | `state` | The storage column's state, which `MacStorageChip` draws in place of `value`. |
 | `progress` | With a state that moves (uploading, pinning, detaching), how far it has got, from 0 to 1. |
 
-**In the code:** macOS: `StorageReleaseCell` (`Views/Storage/Table/StorageReleaseCell.swift`) for every column but `.release`, which it hands to `MacReleaseCell`.
+**In the code:** macOS: `MacStorageCell` (`Views/Storage/Table/MacStorageCell.swift`) for every column but Release, which it hands to `MacReleaseCell`.

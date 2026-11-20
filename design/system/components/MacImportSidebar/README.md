@@ -7,4 +7,4 @@ Import's left column: Found / Imported / Skipped, then the filter row, then the 
 
 The tabs are a `MacImportTabs` and the filter row a `MacImportFilterRow`. An empty list draws `empty` as a `MacContentUnavailable`.
 
-**In the code:** macOS: `ImportCandidateListContent`, `TriageTabBar` and the filter row (`Views/Import/Candidates/`).
+**In the code:** macOS: `MacImportSidebar` (`Views/Import/Candidates/MacImportSidebar.swift`), with `MacImportTabs` and `MacImportFilterRow`; `MacImportSidebarContainer` reads the stores for it.

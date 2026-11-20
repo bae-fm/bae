@@ -11,4 +11,4 @@ An artist field: a button that opens the artist picker, drawn as its value until
 | `secondary` | The artists in secondary text, as the album identity draws them. |
 | `column` | Fills its column, as a track row's artist does; otherwise the field is as wide as its value. |
 
-**In the code:** macOS: `ArtistAssignmentsField` (`Views/Components/MetadataForm/ReleaseMetadataHeader.swift`), which owns its `FieldChrome` and its text style, in `ReleaseAlbumIdentityEditor` and `ReleaseMetadataTrackRow`.
+**In the code:** macOS: `MacAlbumArtistField` (`Views/Components/MetadataForm/MacAlbumArtistField.swift`), in `MacReleaseIdentity` and `ReleaseMetadataTrackRow`.

@@ -4,4 +4,4 @@ The toolbar's Activity panel, where bae lists what it needs the person for and w
 
 The panel's words are core's: Needs attention, Open sync settings, Everything is up to date., Syncing changes, Uploading, Pinning and Moving to This Mac.
 
-**In the code:** macOS: `ActivityList` (`Views/Chrome/ActivityList.swift`) in `ActivityButton`'s popover.
+**In the code:** macOS: `MacActivity` (`Views/Chrome/MacActivity.swift`) in `MacActivityButton`'s popover.

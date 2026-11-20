@@ -4,4 +4,4 @@ The person types the PIN that an AirPlay receiver shows on its own screen. The f
 
 When the PIN is wrong, the field draws every box red and puts one line under them, in red. While the field waits for the receiver (`off`), it dims and takes nothing. The field sits in the pairing sheet (`MacSheet`) beneath the sheet's message; a password receiver's sheet uses `MacTextField` with `secret` in its place.
 
-**In the code:** macOS: none yet; the pairing sheet needs a `PinField` taking the digit count, the typed text, and the error line.
+**In the code:** macOS: `MacPinField` (`Views/Components/MacPinField.swift`).

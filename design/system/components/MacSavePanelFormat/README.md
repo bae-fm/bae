@@ -7,4 +7,4 @@ The Save as panel's Format line: "Format:" and the format pop-up, centred under 
 | `value` | The chosen format. |
 | `open`, `items`, `chosen` | The menu the pop-up opens, as `MacPopUpButton` draws it: its comma-separated formats (`-` for a separator), and the format it checks. Two boards show the open menu; a shot of the app can't open a native menu, so the open rows get no shot. |
 
-**In the code:** macOS: `TrackSavePanel` (`bae-macos/bae/bae/Views/Library/AlbumDetail/TrackSavePanel.swift`) draws the line, and AppKit draws its `NSPopUpButton`.
+**In the code:** macOS: `MacSavePanelFormat` (`bae-macos/bae/bae/Views/Library/AlbumDetail/MacSavePanelFormat.swift`), an `NSView` that `TrackSavePanel` sets as the save panel's accessory view.

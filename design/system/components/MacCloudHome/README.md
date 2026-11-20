@@ -11,4 +11,4 @@ A library's cloud home in the Sync settings: the Cloud home heading over the row
 | `oldKey` | On S3, the key the person just replaced: a notice under the box asks them to delete it in their provider's console. |
 | `bare` | The provider's rows alone, with no heading, key row or Open in browser, for a box that holds other rows too: the welcome window's library details put them under the status. |
 
-**In the code:** macOS: the Cloud home section of `LibrarySettingsTab` (`Views/Settings/Library/LibrarySettingsTab.swift`): BaeKit's `CloudProviderConnectedSection` for the rows, the Access key ID row, `OpenFolderInBrowserRow` and `S3KeyLineNotice`. `WelcomeLibraryDetails` draws `CloudProviderConnectedSection` alone, which is `bare`.
+**In the code:** macOS: `MacCloudHome` (`Views/Settings/Library/MacCloudHome.swift`), in the Cloud home section of `LibrarySettingsTab`: BaeKit's `CloudProviderConnectedSection` for the rows, the Access key ID row, `OpenFolderInBrowserRow` and `S3KeyLineNotice`. `WelcomeLibraryDetails` draws it `bare`, which is `CloudProviderConnectedSection` alone.

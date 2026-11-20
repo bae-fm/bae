@@ -8,4 +8,4 @@ Label and value pairs in two columns, the labels in secondary text: a file's fac
 | `numeric` | The labels whose values are numbers, drawn in tabular figures: Size. |
 | `wide` | A 140pt label column and body-sized values, as an album's credits draw them. |
 
-**In the code:** macOS: the `Grid` in `StorageFileDetails` (`Views/Storage/StorageFileDetails.swift`).
+**In the code:** macOS: `MacFactsGrid` (`Views/Components/MacFactsGrid.swift`), holding `MacFact` rows.

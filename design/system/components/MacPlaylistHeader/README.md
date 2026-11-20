@@ -7,4 +7,4 @@ A playlist page's head, laid out as the album page's: the playlist's picture (`c
 | `options` | The owner's actions in the ⋯ menu, after Shuffle, which everyone has. `optionsOpen` draws the menu open, `highlighted` the item under the pointer. |
 | `sharing` | On the person's own playlist, who sees it: a lock for Only me, two people for Everyone, at the facts line's end. A playlist someone else shared shows nothing about sharing. |
 
-**In the code:** macOS: none yet; `PlaylistDetailPane` (`Views/Library/Playlists/PlaylistDetailPane.swift`) draws it inline.
+**In the code:** macOS: `MacPlaylistHeader` (`Views/Library/Playlists/MacPlaylistHeader.swift`).

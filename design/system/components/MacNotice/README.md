@@ -24,4 +24,4 @@ Its text takes the size of the screen it sits in. The glyph is 1.19 times the te
 
 Its text buttons (Details) are the accent, so they read apart from the title. Every notice's glyph is the status glyph, a ring with its mark, in the tone's colour (grey in the centred layout): a filled disc is louder than the words beside it.
 
-**In the code:** macOS: `Notice` (`BaeKit/Sources/BaeKit/Views/Notice.swift`), whose Details button opens an alert and whose centred look draws a view that failed whole.
+**In the code:** macOS: BaeKit's `MacNotice` (`BaeKit/Sources/BaeKit/Views/MacNotice.swift`), whose Details button opens an alert and whose centred look draws a view that failed whole.

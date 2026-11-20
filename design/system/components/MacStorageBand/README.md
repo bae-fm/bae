@@ -4,4 +4,4 @@ A release's storage in its Storage sheet, in the order `MacStorageBand` draws it
 
 The state at rest is a `MacStorageState`.
 
-**In the code:** macOS: `MacStorageBand` (`Views/Library/AlbumDetail/MacStorageBand.swift`), its pill drawn by `StorageBandPill` in the same file.
+**In the code:** macOS: `MacStorageBand` (`Views/Library/AlbumDetail/MacStorageBand.swift`).

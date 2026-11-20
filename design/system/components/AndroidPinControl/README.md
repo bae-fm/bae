@@ -4,4 +4,4 @@ On the album page, under the releases: whether this release's files are pinned o
 
 Each button is an outlined `AndroidButton` with its `icon`.
 
-**In the code:** Android: `AndroidDownloadControl` (`ui/albumdetail/AndroidDownloadControl.kt`), taking the release's download status and its progress; `AndroidDownloadControlContainer`, in the same file, reads the session for it. A release this device can't play shows `UnplayableLine` in its place.
+**In the code:** Android: `AndroidPinControl` (`ui/albumdetail/AndroidPinControl.kt`), taking the release's pin status and its progress; `AndroidDownloadControlContainer`, in the same file, reads the session for it. A release this device can't play shows `AndroidUnplayableLine` in its place.

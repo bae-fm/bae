@@ -6,4 +6,4 @@ Android's outlined text field, used in dialogs: its label, an optional placehold
 
 `secret` shows the typed text as dots, for a password: a receiver's password in the pairing dialog.
 
-**In the code:** Android: Material's `OutlinedTextField`.
+**In the code:** Android: `AndroidTextField` (`ui/components/AndroidTextField.kt`), over Material's `OutlinedTextField`.

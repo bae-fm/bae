@@ -9,4 +9,4 @@ The camera's picture in the Scan a code sheet, where this Mac reads a code anoth
 | `unavailable` | "No camera available. Paste the code below instead." |
 | `camera` | The camera's picture, which bae reads the code from. |
 
-**In the code:** macOS: `QRScannerView` (`Views/Settings/Library/QRScannerView.swift`), framed by `CodeScannerSheet` there.
+**In the code:** macOS: `MacQRScanner` (`Views/Settings/Library/MacQRScanner.swift`), framed by `CodeScannerSheet` there.

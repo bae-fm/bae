@@ -8,4 +8,4 @@ The now playing bar's transport: shuffle, previous, play and pause, next, and re
 | `waiting` | The track waits on storage: an arc turns around the middle button. |
 | `shuffle`, `repeat` | Each lights its button while on. |
 
-**In the code:** macOS: none yet; `MacNowPlayingBar` (`Views/Playback/NowPlaying/MacNowPlayingBar.swift`) draws it inline.
+**In the code:** macOS: `MacTransport` (`Views/Playback/NowPlaying/MacTransport.swift`), in `MacNowPlayingBar`.

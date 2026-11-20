@@ -7,4 +7,4 @@ One kind in the storage legend of Settings → Storage (`MacStorageUsage`): the 
 | `label` | The kind's name. |
 | `size` | How much the kind takes: 6.1 GB. |
 
-**In the code:** macOS: drawn inside `MacStorageUsage` (`Views/Settings/Storage/StorageUsage.swift`).
+**In the code:** macOS: `MacUsageKey` (`Views/Settings/Storage/MacUsageKey.swift`), in `MacStorageUsage`.

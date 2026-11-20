@@ -9,4 +9,4 @@ One transfer in the Activity panel (`MacActivity`): what it does, how far it has
 | `progress` | How much of the bytes bae has sent, 0 to 1. Without it the bar moves, as syncing draws it, since syncing counts nothing. |
 | `pausable`, `paused` | The line ends in Pause, or Resume while `paused`. Pinning and moving to This Mac are one queue, so both lines' buttons pause it. |
 
-**In the code:** macOS: the private `TransferLine` (`Views/Chrome/ActivityList.swift`).
+**In the code:** macOS: `MacTransferLine` (`Views/Chrome/MacTransferLine.swift`).

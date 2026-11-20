@@ -4,4 +4,4 @@ A cover, an artist's picture or a composer's. Boards give each title its own sta
 
 Beside its title, as in a row, a tile, a heading or the player, the picture is decorative and screen readers skip it, as both apps mark it. `label` names one that is itself what the screen shows, such as a gallery's image.
 
-**In the code:** macOS: `ImageView` (`Views/Components/ImageView.swift`), clipped by the caller. Android: `CoverImage` (`ui/components/CoverImage.kt`). A cover that fails to load shows a retry glyph in both; not drawn here.
+**In the code:** macOS: `Artwork` (`Views/Components/Artwork.swift`). Android: `Artwork` (`ui/components/Artwork.kt`). A cover that fails to load shows a tile to tap to retry on both; the preview does not draw that state.

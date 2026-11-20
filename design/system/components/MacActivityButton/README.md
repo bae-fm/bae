@@ -8,4 +8,4 @@ The title bar's Activity button, which opens the Activity panel. `state` says wh
 
 With nothing moving or held, the title bar has no Activity button.
 
-**In the code:** macOS: `ActivityButton` (`Views/Chrome/ActivityButton.swift`).
+**In the code:** macOS: `MacActivityButton` (`Views/Chrome/MacActivityButton.swift`).

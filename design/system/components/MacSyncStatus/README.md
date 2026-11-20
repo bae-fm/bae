@@ -10,4 +10,4 @@ How the library syncs, in Settings: the status in its tone, then what caused it,
 | `fix` | The primary button that fixes it. |
 | `lastSynced` | When this Mac last synced, in a row of its own. |
 
-**In the code:** macOS: `SyncStatusBlock` (`bae-macos/bae/bae/Views/Settings/Library/SyncStatusBlock.swift`).
+**In the code:** macOS: `MacSyncStatus` (`bae-macos/bae/bae/Views/Settings/Library/MacSyncStatus.swift`).

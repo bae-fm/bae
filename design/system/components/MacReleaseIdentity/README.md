@@ -7,4 +7,4 @@ The release's cover beside its identity, at the top of the import draft and the 
 - **Album artist:** a `MacAlbumArtistField` (`artist`, with `artistChip`), in secondary text.
 - **Children:** what the card puts under the year, in order: the folder's audio line and the `MacAlbumPicker`.
 
-**In the code:** macOS: `ReleaseAlbumIdentityEditor` (`Views/Components/MetadataForm/ReleaseMetadataHeader.swift`), whose callers pass the audio line (`SourceAudioLine`) and the album row (`DraftAlbumRow`).
+**In the code:** macOS: `MacReleaseIdentity` (`Views/Components/MetadataForm/MacReleaseIdentity.swift`), whose callers pass the audio line (`SourceAudioLine`) and the album row (`MacAlbumPicker`).

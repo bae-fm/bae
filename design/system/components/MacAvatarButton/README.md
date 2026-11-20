@@ -7,4 +7,4 @@ The person's picture, or their initials, at the end of the title bar. It opens t
 | `name` | The person's name, for the initials (the boards' person is Ana). |
 | `image` | Their picture; the board draws artwork seeded by it. |
 
-**In the code:** macOS: none yet; `TitleBar` (`Views/Chrome/TitleBar.swift`) draws it inline.
+**In the code:** macOS: none yet; `MacTitleBar` (`Views/Chrome/MacTitleBar.swift`) ends with a Settings button instead.

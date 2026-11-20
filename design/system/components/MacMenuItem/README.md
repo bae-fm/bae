@@ -13,4 +13,4 @@ One line of a `MacMenu`: a choice, a heading over a group of choices, a divider 
 | `accessory` | On a submenu, a glyph before the ›: `problem` (a red ! in a circle, for a folder whose scan failed or that bae is not watching), `scanning` (a spinner) or `network` (a globe, for a folder on a network volume). |
 | `help` | The accessory's hover text: the problem's words, or how bae checks a network folder. |
 
-**In the code:** macOS: BaeKit `MacMenuItem`, `MacMenuDivider`, `MacMenuSection` (its heading) and `MacMenuSubmenu` with its `MacMenuAccessory` (`BaeKit/Sources/BaeKit/Views/MacMenu.swift`), drawn by `MacMenuView`.
+**In the code:** macOS: BaeKit `MacMenuItem`, `MacMenuDivider`, `MacMenuSection` (its heading) and `MacMenuSubmenu` with its `MacMenuAccessory` (`BaeKit/Sources/BaeKit/Views/MacMenu.swift`), drawn by `MacMenuFace` (`BaeKit/Sources/BaeKit/Views/MacMenuView.swift`).

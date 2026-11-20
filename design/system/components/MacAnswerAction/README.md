@@ -8,4 +8,4 @@ A way to answer a folder that waits on you, at the foot of Identify's Automatic 
 | `subtitle` | What the button does. |
 | `off` | bae is importing the folder, so the button can't act. |
 
-**In the code:** macOS: `PaneAnswerAction` (`Views/Import/Search/FindOnlineAutomaticSection.swift`).
+**In the code:** macOS: `MacAnswerAction` (`Views/Import/Search/MacAnswerAction.swift`).

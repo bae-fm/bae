@@ -6,4 +6,4 @@ The Import section before any folder is added, centred in the space it fills: th
 |---|---|
 | `discogs` | bae has a Discogs key it can use: the window shows Import folder… alone. |
 
-**In the code:** macOS: `ImportEmptyState` (`Views/Import/ImportEmptyState.swift`), with `AddDiscogsKeyButton`.
+**In the code:** macOS: `MacImportEmptyState` (`Views/Import/MacImportEmptyState.swift`), with `AddDiscogsKeyButton`.

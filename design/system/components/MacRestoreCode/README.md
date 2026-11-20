@@ -7,4 +7,4 @@ The library's restore code in Settings, in a box of its own: hidden but for its 
 | `shown` | The code starts shown. Show and Hide switch it. |
 | `s3` | A second note says that an S3 library also needs its access key and secret. |
 
-**In the code:** macOS: BaeKit `RestoreCodeSection` (`BaeKit/Sources/BaeKit/Views/RestoreCodeSection.swift`).
+**In the code:** macOS: BaeKit's `MacRestoreCode` (`BaeKit/Sources/BaeKit/Views/MacRestoreCode.swift`).

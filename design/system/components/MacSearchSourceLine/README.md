@@ -8,4 +8,4 @@ One catalog that a typed search in Identify still waits on, under the results, o
 | `failed` | The catalog did not answer: the warning mark, its name and Retry. |
 | `reason` | Why it failed, as the name's hover text. |
 
-**In the code:** macOS: the `sourceLines` of `FindOnlineSearchResults` (`Views/Import/Search/FindOnlineSearchResults.swift`), with `failedLine`.
+**In the code:** macOS: `MacSearchSourceLine` (`Views/Import/Search/MacSearchSourceLine.swift`), the `sourceLines` of `FindOnlineSearchResults` (`Views/Import/Search/FindOnlineSearchResults.swift`).

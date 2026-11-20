@@ -4,4 +4,4 @@ A playlist's page inside the side pane. Clicking a playlist in the pane's Playli
 
 The page draws its header with `MacPlaylistHeader`, which takes the same props.
 
-**In the code:** macOS: `PlaylistDetailPane` (`Views/Library/Playlists/PlaylistDetailPane.swift`) draws the page's tracks, and a header with the buttons at its end and who sees it in words, as the detail of the Playlists view's split, in the window; the side pane holds no page yet.
+**In the code:** macOS: `MacPlaylistPage` (`Views/Library/Playlists/MacPlaylistPage.swift`).

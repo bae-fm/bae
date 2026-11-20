@@ -8,4 +8,4 @@ Previous, play and pause, and next, in the now playing bar and the full player.
 | `waiting` | The track waits on storage: an arc turns around the middle button, which shows Pause. |
 | `large` | The full player's: bigger buttons, spread across the sheet. |
 
-**In the code:** Android: `NowPlayingTransport` (`ui/playback/AndroidNowPlayingBar.kt`) and `ExpandedTransportRow` (`ui/playback/AndroidFullPlayer.kt`).
+**In the code:** Android: `AndroidTransport` (`ui/playback/AndroidTransport.kt`), in the now playing bar and, with `full`, in the full player (`ui/playback/AndroidFullPlayer.kt`).

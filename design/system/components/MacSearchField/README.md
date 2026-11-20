@@ -8,4 +8,4 @@ A search or filter field: the magnifier, then the text.
 - `focused` rings the search field in the accent while it has focus.
 - `off` dims a field that has nothing to filter, and the field takes no typing.
 
-**In the code:** macOS: `LibrarySearchField` (`bae-macos/bae/bae/Views/Chrome/LibrarySearchField.swift`) for `search`. `filter` is AppKit's search field, which SwiftUI's `searchable(placement: .toolbar)` puts in the Storage Manager's toolbar (`View+StorageManagerToolbar.swift`); its rows draw only what that field shows: empty with Filter, the typed text, and off, which the toolbar draws as `OffFilterField`, the magnifier and the word Filter dimmed on the field's fill.
+**In the code:** macOS: `MacSearchField` (`bae-macos/bae/bae/Views/Chrome/MacSearchField.swift`), in `MacTitleBar` for `search`, and in `MacStorageToolbar` and the import list's `ImportListFilterField` for `filter`.

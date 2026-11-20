@@ -4,4 +4,4 @@ A pressing: year, labels, catalog number, the agreement badges, the summary; In 
 
 Each fact is a `MacSourcedValue`.
 
-**In the code:** macOS: `ImportSearchResultRow` (`Views/Import/Search/`).
+**In the code:** macOS: `MacPressingRow` (`Views/Import/Search/MacPressingRow.swift`), under each `MacReleaseCard` in `MacReleaseGroup`.

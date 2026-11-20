@@ -6,4 +6,4 @@ A file's transfer ring in the Storage Manager's inspector: a ring that fills clo
 - `tone`: `activity` (the default) for a file moving to or from storage, `pinning` for a file bae is pinning, each over a hairline.
 - `label` names the ring for VoiceOver. Without one, the row around the ring names it.
 
-**In the code:** macOS: `TransferRingNSView`, which `StorageFileMark` (`Views/Storage/StorageInspectorFileRow.swift`) draws for a moving file and fills from the file's stream each frame.
+**In the code:** macOS: `MacProgressRing` (`Views/Storage/MacProgressRing.swift`), which hosts `TransferRingNSView` (`Views/Storage/TransferRingNSView.swift`); `StorageFileMark` (`Views/Storage/MacFileRow.swift`) draws it for a moving file.

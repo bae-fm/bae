@@ -13,4 +13,4 @@ A macOS push button: `kind="primary"` for the action a screen is for, secondary 
 
 `menu` for a button whose click opens a menu, such as Welcome's Add library…: it looks like any button, and macOS reads it as a pop-up button.
 
-**In the code:** macOS: `Button`; with `menu`, a `Menu` with `.menuStyle(.button)` and `.menuIndicator(.hidden)`; primary with BaeKit's `PrimaryButtonStyle`, borderless with BaeKit's `.accentBorderless` style, `neutral` in primary text, as `CreateNameView` and `JoinNameView` draw their Cancel, destructive with `role: .destructive`.
+**In the code:** macOS: BaeKit's `MacButton` (`BaeKit/Sources/BaeKit/Views/MacButton.swift`): primary with BaeKit's `PrimaryButtonStyle`, borderless with BaeKit's `.accentBorderless` style, `neutral()` in primary text; with `menu`, it opens bae's menu under itself.

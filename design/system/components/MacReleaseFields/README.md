@@ -4,4 +4,4 @@ The release's fields under a Release heading, in a grid of labels and values: Ye
 
 Details holds what Discogs says about the pressing that no other field holds (`details`: comma-separated, such as Remastered, Limited Edition): each detail with a button that removes it, then a menu that adds another, showing a dash while there are none and + Add after.
 
-**In the code:** macOS: `ReleasePressingFieldsGrid` (`Views/Components/MetadataForm/ReleaseMetadataHeader.swift`), with `DiscogsDetailsEditor` (`Views/Components/MetadataForm/PressingFactPickers.swift`) for Details.
+**In the code:** macOS: `MacReleaseFields` (`Views/Components/MetadataForm/MacReleaseFields.swift`), with `DiscogsDetailsEditor` (`Views/Components/MetadataForm/PressingFactPickers.swift`) for Details.

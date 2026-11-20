@@ -9,4 +9,4 @@ The main window's title bar: the section tabs (`MacSectionTabs`) in the middle, 
 | `sync` | The Activity button's state: moving, attention or paused. |
 | `avatar`, `avatarImage` | The person's name and picture. |
 
-**In the code:** macOS: `TitleBar` (`Views/Chrome/TitleBar.swift`, and `baeShots/ShotScene.swift` for the shots).
+**In the code:** macOS: `MacTitleBar` (`Views/Chrome/MacTitleBar.swift`, and `baeShots/ShotScene+ComponentsChrome.swift` for the shots).

@@ -4,4 +4,4 @@ Cover, title, artists, year (the year line holds its height when empty). `hover`
 
 The options button is a `MacMoreMenu` with `overlay`, labelled Album options.
 
-**In the code:** macOS: `MacAlbumTile` with `CardMenuButton` (`Views/Library/Grid/`), the round ⋯ on the scrim at the cover's top right while the pointer is over the tile.
+**In the code:** macOS: `MacAlbumTile` (`Views/Library/Grid/MacAlbumTile.swift`), with an overlay `MacMoreMenu`, the round ⋯ at the cover's top right while the pointer is over the tile.
