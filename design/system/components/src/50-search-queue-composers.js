@@ -97,7 +97,9 @@
   var CAST_KIND = { cast: 'Chromecast', airplay: 'AirPlay', upnp: 'UPnP' };
   function MacCastRow(props) {
     var glyph = { cast: 'cast', airplay: 'airplay', upnp: 'tv' }[props.kind || 'cast'];
-    return h('div', { className: 'bae-m-castrow' }, h(MacItem, { lead: h(Glyph, { set: 'mac', name: glyph, size: 15, className: props.active ? 'bae-accent' : 'bae-muted' }), trail: props.menu ? h(MacMoreMenu, {}) : props.active ? h(MacButton, { kind: 'borderless', neutral: true, size: 'small' }, 'Disconnect') : null },
+    // A receiver the person clicks to play on is one button, named as macOS names it: its name and kind joined with a comma.
+    var tap = !props.active && !props.menu;
+    return h('div', Object.assign({ className: 'bae-m-castrow' }, tap ? { role: 'button', 'aria-label': props.name + ', ' + CAST_KIND[props.kind || 'cast'] } : null), h(MacItem, { lead: h(Glyph, { set: 'mac', name: glyph, size: 15, className: props.active ? 'bae-accent' : 'bae-muted' }), trail: props.menu ? h(MacMoreMenu, {}) : props.active ? h(MacButton, { kind: 'borderless', neutral: true, size: 'small' }, 'Disconnect') : null },
       h('span', { className: 'bae-m-castpop-text' }, h('span', { className: 'bae-m-castpop-name' }, props.name), h('span', { className: props.active ? 'bae-m-castpop-state' : 'bae-m-castpop-kind' }, props.active ? 'Playing' : CAST_KIND[props.kind || 'cast']))));
   }
   // The Play on popover's line while bae connects to a receiver (`name`): a spinner and Connecting to … .
