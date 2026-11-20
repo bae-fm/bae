@@ -8,9 +8,9 @@ import os
 @testable import bae
 
 @MainActor
-@Suite("Casting settings")
-struct CastingSettingsTabTests {
-    @Test("turning casting on never asks")
+@Suite("Play on in the Playback settings")
+struct PlaybackSettingsTabTests {
+    @Test("turning Play on other devices on never asks")
     func enablingAppliesDirectly() {
         #expect(
             Cast.toggleAction(
@@ -26,7 +26,9 @@ struct CastingSettingsTabTests {
         )
     }
 
-    @Test("turning casting off with nothing casting applies directly")
+    @Test(
+        "turning Play on other devices off with nothing playing applies directly"
+    )
     func disablingIdleAppliesDirectly() {
         #expect(
             Cast.toggleAction(
@@ -36,7 +38,9 @@ struct CastingSettingsTabTests {
         )
     }
 
-    @Test("turning casting off mid-session asks, naming the device")
+    @Test(
+        "turning Play on other devices off while playing asks, naming the receiver"
+    )
     func disablingWhileCastingConfirms() {
         #expect(
             Cast.toggleAction(
@@ -46,7 +50,7 @@ struct CastingSettingsTabTests {
         )
     }
 
-    @Test("the page browses from its window opening until it closes")
+    @Test("the pane browses from its window opening until it closes")
     func browsesWhileTheWindowIsOpen() async throws {
         let asks = OSAllocatedUnfairLock(initialState: [String]())
         let cast = Cast(
@@ -60,8 +64,9 @@ struct CastingSettingsTabTests {
         let owner = WindowOwner()
         try autoreleasepool {
             let controller = HostingWindowController(
-                content: CastingSettingsTab()
+                content: PlaybackSettingsTab()
                     .environment(cast)
+                    .environment(Playback.stub())
                     .environment(CastStart.stub())
                     .environment(CastStore())
                     .environment(
@@ -97,8 +102,8 @@ struct CastingSettingsTabTests {
         }
     }
 
-    @Test("the casting settings strings ship in every locale")
-    func castingStringsHaveEveryLocalization() throws {
+    @Test("the Play on strings ship in every locale")
+    func playOnStringsHaveEveryLocalization() throws {
         let catalogURL = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
@@ -118,13 +123,15 @@ struct CastingSettingsTabTests {
             return Set(localizations.keys)
         }
 
-        let reference = try locales("Cast")
+        let reference = try locales("Play on…")
         for key in [
-            "Casting",
-            "Enable casting",
+            "Playing on %@",
+            "No receivers found",
+            "Play on other devices",
             "Scan for Cast, AirPlay, and UPnP receivers on your network.",
-            "Turn off casting?",
-            "This will stop casting to %@.",
+            "Stop playing on %@?",
+            "Could not play on %@",
+            "Could not play on the receiver",
             "Turn off",
             "Receivers on your network",
             "Looking for receivers…",

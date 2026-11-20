@@ -16,11 +16,11 @@ public final class Cast: Sendable, Observable {
             _ deviceId: String,
             _ prompt: any AirPlayCodePromptCallback
         ) async throws -> Void
-    /// Stop casting and return playback to local output.
+    /// Stop playing on the receiver and return playback to local output.
     public let stopCasting: @Sendable () -> Void
-    /// Whether casting is available at all. Turning it off is what stops
-    /// discovery and ends a session in flight — core does both off the write, so
-    /// the settings toggle only has to make this call.
+    /// Whether playing on other devices is available at all. Turning it off
+    /// stops discovery and ends a session in flight — core does both off the
+    /// write, so the settings switch only has to make this call.
     public let setEnabled: @Sendable (_ enabled: Bool) async throws -> Void
     /// What a track a device can't play directly is converted to. Core reads
     /// it as each track is loaded onto a device.
@@ -62,9 +62,9 @@ public final class Cast: Sendable, Observable {
         )
     }
 
-    /// Turning casting off mid-session ends it, so that one case asks first;
-    /// every other flip writes straight through. One rule for every platform's
-    /// settings surface, which only renders what it returns.
+    /// Turning Play on other devices off while playing ends it, so that one
+    /// case asks first; every other flip writes straight through. One rule for
+    /// every platform's settings surface, which only renders what it returns.
     public static func toggleAction(
         enabled: Bool,
         castingDeviceName: String?
@@ -80,10 +80,10 @@ public final class Cast: Sendable, Observable {
     #endif
 }
 
-/// What flipping the casting toggle should do.
+/// What flipping the Play on other devices switch should do.
 public enum CastToggleAction: Equatable {
     /// Write the setting straight through.
     case apply(Bool)
-    /// Turning casting off would end the session on this device — ask first.
+    /// Turning it off would end playback on this receiver — ask first.
     case confirmDisconnect(device: String)
 }

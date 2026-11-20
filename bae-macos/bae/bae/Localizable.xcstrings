@@ -32636,179 +32636,6 @@
         }
       }
     },
-    "Casting" : {
-      "comment" : "Settings tab title for the casting feature",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "الإرسال"
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Предаване"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Odesílání"
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Caster"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Casting"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Übertragung"
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Μετάδοση"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Transmisión"
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Suoratoisto"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Diffusion"
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "שידור"
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Emitiranje"
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Átküldés"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Trasmissione"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "キャスト"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "캐스트"
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Caster"
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Casten"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Przesyłanie"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Transmissão"
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Transmissão"
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Transmisie"
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Prenášanie"
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Castar"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Yayınlama"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Трансляція"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "投放"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "投放"
-          }
-        }
-      }
-    },
     "Playing on %@" : {
       "comment" : "Playback bar: the Play on button's tooltip while playing on this receiver (name)",
       "localizations" : {
@@ -43533,181 +43360,181 @@
         }
       }
     },
-    "Enable casting" : {
-      "comment" : "Casting settings: the toggle that turns the whole feature on",
+    "Play on other devices" : {
+      "comment" : "Playback settings: the switch that turns playing on other devices on",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "تفعيل الإرسال"
+            "value" : "التشغيل على أجهزة أخرى"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Включване на предаването"
+            "value" : "Възпроизвеждане на други устройства"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Povolit odesílání"
+            "value" : "Přehrávat na dalších zařízeních"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Slå casting til"
+            "value" : "Afspil på andre enheder"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Enable casting"
+            "value" : "Play on other devices"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Übertragung aktivieren"
+            "value" : "Auf anderen Geräten wiedergeben"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ενεργοποίηση μετάδοσης"
+            "value" : "Αναπαραγωγή σε άλλες συσκευές"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Activar la transmisión"
+            "value" : "Reproducir en otros dispositivos"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ota suoratoisto käyttöön"
+            "value" : "Toista muilla laitteilla"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Activer la diffusion"
+            "value" : "Lire sur d’autres appareils"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "הפעלת שידור"
+            "value" : "ניגון במכשירים אחרים"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Omogući emitiranje"
+            "value" : "Reproduciraj na drugim uređajima"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Átküldés bekapcsolása"
+            "value" : "Lejátszás más eszközökön"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Attiva la trasmissione"
+            "value" : "Riproduci su altri dispositivi"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "キャストを有効にする"
+            "value" : "ほかのデバイスで再生"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "캐스트 사용"
+            "value" : "다른 기기에서 재생"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Slå på casting"
+            "value" : "Spill av på andre enheter"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Casten inschakelen"
+            "value" : "Afspelen op andere apparaten"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Włącz przesyłanie"
+            "value" : "Odtwarzaj na innych urządzeniach"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ativar a transmissão"
+            "value" : "Reproduzir em outros dispositivos"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ativar transmissão"
+            "value" : "Reproduzir noutros dispositivos"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Activează transmisia"
+            "value" : "Redă pe alte dispozitive"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zapnúť prenášanie"
+            "value" : "Prehrávať na iných zariadeniach"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Slå på castning"
+            "value" : "Spela upp på andra enheter"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Yayınlamayı etkinleştir"
+            "value" : "Diğer cihazlarda oynat"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Увімкнути трансляцію"
+            "value" : "Відтворювати на інших пристроях"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "启用投放"
+            "value" : "在其他设备上播放"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "啟用投放"
+            "value" : "在其他裝置上播放"
           }
         }
       }
     },
     "Convert to" : {
-      "comment" : "Casting settings: picker choosing what bae converts a track to when a Cast or UPnP device can't play it directly (MP3, WAV)",
+      "comment" : "Playback settings: picker choosing what bae converts a track to when a Cast or UPnP device can't play it directly (MP3, WAV)",
       "extractionState" : "manual",
       "localizations" : {
         "ar" : {
@@ -43881,7 +43708,7 @@
       }
     },
     "WAV (lossless)" : {
-      "comment" : "Casting settings: the lossless choice in the conversion picker; WAV is the format name",
+      "comment" : "Playback settings: the lossless choice in the conversion picker; WAV is the format name",
       "extractionState" : "manual",
       "localizations" : {
         "ar" : {
@@ -44055,7 +43882,7 @@
       }
     },
     "For tracks a receiver cannot play as they are. WAV keeps full quality but can cut out on weak Wi‑Fi; MP3 holds up better." : {
-      "comment" : "Casting settings footer under the conversion picker. UPnP devices get MP3 whatever the setting, since they aren't required to play WAV",
+      "comment" : "Playback settings footer under the conversion picker. UPnP devices get MP3 whatever the setting, since they aren't required to play WAV",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -63064,7 +62891,7 @@
       }
     },
     "Scan for Cast, AirPlay, and UPnP receivers on your network." : {
-      "comment" : "Casting settings: what the toggle does",
+      "comment" : "Playback settings: what the Play on other devices switch does",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -79311,179 +79138,6 @@
         }
       }
     },
-    "This will stop casting to %@." : {
-      "comment" : "Casting settings: confirmation body, %@ is the device currently being cast to",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "سيؤدي هذا إلى إيقاف الإرسال إلى ‏%@."
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Това ще спре предаването към %@."
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tím se ukončí odesílání do %@."
-          }
-        },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dette stopper casting til %@."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "This will stop casting to %@."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Damit wird die Übertragung an %@ beendet."
-          }
-        },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Αυτό θα σταματήσει τη μετάδοση σε %@."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Esto detendrá la transmisión a %@."
-          }
-        },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tämä lopettaa suoratoiston kohteeseen %@."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "La diffusion vers %@ sera interrompue."
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "פעולה זו תפסיק את השידור אל %@."
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Time će se prekinuti emitiranje na %@."
-          }
-        },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ezzel leáll az átküldés ide: %@."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "La trasmissione a %@ verrà interrotta."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ へのキャストを停止します。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@(으)로의 캐스트가 중지됩니다."
-          }
-        },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dette stopper castingen til %@."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hiermee stopt het casten naar %@."
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Spowoduje to zatrzymanie przesyłania do %@."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Isso interromperá a transmissão para %@."
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Isto vai parar a transmissão para %@."
-          }
-        },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aceasta va opri transmisia către %@."
-          }
-        },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Týmto sa zastaví prenášanie do %@."
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Detta stoppar castningen till %@."
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bu, %@ cihazına yayınlamayı durdurur."
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Це припинить трансляцію на %@."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "这将停止投放到 %@。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "這會停止投放到 %@。"
-          }
-        }
-      }
-    },
     "Title" : {
       "comment" : "Edit-metadata: album/track title field label & placeholder / library sort field",
       "localizations" : {
@@ -81905,175 +81559,175 @@
         }
       }
     },
-    "Turn off casting?" : {
-      "comment" : "Casting settings: confirmation title when turning casting off would end a live session",
+    "Stop playing on %@?" : {
+      "comment" : "Playback settings: confirmation title when turning Play on other devices off would end playback on a receiver; %@ is the receiver's name",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "إيقاف الإرسال؟"
+            "value" : "إيقاف التشغيل على ‏%@؟"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Да се изключи ли предаването?"
+            "value" : "Да спре ли възпроизвеждането на %@?"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vypnout odesílání?"
+            "value" : "Zastavit přehrávání na %@?"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vil du slå casting fra?"
+            "value" : "Stop afspilning på %@?"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Turn off casting?"
+            "value" : "Stop playing on %@?"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Übertragung ausschalten?"
+            "value" : "Wiedergabe auf %@ beenden?"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Απενεργοποίηση μετάδοσης;"
+            "value" : "Διακοπή αναπαραγωγής σε %@;"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "¿Desactivar la transmisión?"
+            "value" : "¿Dejar de reproducir en %@?"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Otetaanko suoratoisto pois käytöstä?"
+            "value" : "Lopetetaanko toisto laitteella %@?"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Désactiver la diffusion ?"
+            "value" : "Arrêter la lecture sur %@ ?"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "לכבות את השידור?"
+            "value" : "להפסיק את הניגון ב-%@?"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Isključiti emitiranje?"
+            "value" : "Zaustaviti reprodukciju na %@?"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kikapcsolod az átküldést?"
+            "value" : "Leállítod a lejátszást itt: %@?"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Disattivare la trasmissione?"
+            "value" : "Interrompere la riproduzione su %@?"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "キャストをオフにしますか？"
+            "value" : "%@ での再生を停止しますか？"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "캐스트를 끌까요?"
+            "value" : "%@에서 재생을 중지할까요?"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Slå av castingen?"
+            "value" : "Slutte å spille av på %@?"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Casten uitschakelen?"
+            "value" : "Stoppen met afspelen op %@?"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wyłączyć przesyłanie?"
+            "value" : "Zatrzymać odtwarzanie na %@?"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Desativar a transmissão?"
+            "value" : "Parar de reproduzir em %@?"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Desligar a transmissão?"
+            "value" : "Parar de reproduzir em %@?"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Oprești transmisia?"
+            "value" : "Oprești redarea pe %@?"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vypnúť prenášanie?"
+            "value" : "Zastaviť prehrávanie na %@?"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Stänga av castningen?"
+            "value" : "Sluta spela upp på %@?"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Yayınlama kapatılsın mı?"
+            "value" : "%@ üzerinde oynatma durdurulsun mu?"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Вимкнути трансляцію?"
+            "value" : "Зупинити відтворення на %@?"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "要关闭投放吗？"
+            "value" : "要停止在 %@ 上播放吗？"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "要關閉投放嗎？"
+            "value" : "要停止在 %@ 上播放嗎？"
           }
         }
       }
@@ -125757,7 +125411,7 @@
       }
     },
     "Receivers on your network" : {
-      "comment" : "Casting settings: heading over the receivers bae finds on the network.",
+      "comment" : "Playback settings: heading over the receivers bae finds on the network.",
       "extractionState" : "manual",
       "localizations" : {
         "ar" : {
@@ -125931,7 +125585,7 @@
       }
     },
     "Looking for receivers…" : {
-      "comment" : "Casting settings: shown until the first receiver answers, while bae looks for them.",
+      "comment" : "Playback settings: shown until the first receiver answers, while bae looks for them.",
       "extractionState" : "manual",
       "localizations" : {
         "ar" : {
@@ -137305,7 +136959,7 @@
       }
     },
     "Details…" : {
-      "comment" : "A row's ⋯ menu (Welcome's library list, Settings → Casting's receivers): the item that shows the row's details in a popover",
+      "comment" : "A row's ⋯ menu (Welcome's library list, Settings → Playback's receivers): the item that shows the row's details in a popover",
       "extractionState" : "manual",
       "localizations" : {
         "ar" : {
@@ -140423,7 +140077,7 @@
       }
     },
     "Type" : {
-      "comment" : "Casting receiver details (a popover off its row): the label of the receiver's protocol, Chromecast, AirPlay or UPnP.",
+      "comment" : "Receiver details (a popover off its row): the label of the receiver's protocol, Chromecast, AirPlay or UPnP.",
       "extractionState" : "manual",
       "localizations" : {
         "ar" : {
@@ -140597,7 +140251,7 @@
       }
     },
     "Model" : {
-      "comment" : "Casting receiver details: the label of the model the receiver states of itself.",
+      "comment" : "Receiver details: the label of the model the receiver states of itself.",
       "extractionState" : "manual",
       "localizations" : {
         "ar" : {
@@ -140771,7 +140425,7 @@
       }
     },
     "Address" : {
-      "comment" : "Casting receiver details: the label of the network address bae found the receiver at.",
+      "comment" : "Receiver details: the label of the network address bae found the receiver at.",
       "extractionState" : "manual",
       "localizations" : {
         "ar" : {

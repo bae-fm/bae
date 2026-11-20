@@ -8,7 +8,7 @@ import SwiftUI
 /// it, then the app itself.
 enum SettingsTab: Hashable, CaseIterable {
     case appearance, library, playback, transfers, storage, importing, formats,
-        casting, subsonic, automation, about
+        subsonic, automation, about
 
     var title: LocalizedStringKey {
         switch self {
@@ -19,7 +19,6 @@ enum SettingsTab: Hashable, CaseIterable {
         case .formats: "Save as"
         case .transfers: "Transfers"
         case .storage: "Storage"
-        case .casting: "Casting"
         case .subsonic: "Subsonic"
         case .automation: "Automation"
         case .about: "About"
@@ -132,8 +131,6 @@ struct MacSettingsWindow: View {
             TransfersSettingsTab()
         case .storage:
             StorageSettingsTab()
-        case .casting:
-            CastingSettingsTab()
         case .subsonic:
             SubsonicSettingsTab()
         case .automation:

@@ -27,26 +27,26 @@ struct MacCastRows: View {
     }
 }
 
-/// A receiver, wherever bae lists them: the cast picker and Settings → Casting.
-/// Its kind's glyph, its name, then its kind under it; the receiver playback is
-/// cast to says "Casting" in the accent instead. In the picker it ends in
-/// Disconnect; on the Casting page every row ends in a ⋯ menu holding Details
-/// and, on the receiver cast to, Disconnect. Any other row casts to its
-/// receiver when clicked.
+/// A receiver, wherever bae lists them: the Play on popover and Settings →
+/// Playback. Its kind's glyph, its name, then its kind under it; the receiver
+/// playing says "Playing" in the accent instead. In the popover it ends in
+/// Disconnect; in the Playback settings every row ends in a ⋯ menu holding
+/// Details and, on the receiver playing, Disconnect. Any other row plays on
+/// its receiver when clicked.
 struct MacCastRow: View {
     /// Where receivers are listed, which decides how a row ends.
     enum Place {
-        /// The cast picker, opened to pick a receiver or stop.
+        /// The Play on popover, opened to pick a receiver or stop.
         case picker
-        /// Settings → Casting.
+        /// Settings → Playback.
         case page
     }
 
     /// Where the row's receiver stands in the list, and what the row offers.
     enum Role {
-        /// Playback is cast to it; the row offers Disconnect.
+        /// Playback is on it; the row offers Disconnect.
         case casting(onDisconnect: () -> Void)
-        /// Discovery found it; clicking the row casts to it.
+        /// Discovery found it; clicking the row plays on it.
         case found(onCast: () -> Void)
     }
 
@@ -94,9 +94,9 @@ struct MacCastRow: View {
                     Text(
                         LocalizedStringResource(
                             "cast.receiver.playing",
-                            defaultValue: "Casting",
+                            defaultValue: "Playing",
                             comment:
-                                "Under the name of the receiver playback is cast to, in the cast picker and Settings → Casting."
+                                "Under the name of the receiver playback is on, in the Play on popover and the Playback settings."
                         )
                     )
                     .themeText(.detail)

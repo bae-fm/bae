@@ -22,7 +22,6 @@ struct SettingsPaneOrderTests {
                 .storage,
                 .importing,
                 .formats,
-                .casting,
                 .subsonic,
                 .automation,
                 .about,

@@ -76,9 +76,9 @@ public struct Config: Equatable {
     /// The preset the last save, of a track or a release, used: the one a
     /// save starts with.
     public let lastSavePreset: BridgeSavePreset
-    /// Whether casting to a network receiver is available. Core enforces it —
+    /// Whether playing on a network receiver is available. Core enforces it —
     /// while off it runs no discovery and refuses to start a session — so the
-    /// playback bar reads this only to decide whether to show its Cast control.
+    /// playback bar reads this only to decide whether to show its Play on control.
     public let castEnabled: Bool
     /// What a track a Cast or UPnP device can't play directly is converted
     /// to. Core applies it per device flavor, from the next track loaded.

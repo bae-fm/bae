@@ -3,7 +3,7 @@ import SwiftUI
 /// What a track a Cast or UPnP device can't play directly is converted to:
 /// MP3, or lossless WAV. Core decides per device flavor whether the choice
 /// applies (a UPnP device gets MP3 either way), so each platform's footer says
-/// what its devices do. Only drawn while casting is on — with casting off
+/// what its devices do. Only drawn while Play on other devices is on — with it off
 /// nothing is converted for a device.
 @MainActor
 public struct CastTranscodeFormatPicker: View {
@@ -24,7 +24,7 @@ public struct CastTranscodeFormatPicker: View {
         self.showError = showError
     }
 
-    /// Whether settings draw the picker for `config`: only while casting is on.
+    /// Whether settings draw the picker for `config`: only while Play on other devices is on.
     public static func isShown(for config: Config) -> Bool {
         config.castEnabled
     }
