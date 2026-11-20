@@ -3618,22 +3618,6 @@
    "x": 1296,
    "y": 21244
   },
-  "android.settings.person.add-device.dc.html": {
-   "h": 916,
-   "page": "library",
-   "title": "A person: add a device for them",
-   "w": 412,
-   "x": 0,
-   "y": 27204
-  },
-  "mac.settings.person.add-device.dc.html": {
-   "h": 600,
-   "page": "library",
-   "title": "macOS: A person: add a device for them",
-   "w": 690,
-   "x": 508,
-   "y": 27204
-  },
   "android.library.artist.menu.dc.html": {
    "h": 916,
    "page": "home",
@@ -6325,8 +6309,6 @@
   "android.welcome.libraries.unreadable.dc.html",
   "mac.album.record-sides.dc.html",
   "android.album.record-sides.dc.html",
-  "android.settings.person.add-device.dc.html",
-  "mac.settings.person.add-device.dc.html",
   "android.library.artist.menu.dc.html",
   "android.library.artist.edit.dc.html",
   "android.library.artist.merge.dc.html",
