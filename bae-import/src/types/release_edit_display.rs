@@ -125,9 +125,10 @@ fn sheet_captions(
     side_choices: &[bae_records::DbSheetSideChoice],
 ) -> Vec<crate::SheetGroup> {
     use crate::folder_scanner::{SheetBindingOffer, SheetBindingOption, SheetReferenceOptions};
-    /// A sheet and its `FILE` lines so far, each with the name of the file
-    /// it plays from.
-    type Lines<'a> = (&'a DbReleaseEditSheet, Vec<(SheetReferenceOptions, String)>);
+    /// A sheet and its `FILE` lines so far, each with the file it plays
+    /// from.
+    type Lines<'a> =
+        (&'a DbReleaseEditSheet, Vec<(SheetReferenceOptions, crate::MappingContainer)>);
     let mut sheets: Vec<Lines<'_>> = Vec::new();
     for row in rows {
         let Some(sheet) = &row.context.sheet else { continue };
@@ -156,18 +157,18 @@ fn sheet_captions(
             file_id: Some(row.context.source.file_id.clone()),
             options,
         };
-        lines.push((line, row.context.source.name.clone()));
+        let played = crate::MappingContainer {
+            file_id: row.context.source.file_id.clone(),
+            name: row.context.source.name.clone(),
+        };
+        lines.push((line, played));
     }
     sheets
         .into_iter()
         .map(|(sheet, mut lines)| {
             let (bound, bound_audio) = if lines.len() == 1 {
-                let (line, name) = lines.remove(0);
-                let file_id = line.file_id.clone().unwrap_or_default();
-                (
-                    crate::SheetBound::Describes(crate::MappingContainer { file_id, name }),
-                    crate::SheetBoundAudio::One(line),
-                )
+                let (line, played) = lines.remove(0);
+                (crate::SheetBound::Describes(played), crate::SheetBoundAudio::One(line))
             } else {
                 (
                     crate::SheetBound::DescribesFiles {
