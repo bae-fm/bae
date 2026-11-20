@@ -7,4 +7,4 @@ The release editor's top row, in both of its action rows (`actions`).
 - `actions` `import`: at the right, where the import goes (`to`: This Mac or Cloud) when the library has cloud storage (`cloud`), then Import, or Retry import after an import failed (`retry`). A folder with nothing to import (`blank`) shows no Import.
 - `actions` `save`: Save, with Cancel once something changed (`changed`). `reading` (Reading Northbound (2019 rip).flac…) shows a spinner and the file a save or an import reads before it writes, before the buttons, which are off until the read ends.
 
-**In the code:** macOS: `MacIdentifyBar` (`bae-macos/bae/bae/Views/Import/Mapping/MacIdentifyBar.swift`), in `MacReleaseEditor`.
+**In the code:** macOS: `MacIdentifyBar` (`bae-macos/bae/bae/Views/Import/Mapping/MacIdentifyBar.swift`), in `MacImportDraft` and `ReleaseEditorView`.

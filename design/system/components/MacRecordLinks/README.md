@@ -4,4 +4,4 @@ Every catalog that describes a release, as a wrapped row of links to each catalo
 
 The import draft draws Unlink beside the row; a library release's editor card, a search result's card and the open album panel's records popover draw the row alone.
 
-**In the code:** macOS: `MacRecordLinks` (`Views/Components/MacRecordLinks.swift`), in `MacReleaseEditor` and `ReleaseRecordsCard` (the album panel's popover).
+**In the code:** macOS: `MacRecordLinks` (`Views/Components/MacRecordLinks.swift`), in `MacImportDraft`, `MacReleaseEditorCard` and `ReleaseRecordsCard` (the album panel's popover).

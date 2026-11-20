@@ -7,7 +7,7 @@ import SwiftUI
 
 extension ShotScene {
     static let importDraftScenes: [ShotScene] =
-        draftCardScenes + identifyBarScenes + releaseIdentityScenes
+        identifyBarScenes + releaseIdentityScenes
         + releaseFieldsScenes + albumPickerScenes + albumArtistFieldScenes
         + inlineFieldScenes
 
@@ -82,23 +82,22 @@ extension ShotScene {
 
     /// The scan's reading of the folder's audio, which the audio line shows.
     private static func folderAudio() -> BridgeSourceAudioSummary? {
-        draftSummary(blank: false).sourceAudio
+        draftSummary().sourceAudio
     }
 
-    /// What the draft card knows of the folder: its audio when `blank` is
-    /// false, nothing when it is true.
-    private static func draftSummary(blank: Bool) -> ImportReleaseSummary {
-        let edit = blank ? blankEdit() : lowTideEdit()
+    /// What the draft card knows of the folder: its audio.
+    private static func draftSummary() -> ImportReleaseSummary {
+        let edit = lowTideEdit()
         let candidate = PreviewData.paneCandidate(
             folder: PreviewData.boardFolder(
                 .lowTideHours,
                 files: PreviewData.boardFolderFiles(
-                    tracks: blank ? [] : [PreviewData.northboundTracks[0]],
+                    tracks: [PreviewData.northboundTracks[0]],
                     images: []
                 )
             ),
             edit: edit,
-            summaryCatalogNumber: blank ? nil : "HR-1042",
+            summaryCatalogNumber: "HR-1042",
             mapping: BridgeMappingTable(
                 images: [],
                 trackSides: [],
@@ -161,79 +160,12 @@ extension ShotScene {
         )
     }
 
-    /// The draft card over what the folder holds. `blank` leaves the draft
-    /// naming nothing; `commit` is `nil` where there is nothing to import.
-    private static func importDraft(
-        blank: Bool = false,
-        album: BridgeDraftAlbum? = .new,
-        commit: ImportCommitControls? = commitControls(),
-        syncs: Bool = false
-    ) -> some View {
-        let summary = draftSummary(blank: blank)
-        return importStores(
-            MacImportDraft(
-                releaseSummary: summary,
-                actionable: true,
-                isReading: false,
-                coverContent: blank
-                    ? nil
-                    : ImageContent.localFile(
-                        PreviewData.previewArtFile("Low Tide Hours")
-                    ),
-                hasCoverOptions: !blank,
-                editValues: blank ? blankEdit() : lowTideEdit(),
-                pressingOffers: PreviewData.pressingOffers,
-                albumArtists: blank
-                    ? nil : PreviewData.boardLibraryArtists("Mara Quill"),
-                records: blank ? [] : PreviewData.releaseRecordsPair,
-                releaseLink: nil,
-                album: album,
-                albumActions: inertAlbumActions,
-                editActions: ReleaseFieldWriter { _, _ in },
-                editingCommands: EditingCommitCommands(),
-                commit: commit,
-                sourceActions: ImportReleaseSourceActions(
-                    identifyAutomatically: {},
-                    searchForRelease: {},
-                    resetToFileMetadata: {},
-                    clearMetadata: {},
-                    unlink: {}
-                ),
-                onEditCover: {},
-                onDropCoverImage: { _ in }
-            )
-            .frame(width: 720, alignment: .topLeading),
-            syncs: syncs
-        )
-    }
-
-    private static func draftScene<Draft: View>(
-        _ id: String,
-        height: CGFloat = 540,
-        _ draft: @escaping @MainActor () -> Draft
-    ) -> ShotScene {
-        component(
-            id,
-            width: 736,
-            height: height,
-            images: PreviewData.artImageStore()
-        ) {
-            draft()
-        }
-    }
-
-    /// No shots: the design system's `MacReleaseEditor` replaced the draft
-    /// card's component, and its shots come with the app's one release
-    /// editor view.
-    private static let draftCardScenes: [ShotScene] = []
-
     // MARK: Identify bar
 
     private static func identifyBarScene(
         _ id: String,
         syncs: Bool = false,
-        commit: ImportCommitControls? = nil,
-        editor: Bool? = nil
+        commit: ImportCommitControls? = nil
     ) -> ShotScene {
         component(
             id,
@@ -241,52 +173,29 @@ extension ShotScene {
             height: 50
         ) {
             importStores(
-                identifyBar(commit: commit, editor: editor)
+                identifyBar(commit: commit)
                     .frame(width: 640, alignment: .leading),
                 syncs: syncs
             )
         }
     }
 
-    /// The bar over an import's `commit` controls, or over a library
-    /// release's Save and Cancel, `changed` once something is edited.
-    @ViewBuilder
+    /// The bar over an import's `commit` controls.
     private static func identifyBar(
-        commit: ImportCommitControls?,
-        editor changed: Bool?
+        commit: ImportCommitControls?
     ) -> some View {
-        if let changed {
-            MacIdentifyBar(
-                spacing: ThemeSpace.edge,
-                identifyDisabled: false,
-                onAutomatic: {},
-                onSearch: {},
-                onMetadataCommand: nil,
-                trailing: {
-                    ReleaseEditControls(
-                        changed: changed,
-                        isBusy: false,
-                        reading: nil,
-                        onCancel: {},
-                        onSave: {}
-                    )
+        MacIdentifyBar(
+            spacing: ThemeSpace.related,
+            identifyDisabled: false,
+            onAutomatic: {},
+            onSearch: {},
+            onMetadataCommand: { _ in },
+            trailing: {
+                if let commit {
+                    ImportCommitRow(commit: commit)
                 }
-            )
-        }
-        else {
-            MacIdentifyBar(
-                spacing: ThemeSpace.related,
-                identifyDisabled: false,
-                onAutomatic: {},
-                onSearch: {},
-                onMetadataCommand: { _ in },
-                trailing: {
-                    if let commit {
-                        ImportCommitRow(commit: commit)
-                    }
-                }
-            )
-        }
+            }
+        )
     }
 
     private static let identifyBarScenes: [ShotScene] = [

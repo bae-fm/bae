@@ -3,12 +3,10 @@ import SwiftUI
 
 @testable import bae
 
-// The cards a skipped folder and a library release show in place of an
-// import's draft card.
+// The card a skipped folder shows in place of an import's draft card.
 
 extension ShotScene {
-    static let importCardScenes: [ShotScene] =
-        invalidCandidateCardScenes + releaseEditorCardScenes
+    static let importCardScenes: [ShotScene] = invalidCandidateCardScenes
 
     /// The preview's 720pt box, with the 8pt it leaves round a row.
     private static let cardWidth: CGFloat = 736
@@ -59,132 +57,4 @@ extension ShotScene {
                 .frame(width: 720, alignment: .leading)
         },
     ]
-
-    // MARK: Release editor card
-
-    /// Low Tide Hours, a remastered CD from Harbor Records, as the library
-    /// holds it.
-    private static func editedValues() -> BridgeRawReleaseEdit {
-        PreviewData.boardEdit(
-            title: "Low Tide Hours",
-            artist: "Mara Quill",
-            year: "1992",
-            pressing: BridgeRawPressingEdit(
-                year: "1992",
-                labels: [
-                    .alone(name: "Harbor Records", catalogNumber: "HR-1042")
-                ],
-                barcodes: [],
-                facts: PreviewData.pressingFacts(
-                    country: "US",
-                    media: PreviewData.media(.cd),
-                    status: .official,
-                    discogsDetails: [.remastered]
-                )
-            ),
-            tracks: []
-        )
-    }
-
-    /// The library album Low Tide Hours by Mara Quill.
-    private static let editedAlbumLine = BridgeAlbumLine.titleAndArtists(
-        title: "Low Tide Hours",
-        artistLine: .named("Mara Quill")
-    )
-
-    /// What the editor opens on: the release on the album `album`, its
-    /// cover, its files' audio and its MusicBrainz record, with a change
-    /// made when `changed`.
-    private static func editedRelease(
-        album: BridgeDraftAlbum,
-        changed: Bool
-    ) -> PreviewReleaseEdit {
-        PreviewReleaseEdit(
-            values: editedValues(),
-            draft: BridgeReleaseEditDraft(
-                cover: BridgeImageRef(
-                    id: "Low Tide Hours",
-                    version: "1",
-                    imageType: .cover
-                ),
-                sourceAudio: .uniform(
-                    descriptor: BridgeSourceAudioDescriptor(
-                        layout: .file,
-                        format: PreviewData.previewSourceAudioFormat
-                    )
-                ),
-                sides: nil,
-                files: nil,
-                album: album,
-                records: PreviewData.boardRecords("low-tide-hours"),
-                hasRecords: true,
-                pressingOffers: PreviewData.pressingOffers,
-                albumArtists: PreviewData.boardLibraryArtists("Mara Quill"),
-                changed: changed,
-                filesToRead: nil,
-                invalid: nil
-            )
-        )
-    }
-
-    /// The editor card over an editor's session on `release`, ready once
-    /// the session's draft arrives; `menu` draws the album pop-up open over
-    /// its row.
-    private static func releaseEditorCardScene(
-        _ id: String,
-        _ release: PreviewReleaseEdit,
-        menu: Bool = false
-    ) -> ShotScene {
-        let size = CGSize(width: cardWidth, height: 520)
-        return ShotScene(id: id, size: size) {
-            let session = PreviewData.releaseEditSession(release: release)
-            return component(
-                id,
-                width: size.width,
-                height: size.height,
-                images: coverGalleryImages(of: "Low Tide Hours"),
-                isReady: { session.draft != nil }
-            ) {
-                importStores(
-                    ShotReleaseEditorCard(session: session, menu: menu)
-                )
-            }
-            .stage()
-        }
-    }
-
-    /// No shots: the design system's `MacReleaseEditor` replaced the card's
-    /// component, and its shots come with the app's one release editor view.
-    private static let releaseEditorCardScenes: [ShotScene] = []
-}
-
-/// The editor card over `session`'s draft once it arrives, with the lead
-/// the editor gives it; `menu` draws the album pop-up open over its row.
-private struct ShotReleaseEditorCard: View {
-    let session: ReleaseMetadataEditSession
-    let menu: Bool
-
-    var body: some View {
-        if let draft = session.draft {
-            ZStack(alignment: .topLeading) {
-                MacReleaseEditorCard(
-                    session: session,
-                    draft: draft,
-                    onEditCover: {}
-                ) {
-                    ReleaseEditorLead(
-                        session: session,
-                        onAutomatic: {},
-                        onSearch: {},
-                        onCancel: {},
-                        onSave: {}
-                    )
-                }
-                .frame(width: 720, alignment: .leading)
-                if menu {
-                    ShotScene.albumMenu(draft.album, x: 209, y: 160)
-                }
-            }
-        }
-    }
 }
