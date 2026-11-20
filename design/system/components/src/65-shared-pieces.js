@@ -93,8 +93,8 @@
       h('div', { className: 'bae-m-restore-code' },
         shown ? h('span', { 'aria-label': 'Restore code', className: 'bae-m-restore-text' }, 'CVR1 ' + code.slice(5).match(/.{1,4}/g).join(' '))
           : h('span', { role: 'img', 'aria-label': 'Restore code, partly hidden', className: 'bae-m-restore-masked' },
-            h('span', { className: 'bae-m-restore-masked-head' }, code.slice(0, 9) + '•'.repeat(code.length - 13)),
-            h('span', { className: 'bae-m-restore-masked-tail' }, code.slice(-4))),
+            h('span', { 'aria-hidden': true, className: 'bae-m-restore-masked-head' }, code.slice(0, 9) + '•'.repeat(code.length - 13)),
+            h('span', { 'aria-hidden': true, className: 'bae-m-restore-masked-tail' }, code.slice(-4))),
         h(MacButton, { onClick: function () { shownState[1](!shown); } }, shown ? 'Hide' : 'Show'),
         h(MacButton, null, 'Print…'),
         h(MacButton, { kind: 'icon', icon: copied ? 'check' : 'copy', label: copied ? 'Copied' : 'Copy', onClick: function () {
