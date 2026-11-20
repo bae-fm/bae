@@ -12,8 +12,7 @@
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
     W('Back', h(B.AndroidScreen, { title: 'Storage', back: true, height: 360 }, slot('The screen’s content'))),
     W('Menu', h(B.AndroidScreen, { title: 'History', back: true, menu: 'Everyone', height: 360 }, slot('The screen’s content'))),
-    W('No title', h(B.AndroidScreen, { height: 360 }, slot('The screen’s content'))),
-    W('Dialog', h(B.AndroidScreen, { title: 'Storage', back: true, height: 360 }, slot('The screen’s content'), h(B.AndroidDialog, { title: 'Remove library from this device?' }, h(B.AndroidDialogActions, null, h(B.AndroidButton, { kind: 'text', neutral: true }, 'Cancel'), h(B.AndroidButton, { kind: 'text', destructive: true }, 'Remove'))))),
+    W('Dialog', h(B.AndroidScreen, { title: 'Storage', back: true, height: 360 }, slot('The screen’s content'), h(B.AndroidDialog, { title: 'Remove library from this device?' }, h(B.AndroidDialogActions, null, h(B.AndroidButton, { kind: 'text', neutral: true }, 'Cancel'), h(B.AndroidButton, { kind: 'text' }, 'Remove'))))),
     W('Keyboard', h(B.AndroidScreen, { title: 'Name', back: true, keyboard: true, height: 600 }, h(B.AndroidTextField, { label: 'Library name', state: 'focused', value: 'Home' })))));
 </script>
 </body>

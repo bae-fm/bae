@@ -1,6 +1,6 @@
 # AndroidScreen
 
-Holds `AndroidSection`s over `AndroidCard`s under the screen's bar (`AndroidTopBar`: `title`, `back`, `menu`). No `title` on the welcome screen, which has no bar.
+Holds `AndroidSection`s over `AndroidCard`s under the screen's bar (`AndroidTopBar`: `title`, `back`, `menu`).
 
 The screen draws a dialog or sheet placed among its content over the whole screen: its scrim covers the bars and the now playing bar too, and a dialog centres on the screen. A board never wraps the screen in a box to position it.
 
