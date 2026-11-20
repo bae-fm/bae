@@ -16,9 +16,9 @@ extension EditingField {
 /// A text field that says when it gains and loses its field editor, which is
 /// what "focused" is for a field a person types into.
 ///
-/// A secure field (`NSSecureTextField`) and a token field (`NSTokenField`)
-/// say the same with overrides of their own: their classes are AppKit's, and
-/// Swift adds overrides to a class only through a subclass of it.
+/// A secure field (`NSSecureTextField`) says the same with overrides of its
+/// own: its class is AppKit's, and Swift adds overrides to a class only
+/// through a subclass of it.
 class EditingTextField: FocusingTextField, EditingField {
     /// Called with `true` when the field takes its editor and `false` when
     /// the editing ends.
