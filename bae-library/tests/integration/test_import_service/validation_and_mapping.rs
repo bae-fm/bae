@@ -685,7 +685,7 @@ async fn a_found_row_shows_the_length_the_import_stores() {
         .mapping
         .track_sides
         .iter()
-        .flat_map(bae_import::MappingTrackSide::mappings)
+        .flat_map(bae_import::TrackTableSide::rows)
         .map(|row| (row.length_ms, row.listed_length_ms))
         .collect();
 

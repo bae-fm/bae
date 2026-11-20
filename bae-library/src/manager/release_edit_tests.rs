@@ -622,8 +622,8 @@ async fn a_form_holds_each_change_until_its_save() {
         .sides
         .iter()
         .flatten()
-        .flat_map(bae_import::ReleaseEditTrackSide::rows)
-        .map(|row| row.edit.title.as_str())
+        .flat_map(bae_import::TrackTableSide::rows)
+        .map(|row| row.track.title.as_str())
         .collect();
     assert_eq!(titles[1], "Renamed Track", "the track row beside the form's");
     assert!(draft.changed);
@@ -936,19 +936,18 @@ async fn release_edit_seed_names_the_file_each_track_s_body_plays_from() {
             &bae_types::mediums::TrackSide::Disc { disc: 2 },
         ]
     );
-    let bae_import::ReleaseEditTrackRun::Track(first_row) = &sides[0].runs[0] else {
+    let bae_import::TrackTableRun::Track(first_row) = &sides[0].runs[0] else {
         panic!("a track on its own file is a run of its own");
     };
-    assert_eq!(first_row.context.track_id, first.id);
-    assert_eq!(first_row.edit.id, first.id);
-    assert_eq!(first_row.context.source.layout, bae_records::source_audio::SourceAudioLayout::File);
+    assert_eq!(first_row.track.id, first.id);
+    assert_eq!(first_row.audition, bae_import::TrackAudition::LibraryTrack);
     // A pregap stored in the file before is not the track's source.
-    let bae_import::ReleaseEditTrackRun::Track(second_row) = &sides[1].runs[0] else {
+    let bae_import::TrackTableRun::Track(second_row) = &sides[1].runs[0] else {
         panic!("the one track of its disc is a run of its own");
     };
-    assert_eq!(second_row.context.track_id, second.id);
-    assert_eq!(second_row.edit.title, "Second Track");
-    assert_eq!(second_row.context.source.name, "body.flac");
+    assert_eq!(second_row.track.id, second.id);
+    assert_eq!(second_row.track.title, "Second Track");
+    assert_eq!(second_row.source, bae_import::TrackSource::File { name: "body.flac".to_string() });
     assert!(matches!(
         draft.source_audio,
         Some(bae_records::source_audio::SourceAudioSummary::Mixed { .. })

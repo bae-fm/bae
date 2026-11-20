@@ -112,39 +112,10 @@ struct ReleaseEditorTests {
     }
 
     @MainActor
-    @Test(
-        "A CUE source used by one track stays in that track's row",
-        arguments: [
-            ReleaseMetadataTrackColumns.minimumTableWidth, 1_000, 1_400,
-        ]
-    )
-    func individualCueSourcesStayInline(width: CGFloat) async throws {
-        let files = try await trackTitleFrames(
-            width: width,
-            layout: .file,
-            shared: false
-        )
-        let cueFiles = try await trackTitleFrames(
-            width: width,
-            layout: .cue,
-            shared: false
-        )
-        #expect(cueFiles == files)
-    }
-
-    @MainActor
     @Test("Tracks sharing one CUE source keep one caption above their rows")
     func sharedCueSourceKeepsCaption() async throws {
-        let files = try await trackTitleFrames(
-            width: 1_000,
-            layout: .file,
-            shared: false
-        )
-        let shared = try await trackTitleFrames(
-            width: 1_000,
-            layout: .cue,
-            shared: true
-        )
+        let files = try await trackTitleFrames(width: 1_000, shared: false)
+        let shared = try await trackTitleFrames(width: 1_000, shared: true)
         #expect(shared[0].minY > files[0].minY)
         #expect(
             shared[1].minY - shared[0].minY == files[1].minY - files[0].minY
@@ -155,10 +126,9 @@ struct ReleaseEditorTests {
     @MainActor
     private func trackTitleFrames(
         width: CGFloat,
-        layout: BridgeSourceAudioLayout,
         shared: Bool
     ) async throws -> [CGRect] {
-        let release = twoTrackRelease(layout: layout, shared: shared)
+        let release = twoTrackRelease(shared: shared)
         let session = PreviewData.releaseEditSession(
             releaseId: "release-test",
             release: release
@@ -199,60 +169,35 @@ struct ReleaseEditorTests {
 
     /// A release of two tracks, each on a file of its own, or both carved by
     /// a sheet from one file when `shared` is true.
-    private func twoTrackRelease(
-        layout: BridgeSourceAudioLayout,
-        shared: Bool
-    ) -> PreviewReleaseEdit {
+    private func twoTrackRelease(shared: Bool) -> PreviewReleaseEdit {
         var release = PreviewData.releaseEdit(trackCount: 2)
+        let file = { (index: Int) -> (id: String, name: String) in
+            shared
+                ? ("disc.flac", "Disc audio.flac")
+                : (
+                    "track-\(index).flac",
+                    "Disc 1/0\(index + 1) A source track with a long filename.flac"
+                )
+        }
         let rows = release.values.tracks.enumerated()
             .map { index, track in
-                BridgeReleaseEditTrackRow(
-                    edit: track,
-                    context: PreviewData.releaseEditTrackContext(
-                        trackId: track.id,
-                        index: index,
-                        source: BridgeReleaseEditTrackSource(
-                            fileId: shared
-                                ? "disc.flac" : "track-\(index).flac",
-                            name: shared
-                                ? "Disc audio.flac"
-                                : "Disc 1/0\(index + 1) A source track with a long filename.flac",
-                            layout: layout
-                        )
-                    ),
-                    artists: nil
+                PreviewData.releaseEditRow(
+                    track,
+                    index: index,
+                    source: shared
+                        ? .sheetSlice(start: BridgeDurationClock.length(ms: 0))
+                        : .file(name: file(index).name)
                 )
             }
-        // Core lays two tracks a sheet carves from one file out as one run,
-        // and every other track as a run of its own.
+        // Core lays the tracks a sheet carves out as one run under its
+        // caption, and every other track as a run of its own.
         release.draft.sides = [
-            BridgeReleaseEditTrackSide(
+            BridgeTrackTableSide(
                 side: .flat,
                 runs: shared
                     ? [
                         .sheet(
-                            sheet: BridgeReleaseEditSheet(
-                                fileId: "disc.cue",
-                                name: "Disc audio.cue",
-                                place: .disc(1),
-                                sideChoices: BridgeSheetSideChoice.discs(2),
-                                fileReference: "Disc audio.wav",
-                                audioOptions: [
-                                    BridgeReleaseEditAudioOption(
-                                        fileId: rows[0].context.source.fileId,
-                                        name: rows[0].context.source.name,
-                                        bound: true,
-                                        offer: .offered
-                                    ),
-                                    BridgeReleaseEditAudioOption(
-                                        fileId: "disc-rip.flac",
-                                        name: "Disc audio (rip).flac",
-                                        bound: false,
-                                        offer: .offered
-                                    ),
-                                ]
-                            ),
-                            source: rows[0].context.source,
+                            sheet: discSheet(playing: file(0)),
                             rows: rows
                         )
                     ]
@@ -260,6 +205,46 @@ struct ReleaseEditorTests {
             )
         ]
         return release
+    }
+}
+
+extension ReleaseEditorTests {
+    /// The caption of the CUE sheet that carves both tracks from `file`, its
+    /// one line offering that file and the release's rip.
+    private func discSheet(
+        playing file: (id: String, name: String)
+    ) -> BridgeSheetGroup {
+        let line = BridgeSheetReferenceOptions(
+            fileReference: "Disc audio.wav",
+            fileId: file.id,
+            options: [
+                BridgeSheetBindingOption(
+                    fileId: file.id,
+                    name: file.name,
+                    offer: .offered
+                ),
+                BridgeSheetBindingOption(
+                    fileId: "disc-rip.flac",
+                    name: "Disc audio (rip).flac",
+                    offer: .offered
+                ),
+            ]
+        )
+        return BridgeSheetGroup(
+            sheetId: "disc.cue",
+            name: "Disc audio.cue",
+            bound: .describes(
+                container: BridgeMappingContainer(
+                    fileId: file.id,
+                    name: file.name
+                )
+            ),
+            boundAudio: .one(reference: line),
+            unboundReferences: nil,
+            assigned: .disc(1),
+            sideChoices: BridgeSheetSideChoice.discs(2),
+            ignorable: false
+        )
     }
 }
 
@@ -290,7 +275,7 @@ extension ReleaseEditorTests {
     @MainActor
     @Test("a side picked for a sheet reaches the form and shows in the draft")
     func sidePickedForASheetShowsInTheDraft() async throws {
-        let release = twoTrackRelease(layout: .cue, shared: true)
+        let release = twoTrackRelease(shared: true)
         let session = PreviewData.releaseEditSession(
             releaseId: "release-test",
             release: release
@@ -301,10 +286,10 @@ extension ReleaseEditorTests {
         try await Wait.until { !session.isBusy }
         try await Wait.until {
             guard
-                case .sheet(let sheet, _, _) = session.draft?.sides?.first?
+                case .sheet(let sheet, _) = session.draft?.sides?.first?
                     .runs.first
             else { return false }
-            return sheet.place == .disc(2)
+            return sheet.assigned == .disc(2)
         }
     }
 }
@@ -313,7 +298,7 @@ extension ReleaseEditorTests {
     @MainActor
     @Test("a file picked for a sheet reaches the form and shows in the draft")
     func filePickedForASheetShowsInTheDraft() async throws {
-        let release = twoTrackRelease(layout: .cue, shared: true)
+        let release = twoTrackRelease(shared: true)
         let session = PreviewData.releaseEditSession(
             releaseId: "release-test",
             release: release
@@ -328,8 +313,9 @@ extension ReleaseEditorTests {
         try await Wait.until { !session.isBusy }
         try await Wait.until {
             guard
-                case .sheet(_, let source, _) = session.draft?.sides?.first?
-                    .runs.first
+                case .sheet(let sheet, _) = session.draft?.sides?.first?
+                    .runs.first,
+                case .describes(let source) = sheet.bound
             else { return false }
             return source.name == "Disc audio (rip).flac"
         }

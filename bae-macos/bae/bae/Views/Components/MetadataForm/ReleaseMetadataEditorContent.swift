@@ -88,10 +88,10 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
         }
     }
 
-    /// A source shared by several tracks gets a caption above them; a single
-    /// track's source stays in its row.
+    /// The tracks a CUE sheet carves get its caption above them; a track
+    /// that plays a whole file names it in its row.
     @ViewBuilder
-    private func sideRows(_ side: BridgeReleaseEditTrackSide, index: Int)
+    private func sideRows(_ side: BridgeTrackTableSide, index: Int)
         -> some View
     {
         if index == 0 {
@@ -102,32 +102,42 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
             sideHeader(headerText, index: index)
         }
         ForEach(Array(side.runs.enumerated()), id: \.offset) { _, run in
-            switch run {
-            case .track(let row):
-                trackRow(row, sourceIsInCaption: false)
-                    .id(row.edit.id)
-            case .sheet(let sheet, let source, let rows):
-                ReleaseEditSheetCaption(
-                    sheet: sheet,
-                    source: source,
-                    onOpenDocument: onOpenDocument,
-                    onPickSide: {
-                        session.pickSheetSide(sheet.fileId, side: $0)
-                    },
-                    onPickFile: {
-                        session.pickSheetFile(
-                            sheet.fileId,
-                            fileReference: sheet.fileReference,
-                            audioFileId: $0
-                        )
-                    }
-                )
-                .frame(width: tableWidth, alignment: .leading)
-                ForEach(rows, id: \.edit.id) { row in
-                    trackRow(row, sourceIsInCaption: true)
+            if case .sheet(let sheet, _) = run {
+                ReleaseSheetCaption(sheet: sheet, actions: sheetActions)
+                    .padding(
+                        .horizontal,
+                        ReleaseMetadataTrackColumns.rowPadding
+                    )
+                    .padding(.top, ThemeSpace.related)
+                    .padding(.bottom, ThemeSpace.compact)
+                    .frame(width: tableWidth, alignment: .leading)
+            }
+            ForEach(run.rows, id: \.track.id, content: trackRow)
+        }
+    }
+
+    /// The caption's actions on the session's form: a side or disc picked
+    /// for a sheet, or an audio file for one of its lines. The caption
+    /// offers neither *Ignored* nor binding no audio, since the editor keeps
+    /// every track it opened on.
+    private var sheetActions: SheetCaptionActions {
+        SheetCaptionActions(
+            open: onOpenDocument,
+            place: { sheetId, place in
+                if case .on(let side) = place {
+                    session.pickSheetSide(sheetId, side: side)
+                }
+            },
+            bind: { sheetId, fileReference, audioFileId in
+                if let audioFileId {
+                    session.pickSheetFile(
+                        sheetId,
+                        fileReference: fileReference,
+                        audioFileId: audioFileId
+                    )
                 }
             }
-        }
+        )
     }
 
     private func sideHeader(_ text: String, index: Int) -> some View {
@@ -167,20 +177,17 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
         .padding(.bottom, ThemeSpace.compact)
     }
 
-    private func trackRow(
-        _ row: BridgeReleaseEditTrackRow,
-        sourceIsInCaption: Bool
-    ) -> some View {
+    private func trackRow(_ row: BridgeTrackTableRow) -> some View {
         HStack(spacing: ReleaseMetadataTrackColumns.spacing) {
-            sourceCell(row.context, sourceIsInCaption: sourceIsInCaption)
+            sourceCell(trackId: row.track.id, source: row.source)
             ReleaseMetadataTrackRow(
-                track: row.edit,
+                track: row.track,
                 artists: row.artists,
-                length: row.context.durationClock,
-                listedLength: row.context.listedLength,
+                length: row.length,
+                listedLength: row.listedLength,
                 columns: columns,
                 editingCommands: session.editingCommands,
-                position: row.context.positionText,
+                position: row.position,
                 artistSearch: library.artistSearch,
                 onChange: { await session.updateTrack($0) }
             )
@@ -193,13 +200,15 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
         }
     }
 
+    /// The row's play button, which plays the release from the track
+    /// `trackId`, and what the row's source cell names.
     private func sourceCell(
-        _ context: BridgeReleaseEditTrackContext,
-        sourceIsInCaption: Bool
+        trackId: String,
+        source: BridgeTrackSource
     ) -> some View {
         HStack(spacing: ThemeSpace.related) {
             Button {
-                onPlayTrack?(context.trackId)
+                onPlayTrack?(trackId)
             } label: {
                 Image(systemName: "play.fill")
                     .themeIcon(.small)
@@ -208,11 +217,10 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
             .foregroundStyle(.secondary)
             .opacity(onPlayTrack == nil ? 0 : 1)
             .allowsHitTesting(onPlayTrack != nil)
-            if sourceIsInCaption {
-                TrackStartText(start: context.startClock)
-            }
-            else {
-                let name = context.source.name
+            switch source {
+            case .sheetSlice(let start):
+                TrackStartText(start: start)
+            case .file(let name):
                 Text(verbatim: name)
                     .themeText(.mono)
                     .cutLine(.fileName)

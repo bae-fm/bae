@@ -90,10 +90,12 @@ extension PreviewData {
             options: [
                 BridgeSheetBindingOption(
                     fileId: mappedAudioContainer.file.name,
+                    name: mappedAudioContainer.file.name,
                     offer: .offered
                 ),
                 BridgeSheetBindingOption(
                     fileId: "Album Title.mp3",
+                    name: "Album Title.mp3",
                     offer: .refusedCodec(codec: "MP3")
                 ),
             ]

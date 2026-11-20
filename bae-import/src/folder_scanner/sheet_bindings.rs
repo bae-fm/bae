@@ -544,12 +544,16 @@ impl SheetBindingOffer {
     }
 }
 
-/// One of the folder's audio files, as a choice for a sheet's binding.
+/// One of a release's audio files, as a choice for a sheet's binding.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SheetBindingOption {
-    /// The audio's [`ScannedFile::relative_path`] — the id the binding is set
-    /// by (`ImportServiceHandle::set_sheet_binding`).
+    /// The id the binding is set by: in a folder, the audio's
+    /// [`ScannedFile::relative_path`] (`ImportServiceHandle::set_sheet_binding`);
+    /// in the library, its release file's id.
     pub file_id: String,
+    /// The name the choice shows: in a folder, the audio's relative path; in
+    /// the library, its file name.
+    pub name: String,
     pub offer: SheetBindingOffer,
 }
 
@@ -593,6 +597,7 @@ impl CategorizedFiles {
                         })
                         .map(|audio| SheetBindingOption {
                             file_id: audio.relative_path.clone(),
+                            name: audio.relative_path.clone(),
                             offer: cue_pair_codec_label(audio).offer(|| {
                                 sheet_reference_fits_audio(sheet.sheet, reference, audio)
                             }),

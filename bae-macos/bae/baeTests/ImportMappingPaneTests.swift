@@ -205,7 +205,7 @@ struct ImportMappingPaneTests {
         let store = MappingFixtures.store(
             mapping: MappingFixtures.unboundSheetTable
         )
-        #expect(MappingFixtures.mapping(of: store).trackMappings.count == 1)
+        #expect(MappingFixtures.mapping(of: store).trackRows.count == 1)
 
         let recorder = Recorder()
         await ImportMappingFlow.bindSheet(
@@ -226,7 +226,7 @@ struct ImportMappingPaneTests {
         )
         // The pane does not rewrite its own table: it still shows what it was
         // handed, and the next read replaces it whole.
-        #expect(MappingFixtures.mapping(of: store).trackMappings.count == 1)
+        #expect(MappingFixtures.mapping(of: store).trackRows.count == 1)
 
         // What that read comes back with is the sheet's group.
         store.applyCandidateDetail(
@@ -250,7 +250,7 @@ struct ImportMappingPaneTests {
         }
         #expect(container.fileId == MappingFixtures.containerId)
         #expect(entries.count == 12)
-        #expect(after.trackMappings.count == 12)
+        #expect(after.trackRows.count == 12)
     }
 
     // 2. Naming a row writes that row. The count the bar states comes from the
@@ -262,11 +262,11 @@ struct ImportMappingPaneTests {
         let store = MappingFixtures.store(
             mapping: MappingFixtures.thirteenFileTable
         )
-        #expect(MappingFixtures.mapping(of: store).trackMappings.count == 13)
+        #expect(MappingFixtures.mapping(of: store).trackRows.count == 13)
         #expect(MappingFixtures.mapping(of: store).untitledTrackCount == 1)
 
         let unnamed = try #require(
-            MappingFixtures.mapping(of: store).trackMappings.last?.track
+            MappingFixtures.mapping(of: store).trackRows.last?.track
         )
         var named = unnamed
         named.title = "Hidden Track"
@@ -291,7 +291,7 @@ struct ImportMappingPaneTests {
                 )
             )
         )
-        #expect(MappingFixtures.mapping(of: store).trackMappings.count == 13)
+        #expect(MappingFixtures.mapping(of: store).trackRows.count == 13)
         #expect(MappingFixtures.mapping(of: store).untitledTrackCount == 0)
     }
 }
@@ -306,7 +306,7 @@ extension ImportMappingPaneTests {
         )
         #expect(MappingFixtures.isCommittable(unanswered))
         #expect(
-            MappingFixtures.mapping(of: unanswered).trackMappings.count == 13
+            MappingFixtures.mapping(of: unanswered).trackRows.count == 13
         )
 
         // An inactive CUE leaves one whole container track.
@@ -314,7 +314,7 @@ extension ImportMappingPaneTests {
             mapping: MappingFixtures.unboundSheetTable
         )
         #expect(MappingFixtures.isCommittable(unbacked))
-        #expect(MappingFixtures.mapping(of: unbacked).trackMappings.count == 1)
+        #expect(MappingFixtures.mapping(of: unbacked).trackRows.count == 1)
     }
 
     // A failed release read leaves the draft unchanged and names the failed
@@ -430,7 +430,7 @@ extension ImportMappingPaneTests {
             services: recorder.services(store)
         )
         let entry = try #require(
-            MappingFixtures.mapping(of: store).trackMappings[4].source
+            MappingFixtures.mapping(of: store).trackRows[4].audition
                 .previewTarget
         )
 
@@ -510,7 +510,7 @@ extension ImportMappingPaneTests {
             return
         }
         #expect(sheet.assigned == nil)
-        #expect(mapping.trackMappings.count == 1)
+        #expect(mapping.trackRows.count == 1)
     }
 
     // 8. Applying each source writes that source. Browsing either source does
@@ -544,7 +544,7 @@ extension ImportMappingPaneTests {
             store.selectedCandidates[MappingFixtures.candidateKey]
         )
         #expect(candidate.metadataProvenance == .fileMetadata)
-        #expect(candidate.mapping.trackMappings.count == 2)
+        #expect(candidate.mapping.trackRows.count == 2)
         #expect(
             candidate.releaseLink == MappingFixtures.releaseLink,
             "reading the tags leaves the link as it is"
@@ -570,7 +570,7 @@ extension ImportMappingPaneTests {
             store.selectedCandidates[MappingFixtures.candidateKey]
         )
         #expect(candidate.metadataProvenance == MappingFixtures.provenance)
-        #expect(candidate.mapping.trackMappings.count == 13)
+        #expect(candidate.mapping.trackRows.count == 13)
         guard case .pressing(let link) = candidate.releaseLink else {
             Issue.record("the candidate links a pressing")
             return

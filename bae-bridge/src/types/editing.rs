@@ -3,7 +3,7 @@ use super::*;
 use super::{
     BridgeCreditLine, BridgeDiscogsDetail, BridgeDurationClock, BridgeMediaCount, BridgeMedium,
     BridgePackaging, BridgePressingFacts, BridgeReleaseArea, BridgeReleaseLabel,
-    BridgeReleaseStatus, BridgeSourceAudioLayout, BridgeTrackSide,
+    BridgeReleaseStatus, BridgeTrackSide,
 };
 
 /// Mirror of `bae_import::ReleaseUserEdit` — a normalized, validated
@@ -287,80 +287,23 @@ pub struct BridgeMappingFile {
     pub role: BridgeMappingRole,
 }
 
-/// One entry of a track sheet, as the mapping table's left half shows it.
-/// Mirror of bae-library's `MappingEntry`.
-#[cfg(desktop)]
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeMappingEntry {
-    pub sheet_id: String,
-    /// Counts this sheet's playable entries from zero — the index the audio
-    /// binding carries.
-    pub index: u32,
-    /// The number the sheet prints for this entry.
-    pub number: u32,
-    /// Where the entry starts in its container, as a clock label's fields
-    /// ("10:22"): what the row's source cell shows.
-    pub start: BridgeDurationClock,
-    /// The container this entry's samples come from — what auditioning plays.
-    pub container_id: String,
-    /// The exact window of the container that auditioning this entry plays.
-    pub preview_target: BridgePreviewTarget,
-}
-
-/// The left half of a mapping row: what the folder offers for it. Mirror of
-/// bae-library's `MappingSource`.
-#[cfg(desktop)]
-#[derive(Debug, Clone, uniffi::Enum)]
-pub enum BridgeMappingSource {
-    /// A file the folder holds, whole.
-    File { file: BridgeMappingFile },
-    /// One entry of a track sheet, carved out of the container it is bound to.
-    SheetEntry { entry: BridgeMappingEntry },
-}
-
-/// One source-to-track mapping row. Mirror of bae-library's `TrackMapping`.
-#[cfg(desktop)]
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeTrackMapping {
-    pub source: BridgeMappingSource,
-    /// The track of the release being committed. The row edits it in place.
-    pub track: BridgeRawTrackEdit,
-    /// The position this row commits, rendered by core from the track's own
-    /// side and number and the release's format — `8`, `A1`, or `3` beneath a
-    /// `Disc 2` heading.
-    pub position: String,
-    /// The length the row's audio measures, the one the import stores for
-    /// the track.
-    pub length: BridgeDurationClock,
-    /// The length the track's source lists, present only when more than three
-    /// seconds from the measured one — core's judgement, so every surface
-    /// marks the same rows. The listed length marks a row and disables
-    /// nothing.
-    pub listed_length: Option<BridgeDurationClock>,
-    /// The track's own artists, each with how it stands to the library;
-    /// `None` when the track takes its album's artists or names none.
-    pub artists: Option<BridgeArtistField>,
-}
-
-/// The audio a track sheet describes. Mirror of bae-library's `MappingContainer`.
+/// The audio a track sheet describes. Mirror of bae-import's `MappingContainer`.
 #[cfg(desktop)]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeMappingContainer {
     pub file_id: String,
     pub name: String,
-    pub size: u64,
 }
 
-/// A track sheet, as the header of the group of rows it carves. Mirror of
-/// bae-library's `SheetGroup`.
+/// A track sheet, as the caption over the rows it carves, or as a line of
+/// the Files list when it carves none. Mirror of bae-import's `SheetGroup`.
 #[cfg(desktop)]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeSheetGroup {
-    /// The sheet's `file_id` — the id `AppHandle::set_sheet_binding` and
-    /// `AppHandle::set_sheet_place` take.
+    /// The sheet's file id: the id the commands that bind its lines and
+    /// place it take.
     pub sheet_id: String,
     pub name: String,
-    pub size: u64,
     pub bound: BridgeSheetBound,
     /// The sheet's FILE lines that play audio, as the caption's Audio file
     /// pop-up offers them.
@@ -371,11 +314,16 @@ pub struct BridgeSheetGroup {
     /// The side or disc the sheet is on, with its heading, which the
     /// caption's place pop-up names; `None` where the sheet is ignored.
     pub assigned: Option<BridgeSheetSideChoice>,
-    /// The sides and discs this sheet can be put on, in order: the sides
-    /// of the draft's mediums, and a disc at each position up to the count of
-    /// the folder's bound sheets that the draft lacks, so that each sheet can
-    /// go on a disc of its own.
+    /// The sides and discs this sheet can be put on, in order: in the
+    /// import pane, the sides of the draft's mediums, and a disc at each
+    /// position up to the count of the folder's bound sheets that the draft
+    /// lacks, so that each sheet can go on a disc of its own.
     pub side_choices: Vec<BridgeSheetSideChoice>,
+    /// Whether the caption offers taking the sheet's tracks out of the
+    /// table: putting the sheet on *Ignored*, and binding a FILE line to no
+    /// audio. An import can; a library release's editor adds and removes no
+    /// tracks.
+    pub ignorable: bool,
 }
 
 /// The FILE lines of a track sheet that play audio, by how the caption's
@@ -439,24 +387,73 @@ pub struct BridgeMappingImage {
     pub file: BridgeFileVersion,
 }
 
-/// Consecutive rows of one side that the table draws together. Mirror of
-/// bae-library's `MappingTrackRun`.
-#[cfg(desktop)]
-#[derive(Debug, Clone, uniffi::Enum)]
-pub enum BridgeMappingTrackRun {
-    /// Rows supplied independently rather than carved by a track sheet.
-    Tracks { mappings: Vec<BridgeTrackMapping> },
-    /// A track sheet and the entries it carves, which are its child rows.
-    Sheet { sheet: BridgeSheetGroup, entries: Vec<BridgeTrackMapping> },
-}
-
-/// One side or disc of the track table and the runs of rows on it, headed
-/// once. Mirror of bae-library's `MappingTrackSide`.
+/// One side or disc of a release's track table and the runs of rows on it,
+/// headed once: the one shape the import pane's draft and a library
+/// release's editor's draft hand the app. Mirror of bae-import's
+/// `TrackTableSide`.
 #[cfg(desktop)]
 #[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeMappingTrackSide {
+pub struct BridgeTrackTableSide {
     pub side: BridgeTrackSide,
-    pub runs: Vec<BridgeMappingTrackRun>,
+    pub runs: Vec<BridgeTrackTableRun>,
+}
+
+/// Consecutive rows of one side that the table draws together. Mirror of
+/// bae-import's `TrackTableRun`.
+#[cfg(desktop)]
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeTrackTableRun {
+    /// A track that plays a whole file, which its row names.
+    Track { row: BridgeTrackTableRow },
+    /// The tracks one CUE sheet carves on this side, under the sheet's
+    /// caption, each row giving where it starts.
+    Sheet { sheet: BridgeSheetGroup, rows: Vec<BridgeTrackTableRow> },
+}
+
+/// One track of the table. Mirror of bae-import's `TrackTableRow`.
+#[cfg(desktop)]
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeTrackTableRow {
+    /// The track as the draft holds it. The row edits it in place.
+    pub track: BridgeRawTrackEdit,
+    pub source: BridgeTrackSource,
+    pub audition: BridgeTrackAudition,
+    /// How the track's place reads, rendered by core from the track's own
+    /// side and number and the release's format: `8`, `A1`, or `3` beneath
+    /// a `Disc 2` heading. The table shows it and never edits it.
+    pub position: String,
+    /// The length the track's audio measures.
+    pub length: BridgeDurationClock,
+    /// The length the track's source lists, present only when more than three
+    /// seconds from the measured one: core's judgement, so every surface
+    /// marks the same rows. The listed length marks a row and disables
+    /// nothing.
+    pub listed_length: Option<BridgeDurationClock>,
+    /// The track's own artists, each with how it stands to the library;
+    /// `None` when the track takes its album's artists or names none.
+    pub artists: Option<BridgeArtistField>,
+}
+
+/// What a row's source cell names. Mirror of bae-import's `TrackSource`.
+#[cfg(desktop)]
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeTrackSource {
+    /// The file the track plays whole.
+    File { name: String },
+    /// Where the track starts, as a clock label's fields ("10:22"), in the
+    /// file its sheet's caption names.
+    SheetSlice { start: BridgeDurationClock },
+}
+
+/// What playing a row plays. Mirror of bae-import's `TrackAudition`.
+#[cfg(desktop)]
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeTrackAudition {
+    /// The preview player plays this window of one of the folder's files.
+    Preview { target: BridgePreviewTarget },
+    /// The library plays the release from the row's track, the library
+    /// track the row's `track.id` names.
+    LibraryTrack,
 }
 
 /// One row in the files section. Mirror of bae-library's `MappingFileRow`.
@@ -479,8 +476,8 @@ pub enum BridgeMappingFileRow {
 pub struct BridgeMappingTable {
     /// Every image the folder holds, in the scan's authoritative order.
     pub images: Vec<BridgeMappingImage>,
-    /// The rows that can become release tracks, laid out by side.
-    pub track_sides: Vec<BridgeMappingTrackSide>,
+    /// The rows that can become release tracks, on the track table's sides.
+    pub track_sides: Vec<BridgeTrackTableSide>,
     pub files: Vec<BridgeMappingFileRow>,
     /// How many track rows nobody has named yet. Committing anyway titles
     /// each after its file.
@@ -684,9 +681,9 @@ pub struct BridgeReleaseEditSaved {
 pub struct BridgeReleaseEditDraft {
     pub cover: Option<BridgeImageRef>,
     pub source_audio: Option<BridgeSourceAudioSummary>,
-    /// The release's tracks in the sides and runs the table draws, each beside
-    /// the form row that edits it; `None` when the release has no tracks.
-    pub sides: Option<Vec<BridgeReleaseEditTrackSide>>,
+    /// The release's tracks on the track table's sides, each row the form
+    /// row that edits the track; `None` when the release has no tracks.
+    pub sides: Option<Vec<BridgeTrackTableSide>>,
     /// The files the release carries that no track plays from, in the
     /// release's file order: what its Files section lists under the tracks.
     /// `None` when it carries none.
@@ -708,109 +705,6 @@ pub struct BridgeReleaseEditDraft {
     /// when a save reads none.
     pub files_to_read: Option<Vec<String>>,
     pub invalid: Option<BridgeValidationReason>,
-}
-
-/// The persisted file a track's body plays from in the release editor.
-#[cfg(desktop)]
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeReleaseEditTrackSource {
-    pub file_id: String,
-    pub name: String,
-    pub layout: BridgeSourceAudioLayout,
-}
-
-/// The CUE sheet that carves a run of the release editor's tracks out of
-/// their file, as the run's caption names it. Mirrors
-/// `bae_import::ReleaseEditSheet`.
-#[cfg(desktop)]
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeReleaseEditSheet {
-    pub file_id: String,
-    /// The sheet's file name, as the release's files name it.
-    pub name: String,
-    /// The side of the release the sheet is on, with its heading: the side
-    /// the editor's form puts its first track on.
-    pub place: BridgeSheetSideChoice,
-    /// The sides and discs of the release, which the caption's place pop-up
-    /// offers, in order.
-    pub side_choices: Vec<BridgeSheetSideChoice>,
-    /// The text of the sheet's `FILE` line the run's tracks are under.
-    pub file_reference: String,
-    /// The audio files the line can play from, which the caption's Audio
-    /// file pop-up offers, in file name order.
-    pub audio_options: Vec<BridgeReleaseEditAudioOption>,
-}
-
-/// One audio file of the release as a choice for a CUE sheet's `FILE` line
-/// in the release editor. Mirrors `bae_import::ReleaseEditAudioOption`.
-#[cfg(desktop)]
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeReleaseEditAudioOption {
-    pub file_id: String,
-    /// The file's name, as the release's files name it.
-    pub name: String,
-    /// Whether the line plays from this file in the editor's form.
-    pub bound: bool,
-    /// Whether the file can back the line, and why not when it can't, as
-    /// the import pane's Audio file pop-up words it.
-    pub offer: crate::types::BridgeSheetBindingOffer,
-}
-
-/// Persisted, read-only context beside one editable track row.
-#[cfg(desktop)]
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeReleaseEditTrackContext {
-    pub track_id: String,
-    pub source: BridgeReleaseEditTrackSource,
-    /// Where the track's body starts in its source file, as a clock label's
-    /// fields ("10:22"): what a row under a CUE image's heading shows.
-    pub start_clock: BridgeDurationClock,
-    /// The track's stored length as a clock label's fields ("3:07").
-    pub duration_clock: BridgeDurationClock,
-    /// The length the track's source lists, present only when more than
-    /// three seconds from the stored one, as the import's mapping table
-    /// marks a row.
-    pub listed_length: Option<BridgeDurationClock>,
-    /// How the track's place reads ("A1", "3"), which the editor shows and
-    /// never edits.
-    pub position_text: String,
-}
-
-/// One row of the editor's track table: the form row that edits a track,
-/// the library's facts about the track, and the track's own artists, each
-/// with how it stands to the library (`None` when it takes its album's or
-/// names none). Mirrors `bae_import::ReleaseEditTrackRow`.
-#[cfg(desktop)]
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeReleaseEditTrackRow {
-    pub edit: BridgeRawTrackEdit,
-    pub context: BridgeReleaseEditTrackContext,
-    pub artists: Option<BridgeArtistField>,
-}
-
-/// Consecutive rows of one side that the editor's table draws together.
-/// Mirrors `bae_import::ReleaseEditTrackRun`.
-#[cfg(desktop)]
-#[derive(Debug, Clone, uniffi::Enum)]
-pub enum BridgeReleaseEditTrackRun {
-    /// A track whose row names its own source.
-    Track { row: BridgeReleaseEditTrackRow },
-    /// Two or more consecutive tracks a CUE sheet carves from one file, which
-    /// is named once above them with the sheet.
-    Sheet {
-        sheet: BridgeReleaseEditSheet,
-        source: BridgeReleaseEditTrackSource,
-        rows: Vec<BridgeReleaseEditTrackRow>,
-    },
-}
-
-/// One side of the release in the editor's track table and the runs of
-/// rows on it. Mirrors `bae_import::ReleaseEditTrackSide`.
-#[cfg(desktop)]
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeReleaseEditTrackSide {
-    pub side: BridgeTrackSide,
-    pub runs: Vec<BridgeReleaseEditTrackRun>,
 }
 
 /// Raw pressing fields as the editor draws them. Mirrors

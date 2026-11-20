@@ -13,8 +13,8 @@ struct MacReleaseFiles: View {
     /// Open a document in the viewer: the file's name, then its file id.
     let onOpenDocument: (String, String) -> Void
     /// Where a Found folder's track sheets can still be bound to audio and
-    /// given a disc, the actions that do it; `nil` where the sheets are
-    /// read-only.
+    /// given a disc, the actions that do it; `nil` for a list that holds no
+    /// sheet.
     var sheetActions: ImportMappingActions?
     /// Where an audio file can play before import: the source window the
     /// second player plays now, and the actions that start and stop it.
@@ -55,18 +55,12 @@ struct MacReleaseFiles: View {
                     && file.previewTarget == playing?.target
             )
         case .sheet(let sheet):
+            // Only a Found folder's list holds a sheet, which it lists with
+            // the actions that bind it.
             if let sheetActions {
-                ImportPaneSheetCaption(
+                ReleaseSheetCaption(
                     sheet: sheet,
-                    showsPlaceMenu: true,
-                    actions: sheetActions
-                )
-            }
-            else {
-                MacReleaseFileRow(
-                    name: sheet.name,
-                    size: sheet.size.fileSizeText,
-                    onOpen: { onOpenDocument(sheet.name, sheet.sheetId) }
+                    actions: sheetActions.sheetCaption
                 )
             }
         }

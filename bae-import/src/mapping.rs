@@ -5,8 +5,9 @@
 //! pairs unit `i` with draft track `i`. Surfaces render this projection without
 //! joining separate lists.
 
-use crate::folder_scanner::{AudioDamage, SheetReferenceOptions};
+use crate::folder_scanner::AudioDamage;
 use crate::types::RawTrackEdit;
+use crate::{SheetGroup, TrackTableSide};
 
 /// The mapping table: every source unit the folder offers, alongside the track
 /// committing makes of it.
@@ -14,53 +15,14 @@ use crate::types::RawTrackEdit;
 pub struct MappingTable {
     /// Every image the folder holds, in the scan's authoritative order.
     pub images: Vec<MappingImage>,
-    /// The rows that can become release tracks, laid out by side, with a
-    /// bound sheet retaining ownership of the slices it carves.
-    pub track_sides: Vec<MappingTrackSide>,
+    /// The rows that can become release tracks, on the track table's sides,
+    /// with a bound sheet heading the slices it carves.
+    pub track_sides: Vec<TrackTableSide>,
     /// Files carried with the release but not represented by track rows.
     pub files: Vec<MappingFileRow>,
     /// How many track rows nobody has named yet. Committing anyway titles
     /// each after its file.
     pub untitled_track_count: u32,
-}
-
-/// One side of the track table — a disc of a multi-disc set, a side of a
-/// record, or the one flat side — and the runs of rows on it, in table order.
-/// The same shape the release editor's table draws
-/// ([`crate::ReleaseEditTrackSide`]): one heading per side,
-/// however many runs it holds.
-#[derive(Debug, Clone, PartialEq)]
-pub struct MappingTrackSide {
-    pub side: bae_types::mediums::TrackSide,
-    pub runs: Vec<MappingTrackRun>,
-}
-
-/// Consecutive rows of one side that the table draws together. The run makes
-/// the physical source shape explicit: independent track rows, or the entries
-/// carved by one track sheet.
-#[derive(Debug, Clone, PartialEq)]
-pub enum MappingTrackRun {
-    /// Rows supplied independently rather than carved by a track sheet.
-    Tracks(Vec<TrackMapping>),
-    /// A track sheet and the entries it carves, which are its child rows.
-    Sheet { sheet: SheetGroup, entries: Vec<TrackMapping> },
-}
-
-impl MappingTrackRun {
-    /// The source-to-track mappings this run carries.
-    pub fn mappings(&self) -> &[TrackMapping] {
-        match self {
-            MappingTrackRun::Tracks(mappings) => mappings,
-            MappingTrackRun::Sheet { entries, .. } => entries,
-        }
-    }
-}
-
-impl MappingTrackSide {
-    /// The source-to-track mappings on this side, in table order.
-    pub fn mappings(&self) -> impl Iterator<Item = &TrackMapping> {
-        self.runs.iter().flat_map(MappingTrackRun::mappings)
-    }
 }
 
 /// One row in the files section of the mapping table.
@@ -86,39 +48,6 @@ pub struct MappingImage {
     pub name: String,
     /// The version the scan read — what a thumbnail and the lightbox draw.
     pub file: crate::folder_scanner::FileVersion,
-}
-
-/// One source-to-track mapping row: an audio unit of the folder, and the
-/// draft track committing makes of it.
-#[derive(Debug, Clone, PartialEq)]
-pub struct TrackMapping {
-    pub source: MappingSource,
-    /// The track of the release being committed. The row edits it in place.
-    pub track: RawTrackEdit,
-    /// The position this row commits, rendered from the track's own side and
-    /// number and the release's format — `8`, `A1`, or `3` beneath a `Disc 2`
-    /// heading.
-    pub position: String,
-    /// The length the row's audio measures: the length the import stores for
-    /// the track.
-    pub length_ms: u64,
-    /// The length the track's source lists, kept only when it is more than
-    /// [`bae_catalogs::medium_coverage::LENGTH_DISAGREEMENT_MS`] from the
-    /// measured one.
-    pub listed_length_ms: Option<u64>,
-    /// The track's own artists, each with how it stands to the library, as
-    /// the read that returned the row found them; `None` when the track takes
-    /// its album's artists or names none.
-    pub artists: Option<crate::ArtistField>,
-}
-
-/// The left half of a row: what the folder offers for it.
-#[derive(Debug, Clone, PartialEq)]
-pub enum MappingSource {
-    /// A file the folder holds, whole.
-    File(MappingFile),
-    /// One entry of a track sheet, carved out of the container it is bound to.
-    SheetEntry(MappingEntry),
 }
 
 /// What one of a release's files is, as a row of the mapping table or of a
@@ -147,8 +76,8 @@ pub enum MappingRole {
     Other,
 }
 
-/// A file of the folder, as the mapping table's left half shows it, or a
-/// file of a library release, as its editor lists it.
+/// A file of a release as its Files list shows it: a file of the folder, or
+/// of a library release.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct MappingFile {
     /// The id the file is read by: in a folder, its relative path, which the
@@ -159,7 +88,7 @@ pub struct MappingFile {
     /// directory shows up only as the prefix its files carry.
     pub name: String,
     pub size: u64,
-    /// The whole-file audition target when this file currently supplies audio.
+    /// The whole-file audition target of an audio file of a folder.
     #[serde(with = "stored_preview_target")]
     pub preview_target: Option<bae_track_audio::PreviewTarget>,
     pub role: MappingRole,
@@ -202,105 +131,10 @@ mod stored_preview_target {
     }
 }
 
-/// One entry of a track sheet, as the mapping table's left half shows it.
-#[derive(Debug, Clone, PartialEq)]
-pub struct MappingEntry {
-    pub sheet_id: String,
-    /// Counts this sheet's playable entries from zero — the index the audio
-    /// binding carries.
-    pub index: u32,
-    /// The number the sheet prints for this entry.
-    pub number: u32,
-    /// Where the entry starts in its container, in milliseconds: its INDEX
-    /// 01, as the sheet states it.
-    pub start_ms: u64,
-    /// The container this entry's samples come from — what auditioning plays.
-    pub container_id: String,
-    /// The exact window of the container that auditioning this entry plays.
-    pub preview_target: bae_track_audio::PreviewTarget,
-}
-
-/// A track sheet, as the header of the group of rows it carves.
-#[derive(Debug, Clone, PartialEq)]
-pub struct SheetGroup {
-    pub sheet_id: String,
-    pub name: String,
-    pub size: u64,
-    pub bound: SheetBound,
-    /// The sheet's FILE lines that play audio, as the caption's Audio file
-    /// pop-up offers them; independent of track inclusion.
-    pub bound_audio: SheetBoundAudio,
-    /// The sheet's FILE lines that play no audio, in the sheet's order, each
-    /// offered from a menu of its own; `None` where every line plays audio.
-    pub unbound_references: Option<Vec<SheetReferenceOptions>>,
-    /// The side or disc the sheet is on, with its heading, which the
-    /// caption's place pop-up names; `None` where the sheet is ignored.
-    pub assigned: Option<bae_records::DbSheetSideChoice>,
-    /// The sides and discs this sheet can be put on, in order: the sides
-    /// of the draft's mediums, and a disc at each position up to the count of
-    /// the folder's bound sheets that the draft lacks, so that each sheet can
-    /// go on a disc of its own.
-    pub side_choices: Vec<bae_records::DbSheetSideChoice>,
-}
-
-/// The FILE lines of a track sheet that play audio, by how the caption's
-/// Audio file pop-up offers them.
-#[derive(Debug, Clone, PartialEq)]
-pub enum SheetBoundAudio {
-    /// No line plays audio, so the caption names what the sheet describes
-    /// as text.
-    None,
-    /// One line plays audio: its choices sit directly in the pop-up.
-    One(SheetReferenceOptions),
-    /// Several lines play audio: the pop-up has a submenu per line, in the
-    /// sheet's order.
-    Several(Vec<SheetReferenceOptions>),
-}
-
-/// What a track sheet describes, with the facts its header shows about it.
-///
-/// [`SheetBinding`](crate::folder_scanner::SheetBinding) enriched by the
-/// container's name and size: a header states both which audio a sheet is on and
-/// why it is on none, and carrying the binding separately would be a second way
-/// to say the first.
-#[derive(Debug, Clone, PartialEq)]
-pub enum SheetBound {
-    /// The sheet describes this audio.
-    Describes(MappingContainer),
-    /// The sheet describes several audio files, one per distinct `FILE`
-    /// reference. The rows name their own physical files; the group header has
-    /// no single container to name.
-    DescribesFiles { audio_file_count: u32 },
-    /// It describes nothing: the directive named audio that is not in the
-    /// folder, named several and only some are here, or the user cleared the
-    /// binding. `requested` is what the directive asked for, so the header can
-    /// say what the sheet was looking for while it offers the folder's own
-    /// audio instead.
-    Unresolved { requested: Vec<String> },
-    /// The directive resolved, but bae cannot carve tracks out of that codec.
-    /// The physical audio files import independently.
-    RefusedCodec { codec: String },
-    /// All files are associated, but their lengths cannot contain the CUE boundaries.
-    RefusedTiming,
-}
-
-/// The audio a track sheet describes.
-#[derive(Debug, Clone, PartialEq)]
-pub struct MappingContainer {
-    pub file_id: String,
-    pub name: String,
-    pub size: u64,
-}
-
 /// The table's track rows in commit order — what the editor shapes into the
 /// release it writes.
 pub fn mapping_tracks(table: &MappingTable) -> Vec<RawTrackEdit> {
-    table
-        .track_sides
-        .iter()
-        .flat_map(MappingTrackSide::mappings)
-        .map(|mapping| mapping.track.clone())
-        .collect()
+    table.track_sides.iter().flat_map(TrackTableSide::rows).map(|row| row.track.clone()).collect()
 }
 
 /// A folder that failed validation, as the pane looking into it reads it.

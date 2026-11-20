@@ -36,7 +36,7 @@ mirror_enum! {
 mirror_struct! {
     BridgeSheetBindingOption = bae_import::folder_scanner::SheetBindingOption,
     from_core: pub(crate) fn,
-    fields: { file_id, offer: (BridgeSheetBindingOffer) },
+    fields: { file_id, name, offer: (BridgeSheetBindingOffer) },
 }
 
 mirror_struct! {
@@ -135,61 +135,10 @@ impl BridgeMappingFile {
     }
 }
 
-impl BridgeMappingEntry {
-    fn from_core(entry: bae_import::MappingEntry) -> Self {
-        let bae_import::MappingEntry {
-            sheet_id,
-            index,
-            number,
-            start_ms,
-            container_id,
-            preview_target,
-        } = entry;
-        BridgeMappingEntry {
-            sheet_id,
-            index,
-            number,
-            start: BridgeDurationClock::of_length(start_ms),
-            container_id,
-            preview_target: BridgePreviewTarget::from_core(preview_target),
-        }
-    }
-}
-
-mirror_enum! {
-    BridgeMappingSource = bae_import::MappingSource,
-    from_core: fn,
-    variants: {
-        File(file: (BridgeMappingFile)),
-        SheetEntry(entry: (BridgeMappingEntry)),
-    },
-}
-
-impl BridgeTrackMapping {
-    fn from_core(mapping: bae_import::TrackMapping) -> Self {
-        let bae_import::TrackMapping {
-            source,
-            track,
-            position,
-            length_ms,
-            listed_length_ms,
-            artists,
-        } = mapping;
-        BridgeTrackMapping {
-            source: BridgeMappingSource::from_core(source),
-            track: BridgeRawTrackEdit::from_core(track),
-            position,
-            length: BridgeDurationClock::of_length(length_ms),
-            listed_length: listed_length_ms.map(BridgeDurationClock::of_length),
-            artists: artists.map(BridgeArtistField::from_core),
-        }
-    }
-}
-
 mirror_struct! {
     BridgeMappingContainer = bae_import::MappingContainer,
     from_core: fn,
-    fields: { file_id, name, size },
+    fields: { file_id, name },
 }
 
 impl BridgeSheetGroup {
@@ -197,17 +146,17 @@ impl BridgeSheetGroup {
         let bae_import::SheetGroup {
             sheet_id,
             name,
-            size,
             bound,
             bound_audio,
             unbound_references,
             assigned,
             side_choices,
+            ignorable,
         } = sheet;
         BridgeSheetGroup {
             sheet_id,
             name,
-            size,
+            ignorable,
             bound: BridgeSheetBound::from_core(bound),
             bound_audio: BridgeSheetBoundAudio::from_core(bound_audio),
             unbound_references: unbound_references.map(|references| {
@@ -248,24 +197,57 @@ impl BridgeMappingImage {
     }
 }
 
+impl BridgeTrackTableRow {
+    fn from_core(row: bae_import::TrackTableRow) -> Self {
+        let bae_import::TrackTableRow {
+            track,
+            source,
+            audition,
+            position,
+            length_ms,
+            listed_length_ms,
+            artists,
+        } = row;
+        BridgeTrackTableRow {
+            track: BridgeRawTrackEdit::from_core(track),
+            source: match source {
+                bae_import::TrackSource::File { name } => BridgeTrackSource::File { name },
+                bae_import::TrackSource::SheetSlice { start_ms } => BridgeTrackSource::SheetSlice {
+                    start: BridgeDurationClock::of_length(start_ms),
+                },
+            },
+            audition: match audition {
+                bae_import::TrackAudition::Preview(target) => {
+                    BridgeTrackAudition::Preview { target: BridgePreviewTarget::from_core(target) }
+                }
+                bae_import::TrackAudition::LibraryTrack => BridgeTrackAudition::LibraryTrack,
+            },
+            position,
+            length: BridgeDurationClock::of_length(length_ms),
+            listed_length: listed_length_ms.map(BridgeDurationClock::of_length),
+            artists: artists.map(BridgeArtistField::from_core),
+        }
+    }
+}
+
 mirror_enum! {
-    BridgeMappingTrackRun = bae_import::MappingTrackRun,
+    BridgeTrackTableRun = bae_import::TrackTableRun,
     from_core: fn,
     variants: {
-        Tracks(mappings: (each BridgeTrackMapping)),
+        Track(row: (BridgeTrackTableRow)),
         Sheet {
             sheet: (BridgeSheetGroup),
-            entries: (each BridgeTrackMapping),
+            rows: (each BridgeTrackTableRow),
         },
     },
 }
 
 mirror_struct! {
-    BridgeMappingTrackSide = bae_import::MappingTrackSide,
-    from_core: fn,
+    BridgeTrackTableSide = bae_import::TrackTableSide,
+    from_core: pub(crate) fn,
     fields: {
         side: (BridgeTrackSide),
-        runs: (each BridgeMappingTrackRun),
+        runs: (each BridgeTrackTableRun),
     },
 }
 
@@ -283,7 +265,7 @@ mirror_struct! {
     from_core: pub(crate) fn,
     fields: {
         images: (each BridgeMappingImage),
-        track_sides: (each BridgeMappingTrackSide),
+        track_sides: (each BridgeTrackTableSide),
         files: (each BridgeMappingFileRow),
         untitled_track_count,
     },

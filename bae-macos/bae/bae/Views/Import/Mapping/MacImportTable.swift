@@ -1,8 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// The mapping pane's table: every source the folder offers on the same row
-/// as the track committing makes of it.
+/// The mapping pane's track table: every source the folder offers on the
+/// same row as the track committing makes of it.
 struct MacImportTable: View {
     let table: BridgeMappingTable
     /// The source window currently auditioning, if any — its row is accented.
@@ -68,7 +68,7 @@ struct MacImportTable: View {
                         if case .sheet(let sheet, _) = run {
                             sheetCaption(sheet)
                         }
-                        trackRunRows(run)
+                        ForEach(run.rows, id: \.track.id, content: trackRow)
                     }
                 }
             }
@@ -78,16 +78,6 @@ struct MacImportTable: View {
             geo.size.width
         } action: {
             paneWidth = $0
-        }
-    }
-
-    @ViewBuilder
-    private func trackRunRows(_ run: BridgeMappingTrackRun) -> some View {
-        switch run {
-        case .tracks(let mappings):
-            ForEach(mappings, id: \.rowId, content: trackRow)
-        case .sheet(_, let entries):
-            ForEach(entries, id: \.rowId, content: trackRow)
         }
     }
 
@@ -110,16 +100,12 @@ struct MacImportTable: View {
     }
 
     private func sheetCaptionRow(_ sheet: BridgeSheetGroup) -> some View {
-        ImportPaneSheetCaption(
-            sheet: sheet,
-            showsPlaceMenu: true,
-            actions: actions,
-        )
+        ReleaseSheetCaption(sheet: sheet, actions: actions.sheetCaption)
     }
 
-    private func trackRow(_ mapping: BridgeTrackMapping) -> some View {
+    private func trackRow(_ row: BridgeTrackTableRow) -> some View {
         MacImportTrackRow(
-            mapping: mapping,
+            row: row,
             columns: columns,
             previewingTarget: previewingTarget,
             editingCommands: editingCommands,
@@ -127,7 +113,7 @@ struct MacImportTable: View {
             artistSearch: library.artistSearch,
         )
         .mappingRowChrome(
-            background: mapping.source.previewTarget == previewingTarget
+            background: row.audition.previewTarget == previewingTarget
                 ? Theme.accentSoft : .clear
         )
     }
@@ -202,16 +188,6 @@ extension BridgeMappingFileRow {
         switch self {
         case .file(let file): "file:\(file.fileId)"
         case .sheet(let sheet): "sheet:\(sheet.sheetId)"
-        }
-    }
-}
-
-extension BridgeTrackMapping {
-    /// This mapping's identity in the table.
-    var rowId: String {
-        switch source {
-        case .file(let file): "file:\(file.fileId)"
-        case .sheetEntry(let entry): "entry:\(entry.sheetId):\(entry.index)"
         }
     }
 }

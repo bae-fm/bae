@@ -2290,20 +2290,21 @@ deletes a release while its editor is open, the editor closes: in the album
 detail the release's sheet closes, and in the import pane the folder
 returns to Found with its draft (A.5, `import_candidate_edit`).
 
-The editor lays the tracks out as the import's mapping table does: a heading
-for each disc or record side where the release has several, and two or more
-consecutive tracks a CUE sheet carves from one file under the sheet's caption,
-once, as the import pane heads them: the place pop-up of which of the
-release's sides and discs the sheet is on (no *Ignored*), each named by its
-heading (*Side A*, *Side B* on a record or cassette, *Disc 1* elsewhere, even
-on a release of one disc), the sheet's name, and the *Audio
-file* pop-up of which of the release's audio files on this device the sheet
-carves (no *Choose audio…*, since the editor adds and removes no tracks): the
-file the sheet's line plays from, the one it played from when the editor
-opened, and each other audio file of the release on this device that no track
-plays from, with the import pane's reason beside one it refuses, a codec bae
-can't carve tracks out of or a file a track of the line ends, or its last
-track starts, past the end of. The
+The editor lays the tracks out as the import's mapping table does (§3.6): a
+heading for each disc or record side where the release has several, and each
+CUE sheet's tracks on a side under the sheet's caption, however few, the
+sheet naming itself again on the next side. The caption is the import pane's:
+the place pop-up of which of the release's sides and discs the sheet is on (no
+*Ignored*), each named by its heading (*Side A*, *Side B* on a record or
+cassette, *Disc 1* elsewhere, even on a release of one disc), the sheet's
+name, and the *Audio file* pop-up of which of the release's audio files on
+this device each of the sheet's `FILE` lines plays from, a submenu for each
+line where the sheet has several (no *Choose audio…* and no choice of no
+audio, since the editor adds and removes no tracks): the file the line plays
+from, the one it played from when the editor opened, and each other audio
+file of the release on this device that no track plays from, with the import
+pane's reason beside one it refuses, a codec bae can't carve tracks out of or
+a file a track of the line ends, or its last track starts, past the end of. The
 rows show a new choice at once, from the editor's draft, before *Save* writes
 it (a catalog applied after a disc pick lays the tracks out at its own places
 and clears the picks, so the pop-up then shows the catalog's disc; a pick made

@@ -329,15 +329,17 @@ async fn test_editor_moves_a_sheet_to_a_disc_that_holds_other_tracks() {
         .runs
         .iter()
         .map(|run| match run {
-            bae_import::ReleaseEditTrackRun::Sheet { sheet, rows, .. } => {
-                (sheet.file_id.clone(), sheet.place.side, rows.len())
-            }
-            bae_import::ReleaseEditTrackRun::Track(_) => panic!("a sheet carves each track"),
+            bae_import::TrackTableRun::Sheet { sheet, rows } => (
+                sheet.sheet_id.clone(),
+                sheet.assigned.as_ref().map(|choice| choice.side),
+                rows.len(),
+            ),
+            bae_import::TrackTableRun::Track(_) => panic!("a sheet carves each track"),
         })
         .collect();
     assert_eq!(
         runs,
-        [(second.clone(), disc(1), 3), (first.clone(), disc(1), 3)],
+        [(second.clone(), Some(disc(1)), 3), (first.clone(), Some(disc(1)), 3)],
         "the sheet the release kept leads, and the moved sheet follows it on the same disc"
     );
     assert!(draft.changed);

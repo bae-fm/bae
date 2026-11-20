@@ -517,28 +517,17 @@ mod conversion_roundtrip {
             let bridge = BridgeReleaseEditDraft::from_core(bae_import::ReleaseEditDraft {
                 cover: None,
                 source_audio: None,
-                sides: Some(vec![bae_import::ReleaseEditTrackSide {
+                sides: Some(vec![bae_import::TrackTableSide {
                     side: bae_types::mediums::TrackSide::Disc { disc: 2 },
-                    runs: vec![bae_import::ReleaseEditTrackRun::Track(
-                        bae_import::ReleaseEditTrackRow {
-                            edit: edit.tracks[0].clone(),
-                            context: bae_import::ReleaseEditTrackContext {
-                                track_id: "track-id".to_string(),
-                                side: bae_types::mediums::TrackSide::Disc { disc: 2 },
-                                source: bae_import::ReleaseEditTrackSource {
-                                    file_id: "file-id".to_string(),
-                                    name: "source.flac".to_string(),
-                                    layout: bae_records::source_audio::SourceAudioLayout::File,
-                                },
-                                start_ms: 0,
-                                duration_ms: 123_000,
-                                listed_length_ms: Some(130_000),
-                                position_text: "3".to_string(),
-                                sheet: None,
-                            },
-                            artists: None,
-                        },
-                    )],
+                    runs: vec![bae_import::TrackTableRun::Track(bae_import::TrackTableRow {
+                        track: edit.tracks[0].clone(),
+                        source: bae_import::TrackSource::File { name: "source.flac".to_string() },
+                        audition: bae_import::TrackAudition::LibraryTrack,
+                        position: "3".to_string(),
+                        length_ms: 123_000,
+                        listed_length_ms: Some(130_000),
+                        artists: None,
+                    })],
                 }]),
                 files: None,
                 album: bae_import::DraftAlbum::Named {
@@ -572,16 +561,17 @@ mod conversion_roundtrip {
             );
             let side = &bridge.sides.as_ref().expect("the release has tracks")[0];
             assert_eq!(side.side, BridgeTrackSide::Disc { disc: 2 });
-            let BridgeReleaseEditTrackRun::Track { row } = &side.runs[0] else {
+            let BridgeTrackTableRun::Track { row } = &side.runs[0] else {
                 panic!("the side's one run is its track");
             };
-            assert_eq!(row.edit.title, "Track Title");
-            assert_eq!(row.context.track_id, "track-id");
-            assert_eq!(row.context.source.name, "source.flac");
+            assert_eq!(row.track.title, "Track Title");
+            assert_eq!(row.track.id, "track-id");
+            assert!(matches!(row.audition, BridgeTrackAudition::LibraryTrack));
+            assert_eq!(row.source, BridgeTrackSource::File { name: "source.flac".to_string() });
             assert!(bridge.files.is_none());
-            let clock = row.context.duration_clock;
+            let clock = row.length;
             assert_eq!((clock.minutes, clock.seconds), (2, 3));
-            let listed = row.context.listed_length.expect("the track keeps its listed length");
+            let listed = row.listed_length.expect("the track keeps its listed length");
             assert_eq!((listed.minutes, listed.seconds), (2, 10));
         }
     }

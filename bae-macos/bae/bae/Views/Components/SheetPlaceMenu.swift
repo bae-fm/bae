@@ -2,8 +2,8 @@ import BaeKit
 import SwiftUI
 
 /// The place pop-up of a CUE sheet's caption: which of the release's sides
-/// and discs the sheet's tracks are on, each named by its heading, and in
-/// the import pane that the sheet is ignored.
+/// and discs the sheet's tracks are on, each named by its heading, and,
+/// where core offers it, that the sheet is ignored.
 struct SheetPlaceMenu: View {
     /// The sides and discs the pop-up offers, in order.
     let choices: [BridgeSheetSideChoice]

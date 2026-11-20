@@ -71,15 +71,16 @@ extension ShotScene {
         artists: BridgeTrackArtistAssignments = .albumArtists,
         ownArtists: BridgeArtistField? = nil,
         listedSeconds: UInt64? = nil
-    ) -> BridgeTrackMapping {
-        BridgeTrackMapping(
-            source: .file(file: PreviewData.boardAudio(file)),
+    ) -> BridgeTrackTableRow {
+        BridgeTrackTableRow(
             track: BridgeRawTrackEdit(
                 id: "component-\(file)",
                 title: title,
                 artistAssignments: artists,
                 file: .standalone(fileId: file)
             ),
+            source: .file(name: file),
+            audition: PreviewData.wholeFile(file),
             position: position,
             length: BridgeDurationClock.length(ms: seconds * 1_000),
             listedLength: listedSeconds.map {
@@ -96,29 +97,25 @@ extension ShotScene {
         title: String,
         startSeconds: UInt64,
         seconds: UInt64
-    ) -> BridgeTrackMapping {
+    ) -> BridgeTrackTableRow {
         let container = "Salt Road.flac"
-        return BridgeTrackMapping(
-            source: .sheetEntry(
-                entry: BridgeMappingEntry(
-                    sheetId: "Salt Road.cue",
-                    index: 2,
-                    number: 3,
-                    start: BridgeDurationClock.length(ms: startSeconds * 1_000),
-                    containerId: container,
-                    previewTarget: BridgePreviewTarget(
-                        path: PreviewData.fakePath(container),
-                        name: container,
-                        startSample: startSeconds * 44_100,
-                        endSample: (startSeconds + seconds) * 44_100
-                    )
-                )
-            ),
+        return BridgeTrackTableRow(
             track: BridgeRawTrackEdit(
                 id: "component-cue-\(position)",
                 title: title,
                 artistAssignments: .albumArtists,
                 file: .standalone(fileId: container)
+            ),
+            source: .sheetSlice(
+                start: BridgeDurationClock.length(ms: startSeconds * 1_000)
+            ),
+            audition: .preview(
+                target: BridgePreviewTarget(
+                    path: PreviewData.fakePath(container),
+                    name: container,
+                    startSample: startSeconds * 44_100,
+                    endSample: (startSeconds + seconds) * 44_100
+                )
             ),
             position: position,
             length: BridgeDurationClock.length(ms: seconds * 1_000),
@@ -129,7 +126,7 @@ extension ShotScene {
 
     /// The mapping table over `sides`, with no images or other files.
     private static func mappingTable(
-        sides: [BridgeMappingTrackSide]
+        sides: [BridgeTrackTableSide]
     ) -> BridgeMappingTable {
         BridgeMappingTable(
             images: [],
@@ -193,9 +190,9 @@ extension ShotScene {
             ) {
                 importTable(
                     mappingTable(sides: [
-                        BridgeMappingTrackSide(
+                        BridgeTrackTableSide(
                             side: .disc(disc: 1),
-                            runs: [.tracks(mappings: [harborLights])]
+                            runs: [.track(row: harborLights)]
                         )
                     ])
                 )
@@ -266,7 +263,7 @@ extension ShotScene {
 
     private static func trackRowScene(
         _ id: String,
-        _ track: BridgeTrackMapping,
+        _ track: BridgeTrackTableRow,
         playing: Bool = false
     ) -> ShotScene {
         component(
@@ -277,13 +274,13 @@ extension ShotScene {
             importStores(
                 MacImportTable(
                     table: mappingTable(sides: [
-                        BridgeMappingTrackSide(
+                        BridgeTrackTableSide(
                             side: .flat,
-                            runs: [.tracks(mappings: [track])]
+                            runs: [.track(row: track)]
                         )
                     ]),
                     previewingTarget: playing
-                        ? track.source.previewTarget : nil,
+                        ? track.audition.previewTarget : nil,
                     actions: inertMappingActions(),
                     editingCommands: EditingCommitCommands()
                 )
@@ -299,25 +296,23 @@ extension ShotScene {
             height: 110
         ) {
             VStack(alignment: .leading, spacing: ThemeSpace.related) {
-                ImportPaneSheetCaption(
+                ReleaseSheetCaption(
                     sheet: PreviewData.fieldRecordingsSheet(
                         1,
                         bound: .describes(
                             container: PreviewData.fieldRecordingsContainer
                         )
                     ),
-                    showsPlaceMenu: true,
-                    actions: inertMappingActions()
+                    actions: inertMappingActions().sheetCaption
                 )
-                ImportPaneSheetCaption(
+                ReleaseSheetCaption(
                     sheet: PreviewData.fieldRecordingsSheet(
                         2,
                         bound: .unresolved(
                             requested: ["Field Recordings CD2.flac"]
                         )
                     ),
-                    showsPlaceMenu: true,
-                    actions: inertMappingActions()
+                    actions: inertMappingActions().sheetCaption
                 )
             }
             .frame(width: 580, alignment: .leading)

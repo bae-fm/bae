@@ -22,20 +22,37 @@ extension PreviewData {
         URL(fileURLWithPath: "/tmp/fake/\(name)").pathBytes
     }
 
-    /// One of the folder's audio files, as the mapping table's left half
-    /// shows it.
-    private static func mappingAudio(_ index: Int) -> BridgeMappingFile {
-        return BridgeMappingFile(
-            fileId: "Track \(index).flac",
-            name: "Track \(index).flac",
-            size: UInt64(35_000_000 + index * 2_000_000),
-            previewTarget: BridgePreviewTarget(
-                path: fakePath("Track \(index).flac"),
-                name: "Track \(index).flac",
+    /// The whole of the folder's file `name`, as the preview player plays
+    /// it.
+    static func wholeFile(_ name: String) -> BridgeTrackAudition {
+        .preview(
+            target: BridgePreviewTarget(
+                path: fakePath(name),
+                name: name,
                 startSample: 0,
                 endSample: nil
-            ),
-            role: .audio
+            )
+        )
+    }
+
+    /// A row of the track table, its listed length shown where it is
+    /// `listedMs`.
+    static func tableRow(
+        _ track: BridgeRawTrackEdit,
+        source: BridgeTrackSource,
+        audition: BridgeTrackAudition,
+        position: String,
+        lengthMs: UInt64,
+        listedMs: UInt64? = nil
+    ) -> BridgeTrackTableRow {
+        BridgeTrackTableRow(
+            track: track,
+            source: source,
+            audition: audition,
+            position: position,
+            length: BridgeDurationClock.length(ms: lengthMs),
+            listedLength: listedMs.map { BridgeDurationClock.length(ms: $0) },
+            artists: nil
         )
     }
 
@@ -61,21 +78,20 @@ extension PreviewData {
     /// One audio file and the track the release puts on it.
     private static func mappingTrackRow(
         _ index: Int
-    ) -> BridgeTrackMapping {
-        BridgeTrackMapping(
-            source: .file(file: mappingAudio(index)),
-            track: confirmEditValues.tracks[index - 1],
-            position: "\(index)",
-            length: BridgeDurationClock.length(
-                ms: UInt64(180_000 + index * 15000)
-            ),
-            // Track 4's release lists a longer length than its audio measures.
-            listedLength: index == 4
-                ? BridgeDurationClock.length(
-                    ms: UInt64(180_000 + index * 15000 + 21000)
-                )
-                : nil,
-            artists: nil
+    ) -> BridgeTrackTableRun {
+        let name = "Track \(index).flac"
+        let lengthMs = UInt64(180_000 + index * 15000)
+        return .track(
+            row: tableRow(
+                confirmEditValues.tracks[index - 1],
+                source: .file(name: name),
+                audition: wholeFile(name),
+                position: "\(index)",
+                lengthMs: lengthMs,
+                // Track 4's release lists a longer length than its audio
+                // measures.
+                listedMs: index == 4 ? lengthMs + 21000 : nil
+            )
         )
     }
 
@@ -110,13 +126,9 @@ extension PreviewData {
     static let mappingTable = BridgeMappingTable(
         images: mappingImages,
         trackSides: [
-            BridgeMappingTrackSide(
+            BridgeTrackTableSide(
                 side: .flat,
-                runs: [
-                    .tracks(
-                        mappings: (1...9).map(mappingTrackRow)
-                    )
-                ]
+                runs: (1...9).map(mappingTrackRow)
             )
         ],
         files: [
@@ -171,35 +183,18 @@ extension PreviewData {
     static let moreTracksMappingTable = BridgeMappingTable(
         images: [],
         trackSides: [
-            BridgeMappingTrackSide(
+            BridgeTrackTableSide(
                 side: .flat,
                 runs: [
-                    .tracks(mappings: [
-                        BridgeTrackMapping(
-                            source: .file(
-                                file: BridgeMappingFile(
-                                    fileId: moreTracksAudio.file.name,
-                                    name: moreTracksAudio.file.fileName,
-                                    size: moreTracksAudio.file.size,
-                                    previewTarget: BridgePreviewTarget(
-                                        path: fakePath(
-                                            moreTracksAudio.file.name
-                                        ),
-                                        name: moreTracksAudio.file
-                                            .fileName,
-                                        startSample: 0,
-                                        endSample: nil
-                                    ),
-                                    role: .audio
-                                )
-                            ),
-                            track: moreTracksEditValues.tracks[0],
+                    .track(
+                        row: tableRow(
+                            moreTracksEditValues.tracks[0],
+                            source: .file(name: moreTracksAudio.file.name),
+                            audition: wholeFile(moreTracksAudio.file.name),
                             position: "1",
-                            length: BridgeDurationClock.length(ms: 2_720_000),
-                            listedLength: nil,
-                            artists: nil
+                            lengthMs: 2_720_000
                         )
-                    ])
+                    )
                 ]
             )
         ],
@@ -210,46 +205,39 @@ extension PreviewData {
     /// One entry the folder's sheet carves out of its single container.
     private static func sheetEntryMapping(
         _ index: Int
-    ) -> BridgeTrackMapping {
-        let durationMs = UInt64(180_000 + (index + 1) * 15000)
-        let entry = BridgeMappingEntry(
-            sheetId: boundTrackSheet.file.name,
-            index: UInt32(index),
-            number: UInt32(index + 1),
-            start: BridgeDurationClock.length(ms: UInt64(index) * 1_000),
-            containerId: mappedAudioContainer.file.name,
-            previewTarget: BridgePreviewTarget(
-                path: fakePath(mappedAudioContainer.file.name),
-                name: mappedAudioContainer.file.fileName,
-                startSample: UInt64(index) * 44_100,
-                endSample: UInt64(index + 1) * 44_100
-            )
-        )
-        return BridgeTrackMapping(
-            source: .sheetEntry(entry: entry),
-            track: confirmEditValues.tracks[index],
+    ) -> BridgeTrackTableRow {
+        tableRow(
+            confirmEditValues.tracks[index],
+            source: .sheetSlice(
+                start: BridgeDurationClock.length(ms: UInt64(index) * 1_000)
+            ),
+            audition: .preview(
+                target: BridgePreviewTarget(
+                    path: fakePath(mappedAudioContainer.file.name),
+                    name: mappedAudioContainer.file.fileName,
+                    startSample: UInt64(index) * 44_100,
+                    endSample: UInt64(index + 1) * 44_100
+                )
+            ),
             position: "\(index + 1)",
-            length: BridgeDurationClock.length(ms: durationMs),
-            listedLength: nil,
-            artists: nil
+            lengthMs: UInt64(180_000 + (index + 1) * 15000)
         )
     }
 
     private static let previewSheetGroup = BridgeSheetGroup(
         sheetId: boundTrackSheet.file.name,
         name: boundTrackSheet.file.fileName,
-        size: boundTrackSheet.file.size,
         bound: .describes(
             container: BridgeMappingContainer(
                 fileId: mappedAudioContainer.file.name,
-                name: mappedAudioContainer.file.fileName,
-                size: mappedAudioContainer.file.size
+                name: mappedAudioContainer.file.fileName
             )
         ),
         boundAudio: .one(reference: sheetReferenceOptions),
         unboundReferences: nil,
         assigned: .disc(1),
-        sideChoices: BridgeSheetSideChoice.discs(2)
+        sideChoices: BridgeSheetSideChoice.discs(2),
+        ignorable: true
     )
 
     /// Every row kind the table draws, with the folder's gallery beside it:
@@ -262,12 +250,12 @@ extension PreviewData {
     static let everyRowKindMappingTable = BridgeMappingTable(
         images: mappingImages,
         trackSides: [
-            BridgeMappingTrackSide(
+            BridgeTrackTableSide(
                 side: .flat,
                 runs: [
                     .sheet(
                         sheet: previewSheetGroup,
-                        entries: (0..<9).map(sheetEntryMapping)
+                        rows: (0..<9).map(sheetEntryMapping)
                     )
                 ]
             )

@@ -12,12 +12,11 @@
 
 use super::*;
 use crate::folder_scanner::{SheetBindingOffer, SheetReferenceOptions};
-use crate::mapping::{
-    MappingContainer, MappingEntry, MappingFile, MappingFileRow, MappingImage, MappingRole,
-    MappingSource, MappingTable, MappingTrackRun, MappingTrackSide, SheetBound, SheetBoundAudio,
-    SheetGroup, TrackMapping,
+use crate::mapping::{MappingFile, MappingFileRow, MappingImage, MappingRole, MappingTable};
+use crate::{
+    ImportError, MappingContainer, SheetBound, SheetBoundAudio, SheetGroup, TrackAudition,
+    TrackSource, TrackTableRow, TrackTableRun, TrackTableSide,
 };
-use crate::ImportError;
 
 /// The mapping table as one JSON document, for the release the scan stores
 /// at the key the statement binds as `:key`, over the draft stored under its
@@ -63,8 +62,7 @@ f AS (
 ),
 audio_json (relative_path, json) AS (
     SELECT relative_path,
-           json_object('file_id', relative_path, 'name', file_name, 'size', size,
-                       'path', hex(absolute_path))
+           json_object('file_id', relative_path, 'name', file_name, 'path', hex(absolute_path))
     FROM f WHERE role = 'audio'
 ),
 {places},
@@ -80,7 +78,7 @@ rows AS (
            u.file_kind, u.sheet_id, u.file_id AS unit_file_id, u.slice_index,
            u.duration_ms AS unit_ms,
            u.start_sample, u.end_sample, a.json AS audio,
-           ct.number AS cue_number, ct.start_cue_frames * 1000 / 75 AS cue_start_ms,
+           ct.start_cue_frames * 1000 / 75 AS cue_start_ms,
            CASE WHEN t.stated_length_ms IS NOT NULL AND u.duration_ms IS NOT NULL
                      AND bae_lengths_disagree(u.duration_ms, t.stated_length_ms)
                 THEN t.stated_length_ms END AS listed_ms
@@ -159,7 +157,7 @@ sheet_audio_counts (sheet, count) AS (
 sheets (relative_path, json) AS (
     SELECT s.relative_path,
            json_object(
-               'sheet_id', s.relative_path, 'name', s.relative_path, 'size', s.size,
+               'sheet_id', s.relative_path, 'name', s.relative_path,
                'bound', CASE s.sheet_binding
                    WHEN 'resolved' THEN CASE COALESCE(n.count, 0)
                        WHEN 0 THEN json_object('binding', 'resolved_to_none')
@@ -225,8 +223,7 @@ runs AS (
                        'audio', json(audio), 'length_ms', unit_ms,
                        'source', CASE file_kind
                            WHEN 'sheet_slice' THEN json_object(
-                               'kind', file_kind, 'sheet_id', sheet_id, 'index', slice_index,
-                               'number', cue_number, 'start_ms', cue_start_ms,
+                               'kind', file_kind, 'start_ms', cue_start_ms,
                                'start', start_sample, 'end', end_sample)
                            ELSE json_object('kind', file_kind) END) END)
                    ORDER BY position)) AS json
@@ -296,7 +293,6 @@ fn flag<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<bool, D::Er
 struct AudioJson {
     file_id: String,
     name: String,
-    size: u64,
     #[serde(deserialize_with = "path_column::from_hex")]
     path: std::path::PathBuf,
 }
@@ -337,9 +333,6 @@ enum UnitSourceJson {
     Standalone,
     /// One entry a track sheet carves out of the file.
     SheetSlice {
-        sheet_id: String,
-        index: u32,
-        number: u32,
         /// Where the entry starts in its audio, in milliseconds, from the
         /// sheet's INDEX 01.
         start_ms: u64,
@@ -376,7 +369,6 @@ struct OptionJson {
 struct SheetJson {
     sheet_id: String,
     name: String,
-    size: u64,
     bound: BoundJson,
     place: String,
     assigned: Option<SideChoiceJson>,
@@ -513,8 +505,7 @@ impl MappingRows {
             let unplaced = |reason: String| internal(format!("a track side: {reason}"));
             let mut runs = Vec::new();
             for run in side.runs {
-                let mut mappings = Vec::new();
-                let sheet = run.sheet.map(sheet_group).transpose()?;
+                let mut rows = Vec::new();
                 for row in run.rows {
                     let position = bae_records::records::track_position_of(
                         &side.kind,
@@ -522,14 +513,16 @@ impl MappingRows {
                         row.number,
                     )
                     .map_err(unplaced)?;
-                    mappings.push(track_mapping(row, position.text())?);
+                    rows.push(table_row(row, position.text())?);
                 }
-                runs.push(match sheet {
-                    Some(sheet) => MappingTrackRun::Sheet { sheet, entries: mappings },
-                    None => MappingTrackRun::Tracks(mappings),
-                });
+                match run.sheet {
+                    Some(sheet) => {
+                        runs.push(TrackTableRun::Sheet { sheet: sheet_group(sheet)?, rows })
+                    }
+                    None => runs.extend(rows.into_iter().map(TrackTableRun::Track)),
+                }
             }
-            track_sides.push(MappingTrackSide {
+            track_sides.push(TrackTableSide {
                 side: bae_records::records::track_side_of(&side.kind, side.ordinal)
                     .map_err(unplaced)?,
                 runs,
@@ -588,7 +581,7 @@ fn carried_role(role: &str) -> Result<MappingRole, ImportError> {
 }
 
 fn container(audio: &AudioJson) -> MappingContainer {
-    MappingContainer { file_id: audio.file_id.clone(), name: audio.name.clone(), size: audio.size }
+    MappingContainer { file_id: audio.file_id.clone(), name: audio.name.clone() }
 }
 
 fn sheet_group(sheet: SheetJson) -> Result<SheetGroup, ImportError> {
@@ -632,12 +625,12 @@ fn sheet_group(sheet: SheetJson) -> Result<SheetGroup, ImportError> {
     Ok(SheetGroup {
         sheet_id: sheet.sheet_id,
         name: sheet.name,
-        size: sheet.size,
         bound,
         bound_audio,
         unbound_references,
         assigned,
         side_choices,
+        ignorable: true,
     })
 }
 
@@ -652,6 +645,7 @@ fn reference_options(reference: ReferenceJson) -> Result<SheetReferenceOptions, 
             .into_iter()
             .map(|option| {
                 Ok(crate::folder_scanner::SheetBindingOption {
+                    name: option.file_id.clone(),
                     file_id: option.file_id,
                     offer: match (option.offer.as_str(), option.codec) {
                         ("offered", None) => SheetBindingOffer::Offered,
@@ -672,7 +666,7 @@ fn reference_options(reference: ReferenceJson) -> Result<SheetReferenceOptions, 
     })
 }
 
-fn track_mapping(row: RowJson, position: String) -> Result<TrackMapping, ImportError> {
+fn table_row(row: RowJson, position: String) -> Result<TrackTableRow, ImportError> {
     let internal = |detail: String| ImportError::Internal { detail };
     let track = row.track.track()?;
     if !row.matches {
@@ -683,35 +677,24 @@ fn track_mapping(row: RowJson, position: String) -> Result<TrackMapping, ImportE
     }
     let unit = row.unit.ok_or_else(|| internal("a draft track has no audio unit".to_owned()))?;
     let audio = unit.audio.ok_or_else(|| internal("an audio unit names no file".to_owned()))?;
-    let source = match unit.source {
-        UnitSourceJson::Standalone => MappingSource::File(MappingFile {
-            name: audio.file_id.clone(),
-            file_id: audio.file_id,
-            size: audio.size,
-            preview_target: Some(bae_track_audio::PreviewTarget::whole_file(audio.path)),
-            role: MappingRole::Audio,
-        }),
-        UnitSourceJson::SheetSlice { sheet_id, index, number, start_ms, start, end } => {
-            MappingSource::SheetEntry(MappingEntry {
-                sheet_id,
-                index,
-                number,
-                start_ms,
-                container_id: audio.file_id,
-                preview_target: bae_track_audio::PreviewTarget::sample_range(
-                    audio.path, start, end,
-                ),
-            })
-        }
+    let (source, audition) = match unit.source {
+        UnitSourceJson::Standalone => (
+            TrackSource::File { name: audio.file_id },
+            bae_track_audio::PreviewTarget::whole_file(audio.path),
+        ),
+        UnitSourceJson::SheetSlice { start_ms, start, end } => (
+            TrackSource::SheetSlice { start_ms },
+            bae_track_audio::PreviewTarget::sample_range(audio.path, start, end),
+        ),
     };
-    let artists = row.artists.map(super::ArtistFieldJson::field).transpose()?;
-    Ok(TrackMapping {
-        source,
+    Ok(TrackTableRow {
         track: track.edit.as_edit(),
+        source,
+        audition: TrackAudition::Preview(audition),
         position,
         length_ms: unit.length_ms,
         listed_length_ms: row.listed_ms,
-        artists,
+        artists: row.artists.map(super::ArtistFieldJson::field).transpose()?,
     })
 }
 

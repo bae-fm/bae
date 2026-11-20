@@ -58,16 +58,18 @@ pub fn bridge_sheet_binding_offer_key(offer: BridgeSheetBindingOffer) -> Option<
     offer.loc_key().map(str::to_string)
 }
 
-/// One of a candidate's audio files, as a choice for a sheet's binding. The set
+/// One of a release's audio files, as a choice for a sheet's binding. The set
 /// crosses already filtered to what the sheet can use, each refusal carrying
 /// its reason: offering a file the commit would reject is the failure the
 /// editable binding exists to remove.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeSheetBindingOption {
-    /// The audio file's `name` (its release-relative path) — the id
-    /// `AppHandle::set_sheet_binding` takes, and the one to match against
-    /// `BridgeFileInfo.name` for anything else the row shows.
+    /// The id the binding commands take: in a folder, the audio file's
+    /// release-relative path; in the library, its release file's id.
     pub file_id: String,
+    /// The name the choice shows: in a folder, the audio file's
+    /// release-relative path; in the library, its file name.
+    pub name: String,
     pub offer: BridgeSheetBindingOffer,
 }
 
@@ -75,6 +77,7 @@ pub struct BridgeSheetBindingOption {
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeSheetReferenceOptions {
     pub file_reference: String,
+    /// The id of the choice the line plays from; `None` when it plays none.
     pub file_id: Option<String>,
     pub options: Vec<BridgeSheetBindingOption>,
 }

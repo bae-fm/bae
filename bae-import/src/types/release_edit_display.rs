@@ -1,10 +1,9 @@
 //! What the release editor shows beside a library release's form: its
-//! tracks on the table's sides and runs by the file each plays from, each
-//! beside the
-//! form row that edits it, the summary of its audio, and the files it
+//! tracks laid out on the track table both hosts draw, each row the form
+//! row that edits the track, the summary of its audio, and the files it
 //! carries that no track plays from.
 
-use bae_records::source_audio::{SourceAudioLayout, SourceAudioSummary};
+use bae_records::source_audio::SourceAudioSummary;
 use bae_records::DbReleaseEditSheet;
 use bae_types::mediums::TrackSide;
 
@@ -14,7 +13,6 @@ use bae_types::mediums::TrackSide;
 pub struct ReleaseEditTrackSource {
     pub file_id: String,
     pub name: String,
-    pub layout: SourceAudioLayout,
 }
 
 /// Display-only facts that accompany one persisted metadata row in the shared
@@ -42,184 +40,156 @@ pub struct ReleaseEditTrackContext {
     pub sheet: Option<DbReleaseEditSheet>,
 }
 
-#[cfg(desktop)]
-impl ReleaseEditTrackContext {
-    /// The CUE sheet that carves this track's body, and the file it carves
-    /// the body from.
-    fn carved_from(&self) -> Option<(&DbReleaseEditSheet, &ReleaseEditTrackSource)> {
-        self.sheet.as_ref().map(|sheet| (sheet, &self.source))
-    }
-}
-
 /// One row of the editor's track table: the form row that edits a track,
 /// the library's facts about the track, and the track's own artists, each
 /// with how it stands to the library (`None` when it takes its album's or
 /// names none).
+#[cfg(desktop)]
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ReleaseEditTrackRow {
+pub(crate) struct ReleaseEditTrackRow {
     pub edit: crate::RawTrackEdit,
     pub context: ReleaseEditTrackContext,
     pub artists: Option<crate::ArtistField>,
 }
 
-/// One side of the release as the editor's track table lays it out (a disc
-/// of a multi-disc set, a side of a record, or the one flat side) and the
-/// runs of rows on it, in table order. The same shape the import mapping
-/// table draws, so a release reads the same before and after it is imported.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ReleaseEditTrackSide {
-    pub side: TrackSide,
-    pub runs: Vec<ReleaseEditTrackRun>,
-}
-
-/// The CUE sheet over a run of the editor's tracks, as its caption names it:
-/// the sheet's file id and name, the side of the release the editor's form
-/// puts its first track on, with its heading, which the place pop-up names,
-/// and the sides and discs the release holds, which the pop-up offers, and the text of its `FILE` line with the audio files
-/// the line can play from, which its Audio file pop-up offers.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ReleaseEditSheet {
-    pub file_id: String,
-    pub name: String,
-    pub place: bae_records::DbSheetSideChoice,
-    /// The sides and discs of the release, in order.
-    pub side_choices: Vec<bae_records::DbSheetSideChoice>,
-    pub file_reference: String,
-    pub audio_options: Vec<ReleaseEditAudioOption>,
-}
-
-/// One audio file of the release as a choice for a sheet's `FILE` line:
-/// the file, whether the line plays from it in the editor's form, and
-/// whether it can back the line.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ReleaseEditAudioOption {
-    pub file_id: String,
-    pub name: String,
-    pub bound: bool,
-    pub offer: crate::folder_scanner::SheetBindingOffer,
-}
-
 #[cfg(desktop)]
-impl ReleaseEditSheet {
-    /// The caption of the library's sheet `sheet` on a release whose sides
-    /// and discs are `side_choices`: a file whose codec bae can't carve
-    /// tracks out of is refused naming the codec, and one shorter than the
-    /// line's tracks is refused for its timing, as the import pane refuses
-    /// them.
-    fn of(sheet: DbReleaseEditSheet, side_choices: &[bae_records::DbSheetSideChoice]) -> Self {
-        let DbReleaseEditSheet { file_id, name, place, file_reference, audio_options } = sheet;
-        Self {
-            file_id,
-            name,
-            place,
-            side_choices: side_choices.to_vec(),
-            file_reference,
-            audio_options: audio_options
-                .into_iter()
-                .map(|option| ReleaseEditAudioOption {
-                    offer: crate::folder_scanner::SheetBindingOffer::of_probed(
-                        &option.content_type,
-                        option.fits,
-                    ),
-                    file_id: option.file_id,
-                    name: option.name,
-                    bound: option.bound,
-                })
-                .collect(),
+impl ReleaseEditTrackRow {
+    /// The table's row of this track, naming `source` in its source cell,
+    /// which plays the library's release from it.
+    fn table_row(self, source: crate::TrackSource) -> crate::TrackTableRow {
+        crate::TrackTableRow {
+            track: self.edit,
+            source,
+            audition: crate::TrackAudition::LibraryTrack,
+            position: self.context.position_text,
+            length_ms: self.context.duration_ms,
+            listed_length_ms: self.context.listed_length_ms,
+            artists: self.artists,
         }
     }
 }
 
-/// Consecutive rows of one side that the table draws together.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ReleaseEditTrackRun {
-    /// A track whose row names its own source.
-    Track(ReleaseEditTrackRow),
-    /// Two or more consecutive tracks a CUE sheet carves from one file, which
-    /// is named once above them with the sheet.
-    Sheet {
-        sheet: ReleaseEditSheet,
-        source: ReleaseEditTrackSource,
-        rows: Vec<ReleaseEditTrackRow>,
-    },
-}
-
-impl ReleaseEditTrackRun {
-    pub fn rows(&self) -> &[ReleaseEditTrackRow] {
-        match self {
-            Self::Track(row) => std::slice::from_ref(row),
-            Self::Sheet { rows, .. } => rows,
+/// Lay out `rows`, in release order, as the import pane lays out a
+/// folder's tracks: a side per run of tracks on one side, and within it a
+/// run per CUE sheet that carves consecutive tracks there, under the
+/// sheet's caption, whose place pop-up offers the sides and discs
+/// `side_choices`; every other track is a run of its own.
+#[cfg(desktop)]
+pub(crate) fn lay_out_tracks(
+    rows: Vec<ReleaseEditTrackRow>,
+    side_choices: &[bae_records::DbSheetSideChoice],
+) -> Vec<crate::TrackTableSide> {
+    let captions = sheet_captions(&rows, side_choices);
+    let mut sides: Vec<crate::TrackTableSide> = Vec::new();
+    for row in rows {
+        if sides.last().is_none_or(|last| last.side != row.context.side) {
+            sides.push(crate::TrackTableSide { side: row.context.side.clone(), runs: Vec::new() });
         }
-    }
-}
-
-impl ReleaseEditTrackSide {
-    /// Lay out `rows`, in release order: a side per run of tracks on one
-    /// side, and within it a run per `FILE` line of a sheet that carves
-    /// several consecutive tracks from one file, whose caption offers the
-    /// sides and discs `side_choices`; every other track is a run of its own.
-    #[cfg(desktop)]
-    pub(crate) fn lay_out(
-        rows: impl IntoIterator<Item = ReleaseEditTrackRow>,
-        side_choices: &[bae_records::DbSheetSideChoice],
-    ) -> Vec<Self> {
-        let mut sides: Vec<Self> = Vec::new();
-        for row in rows {
-            match sides.last_mut() {
-                Some(last) if last.side == row.context.side => last.append(row, side_choices),
-                _ => sides.push(Self {
-                    side: row.context.side.clone(),
-                    runs: vec![ReleaseEditTrackRun::Track(row)],
-                }),
-            }
-        }
-        sides
-    }
-
-    /// Add the next row: onto the last run when one sheet carves both tracks
-    /// from under the same `FILE` line and from the same file, else as a run
-    /// of its own.
-    #[cfg(desktop)]
-    fn append(
-        &mut self,
-        row: ReleaseEditTrackRow,
-        side_choices: &[bae_records::DbSheetSideChoice],
-    ) {
-        let line = |sheet_file_id: &str, file_reference: &str, source: &ReleaseEditTrackSource| {
-            row.context.carved_from().is_some_and(|(next_sheet, next_source)| {
-                next_sheet.file_id == sheet_file_id
-                    && next_sheet.file_reference == file_reference
-                    && next_source.file_id == source.file_id
-            })
+        let side = sides.last_mut().expect("the row's side is the last one");
+        let Some(sheet_id) = row.context.sheet.as_ref().map(|sheet| sheet.file_id.clone()) else {
+            let name = row.context.source.name.clone();
+            side.runs.push(crate::TrackTableRun::Track(
+                row.table_row(crate::TrackSource::File { name }),
+            ));
+            continue;
         };
-        match self.runs.pop() {
-            Some(ReleaseEditTrackRun::Sheet { sheet, source, mut rows })
-                if line(&sheet.file_id, &sheet.file_reference, &source) =>
-            {
-                rows.push(row);
-                self.runs.push(ReleaseEditTrackRun::Sheet { sheet, source, rows });
+        let start_ms = row.context.start_ms;
+        let row = row.table_row(crate::TrackSource::SheetSlice { start_ms });
+        match side.runs.last_mut() {
+            Some(crate::TrackTableRun::Sheet { sheet, rows }) if sheet.sheet_id == sheet_id => {
+                rows.push(row)
             }
-            Some(ReleaseEditTrackRun::Track(last))
-                if last.context.carved_from().is_some_and(|(sheet, source)| {
-                    line(&sheet.file_id, &sheet.file_reference, source)
-                }) =>
-            {
-                let (sheet, source) =
-                    last.context.carved_from().expect("the guard read the track's sheet");
-                let (sheet, source) =
-                    (ReleaseEditSheet::of(sheet.clone(), side_choices), source.clone());
-                self.runs.push(ReleaseEditTrackRun::Sheet { sheet, source, rows: vec![last, row] });
-            }
-            last => {
-                self.runs.extend(last);
-                self.runs.push(ReleaseEditTrackRun::Track(row));
-            }
+            _ => side.runs.push(crate::TrackTableRun::Sheet {
+                sheet: captions
+                    .iter()
+                    .find(|caption| caption.sheet_id == sheet_id)
+                    .expect("every sheet that carves a row has a caption")
+                    .clone(),
+                rows: vec![row],
+            }),
         }
     }
+    sides
+}
 
-    pub fn rows(&self) -> impl Iterator<Item = &ReleaseEditTrackRow> {
-        self.runs.iter().flat_map(ReleaseEditTrackRun::rows)
+/// The caption of each CUE sheet that carves one of `rows`: the side its
+/// first track is on, the sides and discs `side_choices` its place pop-up
+/// offers, and each of its `FILE` lines in the order the rows reach them,
+/// with the file the line plays from and the audio files it can play from.
+/// A file whose codec bae can't carve tracks out of is refused naming the
+/// codec, and one shorter than the line's tracks is refused for its timing,
+/// as the import pane refuses them.
+#[cfg(desktop)]
+fn sheet_captions(
+    rows: &[ReleaseEditTrackRow],
+    side_choices: &[bae_records::DbSheetSideChoice],
+) -> Vec<crate::SheetGroup> {
+    use crate::folder_scanner::{SheetBindingOffer, SheetBindingOption, SheetReferenceOptions};
+    /// A sheet and its `FILE` lines so far, each with the name of the file
+    /// it plays from.
+    type Lines<'a> = (&'a DbReleaseEditSheet, Vec<(SheetReferenceOptions, String)>);
+    let mut sheets: Vec<Lines<'_>> = Vec::new();
+    for row in rows {
+        let Some(sheet) = &row.context.sheet else { continue };
+        let at = match sheets.iter().position(|(seen, _)| seen.file_id == sheet.file_id) {
+            Some(at) => at,
+            None => {
+                sheets.push((sheet, Vec::new()));
+                sheets.len() - 1
+            }
+        };
+        let lines = &mut sheets[at].1;
+        if lines.iter().any(|(line, _)| line.file_reference == sheet.file_reference) {
+            continue;
+        }
+        let options = sheet
+            .audio_options
+            .iter()
+            .map(|option| SheetBindingOption {
+                file_id: option.file_id.clone(),
+                name: option.name.clone(),
+                offer: SheetBindingOffer::of_probed(&option.content_type, option.fits),
+            })
+            .collect();
+        let line = SheetReferenceOptions {
+            file_reference: sheet.file_reference.clone(),
+            file_id: Some(row.context.source.file_id.clone()),
+            options,
+        };
+        lines.push((line, row.context.source.name.clone()));
     }
+    sheets
+        .into_iter()
+        .map(|(sheet, mut lines)| {
+            let (bound, bound_audio) = if lines.len() == 1 {
+                let (line, name) = lines.remove(0);
+                let file_id = line.file_id.clone().unwrap_or_default();
+                (
+                    crate::SheetBound::Describes(crate::MappingContainer { file_id, name }),
+                    crate::SheetBoundAudio::One(line),
+                )
+            } else {
+                (
+                    crate::SheetBound::DescribesFiles {
+                        audio_file_count: u32::try_from(lines.len()).unwrap_or(u32::MAX),
+                    },
+                    crate::SheetBoundAudio::Several(
+                        lines.into_iter().map(|(line, _)| line).collect(),
+                    ),
+                )
+            };
+            crate::SheetGroup {
+                sheet_id: sheet.file_id.clone(),
+                name: sheet.name.clone(),
+                bound,
+                bound_audio,
+                unbound_references: None,
+                assigned: Some(sheet.place.clone()),
+                side_choices: side_choices.to_vec(),
+                ignorable: false,
+            }
+        })
+        .collect()
 }
 
 /// What the library holds about a release beside its form: the summary of
@@ -278,14 +248,16 @@ impl ReleaseEditTrackContext {
             track_id: track_id.clone(),
             file_id: main.file_id.clone(),
         })?;
-        let layout = file.layout.ok_or_else(|| ReleaseEditLoadError::MissingSourceAudio {
-            track_id: track_id.clone(),
-            file_id: main.file_id.clone(),
-        })?;
+        if file.layout.is_none() {
+            return Err(ReleaseEditLoadError::MissingSourceAudio {
+                track_id,
+                file_id: main.file_id,
+            });
+        }
         Ok(Self {
             track_id,
             side: entry.position.side(),
-            source: ReleaseEditTrackSource { file_id: main.file_id, name: file.name, layout },
+            source: ReleaseEditTrackSource { file_id: main.file_id, name: file.name },
             start_ms: main.start_ms,
             duration_ms: entry.track.duration_ms,
             listed_length_ms: entry.listed_length_ms,

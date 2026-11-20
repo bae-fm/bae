@@ -176,7 +176,7 @@ async fn an_artist_the_form_picked_shows_and_saves_as_a_new_credit_once_deleted(
                     .sides
                     .iter()
                     .flatten()
-                    .flat_map(bae_import::ReleaseEditTrackSide::rows)
+                    .flat_map(bae_import::TrackTableSide::rows)
                     .find_map(|row| row.artists.as_ref());
                 [draft.album_artists.as_ref(), track_artists].into_iter().all(|field| {
                     field.is_some_and(|field| {
@@ -203,11 +203,11 @@ async fn an_artist_the_form_picked_shows_and_saves_as_a_new_credit_once_deleted(
         .sides
         .iter()
         .flatten()
-        .flat_map(bae_import::ReleaseEditTrackSide::rows)
+        .flat_map(bae_import::TrackTableSide::rows)
         .next()
         .expect("the release has tracks");
     assert_eq!(
-        first_row.edit.artist_assignments,
+        first_row.track.artist_assignments,
         bae_import::TrackArtistAssignments::Explicit(vec![credit])
     );
 

@@ -357,9 +357,7 @@ async fn selected_folders_from_different_roots_import_as_one_release() {
             .sides
             .iter()
             .flatten()
-            .flat_map(|side| side
-                .rows()
-                .map(|row| (side.side.clone(), row.context.position_text.as_str())))
+            .flat_map(|side| side.rows().map(|row| (side.side.clone(), row.position.as_str())))
             .collect::<Vec<_>>(),
         [(disc(1), "1"), (disc(1), "2"), (disc(2), "1"), (disc(2), "2")]
     );

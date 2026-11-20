@@ -61,17 +61,26 @@ async fn imported_with_carried_audio(
     (library, imported, id)
 }
 
-/// The only run of the draft's tracks: the sheet over every track.
+/// The only run of the draft's tracks, the sheet over every track: its
+/// caption, its one `FILE` line and the file that line plays from.
 fn sheet_run(
     draft: &bae_import::ReleaseEditDraft,
-) -> (&bae_import::ReleaseEditSheet, &bae_import::ReleaseEditTrackSource) {
+) -> (
+    &bae_import::SheetGroup,
+    &bae_import::folder_scanner::SheetReferenceOptions,
+    &bae_import::MappingContainer,
+) {
     let sides = draft.sides.as_deref().expect("the release has tracks");
     let [side] = sides else { panic!("the release has one side: {sides:?}") };
-    let [bae_import::ReleaseEditTrackRun::Sheet { sheet, source, .. }] = side.runs.as_slice()
-    else {
+    let [bae_import::TrackTableRun::Sheet { sheet, .. }] = side.runs.as_slice() else {
         panic!("one sheet carves every track: {:?}", side.runs);
     };
-    (sheet, source)
+    let (bae_import::SheetBoundAudio::One(line), bae_import::SheetBound::Describes(container)) =
+        (&sheet.bound_audio, &sheet.bound)
+    else {
+        panic!("the sheet's one line plays one file: {sheet:?}");
+    };
+    (sheet, line, container)
 }
 
 /// The draft of `form`, once it shows what `done` looks for.
@@ -109,12 +118,14 @@ async fn a_cue_sheet_moves_to_another_audio_file_of_its_release() {
     let form = manager.open_release_edit(&imported.release_id).await.unwrap();
     let drafts = manager.subscribe_release_edit_draft();
     let opened = draft_where(&drafts, &form, |_| true).await;
-    let (sheet, source) = sheet_run(&opened);
+    let (sheet, line, source) = sheet_run(&opened);
     assert_eq!(
-        sheet
-            .audio_options
+        line.options
             .iter()
-            .map(|option| (option.name.as_str(), option.bound, option.offer.clone()))
+            .map(|option| {
+                let bound = line.file_id.as_ref() == Some(&option.file_id);
+                (option.name.as_str(), bound, option.offer.clone())
+            })
             .collect::<Vec<_>>(),
         [
             ("Test Album (rip).flac", false, SheetBindingOffer::Offered),
@@ -137,9 +148,9 @@ async fn a_cue_sheet_moves_to_another_audio_file_of_its_release() {
     let image = source.file_id.clone();
 
     let picked =
-        form.with_sheet_file(sheet.file_id.clone(), sheet.file_reference.clone(), rip.clone());
-    let draft = draft_where(&drafts, &picked, |draft| sheet_run(draft).1.file_id == rip).await;
-    assert_eq!(sheet_run(&draft).1.name, "Test Album (rip).flac");
+        form.with_sheet_file(sheet.sheet_id.clone(), line.file_reference.clone(), rip.clone());
+    let draft = draft_where(&drafts, &picked, |draft| sheet_run(draft).2.file_id == rip).await;
+    assert_eq!(sheet_run(&draft).2.name, "Test Album (rip).flac");
     assert_eq!(listed_files(&draft), ["Test Album.flac"]);
     assert_eq!(draft.files_to_read, Some(vec!["Test Album (rip).flac".to_string()]));
 
@@ -187,7 +198,7 @@ async fn a_cue_sheet_moves_to_another_audio_file_of_its_release() {
     };
     assert_eq!((layout(&rip), layout(&image)), (Some(SourceAudioLayout::Cue), None));
     let reopened = draft_where(&drafts, &saved, |_| true).await;
-    assert_eq!(sheet_run(&reopened).1.file_id, rip);
+    assert_eq!(sheet_run(&reopened).2.file_id, rip);
     assert_eq!(listed_files(&reopened), ["Test Album.flac"]);
 }
 
@@ -206,13 +217,12 @@ async fn a_file_shorter_than_the_sheet_is_refused() {
     let form = manager.open_release_edit(&imported.release_id).await.unwrap();
     let drafts = manager.subscribe_release_edit_draft();
     let opened = draft_where(&drafts, &form, |_| true).await;
-    let (sheet, source) = sheet_run(&opened);
-    let offer =
-        sheet.audio_options.iter().find(|option| option.file_id == short).unwrap().offer.clone();
+    let (sheet, line, source) = sheet_run(&opened);
+    let offer = line.options.iter().find(|option| option.file_id == short).unwrap().offer.clone();
     assert_eq!(offer, SheetBindingOffer::RefusedTiming);
     let image = source.file_id.clone();
 
-    let picked = form.with_sheet_file(sheet.file_id.clone(), sheet.file_reference.clone(), short);
+    let picked = form.with_sheet_file(sheet.sheet_id.clone(), line.file_reference.clone(), short);
     let error = manager
         .save_release_edit(picked, bae_library::GonePick::Refuse)
         .await

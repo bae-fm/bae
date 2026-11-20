@@ -70,6 +70,13 @@ pub mod loudness;
 #[cfg(desktop)]
 pub mod mapping;
 #[cfg(desktop)]
+mod track_table;
+#[cfg(desktop)]
+pub use track_table::{
+    MappingContainer, SheetBound, SheetBoundAudio, SheetGroup, TrackAudition, TrackSource,
+    TrackTableRow, TrackTableRun, TrackTableSide,
+};
+#[cfg(desktop)]
 pub mod pane;
 #[cfg(desktop)]
 pub mod preparations;
@@ -283,9 +290,8 @@ pub use list::{
 };
 #[cfg(desktop)]
 pub use mapping::{
-    mapping_tracks, InvalidCandidateDetail, MappingContainer, MappingEntry, MappingFile,
-    MappingFileRow, MappingImage, MappingRole, MappingSource, MappingTable, MappingTrackRun,
-    MappingTrackSide, SheetBound, SheetBoundAudio, SheetGroup, TrackMapping,
+    mapping_tracks, InvalidCandidateDetail, MappingFile, MappingFileRow, MappingImage, MappingRole,
+    MappingTable,
 };
 #[cfg(desktop)]
 pub use preparations::{
@@ -333,10 +339,9 @@ pub use types::{
     ArtistsStanding, AudioFile, CandidateDraft, CandidateEditField, CandidateTrack, Credited,
     DraftAlbum, DraftFieldEdit, DraftTrack, EditValidationError, LibraryDraft, LibraryTrack,
     ListRow, MetadataProvenance, PressingFactEdit, PressingOffers, RawLabelEdit, RawPressingEdit,
-    RawReleaseEdit, RawTrackEdit, ReleaseDraft, ReleaseEditAudioOption, ReleaseEditLoadError,
-    ReleaseEditSheet, ReleaseEditTrackContext, ReleaseEditTrackRow, ReleaseEditTrackRun,
-    ReleaseEditTrackSide, ReleaseEditTrackSource, ReleaseUserEdit, StandingCredit,
-    TrackArtistAssignments, TrackBinding, TrackUserEdit,
+    RawReleaseEdit, RawTrackEdit, ReleaseDraft, ReleaseEditLoadError, ReleaseEditTrackContext,
+    ReleaseEditTrackSource, ReleaseUserEdit, StandingCredit, TrackArtistAssignments, TrackBinding,
+    TrackUserEdit,
 };
 #[cfg(desktop)]
 pub use types::{

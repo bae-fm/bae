@@ -40,18 +40,48 @@ enum MappingFixtures {
 extension MappingFixtures {
     // MARK: - Thirteen files, twelve tracks
 
-    static func audioFile(_ index: Int) -> BridgeMappingFile {
-        BridgeMappingFile(
-            fileId: "\(index).flac",
-            name: "\(index).flac",
-            size: UInt64(30_000_000 + index * 1_000_000),
-            previewTarget: BridgePreviewTarget(
-                path: Data("/tmp/walkthrough/\(index).flac".utf8),
-                name: "\(index).flac",
-                startSample: 0,
-                endSample: nil
-            ),
-            role: .audio
+    /// The track `track` at `position`, `lengthMs` long, that plays the
+    /// folder's file `name` at `path` whole.
+    static func fileRow(
+        _ name: String,
+        path: Data,
+        track: BridgeRawTrackEdit,
+        position: String,
+        lengthMs: UInt64
+    ) -> BridgeTrackTableRun {
+        .track(
+            row: BridgeTrackTableRow(
+                track: track,
+                source: .file(name: name),
+                audition: .preview(
+                    target: BridgePreviewTarget(
+                        path: path,
+                        name: name,
+                        startSample: 0,
+                        endSample: nil
+                    )
+                ),
+                position: position,
+                length: BridgeDurationClock.length(ms: lengthMs),
+                listedLength: nil,
+                artists: nil
+            )
+        )
+    }
+
+    /// The folder's audio file numbered `index`, the track `track` plays
+    /// whole, `lengthMs` long.
+    static func audioRow(
+        _ index: Int,
+        track: BridgeRawTrackEdit,
+        lengthMs: UInt64
+    ) -> BridgeTrackTableRun {
+        fileRow(
+            "\(index).flac",
+            path: Data("/tmp/walkthrough/\(index).flac".utf8),
+            track: track,
+            position: "\(index)",
+            lengthMs: lengthMs
         )
     }
 
@@ -69,30 +99,22 @@ extension MappingFixtures {
     }
 
     /// One loose audio file and the track the release puts on it.
-    static func pairedRow(_ index: Int) -> BridgeTrackMapping {
-        BridgeTrackMapping(
-            source: .file(file: audioFile(index)),
+    static func pairedRow(_ index: Int) -> BridgeTrackTableRun {
+        audioRow(
+            index,
             track: trackEdit(
                 index - 1,
                 title: "Track \(index)",
                 file: .standalone(fileId: "\(index).flac")
             ),
-            position: "\(index)",
-            length: BridgeDurationClock.length(
-                ms: UInt64(200_000 + index * 1000)
-            ),
-            listedLength: nil,
-            artists: nil
+            lengthMs: UInt64(200_000 + index * 1000)
         )
     }
 
     static func flatSide(
-        _ mappings: [BridgeTrackMapping]
-    ) -> BridgeMappingTrackSide {
-        BridgeMappingTrackSide(
-            side: .flat,
-            runs: [.tracks(mappings: mappings)]
-        )
+        _ runs: [BridgeTrackTableRun]
+    ) -> BridgeTrackTableSide {
+        BridgeTrackTableSide(side: .flat, runs: runs)
     }
 
     static let thirteenFileTable = thirteenFileTable(lastTitle: "")
@@ -106,19 +128,14 @@ extension MappingFixtures {
                 flatSide(
                     (1...12).map(pairedRow)
                         + [
-                            BridgeTrackMapping(
-                                source: .file(file: audioFile(13)),
+                            audioRow(
+                                13,
                                 track: trackEdit(
                                     12,
                                     title: lastTitle,
                                     file: .standalone(fileId: "13.flac")
                                 ),
-                                position: "13",
-                                length: BridgeDurationClock.length(
-                                    ms: UInt64(213_000)
-                                ),
-                                listedLength: nil,
-                                artists: nil
+                                lengthMs: 213_000
                             )
                         ]
                 )
@@ -134,23 +151,9 @@ extension MappingFixtures {
     static let sheetId = "Album Title.cue"
     static let containerPath = Data("/tmp/walkthrough/Album Title.flac".utf8)
 
-    static let containerFile = BridgeMappingFile(
-        fileId: containerId,
-        name: containerId,
-        size: 380_000_000,
-        previewTarget: BridgePreviewTarget(
-            path: containerPath,
-            name: "Album Title.flac",
-            startSample: 0,
-            endSample: nil
-        ),
-        role: .audio
-    )
-
     static let container = BridgeMappingContainer(
         fileId: containerId,
-        name: containerId,
-        size: 380_000_000
+        name: containerId
     )
 
     static func sheetGroup(
@@ -163,6 +166,7 @@ extension MappingFixtures {
             options: [
                 BridgeSheetBindingOption(
                     fileId: containerId,
+                    name: containerId,
                     offer: .offered
                 )
             ]
@@ -170,33 +174,32 @@ extension MappingFixtures {
         return BridgeSheetGroup(
             sheetId: sheetId,
             name: sheetId,
-            size: 2_048,
             bound: container.map { .describes(container: $0) }
                 ?? .unresolved(requested: [containerId]),
             boundAudio: reference.fileId == nil
                 ? .none : .one(reference: reference),
             unboundReferences: reference.fileId == nil ? [reference] : nil,
             assigned: assigned,
-            sideChoices: BridgeSheetSideChoice.discs(2)
+            sideChoices: BridgeSheetSideChoice.discs(2),
+            ignorable: true
         )
     }
 
     /// Ignoring the sheet exposes the entire container as one track.
-    private static var looseContainerTrackSides: [BridgeMappingTrackSide] {
+    private static var looseContainerTrackSides: [BridgeTrackTableSide] {
         [
             flatSide(
                 [
-                    BridgeTrackMapping(
-                        source: .file(file: containerFile),
+                    fileRow(
+                        containerId,
+                        path: containerPath,
                         track: trackEdit(
                             0,
                             title: containerId,
                             file: .standalone(fileId: containerId)
                         ),
                         position: "1",
-                        length: BridgeDurationClock.length(ms: 2_400_000),
-                        listedLength: nil,
-                        artists: nil
+                        lengthMs: 2_400_000
                     )
                 ]
             )
@@ -232,7 +235,7 @@ extension MappingFixtures {
     )
 
     /// One entry of the bound sheet, carved out of the container.
-    static func entry(_ index: Int) -> BridgeTrackMapping {
+    static func entry(_ index: Int) -> BridgeTrackTableRow {
         let startSample = UInt64(index) * 200 * 44_100
         let previewTarget = BridgePreviewTarget(
             path: containerPath,
@@ -240,19 +243,7 @@ extension MappingFixtures {
             startSample: startSample,
             endSample: startSample + 200 * 44_100
         )
-        return BridgeTrackMapping(
-            source: .sheetEntry(
-                entry: BridgeMappingEntry(
-                    sheetId: sheetId,
-                    index: UInt32(index),
-                    number: UInt32(index + 1),
-                    start: BridgeDurationClock.length(
-                        ms: UInt64(index) * 200_000
-                    ),
-                    containerId: containerId,
-                    previewTarget: previewTarget
-                )
-            ),
+        return BridgeTrackTableRow(
             track: trackEdit(
                 index,
                 title: "Track \(index + 1)",
@@ -262,6 +253,10 @@ extension MappingFixtures {
                     index: UInt32(index)
                 )
             ),
+            source: .sheetSlice(
+                start: BridgeDurationClock.length(ms: UInt64(index) * 200_000)
+            ),
+            audition: .preview(target: previewTarget),
             position: "\(index + 1)",
             length: BridgeDurationClock.length(
                 ms: UInt64(200_000 + index * 1000)
@@ -278,7 +273,7 @@ extension MappingFixtures {
         BridgeMappingTable(
             images: [],
             trackSides: [
-                BridgeMappingTrackSide(
+                BridgeTrackTableSide(
                     side: .flat,
                     runs: [
                         .sheet(
@@ -286,7 +281,7 @@ extension MappingFixtures {
                                 container: container,
                                 assigned: assigned
                             ),
-                            entries: (0..<12).map(entry)
+                            rows: (0..<12).map(entry)
                         )
                     ]
                 )
@@ -304,20 +299,15 @@ extension MappingFixtures {
             flatSide(
                 (1...2)
                     .map { index in
-                        BridgeTrackMapping(
-                            source: .file(file: audioFile(index)),
+                        audioRow(
+                            index,
                             track: BridgeRawTrackEdit(
                                 id: "file-tags-track-\(index - 1)",
                                 title: "Track \(index)",
                                 artistAssignments: .albumArtists,
                                 file: .standalone(fileId: "\(index).flac")
                             ),
-                            position: "\(index)",
-                            length: BridgeDurationClock.length(
-                                ms: UInt64(200_000 + index * 1000)
-                            ),
-                            listedLength: nil,
-                            artists: nil
+                            lengthMs: UInt64(200_000 + index * 1000)
                         )
                     }
             )
@@ -501,7 +491,7 @@ extension MappingFixtures {
         guard let candidate = store.selectedCandidates[candidateKey],
             var edit = candidate.edit
         else { return false }
-        edit.tracks = candidate.mapping.trackMappings.map(\.track)
+        edit.tracks = candidate.mapping.trackRows.map(\.track)
         if case .valid = shapeReleaseEdit(raw: edit) { return true }
         return false
     }

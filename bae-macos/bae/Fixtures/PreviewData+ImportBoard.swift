@@ -144,14 +144,6 @@ extension PreviewData {
         )
     }
 
-    /// The audio file `name`, as the folder's mapping table lists it.
-    static func boardAudio(_ name: String) -> BridgeMappingFile {
-        mappingFile(
-            previewFile(name: name, size: 35_000_000, role: .audio),
-            role: .audio
-        )
-    }
-
     /// The image `name`, as the folder's gallery shows it.
     static func boardImage(_ name: String) -> BridgeMappingImage {
         mappingImage(previewFile(name: name, size: 1_100_000, role: .artwork))
@@ -267,29 +259,22 @@ extension PreviewData {
     static func boardTrackSides(
         _ tracks: [BoardTrack],
         edit: BridgeRawReleaseEdit
-    ) -> [BridgeMappingTrackSide] {
+    ) -> [BridgeTrackTableSide] {
         [
-            BridgeMappingTrackSide(
+            BridgeTrackTableSide(
                 side: .flat,
-                runs: [
-                    .tracks(
-                        mappings: tracks.enumerated()
-                            .map { index, track in
-                                BridgeTrackMapping(
-                                    source: .file(
-                                        file: boardAudio(track.file)
-                                    ),
-                                    track: edit.tracks[index],
-                                    position: "\(index + 1)",
-                                    length: BridgeDurationClock.length(
-                                        ms: track.durationMs
-                                    ),
-                                    listedLength: nil,
-                                    artists: nil
-                                )
-                            }
-                    )
-                ]
+                runs: tracks.enumerated()
+                    .map { index, track in
+                        .track(
+                            row: tableRow(
+                                edit.tracks[index],
+                                source: .file(name: track.file),
+                                audition: wholeFile(track.file),
+                                position: "\(index + 1)",
+                                lengthMs: track.durationMs
+                            )
+                        )
+                    }
             )
         ]
     }

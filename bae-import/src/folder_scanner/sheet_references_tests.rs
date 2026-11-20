@@ -399,17 +399,16 @@ async fn multi_file_cue_resolves_each_reference_by_unique_stem() {
     );
 
     let table = crate::mapping::tests::blank_table(files).await;
-    let Some(crate::MappingTrackRun::Sheet { sheet, entries }) = table.track_sides[0].runs.first()
+    let Some(crate::TrackTableRun::Sheet { sheet, rows }) = table.track_sides[0].runs.first()
     else {
         panic!("the resolved CUE should group its track rows");
     };
     assert_eq!(sheet.bound, crate::SheetBound::DescribesFiles { audio_file_count: 3 });
     assert_eq!(
-        entries
-            .iter()
-            .map(|entry| match &entry.source {
-                crate::MappingSource::SheetEntry(entry) => entry.container_id.as_str(),
-                _ => panic!("a CUE group should contain sheet entries"),
+        rows.iter()
+            .map(|row| match &row.track.file {
+                Some(crate::AudioFile::SheetSlice { file_id, .. }) => file_id.as_str(),
+                other => panic!("a CUE group should contain sheet slices, got {other:?}"),
             })
             .collect::<Vec<_>>(),
         vec!["01 First.flac", "02 Second.flac", "03 Third.flac"],

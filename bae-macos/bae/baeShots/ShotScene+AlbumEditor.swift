@@ -68,52 +68,53 @@ extension ShotScene {
     /// where its track starts in the image, and the third its listed length.
     private static var editedCueRelease: PreviewReleaseEdit {
         var release = editedRelease
-        let sheet = BridgeReleaseEditSheet(
-            fileId: "Northbound.cue",
-            name: "Northbound.cue",
-            place: .disc(1),
-            sideChoices: BridgeSheetSideChoice.discs(1),
+        let line = BridgeSheetReferenceOptions(
             fileReference: cueImage.name,
-            audioOptions: [cueImage, cueRip]
+            fileId: cueImage.id,
+            options: [cueImage, cueRip]
                 .map { file in
-                    BridgeReleaseEditAudioOption(
+                    BridgeSheetBindingOption(
                         fileId: file.id,
                         name: file.name,
-                        bound: file.id == cueImage.id,
                         offer: .offered
                     )
                 }
         )
-        let image = BridgeReleaseEditTrackSource(
-            fileId: cueImage.id,
-            name: cueImage.name,
-            layout: .cue
+        let sheet = BridgeSheetGroup(
+            sheetId: "Northbound.cue",
+            name: "Northbound.cue",
+            bound: .describes(
+                container: BridgeMappingContainer(
+                    fileId: cueImage.id,
+                    name: cueImage.name
+                )
+            ),
+            boundAudio: .one(reference: line),
+            unboundReferences: nil,
+            assigned: .disc(1),
+            sideChoices: BridgeSheetSideChoice.discs(1),
+            ignorable: false
         )
         var startMs: UInt64 = 0
         let rows = PreviewData.northboundTracks.enumerated()
             .map { index, track in
                 let start = startMs
                 startMs += track.durationMs
-                return BridgeReleaseEditTrackRow(
-                    edit: release.values.tracks[index],
-                    context: BridgeReleaseEditTrackContext(
-                        trackId: release.values.tracks[index].id,
-                        source: image,
-                        startClock: BridgeDurationClock.length(ms: start),
-                        durationClock: BridgeDurationClock.length(
-                            ms: track.durationMs
-                        ),
-                        listedLength: index == 2
-                            ? BridgeDurationClock.length(ms: 327_000) : nil,
-                        positionText: "\(index + 1)"
+                return PreviewData.tableRow(
+                    release.values.tracks[index],
+                    source: .sheetSlice(
+                        start: BridgeDurationClock.length(ms: start)
                     ),
-                    artists: nil
+                    audition: .libraryTrack,
+                    position: "\(index + 1)",
+                    lengthMs: track.durationMs,
+                    listedMs: index == 2 ? 327_000 : nil
                 )
             }
         release.draft.sides = [
-            BridgeReleaseEditTrackSide(
+            BridgeTrackTableSide(
                 side: .flat,
-                runs: [.sheet(sheet: sheet, source: image, rows: rows)]
+                runs: [.sheet(sheet: sheet, rows: rows)]
             )
         ]
         release.draft.files = [
@@ -135,29 +136,24 @@ extension ShotScene {
     /// in its place, and a save reads the rip first.
     private static var reboundCueRelease: PreviewReleaseEdit {
         var release = editedCueRelease
-        let rip = BridgeReleaseEditTrackSource(
-            fileId: cueRip.id,
-            name: cueRip.name,
-            layout: .cue
-        )
         release.draft.sides = release.draft.sides?
             .map { side in
                 var side = side
                 side.runs = side.runs.map { run in
-                    guard case .sheet(var sheet, _, let rows) = run else {
+                    guard case .sheet(var sheet, let rows) = run,
+                        case .one(var line) = sheet.boundAudio
+                    else {
                         return run
                     }
-                    sheet.audioOptions = sheet.audioOptions.map {
-                        var option = $0
-                        option.bound = option.fileId == cueRip.id
-                        return option
-                    }
-                    let moved = rows.map { row in
-                        var row = row
-                        row.context.source = rip
-                        return row
-                    }
-                    return .sheet(sheet: sheet, source: rip, rows: moved)
+                    line.fileId = cueRip.id
+                    sheet.boundAudio = .one(reference: line)
+                    sheet.bound = .describes(
+                        container: BridgeMappingContainer(
+                            fileId: cueRip.id,
+                            name: cueRip.name
+                        )
+                    )
+                    return .sheet(sheet: sheet, rows: rows)
                 }
                 return side
             }

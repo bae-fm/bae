@@ -76,18 +76,14 @@ struct ImportPreviewDataTests {
 
         for run in mapping.trackSides.flatMap(\.runs) {
             switch run {
-            case .tracks(let mappings):
-                for mapping in mappings {
-                    if case .file(let file) = mapping.source {
-                        representedFileIDs.insert(file.fileId)
-                    }
+            case .track(let row):
+                if case .file(let name) = row.source {
+                    representedFileIDs.insert(name)
                 }
-            case .sheet(let sheet, let entries):
+            case .sheet(let sheet, _):
                 representedFileIDs.insert(sheet.sheetId)
-                for entry in entries {
-                    if case .sheetEntry(let source) = entry.source {
-                        representedFileIDs.insert(source.containerId)
-                    }
+                if case .describes(let container) = sheet.bound {
+                    representedFileIDs.insert(container.fileId)
                 }
             }
         }
@@ -108,15 +104,15 @@ struct ImportPreviewDataTests {
     func ignoredCuePreviewShowsWholeFile() throws {
         let candidate = PreviewData.moreTracksMappingCandidate
         let mapping = try #require(candidate.mapping)
-        let mappings = mapping.trackMappings
-        let fileSources = mappings.compactMap { mapping -> BridgeMappingFile? in
-            guard case .file(let file) = mapping.source else { return nil }
-            return file
+        let mappings = mapping.trackRows
+        let fileSources = mappings.compactMap { mapping -> String? in
+            guard case .file(let name) = mapping.source else { return nil }
+            return name
         }
         let commitTracks = mappings.map(\.track)
 
         #expect(candidate.files.files.count == 1)
-        #expect(candidate.files.files[0].file.name == fileSources.first?.fileId)
+        #expect(candidate.files.files[0].file.name == fileSources.first)
         #expect(fileSources.count == 1)
         #expect(commitTracks.count == 1)
         #expect(commitTracks[0].title == "Album Image.flac")

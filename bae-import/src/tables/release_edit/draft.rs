@@ -356,13 +356,13 @@ impl DraftTrackRow {
     fn table_row(
         self,
         unreadable: &impl Fn(crate::ReleaseEditLoadError) -> DbError,
-    ) -> Result<crate::ReleaseEditTrackRow, DbError> {
+    ) -> Result<crate::types::ReleaseEditTrackRow, DbError> {
         let track_id = self.track.track.id.clone();
         let form = self
             .form
             .ok_or_else(|| unreadable(crate::ReleaseEditLoadError::MissingFormRow { track_id }))?;
         let row: FormTrackRow = decoded(&form, "a track's form row")?;
-        Ok(crate::ReleaseEditTrackRow {
+        Ok(crate::types::ReleaseEditTrackRow {
             edit: row.form_row()?,
             context: crate::ReleaseEditTrackContext::of_track(self.track).map_err(unreadable)?,
             artists: self.artists.as_deref().map(artist_field_of_json).transpose()?,
@@ -401,7 +401,7 @@ impl ReleaseEditDraftRows {
         Ok(ReleaseEditDraft {
             cover: bae_records::cover_ref(&release_id, cover_version),
             source_audio: files.source_audio.clone(),
-            sides: has_tracks.then(|| crate::ReleaseEditTrackSide::lay_out(rows, &side_choices)),
+            sides: has_tracks.then(|| crate::types::lay_out_tracks(rows, &side_choices)),
             files: files
                 .has_others
                 .then(|| crate::ReleaseEditDisplayContext::carried_files(&files)),

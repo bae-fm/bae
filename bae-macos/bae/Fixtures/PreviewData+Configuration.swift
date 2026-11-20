@@ -136,23 +136,17 @@ extension PreviewData {
                 )
             ),
             sides: [
-                BridgeReleaseEditTrackSide(
+                BridgeTrackTableSide(
                     side: .flat,
                     runs: edit.tracks.enumerated()
                         .map { index, track in
                             .track(
-                                row: BridgeReleaseEditTrackRow(
-                                    edit: track,
-                                    context: releaseEditTrackContext(
-                                        trackId: track.id,
-                                        index: index,
-                                        source: BridgeReleaseEditTrackSource(
-                                            fileId: "file-\(index + 1)",
-                                            name: "Track \(index + 1).flac",
-                                            layout: .file
-                                        )
-                                    ),
-                                    artists: nil
+                                row: releaseEditRow(
+                                    track,
+                                    index: index,
+                                    source: .file(
+                                        name: "Track \(index + 1).flac"
+                                    )
                                 )
                             )
                         }
@@ -177,21 +171,19 @@ extension PreviewData {
         return PreviewReleaseEdit(values: edit, draft: draft)
     }
 
-    /// One track's context beside its form row in the release editor.
-    static func releaseEditTrackContext(
-        trackId: String,
+    /// The release editor's row of the track `track`, the one at `index`,
+    /// naming `source`.
+    static func releaseEditRow(
+        _ track: BridgeRawTrackEdit,
         index: Int,
-        source: BridgeReleaseEditTrackSource
-    ) -> BridgeReleaseEditTrackContext {
-        BridgeReleaseEditTrackContext(
-            trackId: trackId,
+        source: BridgeTrackSource
+    ) -> BridgeTrackTableRow {
+        tableRow(
+            track,
             source: source,
-            startClock: BridgeDurationClock.length(ms: 0),
-            durationClock: BridgeDurationClock.length(
-                ms: UInt64(180_000 + index * 12_000)
-            ),
-            listedLength: nil,
-            positionText: String(index + 1)
+            audition: .libraryTrack,
+            position: String(index + 1),
+            lengthMs: UInt64(180_000 + index * 12_000)
         )
     }
 
@@ -376,14 +368,14 @@ actor PreviewReleaseLibrary {
                     var side = side
                     side.runs = side.runs.map { run in
                         guard
-                            case .sheet(var sheet, let source, let rows) = run,
-                            sheet.fileId == sheetFileId,
+                            case .sheet(var sheet, let rows) = run,
+                            sheet.sheetId == sheetFileId,
                             let choice = sheet.sideChoices.first(where: {
                                 $0.side == picked
                             })
                         else { return run }
-                        sheet.place = choice
-                        return .sheet(sheet: sheet, source: source, rows: rows)
+                        sheet.assigned = choice
+                        return .sheet(sheet: sheet, rows: rows)
                     }
                     return side
                 }
@@ -405,21 +397,23 @@ actor PreviewReleaseLibrary {
                     var side = side
                     side.runs = side.runs.map { run in
                         guard
-                            case .sheet(var sheet, var source, let rows) = run,
-                            sheet.fileId == sheetFileId,
-                            let option = sheet.audioOptions.first(where: {
+                            case .sheet(var sheet, let rows) = run,
+                            sheet.sheetId == sheetFileId,
+                            case .one(var line) = sheet.boundAudio,
+                            let option = line.options.first(where: {
                                 $0.fileId == audioFileId
                             })
                         else { return run }
-                        sheet.audioOptions = sheet.audioOptions.map {
-                            var option = $0
-                            option.bound = option.fileId == audioFileId
-                            return option
-                        }
-                        source.fileId = option.fileId
-                        source.name = option.name
+                        line.fileId = option.fileId
+                        sheet.boundAudio = .one(reference: line)
+                        sheet.bound = .describes(
+                            container: BridgeMappingContainer(
+                                fileId: option.fileId,
+                                name: option.name
+                            )
+                        )
                         picked.append(option.name)
-                        return .sheet(sheet: sheet, source: source, rows: rows)
+                        return .sheet(sheet: sheet, rows: rows)
                     }
                     return side
                 }

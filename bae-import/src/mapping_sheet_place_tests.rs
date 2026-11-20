@@ -11,7 +11,7 @@ async fn a_sheet_place_menu_keeps_the_assigned_disc_available() {
     let mut files = scan(tmp.path());
     assign_discs(&mut files, &[("disc.cue", 2)]);
     let table = blank_table(&files).await;
-    let [MappingTrackRun::Sheet { sheet, .. }] = runs(&table).as_slice() else {
+    let [TrackTableRun::Sheet { sheet, .. }] = runs(&table).as_slice() else {
         panic!("the selected CUE groups its tracks");
     };
     assert!(sheet.side_choices.iter().any(|choice| choice.side.medium == 2));
@@ -36,10 +36,10 @@ async fn a_sheet_place_menu_counts_up_to_the_resolved_sheets() {
     let menus: Vec<Vec<bae_types::mediums::TrackSide>> = runs(&table)
         .into_iter()
         .map(|run| match run {
-            MappingTrackRun::Sheet { sheet, .. } => {
+            TrackTableRun::Sheet { sheet, .. } => {
                 sheet.side_choices.iter().map(|choice| choice.heading.clone()).collect()
             }
-            MappingTrackRun::Tracks(_) => panic!("each CUE groups its tracks"),
+            TrackTableRun::Track(_) => panic!("each CUE groups its tracks"),
         })
         .collect();
     let discs: Vec<_> =
@@ -63,7 +63,7 @@ async fn a_sheet_place_menu_offers_each_side_of_a_record() {
         .expect("the place preserves a valid candidate");
     let draft = numbered_draft(&files, record(), &[(1, 2, 1), (1, 2, 2)]);
     let table = mapping_table(&files, &draft).await.unwrap();
-    let [MappingTrackRun::Sheet { sheet, .. }] = runs(&table).as_slice() else {
+    let [TrackTableRun::Sheet { sheet, .. }] = runs(&table).as_slice() else {
         panic!("the selected CUE groups its tracks");
     };
     let sided = |letter: &str| TrackSide::Sided { side_letter: letter.to_string() };
@@ -99,7 +99,7 @@ async fn a_sheet_on_a_later_side_of_a_disc_names_the_disc() {
         .apply_candidate_file_edits(&CandidateFileEdits { sheet_places, ..Default::default() })
         .expect("the place preserves a valid candidate");
     let table = blank_table(&files).await;
-    let [MappingTrackRun::Sheet { sheet, .. }] = runs(&table).as_slice() else {
+    let [TrackTableRun::Sheet { sheet, .. }] = runs(&table).as_slice() else {
         panic!("the selected CUE groups its tracks");
     };
     assert_eq!(

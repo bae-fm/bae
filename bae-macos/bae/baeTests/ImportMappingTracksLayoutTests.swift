@@ -23,7 +23,7 @@ struct ImportMappingTracksLayoutTests {
         let size = NSSize(width: tableWidth, height: 40)
         try await SnapshotTestSupport.withHostedWindow(
             MacImportTrackRow(
-                mapping: pairedMapping,
+                row: pairedMapping,
                 columns: columns,
                 previewingTarget: nil,
                 editingCommands: EditingCommitCommands(),
@@ -78,7 +78,7 @@ struct ImportMappingTracksLayoutTests {
         let size = NSSize(width: tableWidth, height: 40)
         try await SnapshotTestSupport.withHostedWindow(
             MacImportTrackRow(
-                mapping: pairedMapping,
+                row: pairedMapping,
                 columns: columns,
                 previewingTarget: nil,
                 editingCommands: EditingCommitCommands(),
@@ -166,21 +166,15 @@ struct ImportMappingTracksLayoutTests {
         let columns = ReleaseMetadataTrackColumns.resolved(
             tableWidth: ReleaseMetadataTrackColumns.idealTableWidth
         )
-        let mapping = BridgeTrackMapping(
-            source: pairedMapping.source,
-            track: pairedMapping.track,
-            position: "1",
-            length: BridgeDurationClock.length(ms: 180_000),
-            listedLength: nil,
-            artists: nil
-        )
+        var mapping = pairedMapping
+        mapping.artists = nil
         let size = NSSize(
             width: ReleaseMetadataTrackColumns.idealTableWidth,
             height: 40
         )
         try await SnapshotTestSupport.withHostedWindow(
             MacImportTrackRow(
-                mapping: mapping,
+                row: mapping,
                 columns: columns,
                 previewingTarget: nil,
                 editingCommands: EditingCommitCommands(),
@@ -200,14 +194,8 @@ struct ImportMappingTracksLayoutTests {
 
     @Test("A row shows its measured length and, apart, the listed one")
     func rowShowsItsMeasuredLengthAndTheListedOne() throws {
-        let mapping = BridgeTrackMapping(
-            source: pairedMapping.source,
-            track: pairedMapping.track,
-            position: "1",
-            length: BridgeDurationClock.length(ms: 180_000),
-            listedLength: BridgeDurationClock.length(ms: 210_000),
-            artists: nil
-        )
+        var mapping = pairedMapping
+        mapping.listedLength = BridgeDurationClock.length(ms: 210_000)
 
         #expect(DurationClock.label(mapping.length) == "3:00")
         #expect(
@@ -237,10 +225,10 @@ extension ImportMappingTracksLayoutTests {
     ) async throws {
         let size = NSSize(width: tableWidth, height: 90)
         try await SnapshotTestSupport.withHostedWindow(
-            ImportPaneSheetCaption(
+            ReleaseSheetCaption(
                 sheet: sheet(associated: associated),
-                showsPlaceMenu: true,
                 actions: actions(recording: MappingTrackActionRecorder())
+                    .sheetCaption
             )
             .padding(.horizontal, ImportMappingColumns.rowPadding)
             .frame(width: tableWidth, height: size.height, alignment: .leading),
@@ -266,29 +254,6 @@ extension ImportMappingTracksLayoutTests {
             )
         }
     }
-
-    /// One sheet is one disc, so the pill would only restate it.
-    @MainActor
-    @Test("a lone sheet's caption has no disc pill")
-    func loneSheetCaptionHasNoDiscPill() async throws {
-        let size = NSSize(
-            width: ReleaseMetadataTrackColumns.idealTableWidth,
-            height: 90
-        )
-        try await SnapshotTestSupport.withHostedWindow(
-            ImportPaneSheetCaption(
-                sheet: sheet(associated: true),
-                showsPlaceMenu: false,
-                actions: actions(recording: MappingTrackActionRecorder())
-            )
-            .frame(width: size.width, height: size.height, alignment: .leading),
-            size: size
-        ) { _, host in
-            try await SnapshotTestSupport.settle(host)
-
-            #expect(HostedMenus.controls(in: host).count == 1)
-        }
-    }
 }
 
 extension ImportMappingTracksLayoutTests {
@@ -297,14 +262,12 @@ extension ImportMappingTracksLayoutTests {
         let table = BridgeMappingTable(
             images: [],
             trackSides: [
-                BridgeMappingTrackSide(
+                BridgeTrackTableSide(
                     side: .flat,
                     runs: [
                         .sheet(
                             sheet: sheet(associated: true),
-                            entries: [
-                                sheetEntryMapping(number: 1)
-                            ]
+                            rows: [sheetEntryMapping(number: 1)]
                         )
                     ]
                 )
@@ -314,13 +277,13 @@ extension ImportMappingTracksLayoutTests {
         )
 
         guard
-            case .sheet(let sheet, let entries) = table.trackSides[0].runs[0]
+            case .sheet(let sheet, let rows) = table.trackSides[0].runs[0]
         else {
             Issue.record("expected a sheet group")
             return
         }
         #expect(sheet.sheetId == "descriptor.cue")
-        #expect(entries.map(\.rowId) == ["entry:descriptor.cue:0"])
+        #expect(rows.map(\.track.id) == ["sheet-track-1"])
     }
 
     @MainActor
@@ -330,6 +293,7 @@ extension ImportMappingTracksLayoutTests {
             let host = NSHostingView(
                 rootView: ImportMappingSourceCell(
                     source: sheetEntryMapping(number: number).source,
+                    previewTarget: nil,
                     previewingTarget: nil,
                     actions: actions(recording: MappingTrackActionRecorder())
                 )
@@ -371,17 +335,8 @@ extension ImportMappingTracksLayoutTests {
         )
     }
 
-    private var pairedMapping: BridgeTrackMapping {
-        BridgeTrackMapping(
-            source: .file(
-                file: BridgeMappingFile(
-                    fileId: "track.flac",
-                    name: "track.flac",
-                    size: 24_000_000,
-                    previewTarget: previewTarget,
-                    role: .audio
-                )
-            ),
+    private var pairedMapping: BridgeTrackTableRow {
+        BridgeTrackTableRow(
             track: BridgeRawTrackEdit(
                 id: "track-1",
                 title: "Track Title",
@@ -390,6 +345,8 @@ extension ImportMappingTracksLayoutTests {
                 ),
                 file: .standalone(fileId: "track.flac")
             ),
+            source: .file(name: "track.flac"),
+            audition: .preview(target: previewTarget),
             position: "1",
             length: BridgeDurationClock.length(ms: 180_000),
             listedLength: nil,
@@ -404,6 +361,7 @@ extension ImportMappingTracksLayoutTests {
             options: [
                 BridgeSheetBindingOption(
                     fileId: longAudioName,
+                    name: longAudioName,
                     offer: .offered
                 )
             ]
@@ -412,13 +370,11 @@ extension ImportMappingTracksLayoutTests {
             sheetId: "descriptor.cue",
             name:
                 "A long descriptor filename that must remain inside Source.cue",
-            size: 2_048,
             bound: associated
                 ? .describes(
                     container: BridgeMappingContainer(
                         fileId: longAudioName,
-                        name: longAudioName,
-                        size: 460_000_000
+                        name: longAudioName
                     )
                 )
                 : .unresolved(requested: [longAudioName]),
@@ -426,28 +382,15 @@ extension ImportMappingTracksLayoutTests {
                 ? .none : .one(reference: reference),
             unboundReferences: reference.fileId == nil ? [reference] : nil,
             assigned: .disc(1),
-            sideChoices: BridgeSheetSideChoice.discs(2)
+            sideChoices: BridgeSheetSideChoice.discs(2),
+            ignorable: true
         )
     }
 
     /// The sheet's entry `number`, which starts `number - 1` seconds into
     /// its audio.
-    private func sheetEntryMapping(number: UInt32) -> BridgeTrackMapping {
-        let entry = BridgeMappingEntry(
-            sheetId: "descriptor.cue",
-            index: number - 1,
-            number: number,
-            start: BridgeDurationClock.length(ms: UInt64(number - 1) * 1_000),
-            containerId: longAudioName,
-            previewTarget: BridgePreviewTarget(
-                path: audioPath,
-                name: "track.flac",
-                startSample: UInt64(number - 1) * 44_100,
-                endSample: UInt64(number) * 44_100
-            )
-        )
-        return BridgeTrackMapping(
-            source: .sheetEntry(entry: entry),
+    private func sheetEntryMapping(number: UInt32) -> BridgeTrackTableRow {
+        BridgeTrackTableRow(
             track: BridgeRawTrackEdit(
                 id: "sheet-track-\(number)",
                 title: "Track Title",
@@ -455,9 +398,22 @@ extension ImportMappingTracksLayoutTests {
                     assignments: trackArtists.credits.map(\.credited)
                 ),
                 file: .sheetSlice(
-                    fileId: entry.containerId,
-                    sheetId: entry.sheetId,
-                    index: entry.index
+                    fileId: longAudioName,
+                    sheetId: "descriptor.cue",
+                    index: number - 1
+                )
+            ),
+            source: .sheetSlice(
+                start: BridgeDurationClock.length(
+                    ms: UInt64(number - 1) * 1_000
+                )
+            ),
+            audition: .preview(
+                target: BridgePreviewTarget(
+                    path: audioPath,
+                    name: "track.flac",
+                    startSample: UInt64(number - 1) * 44_100,
+                    endSample: UInt64(number) * 44_100
                 )
             ),
             position: String(number),
@@ -479,7 +435,7 @@ extension ImportMappingTracksLayoutTests {
         let recorder = MappingTrackActionRecorder()
         return try await SnapshotTestSupport.withHostedWindow(
             MacImportTrackRow(
-                mapping: pairedMapping,
+                row: pairedMapping,
                 columns: columns,
                 previewingTarget: previewingTarget,
                 editingCommands: EditingCommitCommands(),
@@ -509,12 +465,13 @@ extension ImportMappingTracksLayoutTests {
 
     @MainActor
     private func sourceCellHeight(
-        source: BridgeMappingSource,
+        source: BridgeTrackSource,
         previewing: BridgePreviewTarget?
     ) -> CGFloat {
         let host = NSHostingView(
             rootView: ImportMappingSourceCell(
                 source: source,
+                previewTarget: previewTarget,
                 previewingTarget: previewing,
                 actions: actions(recording: MappingTrackActionRecorder())
             )

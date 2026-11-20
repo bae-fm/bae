@@ -81,31 +81,17 @@ extension PreviewData {
                 )
             ),
             sides: [
-                BridgeReleaseEditTrackSide(
+                BridgeTrackTableSide(
                     side: .flat,
                     runs: northboundTracks.enumerated()
                         .map { index, track in
                             .track(
-                                row: BridgeReleaseEditTrackRow(
-                                    edit: edit.tracks[index],
-                                    context: BridgeReleaseEditTrackContext(
-                                        trackId: edit.tracks[index].id,
-                                        source: BridgeReleaseEditTrackSource(
-                                            fileId: track.file,
-                                            name: track.file,
-                                            layout: .file
-                                        ),
-                                        startClock: BridgeDurationClock.length(
-                                            ms: 0
-                                        ),
-                                        durationClock:
-                                            BridgeDurationClock.length(
-                                                ms: track.durationMs
-                                            ),
-                                        listedLength: nil,
-                                        positionText: "\(index + 1)"
-                                    ),
-                                    artists: nil
+                                row: tableRow(
+                                    edit.tracks[index],
+                                    source: .file(name: track.file),
+                                    audition: .libraryTrack,
+                                    position: "\(index + 1)",
+                                    lengthMs: track.durationMs
                                 )
                             )
                         }
@@ -304,8 +290,7 @@ extension PreviewData {
     /// The audio the first of Field Recordings' sheets describes.
     static let fieldRecordingsContainer = BridgeMappingContainer(
         fileId: "Field Recordings CD1.flac",
-        name: "Field Recordings CD1.flac",
-        size: 340_000_000
+        name: "Field Recordings CD1.flac"
     )
 
     /// One entry of a sheet: its title, the seconds its slice of the audio
@@ -346,6 +331,7 @@ extension PreviewData {
             options: [
                 BridgeSheetBindingOption(
                     fileId: fieldRecordingsContainer.fileId,
+                    name: fieldRecordingsContainer.fileId,
                     offer: .offered
                 )
             ]
@@ -353,57 +339,46 @@ extension PreviewData {
         return BridgeSheetGroup(
             sheetId: name,
             name: name,
-            size: 1_200,
             bound: bound,
             boundAudio: reference.fileId == nil
                 ? .none : .one(reference: reference),
             unboundReferences: reference.fileId == nil ? [reference] : nil,
             assigned: .disc(UInt32(number)),
-            sideChoices: BridgeSheetSideChoice.discs(2)
+            sideChoices: BridgeSheetSideChoice.discs(2),
+            ignorable: true
         )
     }
 
     /// The first sheet's entries as mapping rows, each slice starting where
     /// the one before it ends.
     static func fieldRecordingsMappings(
-        sheet: BridgeSheetGroup,
         edit: BridgeRawReleaseEdit
-    ) -> [BridgeTrackMapping] {
+    ) -> [BridgeTrackTableRow] {
         let container = fieldRecordingsContainer
         var startSample: UInt64 = 0
         return fieldRecordingsEntries.enumerated()
             .map { index, entry in
                 let from = startSample
                 startSample += entry.seconds * 44_100
-                return BridgeTrackMapping(
-                    source: .sheetEntry(
-                        entry: BridgeMappingEntry(
-                            sheetId: sheet.sheetId,
-                            index: UInt32(index),
-                            number: UInt32(index + 1),
-                            start: BridgeDurationClock.length(
-                                ms: from * 1_000 / 44_100
-                            ),
-                            containerId: container.fileId,
-                            previewTarget: BridgePreviewTarget(
-                                path: fakePath(container.name),
-                                name: container.name,
-                                startSample: from,
-                                endSample: startSample
-                            )
+                return tableRow(
+                    edit.tracks[index],
+                    source: .sheetSlice(
+                        start: BridgeDurationClock.length(
+                            ms: from * 1_000 / 44_100
                         )
                     ),
-                    track: edit.tracks[index],
-                    position: "\(index + 1)",
-                    length: BridgeDurationClock.length(
-                        ms: entry.seconds * 1_000
+                    audition: .preview(
+                        target: BridgePreviewTarget(
+                            path: fakePath(container.name),
+                            name: container.name,
+                            startSample: from,
+                            endSample: startSample
+                        )
                     ),
-                    listedLength: entry.seconds == entry.listedSeconds
-                        ? nil
-                        : BridgeDurationClock.length(
-                            ms: entry.listedSeconds * 1_000
-                        ),
-                    artists: nil
+                    position: "\(index + 1)",
+                    lengthMs: entry.seconds * 1_000,
+                    listedMs: entry.seconds == entry.listedSeconds
+                        ? nil : entry.listedSeconds * 1_000
                 )
             }
     }
@@ -481,17 +456,14 @@ extension PreviewData {
             mapping: BridgeMappingTable(
                 images: [],
                 trackSides: [
-                    BridgeMappingTrackSide(
+                    BridgeTrackTableSide(
                         side: .flat,
                         runs: [
                             .sheet(
                                 sheet: sheetOne,
-                                entries: fieldRecordingsMappings(
-                                    sheet: sheetOne,
-                                    edit: edit
-                                )
+                                rows: fieldRecordingsMappings(edit: edit)
                             ),
-                            .sheet(sheet: sheetTwo, entries: []),
+                            .sheet(sheet: sheetTwo, rows: []),
                         ]
                     )
                 ],

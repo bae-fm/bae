@@ -307,6 +307,7 @@ fn a_sheet_whose_timing_exceeds_its_audio_leaves_the_container_standalone() {
         [crate::folder_scanner::SheetBindingOption {
             file_id,
             offer: SheetBindingOffer::RefusedTiming,
+            ..
         }] if file_id == "CDImage.flac"
     ));
 }

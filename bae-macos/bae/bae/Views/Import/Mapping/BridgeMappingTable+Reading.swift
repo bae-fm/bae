@@ -1,41 +1,42 @@
 import BaeKit
 import Foundation
 
-/// Reading the mapping table. Every value here is one core already decided —
+/// Reading the track table. Every value here is one core already decided —
 /// which track a row commits, what its source is, which catalog message names
 /// the tally — or the table's own rows walked in order.
 
-extension BridgeMappingSource {
-    /// The exact local source window auditioning this row plays.
-    var previewTarget: BridgePreviewTarget? {
+extension BridgeTrackTableRun {
+    /// The rows this run draws, in table order.
+    var rows: [BridgeTrackTableRow] {
         switch self {
-        case .file(let file): file.previewTarget
-        case .sheetEntry(let entry): entry.previewTarget
+        case .track(let row): [row]
+        case .sheet(_, let rows): rows
         }
     }
 }
 
-extension BridgeMappingTrackRun {
-    /// The source-to-track mappings this run carries.
-    var mappings: [BridgeTrackMapping] {
-        switch self {
-        case .tracks(let mappings): mappings
-        case .sheet(_, let entries): entries
-        }
-    }
-}
-
-extension BridgeMappingTrackSide {
-    /// The source-to-track mappings on this side, in table order.
-    var mappings: [BridgeTrackMapping] {
-        runs.flatMap(\.mappings)
+extension BridgeTrackTableSide {
+    /// The rows on this side, in table order.
+    var rows: [BridgeTrackTableRow] {
+        runs.flatMap(\.rows)
     }
 }
 
 extension BridgeMappingTable {
-    /// Every source-to-track mapping in table order.
-    var trackMappings: [BridgeTrackMapping] {
-        trackSides.flatMap(\.mappings)
+    /// Every track row in table order.
+    var trackRows: [BridgeTrackTableRow] {
+        trackSides.flatMap(\.rows)
+    }
+}
+
+extension BridgeTrackAudition {
+    /// The window of a folder's file the preview player plays for the row;
+    /// `nil` for a library release's row, which the library plays.
+    var previewTarget: BridgePreviewTarget? {
+        switch self {
+        case .preview(let target): target
+        case .libraryTrack: nil
+        }
     }
 }
 

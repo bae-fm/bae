@@ -94,7 +94,7 @@ async fn the_pane_shows_each_tracks_stated_length_after_a_file_decision() {
         .mapping
         .track_sides
         .iter()
-        .flat_map(crate::MappingTrackSide::mappings)
+        .flat_map(crate::TrackTableSide::rows)
         .collect();
     assert_eq!(rows.len(), 2);
     assert_eq!(rows[0].listed_length_ms, Some(111_000));

@@ -27,9 +27,10 @@ pub use raw_release_edit::{
 };
 #[cfg(desktop)]
 pub use release_edit_display::ReleaseEditDisplayContext;
+#[cfg(desktop)]
+pub(crate) use release_edit_display::{lay_out_tracks, ReleaseEditTrackRow};
 pub use release_edit_display::{
-    ReleaseEditAudioOption, ReleaseEditLoadError, ReleaseEditSheet, ReleaseEditTrackContext,
-    ReleaseEditTrackRow, ReleaseEditTrackRun, ReleaseEditTrackSide, ReleaseEditTrackSource,
+    ReleaseEditLoadError, ReleaseEditTrackContext, ReleaseEditTrackSource,
 };
 #[cfg(desktop)]
 mod release_link;

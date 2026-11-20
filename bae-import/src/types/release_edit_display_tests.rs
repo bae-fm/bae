@@ -1,4 +1,5 @@
 use super::*;
+use bae_records::source_audio::SourceAudioLayout;
 use bae_types::mediums::TrackPosition;
 
 /// The track `id` on `side`, playing `file`: carved out of it by the sheet
@@ -7,11 +8,7 @@ fn context(side: TrackSide, id: &str, file: &str, sheet: Option<&str>) -> Releas
     ReleaseEditTrackContext {
         track_id: id.to_string(),
         side,
-        source: ReleaseEditTrackSource {
-            file_id: file.to_string(),
-            name: format!("{file}.flac"),
-            layout: if sheet.is_some() { SourceAudioLayout::Cue } else { SourceAudioLayout::File },
-        },
+        source: ReleaseEditTrackSource { file_id: file.to_string(), name: format!("{file}.flac") },
         start_ms: 0,
         duration_ms: 1_000,
         listed_length_ms: None,
@@ -44,7 +41,7 @@ fn form_row(id: &str) -> crate::RawTrackEdit {
 }
 
 /// The sides of `tracks`, each beside a form row of its own.
-fn lay_out(tracks: Vec<ReleaseEditTrackContext>) -> Vec<ReleaseEditTrackSide> {
+fn lay_out(tracks: Vec<ReleaseEditTrackContext>) -> Vec<crate::TrackTableSide> {
     lay_out_on_discs(tracks, 1)
 }
 
@@ -52,13 +49,16 @@ fn lay_out(tracks: Vec<ReleaseEditTrackContext>) -> Vec<ReleaseEditTrackSide> {
 fn lay_out_on_discs(
     tracks: Vec<ReleaseEditTrackContext>,
     disc_count: u32,
-) -> Vec<ReleaseEditTrackSide> {
-    ReleaseEditTrackSide::lay_out(
-        tracks.into_iter().map(|context| ReleaseEditTrackRow {
-            edit: form_row(&context.track_id),
-            context,
-            artists: None,
-        }),
+) -> Vec<crate::TrackTableSide> {
+    lay_out_tracks(
+        tracks
+            .into_iter()
+            .map(|context| ReleaseEditTrackRow {
+                edit: form_row(&context.track_id),
+                context,
+                artists: None,
+            })
+            .collect(),
         &(1..=disc_count)
             .map(|disc| bae_records::DbSheetSideChoice {
                 side: bae_types::mediums::MediumSide::first_of(disc),
@@ -68,66 +68,71 @@ fn lay_out_on_discs(
     )
 }
 
-/// Each run as the track ids it holds, and the file a sheet run names.
-fn runs(side: &ReleaseEditTrackSide) -> Vec<(Option<&str>, Vec<&str>)> {
-    sheet_runs(side)
-        .into_iter()
-        .map(|(carving, rows)| (carving.map(|(_, file)| file), rows))
-        .collect()
-}
-
-/// A run as the sheet and file a sheet run names, and the track ids it holds.
-type SheetRun<'a> = (Option<(&'a str, &'a str)>, Vec<&'a str>);
-
-/// Each run as the track ids it holds, and the sheet and file a sheet run
-/// names.
-fn sheet_runs(side: &ReleaseEditTrackSide) -> Vec<SheetRun<'_>> {
+/// Each run as the sheet a sheet run names, and the track ids it holds.
+fn runs(side: &crate::TrackTableSide) -> Vec<(Option<&str>, Vec<&str>)> {
     side.runs
         .iter()
         .map(|run| {
-            let source = match run {
-                ReleaseEditTrackRun::Track(_) => None,
-                ReleaseEditTrackRun::Sheet { sheet, source, .. } => {
-                    Some((sheet.file_id.as_str(), source.file_id.as_str()))
-                }
+            let sheet = match run {
+                crate::TrackTableRun::Track(_) => None,
+                crate::TrackTableRun::Sheet { sheet, .. } => Some(sheet.sheet_id.as_str()),
             };
-            (source, run.rows().iter().map(|row| row.context.track_id.as_str()).collect())
+            (sheet, run.rows().iter().map(|row| row.track.id.as_str()).collect())
         })
         .collect()
 }
 
+/// The caption of the only run of `side`.
+fn only_caption(side: &crate::TrackTableSide) -> &crate::SheetGroup {
+    let [crate::TrackTableRun::Sheet { sheet, .. }] = side.runs.as_slice() else {
+        panic!("the side holds one sheet run: {:?}", side.runs);
+    };
+    sheet
+}
+
+/// A side holds a run per sheet that carves consecutive tracks on it,
+/// however few, and a run per track that plays a whole file.
 #[test]
-fn tracks_lay_out_a_side_per_run_of_one_side_and_a_run_per_sheet_file() {
-    let sheet = Some("sheet");
+fn tracks_lay_out_a_side_per_run_of_one_side_and_a_run_per_sheet() {
     let sides = lay_out(vec![
-        context(side("A"), "a1", "image-a", sheet),
-        context(side("A"), "a2", "image-a", sheet),
-        context(side("A"), "a3", "image-a", sheet),
-        context(side("A"), "a4", "loose", None),
-        context(side("B"), "b1", "image-b", sheet),
-        context(side("B"), "b2", "image-b", sheet),
-        context(side("B"), "b3", "image-c", sheet),
-        context(side("B"), "b4", "image-c", sheet),
-        context(side("B"), "b5", "image-d", sheet),
+        context(side("A"), "a1", "image-a", Some("first")),
+        context(side("A"), "a2", "image-a", Some("first")),
+        context(side("A"), "a3", "loose", None),
+        context(side("B"), "b1", "image-b", Some("second")),
+        context(side("B"), "b2", "image-b", Some("second")),
+        context(side("B"), "b3", "image-c", Some("third")),
     ]);
 
     assert_eq!(sides.iter().map(|side| &side.side).collect::<Vec<_>>(), [&side("A"), &side("B")]);
-    assert_eq!(runs(&sides[0]), [(Some("image-a"), vec!["a1", "a2", "a3"]), (None, vec!["a4"]),]);
-    // Two sheets back to back are two runs; a file one track alone is
-    // carved from stays in that track's row.
+    assert_eq!(runs(&sides[0]), [(Some("first"), vec!["a1", "a2"]), (None, vec!["a3"])]);
+    assert_eq!(runs(&sides[1]), [(Some("second"), vec!["b1", "b2"]), (Some("third"), vec!["b3"])]);
+}
+
+/// A track that plays a whole file names it in its row, and a track a
+/// sheet carves gives where it starts; each plays the library's release
+/// from itself.
+#[test]
+fn a_row_names_its_file_or_its_start() {
+    let mut carved = context(TrackSide::Flat, "t2", "image", Some("sheet"));
+    carved.start_ms = 61_000;
+    let sides = lay_out(vec![context(TrackSide::Flat, "t1", "loose", None), carved]);
+    let [crate::TrackTableRun::Track(row), crate::TrackTableRun::Sheet { rows, .. }] =
+        sides[0].runs.as_slice()
+    else {
+        panic!("a file run, then a sheet run: {:?}", sides[0].runs);
+    };
+    assert_eq!(row.source, crate::TrackSource::File { name: "loose.flac".to_string() });
+    assert_eq!(row.audition, crate::TrackAudition::LibraryTrack);
     assert_eq!(
-        runs(&sides[1]),
-        [
-            (Some("image-b"), vec!["b1", "b2"]),
-            (Some("image-c"), vec!["b3", "b4"]),
-            (None, vec!["b5"]),
-        ]
+        rows.iter().map(|row| &row.source).collect::<Vec<_>>(),
+        [&crate::TrackSource::SheetSlice { start_ms: 61_000 }]
     );
 }
 
-/// A sheet's run offers the sheet every side and disc the release holds.
+/// A sheet's caption offers every side and disc the release holds, and
+/// keeps its tracks, so it offers no *Ignored*.
 #[test]
-fn a_sheet_run_offers_every_disc_of_the_release() {
+fn a_sheet_caption_offers_every_disc_of_the_release() {
     let sides = lay_out_on_discs(
         vec![
             context(side("A"), "a1", "image", Some("sheet")),
@@ -135,23 +140,25 @@ fn a_sheet_run_offers_every_disc_of_the_release() {
         ],
         3,
     );
-    let [ReleaseEditTrackRun::Sheet { sheet, .. }] = sides[0].runs.as_slice() else {
-        panic!("the sheet carves both tracks: {:?}", sides[0].runs);
-    };
-    assert_eq!(sheet.place.side, bae_types::mediums::MediumSide::first_of(1));
+    let sheet = only_caption(&sides[0]);
+    assert_eq!(
+        sheet.assigned.as_ref().map(|choice| choice.side),
+        Some(bae_types::mediums::MediumSide::first_of(1))
+    );
     assert_eq!(
         sheet.side_choices.iter().map(|choice| choice.side.medium).collect::<Vec<_>>(),
         [1, 2, 3]
     );
+    assert!(!sheet.ignorable);
 }
 
-/// A sheet's run offers the audio files its line can play from as the
+/// A sheet's caption offers the audio files its line can play from as the
 /// import pane offers them: a file in a codec bae can't carve is refused
 /// naming the codec, and one the line's tracks don't fit is refused for its
 /// timing.
 #[test]
-fn a_sheet_run_offers_its_lines_audio_files_as_the_import_pane_does() {
-    use crate::folder_scanner::SheetBindingOffer;
+fn a_sheet_caption_offers_its_lines_audio_files_as_the_import_pane_does() {
+    use crate::folder_scanner::{SheetBindingOffer, SheetBindingOption, SheetReferenceOptions};
     use bae_util::content_type::ContentType;
     let option = |file_id: &str, content_type: ContentType, bound: bool, fits: bool| {
         bae_records::DbSheetAudioOption {
@@ -174,23 +181,61 @@ fn a_sheet_run_offers_its_lines_audio_files_as_the_import_pane_does() {
         ];
     }
     let sides = lay_out(tracks);
-    let [ReleaseEditTrackRun::Sheet { sheet, .. }] = sides[0].runs.as_slice() else {
-        panic!("the sheet carves both tracks: {:?}", sides[0].runs);
+    let sheet = only_caption(&sides[0]);
+    let choice = |file_id: &str, offer| SheetBindingOption {
+        file_id: file_id.to_string(),
+        name: format!("{file_id} name"),
+        offer,
     };
     assert_eq!(
-        sheet
-            .audio_options
+        sheet.bound,
+        crate::SheetBound::Describes(crate::MappingContainer {
+            file_id: "image".to_string(),
+            name: "image.flac".to_string(),
+        })
+    );
+    assert_eq!(
+        sheet.bound_audio,
+        crate::SheetBoundAudio::One(SheetReferenceOptions {
+            file_reference: "image.flac".to_string(),
+            file_id: Some("image".to_string()),
+            options: vec![
+                choice("image", SheetBindingOffer::Offered),
+                choice("lossy", SheetBindingOffer::RefusedCodec { codec: "MP3".to_string() }),
+                choice("short", SheetBindingOffer::RefusedTiming),
+            ],
+        })
+    );
+    assert_eq!(sheet.unbound_references, None);
+}
+
+/// A sheet whose lines play from two files heads all its tracks once, and
+/// its caption offers a choice of file for each line, in the order its
+/// tracks reach them.
+#[test]
+fn a_sheet_of_two_lines_heads_its_tracks_once() {
+    let sides = lay_out(vec![
+        context(TrackSide::Flat, "t1", "image-1", Some("sheet")),
+        context(TrackSide::Flat, "t2", "image-1", Some("sheet")),
+        context(TrackSide::Flat, "t3", "image-2", Some("sheet")),
+    ]);
+    assert_eq!(runs(&sides[0]), [(Some("sheet"), vec!["t1", "t2", "t3"])]);
+    let sheet = only_caption(&sides[0]);
+    assert_eq!(sheet.bound, crate::SheetBound::DescribesFiles { audio_file_count: 2 });
+    let crate::SheetBoundAudio::Several(lines) = &sheet.bound_audio else {
+        panic!("each line has its own choices: {:?}", sheet.bound_audio);
+    };
+    assert_eq!(
+        lines
             .iter()
-            .map(|option| (option.file_id.as_str(), option.bound, option.offer.clone()))
+            .map(|line| (line.file_reference.as_str(), line.file_id.as_deref()))
             .collect::<Vec<_>>(),
-        [
-            ("image", true, SheetBindingOffer::Offered),
-            ("lossy", false, SheetBindingOffer::RefusedCodec { codec: "MP3".to_string() }),
-            ("short", false, SheetBindingOffer::RefusedTiming),
-        ]
+        [("image-1.flac", Some("image-1")), ("image-2.flac", Some("image-2"))]
     );
 }
 
+/// A sheet the release splits across sides heads its tracks again on the
+/// next side.
 #[test]
 fn a_sheet_run_ends_at_its_side() {
     let sides = lay_out(vec![
@@ -199,14 +244,13 @@ fn a_sheet_run_ends_at_its_side() {
         context(side("B"), "b1", "image", Some("sheet")),
     ]);
 
-    assert_eq!(runs(&sides[0]), [(Some("image"), vec!["a1", "a2"])]);
-    assert_eq!(runs(&sides[1]), [(None, vec!["b1"])]);
+    assert_eq!(runs(&sides[0]), [(Some("sheet"), vec!["a1", "a2"])]);
+    assert_eq!(runs(&sides[1]), [(Some("sheet"), vec!["b1"])]);
 }
 
-/// A sheet run names the sheet that carves its tracks, and two sheets that
-/// carve one file make a run each.
+/// Two sheets that carve one file make a run each.
 #[test]
-fn a_sheet_run_holds_the_tracks_one_sheet_carves_from_one_file() {
+fn a_sheet_run_holds_the_tracks_one_sheet_carves() {
     let sides = lay_out(vec![
         context(TrackSide::Flat, "t1", "image", Some("first")),
         context(TrackSide::Flat, "t2", "image", Some("first")),
@@ -215,11 +259,8 @@ fn a_sheet_run_holds_the_tracks_one_sheet_carves_from_one_file() {
     ]);
 
     assert_eq!(
-        sheet_runs(&sides[0]),
-        [
-            (Some(("first", "image")), vec!["t1", "t2"]),
-            (Some(("second", "image")), vec!["t3", "t4"]),
-        ]
+        runs(&sides[0]),
+        [(Some("first"), vec!["t1", "t2"]), (Some("second"), vec!["t3", "t4"])]
     );
 }
 

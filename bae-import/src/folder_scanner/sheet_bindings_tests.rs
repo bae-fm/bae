@@ -80,10 +80,12 @@ fn audio_a_sheet_cannot_use_is_refused_at_offer_time_with_the_codec_named() {
         vec![
             SheetBindingOption {
                 file_id: "cd.flac".to_string(),
+                name: "cd.flac".to_string(),
                 offer: SheetBindingOffer::Offered,
             },
             SheetBindingOption {
                 file_id: "cd.mp3".to_string(),
+                name: "cd.mp3".to_string(),
                 offer: SheetBindingOffer::RefusedCodec { codec: "MP3".to_string() },
             },
         ],

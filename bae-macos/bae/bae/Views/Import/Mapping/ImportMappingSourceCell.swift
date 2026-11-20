@@ -1,84 +1,41 @@
 import BaeKit
 import SwiftUI
 
-/// The left half of a mapping row: what the folder offers for it — a file
-/// whole, or one entry of a track sheet.
+/// The left half of an import's track row: what the folder offers for it, a
+/// file whole or where one entry of a track sheet starts, and the button
+/// that auditions it.
 struct ImportMappingSourceCell: View {
     static let auditionTargetSize = ThemeSize.hitTarget
 
-    let source: BridgeMappingSource
+    let source: BridgeTrackSource
+    /// The window of the folder's file the row auditions.
+    let previewTarget: BridgePreviewTarget?
     let previewingTarget: BridgePreviewTarget?
     let actions: ImportMappingActions
 
     private var isPreviewing: Bool {
-        guard let previewTarget = source.previewTarget else { return false }
+        guard let previewTarget else { return false }
         return previewTarget == previewingTarget
     }
 
     var body: some View {
-        Group {
-            switch source {
-            case .file(let file):
-                fileCell(file)
-            case .sheetEntry(let entry):
-                entryCell(entry)
+        HStack(spacing: ThemeSpace.compact) {
+            if let previewTarget {
+                auditionButton(target: previewTarget)
             }
+            switch source {
+            case .file(let name):
+                Text(name)
+                    .themeText(.mono)
+                    .cutLine(.fileName)
+            case .sheetSlice(let start):
+                // The entry's number is in the `#` column and its title in
+                // the title column; the image it starts in is the caption's.
+                TrackStartText(start: start)
+            }
+            Spacer(minLength: 0)
         }
         .frame(minHeight: Self.auditionTargetSize)
-    }
-
-    private func fileCell(_ file: BridgeMappingFile) -> some View {
-        HStack(spacing: ThemeSpace.compact) {
-            if let previewTarget = source.previewTarget {
-                auditionButton(target: previewTarget)
-            }
-            nameCell(file)
-            if let damage = file.damageText {
-                Text(damage)
-                    .themeText(.fine)
-                    .foregroundStyle(Theme.warning)
-                    .fixedSize()
-            }
-            Spacer(minLength: 0)
-        }
-    }
-
-    /// The file name in mono; a document's name opens it in the viewer.
-    @ViewBuilder
-    private func nameCell(_ file: BridgeMappingFile) -> some View {
-        if let open = openAction(file) {
-            Button(action: open) {
-                nameLine(file).contentShape(Rectangle())
-            }
-            .buttonStyle(.accentPlain)
-        }
-        else {
-            nameLine(file)
-        }
-    }
-
-    private func nameLine(_ file: BridgeMappingFile) -> some View {
-        Text(file.name)
-            .themeText(.mono)
-            .cutLine(.fileName)
-    }
-
-    private func openAction(_ file: BridgeMappingFile) -> (() -> Void)? {
-        guard file.role == .document else { return nil }
-        return { actions.openDocument(file.name, file.fileId) }
-    }
-
-    /// One track sheet entry's play button and where it starts in the image
-    /// its sheet's caption names; its number is in the `#` column and its
-    /// title in the title column.
-    private func entryCell(_ entry: BridgeMappingEntry) -> some View {
-        HStack(spacing: ThemeSpace.compact) {
-            if let previewTarget = source.previewTarget {
-                auditionButton(target: previewTarget)
-            }
-            TrackStartText(start: entry.start)
-            Spacer(minLength: 0)
-        }
     }
 
     private func auditionButton(target: BridgePreviewTarget) -> some View {

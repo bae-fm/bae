@@ -301,12 +301,12 @@ pub struct ReleaseEditDraft {
     pub cover: Option<bae_records::ImageRef>,
     /// The summary of the release's audio.
     pub source_audio: Option<bae_records::source_audio::SourceAudioSummary>,
-    /// The release's tracks in the sides and runs the editor's table draws,
-    /// each beside the form row that edits it, with its picked artists as
+    /// The release's tracks on the track table's sides and runs, each row
+    /// the form row that edits the track, with its picked artists as
     /// the library holds them now and each one the library no longer holds
     /// as a credit of the values the form holds for it; `None` when the
     /// release has no tracks.
-    pub sides: Option<Vec<crate::ReleaseEditTrackSide>>,
+    pub sides: Option<Vec<crate::TrackTableSide>>,
     /// The files the release carries that no track plays from, in the
     /// release's file order; `None` when it carries none.
     pub files: Option<Vec<crate::MappingFile>>,

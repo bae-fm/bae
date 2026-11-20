@@ -195,88 +195,6 @@ mirror_struct! {
     },
 }
 
-mirror_struct! {
-    BridgeReleaseEditTrackSource = bae_import::ReleaseEditTrackSource,
-    from_core: fn,
-    fields: { file_id, name, layout: (BridgeSourceAudioLayout) },
-}
-
-mirror_struct! {
-    BridgeReleaseEditSheet = bae_import::ReleaseEditSheet,
-    from_core: fn,
-    fields: {
-        file_id,
-        name,
-        place: (BridgeSheetSideChoice),
-        side_choices: (each BridgeSheetSideChoice),
-        file_reference,
-        audio_options: (each BridgeReleaseEditAudioOption),
-    },
-}
-
-mirror_struct! {
-    BridgeReleaseEditAudioOption = bae_import::ReleaseEditAudioOption,
-    from_core: fn,
-    fields: { file_id, name, bound, offer: (crate::types::BridgeSheetBindingOffer) },
-}
-
-impl BridgeReleaseEditTrackContext {
-    fn from_core(context: bae_import::ReleaseEditTrackContext) -> Self {
-        // The table's sides say which side a track is on, and a sheet's run
-        // names the sheet that carves its tracks.
-        let bae_import::ReleaseEditTrackContext {
-            track_id,
-            side: _,
-            source,
-            start_ms,
-            duration_ms,
-            listed_length_ms,
-            position_text,
-            sheet: _,
-        } = context;
-        Self {
-            track_id,
-            source: BridgeReleaseEditTrackSource::from_core(source),
-            start_clock: crate::types::BridgeDurationClock::of_length(start_ms),
-            duration_clock: crate::types::BridgeDurationClock::of_length(duration_ms),
-            listed_length: listed_length_ms.map(crate::types::BridgeDurationClock::of_length),
-            position_text,
-        }
-    }
-}
-
-mirror_struct! {
-    BridgeReleaseEditTrackRow = bae_import::ReleaseEditTrackRow,
-    from_core: fn,
-    fields: {
-        edit: (BridgeRawTrackEdit),
-        context: (BridgeReleaseEditTrackContext),
-        artists: (opt BridgeArtistField),
-    },
-}
-
-mirror_enum! {
-    BridgeReleaseEditTrackRun = bae_import::ReleaseEditTrackRun,
-    from_core: fn,
-    variants: {
-        Track(row: (BridgeReleaseEditTrackRow)),
-        Sheet {
-            sheet: (BridgeReleaseEditSheet),
-            source: (BridgeReleaseEditTrackSource),
-            rows: (each BridgeReleaseEditTrackRow),
-        },
-    },
-}
-
-mirror_struct! {
-    BridgeReleaseEditTrackSide = bae_import::ReleaseEditTrackSide,
-    from_core: fn,
-    fields: {
-        side: (BridgeTrackSide),
-        runs: (each BridgeReleaseEditTrackRun),
-    },
-}
-
 /// `mirror_struct` takes no optional list, so this conversion names each
 /// field by hand.
 impl BridgeReleaseEditDraft {
@@ -298,9 +216,8 @@ impl BridgeReleaseEditDraft {
         Self {
             cover: cover.map(BridgeImageRef::from_core),
             source_audio: source_audio.map(BridgeSourceAudioSummary::from_core),
-            sides: sides.map(|sides| {
-                sides.into_iter().map(BridgeReleaseEditTrackSide::from_core).collect()
-            }),
+            sides: sides
+                .map(|sides| sides.into_iter().map(BridgeTrackTableSide::from_core).collect()),
             files: files.map(|files| files.into_iter().map(BridgeMappingFile::from_core).collect()),
             album: BridgeDraftAlbum::from_core(album),
             has_records,

@@ -1,15 +1,15 @@
 import BaeKit
 import SwiftUI
 
-/// A track sheet's caption: its side or disc, its name and the audio it
-/// describes.
-/// A FILE reference with no audio bound is chosen from the caption's amber
-/// menu; bound references are changed from the summary's menu.
-struct ImportPaneSheetCaption: View {
+/// A track sheet's caption in the release editor, in the import pane and in
+/// the Edit release sheet alike: its side or disc, its name and the audio it
+/// describes. A FILE reference with no audio bound is chosen from the
+/// caption's amber menu; bound references are changed from the summary's
+/// menu. Where core says the sheet is ignorable, the place pop-up offers
+/// *Ignored* and each reference offers binding no audio.
+struct ReleaseSheetCaption: View {
     let sheet: BridgeSheetGroup
-    /// Whether this surface offers the CUE selection and place control.
-    let showsPlaceMenu: Bool
-    let actions: ImportMappingActions
+    let actions: SheetCaptionActions
 
     @State
     private var hoveringBound = false
@@ -17,16 +17,14 @@ struct ImportPaneSheetCaption: View {
     var body: some View {
         MacImportSheetCaption(
             name: sheet.name,
-            onOpen: { actions.openDocument(sheet.name, sheet.sheetId) },
+            onOpen: { actions.open(sheet.name, sheet.sheetId) },
             place: {
-                if showsPlaceMenu {
-                    SheetPlaceMenu(
-                        choices: sheet.sideChoices,
-                        assigned: sheet.assigned,
-                        offersIgnored: true,
-                        onAssign: { actions.setSheetPlace(sheet.sheetId, $0) }
-                    )
-                }
+                SheetPlaceMenu(
+                    choices: sheet.sideChoices,
+                    assigned: sheet.assigned,
+                    offersIgnored: sheet.ignorable,
+                    onAssign: { actions.place(sheet.sheetId, $0) }
+                )
             },
             audio: { audio }
         )
@@ -36,7 +34,17 @@ struct ImportPaneSheetCaption: View {
         _ reference: BridgeSheetReferenceOptions,
         to fileId: String?
     ) {
-        actions.bindSheet(sheet.sheetId, reference.fileReference, fileId)
+        actions.bind(sheet.sheetId, reference.fileReference, fileId)
+    }
+
+    private func items(
+        _ reference: BridgeSheetReferenceOptions
+    ) -> ImportSheetBindingItems {
+        ImportSheetBindingItems(
+            reference: reference,
+            offersNone: sheet.ignorable,
+            onBind: { bind(reference, to: $0) }
+        )
     }
 
     /// The audio the sheet's FILE lines are bound to, and the pop-up that
@@ -49,20 +57,12 @@ struct ImportPaneSheetCaption: View {
                 boundText
             }
         case .one(let reference):
-            boundMenu {
-                ImportSheetBindingItems(
-                    reference: reference,
-                    onBind: { bind(reference, to: $0) }
-                )
-            }
+            boundMenu { items(reference) }
         case .several(let references):
             boundMenu {
                 for reference in references {
                     MacMenuSubmenu(verbatim: referenceTitle(reference)) {
-                        ImportSheetBindingItems(
-                            reference: reference,
-                            onBind: { bind(reference, to: $0) }
-                        )
+                        items(reference)
                     }
                 }
             }
@@ -108,8 +108,32 @@ struct ImportPaneSheetCaption: View {
     private func referenceTitle(
         _ reference: BridgeSheetReferenceOptions
     ) -> String {
-        String(
-            localized: "\(reference.fileReference) → \(reference.fileId ?? "")"
+        let bound = reference.options.first { $0.fileId == reference.fileId }
+        return String(
+            localized: "\(reference.fileReference) → \(bound?.name ?? "")"
+        )
+    }
+}
+
+/// What a track sheet caption's controls do, as its host runs them.
+struct SheetCaptionActions {
+    /// Open the sheet in the viewer: its name, then its file id.
+    let open: (String, String) -> Void
+    /// Put the sheet, by its file id, on a side or disc, or ignore it.
+    let place: (String, BridgeSheetPlace) -> Void
+    /// Bind one of the sheet's FILE lines to an audio file, or to none: the
+    /// sheet's file id, the line's text, then the audio file's id.
+    let bind: (String, String, String?) -> Void
+}
+
+extension ImportMappingActions {
+    /// The import pane's caption actions, which write the candidate's file
+    /// decisions.
+    var sheetCaption: SheetCaptionActions {
+        SheetCaptionActions(
+            open: openDocument,
+            place: setSheetPlace,
+            bind: bindSheet
         )
     }
 }

@@ -16,19 +16,37 @@ extension ImportMappingTracksLayoutTests {
     func boundReferencesHaveTheirOwnSubmenus() throws {
         let references = assignmentReferences(secondAssigned: true)
         #expect(
-            ImportSheetBindingChoice.choices(for: references[0])
+            ImportSheetBindingChoice.choices(
+                for: references[0],
+                offersNone: true
+            )
                 == [
-                    .offered(fileId: "First.flac", isBound: true),
-                    .offered(fileId: "Replacement.flac", isBound: false),
+                    .offered(
+                        fileId: "First.flac",
+                        name: "First.flac",
+                        isBound: true
+                    ),
+                    .offered(
+                        fileId: "Replacement.flac",
+                        name: "Replacement.flac",
+                        isBound: false
+                    ),
                     try refusal(of: "Wrong.mp3", in: references[0]),
                     try refusal(of: "Short.flac", in: references[0]),
                     .describesNothing(isBound: false),
                 ]
         )
         #expect(
-            ImportSheetBindingChoice.choices(for: references[1])
+            ImportSheetBindingChoice.choices(
+                for: references[1],
+                offersNone: true
+            )
                 == [
-                    .offered(fileId: "Second.flac", isBound: true),
+                    .offered(
+                        fileId: "Second.flac",
+                        name: "Second.flac",
+                        isBound: true
+                    ),
                     .describesNothing(isBound: false),
                 ]
         )
@@ -46,13 +64,23 @@ extension ImportMappingTracksLayoutTests {
         try await withHostedSheet(sheet, size: size) { _, host in
             try await SnapshotTestSupport.settle(host)
             let menus = HostedMenus.controls(in: host)
-            #expect(menus.count == 2, "the summary, then the missing reference")
+            #expect(
+                menus.count == 3,
+                "the place pop-up, the summary, then the missing reference"
+            )
         }
         let references = assignmentReferences(secondAssigned: false)
         #expect(
-            ImportSheetBindingChoice.choices(for: references[1])
+            ImportSheetBindingChoice.choices(
+                for: references[1],
+                offersNone: true
+            )
                 == [
-                    .offered(fileId: "Second.flac", isBound: false),
+                    .offered(
+                        fileId: "Second.flac",
+                        name: "Second.flac",
+                        isBound: false
+                    ),
                     .describesNothing(isBound: true),
                 ]
         )
@@ -67,7 +95,7 @@ extension ImportMappingTracksLayoutTests {
             reference.options.first { $0.fileId == fileId }
         )
         return .refused(
-            fileId: fileId,
+            name: option.name,
             reason: try #require(option.offer.refusalLine)
         )
     }
@@ -77,7 +105,6 @@ extension ImportMappingTracksLayoutTests {
         return BridgeSheetGroup(
             sheetId: "Collection.cue",
             name: "Collection.cue",
-            size: 2_048,
             bound: secondAssigned
                 ? .describesFiles(audioFileCount: 2)
                 : .unresolved(requested: ["Second.wav"]),
@@ -86,7 +113,8 @@ extension ImportMappingTracksLayoutTests {
                 : .one(reference: references[0]),
             unboundReferences: secondAssigned ? nil : [references[1]],
             assigned: secondAssigned ? .disc(1) : nil,
-            sideChoices: secondAssigned ? BridgeSheetSideChoice.discs(1) : []
+            sideChoices: secondAssigned ? BridgeSheetSideChoice.discs(1) : [],
+            ignorable: true
         )
     }
 
@@ -102,18 +130,22 @@ extension ImportMappingTracksLayoutTests {
                 options: [
                     BridgeSheetBindingOption(
                         fileId: "First.flac",
+                        name: "First.flac",
                         offer: .offered
                     ),
                     BridgeSheetBindingOption(
                         fileId: "Replacement.flac",
+                        name: "Replacement.flac",
                         offer: .offered
                     ),
                     BridgeSheetBindingOption(
                         fileId: "Wrong.mp3",
+                        name: "Wrong.mp3",
                         offer: .refusedCodec(codec: "MP3")
                     ),
                     BridgeSheetBindingOption(
                         fileId: "Short.flac",
+                        name: "Short.flac",
                         offer: .refusedTiming
                     ),
                 ]
@@ -124,6 +156,7 @@ extension ImportMappingTracksLayoutTests {
                 options: [
                     BridgeSheetBindingOption(
                         fileId: "Second.flac",
+                        name: "Second.flac",
                         offer: .offered
                     )
                 ]
@@ -152,6 +185,7 @@ extension ImportMappingTracksLayoutTests {
                         ? [
                             BridgeSheetBindingOption(
                                 fileId: "\(name).flac",
+                                name: "\(name).flac",
                                 offer: .offered
                             )
                         ] : []
@@ -160,19 +194,26 @@ extension ImportMappingTracksLayoutTests {
         let group = BridgeSheetGroup(
             sheetId: "Collection.cue",
             name: "Collection.cue",
-            size: 2_048,
             bound: .describesFiles(audioFileCount: 2),
             boundAudio: .several(references: references),
             unboundReferences: nil,
             assigned: .disc(1),
-            sideChoices: BridgeSheetSideChoice.discs(1)
+            sideChoices: BridgeSheetSideChoice.discs(1),
+            ignorable: true
         )
         let size = NSSize(width: 900, height: 180)
         try await withHostedSheet(group, size: size) { _, host in
             try await SnapshotTestSupport.settle(host)
             let menus = HostedMenus.controls(in: host)
-            try #require(menus.count == 1, "the summary is the one menu")
-            #expect(try HostedMenus.opens(menus[0]))
+                .sorted {
+                    $0.convert($0.bounds, to: host).minX
+                        < $1.convert($1.bounds, to: host).minX
+                }
+            try #require(
+                menus.count == 2,
+                "the place pop-up, then the summary"
+            )
+            #expect(try HostedMenus.opens(menus[1]))
         }
     }
 }
@@ -185,10 +226,10 @@ extension ImportMappingTracksLayoutTests {
         _ body: (NSWindow, NSView) async throws -> Value
     ) async throws -> Value {
         try await SnapshotTestSupport.withHostedWindow(
-            ImportPaneSheetCaption(
+            ReleaseSheetCaption(
                 sheet: sheet,
-                showsPlaceMenu: false,
                 actions: actions(recording: MappingTrackActionRecorder())
+                    .sheetCaption
             )
             .padding(20)
             .frame(

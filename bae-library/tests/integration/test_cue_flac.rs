@@ -612,7 +612,7 @@ fn listed_lengths(draft: &bae_import::ReleaseEditDraft) -> Vec<Option<u64>> {
         .iter()
         .flatten()
         .flat_map(|side| side.rows())
-        .map(|row| row.context.listed_length_ms)
+        .map(|row| row.listed_length_ms)
         .collect()
 }
 
@@ -655,13 +655,16 @@ async fn a_cue_image_s_release_keeps_its_sheet_and_listed_lengths() {
     let draft = drafts.next().await.expect("read the draft").expect("the library holds it");
     let sides = draft.sides.as_deref().expect("the release has tracks");
     let [side] = sides else { panic!("the release has one side: {sides:?}") };
-    let [bae_import::ReleaseEditTrackRun::Sheet { sheet, source, rows }] = side.runs.as_slice()
-    else {
+    let [bae_import::TrackTableRun::Sheet { sheet, rows }] = side.runs.as_slice() else {
         panic!("one sheet carves every track: {:?}", side.runs);
     };
+    let bae_import::SheetBound::Describes(source) = &sheet.bound else {
+        panic!("the sheet plays one file: {:?}", sheet.bound);
+    };
+    let place = sheet.assigned.as_ref().map(|choice| choice.side);
     assert_eq!(
-        (sheet.name.as_str(), sheet.place.side, source.name.as_str(), rows.len()),
-        ("Test Album.cue", bae_types::mediums::MediumSide::first_of(1), "Test Album.flac", 3)
+        (sheet.name.as_str(), place, source.name.as_str(), rows.len()),
+        ("Test Album.cue", Some(bae_types::mediums::MediumSide::first_of(1)), "Test Album.flac", 3)
     );
     assert_eq!(listed_lengths(&draft), [None, Some(20_000), None]);
 

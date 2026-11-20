@@ -4,7 +4,7 @@ import SwiftUI
 /// One of the folder's audio units alongside the track it becomes. The track's
 /// title and artist edit in place; its audio is the folder's.
 struct MacImportTrackRow: View {
-    let mapping: BridgeTrackMapping
+    let row: BridgeTrackTableRow
     /// The widths the table resolved for this pane, so the row's cells land
     /// under the header's.
     let columns: ReleaseMetadataTrackColumns
@@ -19,13 +19,13 @@ struct MacImportTrackRow: View {
         HStack(spacing: ImportMappingColumns.spacing) {
             sourceCell
             ReleaseMetadataTrackRow(
-                track: mapping.track,
-                artists: mapping.artists,
-                length: mapping.length,
-                listedLength: mapping.listedLength,
+                track: row.track,
+                artists: row.artists,
+                length: row.length,
+                listedLength: row.listedLength,
                 columns: columns,
                 editingCommands: editingCommands,
-                position: mapping.position,
+                position: row.position,
                 artistSearch: artistSearch,
                 onChange: { actions.editTrack($0) }
             )
@@ -35,7 +35,8 @@ struct MacImportTrackRow: View {
     /// The file or CUE slice that supplies this track's audio.
     private var sourceCell: some View {
         ImportMappingSourceCell(
-            source: mapping.source,
+            source: row.source,
+            previewTarget: row.audition.previewTarget,
             previewingTarget: previewingTarget,
             actions: actions,
         )
@@ -46,7 +47,7 @@ struct MacImportTrackRow: View {
         .simultaneousGesture(
             TapGesture(count: 2)
                 .onEnded {
-                    if let target = mapping.source.previewTarget {
+                    if let target = row.audition.previewTarget {
                         actions.preview(target)
                     }
                 }

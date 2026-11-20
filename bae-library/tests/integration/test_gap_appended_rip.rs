@@ -73,23 +73,34 @@ async fn import_rip() -> (
     (library, imported.release_id, (imported.temp_dir, imported.album_dir))
 }
 
-/// Each of the editor's rows names the file its track's body plays from,
-/// never the file before, which holds only its pregap.
+/// The caption of the editor's one sheet names, for each of its lines, the
+/// file the tracks under it play their bodies from, never the file before,
+/// which holds only a pregap.
 #[tokio::test]
-async fn the_editor_s_rows_each_name_the_file_their_body_plays_from() {
+async fn the_editor_s_sheet_lines_each_name_the_file_their_bodies_play_from() {
     let (library, release_id, _dir) = import_rip().await;
     let form = library.manager().open_release_edit(&release_id).await.expect("open the editor");
 
     let read = library.manager().subscribe_release_edit_draft();
     read.set(Some(form)).expect("the draft takes the form");
     let draft = read.next().await.expect("read the draft").expect("the library holds the release");
-    let sources: Vec<&str> = draft
-        .sides
+    let sides = draft.sides.as_deref().expect("the release has tracks");
+    let [side] = sides else { panic!("the release has one side: {sides:?}") };
+    let [bae_import::TrackTableRun::Sheet { sheet, rows }] = side.runs.as_slice() else {
+        panic!("the sheet carves every track: {:?}", side.runs);
+    };
+    let bae_import::SheetBoundAudio::Several(lines) = &sheet.bound_audio else {
+        panic!("each line plays its own file: {:?}", sheet.bound_audio);
+    };
+    let sources: Vec<&str> = lines
         .iter()
-        .flatten()
-        .flat_map(|side| side.rows())
-        .map(|row| row.context.source.name.as_str())
+        .map(|line| {
+            let bound =
+                line.options.iter().find(|option| line.file_id.as_ref() == Some(&option.file_id));
+            bound.expect("the line's file is among its choices").name.as_str()
+        })
         .collect();
 
+    assert_eq!(rows.len(), 3);
     assert_eq!(sources, FILES);
 }
