@@ -177,6 +177,9 @@ extension ShotScene {
                     ),
                 hasCoverOptions: !blank,
                 editValues: blank ? blankEdit() : lowTideEdit(),
+                pressingOffers: PreviewData.pressingOffers(
+                    for: (blank ? blankEdit() : lowTideEdit()).pressing
+                ),
                 albumArtistStanding: blank
                     ? nil : PreviewData.boardLibraryArtistStanding,
                 records: blank ? [] : PreviewData.releaseRecordsPair,
@@ -478,6 +481,9 @@ extension ShotScene {
             importStores(
                 MacReleaseFields(
                     values: values,
+                    pressingOffers: PreviewData.pressingOffers(
+                        for: values.pressing
+                    ),
                     writer: ReleaseFieldWriter { _, _ in },
                     editingCommands: EditingCommitCommands()
                 )

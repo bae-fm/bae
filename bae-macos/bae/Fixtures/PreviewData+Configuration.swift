@@ -6,6 +6,30 @@ import Foundation
 extension PreviewData {
     // MARK: - Config and edit-metadata fixtures
 
+    /// The Add menus' choices core's read would hand beside `edit`.
+    static func pressingOffers(for edit: BridgeRawReleaseEdit)
+        -> BridgePressingOffers
+    {
+        pressingOffers(for: edit.pressing)
+    }
+
+    /// The Add menus' choices core's read would hand beside `pressing`: every
+    /// medium and Discogs detail it does not hold yet.
+    static func pressingOffers(
+        for pressing: BridgeRawPressingEdit
+    ) -> BridgePressingOffers {
+        BridgePressingOffers(
+            media: bridgeMedia()
+                .filter { medium in
+                    !pressing.facts.media.contains { $0.medium == medium }
+                },
+            discogsDetails: bridgeDiscogsDetails()
+                .filter {
+                    !pressing.facts.discogsDetails.contains($0)
+                }
+        )
+    }
+
     /// A raw release edit for metadata-editor shots: the album and
     /// pressing fields plus `trackCount` tracks. Blank track artists
     /// exercise the album-artist inheritance path.
@@ -124,6 +148,7 @@ extension PreviewData {
             ),
             records: [],
             hasRecords: false,
+            pressingOffers: pressingOffers(for: edit.pressing),
             albumArtistStanding: nil,
             changed: false,
             invalid: nil

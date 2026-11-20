@@ -412,6 +412,9 @@ extension MappingFixtures {
                     pickedLibraryStatus: nil,
                     album: .new,
                     metadataDraft: edit,
+                    pressingOffers: PreviewData.pressingOffers(
+                        for: edit.pressing
+                    ),
                     albumArtistStanding: nil,
                     metadataDraftIsBlank: edit.albumTitle.isEmpty,
                     metadataProvenance: metadataProvenance,

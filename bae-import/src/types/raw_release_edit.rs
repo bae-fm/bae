@@ -248,7 +248,31 @@ impl RawTrackEdit {
     }
 }
 
+/// What the pressing's Add menus offer: each medium and Discogs detail the
+/// pressing's facts do not hold yet, in the vocabulary's order.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PressingOffers {
+    pub media: Vec<bae_types::pressing::Medium>,
+    pub discogs_details: Vec<bae_types::pressing::DiscogsDetail>,
+}
+
 impl RawPressingEdit {
+    /// The choices the pressing's Add menus offer.
+    pub fn offers(&self) -> PressingOffers {
+        PressingOffers {
+            media: bae_types::pressing::Medium::ALL
+                .iter()
+                .copied()
+                .filter(|medium| !self.facts.media.iter().any(|held| held.medium == *medium))
+                .collect(),
+            discogs_details: bae_types::pressing::DiscogsDetail::ALL
+                .iter()
+                .copied()
+                .filter(|detail| !self.facts.discogs_details.contains(detail))
+                .collect(),
+        }
+    }
+
     /// Parse and normalize raw pressing text into a wire
     /// [`Pressing`](bae_types::pressing::Pressing): empty fields become `None`,
     /// blank and repeated label and barcode rows are dropped, and the year

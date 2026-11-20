@@ -111,6 +111,9 @@ private func detail(
                 pickedLibraryStatus: nil,
                 album: .new,
                 metadataDraft: MappingFixtures.albumEdit,
+                pressingOffers: PreviewData.pressingOffers(
+                    for: MappingFixtures.albumEdit.pressing
+                ),
                 albumArtistStanding: nil,
                 metadataDraftIsBlank: false,
                 metadataProvenance: MappingFixtures.provenance,

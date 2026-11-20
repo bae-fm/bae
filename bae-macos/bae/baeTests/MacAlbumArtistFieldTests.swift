@@ -83,6 +83,9 @@ struct MacAlbumArtistFieldTests {
         try await SnapshotTestSupport.withHostedWindow(
             ReleaseMetadataHeader(
                 values: values,
+                pressingOffers: PreviewData.pressingOffers(
+                    for: values.pressing
+                ),
                 albumArtistStanding: nil,
                 writer: ReleaseFieldWriter(setField: { _, _ in }),
                 editingCommands: EditingCommitCommands(),

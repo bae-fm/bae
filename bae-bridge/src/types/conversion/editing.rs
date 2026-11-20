@@ -127,6 +127,15 @@ mirror_struct! {
 }
 
 mirror_struct! {
+    BridgePressingOffers = bae_import::PressingOffers,
+    from_core: pub(crate) fn,
+    fields: {
+        media: (each BridgeMedium),
+        discogs_details: (each BridgeDiscogsDetail),
+    },
+}
+
+mirror_struct! {
     BridgeRawReleaseEdit = bae_import::RawReleaseEdit,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
@@ -214,6 +223,7 @@ impl BridgeReleaseEditDraft {
             album,
             records,
             has_records,
+            pressing_offers,
             album_artist_standing,
             changed,
             invalid,
@@ -228,6 +238,7 @@ impl BridgeReleaseEditDraft {
             album: BridgeDraftAlbum::from_core(album),
             has_records,
             records: records.into_iter().map(BridgeReleaseRecord::from_core).collect(),
+            pressing_offers: BridgePressingOffers::from_core(pressing_offers),
             album_artist_standing: album_artist_standing.map(BridgeArtistFieldStanding::from_core),
             changed,
             invalid: invalid.map(BridgeValidationReason::from_core),

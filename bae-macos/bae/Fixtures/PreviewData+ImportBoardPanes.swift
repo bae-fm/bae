@@ -120,6 +120,7 @@ extension PreviewData {
             ),
             records: boardRecords("board-northbound"),
             hasRecords: true,
+            pressingOffers: pressingOffers(for: edit.pressing),
             albumArtistStanding: boardLibraryArtistStanding,
             changed: false,
             invalid: nil

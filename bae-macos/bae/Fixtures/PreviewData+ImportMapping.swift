@@ -402,6 +402,7 @@ extension PreviewData {
                         pickedLibraryStatus: libraryStatus,
                         album: album,
                         metadataDraft: edit,
+                        pressingOffers: pressingOffers(for: edit.pressing),
                         albumArtistStanding: albumArtistStanding,
                         metadataDraftIsBlank: edit.albumTitle.isEmpty,
                         metadataProvenance: metadataProvenance,

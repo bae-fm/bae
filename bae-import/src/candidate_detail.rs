@@ -278,6 +278,7 @@ impl ImportCandidateDetailProjection {
                     CandidateStage::Drafting(Box::new(CandidateDraftPane {
                         picked_library_status,
                         album,
+                        pressing_offers: metadata_draft.pressing.offers(),
                         metadata_draft,
                         album_artist_standing,
                         metadata_draft_is_blank: draft_blank,
@@ -440,6 +441,8 @@ pub struct CandidateDraftPane {
     /// The library album an import of it files under.
     pub album: crate::DraftAlbum,
     pub metadata_draft: RawReleaseEdit,
+    /// The media and Discogs details the draft's pressing Add menus offer.
+    pub pressing_offers: crate::PressingOffers,
     /// How the draft's album artists stand to the library, as the pane's
     /// live read found them; each mapping row carries its track's own.
     /// `None` when the draft names no album artist.

@@ -62,6 +62,8 @@ struct ReleaseAreaPicker: View {
 /// and stepped, a control removing it, and a menu adding one more carrier.
 struct MediaCountsEditor: View {
     let media: [BridgeMediaCount]
+    /// The media the pressing does not hold yet, as core offers them.
+    let offered: [BridgeMedium]
     let write: @MainActor (BridgePressingFactEdit) async -> Void
 
     var body: some View {
@@ -76,11 +78,7 @@ struct MediaCountsEditor: View {
             MacButton(
                 kind: .plain,
                 menu: {
-                    for medium in bridgeMedia()
-                        .filter({ medium in
-                            !media.contains { $0.medium == medium }
-                        })
-                    {
+                    for medium in offered {
                         MacMenuItem(
                             verbatim: bridgeMediumLabel(medium: medium).text
                         ) {
@@ -239,6 +237,8 @@ struct PackagingPicker: View {
 /// detail removable on its own, and a menu adding one more.
 struct DiscogsDetailsEditor: View {
     let details: [BridgeDiscogsDetail]
+    /// The details the pressing does not hold yet, as core offers them.
+    let offered: [BridgeDiscogsDetail]
     let write: @MainActor (BridgePressingFactEdit) async -> Void
 
     var body: some View {
@@ -260,11 +260,7 @@ struct DiscogsDetailsEditor: View {
             MacButton(
                 kind: .plain,
                 menu: {
-                    for detail in bridgeDiscogsDetails()
-                        .filter({
-                            !details.contains($0)
-                        })
-                    {
+                    for detail in offered {
                         MacMenuItem(
                             verbatim: bridgeDiscogsDetailLabel(detail: detail)
                                 .text

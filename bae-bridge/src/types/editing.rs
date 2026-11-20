@@ -1,9 +1,9 @@
 #[cfg(desktop)]
 use super::*;
 use super::{
-    BridgeCreditLine, BridgeDiscogsDetail, BridgeDurationClock, BridgeMediaCount, BridgePackaging,
-    BridgePressingFacts, BridgeReleaseArea, BridgeReleaseLabel, BridgeReleaseStatus,
-    BridgeSourceAudioLayout, BridgeTrackSide,
+    BridgeCreditLine, BridgeDiscogsDetail, BridgeDurationClock, BridgeMediaCount, BridgeMedium,
+    BridgePackaging, BridgePressingFacts, BridgeReleaseArea, BridgeReleaseLabel,
+    BridgeReleaseStatus, BridgeSourceAudioLayout, BridgeTrackSide,
 };
 
 /// Mirror of `bae_import::ReleaseUserEdit` — a normalized, validated
@@ -548,6 +548,15 @@ pub struct BridgeRawReleaseEdit {
     pub tracks: Vec<BridgeRawTrackEdit>,
 }
 
+/// What a pressing's Add menus offer: the media and Discogs details its facts
+/// do not hold yet. Mirrors `bae_import::PressingOffers`; the draft's read
+/// hands it beside the edit, and the menus draw it as given.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgePressingOffers {
+    pub media: Vec<BridgeMedium>,
+    pub discogs_details: Vec<BridgeDiscogsDetail>,
+}
+
 /// The library album a draft files under when it is written: an import's, or
 /// a library release's editor's. Mirrors `bae_import::DraftAlbum`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
@@ -660,6 +669,8 @@ pub struct BridgeReleaseEditDraft {
     pub records: Vec<BridgeReleaseRecord>,
     /// Whether `records` holds any.
     pub has_records: bool,
+    /// The media and Discogs details the form's pressing Add menus offer.
+    pub pressing_offers: BridgePressingOffers,
     /// `None` when the form names no album artist.
     pub album_artist_standing: Option<BridgeArtistFieldStanding>,
     pub changed: bool,

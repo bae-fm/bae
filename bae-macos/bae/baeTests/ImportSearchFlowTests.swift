@@ -374,6 +374,7 @@ final class MetadataApplicationEditingTests: XCTestCase {
         try await SnapshotTestSupport.withHostedWindow(
             ReleaseMetadataHeader(
                 values: model.edit,
+                pressingOffers: PreviewData.pressingOffers(for: model.edit),
                 albumArtistStanding: nil,
                 writer: ReleaseFieldWriter(
                     setField: { field, value in

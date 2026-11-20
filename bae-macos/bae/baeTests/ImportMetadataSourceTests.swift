@@ -498,6 +498,9 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
             coverContent: nil,
             hasCoverOptions: false,
             editValues: editValues,
+            pressingOffers: PreviewData.pressingOffers(
+                for: editValues.pressing
+            ),
             albumArtistStanding: nil,
             records: [],
             releaseLink: nil,

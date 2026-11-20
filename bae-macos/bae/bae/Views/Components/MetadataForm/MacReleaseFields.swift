@@ -4,6 +4,9 @@ import SwiftUI
 /// The editable release facts under a ruled Release header.
 struct MacReleaseFields: View {
     let values: BridgeRawReleaseEdit
+    /// The media and details the pressing's Add menus offer, as core's read
+    /// hands them beside `values`.
+    let pressingOffers: BridgePressingOffers
     let writer: ReleaseFieldWriter
     let editingCommands: EditingCommitCommands
 
@@ -36,6 +39,7 @@ struct MacReleaseFields: View {
                     rowLabel(localizedCoreString("core.release.media"))
                     MediaCountsEditor(
                         media: values.pressing.facts.media,
+                        offered: pressingOffers.media,
                         write: writer.setPressingFact
                     )
                 }
@@ -69,6 +73,7 @@ struct MacReleaseFields: View {
                     rowLabel(String(localized: "Details"))
                     DiscogsDetailsEditor(
                         details: values.pressing.facts.discogsDetails,
+                        offered: pressingOffers.discogsDetails,
                         write: writer.setPressingFact
                     )
                 }

@@ -61,6 +61,9 @@ struct ReleaseMetadataHeader<
     AlbumRow: View
 >: View {
     let values: BridgeRawReleaseEdit
+    /// The media and details the pressing's Add menus offer, as core's read
+    /// hands them beside `values`.
+    let pressingOffers: BridgePressingOffers
     /// How the album artists stand to the library, as core's read found
     /// them; `nil` while the album names none.
     let albumArtistStanding: BridgeArtistFieldStanding?
@@ -94,6 +97,7 @@ struct ReleaseMetadataHeader<
             )
             MacReleaseFields(
                 values: values,
+                pressingOffers: pressingOffers,
                 writer: writer,
                 editingCommands: editingCommands
             )

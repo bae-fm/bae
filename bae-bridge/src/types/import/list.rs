@@ -304,6 +304,8 @@ pub struct BridgeCandidateDraftPane {
     pub album: BridgeDraftAlbum,
     /// The candidate's one editable metadata draft.
     pub metadata_draft: BridgeRawReleaseEdit,
+    /// The media and Discogs details the draft's pressing Add menus offer.
+    pub pressing_offers: crate::types::BridgePressingOffers,
     /// How the draft's album artists stand to the library, as the pane's
     /// live read found them; each mapping row carries its track's own.
     /// `None` when the draft names no album artist.

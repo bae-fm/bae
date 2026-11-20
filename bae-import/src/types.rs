@@ -22,7 +22,8 @@ pub use artist_assignment::{
 mod raw_release_edit;
 mod release_edit_display;
 pub use raw_release_edit::{
-    EditValidationError, RawLabelEdit, RawPressingEdit, RawReleaseEdit, RawTrackEdit,
+    EditValidationError, PressingOffers, RawLabelEdit, RawPressingEdit, RawReleaseEdit,
+    RawTrackEdit,
 };
 #[cfg(desktop)]
 pub use release_edit_display::ReleaseEditDisplayContext;

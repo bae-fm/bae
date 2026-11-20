@@ -332,10 +332,10 @@ pub use types::{
     credited_line, AlbumLine, AlbumPick, ArtistAssignment, ArtistFieldStanding, ArtistStanding,
     ArtistsStanding, AudioFile, CandidateDraft, CandidateEditField, CandidateTrack, Credited,
     DraftAlbum, DraftFieldEdit, DraftTrack, EditValidationError, LibraryDraft, LibraryTrack,
-    MetadataProvenance, PressingFactEdit, RawLabelEdit, RawPressingEdit, RawReleaseEdit,
-    RawTrackEdit, ReleaseDraft, ReleaseEditLoadError, ReleaseEditTrackContext, ReleaseEditTrackRow,
-    ReleaseEditTrackRun, ReleaseEditTrackSide, ReleaseEditTrackSource, ReleaseUserEdit,
-    TrackArtistAssignments, TrackBinding, TrackUserEdit,
+    MetadataProvenance, PressingFactEdit, PressingOffers, RawLabelEdit, RawPressingEdit,
+    RawReleaseEdit, RawTrackEdit, ReleaseDraft, ReleaseEditLoadError, ReleaseEditTrackContext,
+    ReleaseEditTrackRow, ReleaseEditTrackRun, ReleaseEditTrackSide, ReleaseEditTrackSource,
+    ReleaseUserEdit, TrackArtistAssignments, TrackBinding, TrackUserEdit,
 };
 #[cfg(desktop)]
 pub use types::{

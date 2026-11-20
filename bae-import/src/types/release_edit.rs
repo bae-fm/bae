@@ -243,6 +243,8 @@ pub struct ReleaseEditDraft {
     pub records: Vec<bae_catalogs::records::ReleaseRecord>,
     /// Whether `records` holds any.
     pub has_records: bool,
+    /// The media and Discogs details the form's pressing Add menus offer.
+    pub pressing_offers: crate::PressingOffers,
     /// `None` when the form names no album artist.
     pub album_artist_standing: Option<crate::ArtistFieldStanding>,
     pub changed: bool,

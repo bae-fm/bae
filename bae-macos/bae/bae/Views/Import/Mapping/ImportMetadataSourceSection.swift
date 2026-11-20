@@ -46,7 +46,9 @@ struct ImportMetadataSourceSection: View {
 
     @ViewBuilder
     private var draft: some View {
-        if let edit = candidate.edit {
+        if let edit = candidate.edit,
+            let offers = candidate.draft?.pressingOffers
+        {
             MacImportDraft(
                 releaseSummary: ImportReleaseSummary(
                     candidate: candidate,
@@ -57,6 +59,7 @@ struct ImportMetadataSourceSection: View {
                 coverContent: coverContent,
                 hasCoverOptions: hasCoverOptions,
                 editValues: edit,
+                pressingOffers: offers,
                 albumArtistStanding: candidate.draft?.albumArtistStanding,
                 records: candidate.records,
                 releaseLink: candidate.releaseLink,

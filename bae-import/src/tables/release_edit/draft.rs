@@ -415,6 +415,7 @@ impl ReleaseEditDraftRows {
             album,
             records,
             has_records,
+            pressing_offers: form.edit.pressing.offers(),
             album_artist_standing,
             changed,
             invalid,

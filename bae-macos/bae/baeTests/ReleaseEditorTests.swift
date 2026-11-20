@@ -71,6 +71,7 @@ struct ReleaseEditorTests {
         try await SnapshotTestSupport.withHostedWindow(
             ReleaseMetadataHeader(
                 values: session.values,
+                pressingOffers: release.draft.pressingOffers,
                 albumArtistStanding: release.draft.albumArtistStanding,
                 writer: session.fieldWriter,
                 editingCommands: session.editingCommands,

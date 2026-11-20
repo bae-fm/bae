@@ -325,3 +325,17 @@ fn a_form_takes_each_edit_by_its_field_or_row() {
     );
     assert!(!form.set_track(RawTrackEdit { id: "no-such-row".to_string(), ..renamed }));
 }
+
+#[test]
+fn offers_leave_out_the_media_and_details_the_pressing_holds() {
+    use bae_types::pressing::{DiscogsDetail, Medium};
+    let mut pressing = valid_form().pressing;
+    pressing.facts.discogs_details = vec![DiscogsDetail::ALL[0]];
+
+    let offers = pressing.offers();
+
+    assert!(!offers.media.contains(&Medium::Vinyl));
+    assert_eq!(offers.media.len(), Medium::ALL.len() - 1);
+    assert!(!offers.discogs_details.contains(&DiscogsDetail::ALL[0]));
+    assert_eq!(offers.discogs_details.len(), DiscogsDetail::ALL.len() - 1);
+}
