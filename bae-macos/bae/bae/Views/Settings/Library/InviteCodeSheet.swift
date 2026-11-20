@@ -173,15 +173,12 @@ struct InviteCodeSheetContent: View {
             }
         }
         else if !offline {
-            VStack(alignment: .leading, spacing: ThemeSpace.related) {
-                let sharing = Text("Sharing the library with \(invite.label)…")
-                sharing
-                    .themeText(.body)
-                    .foregroundStyle(.secondary)
-                ProgressView()
-                    .progressViewStyle(.linear)
-                    .accessibilityLabel(sharing)
-            }
+            MacProgress(
+                title: String(
+                    localized: "Sharing the library with \(invite.label)…"
+                ),
+                bar: ProgressTrackBar(progress: nil)
+            )
         }
     }
 
