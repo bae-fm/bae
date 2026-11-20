@@ -72,14 +72,10 @@ private struct SettingsFormSection: View {
                     footer.padding(.top, ThemeSpace.compact)
                 }
                 else {
+                    // 8pt under the box, in line with the rows' labels.
                     footer
-                        .themeText(.detail)
-                        .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        // The note's text starts where the rows' labels start,
-                        // 8pt under the box.
-                        .padding(.horizontal, RowMetrics.inset)
-                        .padding(.top, ThemeSpace.related)
+                        .noteText(above: ThemeSpace.related)
                 }
             }
         }

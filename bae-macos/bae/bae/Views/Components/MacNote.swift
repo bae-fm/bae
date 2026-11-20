@@ -13,11 +13,19 @@ struct MacNote: View {
 
     var body: some View {
         Text(text)
-            .themeText(.detail)
+            .noteText(above: ThemeSpace.line)
+    }
+}
+
+extension View {
+    /// Sets a note's text: secondary detail text starting where a box's row
+    /// labels start, with `above` of space over it.
+    func noteText(above: CGFloat) -> some View {
+        themeText(.detail)
             .lineSpacing(ThemeSpace.line / 2)
             .foregroundStyle(.secondary)
             .padding(.horizontal, RowMetrics.inset)
-            .padding(.top, ThemeSpace.line)
+            .padding(.top, above)
             .fixedSize(horizontal: false, vertical: true)
     }
 }
