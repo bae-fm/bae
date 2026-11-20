@@ -67,6 +67,9 @@
     struct MacMenuFace: View {
         let level: MacMenuLevel
         let isPopUp: Bool
+        /// Whether VoiceOver reads the face's lines: a menu's panel gives
+        /// VoiceOver an element of its own for each line instead.
+        let readsLines: Bool
         let hover: (Int, Bool) -> Void
         let pick: (Int) -> Void
 
@@ -97,7 +100,7 @@
                 RoundedRectangle(cornerRadius: MacMenuMetrics.cornerRadius)
                     .strokeBorder(Theme.hairlineStrong, lineWidth: 1)
             )
-            .accessibilityHidden(true)
+            .accessibilityHidden(!readsLines)
         }
 
         private func accessoryColor(
@@ -169,6 +172,7 @@
                     }
                 }
                 .frame(width: MacMenuMetrics.markWidth)
+                .accessibilityHidden(true)
                 if let image {
                     image
                 }
@@ -184,9 +188,11 @@
                             .foregroundStyle(
                                 accessoryColor(accessory, highlighted)
                             )
+                            .accessibilityHidden(true)
                     }
                     Image(systemName: "chevron.right")
                         .font(.system(size: 9, weight: .semibold))
+                        .accessibilityHidden(true)
                 }
             }
             .themeText(.body)
@@ -230,6 +236,7 @@
             MacMenuFace(
                 level: level,
                 isPopUp: isPopUp,
+                readsLines: false,
                 hover: hover,
                 pick: pick
             )
@@ -262,6 +269,7 @@
             MacMenuFace(
                 level: MacMenuLevel(entries: entries, highlighted: highlighted),
                 isPopUp: isPopUp,
+                readsLines: true,
                 hover: { _, _ in },
                 pick: { _ in }
             )

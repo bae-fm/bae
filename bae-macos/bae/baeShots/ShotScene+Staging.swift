@@ -68,6 +68,9 @@ enum OverWindow {
                 .shadow(color: .black.opacity(0.3), radius: 15, y: 5)
                 .padding(.top, top)
                 .padding(.trailing, trailing)
+                // The app's popover is a window of its own, read after the
+                // window it opens from, not among the rows it covers.
+                .accessibilitySortPriority(-1)
         }
     }
 }
