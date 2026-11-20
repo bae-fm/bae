@@ -147,22 +147,18 @@ pub(crate) async fn committed_artists(
 /// [`place_labels`](bae_catalogs::release_values::place_labels) of an import's track rows.
 #[cfg(test)]
 pub(crate) fn row_labels(rows: &bae_records::ReleaseRows) -> Vec<String> {
-    let mediums: Vec<_> = rows.mediums.iter().map(|medium| medium.medium).collect();
-    bae_catalogs::release_values::place_labels(
-        &mediums,
-        rows.tracks.iter().map(|track| {
-            let medium = rows
-                .mediums
-                .iter()
-                .find(|medium| medium.id == track.medium_id)
-                .expect("a track row's medium is one of the release's");
-            bae_types::mediums::TrackPlace {
-                medium: medium.position,
-                side: track.side,
-                number: track.track_number,
-            }
-        }),
-    )
+    bae_catalogs::release_values::place_labels(rows.tracks.iter().map(|track| {
+        let medium = rows
+            .mediums
+            .iter()
+            .find(|medium| medium.id == track.medium_id)
+            .expect("a track row's medium is one of the release's");
+        bae_types::mediums::TrackPlace {
+            medium: medium.position,
+            side: track.side,
+            number: track.track_number,
+        }
+    }))
 }
 
 #[cfg(test)]

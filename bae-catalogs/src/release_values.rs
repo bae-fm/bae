@@ -197,29 +197,22 @@ impl WorkGraphBuilder {
     }
 }
 
-/// How each of `values`' tracks reads on its mediums: `A1` on a lettered
-/// side, `2-3` for track 3 of disc 2, `5` on a release of one medium. What a
-/// reader's test checks places with.
+/// Each of `places` as its medium, side and number, such as `2.1.3` for
+/// track 3 on side 1 of medium 2: what a reader's test checks places with.
 #[cfg(any(test, feature = "test-utils"))]
 pub fn place_labels(
-    mediums: &[bae_types::mediums::ReleaseMedium],
     places: impl IntoIterator<Item = bae_types::mediums::TrackPlace>,
 ) -> Vec<String> {
-    use bae_types::mediums::TrackPosition;
     places
         .into_iter()
-        .map(|place| match bae_types::mediums::track_position(&place, mediums) {
-            TrackPosition::Sided { side_letter, number } => format!("{side_letter}{number}"),
-            TrackPosition::Disc { disc, number } => format!("{disc}-{number}"),
-            TrackPosition::Flat { number } => number.to_string(),
-        })
+        .map(|place| format!("{}.{}.{}", place.medium, place.side, place.number))
         .collect()
 }
 
 /// [`place_labels`] of a reading's tracks.
 #[cfg(any(test, feature = "test-utils"))]
 pub fn value_labels(values: &ReleaseValues) -> Vec<String> {
-    place_labels(&values.mediums, values.tracks.iter().map(|track| track.place))
+    place_labels(values.tracks.iter().map(|track| track.place))
 }
 
 #[cfg(test)]

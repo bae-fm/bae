@@ -249,7 +249,7 @@ fn ambiguous_pressings_contribute_only_a_proven_common_parent() {
             assert!(discogs.is_none_or(|record| record.release_ref().is_none()));
             assert_eq!(payloads.extract().unwrap().covers().len(), usize::from(same));
             let parsed = parsed(payloads);
-            assert_eq!(crate::release_values::value_labels(&parsed)[1], "B1");
+            assert_eq!(crate::release_values::value_labels(&parsed)[1], "1.2.1");
             assert_eq!(parsed.tracks[1].title, "Second Track");
         });
     }

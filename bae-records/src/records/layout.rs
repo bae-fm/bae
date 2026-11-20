@@ -156,8 +156,8 @@ pub fn laid_mediums_source() -> String {
 /// [`MediumsSource::Draft`] takes for `places`.
 pub fn laid_places_source() -> String {
     format!(
-        "(WITH {} SELECT track_id AS id, medium AS medium_id, side, number AS track_number, \
-                 stated_length_ms, position FROM laid_places)",
+        "(WITH {} SELECT track_id AS id, :release AS release_id, medium AS medium_id, side, \
+                 number AS track_number, stated_length_ms, position FROM laid_places)",
         layout_ctes()
     )
 }

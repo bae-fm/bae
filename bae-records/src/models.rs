@@ -415,11 +415,6 @@ impl DbReleaseMedium {
 pub struct DbReleaseMediums(pub Vec<DbReleaseMedium>);
 
 impl DbReleaseMediums {
-    /// The mediums alone, in order.
-    pub fn mediums(&self) -> Vec<bae_types::mediums::ReleaseMedium> {
-        self.0.iter().map(|row| row.medium).collect()
-    }
-
     /// Where `track`, one of this release's, sits. Its medium is one of these:
     /// the schema refuses a track whose medium row is missing or is another
     /// release's.

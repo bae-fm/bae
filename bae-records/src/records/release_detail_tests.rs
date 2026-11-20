@@ -66,15 +66,14 @@ fn a_read_names_the_device_coven_registers_under_its_id() {
     });
 }
 
-/// The track statements, the release editor's among them, place each track where
-/// [`bae_types::mediums::track_position`] places it over decoded rows: a CD
-/// among several mediums gets a disc number, a record's or cassette's sides
-/// get letters across the release's sided mediums, and a release of one
-/// medium shows only track numbers.
+/// The track statements, the release editor's among them, place each track by
+/// one rule: a CD or a download among several mediums is a disc, numbered by
+/// its position among them, and a record's or cassette's sides get letters
+/// across the release's sided mediums.
 #[tokio::test]
-async fn the_statements_place_tracks_as_the_rule_over_decoded_rows_does() {
+async fn the_statements_place_tracks_by_one_rule() {
     use crate::test_fixtures::library::RecordsFixture;
-    use bae_types::mediums::{track_position, ReleaseMedium};
+    use bae_types::mediums::{ReleaseMedium, TrackPosition, TrackSide};
     use bae_types::pressing::Medium;
     let (db, _temp) = bae_store::test_fixtures::temp_db(crate::test_fixtures::TEST_SCHEMA).await;
     let release = "f2b6dac7-8094-4b1d-8c53-6e7f8a9b0c01";
@@ -129,42 +128,54 @@ async fn the_statements_place_tracks_as_the_rule_over_decoded_rows_does() {
     });
     fixture.write(&crate::test_fixtures::test_records(&db)).await;
 
-    let (groups, mediums, places) = db
+    let (groups, places) = db
         .read(move |sql| {
             let (detail, ()) =
                 release_detail_rows_on(&sql, release, NO_STARS, "", |_| Ok(()))?.unwrap();
             let groups = detail.process().track_groups;
-            let mediums = release_mediums_on(&sql, release)?;
             let places = release_tracks::track_places_on(
                 &sql,
                 &ids.iter().map(|(id, ..)| id.clone()).collect::<Vec<_>>(),
             )?;
-            Ok((groups, mediums, places))
+            Ok((groups, places))
         })
         .await
         .unwrap();
 
-    let rows = db
+    let numbers = db
         .read(move |sql| {
             sql.query(
-                "SELECT id, medium_id, side, track_number FROM tracks WHERE release_id = ?1 ORDER BY position",
+                "SELECT id, track_number FROM tracks WHERE release_id = ?1 ORDER BY position",
                 [release],
-                |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, u8>(2)?, row.get::<_, u32>(3)?)),
+                |row| Ok((row.get::<_, String>(0)?, row.get::<_, u32>(1)?)),
             )
             .map_err(bae_store::DbError::from)
         })
         .await
         .unwrap();
-    let expected: Vec<_> = rows
+    let sided = |letter: &str| TrackSide::Sided { side_letter: letter.to_owned() };
+    let expected_sides = [
+        TrackSide::Disc { disc: 1 },
+        sided("A"),
+        sided("B"),
+        TrackSide::Disc { disc: 3 },
+        sided("C"),
+        sided("D"),
+        sided("E"),
+        sided("F"),
+        sided("G"),
+    ];
+    let expected: Vec<_> = numbers
         .iter()
-        .map(|(id, medium_id, side, number)| {
-            let medium = mediums.0.iter().find(|medium| &medium.id == medium_id).unwrap();
-            let place = bae_types::mediums::TrackPlace {
-                medium: medium.position,
-                side: std::num::NonZeroU8::new(*side).unwrap(),
-                number: std::num::NonZeroU32::new(*number).unwrap(),
+        .zip(&expected_sides)
+        .map(|((id, number), side)| {
+            let number = *number;
+            let position = match side.clone() {
+                TrackSide::Sided { side_letter } => TrackPosition::Sided { side_letter, number },
+                TrackSide::Disc { disc } => TrackPosition::Disc { disc, number },
+                TrackSide::Flat => TrackPosition::Flat { number },
             };
-            (id.clone(), track_position(&place, &mediums.mediums()))
+            (id.clone(), position)
         })
         .collect();
     let read: Vec<_> = groups
@@ -174,7 +185,6 @@ async fn the_statements_place_tracks_as_the_rule_over_decoded_rows_does() {
         .collect();
     assert_eq!(read, expected);
     let sides: Vec<_> = places.iter().map(|place| place.on.clone()).collect();
-    let expected_sides: Vec<_> = expected.iter().map(|(_, position)| position.side()).collect();
     assert_eq!(sides, expected_sides);
     #[cfg(desktop)]
     {

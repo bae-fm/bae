@@ -489,11 +489,8 @@ async fn numeric_vinyl_import_preserves_unknown_sides_and_track_order() {
         bae_types::pressing::made_of(bae_types::pressing::Medium::Vinyl, 1).media
     );
     assert_eq!(
-        bae_catalogs::release_values::place_labels(
-            &draft.mediums,
-            draft.tracks.iter().map(|track| track.place)
-        ),
-        ["A9", "A3"],
+        bae_catalogs::release_values::place_labels(draft.tracks.iter().map(|track| track.place)),
+        ["1.1.9", "1.1.3"],
         "one record whose positions name no letter is one side, numbered as printed"
     );
     let mut events = handle.every_event();

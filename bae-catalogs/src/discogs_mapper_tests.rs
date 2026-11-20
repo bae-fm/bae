@@ -267,7 +267,7 @@ fn test_cd_multi_disc() {
     let parsed = map(&release).unwrap();
     assert_eq!(
         crate::release_values::value_labels(&parsed),
-        ["1-1", "1-2", "1-3", "2-1", "2-2"],
+        ["1.1.1", "1.1.2", "1.1.3", "2.1.1", "2.1.2"],
         "each disc numbers its own tracks"
     );
 }
@@ -300,7 +300,7 @@ fn test_vinyl_sides() {
     let parsed = map(&release).unwrap();
     assert_eq!(
         crate::release_values::value_labels(&parsed),
-        ["A1", "A2", "B1", "B2", "C1", "D1"],
+        ["1.1.1", "1.1.2", "1.2.1", "1.2.2", "2.1.1", "2.2.1"],
         "the second record's sides letter on from the first's"
     );
 }
@@ -356,7 +356,7 @@ fn test_2lp_vinyl_with_headings() {
     // 9 tracks: 2 on A, 2 on B (heading collapsed + Track Three), 3 on C, 2 on D
     assert_eq!(
         crate::release_values::value_labels(&parsed),
-        ["A1", "A2", "B1", "B2", "C1", "C2", "C3", "D1", "D2"]
+        ["1.1.1", "1.1.2", "1.2.1", "1.2.2", "2.1.1", "2.1.2", "2.1.3", "2.2.1", "2.2.2"]
     );
     assert_eq!(tracks[0].title, "Track One");
     assert_eq!(tracks[1].title, "Track Two");
@@ -381,7 +381,7 @@ fn test_single_disc() {
         text: None,
     }];
     let parsed = map(&release).unwrap();
-    assert_eq!(crate::release_values::value_labels(&parsed), ["1", "2", "3"]);
+    assert_eq!(crate::release_values::value_labels(&parsed), ["1.1.1", "1.1.2", "1.1.3"]);
 }
 
 #[test]
@@ -612,7 +612,10 @@ fn a_track_with_no_position_is_numbered_by_its_place_on_its_disc() {
         &[("CD", "2")],
     );
     let parsed = map(&release).unwrap();
-    assert_eq!(crate::release_values::value_labels(&parsed), ["1-1", "1-2", "2-1", "2-2", "2-3"]);
+    assert_eq!(
+        crate::release_values::value_labels(&parsed),
+        ["1.1.1", "1.1.2", "2.1.1", "2.1.2", "2.1.3"]
+    );
 }
 
 /// A Discogs album credit keeps its artist name variation as the name it
@@ -740,7 +743,7 @@ fn a_side_letter_alone_names_its_side() {
 
     let release = with_formats(release, &[("Vinyl", "1")]);
     let parsed = map(&release).unwrap();
-    assert_eq!(crate::release_values::value_labels(&parsed), ["A1", "B1"]);
+    assert_eq!(crate::release_values::value_labels(&parsed), ["1.1.1", "1.2.1"]);
     assert_eq!(parsed.mediums[0].sides.get(), 2);
 }
 

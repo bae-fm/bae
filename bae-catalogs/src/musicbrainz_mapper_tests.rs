@@ -114,7 +114,7 @@ fn a_hybrid_sacd_rip_is_read_from_its_cd_layer() {
 
     assert_eq!(
         crate::release_values::value_labels(&parsed),
-        ["1", "2", "3"],
+        ["1.1.1", "1.1.2", "1.1.3"],
         "one layer is one disc"
     );
 }
@@ -145,7 +145,7 @@ fn one_disc_of_a_box_is_read_from_its_own_medium() {
     );
     assert_eq!(
         crate::release_values::value_labels(&parsed),
-        ["1", "2"],
+        ["1.1.1", "1.1.2"],
         "the disc read is the reading's only medium"
     );
 }
@@ -189,7 +189,7 @@ fn test_cd_two_media_each_one_side() {
     ]);
 
     let parsed = map(&response, vec![]).unwrap();
-    assert_eq!(crate::release_values::value_labels(&parsed), ["1-1", "1-2", "2-1", "2-2"]);
+    assert_eq!(crate::release_values::value_labels(&parsed), ["1.1.1", "1.1.2", "2.1.1", "2.1.2"]);
 }
 
 #[test]
@@ -212,7 +212,7 @@ fn numeric_vinyl_tracks_are_usable_without_side_boundaries() {
     );
     assert_eq!(
         crate::release_values::value_labels(&parsed),
-        (1..=12).map(|number| format!("A{number}")).collect::<Vec<_>>()
+        (1..=12).map(|number| format!("1.1.{number}")).collect::<Vec<_>>()
     );
 }
 
@@ -230,7 +230,7 @@ fn test_vinyl_one_medium_two_sides() {
     }]);
 
     let parsed = map(&response, vec![]).unwrap();
-    assert_eq!(crate::release_values::value_labels(&parsed), ["A1", "A2", "B1", "B2"]);
+    assert_eq!(crate::release_values::value_labels(&parsed), ["1.1.1", "1.1.2", "1.2.1", "1.2.2"]);
 }
 
 /// 2LP vinyl: two media, each with two sides of its own (A/B and C/D),
@@ -263,7 +263,7 @@ fn test_vinyl_two_media_four_sides() {
     let parsed = map(&response, vec![]).unwrap();
     assert_eq!(
         crate::release_values::value_labels(&parsed),
-        ["A1", "A2", "B1", "B2", "C1", "C2", "D1", "D2"]
+        ["1.1.1", "1.1.2", "1.2.1", "1.2.2", "2.1.1", "2.1.2", "2.2.1", "2.2.2"]
     );
     assert!(
         parsed.mediums.iter().all(|medium| medium.sides.get() == 2),
@@ -284,7 +284,7 @@ fn test_single_medium_cd_all_side_one() {
     }]);
 
     let parsed = map(&response, vec![]).unwrap();
-    assert_eq!(crate::release_values::value_labels(&parsed), ["1", "2", "3"]);
+    assert_eq!(crate::release_values::value_labels(&parsed), ["1.1.1", "1.1.2", "1.1.3"]);
 }
 
 /// A track whose position names no side is on the side of the track before
@@ -313,7 +313,7 @@ fn vinyl_track_without_a_position_is_on_the_side_before_it() {
     }]);
 
     let parsed = map(&response, vec![]).unwrap();
-    assert_eq!(crate::release_values::value_labels(&parsed), ["A1", "A2"]);
+    assert_eq!(crate::release_values::value_labels(&parsed), ["1.1.1", "1.1.2"]);
 }
 
 /// A printed number names no side: the track is on the side before it, with
@@ -327,7 +327,7 @@ fn vinyl_numeric_track_is_on_the_side_before_it() {
     }]);
 
     let parsed = map(&response, vec![]).unwrap();
-    assert_eq!(crate::release_values::value_labels(&parsed), ["A1", "A1"]);
+    assert_eq!(crate::release_values::value_labels(&parsed), ["1.1.1", "1.1.1"]);
 }
 
 #[test]
@@ -591,7 +591,7 @@ fn vinyl_sub_track_position_names_its_side() {
     }]);
 
     let parsed = map(&response, vec![]).unwrap();
-    assert_eq!(crate::release_values::value_labels(&parsed), ["A1", "A2", "B1"]);
+    assert_eq!(crate::release_values::value_labels(&parsed), ["1.1.1", "1.1.2", "1.2.1"]);
     assert_eq!(parsed.mediums[0].sides.get(), 2);
 }
 

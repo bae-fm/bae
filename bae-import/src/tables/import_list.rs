@@ -78,9 +78,7 @@ const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] = &[
     &bae_store::SEARCH_PATTERN,
     &super::watched_path::FOLDER_BELOW,
     &super::watched_path::FOLDER_RELATIVE,
-    &super::layout_text::SIDE_LETTERS,
-    &super::layout_text::MEDIUM_IS_SIDED,
-    &super::layout_text::TRIM,
+    &super::trim::TRIM,
     &pane_files::SUPPORTED_COVER,
 ];
 

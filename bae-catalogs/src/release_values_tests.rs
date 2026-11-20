@@ -7,6 +7,6 @@ use crate::test_releases::{mb_release_values, mb_vinyl_release};
 fn a_reading_numbers_tracks_per_side() {
     assert_eq!(
         value_labels(&mb_release_values(&mb_vinyl_release("vinyl-release"))),
-        ["A1", "A2", "B1"]
+        ["1.1.1", "1.1.2", "1.2.1"]
     );
 }

@@ -232,7 +232,7 @@ fn cue_sheet_seeds_one_track_per_cue_entry_not_per_image_file() {
         parsed.tracks.iter().map(|t| t.title.as_str()).collect::<Vec<_>>(),
         ["Track One", "Track Two", "Track Three"]
     );
-    assert_eq!(bae_catalogs::release_values::value_labels(&parsed), ["1", "2", "3"]);
+    assert_eq!(bae_catalogs::release_values::value_labels(&parsed), ["1.1.1", "1.1.2", "1.1.3"]);
     assert_eq!(parsed.album_title, "Album Title");
     assert_eq!(parsed.album_year, Some(1970));
     assert_eq!(parsed.album_credits[0].credit.name, "Artist Name");
@@ -248,7 +248,10 @@ fn cue_multi_sheet_assigns_side_per_disc() {
         cue_sheet("Album Title", vec![titled_cue_track(1, "D2 T1"), titled_cue_track(2, "D2 T2")]);
     let parsed = map_cue_folder(vec![disc1, disc2], Some("Folder"));
 
-    assert_eq!(bae_catalogs::release_values::value_labels(&parsed), ["1-1", "1-2", "2-1", "2-2"]);
+    assert_eq!(
+        bae_catalogs::release_values::value_labels(&parsed),
+        ["1.1.1", "1.1.2", "2.1.1", "2.1.2"]
+    );
 }
 
 /// Write the audio file `source` to `folder/{name}` and stamp it with the
@@ -349,7 +352,7 @@ fn flac_with_vorbis_comments_basic() {
     assert_eq!(parsed.tracks.len(), 2);
     assert_eq!(parsed.tracks[0].title, "Track One");
     assert_eq!(parsed.tracks[1].title, "Track Two");
-    assert_eq!(bae_catalogs::release_values::value_labels(&parsed), ["1", "2"]);
+    assert_eq!(bae_catalogs::release_values::value_labels(&parsed), ["1.1.1", "1.1.2"]);
 
     assert_eq!(
         parsed.album_credits.iter().map(|credit| credit.credit.name.as_str()).collect::<Vec<_>>(),
@@ -387,7 +390,10 @@ fn flac_multi_disc_groups_by_discnumber() {
 
     let parsed = map_tags(&temp, &files).unwrap();
 
-    assert_eq!(bae_catalogs::release_values::value_labels(&parsed), ["1-1", "1-2", "2-1", "2-2"]);
+    assert_eq!(
+        bae_catalogs::release_values::value_labels(&parsed),
+        ["1.1.1", "1.1.2", "2.1.1", "2.1.2"]
+    );
     assert!(parsed.mediums.iter().all(|medium| medium.carrier.is_none()), "tags state no carrier");
 }
 
@@ -506,7 +512,7 @@ fn missing_optional_tags_yields_none_and_defaults() {
     let parsed = map_tags(&temp, &[f1, f2]).unwrap();
     assert_eq!(parsed.album_year, None);
     assert_eq!(parsed.pressing.year, None);
-    assert_eq!(bae_catalogs::release_values::value_labels(&parsed), ["1", "2"]);
+    assert_eq!(bae_catalogs::release_values::value_labels(&parsed), ["1.1.1", "1.1.2"]);
 }
 
 /// Supplied numbers remain unchanged; absent numbers use ordered position.
@@ -705,7 +711,7 @@ fn cue_numbers_are_preserved_instead_of_recreated() {
     let sheet =
         cue_sheet("Album", vec![titled_cue_track(4, "Fourth"), titled_cue_track(7, "Seventh")]);
     let parsed = map_cue_folder(vec![sheet], None);
-    assert_eq!(bae_catalogs::release_values::value_labels(&parsed), ["4", "7"]);
+    assert_eq!(bae_catalogs::release_values::value_labels(&parsed), ["1.1.4", "1.1.7"]);
 }
 
 /// All tracks completely untagged → folder-name title, no album artist,

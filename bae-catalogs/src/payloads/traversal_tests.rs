@@ -875,7 +875,7 @@ async fn a_master_backlink_is_followed() {
     assert_eq!(parsed.album_title, "Selected Album");
     assert_eq!(parsed.album_year, Some(1980));
     assert_eq!(parsed.pressing.year, Some(2005));
-    assert_eq!(crate::release_values::value_labels(&parsed), ["A1", "B1"]);
+    assert_eq!(crate::release_values::value_labels(&parsed), ["1.1.1", "1.2.1"]);
     assert_eq!(parsed.album_credits[0].credit.musicbrainz_artist_id.as_deref(), Some("artist-id"));
 }
 

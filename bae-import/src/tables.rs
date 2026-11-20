@@ -15,7 +15,6 @@ mod folder_scans;
 mod import_list;
 mod import_origin;
 pub(crate) mod import_state;
-mod layout_text;
 mod release_edit;
 mod release_groupings;
 mod release_sheet_decisions;
@@ -23,6 +22,7 @@ mod sheet_decision_columns;
 mod skipped_candidates;
 mod source_releases;
 mod stored_credits;
+mod trim;
 mod watched_folders;
 
 /// Import's parts of the library's schema, in the order they run.

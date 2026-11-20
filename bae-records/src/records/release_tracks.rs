@@ -6,11 +6,10 @@
 //! played side by side (a record, a cassette) is on a lettered side, the
 //! letters counting the sides of the release's sided mediums in order; a
 //! track on another medium is on a numbered disc when the release holds more
-//! than one medium, and only a number otherwise.
-//! [`bae_types::mediums::track_position`] states the same rule over decoded
-//! rows. A statement places a release's tracks on the mediums its
-//! [`MediumsSource`] names: the release's own, or those of the catalog
-//! release the person applied in a release editor's session.
+//! than one medium, and only a number otherwise. [`track_places_ctes`] is the
+//! one statement of that rule: every statement that names a track's side or
+//! disc, the import pane's among them, places its tracks through it, on the
+//! mediums its [`MediumsSource`] names.
 
 use super::query::*;
 use super::read::*;
@@ -28,7 +27,9 @@ fn sided_media_sql() -> String {
 }
 
 /// Where a statement over a release's tracks finds the release's mediums and
-/// the place of each track on them.
+/// the place of each track on them: the library's, those of the catalog
+/// release the person applied in a release editor's session, or those of an
+/// import's draft.
 #[derive(Debug, Clone, Copy)]
 pub enum MediumsSource<'a> {
     /// The release's mediums and its tracks' places as the library holds
@@ -38,9 +39,8 @@ pub enum MediumsSource<'a> {
     /// parentheses: `mediums` returns the columns `id`, `release_id`,
     /// `position`, `medium` and `side_count` of `release_mediums`, one row
     /// per medium, and `places` returns the columns `id` (the track's),
-    /// `medium_id` (a medium's `id`), `side`, `track_number`,
-    /// `stated_length_ms` and `position` of `tracks`, one row per track of
-    /// the release.
+    /// `release_id`, `medium_id` (a medium's `id`), `side`, `track_number`,
+    /// `stated_length_ms` and `position` of `tracks`, one row per track.
     Draft { mediums: &'a str, places: &'a str },
 }
 
@@ -83,31 +83,43 @@ fn medium_cte(mediums: &str, release_filter: &str) -> String {
     )
 }
 
-/// What kind of side the track `track` sits on, over a join of `medium` as
-/// `m`: `sided`, `disc` or `flat`.
-const SIDE_KIND_SQL: &str = "CASE WHEN m.sided THEN 'sided' \
-                                  WHEN m.medium_count > 1 THEN 'disc' \
-                                  ELSE 'flat' END";
-
-/// The ordinal of the side a track sits on, over a join of `medium` as `m`
-/// and `side` (an SQL expression naming the track's side on its medium): its
-/// number among the sided sides, the disc's number, or zero.
-fn side_ordinal_sql(side: &str) -> String {
+/// The common table expressions `medium` and `place`, over the mediums and
+/// places `source` names, for the releases `release_filter` keeps (a
+/// condition over `m`, one row of the mediums). `medium` is each of those
+/// mediums with whether it is played side by side, how many sided sides come
+/// before it on its release, and how many mediums its release holds. `place`
+/// is each track on them, with the columns `id`, `release_id`, `position`
+/// (its playing order), `number` (its number on its side), `side` (its side
+/// on its medium), `stated_length_ms`, `medium_position`, `carrier` (its
+/// medium's carrier key, where the source states one), `side_kind` (`sided`,
+/// `disc` or `flat`) and `side_ordinal` (the side's number among the sided
+/// sides, the disc's number, or zero). [`track_position_of`] reads a
+/// `place` row's kind, ordinal and number.
+pub fn track_places_ctes(source: MediumsSource<'_>, release_filter: &str) -> String {
     format!(
-        "CASE WHEN m.sided THEN m.sides_before + {side} \
-              WHEN m.medium_count > 1 THEN m.position \
-              ELSE 0 END"
+        "{medium}, \
+         place AS ( \
+            SELECT p.id, p.release_id, p.position, p.track_number AS number, p.side, \
+                   p.stated_length_ms, m.position AS medium_position, m.medium AS carrier, \
+                   CASE WHEN m.sided THEN 'sided' \
+                        WHEN m.medium_count > 1 THEN 'disc' \
+                        ELSE 'flat' END AS side_kind, \
+                   CASE WHEN m.sided THEN m.sides_before + p.side \
+                        WHEN m.medium_count > 1 THEN m.position \
+                        ELSE 0 END AS side_ordinal \
+            FROM {places} p JOIN medium m ON m.id = p.medium_id AND m.release_id = p.release_id)",
+        medium = medium_cte(source.mediums(), release_filter),
+        places = source.places(),
     )
 }
 
-/// The two common table expressions the statements over a release's tracks
+/// The common table expressions the statements over a release's tracks
 /// start from, for the release `release` (an SQL expression naming its id),
-/// on the mediums `source` names: `medium`, each of those mediums with how
-/// many sided sides come before it, and `placed`, each of the release's
-/// tracks with its side's kind (`sided`, `disc` or `flat`) and ordinal (the
-/// side's number among the sided sides, the disc's number, or zero), its
-/// number on the side, and `extra_columns`, further columns of the track
-/// `track` of the release `r` of the album `a`, each starting with a comma.
+/// on the mediums `source` names: those of [`track_places_ctes`], and
+/// `placed`, each of the release's tracks with its side's kind and ordinal,
+/// its number on the side, and `extra_columns`, further columns of the track
+/// `track` and its place `place` of the release `r` of the album `a`, each
+/// starting with a comma.
 pub(super) fn placed_tracks_ctes(
     release: &str,
     source: MediumsSource<'_>,
@@ -115,32 +127,25 @@ pub(super) fn placed_tracks_ctes(
     extra_joins: &str,
 ) -> String {
     format!(
-        "{medium}, \
+        "{places}, \
          placed AS ( \
             SELECT track.id AS id, track.title AS title, track.duration_ms AS duration_ms, \
-                   place.position AS position, place.track_number AS number, \
-                   {SIDE_KIND_SQL} AS side_kind, {side_ordinal} AS side_ordinal \
+                   place.position AS position, place.number AS number, \
+                   place.side_kind AS side_kind, place.side_ordinal AS side_ordinal \
                    {extra_columns} \
             FROM tracks track \
-            JOIN {places} place ON place.id = track.id \
+            JOIN place ON place.id = track.id \
             JOIN releases r ON r.id = track.release_id \
             JOIN albums a ON a.id = r.album_id \
-            JOIN medium m ON m.id = place.medium_id \
             {extra_joins} \
             WHERE track.release_id = {release})",
-        medium = medium_cte(source.mediums(), &format!("m.release_id = {release}")),
-        side_ordinal = side_ordinal_sql("place.side"),
-        places = source.places(),
+        places = track_places_ctes(source, &format!("m.release_id = {release}")),
     )
 }
 
-/// The place a `placed` row's columns name: the track's side or disc and its
-/// number on the release.
-pub(super) fn track_position_of(
-    kind: &str,
-    ordinal: u32,
-    number: u32,
-) -> Result<TrackPosition, String> {
+/// The place a `place` row's columns name: the track's side or disc and its
+/// number there.
+pub fn track_position_of(kind: &str, ordinal: u32, number: u32) -> Result<TrackPosition, String> {
     match kind {
         "sided" => Ok(TrackPosition::Sided { side_letter: side_letters(ordinal), number }),
         "disc" => Ok(TrackPosition::Disc { disc: ordinal, number }),
@@ -149,8 +154,8 @@ pub(super) fn track_position_of(
     }
 }
 
-/// The side a `placed` row's kind and ordinal name.
-fn track_side_of(kind: &str, ordinal: u32) -> Result<TrackSide, String> {
+/// The side a `place` row's kind and ordinal name.
+pub fn track_side_of(kind: &str, ordinal: u32) -> Result<TrackSide, String> {
     Ok(track_position_of(kind, ordinal, 1)?.side())
 }
 
@@ -309,17 +314,16 @@ pub(super) fn total_duration_sql(release: &str) -> String {
 fn track_places_sql() -> String {
     format!(
         "WITH wanted AS (SELECT j.key AS ord, j.value AS track_id FROM json_each(?1) j), \
-         {medium} \
-         SELECT track.id AS track_id, track.release_id AS release_id, \
-                m.position AS medium_position, track.side AS side, m.medium AS carrier, \
-                {SIDE_KIND_SQL} AS side_kind, {side_ordinal} AS side_ordinal \
+         {places} \
+         SELECT place.id AS track_id, place.release_id AS release_id, \
+                place.medium_position AS medium_position, place.side AS side, \
+                place.carrier AS carrier, place.side_kind AS side_kind, \
+                place.side_ordinal AS side_ordinal \
          FROM wanted w \
-         JOIN tracks track ON track.id = w.track_id \
-         JOIN medium m ON m.id = track.medium_id \
+         JOIN place ON place.id = w.track_id \
          ORDER BY w.ord",
-        side_ordinal = side_ordinal_sql("track.side"),
-        medium = medium_cte(
-            "release_mediums",
+        places = track_places_ctes(
+            MediumsSource::Release,
             "m.release_id IN (SELECT t.release_id FROM tracks t \
                               JOIN wanted w ON w.track_id = t.id)"
         ),

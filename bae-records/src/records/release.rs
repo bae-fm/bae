@@ -516,7 +516,7 @@ pub fn release_edit_tracks_sql(release: &str, source: MediumsSource<'_>, picks: 
             release,
             source,
             ", place.stated_length_ms AS place_stated_length_ms, \
-               FIRST_VALUE(m.position) OVER ( \
+               FIRST_VALUE(place.medium_position) OVER ( \
                    PARTITION BY sheet_carved.sheet_file_id ORDER BY place.position) AS sheet_disc",
             "LEFT JOIN carved_tracks sheet_carved ON sheet_carved.track_id = track.id"
         ),

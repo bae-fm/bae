@@ -71,10 +71,10 @@ impl Placer {
     }
 }
 
-/// How a track's place reads ([`track_position`]): on a
-/// lettered side of a record or cassette, on a numbered disc of a release of
-/// several mediums, or plain on a release of one. Core renders `position_text`
-/// from this; the UI only resolves the header word.
+/// How a track's place reads: on a lettered side of a record or cassette, on
+/// a numbered disc of a release of several mediums, or plain on a release of
+/// one. bae-records' `track_places_ctes` states the rule that gives it. Core
+/// renders `position_text` from this; the UI only resolves the header word.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TrackPosition {
     /// Header "Side A", position "A1". `side_letter` names the side among the
@@ -175,32 +175,6 @@ pub fn side_letters(n: u32) -> String {
         n = (n - 1) / 26;
     }
     letters.iter().rev().collect()
-}
-
-/// How a track at `place` reads on a release holding `mediums`. A track on a
-/// sided medium is on a lettered side, the letters counting the sides of the
-/// release's sided mediums in order; a track on any other medium is on a
-/// numbered disc when the release holds more than one medium (its position
-/// among them), and plain otherwise.
-pub fn track_position(place: &TrackPlace, mediums: &[ReleaseMedium]) -> TrackPosition {
-    let number = place.number.get();
-    let medium =
-        mediums.get(place.medium_index()).expect("a track's medium is one of its release's");
-    if medium.is_sided() {
-        let sides_before: u32 = mediums[..place.medium_index()]
-            .iter()
-            .filter(|medium| medium.is_sided())
-            .map(|medium| u32::from(medium.sides.get()))
-            .sum();
-        return TrackPosition::Sided {
-            side_letter: side_letters(sides_before + u32::from(place.side.get())),
-            number,
-        };
-    }
-    if mediums.len() > 1 {
-        return TrackPosition::Disc { disc: u32::from(place.medium.get()), number };
-    }
-    TrackPosition::Flat { number }
 }
 
 #[cfg(test)]

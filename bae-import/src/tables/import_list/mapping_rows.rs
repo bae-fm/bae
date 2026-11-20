@@ -45,26 +45,13 @@ audio_json (relative_path, json) AS (
                        'path', hex(absolute_path))
     FROM f WHERE role = 'audio'
 ),
-mediums AS (
-    SELECT m.position,
-           bae_medium_is_sided(m.medium) AS sided,
-           COALESCE(SUM(CASE WHEN bae_medium_is_sided(m.medium) THEN m.side_count END)
-                    OVER (ORDER BY m.position
-                          ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING), 0) AS sides_before,
-           COUNT(*) OVER () AS medium_count
-    FROM import_candidate_medium AS m WHERE m.content_hash = (SELECT content_hash FROM candidate)
-),
+{places},
 rows AS (
     SELECT t.position, t.title, t.track_id,
            (SELECT {track} FROM import_candidate_track AS track
             WHERE track.content_hash = t.content_hash AND track.track_id = t.track_id)
                AS track_json,
-           CASE WHEN m.sided THEN 'sided' WHEN m.medium_count > 1 THEN 'disc' ELSE 'flat' END
-               AS side_kind,
-           CASE WHEN m.sided THEN bae_side_letters(m.sides_before + t.side)
-                WHEN m.medium_count > 1 THEN CAST(t.medium AS TEXT) END AS side_value,
-           CASE WHEN m.sided THEN bae_side_letters(m.sides_before + t.side) || t.track_number
-                ELSE CAST(t.track_number AS TEXT) END AS position_text,
+           p.side_kind, p.side_ordinal, p.number,
            u.position IS NOT NULL
                AND u.file_kind IS t.file_kind AND u.file_id IS t.file_id
                AND u.sheet_id IS t.sheet_id AND u.slice_index IS t.slice_index AS unit_matches,
@@ -76,7 +63,7 @@ rows AS (
                      AND bae_lengths_disagree(u.duration_ms, t.stated_length_ms)
                 THEN t.stated_length_ms END AS listed_ms
     FROM import_candidate_track AS t
-    JOIN mediums AS m ON m.position = t.medium
+    JOIN place AS p ON p.id = t.track_id AND p.release_id = t.content_hash
     LEFT JOIN scan_candidate_unit AS u
         ON u.watched_folder_path = (SELECT watched_folder_path FROM candidate) AND u.candidate_path = :key AND u.position = t.position
     LEFT JOIN audio_json AS a ON a.relative_path = u.file_id
@@ -87,9 +74,9 @@ rows AS (
 ),
 marked AS (
     SELECT *,
-           side_kind IS NOT LAG(side_kind) OVER w OR side_value IS NOT LAG(side_value) OVER w
+           side_kind IS NOT LAG(side_kind) OVER w OR side_ordinal IS NOT LAG(side_ordinal) OVER w
                AS side_start,
-           side_kind IS NOT LAG(side_kind) OVER w OR side_value IS NOT LAG(side_value) OVER w
+           side_kind IS NOT LAG(side_kind) OVER w OR side_ordinal IS NOT LAG(side_ordinal) OVER w
                OR sheet_id IS NOT LAG(sheet_id) OVER w AS run_start
     FROM rows WINDOW w AS (ORDER BY position)
 ),
@@ -202,13 +189,13 @@ sheets (relative_path, json) AS (
     WHERE s.role = 'track_sheet'
 ),
 runs AS (
-    SELECT side_no, run_no, MIN(side_kind) AS side_kind, MIN(side_value) AS side_value,
+    SELECT side_no, run_no, MIN(side_kind) AS side_kind, MIN(side_ordinal) AS side_ordinal,
            json_object(
                'sheet', json((SELECT json FROM sheets WHERE relative_path = n.sheet_id)),
                'rows', json_group_array(json_object(
                    'track', json(track_json), 'matches', unit_matches,
                    'artists', json({track_artists}),
-                   'position', position_text,
+                   'number', number,
                    'listed_ms', listed_ms,
                    'unit', CASE WHEN file_kind IS NOT NULL THEN json_object(
                        'audio', json(audio), 'length_ms', unit_ms,
@@ -222,9 +209,9 @@ runs AS (
     FROM numbered AS n GROUP BY side_no, run_no
 ),
 sides AS (
-    SELECT json_group_array(json_object('kind', side_kind, 'value', side_value,
+    SELECT json_group_array(json_object('kind', side_kind, 'ordinal', side_ordinal,
                                         'runs', json(runs_json)) ORDER BY side_no) AS json
-    FROM (SELECT side_no, MIN(side_kind) AS side_kind, MIN(side_value) AS side_value,
+    FROM (SELECT side_no, MIN(side_kind) AS side_kind, MIN(side_ordinal) AS side_ordinal,
                  json_group_array(json(json) ORDER BY run_no) AS runs_json
           FROM runs GROUP BY side_no)
 ),
@@ -257,6 +244,18 @@ SELECT json_object(
             "(SELECT relative_path AS file_id FROM f)",
             "(SELECT unit_file_id AS audio_file_id, sheet_id AS sheet_file_id FROM rows)",
         ),
+        places = bae_records::records::track_places_ctes(
+            bae_records::records::MediumsSource::Draft {
+                mediums: "(SELECT position AS id, content_hash AS release_id, position, medium, \
+                                  side_count FROM import_candidate_medium \
+                           WHERE content_hash = (SELECT content_hash FROM candidate))",
+                places: "(SELECT track_id AS id, content_hash AS release_id, medium AS medium_id, \
+                                 side, track_number, stated_length_ms, position \
+                          FROM import_candidate_track \
+                          WHERE content_hash = (SELECT content_hash FROM candidate))",
+            },
+            "m.release_id = (SELECT content_hash FROM candidate)",
+        ),
     )
 }
 
@@ -283,7 +282,8 @@ struct RowJson {
     artists: Option<super::ArtistFieldJson>,
     #[serde(deserialize_with = "flag")]
     matches: bool,
-    position: String,
+    /// The track's number on its side.
+    number: u32,
     /// The length the track's source lists. The statement sets it only when
     /// `bae_lengths_disagree` finds that it differs too much from the audio's
     /// own length.
@@ -391,8 +391,9 @@ struct RunJson {
 
 #[derive(serde::Deserialize)]
 struct SideJson {
+    /// The side's kind and ordinal, as `track_places_ctes` names them.
     kind: String,
-    value: Option<String>,
+    ordinal: u32,
     runs: Vec<RunJson>,
 }
 
@@ -465,19 +466,30 @@ impl MappingRows {
         }
         let mut track_sides = Vec::new();
         for side in document.sides {
+            let unplaced = |reason: String| internal(format!("a track side: {reason}"));
             let mut runs = Vec::new();
             for run in side.runs {
                 let mut mappings = Vec::new();
                 let sheet = run.sheet.map(sheet_group).transpose()?;
                 for row in run.rows {
-                    mappings.push(track_mapping(row)?);
+                    let position = bae_records::records::track_position_of(
+                        &side.kind,
+                        side.ordinal,
+                        row.number,
+                    )
+                    .map_err(unplaced)?;
+                    mappings.push(track_mapping(row, position.text())?);
                 }
                 runs.push(match sheet {
                     Some(sheet) => MappingTrackRun::Sheet { sheet, entries: mappings },
                     None => MappingTrackRun::Tracks(mappings),
                 });
             }
-            track_sides.push(MappingTrackSide { side: track_side(&side.kind, side.value)?, runs });
+            track_sides.push(MappingTrackSide {
+                side: bae_records::records::track_side_of(&side.kind, side.ordinal)
+                    .map_err(unplaced)?,
+                runs,
+            });
         }
         let files = document
             .files
@@ -513,23 +525,6 @@ impl MappingRows {
             files,
             untitled_track_count: document.untitled,
         })
-    }
-}
-
-fn track_side(
-    kind: &str,
-    value: Option<String>,
-) -> Result<bae_types::mediums::TrackSide, ImportError> {
-    let bad = |detail: String| ImportError::Internal { detail };
-    match (kind, value) {
-        ("sided", Some(side_letter)) => Ok(bae_types::mediums::TrackSide::Sided { side_letter }),
-        ("disc", Some(disc)) => Ok(bae_types::mediums::TrackSide::Disc {
-            disc: disc.parse().map_err(|error| bad(format!("a disc number {disc}: {error}")))?,
-        }),
-        ("flat", None) => Ok(bae_types::mediums::TrackSide::Flat),
-        (kind, value) => {
-            Err(bad(format!("the statement returned an unknown track side {kind} {value:?}")))
-        }
     }
 }
 
@@ -625,7 +620,7 @@ fn reference_options(reference: ReferenceJson) -> Result<SheetReferenceOptions, 
     })
 }
 
-fn track_mapping(row: RowJson) -> Result<TrackMapping, ImportError> {
+fn track_mapping(row: RowJson, position: String) -> Result<TrackMapping, ImportError> {
     let internal = |detail: String| ImportError::Internal { detail };
     let track = row.track.track()?;
     if !row.matches {
@@ -661,7 +656,7 @@ fn track_mapping(row: RowJson) -> Result<TrackMapping, ImportError> {
     Ok(TrackMapping {
         source,
         track: track.edit.as_edit(),
-        position: row.position,
+        position,
         length_ms: unit.length_ms,
         listed_length_ms: row.listed_ms,
         artists,

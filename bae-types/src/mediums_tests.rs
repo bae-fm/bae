@@ -1,9 +1,5 @@
 use super::*;
 
-fn medium(carrier: Option<Medium>, sides: u8) -> ReleaseMedium {
-    ReleaseMedium { carrier, sides: NonZeroU8::new(sides).expect("a medium has a side") }
-}
-
 fn place(medium: u16, side: u8, number: u32) -> TrackPlace {
     TrackPlace {
         medium: NonZeroU16::new(medium).expect("mediums count from one"),
@@ -12,48 +8,11 @@ fn place(medium: u16, side: u8, number: u32) -> TrackPlace {
     }
 }
 
-fn label(place: &TrackPlace, mediums: &[ReleaseMedium]) -> String {
-    track_position(place, mediums).text()
-}
-
-/// Two records read A1 … D5: the second record's sides go on from the first's.
-#[test]
-fn a_two_record_set_letters_its_four_sides_in_order() {
-    let mediums = [medium(Some(Medium::Vinyl), 2), medium(Some(Medium::Vinyl), 2)];
-    assert_eq!(label(&place(1, 1, 1), &mediums), "A1");
-    assert_eq!(label(&place(1, 2, 6), &mediums), "B6");
-    assert_eq!(label(&place(2, 1, 1), &mediums), "C1");
-    assert_eq!(label(&place(2, 2, 5), &mediums), "D5");
-}
-
-/// The CDs of a box are discs, numbered among the mediums the release holds.
-#[test]
-fn the_discs_of_a_multi_disc_release_read_by_disc() {
-    let mediums = [medium(Some(Medium::Cd), 1), medium(Some(Medium::Cd), 1)];
-    assert_eq!(
-        track_position(&place(2, 1, 3), &mediums),
-        TrackPosition::Disc { disc: 2, number: 3 }
-    );
-}
-
-/// One medium with no sides to letter reads its numbers alone, whatever its
-/// carrier.
-#[test]
-fn a_single_disc_reads_its_numbers_alone() {
-    for carrier in [Some(Medium::Cd), None] {
-        assert_eq!(
-            track_position(&place(1, 1, 5), &[medium(carrier, 1)]),
-            TrackPosition::Flat { number: 5 }
-        );
-    }
-}
-
 /// Past Z the letters go on as AA, AB, ….
 #[test]
 fn the_twenty_seventh_side_is_aa() {
-    let mediums: Vec<_> = (0..14).map(|_| medium(Some(Medium::Vinyl), 2)).collect();
-    assert_eq!(label(&place(13, 2, 1), &mediums), "Z1");
-    assert_eq!(label(&place(14, 1, 1), &mediums), "AA1");
+    assert_eq!(side_letters(26), "Z");
+    assert_eq!(side_letters(27), "AA");
     assert_eq!(side_letters(28), "AB");
     assert_eq!(side_letters(52), "AZ");
     assert_eq!(side_letters(53), "BA");
