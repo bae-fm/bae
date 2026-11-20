@@ -6,7 +6,6 @@ use super::*;
 use crate::folder_scanner::{CandidateFile, CategorizedFiles, FileRole, ScanItem, ScannedFile};
 use crate::tables::tests::*;
 use crate::Neighbors;
-use std::time::Duration;
 
 /// A scanned candidate whose folder holds `images` beside one audio file.
 async fn folder_with(
@@ -48,7 +47,7 @@ async fn read(
 ) -> FolderImages {
     let asked = FolderImagesRequest { candidate: key.clone(), focus: focus.map(str::to_string) };
     let mut live = tables.subscribe_folder_images(Some(asked.clone()));
-    tokio::time::timeout(Duration::from_secs(30), async {
+    tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         loop {
             let event = live.next_inline().await.expect("the read runs");
             if event.request.as_ref() == Some(&asked) {

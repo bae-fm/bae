@@ -698,7 +698,7 @@ async fn a_cue_image_s_release_keeps_its_sheet_and_listed_lengths() {
         .await
         .expect("apply the catalog's release");
     drafts.set(Some(applied.clone())).expect("the draft takes the applied form");
-    tokio::time::timeout(std::time::Duration::from_secs(30), async {
+    tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         loop {
             let draft = drafts.next().await.expect("read the draft").expect("the library holds it");
             if listed_lengths(&draft) == [None, None, Some(40_000)] {

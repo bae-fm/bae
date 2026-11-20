@@ -6,7 +6,6 @@ use super::*;
 use bae_catalogs::remote_image::{CoverStanding, RemoteImageSet};
 use bae_records::test_fixtures::live_query::{live_db, RELEASE_ID};
 use bae_store::Store;
-use std::time::Duration;
 
 fn offered(url: &str, source: Catalog) -> RemoteCover {
     RemoteCover {
@@ -114,7 +113,7 @@ async fn gallery_until(
     asked: &CoverGalleryRequest,
     accept: impl Fn(&CoverGallery) -> bool,
 ) -> CoverGallery {
-    tokio::time::timeout(Duration::from_secs(30), async {
+    tokio::time::timeout(bae_util::test_channels::HANG_GUARD, async {
         loop {
             let event = gallery.next_inline().await.expect("the read runs");
             if event.request.as_ref() != Some(asked) {

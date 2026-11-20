@@ -622,9 +622,8 @@ fn play_from_buffer(
         sink.mark_finished();
         done.send(result).ok();
     });
-    let result = result
-        .recv_timeout(std::time::Duration::from_secs(60))
-        .expect("the decode did not finish in 60 s");
+    let result =
+        result.recv_timeout(bae_util::test_channels::HANG_GUARD).expect("the decode finishes");
     let mut played = Vec::new();
     let mut chunk = [0.0f32; 4096];
     loop {

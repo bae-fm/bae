@@ -79,7 +79,7 @@ fn a_cover_asked_for_at_launch_waits_for_storage_and_then_reads() {
         );
         b.storage().set_online(true);
         drop(b.manager().retry_now().await.unwrap());
-        let bytes = tokio::time::timeout(std::time::Duration::from_secs(30), read)
+        let bytes = tokio::time::timeout(bae_util::test_channels::HANG_GUARD, read)
             .await
             .expect("the read ends once storage connects")
             .unwrap()
