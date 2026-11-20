@@ -201,22 +201,17 @@ mirror_struct! {
     fields: { file_id, name, layout: (BridgeSourceAudioLayout) },
 }
 
-impl BridgeReleaseEditSheet {
-    fn from_core(sheet: bae_import::ReleaseEditSheet) -> Self {
-        let bae_import::ReleaseEditSheet { sheet, disc_options, audio_options } = sheet;
-        let bae_records::DbReleaseEditSheet { file_id, name, disc_number, file_reference } = sheet;
-        Self {
-            file_id,
-            name,
-            disc_number,
-            disc_options,
-            file_reference,
-            audio_options: audio_options
-                .into_iter()
-                .map(BridgeReleaseEditAudioOption::from_core)
-                .collect(),
-        }
-    }
+mirror_struct! {
+    BridgeReleaseEditSheet = bae_import::ReleaseEditSheet,
+    from_core: fn,
+    fields: {
+        file_id,
+        name,
+        disc_number,
+        disc_options,
+        file_reference,
+        audio_options: (each BridgeReleaseEditAudioOption),
+    },
 }
 
 mirror_struct! {

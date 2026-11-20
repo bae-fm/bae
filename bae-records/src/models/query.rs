@@ -66,13 +66,31 @@ pub struct DbReleaseEditTrack {
 
 /// A CUE sheet that carves a track out of an image, as the release editor
 /// names it: its file's id and name, the disc of the release the import
-/// read it as, and the text of the sheet's `FILE` line the track is under.
+/// read it as, the text of the sheet's `FILE` line the track is under, and
+/// the audio files of the release that line can play from, in file name
+/// order.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct DbReleaseEditSheet {
     pub file_id: String,
     pub name: String,
     pub disc_number: u32,
     pub file_reference: String,
+    pub audio_options: Vec<DbSheetAudioOption>,
+}
+
+/// One audio file of a release as a choice for a `FILE` line of one of its
+/// CUE sheets, as the release editor's
+/// tracks statement lists it.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct DbSheetAudioOption {
+    pub file_id: String,
+    pub name: String,
+    pub content_type: ContentType,
+    /// Whether the line plays from this file once the picks are written.
+    pub bound: bool,
+    /// Whether the file is long enough for every track the line carves: no
+    /// track's body ends, or the last one starts, past the file's end.
+    pub fits: bool,
 }
 
 /// A track's main segment as the release editor reads it: the file it names,

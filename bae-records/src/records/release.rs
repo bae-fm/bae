@@ -467,14 +467,15 @@ impl Records {
 /// segments they hold, and the first main segment's file id and where it
 /// starts in that file, with the name and audio layout of the release file
 /// of that id when the release holds one, and the CUE sheet that carves it,
-/// with the sheet's name and disc and the sheet's `FILE` line it is under.
-/// A track on a line moved to another file plays to that file's end where
+/// with the sheet's name and disc, the sheet's `FILE` line it is under and
+/// the audio files that line can play from (`sheet_audio_options`, see
+/// [`super::sheet_files::sheet_audio_options_ctes`]). A track on a line moved to another file plays to that file's end where
 /// it played to the end of the file before. [`release_edit_track_of_row`]
 /// reads each row.
 #[cfg(desktop)]
 pub fn release_edit_tracks_sql(release: &str, source: MediumsSource<'_>, picks: &str) -> String {
     format!(
-        "WITH {placed}, {sheet_files}, \
+        "WITH {placed}, {sheet_files}, {audio_options}, \
          main AS ( \
             SELECT s.track_id, s.file_id, s.start_sample * 1000 / s.sample_rate AS start_ms, \
                    s.end_sample IS NULL AND s.moved AS to_new_end, \
@@ -494,13 +495,17 @@ pub fn release_edit_tracks_sql(release: &str, source: MediumsSource<'_>, picks: 
                f.id IS NOT NULL AS main_file_found, f.original_filename AS main_file_name, \
                f.source_audio_layout AS main_file_layout, \
                carved.sheet_file_id, carved.file_reference AS sheet_file_reference, \
-               sheet_file.original_filename AS sheet_name, p.sheet_disc AS sheet_disc_number \
+               sheet_file.original_filename AS sheet_name, p.sheet_disc AS sheet_disc_number, \
+               options.options AS sheet_audio_options \
             FROM tracks t JOIN placed p ON p.id = t.id \
             LEFT JOIN main ON main.track_id = t.id AND main.n = 1 \
             LEFT JOIN laid_files f ON f.id = main.file_id \
             LEFT JOIN (carved_tracks carved \
                JOIN release_files sheet_file ON sheet_file.id = carved.sheet_file_id) \
                ON carved.track_id = t.id \
+            LEFT JOIN line_audio_options options \
+               ON options.sheet_file_id = carved.sheet_file_id \
+              AND options.file_reference = carved.file_reference \
             WHERE t.release_id = {release}) \
      SELECT laid.*, \
         CASE WHEN laid.place_stated_length_ms IS NOT NULL \
@@ -516,6 +521,7 @@ pub fn release_edit_tracks_sql(release: &str, source: MediumsSource<'_>, picks: 
             "LEFT JOIN carved_tracks sheet_carved ON sheet_carved.track_id = track.id"
         ),
         sheet_files = super::sheet_files::sheet_files_ctes(release, picks),
+        audio_options = super::sheet_files::sheet_audio_options_ctes(),
     )
 }
 
@@ -576,6 +582,16 @@ pub fn release_edit_track_of_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Db
                 name: row.get("sheet_name")?,
                 disc_number: row.get("sheet_disc_number")?,
                 file_reference: row.get("sheet_file_reference")?,
+                audio_options: {
+                    let options: String = row.get("sheet_audio_options")?;
+                    serde_json::from_str(&options).map_err(|error| {
+                        bae_store::read::column_conversion_error(
+                            row,
+                            "sheet_audio_options",
+                            format!("{error}: {options}"),
+                        )
+                    })?
+                },
             })
         })
         .transpose()?;

@@ -27,8 +27,6 @@ pub use raw_release_edit::{
 };
 #[cfg(desktop)]
 pub use release_edit_display::ReleaseEditDisplayContext;
-#[cfg(desktop)]
-pub(crate) use release_edit_display::ReleaseEditSheetChoices;
 pub use release_edit_display::{
     ReleaseEditAudioOption, ReleaseEditLoadError, ReleaseEditSheet, ReleaseEditTrackContext,
     ReleaseEditTrackRow, ReleaseEditTrackRun, ReleaseEditTrackSide, ReleaseEditTrackSource,

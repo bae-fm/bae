@@ -8,7 +8,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 /// [`ContentType::from_mime`] (reading a stored MIME back). An extension-based
 /// guess goes through [`crate::content_type_hint::ContentTypeHint`] and
 /// never produces a `ContentType`.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ContentType {
     // Audio
     Flac,

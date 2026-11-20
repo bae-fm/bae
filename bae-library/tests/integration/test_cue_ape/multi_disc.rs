@@ -329,7 +329,7 @@ async fn test_editor_moves_a_sheet_to_a_disc_that_holds_other_tracks() {
         .iter()
         .map(|run| match run {
             bae_import::ReleaseEditTrackRun::Sheet { sheet, rows, .. } => {
-                (sheet.sheet.file_id.clone(), sheet.sheet.disc_number, rows.len())
+                (sheet.file_id.clone(), sheet.disc_number, rows.len())
             }
             bae_import::ReleaseEditTrackRun::Track(_) => panic!("a sheet carves each track"),
         })

@@ -245,9 +245,6 @@ pub(crate) struct ReleaseEditDraftRows {
     tracks: Vec<DraftTrackRow>,
     /// How many discs the release has once the form's layout is written.
     disc_count: usize,
-    /// The audio files each `FILE` line of the release's sheets can play
-    /// from, once the form's picks are written.
-    audio_options: Vec<bae_records::records::sheet_files::DbSheetAudioOption>,
     /// The names of the files a save reads first.
     files_to_read: Vec<String>,
     has_tracks: bool,
@@ -323,12 +320,6 @@ pub(crate) fn release_edit_draft_rows_on(
         )?,
         tracks: draft_tracks_on(sql, &params)?,
         disc_count: bae_records::records::layout::laid_disc_count_on(sql, &params.layout())?,
-        audio_options: bae_records::records::sheet_files::sheet_audio_options_on(
-            sql,
-            ":release",
-            ":sheet_files",
-            named_params! { ":release": params.release, ":sheet_files": params.sheet_files },
-        )?,
         files_to_read: bae_records::records::sheet_files::sheet_files_to_read_on(
             sql,
             ":release",
@@ -439,7 +430,6 @@ impl ReleaseEditDraftRows {
             cover_version,
             tracks,
             disc_count,
-            audio_options,
             files_to_read,
             has_tracks,
             files,
@@ -452,6 +442,8 @@ impl ReleaseEditDraftRows {
         let unreadable = |error: crate::ReleaseEditLoadError| {
             DbError::unreadable(format!("the tracks of release {release_id}"), error)
         };
+        let disc_count = u32::try_from(disc_count).expect("a release holds fewer than 2^32 discs");
+        let disc_options: Vec<u32> = (1..=disc_count).collect();
         let rows = tracks
             .into_iter()
             .map(|track| track.table_row(&unreadable))
@@ -459,12 +451,7 @@ impl ReleaseEditDraftRows {
         Ok(ReleaseEditDraft {
             cover: bae_records::cover_ref(&release_id, cover_version),
             source_audio: files.source_audio.clone(),
-            sides: has_tracks.then(|| {
-                crate::ReleaseEditTrackSide::lay_out(
-                    rows,
-                    &crate::ReleaseEditSheetChoices::of(disc_count, audio_options),
-                )
-            }),
+            sides: has_tracks.then(|| crate::ReleaseEditTrackSide::lay_out(rows, &disc_options)),
             files: files
                 .has_others
                 .then(|| crate::ReleaseEditDisplayContext::carried_files(&files)),

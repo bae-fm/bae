@@ -124,11 +124,8 @@ async fn a_cue_sheet_moves_to_another_audio_file_of_its_release() {
     assert_eq!(listed_files(&opened), ["Test Album (rip).flac", "Test Album.cue"]);
     let image = source.file_id.clone();
 
-    let picked = form.with_sheet_file(
-        sheet.sheet.file_id.clone(),
-        sheet.sheet.file_reference.clone(),
-        rip.clone(),
-    );
+    let picked =
+        form.with_sheet_file(sheet.file_id.clone(), sheet.file_reference.clone(), rip.clone());
     let draft = draft_where(&drafts, &picked, |draft| sheet_run(draft).1.file_id == rip).await;
     assert_eq!(sheet_run(&draft).1.name, "Test Album (rip).flac");
     assert_eq!(listed_files(&draft), ["Test Album.cue", "Test Album.flac"]);
@@ -203,11 +200,7 @@ async fn a_file_shorter_than_the_sheet_is_refused() {
     assert_eq!(offer, SheetBindingOffer::RefusedTiming);
     let image = source.file_id.clone();
 
-    let picked = form.with_sheet_file(
-        sheet.sheet.file_id.clone(),
-        sheet.sheet.file_reference.clone(),
-        short,
-    );
+    let picked = form.with_sheet_file(sheet.file_id.clone(), sheet.file_reference.clone(), short);
     let error = manager
         .save_release_edit(picked, bae_library::GonePick::Refuse)
         .await

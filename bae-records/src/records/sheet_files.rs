@@ -96,70 +96,39 @@ pub fn sheet_files_ctes(release: &str, picks: &str) -> String {
     )
 }
 
-/// One audio file of a release as a choice for a `FILE` line of one of its
-/// CUE sheets, as [`sheet_audio_options_on`] reads it.
-#[derive(Debug, Clone, PartialEq)]
-pub struct DbSheetAudioOption {
-    pub sheet_file_id: String,
-    pub file_reference: String,
-    pub file_id: String,
-    pub name: String,
-    pub content_type: ContentType,
-    /// Whether the line plays from this file once the picks are written.
-    pub bound: bool,
-    /// Whether the file is long enough for every track the line carves: no
-    /// track's body ends, or the last one starts, past the file's end.
-    pub fits: bool,
-}
-
-/// The audio files each `FILE` line of the release `release`'s sheets can
-/// play from once the picks `picks` are written (SQL expressions over
-/// `params`, as for [`sheet_files_ctes`]): the file it then plays from, the
-/// one it plays from now, and every audio file of the release on this
-/// device that no track then plays from, by line and then in file name
-/// order.
-pub fn sheet_audio_options_on(
-    sql: &impl coven::SqlRead,
-    release: &str,
-    picks: &str,
-    params: impl rusqlite::Params,
-) -> Result<Vec<DbSheetAudioOption>, DbError> {
-    Ok(sql.query(
-        &format!(
-            "WITH {ctes}, \
-             line_ends (sheet_file_id, file_reference, end_ms) AS ( \
-                 SELECT c.sheet_file_id, c.file_reference, \
-                        MAX(COALESCE(s.end_sample, s.start_sample) * 1000 / s.sample_rate) \
-                 FROM carved_tracks c JOIN laid_segments s \
-                     ON s.track_id = c.track_id AND s.role = 'main' \
-                 GROUP BY c.sheet_file_id, c.file_reference) \
-             SELECT line.sheet_file_id, line.file_reference, f.id, f.original_filename, \
-                    f.source_audio_content_type, f.id = line.file_id AS bound, \
-                    ends.end_ms <= f.source_audio_duration_ms AS fits \
-             FROM laid_lines line \
-             JOIN line_ends ends ON ends.sheet_file_id = line.sheet_file_id \
-                                AND ends.file_reference = line.file_reference \
-             JOIN laid_files f ON f.role = 'audio' \
-             LEFT JOIN coven_file_reads reads ON reads.file = f.file \
-             WHERE f.id = line.file_id OR f.id = line.stored_file_id \
-                OR (f.source_audio_layout IS NULL AND reads.source = 'here') \
-             ORDER BY line.sheet_file_id, line.file_reference, \
-                      f.original_filename COLLATE natural_order, f.id",
-            ctes = sheet_files_ctes(release, picks),
-        ),
-        params,
-        |row| {
-            Ok(DbSheetAudioOption {
-                sheet_file_id: row.get(0)?,
-                file_reference: row.get(1)?,
-                file_id: row.get(2)?,
-                name: row.get(3)?,
-                content_type: ContentType::from_mime(&row.get::<_, String>(4)?),
-                bound: row.get(5)?,
-                fits: row.get(6)?,
-            })
-        },
-    )?)
+/// The common table expression `line_audio_options` (`sheet_file_id`,
+/// `file_reference`, `options`), which follows [`sheet_files_ctes`] in a
+/// `WITH`: the audio files each `FILE` line of the release's sheets can play
+/// from once the picks are written, as a JSON array of
+/// [`DbSheetAudioOption`]: the file it then plays from, the one it plays from
+/// now, and every audio file of the release on this device that no track
+/// then plays from, in file name order.
+pub fn sheet_audio_options_ctes() -> &'static str {
+    "line_ends (sheet_file_id, file_reference, end_ms) AS ( \
+         SELECT c.sheet_file_id, c.file_reference, \
+                MAX(COALESCE(s.end_sample, s.start_sample) * 1000 / s.sample_rate) \
+         FROM carved_tracks c JOIN laid_segments s \
+             ON s.track_id = c.track_id AND s.role = 'main' \
+         GROUP BY c.sheet_file_id, c.file_reference), \
+     line_audio_options (sheet_file_id, file_reference, options) AS ( \
+         SELECT line.sheet_file_id, line.file_reference, \
+                json_group_array(json_object( \
+                    'file_id', f.id, 'name', f.original_filename, \
+                    'content_type', f.source_audio_content_type, \
+                    'bound', json(CASE WHEN f.id = line.file_id THEN 'true' ELSE 'false' END), \
+                    'fits', json(CASE WHEN ends.end_ms <= f.source_audio_duration_ms \
+                                      THEN 'true' \
+                                      WHEN ends.end_ms > f.source_audio_duration_ms \
+                                      THEN 'false' END)) \
+                    ORDER BY f.original_filename COLLATE natural_order, f.id) \
+         FROM laid_lines line \
+         JOIN line_ends ends ON ends.sheet_file_id = line.sheet_file_id \
+                            AND ends.file_reference = line.file_reference \
+         JOIN laid_files f ON f.role = 'audio' \
+         LEFT JOIN coven_file_reads reads ON reads.file = f.file \
+         WHERE f.id = line.file_id OR f.id = line.stored_file_id \
+            OR (f.source_audio_layout IS NULL AND reads.source = 'here') \
+         GROUP BY line.sheet_file_id, line.file_reference)"
 }
 
 /// The names of the files the picks `picks` move lines of the release

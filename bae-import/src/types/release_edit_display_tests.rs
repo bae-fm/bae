@@ -21,6 +21,7 @@ fn context(side: TrackSide, id: &str, file: &str, sheet: Option<&str>) -> Releas
             name: format!("{sheet}.cue"),
             disc_number: 1,
             file_reference: format!("{file}.flac"),
+            audio_options: Vec::new(),
         }),
     }
 }
@@ -47,7 +48,7 @@ fn lay_out(tracks: Vec<ReleaseEditTrackContext>) -> Vec<ReleaseEditTrackSide> {
 /// The sides of `tracks` on a release of `disc_count` discs.
 fn lay_out_on_discs(
     tracks: Vec<ReleaseEditTrackContext>,
-    disc_count: usize,
+    disc_count: u32,
 ) -> Vec<ReleaseEditTrackSide> {
     ReleaseEditTrackSide::lay_out(
         tracks.into_iter().map(|context| ReleaseEditTrackRow {
@@ -55,7 +56,7 @@ fn lay_out_on_discs(
             context,
             artists: None,
         }),
-        &ReleaseEditSheetChoices::of(disc_count, Vec::new()),
+        &(1..=disc_count).collect::<Vec<_>>(),
     )
 }
 
@@ -79,7 +80,7 @@ fn sheet_runs(side: &ReleaseEditTrackSide) -> Vec<SheetRun<'_>> {
             let source = match run {
                 ReleaseEditTrackRun::Track(_) => None,
                 ReleaseEditTrackRun::Sheet { sheet, source, .. } => {
-                    Some((sheet.sheet.file_id.as_str(), source.file_id.as_str()))
+                    Some((sheet.file_id.as_str(), source.file_id.as_str()))
                 }
             };
             (source, run.rows().iter().map(|row| row.context.track_id.as_str()).collect())
@@ -129,7 +130,53 @@ fn a_sheet_run_offers_every_disc_of_the_release() {
     let [ReleaseEditTrackRun::Sheet { sheet, .. }] = sides[0].runs.as_slice() else {
         panic!("the sheet carves both tracks: {:?}", sides[0].runs);
     };
-    assert_eq!((sheet.sheet.disc_number, sheet.disc_options.as_slice()), (1, [1, 2, 3].as_slice()));
+    assert_eq!((sheet.disc_number, sheet.disc_options.as_slice()), (1, [1, 2, 3].as_slice()));
+}
+
+/// A sheet's run offers the audio files its line can play from as the
+/// import pane offers them: a file in a codec bae can't carve is refused
+/// naming the codec, and one the line's tracks don't fit is refused for its
+/// timing.
+#[test]
+fn a_sheet_run_offers_its_lines_audio_files_as_the_import_pane_does() {
+    use crate::folder_scanner::SheetBindingOffer;
+    use bae_util::content_type::ContentType;
+    let option = |file_id: &str, content_type: ContentType, bound: bool, fits: bool| {
+        bae_records::DbSheetAudioOption {
+            file_id: file_id.to_string(),
+            name: format!("{file_id} name"),
+            content_type,
+            bound,
+            fits,
+        }
+    };
+    let mut tracks = vec![
+        context(side("A"), "a1", "image", Some("sheet")),
+        context(side("A"), "a2", "image", Some("sheet")),
+    ];
+    for track in &mut tracks {
+        track.sheet.as_mut().expect("the sheet carves the track").audio_options = vec![
+            option("image", ContentType::Flac, true, true),
+            option("lossy", ContentType::Mp3, false, true),
+            option("short", ContentType::Flac, false, false),
+        ];
+    }
+    let sides = lay_out(tracks);
+    let [ReleaseEditTrackRun::Sheet { sheet, .. }] = sides[0].runs.as_slice() else {
+        panic!("the sheet carves both tracks: {:?}", sides[0].runs);
+    };
+    assert_eq!(
+        sheet
+            .audio_options
+            .iter()
+            .map(|option| (option.file_id.as_str(), option.bound, option.offer.clone()))
+            .collect::<Vec<_>>(),
+        [
+            ("image", true, SheetBindingOffer::Offered),
+            ("lossy", false, SheetBindingOffer::RefusedCodec { codec: "MP3".to_string() }),
+            ("short", false, SheetBindingOffer::RefusedTiming),
+        ]
+    );
 }
 
 #[test]
@@ -283,6 +330,7 @@ fn a_track_keeps_its_listed_length_and_its_sheet() {
         name: "disc.cue".to_string(),
         disc_number: 2,
         file_reference: "disc.flac".to_string(),
+        audio_options: Vec::new(),
     };
     let mut tracks = one_track(1, Some(segment("id-disc.flac")));
     tracks[0].listed_length_ms = Some(183_001);
