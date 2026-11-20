@@ -7,4 +7,6 @@ The invite form's fields: the email of the person's account on Dropbox, OneDrive
 | `storage` | `s3` (the default), `dropbox`, `onedrive` or `icloud`. |
 | `keyOwner` | On S3: `theirs` (the default), their own key in two fields, or `mine`, a note that they use your key. |
 
+Each field is named by its row's label, as VoiceOver reads it: “Dropbox email”, “Microsoft account email”, “Apple Account email”, “Access key ID”, “Secret access key”.
+
 **In the code:** macOS: `MacInviteFields` (`bae-macos/bae/bae/Views/Settings/Library/MacInviteFields.swift`), in `InvitePersonSheet`.

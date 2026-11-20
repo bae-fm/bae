@@ -229,10 +229,10 @@
     var mine = s3 && (props.keyOwner || 'theirs') === 'mine';
     var lw = s3 ? 120 : 150;
     return h('div', { className: 'bae-mac bae-m-invitefields' },
-      INVITE_EMAIL[storage] ? h(MacBox, null, h(MacFieldRow, { label: INVITE_EMAIL[storage], labelWidth: lw }, h(MacTextField, { value: 'dan@example.com', state: 'focused', note: inviteWhy(storage) }))) : null,
+      INVITE_EMAIL[storage] ? h(MacBox, null, h(MacFieldRow, { label: INVITE_EMAIL[storage], labelWidth: lw }, h(MacTextField, { label: INVITE_EMAIL[storage], labelHidden: true, value: 'dan@example.com', state: 'focused', note: inviteWhy(storage) }))) : null,
       s3 && !mine ? h(MacBox, null,
-        h(MacFieldRow, { label: 'Access key ID', labelWidth: lw }, h(MacTextField, { value: 'AKIAEXAMPLEKEY', state: 'focused' })),
-        h(MacFieldRow, { label: 'Secret access key', labelWidth: lw }, h(MacTextField, { value: 'abcdefghijkl', secret: true, note: INVITE_THEIR_KEY }))) : null,
+        h(MacFieldRow, { label: 'Access key ID', labelWidth: lw }, h(MacTextField, { label: 'Access key ID', labelHidden: true, value: 'AKIAEXAMPLEKEY', state: 'focused' })),
+        h(MacFieldRow, { label: 'Secret access key', labelWidth: lw }, h(MacTextField, { label: 'Secret access key', labelHidden: true, value: 'abcdefghijkl', secret: true, note: INVITE_THEIR_KEY }))) : null,
       mine ? h(MacNote, null, INVITE_MINE) : null,
       h(MacBox, null,
         h(MacFieldRow, { label: 'Role', labelWidth: lw }, h(MacSegmentedControl, { options: 'Member,Admin', selected: 'Member' })),
