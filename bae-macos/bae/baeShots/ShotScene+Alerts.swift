@@ -96,7 +96,12 @@ extension ShotScene {
                     over: SettingsWindowShot(
                         tab: .importing,
                         page: ImportSettingsTab()
-                            .environment(PreviewData.configStore())
+                            .environment(
+                                PreviewData.makeConfigStore(
+                                    libraryFullWidth: false,
+                                    importWhenIdentified: true
+                                )
+                            )
                             .environment(Discogs.stub())
                             .environment(Importer.stub())
                             .environment(UiStore())
