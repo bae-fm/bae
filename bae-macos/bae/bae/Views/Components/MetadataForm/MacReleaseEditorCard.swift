@@ -23,7 +23,7 @@ struct MacReleaseEditorCard<Lead: View>: View {
             SessionReleaseHeader(
                 session: session,
                 pressingOffers: draft.pressingOffers,
-                albumArtistStanding: draft.albumArtistStanding,
+                albumArtists: draft.albumArtists,
                 artistSearch: library.artistSearch,
                 cover: { cover },
                 audioFacts: { sourceAudio },
@@ -82,7 +82,7 @@ private struct SessionReleaseHeader<
 >: View {
     let session: ReleaseMetadataEditSession
     let pressingOffers: BridgePressingOffers
-    let albumArtistStanding: BridgeArtistFieldStanding?
+    let albumArtists: BridgeArtistField?
     let artistSearch: ArtistSearchOpener
     @ViewBuilder
     let cover: () -> Cover
@@ -95,7 +95,7 @@ private struct SessionReleaseHeader<
         ReleaseMetadataHeader(
             values: session.values,
             pressingOffers: pressingOffers,
-            albumArtistStanding: albumArtistStanding,
+            albumArtists: albumArtists,
             writer: session.fieldWriter,
             editingCommands: session.editingCommands,
             artistSearch: artistSearch,

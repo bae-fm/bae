@@ -110,7 +110,7 @@ struct InlineFieldHeightTests {
             ReleaseMetadataHeader(
                 values: session.values,
                 pressingOffers: release.draft.pressingOffers,
-                albumArtistStanding: release.draft.albumArtistStanding,
+                albumArtists: release.draft.albumArtists,
                 writer: session.fieldWriter,
                 editingCommands: session.editingCommands,
                 artistSearch: { _ in .fixed([], answers: UnansweredCount()) },

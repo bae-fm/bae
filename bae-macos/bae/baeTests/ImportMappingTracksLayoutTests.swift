@@ -172,7 +172,7 @@ struct ImportMappingTracksLayoutTests {
             position: "1",
             length: BridgeDurationClock.length(ms: 180_000),
             listedLength: nil,
-            artistStanding: nil
+            artists: nil
         )
         let size = NSSize(
             width: ReleaseMetadataTrackColumns.idealTableWidth,
@@ -206,7 +206,7 @@ struct ImportMappingTracksLayoutTests {
             position: "1",
             length: BridgeDurationClock.length(ms: 180_000),
             listedLength: BridgeDurationClock.length(ms: 210_000),
-            artistStanding: nil
+            artists: nil
         )
 
         #expect(DurationClock.label(mapping.length) == "3:00")
@@ -358,6 +358,20 @@ extension ImportMappingTracksLayoutTests {
         "A very long source filename that must remain inside its column.flac"
     }
 
+    /// A track's own artist as the pane's read answers the field: a credit
+    /// the library has no artist for.
+    private var trackArtists: BridgeArtistField {
+        BridgeArtistField(
+            standing: .new,
+            credits: [
+                BridgeStandingCredit(
+                    credited: MappingFixtures.artistCredit("Artist Name"),
+                    standing: .new
+                )
+            ]
+        )
+    }
+
     private var pairedMapping: BridgeTrackMapping {
         BridgeTrackMapping(
             source: .file(
@@ -373,16 +387,14 @@ extension ImportMappingTracksLayoutTests {
                 id: "track-1",
                 title: "Track Title",
                 artistAssignments: .explicit(
-                    assignments: [
-                        MappingFixtures.artistCredit("Artist Name")
-                    ]
+                    assignments: trackArtists.credits.map(\.credited)
                 ),
                 file: .standalone(fileId: "track.flac")
             ),
             position: "1",
             length: BridgeDurationClock.length(ms: 180_000),
             listedLength: nil,
-            artistStanding: nil
+            artists: trackArtists
         )
     }
 
@@ -441,9 +453,7 @@ extension ImportMappingTracksLayoutTests {
                 id: "sheet-track-\(number)",
                 title: "Track Title",
                 artistAssignments: .explicit(
-                    assignments: [
-                        MappingFixtures.artistCredit("Artist Name")
-                    ]
+                    assignments: trackArtists.credits.map(\.credited)
                 ),
                 file: .sheetSlice(
                     fileId: entry.containerId,
@@ -454,7 +464,7 @@ extension ImportMappingTracksLayoutTests {
             position: String(number),
             length: BridgeDurationClock.length(ms: 180_000),
             listedLength: nil,
-            artistStanding: nil
+            artists: trackArtists
         )
     }
 

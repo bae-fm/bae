@@ -72,7 +72,7 @@ struct ReleaseEditorTests {
             ReleaseMetadataHeader(
                 values: session.values,
                 pressingOffers: release.draft.pressingOffers,
-                albumArtistStanding: release.draft.albumArtistStanding,
+                albumArtists: release.draft.albumArtists,
                 writer: session.fieldWriter,
                 editingCommands: session.editingCommands,
                 artistSearch: { _ in .fixed([], answers: UnansweredCount()) },
@@ -220,7 +220,7 @@ struct ReleaseEditorTests {
                             layout: layout
                         )
                     ),
-                    artistStanding: nil
+                    artists: nil
                 )
             }
         // Core lays two tracks a sheet carves from one file out as one run,

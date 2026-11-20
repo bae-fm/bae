@@ -1,10 +1,10 @@
 //! The draft a release editor shows beside the form it holds, which one read
-//! of the library makes with the form bound to its statements as JSON: how
-//! the form's album artists stand to the library, the album a save files the
-//! release under, the release's cover and files, and its tracks on the
-//! mediums that the catalog the person applied gives them or else on the
-//! release's own, each beside the form row that edits it with its picked
-//! artists as the library holds them.
+//! of the library makes with the form bound to its statements as JSON: the
+//! form's album artists, each with how it stands to the library, the album a
+//! save files the release under, the release's cover and files, and its
+//! tracks on the mediums that the catalog the person applied gives them or
+//! else on the release's own, each beside the form row that edits it with its
+//! picked artists as the library holds them.
 
 use super::form_assignments::{assignment_rows, assignment_rows_sql};
 use super::*;
@@ -195,15 +195,15 @@ fn release_edit_album_on(
     row.album(&format!("the editor of release {}", form.release))
 }
 
-/// The rows bae reads a form's draft from: the form, how its album artists
-/// stand to the library, the album a save files it under, the release's
-/// cover, its tracks with their audio, each with its form row, whether the
+/// The rows bae reads a form's draft from: the form, its album artists with
+/// how each stands to the library, the album a save files it under, the
+/// release's cover, its tracks with their audio, each with its form row, whether the
 /// release has tracks, the release's files, and its records: the applied
 /// catalog's while the form holds one, else the release's own.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct ReleaseEditDraftRows {
     form: ReleaseEditForm,
-    album_artist_standing: Option<crate::ArtistFieldStanding>,
+    album_artists: Option<crate::ArtistField>,
     album: DraftAlbum,
     cover_version: Option<String>,
     tracks: Vec<DraftTrackRow>,
@@ -215,14 +215,14 @@ pub(crate) struct ReleaseEditDraftRows {
 
 /// One track of a form's draft as its statement returns it: what the
 /// library holds about the track, the form row that edits it as JSON (`None`
-/// when the form holds no row for the track), and how the form row's own
-/// artists stand to the library as JSON (`None` when it has none of its
-/// own).
+/// when the form holds no row for the track), and the form row's own artists
+/// with how each stands to the library as JSON (`None` when it has none of
+/// its own).
 #[derive(Debug, Clone, PartialEq)]
 struct DraftTrackRow {
     track: bae_records::DbReleaseEditTrack,
     form: Option<String>,
-    artist_standing: Option<String>,
+    artists: Option<String>,
 }
 
 /// One form track as [`form_track_json_sql`] writes it.
@@ -271,7 +271,7 @@ pub(crate) fn release_edit_draft_rows_on(
     }
     Ok(Some(ReleaseEditDraftRows {
         form: form.clone(),
-        album_artist_standing: album_artist_standing_on(sql, params.credits())?,
+        album_artists: album_artist_field_on(sql, params.credits())?,
         album: release_edit_album_on(sql, &params)?,
         cover_version: sql.query_row(
             &format!("SELECT {}", bae_records::records::files::cover_version_sql(":release")),
@@ -305,8 +305,8 @@ pub(crate) fn release_edit_draft_rows_on(
 /// The tracks of the form's release in release order, on the mediums and
 /// with the listed lengths the catalog the person applied gives them or else
 /// the release's own, each
-/// with the form row that edits it and how that row's own artists stand to
-/// the library.
+/// with the form row that edits it and that row's own artists with how each
+/// stands to the library.
 fn draft_tracks_on(
     sql: &impl coven::SqlRead,
     form: &FormParams,
@@ -339,11 +339,11 @@ fn draft_tracks_on(
             "WITH {standing_clauses} \
              SELECT library.*, \
                     (SELECT {track} FROM {FORM_TRACKS} AS f WHERE f.id = library.id) AS form, \
-                    {standing} AS artist_standing \
+                    {artists} AS artists \
              FROM ({tracks}) AS library ORDER BY library.position",
-            standing_clauses = artist_standing_clauses(credits),
+            standing_clauses = artist_field_clauses(credits),
             track = form_track_json_sql(),
-            standing = track_artist_standing_sql("library.id"),
+            artists = track_artist_field_sql("library.id"),
             tracks = bae_records::records::release_edit_tracks_sql(
                 ":release",
                 bae_records::records::MediumsSource::Draft { mediums, places },
@@ -354,7 +354,7 @@ fn draft_tracks_on(
             Ok(DraftTrackRow {
                 track: bae_records::records::release_edit_track_of_row(row)?,
                 form: row.get("form")?,
-                artist_standing: row.get("artist_standing")?,
+                artists: row.get("artists")?,
             })
         },
     )?)
@@ -375,11 +375,7 @@ impl DraftTrackRow {
         Ok(crate::ReleaseEditTrackRow {
             edit: row.form_row()?,
             context: crate::ReleaseEditTrackContext::of_track(self.track).map_err(unreadable)?,
-            artist_standing: self
-                .artist_standing
-                .as_deref()
-                .map(artist_field_standing_of_json)
-                .transpose()?,
+            artists: self.artists.as_deref().map(artist_field_of_json).transpose()?,
         })
     }
 }
@@ -391,7 +387,7 @@ impl ReleaseEditDraftRows {
     pub(crate) fn draft(self) -> Result<ReleaseEditDraft, DbError> {
         let Self {
             form,
-            album_artist_standing,
+            album_artists,
             album,
             cover_version,
             tracks,
@@ -421,7 +417,7 @@ impl ReleaseEditDraftRows {
             records,
             has_records,
             pressing_offers: form.edit.pressing.offers(),
-            album_artist_standing,
+            album_artists,
             changed,
             invalid,
         })

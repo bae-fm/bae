@@ -47,9 +47,15 @@ mirror_enum! {
 }
 
 mirror_struct! {
-    BridgeArtistFieldStanding = bae_import::ArtistFieldStanding,
+    BridgeArtistField = bae_import::ArtistField,
     from_core: pub(crate) fn,
-    fields: { field: (BridgeArtistsStanding), artists: (each BridgeArtistStanding) },
+    fields: { standing: (BridgeArtistsStanding), credits: (each BridgeStandingCredit) },
+}
+
+mirror_struct! {
+    BridgeStandingCredit = bae_import::StandingCredit,
+    from_core: fn,
+    fields: { credited: (BridgeCredited), standing: (BridgeArtistStanding) },
 }
 
 mirror_enum! {
@@ -232,7 +238,7 @@ mirror_struct! {
     fields: {
         edit: (BridgeRawTrackEdit),
         context: (BridgeReleaseEditTrackContext),
-        artist_standing: (opt BridgeArtistFieldStanding),
+        artists: (opt BridgeArtistField),
     },
 }
 
@@ -276,7 +282,7 @@ impl BridgeReleaseEditDraft {
             records,
             has_records,
             pressing_offers,
-            album_artist_standing,
+            album_artists,
             changed,
             invalid,
         } = draft;
@@ -291,7 +297,7 @@ impl BridgeReleaseEditDraft {
             has_records,
             records: records.into_iter().map(BridgeReleaseRecord::from_core).collect(),
             pressing_offers: BridgePressingOffers::from_core(pressing_offers),
-            album_artist_standing: album_artist_standing.map(BridgeArtistFieldStanding::from_core),
+            album_artists: album_artists.map(BridgeArtistField::from_core),
             changed,
             invalid: invalid.map(BridgeValidationReason::from_core),
         }

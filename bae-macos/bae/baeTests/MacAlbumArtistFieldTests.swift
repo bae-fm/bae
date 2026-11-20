@@ -20,15 +20,29 @@ struct MacAlbumArtistFieldTests {
 
         let linked = try #require(
             ArtistAssignmentsSummary(
-                assignments: [picked],
-                standing: .library
+                field: BridgeArtistField(
+                    standing: .library,
+                    credits: [
+                        BridgeStandingCredit(
+                            credited: picked,
+                            standing: .library
+                        )
+                    ]
+                )
             )?
             .identityLabel
         )
         let new = try #require(
             ArtistAssignmentsSummary(
-                assignments: [credited],
-                standing: .new
+                field: BridgeArtistField(
+                    standing: .new,
+                    credits: [
+                        BridgeStandingCredit(
+                            credited: credited,
+                            standing: .new
+                        )
+                    ]
+                )
             )?
             .identityLabel
         )
@@ -44,7 +58,11 @@ struct MacAlbumArtistFieldTests {
     func manyArtistsStayInsideTheHeader() async throws {
         let size = NSSize(width: 900, height: 400)
         let draft = PreviewData.manyAlbumArtistsDraft()
-        try await withHostedHeader(values: draft, size: size) { _, host in
+        try await withHostedHeader(
+            values: draft,
+            albumArtists: PreviewData.manyAlbumArtists,
+            size: size
+        ) { _, host in
 
             try await SnapshotTestSupport.settle(host)
             let frames = SnapshotTestSupport.descendants(of: host)
@@ -77,6 +95,7 @@ struct MacAlbumArtistFieldTests {
     @MainActor
     private func withHostedHeader<Value>(
         values: BridgeRawReleaseEdit,
+        albumArtists: BridgeArtistField,
         size: NSSize,
         _ body: (NSWindow, NSView) async throws -> Value
     ) async throws -> Value {
@@ -84,7 +103,7 @@ struct MacAlbumArtistFieldTests {
             ReleaseMetadataHeader(
                 values: values,
                 pressingOffers: PreviewData.pressingOffers,
-                albumArtistStanding: nil,
+                albumArtists: albumArtists,
                 writer: ReleaseFieldWriter(setField: { _, _ in }),
                 editingCommands: EditingCommitCommands(),
                 artistSearch: { _ in .fixed([], answers: UnansweredCount()) },

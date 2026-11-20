@@ -181,12 +181,19 @@ extension PreviewData {
         pickedArtist(name, artistId: "board-artist-\(name)")
     }
 
-    /// How a field crediting one picked library artist stands, as the
-    /// pane's read answers it: the artist is in the library.
-    static let boardLibraryArtistStanding = BridgeArtistFieldStanding(
-        field: .library,
-        artists: [.library]
-    )
+    /// A board draft's album artist `name`, picked from the library, as the
+    /// pane's read answers the field: the artist is in the library.
+    static func boardLibraryArtists(_ name: String) -> BridgeArtistField {
+        BridgeArtistField(
+            standing: .library,
+            credits: [
+                BridgeStandingCredit(
+                    credited: boardArtist(name),
+                    standing: .library
+                )
+            ]
+        )
+    }
 
     // MARK: - Drafts
 
@@ -279,7 +286,7 @@ extension PreviewData {
                                         ms: track.durationMs
                                     ),
                                     listedLength: nil,
-                                    artistStanding: nil
+                                    artists: nil
                                 )
                             }
                     )

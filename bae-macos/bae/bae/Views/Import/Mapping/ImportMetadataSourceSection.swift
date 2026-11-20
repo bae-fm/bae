@@ -60,7 +60,7 @@ struct ImportMetadataSourceSection: View {
                 hasCoverOptions: hasCoverOptions,
                 editValues: edit,
                 pressingOffers: offers,
-                albumArtistStanding: candidate.draft?.albumArtistStanding,
+                albumArtists: candidate.draft?.albumArtists,
                 records: candidate.records,
                 releaseLink: candidate.releaseLink,
                 // A blank draft files under nothing yet.

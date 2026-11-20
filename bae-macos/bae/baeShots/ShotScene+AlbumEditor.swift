@@ -77,7 +77,7 @@ extension ShotScene {
                             ? BridgeDurationClock.length(ms: 327_000) : nil,
                         positionText: "\(index + 1)"
                     ),
-                    artistStanding: nil
+                    artists: nil
                 )
             }
         release.draft.sides = [

@@ -281,14 +281,14 @@ async fn next_standing(
                 .result
                 .expect("the pane reads")
                 .expect("the candidate stays in the queue");
-            let Some(standing) = projection.draft().unwrap().album_artist_standing.clone() else {
+            let Some(field) = projection.draft().unwrap().album_artists.clone() else {
                 continue;
             };
-            let [artist] = standing.artists.as_slice() else {
-                panic!("the album credits one artist, got {standing:?}");
+            let [credit] = field.credits.as_slice() else {
+                panic!("the album credits one artist, got {field:?}");
             };
-            if accept(artist) {
-                return artist.clone();
+            if accept(&credit.standing) {
+                return credit.standing.clone();
             }
         }
     })

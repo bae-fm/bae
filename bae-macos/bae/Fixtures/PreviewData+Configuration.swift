@@ -13,6 +13,22 @@ extension PreviewData {
         discogsDetails: [.lp, .remastered]
     )
 
+    /// The album artists of the metadata-editor drafts, as the editor's read
+    /// answers the field: one library artist and one new artist.
+    static let editMetadataAlbumArtists = BridgeArtistField(
+        standing: .someNew(count: 1),
+        credits: [
+            BridgeStandingCredit(
+                credited: pickedArtist("Artist Name", artistId: "artist-1"),
+                standing: .library
+            ),
+            BridgeStandingCredit(
+                credited: artistCredit("New Artist Name"),
+                standing: .new
+            ),
+        ]
+    )
+
     /// A raw release edit for metadata-editor shots: the album and
     /// pressing fields plus `trackCount` tracks. Blank track artists
     /// exercise the album-artist inheritance path.
@@ -22,10 +38,9 @@ extension PreviewData {
     ) -> BridgeRawReleaseEdit {
         BridgeRawReleaseEdit(
             albumTitle: "Album Title",
-            albumArtistAssignments: [
-                pickedArtist("Artist Name", artistId: "artist-1"),
-                artistCredit("New Artist Name"),
-            ],
+            albumArtistAssignments: editMetadataAlbumArtists.credits.map(
+                \.credited
+            ),
             albumYear: "1983",
             pressing: BridgeRawPressingEdit(
                 year: "1997",
@@ -69,19 +84,36 @@ extension PreviewData {
         )
     }
 
-    /// A draft credited to a compilation's worth of album artists, most
-    /// of them already in the library and two of them new, so the header
-    /// has to summarize rather than list.
+    /// A compilation's worth of album artists as the editor's read answers
+    /// the field: ten library artists and two new ones.
+    static let manyAlbumArtists = BridgeArtistField(
+        standing: .someNew(count: 2),
+        credits: (1...10)
+            .map { n in
+                BridgeStandingCredit(
+                    credited: pickedArtist(
+                        "Artist Name \(n)",
+                        artistId: "artist-\(n)"
+                    ),
+                    standing: .library
+                )
+            } + [
+                BridgeStandingCredit(
+                    credited: artistCredit("New Artist One"),
+                    standing: .new
+                ),
+                BridgeStandingCredit(
+                    credited: artistCredit("New Artist Two"),
+                    standing: .new
+                ),
+            ]
+    )
+
+    /// A draft credited to `manyAlbumArtists`, so the header has to
+    /// summarize rather than list.
     static func manyAlbumArtistsDraft() -> BridgeRawReleaseEdit {
         var draft = editMetadataDraft(trackCount: 3)
-        draft.albumArtistAssignments =
-            (1...10)
-            .map { n in
-                pickedArtist("Artist Name \(n)", artistId: "artist-\(n)")
-            } + [
-                artistCredit("New Artist One"),
-                artistCredit("New Artist Two"),
-            ]
+        draft.albumArtistAssignments = manyAlbumArtists.credits.map(\.credited)
         return draft
     }
 
@@ -121,7 +153,7 @@ extension PreviewData {
                                             layout: .file
                                         )
                                     ),
-                                    artistStanding: nil
+                                    artists: nil
                                 )
                             )
                         }
@@ -138,7 +170,7 @@ extension PreviewData {
             records: [],
             hasRecords: false,
             pressingOffers: pressingOffers,
-            albumArtistStanding: nil,
+            albumArtists: editMetadataAlbumArtists,
             changed: false,
             invalid: nil
         )

@@ -5,7 +5,7 @@ import SwiftUI
 /// editable in place.
 struct MacReleaseIdentity<Cover: View, AudioFacts: View, AlbumRow: View>: View {
     let values: BridgeRawReleaseEdit
-    let albumArtistStanding: BridgeArtistFieldStanding?
+    let albumArtists: BridgeArtistField?
     let writer: ReleaseFieldWriter
     let editingCommands: EditingCommitCommands
     let artistSearch: ArtistSearchOpener
@@ -41,8 +41,7 @@ struct MacReleaseIdentity<Cover: View, AudioFacts: View, AlbumRow: View>: View {
                 onCommit: { await writer.setField(.albumTitle, $0) }
             )
             MacAlbumArtistField(
-                assignments: values.albumArtistAssignments,
-                standing: albumArtistStanding,
+                field: albumArtists,
                 placeholder: String(localized: "Album artist"),
                 artistSearch: artistSearch,
                 onChange: { assignments in

@@ -75,7 +75,7 @@ extension PreviewData {
                     ms: UInt64(180_000 + index * 15000 + 21000)
                 )
                 : nil,
-            artistStanding: nil
+            artists: nil
         )
     }
 
@@ -202,7 +202,7 @@ extension PreviewData {
                             position: "1",
                             length: BridgeDurationClock.length(ms: 2_720_000),
                             listedLength: nil,
-                            artistStanding: nil
+                            artists: nil
                         )
                     ])
                 ]
@@ -236,7 +236,7 @@ extension PreviewData {
             position: "\(index + 1)",
             length: BridgeDurationClock.length(ms: durationMs),
             listedLength: nil,
-            artistStanding: nil
+            artists: nil
         )
     }
 
@@ -375,7 +375,7 @@ extension PreviewData {
         importStatus: BridgeCandidateImportStatus? = nil,
         libraryStatus: BridgeLibraryStatus? = nil,
         album: BridgeDraftAlbum = .new,
-        albumArtistStanding: BridgeArtistFieldStanding? = nil
+        albumArtists: BridgeArtistField? = nil
     ) -> Candidate {
         var candidate = Candidate(
             detail: BridgeImportCandidateDetail(
@@ -405,7 +405,7 @@ extension PreviewData {
                         metadataDraft: edit,
                         pressingOffers: pressingOffers,
                         summaryCatalogNumber: summaryCatalogNumber,
-                        albumArtistStanding: albumArtistStanding,
+                        albumArtists: albumArtists,
                         metadataDraftIsBlank: edit.albumTitle.isEmpty,
                         metadataProvenance: metadataProvenance,
                         releaseLink: releaseLink,
@@ -450,6 +450,7 @@ extension PreviewData {
         summaryCatalogNumber: "AB 100",
         mapping: mappingTable,
         cover: releaseDetailBridge.defaultCover,
+        albumArtists: editMetadataAlbumArtists,
     )
 
     /// The applied release remains recorded after its CUE is ignored;
@@ -485,6 +486,7 @@ extension PreviewData {
         summaryCatalogNumber: "AB 100",
         mapping: moreTracksMappingTable,
         cover: moreTracksReleaseDetail.defaultCover,
+        albumArtists: editMetadataAlbumArtists,
     )
 
     /// The candidate the Import-tab shot selects: the settled release
@@ -516,6 +518,7 @@ extension PreviewData {
         summaryCatalogNumber: "AB 100",
         mapping: everyRowKindMappingTable,
         cover: releaseDetailBridge.defaultCover,
+        albumArtists: editMetadataAlbumArtists,
     )
 
     /// Direct entry starts with blank editable metadata while retaining the

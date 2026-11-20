@@ -64,9 +64,9 @@ struct ReleaseMetadataHeader<
     /// The media and details the pressing's Add menus offer, as core's read
     /// hands them beside `values`.
     let pressingOffers: BridgePressingOffers
-    /// How the album artists stand to the library, as core's read found
-    /// them; `nil` while the album names none.
-    let albumArtistStanding: BridgeArtistFieldStanding?
+    /// The album artists, each with its badge, as core's read found them;
+    /// `nil` while the album names none.
+    let albumArtists: BridgeArtistField?
     let writer: ReleaseFieldWriter
     let editingCommands: EditingCommitCommands
     /// Opens the live artist search the album artist field reads while open.
@@ -87,7 +87,7 @@ struct ReleaseMetadataHeader<
         {
             MacReleaseIdentity(
                 values: values,
-                albumArtistStanding: albumArtistStanding,
+                albumArtists: albumArtists,
                 writer: writer,
                 editingCommands: editingCommands,
                 artistSearch: artistSearch,
@@ -179,31 +179,27 @@ extension BridgeArtistsStanding {
 /// badge core's read gives the whole set.
 struct ArtistAssignmentsSummary: Equatable {
     let names: String
-    let identityLabel: String?
+    let identityLabel: String
 
-    /// `nil` when nothing is assigned, so the field shows its placeholder.
-    init?(
-        assignments: [BridgeCredited],
-        standing: BridgeArtistsStanding?
-    ) {
-        guard !assignments.isEmpty else { return nil }
-        names = bridgeCreditLine(credits: assignments).text
-        identityLabel = standing?.label
+    /// `nil` when the field names no artist, so the field shows its
+    /// placeholder.
+    init?(field: BridgeArtistField?) {
+        guard let field else { return nil }
+        names = bridgeCreditLine(credits: field.credits.map(\.credited)).text
+        identityLabel = field.standing.label
     }
 }
 
 struct ArtistAssignmentLabel: View {
     let assignment: BridgeArtistAssignment
-    let standing: BridgeArtistStanding?
+    let standing: BridgeArtistStanding
 
     var body: some View {
         HStack(spacing: ThemeSpace.inline) {
             Text(assignment.displayName)
                 .cutLine(.prose)
-            if let standing {
-                StatusChip(verbatim: standing.label)
-                    .fixedSize()
-            }
+            StatusChip(verbatim: standing.label)
+                .fixedSize()
         }
     }
 }

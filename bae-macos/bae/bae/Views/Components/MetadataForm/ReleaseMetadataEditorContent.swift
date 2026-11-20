@@ -165,7 +165,7 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
             sourceCell(row.context, sourceIsInCaption: sourceIsInCaption)
             ReleaseMetadataTrackRow(
                 track: row.edit,
-                artistStanding: row.artistStanding,
+                artists: row.artists,
                 length: row.context.durationClock,
                 listedLength: row.context.listedLength,
                 columns: columns,

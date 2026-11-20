@@ -82,7 +82,7 @@ extension MappingFixtures {
                 ms: UInt64(200_000 + index * 1000)
             ),
             listedLength: nil,
-            artistStanding: nil
+            artists: nil
         )
     }
 
@@ -119,7 +119,7 @@ extension MappingFixtures {
                                     ms: UInt64(213_000)
                                 ),
                                 listedLength: nil,
-                                artistStanding: nil
+                                artists: nil
                             )
                         ]
                 )
@@ -197,7 +197,7 @@ extension MappingFixtures {
                         position: "1",
                         length: BridgeDurationClock.length(ms: 2_400_000),
                         listedLength: nil,
-                        artistStanding: nil
+                        artists: nil
                     )
                 ]
             )
@@ -268,7 +268,7 @@ extension MappingFixtures {
                 ms: UInt64(200_000 + index * 1000)
             ),
             listedLength: nil,
-            artistStanding: nil
+            artists: nil
         )
     }
 
@@ -319,7 +319,7 @@ extension MappingFixtures {
                                 ms: UInt64(200_000 + index * 1000)
                             ),
                             listedLength: nil,
-                            artistStanding: nil
+                            artists: nil
                         )
                     }
             )
@@ -415,7 +415,7 @@ extension MappingFixtures {
                     metadataDraft: edit,
                     pressingOffers: PreviewData.pressingOffers,
                     summaryCatalogNumber: summaryCatalogNumber,
-                    albumArtistStanding: nil,
+                    albumArtists: nil,
                     metadataDraftIsBlank: edit.albumTitle.isEmpty,
                     metadataProvenance: metadataProvenance,
                     releaseLink: releaseLink,

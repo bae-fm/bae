@@ -329,13 +329,13 @@ pub use types::ImportCommand;
 #[cfg(desktop)]
 pub use types::ReleaseLink;
 pub use types::{
-    credited_line, AlbumLine, AlbumPick, ArtistAssignment, ArtistFieldStanding, ArtistStanding,
+    credited_line, AlbumLine, AlbumPick, ArtistAssignment, ArtistField, ArtistStanding,
     ArtistsStanding, AudioFile, CandidateDraft, CandidateEditField, CandidateTrack, Credited,
     DraftAlbum, DraftFieldEdit, DraftTrack, EditValidationError, LibraryDraft, LibraryTrack,
-    MetadataProvenance, PressingFactEdit, PressingOffers, ListRow, RawLabelEdit, RawPressingEdit,
+    ListRow, MetadataProvenance, PressingFactEdit, PressingOffers, RawLabelEdit, RawPressingEdit,
     RawReleaseEdit, RawTrackEdit, ReleaseDraft, ReleaseEditLoadError, ReleaseEditTrackContext,
     ReleaseEditTrackRow, ReleaseEditTrackRun, ReleaseEditTrackSide, ReleaseEditTrackSource,
-    ReleaseUserEdit, TrackArtistAssignments, TrackBinding, TrackUserEdit,
+    ReleaseUserEdit, StandingCredit, TrackArtistAssignments, TrackBinding, TrackUserEdit,
 };
 #[cfg(desktop)]
 pub use types::{

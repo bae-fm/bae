@@ -309,10 +309,10 @@ pub struct BridgeCandidateDraftPane {
     /// The catalog number the draft's one-line summary shows, or `None` when
     /// no label row has one.
     pub summary_catalog_number: Option<String>,
-    /// How the draft's album artists stand to the library, as the pane's
-    /// live read found them; each mapping row carries its track's own.
-    /// `None` when the draft names no album artist.
-    pub album_artist_standing: Option<crate::types::BridgeArtistFieldStanding>,
+    /// The draft's album artists, each with how it stands to the library, as
+    /// the pane's live read found them; each mapping row carries its track's
+    /// own. `None` when the draft names no album artist.
+    pub album_artists: Option<crate::types::BridgeArtistField>,
     /// Whether the draft contains no authored or sourced metadata.
     pub metadata_draft_is_blank: bool,
     /// Where the current draft began, absent for direct entry and after clear.

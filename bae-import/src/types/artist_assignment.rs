@@ -112,13 +112,21 @@ pub enum ArtistStanding {
     Choose { choices: Vec<ExistingArtist> },
 }
 
-/// How one artist field (an album's artists, or a track's own) stands to the
-/// library, as the read that returns the field's rows finds it: the field's
-/// badge, and each artist's, in the field's order.
+/// One artist field (an album's artists, or a track's own) as the read that
+/// returns the field's rows finds it: each credit with how it stands to the
+/// library, in the field's order, and how the whole field stands.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ArtistFieldStanding {
-    pub field: ArtistsStanding,
-    pub artists: Vec<ArtistStanding>,
+pub struct ArtistField {
+    pub standing: ArtistsStanding,
+    pub credits: Vec<StandingCredit>,
+}
+
+/// One credit of an artist field, with how it stands to the library: what its
+/// badge says.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StandingCredit {
+    pub credited: Credited,
+    pub standing: ArtistStanding,
 }
 
 /// How a whole artist field — an album's artists, or a track's — stands to

@@ -53,9 +53,16 @@ extension ShotScene {
         )
     }
 
-    private static let newArtistStanding = BridgeArtistFieldStanding(
-        field: .new,
-        artists: [.new]
+    /// Mara Quill as a credit the library has no artist for, as the
+    /// pane's read answers the field: the artist is new.
+    private static let newArtists = BridgeArtistField(
+        standing: .new,
+        credits: [
+            BridgeStandingCredit(
+                credited: PreviewData.artistCredit("Mara Quill"),
+                standing: .new
+            )
+        ]
     )
 
     /// The library album the records name.
@@ -176,8 +183,8 @@ extension ShotScene {
                 hasCoverOptions: !blank,
                 editValues: blank ? blankEdit() : lowTideEdit(),
                 pressingOffers: PreviewData.pressingOffers,
-                albumArtistStanding: blank
-                    ? nil : PreviewData.boardLibraryArtistStanding,
+                albumArtists: blank
+                    ? nil : PreviewData.boardLibraryArtists("Mara Quill"),
                 records: blank ? [] : PreviewData.releaseRecordsPair,
                 releaseLink: nil,
                 album: album,
@@ -345,7 +352,7 @@ extension ShotScene {
 
     private static func identity<Cover: View>(
         _ values: BridgeRawReleaseEdit,
-        standing: BridgeArtistFieldStanding?,
+        artists: BridgeArtistField?,
         album: BridgeDraftAlbum?,
         audio: Bool,
         @ViewBuilder cover: @escaping () -> Cover
@@ -354,7 +361,7 @@ extension ShotScene {
         return importStores(
             MacReleaseIdentity(
                 values: values,
-                albumArtistStanding: standing,
+                albumArtists: artists,
                 writer: ReleaseFieldWriter { _, _ in },
                 editingCommands: EditingCommitCommands(),
                 artistSearch: artistSearch(),
@@ -397,7 +404,7 @@ extension ShotScene {
         identityScene("mac.component.release-identity.filled") {
             identity(
                 lowTideEdit(),
-                standing: PreviewData.boardLibraryArtistStanding,
+                artists: PreviewData.boardLibraryArtists("Mara Quill"),
                 album: libraryAlbum,
                 audio: true
             ) { coverWell(true) }
@@ -405,7 +412,7 @@ extension ShotScene {
         identityScene("mac.component.release-identity.new-artist") {
             identity(
                 lowTideEdit(),
-                standing: newArtistStanding,
+                artists: newArtists,
                 album: .new,
                 audio: true
             ) { coverWell(true) }
@@ -413,7 +420,7 @@ extension ShotScene {
         identityScene("mac.component.release-identity.no-cover") {
             identity(
                 lowTideEdit(),
-                standing: PreviewData.boardLibraryArtistStanding,
+                artists: PreviewData.boardLibraryArtists("Mara Quill"),
                 album: nil,
                 audio: true
             ) { coverWell(false) }
@@ -427,7 +434,7 @@ extension ShotScene {
                     year: "1992",
                     tracks: []
                 ),
-                standing: PreviewData.boardLibraryArtistStanding,
+                artists: PreviewData.boardLibraryArtists("Mara Quill"),
                 album: .new,
                 audio: true
             ) { coverWell(true) }
@@ -443,7 +450,7 @@ extension ShotScene {
         identityScene("mac.component.release-identity.empty") {
             identity(
                 blankEdit(),
-                standing: nil,
+                artists: nil,
                 album: nil,
                 audio: false
             ) { coverWell(false) }
@@ -574,8 +581,7 @@ extension ShotScene {
 
     private static func albumArtistFieldScene(
         _ id: String,
-        artist: Bool,
-        standing: BridgeArtistFieldStanding?
+        artists: BridgeArtistField?
     ) -> ShotScene {
         component(
             id,
@@ -584,9 +590,7 @@ extension ShotScene {
         ) {
             importStores(
                 MacAlbumArtistField(
-                    assignments: artist
-                        ? [PreviewData.boardArtist("Mara Quill")] : [],
-                    standing: standing,
+                    field: artists,
                     placeholder: "Album artist",
                     artistSearch: artistSearch(),
                     onChange: { _ in }
@@ -599,23 +603,15 @@ extension ShotScene {
     private static let albumArtistFieldScenes: [ShotScene] = [
         albumArtistFieldScene(
             "mac.component.album-artist-field.library-artist",
-            artist: true,
-            standing: PreviewData.boardLibraryArtistStanding
+            artists: PreviewData.boardLibraryArtists("Mara Quill")
         ),
         albumArtistFieldScene(
             "mac.component.album-artist-field.new-artist",
-            artist: true,
-            standing: newArtistStanding
-        ),
-        albumArtistFieldScene(
-            "mac.component.album-artist-field.no-chip",
-            artist: true,
-            standing: nil
+            artists: newArtists
         ),
         albumArtistFieldScene(
             "mac.component.album-artist-field.no-artist",
-            artist: false,
-            standing: nil
+            artists: nil
         ),
     ]
 

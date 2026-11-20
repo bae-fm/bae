@@ -538,7 +538,7 @@ mod conversion_roundtrip {
                                 position_text: "3".to_string(),
                                 sheet: None,
                             },
-                            artist_standing: None,
+                            artists: None,
                         },
                     )],
                 }]),
@@ -553,7 +553,7 @@ mod conversion_roundtrip {
                 records: Vec::new(),
                 has_records: false,
                 pressing_offers: edit.pressing.offers(),
-                album_artist_standing: None,
+                album_artists: None,
                 changed: true,
                 invalid: Some(bae_import::EditValidationError::NoAlbumArtist),
             });

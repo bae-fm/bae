@@ -12,13 +12,18 @@ struct ArtistAssignmentsSummaryTests {
     func oneLibraryArtistSummary() throws {
         let summary = try #require(
             ArtistAssignmentsSummary(
-                assignments: [
-                    PreviewData.pickedArtist(
-                        "Artist Name",
-                        artistId: "artist-1"
-                    )
-                ],
-                standing: .library
+                field: BridgeArtistField(
+                    standing: .library,
+                    credits: [
+                        BridgeStandingCredit(
+                            credited: PreviewData.pickedArtist(
+                                "Artist Name",
+                                artistId: "artist-1"
+                            ),
+                            standing: .library
+                        )
+                    ]
+                )
             )
         )
 
@@ -30,8 +35,17 @@ struct ArtistAssignmentsSummaryTests {
     func oneNewArtistSummary() throws {
         let summary = try #require(
             ArtistAssignmentsSummary(
-                assignments: [PreviewData.artistCredit("New Artist Name")],
-                standing: .new
+                field: BridgeArtistField(
+                    standing: .new,
+                    credits: [
+                        BridgeStandingCredit(
+                            credited: PreviewData.artistCredit(
+                                "New Artist Name"
+                            ),
+                            standing: .new
+                        )
+                    ]
+                )
             )
         )
 
@@ -43,25 +57,19 @@ struct ArtistAssignmentsSummaryTests {
     func ambiguousCreditSummary() throws {
         let summary = try #require(
             ArtistAssignmentsSummary(
-                assignments: [PreviewData.artistCredit("Artist Name")],
-                standing: .choose(choices: 2)
+                field: BridgeArtistField(
+                    standing: .choose(choices: 2),
+                    credits: [
+                        BridgeStandingCredit(
+                            credited: PreviewData.artistCredit("Artist Name"),
+                            standing: .choose(choices: [])
+                        )
+                    ]
+                )
             )
         )
 
         #expect(summary.identityLabel == "2 in library")
-    }
-
-    @Test("a field core has no standing for carries no badge")
-    func unreadFieldSummary() throws {
-        let summary = try #require(
-            ArtistAssignmentsSummary(
-                assignments: [PreviewData.artistCredit("Artist Name")],
-                standing: nil
-            )
-        )
-
-        #expect(summary.names == "Artist Name")
-        #expect(summary.identityLabel == nil)
     }
 
     @Test("several artists read as one list with one badge")
@@ -69,8 +77,23 @@ struct ArtistAssignmentsSummaryTests {
         let names = ["First Artist", "Second Artist", "Third Artist"]
         let summary = try #require(
             ArtistAssignmentsSummary(
-                assignments: names.map(PreviewData.artistCredit),
-                standing: .someNew(count: 2)
+                field: BridgeArtistField(
+                    standing: .someNew(count: 2),
+                    credits: [
+                        BridgeStandingCredit(
+                            credited: PreviewData.artistCredit(names[0]),
+                            standing: .library
+                        ),
+                        BridgeStandingCredit(
+                            credited: PreviewData.artistCredit(names[1]),
+                            standing: .new
+                        ),
+                        BridgeStandingCredit(
+                            credited: PreviewData.artistCredit(names[2]),
+                            standing: .new
+                        ),
+                    ]
+                )
             )
         )
 
@@ -84,11 +107,19 @@ struct ArtistAssignmentsSummaryTests {
     func artistsToChooseSummary() throws {
         let summary = try #require(
             ArtistAssignmentsSummary(
-                assignments: [
-                    PreviewData.artistCredit("First Artist"),
-                    PreviewData.artistCredit("Second Artist"),
-                ],
-                standing: .someToChoose(count: 1)
+                field: BridgeArtistField(
+                    standing: .someToChoose(count: 1),
+                    credits: [
+                        BridgeStandingCredit(
+                            credited: PreviewData.artistCredit("First Artist"),
+                            standing: .choose(choices: [])
+                        ),
+                        BridgeStandingCredit(
+                            credited: PreviewData.artistCredit("Second Artist"),
+                            standing: .library
+                        ),
+                    ]
+                )
             )
         )
 
@@ -99,34 +130,42 @@ struct ArtistAssignmentsSummaryTests {
     func creditLineSummary() throws {
         let summary = try #require(
             ArtistAssignmentsSummary(
-                assignments: [
-                    BridgeCredited(
-                        artist: .picked(
-                            artist: BridgeExistingArtist(
-                                artistId: "a-1",
-                                name: "First Artist",
-                                sortName: nil,
-                                musicbrainzArtistId: nil,
-                                discogsArtistId: nil
+                field: BridgeArtistField(
+                    standing: .someNew(count: 1),
+                    credits: [
+                        BridgeStandingCredit(
+                            credited: BridgeCredited(
+                                artist: .picked(
+                                    artist: BridgeExistingArtist(
+                                        artistId: "a-1",
+                                        name: "First Artist",
+                                        sortName: nil,
+                                        musicbrainzArtistId: nil,
+                                        discogsArtistId: nil
+                                    ),
+                                    creditName: BridgeCreditName(
+                                        key: "first alias",
+                                        name: "First Alias"
+                                    )
+                                ),
+                                join: " feat. "
                             ),
-                            creditName: BridgeCreditName(
-                                key: "first alias",
-                                name: "First Alias"
-                            )
+                            standing: .library
                         ),
-                        join: " feat. "
-                    ),
-                    PreviewData.artistCredit("Second Artist"),
-                ],
-                standing: .someNew(count: 1)
+                        BridgeStandingCredit(
+                            credited: PreviewData.artistCredit("Second Artist"),
+                            standing: .new
+                        ),
+                    ]
+                )
             )
         )
 
         #expect(summary.names == "First Alias feat. Second Artist")
     }
 
-    @Test("an empty field has no summary, so it shows its placeholder")
+    @Test("a field naming no artist has no summary, so shows its placeholder")
     func emptyFieldHasNoSummary() {
-        #expect(ArtistAssignmentsSummary(assignments: [], standing: nil) == nil)
+        #expect(ArtistAssignmentsSummary(field: nil) == nil)
     }
 }

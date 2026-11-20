@@ -9,10 +9,9 @@ struct MacAlbumArtistField: View {
         case column
     }
 
-    let assignments: [BridgeCredited]
-    /// How the field's artists stand to the library, as core's read found
-    /// them; `nil` while the field names none.
-    let standing: BridgeArtistFieldStanding?
+    /// The field's credits, each with its badge, and the whole field's badge,
+    /// as core's read found them; `nil` while the field names none.
+    let field: BridgeArtistField?
     let placeholder: String
     var width: Width = .value
     var inheritsAlbumArtists = false
@@ -43,8 +42,7 @@ struct MacAlbumArtistField: View {
         .accessibilityLabel(Text(verbatim: accessibleName))
         .macPopover(isPresented: $isPresented, arrowEdge: .bottom) {
             ArtistAssignmentsEditor(
-                assignments: assignments,
-                standing: standing,
+                field: field,
                 onUseAlbumArtists: onUseAlbumArtists,
                 artistSearch: artistSearch,
                 onChange: onChange,
@@ -62,15 +60,9 @@ struct MacAlbumArtistField: View {
     /// names then their badge.
     private var accessibleName: String {
         if inheritsAlbumArtists { return String(localized: "Album artist") }
-        guard
-            let summary = ArtistAssignmentsSummary(
-                assignments: assignments,
-                standing: standing?.field
-            )
+        guard let summary = ArtistAssignmentsSummary(field: field)
         else { return placeholder }
-        return [summary.names, summary.identityLabel]
-            .compactMap { $0 }
-            .joined(separator: " ")
+        return "\(summary.names) \(summary.identityLabel)"
     }
 
     @ViewBuilder
@@ -78,17 +70,12 @@ struct MacAlbumArtistField: View {
         if inheritsAlbumArtists {
             Text("Album artist").foregroundStyle(.tertiary)
         }
-        else if let summary = ArtistAssignmentsSummary(
-            assignments: assignments,
-            standing: standing?.field
-        ) {
+        else if let summary = ArtistAssignmentsSummary(field: field) {
             HStack(spacing: ThemeSpace.inline) {
                 Text(summary.names)
                     .cutLine(.prose)
-                if let label = summary.identityLabel {
-                    StatusChip(verbatim: label)
-                        .fixedSize()
-                }
+                StatusChip(verbatim: summary.identityLabel)
+                    .fixedSize()
             }
         }
         else {
@@ -104,8 +91,7 @@ private struct ArtistAssignmentsEditor: View {
     /// The tallest the found artists' list draws before it scrolls.
     static let resultsHeight: CGFloat = 280
 
-    let assignments: [BridgeCredited]
-    let standing: BridgeArtistFieldStanding?
+    let field: BridgeArtistField?
     let onUseAlbumArtists: (() -> Void)?
     let artistSearch: ArtistSearchOpener
     let onChange: ([BridgeCredited]) -> Void
@@ -126,15 +112,14 @@ private struct ArtistAssignmentsEditor: View {
                     action: onUseAlbumArtists
                 )
             }
-            ForEach(Array(rows.enumerated()), id: \.offset) {
+            ForEach(Array(credits.enumerated()), id: \.offset) {
                 index,
-                row in
-                let (assignment, standing) = row
+                credit in
                 VStack(alignment: .leading, spacing: ThemeSpace.inline) {
                     HStack(spacing: ThemeSpace.related) {
                         ArtistAssignmentLabel(
-                            assignment: assignment.artist,
-                            standing: standing
+                            assignment: credit.credited.artist,
+                            standing: credit.standing
                         )
                         Spacer(minLength: 0)
                         Button {
@@ -147,7 +132,7 @@ private struct ArtistAssignmentsEditor: View {
                         .buttonStyle(.accentBorderless)
                         .accessibilityLabel(Text("Remove"))
                     }
-                    if case .choose(let choices) = standing {
+                    if case .choose(let choices) = credit.standing {
                         choicesList(choices, replacing: index)
                     }
                 }
@@ -175,12 +160,11 @@ private struct ArtistAssignmentsEditor: View {
         }
     }
 
-    /// Each assigned artist beside its badge, which core's read returns in
-    /// the field's order; no badges while the read has none.
-    private var rows: [(BridgeCredited, BridgeArtistStanding?)] {
-        guard let standing else { return assignments.map { ($0, nil) } }
-        return Array(zip(assignments, standing.artists.map { Optional($0) }))
-    }
+    /// Each assigned artist with its badge, in the field's order.
+    private var credits: [BridgeStandingCredit] { field?.credits ?? [] }
+
+    /// The field's credits, which each edit changes and hands back whole.
+    private var assignments: [BridgeCredited] { credits.map(\.credited) }
 
     /// What the search finds, each row holding the page it sits in.
     private func foundArtists(_ list: ArtistSearchList) -> some View {

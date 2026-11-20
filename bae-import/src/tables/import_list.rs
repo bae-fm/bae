@@ -23,8 +23,8 @@
 mod actions;
 mod artist_standings;
 pub(crate) use artist_standings::{
-    album_artist_standing_on, artist_field_standing_of_json, artist_standing_clauses,
-    track_artist_standing_sql, CreditSource, FieldStandingJson,
+    album_artist_field_on, artist_field_clauses, artist_field_of_json, track_artist_field_sql,
+    ArtistFieldJson, CreditSource,
 };
 mod counts;
 mod folder_images;

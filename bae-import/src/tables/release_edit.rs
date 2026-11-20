@@ -9,8 +9,8 @@
 //! the library, the album renamed, a cover picked, the release deleted.
 
 use super::import_list::{
-    album_artist_standing_on, artist_field_standing_of_json, artist_standing_clauses,
-    track_artist_standing_sql, CreditSource,
+    album_artist_field_on, artist_field_clauses, artist_field_of_json, track_artist_field_sql,
+    CreditSource,
 };
 use super::*;
 use crate::{ReleaseEditDraft, ReleaseEditForm, ReleaseEditLoadError, ReleaseEditSeed};
