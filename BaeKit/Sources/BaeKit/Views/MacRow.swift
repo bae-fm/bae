@@ -58,7 +58,12 @@ public struct MacRow<Label: View, Content: View>: View {
             }
             .buttonStyle(.accentPlain)
         case nil:
+            // The row reads its name, and the note under it, before the
+            // controls at its end: VoiceOver orders a window's elements by
+            // where they are, and a control centred on two lines sits
+            // between them.
             row(chevron: false)
+                .accessibilityElement(children: .contain)
         }
     }
 
@@ -84,6 +89,7 @@ public struct MacRow<Label: View, Content: View>: View {
                     StatusChip(verbatim: chip)
                 }
             }
+            .accessibilitySortPriority(1)
         }
         .contentShape(Rectangle())
     }
