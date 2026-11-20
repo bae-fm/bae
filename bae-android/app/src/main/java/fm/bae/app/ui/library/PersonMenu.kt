@@ -40,7 +40,7 @@ internal fun PersonMenu(
     val isAdmin = person.isAdmin ?: return
     PersonButton(
         state = state,
-        face = person.profile?.face() ?: AvatarFace(initials = "", picture = null),
+        face = person.profile.face(),
         isAdmin = isAdmin,
         onAddDevice = onAddDevice,
         onInvite = onInvite,

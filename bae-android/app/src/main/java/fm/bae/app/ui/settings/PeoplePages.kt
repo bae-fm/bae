@@ -21,7 +21,6 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidCard
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidSection
-import fm.bae.app.ui.components.AvatarFace
 import fm.bae.app.ui.components.RowIcon
 import fm.bae.app.ui.components.face
 import uniffi.bae_bridge.BridgeAdminChanges
@@ -168,7 +167,7 @@ private fun PeopleCard(
             val name = person.profile?.name ?: stringResource(R.string.members_unnamed)
             AndroidRow(
                 title = name,
-                avatar = person.profile?.face() ?: AvatarFace(initials = "", picture = null),
+                avatar = person.profile.face(),
                 subtitle =
                     stringResource(
                         R.string.people_role_and_devices,
