@@ -442,7 +442,7 @@ extension ShotScene {
         identityScene("mac.component.release-identity.nothing-under-it") {
             identity(
                 lowTideEdit(),
-                standing: PreviewData.boardLibraryArtistStanding,
+                artists: PreviewData.boardLibraryArtists("Mara Quill"),
                 album: nil,
                 audio: false
             ) { coverWell(true) }

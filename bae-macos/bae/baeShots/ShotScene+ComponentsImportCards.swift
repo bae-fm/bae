@@ -119,7 +119,7 @@ extension ShotScene {
                 records: PreviewData.boardRecords("low-tide-hours"),
                 hasRecords: true,
                 pressingOffers: PreviewData.pressingOffers,
-                albumArtistStanding: PreviewData.boardLibraryArtistStanding,
+                albumArtists: PreviewData.boardLibraryArtists("Mara Quill"),
                 changed: changed,
                 invalid: nil
             )
