@@ -16,7 +16,8 @@ extension ImportListSlot {
             done: 0,
             skipped: 0
         ),
-        selection: ImportSelection = ImportSelection()
+        selection: ImportSelection = ImportSelection(),
+        narrowed: BridgeNarrowedCount? = nil
     ) -> ImportListSlot {
         importStore.applyPendingFilterEntries(
             PreviewData.pendingFilterEntries()
@@ -26,7 +27,8 @@ extension ImportListSlot {
             uiStore: uiStore,
             items: items,
             tabCounts: tabCounts,
-            selection: selection
+            selection: selection,
+            narrowed: narrowed
         )
     }
 }

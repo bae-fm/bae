@@ -138,6 +138,7 @@ extension ShotScene {
         height: CGFloat,
         inset: CGFloat = 8,
         images: ImageStore? = nil,
+        isReady: @escaping @MainActor () -> Bool = { true },
         @ViewBuilder view: @escaping @MainActor () -> Content
     ) -> ShotScene {
         ShotScene(id: id, size: CGSize(width: width, height: height)) {
@@ -152,9 +153,16 @@ extension ShotScene {
             // Every view that draws art reads the store from the
             // environment, as the app's window passes it.
             guard let images else {
-                return ShotStage(content.environment(ImageStore.stub()))
+                return ShotStage(
+                    content.environment(ImageStore.stub()),
+                    isReady: isReady
+                )
             }
-            return ShotStage(content.environment(images), images: images)
+            return ShotStage(
+                content.environment(images),
+                images: images,
+                isReady: isReady
+            )
         }
     }
 }

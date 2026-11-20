@@ -47,14 +47,11 @@ extension ShotScenes {
                     ?? LibraryProjectionStore(library: backing.library)
             )
             .environment(uiStore)
-            .environment(importScene.store)
-            .environment(
-                \.previewPosition,
-                importScene.store.previewPosition.only
+            .importSectionEnvironment(
+                store: importScene.store,
+                slot: slot,
+                runtimes: candidateRuntimes
             )
-            .environment(slot)
-            .environment(slot.selection)
-            .environment(\.heldCandidateRuntimes, candidateRuntimes)
             .environment(SettingsNavigation())
             .environment(PreviewAudio.stub())
             .environment(Cast.stub())
@@ -90,6 +87,22 @@ extension ShotScenes {
 }
 
 extension View {
+    /// What the Import section reads: its store, the list's slot and the
+    /// selection in it, the position of the preview that plays, and what each
+    /// candidate has in flight.
+    func importSectionEnvironment(
+        store: ImportStore,
+        slot: ImportListSlot,
+        runtimes: [Data: BridgeCandidateRuntimeSnapshot]
+    ) -> some View {
+        self
+            .environment(store)
+            .environment(\.previewPosition, store.previewPosition.only)
+            .environment(slot)
+            .environment(slot.selection)
+            .environment(\.heldCandidateRuntimes, runtimes)
+    }
+
     /// `object` in the environment when a shot gives one; otherwise nothing
     /// is set here, so the values an enclosing view or the preview
     /// environment sets stay.

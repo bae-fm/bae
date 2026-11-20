@@ -123,10 +123,6 @@ struct MacImportSidebarContainer: View {
         )
     }
 
-    private var summary: BridgeImportQueueSummary? {
-        importStore.summary
-    }
-
     /// What the list is narrowed by as the person has it now: the tab, the
     /// typed text and the filter entry.
     private var shownNarrowing: ImportListNarrowing {
@@ -144,45 +140,17 @@ struct MacImportSidebarContainer: View {
             filterText: filterTextBinding,
             narrowed: { listSlot.narrowedCount(under: shownNarrowing) }
         ) {
-            IdentificationProgressSlot(
+            ImportListControls(
                 importStore: importStore,
+                listSlot: listSlot,
                 onGoToUnidentified: goToFirstUnidentified,
-                onCancelAll: onCancelAllIdentification
+                onCancelAllIdentification: onCancelAllIdentification,
+                onCancelAllImports: onCancelAllImports,
+                onAddFolder: onAddFolder,
+                onRefreshFolder: onRefreshFolder,
+                onRemoveFolder: onRemoveFolder,
+                onChange: cancelReveal
             )
-            ImportActivitySlot(
-                importStore: importStore,
-                onCancelAll: onCancelAllImports
-            )
-            FolderScanActivitySlot(importStore: importStore)
-            if importStore.hasWatchedFolders != nil {
-                CandidateListMenu(
-                    refreshingFolders: uiStore.refreshingWatchedFolders,
-                    hasGroups: summary?.hasGroups ?? false,
-                    sortOrder: listSlot.sortOrder,
-                    pendingFilter: uiStore
-                        .importCandidatePendingFilter,
-                    importStore: importStore,
-                    pendingFilterApplies: uiStore
-                        .importCandidateTab == .pending,
-                    actions: CandidateListMenuActions(
-                        onSetSortOrder: { order in
-                            cancelReveal()
-                            listSlot.setSortOrder(order)
-                        },
-                        onSetPendingFilter: { filter in
-                            cancelReveal()
-                            listSlot.setPendingFilter(filter)
-                        },
-                        onAddFolder: onAddFolder,
-                        onSetAllGroupsExpanded: { expanded in
-                            cancelReveal()
-                            listSlot.setAllGroupsExpanded(expanded)
-                        },
-                        onRefreshFolder: onRefreshFolder,
-                        onRemoveFolder: onRemoveFolder
-                    )
-                )
-            }
         } content: {
             ImportCandidateListSwitch(
                 listSlot: listSlot,

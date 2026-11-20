@@ -16,14 +16,16 @@ struct ImportPreviewFixture {
     @MainActor
     func slot(
         uiStore: UiStore,
-        selection: ImportSelection = ImportSelection()
+        selection: ImportSelection = ImportSelection(),
+        narrowed: BridgeNarrowedCount? = nil
     ) -> ImportListSlot {
         ImportListSlot.preview(
             importStore: store,
             uiStore: uiStore,
             items: itemsByTab[uiStore.importCandidateTab] ?? [],
             tabCounts: tabCounts,
-            selection: selection
+            selection: selection,
+            narrowed: narrowed
         )
     }
 }

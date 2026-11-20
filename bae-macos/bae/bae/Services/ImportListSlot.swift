@@ -543,11 +543,12 @@ extension ImportListSlot {
             uiStore: UiStore,
             items: [BridgeImportListItem],
             tabCounts: BridgeTriageTabCounts,
-            selection: ImportSelection
+            selection: ImportSelection,
+            narrowed: BridgeNarrowedCount? = nil
         ) -> ImportListSlot {
             let tab = uiStore.importCandidateTab
             let extra = BridgeListCountExtra.import(
-                narrowed: nil,
+                narrowed: narrowed,
                 tabs: tabCounts
             )
             let handle = ImportListHandle.fixed(

@@ -9,7 +9,7 @@ import SwiftUI
 extension ShotScene {
     static let importListComponentScenes: [ShotScene] =
         importRowScenes + importTabsScenes + bulkActionRowScenes
-        + importBulkScenes
+        + importBulkScenes + importBulkRunningScenes
 
     // MARK: Rows
 
@@ -265,10 +265,34 @@ extension ShotScene {
         }
     )
 
+    /// A selection whose Identify action is under way, its bar at two
+    /// folders of five and never finishing.
+    @MainActor
+    private static func runningSelection() -> ImportSelection {
+        let selection = ImportSelection.onList(
+            operations: .stub(
+                progressStream: {
+                    .bulkActionProgress(
+                        holding: BridgeSelectionActionProgress(
+                            completed: 2,
+                            total: 5,
+                            fraction: 0.4
+                        )
+                    )
+                },
+                run: { _, _, _, _ in try await Task.neverAnswers() }
+            )
+        )
+        Task { await selection.perform(.identify, uiStore: UiStore()) }
+        return selection
+    }
+
+    @MainActor
     private static func importBulk(
-        syncs: Bool = false
+        syncs: Bool = false,
+        selection: ImportSelection = ImportSelection(),
+        height: CGFloat = 600
     ) -> some View {
-        let selection = ImportSelection()
         selection.apply(bulkSelection)
         return importStores(
             MacImportBulk(
@@ -276,7 +300,7 @@ extension ShotScene {
                 onPerform: { _ in }
             )
             .environment(selection)
-            .frame(width: 580, height: 600),
+            .frame(width: 580, height: height),
             syncs: syncs
         )
     }
@@ -298,4 +322,27 @@ extension ShotScene {
         },
     ]
 
+    /// The selection of the running scene, which it keeps for `isReady`.
+    @MainActor
+    private final class RunningBulk {
+        var selection: ImportSelection?
+    }
+
+    /// `MacImportBulk` while its Identify action runs, ready once the
+    /// selection holds the run.
+    private static let importBulkRunningScenes: [ShotScene] = {
+        let running = RunningBulk()
+        return [
+            component(
+                "mac.component.import-bulk.running",
+                width: 596,
+                height: 716,
+                isReady: { running.selection?.running != nil }
+            ) {
+                let selection = runningSelection()
+                running.selection = selection
+                return importBulk(selection: selection, height: 700)
+            }
+        ]
+    }()
 }
