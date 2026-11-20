@@ -382,7 +382,9 @@
 
   // A Material menu: `AndroidMenuItem`s, a "Sort by" style label, dividers.
   function AndroidMenu(props) {
-    var style = { position: 'absolute', top: Number(props.top || 56), minWidth: Number(props.width || 200) };
+    // A menu sizes to its items; `width` is a minimum only a board that needs one passes.
+    var style = { position: 'absolute', top: Number(props.top || 56) };
+    if (props.width != null) style.minWidth = Number(props.width);
     if (props.left != null) style.left = Number(props.left); else style.right = Number(props.right != null ? props.right : 8);
     return h('div', { className: 'bae-a-menu', role: 'menu', style: style }, props.children);
   }
