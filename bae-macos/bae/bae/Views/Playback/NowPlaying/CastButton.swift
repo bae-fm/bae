@@ -1,8 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// The playback bar's Cast control: a speaker glyph, accent while casting, that
-/// opens the device picker.
+/// The playback bar's Play on control: a speaker glyph, accent while playing on a
+/// receiver, that opens the receiver picker.
 struct CastButton: View {
     @Environment(Cast.self)
     private var cast
@@ -20,7 +20,7 @@ struct CastButton: View {
         let connectingName = start.connecting?.name
         return MacIconButton(
             symbol: active ? "hifispeaker.fill" : "hifispeaker",
-            label: "Cast",
+            label: "Play on…",
             help: help(casting: castingName, connecting: connectingName),
             active: active
         ) {
@@ -55,8 +55,8 @@ struct CastButton: View {
         }
     }
 
-    /// The device a cast is connecting to, else the one cast to, else what
-    /// the button does.
+    /// The receiver bae is connecting to, else the one playing, else what the
+    /// button does.
     private func help(casting: String?, connecting: String?)
         -> LocalizedStringKey
     {
@@ -64,9 +64,9 @@ struct CastButton: View {
             return "Connecting to \(connecting)…"
         }
         if let casting {
-            return "Casting to \(casting)"
+            return "Playing on \(casting)"
         }
-        return "Cast"
+        return "Play on…"
     }
 }
 
@@ -101,7 +101,7 @@ struct MacCastPopover: View {
                 Divider()
             }
             if receivers.isEmpty {
-                Text("No Cast devices found")
+                Text("No receivers found")
                     .themeText(.body)
                     .foregroundStyle(.secondary)
                     .padding(.vertical, ThemeSpace.compact)

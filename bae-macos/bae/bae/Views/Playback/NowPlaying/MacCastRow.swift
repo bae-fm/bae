@@ -93,7 +93,7 @@ struct MacCastRow: View {
                 if casting {
                     Text(
                         LocalizedStringResource(
-                            "cast.receiver.casting",
+                            "cast.receiver.playing",
                             defaultValue: "Casting",
                             comment:
                                 "Under the name of the receiver playback is cast to, in the cast picker and Settings → Casting."

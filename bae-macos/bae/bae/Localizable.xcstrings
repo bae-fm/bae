@@ -1205,176 +1205,176 @@
         }
       }
     },
-    "cast.receiver.casting" : {
-      "comment" : "Under the name of the receiver playback is cast to, in the cast picker and Settings → Casting.",
+    "cast.receiver.playing" : {
+      "comment" : "Under the name of the receiver playback is on, in the Play on popover and the Playback settings.",
       "extractionState" : "manual",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "جارٍ الإرسال"
+            "value" : "قيد التشغيل"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Предава се"
+            "value" : "Възпроизвежда се"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Odesílá se"
+            "value" : "Přehrává se"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Caster"
+            "value" : "Afspiller"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Casting"
+            "value" : "Playing"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wird übertragen"
+            "value" : "Läuft"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Γίνεται μετάδοση"
+            "value" : "Αναπαράγεται"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Transmitiendo"
+            "value" : "Reproduciendo"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Suoratoisto käynnissä"
+            "value" : "Toistetaan"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Diffusion en cours"
+            "value" : "En lecture"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "משדר"
+            "value" : "מנגן"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Emitira se"
+            "value" : "Reproducira se"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Átküldés folyamatban"
+            "value" : "Lejátszás"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "In trasmissione"
+            "value" : "In riproduzione"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "キャスト中"
+            "value" : "再生中"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "캐스트 중"
+            "value" : "재생 중"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Caster"
+            "value" : "Spiller av"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aan het casten"
+            "value" : "Speelt af"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Trwa przesyłanie"
+            "value" : "Odtwarzanie"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Transmitindo"
+            "value" : "Reproduzindo"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A transmitir"
+            "value" : "A reproduzir"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Se transmite"
+            "value" : "Se redă"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Prenáša sa"
+            "value" : "Prehráva sa"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Castar"
+            "value" : "Spelar upp"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Yayınlanıyor"
+            "value" : "Oynatılıyor"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Триває трансляція"
+            "value" : "Відтворюється"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在投放"
+            "value" : "正在播放"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在投放"
+            "value" : "正在播放"
           }
         }
       }
@@ -32463,175 +32463,175 @@
         }
       }
     },
-    "Cast" : {
-      "comment" : "Cast button tooltip / accessibility label and device-picker heading",
+    "Play on…" : {
+      "comment" : "Play on button tooltip and accessibility label, while no receiver plays",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "إرسال"
+            "value" : "التشغيل على…"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Предаване"
+            "value" : "Възпроизвеждане на…"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Odesílat"
+            "value" : "Přehrát na…"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cast"
+            "value" : "Afspil på…"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cast"
+            "value" : "Play on…"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Übertragen"
+            "value" : "Wiedergabe auf…"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Μετάδοση"
+            "value" : "Αναπαραγωγή σε…"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Transmitir"
+            "value" : "Reproducir en…"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Suoratoista"
+            "value" : "Toista laitteella…"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Diffuser"
+            "value" : "Lire sur…"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "שידור"
+            "value" : "ניגון במכשיר…"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Emitiraj"
+            "value" : "Reproduciraj na…"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Átküldés"
+            "value" : "Lejátszás itt…"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Trasmetti"
+            "value" : "Riproduci su…"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "キャスト"
+            "value" : "再生先…"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "캐스트"
+            "value" : "재생할 기기…"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cast"
+            "value" : "Spill av på…"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Casten"
+            "value" : "Afspelen op…"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Przesyłaj"
+            "value" : "Odtwarzaj na…"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Transmitir"
+            "value" : "Reproduzir em…"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Transmitir"
+            "value" : "Reproduzir em…"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Transmite"
+            "value" : "Redă pe…"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Prenášať"
+            "value" : "Prehrať na…"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Casta"
+            "value" : "Spela upp på…"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Yayınla"
+            "value" : "Şurada oynat…"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Трансляція"
+            "value" : "Відтворити на…"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "投放"
+            "value" : "播放到…"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "投放"
+            "value" : "播放到…"
           }
         }
       }
@@ -32809,175 +32809,175 @@
         }
       }
     },
-    "Casting to %@" : {
-      "comment" : "Playback bar: currently casting to this device (name)",
+    "Playing on %@" : {
+      "comment" : "Playback bar: the Play on button's tooltip while playing on this receiver (name)",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "يتم الإرسال إلى ‏%@"
+            "value" : "يتم التشغيل على ‏%@"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Предаване към %@"
+            "value" : "Възпроизвежда се на %@"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Odesílání do %@"
+            "value" : "Přehrává se na %@"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Caster til %@"
+            "value" : "Afspiller på %@"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Casting to %@"
+            "value" : "Playing on %@"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Übertragung an %@"
+            "value" : "Wiedergabe auf %@"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Μετάδοση σε %@"
+            "value" : "Αναπαραγωγή σε %@"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Transmitiendo a %@"
+            "value" : "Reproduciendo en %@"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Suoratoistetaan kohteeseen %@"
+            "value" : "Toistetaan laitteella %@"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Diffusion vers %@"
+            "value" : "Lecture sur %@"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "משדר אל %@"
+            "value" : "מנגן ב-%@"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Emitiranje na %@"
+            "value" : "Reproducira se na %@"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Átküldés ide: %@"
+            "value" : "Lejátszás itt: %@"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Trasmissione a %@"
+            "value" : "In riproduzione su %@"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ にキャスト中"
+            "value" : "%@ で再生中"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@(으)로 캐스트 중"
+            "value" : "%@에서 재생 중"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Caster til %@"
+            "value" : "Spiller av på %@"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Casten naar %@"
+            "value" : "Speelt af op %@"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Przesyłanie do %@"
+            "value" : "Odtwarzanie na %@"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Transmitindo para %@"
+            "value" : "Reproduzindo em %@"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A transmitir para %@"
+            "value" : "A reproduzir em %@"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Se transmite către %@"
+            "value" : "Se redă pe %@"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Prenáša sa do %@"
+            "value" : "Prehráva sa na %@"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Castar till %@"
+            "value" : "Spelar upp på %@"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ cihazına yayınlanıyor"
+            "value" : "%@ üzerinde oynatılıyor"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Трансляція на %@"
+            "value" : "Відтворення на %@"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在投放到 %@"
+            "value" : "正在播放到 %@"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在投放到 %@"
+            "value" : "正在播放到 %@"
           }
         }
       }
@@ -55644,175 +55644,175 @@
         }
       }
     },
-    "No Cast devices found" : {
-      "comment" : "Cast device picker empty state",
+    "No receivers found" : {
+      "comment" : "Play on popover empty state",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "لم يتم العثور على أجهزة إرسال"
+            "value" : "لم يتم العثور على أجهزة استقبال"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Няма намерени устройства"
+            "value" : "Не са намерени приемници"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nenalezena žádná zařízení"
+            "value" : "Nenalezeny žádné přijímače"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Der blev ikke fundet nogen Cast-enheder"
+            "value" : "Ingen modtagere fundet"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No Cast devices found"
+            "value" : "No receivers found"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Keine Cast-Geräte gefunden"
+            "value" : "Keine Empfänger gefunden"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Δεν βρέθηκαν συσκευές Cast"
+            "value" : "Δεν βρέθηκαν δέκτες"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No se encontraron dispositivos"
+            "value" : "No se encontraron receptores"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cast-laitteita ei löytynyt"
+            "value" : "Vastaanottimia ei löytynyt"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aucun appareil trouvé"
+            "value" : "Aucun récepteur trouvé"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "לא נמצאו מכשירי שידור"
+            "value" : "לא נמצאו מקלטים"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nema pronađenih uređaja"
+            "value" : "Prijamnici nisu pronađeni"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nem található átküldési eszköz"
+            "value" : "Nem található vevő"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nessun dispositivo trovato"
+            "value" : "Nessun ricevitore trovato"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "キャストデバイスが見つかりません"
+            "value" : "レシーバーが見つかりません"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "캐스트 기기를 찾을 수 없음"
+            "value" : "수신기를 찾을 수 없음"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fant ingen Cast-enheter"
+            "value" : "Fant ingen mottakere"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Geen Cast-apparaten gevonden"
+            "value" : "Geen ontvangers gevonden"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nie znaleziono urządzeń"
+            "value" : "Nie znaleziono odbiorników"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nenhum dispositivo encontrado"
+            "value" : "Nenhum receptor encontrado"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Não foram encontrados dispositivos Cast"
+            "value" : "Nenhum recetor encontrado"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nu s-a găsit niciun dispozitiv Cast"
+            "value" : "Nu s-a găsit niciun receptor"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nenašli sa žiadne zariadenia Cast"
+            "value" : "Nenašli sa žiadne prijímače"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Inga Cast-enheter hittades"
+            "value" : "Inga mottagare hittades"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Yayın cihazı bulunamadı"
+            "value" : "Alıcı bulunamadı"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Пристроїв не знайдено"
+            "value" : "Приймачів не знайдено"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "未找到投放设备"
+            "value" : "未找到接收设备"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "找不到投放裝置"
+            "value" : "找不到接收裝置"
           }
         }
       }
@@ -118480,7 +118480,7 @@
       }
     },
     "Connecting to %@…" : {
-      "comment" : "Cast picker and Settings → Casting, over the receivers, and the Cast button's tooltip, while bae connects to the device the person picked; the argument is its name.",
+      "comment" : "Play on popover and Settings → Playback, over the receivers, and the Play on button's tooltip, while bae connects to the receiver the person picked; the argument is its name.",
       "extractionState" : "manual",
       "localizations" : {
         "ar" : {
@@ -167501,7 +167501,7 @@
       }
     },
     "Volume is set on %@" : {
-      "comment" : "Now-playing bar: shown in place of mute and the volume slider when the receiver cast to takes no volume from bae (receiver name)",
+      "comment" : "Now-playing bar: shown in place of mute and the volume slider when the receiver playing takes no volume from bae (receiver name)",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -172528,7 +172528,7 @@
       }
     },
     "Pair again…" : {
-      "comment" : "Alert button: cast again to the AirPlay receiver that no longer accepts this device, which asks for its code again.",
+      "comment" : "Alert button: play on the AirPlay receiver again, which no longer accepts this device and asks for its code again.",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -172700,348 +172700,348 @@
         }
       }
     },
-    "Could not cast to %@" : {
-      "comment" : "Alert title: the receiver named %@ refused the cast; the message says why and what to do.",
+    "Could not play on %@" : {
+      "comment" : "Alert title: the receiver named %@ refused playback; the message says why and what to do.",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "تعذّر الإرسال إلى %@"
+            "value" : "تعذّر التشغيل على ‏%@"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Не може да се предава към %@"
+            "value" : "Неуспешно възпроизвеждане на %@"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nelze odesílat do %@"
+            "value" : "Nelze přehrát na %@"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kunne ikke caste til %@"
+            "value" : "Kunne ikke afspille på %@"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Could not cast to %@"
+            "value" : "Could not play on %@"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Übertragung an %@ nicht möglich"
+            "value" : "Wiedergabe auf %@ nicht möglich"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Δεν ήταν δυνατή η μετάδοση σε %@"
+            "value" : "Δεν ήταν δυνατή η αναπαραγωγή σε %@"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No se pudo transmitir a %@"
+            "value" : "No se pudo reproducir en %@"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Suoratoisto kohteeseen %@ ei onnistunut"
+            "value" : "Toisto laitteella %@ ei onnistunut"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible de diffuser vers %@"
+            "value" : "Impossible de lire sur %@"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "לא ניתן לשדר אל %@"
+            "value" : "לא ניתן לנגן ב-%@"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Emitiranje na %@ nije uspjelo"
+            "value" : "Reprodukcija na %@ nije uspjela"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nem sikerült az átküldés ide: %@"
+            "value" : "Nem sikerült lejátszani itt: %@"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossibile trasmettere a %@"
+            "value" : "Impossibile riprodurre su %@"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ にキャストできませんでした"
+            "value" : "%@ で再生できませんでした"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@(으)로 캐스트할 수 없음"
+            "value" : "%@에서 재생하지 못했습니다"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kunne ikke caste til %@"
+            "value" : "Kunne ikke spille av på %@"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kan niet casten naar %@"
+            "value" : "Kan niet afspelen op %@"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nie można przesyłać do %@"
+            "value" : "Nie można odtworzyć na %@"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Não foi possível transmitir para %@"
+            "value" : "Não foi possível reproduzir em %@"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Não foi possível transmitir para %@"
+            "value" : "Não foi possível reproduzir em %@"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nu s-a putut transmite către %@"
+            "value" : "Nu s-a putut reda pe %@"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nepodarilo sa prenášať do %@"
+            "value" : "Nedá sa prehrať na %@"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kunde inte casta till %@"
+            "value" : "Det gick inte att spela upp på %@"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ cihazına yayınlanamadı"
+            "value" : "%@ üzerinde oynatılamadı"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Не вдалося транслювати на %@"
+            "value" : "Не вдалося відтворити на %@"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "无法投放到 %@"
+            "value" : "无法在 %@ 上播放"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "無法投放到 %@"
+            "value" : "無法在 %@ 上播放"
           }
         }
       }
     },
-    "Could not cast" : {
+    "Could not play on the receiver" : {
       "comment" : "Alert title: playback on an AirPlay receiver stopped because it no longer accepts this device; the message says so.",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "تعذّر الإرسال"
+            "value" : "تعذّر التشغيل على جهاز الاستقبال"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Не може да се предава"
+            "value" : "Неуспешно възпроизвеждане на приемника"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nelze odesílat"
+            "value" : "Nelze přehrát na přijímači"
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kunne ikke caste"
+            "value" : "Kunne ikke afspille på modtageren"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Could not cast"
+            "value" : "Could not play on the receiver"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Übertragung nicht möglich"
+            "value" : "Wiedergabe auf dem Empfänger nicht möglich"
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Δεν ήταν δυνατή η μετάδοση"
+            "value" : "Δεν ήταν δυνατή η αναπαραγωγή στον δέκτη"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No se pudo transmitir"
+            "value" : "No se pudo reproducir en el receptor"
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Suoratoisto ei onnistunut"
+            "value" : "Toisto vastaanottimella ei onnistunut"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossible de diffuser"
+            "value" : "Impossible de lire sur le récepteur"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "לא ניתן לשדר"
+            "value" : "לא ניתן לנגן במקלט"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Emitiranje nije uspjelo"
+            "value" : "Reprodukcija na prijamniku nije uspjela"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nem sikerült az átküldés"
+            "value" : "Nem sikerült lejátszani a vevőn"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Impossibile trasmettere"
+            "value" : "Impossibile riprodurre sul ricevitore"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "キャストできませんでした"
+            "value" : "レシーバーで再生できませんでした"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "캐스트할 수 없음"
+            "value" : "수신기에서 재생하지 못했습니다"
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kunne ikke caste"
+            "value" : "Kunne ikke spille av på mottakeren"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kan niet casten"
+            "value" : "Kan niet afspelen op de ontvanger"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nie można przesyłać"
+            "value" : "Nie można odtworzyć na odbiorniku"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Não foi possível transmitir"
+            "value" : "Não foi possível reproduzir no receptor"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Não foi possível transmitir"
+            "value" : "Não foi possível reproduzir no recetor"
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nu s-a putut transmite"
+            "value" : "Nu s-a putut reda pe receptor"
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nepodarilo sa prenášať"
+            "value" : "Nedá sa prehrať na prijímači"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kunde inte casta"
+            "value" : "Det gick inte att spela upp på mottagaren"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Yayınlanamadı"
+            "value" : "Alıcıda oynatılamadı"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Не вдалося транслювати"
+            "value" : "Не вдалося відтворити на приймачі"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "无法投放"
+            "value" : "无法在接收设备上播放"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "無法投放"
+            "value" : "無法在接收裝置上播放"
           }
         }
       }

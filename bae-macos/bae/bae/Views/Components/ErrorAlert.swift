@@ -25,10 +25,11 @@ extension View {
     /// Shows an alert for why playback last failed while
     /// `PlaybackStore.failure` is set, on any screen. A later failure replaces
     /// the one shown. An AirPlay receiver that no longer accepts this device
-    /// gets Could not cast with Pair again…, which calls `pairAgain` with the
-    /// receiver; any other failure gets the shared Error alert. Each button
-    /// calls `dismiss`, which asks core to clear the failure, and the alert
-    /// closes when `PlaybackStore.failure` is `nil` again.
+    /// gets Could not play on the receiver with Pair again…, which calls
+    /// `pairAgain` with the receiver; any other failure gets the shared Error
+    /// alert. Each button calls `dismiss`, which asks core to clear the
+    /// failure, and the alert closes when `PlaybackStore.failure` is `nil`
+    /// again.
     func playbackFailureAlert(
         _ playbackStore: PlaybackStore,
         pairAgain: @escaping @MainActor (BridgeCastReceiver) -> Void,
@@ -116,7 +117,7 @@ enum CastAlertContent {
         error: DisplayError
     ) -> (MacAlertWords, [MacAlertButton]) {
         ErrorAlertContent.alert(
-            title: Text("Could not cast to \(receiver)"),
+            title: Text("Could not play on \(receiver)"),
             error: error
         )
     }
@@ -129,7 +130,7 @@ enum CastAlertContent {
     ) -> (MacAlertWords, [MacAlertButton]) {
         (
             MacAlertWords(
-                Text("Could not cast"),
+                Text("Could not play on the receiver"),
                 message: Text(verbatim: error.line)
             ),
             [
