@@ -125,7 +125,7 @@ extension PreviewData {
             pressingOffers: pressingOffers,
             albumArtists: boardLibraryArtists("Mara Quill"),
             changed: false,
-            filesToRead: [],
+            filesToRead: nil,
             invalid: nil
         )
         return PreviewReleaseEdit(values: edit, draft: draft)

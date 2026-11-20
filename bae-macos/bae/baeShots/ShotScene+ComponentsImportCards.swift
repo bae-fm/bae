@@ -121,7 +121,7 @@ extension ShotScene {
                 pressingOffers: PreviewData.pressingOffers,
                 albumArtists: PreviewData.boardLibraryArtists("Mara Quill"),
                 changed: changed,
-                filesToRead: [],
+                filesToRead: nil,
                 invalid: nil
             )
         )

@@ -60,7 +60,7 @@ struct ReleaseEditorWaitTests {
     /// A session whose save and apply never finish, so the editor stays on
     /// its wait, and whose save reads `filesToRead` first.
     private func heldSession(
-        filesToRead: [String] = []
+        filesToRead: [String]? = nil
     ) -> ReleaseMetadataEditSession {
         var release = PreviewData.releaseEdit(trackCount: 2)
         release.draft.filesToRead = filesToRead

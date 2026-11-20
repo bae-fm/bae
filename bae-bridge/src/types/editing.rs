@@ -683,9 +683,9 @@ pub struct BridgeReleaseEditDraft {
     pub album_artists: Option<BridgeArtistField>,
     pub changed: bool,
     /// The names of the audio files a save reads before it writes, the ones
-    /// the form binds CUE sheets' `FILE` lines to, in name order; empty when
-    /// a save reads none.
-    pub files_to_read: Vec<String>,
+    /// the form binds CUE sheets' `FILE` lines to, in name order; `None`
+    /// when a save reads none.
+    pub files_to_read: Option<Vec<String>>,
     pub invalid: Option<BridgeValidationReason>,
 }
 

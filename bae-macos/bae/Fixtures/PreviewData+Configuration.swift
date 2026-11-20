@@ -172,7 +172,7 @@ extension PreviewData {
             pressingOffers: pressingOffers,
             albumArtists: editMetadataAlbumArtists,
             changed: false,
-            filesToRead: [],
+            filesToRead: nil,
             invalid: nil
         )
         return PreviewReleaseEdit(values: edit, draft: draft)

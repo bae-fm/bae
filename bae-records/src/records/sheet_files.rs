@@ -134,23 +134,31 @@ pub fn sheet_audio_options_ctes() -> &'static str {
 /// The names of the files the picks `picks` move lines of the release
 /// `release`'s sheets onto (SQL expressions over `params`, as for
 /// [`sheet_files_ctes`]), which a save reads before it writes, in name
-/// order.
+/// order; `None` when the picks move no line.
 pub fn sheet_files_to_read_on(
     sql: &impl coven::SqlRead,
     release: &str,
     picks: &str,
     params: impl rusqlite::Params,
-) -> Result<Vec<String>, DbError> {
-    Ok(sql.query(
+) -> Result<Option<Vec<String>>, DbError> {
+    let names: Option<String> = sql.query_row(
         &format!(
-            "WITH {} SELECT DISTINCT f.original_filename FROM moved_lines moved \
-             JOIN release_files f ON f.id = moved.to_file_id \
-             ORDER BY f.original_filename COLLATE natural_order",
+            "WITH {} SELECT CASE WHEN EXISTS (SELECT 1 FROM moved_lines) THEN ( \
+                 SELECT json_group_array(name ORDER BY name COLLATE natural_order) \
+                 FROM (SELECT DISTINCT f.original_filename AS name FROM moved_lines moved \
+                       JOIN release_files f ON f.id = moved.to_file_id)) END",
             sheet_files_ctes(release, picks),
         ),
         params,
         |row| row.get(0),
-    )?)
+    )?;
+    names
+        .map(|names| {
+            serde_json::from_str(&names).map_err(|error| {
+                DbError::unreadable_json("the files a save reads first", names.clone(), error)
+            })
+        })
+        .transpose()
 }
 
 /// A release's tracks' audio as a save that binds its sheets' lines to other

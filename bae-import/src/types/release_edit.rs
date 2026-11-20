@@ -317,7 +317,8 @@ pub struct ReleaseEditDraft {
     pub album_artists: Option<crate::ArtistField>,
     pub changed: bool,
     /// The names of the audio files a save reads before it writes, the ones
-    /// the form binds CUE sheets' `FILE` lines to, in name order.
-    pub files_to_read: Vec<String>,
+    /// the form binds CUE sheets' `FILE` lines to, in name order; `None`
+    /// when a save reads none.
+    pub files_to_read: Option<Vec<String>>,
     pub invalid: Option<EditValidationError>,
 }

@@ -405,7 +405,7 @@ extension ReleaseMetadataEditSession {
     /// CUE sheets' FILE lines to; `nil` while no such save runs.
     var readingLine: String? {
         guard case .saving = operation,
-            let names = draft?.filesToRead, !names.isEmpty
+            let names = draft?.filesToRead
         else { return nil }
         return localizedCoreString(
             "ui.release_edit.reading_files",

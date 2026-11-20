@@ -245,8 +245,8 @@ pub(crate) struct ReleaseEditDraftRows {
     tracks: Vec<DraftTrackRow>,
     /// How many discs the release has once the form's layout is written.
     disc_count: usize,
-    /// The names of the files a save reads first.
-    files_to_read: Vec<String>,
+    /// The names of the files a save reads first; `None` when it reads none.
+    files_to_read: Option<Vec<String>>,
     has_tracks: bool,
     files: bae_records::DbReleaseFiles,
     records: Vec<bae_catalogs::records::ReleaseRecord>,
