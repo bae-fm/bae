@@ -2516,7 +2516,7 @@ with a column for each of these; a column can be dragged wider or narrower or
 to another place, sized to its header and the rows in view by double-clicking
 the divider after its header, and hidden or shown again from the menu the
 header row opens, except the release column, which always shows. Which
-columns show, their order and their widths are kept across launches. A
+columns show, their order and their widths are kept across launches. Each column keeps its width beside the inspector, and the table scrolls sideways when the list is narrower than its columns. The date added reads in the platform's own date format, such as Oct 4, 2026. A
 release reads as pinned, here and in the album and release details, once this
 device keeps every one of its files whole, and the views change as each pin
 finishes.
