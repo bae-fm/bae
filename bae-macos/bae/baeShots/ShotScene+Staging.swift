@@ -11,7 +11,7 @@ import SwiftUI
 enum OverWindow {
     /// How far below the window's top a sheet or an alert hangs (the boards'
     /// `margin-top` on `bae-m-sheet` and `bae-m-alert`).
-    private static let hangs: CGFloat = 36
+    static let hangs: CGFloat = 36
 
     /// A sheet or an alert, hung from the top edge, centred.
     @MainActor
