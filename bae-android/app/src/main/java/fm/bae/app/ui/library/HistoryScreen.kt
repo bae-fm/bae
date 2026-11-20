@@ -39,8 +39,8 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidListRow
 import fm.bae.app.ui.components.AndroidMenu
+import fm.bae.app.ui.components.AndroidScreen
 import fm.bae.app.ui.components.AndroidSection
-import fm.bae.app.ui.components.AndroidTopBar
 import kotlinx.coroutines.flow.distinctUntilChanged
 import uniffi.bae_bridge.BridgeHistoryPlay
 import uniffi.bae_bridge.BridgeHistoryShown
@@ -64,41 +64,28 @@ internal fun HistoryScreen(
     // Read once here, so every row agrees on today and on the zone the times show in.
     val today = remember { LocalDate.now() }
     val zone = remember { TimeZone.getDefault() }
-    Column(modifier = Modifier.fillMaxSize()) {
-        HistoryTopBar(
-            onBack = onBack,
-            backLabel = backLabel,
-            menu = { page.countExtra as? BridgeListCountExtra.History },
-            menuOpen = menuOpen,
-            onMenuOpen = { menuOpen = it },
-            onChoose = { chosen ->
-                menuOpen = false
-                person = chosen
-            },
-        )
-        HistoryContent(session = session, page = page, today = today, zone = zone, listState = rememberLazyListState())
-    }
-}
-
-/** History's bar: the way back, the title, and, once the list's count says whose plays it can show, that choice. */
-@Composable
-internal fun HistoryTopBar(
-    onBack: () -> Unit,
-    backLabel: String,
-    menu: () -> BridgeListCountExtra.History?,
-    menuOpen: Boolean,
-    onMenuOpen: (Boolean) -> Unit,
-    onChoose: (String?) -> Unit,
-) {
-    AndroidTopBar(
+    AndroidScreen(
+        title = stringResource(R.string.history),
         onBack = onBack,
         backLabel = backLabel,
-        title = stringResource(R.string.history),
+        modifier = Modifier.fillMaxSize(),
         actions = {
             // The bar's own action reads the count, so only the bar redraws when it changes.
-            menu()?.let { WhoseMenu(menu = it, open = menuOpen, onOpen = onMenuOpen, onChoose = onChoose) }
+            (page.countExtra as? BridgeListCountExtra.History)?.let { menu ->
+                WhoseMenu(
+                    menu = menu,
+                    open = menuOpen,
+                    onOpen = { menuOpen = it },
+                    onChoose = { chosen ->
+                        menuOpen = false
+                        person = chosen
+                    },
+                )
+            }
         },
-    )
+    ) {
+        HistoryContent(session = session, page = page, today = today, zone = zone, listState = rememberLazyListState())
+    }
 }
 
 @Composable
@@ -118,7 +105,7 @@ private fun rememberHistoryPage(
 
 /** The choice of whose plays History shows, at the end of the top bar: the current choice with a ⌄. */
 @Composable
-private fun RowScope.WhoseMenu(
+internal fun RowScope.WhoseMenu(
     menu: BridgeListCountExtra.History,
     open: Boolean,
     onOpen: (Boolean) -> Unit,

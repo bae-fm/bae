@@ -5,13 +5,25 @@ import fm.bae.app.ui.components.AndroidPageActions
 import fm.bae.app.ui.components.AndroidTopBar
 import fm.bae.app.ui.components.QueueActions
 import fm.bae.app.ui.library.AndroidSearchBar
+import fm.bae.app.ui.library.WhoseMenu
 import org.junit.Test
+import uniffi.bae_bridge.BridgeHistoryShown
 
 /** The component shots of the bars: the screen's top bar, the page's Play and Shuffle, and the search bar. */
 class BarComponentShots : BoardShot() {
     @Test
     fun androidComponentTopBarBack() =
         component("android.component.top-bar.back", wide = true) { AndroidTopBar(onBack = {}, title = "Storage") }
+
+    @Test
+    fun androidComponentTopBarMenu() =
+        component("android.component.top-bar.menu", wide = true) {
+            AndroidTopBar(
+                onBack = {},
+                title = "History",
+                actions = { WhoseMenu(menu = historyChoice(BridgeHistoryShown.Everyone), open = false, onOpen = {}, onChoose = {}) },
+            )
+        }
 
     @Test
     fun androidComponentTopBarLongTitle() =

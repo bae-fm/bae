@@ -21,16 +21,21 @@ import fm.bae.app.R
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 
-/** A screen: its bar, with the [title] and the way back, over [content] in a column of [modifier]'s shape. */
+/**
+ * A screen: its bar, with the [title], the way back named by [backLabel] and the screen's own [actions] at the
+ * end, over [content] in a column of [modifier]'s shape.
+ */
 @Composable
 internal fun AndroidScreen(
     title: String,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    backLabel: String = stringResource(R.string.back),
+    actions: @Composable RowScope.() -> Unit = {},
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(modifier = modifier) {
-        AndroidTopBar(onBack = onBack, title = title)
+        AndroidTopBar(onBack = onBack, title = title, backLabel = backLabel, actions = actions)
         content()
     }
 }

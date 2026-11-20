@@ -30,8 +30,11 @@ import fm.bae.app.ui.components.DialogHead
 import fm.bae.app.ui.components.DialogParts
 import uniffi.bae_bridge.BridgeDropboxLocation
 import uniffi.bae_bridge.BridgeFolderLabel
+import uniffi.bae_bridge.BridgeHistoryPerson
+import uniffi.bae_bridge.BridgeHistoryShown
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeLibraryState
+import uniffi.bae_bridge.BridgeListCountExtra
 import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeSyncCause
 import uniffi.bae_bridge.BridgeSyncFix
@@ -152,25 +155,50 @@ internal fun InPlaceDialogScene(
                         .padding(ThemeSpace.page),
                 contentAlignment = Alignment.Center,
             ) {
-                val parts = dialog()
-                DialogSurface {
-                    Column(modifier = Modifier.width(DIALOG_WIDTH), verticalArrangement = Arrangement.spacedBy(ThemeSpace.edge)) {
-                        if (parts.title != null || parts.message != null) DialogHead(parts.title, parts.message)
-                        parts.content?.invoke()
-                        Box(
-                            modifier = Modifier.fillMaxWidth().padding(top = ThemeSpace.related),
-                            contentAlignment = Alignment.CenterEnd,
-                        ) {
-                            AndroidDialogActions(parts.action, parts.dismiss)
-                        }
-                    }
-                }
+                InPlaceDialog(dialog())
             }
         }
     }
 }
 
+/**
+ * A dialog's [parts] on the dialog's surface, 340 dp wide, 16 apart with the buttons 24 below the content, as the
+ * design system's dialog sets them.
+ */
+@Composable
+internal fun InPlaceDialog(parts: DialogParts) {
+    DialogSurface {
+        Column(modifier = Modifier.width(DIALOG_WIDTH), verticalArrangement = Arrangement.spacedBy(ThemeSpace.edge)) {
+            if (parts.title != null || parts.message != null) DialogHead(parts.title, parts.message)
+            parts.content?.invoke()
+            Box(
+                modifier = Modifier.fillMaxWidth().padding(top = ThemeSpace.related),
+                contentAlignment = Alignment.CenterEnd,
+            ) {
+                AndroidDialogActions(parts.action, parts.dismiss)
+            }
+        }
+    }
+}
+
+/** A screen with a field in focus: the keyboard's inset holds the bottom of the screen, and [content] fits above it. */
+@Composable
+internal fun KeyboardScene(content: @Composable () -> Unit) {
+    ScreenScene { Box(modifier = Modifier.fillMaxSize().padding(bottom = KEYBOARD_HEIGHT)) { content() } }
+}
+
 private val DIALOG_WIDTH = 340.dp
+
+/** What the count of History says about whose plays it shows: [shown], and the library's two other people to choose. */
+internal fun historyChoice(shown: BridgeHistoryShown) =
+    BridgeListCountExtra.History(
+        people =
+            listOf(
+                BridgeHistoryPerson(person = "ana", name = "Ana", chosen = false),
+                BridgeHistoryPerson(person = "ben", name = "Ben", chosen = shown is BridgeHistoryShown.Person),
+            ),
+        shown = shown,
+    )
 
 /**
  * The height of the board's keyboard (the design system's `AndroidKeyboard`): 10 above four rows of 46-high keys, 10

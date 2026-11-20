@@ -26,16 +26,16 @@ import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidContentUnavailable
-import fm.bae.app.ui.components.AndroidTopBar
+import fm.bae.app.ui.components.AndroidScreen
 import fm.bae.app.ui.components.AvatarFace
 import fm.bae.app.ui.components.ButtonKind
-import fm.bae.app.ui.library.HistoryTopBar
 import fm.bae.app.ui.library.LibraryBrowserState
 import fm.bae.app.ui.library.LibraryMoreMenuItems
 import fm.bae.app.ui.library.ListPlaceholder
 import fm.bae.app.ui.library.PersonButton
 import fm.bae.app.ui.library.PersonMenuItems
 import fm.bae.app.ui.library.PlaylistRows
+import fm.bae.app.ui.library.WhoseMenu
 import fm.bae.app.ui.library.historyEmptyText
 import org.junit.Test
 import uniffi.bae_bridge.BridgeHistoryPerson
@@ -120,12 +120,11 @@ class PersonMenuBoardShots : BoardShot() {
         shot("android.playlists.list") {
             ScreenScene {
                 CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
-                    Column {
-                        AndroidTopBar(
-                            onBack = {},
-                            backLabel = stringResource(R.string.back_to_library),
-                            title = stringResource(R.string.library_mode_playlists),
-                        )
+                    AndroidScreen(
+                        title = stringResource(R.string.library_mode_playlists),
+                        onBack = {},
+                        backLabel = stringResource(R.string.back_to_library),
+                    ) {
                         PlaylistRows(
                             playlists =
                                 listOf(
@@ -157,31 +156,18 @@ class PersonMenuBoardShots : BoardShot() {
         trackCount = BridgeFixtures.playlistSummary().trackCount.copy(count = tracks),
     )
 
-    private fun menu(shown: BridgeHistoryShown) =
-        BridgeListCountExtra.History(
-            people =
-                listOf(
-                    BridgeHistoryPerson(person = "ana", name = "Ana", chosen = false),
-                    BridgeHistoryPerson(person = "ben", name = "Ben", chosen = shown is BridgeHistoryShown.Person),
-                ),
-            shown = shown,
-        )
-
     @Composable
     private fun HistoryScene(
         shown: BridgeHistoryShown,
         body: @Composable () -> Unit,
     ) {
         CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
-            Column {
-                HistoryTopBar(
-                    onBack = {},
-                    backLabel = stringResource(R.string.back_to_library),
-                    menu = { menu(shown) },
-                    menuOpen = false,
-                    onMenuOpen = {},
-                    onChoose = {},
-                )
+            AndroidScreen(
+                title = stringResource(R.string.history),
+                onBack = {},
+                backLabel = stringResource(R.string.back_to_library),
+                actions = { WhoseMenu(menu = historyChoice(shown), open = false, onOpen = {}, onChoose = {}) },
+            ) {
                 Box(modifier = Modifier.fillMaxSize()) { body() }
             }
         }

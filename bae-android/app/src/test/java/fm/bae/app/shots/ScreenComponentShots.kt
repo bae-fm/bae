@@ -7,8 +7,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
@@ -17,20 +20,74 @@ import fm.bae.app.ui.albumdetail.AndroidAlbumHeader
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.AndroidScreen
+import fm.bae.app.ui.components.AndroidTextField
+import fm.bae.app.ui.components.DialogAction
+import fm.bae.app.ui.components.DialogParts
 import fm.bae.app.ui.library.AlbumGridLayout
 import fm.bae.app.ui.library.AndroidAlbumGrid
 import fm.bae.app.ui.library.AndroidDetailScreen
 import fm.bae.app.ui.library.AndroidLibraryScreen
 import fm.bae.app.ui.library.LibraryBrowserState
+import fm.bae.app.ui.library.WhoseMenu
 import org.junit.Test
+import uniffi.bae_bridge.BridgeHistoryShown
 
-/** The component shots of the two screen frames: a settings screen's, and a library detail page's. */
+/** The component shots of the screen frames: a settings screen's, with its dialog and keyboard, the library screen's, and a library detail page's. */
 class ScreenComponentShots : BoardShot() {
     @Test
     fun androidComponentScreenBack() =
         component("android.component.screen.back", wide = true) {
             AndroidScreen(title = "Library", onBack = {}, modifier = Modifier.height(360.dp)) {
                 Text("The screen’s content", modifier = Modifier.padding(ThemeSpace.edge))
+            }
+        }
+
+    @Test
+    fun androidComponentScreenMenu() =
+        component("android.component.screen.menu", wide = true) {
+            AndroidScreen(
+                title = "History",
+                onBack = {},
+                modifier = Modifier.height(360.dp),
+                actions = { WhoseMenu(menu = historyChoice(BridgeHistoryShown.Everyone), open = false, onOpen = {}, onChoose = {}) },
+            ) {
+                Text("The screen’s content", modifier = Modifier.padding(ThemeSpace.edge))
+            }
+        }
+
+    @Test
+    fun androidComponentScreenDialog() =
+        shot("android.component.screen.dialog") {
+            InPlaceDialogScene(
+                behind = {
+                    AndroidScreen(title = "Storage", onBack = {}) {
+                        Text("The screen’s content", modifier = Modifier.padding(ThemeSpace.edge))
+                    }
+                },
+            ) {
+                DialogParts(
+                    title = "Remove library from this device?",
+                    message = "The library will remain in the cloud and on your other devices.",
+                    action = DialogAction("Remove", {}, destructive = true),
+                    dismiss = DialogAction("Cancel", {}),
+                )
+            }
+        }
+
+    @Test
+    fun androidComponentScreenKeyboard() =
+        shot("android.component.screen.keyboard") {
+            KeyboardScene {
+                AndroidScreen(title = "Name", onBack = {}) {
+                    val focus = remember { FocusRequester() }
+                    AndroidTextField(
+                        value = "Home",
+                        onValueChange = {},
+                        label = "Library name",
+                        modifier = Modifier.padding(ThemeSpace.edge).focusRequester(focus),
+                    )
+                    LaunchedEffect(Unit) { focus.requestFocus() }
+                }
             }
         }
 
