@@ -94,6 +94,7 @@ async fn the_pane_shows_each_tracks_stated_length_after_a_file_decision() {
         .mapping
         .track_sides
         .iter()
+        .flatten()
         .flat_map(crate::TrackTableSide::rows)
         .collect();
     assert_eq!(rows.len(), 2);
@@ -417,6 +418,7 @@ async fn a_cleared_sheet_can_be_bound_again() {
         .mapping
         .files
         .iter()
+        .flatten()
         .find_map(|row| match row {
             crate::MappingFileRow::Sheet(sheet) if sheet.sheet_id == "Test Album.cue" => {
                 Some(sheet.unbound_references.clone())

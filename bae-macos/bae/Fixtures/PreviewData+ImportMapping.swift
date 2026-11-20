@@ -350,7 +350,7 @@ extension PreviewData {
         session: CandidatePaneState = CandidatePaneState(),
         placement: BridgeCandidatePanePlacement = .pending(
             folderCheck: nil,
-            records: []
+            records: nil
         ),
         live: BridgeCandidateLiveState? = nil,
         importStatus: BridgeCandidateImportStatus? = nil,

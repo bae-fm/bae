@@ -121,11 +121,11 @@ impl TriageReading {
         }
     }
 
-    /// Every catalog record the row names: none unless it is linked.
-    pub fn records(self) -> Vec<bae_catalogs::records::ReleaseRecord> {
+    /// Every catalog record the row names; `None` unless it is linked.
+    pub fn records(self) -> Option<Vec<bae_catalogs::records::ReleaseRecord>> {
         match self {
-            Self::Identified { records } | Self::IdentifiedAlbum { records } => records,
-            Self::Unidentified | Self::Prefilled => Vec::new(),
+            Self::Identified { records } | Self::IdentifiedAlbum { records } => Some(records),
+            Self::Unidentified | Self::Prefilled => None,
         }
     }
 }

@@ -337,10 +337,9 @@ pub struct ReleaseEditDraft {
     pub files: Option<Vec<crate::MappingFile>>,
     pub album: DraftAlbum,
     /// The catalogs that describe the release the form holds: the applied
-    /// catalog's records, the applied one first, else the release's own.
-    pub records: Vec<bae_catalogs::records::ReleaseRecord>,
-    /// Whether `records` holds any.
-    pub has_records: bool,
+    /// catalog's records, the applied one first, else the release's own;
+    /// `None` when none does.
+    pub records: Option<Vec<bae_catalogs::records::ReleaseRecord>>,
     /// The media and Discogs details the form's pressing Add menus offer.
     pub pressing_offers: crate::PressingOffers,
     /// The form's album artists, each with how it stands to the library, as

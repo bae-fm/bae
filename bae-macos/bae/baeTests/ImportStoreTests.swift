@@ -93,7 +93,7 @@ private func detail(
         ),
         partCount: 0,
         actionable: true,
-        placement: .pending(folderCheck: nil, records: []),
+        placement: .pending(folderCheck: nil, records: nil),
         live: BridgeCandidateLiveState(
             identifying: nil,
             import: nil,
@@ -150,7 +150,7 @@ struct ImportStoreCandidateDetailTests {
 
         let read = try #require(store.selectedCandidates[Data("/w1/a".utf8)])
         #expect(read.displayName == "A")
-        #expect(read.placement == .pending(folderCheck: nil, records: []))
+        #expect(read.placement == .pending(folderCheck: nil, records: nil))
         #expect(read.importStatus == nil)
     }
 

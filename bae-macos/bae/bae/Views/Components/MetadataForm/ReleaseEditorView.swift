@@ -11,9 +11,9 @@ struct ReleaseEditorView: View {
     let displayName: String
     var onPlayTrack: ((String) -> Void)?
     /// The images of the folder the release was imported from, as the scan
-    /// read them, drawn between the album row and the tracks; empty where
-    /// the release has no folder to show.
-    var images: [BridgeMappingImage] = []
+    /// read them, drawn between the album row and the tracks; `nil` where
+    /// the release has no folder images to show.
+    var images: [BridgeMappingImage]?
     var onOpenImages: ((String) -> Void)?
     /// The save landed; receives the album the release is on after it.
     let onSaved: @MainActor @Sendable (String) -> Void
@@ -64,8 +64,8 @@ struct ReleaseEditorView: View {
                     tracks: ReleaseEditorTracks(
                         images: images,
                         onOpenImages: onOpenImages ?? { _ in },
-                        sides: draft.sides ?? [],
-                        files: (draft.files ?? []).map { .file(file: $0) },
+                        sides: draft.sides,
+                        files: draft.files?.map { .file(file: $0) },
                         previewingTarget: nil,
                         actions: tableActions
                     ),

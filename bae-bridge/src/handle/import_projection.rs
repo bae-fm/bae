@@ -687,8 +687,10 @@ impl crate::types::BridgeCandidatePanePlacement {
     /// Not a copy: the folder check crosses with `rate`, the rate of the
     /// audio's files.
     fn from_core(placement: bae_import::CandidatePanePlacement, rate: Option<u32>) -> Self {
-        let records = |records: Vec<bae_catalogs::records::ReleaseRecord>| {
-            records.into_iter().map(crate::types::BridgeReleaseRecord::from_core).collect()
+        let records = |records: Option<Vec<bae_catalogs::records::ReleaseRecord>>| {
+            records.map(|records| {
+                records.into_iter().map(crate::types::BridgeReleaseRecord::from_core).collect()
+            })
         };
         match placement {
             bae_import::CandidatePanePlacement::Pending { folder_check, records: pending } => {
@@ -754,17 +756,19 @@ impl crate::types::BridgeImportCandidateDetail {
 impl crate::types::BridgeCandidateStage {
     /// Builds the pane's stage. An imported candidate's gallery shows
     /// `images`, the images in the candidate's folder.
-    fn from_core(stage: bae_import::CandidateStage, images: Vec<bae_import::MappingImage>) -> Self {
+    fn from_core(
+        stage: bae_import::CandidateStage,
+        images: Option<Vec<bae_import::MappingImage>>,
+    ) -> Self {
         match stage {
             bae_import::CandidateStage::Drafting(draft) => {
                 Self::Drafting { draft: crate::types::BridgeCandidateDraftPane::from_core(*draft) }
             }
             bae_import::CandidateStage::Imported { release } => Self::Imported {
                 release: crate::types::BridgeImportedRelease::from_core(release),
-                images: images
-                    .into_iter()
-                    .map(crate::types::BridgeMappingImage::from_core)
-                    .collect(),
+                images: images.map(|images| {
+                    images.into_iter().map(crate::types::BridgeMappingImage::from_core).collect()
+                }),
             },
         }
     }

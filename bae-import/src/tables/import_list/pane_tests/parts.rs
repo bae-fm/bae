@@ -181,7 +181,7 @@ async fn the_pane_counts_and_summarizes_the_folder_s_files() {
         vec!["cover.jpg", "scan.webp"]
     );
     assert_eq!(
-        files.images.iter().map(|image| image.file_id.as_str()).collect::<Vec<_>>(),
+        files.images.iter().flatten().map(|image| image.file_id.as_str()).collect::<Vec<_>>(),
         vec!["booklet.bmp", "cover.jpg", "drawing.svg", "scan.webp"]
     );
     // Every image keeps its role, whether or not a picker can show it.

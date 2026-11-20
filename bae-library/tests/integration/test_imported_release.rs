@@ -333,6 +333,7 @@ async fn selected_folders_from_different_roots_import_as_one_release() {
             .mapping
             .track_sides
             .iter()
+            .flatten()
             .map(|side| side.side.clone())
             .collect::<Vec<_>>(),
         [

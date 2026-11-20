@@ -35,24 +35,24 @@ struct MacReleaseEditor<Search: View>: View {
                     editable: editable
                 )
             }
-            if !tracks.images.isEmpty {
+            if let images = tracks.images {
                 MacImportImages(
-                    images: tracks.images,
+                    images: images,
                     onOpen: tracks.onOpenImages
                 )
             }
-            if !tracks.sides.isEmpty {
+            if let sides = tracks.sides {
                 MacImportTable(
-                    sides: tracks.sides,
+                    sides: sides,
                     previewingTarget: tracks.previewingTarget,
                     actions: tracks.actions,
                     editingCommands: editingCommands
                 )
                 .disabled(!editable)
             }
-            if !tracks.files.isEmpty {
+            if let files = tracks.files {
                 MacReleaseFiles(
-                    rows: tracks.files,
+                    rows: files,
                     onOpenDocument: tracks.actions.sheetCaption.open,
                     sheetActions: tracks.actions.sheetCaption
                 )
@@ -172,8 +172,9 @@ struct ReleaseEditorCard {
     let album: BridgeDraftAlbum?
     let albumActions: DraftAlbumActions
     /// Every catalog record that describes the release, the applied
-    /// catalog's first.
-    let records: [BridgeReleaseRecord]
+    /// catalog's first; `nil` while none does, and the card then draws no
+    /// records line and no Unlink.
+    let records: [BridgeReleaseRecord]?
     /// Whether the link names an album and no pressing of it.
     let pressingUnknown: Bool
 }
@@ -192,11 +193,14 @@ struct ReleaseCover {
 /// What the editor shows under its card: the release's images, its track
 /// table and its Files list, and what their controls do.
 struct ReleaseEditorTracks {
-    let images: [BridgeMappingImage]
+    /// The folder's images; `nil` where there are none to show.
+    let images: [BridgeMappingImage]?
     /// Open the images in the lightbox at the one whose file id it gets.
     let onOpenImages: (String) -> Void
-    let sides: [BridgeTrackTableSide]
-    let files: [BridgeMappingFileRow]
+    /// The track table's sides; `nil` while the release has no track.
+    let sides: [BridgeTrackTableSide]?
+    /// The files no track plays from; `nil` while there are none.
+    let files: [BridgeMappingFileRow]?
     /// The source window the preview player plays now, if any.
     let previewingTarget: BridgePreviewTarget?
     let actions: ReleaseTrackTableActions
@@ -239,9 +243,9 @@ private struct ReleaseEditorCardView: View {
             .disabled(!editable)
             // The catalogs that describe the release end the card, under
             // their own divider, beside the way to unlink them.
-            if !card.records.isEmpty {
+            if let records = card.records {
                 MacHairline()
-                records
+                recordsLine(records)
             }
         }
         .padding(.vertical, ThemeSpace.edge)
@@ -302,9 +306,9 @@ private struct ReleaseEditorCardView: View {
         }
     }
 
-    private var records: some View {
+    private func recordsLine(_ records: [BridgeReleaseRecord]) -> some View {
         HStack(alignment: .firstTextBaseline) {
-            MacRecordLinks(records: card.records)
+            MacRecordLinks(records: records)
             if card.pressingUnknown {
                 Text("Pressing unknown")
                     .themeText(.detail)

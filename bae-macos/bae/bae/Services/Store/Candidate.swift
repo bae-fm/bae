@@ -383,7 +383,8 @@ struct Candidate: Equatable, Identifiable {
     }
 
     /// The folder's images, once this device imported its files: the
-    /// gallery the imported folder's pane shows beside the library release.
+    /// gallery the imported folder's pane shows beside the library release;
+    /// `nil` before then and when the folder holds no image.
     var importedImages: [BridgeMappingImage]? {
         guard case .imported(_, let images) = detail?.stage else { return nil }
         return images
@@ -400,9 +401,9 @@ struct Candidate: Equatable, Identifiable {
     var mapping: BridgeMappingTable {
         draft?.mapping
             ?? BridgeMappingTable(
-                images: [],
-                trackSides: [],
-                files: [],
+                images: nil,
+                trackSides: nil,
+                files: nil,
                 trackCount: 0,
                 untitledTrackCount: 0
             )
@@ -430,13 +431,12 @@ struct Candidate: Equatable, Identifiable {
         draft?.metadataProvenance
     }
 
-    /// Every catalog that describes the release this candidate's draft was
-    /// read from, in the order core lists them. Empty for a draft read from
-    /// the files' own tags, typed in, or not there yet.
-    var records: [BridgeReleaseRecord] {
+    /// Every catalog that describes the release the candidate is linked
+    /// to, in the order core lists them; `nil` while it is linked to none.
+    var records: [BridgeReleaseRecord]? {
         switch placement {
         case .pending(_, let records), .skipped(let records): records
-        case .done, nil: []
+        case .done, nil: nil
         }
     }
 

@@ -112,8 +112,9 @@ pub struct PaneFiles {
     pub files: Vec<PaneFile>,
     /// The folder's images a cover picker can show, in the same order.
     pub cover_files: Vec<PaneFile>,
-    /// Every image of the folder, in the same order: the gallery.
-    pub images: Vec<super::mapping::MappingImage>,
+    /// Every image of the folder, in the same order: the gallery; `None`
+    /// when the folder holds no image.
+    pub images: Option<Vec<super::mapping::MappingImage>>,
     /// How many tracks the folder holds: its audio units.
     pub track_count: u32,
     /// What the folder's audio is, summarized over its audio files; `None`
@@ -330,12 +331,13 @@ pub enum CandidatePanePlacement {
         /// [`ImportCandidateDetailProjection::stored_verdict`] decides on.
         folder_check: Option<bae_identify::FolderCheck>,
         /// Every catalog the linked release is described in, in the order
-        /// surfaces list catalogs. Empty for a candidate linked to no release.
-        records: Vec<bae_catalogs::records::ReleaseRecord>,
+        /// surfaces list catalogs; `None` for a candidate linked to no
+        /// release.
+        records: Option<Vec<bae_catalogs::records::ReleaseRecord>>,
     },
     /// Skipped, with every catalog the linked release is described in, as
     /// for Pending.
-    Skipped { records: Vec<bae_catalogs::records::ReleaseRecord> },
+    Skipped { records: Option<Vec<bae_catalogs::records::ReleaseRecord>> },
     /// In the library.
     Done,
 }

@@ -13,13 +13,16 @@ use crate::{SheetGroup, TrackTableSide};
 /// committing makes of it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct MappingTable {
-    /// Every image the folder holds, in the scan's authoritative order.
-    pub images: Vec<MappingImage>,
+    /// Every image the folder holds, in the scan's authoritative order;
+    /// `None` when it holds none.
+    pub images: Option<Vec<MappingImage>>,
     /// The rows that can become release tracks, on the track table's sides,
-    /// with a bound sheet heading the slices it carves.
-    pub track_sides: Vec<TrackTableSide>,
-    /// Files carried with the release but not represented by track rows.
-    pub files: Vec<MappingFileRow>,
+    /// with a bound sheet heading the slices it carves; `None` when the
+    /// folder offers no track.
+    pub track_sides: Option<Vec<TrackTableSide>>,
+    /// Files carried with the release but not represented by track rows;
+    /// `None` when there are none.
+    pub files: Option<Vec<MappingFileRow>>,
     /// How many track rows the table holds.
     pub track_count: u32,
     /// How many track rows nobody has named yet. Committing anyway titles
@@ -136,7 +139,13 @@ mod stored_preview_target {
 /// The table's track rows in commit order — what the editor shapes into the
 /// release it writes.
 pub fn mapping_tracks(table: &MappingTable) -> Vec<RawTrackEdit> {
-    table.track_sides.iter().flat_map(TrackTableSide::rows).map(|row| row.track.clone()).collect()
+    table
+        .track_sides
+        .iter()
+        .flatten()
+        .flat_map(TrackTableSide::rows)
+        .map(|row| row.track.clone())
+        .collect()
 }
 
 /// A folder that failed validation, as the pane looking into it reads it.

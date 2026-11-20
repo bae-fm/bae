@@ -114,14 +114,13 @@ async fn unlink_drops_the_records_and_keeps_the_album() {
     let draft = tokio::time::timeout(std::time::Duration::from_secs(30), async {
         loop {
             let draft = drafts.next().await.expect("read the draft").expect("the release");
-            if !draft.has_records {
+            if draft.records.is_none() {
                 return draft;
             }
         }
     })
     .await
     .expect("the draft shows no records");
-    assert!(draft.records.is_empty());
     assert!(
         matches!(&draft.album, bae_import::DraftAlbum::Named { album_id: id, .. } if *id == album_id),
         "{:?}",

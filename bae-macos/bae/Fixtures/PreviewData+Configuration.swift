@@ -160,8 +160,7 @@ extension PreviewData {
                     artistLine: .named("Preview Artist")
                 )
             ),
-            records: [],
-            hasRecords: false,
+            records: nil,
             pressingOffers: pressingOffers,
             albumArtists: editMetadataAlbumArtists,
             changed: false,
@@ -435,8 +434,7 @@ actor PreviewReleaseLibrary {
 
     /// `release` linked to no record, as core's Unlink leaves a form.
     private static func unlink(_ release: inout PreviewReleaseEdit) {
-        release.draft.records = []
-        release.draft.hasRecords = false
+        release.draft.records = nil
     }
 
     /// What `session` does with each command.

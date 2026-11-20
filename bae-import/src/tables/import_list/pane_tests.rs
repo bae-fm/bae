@@ -130,7 +130,11 @@ async fn the_row_and_the_pane_name_the_same_records() {
     else {
         panic!("a picked candidate is pending, got {:?}", detail.placement);
     };
-    assert_eq!(pane_records, records, "the pane names the records the queue's row does");
+    assert_eq!(
+        pane_records.as_ref(),
+        Some(records),
+        "the pane names the records the queue's row does"
+    );
 }
 
 /// A scanned hi-res folder with a stored verdict whose pick the folder rules
@@ -214,7 +218,7 @@ async fn a_verdict_the_folder_rules_out_reads_back_as_its_failed_check() {
         pane.placement,
         crate::CandidatePanePlacement::Pending {
             folder_check: Some(bae_identify::FolderCheck::MediumDisagrees { folder: conflict }),
-            records: Vec::new(),
+            records: None,
         }
     );
     let detail = tables

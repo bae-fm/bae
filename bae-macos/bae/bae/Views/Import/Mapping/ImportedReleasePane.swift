@@ -17,9 +17,10 @@ struct ImportedReleasePane: View {
     private static let placeholderHeight: CGFloat = 280
 
     /// The folder's images, as its scan read them: the candidate holds no
-    /// draft once imported, so no mapping table.
-    private var images: [BridgeMappingImage] {
-        candidate.importedImages ?? []
+    /// draft once imported, so no mapping table. `nil` when the folder holds
+    /// no image.
+    private var images: [BridgeMappingImage]? {
+        candidate.importedImages
     }
 
     @State

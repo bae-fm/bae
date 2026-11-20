@@ -503,14 +503,14 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
                     pick: { _ in },
                     search: { _ in [] }
                 ),
-                records: [],
+                records: nil,
                 pressingUnknown: false
             ),
             tracks: ReleaseEditorTracks(
-                images: [],
+                images: nil,
                 onOpenImages: { _ in },
-                sides: [],
-                files: [],
+                sides: nil,
+                files: nil,
                 previewingTarget: nil,
                 actions: inertMappingActions().trackTable
             ),

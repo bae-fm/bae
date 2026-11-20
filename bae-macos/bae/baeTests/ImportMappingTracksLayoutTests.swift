@@ -279,7 +279,7 @@ extension ImportMappingTracksLayoutTests {
         )
 
         guard
-            case .sheet(let sheet, let rows) = table.trackSides[0].runs[0]
+            case .sheet(let sheet, let rows) = table.trackSides?[0].runs[0]
         else {
             Issue.record("expected a sheet group")
             return

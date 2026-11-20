@@ -290,8 +290,9 @@ pub enum BridgeCandidateStage {
     Imported {
         release: BridgeImportedRelease,
         /// The folder's images, read from its scan: the gallery beside the
-        /// library release, whose editor lists the release's files.
-        images: Vec<crate::types::BridgeMappingImage>,
+        /// library release, whose editor lists the release's files; `None`
+        /// when the folder holds no image.
+        images: Option<Vec<crate::types::BridgeMappingImage>>,
     },
 }
 
@@ -346,13 +347,13 @@ pub enum BridgeCandidatePanePlacement {
         /// The check against the folder the candidate's found release did
         /// not pass, stated beside its Import.
         folder_check: Option<crate::types::BridgeFolderCheck>,
-        /// Every catalog the draft was read from, in the order surfaces list
-        /// catalogs. Empty for a draft read from the files' tags, typed in, or
-        /// not there yet.
-        records: Vec<crate::types::BridgeReleaseRecord>,
+        /// Every catalog the linked release is described in, in the order
+        /// surfaces list catalogs; `None` for a candidate linked to no
+        /// release.
+        records: Option<Vec<crate::types::BridgeReleaseRecord>>,
     },
     /// Skipped, with every catalog the draft was read from.
-    Skipped { records: Vec<crate::types::BridgeReleaseRecord> },
+    Skipped { records: Option<Vec<crate::types::BridgeReleaseRecord>> },
     /// In the library.
     Done,
 }

@@ -237,11 +237,14 @@ struct ImportMappingPaneTests {
         )
         let after = MappingFixtures.mapping(of: store)
         guard
-            after.trackSides.count == 1,
-            after.trackSides[0].runs.count == 1,
-            case .sheet(let sheet, let entries) = after.trackSides[0].runs[0]
+            let sides = after.trackSides,
+            sides.count == 1,
+            sides[0].runs.count == 1,
+            case .sheet(let sheet, let entries) = sides[0].runs[0]
         else {
-            Issue.record("expected one sheet run, got \(after.trackSides)")
+            Issue.record(
+                "expected one sheet run, got \(String(describing: after.trackSides))"
+            )
             return
         }
         guard case .describes(let container) = sheet.bound else {
@@ -472,7 +475,8 @@ extension ImportMappingPaneTests {
         )
         guard
             case .sheet(let sheet, _) = MappingFixtures.mapping(of: store)
-                .trackSides[0].runs[0]
+                .trackSides?[0]
+                .runs[0]
         else {
             Issue.record("expected a sheet row")
             return
@@ -505,7 +509,7 @@ extension ImportMappingPaneTests {
             )
         )
         let mapping = MappingFixtures.mapping(of: store)
-        guard case .sheet(let sheet) = mapping.files[0] else {
+        guard case .sheet(let sheet) = mapping.files?[0] else {
             Issue.record("expected an unassociated sheet file")
             return
         }
@@ -595,12 +599,12 @@ struct ImportCommitControlsTests {
         )
         candidate.placement = .pending(
             folderCheck: .sourceTracksUnknown,
-            records: []
+            records: nil
         )
         let stated = try #require(candidate.folderCheck?.localizedText)
         #expect(stated.contains("The release lists no tracks"))
 
-        candidate.placement = .pending(folderCheck: nil, records: [])
+        candidate.placement = .pending(folderCheck: nil, records: nil)
         #expect(candidate.folderCheck == nil)
     }
 

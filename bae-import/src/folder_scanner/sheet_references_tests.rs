@@ -399,7 +399,8 @@ async fn multi_file_cue_resolves_each_reference_by_unique_stem() {
     );
 
     let table = crate::mapping::tests::blank_table(files).await;
-    let Some(crate::TrackTableRun::Sheet { sheet, rows }) = table.track_sides[0].runs.first()
+    let Some(crate::TrackTableRun::Sheet { sheet, rows }) =
+        table.track_sides.as_ref().expect("the table's sides")[0].runs.first()
     else {
         panic!("the resolved CUE should group its track rows");
     };

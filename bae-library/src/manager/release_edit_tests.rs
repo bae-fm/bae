@@ -206,8 +206,7 @@ async fn the_draft_lists_the_release_s_records_and_then_the_applied_ones() {
 
     let form = manager.open_release_edit(&release.id).await.unwrap();
     let opened = draft_now(manager, &form).await;
-    assert_eq!(opened.records, [stored]);
-    assert!(opened.has_records);
+    assert_eq!(opened.records, Some(vec![stored]));
 
     let new_release_id = "draft-records-mb-rel-new";
     seed_musicbrainz(&test, new_release_id, "draft-records-mb-group-new", 3);
@@ -220,8 +219,7 @@ async fn the_draft_lists_the_release_s_records_and_then_the_applied_ones() {
         .await
         .unwrap();
     let applied_draft = draft_now(manager, &applied).await;
-    assert!(applied_draft.has_records);
-    let records = applied_draft.records;
+    let records = applied_draft.records.expect("the applied release's records");
     assert_eq!(records.len(), 1);
     assert_eq!(records[0].key(), new_release_id);
 }

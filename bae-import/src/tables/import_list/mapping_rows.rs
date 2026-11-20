@@ -238,12 +238,12 @@ sides AS (
 ),
 {unplayed}
 SELECT json_object(
-    'images', json((SELECT json_group_array(json_object(
+    'images', json(NULLIF((SELECT json_group_array(json_object(
                         'file_id', relative_path, 'name', file_name, 'path', hex(absolute_path),
                         'size', size, 'modified_at_ns', modified_at_ns) ORDER BY position)
-                    FROM f WHERE role = 'artwork')),
-    'sides', json((SELECT json FROM sides)),
-    'files', json((SELECT json_group_array(
+                    FROM f WHERE role = 'artwork'), '[]')),
+    'sides', json(NULLIF((SELECT json FROM sides), '[]')),
+    'files', json(NULLIF((SELECT json_group_array(
                        CASE f.role
                            WHEN 'track_sheet' THEN json_object('sheet', json(s.json))
                            ELSE json_object('file', json_object(
@@ -251,7 +251,7 @@ SELECT json_object(
                                'size', f.size, 'role', f.role))
                        END ORDER BY f.position)
                    FROM f LEFT JOIN sheets AS s ON s.relative_path = f.relative_path
-                   WHERE f.relative_path IN (SELECT file_id FROM unplayed_files))),
+                   WHERE f.relative_path IN (SELECT file_id FROM unplayed_files)), '[]')),
     'untitled', (SELECT COUNT(*) FILTER (WHERE bae_trim(title) = '') FROM rows),
     'tracks', (SELECT COUNT(*) FROM rows),
     'units', (SELECT COUNT(*) FROM scan_candidate_unit
@@ -467,9 +467,12 @@ pub(super) struct MappingRows {
 
 #[derive(serde::Deserialize)]
 struct Document {
-    images: Vec<ImageJson>,
-    sides: Vec<SideJson>,
-    files: Vec<CarriedJson>,
+    /// The folder's images; `None` when it holds none.
+    images: Option<Vec<ImageJson>>,
+    /// The track table's sides; `None` when the folder offers no track.
+    sides: Option<Vec<SideJson>>,
+    /// The files no track plays from; `None` when there are none.
+    files: Option<Vec<CarriedJson>>,
     untitled: u32,
     tracks: u32,
     units: u32,
@@ -500,70 +503,74 @@ impl MappingRows {
                 document.tracks, document.units
             )));
         }
-        let mut track_sides = Vec::new();
-        for side in document.sides {
-            let unplaced = |reason: String| internal(format!("a track side: {reason}"));
-            let mut runs = Vec::new();
-            for run in side.runs {
-                let mut rows = Vec::new();
-                for row in run.rows {
-                    let position = bae_records::records::track_position_of(
-                        &side.kind,
-                        side.ordinal,
-                        row.number,
-                    )
-                    .map_err(unplaced)?;
-                    rows.push(table_row(row, position.text())?);
-                }
-                match run.sheet {
-                    Some(sheet) => {
-                        runs.push(TrackTableRun::Sheet { sheet: sheet_group(sheet)?, rows })
-                    }
-                    None => runs.extend(rows.into_iter().map(TrackTableRun::Track)),
-                }
-            }
-            track_sides.push(TrackTableSide {
-                side: bae_records::records::track_side_of(&side.kind, side.ordinal)
-                    .map_err(unplaced)?,
-                runs,
-            });
-        }
+        let track_sides = document
+            .sides
+            .map(|sides| sides.into_iter().map(track_side).collect::<Result<Vec<_>, _>>())
+            .transpose()?;
         let files = document
             .files
-            .into_iter()
-            .map(|carried| {
-                Ok(match carried {
-                    CarriedJson::Sheet(sheet) => MappingFileRow::Sheet(sheet_group(sheet)?),
-                    CarriedJson::File(file) => MappingFileRow::File(MappingFile {
-                        file_id: file.file_id,
-                        name: file.name,
-                        size: file.size,
-                        preview_target: None,
-                        role: carried_role(&file.role)?,
-                    }),
-                })
-            })
-            .collect::<Result<Vec<_>, ImportError>>()?;
+            .map(|files| files.into_iter().map(carried_row).collect::<Result<Vec<_>, _>>())
+            .transpose()?;
         Ok(MappingTable {
-            images: document
-                .images
-                .into_iter()
-                .map(|image| MappingImage {
-                    file_id: image.file_id,
-                    name: image.name,
-                    file: crate::folder_scanner::FileVersion {
-                        path: image.path,
-                        size: image.size,
-                        modified_at_ns: image.modified_at_ns,
-                    },
-                })
-                .collect(),
+            images: document.images.map(|images| {
+                images
+                    .into_iter()
+                    .map(|image| MappingImage {
+                        file_id: image.file_id,
+                        name: image.name,
+                        file: crate::folder_scanner::FileVersion {
+                            path: image.path,
+                            size: image.size,
+                            modified_at_ns: image.modified_at_ns,
+                        },
+                    })
+                    .collect()
+            }),
             track_sides,
             files,
             track_count: document.tracks,
             untitled_track_count: document.untitled,
         })
     }
+}
+
+/// One side of the track table, its runs of loose tracks and of the tracks
+/// a sheet carves, each row at its place on the side.
+fn track_side(side: SideJson) -> Result<TrackTableSide, ImportError> {
+    let unplaced =
+        |reason: String| ImportError::Internal { detail: format!("a track side: {reason}") };
+    let mut runs = Vec::new();
+    for run in side.runs {
+        let mut rows = Vec::new();
+        for row in run.rows {
+            let position =
+                bae_records::records::track_position_of(&side.kind, side.ordinal, row.number)
+                    .map_err(unplaced)?;
+            rows.push(table_row(row, position.text())?);
+        }
+        match run.sheet {
+            Some(sheet) => runs.push(TrackTableRun::Sheet { sheet: sheet_group(sheet)?, rows }),
+            None => runs.extend(rows.into_iter().map(TrackTableRun::Track)),
+        }
+    }
+    Ok(TrackTableSide {
+        side: bae_records::records::track_side_of(&side.kind, side.ordinal).map_err(unplaced)?,
+        runs,
+    })
+}
+
+/// One file no track plays from, or a sheet that carves no track.
+fn carried_row(carried: CarriedJson) -> Result<MappingFileRow, ImportError> {
+    Ok(match carried {
+        CarriedJson::Sheet(sheet) => MappingFileRow::Sheet(sheet_group(sheet)?),
+        CarriedJson::File(file) => MappingFileRow::File(MappingFile {
+            file_id: file.file_id,
+            name: file.name,
+            size: file.size,
+            preview_target: None,
+            role: carried_role(&file.role)?,
+        }),
+    })
 }
 
 fn carried_role(role: &str) -> Result<MappingRole, ImportError> {

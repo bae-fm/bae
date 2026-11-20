@@ -72,7 +72,10 @@ async fn linking_the_album_takes_what_its_pressings_share() {
     );
     assert_eq!(
         after.placement,
-        crate::CandidatePanePlacement::Pending { folder_check: None, records: album().records() }
+        crate::CandidatePanePlacement::Pending {
+            folder_check: None,
+            records: Some(album().records())
+        }
     );
     shut_down(handle).await;
 }

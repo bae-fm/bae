@@ -264,14 +264,26 @@ mirror_enum! {
     },
 }
 
-mirror_struct! {
-    BridgeMappingTable = bae_import::MappingTable,
-    from_core: pub(crate) fn,
-    fields: {
-        images: (each BridgeMappingImage),
-        track_sides: (each BridgeTrackTableSide),
-        files: (each BridgeMappingFileRow),
-        track_count,
-        untitled_track_count,
-    },
+/// `mirror_struct` takes no optional list, so this conversion names each
+/// field by hand.
+impl BridgeMappingTable {
+    pub(crate) fn from_core(table: bae_import::MappingTable) -> Self {
+        let bae_import::MappingTable {
+            images,
+            track_sides,
+            files,
+            track_count,
+            untitled_track_count,
+        } = table;
+        Self {
+            images: images
+                .map(|images| images.into_iter().map(BridgeMappingImage::from_core).collect()),
+            track_sides: track_sides
+                .map(|sides| sides.into_iter().map(BridgeTrackTableSide::from_core).collect()),
+            files: files
+                .map(|files| files.into_iter().map(BridgeMappingFileRow::from_core).collect()),
+            track_count,
+            untitled_track_count,
+        }
+    }
 }

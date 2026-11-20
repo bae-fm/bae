@@ -81,8 +81,8 @@ SELECT json_object(
     'files', json((SELECT json_group_array(json(json) ORDER BY position) FROM entries)),
     'cover_files', json((SELECT json_group_array(json(json) ORDER BY position)
                          FROM entries WHERE cover)),
-    'images', json((SELECT json_group_array(json(json) ORDER BY position)
-                    FROM entries WHERE role = 'artwork')),
+    'images', json(NULLIF((SELECT json_group_array(json(json) ORDER BY position)
+                           FROM entries WHERE role = 'artwork'), '[]')),
     'track_count', (SELECT COUNT(*) FROM scan_candidate_unit AS unit
                     JOIN candidate
                         ON unit.watched_folder_path = candidate.watched_folder_path
@@ -107,7 +107,7 @@ SELECT json_object(
 struct Document {
     files: Vec<FileJson>,
     cover_files: Vec<FileJson>,
-    images: Vec<FileJson>,
+    images: Option<Vec<FileJson>>,
     track_count: u32,
     #[serde(deserialize_with = "SourceAudioSummary::deserialize_stored")]
     source_audio: Option<SourceAudioSummary>,
@@ -199,7 +199,7 @@ pub(super) fn load_pane_files_on(
             .into_iter()
             .map(FileJson::file)
             .collect::<Result<_, _>>()?,
-        images: document.images.into_iter().map(FileJson::image).collect(),
+        images: document.images.map(|images| images.into_iter().map(FileJson::image).collect()),
         track_count: document.track_count,
         source_audio: document.source_audio,
     })

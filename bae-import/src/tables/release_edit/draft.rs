@@ -416,8 +416,7 @@ impl ReleaseEditDraftRows {
                 .has_others
                 .then(|| crate::ReleaseEditDisplayContext::carried_files(&files)),
             album,
-            records,
-            has_records,
+            records: has_records.then_some(records),
             pressing_offers: form.edit.pressing.offers(),
             album_artists,
             changed,

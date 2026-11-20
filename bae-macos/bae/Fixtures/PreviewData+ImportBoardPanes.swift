@@ -106,7 +106,6 @@ extension PreviewData {
                 )
             ),
             records: boardRecords("board-northbound"),
-            hasRecords: true,
             pressingOffers: pressingOffers,
             albumArtists: boardLibraryArtists("Mara Quill"),
             changed: false,

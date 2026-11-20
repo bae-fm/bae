@@ -72,9 +72,9 @@ struct ImportPreviewDataTests {
         let candidate = PreviewData.importTabCandidate
         let mapping = try #require(candidate.mapping)
         let candidateFileIDs = Set(candidate.files.files.map(\.file.name))
-        var representedFileIDs = Set(mapping.images.map(\.fileId))
+        var representedFileIDs = Set((mapping.images ?? []).map(\.fileId))
 
-        for run in mapping.trackSides.flatMap(\.runs) {
+        for run in (mapping.trackSides ?? []).flatMap(\.runs) {
             switch run {
             case .track(let row):
                 if case .file(let name) = row.source {
@@ -87,7 +87,7 @@ struct ImportPreviewDataTests {
                 }
             }
         }
-        for row in mapping.files {
+        for row in mapping.files ?? [] {
             switch row {
             case .file(let file):
                 representedFileIDs.insert(file.fileId)

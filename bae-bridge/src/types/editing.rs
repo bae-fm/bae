@@ -475,11 +475,14 @@ pub enum BridgeMappingFileRow {
 #[cfg(desktop)]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeMappingTable {
-    /// Every image the folder holds, in the scan's authoritative order.
-    pub images: Vec<BridgeMappingImage>,
-    /// The rows that can become release tracks, on the track table's sides.
-    pub track_sides: Vec<BridgeTrackTableSide>,
-    pub files: Vec<BridgeMappingFileRow>,
+    /// Every image the folder holds, in the scan's authoritative order;
+    /// `None` when it holds none.
+    pub images: Option<Vec<BridgeMappingImage>>,
+    /// The rows that can become release tracks, on the track table's sides;
+    /// `None` when the folder offers no track.
+    pub track_sides: Option<Vec<BridgeTrackTableSide>>,
+    /// The files no track plays from; `None` when there are none.
+    pub files: Option<Vec<BridgeMappingFileRow>>,
     /// How many track rows the table holds.
     pub track_count: u32,
     /// How many track rows nobody has named yet. Committing anyway titles
@@ -693,10 +696,8 @@ pub struct BridgeReleaseEditDraft {
     pub files: Option<Vec<BridgeMappingFile>>,
     pub album: BridgeDraftAlbum,
     /// The catalogs that describe the release the form holds, the applied
-    /// one first.
-    pub records: Vec<BridgeReleaseRecord>,
-    /// Whether `records` holds any.
-    pub has_records: bool,
+    /// one first; `None` when none does.
+    pub records: Option<Vec<BridgeReleaseRecord>>,
     /// The media and Discogs details the form's pressing Add menus offer.
     pub pressing_offers: BridgePressingOffers,
     /// The form's album artists, each with how it stands to the library;

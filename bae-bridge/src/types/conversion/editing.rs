@@ -206,7 +206,6 @@ impl BridgeReleaseEditDraft {
             files,
             album,
             records,
-            has_records,
             pressing_offers,
             album_artists,
             changed,
@@ -220,8 +219,8 @@ impl BridgeReleaseEditDraft {
                 .map(|sides| sides.into_iter().map(BridgeTrackTableSide::from_core).collect()),
             files: files.map(|files| files.into_iter().map(BridgeMappingFile::from_core).collect()),
             album: BridgeDraftAlbum::from_core(album),
-            has_records,
-            records: records.into_iter().map(BridgeReleaseRecord::from_core).collect(),
+            records: records
+                .map(|records| records.into_iter().map(BridgeReleaseRecord::from_core).collect()),
             pressing_offers: BridgePressingOffers::from_core(pressing_offers),
             album_artists: album_artists.map(BridgeArtistField::from_core),
             changed,

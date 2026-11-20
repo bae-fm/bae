@@ -526,11 +526,11 @@ extension PreviewData {
     static func panePlacement(
         of row: BridgeTriageRow
     ) -> BridgeCandidatePanePlacement {
-        let records: [BridgeReleaseRecord] =
+        let records: [BridgeReleaseRecord]? =
             switch row.reading {
             case .identified(let records), .identifiedAlbum(let records):
                 records
-            case .prefilled, .unidentified: []
+            case .prefilled, .unidentified: nil
             }
         return switch row.placement {
         case .pending:

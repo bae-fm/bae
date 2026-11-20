@@ -120,10 +120,10 @@ struct ImportMappingPane: View {
                     }()
                 ),
                 tracks: ReleaseEditorTracks(
-                    images: candidate.detail == nil ? [] : mapping.images,
+                    images: candidate.detail == nil ? nil : mapping.images,
                     onOpenImages: mappingActions.openImages,
-                    sides: candidate.detail == nil ? [] : mapping.trackSides,
-                    files: candidate.detail == nil ? [] : mapping.files,
+                    sides: candidate.detail == nil ? nil : mapping.trackSides,
+                    files: candidate.detail == nil ? nil : mapping.files,
                     previewingTarget: previewingTarget,
                     actions: mappingActions.trackTable
                 ),

@@ -79,13 +79,28 @@ fn assign_discs(files: &mut CategorizedFiles, assignments: &[(&str, u32)]) {
         .expect("disc assignments preserve a valid candidate");
 }
 
+/// The table's sides, none when it has no track.
+fn table_sides(table: &MappingTable) -> &[TrackTableSide] {
+    table.track_sides.as_deref().unwrap_or_default()
+}
+
+/// The folder's images, none when it holds no image.
+fn table_images(table: &MappingTable) -> &[crate::MappingImage] {
+    table.images.as_deref().unwrap_or_default()
+}
+
+/// The files no track plays from, none when there are none.
+fn table_files(table: &MappingTable) -> &[MappingFileRow] {
+    table.files.as_deref().unwrap_or_default()
+}
+
 fn mappings(table: &MappingTable) -> Vec<&TrackTableRow> {
-    table.track_sides.iter().flat_map(TrackTableSide::rows).collect()
+    table.track_sides.iter().flatten().flat_map(TrackTableSide::rows).collect()
 }
 
 /// Every run of the table, side after side.
 fn runs(table: &MappingTable) -> Vec<&TrackTableRun> {
-    table.track_sides.iter().flat_map(|side| &side.runs).collect()
+    table.track_sides.iter().flatten().flat_map(|side| &side.runs).collect()
 }
 
 /// The name of each file a track plays whole, in table order.
@@ -195,14 +210,14 @@ async fn audio_rows_are_the_draft_s_tracks_and_the_rest_are_carried() {
     let table = blank_table(&files).await;
     let mappings = mappings(&table);
 
-    assert_eq!(table.images.len(), 1);
+    assert_eq!(table_images(&table).len(), 1);
     let cover = files
         .files
         .iter()
         .find(|entry| entry.file.relative_path == "cover.jpg")
         .expect("the scan found cover.jpg");
     assert_eq!(
-        table.images[0].file,
+        table_images(&table)[0].file,
         cover.file.version.clone(),
         "the gallery draws the image at the version the scan read"
     );
@@ -211,6 +226,7 @@ async fn audio_rows_are_the_draft_s_tracks_and_the_rest_are_carried() {
     let carried: Vec<(&str, MappingRole)> = table
         .files
         .iter()
+        .flatten()
         .map(|row| match row {
             MappingFileRow::File(file) => (file.name.as_str(), file.role),
             other => panic!("expected a carried file, got {other:?}"),
@@ -240,6 +256,7 @@ async fn files_keep_the_images_the_gallery_does_not_show() {
     let listed: Vec<&str> = table
         .files
         .iter()
+        .flatten()
         .map(|row| match row {
             MappingFileRow::File(file) => file.name.as_str(),
             other => panic!("expected a carried file, got {other:?}"),
@@ -344,6 +361,7 @@ async fn mapping_statement_letters_sides_past_z() {
     let letters: Vec<String> = table
         .track_sides
         .iter()
+        .flatten()
         .map(|side| match &side.side {
             bae_types::mediums::TrackSide::Sided { side_letter } => side_letter.clone(),
             other => panic!("a record's side, got {other:?}"),
@@ -371,9 +389,9 @@ async fn the_folder_s_images_are_a_gallery_beside_the_table_rows() {
 
     let table = blank_table(&scan(tmp.path())).await;
 
-    assert_eq!(table.images.len(), 5);
+    assert_eq!(table_images(&table).len(), 5);
     assert_eq!(
-        table.images.iter().map(|image| image.file_id.as_str()).collect::<Vec<_>>(),
+        table_images(&table).iter().map(|image| image.file_id.as_str()).collect::<Vec<_>>(),
         ["back.jpg", "cover.jpg", "scans/scan1.jpg", "scans/scan2.jpg", "scans/scan3.jpg",],
         "the gallery preserves the scan's authoritative order"
     );
@@ -382,8 +400,9 @@ async fn the_folder_s_images_are_a_gallery_beside_the_table_rows() {
     assert!(table
         .images
         .iter()
+        .flatten()
         .any(|image| image.file_id == "scans/scan1.jpg" && tmp.exists(&image.file.path)));
-    assert_eq!(table.track_sides.len(), 1);
+    assert_eq!(table_sides(&table).len(), 1);
     assert_eq!(file_names(&runs(&table))[0], "01.flac");
 }
 
@@ -405,7 +424,7 @@ async fn a_sheet_s_entries_carry_their_starts_and_bind_to_its_slices() {
     let table = mapping_table(&files, &draft).await.unwrap();
 
     let [TrackTableRun::Sheet { sheet, rows: entries }] = runs(&table).as_slice() else {
-        panic!("the sheet is the folder's only run, got {:?}", table.track_sides);
+        panic!("the sheet is the folder's only run, got {:?}", table_sides(&table));
     };
     assert_eq!(sheet.sheet_id, "CDImage.cue");
     assert_eq!(
@@ -466,17 +485,17 @@ async fn standalone_tracks_are_sectioned_by_release_side() {
     let draft = numbered_draft(&files, record(), &[(1, 1, 1), (1, 1, 2), (1, 2, 1), (1, 2, 2)]);
     let table = mapping_table(&files, &draft).await.unwrap();
 
-    assert_eq!(table.track_sides.len(), 2);
+    assert_eq!(table_sides(&table).len(), 2);
     assert_eq!(
-        table.track_sides[0].side,
+        table_sides(&table)[0].side,
         bae_types::mediums::TrackSide::Sided { side_letter: "A".to_string() }
     );
     assert_eq!(
-        table.track_sides[1].side,
+        table_sides(&table)[1].side,
         bae_types::mediums::TrackSide::Sided { side_letter: "B".to_string() }
     );
-    assert_eq!(positions(&table.track_sides[0]), ["A1", "A2"]);
-    assert_eq!(positions(&table.track_sides[1]), ["B1", "B2"]);
+    assert_eq!(positions(&table_sides(&table)[0]), ["A1", "A2"]);
+    assert_eq!(positions(&table_sides(&table)[1]), ["B1", "B2"]);
 }
 
 #[tokio::test]
@@ -502,9 +521,9 @@ async fn each_cue_is_one_section_on_its_assigned_disc() {
     );
     let table = mapping_table(&files, &draft).await.unwrap();
 
-    assert_eq!(table.track_sides.len(), 2);
+    assert_eq!(table_sides(&table).len(), 2);
     for (side, (disc, sheet_id)) in
-        table.track_sides.iter().zip([(1, "beta.cue"), (2, "alpha.cue")])
+        table_sides(&table).iter().zip([(1, "beta.cue"), (2, "alpha.cue")])
     {
         assert_eq!(side.side, bae_types::mediums::TrackSide::Disc { disc });
         let [TrackTableRun::Sheet { sheet, rows: entries }] = side.runs.as_slice() else {
@@ -528,8 +547,8 @@ async fn mapping_statement_names_a_split_sheet_again_on_the_next_side() {
     let draft = numbered_draft(&files, record(), &[(1, 1, 1), (1, 1, 2), (1, 2, 1), (1, 2, 2)]);
     let table = mapping_table(&files, &draft).await.unwrap();
 
-    assert_eq!(table.track_sides.len(), 2);
-    for (side, letter) in table.track_sides.iter().zip(["A", "B"]) {
+    assert_eq!(table_sides(&table).len(), 2);
+    for (side, letter) in table_sides(&table).iter().zip(["A", "B"]) {
         assert_eq!(
             side.side,
             bae_types::mediums::TrackSide::Sided { side_letter: letter.to_string() }
@@ -558,8 +577,8 @@ async fn mapping_statement_heads_each_side_once_however_many_runs() {
     let draft = numbered_draft(&files, record(), &[(1, 1, 1), (1, 1, 2), (1, 1, 3), (1, 2, 1)]);
     let table = mapping_table(&files, &draft).await.unwrap();
 
-    let [side_a, side_b] = table.track_sides.as_slice() else {
-        panic!("one side per side letter, got {:?}", table.track_sides);
+    let [side_a, side_b] = table_sides(&table) else {
+        panic!("one side per side letter, got {:?}", table_sides(&table));
     };
     assert_eq!(side_a.side, bae_types::mediums::TrackSide::Sided { side_letter: "A".to_string() });
     let [first, second, TrackTableRun::Sheet { sheet, rows: entries }] = side_a.runs.as_slice()
@@ -658,9 +677,9 @@ async fn a_sheet_that_describes_nothing_says_what_it_asked_for() {
     // The sheet is named where it sits on disk, after the loose audio that
     // sorts before it — a sheet that carves nothing occupies no run.
     let Some(MappingFileRow::Sheet(sheet)) =
-        table.files.iter().find(|row| matches!(row, MappingFileRow::Sheet(_)))
+        table_files(&table).iter().find(|row| matches!(row, MappingFileRow::Sheet(_)))
     else {
-        panic!("expected a sheet row among {:?}", table.files);
+        panic!("expected a sheet row among {:?}", table_files(&table));
     };
     assert_eq!(sheet.bound, SheetBound::Unresolved { requested: vec!["CDImage.wav".to_string()] },);
 }
@@ -683,7 +702,7 @@ async fn associated_sheets_group_tracks_and_unassociated_sheets_remain_files() {
             if sheet.sheet_id == "disc.cue" && entries.len() == 2
     ));
     assert!(matches!(
-        table.files.as_slice(),
+        table_files(&table),
         [MappingFileRow::Sheet(sheet)] if sheet.sheet_id == "unresolved.cue"
     ));
 }
@@ -731,7 +750,7 @@ async fn invalid_cue_times_are_not_reported_as_missing_audio() {
     write_flac(&tmp, "disc.flac");
     tmp.write("disc.cue", cue_sheet_text("disc.flac", 7));
     let table = blank_table(&scan(tmp.path())).await;
-    let MappingFileRow::Sheet(sheet) = &table.files[0] else {
+    let MappingFileRow::Sheet(sheet) = &table_files(&table)[0] else {
         panic!("the refused CUE remains listed");
     };
     assert_eq!(sheet.bound, SheetBound::RefusedTiming);
@@ -756,7 +775,7 @@ async fn partial_sheet_keeps_assigned_and_missing_references_even_without_choice
     write_flac(&tmp, "first.flac");
     tmp.write("album.cue", "FILE \"first.wav\" WAVE\n TRACK 01 AUDIO\n INDEX 01 00:00:00\nFILE \"absent.wav\" WAVE\n TRACK 02 AUDIO\n INDEX 01 00:00:00\n");
     let table = blank_table(&scan(tmp.path())).await;
-    let MappingFileRow::Sheet(sheet) = &table.files[0] else {
+    let MappingFileRow::Sheet(sheet) = &table_files(&table)[0] else {
         panic!("partial CUE remains listed");
     };
     assert_eq!(sheet.bound, SheetBound::Unresolved { requested: vec!["absent.wav".into()] });
@@ -794,7 +813,7 @@ async fn codec_refusal_does_not_invent_a_current_assignment() {
     );
     tmp.write("disc.cue", cue_sheet_text("disc.mp3", 1));
     let table = blank_table(&scan(tmp.path())).await;
-    let MappingFileRow::Sheet(sheet) = &table.files[0] else {
+    let MappingFileRow::Sheet(sheet) = &table_files(&table)[0] else {
         panic!("refused CUE remains listed");
     };
     assert_eq!(sheet.bound, SheetBound::RefusedCodec { codec: "MP3".into() });
@@ -829,8 +848,8 @@ async fn the_first_of_competing_sheets_carves_and_the_rest_stay_listed() {
     // The sheet that lost the container stays listed, ignored, still bound
     // to it and still offering it, so a person can make it the one that
     // carves instead.
-    let [MappingFileRow::Sheet(sheet)] = table.files.as_slice() else {
-        panic!("the competing CUE remains listed: {:?}", table.files);
+    let [MappingFileRow::Sheet(sheet)] = table_files(&table) else {
+        panic!("the competing CUE remains listed: {:?}", table_files(&table));
     };
     assert_eq!(sheet.sheet_id, "second.cue");
     assert_eq!(sheet.assigned, None);
@@ -859,6 +878,7 @@ async fn source_disc_assignments_do_not_invent_sides() {
         table
             .track_sides
             .iter()
+            .flatten()
             .all(|side| { !matches!(side.side, bae_types::mediums::TrackSide::Sided { .. }) }),
         "available CUE audio does not establish vinyl sides"
     );
@@ -920,7 +940,7 @@ async fn a_multi_file_sheet_stays_described_when_ignored_without_probing() {
         .apply_candidate_file_edits(&CandidateFileEdits { sheet_places, ..Default::default() })
         .unwrap();
     let table = blank_table(&files).await;
-    let MappingFileRow::Sheet(sheet) = &table.files[0] else {
+    let MappingFileRow::Sheet(sheet) = &table_files(&table)[0] else {
         panic!("ignored CUE remains a file");
     };
     assert_eq!(sheet.assigned, None);
