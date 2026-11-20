@@ -29,8 +29,8 @@ extension ShotScene {
     ]
 
     /// The shot people: Ana on this Mac, and Ben.
-    private static let anaMemberId = "4a1f2c3d-0000-4000-8000-000000000001"
-    private static let benMemberId = "4a1f2c3d-0000-4000-8000-000000000002"
+    static let anaMemberId = "4a1f2c3d-0000-4000-8000-000000000001"
+    static let benMemberId = "4a1f2c3d-0000-4000-8000-000000000002"
 
     /// The window with the side pane on History, showing `plays`, the plays
     /// of the person with member id `person` when one is picked.
@@ -121,7 +121,7 @@ extension ShotScene {
     /// of this Mac's calendar the boards name, so the headings say Today
     /// and Yesterday.
     @MainActor
-    private static var boardPlays: [BridgeHistoryPlay] {
+    static var boardPlays: [BridgeHistoryPlay] {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: .now)
         return boardPlayList.enumerated()

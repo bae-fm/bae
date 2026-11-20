@@ -578,7 +578,46 @@ extension ShotScene {
             current: true,
             picked: true
         ),
+        ratedTrackRow("mac.component.track-row.rated", stars: .four),
+        ratedTrackRow(
+            "mac.component.track-row.not-rated-in-a-rated-list",
+            stars: nil
+        ),
+        ratedTrackRow(
+            "mac.component.track-row.rated-and-hover",
+            stars: .four,
+            hover: true
+        ),
     ]
+
+    /// `MacRatedTrackRow`: a track of an album's list with the slot for the
+    /// person's `stars` after it.
+    private static func ratedTrackRow(
+        _ id: String,
+        stars: BridgeStars?,
+        hover: Bool = false
+    ) -> ShotScene {
+        component(id, height: 70) {
+            MacRatedTrackRow(
+                row: MacTrackRow(
+                    track: PreviewData.previewTrack(
+                        title: "Low Tide Hours",
+                        position: "4",
+                        durationMs: 303_000
+                    ),
+                    artist: nil,
+                    positionWidth: MacTrackRow.leadingSlotMinWidth,
+                    isCurrent: false,
+                    isPlaying: false,
+                    hover: hover,
+                    onPlay: {},
+                    onTogglePlayPause: {}
+                ),
+                stars: stars
+            )
+            .frame(width: 380, height: 40)
+        }
+    }
 
     /// One of Mara Quill's tracks in the queue, as the boards list it, with
     /// its album's cover unless `covered` is false.

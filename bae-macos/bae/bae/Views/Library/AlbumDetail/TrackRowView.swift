@@ -3,8 +3,8 @@ import BaeKit
 import Combine
 import SwiftUI
 
-/// One row in an album's track list: a `MacTrackRow` that follows the
-/// pointer, flashes when a jump arrives at its track, plays on a double click
+/// One row in an album's track list: a `MacTrackRow` with its stars' slot
+/// that follows the pointer, flashes when a jump arrives at its track, plays on a double click
 /// and offers its context menu.
 struct TrackRowView: View {
     @Environment(UiStore.self)
@@ -39,8 +39,8 @@ struct TrackRowView: View {
         // The body reads the pick once, and the tap handler gets the value
         // the row draws, so the handler never reads the picks it writes.
         let picked = isPicked
-        HStack(spacing: ThemeSpace.compact) {
-            MacTrackRow(
+        MacRatedTrackRow(
+            row: MacTrackRow(
                 track: track,
                 artist: artist,
                 positionWidth: positionWidth,
@@ -51,11 +51,9 @@ struct TrackRowView: View {
                 highlight: highlightOpacity,
                 onPlay: onPlay,
                 onTogglePlayPause: onTogglePlayPause
-            )
-            Stars(value: track.myStars?.number ?? 0, size: 10)
-                .opacity(track.myStars == nil ? 0 : 1)
-                .accessibilityHidden(track.myStars == nil)
-        }
+            ),
+            stars: track.myStars
+        )
         .revealsAsTrackRow(track.id)
         .onReceive(uiStore.trackFlashes) { trackId in
             guard trackId == track.id else { return }
