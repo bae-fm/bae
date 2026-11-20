@@ -98,6 +98,10 @@ extension ShotScene {
         @ViewBuilder content: @escaping @MainActor () -> Content
     ) -> ShotScene {
         component(id, width: 436, height: 616, images: coverStore()) {
+            // The tabs' content reads the library, the window's state and
+            // the grid's order for what a click or a drop does.
+            let uiStore = UiStore()
+            let backing = boardLibraryBacking(uiStore: uiStore)
             MacQueuePanel(
                 tab: tab,
                 onSelectTab: { _ in },
@@ -106,6 +110,9 @@ extension ShotScene {
                 content: { content() }
             )
             .frame(height: 600)
+            .environment(backing.library)
+            .environment(backing.session)
+            .environment(uiStore)
         }
     }
 }
