@@ -349,9 +349,9 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
     }
 
     /// A blank draft keeps its title and album year beside the cover and the
-    /// release's text fields below it: year, one blank label row (its name
-    /// and catalog number), barcode, each showing the form's dash and named
-    /// for its row.
+    /// pressing's year below it, showing the form's dash and named for its
+    /// row. A blank draft holds no label or barcode row: each offers its Add
+    /// button instead.
     func testIdentityFieldsSitBesideTheCoverAndReleaseFieldsUnderIt()
         async throws
     {
@@ -370,7 +370,7 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
                 .compactMap { $0 as? NSTextField }
                 .filter(\.isEditable)
             let cover = try coverFrame(in: host)
-            XCTAssertEqual(fields.count, 6)
+            XCTAssertEqual(fields.count, 3)
             for placeholder in [
                 String(localized: "Album title"),
                 String(localized: "Album year"),
@@ -391,12 +391,7 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
             }
             XCTAssertEqual(
                 Set(dashed.compactMap { $0.accessibilityLabel() }),
-                [
-                    String(localized: "Year"),
-                    String(localized: "Label"),
-                    String(localized: "Catalog number"),
-                    String(localized: "Barcode"),
-                ]
+                [String(localized: "Year")]
             )
             for field in dashed {
                 let frame = field.convert(field.bounds, to: host)
