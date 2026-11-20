@@ -1,12 +1,13 @@
 import BaeKit
 import SwiftUI
 
-/// One row of a track list: a leading column (a playlist entry's number), a
-/// cover, a title over a second line, then whose it is and its length.
+/// One row of a track list: a leading column (a playlist entry's number, a
+/// play's time), a cover, a title over a second line, then whose it is and
+/// its length.
 ///
 /// With `hanging`, the leading column hangs in the margin left of the row,
 /// right-aligned and `leadWidth` wide, so the covers start at the list's
-/// edge, as a playlist's page in the side pane draws its tracks. `wide`
+/// edge, as a playlist's page and History in the side pane draw their rows. `wide`
 /// leaves more room at the end, for a row that ends in a person. While the
 /// owner drags a playlist's row, `lift` says whether the row is left faint in
 /// its place or is the copy under the pointer, raised over the rows.
@@ -29,7 +30,8 @@ struct MacListRow: View {
     let subtitle: String
     /// The person the row names at its end, with their picture.
     var who: BridgePlaylistOwner?
-    let duration: String
+    /// The row's length; a play of History has none.
+    var duration: String?
     var wide = false
     var hover = false
     var lift = Lift.resting
@@ -90,11 +92,13 @@ struct MacListRow: View {
                 }
                 .foregroundStyle(.secondary)
             }
-            Text(duration)
-                .themeText(.detail)
-                .monospacedDigit()
-                .foregroundStyle(.secondary)
-                .frame(width: Self.durationWidth, alignment: .trailing)
+            if let duration {
+                Text(duration)
+                    .themeText(.detail)
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+                    .frame(width: Self.durationWidth, alignment: .trailing)
+            }
         }
         .padding(.trailing, wide ? ThemeSpace.edge : ThemeSpace.related)
         .padding(
