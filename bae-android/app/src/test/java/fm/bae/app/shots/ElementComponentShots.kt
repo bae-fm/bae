@@ -165,7 +165,7 @@ class ElementComponentShots : BoardShot() {
                 listOf(
                     boardFile("Low Tide Hours.cue", BridgeFileKind.CueSheet),
                     boardFile("Low Tide Hours.log", BridgeFileKind.RipLog),
-                    boardFile("booklet.pdf", BridgeFileKind.Text),
+                    boardFile("booklet.pdf", BridgeFileKind.Pdf),
                 ),
             )
         }
