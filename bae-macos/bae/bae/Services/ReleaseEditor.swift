@@ -179,6 +179,11 @@ final class ReleaseEditor: Observable {
                 setAlbum: { pick in
                     _ = try await form.change { $0.withAlbum(pick: pick) }
                 },
+                setSheetDisc: { sheetFileId, disc in
+                    _ = try await form.change {
+                        $0.withSheetDisc(sheetFileId: sheetFileId, disc: disc)
+                    }
+                },
                 cancel: { try await form.reopen() },
                 save: { try await form.save() }
             )

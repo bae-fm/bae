@@ -2,26 +2,30 @@ import BaeKit
 import SwiftUI
 
 /// The caption over the tracks one CUE sheet carves from one file: the
-/// import pane's sheet caption, naming the disc the import read the sheet
-/// as and the file it carves as text.
+/// import pane's sheet caption, with the Disc pop-up of which of the
+/// release's discs the sheet is, the sheet, and the file it carves as text.
 struct ReleaseEditSheetCaption: View {
     let sheet: BridgeReleaseEditSheet
     let source: BridgeReleaseEditTrackSource
     let onOpenDocument: (String, String) -> Void
+    /// The person picked a disc for the sheet.
+    let onPickDisc: (UInt32) -> Void
 
     var body: some View {
         MacImportSheetCaption(
             name: sheet.name,
             onOpen: { onOpenDocument(sheet.name, sheet.fileId) },
             disc: {
-                Text(
-                    verbatim: localizedCoreString(
-                        "ui.import.sheet.disc",
-                        Int(sheet.discNumber)
-                    )
+                SheetDiscMenu(
+                    discs: sheet.discOptions,
+                    assignment: .disc(number: sheet.discNumber),
+                    offersIgnored: false,
+                    onAssign: { assignment in
+                        if case .disc(let number) = assignment {
+                            onPickDisc(number)
+                        }
+                    }
                 )
-                .themeText(.strong)
-                .fixedSize()
             },
             audio: {
                 Text(verbatim: source.name)

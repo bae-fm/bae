@@ -30,6 +30,9 @@ struct ReleaseEditFormCommands: Sendable {
     /// Record what the person picked for the album a save files the release
     /// under.
     let setAlbum: @Sendable (BridgeAlbumPick) async throws -> Void
+    /// Record the disc the person picked for a CUE sheet, by the sheet's
+    /// file id: a save moves the sheet's tracks there.
+    let setSheetDisc: @Sendable (String, UInt32) async throws -> Void
     /// Discard every change: the editor opens its form again on the release
     /// as the library holds it now.
     let cancel: @Sendable () async throws -> BridgeRawReleaseEdit
@@ -85,6 +88,7 @@ final class ReleaseMetadataEditSession {
         case saving
         case cancelling
         case pickingAlbum
+        case pickingSheetDisc
         /// Applying a catalog release. The editor's step line shows the
         /// network read the apply waits on; `nil` when no apply runs.
         case applying((any CatalogApplySource)?)
@@ -267,6 +271,24 @@ final class ReleaseMetadataEditSession {
         operationTask = Task { @MainActor in
             do {
                 try await serially { [form] in try await form.setAlbum(pick) }
+            }
+            catch is CancellationError {}
+            catch {
+                failure = DisplayError(error)
+            }
+            finish(serial)
+        }
+    }
+
+    /// Record the disc the person picked for the CUE sheet `sheetFileId`.
+    func pickSheetDisc(_ sheetFileId: String, disc: UInt32) {
+        let serial = begin(.pickingSheetDisc)
+        failure = nil
+        operationTask = Task { @MainActor in
+            do {
+                try await serially { [form] in
+                    try await form.setSheetDisc(sheetFileId, disc)
+                }
             }
             catch is CancellationError {}
             catch {

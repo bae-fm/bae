@@ -235,7 +235,8 @@ struct ReleaseEditorTests {
                             sheet: BridgeReleaseEditSheet(
                                 fileId: "disc.cue",
                                 name: "Disc audio.cue",
-                                discNumber: 1
+                                discNumber: 1,
+                                discOptions: [1, 2]
                             ),
                             source: rows[0].context.source,
                             rows: rows
@@ -268,6 +269,29 @@ extension ReleaseEditorTests {
         try await Wait.until { session.draft?.changed == false }
         #expect(session.values.albumTitle == release.values.albumTitle)
         #expect(session.values.pressing.facts == release.values.pressing.facts)
+    }
+}
+
+extension ReleaseEditorTests {
+    @MainActor
+    @Test("a disc picked for a sheet reaches the form and shows in the draft")
+    func discPickedForASheetShowsInTheDraft() async throws {
+        let release = twoTrackRelease(layout: .cue, shared: true)
+        let session = PreviewData.releaseEditSession(
+            releaseId: "release-test",
+            release: release
+        )
+        try await Wait.until { session.draft != nil }
+
+        session.pickSheetDisc("disc.cue", disc: 2)
+        try await Wait.until { !session.isBusy }
+        try await Wait.until {
+            guard
+                case .sheet(let sheet, _, _) = session.draft?.sides?.first?
+                    .runs.first
+            else { return false }
+            return sheet.discNumber == 2
+        }
     }
 }
 
@@ -332,6 +356,7 @@ extension ReleaseEditorTests {
                     setTrack: preview.setTrack,
                     apply: preview.apply,
                     setAlbum: preview.setAlbum,
+                    setSheetDisc: preview.setSheetDisc,
                     cancel: preview.cancel,
                     save: preview.save
                 )

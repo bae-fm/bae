@@ -337,6 +337,51 @@ actor PreviewReleaseLibrary {
         )
     }
 
+    /// Pick `pick` as the album `session`'s draft files the release under.
+    nonisolated func putAlbum(
+        _ pick: BridgeAlbumPick,
+        in session: PreviewReleaseEditSession
+    ) async {
+        _ = await session.change {
+            $0.draft.album =
+                switch pick {
+                case .records: .new
+                case .new: .pickedNew
+                case .album(let albumId):
+                    .picked(
+                        albumId: albumId,
+                        line: .titleAndArtists(
+                            title: "Picked album",
+                            artistLine: .named("Preview Artist")
+                        )
+                    )
+                }
+        }
+    }
+
+    /// Move the CUE sheet `sheetFileId` of `session`'s draft to `disc`.
+    nonisolated func putSheet(
+        _ sheetFileId: String,
+        onDisc disc: UInt32,
+        in session: PreviewReleaseEditSession
+    ) async {
+        _ = await session.change { release in
+            release.draft.sides = release.draft.sides?
+                .map { side in
+                    var side = side
+                    side.runs = side.runs.map { run in
+                        guard
+                            case .sheet(var sheet, let source, let rows) = run,
+                            sheet.fileId == sheetFileId
+                        else { return run }
+                        sheet.discNumber = disc
+                        return .sheet(sheet: sheet, source: source, rows: rows)
+                    }
+                    return side
+                }
+        }
+    }
+
     /// What `session` does with each command.
     nonisolated func commands(
         of session: PreviewReleaseEditSession
@@ -379,21 +424,10 @@ actor PreviewReleaseLibrary {
             },
             apply: { _, _ in await session.change { _ in } },
             setAlbum: { pick in
-                _ = await session.change {
-                    $0.draft.album =
-                        switch pick {
-                        case .records: .new
-                        case .new: .pickedNew
-                        case .album(let albumId):
-                            .picked(
-                                albumId: albumId,
-                                line: .titleAndArtists(
-                                    title: "Picked album",
-                                    artistLine: .named("Preview Artist")
-                                )
-                            )
-                        }
-                }
+                await self.putAlbum(pick, in: session)
+            },
+            setSheetDisc: { sheetFileId, disc in
+                await self.putSheet(sheetFileId, onDisc: disc, in: session)
             },
             cancel: { await session.replace(with: await self.open()) },
             save: { await self.save(session) }

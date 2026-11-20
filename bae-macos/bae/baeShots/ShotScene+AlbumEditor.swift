@@ -52,7 +52,8 @@ extension ShotScene {
         let sheet = BridgeReleaseEditSheet(
             fileId: "Northbound.cue",
             name: "Northbound.cue",
-            discNumber: 1
+            discNumber: 1,
+            discOptions: [1]
         )
         let image = BridgeReleaseEditTrackSource(
             fileId: "Northbound.flac",

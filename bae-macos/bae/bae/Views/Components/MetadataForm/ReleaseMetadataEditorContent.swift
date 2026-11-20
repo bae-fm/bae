@@ -110,7 +110,10 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
                 ReleaseEditSheetCaption(
                     sheet: sheet,
                     source: source,
-                    onOpenDocument: onOpenDocument
+                    onOpenDocument: onOpenDocument,
+                    onPickDisc: {
+                        session.pickSheetDisc(sheet.fileId, disc: $0)
+                    }
                 )
                 .frame(width: tableWidth, alignment: .leading)
                 ForEach(rows, id: \.edit.id) { row in

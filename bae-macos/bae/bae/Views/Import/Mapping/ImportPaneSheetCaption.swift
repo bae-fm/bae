@@ -19,9 +19,11 @@ struct ImportPaneSheetCaption: View {
             onOpen: { actions.openDocument(sheet.name, sheet.sheetId) },
             disc: {
                 if showsDiscMenu {
-                    ImportSheetDiscMenu(
-                        sheet: sheet,
-                        onAssign: { actions.setSheetDisc(sheet.sheetId, $0) },
+                    SheetDiscMenu(
+                        discs: sheet.discOptions,
+                        assignment: sheet.assignment,
+                        offersIgnored: true,
+                        onAssign: { actions.setSheetDisc(sheet.sheetId, $0) }
                     )
                 }
             },
@@ -108,65 +110,5 @@ struct ImportPaneSheetCaption: View {
         String(
             localized: "\(reference.fileReference) → \(reference.fileId ?? "")"
         )
-    }
-}
-
-/// The sheet's disc assignment: which of the release's discs its entries are,
-/// or that it is ignored.
-struct ImportSheetDiscMenu: View {
-    let sheet: BridgeSheetGroup
-    let onAssign: (BridgeSheetDisc) -> Void
-
-    @State
-    private var hovering = false
-
-    var body: some View {
-        MacButton(
-            kind: .plain,
-            menu: {
-                for number in sheet.discOptions {
-                    MacMenuItem(
-                        verbatim: localizedCoreString(
-                            "ui.import.sheet.disc",
-                            Int(number)
-                        ),
-                        checked: sheet.assignment == .disc(number: number)
-                    ) { onAssign(.disc(number: number)) }
-                }
-                MacMenuItem.divider
-                MacMenuItem(
-                    verbatim: localizedCoreString("ui.import.sheet.ignored"),
-                    checked: sheet.assignment == .ignored
-                ) { onAssign(.ignored) }
-            }
-        ) {
-            HStack(spacing: ThemeSpace.inline) {
-                Text(assignmentText)
-                    .themeText(.strong)
-                Image(systemName: "chevron.down")
-                    .themeIcon(.small)
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.horizontal, ThemeSpace.compact)
-            .padding(.vertical, ThemeSpace.line)
-            .background(
-                hovering ? Theme.pressed : Theme.hover,
-                in: RoundedRectangle(cornerRadius: ThemeRadius.chip)
-            )
-        }
-        .fixedSize()
-        .onHover { hovering = $0 }
-        .help(localizedCoreString("ui.import.sheet.disc_help"))
-        .accessibilityLabel(String(localized: "Disc"))
-        .accessibilityValue(Text(verbatim: assignmentText))
-    }
-
-    private var assignmentText: String {
-        switch sheet.assignment {
-        case .disc(let number):
-            localizedCoreString("ui.import.sheet.disc", Int(number))
-        case .ignored:
-            localizedCoreString("ui.import.sheet.ignored")
-        }
     }
 }

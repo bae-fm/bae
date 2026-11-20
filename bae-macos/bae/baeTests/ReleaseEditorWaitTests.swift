@@ -54,6 +54,7 @@ struct ReleaseEditorWaitTests {
             setTrack: { _ in values },
             apply: { _, _ in try await Task.neverAnswers() },
             setAlbum: { _ in },
+            setSheetDisc: { _, _ in },
             cancel: { values },
             save: { try await Task.neverAnswers() }
         )
