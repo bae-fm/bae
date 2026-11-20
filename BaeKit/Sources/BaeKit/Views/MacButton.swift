@@ -156,7 +156,7 @@ extension MacButton where Label == Text {
 
     /// A button whose words are already localized.
     public init<S: StringProtocol>(
-        _ title: S,
+        verbatim title: S,
         kind: MacButtonKind = .secondary,
         action: @escaping () -> Void
     ) {

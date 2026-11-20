@@ -115,7 +115,7 @@ struct MacStorageBand: View {
                     )
                 }
                 else {
-                    MacButton(action.label) { onAction(action) }
+                    MacButton(verbatim: action.label) { onAction(action) }
                 }
             }
             // Export and Save As change no state, so every release offers them.

@@ -13,7 +13,7 @@ struct ImportConfirmationCardAction: View {
     let onConfirmImport: () -> Void
 
     var body: some View {
-        MacButton(Self.title(importStatus), kind: .primary) {
+        MacButton(verbatim: Self.title(importStatus), kind: .primary) {
             onConfirmImport()
         }
     }

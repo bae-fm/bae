@@ -117,7 +117,7 @@ struct SyncFixButton: View {
     private var error: DisplayError?
 
     var body: some View {
-        MacButton(title, kind: .primary, action: run)
+        MacButton(verbatim: title, kind: .primary, action: run)
             .disabled(reconnection.isRunning)
             .onDisappear { reconnection.cancel() }
         if let steps = reconnection.steps {
