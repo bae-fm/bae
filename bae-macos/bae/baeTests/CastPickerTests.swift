@@ -5,36 +5,39 @@ import Testing
 
 @testable import bae
 
-/// Connecting to a device can take a while, so the picker spins, naming the
-/// device it is connecting to, until the cast starts; the words are the
-/// `cast-picker-connecting` shot's.
+/// Connecting to a device can take a while, so the row of the device the
+/// picker is connecting to spins until the cast starts.
 @MainActor
 @Suite("Cast picker")
 struct CastPickerTests {
+    nonisolated private static let kitchen = BridgeCastReceiver(
+        id: "speaker-1",
+        name: "Kitchen",
+        kind: .airPlay,
+        model: nil,
+        address: "192.168.1.41",
+        takesVolume: true
+    )
+
     @Test(
         "the picker spins only while a cast connects",
-        arguments: ["Kitchen", nil]
+        arguments: [
+            CastStart.Connecting(receiver: kitchen, ownerDeciding: false),
+            CastStart.Connecting(receiver: kitchen, ownerDeciding: true),
+            nil,
+        ]
     )
-    func spinsWhileConnecting(connectingName: String?) async throws {
+    func spinsWhileConnecting(connecting: CastStart.Connecting?) async throws {
         let size = NSSize(width: 300, height: 160)
         try await SnapshotTestSupport.withHostedWindow(
             MacCastPopover(
                 receivers: BridgeCastReceiverList(
                     casting: nil,
-                    found: [
-                        BridgeCastReceiver(
-                            id: "speaker-1",
-                            name: "Kitchen",
-                            kind: .cast,
-                            model: nil,
-                            address: "192.168.1.41",
-                            takesVolume: true
-                        )
-                    ],
+                    found: [Self.kitchen],
                     isEmpty: false
                 ),
                 endedFailure: nil,
-                connectingName: connectingName,
+                connecting: connecting,
                 onDisconnect: {}
             )
             .environment(CastStart.stub())
@@ -44,7 +47,7 @@ struct CastPickerTests {
             try await SnapshotTestSupport.settle(host)
             let spinners = SnapshotTestSupport.descendants(of: host)
                 .filter { $0 is NSProgressIndicator }
-            #expect(spinners.count == (connectingName == nil ? 0 : 1))
+            #expect(spinners.count == (connecting == nil ? 0 : 1))
         }
     }
 }

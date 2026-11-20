@@ -264,7 +264,8 @@
     <string name="cast_receiver_model">Modell</string>
     <string name="cast_receiver_address">Adresse</string>
     <string name="cast_looking_for_devices">Ser etter enheter…</string>
-    <string name="cast_connecting">Kobler til %1$s…</string>
+    <string name="cast_receiver_connecting">Kobler til…</string>
+    <string name="cast_receiver_owner_deciding">Godta på %1$s…</string>
     <string name="cast_stop_title">Slutte å spille av på %1$s?</string>
     <string name="cast_turn_off_confirm">Slå av</string>
     <string name="cast_pin_field">PIN-kode</string>

@@ -273,7 +273,8 @@
     <string name="cast_receiver_model">Model</string>
     <string name="cast_receiver_address">Adresa</string>
     <string name="cast_looking_for_devices">Traženje uređaja…</string>
-    <string name="cast_connecting">Povezivanje s %1$s…</string>
+    <string name="cast_receiver_connecting">Povezivanje…</string>
+    <string name="cast_receiver_owner_deciding">Prihvatite na %1$s…</string>
     <string name="cast_stop_title">Zaustaviti reprodukciju na %1$s?</string>
     <string name="cast_turn_off_confirm">Isključi</string>
     <string name="cast_pin_field">PIN</string>

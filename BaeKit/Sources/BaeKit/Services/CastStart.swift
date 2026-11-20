@@ -267,6 +267,14 @@ public final class CastStart {
         public static func stub() -> CastStart {
             CastStart(cast: .stub(), report: { _ in })
         }
+
+        /// A start whose cast is `connecting`, as the pictures of the
+        /// receiver lists draw it.
+        public static func drawn(connecting: Connecting) -> CastStart {
+            let start = stub()
+            start.connecting = connecting
+            return start
+        }
     #endif
 }
 

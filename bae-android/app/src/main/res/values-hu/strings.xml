@@ -264,7 +264,8 @@
     <string name="cast_receiver_model">Modell</string>
     <string name="cast_receiver_address">Cím</string>
     <string name="cast_looking_for_devices">Eszközök keresése…</string>
-    <string name="cast_connecting">Csatlakozás ehhez: %1$s…</string>
+    <string name="cast_receiver_connecting">Kapcsolódás…</string>
+    <string name="cast_receiver_owner_deciding">Fogadja el ezen: %1$s…</string>
     <string name="cast_stop_title">Leállítja a lejátszást itt: %1$s?</string>
     <string name="cast_turn_off_confirm">Kikapcsolás</string>
     <string name="cast_pin_field">PIN-kód</string>

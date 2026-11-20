@@ -9,6 +9,7 @@ import fm.bae.app.ui.playback.AndroidCastRow
 import fm.bae.app.ui.playback.CastReceiverPlace
 import fm.bae.app.ui.playback.CastReceiverRole
 import fm.bae.app.ui.playback.CastReceiverRows
+import fm.bae.app.ui.playback.CastWait
 import org.junit.Test
 import uniffi.bae_bridge.BridgeCastReceiver
 import uniffi.bae_bridge.BridgeCastReceiverList
@@ -24,13 +25,13 @@ class CastComponentShots : BoardShot() {
     @Test
     fun androidComponentCastRowReceiver() =
         component("android.component.cast-row.receiver", wide = true) {
-            AndroidCastRow(receiver("Kitchen", BridgeRendererKind.AIR_PLAY), CastReceiverRole.Found {}, CastReceiverPlace.PICKER)
+            AndroidCastRow(receiver("Kitchen", BridgeRendererKind.AIR_PLAY), CastReceiverRole.Found {}, CastReceiverPlace.PICKER, null)
         }
 
     @Test
     fun androidComponentCastRowCasting() =
         component("android.component.cast-row.casting", wide = true) {
-            AndroidCastRow(receiver("Living Room", BridgeRendererKind.CAST), CastReceiverRole.Casting {}, CastReceiverPlace.PICKER)
+            AndroidCastRow(receiver("Living Room", BridgeRendererKind.CAST), CastReceiverRole.Casting {}, CastReceiverPlace.PICKER, null)
         }
 
     @Test
@@ -39,11 +40,39 @@ class CastComponentShots : BoardShot() {
             CastReceiverRows(
                 place = CastReceiverPlace.PICKER,
                 receivers = BridgeCastReceiverList(casting = null, found = emptyList(), isEmpty = true),
-                connectingName = null,
+                connecting = null,
                 onCast = {},
                 onDisconnect = {},
                 looking = stringResource(R.string.cast_looking_for_devices),
             )
+        }
+
+    @Test
+    fun androidComponentCastRowConnecting() =
+        component("android.component.cast-row.connecting", wide = true) {
+            AndroidCastRow(
+                receiver("Kitchen", BridgeRendererKind.AIR_PLAY),
+                CastReceiverRole.Found {},
+                CastReceiverPlace.PICKER,
+                CastWait.CONNECTING,
+            )
+        }
+
+    @Test
+    fun androidComponentCastRowOwnerDeciding() =
+        component("android.component.cast-row.owner-deciding", wide = true) {
+            AndroidCastRow(
+                receiver("Kitchen", BridgeRendererKind.AIR_PLAY),
+                CastReceiverRole.Found {},
+                CastReceiverPlace.PICKER,
+                CastWait.OWNER_DECIDING,
+            )
+        }
+
+    @Test
+    fun androidComponentCastRowMenu() =
+        component("android.component.cast-row.menu", wide = true) {
+            AndroidCastRow(receiver("Kitchen", BridgeRendererKind.AIR_PLAY), CastReceiverRole.Found {}, CastReceiverPlace.PAGE, null)
         }
 
     @Test
@@ -53,6 +82,7 @@ class CastComponentShots : BoardShot() {
                 receiver("Denon AVR-X3800H Home Theater Receiver (Basement)", BridgeRendererKind.DLNA),
                 CastReceiverRole.Casting {},
                 CastReceiverPlace.PICKER,
+                null,
             )
         }
 

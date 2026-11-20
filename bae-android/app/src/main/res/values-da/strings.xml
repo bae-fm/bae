@@ -264,7 +264,8 @@
     <string name="cast_receiver_model">Model</string>
     <string name="cast_receiver_address">Adresse</string>
     <string name="cast_looking_for_devices">Søger efter enheder…</string>
-    <string name="cast_connecting">Opretter forbindelse til %1$s…</string>
+    <string name="cast_receiver_connecting">Forbinder…</string>
+    <string name="cast_receiver_owner_deciding">Godkend på %1$s…</string>
     <string name="cast_stop_title">Stop afspilning på %1$s?</string>
     <string name="cast_turn_off_confirm">Slå fra</string>
     <string name="cast_pin_field">Pinkode</string>

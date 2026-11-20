@@ -280,7 +280,8 @@
     <string name="cast_receiver_model">Модель</string>
     <string name="cast_receiver_address">Адреса</string>
     <string name="cast_looking_for_devices">Пошук пристроїв…</string>
-    <string name="cast_connecting">Підключення до %1$s…</string>
+    <string name="cast_receiver_connecting">Підключення…</string>
+    <string name="cast_receiver_owner_deciding">Прийміть на %1$s…</string>
     <string name="cast_stop_title">Зупинити відтворення на %1$s?</string>
     <string name="cast_turn_off_confirm">Вимкнути</string>
     <string name="cast_pin_field">PIN-код</string>

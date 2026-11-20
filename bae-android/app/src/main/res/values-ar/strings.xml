@@ -294,7 +294,8 @@
     <string name="cast_receiver_model">الطراز</string>
     <string name="cast_receiver_address">العنوان</string>
     <string name="cast_looking_for_devices">جارٍ البحث عن أجهزة…</string>
-    <string name="cast_connecting">جارٍ الاتصال بـ ‏%1$s…</string>
+    <string name="cast_receiver_connecting">جارٍ الاتصال…</string>
+    <string name="cast_receiver_owner_deciding">اقبل الطلب على ‏%1$s…</string>
     <string name="cast_stop_title">إيقاف التشغيل على ‏%1$s؟</string>
     <string name="cast_turn_off_confirm">إيقاف</string>
     <string name="cast_pin_field">رمز PIN</string>

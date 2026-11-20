@@ -313,7 +313,8 @@
     <string name="cast_receiver_model">Model</string>
     <string name="cast_receiver_address">Address</string>
     <string name="cast_looking_for_devices">Looking for devices…</string>
-    <string name="cast_connecting">Connecting to %1$s…</string>
+    <string name="cast_receiver_connecting">Connecting…</string>
+    <string name="cast_receiver_owner_deciding">Accept on %1$s…</string>
     <string name="cast_stop_title">Stop playing on %1$s?</string>
     <string name="cast_turn_off_confirm">Turn off</string>
     <string name="cast_pin_field">PIN</string>

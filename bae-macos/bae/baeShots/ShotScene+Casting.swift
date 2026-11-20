@@ -5,11 +5,63 @@ import SwiftUI
 
 extension ShotScene {
     /// The casting boards (`mac.playback.casting*`): the library window with
-    /// "Low Tide Hours" playing on a receiver; and the pairing boards
+    /// "Low Tide Hours" playing on a receiver; the pairing boards
     /// (`mac.playback.cast-pin*`): the sheet that asks for an AirPlay
     /// receiver's code, and the alerts for a cast that failed, over the
-    /// library window.
+    /// library window; and the boards of a receiver that holds the cast for
+    /// its owner, in the Play on popover and in Settings → Playback.
     static let castingScenes: [ShotScene] = [
+        ShotScene(
+            id: "mac.playback.cast-picker.owner-deciding",
+            size: CGSize(width: 1200, height: 760),
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            let start = CastStart.drawn(connecting: kitchenOwnerDeciding)
+            return libraryWindowStage(castStore: receiversCastStore()) {
+                window in
+                AnyView(
+                    OverWindow.popover(
+                        MacCastPopover(
+                            receivers: ownerDecidingReceivers,
+                            endedFailure: nil,
+                            connecting: start.connecting,
+                            onDisconnect: {}
+                        )
+                        .environment(start),
+                        bottom: 88,
+                        trailing: 112,
+                        over: window
+                    )
+                )
+            }
+        },
+        ShotScene(
+            id: "mac.settings.playback.receivers-owner-deciding",
+            size: CGSize(width: 690, height: 600),
+            frame: .window(title: "Settings", titleBar: .hidden)
+        ) {
+            ShotStage(
+                SettingsWindowShot(
+                    tab: .playback,
+                    page: PlaybackSettingsTab()
+                        .environment(Playback.stub())
+                        .environment(Cast.stub())
+                        .environment(receiversCastStore())
+                        .environment(
+                            CastStart.drawn(connecting: kitchenOwnerDeciding)
+                        )
+                        .environment(
+                            PreviewData.makeConfigStore(
+                                libraryFullWidth: false,
+                                pauseBetweenSides: true,
+                                castEnabled: true
+                            )
+                        )
+                        .environment(UiStore())
+                        .defaultAppStorage(restoringOnLaunch)
+                )
+            )
+        },
         ShotScene(
             id: "mac.playback.casting.no-volume",
             size: CGSize(width: 1200, height: 760)
@@ -115,6 +167,59 @@ extension ShotScene {
         takesVolume: true
     )
 
+    /// Living Room playing, then Kitchen and the Den's UPnP receiver, as the
+    /// owner-deciding boards list them.
+    private static let ownerDecidingReceivers = BridgeCastReceiverList(
+        casting: livingRoom,
+        found: [
+            kitchen,
+            BridgeCastReceiver(
+                id: "den",
+                name: "Den receiver",
+                kind: .dlna,
+                model: nil,
+                address: "192.168.1.57",
+                takesVolume: true
+            ),
+        ],
+        isEmpty: false
+    )
+
+    /// The Chromecast the owner-deciding boards play on.
+    private static let livingRoom = BridgeCastReceiver(
+        id: "living-room",
+        name: "Living Room",
+        kind: .cast,
+        model: nil,
+        address: "192.168.1.42",
+        takesVolume: true
+    )
+
+    /// A cast to Kitchen once Kitchen has held bae's request for five
+    /// seconds.
+    private static let kitchenOwnerDeciding = CastStart.Connecting(
+        receiver: kitchen,
+        ownerDeciding: true
+    )
+
+    /// Playback on Living Room, with the owner-deciding boards' receivers
+    /// found.
+    private static func receiversCastStore() -> CastStore {
+        let castStore = CastStore()
+        castStore.applyStatus(.on(device: livingRoom))
+        castStore.receivers = ownerDecidingReceivers
+        return castStore
+    }
+
+    /// Settings that restore the last session on launch, as the Playback
+    /// boards draw the switch.
+    private static var restoringOnLaunch: UserDefaults {
+        guard let defaults = UserDefaults(suiteName: "fm.bae.shots.playback")
+        else { preconditionFailure("a named suite opens") }
+        defaults.set(true, forKey: "persistPlayback")
+        return defaults
+    }
+
     /// The playback error for Kitchen no longer accepting this device.
     private static var pairingLost: DisplayError {
         let reason = BridgePlaybackErrorReason.audioOutput(
@@ -173,9 +278,10 @@ extension ShotScene {
         }
     }
 
-    /// The library window with "Low Tide Hours" playing, `dressed` with what
-    /// opens over it.
+    /// The library window with "Low Tide Hours" playing, where `castStore`
+    /// says, `dressed` with what opens over it.
     private static func libraryWindowStage(
+        castStore: CastStore = CastStore(),
         dressed: (AnyView) -> AnyView
     ) -> ShotStage {
         let uiStore = UiStore()
@@ -185,6 +291,7 @@ extension ShotScene {
             backing: backing,
             needsAttention: false,
             playbackStore: boardPlayback(),
+            castStore: castStore,
             size: CGSize(width: 1200, height: 760)
         )
         return ShotStage(dressed(AnyView(window))) {

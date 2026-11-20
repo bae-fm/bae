@@ -14,6 +14,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import fm.bae.app.BaeRobolectricTestRunner
+import fm.bae.app.data.CastStart
 import fm.bae.app.ui.TestTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -55,7 +56,7 @@ class CastReceiverRowsTest {
 
     private fun setRows(
         receivers: BridgeCastReceiverList,
-        connectingName: String? = null,
+        connecting: CastStart.Connecting? = null,
         place: CastReceiverPlace = CastReceiverPlace.PICKER,
         onDisconnect: () -> Unit = {},
         onCast: (BridgeCastReceiver) -> Unit = {},
@@ -66,7 +67,7 @@ class CastReceiverRowsTest {
                     CastReceiverRows(
                         place = place,
                         receivers = receivers,
-                        connectingName = connectingName,
+                        connecting = connecting,
                         onCast = onCast,
                         onDisconnect = onDisconnect,
                         looking = "Looking for devices…",
@@ -171,7 +172,7 @@ class CastReceiverRowsTest {
                     CastReceiverRows(
                         place = CastReceiverPlace.PICKER,
                         receivers = receivers,
-                        connectingName = null,
+                        connecting = null,
                         onCast = {},
                         onDisconnect = {},
                         looking = "Looking for devices…",
@@ -189,17 +190,20 @@ class CastReceiverRowsTest {
         compose.onNodeWithText("Looking for devices…").assertDoesNotExist()
     }
 
-    /** Connecting can take a while, so the list names the receiver it is connecting to until the cast starts. */
+    /**
+     * Connecting can take a while, so the row of the receiver bae connects to says so until the cast starts, and
+     * says to accept bae on it while its owner decides.
+     */
     @Test
-    fun aConnectingCastNamesItsReceiver() {
-        var connecting by mutableStateOf<String?>(null)
+    fun theReceiverConnectingSaysSoOnItsRow() {
+        var connecting by mutableStateOf<CastStart.Connecting?>(null)
         compose.setContent {
             TestTheme {
                 Column {
                     CastReceiverRows(
                         place = CastReceiverPlace.PICKER,
                         receivers = found(kitchen),
-                        connectingName = connecting,
+                        connecting = connecting,
                         onCast = {},
                         onDisconnect = {},
                         looking = "Looking for devices…",
@@ -208,10 +212,17 @@ class CastReceiverRowsTest {
             }
         }
 
-        compose.onNodeWithText("Connecting to Kitchen…").assertDoesNotExist()
+        compose.onNodeWithText("Connecting…").assertDoesNotExist()
+        compose.onNodeWithText("AirPlay").assertIsDisplayed()
 
-        connecting = kitchen.name
+        connecting = CastStart.Connecting(kitchen, ownerDeciding = false)
         compose.waitForIdle()
-        compose.onNodeWithText("Connecting to Kitchen…").assertIsDisplayed()
+        compose.onNodeWithText("Connecting…").assertIsDisplayed()
+        compose.onNodeWithText("AirPlay").assertDoesNotExist()
+
+        connecting = CastStart.Connecting(kitchen, ownerDeciding = true)
+        compose.waitForIdle()
+        compose.onNodeWithText("Accept on Kitchen…").assertIsDisplayed()
+        compose.onNodeWithText("Connecting…").assertDoesNotExist()
     }
 }

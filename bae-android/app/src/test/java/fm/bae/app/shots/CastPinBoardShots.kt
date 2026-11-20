@@ -23,16 +23,19 @@ import uniffi.bae_bridge.BridgeRendererKind
 
 /**
  * The pairing boards' shots: the dialog that asks for an AirPlay receiver's PIN or password, over the cast picker
- * or over the library, and the picker's notice when the receiver refuses the cast.
+ * or over the library, the picker's notice when the receiver refuses the cast, and the picker while a receiver
+ * holds the cast for its owner.
  */
 class CastPinBoardShots : BoardShot() {
+    private val kitchen = receiver("Kitchen", BridgeRendererKind.AIR_PLAY)
+
     private val receivers =
         BridgeCastReceiverList(
             casting = null,
             found =
                 listOf(
                     receiver("Living Room", BridgeRendererKind.CAST),
-                    receiver("Kitchen", BridgeRendererKind.AIR_PLAY),
+                    kitchen,
                     receiver("Den receiver", BridgeRendererKind.DLNA),
                 ),
             isEmpty = false,
@@ -44,6 +47,21 @@ class CastPinBoardShots : BoardShot() {
             why = BridgeAirPlayCodeAsked.FIRST_PAIRING,
             lastTry = null,
         )
+
+    /** Kitchen has held bae's request for five seconds while its owner decides, with Living Room playing. */
+    @Test
+    fun androidPlaybackCastPickerOwnerDeciding() =
+        shot("android.playback.cast-picker.owner-deciding") {
+            Picker(
+                receivers =
+                    BridgeCastReceiverList(
+                        casting = receiver("Living Room", BridgeRendererKind.CAST),
+                        found = listOf(kitchen, receiver("Den receiver", BridgeRendererKind.DLNA)),
+                        isEmpty = false,
+                    ),
+                connecting = CastStart.Connecting(kitchen, ownerDeciding = true),
+            )
+        }
 
     @Test
     fun androidPlaybackCastPin() =
@@ -113,12 +131,13 @@ class CastPinBoardShots : BoardShot() {
         }
 
     /**
-     * The cast picker over the library, as the boards draw it: connecting to [connecting] while a dialog asks for
-     * its code, or with [failure] above its receivers once the cast failed.
+     * The cast picker over the library listing [receivers], as the boards draw it: connecting to Kitchen
+     * ([connecting]) while a dialog asks for its code, or with [failure] above its receivers once the cast failed.
      */
     @Composable
     private fun Picker(
-        connecting: String? = "Kitchen",
+        receivers: BridgeCastReceiverList = this.receivers,
+        connecting: CastStart.Connecting? = CastStart.Connecting(kitchen, ownerDeciding = false),
         failure: CastStart.Failure? = null,
     ) {
         SheetScene(title = stringResource(R.string.cast_picker_title), behind = { PlayingLibraryScreen() }) {
@@ -126,7 +145,7 @@ class CastPinBoardShots : BoardShot() {
             CastReceiverRows(
                 place = CastReceiverPlace.PICKER,
                 receivers = receivers,
-                connectingName = connecting,
+                connecting = connecting,
                 onCast = {},
                 onDisconnect = {},
                 looking = stringResource(R.string.cast_looking_for_devices),

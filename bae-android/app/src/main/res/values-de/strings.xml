@@ -266,7 +266,8 @@
     <string name="cast_receiver_model">Modell</string>
     <string name="cast_receiver_address">Adresse</string>
     <string name="cast_looking_for_devices">Geräte werden gesucht …</string>
-    <string name="cast_connecting">Verbindung mit %1$s wird hergestellt…</string>
+    <string name="cast_receiver_connecting">Verbindung wird hergestellt…</string>
+    <string name="cast_receiver_owner_deciding">Auf %1$s annehmen…</string>
     <string name="cast_stop_title">Wiedergabe auf %1$s beenden?</string>
     <string name="cast_turn_off_confirm">Ausschalten</string>
     <string name="cast_pin_field">PIN</string>

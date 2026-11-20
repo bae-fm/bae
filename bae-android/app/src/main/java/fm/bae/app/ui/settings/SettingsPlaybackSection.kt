@@ -26,6 +26,7 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.RestorePlaybackPref
 import fm.bae.app.currentLocale
+import fm.bae.app.data.CastStart
 import fm.bae.app.data.castingDeviceName
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidCard
@@ -81,7 +82,7 @@ internal fun SettingsPlaybackSection(
         restoreOnLaunch = restoreOnLaunch,
         playOnEnabled = config.castEnabled,
         receivers = { receivers },
-        connectingName = { connecting?.receiver?.name },
+        connecting = { connecting },
         transcodeFormat = config.castTranscodeFormat,
         onBack = onBack,
         onPauseBetweenSides = { enabled ->
@@ -125,7 +126,7 @@ internal fun AndroidSettingsPlayback(
     restoreOnLaunch: Boolean,
     playOnEnabled: Boolean,
     receivers: () -> BridgeCastReceiverList,
-    connectingName: () -> String?,
+    connecting: () -> CastStart.Connecting?,
     transcodeFormat: BridgeCastTranscodeFormat,
     onBack: () -> Unit,
     onPauseBetweenSides: (Boolean) -> Unit,
@@ -164,7 +165,7 @@ internal fun AndroidSettingsPlayback(
             SettingsPlayOn(
                 enabled = playOnEnabled,
                 receivers = receivers,
-                connectingName = connectingName,
+                connecting = connecting,
                 transcodeFormat = transcodeFormat,
                 onEnabledChange = onPlayOnEnabledChange,
                 onCast = onPlayOn,

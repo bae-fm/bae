@@ -78,6 +78,31 @@ enum OverWindow {
     }
 }
 
+extension OverWindow {
+    /// A popover that opens upward from a control at the window's bottom,
+    /// its bottom edge `bottom` points above the window's bottom and its
+    /// right edge `trailing` points in from the window's right, as the
+    /// boards place it.
+    @MainActor
+    static func popover(
+        _ content: some View,
+        bottom: CGFloat,
+        trailing: CGFloat,
+        over window: some View
+    ) -> some View {
+        ZStack(alignment: .bottomTrailing) {
+            window
+            content
+                .fixedSize(horizontal: false, vertical: true)
+                .background(Color(nsColor: .windowBackgroundColor))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .shadow(color: .black.opacity(0.3), radius: 15, y: 5)
+                .padding(.bottom, bottom)
+                .padding(.trailing, trailing)
+        }
+    }
+}
+
 /// The Settings window as the app draws it, `SettingsWindowLayout`, on the
 /// pane `tab`, with `page` as that pane, and the sync state the sidebar's
 /// badges read.

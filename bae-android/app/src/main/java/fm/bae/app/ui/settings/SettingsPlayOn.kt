@@ -12,6 +12,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.LifecycleStartEffect
 import fm.bae.app.R
 import fm.bae.app.data.Cast
+import fm.bae.app.data.CastStart
 import fm.bae.app.ui.components.AndroidCard
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidMenu
@@ -54,14 +55,14 @@ fun castToggleAction(
 /**
  * The Play on group of the Playback page: the switch Play on other devices, which core enforces, and, while it is on,
  * the receivers bae finds and what a track a receiver can't play directly is converted to. The config subscription
- * moves the switch, so a refused flip leaves it in place. [receivers] and [connectingName] read their state here, so a
+ * moves the switch, so a refused flip leaves it in place. [receivers] and [connecting] read their state here, so a
  * receiver found recomposes this group and not the page around it.
  */
 @Composable
 internal fun SettingsPlayOn(
     enabled: Boolean,
     receivers: () -> BridgeCastReceiverList,
-    connectingName: () -> String?,
+    connecting: () -> CastStart.Connecting?,
     transcodeFormat: BridgeCastTranscodeFormat,
     onEnabledChange: (Boolean) -> Unit,
     onCast: (BridgeCastReceiver) -> Unit,
@@ -81,7 +82,7 @@ internal fun SettingsPlayOn(
             CastReceiverRows(
                 place = CastReceiverPlace.PAGE,
                 receivers = receivers(),
-                connectingName = connectingName(),
+                connecting = connecting(),
                 onCast = onCast,
                 onDisconnect = onDisconnect,
                 looking = stringResource(R.string.settings_receivers_looking),

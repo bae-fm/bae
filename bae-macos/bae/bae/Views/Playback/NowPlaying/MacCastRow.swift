@@ -2,10 +2,12 @@ import BaeKit
 import SwiftUI
 
 /// The rows of a receiver list, wherever bae lists them: the one playback is
-/// cast to first, then the rest.
+/// cast to first, then the rest, the receiver of the cast `connecting` saying
+/// so on its row.
 struct MacCastRows: View {
     let place: MacCastRow.Place
     let receivers: BridgeCastReceiverList
+    let connecting: CastStart.Connecting?
     let onCast: (BridgeCastReceiver) -> Void
     let onDisconnect: () -> Void
 
@@ -14,16 +16,27 @@ struct MacCastRows: View {
             MacCastRow(
                 receiver: casting,
                 role: .casting(onDisconnect: onDisconnect),
-                place: place
+                place: place,
+                wait: wait(on: casting)
             )
         }
         ForEach(receivers.found, id: \.id) { receiver in
             MacCastRow(
                 receiver: receiver,
                 role: .found(onCast: { onCast(receiver) }),
-                place: place
+                place: place,
+                wait: wait(on: receiver)
             )
         }
+    }
+
+    /// What the row of `receiver` waits on, when the cast connecting is to
+    /// it.
+    private func wait(on receiver: BridgeCastReceiver) -> MacCastRow.Wait? {
+        guard let connecting, connecting.receiver.id == receiver.id else {
+            return nil
+        }
+        return connecting.ownerDeciding ? .ownerDeciding : .connecting
     }
 }
 
@@ -32,7 +45,9 @@ struct MacCastRows: View {
 /// playing says "Playing" in the accent instead. In the popover it ends in
 /// Disconnect; in the Playback settings every row ends in a ⋯ menu holding
 /// Details and, on the receiver playing, Disconnect. Any other row plays on
-/// its receiver when clicked.
+/// its receiver when clicked. While bae connects to the receiver, the row
+/// says what it waits on in italic in place of its kind, with a spinner at
+/// its end.
 struct MacCastRow: View {
     /// Where receivers are listed, which decides how a row ends.
     enum Place {
@@ -50,9 +65,19 @@ struct MacCastRow: View {
         case found(onCast: () -> Void)
     }
 
+    /// What bae waits on while it connects to the row's receiver.
+    enum Wait {
+        /// The receiver to answer.
+        case connecting
+        /// The receiver's owner to accept bae on it: an AirPlay 2 receiver
+        /// has held bae's request for five seconds.
+        case ownerDeciding
+    }
+
     let receiver: BridgeCastReceiver
     let role: Role
     let place: Place
+    let wait: Wait?
 
     @State
     private var showsDetails = false
@@ -107,7 +132,7 @@ struct MacCastRow: View {
     }
 
     private var item: some View {
-        MacItem {
+        MacItem(centered: true, wide: true) {
             Image(systemName: icon)
                 .font(.system(size: 15))
                 .foregroundStyle(casting ? Theme.accent : .secondary)
@@ -118,7 +143,13 @@ struct MacCastRow: View {
                     .themeText(.rowTitle)
                     .lineLimit(2)
                     .truncationMode(.tail)
-                if casting {
+                if let wait {
+                    waitLine(wait)
+                        .themeText(.detail)
+                        .italic()
+                        .foregroundStyle(.secondary)
+                }
+                else if casting {
                     Text(
                         LocalizedStringResource(
                             "cast.receiver.playing",
@@ -139,6 +170,9 @@ struct MacCastRow: View {
             // Read before the row's end in a row read in its own order.
             .accessibilitySortPriority(readsOwnElements ? 1 : 0)
         } trail: {
+            if wait != nil {
+                MacSpinner()
+            }
             switch place {
             case .picker:
                 if case .casting(let onDisconnect) = role {
@@ -147,7 +181,6 @@ struct MacCastRow: View {
                         kind: .borderless,
                         action: onDisconnect
                     )
-                    .neutral()
                     .small()
                 }
             case .page:
@@ -164,6 +197,27 @@ struct MacCastRow: View {
         }
         .padding(.vertical, rowPadding)
         .padding(.horizontal, rowInset)
+    }
+
+    /// The words of `wait`, under the receiver's name.
+    private func waitLine(_ wait: Wait) -> Text {
+        switch wait {
+        case .connecting:
+            Text(
+                LocalizedStringResource(
+                    "cast.receiver.connecting",
+                    defaultValue: "Connecting…",
+                    comment:
+                        "Under a receiver's name in the Play on popover and the Playback settings, in place of its kind, while bae connects to it."
+                )
+            )
+        case .ownerDeciding:
+            Text(
+                "Accept on \(receiver.name)…",
+                comment:
+                    "Under a receiver's name in the Play on popover and the Playback settings, and the Play on button's tooltip, once the receiver has held bae's request for five seconds: its owner may have to accept bae on it. The argument is the receiver's name."
+            )
+        }
     }
 
     /// The room beside a row's glyph and Disconnect: the picker's rows sit in

@@ -259,7 +259,8 @@
     <string name="cast_receiver_model">모델</string>
     <string name="cast_receiver_address">주소</string>
     <string name="cast_looking_for_devices">기기를 찾는 중…</string>
-    <string name="cast_connecting">%1$s에 연결 중…</string>
+    <string name="cast_receiver_connecting">연결 중…</string>
+    <string name="cast_receiver_owner_deciding">%1$s에서 수락하세요…</string>
     <string name="cast_stop_title">%1$s에서 재생을 중지할까요?</string>
     <string name="cast_turn_off_confirm">끄기</string>
     <string name="cast_pin_field">PIN</string>

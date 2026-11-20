@@ -264,7 +264,8 @@
     <string name="cast_receiver_model">Malli</string>
     <string name="cast_receiver_address">Osoite</string>
     <string name="cast_looking_for_devices">Etsitään laitteita…</string>
-    <string name="cast_connecting">Yhdistetään kohteeseen %1$s…</string>
+    <string name="cast_receiver_connecting">Yhdistetään…</string>
+    <string name="cast_receiver_owner_deciding">Hyväksy laitteella %1$s…</string>
     <string name="cast_stop_title">Lopetetaanko toisto laitteella %1$s?</string>
     <string name="cast_turn_off_confirm">Ota pois käytöstä</string>
     <string name="cast_pin_field">PIN-koodi</string>

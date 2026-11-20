@@ -5256,9 +5256,10 @@ picks a receiver, the picker or the settings name it while bae connects, until
 playback on it starts or fails: the receiver's own row shows a spinner at its
 end and says "Connecting…" in place of its kind. Once an AirPlay 2 receiver has
 held bae's request for 5 seconds while its owner decides whether to accept it,
-the row says "Accept on Kitchen…" instead, in italic on macOS, until the
-receiver answers (see Pairing). On macOS the connection is the app's, not the
-picker's or the settings': both name it, so does the Play on button's tooltip, and
+the row says "Accept on Kitchen…" instead, until the receiver answers (see
+Pairing). macOS sets both lines in italic. On macOS the connection is the
+app's, not the picker's or the settings': both name it, so does the Play on
+button's tooltip ("Connecting to Kitchen…", then "Accept on Kitchen…"), and
 closing either leaves it connecting; a failure says why in an alert,
 wherever the person is. A connection that succeeds closes the picker that started
 it, never one opened after. On Android it is the open library's too: closing the

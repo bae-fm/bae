@@ -17,11 +17,10 @@ struct CastButton: View {
     var body: some View {
         let castingName = castStore.castingDeviceName
         let active = castingName != nil
-        let connectingName = start.connecting?.receiver.name
         return MacIconButton(
             symbol: active ? "hifispeaker.fill" : "hifispeaker",
             label: "Play on…",
-            help: help(casting: castingName, connecting: connectingName),
+            help: help(casting: castingName, connecting: start.connecting),
             active: active
         ) {
             showPicker.toggle()
@@ -30,7 +29,7 @@ struct CastButton: View {
             MacCastPopover(
                 receivers: castStore.receivers,
                 endedFailure: castStore.endedFailure,
-                connectingName: connectingName,
+                connecting: start.connecting,
                 onDisconnect: {
                     cast.stopCasting()
                     showPicker = false
@@ -55,13 +54,15 @@ struct CastButton: View {
         }
     }
 
-    /// The receiver bae is connecting to, else the one playing, else what the
-    /// button does.
-    private func help(casting: String?, connecting: String?)
+    /// The receiver bae is connecting to, and what to do on it while its
+    /// owner decides, else the one playing, else what the button does.
+    private func help(casting: String?, connecting: CastStart.Connecting?)
         -> LocalizedStringKey
     {
         if let connecting {
-            return "Connecting to \(connecting)…"
+            let name = connecting.receiver.name
+            return connecting.ownerDeciding
+                ? "Accept on \(name)…" : "Connecting to \(name)…"
         }
         if let casting {
             return "Playing on \(casting)"
@@ -70,14 +71,14 @@ struct CastButton: View {
     }
 }
 
-/// The device picker: why the last device stopped when its link was lost, the
-/// receiver a cast is connecting to, then each receiver once, the one cast to
-/// first with Disconnect.
+/// The device picker, headed Play on: why the last device stopped when its
+/// link was lost, then each receiver once, the one cast to first with
+/// Disconnect, the one a cast is connecting to saying so on its row.
 struct MacCastPopover: View {
     let receivers: BridgeCastReceiverList
     let endedFailure: DisplayError?
-    /// The receiver a cast is connecting to, while it does.
-    let connectingName: String?
+    /// The cast connecting, while one is.
+    let connecting: CastStart.Connecting?
     let onDisconnect: () -> Void
 
     @Environment(CastStart.self)
@@ -91,10 +92,8 @@ struct MacCastPopover: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.compact) {
-            if let connectingName {
-                MacCastConnectingLine(name: connectingName)
-                Divider()
-            }
+            MacEyebrow("Play on")
+                .padding([.top, .horizontal], ThemeSpace.group)
             if let endedFailure {
                 MacNotice(error: endedFailure, tone: .warning)
                     .padding(.vertical, ThemeSpace.line)
@@ -111,12 +110,15 @@ struct MacCastPopover: View {
                 MacCastRows(
                     place: .picker,
                     receivers: receivers,
+                    connecting: connecting,
                     onCast: { receiver in asked = start.cast(to: receiver) },
                     onDisconnect: onDisconnect
                 )
             }
         }
-        .padding(ThemeSpace.group)
+        .padding(.top, ThemeSpace.compact)
+        .padding(.horizontal, ThemeSpace.inline)
+        .padding(.bottom, ThemeSpace.group)
         .frame(width: 260)
         .onChange(of: start.started) {
             if start.didStart(asked) {

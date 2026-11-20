@@ -49,6 +49,26 @@ extension ShotScene {
         },
     ]
 
+    /// `MacCastRow` in a box, as its preview draws it: Kitchen while bae
+    /// connects to it, or waits for its owner, or with the Playback settings'
+    /// menu.
+    private static func castRow(
+        _ id: String,
+        place: MacCastRow.Place = .picker,
+        wait: MacCastRow.Wait?
+    ) -> ShotScene {
+        component(id, height: 100) {
+            ShotBox {
+                MacCastRow(
+                    receiver: castReceiver("Kitchen", .airPlay),
+                    role: .found(onCast: {}),
+                    place: place,
+                    wait: wait
+                )
+            }
+        }
+    }
+
     /// `MacCastRow` in the cast popover.
     private static let castRowScenes: [ShotScene] = [
         component("mac.component.cast-row.receivers", height: 270) {
@@ -56,20 +76,26 @@ extension ShotScene {
                 MacCastRow(
                     receiver: castReceiver("Living Room", .cast),
                     role: .casting(onDisconnect: {}),
-                    place: .picker
+                    place: .picker,
+                    wait: nil
                 )
                 MacCastRow(
                     receiver: castReceiver("Kitchen", .airPlay),
                     role: .found(onCast: {}),
-                    place: .picker
+                    place: .picker,
+                    wait: nil
                 )
                 MacCastRow(
                     receiver: castReceiver("Den receiver", .dlna),
                     role: .found(onCast: {}),
-                    place: .picker
+                    place: .picker,
+                    wait: nil
                 )
             }
         },
+        castRow("mac.component.cast-row.connecting", wait: .connecting),
+        castRow("mac.component.cast-row.owner-deciding", wait: .ownerDeciding),
+        castRow("mac.component.cast-row.menu", place: .page, wait: nil),
         component("mac.component.cast-row.long-name", height: 140) {
             ShotBox {
                 MacCastRow(
@@ -78,7 +104,8 @@ extension ShotScene {
                         .dlna
                     ),
                     role: .found(onCast: {}),
-                    place: .picker
+                    place: .picker,
+                    wait: nil
                 )
             }
         },

@@ -272,7 +272,8 @@
     <string name="cast_receiver_model">Modelo</string>
     <string name="cast_receiver_address">Dirección</string>
     <string name="cast_looking_for_devices">Buscando dispositivos…</string>
-    <string name="cast_connecting">Conectando con %1$s…</string>
+    <string name="cast_receiver_connecting">Conectando…</string>
+    <string name="cast_receiver_owner_deciding">Acepta en %1$s…</string>
     <string name="cast_stop_title">¿Dejar de reproducir en %1$s?</string>
     <string name="cast_turn_off_confirm">Desactivar</string>
     <string name="cast_pin_field">PIN</string>

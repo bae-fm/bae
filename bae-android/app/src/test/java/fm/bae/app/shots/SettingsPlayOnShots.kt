@@ -1,6 +1,7 @@
 package fm.bae.app.shots
 
 import androidx.compose.runtime.Composable
+import fm.bae.app.data.CastStart
 import fm.bae.app.ui.playback.CastReceiverDetailsRows
 import fm.bae.app.ui.settings.AndroidSettingsPlayback
 import org.junit.Test
@@ -16,6 +17,14 @@ class SettingsPlayOnShots : BoardShot() {
     @Test
     fun androidSettingsPlaybackReceiversFound() =
         shot("android.settings.playback.receivers-found") { ScreenScene { Playback(receivers()) } }
+
+    /** Kitchen has held bae's request for five seconds while its owner decides. */
+    @Test
+    fun androidSettingsPlaybackReceiversOwnerDeciding() =
+        shot("android.settings.playback.receivers-owner-deciding") {
+            val receivers = receivers()
+            ScreenScene { Playback(receivers, CastStart.Connecting(receivers.found.first(), ownerDeciding = true)) }
+        }
 
     /** The search before the first receiver answers. */
     @Test
@@ -35,26 +44,31 @@ class SettingsPlayOnShots : BoardShot() {
         }
 }
 
-/** The Playback page with Play on other devices on and [receivers] listed, as the boards draw it. */
+/**
+ * The Playback page with Play on other devices on and [receivers] listed, as the boards draw it, bae connecting to
+ * the receiver of [connecting] when there is one.
+ */
 @Composable
-private fun Playback(receivers: BridgeCastReceiverList) =
-    AndroidSettingsPlayback(
-        pauseBetweenSides = true,
-        countdown = BridgeSidePauseCountdown.OFF,
-        restoreOnLaunch = true,
-        playOnEnabled = true,
-        receivers = { receivers },
-        connectingName = { null },
-        transcodeFormat = BridgeCastTranscodeFormat.MP3,
-        onBack = {},
-        onPauseBetweenSides = {},
-        onCountdown = {},
-        onRestoreOnLaunch = {},
-        onPlayOnEnabledChange = {},
-        onPlayOn = {},
-        onDisconnect = {},
-        onTranscodeFormatChange = {},
-    )
+private fun Playback(
+    receivers: BridgeCastReceiverList,
+    connecting: CastStart.Connecting? = null,
+) = AndroidSettingsPlayback(
+    pauseBetweenSides = true,
+    countdown = BridgeSidePauseCountdown.OFF,
+    restoreOnLaunch = true,
+    playOnEnabled = true,
+    receivers = { receivers },
+    connecting = { connecting },
+    transcodeFormat = BridgeCastTranscodeFormat.MP3,
+    onBack = {},
+    onPauseBetweenSides = {},
+    onCountdown = {},
+    onRestoreOnLaunch = {},
+    onPlayOnEnabledChange = {},
+    onPlayOn = {},
+    onDisconnect = {},
+    onTranscodeFormatChange = {},
+)
 
 /** Living Room playing, then the rest as core lists them. */
 private fun receivers() =

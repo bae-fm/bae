@@ -58,7 +58,7 @@ class SettingsPageShots : BoardShot() {
                     restoreOnLaunch = true,
                     playOnEnabled = false,
                     receivers = { BridgeCastReceiverList(casting = null, found = emptyList(), isEmpty = true) },
-                    connectingName = { null },
+                    connecting = { null },
                     transcodeFormat = BridgeCastTranscodeFormat.MP3,
                     onBack = {},
                     onPauseBetweenSides = {},

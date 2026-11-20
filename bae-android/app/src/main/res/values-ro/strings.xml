@@ -271,7 +271,8 @@
     <string name="cast_receiver_model">Model</string>
     <string name="cast_receiver_address">Adresă</string>
     <string name="cast_looking_for_devices">Se caută dispozitive…</string>
-    <string name="cast_connecting">Se conectează la %1$s…</string>
+    <string name="cast_receiver_connecting">Se conectează…</string>
+    <string name="cast_receiver_owner_deciding">Acceptați pe %1$s…</string>
     <string name="cast_stop_title">Oprești redarea pe %1$s?</string>
     <string name="cast_turn_off_confirm">Oprește</string>
     <string name="cast_pin_field">PIN</string>

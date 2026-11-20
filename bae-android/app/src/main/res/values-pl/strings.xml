@@ -280,7 +280,8 @@
     <string name="cast_receiver_model">Model</string>
     <string name="cast_receiver_address">Adres</string>
     <string name="cast_looking_for_devices">Wyszukiwanie urządzeń…</string>
-    <string name="cast_connecting">Łączenie z %1$s…</string>
+    <string name="cast_receiver_connecting">Łączenie…</string>
+    <string name="cast_receiver_owner_deciding">Zaakceptuj na %1$s…</string>
     <string name="cast_stop_title">Zatrzymać odtwarzanie na %1$s?</string>
     <string name="cast_turn_off_confirm">Wyłącz</string>
     <string name="cast_pin_field">PIN</string>

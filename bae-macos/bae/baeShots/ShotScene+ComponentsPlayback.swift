@@ -744,7 +744,7 @@ extension ShotScene {
         queuePanel("mac.component.queue-panel.empty", nil),
     ]
 
-    // MARK: - MacCastPopover, MacCastConnectingLine
+    // MARK: - MacCastPopover
 
     static func castReceiver(
         _ name: String,
@@ -765,7 +765,7 @@ extension ShotScene {
         _ id: String,
         casting: BridgeCastReceiver? = nil,
         found: [BridgeCastReceiver] = [],
-        connecting: String? = nil
+        connecting: CastStart.Connecting? = nil
     ) -> ShotScene {
         component(id, width: 300, height: 280) {
             MacCastPopover(
@@ -775,7 +775,7 @@ extension ShotScene {
                     isEmpty: casting == nil && found.isEmpty
                 ),
                 endedFailure: nil,
-                connectingName: connecting,
+                connecting: connecting,
                 onDisconnect: {}
             )
             .environment(CastStart.stub())
@@ -783,7 +783,8 @@ extension ShotScene {
     }
 
     /// `MacCastPopover`: over a receiver cast to, with long names, with
-    /// nothing cast to, while a cast connects, and with no receivers.
+    /// nothing cast to, while a cast connects, while the receiver's owner
+    /// decides, and with no receivers.
     private static let castPopoverScenes: [ShotScene] = [
         castPopover(
             "mac.component.cast-popover.casting",
@@ -813,7 +814,25 @@ extension ShotScene {
         ),
         castPopover(
             "mac.component.cast-popover.connecting",
-            connecting: "Living Room"
+            found: [
+                castReceiver("Living Room", .cast),
+                castReceiver("Kitchen", .airPlay),
+            ],
+            connecting: CastStart.Connecting(
+                receiver: castReceiver("Kitchen", .airPlay),
+                ownerDeciding: false
+            )
+        ),
+        castPopover(
+            "mac.component.cast-popover.owner-deciding",
+            found: [
+                castReceiver("Living Room", .cast),
+                castReceiver("Kitchen", .airPlay),
+            ],
+            connecting: CastStart.Connecting(
+                receiver: castReceiver("Kitchen", .airPlay),
+                ownerDeciding: true
+            )
         ),
         castPopover("mac.component.cast-popover.no-receivers"),
     ]
