@@ -269,17 +269,16 @@ pub struct DbCreditRow {
 pub struct DbReleaseFiles {
     /// Every file, in the release's file order.
     pub files: Vec<DbFile>,
-    /// The files that are images.
+    /// The images bae can show, which the gallery shows and the Files list
+    /// leaves out.
     pub images: Vec<DbFile>,
-    /// The images bae can make a cover from.
-    pub covers: Vec<DbFile>,
     /// The files no track plays from: a file a track's segment reads, and a
     /// CUE sheet that carves a track, are played.
     pub others: Vec<DbFile>,
     /// Whether any file is one no track plays from.
     pub has_others: bool,
     pub count: i64,
-    /// How many files are images: the files `images` lists.
+    /// How many files are images bae can show: the files `images` lists.
     pub image_count: u32,
     pub total_size: u64,
     /// What the release's audio is, summarized over the audio files its

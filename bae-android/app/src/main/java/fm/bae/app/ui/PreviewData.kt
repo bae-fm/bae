@@ -169,7 +169,6 @@ object PreviewData {
             otherFiles = emptyList(),
             hasOtherFiles = false,
             imageFiles = emptyList(),
-            coverFiles = emptyList(),
             galleryItems = emptyList(),
             galleryItemCount = 0u,
             playability = BridgeReleasePlayability.Playable,

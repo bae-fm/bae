@@ -651,8 +651,8 @@ group with no heading. Each group carries its tracks' playing time. When the
 release has more than one group, each group shows its time beside the release's
 total. Each track carries its own credits (or the album's), the works it
 performs and the stars the person gave it. The detail lists the release's
-images, the images a cover can be made from and the files no track plays from,
-with the files' count and total size.
+images bae can show and the files no track plays from, with the files' count and
+total size.
 
 **A release's credits.** A release's detail lists who did what on it, every
 role. Its credits are the release's own, each track's own, and for each track
@@ -2080,7 +2080,7 @@ apps name each image in the viewer's language, from its parts: the service
 that serves it (the Cover Art Archive, Discogs), the album's front image as the
 album's, a gallery entry's number and what it shows (front, back, booklet and
 the archive's other types) and the archive's comment, joined by the language's
-separator. A release's gallery names its cover Cover and an image file by its
+separator. A release's gallery holds its cover and each image bae can show, a JPEG, PNG, GIF or WebP, and names its cover Cover and an image file by its
 filename. On Android the album page's cover opens the gallery only when the
 release has gallery items, and the gallery shows its page counter, with the
 number of items as its total, only when it holds more than one. Saving the cover picked, in the import's picker or a library

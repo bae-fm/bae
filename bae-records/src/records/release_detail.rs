@@ -190,21 +190,16 @@ fn performs_works_sql(release: &str) -> String {
 
 /// The release `release` (an SQL expression naming its id)'s files, as the
 /// table `table` with the columns of `release_files` holds them, and among
-/// them the images, the images bae can make a cover from, and the files no
-/// track plays from, each in the release's file order, with the number of
+/// them the images the gallery shows ([`super::files::showable_image_sql`]) and
+/// the files no track plays from, each in the release's file order, with the number of
 /// files, the number of images, the files' total size and the summary of
 /// their audio, as one JSON object for [`release_files_column`]. A track
 /// plays from each file a segment of the table `segments` (with the column
 /// `file_id` of `audio_format_segments`) reads, and from each CUE sheet that
-/// carves it, by [`super::files::unplayed_files_cte`]. Files leaves out the images of a
-/// format a cover can be made from (`covers`), which the gallery shows.
+/// carves it, by [`super::files::unplayed_files_cte`], which leaves out the images
+/// the gallery shows.
 fn release_files_json_sql(release: &str, table: &str, segments: &str) -> String {
-    let cover_types = ContentType::SUPPORTED_COVERS
-        .iter()
-        .map(|content_type| format!("'{}'", content_type.as_str()))
-        .collect::<Vec<_>>()
-        .join(", ");
-    let cover = format!("listed.content_type IN ({cover_types})");
+    let image = super::files::showable_image_sql("listed.content_type");
     let list = |condition: &str| {
         format!(
             "json_group_array(json(listed.file_json) \
@@ -212,10 +207,9 @@ fn release_files_json_sql(release: &str, table: &str, segments: &str) -> String 
              FILTER (WHERE {condition})"
         )
     };
-    let image = "listed.content_type GLOB 'image/*'";
     format!(
         "(WITH {unplayed} SELECT json_object( \
-              'files', json({files}), 'images', json({images}), 'covers', json({covers}), \
+              'files', json({files}), 'images', json({images}), \
               'others', json({others}), \
               'has_others', COALESCE(SUM(listed.in_files), 0) > 0, \
               'count', COUNT(*), 'image_count', COUNT(*) FILTER (WHERE {image}), \
@@ -229,7 +223,7 @@ fn release_files_json_sql(release: &str, table: &str, segments: &str) -> String 
                 WHERE f.release_id = {release}) AS listed)",
         unplayed = super::files::unplayed_files_cte(
             &format!(
-                "(SELECT id AS file_id, {cover} AS showable_image \
+                "(SELECT id AS file_id, {image} AS showable_image \
                   FROM {table} AS listed \
                   WHERE release_id = {release})"
             ),
@@ -240,8 +234,7 @@ fn release_files_json_sql(release: &str, table: &str, segments: &str) -> String 
             ),
         ),
         files = list("1"),
-        images = list(image),
-        covers = list(&cover),
+        images = list(&image),
         others = list("listed.in_files"),
         file_json = file_json_sql("coven.size", "coven.hash IS NOT NULL"),
         source_audio = crate::source_audio::source_audio_summary_sql(&format!(
@@ -287,7 +280,6 @@ fn release_files_column(row: &Row<'_>, column: &str) -> rusqlite::Result<DbRelea
     struct Stored {
         files: Vec<FileColumns>,
         images: Vec<FileColumns>,
-        covers: Vec<FileColumns>,
         others: Vec<FileColumns>,
         has_others: i64,
         count: i64,
@@ -310,7 +302,6 @@ fn release_files_column(row: &Row<'_>, column: &str) -> rusqlite::Result<DbRelea
     Ok(DbReleaseFiles {
         files: files(stored.files)?,
         images: files(stored.images)?,
-        covers: files(stored.covers)?,
         others: files(stored.others)?,
         has_others: stored.has_others != 0,
         count: stored.count,

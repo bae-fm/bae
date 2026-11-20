@@ -143,10 +143,6 @@ pub struct CoverGallery {
 /// files, each file in name order. The release focuses its saved cover
 /// unless the request names another.
 fn release_gallery_sql() -> String {
-    let cover_types: Vec<String> = bae_util::content_type::ContentType::SUPPORTED_COVERS
-        .iter()
-        .map(|content_type| format!("'{}'", content_type.as_str()))
-        .collect();
     format!(
         "
 WITH items (rank, pos, kind, key, preferred, item) AS (
@@ -164,10 +160,10 @@ WITH items (rank, pos, kind, key, preferred, item) AS (
            json_object('kind', 'release_file', 'id', file.id, 'name', file.original_filename)
     FROM release_files AS file
     WHERE file.release_id = :release AND :filter IN ('all', 'release_files')
-      AND file.content_type IN ({cover_types})
+      AND {showable}
 ){walk}",
         cover_version = bae_records::records::files::cover_version_sql(":release"),
-        cover_types = cover_types.join(", "),
+        showable = bae_records::records::files::showable_image_sql("file.content_type"),
         walk = walk::walk_sql(
             "(SELECT fetch.linked FROM release_cover_fetch AS fetch \
               WHERE fetch.release_id = :release)"

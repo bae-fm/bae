@@ -806,7 +806,6 @@ extension PreviewData {
             otherFiles: [],
             hasOtherFiles: false,
             imageFiles: [imageFile],
-            coverFiles: [imageFile],
             galleryItems: [],
             galleryItemCount: 0,
             playability: .playable,

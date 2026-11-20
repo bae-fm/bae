@@ -652,11 +652,10 @@ async fn gallery_includes_cloud_only_image_files_with_no_local_path() {
 }
 
 #[tokio::test]
-async fn cover_picker_excludes_unsupported_images_without_hiding_gallery_files() {
+async fn gallery_shows_the_images_bae_can_show_and_files_lists_the_rest() {
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
-    let mut eligible = Vec::new();
-    let mut all_images = Vec::new();
-    for (name, content_type, supports_cover) in [
+    let mut showable = Vec::new();
+    for (name, content_type, shown) in [
         ("front.jpg", ContentType::Jpeg, true),
         ("back.png", ContentType::Png, true),
         ("scan.gif", ContentType::Gif, true),
@@ -673,32 +672,27 @@ async fn cover_picker_excludes_unsupported_images_without_hiding_gallery_files()
             UtcDateTime::now(),
         );
         manager.library.manager().add_file(&file, 100).await.unwrap();
-        if supports_cover {
-            eligible.push(file.id.clone());
+        if shown {
+            showable.push(file.id);
         }
-        all_images.push(file.id);
     }
     let detail =
         views(manager.library.manager()).find_release_detail(&release.id).await.unwrap().unwrap();
-    let mut cover_ids: Vec<_> = detail.cover_files.iter().map(|file| file.id.clone()).collect();
     let mut image_ids: Vec<_> = detail.image_files.iter().map(|file| file.id.clone()).collect();
     let mut gallery_ids: Vec<_> = detail.gallery_items.iter().map(|item| item.id.clone()).collect();
-    eligible.sort();
-    all_images.sort();
-    cover_ids.sort();
+    showable.sort();
     image_ids.sort();
     gallery_ids.sort();
-    assert_eq!(cover_ids, eligible);
-    assert_eq!(image_ids, all_images);
-    assert_eq!(gallery_ids, all_images);
-    assert_eq!(detail.gallery_item_count, 6, "the release counts its six gallery items");
+    assert_eq!(image_ids, showable);
+    assert_eq!(gallery_ids, showable, "the gallery shows exactly the images bae can show");
+    assert_eq!(detail.gallery_item_count, 4, "the release counts its four gallery items");
     let mut other_names: Vec<_> =
         detail.other_files.iter().map(|file| file.original_filename.clone()).collect();
     other_names.sort();
     assert_eq!(
         other_names,
         ["booklet.bmp", "drawing.svg"],
-        "Files lists the images a cover cannot be made from"
+        "Files lists the images the gallery does not show"
     );
 }
 

@@ -14,7 +14,6 @@ fn detail_in_years(release_year: Option<i32>, album_year: Option<i32>) -> Releas
         files: bae_records::DbReleaseFiles {
             files: Vec::new(),
             images: Vec::new(),
-            covers: Vec::new(),
             others: Vec::new(),
             has_others: false,
             count: 0,

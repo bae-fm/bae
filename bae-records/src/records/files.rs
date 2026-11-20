@@ -253,6 +253,19 @@ impl Records {
     }
 }
 
+/// The SQL condition that a file whose content type is `content_type` (an SQL
+/// expression) is an image bae can show: one of the formats a cover can be made
+/// from. The gallery shows these images, and a release's Files list leaves them
+/// out, so each image of a release is in exactly one of them.
+pub fn showable_image_sql(content_type: &str) -> String {
+    let types = bae_util::content_type::ContentType::SUPPORTED_COVERS
+        .iter()
+        .map(|content_type| format!("'{}'", content_type.as_str()))
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!("{content_type} IN ({types})")
+}
+
 /// The common table expression `unplayed_files (file_id)`: the files of
 /// `files` that a release's Files list shows. `files` is a relation with the
 /// columns `file_id` and `showable_image`, which is true for each file the

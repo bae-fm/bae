@@ -147,9 +147,9 @@ pub struct ReleaseDetail {
     /// Whether any file is one no track plays from.
     pub has_other_files: bool,
     pub source_audio: Option<SourceAudioSummary>,
+    /// The images bae can show: the gallery shows them, and no Files list
+    /// holds them.
     pub image_files: Vec<FileDetail>,
-    /// Image files eligible for cover normalization; previews use `image_files`.
-    pub cover_files: Vec<FileDetail>,
     /// The cover, then every image file the release has — including cloud-only ones,
     /// which the lightbox fetches on demand.
     pub gallery_items: Vec<GalleryItem>,
@@ -201,8 +201,6 @@ impl ReleaseDetail {
             raw.files.files.into_iter().map(FileDetail::from_raw).collect();
         let image_files: Vec<FileDetail> =
             raw.files.images.into_iter().map(FileDetail::from_raw).collect();
-        let cover_files: Vec<FileDetail> =
-            raw.files.covers.into_iter().map(FileDetail::from_raw).collect();
         let has_other_files = raw.files.has_others;
         let other_files: Vec<FileDetail> =
             raw.files.others.into_iter().map(FileDetail::from_raw).collect();
@@ -289,7 +287,6 @@ impl ReleaseDetail {
             has_other_files,
             source_audio,
             image_files,
-            cover_files,
             gallery_item_count,
             gallery_items: gallery,
             playability,

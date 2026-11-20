@@ -120,7 +120,6 @@ extension PreviewData {
             otherFiles: [],
             hasOtherFiles: false,
             imageFiles: [previewReleaseCoverFile],
-            coverFiles: [previewReleaseCoverFile],
             galleryItems: [],
             galleryItemCount: 0,
             playability: playability,

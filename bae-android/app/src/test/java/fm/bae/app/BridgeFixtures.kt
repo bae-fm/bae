@@ -124,7 +124,6 @@ object BridgeFixtures {
             otherFiles = emptyList(),
             hasOtherFiles = false,
             imageFiles = emptyList(),
-            coverFiles = emptyList(),
             galleryItems = galleryItems,
             galleryItemCount = galleryItems.size.toUInt(),
             playability = BridgeReleasePlayability.Playable,

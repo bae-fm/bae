@@ -468,13 +468,12 @@ pub struct BridgeRelease {
     pub performs_works: bool,
     pub source_audio: Option<BridgeSourceAudioSummary>,
     /// The files no track plays from, in the release's file order: a cue sheet,
-    /// a rip log, an image.
+    /// a rip log, an image bae cannot show.
     pub other_files: Vec<BridgeFile>,
     /// Whether any file is one no track plays from.
     pub has_other_files: bool,
+    /// The images bae can show, which the gallery shows and no Files list holds.
     pub image_files: Vec<BridgeFile>,
-    /// Core-selected cover inputs; the gallery still contains every image.
-    pub cover_files: Vec<BridgeFile>,
     /// Cover slot first (if the release has one), then every image file the
     /// release has. Each item's bytes are read through
     /// `fetch_release_image`, which takes the item's `source` and

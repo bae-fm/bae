@@ -355,11 +355,12 @@ async fn a_release_groups_its_tracks_by_side_across_its_mediums() {
 const FILED_ALBUM: &str = "c9e3a7f4-5d61-4e8a-9f20-3b4c5d6e7f01";
 const FILED_RELEASE: &str = "c9e3a7f4-5d61-4e8a-9f20-3b4c5d6e7f02";
 
-/// The release detail returns the release's files with every image, the
-/// images bae can make a cover from, the files no track plays from, and the
-/// files' count and total size, counting each file once.
+/// The release detail returns the release's files with the images bae can
+/// show, which the gallery shows, the files no track plays from, which leave
+/// those images out, and the files' count and total size, counting each file
+/// once.
 #[tokio::test]
-async fn a_release_lists_its_files_with_the_images_and_covers_among_them() {
+async fn a_release_lists_its_files_with_the_images_the_gallery_shows_among_them() {
     use bae_records::source_audio::{SourceAudioFile, SourceAudioLayout};
     use bae_records::ReleaseFileRole::{Artwork, Audio, Document, TrackSheet};
     use bae_util::content_type::ContentType;
@@ -420,12 +421,16 @@ async fn a_release_lists_its_files_with_the_images_and_covers_among_them() {
         names(&detail.files),
         ["back.png", "cover.jpg", "disc.cue", "disc.flac", "odd.flac", "rip.log", "scan.bmp"]
     );
-    assert_eq!(names(&detail.image_files), ["back.png", "cover.jpg", "scan.bmp"]);
-    assert_eq!(names(&detail.cover_files), ["back.png", "cover.jpg"]);
+    // The gallery shows the PNG and the JPEG; the BMP is no image bae shows, so
+    // it stays in Files.
+    assert_eq!(names(&detail.image_files), ["back.png", "cover.jpg"]);
     assert_eq!(
         names(&detail.other_files),
-        ["back.png", "cover.jpg", "disc.cue", "odd.flac", "rip.log", "scan.bmp"]
+        ["disc.cue", "disc.flac", "odd.flac", "rip.log", "scan.bmp"]
     );
+    let gallery: Vec<_> = detail.gallery_items.iter().map(|item| item.id.clone()).collect();
+    let image_ids: Vec<_> = detail.image_files.iter().map(|file| file.id.clone()).collect();
+    assert_eq!(gallery, image_ids, "the gallery holds exactly the images Files leaves out");
     assert!(detail.has_other_files);
     assert_eq!(detail.summary.file_count, 7);
     assert_eq!(detail.summary.total_size, 28_000);

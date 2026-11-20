@@ -228,7 +228,6 @@ fn no_files() -> bae_records::DbReleaseFiles {
     bae_records::DbReleaseFiles {
         files: Vec::new(),
         images: Vec::new(),
-        covers: Vec::new(),
         others: Vec::new(),
         has_others: false,
         count: 0,

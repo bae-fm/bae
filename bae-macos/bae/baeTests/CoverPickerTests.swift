@@ -68,10 +68,10 @@ struct CoverPickerTests {
         }
     }
 
-    /// The covers core reads for `release`: its image files that can be a
-    /// cover. Saving one selects it by its library file id.
+    /// The covers core reads for `release`: its image files, which are the
+    /// images bae can show. Saving one selects it by its library file id.
     private func gallery(of release: BridgeRelease) -> BridgeCoverGallery {
-        let files = release.coverFiles.map {
+        let files = release.imageFiles.map {
             BridgeGalleryCover(
                 key: .file(fileId: $0.id),
                 image: .releaseImage(
@@ -141,10 +141,9 @@ struct CoverPickerTests {
             hasCredits: false,
             performsWorks: false,
             sourceAudio: nil,
-            otherFiles: [],
-            hasOtherFiles: false,
-            imageFiles: [file, bitmap],
-            coverFiles: [file],
+            otherFiles: [bitmap],
+            hasOtherFiles: true,
+            imageFiles: [file],
             galleryItems: [],
             galleryItemCount: 0,
             playability: .playable,
