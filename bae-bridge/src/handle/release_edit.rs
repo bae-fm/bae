@@ -109,6 +109,13 @@ impl BridgeReleaseEditForm {
         }
     }
 
+    /// The form with the CUE sheet `sheet_file_id` on `disc`, counted from
+    /// one: a save moves the sheet's tracks there, and a disc the release
+    /// lacks moves nothing.
+    pub fn with_sheet_disc(&self, sheet_file_id: String, disc: u32) -> std::sync::Arc<Self> {
+        self.changed(|form| *form = form.clone().with_sheet_disc(sheet_file_id, disc))
+    }
+
     /// The form with `pick` as the album a save files the release under: a
     /// library album, a new one, or the album its records name.
     pub fn with_album(&self, pick: crate::types::BridgeAlbumPick) -> std::sync::Arc<Self> {

@@ -71,8 +71,7 @@ impl LibraryManager {
             .and_then(|name| name.to_str())
             .ok_or_else(|| invalid("names no file".to_string()))?
             .to_string();
-        let analysis =
-            Arc::new(CueFlacAnalysis { sheet_id, disc_number: 1, cue_sheet: sheet, audio_files });
+        let analysis = Arc::new(CueFlacAnalysis { sheet_id, cue_sheet: sheet, audio_files });
 
         let mut seeded = self
             .seeded_album(

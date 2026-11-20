@@ -156,14 +156,21 @@ impl LibraryManager {
             (GonePick::Unpick, _) => bae_records::GonePicks::Unpick { unpicked: None },
         };
         let saved_id = release_id.clone();
+        let (opened_form, layout_form, decisions_form) = (form.clone(), form.clone(), form);
         let still_as_opened = move |sql: &coven::CovenWrite<'_>| {
-            bae_import::tables::release_edit_still_as_opened_on(sql, &form)
+            bae_import::tables::release_edit_still_as_opened_on(sql, &opened_form)
+        };
+        let layout = move |sql: &coven::CovenWrite<'_>| {
+            bae_import::tables::release_edit_layout_on(sql, &layout_form)
+        };
+        let sheet_decisions = move |sql: &coven::CovenWrite<'_>| {
+            bae_import::tables::store_release_edit_sheet_decisions_on(sql, &decisions_form)
         };
         let saved = move |sql: &coven::CovenWrite<'_>| {
             bae_import::tables::release_edit_form_on(sql, &saved_id)
         };
         self.records
-            .save_release_edit_atomic(plan, gone, still_as_opened, saved)
+            .save_release_edit_atomic(plan, gone, still_as_opened, layout, sheet_decisions, saved)
             .await
             .map_err(|error| release_edit_save_error(error, &release_id))
     }

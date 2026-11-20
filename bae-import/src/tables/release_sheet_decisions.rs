@@ -66,6 +66,25 @@ pub(super) fn store_on(
     Ok(())
 }
 
+/// Store the discs the person picked for CUE sheets in a release editor,
+/// each a sheet's file id with the disc, as the sheet's disc decision: a
+/// sheet decided before takes the new disc. The editor's save calls it
+/// through `store_release_edit_sheet_decisions_on`.
+pub(super) fn store_sheet_disc_decisions_on(
+    sql: &CovenWrite<'_>,
+    discs: &[(String, u32)],
+) -> Result<(), DbError> {
+    for (sheet_file_id, disc_number) in discs {
+        sql.execute(
+            "INSERT INTO release_sheet_discs (sheet_file_id, disc, disc_number) \
+             VALUES (?, 'disc', ?) \
+             ON CONFLICT (sheet_file_id) DO UPDATE SET disc = 'disc', disc_number = excluded.disc_number",
+            params![sheet_file_id, disc_number],
+        )?;
+    }
+    Ok(())
+}
+
 impl ImportTables {
     /// The decisions the person made about `release_id`'s sheets, naming each
     /// file by its path in the release, as the import's decisions did. The

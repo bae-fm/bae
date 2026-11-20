@@ -88,6 +88,7 @@ pub use release_edit_save::{
     GonePicks, ReleaseEditPlan, ReleaseEditRefusal, ReleaseEditSaveError, ReleaseEditWrite,
 };
 mod emptied;
+pub mod layout;
 use emptied::Emptiable;
 mod release_credits;
 mod release_deletion;

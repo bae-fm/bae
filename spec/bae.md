@@ -1769,8 +1769,11 @@ the library lists the release's files in. Ben's download names its files by titl
 tags numbers it 7, and a catalog's tracklist lays its seventh track on it.
 
 **Mediums and places.** Applying a source writes the draft's mediums and each
-track's place, and nothing edits them afterwards: the pane and the library
-editor show a track's position and edit only its title and artists.
+track's place. Only two things edit them afterwards: applying another source
+in the library editor, and the *Disc* pop-up of a CUE sheet in the library
+editor (§3.8), which moves the sheet's tracks to another disc. The pane and
+the library editor show a track's position and edit only its title and
+artists.
 
 - A MusicBrainz release gives each medium it reads its format; a record or
   cassette has as many sides as its positions name letters, read as a Discogs
@@ -1791,7 +1794,11 @@ editor show a track's position and edit only its title and artists.
 A file decision that gains a track, or moves a CUE sheet to another disc,
 places that audio as the folder lays it out, adding a medium of unstated
 carrier where the draft holds fewer; a medium no track sits on any more is
-dropped. A file decision is kept under the files' hash, so it settles every
+dropped. The library editor's *Disc* pop-up moves a sheet's tracks onto a disc
+the release holds: they go after the tracks already on that disc, on its last
+side, each numbered one more than the highest number on that side, so no two
+tracks of a side share a number; the medium the sheet left is dropped if no
+track sits on it any more, and the mediums after it move up. A file decision is kept under the files' hash, so it settles every
 folder holding the same files in one write, each found by that hash.
 
 **What the files' tags say.** The tags are read whole: a tag stating a value
@@ -1998,7 +2005,7 @@ Ana clicks Import. bae:
    with the length the draft's source lists for it, where it lists one. A track
    left untitled takes its file's name. The same write stores what the draft
    worked out and the pane showed about the folder's CUE sheets: each sheet
-   that carves tracks out of an image, with the disc the pane showed for it, and
+   that carves tracks out of an image, with the disc its first track sits on, and
    the sheet that carves each such track. The release editor (§3.8) reads
    these rows and never reads a `.cue` file again to show them. An existing album is checked in that
    same write: one deleted since the import was prepared, because a later
@@ -2220,7 +2227,8 @@ applied one first) and the album those name — none of which is written yet;
 the cover stays the release's own. Saving writes the whole form in one
 transaction: the edited fields, and where a catalog was applied, its every
 value too, each track's listed length among them, so nothing a previous
-source credited survives. The release lands
+source credited survives, and the discs the person picked for CUE sheets:
+each move of a sheet's tracks, with the sheet's disc as its disc decision. The release lands
 in the album its records name (§3.7), or in a library album the person
 picked, which keeps its own title and artists. The editor names that album
 with the import pane's album picker: the album the release is in, the one an
@@ -2264,7 +2272,9 @@ release's discs the sheet is (no *Ignored*), the sheet's name, and the *Audio
 file* pop-up of which of the release's audio files on this device the sheet
 carves (no *Choose audio…*, since the editor adds and removes no tracks). The
 rows show a new choice at once, from the editor's draft, before *Save* writes
-it; every other track names in its row the file its body, from its
+it (a catalog applied after a disc pick lays the tracks out at its own places
+and clears the picks, so the pop-up then shows the catalog's disc; a pick made
+after it moves the sheet again); every other track names in its row the file its body, from its
 INDEX 01 on, plays from. Each row's listed length is the one the library
 stores for the track, or the one the catalog applied in the session lists. A pregap stored at the tail of the file before
 (§2.2) is not named: a row names one file. An applied catalog lays them out
@@ -5898,7 +5908,7 @@ All sync.
 | `track_works` | work a track performs, in order |
 | `audio_formats` | track's format, pregap, loudness and peak |
 | `audio_format_segments` | span of a file a track reads: pregap or main, samples and bytes; one main and at most one pregap per format, each kept to one by a unique index |
-| `release_carving_sheets` | CUE sheet of a release that carves tracks out of an image, keyed by the sheet's `release_files` row: the disc of the release the import read it as; deleting the sheet's file deletes it |
+| `release_carving_sheets` | CUE sheet of a release that carves tracks out of an image, keyed by the sheet's `release_files` row: the disc of the release the sheet is, which is the disc its first track sits on; deleting the sheet's file deletes it |
 | `carved_tracks` | track a CUE sheet carves out of an image, keyed by the track: the sheet (`release_carving_sheets`); deleting the track or the sheet deletes it |
 | `audio_segment_scrub_points` | frames a seek inside a segment can start its decode at, one row per segment that has any, keyed by the segment: each frame's first sample, its byte, and the first sample a decode from it plays exactly, packed in sample order in one blob; for a FLAC whose seektable is missing or sparser than the points' 10-second spacing, and for every MP3 (§3.7) |
 

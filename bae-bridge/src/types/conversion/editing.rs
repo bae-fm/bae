@@ -202,9 +202,9 @@ mirror_struct! {
 }
 
 mirror_struct! {
-    BridgeReleaseEditSheet = bae_records::DbReleaseEditSheet,
+    BridgeReleaseEditSheet = bae_import::ReleaseEditSheet,
     from_core: fn,
-    fields: { file_id, name, disc_number },
+    fields: { file_id, name, disc_number, disc_options },
 }
 
 impl BridgeReleaseEditTrackContext {

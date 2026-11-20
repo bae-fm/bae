@@ -695,15 +695,17 @@ pub struct BridgeReleaseEditTrackSource {
 
 /// The CUE sheet that carves a run of the release editor's tracks out of
 /// their file, as the run's caption names it. Mirrors
-/// `bae_records::DbReleaseEditSheet`.
+/// `bae_import::ReleaseEditSheet`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeReleaseEditSheet {
     pub file_id: String,
     /// The sheet's file name, as the release's files name it.
     pub name: String,
-    /// The disc of the release the import read the sheet as, counted from
-    /// one.
+    /// The disc of the release the sheet is, counted from one: the disc the
+    /// editor's form puts its tracks on.
     pub disc_number: u32,
+    /// The discs the release holds, which the caption's Disc pop-up offers.
+    pub disc_options: Vec<u32>,
 }
 
 /// Persisted, read-only context beside one editable track row.

@@ -299,6 +299,8 @@ impl Records {
             },
             super::GonePicks::Refuse,
             |_| Ok(Ok(())),
+            |_| Ok(None),
+            |_| Ok(()),
             |_| Ok(()),
         )
         .await

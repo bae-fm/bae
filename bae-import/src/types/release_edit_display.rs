@@ -72,6 +72,31 @@ pub struct ReleaseEditTrackSide {
     pub runs: Vec<ReleaseEditTrackRun>,
 }
 
+/// The CUE sheet over a run of the editor's tracks, with the discs the
+/// release has, which its Disc pop-up offers: the library's sheet, whose disc
+/// is the one the form puts it on.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReleaseEditSheet {
+    pub file_id: String,
+    pub name: String,
+    pub disc_number: u32,
+    /// The discs the release holds, counted from one.
+    pub disc_options: Vec<u32>,
+}
+
+impl ReleaseEditSheet {
+    /// `sheet` on a release of `disc_count` discs.
+    fn of(sheet: DbReleaseEditSheet, disc_count: usize) -> Self {
+        let disc_count = u32::try_from(disc_count).expect("a release holds fewer than 2^32 discs");
+        Self {
+            file_id: sheet.file_id,
+            name: sheet.name,
+            disc_number: sheet.disc_number,
+            disc_options: (1..=disc_count).collect(),
+        }
+    }
+}
+
 /// Consecutive rows of one side that the table draws together.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReleaseEditTrackRun {
@@ -80,7 +105,7 @@ pub enum ReleaseEditTrackRun {
     /// Two or more consecutive tracks a CUE sheet carves from one file, which
     /// is named once above them with the sheet.
     Sheet {
-        sheet: DbReleaseEditSheet,
+        sheet: ReleaseEditSheet,
         source: ReleaseEditTrackSource,
         rows: Vec<ReleaseEditTrackRow>,
     },
@@ -100,11 +125,14 @@ impl ReleaseEditTrackSide {
     /// side, and within it a run per file a sheet carves several consecutive
     /// tracks from; every other track is a run of its own.
     #[cfg(desktop)]
-    pub(crate) fn lay_out(rows: impl IntoIterator<Item = ReleaseEditTrackRow>) -> Vec<Self> {
+    pub(crate) fn lay_out(
+        rows: impl IntoIterator<Item = ReleaseEditTrackRow>,
+        disc_count: usize,
+    ) -> Vec<Self> {
         let mut sides: Vec<Self> = Vec::new();
         for row in rows {
             match sides.last_mut() {
-                Some(last) if last.side == row.context.side => last.append(row),
+                Some(last) if last.side == row.context.side => last.append(row, disc_count),
                 _ => sides.push(Self {
                     side: row.context.side.clone(),
                     runs: vec![ReleaseEditTrackRun::Track(row)],
@@ -117,25 +145,32 @@ impl ReleaseEditTrackSide {
     /// Add the next row: onto the last run when one sheet carves both tracks
     /// from the same file, else as a run of its own.
     #[cfg(desktop)]
-    fn append(&mut self, row: ReleaseEditTrackRow) {
-        let carved_with = |(sheet, source): (&DbReleaseEditSheet, &ReleaseEditTrackSource)| {
+    fn append(&mut self, row: ReleaseEditTrackRow, disc_count: usize) {
+        let carved_with = |(sheet, source): (&str, &str)| {
             row.context.carved_from().is_some_and(|(next_sheet, next_source)| {
-                next_sheet.file_id == sheet.file_id && next_source.file_id == source.file_id
+                next_sheet.file_id == sheet && next_source.file_id == source
             })
+        };
+        let of = |(sheet, source): (&DbReleaseEditSheet, &ReleaseEditTrackSource)| {
+            (sheet.file_id.clone(), source.file_id.clone())
         };
         match self.runs.pop() {
             Some(ReleaseEditTrackRun::Sheet { sheet, source, mut rows })
-                if carved_with((&sheet, &source)) =>
+                if carved_with((&sheet.file_id, &source.file_id)) =>
             {
                 rows.push(row);
                 self.runs.push(ReleaseEditTrackRun::Sheet { sheet, source, rows });
             }
             Some(ReleaseEditTrackRun::Track(last))
-                if last.context.carved_from().is_some_and(carved_with) =>
+                if last.context.carved_from().is_some_and(|from| {
+                    let (sheet, source) = of(from);
+                    carved_with((&sheet, &source))
+                }) =>
             {
                 let (sheet, source) =
                     last.context.carved_from().expect("the guard read the track's sheet");
-                let (sheet, source) = (sheet.clone(), source.clone());
+                let (sheet, source) =
+                    (ReleaseEditSheet::of(sheet.clone(), disc_count), source.clone());
                 self.runs.push(ReleaseEditTrackRun::Sheet { sheet, source, rows: vec![last, row] });
             }
             last => {

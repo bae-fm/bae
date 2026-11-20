@@ -64,8 +64,8 @@ pub use import_state::{
     VerdictPick,
 };
 pub use release_edit::{
-    release_edit_form_on, release_edit_still_as_opened_on, ReleaseEditContext,
-    ReleaseEditSeedRefusal,
+    release_edit_form_on, release_edit_layout_on, release_edit_still_as_opened_on,
+    store_release_edit_sheet_decisions_on, ReleaseEditContext, ReleaseEditSeedRefusal,
 };
 pub(crate) use release_groupings::GroupingFacts;
 pub use release_groupings::{FolderReadingRefusal, GroupingChanges, SeparationRefusal};

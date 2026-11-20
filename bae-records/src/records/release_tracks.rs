@@ -38,8 +38,9 @@ pub enum MediumsSource<'a> {
     /// parentheses: `mediums` returns the columns `id`, `release_id`,
     /// `position`, `medium` and `side_count` of `release_mediums`, one row
     /// per medium, and `places` returns the columns `id` (the track's),
-    /// `medium_id` (a medium's `id`), `side`, `track_number` and
-    /// `stated_length_ms` of `tracks`, one row per track of the release.
+    /// `medium_id` (a medium's `id`), `side`, `track_number`,
+    /// `stated_length_ms` and `position` of `tracks`, one row per track of
+    /// the release.
     Draft { mediums: &'a str, places: &'a str },
 }
 
@@ -116,7 +117,7 @@ pub(super) fn placed_tracks_ctes(
         "{medium}, \
          placed AS ( \
             SELECT track.id AS id, track.title AS title, track.duration_ms AS duration_ms, \
-                   track.position AS position, place.track_number AS number, \
+                   place.position AS position, place.track_number AS number, \
                    {SIDE_KIND_SQL} AS side_kind, {side_ordinal} AS side_ordinal \
                    {extra_columns} \
             FROM tracks track \

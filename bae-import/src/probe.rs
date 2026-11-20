@@ -142,9 +142,6 @@ pub(crate) fn sheet_analysis(
             }
         })?;
 
-    let disc_number = sheet.disc_number().ok_or_else(|| ImportError::UnusableFile {
-        detail: format!("{sheet_id} is ignored, so it carves none of the folder's audio"),
-    })?;
     let mut audio_files = Vec::new();
     for (file_reference, file) in &sheet.audio_files {
         let source_audio = file.source_audio.as_ref().ok_or_else(|| ImportError::UnusableFile {
@@ -159,7 +156,6 @@ pub(crate) fn sheet_analysis(
 
     Ok(CueFlacAnalysis {
         sheet_id: sheet_id.to_string(),
-        disc_number,
         cue_sheet: sheet.sheet.clone(),
         audio_files,
     })

@@ -307,7 +307,8 @@ pub(crate) struct ImportRows<'a> {
 
 /// What an import worked out about the CUE sheets that carve its tracks out
 /// of images, each sheet named by its path in the folder: the disc each
-/// carving sheet is, and the sheet each carved track comes from.
+/// carving sheet is (the disc its first track sits on), and the sheet each
+/// carved track comes from.
 struct Carving {
     sheets: BTreeMap<String, u32>,
     /// Each carved track's id with its sheet's path.
@@ -316,16 +317,28 @@ struct Carving {
 
 impl Carving {
     /// The carving of `tracks`, read from the sheet each CUE-backed track
-    /// plays a slice of.
-    fn of(tracks: &[crate::TrackFile]) -> Self {
+    /// plays a slice of, with the discs `mediums` give the tracks.
+    fn of(
+        tracks: &[crate::TrackFile],
+        mediums: &[bae_records::DbReleaseMedium],
+    ) -> Result<Self, DbError> {
         let mut carving = Self { sheets: BTreeMap::new(), tracks: Vec::new() };
         for track in tracks {
             if let crate::TrackAudio::CueBacked { cue_pair, .. } = &track.audio {
-                carving.sheets.insert(cue_pair.sheet_id.clone(), cue_pair.disc_number);
+                let medium = mediums
+                    .iter()
+                    .find(|medium| medium.id == track.db_track.medium_id)
+                    .ok_or_else(|| {
+                        DbError::unreadable("the medium of a carved track", &track.db_track.id)
+                    })?;
+                carving
+                    .sheets
+                    .entry(cue_pair.sheet_id.clone())
+                    .or_insert(u32::from(medium.position.get()));
                 carving.tracks.push((track.db_track.id.clone(), cue_pair.sheet_id.clone()));
             }
         }
-        carving
+        Ok(carving)
     }
 
     /// Write the carving as rows over the release's files `file_ids` (each
@@ -387,7 +400,7 @@ impl ImportTables {
         let album = album.map(|album| (album.row.clone(), album.picked_new));
         let mut release = release.clone();
         let tracks: Vec<DbTrack> = tracks_to_files.iter().map(|tf| tf.db_track.clone()).collect();
-        let carving = Carving::of(tracks_to_files);
+        let carving = Carving::of(tracks_to_files, rows.mediums)?;
         let mediums = rows.mediums.to_vec();
         let track_artists = rows.track_artists.to_vec();
         let album_artists = rows.album_artists.to_vec();

@@ -16,11 +16,13 @@ use super::*;
 use crate::{ReleaseEditDraft, ReleaseEditForm, ReleaseEditLoadError, ReleaseEditSeed};
 pub(crate) use draft::{release_edit_draft_rows_on, ReleaseEditDraftRows};
 pub(crate) use form_assignments::assignment_rows_sql;
+pub use layout::{release_edit_layout_on, store_release_edit_sheet_decisions_on};
 pub use seed::ReleaseEditContext;
 use seed::{release_edit_rows_on, release_edit_seed, ReleaseEditRows};
 
 mod draft;
 mod form_assignments;
+mod layout;
 mod seed;
 
 /// Why bae can't read the seed of a release, so an editor can't open on it.

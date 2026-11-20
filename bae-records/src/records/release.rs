@@ -478,7 +478,8 @@ pub fn release_edit_tracks_sql(release: &str, source: MediumsSource<'_>) -> Stri
             JOIN audio_format_segments s ON s.audio_format_id = af.id \
             JOIN tracks t ON t.id = af.track_id \
             WHERE t.release_id = {release} AND s.role = 'main') \
-     SELECT t.*, p.side_kind, p.side_ordinal, p.number AS place_number, \
+     SELECT t.*, p.position AS placed_position, p.side_kind, p.side_ordinal, \
+        p.number AS place_number, \
         CASE WHEN p.place_stated_length_ms IS NOT NULL \
                   AND bae_lengths_disagree(t.duration_ms, p.place_stated_length_ms) \
              THEN p.place_stated_length_ms END AS listed_length_ms, \
@@ -496,7 +497,7 @@ pub fn release_edit_tracks_sql(release: &str, source: MediumsSource<'_>) -> Stri
         JOIN release_carving_sheets sheet ON sheet.file_id = carved.sheet_file_id \
         JOIN release_files sheet_file ON sheet_file.id = carved.sheet_file_id) \
         ON carved.track_id = t.id \
-     WHERE t.release_id = {release} ORDER BY t.position",
+     WHERE t.release_id = {release} ORDER BY p.position",
         placed = super::release_tracks::placed_tracks_ctes(
             release,
             source,

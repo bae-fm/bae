@@ -114,7 +114,10 @@ impl Records {
     /// check, as `still_as_opened` says, that the release is still as the
     /// editor opened on it, then write `plan`: move the release and replace
     /// its records where its change says (see `set_records_on`), then write
-    /// its rows. `gone` says what the save does with a picked artist or
+    /// its rows, then the layout of the tracks `layout` reads, when it reads
+    /// one, then what `sheet_decisions` writes of the person's choices about
+    /// CUE sheets.
+    /// `gone` says what the save does with a picked artist or
     /// album the library no longer holds. Last it reads what `saved` reads
     /// of the release as this save wrote it, and returns that.
     /// Before it writes anything, the save refuses a release that is not as
@@ -127,6 +130,14 @@ impl Records {
         plan: ReleaseEditPlan,
         gone: GonePicks,
         still_as_opened: impl for<'ctx> FnOnce(&CovenWrite<'ctx>) -> Result<Result<(), ReleaseEditRefusal>, DbError>
+            + Send
+            + 'static,
+        layout: impl for<'ctx> FnOnce(
+                &CovenWrite<'ctx>,
+            ) -> Result<Option<super::layout::ReleaseLayout>, DbError>
+            + Send
+            + 'static,
+        sheet_decisions: impl for<'ctx> FnOnce(&CovenWrite<'ctx>) -> Result<(), DbError>
             + Send
             + 'static,
         saved: impl for<'ctx> FnOnce(&CovenWrite<'ctx>) -> Result<Saved, DbError> + Send + 'static,
@@ -177,6 +188,13 @@ impl Records {
                     ),
                 }
                 .map_err(|error| error.map_refusal(ReleaseEditRefusal::Identity))?;
+                if let Some(layout) = layout(&sql)? {
+                    super::layout::write_layout_on(&sql, plan.release_id(), &layout, &*ids, &now)?;
+                }
+                // A sheet is on the disc its first track sits on, whatever
+                // moved the tracks.
+                super::layout::refresh_sheet_discs_on(&sql, plan.release_id())?;
+                sheet_decisions(&sql)?;
                 emptiable.remove_emptied(&sql)?;
                 Ok(saved(&sql)?)
             })

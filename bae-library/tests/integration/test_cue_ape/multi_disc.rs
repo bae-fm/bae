@@ -96,14 +96,12 @@ async fn test_cue_ape_next_track() {
     );
 }
 
-/// Import a two-disc CUE/APE release to the given destination and assert
-/// each track's main audio segment resolves to its own disc's APE file
-/// (identified by the relative path `CD{N}/CDImage.ape`).
-///
-/// This exercises the bare-filename collision regression in every code path:
-/// bytes-never-copied (Local), bytes-uploaded-and-pinned (Remote + pin),
-/// and bytes-uploaded-cloud-only (Remote, no pin).
-async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestination) {
+/// Import the two-disc CUE/APE release: one CUE sheet and APE image per disc,
+/// each folder's sheet naming `CDImage.ape`, read as the release's two discs.
+/// Returns the library, the folder holding its files, and the release's id.
+async fn import_multi_disc_cue_ape(
+    destination: ImportDestination,
+) -> (bae_library::test_libraries::TestLibrary, bae_util::test_files::TestFolder, String) {
     bae_util::test_logs::install();
     let temp_root = bae_util::test_files::TestFolder::new();
     let album_dir = temp_root.path().join("album");
@@ -186,7 +184,18 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestinati
     let (release_id, _) =
         wait_for_multi_disc_cue_ape_import_ready(library.manager(), destination, &mut progress_rx)
             .await;
+    (library, temp_root, release_id)
+}
 
+/// Import a two-disc CUE/APE release to the given destination and assert
+/// each track's main audio segment resolves to its own disc's APE file
+/// (identified by the relative path `CD{N}/CDImage.ape`).
+///
+/// This exercises the bare-filename collision regression in every code path:
+/// bytes-never-copied (Local), bytes-uploaded-and-pinned (Remote + pin),
+/// and bytes-uploaded-cloud-only (Remote, no pin).
+async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestination) {
+    let (library, _temp_root, release_id) = import_multi_disc_cue_ape(destination).await;
     let tracks = library.records().get_tracks_for_release(&release_id).await.expect("get tracks");
     assert_eq!(tracks.len(), 6, "should have 6 tracks (2 discs × 3 tracks)");
 
@@ -282,4 +291,71 @@ async fn test_multi_disc_cue_ape_local() {
 #[tokio::test]
 async fn test_multi_disc_cue_ape_remote() {
     assert_multi_disc_cue_ape_per_disc_mapping(ImportDestination::Cloud).await;
+}
+
+/// The release editor puts a CUE sheet on another disc of the release: the
+/// draft shows the sheet's tracks under that disc at once, after the tracks
+/// the disc holds, and saving writes the move: the medium the sheet left is
+/// gone, the moved tracks number on from the disc's own, and the sheet is the
+/// disc its tracks are on.
+#[tokio::test]
+async fn test_editor_moves_a_sheet_to_a_disc_that_holds_other_tracks() {
+    let (library, _temp_root, release_id) =
+        import_multi_disc_cue_ape(ImportDestination::ThisDevice).await;
+    let manager = library.manager();
+    let files = manager.get_files_for_release(&release_id).await.unwrap();
+    let sheet_id = |name: &str| {
+        files
+            .iter()
+            .find(|file| file.original_filename == name)
+            .unwrap_or_else(|| panic!("the release holds {name}"))
+            .id
+            .clone()
+    };
+    let (first, second) = (sheet_id("CD1/CDImage.cue"), sheet_id("CD2/CDImage.cue"));
+
+    let form = manager.open_release_edit(&release_id).await.unwrap();
+    let drafts = manager.subscribe_release_edit_draft();
+    let moved = form.clone().with_sheet_disc(first.clone(), 2);
+    let put_back = moved.clone().with_sheet_disc(first.clone(), 1);
+    assert!(!put_back.changed(), "a sheet picked back onto its own disc is no change");
+    drafts.set(Some(moved.clone())).expect("the draft takes the form");
+    let draft = drafts.next().await.expect("read the draft").expect("the library holds it");
+    let sides = draft.sides.as_deref().expect("the release has tracks");
+    let [side] = sides else { panic!("one disc holds every track: {sides:?}") };
+    assert_eq!(side.side, bae_types::mediums::TrackSide::Flat);
+    let runs: Vec<_> = side
+        .runs
+        .iter()
+        .map(|run| match run {
+            bae_import::ReleaseEditTrackRun::Sheet { sheet, rows, .. } => {
+                (sheet.file_id.clone(), sheet.disc_number, rows.len())
+            }
+            bae_import::ReleaseEditTrackRun::Track(_) => panic!("a sheet carves each track"),
+        })
+        .collect();
+    assert_eq!(
+        runs,
+        [(second.clone(), 1, 3), (first.clone(), 1, 3)],
+        "the sheet the release kept leads, and the moved sheet follows it on the same disc"
+    );
+    assert!(draft.changed);
+
+    manager.save_release_edit(moved, bae_library::GonePick::Refuse).await.expect("save the form");
+
+    let mediums = library.records().get_release_mediums(&release_id).await.unwrap();
+    assert_eq!(mediums.0.len(), 1, "the disc the sheet left is gone");
+    let tracks = library.records().get_tracks_for_release(&release_id).await.unwrap();
+    let places: Vec<_> =
+        tracks.iter().map(|track| (track.side.get(), track.track_number.get())).collect();
+    assert_eq!(places, [(1, 1), (1, 2), (1, 3), (1, 4), (1, 5), (1, 6)]);
+    let reopened = manager.open_release_edit(&release_id).await.unwrap();
+    let discs: Vec<_> = reopened
+        .opened
+        .display
+        .tracks
+        .iter()
+        .map(|track| track.sheet.as_ref().map(|sheet| sheet.disc_number))
+        .collect();
+    assert_eq!(discs, [Some(1); 6], "each sheet is the disc its tracks are on");
 }

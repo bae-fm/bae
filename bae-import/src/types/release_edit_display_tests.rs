@@ -40,11 +40,22 @@ fn form_row(id: &str) -> crate::RawTrackEdit {
 
 /// The sides of `tracks`, each beside a form row of its own.
 fn lay_out(tracks: Vec<ReleaseEditTrackContext>) -> Vec<ReleaseEditTrackSide> {
-    ReleaseEditTrackSide::lay_out(tracks.into_iter().map(|context| ReleaseEditTrackRow {
-        edit: form_row(&context.track_id),
-        context,
-        artists: None,
-    }))
+    lay_out_on_discs(tracks, 1)
+}
+
+/// The sides of `tracks` on a release of `disc_count` discs.
+fn lay_out_on_discs(
+    tracks: Vec<ReleaseEditTrackContext>,
+    disc_count: usize,
+) -> Vec<ReleaseEditTrackSide> {
+    ReleaseEditTrackSide::lay_out(
+        tracks.into_iter().map(|context| ReleaseEditTrackRow {
+            edit: form_row(&context.track_id),
+            context,
+            artists: None,
+        }),
+        disc_count,
+    )
 }
 
 /// Each run as the track ids it holds, and the file a sheet run names.
@@ -102,6 +113,22 @@ fn tracks_lay_out_a_side_per_run_of_one_side_and_a_run_per_sheet_file() {
             (None, vec!["b5"]),
         ]
     );
+}
+
+/// A sheet's run offers the sheet every disc the release holds.
+#[test]
+fn a_sheet_run_offers_every_disc_of_the_release() {
+    let sides = lay_out_on_discs(
+        vec![
+            context(side("A"), "a1", "image", Some("sheet")),
+            context(side("A"), "a2", "image", Some("sheet")),
+        ],
+        3,
+    );
+    let [ReleaseEditTrackRun::Sheet { sheet, .. }] = sides[0].runs.as_slice() else {
+        panic!("the sheet carves both tracks: {:?}", sides[0].runs);
+    };
+    assert_eq!((sheet.disc_number, sheet.disc_options.as_slice()), (1, [1, 2, 3].as_slice()));
 }
 
 #[test]
