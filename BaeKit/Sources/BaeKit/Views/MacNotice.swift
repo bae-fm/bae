@@ -217,7 +217,7 @@ public struct MacNotice: View {
             // end, then the buttons below; by where they sit, it would read
             // the line's end between the title and the line under it.
             VStack(alignment: .leading, spacing: ThemeSpace.inline) {
-                words
+                wordsOpeningDetails
                     .accessibilitySortPriority(2)
                 if buttons == .below, hasChoiceButtons {
                     choiceButtons.padding(.top, ThemeSpace.inline)
@@ -238,6 +238,26 @@ public struct MacNotice: View {
             }
         }
         .accessibilityElement(children: .contain)
+    }
+
+    /// The words, which VoiceOver reads as the button that opens the
+    /// details when a click on the row opens them.
+    @ViewBuilder
+    private var wordsOpeningDetails: some View {
+        #if canImport(AppKit)
+            if opensFromRow, let details {
+                words
+                    .accessibilityAddTraits(.isButton)
+                    .accessibilityAction(named: Text("Details")) {
+                        showErrorDetails(details)
+                    }
+            }
+            else {
+                words
+            }
+        #else
+            words
+        #endif
     }
 
     @ViewBuilder
@@ -302,6 +322,7 @@ public struct MacNotice: View {
 
     /// A click anywhere on the row opens the details, for a notice whose
     /// details open from its row; the buttons inside it keep their own clicks.
+    /// VoiceOver reads the words as that button (`wordsOpeningDetails`).
     @ViewBuilder
     private func rowOpeningDetails(_ content: some View) -> some View {
         #if canImport(AppKit)
@@ -309,10 +330,6 @@ public struct MacNotice: View {
                 content
                     .contentShape(Rectangle())
                     .onTapGesture { showErrorDetails(details) }
-                    .accessibilityAddTraits(.isButton)
-                    .accessibilityAction(named: Text("Details")) {
-                        showErrorDetails(details)
-                    }
             }
             else {
                 content
