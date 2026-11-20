@@ -28,6 +28,7 @@ import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.AndroidListRow
 import fm.bae.app.ui.components.AndroidSegmentedControl
 import fm.bae.app.ui.components.AndroidUsageKey
+import fm.bae.app.ui.components.AvatarFace
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.IconTone
 import fm.bae.app.ui.components.StorageUsageSegment
@@ -116,6 +117,10 @@ class ElementComponentShots : BoardShot() {
 
     @Test
     fun androidComponentListRowResting() = component("android.component.list-row.resting", wide = true) { Entry() }
+
+    @Test
+    fun androidComponentListRowWho() =
+        component("android.component.list-row.who", wide = true) { Entry(who = AvatarFace("A", picture = null)) }
 
     @Test
     fun androidComponentListRowMenu() = component("android.component.list-row.menu", wide = true) { Entry(menu = true) }
@@ -218,6 +223,7 @@ private fun Elsewhere(device: String) =
 
 @Composable
 private fun Entry(
+    who: AvatarFace? = null,
     menu: Boolean = false,
     dragging: Boolean = false,
 ) = Images {
@@ -227,6 +233,7 @@ private fun Entry(
         trailing = "4:32",
         art = PreviewData.imageRef(),
         onClick = {},
+        who = who,
         dragging = dragging,
         menu = if (menu) ({ TrackOptionsMenu(onPlayNext = {}, onAddToQueue = {}) }) else null,
     )
