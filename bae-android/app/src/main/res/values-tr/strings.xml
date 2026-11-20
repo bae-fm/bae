@@ -267,8 +267,7 @@
     <string name="cast_receiver_address">Adres</string>
     <string name="cast_looking_for_devices">Cihazlar aranıyor…</string>
     <string name="cast_connecting">%1$s cihazına bağlanılıyor…</string>
-    <string name="cast_turn_off_title">Yayınlama kapatılsın mı?</string>
-    <string name="cast_turn_off_message">Bu, %1$s cihazına yayınlamayı durdurur.</string>
+    <string name="cast_stop_title">%1$s üzerinde oynatma durdurulsun mu?</string>
     <string name="cast_turn_off_confirm">Kapat</string>
     <string name="cast_pin_field">PIN</string>
     <string name="cast_pair_with">%1$s ile eşleştir</string>
@@ -277,11 +276,10 @@
     <string name="cast_pairing">Eşleştiriliyor…</string>
     <string name="cast_refused_title">%1$s üzerinde oynatılamadı</string>
     <string name="cast_pair_again">Yeniden eşleştir…</string>
-    <string name="settings_casting">Yayınlama</string>
-    <string name="settings_enable_casting">Yayınlamayı etkinleştir</string>
-    <string name="settings_casting_help">Ağınızdaki Cast, AirPlay ve UPnP alıcılarını tarar.</string>
-    <string name="settings_casting_receivers">Ağınızdaki alıcılar</string>
-    <string name="settings_casting_looking">Alıcılar aranıyor…</string>
+    <string name="settings_play_on_other_devices">Diğer cihazlarda oynat</string>
+    <string name="settings_play_on_help">Ağınızdaki Cast, AirPlay ve UPnP alıcılarını tarar.</string>
+    <string name="settings_receivers">Ağınızdaki alıcılar</string>
+    <string name="settings_receivers_looking">Alıcılar aranıyor…</string>
     <string name="settings_cast_transcode_format">Dönüştürme biçimi</string>
     <string name="settings_cast_transcode_wav">WAV (kayıpsız)</string>
     <string name="settings_cast_transcode_help">Bir alıcının olduğu gibi çalamadığı parçalar için. WAV tam kaliteyi korur ancak zayıf Wi‑Fi’de kesilebilir; MP3 daha dayanıklıdır.</string>

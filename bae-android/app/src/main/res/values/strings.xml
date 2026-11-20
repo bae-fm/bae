@@ -314,8 +314,7 @@
     <string name="cast_receiver_address">Address</string>
     <string name="cast_looking_for_devices">Looking for devices…</string>
     <string name="cast_connecting">Connecting to %1$s…</string>
-    <string name="cast_turn_off_title">Turn off casting?</string>
-    <string name="cast_turn_off_message">This will stop casting to %1$s.</string>
+    <string name="cast_stop_title">Stop playing on %1$s?</string>
     <string name="cast_turn_off_confirm">Turn off</string>
     <string name="cast_pin_field">PIN</string>
     <string name="cast_pair_with">Pair with %1$s</string>
@@ -324,11 +323,10 @@
     <string name="cast_pairing">Pairing…</string>
     <string name="cast_refused_title">Could not play on %1$s</string>
     <string name="cast_pair_again">Pair again…</string>
-    <string name="settings_casting">Casting</string>
-    <string name="settings_enable_casting">Enable casting</string>
-    <string name="settings_casting_help">Scan for Cast, AirPlay, and UPnP receivers on your network.</string>
-    <string name="settings_casting_receivers">Receivers on your network</string>
-    <string name="settings_casting_looking">Looking for receivers…</string>
+    <string name="settings_play_on_other_devices">Play on other devices</string>
+    <string name="settings_play_on_help">Scan for Cast, AirPlay, and UPnP receivers on your network.</string>
+    <string name="settings_receivers">Receivers on your network</string>
+    <string name="settings_receivers_looking">Looking for receivers…</string>
     <string name="settings_cast_transcode_format">Convert to</string>
     <string name="settings_cast_transcode_wav">WAV (lossless)</string>
     <string name="settings_cast_transcode_help">For tracks a receiver cannot play as they are. WAV keeps full quality but can cut out on weak Wi‑Fi; MP3 holds up better.</string>

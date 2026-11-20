@@ -260,8 +260,7 @@
     <string name="cast_receiver_address">アドレス</string>
     <string name="cast_looking_for_devices">デバイスを探しています…</string>
     <string name="cast_connecting">%1$s に接続中…</string>
-    <string name="cast_turn_off_title">キャストをオフにしますか？</string>
-    <string name="cast_turn_off_message">%1$s へのキャストを停止します。</string>
+    <string name="cast_stop_title">%1$s での再生を停止しますか？</string>
     <string name="cast_turn_off_confirm">オフにする</string>
     <string name="cast_pin_field">PINコード</string>
     <string name="cast_pair_with">%1$s とペアリング</string>
@@ -270,11 +269,10 @@
     <string name="cast_pairing">ペアリング中…</string>
     <string name="cast_refused_title">%1$s で再生できませんでした</string>
     <string name="cast_pair_again">もう一度ペアリング…</string>
-    <string name="settings_casting">キャスト</string>
-    <string name="settings_enable_casting">キャストを有効にする</string>
-    <string name="settings_casting_help">ネットワーク上の Cast、AirPlay、UPnP レシーバーを探します。</string>
-    <string name="settings_casting_receivers">ネットワーク上のレシーバー</string>
-    <string name="settings_casting_looking">レシーバーを探しています…</string>
+    <string name="settings_play_on_other_devices">ほかのデバイスで再生</string>
+    <string name="settings_play_on_help">ネットワーク上の Cast、AirPlay、UPnP レシーバーを探します。</string>
+    <string name="settings_receivers">ネットワーク上のレシーバー</string>
+    <string name="settings_receivers_looking">レシーバーを探しています…</string>
     <string name="settings_cast_transcode_format">変換形式</string>
     <string name="settings_cast_transcode_wav">WAV（ロスレス）</string>
     <string name="settings_cast_transcode_help">レシーバーがそのままでは再生できないトラック用です。WAV は音質を保ちますが、Wi‑Fi が弱いと途切れることがあります。MP3 のほうが途切れにくくなります。</string>

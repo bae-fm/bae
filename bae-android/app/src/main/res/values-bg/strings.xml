@@ -267,8 +267,7 @@
     <string name="cast_receiver_address">Адрес</string>
     <string name="cast_looking_for_devices">Търсене на устройства…</string>
     <string name="cast_connecting">Свързване с %1$s…</string>
-    <string name="cast_turn_off_title">Да се изключи ли предаването?</string>
-    <string name="cast_turn_off_message">Това ще спре предаването към %1$s.</string>
+    <string name="cast_stop_title">Да спре ли възпроизвеждането на %1$s?</string>
     <string name="cast_turn_off_confirm">Изключване</string>
     <string name="cast_pin_field">ПИН</string>
     <string name="cast_pair_with">Сдвояване с %1$s</string>
@@ -277,11 +276,10 @@
     <string name="cast_pairing">Сдвояване…</string>
     <string name="cast_refused_title">Неуспешно възпроизвеждане на %1$s</string>
     <string name="cast_pair_again">Ново сдвояване…</string>
-    <string name="settings_casting">Предаване</string>
-    <string name="settings_enable_casting">Включване на предаването</string>
-    <string name="settings_casting_help">Търси приемници Cast, AirPlay и UPnP в мрежата ви.</string>
-    <string name="settings_casting_receivers">Приемници в мрежата ви</string>
-    <string name="settings_casting_looking">Търсене на приемници…</string>
+    <string name="settings_play_on_other_devices">Възпроизвеждане на други устройства</string>
+    <string name="settings_play_on_help">Търси приемници Cast, AirPlay и UPnP в мрежата ви.</string>
+    <string name="settings_receivers">Приемници в мрежата ви</string>
+    <string name="settings_receivers_looking">Търсене на приемници…</string>
     <string name="settings_cast_transcode_format">Преобразуване в</string>
     <string name="settings_cast_transcode_wav">WAV (без загуби)</string>
     <string name="settings_cast_transcode_help">За песни, които приемникът не може да възпроизведе в оригинален вид. WAV запазва пълното качество, но може да прекъсва при слаб Wi‑Fi; MP3 е по-устойчив.</string>

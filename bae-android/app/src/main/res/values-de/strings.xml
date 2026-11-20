@@ -267,8 +267,7 @@
     <string name="cast_receiver_address">Adresse</string>
     <string name="cast_looking_for_devices">Geräte werden gesucht …</string>
     <string name="cast_connecting">Verbindung mit %1$s wird hergestellt…</string>
-    <string name="cast_turn_off_title">Übertragung ausschalten?</string>
-    <string name="cast_turn_off_message">Damit wird die Übertragung an %1$s beendet.</string>
+    <string name="cast_stop_title">Wiedergabe auf %1$s beenden?</string>
     <string name="cast_turn_off_confirm">Ausschalten</string>
     <string name="cast_pin_field">PIN</string>
     <string name="cast_pair_with">Mit %1$s koppeln</string>
@@ -277,11 +276,10 @@
     <string name="cast_pairing">Wird gekoppelt …</string>
     <string name="cast_refused_title">Wiedergabe auf %1$s nicht möglich</string>
     <string name="cast_pair_again">Erneut koppeln …</string>
-    <string name="settings_casting">Übertragung</string>
-    <string name="settings_enable_casting">Übertragung aktivieren</string>
-    <string name="settings_casting_help">Sucht nach Cast-, AirPlay- und UPnP-Empfängern in deinem Netzwerk.</string>
-    <string name="settings_casting_receivers">Empfänger in deinem Netzwerk</string>
-    <string name="settings_casting_looking">Empfänger werden gesucht …</string>
+    <string name="settings_play_on_other_devices">Auf anderen Geräten wiedergeben</string>
+    <string name="settings_play_on_help">Sucht nach Cast-, AirPlay- und UPnP-Empfängern in deinem Netzwerk.</string>
+    <string name="settings_receivers">Empfänger in deinem Netzwerk</string>
+    <string name="settings_receivers_looking">Empfänger werden gesucht …</string>
     <string name="settings_cast_transcode_format">Umwandeln in</string>
     <string name="settings_cast_transcode_wav">WAV (verlustfrei)</string>
     <string name="settings_cast_transcode_help">Für Titel, die ein Empfänger nicht unverändert abspielen kann. WAV behält die volle Qualität, kann bei schwachem WLAN aber aussetzen; MP3 hält besser durch.</string>

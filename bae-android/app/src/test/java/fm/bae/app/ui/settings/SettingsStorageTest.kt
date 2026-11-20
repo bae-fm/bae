@@ -281,7 +281,6 @@ class SettingsStorageTest {
             playback = "Off",
             transfers = "3 pins at once",
             storage = storage,
-            casting = "Off",
             about = "Version 0.0-dev",
         )
 

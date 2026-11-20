@@ -273,8 +273,7 @@
     <string name="cast_receiver_address">Dirección</string>
     <string name="cast_looking_for_devices">Buscando dispositivos…</string>
     <string name="cast_connecting">Conectando con %1$s…</string>
-    <string name="cast_turn_off_title">¿Desactivar la transmisión?</string>
-    <string name="cast_turn_off_message">Esto detendrá la transmisión a %1$s.</string>
+    <string name="cast_stop_title">¿Dejar de reproducir en %1$s?</string>
     <string name="cast_turn_off_confirm">Desactivar</string>
     <string name="cast_pin_field">PIN</string>
     <string name="cast_pair_with">Vincular con %1$s</string>
@@ -283,11 +282,10 @@
     <string name="cast_pairing">Vinculando…</string>
     <string name="cast_refused_title">No se pudo reproducir en %1$s</string>
     <string name="cast_pair_again">Volver a vincular…</string>
-    <string name="settings_casting">Transmisión</string>
-    <string name="settings_enable_casting">Activar la transmisión</string>
-    <string name="settings_casting_help">Busca receptores Cast, AirPlay y UPnP en tu red.</string>
-    <string name="settings_casting_receivers">Receptores de tu red</string>
-    <string name="settings_casting_looking">Buscando receptores…</string>
+    <string name="settings_play_on_other_devices">Reproducir en otros dispositivos</string>
+    <string name="settings_play_on_help">Busca receptores Cast, AirPlay y UPnP en tu red.</string>
+    <string name="settings_receivers">Receptores de tu red</string>
+    <string name="settings_receivers_looking">Buscando receptores…</string>
     <string name="settings_cast_transcode_format">Convertir a</string>
     <string name="settings_cast_transcode_wav">WAV (sin pérdida)</string>
     <string name="settings_cast_transcode_help">Para las pistas que un receptor no puede reproducir tal cual. WAV mantiene la calidad completa, pero puede cortarse con un Wi‑Fi débil; MP3 aguanta mejor.</string>

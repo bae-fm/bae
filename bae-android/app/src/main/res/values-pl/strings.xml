@@ -281,8 +281,7 @@
     <string name="cast_receiver_address">Adres</string>
     <string name="cast_looking_for_devices">Wyszukiwanie urządzeń…</string>
     <string name="cast_connecting">Łączenie z %1$s…</string>
-    <string name="cast_turn_off_title">Wyłączyć przesyłanie?</string>
-    <string name="cast_turn_off_message">Spowoduje to zatrzymanie przesyłania do %1$s.</string>
+    <string name="cast_stop_title">Zatrzymać odtwarzanie na %1$s?</string>
     <string name="cast_turn_off_confirm">Wyłącz</string>
     <string name="cast_pin_field">PIN</string>
     <string name="cast_pair_with">Sparuj z %1$s</string>
@@ -291,11 +290,10 @@
     <string name="cast_pairing">Parowanie…</string>
     <string name="cast_refused_title">Nie można odtworzyć na %1$s</string>
     <string name="cast_pair_again">Sparuj ponownie…</string>
-    <string name="settings_casting">Przesyłanie</string>
-    <string name="settings_enable_casting">Włącz przesyłanie</string>
-    <string name="settings_casting_help">Wyszukuje odbiorniki Cast, AirPlay i UPnP w Twojej sieci.</string>
-    <string name="settings_casting_receivers">Odbiorniki w Twojej sieci</string>
-    <string name="settings_casting_looking">Wyszukiwanie odbiorników…</string>
+    <string name="settings_play_on_other_devices">Odtwarzaj na innych urządzeniach</string>
+    <string name="settings_play_on_help">Wyszukuje odbiorniki Cast, AirPlay i UPnP w Twojej sieci.</string>
+    <string name="settings_receivers">Odbiorniki w Twojej sieci</string>
+    <string name="settings_receivers_looking">Wyszukiwanie odbiorników…</string>
     <string name="settings_cast_transcode_format">Format konwersji</string>
     <string name="settings_cast_transcode_wav">WAV (bezstratny)</string>
     <string name="settings_cast_transcode_help">Dla utworów, których odbiornik nie może odtworzyć w oryginalnej postaci. WAV zachowuje pełną jakość, ale przy słabym Wi‑Fi może się urywać; MP3 radzi sobie lepiej.</string>

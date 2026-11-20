@@ -273,8 +273,7 @@
     <string name="cast_receiver_address">Adresse</string>
     <string name="cast_looking_for_devices">Recherche d’appareils…</string>
     <string name="cast_connecting">Connexion à %1$s…</string>
-    <string name="cast_turn_off_title">Désactiver la diffusion ?</string>
-    <string name="cast_turn_off_message">La diffusion vers %1$s sera interrompue.</string>
+    <string name="cast_stop_title">Arrêter la lecture sur %1$s ?</string>
     <string name="cast_turn_off_confirm">Désactiver</string>
     <string name="cast_pin_field">Code PIN</string>
     <string name="cast_pair_with">Jumeler avec %1$s</string>
@@ -283,11 +282,10 @@
     <string name="cast_pairing">Jumelage…</string>
     <string name="cast_refused_title">Impossible de lire sur %1$s</string>
     <string name="cast_pair_again">Jumeler à nouveau…</string>
-    <string name="settings_casting">Diffusion</string>
-    <string name="settings_enable_casting">Activer la diffusion</string>
-    <string name="settings_casting_help">Recherche les récepteurs Cast, AirPlay et UPnP de votre réseau.</string>
-    <string name="settings_casting_receivers">Récepteurs de votre réseau</string>
-    <string name="settings_casting_looking">Recherche de récepteurs…</string>
+    <string name="settings_play_on_other_devices">Lire sur d’autres appareils</string>
+    <string name="settings_play_on_help">Recherche les récepteurs Cast, AirPlay et UPnP de votre réseau.</string>
+    <string name="settings_receivers">Récepteurs de votre réseau</string>
+    <string name="settings_receivers_looking">Recherche de récepteurs…</string>
     <string name="settings_cast_transcode_format">Convertir en</string>
     <string name="settings_cast_transcode_wav">WAV (sans perte)</string>
     <string name="settings_cast_transcode_help">Pour les morceaux qu’un récepteur ne peut pas lire tels quels. Le WAV garde toute la qualité mais peut saccader en cas de Wi‑Fi faible ; le MP3 tient mieux.</string>

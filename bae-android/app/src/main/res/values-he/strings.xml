@@ -274,8 +274,7 @@
     <string name="cast_receiver_address">כתובת</string>
     <string name="cast_looking_for_devices">מחפש מכשירים…</string>
     <string name="cast_connecting">מתחבר אל %1$s…</string>
-    <string name="cast_turn_off_title">לכבות את השידור?</string>
-    <string name="cast_turn_off_message">פעולה זו תפסיק את השידור אל %1$s.</string>
+    <string name="cast_stop_title">להפסיק את הניגון ב-%1$s?</string>
     <string name="cast_turn_off_confirm">כבה</string>
     <string name="cast_pin_field">קוד PIN</string>
     <string name="cast_pair_with">התאמה עם %1$s</string>
@@ -284,11 +283,10 @@
     <string name="cast_pairing">מתבצעת התאמה…</string>
     <string name="cast_refused_title">לא ניתן לנגן ב-%1$s</string>
     <string name="cast_pair_again">התאמה מחדש…</string>
-    <string name="settings_casting">שידור</string>
-    <string name="settings_enable_casting">הפעלת שידור</string>
-    <string name="settings_casting_help">סורק את הרשת שלך אחר מקלטי Cast‏, AirPlay ו‑UPnP.</string>
-    <string name="settings_casting_receivers">מקלטים ברשת שלך</string>
-    <string name="settings_casting_looking">מחפש מקלטים…</string>
+    <string name="settings_play_on_other_devices">ניגון במכשירים אחרים</string>
+    <string name="settings_play_on_help">סורק את הרשת שלך אחר מקלטי Cast‏, AirPlay ו‑UPnP.</string>
+    <string name="settings_receivers">מקלטים ברשת שלך</string>
+    <string name="settings_receivers_looking">מחפש מקלטים…</string>
     <string name="settings_cast_transcode_format">פורמט ההמרה</string>
     <string name="settings_cast_transcode_wav">WAV (ללא אובדן)</string>
     <string name="settings_cast_transcode_help">לרצועות שמקלט אינו יכול לנגן כפי שהן. WAV שומר על איכות מלאה אך עלול להיקטע ב‑Wi‑Fi חלש; MP3 עמיד יותר.</string>

@@ -281,8 +281,7 @@
     <string name="cast_receiver_address">Адреса</string>
     <string name="cast_looking_for_devices">Пошук пристроїв…</string>
     <string name="cast_connecting">Підключення до %1$s…</string>
-    <string name="cast_turn_off_title">Вимкнути трансляцію?</string>
-    <string name="cast_turn_off_message">Це припинить трансляцію на %1$s.</string>
+    <string name="cast_stop_title">Зупинити відтворення на %1$s?</string>
     <string name="cast_turn_off_confirm">Вимкнути</string>
     <string name="cast_pin_field">PIN-код</string>
     <string name="cast_pair_with">Створити пару з %1$s</string>
@@ -291,11 +290,10 @@
     <string name="cast_pairing">Створення пари…</string>
     <string name="cast_refused_title">Не вдалося відтворити на %1$s</string>
     <string name="cast_pair_again">Створити пару знову…</string>
-    <string name="settings_casting">Трансляція</string>
-    <string name="settings_enable_casting">Увімкнути трансляцію</string>
-    <string name="settings_casting_help">Шукає приймачі Cast, AirPlay і UPnP у вашій мережі.</string>
-    <string name="settings_casting_receivers">Приймачі у вашій мережі</string>
-    <string name="settings_casting_looking">Пошук приймачів…</string>
+    <string name="settings_play_on_other_devices">Відтворювати на інших пристроях</string>
+    <string name="settings_play_on_help">Шукає приймачі Cast, AirPlay і UPnP у вашій мережі.</string>
+    <string name="settings_receivers">Приймачі у вашій мережі</string>
+    <string name="settings_receivers_looking">Пошук приймачів…</string>
     <string name="settings_cast_transcode_format">Формат перетворення</string>
     <string name="settings_cast_transcode_wav">WAV (без втрат)</string>
     <string name="settings_cast_transcode_help">Для треків, які приймач не може відтворити як є. WAV зберігає повну якість, але може уриватися при слабкому Wi‑Fi; MP3 витримує краще.</string>

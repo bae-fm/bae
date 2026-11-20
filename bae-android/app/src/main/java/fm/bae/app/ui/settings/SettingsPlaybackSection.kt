@@ -4,6 +4,7 @@ import android.content.Context
 import android.icu.text.MeasureFormat
 import android.icu.util.Measure
 import android.icu.util.MeasureUnit
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,6 +14,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -24,6 +26,7 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.RestorePlaybackPref
 import fm.bae.app.currentLocale
+import fm.bae.app.data.castingDeviceName
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidCard
 import fm.bae.app.ui.components.AndroidMenu
@@ -32,10 +35,13 @@ import fm.bae.app.ui.components.AndroidScreen
 import fm.bae.app.ui.components.RowSwitch
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
+import uniffi.bae_bridge.BridgeCastReceiver
+import uniffi.bae_bridge.BridgeCastReceiverList
+import uniffi.bae_bridge.BridgeCastTranscodeFormat
 import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeSidePauseCountdown
 
-/** The Playback page over this library's settings and this device's restore-on-launch choice. */
+/** The Playback page over this library's settings, this device's restore-on-launch choice and the receivers. */
 @Composable
 internal fun SettingsPlaybackSection(
     session: OpenLibrary,
@@ -45,10 +51,38 @@ internal fun SettingsPlaybackSection(
 ) {
     val context = LocalContext.current
     var restoreOnLaunch by remember { mutableStateOf(RestorePlaybackPref.load(context)) }
+    val status by session.castStore.status.collectAsState()
+    val receivers by session.castStore.receivers.collectAsState()
+    val connecting by session.castStart.connecting.collectAsState()
+    var pendingDisconnect by remember { mutableStateOf<String?>(null) }
+
+    fun setPlayOnOtherDevices(enabled: Boolean) {
+        session.messages.perform("update play on other devices setting") {
+            withContext(ioDispatcher) { session.cast.setEnabled(enabled) }
+        }
+    }
+
+    pendingDisconnect?.let { device ->
+        PlayOnStopDialog(
+            device = device,
+            onConfirm = {
+                pendingDisconnect = null
+                setPlayOnOtherDevices(false)
+            },
+            onDismiss = { pendingDisconnect = null },
+        )
+    }
+
+    PlayOnDiscovery(session.cast, enabled = config.castEnabled)
+
     AndroidSettingsPlayback(
         pauseBetweenSides = config.pauseBetweenSides,
         countdown = config.sidePauseCountdown,
         restoreOnLaunch = restoreOnLaunch,
+        playOnEnabled = config.castEnabled,
+        receivers = receivers,
+        connectingName = connecting?.name,
+        transcodeFormat = config.castTranscodeFormat,
         onBack = onBack,
         onPauseBetweenSides = { enabled ->
             session.messages.perform("update pause-between-sides setting") {
@@ -64,6 +98,19 @@ internal fun SettingsPlaybackSection(
             restoreOnLaunch = enabled
             RestorePlaybackPref.save(context, enabled)
         },
+        onPlayOnEnabledChange = {
+            when (val action = castToggleAction(it, castingDeviceName(status))) {
+                is CastToggleAction.Apply -> setPlayOnOtherDevices(action.enabled)
+                is CastToggleAction.ConfirmDisconnect -> pendingDisconnect = action.device
+            }
+        },
+        onPlayOn = { receiver -> session.castStart.cast(receiver) },
+        onDisconnect = session.cast::stopCasting,
+        onTranscodeFormatChange = { format ->
+            session.messages.perform("update cast conversion format") {
+                withContext(ioDispatcher) { session.cast.setTranscodeFormat(format) }
+            }
+        },
     )
 }
 
@@ -76,17 +123,28 @@ internal fun AndroidSettingsPlayback(
     pauseBetweenSides: Boolean,
     countdown: BridgeSidePauseCountdown,
     restoreOnLaunch: Boolean,
+    playOnEnabled: Boolean,
+    receivers: BridgeCastReceiverList,
+    connectingName: String?,
+    transcodeFormat: BridgeCastTranscodeFormat,
     onBack: () -> Unit,
     onPauseBetweenSides: (Boolean) -> Unit,
     onCountdown: (BridgeSidePauseCountdown) -> Unit,
     onRestoreOnLaunch: (Boolean) -> Unit,
+    onPlayOnEnabledChange: (Boolean) -> Unit,
+    onPlayOn: (BridgeCastReceiver) -> Unit,
+    onDisconnect: () -> Unit,
+    onTranscodeFormatChange: (BridgeCastTranscodeFormat) -> Unit,
 ) {
     AndroidScreen(
         title = stringResource(R.string.settings_playback),
         onBack = onBack,
         modifier = Modifier.fillMaxSize(),
     ) {
-        Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(ThemeSpace.edge)) {
+        Column(
+            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(ThemeSpace.edge),
+            verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
+        ) {
             AndroidCard {
                 AndroidRow(
                     title = stringResource(R.string.settings_pause_between_sides),
@@ -103,6 +161,16 @@ internal fun AndroidSettingsPlayback(
                     switch = RowSwitch(restoreOnLaunch, onRestoreOnLaunch),
                 )
             }
+            SettingsPlayOn(
+                enabled = playOnEnabled,
+                receivers = receivers,
+                connectingName = connectingName,
+                transcodeFormat = transcodeFormat,
+                onEnabledChange = onPlayOnEnabledChange,
+                onCast = onPlayOn,
+                onDisconnect = onDisconnect,
+                onTranscodeFormatChange = onTranscodeFormatChange,
+            )
         }
     }
 }

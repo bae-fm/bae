@@ -1,7 +1,6 @@
 package fm.bae.app.ui.settings
 
 import android.content.Context
-import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
@@ -42,14 +41,13 @@ internal data class SettingsSummaries(
     val transfers: String,
     /** The total this phone keeps for the library; none before core has measured it. */
     val storage: String?,
-    val casting: String,
     val about: String,
 )
 
 /**
  * Settings as rows on a card, in the order of the Mac's sidebar, each opening a
- * page: those of [SettingsPage] through [onOpen], Library, Transfers, Storage and
- * Casting, which are screens of their own, through [onPush].
+ * page: those of [SettingsPage] through [onOpen], Library, Transfers and Storage,
+ * which are screens of their own, through [onPush].
  */
 @Composable
 internal fun SettingsMenu(
@@ -83,11 +81,6 @@ internal fun SettingsMenu(
                 title = stringResource(R.string.settings_storage),
                 subtitle = summaries.storage,
                 onClick = { onPush(LibraryDestination.Storage) },
-            )
-            AndroidRow(
-                title = stringResource(R.string.settings_casting),
-                subtitle = summaries.casting,
-                onClick = { onPush(LibraryDestination.Casting) },
             )
             AndroidRow(
                 title = stringResource(R.string.settings_about),
@@ -135,7 +128,6 @@ internal fun rememberSettingsSummaries(
             },
         transfers = resources.getQuantityString(R.plurals.transfers_pins_summary, pins, pins),
         storage = storageSummary(deviceStorage, context),
-        casting = resources.getString(onOff(config.castEnabled)),
         about = resources.getString(R.string.settings_about_summary, installedVersion()),
     )
 }
@@ -152,9 +144,6 @@ internal fun storageSummary(
         val total = context.formatFileSize(current.value.total.requireDisplayableByteCount())
         context.getString(R.string.settings_storage_summary, total)
     }
-
-@StringRes
-private fun onOff(on: Boolean): Int = if (on) R.string.settings_summary_on else R.string.settings_summary_off
 
 /** The version of bae installed, read from the package rather than BuildConfig so it reflects what is installed. */
 @Composable

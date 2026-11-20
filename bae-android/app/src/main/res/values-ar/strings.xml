@@ -295,8 +295,7 @@
     <string name="cast_receiver_address">العنوان</string>
     <string name="cast_looking_for_devices">جارٍ البحث عن أجهزة…</string>
     <string name="cast_connecting">جارٍ الاتصال بـ ‏%1$s…</string>
-    <string name="cast_turn_off_title">إيقاف الإرسال؟</string>
-    <string name="cast_turn_off_message">سيؤدي هذا إلى إيقاف الإرسال إلى ‏%1$s.</string>
+    <string name="cast_stop_title">إيقاف التشغيل على ‏%1$s؟</string>
     <string name="cast_turn_off_confirm">إيقاف</string>
     <string name="cast_pin_field">رمز PIN</string>
     <string name="cast_pair_with">الاقتران بـ %1$s</string>
@@ -305,11 +304,10 @@
     <string name="cast_pairing">جارٍ الاقتران…</string>
     <string name="cast_refused_title">تعذّر التشغيل على ‏%1$s</string>
     <string name="cast_pair_again">الاقتران مجددًا…</string>
-    <string name="settings_casting">الإرسال</string>
-    <string name="settings_enable_casting">تفعيل الإرسال</string>
-    <string name="settings_casting_help">يبحث عن أجهزة استقبال Cast وAirPlay وUPnP على شبكتك.</string>
-    <string name="settings_casting_receivers">أجهزة الاستقبال على شبكتك</string>
-    <string name="settings_casting_looking">جارٍ البحث عن أجهزة الاستقبال…</string>
+    <string name="settings_play_on_other_devices">التشغيل على أجهزة أخرى</string>
+    <string name="settings_play_on_help">يبحث عن أجهزة استقبال Cast وAirPlay وUPnP على شبكتك.</string>
+    <string name="settings_receivers">أجهزة الاستقبال على شبكتك</string>
+    <string name="settings_receivers_looking">جارٍ البحث عن أجهزة الاستقبال…</string>
     <string name="settings_cast_transcode_format">التحويل إلى</string>
     <string name="settings_cast_transcode_wav">WAV (بدون فقدان)</string>
     <string name="settings_cast_transcode_help">للمقاطع التي لا يستطيع جهاز الاستقبال تشغيلها كما هي. يحافظ WAV على الجودة الكاملة لكنه قد ينقطع مع ضعف Wi‑Fi؛ أما MP3 فيصمد أفضل.</string>

@@ -265,8 +265,7 @@
     <string name="cast_receiver_address">Adress</string>
     <string name="cast_looking_for_devices">Söker efter enheter…</string>
     <string name="cast_connecting">Ansluter till %1$s…</string>
-    <string name="cast_turn_off_title">Stänga av castningen?</string>
-    <string name="cast_turn_off_message">Detta stoppar castningen till %1$s.</string>
+    <string name="cast_stop_title">Sluta spela upp på %1$s?</string>
     <string name="cast_turn_off_confirm">Stäng av</string>
     <string name="cast_pin_field">PIN-kod</string>
     <string name="cast_pair_with">Parkoppla med %1$s</string>
@@ -275,11 +274,10 @@
     <string name="cast_pairing">Parkopplar…</string>
     <string name="cast_refused_title">Det gick inte att spela upp på %1$s</string>
     <string name="cast_pair_again">Parkoppla igen…</string>
-    <string name="settings_casting">Castar</string>
-    <string name="settings_enable_casting">Slå på castning</string>
-    <string name="settings_casting_help">Söker efter Cast-, AirPlay- och UPnP-mottagare i ditt nätverk.</string>
-    <string name="settings_casting_receivers">Mottagare i ditt nätverk</string>
-    <string name="settings_casting_looking">Söker efter mottagare…</string>
+    <string name="settings_play_on_other_devices">Spela upp på andra enheter</string>
+    <string name="settings_play_on_help">Söker efter Cast-, AirPlay- och UPnP-mottagare i ditt nätverk.</string>
+    <string name="settings_receivers">Mottagare i ditt nätverk</string>
+    <string name="settings_receivers_looking">Söker efter mottagare…</string>
     <string name="settings_cast_transcode_format">Konvertera till</string>
     <string name="settings_cast_transcode_wav">WAV (förlustfri)</string>
     <string name="settings_cast_transcode_help">För spår som en mottagare inte kan spela upp som de är. WAV behåller full kvalitet men kan hacka vid svagt Wi‑Fi; MP3 klarar det bättre.</string>

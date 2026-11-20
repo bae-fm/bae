@@ -267,8 +267,7 @@
     <string name="cast_receiver_address">Adres</string>
     <string name="cast_looking_for_devices">Apparaten zoeken…</string>
     <string name="cast_connecting">Verbinden met %1$s…</string>
-    <string name="cast_turn_off_title">Casten uitschakelen?</string>
-    <string name="cast_turn_off_message">Hiermee stopt het casten naar %1$s.</string>
+    <string name="cast_stop_title">Stoppen met afspelen op %1$s?</string>
     <string name="cast_turn_off_confirm">Uitschakelen</string>
     <string name="cast_pin_field">Pincode</string>
     <string name="cast_pair_with">Koppelen met %1$s</string>
@@ -277,11 +276,10 @@
     <string name="cast_pairing">Koppelen…</string>
     <string name="cast_refused_title">Kan niet afspelen op %1$s</string>
     <string name="cast_pair_again">Opnieuw koppelen…</string>
-    <string name="settings_casting">Casten</string>
-    <string name="settings_enable_casting">Casten inschakelen</string>
-    <string name="settings_casting_help">Zoekt naar Cast-, AirPlay- en UPnP-ontvangers in je netwerk.</string>
-    <string name="settings_casting_receivers">Ontvangers in je netwerk</string>
-    <string name="settings_casting_looking">Ontvangers zoeken…</string>
+    <string name="settings_play_on_other_devices">Afspelen op andere apparaten</string>
+    <string name="settings_play_on_help">Zoekt naar Cast-, AirPlay- en UPnP-ontvangers in je netwerk.</string>
+    <string name="settings_receivers">Ontvangers in je netwerk</string>
+    <string name="settings_receivers_looking">Ontvangers zoeken…</string>
     <string name="settings_cast_transcode_format">Omzetten naar</string>
     <string name="settings_cast_transcode_wav">WAV (verliesvrij)</string>
     <string name="settings_cast_transcode_help">Voor nummers die een ontvanger niet zoals ze zijn kan afspelen. WAV behoudt de volle kwaliteit, maar kan haperen bij zwak Wi‑Fi; MP3 houdt beter stand.</string>

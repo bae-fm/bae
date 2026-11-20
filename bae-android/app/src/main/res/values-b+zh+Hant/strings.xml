@@ -260,8 +260,7 @@
     <string name="cast_receiver_address">位址</string>
     <string name="cast_looking_for_devices">正在尋找裝置…</string>
     <string name="cast_connecting">正在連線到 %1$s…</string>
-    <string name="cast_turn_off_title">要關閉投放嗎？</string>
-    <string name="cast_turn_off_message">這會停止投放到 %1$s。</string>
+    <string name="cast_stop_title">要停止在 %1$s 上播放嗎？</string>
     <string name="cast_turn_off_confirm">關閉</string>
     <string name="cast_pin_field">PIN 碼</string>
     <string name="cast_pair_with">與 %1$s 配對</string>
@@ -270,11 +269,10 @@
     <string name="cast_pairing">正在配對…</string>
     <string name="cast_refused_title">無法在 %1$s 上播放</string>
     <string name="cast_pair_again">重新配對…</string>
-    <string name="settings_casting">投放</string>
-    <string name="settings_enable_casting">啟用投放</string>
-    <string name="settings_casting_help">在你的網路中搜尋 Cast、AirPlay 和 UPnP 接收裝置。</string>
-    <string name="settings_casting_receivers">你網路中的接收裝置</string>
-    <string name="settings_casting_looking">正在尋找接收裝置…</string>
+    <string name="settings_play_on_other_devices">在其他裝置上播放</string>
+    <string name="settings_play_on_help">在你的網路中搜尋 Cast、AirPlay 和 UPnP 接收裝置。</string>
+    <string name="settings_receivers">你網路中的接收裝置</string>
+    <string name="settings_receivers_looking">正在尋找接收裝置…</string>
     <string name="settings_cast_transcode_format">轉換格式</string>
     <string name="settings_cast_transcode_wav">WAV（無損）</string>
     <string name="settings_cast_transcode_help">用於接收裝置無法直接播放的曲目。WAV 保留完整音質，但在 Wi‑Fi 訊號弱時可能中斷；MP3 則更穩定。</string>

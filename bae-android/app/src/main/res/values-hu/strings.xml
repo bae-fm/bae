@@ -265,8 +265,7 @@
     <string name="cast_receiver_address">Cím</string>
     <string name="cast_looking_for_devices">Eszközök keresése…</string>
     <string name="cast_connecting">Csatlakozás ehhez: %1$s…</string>
-    <string name="cast_turn_off_title">Kikapcsolod az átküldést?</string>
-    <string name="cast_turn_off_message">Ezzel leáll az átküldés ide: %1$s.</string>
+    <string name="cast_stop_title">Leállítja a lejátszást itt: %1$s?</string>
     <string name="cast_turn_off_confirm">Kikapcsolás</string>
     <string name="cast_pin_field">PIN-kód</string>
     <string name="cast_pair_with">Párosítás ezzel: %1$s</string>
@@ -275,11 +274,10 @@
     <string name="cast_pairing">Párosítás…</string>
     <string name="cast_refused_title">Nem sikerült lejátszani itt: %1$s</string>
     <string name="cast_pair_again">Párosítás újra…</string>
-    <string name="settings_casting">Átküldés</string>
-    <string name="settings_enable_casting">Átküldés bekapcsolása</string>
-    <string name="settings_casting_help">Cast-, AirPlay- és UPnP-vevőket keres a hálózatodon.</string>
-    <string name="settings_casting_receivers">Vevők a hálózatodon</string>
-    <string name="settings_casting_looking">Vevők keresése…</string>
+    <string name="settings_play_on_other_devices">Lejátszás más eszközökön</string>
+    <string name="settings_play_on_help">Cast-, AirPlay- és UPnP-vevőket keres a hálózatodon.</string>
+    <string name="settings_receivers">Vevők a hálózatodon</string>
+    <string name="settings_receivers_looking">Vevők keresése…</string>
     <string name="settings_cast_transcode_format">Átalakítási formátum</string>
     <string name="settings_cast_transcode_wav">WAV (veszteségmentes)</string>
     <string name="settings_cast_transcode_help">Olyan számokhoz, amelyeket a vevő nem tud úgy lejátszani, ahogy vannak. A WAV megőrzi a teljes minőséget, de gyenge Wi‑Fin megakadhat; az MP3 jobban bírja.</string>

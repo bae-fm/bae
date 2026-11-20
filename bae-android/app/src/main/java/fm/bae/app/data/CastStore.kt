@@ -61,7 +61,7 @@ fun receiverWithoutVolume(status: BridgeRemotePlayback): String? {
 
 /**
  * The casting device's name — what drives the cast button's active state, the
- * "Casting to …" row, and the settings confirmation.
+ * "Playing on …" row, and the settings confirmation.
  */
 fun castingDeviceName(status: BridgeRemotePlayback): String? = castingDevice(status)?.name
 

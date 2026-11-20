@@ -265,8 +265,7 @@
     <string name="cast_receiver_address">Osoite</string>
     <string name="cast_looking_for_devices">Etsitään laitteita…</string>
     <string name="cast_connecting">Yhdistetään kohteeseen %1$s…</string>
-    <string name="cast_turn_off_title">Otetaanko suoratoisto pois käytöstä?</string>
-    <string name="cast_turn_off_message">Tämä lopettaa suoratoiston kohteeseen %1$s.</string>
+    <string name="cast_stop_title">Lopetetaanko toisto laitteella %1$s?</string>
     <string name="cast_turn_off_confirm">Ota pois käytöstä</string>
     <string name="cast_pin_field">PIN-koodi</string>
     <string name="cast_pair_with">Muodosta pari laitteen %1$s kanssa</string>
@@ -275,11 +274,10 @@
     <string name="cast_pairing">Muodostetaan paria…</string>
     <string name="cast_refused_title">Toisto laitteella %1$s ei onnistunut</string>
     <string name="cast_pair_again">Muodosta pari uudelleen…</string>
-    <string name="settings_casting">Suoratoisto</string>
-    <string name="settings_enable_casting">Ota suoratoisto käyttöön</string>
-    <string name="settings_casting_help">Etsii verkostasi Cast-, AirPlay- ja UPnP-vastaanottimia.</string>
-    <string name="settings_casting_receivers">Verkkosi vastaanottimet</string>
-    <string name="settings_casting_looking">Etsitään vastaanottimia…</string>
+    <string name="settings_play_on_other_devices">Toista muilla laitteilla</string>
+    <string name="settings_play_on_help">Etsii verkostasi Cast-, AirPlay- ja UPnP-vastaanottimia.</string>
+    <string name="settings_receivers">Verkkosi vastaanottimet</string>
+    <string name="settings_receivers_looking">Etsitään vastaanottimia…</string>
     <string name="settings_cast_transcode_format">Muunna muotoon</string>
     <string name="settings_cast_transcode_wav">WAV (häviötön)</string>
     <string name="settings_cast_transcode_help">Kappaleille, joita vastaanotin ei voi toistaa sellaisenaan. WAV säilyttää täyden laadun, mutta voi katkeilla heikolla Wi‑Fi-yhteydellä; MP3 kestää sitä paremmin.</string>

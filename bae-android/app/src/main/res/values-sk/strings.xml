@@ -279,8 +279,7 @@
     <string name="cast_receiver_address">Adresa</string>
     <string name="cast_looking_for_devices">Hľadajú sa zariadenia…</string>
     <string name="cast_connecting">Pripája sa k %1$s…</string>
-    <string name="cast_turn_off_title">Vypnúť prenášanie?</string>
-    <string name="cast_turn_off_message">Týmto sa zastaví prenášanie do %1$s.</string>
+    <string name="cast_stop_title">Zastaviť prehrávanie na %1$s?</string>
     <string name="cast_turn_off_confirm">Vypnúť</string>
     <string name="cast_pin_field">PIN</string>
     <string name="cast_pair_with">Spárovať s %1$s</string>
@@ -289,11 +288,10 @@
     <string name="cast_pairing">Páruje sa…</string>
     <string name="cast_refused_title">Nedá sa prehrať na %1$s</string>
     <string name="cast_pair_again">Znova spárovať…</string>
-    <string name="settings_casting">Prenášanie</string>
-    <string name="settings_enable_casting">Zapnúť prenášanie</string>
-    <string name="settings_casting_help">Vyhľadáva prijímače Cast, AirPlay a UPnP v tvojej sieti.</string>
-    <string name="settings_casting_receivers">Prijímače v tvojej sieti</string>
-    <string name="settings_casting_looking">Hľadajú sa prijímače…</string>
+    <string name="settings_play_on_other_devices">Prehrávať na iných zariadeniach</string>
+    <string name="settings_play_on_help">Vyhľadáva prijímače Cast, AirPlay a UPnP v tvojej sieti.</string>
+    <string name="settings_receivers">Prijímače v tvojej sieti</string>
+    <string name="settings_receivers_looking">Hľadajú sa prijímače…</string>
     <string name="settings_cast_transcode_format">Konvertovať do</string>
     <string name="settings_cast_transcode_wav">WAV (bezstratový)</string>
     <string name="settings_cast_transcode_help">Pre skladby, ktoré prijímač nedokáže prehrať tak, ako sú. WAV zachová plnú kvalitu, ale pri slabej sieti Wi‑Fi môže vypadávať; MP3 to zvláda lepšie.</string>

@@ -260,8 +260,7 @@
     <string name="cast_receiver_address">주소</string>
     <string name="cast_looking_for_devices">기기를 찾는 중…</string>
     <string name="cast_connecting">%1$s에 연결 중…</string>
-    <string name="cast_turn_off_title">캐스트를 끌까요?</string>
-    <string name="cast_turn_off_message">%1$s(으)로의 캐스트가 중지됩니다.</string>
+    <string name="cast_stop_title">%1$s에서 재생을 중지할까요?</string>
     <string name="cast_turn_off_confirm">끄기</string>
     <string name="cast_pin_field">PIN</string>
     <string name="cast_pair_with">%1$s와(과) 페어링</string>
@@ -270,11 +269,10 @@
     <string name="cast_pairing">페어링 중…</string>
     <string name="cast_refused_title">%1$s에서 재생하지 못했습니다</string>
     <string name="cast_pair_again">다시 페어링…</string>
-    <string name="settings_casting">캐스트</string>
-    <string name="settings_enable_casting">캐스트 사용</string>
-    <string name="settings_casting_help">네트워크에서 Cast, AirPlay, UPnP 수신기를 검색합니다.</string>
-    <string name="settings_casting_receivers">네트워크의 수신기</string>
-    <string name="settings_casting_looking">수신기를 찾는 중…</string>
+    <string name="settings_play_on_other_devices">다른 기기에서 재생</string>
+    <string name="settings_play_on_help">네트워크에서 Cast, AirPlay, UPnP 수신기를 검색합니다.</string>
+    <string name="settings_receivers">네트워크의 수신기</string>
+    <string name="settings_receivers_looking">수신기를 찾는 중…</string>
     <string name="settings_cast_transcode_format">변환 형식</string>
     <string name="settings_cast_transcode_wav">WAV(무손실)</string>
     <string name="settings_cast_transcode_help">수신기가 그대로 재생할 수 없는 트랙에 사용합니다. WAV는 음질을 그대로 유지하지만 Wi‑Fi가 약하면 끊길 수 있고, MP3는 더 안정적입니다.</string>

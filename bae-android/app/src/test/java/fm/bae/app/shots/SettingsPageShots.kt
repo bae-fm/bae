@@ -11,6 +11,8 @@ import fm.bae.app.ui.settings.AndroidSettingsPlayback
 import fm.bae.app.ui.settings.AndroidSettingsTransfers
 import fm.bae.app.ui.settings.SettingsSummaries
 import org.junit.Test
+import uniffi.bae_bridge.BridgeCastReceiverList
+import uniffi.bae_bridge.BridgeCastTranscodeFormat
 import uniffi.bae_bridge.BridgeSidePauseCountdown
 
 /** The shots of the ready android.settings.* boards for the Settings list and the pages it opens. */
@@ -45,7 +47,7 @@ class SettingsPageShots : BoardShot() {
             }
         }
 
-    /** The Playback page with pausing between sides on, never resuming by itself, restoring on launch. */
+    /** The Playback page with pausing between sides on, never resuming by itself, restoring on launch, no Play on. */
     @Test
     fun androidSettingsPlayback() =
         shot("android.settings.playback") {
@@ -54,10 +56,18 @@ class SettingsPageShots : BoardShot() {
                     pauseBetweenSides = true,
                     countdown = BridgeSidePauseCountdown.OFF,
                     restoreOnLaunch = true,
+                    playOnEnabled = false,
+                    receivers = BridgeCastReceiverList(casting = null, found = emptyList()),
+                    connectingName = null,
+                    transcodeFormat = BridgeCastTranscodeFormat.MP3,
                     onBack = {},
                     onPauseBetweenSides = {},
                     onCountdown = {},
                     onRestoreOnLaunch = {},
+                    onPlayOnEnabledChange = {},
+                    onPlayOn = {},
+                    onDisconnect = {},
+                    onTranscodeFormatChange = {},
                 )
             }
         }
@@ -86,6 +96,5 @@ private fun summaries(library: String) =
         playback = "Pauses between sides · Restores on launch",
         transfers = "3 pins at once",
         storage = "3.9 GB on this phone",
-        casting = "Off",
         about = "Version 0.0-dev",
     )

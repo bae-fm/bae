@@ -265,8 +265,7 @@
     <string name="cast_receiver_address">Διεύθυνση</string>
     <string name="cast_looking_for_devices">Αναζήτηση συσκευών…</string>
     <string name="cast_connecting">Σύνδεση με %1$s…</string>
-    <string name="cast_turn_off_title">Απενεργοποίηση μετάδοσης;</string>
-    <string name="cast_turn_off_message">Αυτό θα σταματήσει τη μετάδοση σε %1$s.</string>
+    <string name="cast_stop_title">Διακοπή αναπαραγωγής σε %1$s;</string>
     <string name="cast_turn_off_confirm">Απενεργοποίηση</string>
     <string name="cast_pin_field">PIN</string>
     <string name="cast_pair_with">Σύζευξη με %1$s</string>
@@ -275,11 +274,10 @@
     <string name="cast_pairing">Σύζευξη…</string>
     <string name="cast_refused_title">Δεν ήταν δυνατή η αναπαραγωγή σε %1$s</string>
     <string name="cast_pair_again">Νέα σύζευξη…</string>
-    <string name="settings_casting">Μετάδοση</string>
-    <string name="settings_enable_casting">Ενεργοποίηση μετάδοσης</string>
-    <string name="settings_casting_help">Αναζήτηση δεκτών Cast, AirPlay και UPnP στο δίκτυό σας.</string>
-    <string name="settings_casting_receivers">Δέκτες στο δίκτυό σας</string>
-    <string name="settings_casting_looking">Αναζήτηση δεκτών…</string>
+    <string name="settings_play_on_other_devices">Αναπαραγωγή σε άλλες συσκευές</string>
+    <string name="settings_play_on_help">Αναζήτηση δεκτών Cast, AirPlay και UPnP στο δίκτυό σας.</string>
+    <string name="settings_receivers">Δέκτες στο δίκτυό σας</string>
+    <string name="settings_receivers_looking">Αναζήτηση δεκτών…</string>
     <string name="settings_cast_transcode_format">Μετατροπή σε</string>
     <string name="settings_cast_transcode_wav">WAV (χωρίς απώλειες)</string>
     <string name="settings_cast_transcode_help">Για κομμάτια που ένας δέκτης δεν μπορεί να αναπαραγάγει ως έχουν. Το WAV διατηρεί την πλήρη ποιότητα, αλλά μπορεί να κόβεται σε αδύναμο Wi‑Fi· το MP3 αντέχει καλύτερα.</string>

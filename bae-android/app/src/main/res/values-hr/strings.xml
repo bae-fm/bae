@@ -274,8 +274,7 @@
     <string name="cast_receiver_address">Adresa</string>
     <string name="cast_looking_for_devices">Traženje uređaja…</string>
     <string name="cast_connecting">Povezivanje s %1$s…</string>
-    <string name="cast_turn_off_title">Isključiti emitiranje?</string>
-    <string name="cast_turn_off_message">Time će se prekinuti emitiranje na %1$s.</string>
+    <string name="cast_stop_title">Zaustaviti reprodukciju na %1$s?</string>
     <string name="cast_turn_off_confirm">Isključi</string>
     <string name="cast_pin_field">PIN</string>
     <string name="cast_pair_with">Upari s uređajem %1$s</string>
@@ -284,11 +283,10 @@
     <string name="cast_pairing">Uparivanje…</string>
     <string name="cast_refused_title">Reprodukcija na %1$s nije uspjela</string>
     <string name="cast_pair_again">Ponovno upari…</string>
-    <string name="settings_casting">Emitiranje</string>
-    <string name="settings_enable_casting">Omogući emitiranje</string>
-    <string name="settings_casting_help">Traži Cast, AirPlay i UPnP prijamnike na vašoj mreži.</string>
-    <string name="settings_casting_receivers">Prijamnici na vašoj mreži</string>
-    <string name="settings_casting_looking">Traženje prijamnika…</string>
+    <string name="settings_play_on_other_devices">Reproduciraj na drugim uređajima</string>
+    <string name="settings_play_on_help">Traži Cast, AirPlay i UPnP prijamnike na vašoj mreži.</string>
+    <string name="settings_receivers">Prijamnici na vašoj mreži</string>
+    <string name="settings_receivers_looking">Traženje prijamnika…</string>
     <string name="settings_cast_transcode_format">Pretvori u</string>
     <string name="settings_cast_transcode_wav">WAV (bez gubitaka)</string>
     <string name="settings_cast_transcode_help">Za pjesme koje prijamnik ne može reproducirati onakve kakve jesu. WAV čuva punu kvalitetu, ali se može prekidati na slabom Wi‑Fi-ju; MP3 bolje izdržava.</string>

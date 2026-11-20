@@ -272,8 +272,7 @@
     <string name="cast_receiver_address">Adresă</string>
     <string name="cast_looking_for_devices">Se caută dispozitive…</string>
     <string name="cast_connecting">Se conectează la %1$s…</string>
-    <string name="cast_turn_off_title">Oprești transmisia?</string>
-    <string name="cast_turn_off_message">Aceasta va opri transmisia către %1$s.</string>
+    <string name="cast_stop_title">Oprești redarea pe %1$s?</string>
     <string name="cast_turn_off_confirm">Oprește</string>
     <string name="cast_pin_field">PIN</string>
     <string name="cast_pair_with">Asociază cu %1$s</string>
@@ -282,11 +281,10 @@
     <string name="cast_pairing">Se asociază…</string>
     <string name="cast_refused_title">Nu s-a putut reda pe %1$s</string>
     <string name="cast_pair_again">Asociază din nou…</string>
-    <string name="settings_casting">Transmisie</string>
-    <string name="settings_enable_casting">Activează transmisia</string>
-    <string name="settings_casting_help">Caută receptoare Cast, AirPlay și UPnP în rețeaua ta.</string>
-    <string name="settings_casting_receivers">Receptoare din rețeaua ta</string>
-    <string name="settings_casting_looking">Se caută receptoare…</string>
+    <string name="settings_play_on_other_devices">Redă pe alte dispozitive</string>
+    <string name="settings_play_on_help">Caută receptoare Cast, AirPlay și UPnP în rețeaua ta.</string>
+    <string name="settings_receivers">Receptoare din rețeaua ta</string>
+    <string name="settings_receivers_looking">Se caută receptoare…</string>
     <string name="settings_cast_transcode_format">Convertește în</string>
     <string name="settings_cast_transcode_wav">WAV (fără pierderi)</string>
     <string name="settings_cast_transcode_help">Pentru piesele pe care un receptor nu le poate reda ca atare. WAV păstrează calitatea completă, dar se poate întrerupe pe un Wi‑Fi slab; MP3 rezistă mai bine.</string>
