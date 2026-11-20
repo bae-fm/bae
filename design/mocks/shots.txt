@@ -97,7 +97,6 @@ android.settings.person.make-admin-done
 android.settings.person.make-admin-waiting
 android.settings.playback
 android.settings.playback.receiver-details
-android.settings.playback.receiver-menu
 android.settings.playback.receivers-found
 android.settings.playback.receivers-looking
 android.settings.restore-code.printed

@@ -1,9 +1,7 @@
 package fm.bae.app.shots
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import fm.bae.app.ui.playback.CastReceiverDetailsRows
-import fm.bae.app.ui.playback.LocalOpenReceiverMenu
 import fm.bae.app.ui.settings.AndroidSettingsPlayback
 import org.junit.Test
 import uniffi.bae_bridge.BridgeCastReceiver
@@ -34,14 +32,6 @@ class SettingsPlayOnShots : BoardShot() {
             SheetScene(playing.name, behind = { Playback(receivers()) }) {
                 CastReceiverDetailsRows(playing)
             }
-        }
-
-    /** The menu of the receiver playing, open over the page: Details, then Disconnect. */
-    @Test
-    fun androidSettingsPlaybackReceiverMenu() =
-        shot("android.settings.playback.receiver-menu") {
-            val playing = checkNotNull(receivers().casting)
-            ScreenScene { CompositionLocalProvider(LocalOpenReceiverMenu provides playing.id) { Playback(receivers()) } }
         }
 }
 
