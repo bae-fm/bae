@@ -1,0 +1,862 @@
+[
+  {
+    "name": "Brand",
+    "about": "The sheep, the drawn word and the app icons, the sheep at play on the empty Import screen, and the picture that opens the design system.",
+    "subgroups": [
+      {
+        "name": "The sheep and the word",
+        "about": "The sheep, the drawn word, and the sheep at play on the empty Import screen.",
+        "components": [
+          "Logo",
+          "ImportSheep"
+        ]
+      },
+      {
+        "name": "App icons and the cover",
+        "about": "Each platform's app icon, and the picture that opens the design system.",
+        "components": [
+          "AppIcon",
+          "Cover"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Pictures and marks",
+    "about": "What every platform shares: covers and pictures, a person's avatar, the status glyph and chip, symbols and stars.",
+    "components": [
+      "Artwork",
+      "PlaylistPicture",
+      "Avatar",
+      "StatusGlyph",
+      "StatusChip",
+      "Sym",
+      "Stars"
+    ]
+  },
+  {
+    "name": "Windows and screens",
+    "about": "The frames every board sits in: the Mac's windows with their title bar and sidebars, and the Android screens with their bars and the keyboard that shares a phone's screen.",
+    "subgroups": [
+      {
+        "name": "The main window",
+        "about": "The Mac's main window, in which the library, the side pane and the now playing bar sit.",
+        "components": [
+          "MacMainWindow"
+        ]
+      },
+      {
+        "name": "The title bar",
+        "about": "The pieces of the Mac's title bar, the welcome window, and the split a browsing page sits in.",
+        "components": [
+          "MacTitleBar",
+          "MacSectionTabs",
+          "MacActivityButton",
+          "MacAvatarButton",
+          "MacWelcomeWindow",
+          "MacBrowseSplit"
+        ]
+      },
+      {
+        "name": "The Settings window",
+        "about": "The Mac's Settings window, with its sidebar of panes and a pane's heading.",
+        "components": [
+          "MacSettingsWindow"
+        ]
+      },
+      {
+        "name": "The Settings sidebar and heading",
+        "about": "The Settings window's list of panes, and the heading at the top of a pane.",
+        "components": [
+          "MacSettingsSidebar",
+          "MacPageHeading"
+        ]
+      },
+      {
+        "name": "An Android screen",
+        "about": "An Android screen: its sections and boxes under the screen's bar.",
+        "components": [
+          "AndroidScreen"
+        ]
+      },
+      {
+        "name": "The top bar and the keyboard",
+        "about": "An Android screen's top bar, and the keyboard that shares the screen while a field has focus.",
+        "components": [
+          "AndroidTopBar",
+          "AndroidKeyboard"
+        ]
+      },
+      {
+        "name": "The library screen",
+        "about": "The Android library screen.",
+        "components": [
+          "AndroidLibraryScreen"
+        ]
+      },
+      {
+        "name": "The library screen's header",
+        "about": "The library screen's header, its search bar and its Activity button.",
+        "components": [
+          "AndroidLibraryHeader",
+          "AndroidSearchBar",
+          "AndroidActivityButton"
+        ]
+      },
+      {
+        "name": "A detail page",
+        "about": "An Android page about one thing, an album, an artist or a playlist, under its back bar.",
+        "components": [
+          "AndroidDetailScreen"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Buttons and choices",
+    "about": "The controls a person presses or sets, each platform's version side by side.",
+    "subgroups": [
+      {
+        "name": "Buttons",
+        "about": "The buttons a person presses, each platform's version side by side.",
+        "components": [
+          "MacButton",
+          "AndroidButton",
+          "MacIconButton",
+          "AndroidIconButton",
+          "AndroidInlineIconButton",
+          "MacCloseButton",
+          "MacBackButton"
+        ]
+      },
+      {
+        "name": "Choices",
+        "about": "The controls a person sets: checkboxes, switches, radios, segmented controls, pop-ups, the sort and the accent.",
+        "components": [
+          "MacCheckbox",
+          "AndroidCheckbox",
+          "MacSwitch",
+          "AndroidSwitch",
+          "MacRadio",
+          "AndroidRadio",
+          "MacSegmentedControl",
+          "AndroidSegmentedControl",
+          "MacPopUpButton",
+          "MacSortCriteria",
+          "MacSortPill",
+          "MacAccentPicker",
+          "AndroidAccentPicker"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Fields",
+    "about": "Where a person types: text, a search, a port, a file name pattern and its tokens, a receiver's PIN, and the label, note and error around a field.",
+    "subgroups": [
+      {
+        "name": "Typing",
+        "about": "Where a person types: text, a search, a port and a receiver's PIN.",
+        "components": [
+          "MacTextField",
+          "AndroidTextField",
+          "MacSearchField",
+          "MacPortField",
+          "MacPinField",
+          "AndroidPinField"
+        ]
+      },
+      {
+        "name": "Labels, patterns and errors",
+        "about": "The label and row around a field, a file name pattern and its tokens, and the line that says what is wrong.",
+        "components": [
+          "MacFormField",
+          "MacFieldRow",
+          "MacFileNameField",
+          "MacToken",
+          "MacErrorLine",
+          "AndroidErrorLine"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Settings sections, boxes and rows",
+    "about": "How a settings page is built: a section's title over a box of rows, the rows and the pieces inside them, and the note under a box.",
+    "subgroups": [
+      {
+        "name": "Sections and boxes",
+        "about": "How a settings page is built: a section's title over a box, what nests in a box, and the note and line under it.",
+        "components": [
+          "MacSection",
+          "AndroidSection",
+          "MacBox",
+          "AndroidCard",
+          "MacNested",
+          "MacDisclosure",
+          "AndroidDisclosure",
+          "MacNote",
+          "AndroidNote",
+          "MacHairline",
+          "AndroidDivider"
+        ]
+      },
+      {
+        "name": "Rows",
+        "about": "A box's rows, each platform's version.",
+        "components": [
+          "MacRow",
+          "AndroidRow"
+        ]
+      },
+      {
+        "name": "What sits in a row",
+        "about": "An info tip after a row's name, text to copy, a row's icon and text, and a grid of facts.",
+        "components": [
+          "MacInfoTip",
+          "MacCopyText",
+          "MacItem",
+          "AndroidItem",
+          "MacFactsGrid"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Menus",
+    "about": "A menu and its items, and the ⋯ button that holds a row's actions.",
+    "components": [
+      "MacMenu",
+      "MacMenuItem",
+      "AndroidMenu",
+      "AndroidMenuItem",
+      "MacMoreMenu",
+      "AndroidMoreMenu"
+    ]
+  },
+  {
+    "name": "Alerts, sheets and popovers",
+    "about": "What opens over a screen, by what it asks: a decision, a task with fields, or something to look at.",
+    "subgroups": [
+      {
+        "name": "Alerts and dialogs",
+        "about": "What asks the person to decide, and a dialog's actions.",
+        "components": [
+          "MacAlert",
+          "AndroidDialog",
+          "AndroidDialogActions"
+        ]
+      },
+      {
+        "name": "Sheets, modals and popovers",
+        "about": "What opens over a screen for a task with fields, or for something to look at.",
+        "components": [
+          "MacSheet",
+          "MacSheetFooter",
+          "MacModal",
+          "MacModalHeader",
+          "AndroidSheet",
+          "MacPopover"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Waits, notices and errors",
+    "about": "How bae says it is busy, that something went wrong, or that there is nothing to show.",
+    "subgroups": [
+      {
+        "name": "Notices",
+        "about": "How bae says that something went wrong or needs the person.",
+        "components": [
+          "MacNotice",
+          "AndroidNotice"
+        ]
+      },
+      {
+        "name": "Error details",
+        "about": "An error's causes, one a line, as an alert or a dialog shows them.",
+        "components": [
+          "MacErrorDetails",
+          "AndroidErrorDetails"
+        ]
+      },
+      {
+        "name": "Waiting and nothing to show",
+        "about": "How bae says it is busy, how far along it is, what will appear while it loads, and that there is nothing to show.",
+        "components": [
+          "MacSpinner",
+          "AndroidSpinner",
+          "MacProgress",
+          "AndroidProgress",
+          "MacProgressLine",
+          "MacProgressRing",
+          "MacPlaceholderLine",
+          "AndroidPlaceholderLine",
+          "AndroidSnackbar",
+          "MacContentUnavailable",
+          "AndroidContentUnavailable"
+        ]
+      },
+      {
+        "name": "Activity",
+        "about": "What needs the person and what is moving, in the Activity panel and sheet.",
+        "components": [
+          "MacActivity",
+          "AndroidActivity"
+        ]
+      },
+      {
+        "name": "Transfer lines",
+        "about": "One transfer in the Activity panel or sheet: what it does, how far it has got, and its bar.",
+        "components": [
+          "MacTransferLine",
+          "AndroidTransferLine"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Welcome, joining and adding a device",
+    "about": "The welcome screen's libraries and actions, and the steps that let a person or a device into a library: a step's layout, the code to scan or to show, and the digits to match.",
+    "subgroups": [
+      {
+        "name": "The Mac home",
+        "about": "The Mac welcome window's home: the logo, the person's libraries and the actions.",
+        "components": [
+          "MacWelcomeHome"
+        ]
+      },
+      {
+        "name": "The Android home",
+        "about": "The Android welcome screen's home: the logo, the person's libraries and the actions.",
+        "components": [
+          "AndroidWelcomeHome"
+        ]
+      },
+      {
+        "name": "Libraries and actions",
+        "about": "The welcome screen's list of libraries and its actions, each platform's version side by side.",
+        "components": [
+          "MacWelcomeLibraries",
+          "AndroidWelcomeLibraries",
+          "MacWelcomeActions",
+          "AndroidWelcomeActions"
+        ]
+      },
+      {
+        "name": "Joining: steps and codes",
+        "about": "The steps that let a person or a device into a library: a step's layout, the code to show and the digits to match.",
+        "components": [
+          "MacStep",
+          "AndroidStep",
+          "MacStepActions",
+          "MacScanCode",
+          "AndroidScanCode",
+          "MacMatchCode",
+          "AndroidMatchCode"
+        ]
+      },
+      {
+        "name": "Joining: scanning a code",
+        "about": "The camera that reads another device's code.",
+        "components": [
+          "MacQRScanner",
+          "AndroidQRScanner"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Sync and sharing",
+    "about": "Where the library syncs and who shares it: the sync status, the cloud home and its setup, the restore code and the invite.",
+    "subgroups": [
+      {
+        "name": "Sync status",
+        "about": "How the library syncs, what stopped it, and when this device last synced.",
+        "components": [
+          "MacSyncStatus",
+          "AndroidSyncStatus"
+        ]
+      },
+      {
+        "name": "The cloud home",
+        "about": "Where the library's data is, and what this device uses to reach it.",
+        "components": [
+          "MacCloudHome",
+          "AndroidCloudHome"
+        ]
+      },
+      {
+        "name": "Setting up S3",
+        "about": "The form that sets up an S3 cloud home.",
+        "components": [
+          "MacS3Form"
+        ]
+      },
+      {
+        "name": "S3 key fields",
+        "about": "The two fields of an S3 access key, which setting up S3, replacing a key and joining an S3 library ask for.",
+        "components": [
+          "MacS3KeyFields",
+          "AndroidS3KeyFields"
+        ]
+      },
+      {
+        "name": "Choosing a folder",
+        "about": "Choosing the Dropbox or OneDrive folder that holds the library.",
+        "components": [
+          "MacFolderPicker"
+        ]
+      },
+      {
+        "name": "The restore code",
+        "about": "The library's restore code, as Settings shows it.",
+        "components": [
+          "MacRestoreCode",
+          "AndroidRestoreCode"
+        ]
+      },
+      {
+        "name": "The invite",
+        "about": "The form that invites someone to the library.",
+        "components": [
+          "MacInviteFields",
+          "AndroidInviteFields"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Library",
+    "about": "The albums grid, the artist and composer lists and pages, and search.",
+    "subgroups": [
+      {
+        "name": "Albums",
+        "about": "The albums grid under the library's heading.",
+        "components": [
+          "MacLibraryHeading",
+          "MacAlbumGrid",
+          "AndroidAlbumGrid"
+        ]
+      },
+      {
+        "name": "Album tiles",
+        "about": "One album in the grid: its cover, title, artists and year.",
+        "components": [
+          "MacAlbumTile",
+          "AndroidAlbumTile"
+        ]
+      },
+      {
+        "name": "Artists and composers",
+        "about": "The artist and composer lists and pages: their headings, album grids and the other names they are credited by.",
+        "components": [
+          "MacArtistGroupHeading",
+          "AndroidArtistGroupHeading",
+          "MacArtistAlbumGrid",
+          "MacArtistAlbumTile",
+          "MacArtistOtherNames",
+          "AndroidArtistOtherNames",
+          "MacDetailHeader",
+          "MacSectionHeader",
+          "MacWorkDetail"
+        ]
+      },
+      {
+        "name": "Rows and search",
+        "about": "The library's list rows, and search with its sections.",
+        "components": [
+          "MacLibraryRow",
+          "AndroidLibraryRow",
+          "MacSearchCard",
+          "MacSearchSection",
+          "AndroidSearchSection"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Album page",
+    "about": "An album open: its header, rating and release, its tracks by side or disc, its credits and works, its covers and what its files are doing on this device.",
+    "subgroups": [
+      {
+        "name": "The panel",
+        "about": "The Mac's open album, as it opens under its tile.",
+        "components": [
+          "MacAlbumPanel"
+        ]
+      },
+      {
+        "name": "The header",
+        "about": "An album's header, each platform's version.",
+        "components": [
+          "MacAlbumHeader",
+          "AndroidAlbumHeader"
+        ]
+      },
+      {
+        "name": "The header's controls",
+        "about": "What sits in and under an album's header: the release picker, the rating, the play buttons, the catalogs' links, and what this phone does with the release's files.",
+        "components": [
+          "MacReleasePicker",
+          "AndroidReleasePicker",
+          "MacAlbumRating",
+          "AndroidAlbumRating",
+          "AndroidPageActions",
+          "AndroidUnplayableLine",
+          "AndroidRecordLinks",
+          "AndroidPinControl",
+          "AndroidUploadLine"
+        ]
+      },
+      {
+        "name": "Tracks",
+        "about": "An album's tracks by side or disc, and the pieces of a track's row.",
+        "components": [
+          "MacTrackRow",
+          "AndroidTrackRow",
+          "MacTrackLead",
+          "AndroidTrackLead",
+          "MacTrackColumns",
+          "MacEyebrow",
+          "AndroidEyebrow"
+        ]
+      },
+      {
+        "name": "Credits, files and saving",
+        "about": "Who made the album, what it records, its files, and the format it saves its tracks in.",
+        "components": [
+          "MacAlbumCredits",
+          "AndroidAlbumCredits",
+          "MacAlbumWorks",
+          "AndroidReleaseFiles",
+          "MacSavePanelFormat"
+        ]
+      },
+      {
+        "name": "The cover gallery",
+        "about": "Choosing an album's cover from its images, and one image's tile.",
+        "components": [
+          "MacCoverGallery",
+          "MacCoverTile"
+        ]
+      },
+      {
+        "name": "The cover preview",
+        "about": "The cover gallery's preview of the picked image.",
+        "components": [
+          "MacCoverPreview"
+        ]
+      },
+      {
+        "name": "The lightbox on the Mac",
+        "about": "An album's images, one at a time, with the thumbnails along the foot.",
+        "components": [
+          "MacLightbox",
+          "MacThumbnailStrip"
+        ]
+      },
+      {
+        "name": "The gallery on Android",
+        "about": "An album's images, one at a time, with the caption at the foot.",
+        "components": [
+          "AndroidLightbox",
+          "AndroidGalleryCaption"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Playing and casting",
+    "about": "What plays now and where: the now playing bar and full player, their controls, the seek bar, the pause between sides, and the receivers.",
+    "subgroups": [
+      {
+        "name": "Now playing",
+        "about": "The now playing bar, on each platform, with the track it plays.",
+        "components": [
+          "MacNowPlayingBar",
+          "AndroidNowPlayingBar",
+          "AndroidNowPlayingTrack"
+        ]
+      },
+      {
+        "name": "The full player",
+        "about": "Android's full player, over the library.",
+        "components": [
+          "AndroidFullPlayer"
+        ]
+      },
+      {
+        "name": "Controls",
+        "about": "Play and pause, previous and next, the seek bar and the volume.",
+        "components": [
+          "MacTransport",
+          "AndroidTransport",
+          "MacPlayPause",
+          "AndroidPlayPause",
+          "MacSeekBar",
+          "AndroidSeekBar",
+          "MacVolumeSlider",
+          "AndroidVolumeSlider"
+        ]
+      },
+      {
+        "name": "Between sides",
+        "about": "The pause between sides or discs.",
+        "components": [
+          "MacSidePause",
+          "AndroidSidePause"
+        ]
+      },
+      {
+        "name": "Casting",
+        "about": "The receivers bae casts to, and the line while it connects.",
+        "components": [
+          "MacCastPopover",
+          "MacCastConnectingLine",
+          "MacCastRow",
+          "AndroidCastRow"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Queue, playlists and history",
+    "about": "The side pane's tabs: what plays next, a playlist's page, and the plays so far.",
+    "subgroups": [
+      {
+        "name": "The side pane",
+        "about": "The Mac's side pane: the queue, the playlists and the plays so far.",
+        "components": [
+          "MacQueuePanel"
+        ]
+      },
+      {
+        "name": "Queue rows",
+        "about": "The side pane's head, the queue's sections and its rows.",
+        "components": [
+          "MacSidePaneHeader",
+          "MacQueueSection",
+          "AndroidQueueSection",
+          "MacQueueRow",
+          "AndroidQueueRow",
+          "MacQueuePlaceholderRow",
+          "AndroidQueuePlaceholderRow",
+          "MacQueueInsertLine"
+        ]
+      },
+      {
+        "name": "Playlists",
+        "about": "A playlist's page and header, and the tag that names a person.",
+        "components": [
+          "MacPlaylistPage",
+          "MacPlaylistHeader",
+          "AndroidPlaylistHeader",
+          "MacPersonTag"
+        ]
+      },
+      {
+        "name": "Playlist and history rows",
+        "about": "A row of a playlist or of the plays so far.",
+        "components": [
+          "MacListRow",
+          "AndroidListRow"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Import",
+    "about": "Finding a folder's release: the Import window and its folder list, the draft and its fields, the catalogs' answers, and the mapping of files to tracks.",
+    "subgroups": [
+      {
+        "name": "The window",
+        "about": "The Import window, and what it says before any folder is added.",
+        "components": [
+          "MacImportWindow",
+          "MacImportEmptyState"
+        ]
+      },
+      {
+        "name": "The list's sidebar",
+        "about": "The folder list in the Import window's sidebar.",
+        "components": [
+          "MacImportSidebar"
+        ]
+      },
+      {
+        "name": "The list's rows",
+        "about": "The folder list's tabs, its filter, and a folder's rows.",
+        "components": [
+          "MacImportTabs",
+          "MacImportFilterRow",
+          "MacImportGroupHeader",
+          "MacImportRow",
+          "MacImportFolderLine"
+        ]
+      },
+      {
+        "name": "The draft",
+        "about": "A found folder's release, as bae will import it.",
+        "components": [
+          "MacImportDraft"
+        ]
+      },
+      {
+        "name": "What bae read",
+        "about": "What bae read in a folder, the bar that identifies and imports it, and where the import goes.",
+        "components": [
+          "MacInvalidCandidateCard",
+          "MacImportReleaseSummary",
+          "MacIdentifyBar",
+          "MacImportDestination"
+        ]
+      },
+      {
+        "name": "The release's cover, title and artist",
+        "about": "The top of the draft, and the fields that show their values until the person edits them.",
+        "components": [
+          "MacReleaseIdentity",
+          "MacAlbumArtistField",
+          "MacAlbumPicker",
+          "MacInlineField",
+          "MacFormHeading"
+        ]
+      },
+      {
+        "name": "The release fields",
+        "about": "The release's facts: year, media, label, country, barcode, status, packaging and details.",
+        "components": [
+          "MacReleaseFields"
+        ]
+      },
+      {
+        "name": "The editor",
+        "about": "The release editor's card, for a release already in the library.",
+        "components": [
+          "MacReleaseEditorCard"
+        ]
+      },
+      {
+        "name": "The search",
+        "about": "Identify's search, a catalog it still waits on, and the ways to answer a folder that waits on the person.",
+        "components": [
+          "MacFindOnline",
+          "MacSearchSourceLine",
+          "MacAnswerAction"
+        ]
+      },
+      {
+        "name": "Releases and pressings",
+        "about": "A found album with its pressings.",
+        "components": [
+          "MacReleaseGroup",
+          "MacReleaseCard",
+          "MacPressingRow"
+        ]
+      },
+      {
+        "name": "Identifiers and links",
+        "about": "The facts and identifiers the catalogs agree on, and the links to each catalog's page.",
+        "components": [
+          "MacSourcedValue",
+          "MacIdentifierBand",
+          "MacIdentifierChip",
+          "MacRecordLinks"
+        ]
+      },
+      {
+        "name": "Files and tracks",
+        "about": "The mapping of a folder's files to the release's tracks, its images and its other files.",
+        "components": [
+          "MacImportTable",
+          "MacImportTrackRow",
+          "MacImportSheetCaption",
+          "MacImportImages",
+          "MacReleaseFiles",
+          "MacReleaseFileRow"
+        ]
+      },
+      {
+        "name": "Several folders",
+        "about": "What applies to several picked folders at once.",
+        "components": [
+          "MacImportBulk",
+          "MacBulkActionRow"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Storage and transfers",
+    "about": "Where each release's files are and what is moving: the Storage Manager, its table and inspector, the release's storage sheet, and the pins on a phone.",
+    "subgroups": [
+      {
+        "name": "The Storage Manager",
+        "about": "The Storage Manager window: every release's files and where they are.",
+        "components": [
+          "MacStorageWindow"
+        ]
+      },
+      {
+        "name": "The toolbar and the table",
+        "about": "The Storage Manager's toolbar, its table, and the cells of a release's row.",
+        "components": [
+          "MacStorageToolbar",
+          "MacTable",
+          "MacReleaseCell",
+          "MacStorageCell",
+          "MacStorageChip"
+        ]
+      },
+      {
+        "name": "What moves",
+        "about": "The footer under the release list with each queue's rate, and a transfer's bytes, rate and bar.",
+        "components": [
+          "MacStorageFooter",
+          "MacQueueRate",
+          "MacTransferReadout",
+          "MacTransferSummary"
+        ]
+      },
+      {
+        "name": "The inspector",
+        "about": "A release's files in the inspector: each file, its details, and a transfer that failed.",
+        "components": [
+          "MacFileRow",
+          "MacFileDetails",
+          "MacFailedTransferRow",
+          "MacReleaseFileTable"
+        ]
+      },
+      {
+        "name": "A release's storage",
+        "about": "Where a release's files are, on its Storage sheet.",
+        "components": [
+          "MacStorageBand",
+          "MacStorageState"
+        ]
+      },
+      {
+        "name": "Usage on a device",
+        "about": "What the library takes on this device, by kind.",
+        "components": [
+          "MacStorageUsage",
+          "AndroidStorageUsage",
+          "MacUsageKey",
+          "AndroidUsageKey"
+        ]
+      },
+      {
+        "name": "Pinning on a phone",
+        "about": "The Pinning screen: its bar, how many pin at once, and each release that pins.",
+        "components": [
+          "AndroidPinningBar",
+          "AndroidPinsAtOnce",
+          "AndroidPinningRow"
+        ]
+      }
+    ]
+  }
+]
