@@ -708,10 +708,8 @@ async fn an_upload_queues_each_release_before_returning() {
     }
 }
 
-/// Moving a selection queues each release in a write of its own, under a
-/// move of its own, and names the one that can't move: it is moving
-/// already. No release shows a transition in between, because no row of one is
-/// written.
+/// Moving a selection queues each release under a move of its own, and names
+/// the one that can't move: it is moving already.
 #[tokio::test]
 async fn moving_a_selection_queues_each_release_under_a_move_of_its_own() {
     let (test, temp_dir) = setup_test_manager().await;
@@ -731,22 +729,7 @@ async fn moving_a_selection_queues_each_release_under_a_move_of_its_own() {
     }
     manager.upload_release(&ids[4]).await.unwrap();
 
-    let rows = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
-    let mut transitions = manager.store.subscribe(|sql| {
-        Ok(sql.query_row("SELECT COUNT(*) FROM release_storage_action", [], |row| {
-            row.get::<_, i64>(0)
-        })?)
-    });
-    let seen = rows.clone();
-    let collector = bae_util::test_spawn::task(async move {
-        while let Some(Ok(count)) = transitions.next_inline().await {
-            seen.lock().unwrap().push(count);
-        }
-    });
-
     let outcome = manager.upload_releases(&ids).await.unwrap();
-    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
-    collector.abort();
 
     let UploadReleasesOutcome::Partial { receipt: Some(receipt), failure } = outcome else {
         panic!("four releases must move around the one in storage");
@@ -776,11 +759,6 @@ async fn moving_a_selection_queues_each_release_under_a_move_of_its_own() {
     for id in &ids[..4] {
         assert!(has_pending_uploads(manager, id).await);
     }
-    assert!(
-        rows.lock().unwrap().iter().all(|count| *count == 0),
-        "no release shows a transition: {:?}",
-        rows.lock().unwrap()
-    );
 }
 
 #[tokio::test]

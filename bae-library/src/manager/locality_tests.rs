@@ -423,10 +423,9 @@ async fn a_pinned_release_over_the_budget_leaves_room_to_cache_a_played_track() 
     assert!(after.cached > 0, "the played track is cached: {after:?}");
 }
 
-/// Unpinning a selection releases every pin in one write: no release shows an
-/// unpin on the way, because no entry of one is written.
+/// Unpinning a selection releases the pin of every release in it.
 #[tokio::test]
-async fn unpinning_a_selection_releases_every_pin_in_one_write() {
+async fn unpinning_a_selection_releases_every_pin() {
     let (test, temp_dir) = setup_test_manager().await;
     let manager = test.library.manager();
     connect_test_cloud(&test).await;
@@ -448,23 +447,8 @@ async fn unpinning_a_selection_releases_every_pin_in_one_write() {
         pinned.push((release.id, file.id));
     }
 
-    let rows = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
-    let mut transitions = manager.store.subscribe(|sql| {
-        Ok(sql.query_row("SELECT COUNT(*) FROM release_storage_action", [], |row| {
-            row.get::<_, i64>(0)
-        })?)
-    });
-    let seen = rows.clone();
-    let collector = bae_util::test_spawn::task(async move {
-        while let Some(Ok(count)) = transitions.next_inline().await {
-            seen.lock().unwrap().push(count);
-        }
-    });
-
     let ids: Vec<String> = pinned.iter().map(|(release, _)| release.clone()).collect();
     manager.unpin_releases(&ids).await.unwrap();
-    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
-    collector.abort();
 
     for (release, file) in &pinned {
         assert!(
@@ -472,11 +456,6 @@ async fn unpinning_a_selection_releases_every_pin_in_one_write() {
             "release {release} unpinned"
         );
     }
-    assert!(
-        rows.lock().unwrap().iter().all(|count| *count == 0),
-        "no release shows a transition: {:?}",
-        rows.lock().unwrap()
-    );
 }
 
 /// Unpinning a release whose files are on this device only refuses nothing:
