@@ -32,7 +32,7 @@
       // With no linked release there is nothing to fetch, so no Refresh.
       h(MacModalHeader, { title: props.title || 'Change cover', large: true }, unlinked ? null : h(MacButton, null, 'Refresh'), h(MacButton, null, 'Done')),
       h('div', { className: 'bae-m-cgal-body' },
-        h('div', { className: 'bae-m-cgal-left' }, h('div', { style: { display: 'flex', gap: 8, alignItems: 'center' } }, 'Source', h(MacPopUpButton, { value: 'All' })),
+        h('div', { className: 'bae-m-cgal-left' }, h('div', { style: { display: 'flex', gap: 8, alignItems: 'center' } }, 'Source', h(MacPopUpButton, { label: 'Source', value: 'All' })),
           sec('photo', 'Current cover', 'Cover', true),
           unlinked ? h('div', null, h('div', { className: 'bae-strong', style: { fontSize: 15 } }, 'No linked release'), h('div', { className: 'bae-muted' }, 'Link a Discogs or MusicBrainz release to browse its artwork.'), h(MacButton, null, 'Find release…')) : sec('globe', 'Remote sources', props.remoteNames || 'Discogs · 1 · Front,Discogs · 2 · Back'),
           sec('folder', 'Release files', props.files || 'cover.jpg,back.jpg,disc.jpg')),
