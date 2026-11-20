@@ -43,7 +43,7 @@ fn lay_out(tracks: Vec<ReleaseEditTrackContext>) -> Vec<ReleaseEditTrackSide> {
     ReleaseEditTrackSide::lay_out(tracks.into_iter().map(|context| ReleaseEditTrackRow {
         edit: form_row(&context.track_id),
         context,
-        artist_standing: None,
+        artists: None,
     }))
 }
 

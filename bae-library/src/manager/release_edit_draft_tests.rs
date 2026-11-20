@@ -90,10 +90,9 @@ async fn the_live_draft_shows_a_merged_artist_without_an_edit() {
     let stands = |wanted: bae_import::ArtistStanding| {
         move |draft: &Option<bae_import::ReleaseEditDraft>| {
             draft.as_ref().is_some_and(|draft| {
-                draft
-                    .album_artist_standing
-                    .as_ref()
-                    .is_some_and(|standing| standing.artists == std::slice::from_ref(&wanted))
+                draft.album_artists.as_ref().is_some_and(|field| {
+                    field.credits.iter().map(|credit| &credit.standing).eq([&wanted])
+                })
             })
         }
     };
@@ -173,15 +172,16 @@ async fn an_artist_the_form_picked_shows_and_saves_as_a_new_credit_once_deleted(
     let stands = |wanted: bae_import::ArtistStanding| {
         move |draft: &Option<bae_import::ReleaseEditDraft>| {
             draft.as_ref().is_some_and(|draft| {
-                let track_standing = draft
+                let track_artists = draft
                     .sides
                     .iter()
                     .flatten()
                     .flat_map(bae_import::ReleaseEditTrackSide::rows)
-                    .find_map(|row| row.artist_standing.as_ref());
-                [draft.album_artist_standing.as_ref(), track_standing].into_iter().all(|standing| {
-                    standing
-                        .is_some_and(|standing| standing.artists == std::slice::from_ref(&wanted))
+                    .find_map(|row| row.artists.as_ref());
+                [draft.album_artists.as_ref(), track_artists].into_iter().all(|field| {
+                    field.is_some_and(|field| {
+                        field.credits.iter().map(|credit| &credit.standing).eq([&wanted])
+                    })
                 })
             })
         }

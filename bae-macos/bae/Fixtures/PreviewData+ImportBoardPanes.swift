@@ -44,7 +44,7 @@ extension PreviewData {
             live: importStep == nil
                 ? triageLive(boardDraftActions) : northboundImportingLive,
             importStatus: importStep.map { .importing(step: $0) },
-            albumArtistStanding: boardLibraryArtistStanding
+            albumArtists: boardLibraryArtists("Mara Quill")
         )
     }
 
@@ -106,7 +106,7 @@ extension PreviewData {
                                         listedLength: nil,
                                         positionText: "\(index + 1)"
                                     ),
-                                    artistStanding: nil
+                                    artists: nil
                                 )
                             )
                         }
@@ -123,7 +123,7 @@ extension PreviewData {
             records: boardRecords("board-northbound"),
             hasRecords: true,
             pressingOffers: pressingOffers,
-            albumArtistStanding: boardLibraryArtistStanding,
+            albumArtists: boardLibraryArtists("Mara Quill"),
             changed: false,
             invalid: nil
         )
@@ -264,7 +264,7 @@ extension PreviewData {
                     artistLine: .named("Mara Quill")
                 )
             ),
-            albumArtistStanding: boardLibraryArtistStanding
+            albumArtists: boardLibraryArtists("Mara Quill")
         )
     }
 
@@ -407,7 +407,7 @@ extension PreviewData {
                         : BridgeDurationClock.length(
                             ms: entry.listedSeconds * 1_000
                         ),
-                    artistStanding: nil
+                    artists: nil
                 )
             }
     }
@@ -509,7 +509,7 @@ extension PreviewData {
                 records: boardRecords("board-field-recordings")
             ),
             live: triageLive(boardDraftActions),
-            albumArtistStanding: boardLibraryArtistStanding
+            albumArtists: boardLibraryArtists("Mara Quill")
         )
     }
 
@@ -584,7 +584,8 @@ extension PreviewData {
             ),
             cover: boardCover(found.album),
             session: session,
-            live: needsYou(.notFound)
+            live: needsYou(.notFound),
+            albumArtists: boardLibraryArtists(found.artist)
         )
     }
 

@@ -93,9 +93,9 @@ struct MacImportDraft: View {
     /// The media and details the pressing's Add menus offer, as the draft's
     /// read hands them beside `editValues`.
     let pressingOffers: BridgePressingOffers
-    /// How the draft's album artists stand to the library, as core's read
-    /// found them; `nil` while the draft names none.
-    let albumArtistStanding: BridgeArtistFieldStanding?
+    /// The draft's album artists, each with its badge, as core's read found
+    /// them; `nil` while the draft names none.
+    let albumArtists: BridgeArtistField?
     /// Every catalog that describes the release the candidate is linked to.
     /// Empty for a candidate linked to no release.
     let records: [BridgeReleaseRecord]
@@ -142,7 +142,7 @@ struct MacImportDraft: View {
                 ReleaseMetadataHeader(
                     values: editValues,
                     pressingOffers: pressingOffers,
-                    albumArtistStanding: albumArtistStanding,
+                    albumArtists: albumArtists,
                     writer: editActions,
                     editingCommands: editingCommands,
                     artistSearch: library.artistSearch,

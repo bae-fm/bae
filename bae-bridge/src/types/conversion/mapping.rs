@@ -157,7 +157,7 @@ impl BridgeTrackMapping {
             position,
             length_ms,
             listed_length_ms,
-            artist_standing,
+            artists,
         } = mapping;
         BridgeTrackMapping {
             source: BridgeMappingSource::from_core(source),
@@ -165,7 +165,7 @@ impl BridgeTrackMapping {
             position,
             length: BridgeDurationClock::of_length(length_ms),
             listed_length: listed_length_ms.map(BridgeDurationClock::of_length),
-            artist_standing: artist_standing.map(BridgeArtistFieldStanding::from_core),
+            artists: artists.map(BridgeArtistField::from_core),
         }
     }
 }

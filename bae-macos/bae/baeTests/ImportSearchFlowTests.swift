@@ -375,7 +375,7 @@ final class MetadataApplicationEditingTests: XCTestCase {
             ReleaseMetadataHeader(
                 values: model.edit,
                 pressingOffers: PreviewData.pressingOffers,
-                albumArtistStanding: nil,
+                albumArtists: nil,
                 writer: ReleaseFieldWriter(
                     setField: { field, value in
                         model.commit(field: field, value: value)

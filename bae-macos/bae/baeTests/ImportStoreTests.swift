@@ -113,7 +113,7 @@ private func detail(
                 metadataDraft: MappingFixtures.albumEdit,
                 pressingOffers: PreviewData.pressingOffers,
                 summaryCatalogNumber: nil,
-                albumArtistStanding: nil,
+                albumArtists: nil,
                 metadataDraftIsBlank: false,
                 metadataProvenance: MappingFixtures.provenance,
                 releaseLink: MappingFixtures.releaseLink,

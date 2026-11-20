@@ -22,8 +22,8 @@ use crate::ImportError;
 /// The mapping table as one JSON document, for the release the scan stores
 /// at the key the statement binds as `:key`, over the draft stored under its
 /// content hash. Each row carries its draft track whole (`track_json_sql`)
-/// and how the track's own artists stand to the library
-/// (`artist_standing_clauses`), so the rows need no join to another read's
+/// and the track's own artists, each with how it stands to the library
+/// (`artist_field_clauses`), so the rows need no join to another read's
 /// draft. `key` is the key the statement binds. The disc numbers a sheet can
 /// take, 1 up to the count of resolved sheets, number those sheets: a
 /// recursive CTE that counted up to them would make coven rerun the
@@ -206,7 +206,7 @@ runs AS (
                'sheet', json((SELECT json FROM sheets WHERE relative_path = n.sheet_id)),
                'rows', json_group_array(json_object(
                    'track', json(track_json), 'matches', unit_matches,
-                   'artist_standing', json({track_standing}),
+                   'artists', json({track_artists}),
                    'position', position_text,
                    'listed_ms', listed_ms,
                    'unit', CASE WHEN file_kind IS NOT NULL THEN json_object(
@@ -252,10 +252,10 @@ SELECT json_object(
     'units', (SELECT COUNT(*) FROM scan_candidate_unit
               WHERE watched_folder_path = (SELECT watched_folder_path FROM candidate) AND candidate_path = :key))",
         track = crate::tables::import_state::track_json_sql(),
-        standing_clauses = super::artist_standing_clauses(super::CreditSource::Candidate(
+        standing_clauses = super::artist_field_clauses(super::CreditSource::Candidate(
             crate::tables::import_state::OneCandidate::Scanned(key)
         )),
-        track_standing = super::track_artist_standing_sql("n.track_id"),
+        track_artists = super::track_artist_field_sql("n.track_id"),
     )
 }
 
@@ -277,9 +277,9 @@ struct AudioJson {
 struct RowJson {
     /// The draft track the row maps.
     track: crate::tables::import_state::StoredTrack,
-    /// How the track's own artists stand to the library, as the standing
-    /// clauses wrote it; `None` when it has none of its own.
-    artist_standing: Option<super::FieldStandingJson>,
+    /// The track's own artists, each with how it stands to the library, as
+    /// the standing clauses wrote them; `None` when it has none of its own.
+    artists: Option<super::ArtistFieldJson>,
     #[serde(deserialize_with = "flag")]
     matches: bool,
     position: String,
@@ -655,18 +655,14 @@ fn track_mapping(row: RowJson) -> Result<TrackMapping, ImportError> {
             })
         }
     };
-    let artist_standing =
-        row.artist_standing
-            .map(super::FieldStandingJson::standing)
-            .transpose()
-            .map_err(|stated| internal(format!("a track's artist standing: {stated}")))?;
+    let artists = row.artists.map(super::ArtistFieldJson::field).transpose()?;
     Ok(TrackMapping {
         source,
         track: track.edit.as_edit(),
         position: row.position,
         length_ms: unit.length_ms,
         listed_length_ms: row.listed_ms,
-        artist_standing,
+        artists,
     })
 }
 

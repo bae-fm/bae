@@ -500,7 +500,7 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
             hasCoverOptions: false,
             editValues: editValues,
             pressingOffers: PreviewData.pressingOffers,
-            albumArtistStanding: nil,
+            albumArtists: nil,
             records: [],
             releaseLink: nil,
             album: nil,

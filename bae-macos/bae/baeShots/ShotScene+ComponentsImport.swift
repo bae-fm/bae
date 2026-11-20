@@ -58,14 +58,16 @@ extension ShotScene {
 
     /// One track of the mapping table: the file it plays from, its title
     /// and the position core numbers it by. By default the album's artists
-    /// are its artists, so its artist field is empty; `listedSeconds` is the
-    /// length the source lists when it differs from the audio's.
+    /// are its artists, so its artist field is empty; `ownArtists` is the
+    /// field core's read gives the track's own `artists`; `listedSeconds` is
+    /// the length the source lists when it differs from the audio's.
     private static func mappingTrack(
         file: String,
         position: String,
         title: String,
         seconds: UInt64,
         artists: BridgeTrackArtistAssignments = .albumArtists,
+        ownArtists: BridgeArtistField? = nil,
         listedSeconds: UInt64? = nil
     ) -> BridgeTrackMapping {
         BridgeTrackMapping(
@@ -81,7 +83,7 @@ extension ShotScene {
             listedLength: listedSeconds.map {
                 BridgeDurationClock.length(ms: $0 * 1_000)
             },
-            artistStanding: nil
+            artists: ownArtists
         )
     }
 
@@ -119,7 +121,7 @@ extension ShotScene {
             position: position,
             length: BridgeDurationClock.length(ms: seconds * 1_000),
             listedLength: nil,
-            artistStanding: nil
+            artists: nil
         )
     }
 
@@ -212,7 +214,7 @@ extension ShotScene {
             playing: true
         ),
         trackRowScene(
-            "mac.component.import-track-row.own-artist",
+            "mac.component.import-track-row.own-artist-from-the-library",
             mappingTrack(
                 file: "03 Salt Road.flac",
                 position: "3",
@@ -220,7 +222,8 @@ extension ShotScene {
                 seconds: 320,
                 artists: .explicit(
                     assignments: [PreviewData.boardArtist("Odile Fen")]
-                )
+                ),
+                ownArtists: PreviewData.boardLibraryArtists("Odile Fen")
             )
         ),
         trackRowScene(

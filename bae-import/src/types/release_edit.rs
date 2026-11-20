@@ -245,8 +245,9 @@ pub struct ReleaseEditDraft {
     pub has_records: bool,
     /// The media and Discogs details the form's pressing Add menus offer.
     pub pressing_offers: crate::PressingOffers,
-    /// `None` when the form names no album artist.
-    pub album_artist_standing: Option<crate::ArtistFieldStanding>,
+    /// The form's album artists, each with how it stands to the library, as
+    /// this read found them; `None` when the form names no album artist.
+    pub album_artists: Option<crate::ArtistField>,
     pub changed: bool,
     pub invalid: Option<EditValidationError>,
 }

@@ -52,13 +52,14 @@ impl ReleaseEditTrackContext {
 }
 
 /// One row of the editor's track table: the form row that edits a track,
-/// the library's facts about the track, and how the track's own artists
-/// stand to the library (`None` when it takes its album's or names none).
+/// the library's facts about the track, and the track's own artists, each
+/// with how it stands to the library (`None` when it takes its album's or
+/// names none).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReleaseEditTrackRow {
     pub edit: crate::RawTrackEdit,
     pub context: ReleaseEditTrackContext,
-    pub artist_standing: Option<crate::ArtistFieldStanding>,
+    pub artists: Option<crate::ArtistField>,
 }
 
 /// One side of the release as the editor's track table lays it out (a disc

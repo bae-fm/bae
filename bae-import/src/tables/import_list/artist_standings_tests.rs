@@ -1,5 +1,6 @@
-//! Each field's standing follows its artists': a picked artist stands in the
-//! library and a credit as its stored answer says, and the field counts them.
+//! Each field holds its credits, each with its artist's standing: a picked
+//! artist stands in the library and a credit as its stored answer says, and
+//! the field counts them.
 
 use super::*;
 use crate::identification::tests::fixed_now;
@@ -19,36 +20,48 @@ fn artist(id: &str, name: &str, discogs: Option<&str>, musicbrainz: Option<&str>
     }
 }
 
-/// The standings of the candidate `hash`'s album artists and of its first
-/// track's own artists.
-async fn standings_of(
+/// The candidate `hash`'s album artists and its first track's own artists,
+/// each with its standing.
+async fn fields_of(
     db: &bae_store::Store,
     hash: &str,
-) -> (Option<ArtistFieldStanding>, Option<ArtistFieldStanding>) {
+) -> (Option<ArtistField>, Option<ArtistField>) {
     let hash = hash.to_string();
     db.read(move |sql| {
         let source =
             CreditSource::Candidate(crate::tables::import_state::OneCandidate::Hash(&hash));
-        let album = album_artist_standing_on(&sql, source)?;
+        let album = album_artist_field_on(&sql, source)?;
         let track: Option<String> = sql
             .query_row(
                 &format!(
-                    "WITH {} SELECT standing FROM artist_field_standing WHERE part = 1",
-                    artist_standing_clauses(source)
+                    "WITH {} SELECT field FROM artist_field WHERE part = 1",
+                    artist_field_clauses(source)
                 ),
                 source.params().as_slice(),
                 |row| row.get(0),
             )
             .optional()?;
-        Ok((album, track.as_deref().map(artist_field_standing_of_json).transpose()?))
+        Ok((album, track.as_deref().map(artist_field_of_json).transpose()?))
     })
     .await
     .unwrap()
 }
 
+/// The field `standing` of `credits`, each beside its artist's standing.
+fn field_of(standing: ArtistsStanding, credits: Vec<(Credited, ArtistStanding)>) -> ArtistField {
+    ArtistField {
+        standing,
+        credits: credits
+            .into_iter()
+            .map(|(credited, standing)| StandingCredit { credited, standing })
+            .collect(),
+    }
+}
+
 /// A picked artist stands in the library; each credit stands as it
-/// resolved, in the field's order; and the field counts its artists: all in
-/// the library, all new, some new, one with choices, or some to choose.
+/// resolved, beside its credit in the field's order; and the field counts its
+/// artists: all in the library, all new, some new, one with choices, or some
+/// to choose.
 #[tokio::test]
 async fn each_field_counts_how_its_artists_stand() {
     let (db, _tmp) = empty_db(crate::TEST_SCHEMA).await;
@@ -66,7 +79,7 @@ async fn each_field_counts_how_its_artists_stand() {
         Credited::plain(ArtistAssignment::picked(ExistingArtist {
             artist_id: "library-artist".to_string(),
             name: "Library Name".to_string(),
-            sort_name: None,
+            sort_name: Some("Library Name, sorted".to_string()),
             musicbrainz_artist_id: None,
             discogs_artist_id: None,
         }))
@@ -84,33 +97,22 @@ async fn each_field_counts_how_its_artists_stand() {
             .to_vec(),
     };
 
-    for (album, field, artists) in [
+    use ArtistStanding::{Library, New};
+    for (standing, credits) in [
+        (ArtistsStanding::Library, vec![(picked(), Library), (named("library name"), Library)]),
+        (ArtistsStanding::New, vec![(named("New One"), New), (named("New Two"), New)]),
+        (ArtistsStanding::SomeNew { count: 1 }, vec![(picked(), Library), (named("New One"), New)]),
+        (ArtistsStanding::Choose { choices: 2 }, vec![(named("Shared Name"), shared())]),
         (
-            vec![picked(), named("library name")],
-            ArtistsStanding::Library,
-            vec![ArtistStanding::Library, ArtistStanding::Library],
-        ),
-        (
-            vec![named("New One"), named("New Two")],
-            ArtistsStanding::New,
-            vec![ArtistStanding::New, ArtistStanding::New],
-        ),
-        (
-            vec![picked(), named("New One")],
-            ArtistsStanding::SomeNew { count: 1 },
-            vec![ArtistStanding::Library, ArtistStanding::New],
-        ),
-        (vec![named("Shared Name")], ArtistsStanding::Choose { choices: 2 }, vec![shared()]),
-        (
-            vec![picked(), named("Shared Name"), named("New One")],
             ArtistsStanding::SomeToChoose { count: 1 },
-            vec![ArtistStanding::Library, shared(), ArtistStanding::New],
+            vec![(picked(), Library), (named("Shared Name"), shared()), (named("New One"), New)],
         ),
     ] {
+        let album: Vec<Credited> = credits.iter().map(|(credited, _)| credited.clone()).collect();
         controls.set_album_artists(&hash, &album).await.unwrap();
-        let (album_standing, track_standing) = standings_of(&db, &hash).await;
-        assert_eq!(album_standing, Some(ArtistFieldStanding { field, artists }));
-        assert_eq!(track_standing, None, "the track takes its album's artists");
+        let (album_field, track_field) = fields_of(&db, &hash).await;
+        assert_eq!(album_field, Some(field_of(standing, credits)));
+        assert_eq!(track_field, None, "the track takes its album's artists");
     }
 }
 
@@ -142,19 +144,20 @@ async fn a_track_s_own_artists_stand_apart_from_the_album_s() {
         .await
         .unwrap();
 
-    let (album, track) = standings_of(&db, &hash).await;
+    let (album, track) = fields_of(&db, &hash).await;
+    let named = |name: &str| Credited::plain(ArtistAssignment::named(name));
     assert_eq!(
         album,
-        Some(ArtistFieldStanding {
-            field: ArtistsStanding::New,
-            artists: vec![ArtistStanding::New]
-        })
+        Some(field_of(ArtistsStanding::New, vec![(named("Album Artist"), ArtistStanding::New)]))
     );
     assert_eq!(
         track,
-        Some(ArtistFieldStanding {
-            field: ArtistsStanding::New,
-            artists: vec![ArtistStanding::New, ArtistStanding::New]
-        })
+        Some(field_of(
+            ArtistsStanding::New,
+            vec![
+                (named("Guest One"), ArtistStanding::New),
+                (named("Guest Two"), ArtistStanding::New)
+            ]
+        ))
     );
 }

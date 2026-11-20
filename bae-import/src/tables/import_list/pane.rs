@@ -56,7 +56,7 @@ enum StageRows {
 struct DraftRows {
     pane_rows: DbCandidatePaneRows,
     mapping: super::mapping_rows::MappingRows,
-    album_artist_standing: Option<crate::ArtistFieldStanding>,
+    album_artists: Option<crate::ArtistField>,
     records: Vec<bae_catalogs::records::ReleaseRecord>,
     picked_library_status: Option<LibraryStatus>,
     album: crate::DraftAlbum,
@@ -151,7 +151,8 @@ fn imported_on(
 
 /// The draft of the release the scan stores at `key` and what its pane draws
 /// beside it: the linked releases' records, its cover, the album an import
-/// files under, and how the draft's album artists stand to the library. Each
+/// files under, and the draft's album artists with how each stands to the
+/// library. Each
 /// statement binds only `key` and reads the candidate's content hash from
 /// the scan's row itself.
 fn draft_rows_on(
@@ -163,7 +164,7 @@ fn draft_rows_on(
     // Read here, inside the pane's live query, so an artist another import
     // commits, or any artist row that changes, reads the credits again. The
     // mapping statement reads each track's own artists' standing the same way.
-    let album_artist_standing = super::artist_standings::album_artist_standing_on(
+    let album_artists = super::artist_standings::album_artist_field_on(
         sql,
         super::artist_standings::CreditSource::Candidate(OneCandidate::Scanned(key)),
     )?;
@@ -178,7 +179,7 @@ fn draft_rows_on(
     Ok(DraftRows {
         pane_rows,
         mapping,
-        album_artist_standing,
+        album_artists,
         records,
         picked_library_status,
         album,
@@ -273,7 +274,7 @@ impl CandidateDetailRows {
                 let DraftRows {
                     pane_rows,
                     mapping,
-                    album_artist_standing,
+                    album_artists,
                     records,
                     picked_library_status,
                     album,
@@ -294,7 +295,7 @@ impl CandidateDetailRows {
                     metadata_draft: pane_rows.draft.release_edit(),
                     draft_blank: pane_rows.draft_blank,
                     draft_valid: pane_rows.draft_valid,
-                    album_artist_standing,
+                    album_artists,
                     mapping,
                     cover,
                     lookup_choices,
