@@ -2860,7 +2860,8 @@ Two ways put a release back on disk, from desktop:
   One file name pattern and one folder name pattern serve every format. A
   pattern is text with values in it, each value one chip in the accent: the person types
   between the chips (`Artist - Album`), and Delete after a chip or Forward
-  Delete before it takes the whole chip out. A value the track or release
+  Delete before it takes the whole chip out. The person drags a chip to move
+  it, and VoiceOver reads each chip by its value's name. A value the track or release
   does not state comes out empty and the text around it stays. Typed text
   that can't make a name turns the field red with why: text that starts the
   name with `.`, one of `\ : ? * " < > | /`, or no pattern at all. Until it
