@@ -446,9 +446,9 @@ extension ImportListSlot {
 
     /// A read failed: report it, and have the next change rebuild the list.
     private func fail(_ error: any Error) {
-        sourceFailed = true
         // A cancellation has no line and is not a failed read.
         guard let displayed = DisplayError(error) else { return }
+        sourceFailed = true
         loadFailure = displayed
         uiStore.showError(displayed)
     }

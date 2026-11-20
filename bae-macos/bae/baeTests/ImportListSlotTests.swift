@@ -206,6 +206,38 @@ struct ImportListSlotTests {
         #expect(uiStore.lastError != nil)
     }
 
+    /// A task that scrolls the list ends with it, and the bridge's reads throw
+    /// `CancellationError`. That is no failure: no alert, no failure state, and
+    /// the next change keeps the list instead of building it again.
+    @Test("a cancelled read is neither an alert nor a failed list")
+    func aCancelledReadIsNotAFailure() async throws {
+        let uiStore = UiStore()
+        let source = MutableImportList(items: (0..<30).map(candidateItem))
+        let loads = Counter()
+        let slot = ImportListSlot(
+            importStore: ImportStore(),
+            uiStore: uiStore,
+            selection: ImportSelection(),
+            makeHandle: {
+                loads.increment()
+                return source.handle
+            }
+        )
+        slot.startLoad()
+        try await Wait.until { slot.list?.idAt(0) != nil }
+        let list = try #require(slot.list)
+
+        source.cancelReads()
+        try await Wait.until { source.endedReads > 0 }
+        try await Wait.untilSteady { uiStore.lastError == nil }
+        #expect(uiStore.lastError == nil)
+        #expect(slot.loadFailure == nil)
+
+        slot.setAllGroupsExpanded(false)
+        #expect(loads.value == 1)
+        #expect(slot.list === list)
+    }
+
     /// The slot follows the candidate core says the count waits on.
     @Test("going to the first identifying candidate follows core's answer")
     func revealFirstIdentifyingFollowsCoresAnswer() async throws {

@@ -276,6 +276,22 @@ struct PaginatedListTests {
     }
 
     @MainActor
+    @Test("a first read that is cancelled is no failure")
+    func cancelledFirstReadIsNotAFailure() async throws {
+        let probe = ProbeList(ids(0...9))
+        probe.holdCount()
+        let list = PaginatedList(
+            queries: probe.queries,
+            onError: { Issue.record("List failed: \($0)") }
+        )
+        await list.loadInitial()
+        probe.failCount(CancellationError())
+        try await Wait.untilSteady { list.initialLoadError }
+        #expect(list.initialLoadError == nil)
+        list.cancel()
+    }
+
+    @MainActor
     @Test(
         "a reopened list whose view read fails before its count delivers keeps its rows and reports the failure"
     )

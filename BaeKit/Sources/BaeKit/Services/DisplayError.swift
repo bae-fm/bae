@@ -137,9 +137,12 @@ public struct DisplayError: Equatable, Sendable {
     /// out the opaque detail the copy button offers, and for a cancellation
     /// Foundation puts its generic sentence where core says to show nothing.
     ///
-    /// Fails when core says the failure has no line to show — a cancellation. A
-    /// Swift-origin error always has one: it is prose the UI wrote.
+    /// Fails for a cancellation: core's, which says the failure has no line to
+    /// show, or Swift's own `CancellationError`, which a cancelled `async` bridge
+    /// call throws. Any other Swift-origin error has a line: it is prose the UI
+    /// wrote.
     public init?(_ error: any Error) {
+        if error is CancellationError { return nil }
         guard let failure = error as? LocalizedFailure else {
             self.line = error.localizedDescription
             self.detail = nil

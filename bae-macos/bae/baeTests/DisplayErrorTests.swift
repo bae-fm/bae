@@ -132,6 +132,11 @@ struct DisplayErrorTests {
         #expect(BridgeError.Cancelled.localizedLine == nil)
     }
 
+    @Test("Swift's cancellation produces no error to display")
+    func swiftCancellationProducesNothing() {
+        #expect(DisplayError(CancellationError() as any Error) == nil)
+    }
+
     /// The fallback is what lets a `catch` be routed without first proving what it
     /// can throw: a Swift-origin error keeps its own prose.
     @Test("a Swift-origin error passes through unchanged")
