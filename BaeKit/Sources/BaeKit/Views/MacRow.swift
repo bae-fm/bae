@@ -134,8 +134,11 @@ public struct MacRow<Lead: View, Label: View, Content: View>: View {
             LabeledContent {
                 HStack(spacing: ThemeSpace.group) {
                     if let value, !value.isEmpty {
+                        // A value stays on one line, as the boards keep
+                        // it, and the name beside it wraps instead.
                         Text(verbatim: value)
                             .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: true, vertical: false)
                     }
                     content
                     if chevron {
