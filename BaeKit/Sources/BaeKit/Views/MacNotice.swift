@@ -220,6 +220,10 @@ public struct MacNotice: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            // The words are read before the buttons at the line's end,
+            // which VoiceOver would otherwise read between the title and
+            // the line under it, by where they sit.
+            .accessibilitySortPriority(1)
             if (buttons == .inline && hasChoiceButtons) || onDismiss != nil {
                 HStack(spacing: ThemeSpace.related) {
                     if buttons == .inline {
@@ -232,6 +236,7 @@ public struct MacNotice: View {
                 .fixedSize()
             }
         }
+        .accessibilityElement(children: .contain)
     }
 
     @ViewBuilder
