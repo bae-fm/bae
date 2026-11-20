@@ -66,10 +66,6 @@ struct MacReleaseFileRow: View {
                         ? AnyShapeStyle(Theme.accent)
                         : AnyShapeStyle(.secondary)
                 )
-                .frame(
-                    width: ThemeSize.hitTarget,
-                    height: ThemeSize.hitTarget
-                )
                 .contentShape(Rectangle())
         }
         .buttonStyle(.accentPlain)
