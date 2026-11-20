@@ -129,10 +129,6 @@ struct PeopleAndDevicesPage: View {
     private var closedRequests: Set<String> = []
     @State
     private var showAddDevice = false
-    /// The QR code and restore code the Add Device sheet shows, with the
-    /// watch for the device that joins from them; nil while they generate.
-    @State
-    private var addDeviceShare: Result<BridgeAddDevice, Error>?
     @State
     private var removal: Removal?
     /// What the person still has to do in the provider after removing a
@@ -260,11 +256,7 @@ struct PeopleAndDevicesPage: View {
             }
         }
         .sheet(isPresented: $showAddDevice) {
-            AddDeviceSheet(
-                result: $addDeviceShare,
-                onDismiss: { showAddDevice = false }
-            )
-            .task { await generateAddDeviceShare() }
+            AddDevicePairingSheet(onDismiss: { showAddDevice = false })
         }
         .macAlert(item: $removal) { selected in
             let title: String
@@ -562,10 +554,7 @@ extension PeopleAndDevicesPage {
         } footer: {
             if member.isSelf {
                 MacSheetFooter {
-                    Button("Add device…") {
-                        addDeviceShare = nil
-                        showAddDevice = true
-                    }
+                    Button("Add device…") { showAddDevice = true }
                 }
             }
         }
@@ -659,24 +648,6 @@ extension PeopleAndDevicesPage {
                     reason: .deviceNotGone
                 )
             }
-        }
-    }
-
-    /// Closing the sheet cancels this task, and with it the Rust call.
-    private func generateAddDeviceShare() async {
-        do {
-            addDeviceShare = .success(try await sync.addDevice.start())
-        }
-        catch is CancellationError {
-            logger.debug("add-device code generation cancelled")
-        }
-        catch {
-            logger.error(
-                "Failed to generate the add-device code: \(String(reflecting: error))"
-            )
-            // No line means core reported a cancellation; keep the spinner.
-            guard DisplayError(error) != nil else { return }
-            addDeviceShare = .failure(error)
         }
     }
 

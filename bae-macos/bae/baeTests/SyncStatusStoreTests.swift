@@ -183,6 +183,7 @@ struct SyncStatusStoreTests {
         BridgeSyncStatusSnapshot(
             shown: shown,
             setupRunning: false,
+            hasCloudHome: true,
             undoneSetup: nil
         )
     }

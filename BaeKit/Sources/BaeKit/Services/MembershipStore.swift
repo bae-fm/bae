@@ -5,14 +5,15 @@ import os.log
 private let logger = Logger.bae("MembershipStore")
 
 /// The store's members joined with their profiles, the invites this device
-/// has open and the admin changes it asked for. The store reads whether this device's person is an admin
-/// for as long as the library is open, from `start()`: the menu bar always
-/// shows Rename Library, which it enables. The store reads the rest while a
-/// screen shows it, from `show()` to `hide()`: it subscribes to the people,
-/// the requested profile and the invites, and to core's joined list of the
-/// people: this device's person, the others and their counts. A person's
-/// page reads that person by member id, and each place that shows admin
-/// changes reads its own changes by the place.
+/// has open and the admin changes it asked for. The store reads whether this
+/// device's person is an admin, and core's joined list of the people (this
+/// device's person, the others and their counts), for as long as the library
+/// is open, from `start()`: the menu bar always shows Rename Library, which
+/// it enables, and the title bar always shows the person's picture. The store reads the rest while
+/// a screen shows it, from `show()` to `hide()`: it subscribes to the
+/// requested profile and the invites. A person's page reads that person by
+/// member id, and each place that shows admin changes reads its own changes
+/// by the place.
 @MainActor
 @Observable
 public final class MembershipStore {
@@ -50,10 +51,11 @@ public final class MembershipStore {
     /// Where the pairing `followAddDevice` follows is, nil until it reports.
     public private(set) var addDeviceStatus: BridgeAddDeviceStatus?
 
-    /// Starts the membership subscription, returning what keeps it running.
-    private let subscribeMembers: @MainActor (MembershipStore) -> AnyObject
-    /// Starts the people, requested profile, admin change and invite
-    /// subscriptions a screen shows, returning what keeps each running.
+    /// Starts the membership and people subscriptions, returning what keeps
+    /// each running.
+    private let subscribeMembers: @MainActor (MembershipStore) -> [AnyObject]
+    /// Starts the requested profile, admin change and invite subscriptions a
+    /// screen shows, returning what keeps each running.
     private let subscribeShown: @MainActor (MembershipStore) -> [AnyObject]
     /// Starts the subscription to the person with the member id.
     private let subscribePerson: Subscribe<String, BridgePerson?>
@@ -77,7 +79,7 @@ public final class MembershipStore {
     /// request.
     private let holdFrequentSync: @MainActor () -> () -> Void
     @ObservationIgnored
-    private var membersSubscription: AnyObject?
+    private var membersSubscriptions: [AnyObject]?
     /// What a screen showing the people reads, while one does.
     @ObservationIgnored
     private var shownSubscriptions: [AnyObject]?
@@ -85,13 +87,7 @@ public final class MembershipStore {
     public convenience init(handle: AppHandle) {
         self.init(
             subscribeMembers: { store in
-                ScreenSubscription(
-                    handle.subscribeMembers(),
-                    onValue: { [weak store] membership in
-                        store?.membersChanged(membership)
-                    },
-                    onError: { [weak store] error in store?.fail(error) }
-                )
+                Self.followMembers(handle, store: store)
             },
             subscribeShown: { store in Self.followShown(handle, store: store) },
             subscribePerson: { store, memberId, apply in
@@ -140,7 +136,8 @@ public final class MembershipStore {
     }
 
     private init(
-        subscribeMembers: @escaping @MainActor (MembershipStore) -> AnyObject,
+        subscribeMembers:
+            @escaping @MainActor (MembershipStore) -> [AnyObject],
         subscribeShown: @escaping @MainActor (MembershipStore) -> [AnyObject],
         subscribePerson: @escaping Subscribe<String, BridgePerson?>,
         subscribeWaitingRequest:
@@ -166,14 +163,14 @@ public final class MembershipStore {
         self.followAddDeviceStatus = followAddDeviceStatus
     }
 
-    /// Read whether this device's person is an admin, for as long as the
-    /// library is open.
+    /// Read whether this device's person is an admin, and the people, for
+    /// as long as the library is open.
     public func start() {
-        precondition(membersSubscription == nil, "membership subscribed twice")
-        membersSubscription = subscribeMembers(self)
+        precondition(membersSubscriptions == nil, "membership subscribed twice")
+        membersSubscriptions = subscribeMembers(self)
     }
 
-    /// Read the people, invites and admin changes while a screen shows them.
+    /// Read the invites and admin changes while a screen shows them.
     public func show() {
         guard shownSubscriptions == nil else { return }
         shownSubscriptions = subscribeShown(self)
@@ -208,7 +205,6 @@ public final class MembershipStore {
         hideWaitingRequest()
         hideInvite()
         shownSubscriptions = nil
-        people = nil
         inviteEntries = []
         libraryAdminChanges.hide()
         pageAdminChanges.hide()
@@ -282,23 +278,38 @@ public final class MembershipStore {
 extension MembershipStore {
     /// The subscriptions to what a screen showing the people reads, which
     /// hand each value to `store`.
+    private static func followMembers(
+        _ handle: AppHandle,
+        store: MembershipStore
+    ) -> [AnyObject] {
+        [
+            ScreenSubscription(
+                handle.subscribeMembers(),
+                onValue: { [weak store] membership in
+                    store?.membersChanged(membership)
+                },
+                onError: { [weak store] error in store?.fail(error) }
+            ),
+            ScreenSubscription(
+                handle.subscribePeople(),
+                onValue: { [weak store] people in store?.people = people },
+                onError: { [weak store] error in store?.fail(error) }
+            ),
+        ]
+    }
+
     private static func followShown(
         _ handle: AppHandle,
         store: MembershipStore
     ) -> [AnyObject] {
         [
             ScreenSubscription(
-                handle.subscribePeople(),
-                onValue: { [weak store] people in store?.people = people },
-                onError: { [weak store] error in store?.fail(error) }
-            ),
-            ScreenSubscription(
                 handle.subscribeInvites(),
                 onValue: { [weak store] entries in
                     store?.inviteEntries = entries
                 },
                 onError: { [weak store] error in store?.fail(error) }
-            ),
+            )
         ]
     }
 
@@ -369,7 +380,7 @@ extension MembershipStore {
             addDeviceStatus: BridgeAddDeviceStatus? = nil
         ) -> MembershipStore {
             let store = MembershipStore(
-                subscribeMembers: { _ in NSObject() },
+                subscribeMembers: { _ in [] },
                 subscribeShown: { _ in [] },
                 subscribePerson: { _, memberId, apply in
                     apply(

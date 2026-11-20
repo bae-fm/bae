@@ -108,6 +108,7 @@ class SyncPullsTest {
                 lastSynced = null,
             ),
         setupRunning = false,
+        hasCloudHome = true,
         undoneSetup = null,
     )
 }

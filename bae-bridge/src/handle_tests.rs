@@ -665,11 +665,13 @@ fn a_storage_setup_crosses_undone_or_running() {
     assert_eq!(category, crate::types::BridgeErrorCategory::StorageSetupUndone);
     assert_eq!(bridge.shown.status, crate::types::BridgeSyncStatusWord::NotSynced);
     assert!(!bridge.setup_running);
+    assert!(!bridge.has_cloud_home, "an undone setup leaves the library with no cloud home");
 
     let running = snapshot(bae_sync_status::StorageSetupState::Running);
     let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(running);
     assert!(bridge.undone_setup.is_none());
     assert!(bridge.setup_running);
+    assert!(bridge.has_cloud_home, "a running setup counts as a cloud home");
     assert_eq!(bridge.shown.status, crate::types::BridgeSyncStatusWord::SettingUpStorage);
 }
 

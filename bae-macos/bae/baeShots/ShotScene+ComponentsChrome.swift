@@ -338,6 +338,16 @@ extension ShotScene {
             .environment(activityStore(activity))
             .environment(SubsonicStore())
             .environment(SettingsNavigation())
+            // Ana, whose picture ends the bar.
+            .environment(
+                MembershipStore.stub(
+                    people: PreviewData.members(
+                        reaching: PreviewData.previewDropboxStorage
+                    ),
+                    selfIsAdmin: true
+                )
+            )
+            .environment(PreviewData.syncStatus(hasCloudHome: true))
         }
     }
 }

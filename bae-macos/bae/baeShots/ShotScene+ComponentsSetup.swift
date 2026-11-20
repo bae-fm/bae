@@ -323,6 +323,7 @@ extension ShotScene {
                             lastSynced: lastSynced
                         ),
                         setupRunning: false,
+                        hasCloudHome: true,
                         undoneSetup: nil
                     )
                 )

@@ -75,6 +75,42 @@ struct AddDeviceSheet: View {
     }
 }
 
+/// The Add device sheet as Your devices and the person's menu open it: it
+/// starts a pairing as it opens, and closing it ends the pairing.
+struct AddDevicePairingSheet: View {
+    @Environment(Sync.self)
+    private var sync
+    let onDismiss: () -> Void
+
+    /// The QR code and restore code the sheet shows, with the watch for the
+    /// device that joins from them; nil while they generate.
+    @State
+    private var share: Result<BridgeAddDevice, Error>?
+
+    var body: some View {
+        AddDeviceSheet(result: $share, onDismiss: onDismiss)
+            .task { await generateShare() }
+    }
+
+    /// Closing the sheet cancels this task, and with it the Rust call.
+    private func generateShare() async {
+        do {
+            share = .success(try await sync.addDevice.start())
+        }
+        catch is CancellationError {
+            logger.debug("add-device code generation cancelled")
+        }
+        catch {
+            logger.error(
+                "Failed to generate the add-device code: \(String(reflecting: error))"
+            )
+            // No line means core reported a cancellation; keep the spinner.
+            guard DisplayError(error) != nil else { return }
+            share = .failure(error)
+        }
+    }
+}
+
 /// The sheet's face, by where the pairing is: a new device's request, to
 /// add when its screen shows the number; the name of the device that was
 /// added; or until then the code to scan or type, a spinner while it starts,

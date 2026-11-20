@@ -216,6 +216,12 @@ impl SyncStatusSnapshot {
         )
     }
 
+    /// The library has a cloud home: this device has a storage location
+    /// recorded, or a setup of one runs.
+    pub fn has_cloud_home(&self) -> bool {
+        self.location.is_some() || self.storage_setup == Some(StorageSetupState::Running)
+    }
+
     /// A pass is moving, or a file is being sent or downloaded, as coven's
     /// sync state says.
     pub fn syncing(&self) -> bool {

@@ -148,7 +148,7 @@ struct LibrarySettingsTab: View {
     }
 
     /// The Sync row: the state of the sync, opening its page; without
-    /// storage, Set up sync….
+    /// storage, Set up a cloud home….
     @ViewBuilder
     private var syncRow: some View {
         if configStore.syncs || setupRunning {
@@ -169,7 +169,7 @@ struct LibrarySettingsTab: View {
                     HStack {
                         Text("Not synced")
                             .foregroundStyle(.secondary)
-                        Button("Set up sync…") {
+                        Button("Set up a cloud home…") {
                             showSyncSetup = true
                         }
                     }

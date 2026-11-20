@@ -458,6 +458,9 @@ pub struct BridgeSyncStatusSnapshot {
     /// A storage setup runs: a setup screen's, or one past its point of no
     /// return that sync's connection finishes after a relaunch.
     pub setup_running: bool,
+    /// The library has a cloud home: this device has a storage location
+    /// recorded, or a setup of one runs.
+    pub has_cloud_home: bool,
     /// A storage setup that ended undone with no setup screen there to hear
     /// it, shown until the person dismisses it with
     /// `AppHandle::dismiss_undone_storage_setup`.
@@ -476,6 +479,7 @@ pub struct BridgeUndoneStorageSetup {
 impl BridgeSyncStatusSnapshot {
     pub(crate) fn from_core(snapshot: bae_sync_status::SyncStatusSnapshot) -> Self {
         let shown = BridgeSyncShown::from_core(snapshot.shown());
+        let has_cloud_home = snapshot.has_cloud_home();
         let bae_sync_status::SyncStatusSnapshot {
             coven: _,
             error: _,
@@ -493,7 +497,7 @@ impl BridgeSyncStatusSnapshot {
             }
             Some(bae_sync_status::StorageSetupState::Running) | None => None,
         };
-        Self { shown, setup_running, undone_setup }
+        Self { shown, setup_running, has_cloud_home, undone_setup }
     }
 }
 

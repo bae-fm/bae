@@ -304,17 +304,21 @@ and, when it credits others besides the group's artist, "with" them.
 
 **The person's menu.** The person's picture, or the initials of their name
 (§5.4), ends the top bar: on a Mac at the end of the window's title bar, and on
-Android after ⋮. Screen readers name it *Your menu*. It opens a menu of *Add
-device…* and, for an admin, *Invite someone…*, then, after a divider,
+Android after ⋮. Screen readers name it *Your menu*. A person with no profile
+shows a plain tile in the picture's place, and until bae has read what the menu
+needs (the library's sync state on a Mac, whether the person is an admin on
+Android) the top bar shows no picture and no menu. It opens a menu of *Add device…* and, for an admin, *Invite
+someone…*, then, after a divider,
 *Playlists* and *History*, and, after another, *Settings…* (on Android *Add
 device*, *Invite someone* for an admin, *Playlists*, *History* and *Settings*).
 Add device opens the pairing of a new device, as *Add device…* on Your devices
 does; Invite someone opens the invite, as People's *Invite…* does; on a Mac
 whose library has no cloud home yet, *Set up a cloud home…* comes first and
 opens the cloud home setup, as the Sync page's *Set up a cloud home…* does, and
-Add device and Invite someone each open a sheet that says the cloud home comes
-first: "To add a device, set up a cloud home first. Your library and music stay
-on this Mac until you do." (an invite says "To invite someone, …"), with
+Add device and Invite someone each open a sheet, titled *Add a device* or
+*Invite someone*, that says the cloud home comes first: "To add a device, set
+up a cloud home first. Your library and music stay on this Mac until you do."
+(an invite says "To invite someone, …"), with
 *Cancel* and *Set up a cloud home…*. On a Mac, Playlists and History open in
 the side pane beside the queue, which a control at its top switches between
 *Queue*, *Playlists* and *History*; on Android each opens as its own screen
@@ -3871,7 +3875,7 @@ still record the key, so the page's line says *Could not use this key* over
 why, until the person dismisses it.
 The words for the place are always "S3 storage", never "bucket".
 
-**Choosing where, on macOS.** *Set up sync…* opens a sheet that lists the
+**Choosing where, on macOS.** *Set up a cloud home…* opens a sheet that lists the
 providers this build offers, in the order iCloud, Dropbox, OneDrive and
 S3-compatible, one row each with a line saying what it is (iCloud
 uses the Apple Account the Mac is signed in to; Dropbox, a shared folder in the
@@ -5691,7 +5695,7 @@ rows follow, **Sync** and **People and devices**, each
 opening its page and showing where it stands: Sync the state of the sync,
 with its dot in the state's color, People and devices "2 people · 3
 devices". A library with no storage has one row in place of those two,
-**Sync** saying "Not synced", with a chevron, *Set up sync…* and a note that the library
+**Sync** saying "Not synced", with a chevron, *Set up a cloud home…* and a note that the library
 is only on this Mac. Removing the library is not in Settings; it is on the
 first screen's list (§6.4).
 

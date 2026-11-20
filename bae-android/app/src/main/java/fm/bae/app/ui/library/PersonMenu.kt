@@ -24,8 +24,8 @@ import fm.bae.app.ui.components.face
 private val PERSON_PICTURE = 32.dp
 
 /**
- * The person's picture, or the initials of their name, which ends the library's header and opens their menu. It
- * draws nothing until their profile and whether they are an admin have been read.
+ * The person's picture, or the initials of their name, which ends the library's header and opens their menu. A person
+ * with no profile shows a plain tile. It draws nothing until whether they are an admin has been read.
  */
 @Composable
 internal fun PersonMenu(
@@ -37,11 +37,10 @@ internal fun PersonMenu(
     onHistory: () -> Unit,
     onSettings: () -> Unit,
 ) {
-    val profile = person.profile ?: return
     val isAdmin = person.isAdmin ?: return
     PersonButton(
         state = state,
-        face = profile.face(),
+        face = person.profile?.face() ?: AvatarFace(initials = "", picture = null),
         isAdmin = isAdmin,
         onAddDevice = onAddDevice,
         onInvite = onInvite,

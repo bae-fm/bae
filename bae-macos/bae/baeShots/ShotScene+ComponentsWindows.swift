@@ -217,6 +217,7 @@ private struct SettingsSidebarShot: View {
                     snapshot: BridgeSyncStatusSnapshot(
                         shown: shown,
                         setupRunning: false,
+                        hasCloudHome: true,
                         undoneSetup: nil
                     )
                 )

@@ -19,8 +19,6 @@ struct MacTitleBar: View {
     private var libraryProjections
     @Environment(UiStore.self)
     var uiStore
-    @Environment(\.openSettingsWindow)
-    private var openSettings
     @Binding
     var searchText: String
     /// Told the search field's frame in `SearchOverlaySpace` whenever it
@@ -65,9 +63,7 @@ struct MacTitleBar: View {
 
                 MacActivityButton()
 
-                MacIconButton(symbol: "gearshape", label: "Settings") {
-                    openSettings()
-                }
+                MacAvatarButton()
             }
         }
         .padding(.leading, titleBarLeadingPadding)

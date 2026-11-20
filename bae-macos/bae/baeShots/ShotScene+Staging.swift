@@ -108,6 +108,7 @@ struct SettingsWindowShot<Page: View>: View {
                     snapshot: BridgeSyncStatusSnapshot(
                         shown: shown,
                         setupRunning: false,
+                        hasCloudHome: true,
                         undoneSetup: undoneSetup
                     )
                 )

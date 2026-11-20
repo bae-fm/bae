@@ -61,6 +61,7 @@ func librarySettingsTabPreview(
             snapshot: BridgeSyncStatusSnapshot(
                 shown: shown,
                 setupRunning: false,
+                hasCloudHome: true,
                 undoneSetup: nil
             )
         )
@@ -89,6 +90,7 @@ func syncSettingsPagePreview(
         snapshot: BridgeSyncStatusSnapshot(
             shown: shown,
             setupRunning: false,
+            hasCloudHome: true,
             undoneSetup: undoneSetup
         )
     )

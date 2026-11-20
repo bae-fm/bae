@@ -128,7 +128,12 @@ class SyncScreenTest {
         val status = SyncStatusStore()
         val session = openTestLibrary(handle, status)
         status.apply(
-            BridgeSyncStatusSnapshot(shown = shown, setupRunning = false, undoneSetup = null),
+            BridgeSyncStatusSnapshot(
+                shown = shown,
+                setupRunning = false,
+                hasCloudHome = true,
+                undoneSetup = null,
+            ),
             NoErrorDisplays,
         )
         return session
@@ -160,6 +165,7 @@ class SyncScreenTest {
                         lastSynced = null,
                     ),
                 setupRunning = false,
+                hasCloudHome = true,
                 undoneSetup = null,
             ),
             NoErrorDisplays,
@@ -242,6 +248,7 @@ class SyncScreenTest {
                         lastSynced = null,
                     ),
                 setupRunning = false,
+                hasCloudHome = true,
                 undoneSetup = null,
             ),
             NoErrorDisplays,

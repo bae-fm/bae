@@ -212,6 +212,9 @@ mac.library.albums.scrolled
 mac.library.albums.sorted-two-fields
 mac.library.artists
 mac.library.artists.none
+mac.library.avatar-menu
+mac.library.avatar-menu.no-cloud-home-asks
+mac.library.avatar-menu.no-cloud-home-sheet
 mac.library.composers
 mac.library.composers.composer-open
 mac.library.composers.none

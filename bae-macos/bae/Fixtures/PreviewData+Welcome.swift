@@ -109,6 +109,20 @@ extension PreviewData {
         lastSynced: Date(timeIntervalSinceNow: -2 * 3_600)
     )
 
+    /// The sync status of a library that is synced, or, with no cloud home,
+    /// of one that is only on this Mac.
+    @MainActor
+    static func syncStatus(hasCloudHome: Bool) -> SyncStatusStore {
+        SyncStatusStore(
+            snapshot: BridgeSyncStatusSnapshot(
+                shown: hasCloudHome ? .fixtureSynced : .fixtureNotSynced,
+                setupRunning: false,
+                hasCloudHome: hasCloudHome,
+                undoneSetup: nil
+            )
+        )
+    }
+
     /// The same library holding changes this Mac never uploaded.
     static let standingUnsent = BridgeLibraryStanding(
         state: .unsentChanges,
