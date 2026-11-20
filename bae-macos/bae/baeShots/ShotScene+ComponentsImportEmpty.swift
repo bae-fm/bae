@@ -129,13 +129,13 @@ extension ShotScene {
             year: "1974",
             pressing: BridgeRawPressingEdit(
                 year: "1974",
-                storedLabels: [
-                    BridgeRawLabelEdit(
+                labels: [
+                    .alone(
                         name: "Harbor Records",
                         catalogNumber: "HR-0412-A-DELUXE"
                     )
                 ],
-                storedBarcodes: [],
+                barcodes: [.blank],
                 facts: PreviewData.pressingFacts(
                     country: "US",
                     media: PreviewData.media(.cd),

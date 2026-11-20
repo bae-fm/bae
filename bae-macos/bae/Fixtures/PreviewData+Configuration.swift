@@ -29,17 +29,23 @@ extension PreviewData {
             albumYear: "1983",
             pressing: BridgeRawPressingEdit(
                 year: "1997",
-                storedLabels: [
-                    BridgeRawLabelEdit(
-                        name: "Label A",
-                        catalogNumber: "AB 100"
+                labels: [
+                    BridgeLabelRow(
+                        label: BridgeRawLabelEdit(
+                            name: "Label A",
+                            catalogNumber: "AB 100"
+                        ),
+                        place: .first
                     ),
-                    BridgeRawLabelEdit(
-                        name: "Label B",
-                        catalogNumber: "CL 719"
+                    BridgeLabelRow(
+                        label: BridgeRawLabelEdit(
+                            name: "Label B",
+                            catalogNumber: "CL 719"
+                        ),
+                        place: .last
                     ),
                 ],
-                storedBarcodes: ["000000000000"],
+                barcodes: [.alone("000000000000")],
                 facts: PreviewData.pressingFacts(
                     country: "US",
                     media: PreviewData.media(.cd)
@@ -313,13 +319,11 @@ actor PreviewReleaseLibrary {
                     }
                 }
             },
-            setLabels: { labels in
-                await session.change { $0.values.pressing.set(labels: labels) }
+            setLabels: { _ in
+                await session.change { _ in }
             },
-            setBarcodes: { barcodes in
-                await session.change {
-                    $0.values.pressing.set(barcodes: barcodes)
-                }
+            setBarcodes: { _ in
+                await session.change { _ in }
             },
             setPressingFact: { fact in
                 await session.change {

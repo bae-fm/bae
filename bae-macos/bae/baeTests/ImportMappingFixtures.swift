@@ -338,8 +338,8 @@ extension MappingFixtures {
         albumYear: "1987",
         pressing: BridgeRawPressingEdit(
             year: "1996",
-            storedLabels: [],
-            storedBarcodes: [],
+            labels: [.blank],
+            barcodes: [.blank],
             facts: PreviewData.pressingFacts(
                 country: nil,
                 media: PreviewData.media(.cd)
@@ -354,8 +354,8 @@ extension MappingFixtures {
         albumYear: "",
         pressing: BridgeRawPressingEdit(
             year: "",
-            storedLabels: [],
-            storedBarcodes: [],
+            labels: [.blank],
+            barcodes: [.blank],
             facts: PreviewData.pressingFacts()
         ),
         tracks: []

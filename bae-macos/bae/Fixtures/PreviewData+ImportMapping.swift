@@ -533,8 +533,8 @@ extension PreviewData {
             albumYear: "",
             pressing: BridgeRawPressingEdit(
                 year: "",
-                storedLabels: [],
-                storedBarcodes: [],
+                labels: [.blank],
+                barcodes: [.blank],
                 facts: PreviewData.pressingFacts()
             ),
             tracks: files.enumerated()
