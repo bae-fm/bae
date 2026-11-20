@@ -73,48 +73,17 @@ struct ReleaseEditorView: View {
         .onDisappear { endSearch() }
     }
 
-    /// What heads the draft card: the action row, the progress of applying
-    /// a pressing, and the failure of the last save or check.
+    /// What heads the draft card.
     private var lead: some View {
-        VStack(
-            alignment: .leading,
-            spacing: ReleaseMetadataLayout.blockSpacing
-        ) {
-            actionRow
-            if let applying = session.catalogApplying {
-                CatalogApplyStepLine(apply: applying.apply)
-            }
-            if let shown = session.validationMessage.map({
-                DisplayError(line: $0)
-            })
-                ?? session.failure
-            {
-                MacNotice(error: shown)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }
-    }
-
-    /// The identify entries the import pane offers, then the session's own
-    /// Cancel and Save.
-    private var actionRow: some View {
-        MacIdentifyBar(
-            spacing: ThemeSpace.edge,
-            identifyDisabled: session.isBusy,
+        ReleaseEditorLead(
+            session: session,
             onAutomatic: { identifyAutomatically() },
             onSearch: { openSearch(.search) },
-            onMetadataCommand: nil,
-            trailing: {
-                ReleaseEditControls(
-                    changed: session.draft?.changed == true,
-                    isBusy: session.isBusy,
-                    onCancel: {
-                        searchSection = nil
-                        session.cancelChanges()
-                    },
-                    onSave: { session.save(onSuccess: onSaved) }
-                )
-            }
+            onCancel: {
+                searchSection = nil
+                session.cancelChanges()
+            },
+            onSave: { session.save(onSuccess: onSaved) }
         )
     }
 
@@ -237,6 +206,51 @@ struct ReleaseEditorView: View {
         Task {
             do { try await importer.endReleaseIdentification(releaseId) }
             catch { uiStore.showError(error) }
+        }
+    }
+}
+
+/// What heads a library release's editor card: the identify entries the
+/// import pane offers, then the session's own Cancel and Save; the progress
+/// of applying a pressing; and the failure of the last save or check.
+struct ReleaseEditorLead: View {
+    let session: ReleaseMetadataEditSession
+    let onAutomatic: () -> Void
+    let onSearch: () -> Void
+    let onCancel: () -> Void
+    let onSave: () -> Void
+
+    var body: some View {
+        VStack(
+            alignment: .leading,
+            spacing: ReleaseMetadataLayout.blockSpacing
+        ) {
+            MacIdentifyBar(
+                spacing: ThemeSpace.edge,
+                identifyDisabled: session.isBusy,
+                onAutomatic: onAutomatic,
+                onSearch: onSearch,
+                onMetadataCommand: nil,
+                trailing: {
+                    ReleaseEditControls(
+                        changed: session.draft?.changed == true,
+                        isBusy: session.isBusy,
+                        onCancel: onCancel,
+                        onSave: onSave
+                    )
+                }
+            )
+            if let applying = session.catalogApplying {
+                CatalogApplyStepLine(apply: applying.apply)
+            }
+            if let shown = session.validationMessage.map({
+                DisplayError(line: $0)
+            })
+                ?? session.failure
+            {
+                MacNotice(error: shown)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
     }
 }

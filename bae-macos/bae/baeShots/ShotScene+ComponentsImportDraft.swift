@@ -118,7 +118,7 @@ extension ShotScene {
     /// The pop-up of `albumOptions` drawn open in place, its first line on
     /// the pop-up's line: `x` and `y` are where the pop-up's top left is,
     /// in the frame the menu is drawn over.
-    private static func albumMenu(
+    static func albumMenu(
         _ album: BridgeDraftAlbum,
         x: CGFloat,
         y: CGFloat

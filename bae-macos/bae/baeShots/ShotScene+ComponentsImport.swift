@@ -7,10 +7,12 @@ extension ShotScene {
     /// The Mac components of the import: the folder line and a group's
     /// header, then the mapping table with its rows, images and files, the
     /// list's column, the search's cards and pressings, the draft card and
-    /// its parts, and the cover gallery.
+    /// its parts, the skipped folder's and the release editor's cards, and
+    /// the cover gallery.
     static let importComponentScenes: [ShotScene] =
         importValueScenes + importMappingScenes + importListComponentScenes
-        + importSearchScenes + importDraftScenes + importCoverGalleryScenes
+        + importSearchScenes + importDraftScenes + importCardScenes
+        + importCoverGalleryScenes
         + importSheetScenes + importAnswerScenes + importSummaryScenes
         + importSidebarComponentScenes
 
