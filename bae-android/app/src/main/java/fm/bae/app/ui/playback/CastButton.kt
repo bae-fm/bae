@@ -30,7 +30,7 @@ import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.StatusTone
 import uniffi.bae_bridge.BridgeBrowsingFor
 
-/** The now-playing bar's cast control, absent when casting is turned off. */
+/** The now-playing bar's Play on control, absent when Play on other devices is turned off. */
 @Composable
 fun CastButton(session: OpenLibrary) {
     val config by session.configStore.config.collectAsState()
@@ -61,7 +61,7 @@ fun CastButton(session: OpenLibrary) {
     CastBarButton(casting = castingTo != null, onClick = { pickerOpen = true })
 }
 
-/** The bar's cast glyph, in the accent while the library casts. */
+/** The bar's Play on glyph, in the accent while a receiver plays. */
 @Composable
 internal fun CastBarButton(
     casting: Boolean,
@@ -69,7 +69,7 @@ internal fun CastBarButton(
 ) {
     AndroidIconButton(
         icon = Icons.Filled.Cast,
-        contentDescription = stringResource(R.string.cast),
+        contentDescription = stringResource(R.string.cast_button),
         onClick = onClick,
         tone = if (casting) IconTone.ACCENT else IconTone.MUTED,
         box = ICON_BUTTON_BAR_BOX,
@@ -96,7 +96,7 @@ private fun CastPickerSheet(
         if (session.castStart.didStart(asked)) onDismiss()
     }
 
-    AndroidSheet(title = stringResource(R.string.cast), onDismiss = onDismiss) {
+    AndroidSheet(title = stringResource(R.string.cast_picker_title), onDismiss = onDismiss) {
         PickerFailures(endedFailure = endedFailure, castFailure = castFailure)
         CastReceiverRows(
             place = CastReceiverPlace.PICKER,

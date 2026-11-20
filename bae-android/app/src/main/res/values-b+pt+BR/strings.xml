@@ -263,8 +263,9 @@
     <string name="widget_nothing_playing">Nada em reprodução</string>
     <string name="shortcut_resume_long">Retomar reprodução</string>
     <string name="shortcut_search_long">Buscar na biblioteca</string>
-    <string name="cast">Transmitir</string>
-    <string name="cast_receiver_casting">Transmitindo</string>
+    <string name="cast_button">Reproduzir em…</string>
+    <string name="cast_picker_title">Reproduzir em</string>
+    <string name="cast_receiver_playing">Reproduzindo</string>
     <string name="cast_disconnect">Desconectar</string>
     <string name="volume_set_on_receiver">O volume é definido em %1$s</string>
     <string name="cast_receiver_type">Tipo</string>
@@ -280,7 +281,7 @@
     <string name="cast_password">Senha</string>
     <string name="cast_pair">Parear</string>
     <string name="cast_pairing">Pareando…</string>
-    <string name="cast_refused_title">Não foi possível transmitir para %1$s</string>
+    <string name="cast_refused_title">Não foi possível reproduzir em %1$s</string>
     <string name="cast_pair_again">Parear de novo…</string>
     <string name="settings_casting">Transmissão</string>
     <string name="settings_enable_casting">Ativar a transmissão</string>

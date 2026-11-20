@@ -255,8 +255,9 @@
     <string name="widget_nothing_playing">Semmi sem szól</string>
     <string name="shortcut_resume_long">Lejátszás folytatása</string>
     <string name="shortcut_search_long">Keresés a könyvtárban</string>
-    <string name="cast">Átküldés</string>
-    <string name="cast_receiver_casting">Átküldés folyamatban</string>
+    <string name="cast_button">Lejátszás itt…</string>
+    <string name="cast_picker_title">Lejátszás itt</string>
+    <string name="cast_receiver_playing">Lejátszás</string>
     <string name="cast_disconnect">Leválasztás</string>
     <string name="volume_set_on_receiver">A hangerőt itt lehet beállítani: %1$s</string>
     <string name="cast_receiver_type">Típus</string>
@@ -272,7 +273,7 @@
     <string name="cast_password">Jelszó</string>
     <string name="cast_pair">Párosítás</string>
     <string name="cast_pairing">Párosítás…</string>
-    <string name="cast_refused_title">Nem sikerült az átküldés ide: %1$s</string>
+    <string name="cast_refused_title">Nem sikerült lejátszani itt: %1$s</string>
     <string name="cast_pair_again">Párosítás újra…</string>
     <string name="settings_casting">Átküldés</string>
     <string name="settings_enable_casting">Átküldés bekapcsolása</string>

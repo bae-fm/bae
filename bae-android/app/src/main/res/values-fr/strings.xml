@@ -263,8 +263,9 @@
     <string name="widget_nothing_playing">Aucune lecture en cours</string>
     <string name="shortcut_resume_long">Reprendre la lecture</string>
     <string name="shortcut_search_long">Rechercher dans la bibliothèque</string>
-    <string name="cast">Diffuser</string>
-    <string name="cast_receiver_casting">Diffusion en cours</string>
+    <string name="cast_button">Lire sur…</string>
+    <string name="cast_picker_title">Lire sur</string>
+    <string name="cast_receiver_playing">En lecture</string>
     <string name="cast_disconnect">Déconnecter</string>
     <string name="volume_set_on_receiver">Le volume se règle sur %1$s</string>
     <string name="cast_receiver_type">Type</string>
@@ -280,7 +281,7 @@
     <string name="cast_password">Mot de passe</string>
     <string name="cast_pair">Jumeler</string>
     <string name="cast_pairing">Jumelage…</string>
-    <string name="cast_refused_title">Impossible de diffuser vers %1$s</string>
+    <string name="cast_refused_title">Impossible de lire sur %1$s</string>
     <string name="cast_pair_again">Jumeler à nouveau…</string>
     <string name="settings_casting">Diffusion</string>
     <string name="settings_enable_casting">Activer la diffusion</string>

@@ -269,8 +269,9 @@
     <string name="widget_nothing_playing">Nič sa neprehráva</string>
     <string name="shortcut_resume_long">Pokračovať v prehrávaní</string>
     <string name="shortcut_search_long">Hľadať v knižnici</string>
-    <string name="cast">Prenášať</string>
-    <string name="cast_receiver_casting">Prenáša sa</string>
+    <string name="cast_button">Prehrať na…</string>
+    <string name="cast_picker_title">Prehrať na</string>
+    <string name="cast_receiver_playing">Prehráva sa</string>
     <string name="cast_disconnect">Odpojiť</string>
     <string name="volume_set_on_receiver">Hlasitosť sa nastavuje na zariadení %1$s</string>
     <string name="cast_receiver_type">Typ</string>
@@ -286,7 +287,7 @@
     <string name="cast_password">Heslo</string>
     <string name="cast_pair">Spárovať</string>
     <string name="cast_pairing">Páruje sa…</string>
-    <string name="cast_refused_title">Nepodarilo sa prenášať do %1$s</string>
+    <string name="cast_refused_title">Nedá sa prehrať na %1$s</string>
     <string name="cast_pair_again">Znova spárovať…</string>
     <string name="settings_casting">Prenášanie</string>
     <string name="settings_enable_casting">Zapnúť prenášanie</string>

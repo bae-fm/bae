@@ -255,8 +255,9 @@
     <string name="widget_nothing_playing">Δεν αναπαράγεται τίποτα</string>
     <string name="shortcut_resume_long">Συνέχιση αναπαραγωγής</string>
     <string name="shortcut_search_long">Αναζήτηση στη βιβλιοθήκη</string>
-    <string name="cast">Μετάδοση</string>
-    <string name="cast_receiver_casting">Μεταδίδεται</string>
+    <string name="cast_button">Αναπαραγωγή σε…</string>
+    <string name="cast_picker_title">Αναπαραγωγή σε</string>
+    <string name="cast_receiver_playing">Αναπαράγεται</string>
     <string name="cast_disconnect">Αποσύνδεση</string>
     <string name="volume_set_on_receiver">Η ένταση ρυθμίζεται στη συσκευή %1$s</string>
     <string name="cast_receiver_type">Τύπος</string>
@@ -272,7 +273,7 @@
     <string name="cast_password">Κωδικός πρόσβασης</string>
     <string name="cast_pair">Σύζευξη</string>
     <string name="cast_pairing">Σύζευξη…</string>
-    <string name="cast_refused_title">Δεν ήταν δυνατή η μετάδοση σε %1$s</string>
+    <string name="cast_refused_title">Δεν ήταν δυνατή η αναπαραγωγή σε %1$s</string>
     <string name="cast_pair_again">Νέα σύζευξη…</string>
     <string name="settings_casting">Μετάδοση</string>
     <string name="settings_enable_casting">Ενεργοποίηση μετάδοσης</string>

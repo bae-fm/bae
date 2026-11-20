@@ -250,8 +250,9 @@
     <string name="widget_nothing_playing">再生していません</string>
     <string name="shortcut_resume_long">再生を再開</string>
     <string name="shortcut_search_long">ライブラリを検索</string>
-    <string name="cast">キャスト</string>
-    <string name="cast_receiver_casting">キャスト中</string>
+    <string name="cast_button">再生先…</string>
+    <string name="cast_picker_title">再生先</string>
+    <string name="cast_receiver_playing">再生中</string>
     <string name="cast_disconnect">切断</string>
     <string name="volume_set_on_receiver">音量は %1$s で設定します</string>
     <string name="cast_receiver_type">種類</string>
@@ -267,7 +268,7 @@
     <string name="cast_password">パスワード</string>
     <string name="cast_pair">ペアリング</string>
     <string name="cast_pairing">ペアリング中…</string>
-    <string name="cast_refused_title">%1$s にキャストできませんでした</string>
+    <string name="cast_refused_title">%1$s で再生できませんでした</string>
     <string name="cast_pair_again">もう一度ペアリング…</string>
     <string name="settings_casting">キャスト</string>
     <string name="settings_enable_casting">キャストを有効にする</string>

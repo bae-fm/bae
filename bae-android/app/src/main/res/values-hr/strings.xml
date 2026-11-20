@@ -264,8 +264,9 @@
     <string name="widget_nothing_playing">Ništa se ne reproducira</string>
     <string name="shortcut_resume_long">Nastavi reprodukciju</string>
     <string name="shortcut_search_long">Pretraži fonoteku</string>
-    <string name="cast">Emitiraj</string>
-    <string name="cast_receiver_casting">Emitira se</string>
+    <string name="cast_button">Reproduciraj na…</string>
+    <string name="cast_picker_title">Reproduciraj na</string>
+    <string name="cast_receiver_playing">Reproducira se</string>
     <string name="cast_disconnect">Prekini vezu</string>
     <string name="volume_set_on_receiver">Glasnoća se postavlja na uređaju %1$s</string>
     <string name="cast_receiver_type">Vrsta</string>
@@ -281,7 +282,7 @@
     <string name="cast_password">Lozinka</string>
     <string name="cast_pair">Upari</string>
     <string name="cast_pairing">Uparivanje…</string>
-    <string name="cast_refused_title">Emitiranje na %1$s nije uspjelo</string>
+    <string name="cast_refused_title">Reprodukcija na %1$s nije uspjela</string>
     <string name="cast_pair_again">Ponovno upari…</string>
     <string name="settings_casting">Emitiranje</string>
     <string name="settings_enable_casting">Omogući emitiranje</string>

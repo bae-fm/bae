@@ -285,8 +285,9 @@
     <string name="widget_nothing_playing">لا شيء قيد التشغيل</string>
     <string name="shortcut_resume_long">استئناف التشغيل</string>
     <string name="shortcut_search_long">البحث في المكتبة</string>
-    <string name="cast">إرسال</string>
-    <string name="cast_receiver_casting">جارٍ الإرسال</string>
+    <string name="cast_button">التشغيل على…</string>
+    <string name="cast_picker_title">التشغيل على</string>
+    <string name="cast_receiver_playing">قيد التشغيل</string>
     <string name="cast_disconnect">قطع الاتصال</string>
     <string name="volume_set_on_receiver">يتم ضبط مستوى الصوت على %1$s</string>
     <string name="cast_receiver_type">النوع</string>
@@ -302,7 +303,7 @@
     <string name="cast_password">كلمة السر</string>
     <string name="cast_pair">اقتران</string>
     <string name="cast_pairing">جارٍ الاقتران…</string>
-    <string name="cast_refused_title">تعذّر الإرسال إلى %1$s</string>
+    <string name="cast_refused_title">تعذّر التشغيل على ‏%1$s</string>
     <string name="cast_pair_again">الاقتران مجددًا…</string>
     <string name="settings_casting">الإرسال</string>
     <string name="settings_enable_casting">تفعيل الإرسال</string>

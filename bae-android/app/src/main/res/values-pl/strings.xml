@@ -271,8 +271,9 @@
     <string name="widget_nothing_playing">Nic nie jest odtwarzane</string>
     <string name="shortcut_resume_long">Wznów odtwarzanie</string>
     <string name="shortcut_search_long">Przeszukaj bibliotekę</string>
-    <string name="cast">Przesyłaj</string>
-    <string name="cast_receiver_casting">Trwa przesyłanie</string>
+    <string name="cast_button">Odtwarzaj na…</string>
+    <string name="cast_picker_title">Odtwarzaj na</string>
+    <string name="cast_receiver_playing">Odtwarzanie</string>
     <string name="cast_disconnect">Rozłącz</string>
     <string name="volume_set_on_receiver">Głośność ustawia się na urządzeniu %1$s</string>
     <string name="cast_receiver_type">Typ</string>
@@ -288,7 +289,7 @@
     <string name="cast_password">Hasło</string>
     <string name="cast_pair">Sparuj</string>
     <string name="cast_pairing">Parowanie…</string>
-    <string name="cast_refused_title">Nie można przesyłać do %1$s</string>
+    <string name="cast_refused_title">Nie można odtworzyć na %1$s</string>
     <string name="cast_pair_again">Sparuj ponownie…</string>
     <string name="settings_casting">Przesyłanie</string>
     <string name="settings_enable_casting">Włącz przesyłanie</string>

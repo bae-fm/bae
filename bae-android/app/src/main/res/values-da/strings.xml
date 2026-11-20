@@ -255,8 +255,9 @@
     <string name="widget_nothing_playing">Der afspilles intet</string>
     <string name="shortcut_resume_long">Fortsæt afspilningen</string>
     <string name="shortcut_search_long">Søg i biblioteket</string>
-    <string name="cast">Cast</string>
-    <string name="cast_receiver_casting">Caster nu</string>
+    <string name="cast_button">Afspil på…</string>
+    <string name="cast_picker_title">Afspil på</string>
+    <string name="cast_receiver_playing">Afspiller</string>
     <string name="cast_disconnect">Afbryd forbindelsen</string>
     <string name="volume_set_on_receiver">Lydstyrken indstilles på %1$s</string>
     <string name="cast_receiver_type">Type</string>
@@ -272,7 +273,7 @@
     <string name="cast_password">Adgangskode</string>
     <string name="cast_pair">Par</string>
     <string name="cast_pairing">Parrer…</string>
-    <string name="cast_refused_title">Kunne ikke caste til %1$s</string>
+    <string name="cast_refused_title">Kunne ikke afspille på %1$s</string>
     <string name="cast_pair_again">Par igen…</string>
     <string name="settings_casting">Caster</string>
     <string name="settings_enable_casting">Slå casting til</string>

@@ -250,8 +250,9 @@
     <string name="widget_nothing_playing">未在播放</string>
     <string name="shortcut_resume_long">繼續播放</string>
     <string name="shortcut_search_long">搜尋資料庫</string>
-    <string name="cast">投放</string>
-    <string name="cast_receiver_casting">正在投放</string>
+    <string name="cast_button">播放到…</string>
+    <string name="cast_picker_title">播放到</string>
+    <string name="cast_receiver_playing">正在播放</string>
     <string name="cast_disconnect">中斷連線</string>
     <string name="volume_set_on_receiver">音量在 %1$s 上設定</string>
     <string name="cast_receiver_type">類型</string>
@@ -267,7 +268,7 @@
     <string name="cast_password">密碼</string>
     <string name="cast_pair">配對</string>
     <string name="cast_pairing">正在配對…</string>
-    <string name="cast_refused_title">無法投放到 %1$s</string>
+    <string name="cast_refused_title">無法在 %1$s 上播放</string>
     <string name="cast_pair_again">重新配對…</string>
     <string name="settings_casting">投放</string>
     <string name="settings_enable_casting">啟用投放</string>

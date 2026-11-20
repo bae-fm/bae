@@ -257,8 +257,9 @@
     <string name="widget_nothing_playing">Er speelt niets</string>
     <string name="shortcut_resume_long">Afspelen hervatten</string>
     <string name="shortcut_search_long">Bibliotheek doorzoeken</string>
-    <string name="cast">Casten</string>
-    <string name="cast_receiver_casting">Wordt gecast</string>
+    <string name="cast_button">Afspelen op…</string>
+    <string name="cast_picker_title">Afspelen op</string>
+    <string name="cast_receiver_playing">Speelt af</string>
     <string name="cast_disconnect">Verbinding verbreken</string>
     <string name="volume_set_on_receiver">Het volume wordt ingesteld op %1$s</string>
     <string name="cast_receiver_type">Type</string>
@@ -274,7 +275,7 @@
     <string name="cast_password">Wachtwoord</string>
     <string name="cast_pair">Koppelen</string>
     <string name="cast_pairing">Koppelen…</string>
-    <string name="cast_refused_title">Kan niet casten naar %1$s</string>
+    <string name="cast_refused_title">Kan niet afspelen op %1$s</string>
     <string name="cast_pair_again">Opnieuw koppelen…</string>
     <string name="settings_casting">Casten</string>
     <string name="settings_enable_casting">Casten inschakelen</string>

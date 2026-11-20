@@ -255,8 +255,9 @@
     <string name="widget_nothing_playing">Ingenting spilles av</string>
     <string name="shortcut_resume_long">Fortsett avspillingen</string>
     <string name="shortcut_search_long">Søk i biblioteket</string>
-    <string name="cast">Cast</string>
-    <string name="cast_receiver_casting">Caster nå</string>
+    <string name="cast_button">Spill av på…</string>
+    <string name="cast_picker_title">Spill av på</string>
+    <string name="cast_receiver_playing">Spiller av</string>
     <string name="cast_disconnect">Koble fra</string>
     <string name="volume_set_on_receiver">Volumet stilles inn på %1$s</string>
     <string name="cast_receiver_type">Type</string>
@@ -272,7 +273,7 @@
     <string name="cast_password">Passord</string>
     <string name="cast_pair">Par</string>
     <string name="cast_pairing">Parer…</string>
-    <string name="cast_refused_title">Kunne ikke caste til %1$s</string>
+    <string name="cast_refused_title">Kunne ikke spille av på %1$s</string>
     <string name="cast_pair_again">Par på nytt…</string>
     <string name="settings_casting">Caster</string>
     <string name="settings_enable_casting">Slå på casting</string>

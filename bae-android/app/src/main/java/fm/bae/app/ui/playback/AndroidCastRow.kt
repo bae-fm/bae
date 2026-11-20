@@ -41,12 +41,12 @@ import uniffi.bae_bridge.BridgeRendererKind
 
 /** Where a row's receiver stands in the list, and what the row offers. */
 internal sealed interface CastReceiverRole {
-    /** Playback is cast to it; the row offers Disconnect. */
+    /** Playback is on it; the row offers Disconnect. */
     data class Casting(
         val onDisconnect: () -> Unit,
     ) : CastReceiverRole
 
-    /** Discovery found it; tapping the row casts to it. */
+    /** Discovery found it; tapping the row plays on it. */
     data class Found(
         val onCast: () -> Unit,
     ) : CastReceiverRole
@@ -54,10 +54,10 @@ internal sealed interface CastReceiverRole {
 
 /** Where receivers are listed, which decides how a row ends. */
 internal enum class CastReceiverPlace {
-    /** The cast picker, opened to pick a receiver or stop: the receiver cast to ends in Disconnect. */
+    /** The Play on picker, opened to pick a receiver or stop: the receiver playing ends in Disconnect. */
     PICKER,
 
-    /** The Casting page: every row ends in a ⋮ menu holding Details, and Disconnect on the receiver cast to. */
+    /** The Playback settings: every row ends in a ⋮ menu holding Details, and Disconnect on the receiver playing. */
     PAGE,
 }
 
@@ -123,7 +123,7 @@ private fun CastReceiverLabel(
         )
         if (casting) {
             Text(
-                text = stringResource(R.string.cast_receiver_casting),
+                text = stringResource(R.string.cast_receiver_playing),
                 style = ThemeText.body.style,
                 color = MaterialTheme.colorScheme.primary,
             )

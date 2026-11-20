@@ -264,8 +264,9 @@
     <string name="widget_nothing_playing">לא מתנגן כלום</string>
     <string name="shortcut_resume_long">המשך השמעה</string>
     <string name="shortcut_search_long">חיפוש בספרייה</string>
-    <string name="cast">שידור</string>
-    <string name="cast_receiver_casting">משדר כעת</string>
+    <string name="cast_button">ניגון במכשיר…</string>
+    <string name="cast_picker_title">ניגון במכשיר</string>
+    <string name="cast_receiver_playing">מנגן</string>
     <string name="cast_disconnect">התנתק</string>
     <string name="volume_set_on_receiver">עוצמת הקול נקבעת ב־%1$s</string>
     <string name="cast_receiver_type">סוג</string>
@@ -281,7 +282,7 @@
     <string name="cast_password">סיסמה</string>
     <string name="cast_pair">התאמה</string>
     <string name="cast_pairing">מתבצעת התאמה…</string>
-    <string name="cast_refused_title">לא ניתן לשדר אל %1$s</string>
+    <string name="cast_refused_title">לא ניתן לנגן ב-%1$s</string>
     <string name="cast_pair_again">התאמה מחדש…</string>
     <string name="settings_casting">שידור</string>
     <string name="settings_enable_casting">הפעלת שידור</string>

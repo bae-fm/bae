@@ -120,7 +120,7 @@ class CastPinBoardShots : BoardShot() {
         connecting: String? = "Kitchen",
         failure: CastStart.Failure? = null,
     ) {
-        SheetScene(title = stringResource(R.string.cast), behind = { PlayingLibraryScreen() }) {
+        SheetScene(title = stringResource(R.string.cast_picker_title), behind = { PlayingLibraryScreen() }) {
             PickerFailures(endedFailure = null, castFailure = failure)
             CastReceiverRows(
                 place = CastReceiverPlace.PICKER,

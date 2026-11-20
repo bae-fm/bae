@@ -257,8 +257,9 @@
     <string name="widget_nothing_playing">Hiçbir şey çalmıyor</string>
     <string name="shortcut_resume_long">Oynatmayı sürdür</string>
     <string name="shortcut_search_long">Kitaplıkta ara</string>
-    <string name="cast">Yayınla</string>
-    <string name="cast_receiver_casting">Yayınlanıyor</string>
+    <string name="cast_button">Şurada oynat…</string>
+    <string name="cast_picker_title">Şurada oynat</string>
+    <string name="cast_receiver_playing">Oynatılıyor</string>
     <string name="cast_disconnect">Bağlantıyı kes</string>
     <string name="volume_set_on_receiver">Ses düzeyi %1$s üzerinde ayarlanır</string>
     <string name="cast_receiver_type">Tür</string>
@@ -274,7 +275,7 @@
     <string name="cast_password">Parola</string>
     <string name="cast_pair">Eşleştir</string>
     <string name="cast_pairing">Eşleştiriliyor…</string>
-    <string name="cast_refused_title">%1$s cihazına yayınlanamadı</string>
+    <string name="cast_refused_title">%1$s üzerinde oynatılamadı</string>
     <string name="cast_pair_again">Yeniden eşleştir…</string>
     <string name="settings_casting">Yayınlama</string>
     <string name="settings_enable_casting">Yayınlamayı etkinleştir</string>

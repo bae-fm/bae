@@ -257,8 +257,9 @@
     <string name="widget_nothing_playing">Нищо не се възпроизвежда</string>
     <string name="shortcut_resume_long">Възобновяване на възпроизвеждането</string>
     <string name="shortcut_search_long">Търсене в библиотеката</string>
-    <string name="cast">Предаване</string>
-    <string name="cast_receiver_casting">Предава се</string>
+    <string name="cast_button">Възпроизвеждане на…</string>
+    <string name="cast_picker_title">Възпроизвеждане на</string>
+    <string name="cast_receiver_playing">Възпроизвежда се</string>
     <string name="cast_disconnect">Прекъсване на връзката</string>
     <string name="volume_set_on_receiver">Силата на звука се настройва на %1$s</string>
     <string name="cast_receiver_type">Тип</string>
@@ -274,7 +275,7 @@
     <string name="cast_password">Парола</string>
     <string name="cast_pair">Сдвояване</string>
     <string name="cast_pairing">Сдвояване…</string>
-    <string name="cast_refused_title">Не може да се предава към %1$s</string>
+    <string name="cast_refused_title">Неуспешно възпроизвеждане на %1$s</string>
     <string name="cast_pair_again">Ново сдвояване…</string>
     <string name="settings_casting">Предаване</string>
     <string name="settings_enable_casting">Включване на предаването</string>

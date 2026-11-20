@@ -304,8 +304,9 @@
     <string name="shortcut_search_long">Search library</string>
 
     <!-- Casting -->
-    <string name="cast">Cast</string>
-    <string name="cast_receiver_casting">Casting</string>
+    <string name="cast_button">Play on…</string>
+    <string name="cast_picker_title">Play on</string>
+    <string name="cast_receiver_playing">Playing</string>
     <string name="cast_disconnect">Disconnect</string>
     <string name="volume_set_on_receiver">Volume is set on %1$s</string>
     <string name="cast_receiver_type">Type</string>
@@ -321,7 +322,7 @@
     <string name="cast_password">Password</string>
     <string name="cast_pair">Pair</string>
     <string name="cast_pairing">Pairing…</string>
-    <string name="cast_refused_title">Could not cast to %1$s</string>
+    <string name="cast_refused_title">Could not play on %1$s</string>
     <string name="cast_pair_again">Pair again…</string>
     <string name="settings_casting">Casting</string>
     <string name="settings_enable_casting">Enable casting</string>

@@ -250,8 +250,9 @@
     <string name="widget_nothing_playing">未在播放</string>
     <string name="shortcut_resume_long">恢复播放</string>
     <string name="shortcut_search_long">搜索音乐库</string>
-    <string name="cast">投放</string>
-    <string name="cast_receiver_casting">正在投放</string>
+    <string name="cast_button">播放到…</string>
+    <string name="cast_picker_title">播放到</string>
+    <string name="cast_receiver_playing">正在播放</string>
     <string name="cast_disconnect">断开连接</string>
     <string name="volume_set_on_receiver">音量在 %1$s 上设置</string>
     <string name="cast_receiver_type">类型</string>
@@ -267,7 +268,7 @@
     <string name="cast_password">密码</string>
     <string name="cast_pair">配对</string>
     <string name="cast_pairing">正在配对…</string>
-    <string name="cast_refused_title">无法投放到 %1$s</string>
+    <string name="cast_refused_title">无法在 %1$s 上播放</string>
     <string name="cast_pair_again">重新配对…</string>
     <string name="settings_casting">投放</string>
     <string name="settings_enable_casting">启用投放</string>

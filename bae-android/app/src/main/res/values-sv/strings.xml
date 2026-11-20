@@ -255,8 +255,9 @@
     <string name="widget_nothing_playing">Inget spelas</string>
     <string name="shortcut_resume_long">Fortsätt uppspelningen</string>
     <string name="shortcut_search_long">Sök i biblioteket</string>
-    <string name="cast">Casta</string>
-    <string name="cast_receiver_casting">Castar nu</string>
+    <string name="cast_button">Spela upp på…</string>
+    <string name="cast_picker_title">Spela upp på</string>
+    <string name="cast_receiver_playing">Spelar upp</string>
     <string name="cast_disconnect">Koppla från</string>
     <string name="volume_set_on_receiver">Volymen ställs in på %1$s</string>
     <string name="cast_receiver_type">Typ</string>
@@ -272,7 +273,7 @@
     <string name="cast_password">Lösenord</string>
     <string name="cast_pair">Parkoppla</string>
     <string name="cast_pairing">Parkopplar…</string>
-    <string name="cast_refused_title">Kunde inte casta till %1$s</string>
+    <string name="cast_refused_title">Det gick inte att spela upp på %1$s</string>
     <string name="cast_pair_again">Parkoppla igen…</string>
     <string name="settings_casting">Castar</string>
     <string name="settings_enable_casting">Slå på castning</string>

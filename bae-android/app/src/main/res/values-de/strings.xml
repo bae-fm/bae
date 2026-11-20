@@ -257,8 +257,9 @@
     <string name="widget_nothing_playing">Nichts wird wiedergegeben</string>
     <string name="shortcut_resume_long">Wiedergabe fortsetzen</string>
     <string name="shortcut_search_long">Mediathek durchsuchen</string>
-    <string name="cast">Übertragen</string>
-    <string name="cast_receiver_casting">Wird übertragen</string>
+    <string name="cast_button">Wiedergabe auf …</string>
+    <string name="cast_picker_title">Wiedergabe auf</string>
+    <string name="cast_receiver_playing">Läuft</string>
     <string name="cast_disconnect">Trennen</string>
     <string name="volume_set_on_receiver">Die Lautstärke wird an %1$s eingestellt</string>
     <string name="cast_receiver_type">Typ</string>
@@ -274,7 +275,7 @@
     <string name="cast_password">Passwort</string>
     <string name="cast_pair">Koppeln</string>
     <string name="cast_pairing">Wird gekoppelt …</string>
-    <string name="cast_refused_title">Übertragung an %1$s nicht möglich</string>
+    <string name="cast_refused_title">Wiedergabe auf %1$s nicht möglich</string>
     <string name="cast_pair_again">Erneut koppeln …</string>
     <string name="settings_casting">Übertragung</string>
     <string name="settings_enable_casting">Übertragung aktivieren</string>
