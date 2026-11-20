@@ -309,20 +309,12 @@ extension PreviewData {
     }
 
     /// The files a board release carries that no track plays: its rip log
-    /// and its two images.
+    /// beside the images the gallery shows.
     static let carriedBoardFiles: [BridgeMappingFile] = [
         mappingFile(
             previewFile(name: "rip.log", size: 4_000, role: .document),
             role: .document
-        ),
-        mappingFile(
-            previewFile(name: "cover.jpg", size: 1_100_000, role: .artwork),
-            role: .image
-        ),
-        mappingFile(
-            previewFile(name: "back.jpg", size: 900_000, role: .artwork),
-            role: .image
-        ),
+        )
     ]
 
     // MARK: - Records

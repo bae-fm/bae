@@ -205,16 +205,12 @@ extension PreviewData {
         ]
     )
 
-    /// The files no track plays from: the rip log and the front cover.
+    /// The files no track plays from: the rip log.
     static let lowTideHoursFiles = [
         mappingFile(
             previewFile(name: "rip.log", size: 4_000, role: .document),
             role: .document
-        ),
-        mappingFile(
-            previewFile(name: "cover.jpg", size: 1_200_000, role: .artwork),
-            role: .image
-        ),
+        )
     ]
 
     /// Low Tide Hours' draft, a release the library already holds: its

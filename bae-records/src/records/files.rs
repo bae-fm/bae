@@ -254,19 +254,24 @@ impl Records {
 }
 
 /// The common table expression `unplayed_files (file_id)`: the files of
-/// `files` (a relation with the column `file_id`) that no track plays from,
-/// by `track_reads` (a relation with the columns `audio_file_id` and
-/// `sheet_file_id`, either `NULL`): the audio file each track's segment
-/// reads, and the CUE sheet that carves a track. A file a track reads and a
-/// sheet that carves a track are played; every other file, a sheet that
-/// carves none and an audio file no track reads among them, is not. The
-/// import pane supplies the scan's rows and the library its own, so both
-/// list a release's files by this one rule.
+/// `files` that a release's Files list shows. `files` is a relation with the
+/// columns `file_id` and `showable_image`, which is true for each file the
+/// release's gallery shows as an image. `track_reads` is a relation with the
+/// columns `audio_file_id` and `sheet_file_id`, either `NULL`: the audio file
+/// each track's segment reads, and the CUE sheet that carves a track.
+///
+/// The list leaves out the files a track plays from (a file a track reads and
+/// a sheet that carves a track) and the images the gallery shows, which the
+/// gallery shows instead. Every other file is listed: a sheet that carves no
+/// track, an audio file no track reads, and an image in a format bae cannot
+/// show. The import pane supplies the scan's rows and the library its own, so
+/// both list a release's files by this one rule.
 pub fn unplayed_files_cte(files: &str, track_reads: &str) -> String {
     format!(
         "unplayed_files (file_id) AS ( \
              SELECT listed.file_id FROM {files} AS listed \
-             WHERE NOT EXISTS (SELECT 1 FROM {track_reads} AS read \
+             WHERE NOT listed.showable_image \
+               AND NOT EXISTS (SELECT 1 FROM {track_reads} AS read \
                                WHERE read.audio_file_id = listed.file_id \
                                   OR read.sheet_file_id = listed.file_id))"
     )

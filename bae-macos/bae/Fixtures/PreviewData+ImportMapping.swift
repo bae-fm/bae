@@ -105,8 +105,8 @@ extension PreviewData {
     }
 
     /// The mapping the picked release produces: nine files against nine
-    /// tracks, every row paired, with the folder's images, listed again among
-    /// its files, and documents carried alongside them.
+    /// tracks, every row paired, with the folder's images, which the gallery
+    /// shows and the files leave out, and documents carried beside them.
     static let mappingTable = BridgeMappingTable(
         images: mappingImages,
         trackSides: [
@@ -120,10 +120,7 @@ extension PreviewData {
             )
         ],
         files: [
-            carriedRow(infoLog, role: .document),
-            carriedRow(coverImage, role: .image),
-            carriedRow(backImage, role: .image),
-            carriedRow(scanImage, role: .image),
+            carriedRow(infoLog, role: .document)
         ],
         untitledTrackCount: 0
     )
@@ -290,11 +287,10 @@ extension PreviewData {
     )
 
     /// A library release's files that no track plays from, as its editor
-    /// lists them: its rip log, its track sheet, a cover image and a scan
-    /// the import found damaged, in the release's file order.
+    /// lists them: its rip log, its track sheet and a scan the import found
+    /// damaged, in the release's file order.
     static let libraryReleaseFiles: [BridgeMappingFile] = [
         libraryReleaseFile("back.png", size: 512, role: .damagedImage),
-        libraryReleaseFile("cover.jpg", size: 1_100_000, role: .image),
         libraryReleaseFile("disc.cue", size: 1_400, role: .document),
         libraryReleaseFile("rip.log", size: 4_000, role: .document),
     ]

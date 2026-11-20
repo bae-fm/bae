@@ -332,7 +332,7 @@ extension ShotScene {
             height: 120,
             rows: [
                 fileRow("rip.log", size: 4_000, role: .document),
-                fileRow("cover.jpg", size: 1_100_000, role: .image),
+                fileRow("notes.txt", size: 2_000, role: .document),
             ]
         ),
         releaseFilesScene(

@@ -196,12 +196,15 @@ fn performs_works_sql(release: &str) -> String {
 /// their audio, as one JSON object for [`release_files_column`]. A track
 /// plays from each file a segment of the table `segments` (with the column
 /// `file_id` of `audio_format_segments`) reads, and from each CUE sheet that
-/// carves it, by [`super::files::unplayed_files_cte`].
+/// carves it, by [`super::files::unplayed_files_cte`]. Files leaves out the images of a
+/// format a cover can be made from (`covers`), which the gallery shows.
 fn release_files_json_sql(release: &str, table: &str, segments: &str) -> String {
-    let covers: Vec<String> = ContentType::SUPPORTED_COVERS
+    let cover_types = ContentType::SUPPORTED_COVERS
         .iter()
         .map(|content_type| format!("'{}'", content_type.as_str()))
-        .collect();
+        .collect::<Vec<_>>()
+        .join(", ");
+    let cover = format!("listed.content_type IN ({cover_types})");
     let list = |condition: &str| {
         format!(
             "json_group_array(json(listed.file_json) \
@@ -214,18 +217,22 @@ fn release_files_json_sql(release: &str, table: &str, segments: &str) -> String 
         "(WITH {unplayed} SELECT json_object( \
               'files', json({files}), 'images', json({images}), 'covers', json({covers}), \
               'others', json({others}), \
-              'has_others', COALESCE(SUM(NOT listed.played), 0) > 0, \
+              'has_others', COALESCE(SUM(listed.in_files), 0) > 0, \
               'count', COUNT(*), 'image_count', COUNT(*) FILTER (WHERE {image}), \
               'total_size', COALESCE(SUM(listed.size), 0), \
               'source_audio', {source_audio}) \
           FROM (SELECT f.id, f.original_filename, f.content_type, \
-                       f.id NOT IN (SELECT file_id FROM unplayed_files) AS played, \
+                       f.id IN (SELECT file_id FROM unplayed_files) AS in_files, \
                        coven.size AS size, {file_json} AS file_json \
                 FROM {table} AS f \
                 JOIN coven_files AS coven ON coven.id = f.file \
                 WHERE f.release_id = {release}) AS listed)",
         unplayed = super::files::unplayed_files_cte(
-            &format!("(SELECT id AS file_id FROM {table} WHERE release_id = {release})"),
+            &format!(
+                "(SELECT id AS file_id, {cover} AS showable_image \
+                  FROM {table} AS listed \
+                  WHERE release_id = {release})"
+            ),
             &format!(
                 "(SELECT file_id AS audio_file_id, NULL AS sheet_file_id FROM {segments} \
                   UNION ALL \
@@ -234,8 +241,8 @@ fn release_files_json_sql(release: &str, table: &str, segments: &str) -> String 
         ),
         files = list("1"),
         images = list(image),
-        covers = list(&format!("listed.content_type IN ({})", covers.join(", "))),
-        others = list("NOT listed.played"),
+        covers = list(&cover),
+        others = list("listed.in_files"),
         file_json = file_json_sql("coven.size", "coven.hash IS NOT NULL"),
         source_audio = crate::source_audio::source_audio_summary_sql(&format!(
             "SELECT ROW_NUMBER() OVER (ORDER BY f.original_filename COLLATE natural_order, \

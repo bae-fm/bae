@@ -692,6 +692,14 @@ async fn cover_picker_excludes_unsupported_images_without_hiding_gallery_files()
     assert_eq!(image_ids, all_images);
     assert_eq!(gallery_ids, all_images);
     assert_eq!(detail.gallery_item_count, 6, "the release counts its six gallery items");
+    let mut other_names: Vec<_> =
+        detail.other_files.iter().map(|file| file.original_filename.clone()).collect();
+    other_names.sort();
+    assert_eq!(
+        other_names,
+        ["booklet.bmp", "drawing.svg"],
+        "Files lists the images a cover cannot be made from"
+    );
 }
 
 #[tokio::test]

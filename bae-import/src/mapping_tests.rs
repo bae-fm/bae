@@ -171,8 +171,9 @@ fn positions(side: &MappingTrackSide) -> Vec<&str> {
     side.mappings().map(|mapping| mapping.position.as_str()).collect()
 }
 
-/// Every audio row is one of the draft's tracks, and a rip log and an image
-/// are carried beside them, because a role is a fact about the folder.
+/// Every audio row is one of the draft's tracks, and a rip log is carried
+/// beside them, because a role is a fact about the folder. The folder's
+/// image is in the gallery, so the files leave it out.
 #[tokio::test]
 async fn audio_rows_are_the_draft_s_tracks_and_the_rest_are_carried() {
     let tmp = TestFolder::new();
@@ -209,12 +210,35 @@ async fn audio_rows_are_the_draft_s_tracks_and_the_rest_are_carried() {
         .collect();
     assert_eq!(
         carried,
-        [("cover.jpg", MappingRole::Image), ("rip.log", MappingRole::Document)],
-        "the image is carried in the scan's order beside the other files"
+        [("rip.log", MappingRole::Document)],
+        "the files hold no image the gallery shows"
     );
     // The scan stored the length of each unit with the files.
     assert_eq!(mappings[0].length_ms, 1_000);
     assert_eq!(track_file(mappings[0]).role, MappingRole::Audio);
+}
+
+/// An image bae cannot show stays in the files: a BMP, which a cover cannot be
+/// made from, and a JPEG whose bytes are no JPEG's.
+#[tokio::test]
+async fn files_keep_the_images_the_gallery_does_not_show() {
+    let tmp = TestFolder::new();
+    write_flac(&tmp, "01.flac");
+    tmp.write("front.jpg", fake_jpeg());
+    tmp.write("scan.bmp", b"BM0000");
+    tmp.write("broken.jpg", b"not a jpeg");
+
+    let files = scan(tmp.path());
+    let table = blank_table(&files).await;
+    let listed: Vec<&str> = table
+        .files
+        .iter()
+        .map(|row| match row {
+            MappingFileRow::File(file) => file.name.as_str(),
+            other => panic!("expected a carried file, got {other:?}"),
+        })
+        .collect();
+    assert_eq!(listed, ["broken.jpg", "scan.bmp"]);
 }
 
 /// The table counts the track rows nobody has named: a blank title, or one
