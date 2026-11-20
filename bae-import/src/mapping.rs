@@ -236,7 +236,7 @@ pub struct SheetGroup {
 
 /// What a track sheet describes, with the facts its header shows about it.
 ///
-/// [`SheetBinding`] enriched by the
+/// [`SheetBinding`](crate::folder_scanner::SheetBinding) enriched by the
 /// container's name and size: a header states both which audio a sheet is on and
 /// why it is on none, and carrying the binding separately would be a second way
 /// to say the first.

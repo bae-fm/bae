@@ -11,7 +11,7 @@
 //! answer of the window's live query and of its position's, until each
 //! reruns, and nothing else.
 //!
-//! The view runs as a task of the owner that opens it ([`open`]), which
+//! The view runs as a task of the owner that opens it ([`ListView::open`]), which
 //! holds the list's reads. The screen holds a [`ListViewHandle`]: it sends
 //! the rows on screen through it and receives the window's rows.
 

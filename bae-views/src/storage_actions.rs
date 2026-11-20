@@ -7,8 +7,8 @@ use bae_types::release_storage::ReleaseStorageAction;
 use rusqlite::Row;
 
 /// The storage actions a release, or every release of a selection, offers,
-/// and whether Cancel is the only action, as [`storage_action_columns`] or
-/// [`selection_action_columns`] reads them.
+/// and whether Cancel is the only action, as `storage_action_columns` or
+/// `selection_action_columns` reads them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DbStorageActionFlags {
     pub upload: bool,
@@ -49,7 +49,7 @@ impl DbStorageActionFlags {
 }
 
 /// The storage actions a release offers and whether it is mid-transition, as
-/// [`storage_action_columns`] reads them.
+/// `storage_action_columns` reads them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DbStorageActions {
     pub offered: DbStorageActionFlags,
@@ -59,7 +59,7 @@ pub struct DbStorageActions {
 }
 
 impl DbStorageActions {
-    /// The actions [`storage_action_columns`] gave `row`.
+    /// The actions `storage_action_columns` gave `row`.
     pub fn of_row(row: &Row<'_>) -> rusqlite::Result<Self> {
         Ok(Self {
             offered: DbStorageActionFlags::of_row(row)?,
@@ -110,7 +110,7 @@ pub(crate) fn storage_action_columns(release: &str) -> String {
     )
 }
 
-/// The columns over rows carrying [`storage_action_columns`]: each action
+/// The columns over rows carrying `storage_action_columns`: each action
 /// every row offers (the least of its flags, none for no rows) and whether
 /// Cancel is the only action one of the rows offers.
 pub(crate) fn selection_action_columns() -> &'static str {
