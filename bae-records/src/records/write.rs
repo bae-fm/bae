@@ -562,15 +562,17 @@ pub fn insert_scrub_points_row(
 }
 
 /// Record that the CUE sheet `sheet_file_id`, one of a release's files,
-/// carves the track `track_id` out of an image.
+/// carves the track `track_id` out of an image, from under the sheet's
+/// `FILE` line `file_reference`.
 pub fn insert_carved_track_row(
     conn: &CovenWrite<'_>,
     track_id: &str,
     sheet_file_id: &str,
+    file_reference: &str,
 ) -> Result<(), DbError> {
     conn.execute(
-        "INSERT INTO carved_tracks (track_id, sheet_file_id) VALUES (?, ?)",
-        params![track_id, sheet_file_id],
+        "INSERT INTO carved_tracks (track_id, sheet_file_id, file_reference) VALUES (?, ?, ?)",
+        params![track_id, sheet_file_id, file_reference],
     )
     .map(|_| ())
     .map_err(DbError::from)

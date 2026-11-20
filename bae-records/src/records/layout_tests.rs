@@ -53,7 +53,9 @@ async fn release(
         .await;
     }
     for (sheet, track) in carved.iter().map(|(sheet, track)| (uuid(sheet), uuid(track))) {
-        db.call_sql(move |sql| write::insert_carved_track_row(&sql, &track, &sheet)).await.unwrap();
+        db.call_sql(move |sql| write::insert_carved_track_row(&sql, &track, &sheet, "image.flac"))
+            .await
+            .unwrap();
     }
     (db, folder)
 }

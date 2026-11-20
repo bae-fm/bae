@@ -306,26 +306,41 @@ pub(crate) struct ImportRows<'a> {
 }
 
 /// The sheet that carves each carved track of an import, each sheet named by
-/// its path in the folder.
+/// its path in the folder, and the sheet's `FILE` line the track is under.
 struct Carving {
-    /// Each carved track's id with its sheet's path.
-    tracks: Vec<(String, String)>,
+    tracks: Vec<CarvedTrack>,
+}
+
+/// One carved track of a [`Carving`].
+struct CarvedTrack {
+    track_id: String,
+    /// The sheet's path in the folder.
+    sheet: String,
+    file_reference: String,
 }
 
 impl Carving {
     /// The carving of `tracks`, read from the sheet each CUE-backed track
-    /// plays a slice of.
-    fn of(tracks: &[crate::TrackFile]) -> Self {
-        let tracks = tracks
-            .iter()
-            .filter_map(|track| match &track.audio {
-                crate::TrackAudio::CueBacked { cue_pair, .. } => {
-                    Some((track.db_track.id.clone(), cue_pair.sheet_id.clone()))
-                }
-                _ => None,
-            })
-            .collect();
-        Self { tracks }
+    /// plays a slice of. The import built each track's audio from the
+    /// sheet's playable track it names, so a track naming none is a bug, and
+    /// `of` fails the commit.
+    fn of(tracks: &[crate::TrackFile]) -> Result<Self, DbError> {
+        let mut carved = Vec::new();
+        for track in tracks {
+            let crate::TrackAudio::CueBacked { cue_pair, cue_index } = &track.audio else {
+                continue;
+            };
+            let cue_track =
+                cue_pair.cue_sheet.playable_tracks().nth(*cue_index).ok_or_else(|| {
+                    DbError::unreadable("the CUE track a carved track plays", cue_index)
+                })?;
+            carved.push(CarvedTrack {
+                track_id: track.db_track.id.clone(),
+                sheet: cue_pair.sheet_id.clone(),
+                file_reference: cue_track.file_reference.clone(),
+            });
+        }
+        Ok(Self { tracks: carved })
     }
 
     /// Write the carving as rows over the release's files `file_ids` (each
@@ -338,12 +353,11 @@ impl Carving {
         sql: &CovenWrite<'_>,
         file_ids: &HashMap<&str, &str>,
     ) -> Result<(), DbError> {
-        for (track_id, sheet) in &self.tracks {
-            let sheet_file_id = file_ids
-                .get(sheet.as_str())
-                .copied()
-                .ok_or_else(|| DbError::unreadable("the sheet that carves a track", sheet))?;
-            insert_carved_track_row(sql, track_id, sheet_file_id)?;
+        for track in &self.tracks {
+            let sheet_file_id = file_ids.get(track.sheet.as_str()).copied().ok_or_else(|| {
+                DbError::unreadable("the sheet that carves a track", &track.sheet)
+            })?;
+            insert_carved_track_row(sql, &track.track_id, sheet_file_id, &track.file_reference)?;
         }
         Ok(())
     }
@@ -382,7 +396,7 @@ impl ImportTables {
         let album = album.map(|album| (album.row.clone(), album.picked_new));
         let mut release = release.clone();
         let tracks: Vec<DbTrack> = tracks_to_files.iter().map(|tf| tf.db_track.clone()).collect();
-        let carving = Carving::of(tracks_to_files);
+        let carving = Carving::of(tracks_to_files)?;
         let mediums = rows.mediums.to_vec();
         let track_artists = rows.track_artists.to_vec();
         let album_artists = rows.album_artists.to_vec();

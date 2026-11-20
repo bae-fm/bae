@@ -807,13 +807,15 @@ CREATE TABLE IF NOT EXISTS audio_segment_scrub_points (
 ) STRICT;
 
 -- The CUE sheet that carves each track a CUE sheet carves out of an image,
--- as the import read it: the sheet's file in the release's files. A track
--- that plays a whole file has no row. Deleting the track or the sheet's
--- file deletes the row. The disc a sheet is, is the disc its first track
--- sits on.
+-- as the import read it: the sheet's file in the release's files, and the
+-- text of the sheet's `FILE` line the track's INDEX 01 is under, as
+-- `release_sheet_bindings` keys a line. A track that plays a whole file has
+-- no row. Deleting the track or the sheet's file deletes the row. The disc a
+-- sheet is, is the disc its first track sits on.
 CREATE TABLE IF NOT EXISTS carved_tracks (
     track_id TEXT PRIMARY KEY NOT NULL,
     sheet_file_id TEXT NOT NULL,
+    file_reference TEXT NOT NULL,
     FOREIGN KEY (track_id) REFERENCES tracks (id) ON DELETE CASCADE,
     FOREIGN KEY (sheet_file_id) REFERENCES release_files (id) ON DELETE CASCADE
 ) STRICT;

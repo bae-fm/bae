@@ -5924,7 +5924,7 @@ All sync.
 | `track_works` | work a track performs, in order |
 | `audio_formats` | track's format, pregap, loudness and peak |
 | `audio_format_segments` | span of a file a track reads: pregap or main, samples and bytes; one main and at most one pregap per format, each kept to one by a unique index |
-| `carved_tracks` | track a CUE sheet carves out of an image, keyed by the track: the sheet, one of the release's files; deleting the track or the sheet's file deletes it. A sheet is the disc its first track sits on, which the table does not store |
+| `carved_tracks` | track a CUE sheet carves out of an image, keyed by the track: the sheet, one of the release's files, and the text of the sheet's `FILE` line the track's INDEX 01 is under; deleting the track or the sheet's file deletes it. A sheet is the disc its first track sits on, which the table does not store |
 | `audio_segment_scrub_points` | frames a seek inside a segment can start its decode at, one row per segment that has any, keyed by the segment: each frame's first sample, its byte, and the first sample a decode from it plays exactly, packed in sample order in one blob; for a FLAC whose seektable is missing or sparser than the points' 10-second spacing, and for every MP3 (§3.7) |
 
 Beside them, device-local tables:
