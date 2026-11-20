@@ -4,6 +4,6 @@
 
 `copy` adds text after the note as a `MacCopyText`, with a copy button on hover: “Apps connect at” then an address. Given more than one, the note ends in a colon and each is a bullet under it, with words after it that aren't copied: “Apps connect at:” / “• http://192.168.1.20:4533 (Wi-Fi)” / “• http://100.64.0.3:4533 (Tailscale)”.
 
-A row the person clicks reads as one button named by its words: one with `chevron`, `action` or `destructive` is, and `button` marks the rest, such as a Welcome library. A row that ends in controls of its own (a ⋯ menu) gives the button to its label alone.
+A row the person clicks reads as one button named by its words: one with `chevron`, `action` or `destructive` is, and `button` marks the rest, such as a Welcome library. A row that ends in controls of its own (a ⋯ menu) gives the button to its label alone. The button's name is its texts joined with a comma and a space, as macOS names it: “Devices, 2 devices”.
 
 **In the code:** macOS: BaeKit's `MacRow` (`BaeKit/Sources/BaeKit/Views/MacRow.swift`).

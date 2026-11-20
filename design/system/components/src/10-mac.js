@@ -137,11 +137,15 @@
     var copies = props.copy == null || props.copy === '' ? [] : Array.isArray(props.copy) ? props.copy : [{ text: props.copy }];
     // A row the person clicks is a button, named by its words: on the whole row, or, when the row ends in controls of its own, on its label alone so a button never holds one.
     var tap = !!(props.onClick || props.chevron || props.action || props.destructive || props.button);
+    // macOS names a clickable row from its texts joined with ", " ("Devices, 2 devices"), where a browser joins them with spaces. A string note is one of them; a note of other content is not.
+    var named = function (parts) { return parts.filter(function (x) { return typeof x === 'string' && x !== ''; }).join(', '); };
     var press = tap ? { role: 'button', 'aria-disabled': props.off ? true : null } : {};
-    return h('div', { className: cx('bae-m-row', props.nested && 'bae-m-row-nested', props.nested && props.off && 'bae-m-row-nested-off', !props.nested && props.off && 'bae-off', props.selected && 'bae-m-row-selected', props.action && 'bae-m-row-action', props.destructive && 'bae-m-row-destructive'), role: trail.length ? null : press.role, 'aria-disabled': trail.length ? null : press['aria-disabled'], onClick: props.onClick },
+    var rowName = tap ? named([props.label, props.tag, props.note, props.value]) : '';
+    var labelName = tap ? named([props.label, props.tag, props.note]) : '';
+    return h('div', { className: cx('bae-m-row', props.nested && 'bae-m-row-nested', props.nested && props.off && 'bae-m-row-nested-off', !props.nested && props.off && 'bae-off', props.selected && 'bae-m-row-selected', props.action && 'bae-m-row-action', props.destructive && 'bae-m-row-destructive'), role: trail.length ? null : press.role, 'aria-label': tap && !trail.length && rowName ? rowName : null, 'aria-disabled': trail.length ? null : press['aria-disabled'], onClick: props.onClick },
       // `avatar`: a person's name, whose picture (`avatarImage`) or initials lead the row.
       props.avatar != null ? h('span', { className: 'bae-m-row-lead' }, h(Avatar, { name: props.avatar, image: props.avatarImage, size: 28 })) : null,
-      props.label == null ? null : h('span', Object.assign({ className: 'bae-m-row-label' }, trail.length ? press : null),
+      props.label == null ? null : h('span', Object.assign({ className: 'bae-m-row-label' }, trail.length ? press : null, trail.length && labelName ? { 'aria-label': labelName } : null),
         h('span', { className: 'bae-m-row-title' }, h('span', { className: props.strong ? 'bae-m-row-strong' : null }, props.label), props.tag ? h(StatusChip, null, props.tag) : null, props.info ? h(MacInfoTip, { label: 'About ' + props.label }) : null),
         props.note || copies.length ? h('span', { className: cx('bae-m-row-note', props.noteTone && 'bae-tone-' + props.noteTone) },
           copies.length > 1 ? [props.note ? props.note + ':' : null, h('ul', { key: 'l', className: 'bae-m-row-notelist' }, copies.map(function (c, i) { return h('li', { key: i }, h(MacCopyText, { hover: props.copyHover, after: c.after }, c.text)); }))]
