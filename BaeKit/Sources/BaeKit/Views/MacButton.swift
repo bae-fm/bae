@@ -20,8 +20,7 @@ public struct MacButton<Label: View>: View {
     private let kind: MacButtonKind
     private let press: Press
     private let label: Label
-    private var isNeutral = false
-    private var mutedLook: Muted?
+    private var tone = Tone.inherited
     private var controlSize: ControlSize?
 
     /// What a press does.
@@ -46,7 +45,15 @@ public struct MacButton<Label: View>: View {
     /// step's default button.
     public func neutral() -> MacButton {
         var copy = self
-        copy.isNeutral = true
+        copy.tone = .neutral
+        return copy
+    }
+
+    /// Words in the accent, for a borderless button among quiet words that
+    /// would otherwise take their colour: Disconnect at a receiver row's end.
+    public func accent() -> MacButton {
+        var copy = self
+        copy.tone = .accent
         return copy
     }
 
@@ -56,7 +63,7 @@ public struct MacButton<Label: View>: View {
         -> MacButton
     {
         var copy = self
-        copy.mutedLook = isMuted ? Muted(onStage: onStage) : nil
+        copy.tone = isMuted ? .muted(onStage: onStage) : .inherited
         return copy
     }
 
@@ -69,7 +76,7 @@ public struct MacButton<Label: View>: View {
 
     public var body: some View {
         drawn
-            .modifier(MacButtonLook(neutral: isNeutral, muted: mutedLook))
+            .modifier(MacButtonLook(tone: tone))
             .modifier(MacButtonSize(size: controlSize))
     }
 
@@ -92,25 +99,32 @@ public struct MacButton<Label: View>: View {
     }
 }
 
-/// How a muted button reads: in secondary text, or in a stage's.
-private struct Muted {
-    let onStage: Bool
+/// The colour of a button's words.
+private enum Tone {
+    /// The kind's own colour, as what the button sits in sets it.
+    case inherited
+    /// The primary text colour.
+    case neutral
+    /// The accent.
+    case accent
+    /// Secondary text, or a stage's secondary text `onStage`.
+    case muted(onStage: Bool)
 }
 
 private struct MacButtonLook: ViewModifier {
-    let neutral: Bool
-    let muted: Muted?
+    let tone: Tone
 
     func body(content: Content) -> some View {
-        if neutral {
-            content.foregroundStyle(Theme.textPrimary).tint(Theme.textPrimary)
-        }
-        else if let muted {
-            let color = muted.onStage ? Theme.onFillSecondary : Color.secondary
-            content.foregroundStyle(color).tint(color)
-        }
-        else {
+        switch tone {
+        case .inherited:
             content
+        case .neutral:
+            content.foregroundStyle(Theme.textPrimary).tint(Theme.textPrimary)
+        case .accent:
+            content.foregroundStyle(Theme.accent).tint(Theme.accent)
+        case .muted(let onStage):
+            let color = onStage ? Theme.onFillSecondary : Color.secondary
+            content.foregroundStyle(color).tint(color)
         }
     }
 }

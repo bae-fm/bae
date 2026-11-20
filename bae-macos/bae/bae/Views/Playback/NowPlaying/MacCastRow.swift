@@ -95,11 +95,7 @@ struct MacCastRow: View {
                 .buttonStyle(.accentPlain)
                 // Named as macOS names a row button: its name and its second
                 // line, without the spinner of a wait.
-                .accessibilityLabel(
-                    Text(verbatim: "\(receiver.name), ")
-                        + (wait.map(waitLine)
-                            ?? Text(verbatim: receiver.kind.productName))
-                )
+                .accessibilityLabel(buttonName)
             case .page:
                 // The row holds the ⋯ menu, which a button around the row
                 // would take in as part of its own label.
@@ -151,7 +147,7 @@ struct MacCastRow: View {
                     .lineLimit(2)
                     .truncationMode(.tail)
                 if let wait {
-                    waitLine(wait)
+                    Text(verbatim: waitWords(wait))
                         .themeText(.detail)
                         .italic()
                         .foregroundStyle(.secondary)
@@ -189,9 +185,7 @@ struct MacCastRow: View {
                         action: onDisconnect
                     )
                     .small()
-                    // In the accent, over the secondary style of the row's
-                    // end.
-                    .foregroundStyle(Theme.accent)
+                    .accent()
                 }
             case .page:
                 MacMoreMenu {
@@ -209,12 +203,26 @@ struct MacCastRow: View {
         .padding(.horizontal, rowInset)
     }
 
+    /// The name VoiceOver reads for a row the person clicks to play on: the
+    /// receiver's name and its second line, what bae waits on or its kind.
+    private var buttonName: Text {
+        let line = wait.map(waitWords) ?? receiver.kind.productName
+        return Text(
+            LocalizedStringResource(
+                "cast.receiver.button",
+                defaultValue: "\(receiver.name), \(line)",
+                comment:
+                    "VoiceOver's name for a receiver's row in the Play on popover: the receiver's name, then the line under it (its kind, or what bae waits on while it connects)."
+            )
+        )
+    }
+
     /// The words of `wait`, under the receiver's name.
-    private func waitLine(_ wait: Wait) -> Text {
+    private func waitWords(_ wait: Wait) -> String {
         switch wait {
         case .connecting:
-            Text(
-                LocalizedStringResource(
+            String(
+                localized: LocalizedStringResource(
                     "cast.receiver.connecting",
                     defaultValue: "Connecting…",
                     comment:
@@ -222,8 +230,8 @@ struct MacCastRow: View {
                 )
             )
         case .ownerDeciding:
-            Text(
-                "Accept on \(receiver.name)…",
+            String(
+                localized: "Accept on \(receiver.name)…",
                 comment:
                     "Under a receiver's name in the Play on popover and the Playback settings, and the Play on button's tooltip, once the receiver has held bae's request for five seconds: its owner may have to accept bae on it. The argument is the receiver's name."
             )
