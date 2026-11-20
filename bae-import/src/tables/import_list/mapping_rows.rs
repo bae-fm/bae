@@ -471,8 +471,8 @@ struct Document {
     sides: Vec<SideJson>,
     files: Vec<CarriedJson>,
     untitled: u32,
-    tracks: usize,
-    units: usize,
+    tracks: u32,
+    units: u32,
 }
 
 /// Read the mapping table of the release the scan stores at `key`.
@@ -560,6 +560,7 @@ impl MappingRows {
                 .collect(),
             track_sides,
             files,
+            track_count: document.tracks,
             untitled_track_count: document.untitled,
         })
     }
@@ -639,7 +640,8 @@ fn sheet_group(sheet: SheetJson) -> Result<SheetGroup, ImportError> {
 fn reference_options(reference: ReferenceJson) -> Result<SheetReferenceOptions, ImportError> {
     Ok(SheetReferenceOptions {
         file_reference: reference.file_reference,
-        file_id: reference.file_id,
+        // A folder's audio is named by its relative path, its id.
+        bound: reference.file_id.map(|file_id| MappingContainer { name: file_id.clone(), file_id }),
         options: reference
             .options
             .into_iter()

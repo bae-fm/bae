@@ -159,8 +159,10 @@ pub enum SheetBound {
     RefusedTiming,
 }
 
-/// The audio a track sheet describes.
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// One of a release's audio files, by its id and the name the screens show:
+/// the audio a track sheet describes, the file a `FILE` line plays from, or
+/// the file a library track plays.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct MappingContainer {
     pub file_id: String,
     pub name: String,

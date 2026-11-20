@@ -403,6 +403,7 @@ struct Candidate: Equatable, Identifiable {
                 images: [],
                 trackSides: [],
                 files: [],
+                trackCount: 0,
                 untitledTrackCount: 0
             )
     }

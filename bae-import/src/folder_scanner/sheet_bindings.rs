@@ -557,11 +557,12 @@ pub struct SheetBindingOption {
     pub offer: SheetBindingOffer,
 }
 
-/// One CUE FILE reference, its current association, and available choices.
+/// One CUE FILE reference, the audio file it plays from (`None` when it
+/// plays none), and the audio files it can play from.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SheetReferenceOptions {
     pub file_reference: String,
-    pub file_id: Option<String>,
+    pub bound: Option<crate::MappingContainer>,
     pub options: Vec<SheetBindingOption>,
 }
 
@@ -586,7 +587,11 @@ impl CategorizedFiles {
                     .find(|file| file.file_reference == reference);
                 SheetReferenceOptions {
                     file_reference: reference.to_owned(),
-                    file_id: associated.map(|file| file.file_id.clone()),
+                    // A folder's audio is named by its relative path, its id.
+                    bound: associated.map(|file| crate::MappingContainer {
+                        file_id: file.file_id.clone(),
+                        name: file.file_id.clone(),
+                    }),
                     options: self
                         .audio()
                         .filter(|audio| {

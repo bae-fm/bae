@@ -80,11 +80,11 @@ enum ImportSheetBindingChoice: Hashable {
             return .offered(
                 fileId: option.fileId,
                 name: option.name,
-                isBound: reference.fileId == option.fileId
+                isBound: reference.bound?.fileId == option.fileId
             )
         }
         return offersNone
-            ? files + [.describesNothing(isBound: reference.fileId == nil)]
+            ? files + [.describesNothing(isBound: reference.bound == nil)]
             : files
     }
 }

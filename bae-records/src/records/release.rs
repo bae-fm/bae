@@ -469,7 +469,8 @@ impl Records {
 /// of that id when the release holds one, and the CUE sheet that carves it,
 /// with the sheet's name and the side its first track sits on (the first side
 /// of a medium that is not played side by side, whose sides share its one
-/// heading), the sheet's `FILE` line it is under and
+/// heading), how many of the sheet's `FILE` lines carve the release's
+/// tracks, the sheet's `FILE` line it is under and
 /// the audio files that line can play from (`sheet_audio_options`, see
 /// [`super::sheet_files::sheet_audio_options_ctes`]). A track on a line moved to another file plays to that file's end where
 /// it played to the end of the file before. [`release_edit_track_of_row`]
@@ -504,6 +505,8 @@ pub fn release_edit_tracks_sql(release: &str, source: MediumsSource<'_>, picks: 
                carved.sheet_file_id, carved.file_reference AS sheet_file_reference, \
                sheet_file.original_filename AS sheet_name, p.sheet_medium, p.sheet_side, \
                p.sheet_kind, p.sheet_ordinal, \
+               (SELECT COUNT(DISTINCT lines.file_reference) FROM carved_tracks lines \
+                WHERE lines.sheet_file_id = carved.sheet_file_id) AS sheet_line_count, \
                options.options AS sheet_audio_options \
             FROM tracks t JOIN placed p ON p.id = t.id \
             LEFT JOIN main ON main.track_id = t.id AND main.n = 1 \
@@ -612,6 +615,7 @@ pub fn release_edit_track_of_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Db
                         bae_store::read::column_conversion_error(row, "sheet_kind", reason)
                     })?
                 },
+                line_count: count_column(row, "sheet_line_count")?,
                 file_reference: row.get("sheet_file_reference")?,
                 audio_options: {
                     let options: String = row.get("sheet_audio_options")?;

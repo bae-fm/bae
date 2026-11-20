@@ -404,14 +404,13 @@ actor PreviewReleaseLibrary {
                                 $0.fileId == audioFileId
                             })
                         else { return run }
-                        line.fileId = option.fileId
-                        sheet.boundAudio = .one(reference: line)
-                        sheet.bound = .describes(
-                            container: BridgeMappingContainer(
-                                fileId: option.fileId,
-                                name: option.name
-                            )
+                        let file = BridgeMappingContainer(
+                            fileId: option.fileId,
+                            name: option.name
                         )
+                        line.bound = file
+                        sheet.boundAudio = .one(reference: line)
+                        sheet.bound = .describes(container: file)
                         picked.append(option.name)
                         return .sheet(sheet: sheet, rows: rows)
                     }

@@ -86,7 +86,10 @@ extension PreviewData {
     static let sheetReferenceOptions =
         BridgeSheetReferenceOptions(
             fileReference: mappedAudioContainer.file.name,
-            fileId: mappedAudioContainer.file.name,
+            bound: BridgeMappingContainer(
+                fileId: mappedAudioContainer.file.name,
+                name: mappedAudioContainer.file.name
+            ),
             options: [
                 BridgeSheetBindingOption(
                     fileId: mappedAudioContainer.file.name,

@@ -7,7 +7,9 @@ use crate::folder_scanner::{
 use crate::pane::blank_candidate_draft;
 use crate::tables::watched_path::host_root;
 use crate::types::{AudioFile, CandidateDraft};
-use crate::{ImportError, SheetBound, SheetBoundAudio, TrackTableRow, TrackTableRun};
+use crate::{
+    ImportError, MappingContainer, SheetBound, SheetBoundAudio, TrackTableRow, TrackTableRun,
+};
 use bae_catalogs::medium_coverage::LENGTH_DISAGREEMENT_MS;
 use bae_types::pressing::{made_of, Medium};
 use bae_util::test_files::TestFolder;
@@ -414,7 +416,10 @@ async fn a_sheet_s_entries_carry_their_starts_and_bind_to_its_slices() {
         sheet.bound_audio,
         SheetBoundAudio::One(SheetReferenceOptions {
             file_reference: "CDImage.flac".into(),
-            file_id: Some("CDImage.flac".into()),
+            bound: Some(MappingContainer {
+                file_id: "CDImage.flac".into(),
+                name: "CDImage.flac".into()
+            }),
             options: vec![SheetBindingOption {
                 file_id: "CDImage.flac".into(),
                 name: "CDImage.flac".into(),
@@ -734,7 +739,7 @@ async fn invalid_cue_times_are_not_reported_as_missing_audio() {
         sheet.bound_audio,
         SheetBoundAudio::One(SheetReferenceOptions {
             file_reference: "disc.flac".into(),
-            file_id: Some("disc.flac".into()),
+            bound: Some(MappingContainer { file_id: "disc.flac".into(), name: "disc.flac".into() }),
             options: vec![SheetBindingOption {
                 file_id: "disc.flac".into(),
                 name: "disc.flac".into(),
@@ -759,7 +764,10 @@ async fn partial_sheet_keeps_assigned_and_missing_references_even_without_choice
         sheet.bound_audio,
         SheetBoundAudio::One(SheetReferenceOptions {
             file_reference: "first.wav".into(),
-            file_id: Some("first.flac".into()),
+            bound: Some(MappingContainer {
+                file_id: "first.flac".into(),
+                name: "first.flac".into()
+            }),
             options: vec![SheetBindingOption {
                 file_id: "first.flac".into(),
                 name: "first.flac".into(),
@@ -771,7 +779,7 @@ async fn partial_sheet_keeps_assigned_and_missing_references_even_without_choice
         sheet.unbound_references,
         Some(vec![SheetReferenceOptions {
             file_reference: "absent.wav".into(),
-            file_id: None,
+            bound: None,
             options: vec![]
         }])
     );
@@ -795,7 +803,7 @@ async fn codec_refusal_does_not_invent_a_current_assignment() {
         sheet.unbound_references,
         Some(vec![SheetReferenceOptions {
             file_reference: "disc.mp3".into(),
-            file_id: None,
+            bound: None,
             options: vec![SheetBindingOption {
                 file_id: "disc.mp3".into(),
                 name: "disc.mp3".into(),
@@ -832,7 +840,7 @@ async fn the_first_of_competing_sheets_carves_and_the_rest_stay_listed() {
     let SheetBoundAudio::One(reference) = &sheet.bound_audio else {
         panic!("the sheet's one line plays audio: {:?}", sheet.bound_audio);
     };
-    assert_eq!(reference.file_id.as_deref(), Some("disc.flac"));
+    assert_eq!(reference.bound.as_ref().map(|file| file.file_id.as_str()), Some("disc.flac"));
 }
 
 /// A CUE's slices on a draft whose medium states no carrier read as one flat
@@ -874,7 +882,10 @@ async fn a_multi_file_sheet_stays_described_when_ignored_without_probing() {
     let expected = vec![
         SheetReferenceOptions {
             file_reference: "first.wav".into(),
-            file_id: Some("first.flac".into()),
+            bound: Some(MappingContainer {
+                file_id: "first.flac".into(),
+                name: "first.flac".into(),
+            }),
             options: vec![SheetBindingOption {
                 file_id: "first.flac".into(),
                 name: "first.flac".into(),
@@ -883,7 +894,10 @@ async fn a_multi_file_sheet_stays_described_when_ignored_without_probing() {
         },
         SheetReferenceOptions {
             file_reference: "second.wav".into(),
-            file_id: Some("second.flac".into()),
+            bound: Some(MappingContainer {
+                file_id: "second.flac".into(),
+                name: "second.flac".into(),
+            }),
             options: vec![SheetBindingOption {
                 file_id: "second.flac".into(),
                 name: "second.flac".into(),

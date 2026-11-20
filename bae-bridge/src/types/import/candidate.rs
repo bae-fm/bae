@@ -77,8 +77,8 @@ pub struct BridgeSheetBindingOption {
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeSheetReferenceOptions {
     pub file_reference: String,
-    /// The id of the choice the line plays from; `None` when it plays none.
-    pub file_id: Option<String>,
+    /// The audio file the line plays from; `None` when it plays none.
+    pub bound: Option<BridgeMappingContainer>,
     pub options: Vec<BridgeSheetBindingOption>,
 }
 

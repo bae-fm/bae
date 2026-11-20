@@ -2,13 +2,13 @@ use super::*;
 use bae_records::source_audio::SourceAudioLayout;
 use bae_types::mediums::TrackPosition;
 
-/// The track `id` on `side`, playing `file`: carved out of it by the sheet
-/// `sheet`, or the whole file where `sheet` is `None`.
-fn context(side: TrackSide, id: &str, file: &str, sheet: Option<&str>) -> ReleaseEditTrackContext {
-    ReleaseEditTrackContext {
-        track_id: id.to_string(),
+/// The row of the track `id` on `side`, playing `file`: carved out of it by
+/// the sheet `sheet` of one `FILE` line, or the whole file where `sheet` is
+/// `None`.
+fn context(side: TrackSide, id: &str, file: &str, sheet: Option<&str>) -> ReleaseEditTrackRow {
+    let context = ReleaseEditTrackContext {
         side,
-        source: ReleaseEditTrackSource { file_id: file.to_string(), name: format!("{file}.flac") },
+        source: crate::MappingContainer { file_id: file.to_string(), name: format!("{file}.flac") },
         start_ms: 0,
         duration_ms: 1_000,
         listed_length_ms: None,
@@ -20,10 +20,12 @@ fn context(side: TrackSide, id: &str, file: &str, sheet: Option<&str>) -> Releas
                 side: bae_types::mediums::MediumSide::first_of(1),
                 heading: TrackSide::Disc { disc: 1 },
             },
+            line_count: 1,
             file_reference: format!("{file}.flac"),
             audio_options: Vec::new(),
         }),
-    }
+    };
+    ReleaseEditTrackRow { edit: form_row(id), context, artists: None }
 }
 
 fn side(letter: &str) -> TrackSide {
@@ -40,25 +42,18 @@ fn form_row(id: &str) -> crate::RawTrackEdit {
     }
 }
 
-/// The sides of `tracks`, each beside a form row of its own.
-fn lay_out(tracks: Vec<ReleaseEditTrackContext>) -> Vec<crate::TrackTableSide> {
+/// The sides of `tracks`.
+fn lay_out(tracks: Vec<ReleaseEditTrackRow>) -> Vec<crate::TrackTableSide> {
     lay_out_on_discs(tracks, 1)
 }
 
 /// The sides of `tracks` on a release of `disc_count` discs.
 fn lay_out_on_discs(
-    tracks: Vec<ReleaseEditTrackContext>,
+    tracks: Vec<ReleaseEditTrackRow>,
     disc_count: u32,
 ) -> Vec<crate::TrackTableSide> {
     lay_out_tracks(
-        tracks
-            .into_iter()
-            .map(|context| ReleaseEditTrackRow {
-                edit: form_row(&context.track_id),
-                context,
-                artists: None,
-            })
-            .collect(),
+        tracks,
         &(1..=disc_count)
             .map(|disc| bae_records::DbSheetSideChoice {
                 side: bae_types::mediums::MediumSide::first_of(disc),
@@ -114,7 +109,7 @@ fn tracks_lay_out_a_side_per_run_of_one_side_and_a_run_per_sheet() {
 #[test]
 fn a_row_names_its_file_or_its_start() {
     let mut carved = context(TrackSide::Flat, "t2", "image", Some("sheet"));
-    carved.start_ms = 61_000;
+    carved.context.start_ms = 61_000;
     let sides = lay_out(vec![context(TrackSide::Flat, "t1", "loose", None), carved]);
     let [crate::TrackTableRun::Track(row), crate::TrackTableRun::Sheet { rows, .. }] =
         sides[0].runs.as_slice()
@@ -174,7 +169,7 @@ fn a_sheet_caption_offers_its_lines_audio_files_as_the_import_pane_does() {
         context(side("A"), "a2", "image", Some("sheet")),
     ];
     for track in &mut tracks {
-        track.sheet.as_mut().expect("the sheet carves the track").audio_options = vec![
+        track.context.sheet.as_mut().expect("the sheet carves the track").audio_options = vec![
             option("image", ContentType::Flac, true, true),
             option("lossy", ContentType::Mp3, false, true),
             option("short", ContentType::Flac, false, false),
@@ -198,7 +193,10 @@ fn a_sheet_caption_offers_its_lines_audio_files_as_the_import_pane_does() {
         sheet.bound_audio,
         crate::SheetBoundAudio::One(SheetReferenceOptions {
             file_reference: "image.flac".to_string(),
-            file_id: Some("image".to_string()),
+            bound: Some(crate::MappingContainer {
+                file_id: "image".to_string(),
+                name: "image.flac".to_string(),
+            }),
             options: vec![
                 choice("image", SheetBindingOffer::Offered),
                 choice("lossy", SheetBindingOffer::RefusedCodec { codec: "MP3".to_string() }),
@@ -214,11 +212,15 @@ fn a_sheet_caption_offers_its_lines_audio_files_as_the_import_pane_does() {
 /// tracks reach them.
 #[test]
 fn a_sheet_of_two_lines_heads_its_tracks_once() {
-    let sides = lay_out(vec![
+    let mut tracks = vec![
         context(TrackSide::Flat, "t1", "image-1", Some("sheet")),
         context(TrackSide::Flat, "t2", "image-1", Some("sheet")),
         context(TrackSide::Flat, "t3", "image-2", Some("sheet")),
-    ]);
+    ];
+    for track in &mut tracks {
+        track.context.sheet.as_mut().expect("the sheet carves the track").line_count = 2;
+    }
+    let sides = lay_out(tracks);
     assert_eq!(runs(&sides[0]), [(Some("sheet"), vec!["t1", "t2", "t3"])]);
     let sheet = only_caption(&sides[0]);
     assert_eq!(sheet.bound, crate::SheetBound::DescribesFiles { audio_file_count: 2 });
@@ -228,7 +230,12 @@ fn a_sheet_of_two_lines_heads_its_tracks_once() {
     assert_eq!(
         lines
             .iter()
-            .map(|line| (line.file_reference.as_str(), line.file_id.as_deref()))
+            .map(|line| {
+                (
+                    line.file_reference.as_str(),
+                    line.bound.as_ref().map(|file| file.file_id.as_str()),
+                )
+            })
             .collect::<Vec<_>>(),
         [("image-1.flac", Some("image-1")), ("image-2.flac", Some("image-2"))]
     );
@@ -384,6 +391,7 @@ fn a_track_keeps_its_listed_length_and_its_sheet() {
             side: bae_types::mediums::MediumSide::first_of(2),
             heading: TrackSide::Disc { disc: 2 },
         },
+        line_count: 1,
         file_reference: "disc.flac".to_string(),
         audio_options: Vec::new(),
     };

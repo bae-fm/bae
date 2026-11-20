@@ -7,22 +7,15 @@ use bae_records::source_audio::SourceAudioSummary;
 use bae_records::DbReleaseEditSheet;
 use bae_types::mediums::TrackSide;
 
-/// The file a persisted track's body plays from: its main segment's file. A
-/// pregap stored in the file before is not the track's source.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct ReleaseEditTrackSource {
-    pub file_id: String,
-    pub name: String,
-}
-
 /// Display-only facts that accompany one persisted metadata row in the shared
-/// editor. `track_id` is the database row identity, not a positional join.
+/// editor.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ReleaseEditTrackContext {
-    pub track_id: String,
     /// The side of the release the track is on.
     pub side: TrackSide,
-    pub source: ReleaseEditTrackSource,
+    /// The file the track's body plays from: its main segment's file. A
+    /// pregap stored in the file before is not the track's source.
+    pub source: crate::MappingContainer,
     /// Where the track's body starts in its source file, in milliseconds:
     /// for a track a CUE sheet carves from an image, its INDEX 01.
     pub start_ms: u64,
@@ -116,6 +109,8 @@ pub(crate) fn lay_out_tracks(
 /// first track is on, the sides and discs `side_choices` its place pop-up
 /// offers, and each of its `FILE` lines in the order the rows reach them,
 /// with the file the line plays from and the audio files it can play from.
+/// The sheet's count of lines, which its query counts, decides whether the
+/// caption names the one file or how many.
 /// A file whose codec bae can't carve tracks out of is refused naming the
 /// codec, and one shorter than the line's tracks is refused for its timing,
 /// as the import pane refuses them.
@@ -152,28 +147,24 @@ fn sheet_captions(
                 offer: SheetBindingOffer::of_probed(&option.content_type, option.fits),
             })
             .collect();
+        let played = row.context.source.clone();
         let line = SheetReferenceOptions {
             file_reference: sheet.file_reference.clone(),
-            file_id: Some(row.context.source.file_id.clone()),
+            bound: Some(played.clone()),
             options,
-        };
-        let played = crate::MappingContainer {
-            file_id: row.context.source.file_id.clone(),
-            name: row.context.source.name.clone(),
         };
         lines.push((line, played));
     }
     sheets
         .into_iter()
         .map(|(sheet, mut lines)| {
-            let (bound, bound_audio) = if lines.len() == 1 {
-                let (line, played) = lines.remove(0);
+            let (bound, bound_audio) = if sheet.line_count == 1 {
+                let (line, played) =
+                    lines.pop().expect("a sheet that carves a row has the row's line");
                 (crate::SheetBound::Describes(played), crate::SheetBoundAudio::One(line))
             } else {
                 (
-                    crate::SheetBound::DescribesFiles {
-                        audio_file_count: u32::try_from(lines.len()).unwrap_or(u32::MAX),
-                    },
+                    crate::SheetBound::DescribesFiles { audio_file_count: sheet.line_count },
                     crate::SheetBoundAudio::Several(
                         lines.into_iter().map(|(line, _)| line).collect(),
                     ),
@@ -256,9 +247,8 @@ impl ReleaseEditTrackContext {
             });
         }
         Ok(Self {
-            track_id,
             side: entry.position.side(),
-            source: ReleaseEditTrackSource { file_id: main.file_id, name: file.name },
+            source: crate::MappingContainer { file_id: main.file_id, name: file.name },
             start_ms: main.start_ms,
             duration_ms: entry.track.duration_ms,
             listed_length_ms: entry.listed_length_ms,

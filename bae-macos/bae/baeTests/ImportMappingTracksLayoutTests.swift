@@ -357,7 +357,11 @@ extension ImportMappingTracksLayoutTests {
     private func sheet(associated: Bool) -> BridgeSheetGroup {
         let reference = BridgeSheetReferenceOptions(
             fileReference: longAudioName,
-            fileId: associated ? longAudioName : nil,
+            bound: associated
+                ? BridgeMappingContainer(
+                    fileId: longAudioName,
+                    name: longAudioName
+                ) : nil,
             options: [
                 BridgeSheetBindingOption(
                     fileId: longAudioName,
@@ -378,9 +382,9 @@ extension ImportMappingTracksLayoutTests {
                     )
                 )
                 : .unresolved(requested: [longAudioName]),
-            boundAudio: reference.fileId == nil
+            boundAudio: reference.bound == nil
                 ? .none : .one(reference: reference),
-            unboundReferences: reference.fileId == nil ? [reference] : nil,
+            unboundReferences: reference.bound == nil ? [reference] : nil,
             assigned: .disc(1),
             sideChoices: BridgeSheetSideChoice.discs(2),
             ignorable: true

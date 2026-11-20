@@ -318,16 +318,16 @@ extension PreviewData {
         bound: BridgeSheetBound
     ) -> BridgeSheetGroup {
         let name = "Field Recordings CD\(number).cue"
-        let boundTo: String? =
+        let boundTo: BridgeMappingContainer? =
             if case .describes(let container) = bound {
-                container.fileId
+                container
             }
             else {
                 nil
             }
         let reference = BridgeSheetReferenceOptions(
             fileReference: "Field Recordings CD\(number).flac",
-            fileId: boundTo,
+            bound: boundTo,
             options: [
                 BridgeSheetBindingOption(
                     fileId: fieldRecordingsContainer.fileId,
@@ -340,9 +340,9 @@ extension PreviewData {
             sheetId: name,
             name: name,
             bound: bound,
-            boundAudio: reference.fileId == nil
+            boundAudio: reference.bound == nil
                 ? .none : .one(reference: reference),
-            unboundReferences: reference.fileId == nil ? [reference] : nil,
+            unboundReferences: reference.bound == nil ? [reference] : nil,
             assigned: .disc(UInt32(number)),
             sideChoices: BridgeSheetSideChoice.discs(2),
             ignorable: true

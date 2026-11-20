@@ -67,14 +67,15 @@ pub struct DbReleaseEditTrack {
 /// A CUE sheet that carves a track out of an image, as the release editor
 /// names it: its file's id and name, the side of the release its first
 /// track sits on with that side's heading, as the release's choices of side
-/// name it, the text of the sheet's `FILE` line the track is under, and
-/// the audio files of the release that line can play from, in file name
-/// order.
+/// name it, how many `FILE` lines of the sheet carve the release's tracks,
+/// the text of the sheet's `FILE` line the track is under, and the audio
+/// files of the release that line can play from, in file name order.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct DbReleaseEditSheet {
     pub file_id: String,
     pub name: String,
     pub place: DbSheetSideChoice,
+    pub line_count: u32,
     pub file_reference: String,
     pub audio_options: Vec<DbSheetAudioOption>,
 }

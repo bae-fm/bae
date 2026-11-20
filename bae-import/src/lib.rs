@@ -340,8 +340,7 @@ pub use types::{
     DraftAlbum, DraftFieldEdit, DraftTrack, EditValidationError, LibraryDraft, LibraryTrack,
     ListRow, MetadataProvenance, PressingFactEdit, PressingOffers, RawLabelEdit, RawPressingEdit,
     RawReleaseEdit, RawTrackEdit, ReleaseDraft, ReleaseEditLoadError, ReleaseEditTrackContext,
-    ReleaseEditTrackSource, ReleaseUserEdit, StandingCredit, TrackArtistAssignments, TrackBinding,
-    TrackUserEdit,
+    ReleaseUserEdit, StandingCredit, TrackArtistAssignments, TrackBinding, TrackUserEdit,
 };
 #[cfg(desktop)]
 pub use types::{

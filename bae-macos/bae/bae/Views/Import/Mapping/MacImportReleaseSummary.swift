@@ -20,7 +20,7 @@ struct ImportReleaseSummary {
             values.albumArtistAssignments.isEmpty
             ? nil
             : bridgeCreditLine(credits: values.albumArtistAssignments).text
-        let count = candidate.mapping.trackRows.count
+        let count = Int(candidate.mapping.trackCount)
         let trackText = String(localized: "\(count) tracks")
         switch provenance {
         case .externalRelease:

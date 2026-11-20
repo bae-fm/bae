@@ -42,7 +42,11 @@ mirror_struct! {
 mirror_struct! {
     BridgeSheetReferenceOptions = bae_import::folder_scanner::SheetReferenceOptions,
     from_core: pub(crate) fn,
-    fields: { file_reference, file_id, options: (each BridgeSheetBindingOption) },
+    fields: {
+        file_reference,
+        bound: (opt BridgeMappingContainer),
+        options: (each BridgeSheetBindingOption),
+    },
 }
 
 impl BridgeCandidateFiles {
@@ -267,6 +271,7 @@ mirror_struct! {
         images: (each BridgeMappingImage),
         track_sides: (each BridgeTrackTableSide),
         files: (each BridgeMappingFileRow),
+        track_count,
         untitled_track_count,
     },
 }

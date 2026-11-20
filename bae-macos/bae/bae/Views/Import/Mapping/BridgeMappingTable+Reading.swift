@@ -15,20 +15,6 @@ extension BridgeTrackTableRun {
     }
 }
 
-extension BridgeTrackTableSide {
-    /// The rows on this side, in table order.
-    var rows: [BridgeTrackTableRow] {
-        runs.flatMap(\.rows)
-    }
-}
-
-extension BridgeMappingTable {
-    /// Every track row in table order.
-    var trackRows: [BridgeTrackTableRow] {
-        trackSides.flatMap(\.rows)
-    }
-}
-
 extension BridgeTrackAudition {
     /// The window of a folder's file the preview player plays for the row;
     /// `nil` for a library release's row, which the library plays.

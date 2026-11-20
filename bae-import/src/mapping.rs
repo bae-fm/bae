@@ -20,6 +20,8 @@ pub struct MappingTable {
     pub track_sides: Vec<TrackTableSide>,
     /// Files carried with the release but not represented by track rows.
     pub files: Vec<MappingFileRow>,
+    /// How many track rows the table holds.
+    pub track_count: u32,
     /// How many track rows nobody has named yet. Committing anyway titles
     /// each after its file.
     pub untitled_track_count: u32,

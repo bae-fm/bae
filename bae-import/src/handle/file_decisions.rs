@@ -59,7 +59,8 @@ impl ImportServiceHandle {
             .ok_or_else(|| crate::ImportError::SheetBinding {
                 detail: format!("{sheet_file_id} has no FILE reference {file_reference}"),
             })?;
-        if audio_file_id.is_some() && reference.file_id == audio_file_id {
+        let bound_file_id = reference.bound.as_ref().map(|file| file.file_id.as_str());
+        if audio_file_id.is_some() && bound_file_id == audio_file_id.as_deref() {
             let _commit = self.services.folder_state_commit.lock("check a sheet binding").await;
             self.editable_candidate_for_commit(&candidate_key).await?;
             return Ok(());

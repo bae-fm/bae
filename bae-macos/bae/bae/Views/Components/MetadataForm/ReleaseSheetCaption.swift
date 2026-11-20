@@ -103,14 +103,17 @@ struct ReleaseSheetCaption: View {
         .accessibilityValue(Text(verbatim: sheet.bound.descriptionText))
     }
 
-    /// A bound reference as its submenu names it: what the sheet asked for,
-    /// and the audio it has.
+    /// A reference as its submenu names it: what the sheet asked for, and
+    /// the audio it plays; a reference that plays none is named alone, as
+    /// the unbound menu names it.
     private func referenceTitle(
         _ reference: BridgeSheetReferenceOptions
     ) -> String {
-        let bound = reference.options.first { $0.fileId == reference.fileId }
+        guard let bound = reference.bound else {
+            return reference.fileReference
+        }
         return String(
-            localized: "\(reference.fileReference) → \(bound?.name ?? "")"
+            localized: "\(reference.fileReference) → \(bound.name)"
         )
     }
 }

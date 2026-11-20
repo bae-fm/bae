@@ -70,7 +70,10 @@ extension ShotScene {
         var release = editedRelease
         let line = BridgeSheetReferenceOptions(
             fileReference: cueImage.name,
-            fileId: cueImage.id,
+            bound: BridgeMappingContainer(
+                fileId: cueImage.id,
+                name: cueImage.name
+            ),
             options: [cueImage, cueRip]
                 .map { file in
                     BridgeSheetBindingOption(
@@ -145,14 +148,13 @@ extension ShotScene {
                     else {
                         return run
                     }
-                    line.fileId = cueRip.id
-                    sheet.boundAudio = .one(reference: line)
-                    sheet.bound = .describes(
-                        container: BridgeMappingContainer(
-                            fileId: cueRip.id,
-                            name: cueRip.name
-                        )
+                    let rip = BridgeMappingContainer(
+                        fileId: cueRip.id,
+                        name: cueRip.name
                     )
+                    line.bound = rip
+                    sheet.boundAudio = .one(reference: line)
+                    sheet.bound = .describes(container: rip)
                     return .sheet(sheet: sheet, rows: rows)
                 }
                 return side

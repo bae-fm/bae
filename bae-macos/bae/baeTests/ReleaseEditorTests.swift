@@ -216,7 +216,7 @@ extension ReleaseEditorTests {
     ) -> BridgeSheetGroup {
         let line = BridgeSheetReferenceOptions(
             fileReference: "Disc audio.wav",
-            fileId: file.id,
+            bound: BridgeMappingContainer(fileId: file.id, name: file.name),
             options: [
                 BridgeSheetBindingOption(
                     fileId: file.id,

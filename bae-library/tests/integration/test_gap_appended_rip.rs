@@ -94,11 +94,7 @@ async fn the_editor_s_sheet_lines_each_name_the_file_their_bodies_play_from() {
     };
     let sources: Vec<&str> = lines
         .iter()
-        .map(|line| {
-            let bound =
-                line.options.iter().find(|option| line.file_id.as_ref() == Some(&option.file_id));
-            bound.expect("the line's file is among its choices").name.as_str()
-        })
+        .map(|line| line.bound.as_ref().expect("the line plays from a file").name.as_str())
         .collect();
 
     assert_eq!(rows.len(), 3);

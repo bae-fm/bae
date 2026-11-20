@@ -123,7 +123,7 @@ async fn a_cue_sheet_moves_to_another_audio_file_of_its_release() {
         line.options
             .iter()
             .map(|option| {
-                let bound = line.file_id.as_ref() == Some(&option.file_id);
+                let bound = line.bound.as_ref().map(|file| &file.file_id) == Some(&option.file_id);
                 (option.name.as_str(), bound, option.offer.clone())
             })
             .collect::<Vec<_>>(),

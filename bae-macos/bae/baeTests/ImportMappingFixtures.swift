@@ -162,7 +162,7 @@ extension MappingFixtures {
     ) -> BridgeSheetGroup {
         let reference = BridgeSheetReferenceOptions(
             fileReference: containerId,
-            fileId: container?.fileId,
+            bound: container,
             options: [
                 BridgeSheetBindingOption(
                     fileId: containerId,
@@ -176,9 +176,9 @@ extension MappingFixtures {
             name: sheetId,
             bound: container.map { .describes(container: $0) }
                 ?? .unresolved(requested: [containerId]),
-            boundAudio: reference.fileId == nil
+            boundAudio: reference.bound == nil
                 ? .none : .one(reference: reference),
-            unboundReferences: reference.fileId == nil ? [reference] : nil,
+            unboundReferences: reference.bound == nil ? [reference] : nil,
             assigned: assigned,
             sideChoices: BridgeSheetSideChoice.discs(2),
             ignorable: true

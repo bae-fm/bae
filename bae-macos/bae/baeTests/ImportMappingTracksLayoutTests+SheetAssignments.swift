@@ -126,7 +126,10 @@ extension ImportMappingTracksLayoutTests {
         [
             BridgeSheetReferenceOptions(
                 fileReference: "First.wav",
-                fileId: "First.flac",
+                bound: BridgeMappingContainer(
+                    fileId: "First.flac",
+                    name: "First.flac"
+                ),
                 options: [
                     BridgeSheetBindingOption(
                         fileId: "First.flac",
@@ -152,7 +155,11 @@ extension ImportMappingTracksLayoutTests {
             ),
             BridgeSheetReferenceOptions(
                 fileReference: "Second.wav",
-                fileId: secondAssigned ? "Second.flac" : nil,
+                bound: secondAssigned
+                    ? BridgeMappingContainer(
+                        fileId: "Second.flac",
+                        name: "Second.flac"
+                    ) : nil,
                 options: [
                     BridgeSheetBindingOption(
                         fileId: "Second.flac",
@@ -180,7 +187,10 @@ extension ImportMappingTracksLayoutTests {
             .map { name in
                 BridgeSheetReferenceOptions(
                     fileReference: "\(name).wav",
-                    fileId: "\(name).flac",
+                    bound: BridgeMappingContainer(
+                        fileId: "\(name).flac",
+                        name: "\(name).flac"
+                    ),
                     options: hasOffers
                         ? [
                             BridgeSheetBindingOption(

@@ -287,9 +287,10 @@ pub struct BridgeMappingFile {
     pub role: BridgeMappingRole,
 }
 
-/// The audio a track sheet describes. Mirror of bae-import's `MappingContainer`.
+/// One of a release's audio files, by its id and the name the screens show.
+/// Mirror of bae-import's `MappingContainer`.
 #[cfg(desktop)]
-#[derive(Debug, Clone, uniffi::Record)]
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeMappingContainer {
     pub file_id: String,
     pub name: String,
@@ -479,6 +480,8 @@ pub struct BridgeMappingTable {
     /// The rows that can become release tracks, on the track table's sides.
     pub track_sides: Vec<BridgeTrackTableSide>,
     pub files: Vec<BridgeMappingFileRow>,
+    /// How many track rows the table holds.
+    pub track_count: u32,
     /// How many track rows nobody has named yet. Committing anyway titles
     /// each after its file.
     pub untitled_track_count: u32,
