@@ -100,9 +100,13 @@ struct ShotElementList: Encodable {
             )
         }
         // The window's own buttons are the platform's frame, not the view:
-        // a board draws them and hides them from its reading order.
+        // a board draws them and hides them from its reading order. A scroll
+        // view's scroll bar, with the buttons it holds, is the platform's
+        // too: it shows on the screen only while the person scrolls, and a
+        // board, which crops its window, draws none.
         tree = tree.leavingOut { node in
             node.subrole.map(windowButtons.contains) == true
+                || node.role == NSAccessibility.Role.scrollBar.rawValue
         }
         return Self(
             board: board,

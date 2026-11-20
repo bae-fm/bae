@@ -234,4 +234,22 @@ struct ShotElementListTests {
             }
         }
     }
+
+    @Test
+    func leavesOutAScrollViewsScrollBar() async throws {
+        // Save as runs past the window's bottom, so its pane scrolls.
+        let list = try await list("mac.settings.save-as")
+        let json = try json(list)
+
+        #expect(
+            !list.elements.contains {
+                $0.native == NSAccessibility.Role.scrollBar.rawValue
+            },
+            "\(json)"
+        )
+        #expect(
+            !list.elements.contains { $0.role == "button" && $0.label == nil },
+            "\(json)"
+        )
+    }
 }
