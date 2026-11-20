@@ -6,6 +6,7 @@ public struct MacSection<Header: View, Content: View, Footer: View>: View {
     private let header: Header
     private let content: Content
     private let footer: Footer
+    private var emptyWords: LocalizedStringResource?
 
     public init(
         @ViewBuilder content: () -> Content,
@@ -17,9 +18,23 @@ public struct MacSection<Header: View, Content: View, Footer: View>: View {
         self.footer = footer()
     }
 
+    /// The words a box with no rows holds, such as "No shared folders yet",
+    /// in place of its rows; nil draws the rows.
+    public func empty(_ words: LocalizedStringResource?) -> MacSection {
+        var copy = self
+        copy.emptyWords = words
+        return copy
+    }
+
     public var body: some View {
         Section {
-            content
+            if let emptyWords {
+                Text(emptyWords)
+                    .foregroundStyle(.secondary)
+            }
+            else {
+                content
+            }
         } header: {
             header
         } footer: {

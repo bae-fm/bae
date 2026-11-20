@@ -100,6 +100,11 @@ extension ShotScene {
     /// something, a strong name, a chip, a row that removes, controls, and the
     /// row under a switch.
     private static let rowScenes: [ShotScene] = [
+        component("mac.component.box.empty", width: 596, height: 70) {
+            ShotForm {
+                MacSection {}.empty("No shared folders yet")
+            }
+        },
         component("mac.component.row.label", width: 596, height: 70) {
             ShotBox {
                 MacRow("Sync") {}

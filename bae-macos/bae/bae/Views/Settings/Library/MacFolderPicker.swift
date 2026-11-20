@@ -98,11 +98,6 @@
             }
             MacSection {
                 if let listing = browser.listing {
-                    if listing.folders.isEmpty && !browser.isNaming {
-                        Text(words.empty)
-                            .themeText(.body)
-                            .foregroundStyle(.secondary)
-                    }
                     ForEach(listing.folders, id: \.location) { folder in
                         row(folder)
                     }
@@ -119,6 +114,10 @@
                     }
                 }
             }
+            .empty(
+                browser.listing?.folders.isEmpty == true && !browser.isNaming
+                    ? words.empty : nil
+            )
             if browser.takenName != nil {
                 MacSection {
                     MacNotice(
