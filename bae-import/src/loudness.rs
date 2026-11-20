@@ -536,13 +536,8 @@ pub(super) async fn measure_loudness(
         })?;
         sources.insert(file_id.clone(), (path.clone(), size));
     }
-    let tracks: Vec<LoudnessTrack> = tracks_to_files
-        .iter()
-        .map(|track| LoudnessTrack {
-            title: track.db_track.title.clone(),
-            duration_ms: track.db_track.duration_ms,
-        })
-        .collect();
+    let tracks: Vec<&bae_records::DbTrack> =
+        tracks_to_files.iter().map(|track| &track.db_track).collect();
     measure_tracks(
         files,
         parallelism,
@@ -561,26 +556,20 @@ pub(super) async fn measure_loudness(
     .await
 }
 
-/// One track a loudness pass measures, as the pass names it, and its length,
-/// which counts the frames the pass expects of it when its segments don't
-/// say.
-pub(crate) struct LoudnessTrack {
-    pub title: String,
-    pub duration_ms: u64,
-}
-
 /// Measure each of `tracks`, whose formats are `audio_formats` and whose
 /// segments are among `audio_segments` (all index-aligned), as
 /// [`measure_loudness`] says, reading each file `readable` says the pass
 /// has a source for through the stream `open` starts, and reporting the
 /// pass's percent as the progress `progress` makes of the frames it expects
-/// does. A track reading a file the pass has no source for stays unmeasured.
+/// does. The pass names each track by its title, and counts the frames it
+/// expects of a track whose segments don't say from its length. A track
+/// reading a file the pass has no source for stays unmeasured.
 async fn measure_tracks<Opening>(
     files: &coven::FileBudget,
     parallelism: NonZeroUsize,
     audio_formats: &mut [bae_records::DbAudioFormat],
     audio_segments: &[bae_records::DbAudioSegment],
-    tracks: &[LoudnessTrack],
+    tracks: &[&bae_records::DbTrack],
     readable: impl Fn(&str) -> bool,
     open: impl Fn(String, coven::FileLease) -> Opening,
     progress: impl FnOnce(Option<u64>) -> LoudnessProgress,
@@ -745,7 +734,7 @@ pub(crate) async fn measure_library_tracks(
     runtime: &tokio::runtime::Handle,
     audio_formats: &mut [bae_records::DbAudioFormat],
     audio_segments: &[bae_records::DbAudioSegment],
-    tracks: &[LoudnessTrack],
+    tracks: &[&bae_records::DbTrack],
     file_sizes: &HashMap<String, u64>,
     diagnostics: &bae_diagnostics::Diagnostics,
 ) -> Result<LoudnessResult, crate::ImportError> {

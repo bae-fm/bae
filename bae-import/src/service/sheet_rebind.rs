@@ -138,8 +138,8 @@ pub async fn rebound_sheet_audio(
     let mut segments = built.audio_segments.clone();
     let mut measured = Vec::with_capacity(tracks.len());
     for track in &tracks {
-        let (format, length_ms) = match moved.iter().position(|m| m.db_track.id == track.id) {
-            Some(index) => (built.audio_formats[index].clone(), moved[index].db_track.duration_ms),
+        let (format, measured_track) = match moved.iter().position(|m| m.db_track.id == track.id) {
+            Some(index) => (built.audio_formats[index].clone(), &moved[index].db_track),
             None => {
                 let format =
                     audio.formats.iter().find(|format| format.track_id == track.id).ok_or_else(
@@ -150,14 +150,11 @@ pub async fn rebound_sheet_audio(
                 segments.extend(
                     audio.segments.iter().filter(|s| s.audio_format_id == format.id).cloned(),
                 );
-                (format.clone(), track.duration_ms)
+                (format.clone(), track)
             }
         };
         formats.push(format);
-        measured.push(crate::loudness::LoudnessTrack {
-            title: track.title.clone(),
-            duration_ms: length_ms,
-        });
+        measured.push(measured_track);
     }
     let file_sizes: HashMap<String, u64> =
         files.iter().map(|file| (file.id.clone(), file.file_size)).collect();
