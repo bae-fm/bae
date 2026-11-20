@@ -2,7 +2,9 @@ package fm.bae.app.ui.components
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.matchParentSize
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.runtime.Composable
@@ -36,8 +38,15 @@ fun AndroidMoreMenu(
             enabled = enabled,
         )
         if (drawnOpen) {
-            AndroidMenuInPlace(modifier = Modifier.align(Alignment.TopEnd).offset(y = DRAWN_MENU_TOP)) {
-                items { }
+            // The menu adds no size to the row it lies over.
+            Box(
+                modifier =
+                    Modifier
+                        .matchParentSize()
+                        .wrapContentSize(Alignment.TopEnd, unbounded = true)
+                        .offset(y = DRAWN_MENU_TOP),
+            ) {
+                AndroidMenuInPlace { items { } }
             }
         } else {
             AndroidMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
