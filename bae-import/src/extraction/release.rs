@@ -316,15 +316,9 @@ fn create_file(path: &Path) -> std::io::Result<std::fs::File> {
 
 /// Write `bytes` to a file at `path`, making the folders above it.
 /// Blocking.
-#[expect(
-    clippy::disallowed_methods,
-    reason = "file system: temporary copies of a release's files for readers that open a path, which coven does not own"
-)]
 fn write_file(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
-    if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent)?;
-    }
-    std::fs::write(path, bytes)
+    use std::io::Write as _;
+    create_file(path)?.write_all(bytes)
 }
 
 #[cfg(test)]
