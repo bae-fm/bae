@@ -62,11 +62,10 @@ struct QueueSection: View {
     /// Shows why a reorder failed.
     let onReorderFailed: @MainActor (any Error) -> Void
     let onInsertTracks: ([String], Int) -> Void
+    /// Shows that a drop's items failed to load.
+    let onDropFailed: @MainActor (DisplayError) -> Void
     /// Sets this lane's shuffle; `nil` on the manual lane, which has none.
     let onSetShuffle: ((Bool) -> Void)?
-
-    @Environment(UiStore.self)
-    private var uiStore
 
     /// The hovered row by entry id, not slot, so the hover stays on its row
     /// when a removal above shifts the lane without new hover events.
@@ -155,7 +154,7 @@ struct QueueSection: View {
                                 acceptsExternalDrops: acceptsExternalDrops,
                                 dropInsertIndex: $dropInsertIndex,
                                 onInsertTracks: onInsertTracks,
-                                onDropFailed: { uiStore.showError($0) },
+                                onDropFailed: onDropFailed,
                             )
                         )
                 }
@@ -197,7 +196,7 @@ struct QueueSection: View {
                         acceptsExternalDrops: acceptsExternalDrops,
                         dropInsertIndex: $dropInsertIndex,
                         onInsertTracks: onInsertTracks,
-                        onDropFailed: { uiStore.showError($0) },
+                        onDropFailed: onDropFailed,
                     )
                 )
         }

@@ -88,6 +88,8 @@ struct QueueTabContent: View {
     /// Shows why a reorder failed.
     let onReorderFailed: @MainActor (any Error) -> Void
     let onInsertTracks: ([String], Int) -> Void
+    /// Shows that a drop's items failed to load.
+    let onDropFailed: @MainActor (DisplayError) -> Void
     /// Sets the playing context's shuffle, from the context section's header.
     let onSetShuffle: (Bool) -> Void
 
@@ -149,6 +151,7 @@ struct QueueTabContent: View {
                             onReorder: onReorder,
                             onReorderFailed: onReorderFailed,
                             onInsertTracks: onInsertTracks,
+                            onDropFailed: onDropFailed,
                             onSetShuffle: nil,
                         )
                         .zIndex(dragCoordinator.isDragSource(.manual) ? 1 : 0)
@@ -172,6 +175,7 @@ struct QueueTabContent: View {
                                 onReorder: onReorder,
                                 onReorderFailed: onReorderFailed,
                                 onInsertTracks: onInsertTracks,
+                                onDropFailed: onDropFailed,
                                 onSetShuffle: onSetShuffle,
                             )
                             .zIndex(

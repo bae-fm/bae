@@ -670,18 +670,7 @@ extension ShotScene {
                         failure: nil,
                         onRetry: {}
                     ),
-                    nowPlaying: queue.map { playing in
-                        QueueNowPlaying(
-                            title: "Low Tide Hours",
-                            artist: "Mara Quill",
-                            cover: playing.covered
-                                ? .libraryImage(cover("Low Tide Hours")) : nil,
-                            position: PreviewData.trackPosition(
-                                positionMs: 102_000,
-                                durationMs: 303_000
-                            )
-                        )
-                    },
+                    nowPlaying: queue.map(queueNowPlaying),
                     onShowUpcoming: {},
                     isPlaying: isPlaying,
                     onGoToNowPlaying: {},
@@ -693,10 +682,27 @@ extension ShotScene {
                     onReorder: { _, _, _ in true },
                     onReorderFailed: { _ in },
                     onInsertTracks: { _, _ in },
+                    onDropFailed: { _ in },
                     onSetShuffle: { _ in }
                 )
             }
         }
+    }
+
+    /// The track `playing` names, as the queue panel's top shows it.
+    private static func queueNowPlaying(_ playing: QueuePlaying)
+        -> QueueNowPlaying
+    {
+        QueueNowPlaying(
+            title: "Low Tide Hours",
+            artist: "Mara Quill",
+            cover: playing.covered
+                ? .libraryImage(cover("Low Tide Hours")) : nil,
+            position: PreviewData.trackPosition(
+                positionMs: 102_000,
+                durationMs: 303_000
+            )
+        )
     }
 
     /// `MacQueuePanel`, docked at the window's right: with a track playing,

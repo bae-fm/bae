@@ -127,6 +127,7 @@ private struct QueueTabContainer: View {
             },
             onReorderFailed: { uiStore.showError($0) },
             onInsertTracks: onInsertTracks,
+            onDropFailed: { uiStore.showError($0) },
             onSetShuffle: { queue.setShuffle($0) },
         )
     }

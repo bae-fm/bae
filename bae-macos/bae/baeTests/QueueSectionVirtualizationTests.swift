@@ -36,6 +36,7 @@ struct QueueSectionVirtualizationTests {
                     onReorder: { _, _, _ in true },
                     onReorderFailed: { _ in },
                     onInsertTracks: { _, _ in },
+                    onDropFailed: { _ in },
                     onSetShuffle: nil,
                 )
             }
