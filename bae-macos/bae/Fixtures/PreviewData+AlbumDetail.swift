@@ -37,17 +37,36 @@ extension PreviewData {
         displayArtist: String? = nil
     ) -> Track {
         Track(
-            from: BridgeTrack(
+            from: previewBridgeTrack(
                 id: id,
                 title: title,
+                position: position,
                 durationMs: durationMs,
-                durationClock: BridgeDurationClock.length(ms: durationMs),
-                artistLine: .named(displayArtist ?? "Artist Name"),
-                displayArtist: displayArtist.map(BridgeCreditLine.named),
-                positionText: position,
-                works: [],
-                myStars: nil,
+                artist: displayArtist ?? "Artist Name",
+                displayArtist: displayArtist
             )
+        )
+    }
+
+    /// One `BridgeTrack`, by `artist` on its line.
+    static func previewBridgeTrack(
+        id: String,
+        title: String,
+        position: String,
+        durationMs: UInt64,
+        artist: String,
+        displayArtist: String? = nil
+    ) -> BridgeTrack {
+        BridgeTrack(
+            id: id,
+            title: title,
+            durationMs: durationMs,
+            durationClock: BridgeDurationClock.length(ms: durationMs),
+            artistLine: .named(artist),
+            displayArtist: displayArtist.map(BridgeCreditLine.named),
+            positionText: position,
+            works: [],
+            myStars: nil
         )
     }
 
