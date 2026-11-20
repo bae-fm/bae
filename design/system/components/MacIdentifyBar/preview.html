@@ -11,13 +11,13 @@
   function box(w, c) { return h('div', { style: { width: w, flex: 'none' } }, c); }
 
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
-    W('Import', box(640, h(B.MacIdentifyBar, null))),
-    W('Import to the cloud', box(640, h(B.MacIdentifyBar, { cloud: true, to: 'Cloud' }))),
-    W('Retry', box(640, h(B.MacIdentifyBar, { retry: true }))),
-    W('Nothing to import', box(640, h(B.MacIdentifyBar, { blank: true }))),
-    W('Editor', box(640, h(B.MacIdentifyBar, { editor: true }))),
-    W('Editor changed', box(640, h(B.MacIdentifyBar, { editor: true, changed: true }))),
-    W('Editor reading', box(640, h(B.MacIdentifyBar, { editor: true, changed: true, reading: 'Reading Low Tide Hours (2019 rip).flac…' })))));
+    W('Import', box(640, h(B.MacIdentifyBar, { actions: 'import' }))),
+    W('Import to the cloud', box(640, h(B.MacIdentifyBar, { actions: 'import', cloud: true, to: 'Cloud' }))),
+    W('Retry', box(640, h(B.MacIdentifyBar, { actions: 'import', retry: true }))),
+    W('Nothing to import', box(640, h(B.MacIdentifyBar, { actions: 'import', blank: true }))),
+    W('Save', box(640, h(B.MacIdentifyBar, { actions: 'save' }))),
+    W('Save, changed', box(640, h(B.MacIdentifyBar, { actions: 'save', changed: true }))),
+    W('Save, reading', box(640, h(B.MacIdentifyBar, { actions: 'save', changed: true, reading: 'Reading Low Tide Hours (2019 rip).flac…' })))));
 </script>
 </body>
 </html>

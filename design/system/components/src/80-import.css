@@ -36,6 +36,7 @@
 .bae-m-ipane { flex: 1; min-width: 0; height: 100%; overflow: hidden; display: flex; flex-direction: column; gap: var(--space-group); padding: 24px 24px 32px; box-sizing: border-box; font: 400 13px var(--font-sans); }
 .bae-m-isplit { display: flex; height: 100%; }
 .bae-m-ipane-empty { flex: 1; display: flex; }
+.bae-m-reditor { display: flex; flex-direction: column; gap: var(--space-group); }
 .bae-m-idraft { display: flex; flex-direction: column; gap: 12px; padding: 16px 24px; }
 .bae-m-idraft-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .bae-m-idraft-trail { display: flex; align-items: center; gap: 8px; margin-left: auto; }

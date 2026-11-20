@@ -697,10 +697,10 @@
         ]
       },
       {
-        "name": "The draft",
-        "about": "A found folder's release, as bae will import it.",
+        "name": "The release editor",
+        "about": "One editor for a release, in the import pane and in the album's Edit release sheet.",
         "components": [
-          "MacImportDraft"
+          "MacReleaseEditor"
         ]
       },
       {
@@ -729,13 +729,6 @@
         "about": "The release's facts: year, media, label, country, barcode, status, packaging and details.",
         "components": [
           "MacReleaseFields"
-        ]
-      },
-      {
-        "name": "The editor",
-        "about": "The release editor's card, for a release already in the library.",
-        "components": [
-          "MacReleaseEditorCard"
         ]
       },
       {

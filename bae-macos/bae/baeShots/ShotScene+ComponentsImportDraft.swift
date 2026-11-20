@@ -222,41 +222,10 @@ extension ShotScene {
         }
     }
 
-    private static let draftCardScenes: [ShotScene] = [
-        draftScene("mac.component.import-draft.filled") { importDraft() },
-        draftScene("mac.component.import-draft.import-to-the-cloud") {
-            importDraft(syncs: true)
-        },
-        draftScene("mac.component.import-draft.folder-check", height: 590) {
-            importDraft(
-                commit: commitControls(folderCheck: .sourceTracksUnknown)
-            )
-        },
-        draftScene("mac.component.import-draft.retry") {
-            importDraft(
-                commit: commitControls(
-                    importStatus: .error(
-                        error: .Diagnostic(
-                            category: .import,
-                            detail: "decode verification failed for 1 track"
-                        )
-                    )
-                )
-            )
-        },
-        draftScene("mac.component.import-draft.nothing-to-import") {
-            importDraft(commit: nil)
-        },
-        draftScene("mac.component.import-draft.album-picker-open") {
-            ZStack(alignment: .topLeading) {
-                importDraft(album: libraryAlbum)
-                albumMenu(libraryAlbum, x: 209, y: 160)
-            }
-        },
-        draftScene("mac.component.import-draft.empty", height: 480) {
-            importDraft(blank: true)
-        },
-    ]
+    /// No shots: the design system's `MacReleaseEditor` replaced the draft
+    /// card's component, and its shots come with the app's one release
+    /// editor view.
+    private static let draftCardScenes: [ShotScene] = []
 
     // MARK: Identify bar
 
@@ -342,11 +311,6 @@ extension ShotScene {
             )
         ),
         identifyBarScene("mac.component.identify-bar.nothing-to-import"),
-        identifyBarScene("mac.component.identify-bar.editor", editor: false),
-        identifyBarScene(
-            "mac.component.identify-bar.editor-changed",
-            editor: true
-        ),
     ]
 
     // MARK: Release identity

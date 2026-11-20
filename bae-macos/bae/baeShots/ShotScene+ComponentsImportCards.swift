@@ -153,43 +153,9 @@ extension ShotScene {
         }
     }
 
-    /// `MacReleaseEditorCard`: as the editor opens, once something changed,
-    /// and with the album pop-up open after the person picked the album.
-    /// The component's Reading a file row has no shot: the editor offers no
-    /// change that makes a save read a file before it writes.
-    private static let releaseEditorCardScenes: [ShotScene] = [
-        releaseEditorCardScene(
-            "mac.component.release-editor-card.unchanged",
-            editedRelease(
-                album: .named(
-                    albumId: "album-low-tide-hours",
-                    line: editedAlbumLine
-                ),
-                changed: false
-            )
-        ),
-        releaseEditorCardScene(
-            "mac.component.release-editor-card.changed",
-            editedRelease(
-                album: .named(
-                    albumId: "album-low-tide-hours",
-                    line: editedAlbumLine
-                ),
-                changed: true
-            )
-        ),
-        releaseEditorCardScene(
-            "mac.component.release-editor-card.album-picker-open",
-            editedRelease(
-                album: .picked(
-                    albumId: "album-low-tide-hours",
-                    line: editedAlbumLine
-                ),
-                changed: true
-            ),
-            menu: true
-        ),
-    ]
+    /// No shots: the design system's `MacReleaseEditor` replaced the card's
+    /// component, and its shots come with the app's one release editor view.
+    private static let releaseEditorCardScenes: [ShotScene] = []
 }
 
 /// The editor card over `session`'s draft once it arrives, with the lead

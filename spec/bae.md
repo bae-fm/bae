@@ -1877,7 +1877,7 @@ imported those files, naming the release they became, as a second Import is
 (§2.7). Since each edit is written as it is made, the pane has no reset and no
 undo: to start over, the person applies a source again (a catalog release, or
 the files' tags) or clears the metadata, and the file decisions stay as they
-are.
+are. The release editor offers the same two commands in both places (§3.8).
 
 The pane's draft card shows the folder's audio on one line under the album's
 year: the codec, the sample rate, the bit depth (a lossy codec's bitrate in
@@ -2210,8 +2210,8 @@ that file, and every other file the sheet's lines then play from, first, and
 a spinner and *Reading <file name>…* sit before *Cancel* and *Save*, which
 stay disabled until the read ends. The card ends
 with the release's catalog records, the applied catalog's first while the form
-holds one, as the import pane's draft ends with its own, but with no *Unlink*:
-nothing unlinks a library release.
+holds one, then *Unlink*, as the import pane's draft ends: it drops the link and
+its records, and a save then writes the release with none.
 
 The editor opens with a *form* that holds the release's values as the
 library holds them, and the editor holds its form: bae stores none of the
@@ -2255,8 +2255,10 @@ how it stands to the library as for a name the person typed, and a save
 writes that credit as it writes a typed name. The cover is
 not part of the form: the editor writes a cover the person
 picks at once, and the form keeps what the person applied and picked.
-Cancelling discards the form's changes; bae reads no source again, and there is no reset to
-a source: the library holds no pointer back into one. A release with nothing
+Cancelling discards the form's changes; bae reads no source again, since the
+library holds no pointer back into one. The editor offers the import pane's two
+commands for starting over (§3.6): applying the files' tags and clearing the
+metadata. Each changes the form and writes nothing until a save. A release with nothing
 applied saves its edited fields alone, its mediums, roles and works as stored.
 A save decides each label as an import does (§2.3), and a label the person
 left as it was keeps the library label it named.
