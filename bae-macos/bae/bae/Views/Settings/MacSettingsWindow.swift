@@ -67,6 +67,10 @@ struct SettingsWindowLayout<Pane: View>: View {
         // sidebar's top, and each pane puts its own title at its top left.
         HStack(spacing: 0) {
             MacSettingsSidebar(navigation: navigation)
+                // VoiceOver orders the window's elements from the top, and
+                // the pane's title sits above the sidebar's first pane; the
+                // panes are read first, as the window lays them out.
+                .accessibilitySortPriority(1)
             pane
                 .scrollContentBackground(.hidden)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
