@@ -1,4 +1,4 @@
-<!-- @dsCard group="Queue, playlists and history" height=560 -->
+<!-- @dsCard group="Queue, playlists and history" height=640 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>MacListRow</title></head>
@@ -15,7 +15,9 @@
     W('Cover', h(B.MacListRow, Object.assign({ lead: '21:04', title: 'Harbor Lights', sub: 'Mara Quill · Low Tide Hours', album: 'Low Tide Hours', duration: '4:32' }, { cover: 40 }))),
     W('Lifted', h(B.MacListRow, Object.assign({ lead: '21:04', title: 'Harbor Lights', sub: 'Mara Quill · Low Tide Hours', album: 'Low Tide Hours', duration: '4:32' }, { lifted: true }))),
     W('Dragging', h(B.MacListRow, Object.assign({ lead: '21:04', title: 'Harbor Lights', sub: 'Mara Quill · Low Tide Hours', album: 'Low Tide Hours', duration: '4:32' }, { dragging: true }))),
-    W('Hanging', h('div', { style: { paddingLeft: 66 } }, h(B.MacListRow, Object.assign({ lead: '21:04', title: 'Harbor Lights', sub: 'Mara Quill · Low Tide Hours', album: 'Low Tide Hours', duration: '4:32' }, { hanging: true, leadWidth: 56, cover: 40 }))))));
+    W('Hanging', h('div', { style: { paddingLeft: 66 } }, h(B.MacListRow, Object.assign({ lead: '21:04', title: 'Harbor Lights', sub: 'Mara Quill · Low Tide Hours', album: 'Low Tide Hours', duration: '4:32' }, { hanging: true, leadWidth: 56, cover: 40 })))),
+    W('Hover', h(B.MacListRow, { lead: '21:04', title: 'Harbor Lights', sub: 'Mara Quill · Low Tide Hours', album: 'Low Tide Hours', duration: '4:32', hover: true })),
+    W('Hover with remove', h(B.MacListRow, { lead: '21:04', title: 'Harbor Lights', sub: 'Mara Quill · Low Tide Hours', album: 'Low Tide Hours', duration: '4:32', hover: true, remove: 'Remove from queue' }))));
 </script>
 </body>
 </html>

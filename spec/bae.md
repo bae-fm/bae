@@ -4704,7 +4704,10 @@ card, Android's full player and the system's media controls show it, with its
 title, artists and cover, so the app shows a track at every moment of a track
 change.
 The speaker mark on an album's track list is on the track loading, and Go to
-Now Playing opens its album.
+Now Playing opens its album. On a Mac each queued track's row is a playlist
+page's track row with no number: its cover, its title over its artists, and
+its length at the end, where Remove from queue joins it while the pointer is
+over the row.
 
 What's playing from is a release, several releases in the order chosen, a
 list of tracks in the order it was sent, or the whole library. The queue's

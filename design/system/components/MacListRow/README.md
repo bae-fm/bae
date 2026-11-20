@@ -6,4 +6,6 @@ Exploration: a history or playlist row: when or position, cover, title, artist Â
 
 The row draws who with `MacPersonTag`.
 
-**In the code:** macOS: `MacListRow` (`Views/Components/MacListRow.swift`), which the playlist page draws for a track; no view draws the history row, with who, yet.
+`hover`: the row under the pointer tints; with `remove`, the label of a button that takes the row out of its list (the queue's Remove from queue), that button joins the row's end.
+
+**In the code:** macOS: `MacListRow` (`Views/Components/MacListRow.swift`), which the playlist page draws for a track and History draws for a play, with who.

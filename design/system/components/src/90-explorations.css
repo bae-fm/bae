@@ -2,6 +2,7 @@
 .bae-m-lrow { display: flex; align-items: center; gap: 10px; padding: 5px 8px; border-radius: 6px; font: 400 13px var(--font-sans); }
 .bae-m-lrow-lead { width: 56px; flex: none; font-size: 11.5px; }
 .bae-m-lrow-wide { padding-right: 16px; }
+.bae-m-lrow-hover { background: var(--hover); }
 .bae-m-lrow-hanging { padding-left: 0; }
 .bae-m-lrow-hanging .bae-m-lrow-lead { text-align: right; white-space: nowrap; }
 .bae-m-lrow-hanging .bae-m-lrow-sub { margin-top: 3px; }

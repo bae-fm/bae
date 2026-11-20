@@ -256,11 +256,9 @@
       h('div', { className: 'bae-m-plpage-tracks' }, props.children));
   }
 
+  // A queued track: the playlist page's row, the cover beside the title over the artists, the length at the end; under the pointer (`hover`) the row tints and Remove from queue joins the end.
   function MacQueueRow(props) {
-    return h('div', { className: cx('bae-m-qrow', props.hover && 'bae-m-qrow-hover') },
-      h(Artwork, { title: props.album || props.title, size: 48, radius: 6 }, props.hover ? h('span', { className: 'bae-m-qrow-play' }, h(Glyph, { set: 'mac', name: 'play', size: 11 })) : null),
-      h('div', { className: 'bae-m-qrow-text' }, h('div', { className: 'bae-m-qrow-title' }, props.title), h('div', { className: 'bae-m-qrow-sub' }, props.artist), h('div', { className: 'bae-m-qrow-sub' }, props.album)),
-      props.hover ? h('span', { className: 'bae-m-qrow-remove', title: 'Remove from queue' }, h(Glyph, { set: 'mac', name: 'close', size: 11 })) : h('span', { className: 'bae-m-qrow-time' }, props.duration));
+    return h(MacListRow, { cover: 40, title: props.title, sub: props.artist, album: props.album, duration: props.duration, hover: props.hover, remove: 'Remove from queue' });
   }
 
 

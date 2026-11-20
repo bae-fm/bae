@@ -76,9 +76,10 @@
   function wholeListChoice(value, big) {
     return h('button', { type: 'button', 'aria-haspopup': 'menu', className: cx('bae-m-queue-menu', big && 'bae-m-queue-menu-action') }, value, h(Glyph, { set: 'mac', name: 'down', size: big ? 11 : 9 }));
   }
+  // A queued track still loading: the queue row's shape, a 40pt cover and two lines, in placeholder grey.
   function MacQueuePlaceholderRow() {
-    return h('div', { className: 'bae-m-qrow' }, h(MacPlaceholderLine, { width: 48, height: 48, radius: 6 }),
-      h('div', { className: 'bae-m-qrow-text', style: { gap: 4 } }, h(MacPlaceholderLine, { width: 140, height: 12 }), h(MacPlaceholderLine, { width: 90, height: 10 }), h(MacPlaceholderLine, { width: 120, height: 10 })));
+    return h('div', { className: 'bae-m-lrow' }, h(MacPlaceholderLine, { width: 40, height: 40, radius: 6, fixed: true }),
+      h('div', { style: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 5 } }, h(MacPlaceholderLine, { width: 140, height: 12 }), h(MacPlaceholderLine, { width: 90, height: 10 })));
   }
   function MacQueueInsertLine() { return h('div', { className: 'bae-m-queue-insert' }); }
 

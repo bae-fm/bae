@@ -99,14 +99,6 @@
 .bae-m-plpage-sharing { display: inline-flex; fill: currentColor; }
 .bae-m-plpage-actions { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
 .bae-m-plpage-tracks { margin: 0; }
-.bae-m-qrow { display: flex; align-items: center; gap: 12px; padding: 6px 8px; border-radius: var(--radius-control); }
-.bae-m-qrow-hover { background: var(--hover); }
-.bae-m-qrow-play { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--scrim); color: var(--on-fill); fill: currentColor; }
-.bae-m-qrow-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.bae-m-qrow-title { font: 500 13px var(--font-sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.bae-m-qrow-sub { font: 400 11.5px var(--font-sans); color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.bae-m-qrow-time { font: 400 11.5px var(--font-sans); font-variant-numeric: tabular-nums; color: var(--text-secondary); }
-.bae-m-qrow-remove { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); fill: currentColor; }
 
 /* Android */
 .bae-a-libscreen { font-family: var(--font-android); }
