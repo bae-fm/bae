@@ -536,4 +536,5 @@
     <string name="history_today">今日</string>
     <string name="history_yesterday">昨日</string>
     <string name="history_everyone">全員</string>
+    <string name="side_pause_turned_off">「設定 › 再生」でもう一度オンにできます。</string>
 </resources>

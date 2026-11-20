@@ -581,4 +581,5 @@
     <string name="history_today">اليوم</string>
     <string name="history_yesterday">أمس</string>
     <string name="history_everyone">الجميع</string>
+    <string name="side_pause_turned_off">يمكنك إعادة تشغيل هذا من الإعدادات › التشغيل.</string>
 </resources>

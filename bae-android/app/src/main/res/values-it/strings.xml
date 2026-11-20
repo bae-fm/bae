@@ -552,4 +552,5 @@
     <string name="history_today">Oggi</string>
     <string name="history_yesterday">Ieri</string>
     <string name="history_everyone">Tutti</string>
+    <string name="side_pause_turned_off">Puoi riattivarlo in Impostazioni › Riproduzione.</string>
 </resources>

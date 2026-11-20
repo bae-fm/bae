@@ -545,4 +545,5 @@
     <string name="history_today">Днес</string>
     <string name="history_yesterday">Вчера</string>
     <string name="history_everyone">Всички</string>
+    <string name="side_pause_turned_off">Можете да го включите отново в Настройки › Възпроизвеждане.</string>
 </resources>

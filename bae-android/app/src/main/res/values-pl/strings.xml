@@ -563,4 +563,5 @@
     <string name="history_today">Dzisiaj</string>
     <string name="history_yesterday">Wczoraj</string>
     <string name="history_everyone">Wszyscy</string>
+    <string name="side_pause_turned_off">Możesz to ponownie włączyć w Ustawienia › Odtwarzanie.</string>
 </resources>

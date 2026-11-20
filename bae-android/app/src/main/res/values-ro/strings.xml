@@ -552,4 +552,5 @@
     <string name="history_today">Astăzi</string>
     <string name="history_yesterday">Ieri</string>
     <string name="history_everyone">Toată lumea</string>
+    <string name="side_pause_turned_off">Poți reactiva această opțiune în Setări › Redare.</string>
 </resources>

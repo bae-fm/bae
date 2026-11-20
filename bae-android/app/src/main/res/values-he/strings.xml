@@ -554,4 +554,5 @@
     <string name="history_today">היום</string>
     <string name="history_yesterday">אתמול</string>
     <string name="history_everyone">כולם</string>
+    <string name="side_pause_turned_off">אפשר להפעיל זאת מחדש בהגדרות › הפעלה.</string>
 </resources>

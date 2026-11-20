@@ -543,4 +543,5 @@
     <string name="history_today">Σήμερα</string>
     <string name="history_yesterday">Χθες</string>
     <string name="history_everyone">Όλοι</string>
+    <string name="side_pause_turned_off">Μπορείτε να το ενεργοποιήσετε ξανά στις Ρυθμίσεις › Αναπαραγωγή.</string>
 </resources>

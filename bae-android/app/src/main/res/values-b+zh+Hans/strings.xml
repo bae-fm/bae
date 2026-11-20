@@ -536,4 +536,5 @@
     <string name="history_today">今天</string>
     <string name="history_yesterday">昨天</string>
     <string name="history_everyone">所有人</string>
+    <string name="side_pause_turned_off">你可以在“设置 › 播放”中重新打开。</string>
 </resources>

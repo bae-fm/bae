@@ -536,4 +536,5 @@
     <string name="history_today">오늘</string>
     <string name="history_yesterday">어제</string>
     <string name="history_everyone">모든 사람</string>
+    <string name="side_pause_turned_off">설정 › 재생에서 다시 켤 수 있습니다.</string>
 </resources>

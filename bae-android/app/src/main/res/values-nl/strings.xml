@@ -545,4 +545,5 @@
     <string name="history_today">Vandaag</string>
     <string name="history_yesterday">Gisteren</string>
     <string name="history_everyone">Iedereen</string>
+    <string name="side_pause_turned_off">Je kunt dit weer aanzetten bij Instellingen › Afspelen.</string>
 </resources>

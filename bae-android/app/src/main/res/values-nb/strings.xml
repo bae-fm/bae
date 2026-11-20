@@ -543,4 +543,5 @@
     <string name="history_today">I dag</string>
     <string name="history_yesterday">I går</string>
     <string name="history_everyone">Alle</string>
+    <string name="side_pause_turned_off">Du kan slå dette på igjen under Innstillinger › Avspilling.</string>
 </resources>

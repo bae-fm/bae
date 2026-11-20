@@ -543,4 +543,5 @@
     <string name="history_today">Tänään</string>
     <string name="history_yesterday">Eilen</string>
     <string name="history_everyone">Kaikki</string>
+    <string name="side_pause_turned_off">Voit ottaa tämän takaisin käyttöön kohdassa Asetukset › Toisto.</string>
 </resources>

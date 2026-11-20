@@ -563,4 +563,5 @@
     <string name="history_today">Dnes</string>
     <string name="history_yesterday">Včera</string>
     <string name="history_everyone">Všichni</string>
+    <string name="side_pause_turned_off">Znovu to můžete zapnout v Nastavení › Přehrávání.</string>
 </resources>

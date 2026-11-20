@@ -563,4 +563,5 @@
     <string name="history_today">Сьогодні</string>
     <string name="history_yesterday">Учора</string>
     <string name="history_everyone">Усі</string>
+    <string name="side_pause_turned_off">Ви можете ввімкнути це знову в Налаштування › Відтворення.</string>
 </resources>

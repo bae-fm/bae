@@ -552,4 +552,5 @@
     <string name="history_today">Aujourd’hui</string>
     <string name="history_yesterday">Hier</string>
     <string name="history_everyone">Tout le monde</string>
+    <string name="side_pause_turned_off">Vous pouvez le réactiver dans Réglages › Lecture.</string>
 </resources>
