@@ -72,10 +72,7 @@ extension ShotScene {
             pressing: BridgeRawPressingEdit(
                 year: "1992",
                 labels: [
-                    BridgeRawLabelEdit(
-                        name: "Harbor Records",
-                        catalogNumber: "HR-1042"
-                    )
+                    .alone(name: "Harbor Records", catalogNumber: "HR-1042")
                 ],
                 barcodes: [],
                 facts: PreviewData.pressingFacts(
