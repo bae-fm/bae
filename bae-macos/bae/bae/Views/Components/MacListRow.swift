@@ -104,18 +104,10 @@ struct MacListRow: View {
         .padding(.vertical, 5)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(
-                cornerRadius: hanging
-                    ? ThemeRadius.artwork : ThemeRadius.control
-            )
-            .fill(fill)
+            RoundedRectangle(cornerRadius: ThemeRadius.artwork)
+                .fill(fill)
         )
-        .contentShape(
-            RoundedRectangle(
-                cornerRadius: hanging
-                    ? ThemeRadius.artwork : ThemeRadius.control
-            )
-        )
+        .contentShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
         .opacity(lift == .lifted ? 0.45 : lift == .dragging ? 0.75 : 1)
         .shadow(
             color: lift == .dragging ? Theme.shadow : .clear,
