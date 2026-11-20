@@ -134,7 +134,9 @@
       h('span', { className: 'bae-strong bae-muted' }, 'Identify'), h(MacButton, null, 'Automatic'), h(MacButton, null, 'Search'), props.editor ? null : h(MacButton, { menu: true, label: 'Metadata' }, '⋯'),
       h('span', { style: { flex: 1 } }),
       props.cloud ? h(MacImportDestination, { to: props.to }) : null,
-      props.editor ? [props.changed ? h(MacButton, { key: 'c' }, 'Cancel') : null, h(MacButton, { key: 's', kind: 'primary' }, 'Save')] : props.blank ? null : h(MacButton, { kind: 'primary' }, props.retry ? 'Retry import' : 'Import'));
+      // `reading`: in the editor, the line a save shows while it reads a file on this device before it writes (the audio file a CUE sheet is newly bound to), with Cancel and Save off until the read ends.
+      props.editor && props.reading ? h('span', { key: 'r', className: 'bae-m-idraft-reading bae-muted' }, h(MacSpinner, { size: 14 }), props.reading) : null,
+      props.editor ? [props.changed ? h(MacButton, { key: 'c', off: !!props.reading }, 'Cancel') : null, h(MacButton, { key: 's', kind: 'primary', off: !!props.reading }, 'Save')] : props.blank ? null : h(MacButton, { kind: 'primary' }, props.retry ? 'Retry import' : 'Import'));
   }
   // An artist field, a button that opens the artist picker, drawn as its value until the pointer is over it, like MacInlineField: the artists (`artist`) and their chip (`chip`), Library for an artist the library has, New for one the import adds; `placeholder` in the tertiary colour while it names none (Album artist unless given). `inherited`: a track that takes the album's artists shows Album artist in the tertiary colour. `secondary` draws the artists in secondary text, as the album identity does; `column` fills its column, as a track row's does.
   function MacAlbumArtistField(props) {
@@ -202,7 +204,7 @@
   // A library release's editor card: Identify with Automatic and Search, Cancel once something changed (`changed`) and Save; the release's identity and fields; the records under a rule, with no Unlink, since nothing unlinks a library release (spec §3.8).
   function MacReleaseEditorCard(props) {
     return h('div', { className: 'bae-m-card bae-m-idraft' },
-      h(MacIdentifyBar, { editor: true, changed: props.changed }),
+      h(MacIdentifyBar, { editor: true, changed: props.changed, reading: props.reading }),
       releaseHeader(props),
       props.records ? h('div', { className: 'bae-m-idraft-records' }, h(MacRecordLinks, { records: props.records })) : null);
   }
@@ -251,8 +253,6 @@
   }
   // A CUE sheet's caption: the pop-up of which disc the sheet is, CUE, the sheet's name (a button that opens it in the viewer), → and the pop-up of the audio its FILE line is bound to.
   function MacImportSheetCaption(props) {
-    // `file`: in a library release's editor, the image file the sheet's tracks play from, named once over them (spec §3.8); the editor binds no sheet and picks no disc.
-    if (props.file) return h('div', { className: 'bae-m-icue' }, h('span', { className: 'bae-mono bae-muted' }, props.file));
     return h('div', { className: 'bae-m-icue' },
       h('button', { type: 'button', role: 'combobox', 'aria-label': 'Disc', 'aria-expanded': false, className: 'bae-plainbtn bae-m-icue-disc' }, h('span', { className: 'bae-strong' }, props.disc), h(Glyph, { set: 'mac', name: 'down', size: 8 })),
       h(StatusChip, { tone: 'accent' }, 'CUE'),

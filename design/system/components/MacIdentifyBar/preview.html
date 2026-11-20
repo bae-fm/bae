@@ -1,4 +1,4 @@
-<!-- @dsCard group="Import" height=330 -->
+<!-- @dsCard group="Import" height=380 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>MacIdentifyBar</title></head>
@@ -16,7 +16,8 @@
     W('Retry', box(640, h(B.MacIdentifyBar, { retry: true }))),
     W('Nothing to import', box(640, h(B.MacIdentifyBar, { blank: true }))),
     W('Editor', box(640, h(B.MacIdentifyBar, { editor: true }))),
-    W('Editor changed', box(640, h(B.MacIdentifyBar, { editor: true, changed: true })))));
+    W('Editor changed', box(640, h(B.MacIdentifyBar, { editor: true, changed: true }))),
+    W('Editor reading', box(640, h(B.MacIdentifyBar, { editor: true, changed: true, reading: 'Reading Low Tide Hours (2019 rip).flac…' })))));
 </script>
 </body>
 </html>

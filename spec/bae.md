@@ -1887,10 +1887,12 @@ disc each sheet is, or ignore a sheet. The table also counts the tracks nobody
 has named yet, and the pane states that count beside Import without blocking
 it: importing titles each of them after its file.
 
-The files the folder carries that are no track, such as a rip log, its images
-(which its gallery above the tracks also shows) or a track
-sheet that carves no tracks, are listed under the tracks beneath a ruled *Files*
-heading, one line per file: its name in monospace, its size at the right, a
+A release's *Files* list is one list, the same in the import pane and in the
+release editor (§3.8): the files no track plays from, such as a rip log, its
+images (which its gallery above the tracks also shows), a track sheet that
+carves no tracks, or an audio file no track plays from. A CUE sheet that
+carves tracks plays, so it is not listed. The list sits under the tracks
+beneath a ruled *Files* heading, one line per file: its name in monospace, its size at the right, a
 hairline between lines, a damaged file marked with why: *Empty file* for a file that holds no bytes, *No audio bae can read* for one that holds no audio bae can play. Every size bae shows, here
 and elsewhere, is in decimal units with at most one decimal and none when whole
 ("3.9 GB", "420 MB", "1 GB", an empty file's "0 B"), the number and the unit in the person's language.
@@ -2156,7 +2158,8 @@ reported and stops for the session, as it does when the library closes.
   decided in the import pane about a sheet (`release_sheet_bindings` and
   `release_sheet_discs`, A.5): the audio they bound a `FILE` line to, or that
   they cleared it, and the disc they said the sheet is, or that bae should
-  ignore it. Identifying the release again binds a sheet they bound to the file
+  ignore it. A save in the release's editor (§3.8) that changes a sheet's disc
+  or audio file rewrites those rows in the save's own transaction. Identifying the release again binds a sheet they bound to the file
   they chose, leaves one they cleared unbound, and gives a sheet they numbered
   the disc they gave it or skips one they ignored; it reads a sheet they decided
   nothing about by the scan's rules. Its track lengths come from its stored
@@ -2184,7 +2187,10 @@ place until a pick applies one, or *Back* returns to it. *Save* writes the
 form; *Cancel*, shown once something changed, discards its changes. While an apply
 reads a release from its catalog, the editor names the catalog it reads from,
 as an import's pick does (§3.5); saving, cancelling and picking an album are
-local and show no spinner, their controls disabled until they end. The card ends
+local and show no spinner, their controls disabled until they end, except a
+save that binds a CUE sheet to another of the release's audio files: it reads
+that file first, and a spinner and *Reading <file name>…* sit before *Cancel*
+and *Save*, which stay disabled until the read ends. The card ends
 with the release's catalog records, the applied catalog's first while the form
 holds one, as the import pane's draft ends with its own, but with no *Unlink*:
 nothing unlinks a library release.
@@ -2246,19 +2252,23 @@ returns to Found with its draft (A.5, `import_candidate_edit`).
 
 The editor lays the tracks out as the import's mapping table does: a heading
 for each disc or record side where the release has several, and two or more
-consecutive tracks a CUE sheet carves from one file under that file's name,
-once; every other track names in its row the file its body, from its
+consecutive tracks a CUE sheet carves from one file under the sheet's caption,
+once, as the import pane heads them: the *Disc* pop-up of which of the
+release's discs the sheet is (no *Ignored*), the sheet's name, and the *Audio
+file* pop-up of which of the release's audio files on this device the sheet
+carves (no *Choose audio…*, since the editor adds and removes no tracks). The
+rows show a new choice at once, from the editor's draft, before *Save* writes
+it; every other track names in its row the file its body, from its
 INDEX 01 on, plays from. A pregap stored at the tail of the file before
 (§2.2) is not named: a row names one file. An applied catalog lays them out
 again at the places it gives them.
 
-Under the tracks, the editor lists the release's files that no track plays
-from (§3.6): its track sheets, documents, images and anything else its folder
-held, in the release's file order, each as the role its import's scan gave it
-(§2.2) says. A track sheet reads as the text it is, an image the scan found
-damaged says so, and a document or track sheet opens in the viewer, read from
-wherever this device can get the file and decoded as a folder's document is
-(§3.3).
+Under the tracks, the editor shows the release's *Files* list (§3.6), in the
+release's file order, each file as the role its import's scan gave it (§2.2)
+says.
+A track sheet reads as the text it is, an image the scan found damaged says
+so, and a document or track sheet opens in the viewer, read from wherever this
+device can get the file and decoded as a folder's document is (§3.3).
 
 ---
 ## 4. Files
@@ -6004,8 +6014,8 @@ Beside them, keyed by the release an import made:
 | Table | One row per |
 |---|---|
 | `local_release_origin` | release this device imported, keyed by the release: the hash of the folder's files it read (§2.7), unique, so one hash is one release here. Importing writes it in the release's own transaction; deleting the release deletes it |
-| `release_sheet_discs` | the disc the person said a release's CUE sheet is, or that the release ignores it, keyed by the sheet's `release_files` row; only a sheet the person decided has a row. Importing writes its rows and identifying the release again reads them, as for `release_sheet_bindings`; deleting the sheet deletes it. The table syncs (Appendix B) |
-| `release_sheet_bindings` | the audio the person bound a `FILE` line of a release's CUE sheet to in the import pane, or cleared (no audio), keyed by the sheet's `release_files` row and the `FILE` line's text; only a line the person decided has a row. Importing writes the rows in the release's own transaction, from the candidate's stored decisions (naming each file by its path in the release); identifying the release again reads them. Deleting either file deletes the row. The table syncs (Appendix B) |
+| `release_sheet_discs` | the disc the person said a release's CUE sheet is, or that the release ignores it, keyed by the sheet's `release_files` row; only a sheet the person decided has a row. Importing writes its rows, a save in the release's editor (§3.8) rewrites the row of a sheet whose disc it changes, and identifying the release again reads them, as for `release_sheet_bindings`; deleting the sheet deletes it. The table syncs (Appendix B) |
+| `release_sheet_bindings` | the audio the person bound a `FILE` line of a release's CUE sheet to in the import pane or the release's editor, or cleared (no audio), keyed by the sheet's `release_files` row and the `FILE` line's text; only a line the person decided has a row. Importing writes the rows in the release's own transaction, from the candidate's stored decisions (naming each file by its path in the release); a save in the release's editor (§3.8) rewrites the row of a `FILE` line it binds to another audio file, in the save's own transaction; identifying the release again reads them. Deleting either file deletes the row. The table syncs (Appendix B) |
 
 ### A.6 Identification
 

@@ -371,12 +371,12 @@ export declare function MacImportFolderLine(props: { tab?: string; folder: strin
 export declare function MacImportDestination(props: { to: 'This Mac' | 'Cloud'; off?: boolean }): React.ReactElement;
 export declare function MacImportDraft(props: { title?: string; artist?: string; artistChip?: string; year?: string; audio?: string; album?: string; albumInLibrary?: boolean; albumPicked?: boolean; albumOpen?: boolean; cover?: string; pressingYear?: string; media?: string; labelName?: string; catalog?: string; country?: string; barcode?: string; status?: string; packaging?: string; details?: string; records?: string; check?: string; cloud?: boolean; to?: 'This Mac' | 'Cloud'; retry?: boolean; blank?: boolean }): React.ReactElement;
 /** A library release's editor card: Identify, Cancel once something changed, Save; the release's identity and fields; the records with no Unlink. */
-export declare function MacReleaseEditorCard(props: { title?: string; artist?: string; artistChip?: string; year?: string; audio?: string; album?: string; albumInLibrary?: boolean; albumPicked?: boolean; albumOpen?: boolean; cover?: string; pressingYear?: string; media?: string; labelName?: string; catalog?: string; country?: string; barcode?: string; status?: string; packaging?: string; details?: string; records?: string; changed?: boolean }): React.ReactElement;
+export declare function MacReleaseEditorCard(props: { title?: string; artist?: string; artistChip?: string; year?: string; audio?: string; album?: string; albumInLibrary?: boolean; albumPicked?: boolean; albumOpen?: boolean; cover?: string; pressingYear?: string; media?: string; labelName?: string; catalog?: string; country?: string; barcode?: string; status?: string; packaging?: string; details?: string; records?: string; changed?: boolean; reading?: string }): React.ReactElement;
 /** A skipped folder's card, read-only: why bae can't import it, then its cover and what its tags call the release, or its folder's name. */
 export declare function MacInvalidCandidateCard(props: { reason: string; cover?: string; title?: string; artist?: string; folder?: string }): React.ReactElement;
 export declare function MacImportTable(props: { children?: React.ReactNode }): React.ReactElement;
 export declare function MacImportTrackRow(props: { file?: string; start?: string; position?: string; title?: string; artist?: string; artistChip?: 'Library' | 'New'; inherited?: boolean; length?: string; listed?: string; playing?: boolean }): React.ReactElement;
-export declare function MacImportSheetCaption(props: { disc?: string; sheet?: string; bound?: string; unbound?: boolean; file?: string }): React.ReactElement;
+export declare function MacImportSheetCaption(props: { disc?: string; sheet?: string; bound?: string; unbound?: boolean }): React.ReactElement;
 export declare function MacFindOnline(props: { open?: 'Automatic' | 'Search'; discogsBar?: boolean; autoStatus?: 'working' | 'failed'; dimmed?: string; children?: React.ReactNode }): React.ReactElement;
 export declare function MacIdentifierBand(props: { chips: string }): React.ReactElement;
 export declare function MacReleaseCard(props: { title: string; artist?: string; label?: string; sources?: string }): React.ReactElement;
@@ -486,7 +486,7 @@ export declare function MacInlineField(props: { label: string; value?: string; p
 /** A ruled heading over a part of a form: Release, Images, Files, Credits. */
 export declare function MacFormHeading(props: { children?: React.ReactNode }): React.ReactElement;
 /** The draft's top row: Identify with Automatic, Search and the Metadata menu, then where the import goes and Import or Retry import; in a library release's editor, Save with Cancel once something changed. */
-export declare function MacIdentifyBar(props: { editor?: boolean; changed?: boolean; blank?: boolean; retry?: boolean; cloud?: boolean; to?: 'This Mac' | 'Cloud' }): React.ReactElement;
+export declare function MacIdentifyBar(props: { editor?: boolean; changed?: boolean; reading?: string; blank?: boolean; retry?: boolean; cloud?: boolean; to?: 'This Mac' | 'Cloud' }): React.ReactElement;
 /** An artist field: a button showing the artists and their Library or New chip, drawn as its value until the pointer is over it. */
 export declare function MacAlbumArtistField(props: { artist?: string; chip?: 'Library' | 'New'; placeholder?: string; inherited?: boolean; secondary?: boolean; column?: boolean }): React.ReactElement;
 /** The Album pop-up showing the album as it stands; open draws its menu: that album, New album, Use the release's album, Choose another album. */
