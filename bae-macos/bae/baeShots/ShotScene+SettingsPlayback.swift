@@ -7,8 +7,9 @@ extension ShotScene {
     /// The Playback pane over the Settings window: with Play on other
     /// devices off (`mac.settings.playback`), then its Play on group as the
     /// boards `mac.settings.playback.receivers-*` and `receiver-*` draw it:
-    /// the receivers found, the search before the first answer, the ⋯ menu
-    /// of the receiver playing open, and its details popover.
+    /// the receivers found, the search before the first answer, Kitchen
+    /// once it has held bae's request for its owner, the ⋯ menu of the
+    /// receiver playing open, and its details popover.
     static let settingsPlaybackScenes: [ShotScene] = [
         ShotScene(
             id: "mac.settings.playback",
@@ -41,6 +42,21 @@ extension ShotScene {
                     casting: nil,
                     found: [],
                     isEmpty: true
+                )
+            ) { $0 }
+        },
+        ShotScene(
+            id: "mac.settings.playback.receivers-owner-deciding",
+            size: CGSize(width: 690, height: 600),
+            frame: .window(title: "Settings", titleBar: .hidden)
+        ) {
+            playbackStage(
+                receivers: foundReceivers,
+                start: CastStart.drawn(
+                    connecting: CastStart.Connecting(
+                        receiver: foundReceivers.found[0],
+                        ownerDeciding: true
+                    )
                 )
             ) { $0 }
         },
@@ -117,11 +133,12 @@ extension ShotScene {
 
     /// The Playback pane with pausing between sides on and restoring on
     /// launch on, and Play on other devices on unless `playsOnOtherDevices`
-    /// is false, as the boards draw it. `over` lays what a board adds over
-    /// the window.
+    /// is false, as the boards draw it, with `start`'s cast connecting.
+    /// `over` lays what a board adds over the window.
     private static func playbackStage<Over: View>(
         receivers: BridgeCastReceiverList,
         playsOnOtherDevices: Bool = true,
+        start: CastStart = .stub(),
         over: @MainActor (AnyView) -> Over
     ) -> ShotStage {
         let castStore = CastStore()
@@ -144,7 +161,7 @@ extension ShotScene {
                 .environment(Playback.stub())
                 .environment(Cast.stub())
                 .environment(castStore)
-                .environment(CastStart.stub())
+                .environment(start)
                 .environment(
                     PreviewData.makeConfigStore(
                         libraryFullWidth: false,

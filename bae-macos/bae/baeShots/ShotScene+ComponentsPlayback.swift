@@ -775,10 +775,12 @@ extension ShotScene {
                     isEmpty: casting == nil && found.isEmpty
                 ),
                 endedFailure: nil,
-                connecting: connecting,
                 onDisconnect: {}
             )
-            .environment(CastStart.stub())
+            .environment(
+                connecting.map { CastStart.drawn(connecting: $0) }
+                    ?? CastStart.stub()
+            )
         }
     }
 

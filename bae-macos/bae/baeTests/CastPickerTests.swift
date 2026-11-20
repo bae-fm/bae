@@ -37,10 +37,12 @@ struct CastPickerTests {
                     isEmpty: false
                 ),
                 endedFailure: nil,
-                connecting: connecting,
                 onDisconnect: {}
             )
-            .environment(CastStart.stub())
+            .environment(
+                connecting.map { CastStart.drawn(connecting: $0) }
+                    ?? CastStart.stub()
+            )
             .frame(width: size.width, height: size.height),
             size: size
         ) { _, host in

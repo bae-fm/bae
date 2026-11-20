@@ -93,6 +93,13 @@ struct MacCastRow: View {
                     item.contentShape(Rectangle())
                 }
                 .buttonStyle(.accentPlain)
+                // Named as macOS names a row button: its name and its second
+                // line, without the spinner of a wait.
+                .accessibilityLabel(
+                    Text(verbatim: "\(receiver.name), ")
+                        + (wait.map(waitLine)
+                            ?? Text(verbatim: receiver.kind.productName))
+                )
             case .page:
                 // The row holds the ⋯ menu, which a button around the row
                 // would take in as part of its own label.
@@ -182,6 +189,9 @@ struct MacCastRow: View {
                         action: onDisconnect
                     )
                     .small()
+                    // In the accent, over the secondary style of the row's
+                    // end.
+                    .foregroundStyle(Theme.accent)
                 }
             case .page:
                 MacMoreMenu {

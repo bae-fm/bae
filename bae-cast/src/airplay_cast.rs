@@ -351,8 +351,14 @@ impl CastController {
     ) -> Result<T, CastError> {
         let (told, mut tells) = tokio::sync::mpsc::unbounded_channel();
         let owner_wait = OwnerWait::new(self.reply_timer.clone(), move |deciding| {
-            // A cast that ended has dropped its tells.
-            told.send(deciding).ok();
+            // A cast that ended has dropped its tells, so nobody is left to
+            // tell.
+            if told.send(deciding).is_err() {
+                tracing::debug!(
+                    deciding,
+                    "the cast ended before bae told whether its receiver's owner is deciding"
+                );
+            }
         });
         let mut exchange =
             std::pin::pin!(self.diagnostics.blocking(operation, move || exchange(owner_wait)));

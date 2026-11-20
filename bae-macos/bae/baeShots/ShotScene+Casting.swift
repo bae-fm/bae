@@ -8,8 +8,8 @@ extension ShotScene {
     /// "Low Tide Hours" playing on a receiver; the pairing boards
     /// (`mac.playback.cast-pin*`): the sheet that asks for an AirPlay
     /// receiver's code, and the alerts for a cast that failed, over the
-    /// library window; and the boards of a receiver that holds the cast for
-    /// its owner, in the Play on popover and in Settings → Playback.
+    /// library window; and the Play on popover while a receiver holds the
+    /// cast for its owner.
     static let castingScenes: [ShotScene] = [
         ShotScene(
             id: "mac.playback.cast-picker.owner-deciding",
@@ -24,7 +24,6 @@ extension ShotScene {
                         MacCastPopover(
                             receivers: ownerDecidingReceivers,
                             endedFailure: nil,
-                            connecting: start.connecting,
                             onDisconnect: {}
                         )
                         .environment(start),
@@ -34,33 +33,6 @@ extension ShotScene {
                     )
                 )
             }
-        },
-        ShotScene(
-            id: "mac.settings.playback.receivers-owner-deciding",
-            size: CGSize(width: 690, height: 600),
-            frame: .window(title: "Settings", titleBar: .hidden)
-        ) {
-            ShotStage(
-                SettingsWindowShot(
-                    tab: .playback,
-                    page: PlaybackSettingsTab()
-                        .environment(Playback.stub())
-                        .environment(Cast.stub())
-                        .environment(receiversCastStore())
-                        .environment(
-                            CastStart.drawn(connecting: kitchenOwnerDeciding)
-                        )
-                        .environment(
-                            PreviewData.makeConfigStore(
-                                libraryFullWidth: false,
-                                pauseBetweenSides: true,
-                                castEnabled: true
-                            )
-                        )
-                        .environment(UiStore())
-                        .defaultAppStorage(restoringOnLaunch)
-                )
-            )
         },
         ShotScene(
             id: "mac.playback.casting.no-volume",
@@ -209,15 +181,6 @@ extension ShotScene {
         castStore.applyStatus(.on(device: livingRoom))
         castStore.receivers = ownerDecidingReceivers
         return castStore
-    }
-
-    /// Settings that restore the last session on launch, as the Playback
-    /// boards draw the switch.
-    private static var restoringOnLaunch: UserDefaults {
-        guard let defaults = UserDefaults(suiteName: "fm.bae.shots.playback")
-        else { preconditionFailure("a named suite opens") }
-        defaults.set(true, forKey: "persistPlayback")
-        return defaults
     }
 
     /// The playback error for Kitchen no longer accepting this device.

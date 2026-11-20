@@ -29,7 +29,6 @@ struct CastButton: View {
             MacCastPopover(
                 receivers: castStore.receivers,
                 endedFailure: castStore.endedFailure,
-                connecting: start.connecting,
                 onDisconnect: {
                     cast.stopCasting()
                     showPicker = false
@@ -73,12 +72,11 @@ struct CastButton: View {
 
 /// The device picker, headed Play on: why the last device stopped when its
 /// link was lost, then each receiver once, the one cast to first with
-/// Disconnect, the one a cast is connecting to saying so on its row.
+/// Disconnect, the one the app's cast start is connecting to saying so on
+/// its row.
 struct MacCastPopover: View {
     let receivers: BridgeCastReceiverList
     let endedFailure: DisplayError?
-    /// The cast connecting, while one is.
-    let connecting: CastStart.Connecting?
     let onDisconnect: () -> Void
 
     @Environment(CastStart.self)
@@ -110,7 +108,7 @@ struct MacCastPopover: View {
                 MacCastRows(
                     place: .picker,
                     receivers: receivers,
-                    connecting: connecting,
+                    connecting: start.connecting,
                     onCast: { receiver in asked = start.cast(to: receiver) },
                     onDisconnect: onDisconnect
                 )

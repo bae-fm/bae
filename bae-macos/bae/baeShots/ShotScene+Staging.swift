@@ -54,31 +54,15 @@ enum OverWindow {
         trailing: CGFloat,
         over window: some View
     ) -> some View {
-        ZStack(alignment: .topTrailing) {
-            window
-            content
-                .fixedSize(horizontal: false, vertical: true)
-                .background(Color(nsColor: .windowBackgroundColor))
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-                .overlay(alignment: .topTrailing) {
-                    Rectangle()
-                        .fill(Color(nsColor: .windowBackgroundColor))
-                        .frame(width: 14, height: 14)
-                        .rotationEffect(.degrees(45))
-                        .offset(x: -40, y: -7)
-                        .accessibilityHidden(true)
-                }
-                .shadow(color: .black.opacity(0.3), radius: 15, y: 5)
-                .padding(.top, top)
-                .padding(.trailing, trailing)
-                // The app's popover is a window of its own, read after the
-                // window it opens from, not among the rows it covers.
-                .accessibilitySortPriority(-1)
-        }
+        placed(
+            content,
+            edge: .top,
+            distance: top,
+            trailing: trailing,
+            over: window
+        )
     }
-}
 
-extension OverWindow {
     /// A popover that opens upward from a control at the window's bottom,
     /// its bottom edge `bottom` points above the window's bottom and its
     /// right edge `trailing` points in from the window's right, as the
@@ -90,14 +74,45 @@ extension OverWindow {
         trailing: CGFloat,
         over window: some View
     ) -> some View {
-        ZStack(alignment: .bottomTrailing) {
+        placed(
+            content,
+            edge: .bottom,
+            distance: bottom,
+            trailing: trailing,
+            over: window
+        )
+    }
+
+    /// `content` drawn as a popover over `window`, `distance` points from
+    /// the window's `edge` and `trailing` points in from its right. One
+    /// hung from the top has the arrow on its top edge; the boards draw one
+    /// that opens upward with none.
+    @MainActor
+    private static func placed(
+        _ content: some View,
+        edge: VerticalEdge,
+        distance: CGFloat,
+        trailing: CGFloat,
+        over window: some View
+    ) -> some View {
+        ZStack(alignment: edge == .top ? .topTrailing : .bottomTrailing) {
             window
             content
                 .fixedSize(horizontal: false, vertical: true)
                 .background(Color(nsColor: .windowBackgroundColor))
                 .clipShape(RoundedRectangle(cornerRadius: 10))
+                .overlay(alignment: .topTrailing) {
+                    if edge == .top {
+                        Rectangle()
+                            .fill(Color(nsColor: .windowBackgroundColor))
+                            .frame(width: 14, height: 14)
+                            .rotationEffect(.degrees(45))
+                            .offset(x: -40, y: -7)
+                            .accessibilityHidden(true)
+                    }
+                }
                 .shadow(color: .black.opacity(0.3), radius: 15, y: 5)
-                .padding(.bottom, bottom)
+                .padding(edge == .top ? .top : .bottom, distance)
                 .padding(.trailing, trailing)
         }
     }
