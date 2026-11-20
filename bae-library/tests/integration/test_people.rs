@@ -6,6 +6,7 @@ use bae_people::people::HistorySharing;
 
 mod avatars;
 mod name_order;
+mod rating_systems;
 mod ratings;
 mod removed_person;
 

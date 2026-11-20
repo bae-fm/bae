@@ -314,6 +314,7 @@ task_types = [
     "bae_bridge::screens::detail::PlaylistDetailSubscription",
     "bae_bridge::screens::PlaylistsSubscription",
     "bae_bridge::screens::QueueSubscription",
+    "bae_bridge::screens::RatingSystemsSubscription",
     "bae_bridge::screens::SessionUpNextSubscription",
     "bae_bridge::screens::detail::ReleaseDetailSubscription",
     "bae_bridge::screens::ReleaseEditDraftSubscription",
@@ -1072,6 +1073,7 @@ homes = ["bae-people/src/people.rs", "bae-people/src/people.sql", "bae-people/sr
 tables = [
     "people",
     "ratings",
+    "rating_systems",
     "playlists",
     "playlist_entries",
     "history",

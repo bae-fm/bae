@@ -8,10 +8,17 @@ fn people_declarations_match_the_store_audience_and_file_contract() {
     let names: BTreeSet<_> = tables.iter().map(SyncedTable::name).collect();
     assert_eq!(
         names,
-        BTreeSet::from(["people", "history", "ratings", "playlists", "playlist_entries"])
+        BTreeSet::from([
+            "people",
+            "history",
+            "ratings",
+            "rating_systems",
+            "playlists",
+            "playlist_entries"
+        ])
     );
     for table in &tables {
-        let shared = matches!(table.name(), "people" | "ratings");
+        let shared = matches!(table.name(), "people" | "ratings" | "rating_systems");
         assert_eq!(
             table.identity(),
             if shared { &RowIdentity::SharedKey } else { &RowIdentity::IndependentUuid }
@@ -29,7 +36,11 @@ fn people_declarations_match_the_store_audience_and_file_contract() {
             table.get_audience_from(),
             (table.name() == "playlist_entries").then_some("playlist_id")
         );
-        assert_eq!(table.write_permission(), coven::WritePermission::Owner, "{}", table.name());
+        let permission = match table.name() {
+            "rating_systems" => coven::WritePermission::Admin,
+            _ => coven::WritePermission::Owner,
+        };
+        assert_eq!(table.write_permission(), permission, "{}", table.name());
         let columns: Vec<(&str, &Binding, bool)> = table
             .file_columns()
             .iter()

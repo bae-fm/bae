@@ -1,5 +1,5 @@
--- The library's people: profiles, ratings, playlists and plays. Part of the
--- schema coven applies as host migration 1.
+-- The library's people: profiles, ratings and the library's rating systems,
+-- playlists and plays. Part of the schema coven applies as host migration 1.
 
 -- Profiles retain the stable member id even after membership removal.
 -- `avatar_id` is the profile picture's coven file (`coven_files`); NULL is
@@ -28,6 +28,16 @@ CREATE TABLE ratings (
 
 -- An album's ratings read along the album.
 CREATE INDEX ratings_album ON ratings(album_id);
+
+-- How the library shows ratings, for albums and for tracks: as stars, as a
+-- heart for three stars or more, or hidden. One row, keyed 'library', which
+-- the library's first write inserts with stars for both, and which only an
+-- admin changes.
+CREATE TABLE rating_systems (
+    id TEXT PRIMARY KEY NOT NULL CHECK (id = 'library'),
+    albums TEXT NOT NULL CHECK (albums IN ('stars', 'heart', 'hidden')),
+    tracks TEXT NOT NULL CHECK (tracks IN ('stars', 'heart', 'hidden'))
+) STRICT;
 
 CREATE TABLE playlists (
     id TEXT PRIMARY KEY NOT NULL,

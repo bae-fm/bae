@@ -52,8 +52,10 @@ fn loading_builder(builder: coven::CovenBuilder) -> coven::CovenBuilder {
 /// its creator, `creator`, as its first member: coven records their name and
 /// their private circle in the store's first slot, and the joining write
 /// gives them their profile as that slot applies, as a joiner's device gives
-/// a joiner theirs (§5.4). Retains the store's open handle, including its
-/// identity custody.
+/// a joiner theirs (§5.4). The schema's first write then writes the rows
+/// every library starts with, such as its rating systems, before the store
+/// is visible. Retains the store's open handle, including its identity
+/// custody.
 pub async fn create_library(
     builder: coven::CovenBuilder,
     name: bae_store::EnteredName,
@@ -68,7 +70,7 @@ pub async fn create_library(
             creator.as_str(),
             |member| bae_people::people::private_circle_name(&member),
             &[],
-            |_, _| Ok(()),
+            crate::SCHEMA.first_write(),
         )
         .await
         .map_err(|error| coven::task::reported(diagnostics, error))

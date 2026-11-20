@@ -44,6 +44,47 @@ mirror_enum! { BridgeRatingTarget = bae_people::collections::RatingTarget,
     variants: { Album(id), Track(id) },
 }
 
+/// How the library shows the ratings of albums, or of tracks. `Hidden` is
+/// Library settings' *None*: no ratings show, and they stay stored.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeRatingSystem {
+    Stars,
+    Heart,
+    Hidden,
+}
+mirror_enum! { BridgeRatingSystem = bae_people::people::RatingSystem,
+    from_core: pub(crate) fn, into_core: pub(crate) fn,
+    variants: { Stars, Heart, Hidden },
+}
+
+/// What a rating system applies to: the library's albums or its tracks.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeRatedItems {
+    Albums,
+    Tracks,
+}
+mirror_enum! { BridgeRatedItems = bae_people::people::RatedItems,
+    from_core: pub(crate) fn, into_core: pub(crate) fn,
+    variants: { Albums, Tracks },
+}
+
+/// How the library shows the ratings of its albums and of its tracks, which
+/// only an admin changes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeRatingSystems {
+    pub albums: BridgeRatingSystem,
+    pub tracks: BridgeRatingSystem,
+}
+impl BridgeRatingSystems {
+    pub(crate) fn from_core(value: bae_people::people::RatingSystems) -> Self {
+        let bae_people::people::RatingSystems { albums, tracks } = value;
+        Self {
+            albums: BridgeRatingSystem::from_core(albums),
+            tracks: BridgeRatingSystem::from_core(tracks),
+        }
+    }
+}
+
 /// A place in a playlist beside one of its entries, named by its position
 /// id: just before it or just after it.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
@@ -449,6 +490,11 @@ impl From<bae_people::people::ProfileError> for BridgeError {
 }
 impl From<bae_library::people::AvatarError> for BridgeError {
     fn from(error: bae_library::people::AvatarError) -> Self {
+        Self::categorized(error.category(), error)
+    }
+}
+impl From<bae_people::people::RatingSystemError> for BridgeError {
+    fn from(error: bae_people::people::RatingSystemError) -> Self {
         Self::categorized(error.category(), error)
     }
 }

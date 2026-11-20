@@ -489,6 +489,14 @@ pulled_read! {
 }
 
 pulled_read! {
+    /// How the library shows the ratings of its albums and of its tracks.
+    RatingSystemsSubscription:
+        LiveValues<bae_people::people::RatingSystems> => crate::types::BridgeRatingSystems,
+    converted by crate::types::BridgeRatingSystems::from_core,
+    built by rating_systems
+}
+
+pulled_read! {
     /// The library's name.
     LibraryNameSubscription: LiveValues<String> => String,
     converted by |name: String| name,

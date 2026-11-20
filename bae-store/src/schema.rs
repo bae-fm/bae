@@ -20,6 +20,12 @@ const PAGE_CACHE_KIB: u32 = 16 * 1024;
 /// registration, with the facts of the member's latest admission.
 pub type JoiningWrite = fn(&coven::JoiningWrite<'_>, &coven::Joining) -> Result<(), coven::DbError>;
 
+/// A domain's write in the library's first write: coven runs it as the
+/// library's creator, inside the library's creation, after the creator and
+/// this device are registered and before the library is visible, so the rows
+/// it writes are there on every device that ever reads the library.
+pub type FirstWrite = fn(&coven::MemberWrite<'_>) -> rusqlite::Result<()>;
+
 /// A domain's function that coven runs last in each transaction that changes
 /// the app's rows, this device's write or one applied from another device
 /// alike, to store in the domain's device-local tables what its Rust rules
@@ -28,14 +34,16 @@ pub type BeforeCommit = fn(&coven::CommitSql<'_>) -> Result<(), coven::DbError>;
 
 /// One domain's share of the schema: its SQL files, which run in the order
 /// given, the SQL functions and collations those files name, the synced
-/// tables and namespaces of its tables, its write for a member's device as
-/// it registers, and its function before each commit.
+/// tables and namespaces of its tables, its write in the library's first
+/// write, its write for a member's device as it registers, and its function
+/// before each commit.
 pub struct SchemaPart {
     sql: &'static [&'static str],
     functions: &'static [&'static SchemaFunction],
     collations: &'static [&'static SchemaCollation],
     synced_tables: fn() -> Vec<coven::SyncedTable>,
     namespaces: fn() -> Vec<coven::Namespace>,
+    first_write: Option<FirstWrite>,
     joining_write: Option<JoiningWrite>,
     before_commit: Option<BeforeCommit>,
 }
@@ -56,6 +64,7 @@ impl SchemaPart {
             collations: &[],
             synced_tables: no_synced_tables,
             namespaces: no_namespaces,
+            first_write: None,
             joining_write: None,
             before_commit: None,
         }
@@ -81,6 +90,12 @@ impl SchemaPart {
     ) -> Self {
         self.synced_tables = tables;
         self.namespaces = namespaces;
+        self
+    }
+
+    /// This part's write in the library's first write.
+    pub const fn first_write(mut self, write: FirstWrite) -> Self {
+        self.first_write = Some(write);
         self
     }
 
@@ -200,6 +215,19 @@ impl Schema {
         let mut parts = self.parts.to_vec();
         parts.push(part);
         Self { parts: Box::leak(parts.into_boxed_slice()) }
+    }
+
+    /// The library's first write, which `coven::CovenBuilder::create_store`
+    /// runs as it creates the library: each part's write in it, in part
+    /// order. bae asks coven for no circles at creation, so the write names
+    /// none.
+    pub fn first_write(
+        self,
+    ) -> impl FnOnce(&coven::MemberWrite<'_>, &[coven::CircleId]) -> coven::CovenResult<()>
+           + Send
+           + 'static {
+        let writes: Vec<FirstWrite> = self.parts().filter_map(|part| part.first_write).collect();
+        move |sql, _| Ok(writes.iter().try_for_each(|write| write(sql))?)
     }
 
     /// The parts' writes for a member's device as its registration applies,

@@ -23,8 +23,9 @@ pub const TEST_CREATOR: &str = "Test Creator";
 /// Create a store named `name` on `builder` configured as bae's store on
 /// `schema`, registering this device as `device_name`, with
 /// [`TEST_CREATOR`] as its first member: coven records their name and a
-/// private circle for them as it creates the store, and a schema's joining
-/// write gives them their profile from those facts.
+/// private circle for them as it creates the store, a schema's joining
+/// write gives them their profile from those facts, and the schema's first
+/// write writes the rows every library starts with.
 pub async fn create_test_store(
     builder: coven::CovenBuilder,
     schema: crate::Schema,
@@ -38,7 +39,7 @@ pub async fn create_test_store(
             TEST_CREATOR,
             |member| format!("test-creator:{member}"),
             &[],
-            |_, _| Ok(()),
+            schema.first_write(),
         )
         .await
 }

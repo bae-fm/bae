@@ -16,6 +16,8 @@ mod joining;
 pub use joining::private_circle_name;
 mod profiles;
 pub(crate) use profiles::name_this_person_goes_by;
+mod rating_systems;
+pub use rating_systems::{RatedItems, RatingSystem, RatingSystemError, RatingSystems};
 
 /// The SQL functions the people's reads name: the key lists of names order by.
 const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] = &[&bae_store::NAME_KEY];
@@ -24,6 +26,7 @@ const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] = &[&bae_store::NAME_KEY];
 pub const SCHEMA: bae_store::SchemaPart = bae_store::SchemaPart::new(&[include_str!("people.sql")])
     .functions(SQL_FUNCTIONS)
     .synced(crate::synced::synced_tables, crate::synced::namespaces)
+    .first_write(rating_systems::write_first_rating_systems)
     .joining_write(joining::write_profile);
 
 struct PeopleInner {
@@ -34,7 +37,8 @@ struct PeopleInner {
     files: coven::FileBudget,
 }
 
-/// The library's profiles, ratings, playlists and plays over the store.
+/// The library's profiles, ratings and rating systems, playlists and plays
+/// over the store.
 #[derive(Clone)]
 pub struct People {
     inner: Arc<PeopleInner>,

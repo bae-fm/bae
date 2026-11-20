@@ -3164,7 +3164,9 @@ stars, by name. A track's stars on the page are the person's own.
 with *Stars*, *Heart* or *None*. The choice belongs to the library, not to a
 person or a device: one row of the `rating_systems` table in the store, which
 every device reads to draw ratings, and which only an admin can change. coven
-refuses a member's write to it on every device (an admin-only table). Each
+refuses a member's write to it on every device (an admin-only table). bae
+writes the row as it creates the library, with *Stars* for albums and for
+tracks (§5.4), so every device that has the library has the row. Each
 person's rating stays one to five stars or none, whatever the system. With
 *Heart*, an album or track the person rated three stars or more shows a heart;
 turning the heart on stores five stars, and turning it off clears the rating.
@@ -3403,7 +3405,9 @@ history setting.
   library never exists without its creator's profile, offline and before any
   storage. Each later device of theirs runs the same write at its own
   registration and finds the row, so a device restored before this one ever
-  uploaded still gets the profile.
+  uploaded still gets the profile. Then, before the library is visible, bae's
+  first write in it inserts the library's `rating_systems` row (§5.3), with
+  the creator as its author: an admin, as coven's admin-only table needs.
 - **A removed person invited again is a new member.** coven gives them a fresh
   `MemberId`, and they start with an empty new profile. Their old `people`
   row, ratings and household playlists stay under the old identity, read-only:

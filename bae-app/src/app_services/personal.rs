@@ -16,6 +16,13 @@ impl AppServices {
     delegate_values!(subscribe_people => subscribe_people() -> bae_people::people::PeopleView);
     delegate_values!(subscribe_person => subscribe_person(member: coven::MemberId) -> Option<bae_people::people::Person>);
     delegate_async!(people, set_rating => set_rating(target: RatingTarget, stars: Option<Stars>) -> Result<(), CollectionError>);
+    delegate_async!(people, set_rating_system => set_rating_system(items: bae_people::people::RatedItems, system: bae_people::people::RatingSystem) -> Result<(), bae_people::people::RatingSystemError>);
+    /// How the library shows ratings, now and after each change.
+    pub fn subscribe_rating_systems(
+        &self,
+    ) -> bae_store::live_query::LiveValues<bae_people::people::RatingSystems> {
+        self.inner.manager.values_until_closed(self.inner.people.subscribe_rating_systems())
+    }
     delegate_async!(manager, create_playlist => create_playlist(name: &str, sharing: Sharing, tracks: bae_records::TrackList) -> Result<uuid::Uuid, CollectionError>);
     delegate_async!(people, edit_playlist => edit_playlist(id: uuid::Uuid, name: &str, sharing: Sharing) -> Result<(), CollectionError>);
     delegate_async!(people, delete_playlist => delete_playlist(id: uuid::Uuid) -> Result<(), CollectionError>);
