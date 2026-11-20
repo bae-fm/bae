@@ -159,11 +159,18 @@
                 }
             }
             else {
+                // The default button sits on the right, and VoiceOver reads
+                // the buttons in the order they were listed, the default
+                // first, as it reads a system alert's.
                 HStack(spacing: ThemeSpace.related) {
                     ForEach(buttons.indices.reversed(), id: \.self) { index in
                         button(at: index)
+                            .accessibilitySortPriority(
+                                Double(buttons.count - index)
+                            )
                     }
                 }
+                .accessibilityElement(children: .contain)
             }
         }
 
