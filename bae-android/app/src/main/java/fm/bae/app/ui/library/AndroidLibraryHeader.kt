@@ -175,7 +175,6 @@ private fun LibraryViewHeading(
         AndroidMenu(
             expanded = state.openMenu == LibraryHeaderMenu.VIEWS,
             onDismissRequest = { state.openMenu = null },
-            minWidth = 180.dp,
         ) {
             LibraryViewMenuItems(state)
         }

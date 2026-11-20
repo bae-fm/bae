@@ -11,7 +11,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidDivider
@@ -31,7 +30,7 @@ internal fun AlbumOptionsMenu(
     var expanded by remember { mutableStateOf(false) }
     Box {
         AndroidIconButton(Icons.Filled.MoreVert, stringResource(R.string.album_options), onClick = { expanded = true })
-        AndroidMenu(expanded = expanded, onDismissRequest = { expanded = false }, minWidth = 240.dp) {
+        AndroidMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             if (onSetPrimaryRelease != null) {
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.set_primary_release)) },

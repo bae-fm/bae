@@ -17,7 +17,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
@@ -100,7 +99,7 @@ internal fun LibraryMoreMenu(
             stringResource(R.string.more_options),
             onClick = { state.openMenu = LibraryHeaderMenu.MORE },
         )
-        AndroidMenu(expanded = state.openMenu == LibraryHeaderMenu.MORE, onDismissRequest = close, minWidth = 220.dp) {
+        AndroidMenu(expanded = state.openMenu == LibraryHeaderMenu.MORE, onDismissRequest = close) {
             LibraryMoreMenuItems(state = state, onShuffleLibrary = onShuffleLibrary, onSettings = onSettings)
         }
     }
