@@ -156,7 +156,7 @@
 .bae-a-progress { display: flex; flex-direction: column; gap: var(--space-related); text-align: left; color: var(--text-primary); font: 400 14px/20px var(--font-android); }
 .bae-m-progress { display: flex; flex-direction: column; gap: var(--space-related); text-align: left; color: var(--text-primary); font: 400 13px var(--font-sans); }
 .bae-m-progress .bae-progress-track { height: 4px; }
-.bae-m-note { padding: 6px 4px 0; font: 400 11.5px var(--font-sans); line-height: 15px; color: var(--text-secondary); }
+.bae-m-note { padding: 2px var(--space-group) 0; font: 400 11.5px var(--font-sans); line-height: 15px; color: var(--text-secondary); }
 .bae-m-pane-on .bae-chip { background: color-mix(in srgb, var(--on-fill) 18%, transparent); color: var(--on-fill); }
 .bae-m-popupbutton-open { position: relative; display: inline-flex; }
 .bae-m-popupbutton-menu { position: absolute; left: -31px; z-index: 6; }
