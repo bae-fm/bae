@@ -374,6 +374,7 @@ extension MappingFixtures {
     static func detail(
         mapping: BridgeMappingTable?,
         edit: BridgeRawReleaseEdit = albumEdit,
+        summaryCatalogNumber: String? = nil,
         metadataProvenance: BridgeMetadataProvenance? = provenance,
         releaseLink: BridgeReleaseLink? = releaseLink,
         failure: BridgeError? = nil,
@@ -412,12 +413,8 @@ extension MappingFixtures {
                     pickedLibraryStatus: nil,
                     album: .new,
                     metadataDraft: edit,
-                    pressingOffers: PreviewData.pressingOffers(
-                        for: edit.pressing
-                    ),
-                    summaryCatalogNumber: PreviewData.summaryCatalogNumber(
-                        of: edit
-                    ),
+                    pressingOffers: PreviewData.pressingOffers,
+                    summaryCatalogNumber: summaryCatalogNumber,
                     albumArtistStanding: nil,
                     metadataDraftIsBlank: edit.albumTitle.isEmpty,
                     metadataProvenance: metadataProvenance,

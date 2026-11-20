@@ -32,6 +32,7 @@ extension ShotScene {
             folder: PreviewData.boardFolder(.northbound, files: files),
             metadataProvenance: provenance,
             edit: edit,
+            summaryCatalogNumber: "HR-0412-A-DELUXE",
             mapping: BridgeMappingTable(
                 images: [],
                 trackSides: PreviewData.boardTrackSides(tracks, edit: edit),

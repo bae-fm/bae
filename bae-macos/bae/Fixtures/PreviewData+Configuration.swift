@@ -6,24 +6,12 @@ import Foundation
 extension PreviewData {
     // MARK: - Config and edit-metadata fixtures
 
-    /// The catalog number core's read would hand for the draft's summary line.
-    static func summaryCatalogNumber(of edit: BridgeRawReleaseEdit) -> String? {
-        bridgeSummaryCatalogNumber(pressing: edit.pressing)
-    }
-
-    /// The Add menus' choices core's read would hand beside `edit`.
-    static func pressingOffers(for edit: BridgeRawReleaseEdit)
-        -> BridgePressingOffers
-    {
-        pressingOffers(for: edit.pressing)
-    }
-
-    /// The Add menus' choices core's read would hand beside `pressing`.
-    static func pressingOffers(
-        for pressing: BridgeRawPressingEdit
-    ) -> BridgePressingOffers {
-        bridgePressingOffers(pressing: pressing)
-    }
+    /// The choices the Add menus of a shot's pressing offer. The menus are
+    /// closed in every shot, so one fixed set stands for each draft's.
+    static let pressingOffers = BridgePressingOffers(
+        media: [.cd, .vinyl, .cassette],
+        discogsDetails: [.lp, .remastered]
+    )
 
     /// A raw release edit for metadata-editor shots: the album and
     /// pressing fields plus `trackCount` tracks. Blank track artists
@@ -143,7 +131,7 @@ extension PreviewData {
             ),
             records: [],
             hasRecords: false,
-            pressingOffers: pressingOffers(for: edit.pressing),
+            pressingOffers: pressingOffers,
             albumArtistStanding: nil,
             changed: false,
             invalid: nil

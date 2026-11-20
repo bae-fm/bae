@@ -111,12 +111,8 @@ private func detail(
                 pickedLibraryStatus: nil,
                 album: .new,
                 metadataDraft: MappingFixtures.albumEdit,
-                pressingOffers: PreviewData.pressingOffers(
-                    for: MappingFixtures.albumEdit.pressing
-                ),
-                summaryCatalogNumber: PreviewData.summaryCatalogNumber(
-                    of: MappingFixtures.albumEdit
-                ),
+                pressingOffers: PreviewData.pressingOffers,
+                summaryCatalogNumber: nil,
                 albumArtistStanding: nil,
                 metadataDraftIsBlank: false,
                 metadataProvenance: MappingFixtures.provenance,

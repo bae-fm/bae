@@ -94,6 +94,7 @@ extension ShotScene {
                 )
             ),
             edit: edit,
+            summaryCatalogNumber: blank ? nil : "HR-1042",
             mapping: BridgeMappingTable(
                 images: [],
                 trackSides: [],
@@ -177,9 +178,7 @@ extension ShotScene {
                     ),
                 hasCoverOptions: !blank,
                 editValues: blank ? blankEdit() : lowTideEdit(),
-                pressingOffers: PreviewData.pressingOffers(
-                    for: (blank ? blankEdit() : lowTideEdit()).pressing
-                ),
+                pressingOffers: PreviewData.pressingOffers,
                 albumArtistStanding: blank
                     ? nil : PreviewData.boardLibraryArtistStanding,
                 records: blank ? [] : PreviewData.releaseRecordsPair,
@@ -481,9 +480,7 @@ extension ShotScene {
             importStores(
                 MacReleaseFields(
                     values: values,
-                    pressingOffers: PreviewData.pressingOffers(
-                        for: values.pressing
-                    ),
+                    pressingOffers: PreviewData.pressingOffers,
                     writer: ReleaseFieldWriter { _, _ in },
                     editingCommands: EditingCommitCommands()
                 )

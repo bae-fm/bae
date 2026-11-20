@@ -485,6 +485,7 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
             detail: MappingFixtures.detail(
                 mapping: MappingFixtures.thirteenFileTable,
                 edit: editValues,
+                summaryCatalogNumber: draftIsBlank ? nil : "AB 100",
                 metadataProvenance: provenance
             )
         )
@@ -498,9 +499,7 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
             coverContent: nil,
             hasCoverOptions: false,
             editValues: editValues,
-            pressingOffers: PreviewData.pressingOffers(
-                for: editValues.pressing
-            ),
+            pressingOffers: PreviewData.pressingOffers,
             albumArtistStanding: nil,
             records: [],
             releaseLink: nil,

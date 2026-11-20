@@ -114,6 +114,7 @@ extension PreviewData {
             )
         ),
         edit: confirmEditValues,
+        summaryCatalogNumber: "AB 100",
         mapping: everyRowKindMappingTable,
         cover: releaseDetailBridge.defaultCover
     )
