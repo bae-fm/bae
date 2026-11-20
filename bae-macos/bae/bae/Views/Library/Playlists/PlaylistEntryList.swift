@@ -80,7 +80,10 @@ struct PlaylistEntryList: View {
             }
         }
         .coordinateSpace(name: Self.space)
+        // A list with no entries keeps the page's width and a row's place,
+        // where it takes dropped tracks.
         .frame(
+            maxWidth: .infinity,
             minHeight: detail.entries.isEmpty ? Self.emptyDropHeight : nil,
             alignment: .top
         )
