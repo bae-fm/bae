@@ -166,7 +166,7 @@ struct LibrarySettingsTab: View {
                 HStack {
                     Text("Not synced")
                         .foregroundStyle(.secondary)
-                    MacButton("Set up a cloud home…", kind: .primary) {
+                    MacButton("Set up a cloud home…") {
                         showSyncSetup = true
                     }
                 }
