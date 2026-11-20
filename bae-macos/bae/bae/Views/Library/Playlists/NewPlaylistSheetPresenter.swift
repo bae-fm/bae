@@ -17,6 +17,10 @@ private struct NewPlaylistSheetPresenter: ViewModifier {
     @Environment(UiStore.self)
     private var uiStore
 
+    /// The creation Create started, which Cancel stops.
+    @State
+    private var creating = CancellableTaskSlot()
+
     func body(content: Content) -> some View {
         content.sheet(
             item: Binding(
@@ -31,7 +35,10 @@ private struct NewPlaylistSheetPresenter: ViewModifier {
                     get: { uiStore.newPlaylistSheet ?? sheet },
                     set: { uiStore.newPlaylistSheet = $0 }
                 ),
-                onCancel: { uiStore.newPlaylistSheet = nil },
+                onCancel: {
+                    creating.cancel()
+                    uiStore.newPlaylistSheet = nil
+                },
                 onCreate: create
             )
         }
@@ -42,7 +49,7 @@ private struct NewPlaylistSheetPresenter: ViewModifier {
     private func create(_ sheet: NewPlaylistSheetState) {
         let library = library
         let uiStore = uiStore
-        Task {
+        creating.replace {
             do {
                 let playlistId = try await library.playlistWrites
                     .createOfPicked(

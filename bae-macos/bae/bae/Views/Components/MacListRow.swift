@@ -1,55 +1,72 @@
 import BaeKit
 import SwiftUI
 
-/// One row of a track list in the side pane: a leading column (a playlist
-/// entry's number, a play's time), a cover, a title over a second line, then
-/// whose it is and its length when given.
+/// One row of a track list: a leading column (a playlist entry's number), a
+/// cover, a title over a second line, then whose it is and its length.
 ///
-/// The leading column hangs in the margin left of the row, right-aligned
-/// and `leadWidth` wide, so the covers start at the list's edge, as a
-/// playlist's page and History draw their rows. `wide` leaves more room at
-/// the end, for a row that ends in a person. While the owner drags a
-/// playlist's row, `lifted` is the row left faint in its place and `dragging`
-/// the copy under the pointer, raised over the rows.
+/// With `hanging`, the leading column hangs in the margin left of the row,
+/// right-aligned and `leadWidth` wide, so the covers start at the list's
+/// edge, as a playlist's page in the side pane draws its tracks. `wide`
+/// leaves more room at the end, for a row that ends in a person. While the
+/// owner drags a playlist's row, `lift` says whether the row is left faint in
+/// its place or is the copy under the pointer, raised over the rows.
 struct MacListRow: View {
+    /// Where the row is in the owner's drag of a row.
+    enum Lift {
+        case resting
+        /// Left faint in its place.
+        case lifted
+        /// The copy under the pointer.
+        case dragging
+    }
+
     let lead: String
-    var leadWidth: CGFloat = 20
+    var leadWidth: CGFloat = 56
+    var hanging = false
+    var coverSize: CGFloat = 32
     var cover: BridgeImageRef?
     let title: String
     let subtitle: String
     /// The person the row names at its end, with their picture.
     var who: BridgePlaylistOwner?
-    var duration: String?
+    let duration: String
     var wide = false
     var hover = false
-    var lifted = false
-    var dragging = false
+    var lift = Lift.resting
 
     /// The space between the row's columns.
     static let gap: CGFloat = 10
-    /// How far a row's leading column reaches into the margin left of its
-    /// list: its width and the gap after it.
+    /// How far a hanging row's leading column reaches into the margin left of
+    /// its list: its width and the gap after it.
     static func hang(leadWidth: CGFloat) -> CGFloat {
         leadWidth + gap
     }
 
-    private static var coverSize: CGFloat { 40 }
     private static var durationWidth: CGFloat { 40 }
 
     var body: some View {
-        HStack(spacing: Self.gap) {
+        HStack(spacing: hanging ? Self.gap : ThemeSpace.related) {
             Text(lead)
                 .themeText(.detail)
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
-                .frame(width: leadWidth, alignment: .trailing)
-            Artwork(imageRef: cover, pointSize: Self.coverSize)
-                .frame(width: Self.coverSize, height: Self.coverSize)
-                .clipShape(
-                    RoundedRectangle(cornerRadius: ThemeRadius.artwork)
+                .frame(
+                    width: leadWidth,
+                    alignment: hanging ? .trailing : .center
                 )
-            VStack(alignment: .leading, spacing: 3) {
+            Artwork(imageRef: cover, pointSize: coverSize)
+                .frame(width: coverSize, height: coverSize)
+                .clipShape(
+                    RoundedRectangle(
+                        cornerRadius: hanging
+                            ? ThemeRadius.artwork : ThemeRadius.bar
+                    )
+                )
+            VStack(
+                alignment: .leading,
+                spacing: hanging ? 3 : ThemeSpace.line
+            ) {
                 Text(title)
                     .themeText(.rowTitle)
                     .lineLimit(1)
@@ -72,33 +89,43 @@ struct MacListRow: View {
                 }
                 .foregroundStyle(.secondary)
             }
-            if let duration {
-                Text(duration)
-                    .themeText(.detail)
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
-                    .frame(width: Self.durationWidth, alignment: .trailing)
-            }
+            Text(duration)
+                .themeText(.detail)
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+                .frame(width: Self.durationWidth, alignment: .trailing)
         }
         .padding(.trailing, wide ? ThemeSpace.edge : ThemeSpace.related)
-        .padding(.vertical, 5)
+        .padding(
+            .leading,
+            hanging ? 0 : ThemeSpace.related
+        )
+        .padding(.vertical, hanging ? 5 : ThemeSpace.inline)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: ThemeRadius.artwork)
-                .fill(fill)
+            RoundedRectangle(
+                cornerRadius: hanging
+                    ? ThemeRadius.artwork : ThemeRadius.control
+            )
+            .fill(fill)
         )
-        .contentShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
-        .opacity(lifted ? 0.45 : dragging ? 0.75 : 1)
+        .contentShape(
+            RoundedRectangle(
+                cornerRadius: hanging
+                    ? ThemeRadius.artwork : ThemeRadius.control
+            )
+        )
+        .opacity(lift == .lifted ? 0.45 : lift == .dragging ? 0.75 : 1)
         .shadow(
-            color: dragging ? Theme.shadow : .clear,
+            color: lift == .dragging ? Theme.shadow : .clear,
             radius: ThemeSpace.group,
             y: ThemeSpace.related
         )
-        .padding(.leading, -Self.hang(leadWidth: leadWidth))
+        .padding(.leading, hanging ? -Self.hang(leadWidth: leadWidth) : 0)
     }
 
     private var fill: AnyShapeStyle {
-        if dragging {
+        if lift == .dragging {
             return AnyShapeStyle(Theme.surfaceElevated)
         }
         return AnyShapeStyle(hover ? Theme.hover : .clear)

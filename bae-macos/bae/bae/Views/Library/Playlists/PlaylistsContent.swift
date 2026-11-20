@@ -1,5 +1,8 @@
 import BaeKit
+import OSLog
 import SwiftUI
+
+private let logger = Logger.bae("PlaylistsContent")
 
 /// The side pane's Playlists tab: every playlist this device holds, each a
 /// place to drop tracks, or the open playlist's page.
@@ -122,7 +125,12 @@ private struct PlaylistList: View {
                     order: order,
                     in: library
                 )
-                guard !trackIds.isEmpty else { return }
+                guard !trackIds.isEmpty else {
+                    logger.info(
+                        "a drop of \(dropped.count) items on a playlist held no tracks"
+                    )
+                    return
+                }
                 try await library.playlistWrites.appendPicked(
                     playlistId,
                     trackIds

@@ -207,14 +207,6 @@ private struct PlaylistEntryFramesKey: PreferenceKey {
     }
 }
 
-/// Where an entry's row is in the owner's drag: at rest, left faint in its
-/// place while the owner drags it, or the copy under the pointer.
-private enum Lift {
-    case resting
-    case lifted
-    case dragging
-}
-
 /// One entry of a playlist: double-clicking plays the playlist from it, and
 /// its menu plays it, queues it, and takes it out of the playlist when
 /// `remove` is given.
@@ -223,7 +215,7 @@ private struct PlaylistEntryRow: View {
     /// The entry's number in the playlist, or nil to draw none.
     let number: UInt64?
     /// Where the row is in the owner's drag of an entry.
-    let lift: Lift
+    let lift: MacListRow.Lift
     let play: () -> Void
     let playNext: () -> Void
     let addToQueue: () -> Void
@@ -236,13 +228,14 @@ private struct PlaylistEntryRow: View {
         MacListRow(
             lead: number.map { String($0) } ?? "",
             leadWidth: MacPlaylistPage.numberWidth,
+            hanging: true,
+            coverSize: 40,
             cover: entry.cover,
             title: entry.title,
             subtitle: entry.artistLine.text,
             duration: DurationClock.label(entry.durationClock),
             hover: hovering,
-            lifted: lift == .lifted,
-            dragging: lift == .dragging
+            lift: lift
         )
         .onHover { hovering = $0 }
         .onTapGesture(count: 2, perform: play)

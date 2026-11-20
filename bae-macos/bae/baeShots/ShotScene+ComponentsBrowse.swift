@@ -874,67 +874,56 @@ extension ShotScene {
 
     // MARK: - MacListRow
 
-    /// `MacListRow`, a play or a playlist's track, its leading column hung
-    /// in the margin: at rest, with a person at its end, left faint and
-    /// raised while the owner drags it, and with a playlist's number.
+    /// `MacListRow`, a playlist's track: at rest, with a person at its end,
+    /// left faint and raised while the owner drags it, with a taller cover, and
+    /// with its number hung in the margin.
     private static let listRowScenes: [ShotScene] = [
-        component(
-            "mac.component.list-row.resting",
-            height: 70,
-            images: coverStore()
-        ) {
-            MacListRow(
-                lead: "21:04",
-                cover: cover("Low Tide Hours"),
-                title: "Harbor Lights",
-                subtitle: "Mara Quill · Low Tide Hours",
-                duration: "4:32"
-            )
-            .frame(width: 380, alignment: .leading)
-        },
-        hangingListRow("mac.component.list-row.who"),
-        hangingListRow("mac.component.list-row.lifted", lifted: true),
-        hangingListRow("mac.component.list-row.dragging", dragging: true),
-        component(
+        listRow("mac.component.list-row.resting"),
+        listRow("mac.component.list-row.who", who: true, wide: true),
+        listRow("mac.component.list-row.lifted", lift: .lifted),
+        listRow("mac.component.list-row.dragging", lift: .dragging),
+        listRow("mac.component.list-row.cover", coverSize: 40),
+        listRow(
             "mac.component.list-row.hanging",
-            height: 70,
-            images: coverStore()
-        ) {
-            MacListRow(
-                lead: "1",
-                cover: cover("Low Tide Hours"),
-                title: "Harbor Lights",
-                subtitle: "Mara Quill",
-                duration: "4:32"
-            )
-            .padding(.leading, MacListRow.hang(leadWidth: 20))
-            .frame(width: 380, alignment: .leading)
-        },
+            hanging: true,
+            coverSize: 40,
+            padsMargin: true
+        ),
     ]
 
-    private static func hangingListRow(
+    private static func listRow(
         _ id: String,
-        lifted: Bool = false,
-        dragging: Bool = false
+        who: Bool = false,
+        wide: Bool = false,
+        lift: MacListRow.Lift = .resting,
+        hanging: Bool = false,
+        coverSize: CGFloat = 32,
+        padsMargin: Bool = false
     ) -> ShotScene {
         component(id, height: 70, images: coverStore()) {
             MacListRow(
                 lead: "21:04",
                 leadWidth: 56,
+                hanging: hanging,
+                coverSize: coverSize,
                 cover: cover("Low Tide Hours"),
                 title: "Harbor Lights",
                 subtitle: "Mara Quill · Low Tide Hours",
-                who: BridgePlaylistOwner(
-                    person: "person-mara",
-                    name: "Mara",
-                    initials: "M",
-                    avatarVersion: nil
-                ),
+                who: who
+                    ? BridgePlaylistOwner(
+                        person: "person-ana",
+                        name: "Ana",
+                        initials: "A",
+                        avatarVersion: nil
+                    ) : nil,
                 duration: "4:32",
-                lifted: lifted,
-                dragging: dragging
+                wide: wide,
+                lift: lift
             )
-            .padding(.leading, MacListRow.hang(leadWidth: 56))
+            .padding(
+                .leading,
+                padsMargin ? MacListRow.hang(leadWidth: 56) : 0
+            )
             .frame(width: 380, alignment: .leading)
         }
     }
