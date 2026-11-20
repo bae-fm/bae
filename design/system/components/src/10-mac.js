@@ -57,7 +57,7 @@
     return h('nav', { className: 'bae-m-sidebar', 'aria-label': 'Settings panes' },
       PANES.map(function (p) {
         var flagged = props.status && p === props.statusPane;
-        return h('button', { key: p, type: 'button', className: cx('bae-m-pane', p === props.pane && 'bae-m-pane-on'), 'aria-current': p === props.pane ? 'page' : null },
+        return h('button', { key: p, type: 'button', className: cx('bae-m-pane', p === props.pane && 'bae-m-pane-on'), 'aria-current': p === props.pane ? 'page' : null, 'aria-label': flagged ? p + ', ' + props.status : null },
           h('span', null, p),
           flagged ? h(StatusChip, { tone: props.statusTone || 'warning' }, props.status) : null);
       }));
