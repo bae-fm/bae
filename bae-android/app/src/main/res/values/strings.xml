@@ -606,4 +606,5 @@
     <string name="history_empty_person">No plays from %1$s</string>
     <string name="history_today">Today</string>
     <string name="history_yesterday">Yesterday</string>
+    <string name="side_pause_turned_off">You can turn this back on in Settings › Playback.</string>
 </resources>

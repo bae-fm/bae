@@ -4815,6 +4815,9 @@ open; once it is closed, the bar's second line says "Side A ended".
 - **The countdown.** The pause can end on its own after 5, 15, 30, 45 or 60
   seconds. Every device counts down to the same moment, so they show the same
   number. Closing the prompt stops the countdown and waits for Play.
+- **The box.** The prompt holds a box, checked, that keeps the pause on. Clearing
+  it turns the setting off when the prompt is answered, and the prompt then says
+  where to turn it back on: Settings › Playback.
 - **Settings.** Pausing is on by default: a side break is part of how the
   record was made. Turning it on also catches a crossing already prepared.
   Playback settings show it as *Pause between sides and discs*, with

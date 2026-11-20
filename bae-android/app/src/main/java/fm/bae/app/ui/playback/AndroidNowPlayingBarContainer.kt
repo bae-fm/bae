@@ -1,7 +1,5 @@
 package fm.bae.app.ui.playback
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -15,28 +13,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.liveRegion
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
-import fm.bae.app.coreString
 import fm.bae.app.data.castEndedFailure
 import fm.bae.app.playback.NowPlaying
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.AndroidCheckbox
-import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidSheet
-import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.color
-import fm.bae.app.ui.rememberCountdownLine
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import uniffi.bae_bridge.BridgeCountdown
 import uniffi.bae_bridge.BridgeRepeatMode
 import uniffi.bae_bridge.bridgeNextRepeatMode
 
@@ -124,7 +112,6 @@ private fun AndroidSidePause(
     session: OpenLibrary,
     track: fm.bae.app.playback.NowPlaying,
 ) {
-    val context = LocalContext.current
     AndroidSidePause(
         track = track,
         onTurnOffPauseBetweenSides = {
@@ -136,77 +123,6 @@ private fun AndroidSidePause(
         },
         onPlay = { session.playback.play() },
         onClose = { session.appHandle.cancelSidePauseCountdown() },
-    )
-}
-
-private val SIDE_PAUSE_DIALOG_WIDTH = 340.dp
-
-/**
- * The prompt core raises when playback pauses at the end of a side or disc; its
- * box starts checked because the prompt only appears while the setting is on.
- */
-@Composable
-fun AndroidSidePause(
-    track: fm.bae.app.playback.NowPlaying,
-    onTurnOffPauseBetweenSides: () -> Unit,
-    onPlay: () -> Unit,
-    onClose: () -> Unit,
-    nowMs: () -> Long = System::currentTimeMillis,
-) {
-    val context = LocalContext.current
-    var dismissedPromptId by remember { mutableStateOf<String?>(null) }
-    val wording = track.sidePausePrompt
-    if (wording != null && dismissedPromptId != wording.prompt.id) {
-        val prompt = wording.prompt
-        var keepPausing by remember(prompt.id) { mutableStateOf(true) }
-        val answer = { play: Boolean ->
-            dismissedPromptId = prompt.id
-            if (!keepPausing) onTurnOffPauseBetweenSides()
-            if (play) onPlay() else onClose()
-        }
-        AndroidDialog(
-            onDismissRequest = { answer(false) },
-            title =
-                context.coreString(
-                    wording.titleKey,
-                    mapOf("label" to prompt.sideLabel),
-                ),
-            width = SIDE_PAUSE_DIALOG_WIDTH,
-            content = {
-                // The message is the first line of the content, a section step under the title.
-                Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-                    Text(
-                        text = context.coreString("core.playback.pause.message"),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    prompt.countdown?.let { countdown ->
-                        SidePauseCountdownLine(countdown = countdown, nowMs = nowMs)
-                    }
-                    AndroidCheckbox(
-                        label = context.coreString(wording.keepPausingKey),
-                        checked = keepPausing,
-                        onCheckedChange = { keepPausing = it },
-                    )
-                }
-            },
-            action = DialogAction(stringResource(R.string.play), { answer(true) }, filled = true),
-            dismiss = DialogAction(stringResource(R.string.close), { answer(false) }),
-        )
-    }
-}
-
-/** The countdown line, redrawn each whole second until core's deadline and read out as it changes. */
-@Composable
-private fun SidePauseCountdownLine(
-    countdown: BridgeCountdown,
-    nowMs: () -> Long,
-) {
-    Text(
-        text = rememberCountdownLine(countdown, nowMs),
-        style = ThemeText.strong.style,
-        color = MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
     )
 }
 
