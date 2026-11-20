@@ -361,4 +361,43 @@ fn the_summary_catalog_number_is_the_first_one_a_label_row_has() {
 
     pressing.labels.clear();
     assert_eq!(pressing.summary_catalog_number(), None);
+
+/// A list with no stored row draws one blank row, which has nothing to remove;
+/// the first row carries the heading and the last the control that adds a row.
+#[test]
+fn a_list_draws_a_blank_row_when_it_holds_none() {
+    let mut pressing = valid_form().pressing;
+    pressing.labels.clear();
+    pressing.barcodes.clear();
+
+    assert_eq!(
+        pressing.label_rows(),
+        [ListRow {
+            row: RawLabelEdit::default(),
+            labelled: true,
+            removable: false,
+            adds_row: true
+        }]
+    );
+    assert_eq!(
+        pressing.barcode_rows(),
+        [ListRow { row: String::new(), labelled: true, removable: false, adds_row: true }]
+    );
+}
+
+#[test]
+fn a_list_marks_its_first_row_its_last_row_and_the_rows_that_can_go() {
+    let mut pressing = valid_form().pressing;
+    pressing.barcodes = vec!["0123".to_string(), String::new(), "4567".to_string()];
+
+    let rows = pressing.barcode_rows();
+
+    assert_eq!(
+        rows.iter().map(|row| (row.labelled, row.removable, row.adds_row)).collect::<Vec<_>>(),
+        [(true, true, false), (false, true, false), (false, true, true)]
+    );
+    pressing.barcodes = vec!["0123".to_string()];
+    assert!(pressing.barcode_rows()[0].removable, "one row with a value can be cleared away");
+    pressing.barcodes = vec![" ".to_string()];
+    assert!(!pressing.barcode_rows()[0].removable, "one blank row has nothing to remove");
 }

@@ -85,26 +85,77 @@ mirror_struct! {
     },
 }
 
-mirror_struct! {
-    BridgeRawPressingEdit = bae_import::RawPressingEdit,
-    from_core: pub(crate) fn,
-    into_core: pub(crate) fn,
-    fields: {
-        year,
-        labels: (each BridgeRawLabelEdit),
-        barcodes,
-        facts: (BridgePressingFacts),
-    },
+/// Not a `mirror_struct`: the editor draws the rows core lays out
+/// ([`bae_import::RawPressingEdit::label_rows`]) and a form's rows come back
+/// from them.
+impl BridgeRawPressingEdit {
+    pub(crate) fn from_core(pressing: bae_import::RawPressingEdit) -> Self {
+        Self {
+            labels: pressing.label_rows().into_iter().map(BridgeLabelRow::from_core).collect(),
+            barcodes: pressing
+                .barcode_rows()
+                .into_iter()
+                .map(BridgeBarcodeRow::from_core)
+                .collect(),
+            year: pressing.year,
+            facts: BridgePressingFacts::from_core(pressing.facts),
+        }
+    }
+
+    pub(crate) fn into_core(self) -> bae_import::RawPressingEdit {
+        bae_import::RawPressingEdit {
+            year: self.year,
+            labels: self.labels.into_iter().map(BridgeLabelRow::into_core).collect(),
+            barcodes: self.barcodes.into_iter().map(|row| row.barcode).collect(),
+            facts: self.facts.into_core(),
+        }
+    }
+}
+
+impl BridgeLabelRow {
+    fn from_core(row: bae_import::ListRow<bae_import::RawLabelEdit>) -> Self {
+        Self {
+            name: row.row.name,
+            catalog_number: row.row.catalog_number,
+            labelled: row.labelled,
+            removable: row.removable,
+            adds_row: row.adds_row,
+        }
+    }
+
+    fn into_core(self) -> bae_import::RawLabelEdit {
+        BridgeRawLabelEdit { name: self.name, catalog_number: self.catalog_number }.into_core()
+    }
+
+    /// The rows the editor draws of `labels`.
+    #[cfg(desktop)]
+    pub(crate) fn of_stored(labels: Vec<BridgeRawLabelEdit>) -> Vec<Self> {
+        let stored: Vec<_> = labels.into_iter().map(BridgeRawLabelEdit::into_core).collect();
+        bae_import::ListRow::of_labels(&stored).into_iter().map(Self::from_core).collect()
+    }
+}
+
+impl BridgeBarcodeRow {
+    fn from_core(row: bae_import::ListRow<String>) -> Self {
+        Self {
+            barcode: row.row,
+            labelled: row.labelled,
+            removable: row.removable,
+            adds_row: row.adds_row,
+        }
+    }
+
+    /// The rows the editor draws of `barcodes`.
+    #[cfg(desktop)]
+    pub(crate) fn of_stored(barcodes: Vec<String>) -> Vec<Self> {
+        bae_import::ListRow::of_barcodes(&barcodes).into_iter().map(Self::from_core).collect()
+    }
 }
 
 /// The editor shows and sends a label row's name and number alone: the ids a
 /// catalog gave the row stay in the core, which gives them back to a row that
 /// keeps the name they came with.
 impl BridgeRawLabelEdit {
-    pub(crate) fn from_core(row: bae_import::RawLabelEdit) -> Self {
-        Self { name: row.name, catalog_number: row.catalog_number }
-    }
-
     pub(crate) fn into_core(self) -> bae_import::RawLabelEdit {
         bae_import::RawLabelEdit {
             name: self.name,

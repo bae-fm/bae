@@ -314,11 +314,11 @@ actor PreviewReleaseLibrary {
                 }
             },
             setLabels: { labels in
-                await session.change { $0.values.pressing.labels = labels }
+                await session.change { $0.values.pressing.set(labels: labels) }
             },
             setBarcodes: { barcodes in
                 await session.change {
-                    $0.values.pressing.barcodes = barcodes
+                    $0.values.pressing.set(barcodes: barcodes)
                 }
             },
             setPressingFact: { fact in

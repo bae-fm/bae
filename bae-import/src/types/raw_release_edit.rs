@@ -105,6 +105,66 @@ pub struct RawPressingEdit {
     pub facts: bae_types::pressing::PressingFacts,
 }
 
+/// One row of the form's label or barcode list as the editor draws it. A list
+/// with no stored row draws one blank row; the row that opens the list carries
+/// its heading, the row that closes it carries the control that adds another
+/// row, and a row can be removed unless it is the one blank row.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ListRow<T> {
+    pub row: T,
+    /// Whether the row carries the list's heading.
+    pub labelled: bool,
+    /// Whether the row has a remove control.
+    pub removable: bool,
+    /// Whether the row carries the control that adds another row.
+    pub adds_row: bool,
+}
+
+impl<T: Clone> ListRow<T> {
+    /// The rows the editor draws of the stored `rows`: the stored rows, or
+    /// `blank` alone when none is stored.
+    fn list(rows: &[T], blank: T, is_blank: impl Fn(&T) -> bool) -> Vec<Self> {
+        let shown = if rows.is_empty() { vec![blank] } else { rows.to_vec() };
+        let count = shown.len();
+        shown
+            .into_iter()
+            .enumerate()
+            .map(|(position, row)| Self {
+                labelled: position == 0,
+                removable: count > 1 || !is_blank(&row),
+                adds_row: position + 1 == count,
+                row,
+            })
+            .collect()
+    }
+}
+
+impl ListRow<RawLabelEdit> {
+    /// The rows the editor draws of the stored label rows `labels`.
+    pub fn of_labels(labels: &[RawLabelEdit]) -> Vec<Self> {
+        Self::list(labels, RawLabelEdit::default(), RawLabelEdit::is_blank)
+    }
+}
+
+impl ListRow<String> {
+    /// The rows the editor draws of the stored barcode rows `barcodes`.
+    pub fn of_barcodes(barcodes: &[String]) -> Vec<Self> {
+        Self::list(barcodes, String::new(), |barcode| barcode.trim().is_empty())
+    }
+}
+
+impl RawPressingEdit {
+    /// The label rows the editor draws.
+    pub fn label_rows(&self) -> Vec<ListRow<RawLabelEdit>> {
+        ListRow::of_labels(&self.labels)
+    }
+
+    /// The barcode rows the editor draws.
+    pub fn barcode_rows(&self) -> Vec<ListRow<String>> {
+        ListRow::of_barcodes(&self.barcodes)
+    }
+}
+
 /// One label row of the form, each field as typed, empty meaning "not set",
 /// with the ids the catalog that stated the row knows its label by. The ids
 /// belong to the name they came with: the editors show and send the name and

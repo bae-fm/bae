@@ -754,24 +754,65 @@ pub struct BridgeReleaseEditTrackSide {
     pub runs: Vec<BridgeReleaseEditTrackRun>,
 }
 
-/// Raw pressing fields as the editor holds them. Mirrors
+/// Raw pressing fields as the editor draws them. Mirrors
 /// `bae_import::RawPressingEdit`: each text field is the text the user
 /// typed, empty meaning "not set"; `year` is text (parsed at shape time).
-/// `labels` is one row per label and `barcodes` one row per barcode, blank
-/// rows included. `facts` is what the person chose with the form's pickers.
+/// `labels` and `barcodes` are the rows the editor draws: one per label or
+/// barcode, or one blank row when there is none. `facts` is what the person
+/// chose with the form's pickers.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeRawPressingEdit {
     pub year: String,
-    pub labels: Vec<BridgeRawLabelEdit>,
-    pub barcodes: Vec<String>,
+    pub labels: Vec<BridgeLabelRow>,
+    pub barcodes: Vec<BridgeBarcodeRow>,
     pub facts: BridgePressingFacts,
 }
 
-/// One label row of the editor. Mirrors `bae_import::RawLabelEdit`.
+/// One label row the editor draws, with what the row carries: the list's
+/// heading on the first row, the control that adds a row on the last, and a
+/// remove control on every row but a lone blank one. Mirrors
+/// `bae_import::ListRow` of a `bae_import::RawLabelEdit`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeLabelRow {
+    pub name: String,
+    pub catalog_number: String,
+    pub labelled: bool,
+    pub removable: bool,
+    pub adds_row: bool,
+}
+
+/// One barcode row the editor draws, with what the row carries, as a
+/// [`BridgeLabelRow`] does.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeBarcodeRow {
+    pub barcode: String,
+    pub labelled: bool,
+    pub removable: bool,
+    pub adds_row: bool,
+}
+
+/// One label row of the editor, as the editor writes it. Mirrors
+/// `bae_import::RawLabelEdit`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeRawLabelEdit {
     pub name: String,
     pub catalog_number: String,
+}
+
+/// The rows the editor draws of `labels`, for a form bound to a value
+/// rather than to a draft in core, as a preview's is.
+#[cfg(desktop)]
+#[uniffi::export]
+pub fn bridge_label_rows(labels: Vec<BridgeRawLabelEdit>) -> Vec<BridgeLabelRow> {
+    BridgeLabelRow::of_stored(labels)
+}
+
+/// The rows the editor draws of `barcodes`, for a form bound to a value
+/// rather than to a draft in core, as a preview's is.
+#[cfg(desktop)]
+#[uniffi::export]
+pub fn bridge_barcode_rows(barcodes: Vec<String>) -> Vec<BridgeBarcodeRow> {
+    BridgeBarcodeRow::of_stored(barcodes)
 }
 
 /// One raw track row from the editor. Mirrors

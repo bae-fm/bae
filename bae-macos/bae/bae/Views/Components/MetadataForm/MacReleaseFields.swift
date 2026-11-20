@@ -81,23 +81,22 @@ struct MacReleaseFields: View {
         }
     }
 
-    /// One row per label, name beside number; a blank row when there is none.
+    /// One row per label, name beside number, as core hands them: a blank row
+    /// when there is none, and each row with the heading, remove button and
+    /// add button it carries.
     @ViewBuilder
     private var labelRows: some View {
-        let rows =
-            values.pressing.labels.isEmpty
-            ? [BridgeRawLabelEdit(name: "", catalogNumber: "")]
-            : values.pressing.labels
+        let rows = values.pressing.labels
         ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
             GridRow {
-                rowLabel(index == 0 ? String(localized: "Label") : "")
+                rowLabel(row.labelled ? String(localized: "Label") : "")
                 HStack(spacing: ThemeSpace.compact) {
                     valueText(
                         row.name,
                         name: String(localized: "Label"),
                         monospaced: false
                     ) { name in
-                        var next = rows
+                        var next = rows.map(\.edit)
                         next[index].name = name
                         await writer.setLabels(next)
                     }
@@ -106,17 +105,15 @@ struct MacReleaseFields: View {
                         name: String(localized: "Catalog number"),
                         monospaced: true
                     ) { number in
-                        var next = rows
+                        var next = rows.map(\.edit)
                         next[index].catalogNumber = number
                         await writer.setLabels(next)
                     }
-                    if rows.count > 1 || !row.name.isEmpty
-                        || !row.catalogNumber.isEmpty
-                    {
+                    if row.removable {
                         let named =
                             row.name.isEmpty ? row.catalogNumber : row.name
                         Button {
-                            var next = rows
+                            var next = rows.map(\.edit)
                             next.remove(at: index)
                             Task { await writer.setLabels(next) }
                         } label: {
@@ -129,13 +126,17 @@ struct MacReleaseFields: View {
                             String(localized: "Remove \(named)")
                         )
                     }
-                    if index == rows.count - 1 {
+                    if row.addsRow {
                         Button {
                             let blank = BridgeRawLabelEdit(
                                 name: "",
                                 catalogNumber: ""
                             )
-                            Task { await writer.setLabels(rows + [blank]) }
+                            Task {
+                                await writer.setLabels(
+                                    rows.map(\.edit) + [blank]
+                                )
+                            }
                         } label: {
                             Image(systemName: "plus")
                                 .foregroundStyle(.secondary)
@@ -150,27 +151,28 @@ struct MacReleaseFields: View {
         }
     }
 
-    /// One row per barcode; a blank row when there is none.
+    /// One row per barcode, as core hands them: a blank row when there is
+    /// none, and each row with the heading, remove button and add button it
+    /// carries.
     @ViewBuilder
     private var barcodeRows: some View {
-        let rows =
-            values.pressing.barcodes.isEmpty ? [""] : values.pressing.barcodes
+        let rows = values.pressing.barcodes
         ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
             GridRow {
-                rowLabel(index == 0 ? String(localized: "Barcode") : "")
+                rowLabel(row.labelled ? String(localized: "Barcode") : "")
                 HStack(spacing: ThemeSpace.compact) {
                     valueText(
-                        row,
+                        row.barcode,
                         name: String(localized: "Barcode"),
                         monospaced: true
                     ) { barcode in
-                        var next = rows
+                        var next = rows.map(\.barcode)
                         next[index] = barcode
                         await writer.setBarcodes(next)
                     }
-                    if rows.count > 1 || !row.isEmpty {
+                    if row.removable {
                         Button {
-                            var next = rows
+                            var next = rows.map(\.barcode)
                             next.remove(at: index)
                             Task { await writer.setBarcodes(next) }
                         } label: {
@@ -178,12 +180,18 @@ struct MacReleaseFields: View {
                                 .foregroundStyle(.tertiary)
                         }
                         .buttonStyle(.accentPlain)
-                        .help(String(localized: "Remove \(row)"))
-                        .accessibilityLabel(String(localized: "Remove \(row)"))
+                        .help(String(localized: "Remove \(row.barcode)"))
+                        .accessibilityLabel(
+                            String(localized: "Remove \(row.barcode)")
+                        )
                     }
-                    if index == rows.count - 1 {
+                    if row.addsRow {
                         Button {
-                            Task { await writer.setBarcodes(rows + [""]) }
+                            Task {
+                                await writer.setBarcodes(
+                                    rows.map(\.barcode) + [""]
+                                )
+                            }
                         } label: {
                             Image(systemName: "plus")
                                 .foregroundStyle(.secondary)
@@ -247,5 +255,12 @@ struct MacReleaseFields: View {
             name: label,
             monospaced: monospaced
         ) { await writer.setField(field, $0) }
+    }
+}
+
+extension BridgeLabelRow {
+    /// The label as a write of the label rows sends it.
+    fileprivate var edit: BridgeRawLabelEdit {
+        BridgeRawLabelEdit(name: name, catalogNumber: catalogNumber)
     }
 }
