@@ -361,6 +361,7 @@ fn the_summary_catalog_number_is_the_first_one_a_label_row_has() {
 
     pressing.labels.clear();
     assert_eq!(pressing.summary_catalog_number(), None);
+}
 
 /// A list with no stored row draws one blank row, which has nothing to remove;
 /// the first row carries the heading and the last the control that adds a row.
