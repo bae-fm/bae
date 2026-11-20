@@ -74,7 +74,7 @@ struct MacCastRow: View {
                 row
                     .contentShape(Rectangle())
                     .onTapGesture(perform: onCast)
-                    .accessibilityAction(named: Text("Play on…"), onCast)
+                    .accessibilityAction(named: Text("Play on"), onCast)
             }
         }
     }

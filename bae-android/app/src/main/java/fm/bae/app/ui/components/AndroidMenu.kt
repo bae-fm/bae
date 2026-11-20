@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.MaterialTheme
@@ -56,7 +55,7 @@ fun AndroidMenuInPlace(
         modifier = modifier,
     ) {
         Column(
-            modifier = Modifier.padding(vertical = MENU_PADDING).width(IntrinsicSize.Max).widthIn(min = MENU_MIN_WIDTH),
+            modifier = Modifier.padding(vertical = MENU_PADDING).width(IntrinsicSize.Max),
         ) {
             MenuWords(content)
         }
@@ -79,4 +78,3 @@ private fun MenuWords(content: @Composable ColumnScope.() -> Unit) {
 
 private val MENU_RADIUS = 4.dp
 private val MENU_PADDING = 8.dp
-private val MENU_MIN_WIDTH = 112.dp
