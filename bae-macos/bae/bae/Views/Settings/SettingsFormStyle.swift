@@ -57,7 +57,11 @@ private struct SettingsFormSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             if !section.header.isEmpty {
+                // A form's section header reads as a heading; the design
+                // system draws a section's title as plain text, as a box's
+                // title outside a form reads.
                 section.header.settingsSectionTitle()
+                    .accessibilityRemoveTraits(.isHeader)
             }
             MacBoxRows(rows: section.content)
             if !section.footer.isEmpty {
@@ -66,7 +70,9 @@ private struct SettingsFormSection: View {
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, ThemeSpace.inline)
-                    .padding(.top, ThemeSpace.compact)
+                    // The section's space between its parts, then the
+                    // note's own space above it.
+                    .padding(.top, ThemeSpace.compact * 2)
             }
         }
     }
