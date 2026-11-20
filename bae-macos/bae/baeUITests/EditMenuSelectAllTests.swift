@@ -37,11 +37,7 @@ final class EditMenuSelectAllTests: XCTestCase {
         // The list draws only the rows on screen, and the count it reaches
         // with Select All is the check that it lists every candidate.
         XCTAssertTrue(
-            list.staticTexts
-                .matching(
-                    NSPredicate(format: "label BEGINSWITH %@", "Album ")
-                )
-                .firstMatch.waitForExistence(timeout: 20)
+            list.staticTexts["Album 000"].waitForExistence(timeout: 20)
         )
         // The top row, wherever the list's order put it.
         let topRow = list.coordinate(withNormalizedOffset: .zero)
@@ -63,7 +59,7 @@ final class EditMenuSelectAllTests: XCTestCase {
         // window as narrow as the CI runner's.
         topRow.click()
         XCTAssertTrue(selectedAll.waitForNonExistence(timeout: 10))
-        let filter = app.textFields
+        let filter = app.searchFields
             .matching(
                 NSPredicate(format: "placeholderValue == %@", "Filter")
             )
