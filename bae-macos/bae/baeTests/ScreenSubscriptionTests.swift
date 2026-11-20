@@ -78,6 +78,10 @@ private final class Handed {
     var errors = 0
 }
 
+/// What only a reader's handlers hold: it deinitializes when the reader
+/// ends and lets its handlers go.
+private final class HeldByTheReader: Sendable {}
+
 @Suite("Screen subscription")
 struct ScreenSubscriptionTests {
     @Test("pulled values turn each value of their source, and end it")
@@ -119,17 +123,25 @@ struct ScreenSubscriptionTests {
     func shuttingDownEndsTheReader() async throws {
         let source = QueuedReads()
         let handed = Handed()
+        var held: HeldByTheReader? = HeldByTheReader()
+        weak var reader = held
+        Wait.announceRelease(of: try #require(held))
         let subscription = ScreenSubscription(
             source,
-            onValue: { handed.values.append($0) },
+            onValue: { [held] in
+                _ = held
+                handed.values.append($0)
+            },
             onError: { _ in handed.errors += 1 }
         )
+        held = nil
         source.answer(1)
         source.failShuttingDown()
         source.answer(2)
 
-        try await Wait.until { source.pulls >= 2 }
-        for _ in 0..<50 { await Task.yield() }
+        // The reader lets its handlers go once it ends. A reader that pulled
+        // on would hold them, parked on a pull past the queued answers.
+        try await Wait.until { reader == nil }
 
         #expect(handed.values == [1])
         #expect(handed.errors == 0)
