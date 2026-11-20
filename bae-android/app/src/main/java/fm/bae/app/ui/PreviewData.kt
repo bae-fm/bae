@@ -8,6 +8,7 @@ import uniffi.bae_bridge.BridgeActiveDevice
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeAlbumRating
+import uniffi.bae_bridge.BridgeCountdown
 import uniffi.bae_bridge.BridgeDownloadCounts
 import uniffi.bae_bridge.BridgeDownloadKind
 import uniffi.bae_bridge.BridgeDownloadOp
@@ -45,6 +46,7 @@ import uniffi.bae_bridge.BridgeReleaseArea
 import uniffi.bae_bridge.BridgeReleaseName
 import uniffi.bae_bridge.BridgeReleasePlayability
 import uniffi.bae_bridge.BridgeReleaseStorageState
+import uniffi.bae_bridge.BridgeSideHeading
 import uniffi.bae_bridge.BridgeSidePausePrompt
 import uniffi.bae_bridge.BridgeStorageFailure
 import uniffi.bae_bridge.BridgeStorageLocation
@@ -56,6 +58,7 @@ import uniffi.bae_bridge.BridgeTrackSide
 import uniffi.bae_bridge.BridgeTransferBatch
 import uniffi.bae_bridge.BridgeUploadQueueActivity
 import uniffi.bae_bridge.BridgeWorkSummary
+import java.time.Instant
 
 /**
  * `Bridge*` fixtures for the screenshot scenes and the tests, in the main source
@@ -303,27 +306,31 @@ object PreviewData {
             throughputBps = 4_800_000uL,
         )
 
-    /** The prompt after side A of a record ends, with the keys the bridge gives a side. */
-    fun sidePausePrompt(): SidePausePrompt =
+    /** The prompt after side A of a record ends, with the keys the bridge gives a side, counting down to [until]
+     *  when it is set. */
+    fun sidePausePrompt(until: Instant? = null): SidePausePrompt =
         SidePausePrompt(
             prompt =
                 BridgeSidePausePrompt(
                     id = "prompt-1",
-                    ended = BridgeTrackSide.Sided(sideLetter = "A"),
-                    countdown = null,
+                    ended = BridgeSideHeading.Sided(sideLetter = "A"),
+                    countdown =
+                        until?.let { BridgeCountdown(key = "core.playback.pause.side_ended.countdown", until = it) },
                 ),
             titleKey = "core.playback.pause.side_ended.title",
             keepPausingKey = "core.playback.pause.side_ended.keep_pausing",
         )
 
-    /** The prompt after disc 2 of a CD box ends, with the keys the bridge gives a disc. */
-    fun discPausePrompt(): SidePausePrompt =
+    /** The prompt after disc 2 of a CD box ends, with the keys the bridge gives a disc, counting down to [until]
+     *  when it is set. */
+    fun discPausePrompt(until: Instant? = null): SidePausePrompt =
         SidePausePrompt(
             prompt =
                 BridgeSidePausePrompt(
                     id = "prompt-2",
-                    ended = BridgeTrackSide.Disc(disc = 2u),
-                    countdown = null,
+                    ended = BridgeSideHeading.Disc(disc = 2u),
+                    countdown =
+                        until?.let { BridgeCountdown(key = "core.playback.pause.disc_ended.countdown", until = it) },
                 ),
             titleKey = "core.playback.pause.disc_ended.title",
             keepPausingKey = "core.playback.pause.disc_ended.keep_pausing",

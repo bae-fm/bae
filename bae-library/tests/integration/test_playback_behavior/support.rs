@@ -13,7 +13,7 @@ pub(super) use bae_playback::{
     PlaybackState, RepeatMode,
 };
 pub(super) use bae_preferences::SidePauseCountdown;
-pub(super) use bae_types::mediums::TrackSide;
+pub(super) use bae_types::mediums::SideHeading;
 pub(super) use bae_types::track_time::TrackTime;
 pub(super) use bae_util::test_channels::HANG_GUARD;
 pub(super) use bae_util::test_files::TestFolder;
@@ -22,14 +22,15 @@ pub(super) use std::sync::Arc;
 pub(super) use std::time::Duration;
 pub(super) use tracing::debug;
 
-/// The lettered side `letter` of a release's records and cassettes.
-pub(super) fn side(letter: &str) -> TrackSide {
-    TrackSide::Sided { side_letter: letter.to_string() }
+/// The heading of the lettered side `letter` of a release's records and
+/// cassettes.
+pub(super) fn side(letter: &str) -> SideHeading {
+    SideHeading::Sided { side_letter: letter.to_string() }
 }
 
-/// The disc `disc` of a release of several mediums.
-pub(super) fn disc(disc: u32) -> TrackSide {
-    TrackSide::Disc { disc }
+/// The heading of the disc `disc` of a release of several mediums.
+pub(super) fn disc(disc: u32) -> SideHeading {
+    SideHeading::Disc { disc }
 }
 
 /// Return the first `StateChanged` state that satisfies `predicate`, or `None`

@@ -20,7 +20,7 @@ use crate::{
     PlaybackPauseReason, PlaybackSideCountdown, PlaybackSidePausePrompt, PlaybackState,
     PlaybackValues, PlayingTrack, PreviewState, RemotePlayback,
 };
-use bae_types::mediums::TrackSide;
+use bae_types::mediums::SideHeading;
 use bae_util::timestamp::StoredTimestamp as _;
 
 /// The `playback_now` row, as playback writes it.
@@ -296,14 +296,11 @@ impl<'a> StateColumns<'a> {
                         columns.pause_reason = Some("side_ended");
                         columns.side_boundary_id = Some(&prompt.id);
                         let (kind, ended) = match &prompt.ended {
-                            TrackSide::Sided { side_letter } => {
-                                ("sided", Some(side_letter.clone()))
-                            }
-                            TrackSide::Disc { disc } => ("disc", Some(disc.to_string())),
-                            TrackSide::Flat => ("flat", None),
+                            SideHeading::Sided { side_letter } => ("sided", side_letter.clone()),
+                            SideHeading::Disc { disc } => ("disc", disc.to_string()),
                         };
                         columns.ended_side_kind = Some(kind);
-                        columns.ended_side = ended;
+                        columns.ended_side = Some(ended);
                         columns.side_resumes_at = prompt
                             .countdown
                             .as_ref()
@@ -462,19 +459,18 @@ fn state_from_row(row: &Row<'_>) -> rusqlite::Result<PlaybackState> {
                 "manual" => PlaybackPauseReason::Manual,
                 "side_ended" => {
                     let kind: String = row.get("ended_side_kind")?;
-                    let ended: Option<String> = row.get("ended_side")?;
+                    let ended: String = row.get("ended_side")?;
                     let resumes_at: Option<i64> = row.get("side_resumes_at")?;
                     PlaybackPauseReason::SideEnded(PlaybackSidePausePrompt {
                         id: row.get("side_boundary_id")?,
-                        ended: match (kind.as_str(), ended) {
-                            ("sided", Some(side_letter)) => TrackSide::Sided { side_letter },
-                            ("disc", Some(disc)) => TrackSide::Disc {
-                                disc: disc
+                        ended: match kind.as_str() {
+                            "sided" => SideHeading::Sided { side_letter: ended },
+                            "disc" => SideHeading::Disc {
+                                disc: ended
                                     .parse()
-                                    .map_err(|_not_a_number| unknown(row, "ended_side", &disc))?,
+                                    .map_err(|_not_a_number| unknown(row, "ended_side", &ended))?,
                             },
-                            ("flat", None) => TrackSide::Flat,
-                            (other, _) => return Err(unknown(row, "ended_side_kind", other)),
+                            other => return Err(unknown(row, "ended_side_kind", other)),
                         },
                         countdown: resumes_at
                             .map(|millis| {

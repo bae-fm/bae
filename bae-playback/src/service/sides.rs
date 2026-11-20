@@ -33,14 +33,13 @@ impl PlaybackTrackInfo {
     }
 }
 
-/// What the side/disc pause prompt shows: the side or disc that ended, which
-/// its title names by the side's heading and its other lines by the kind of
-/// side, and whether the next side starts on its own.
+/// What the side/disc pause prompt shows: the heading of the side or disc
+/// that ended, which its title names and whose kind words its other lines,
+/// and whether the next side starts on its own.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlaybackSidePausePrompt {
     pub id: String,
-    /// The side or disc that ended: never a flat side, which has no heading.
-    pub ended: bae_types::mediums::TrackSide,
+    pub ended: bae_types::mediums::SideHeading,
     /// The countdown to the next side starting on its own, or `None` when the
     /// pause waits for Play.
     pub countdown: Option<PlaybackSideCountdown>,
@@ -53,12 +52,12 @@ pub struct PlaybackSideCountdown {
     pub resumes_at: time::UtcDateTime,
 }
 
-/// The side or disc boundary between two tracks: the pause's id and the side
-/// or disc that ends there.
+/// The side or disc boundary between two tracks: the pause's id and the
+/// heading of the side or disc that ends there.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct SideBoundary {
     pub(super) id: String,
-    pub(super) ended: bae_types::mediums::TrackSide,
+    pub(super) ended: bae_types::mediums::SideHeading,
 }
 
 /// A pause at a side boundary, resuming into `track_id` on Play or, when set,
@@ -90,21 +89,21 @@ pub(super) fn side_boundary_between(
     current: &PlaybackTrackInfo,
     next: &PlaybackTrackInfo,
 ) -> Option<SideBoundary> {
-    use bae_types::mediums::TrackSide;
+    use bae_types::mediums::SideHeading;
     if current.release_id != next.release_id {
         return None;
     }
-    let ended = current.side.as_ref()?;
+    let current_side = current.side.as_ref()?;
     let next_side = next.side.as_ref()?;
-    if ended == next_side {
+    if current_side == next_side {
         return None;
     }
-    let heading = match ended {
-        TrackSide::Sided { side_letter } => format!("side {side_letter}"),
-        TrackSide::Disc { disc } => format!("disc {disc}"),
-        TrackSide::Flat => return None,
+    let ended = current_side.heading()?;
+    let named = match &ended {
+        SideHeading::Sided { side_letter } => format!("side {side_letter}"),
+        SideHeading::Disc { disc } => format!("disc {disc}"),
     };
-    Some(SideBoundary { id: format!("{}:{heading}", next.track_id), ended: ended.clone() })
+    Some(SideBoundary { id: format!("{}:{named}", next.track_id), ended })
 }
 
 #[cfg(test)]

@@ -394,7 +394,10 @@ impl SidePauseTestFixture {
         self.wait_for_playing_track(track_id, "track before side boundary should start").await;
     }
 
-    pub(super) async fn wait_for_side_pause(&mut self, expected_ended: TrackSide) -> PlaybackState {
+    pub(super) async fn wait_for_side_pause(
+        &mut self,
+        expected_ended: SideHeading,
+    ) -> PlaybackState {
         self.wait_for_state(|s| {
             matches!(
                 s,
@@ -411,7 +414,7 @@ impl SidePauseTestFixture {
     pub(super) async fn play_to_side_pause(
         &mut self,
         track_id: &str,
-        expected_ended: TrackSide,
+        expected_ended: SideHeading,
     ) -> PlaybackState {
         self.play_track_and_wait(track_id).await;
         self.play_out_from_near_the_end().await;

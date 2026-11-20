@@ -512,9 +512,9 @@ pub struct BridgeRelease {
 }
 
 /// The side or disc a release's tracks sit on, which every screen, error and
-/// prompt names by one heading ("Side A", "Disc 2"):
-/// [`bridge_track_side_heading_key`] gives its words. `Flat` has no heading:
-/// the tracks of a release of one medium that is not a record or a cassette.
+/// prompt names by its heading ([`BridgeSideHeading`]). `Flat` has no
+/// heading: the tracks of a release of one medium that is not a record or a
+/// cassette.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeTrackSide {
     Sided { side_letter: String },
@@ -530,16 +530,21 @@ mirror_enum! {
     variants: { Sided { side_letter }, Disc { disc }, Flat },
 }
 
-/// The catalog key of `side`'s heading, which takes the side's letters as
-/// `letter` ("Side A") or the disc's number as `disc` ("Disc 2"), or `None`
-/// for a flat side, which has no heading.
-#[uniffi::export]
-pub fn bridge_track_side_heading_key(side: BridgeTrackSide) -> Option<String> {
-    match side {
-        BridgeTrackSide::Sided { .. } => Some("core.track.side".to_owned()),
-        BridgeTrackSide::Disc { .. } => Some("core.track.disc".to_owned()),
-        BridgeTrackSide::Flat => None,
-    }
+/// The heading that names a side or disc on every screen, prompt and error:
+/// a record's or cassette's lettered side ("Side A"), or a disc of a
+/// release of several mediums ("Disc 2"). Each app words it from the
+/// catalog's `core.track.side`, which takes the side's letters as `letter`,
+/// and `core.track.disc`, which takes the disc's number as `disc`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeSideHeading {
+    Sided { side_letter: String },
+    Disc { disc: u32 },
+}
+
+mirror_enum! {
+    BridgeSideHeading = bae_types::mediums::SideHeading,
+    from_core: pub(crate) fn,
+    variants: { Sided { side_letter }, Disc { disc } },
 }
 
 #[derive(Debug, Clone, uniffi::Record)]

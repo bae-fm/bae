@@ -18,7 +18,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.coreString
-import fm.bae.app.headingText
 import fm.bae.app.playback.NowPlaying
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
@@ -58,7 +57,7 @@ fun AndroidSidePause(
             onDismissRequest = { answer(false) },
             parts =
                 sidePauseParts(
-                    title = context.coreString(wording.titleKey, mapOf("heading" to prompt.ended.headingText(context))),
+                    title = wording.title(context),
                     countdown = prompt.countdown,
                     nowMs = nowMs,
                     keepPausingLabel = context.coreString(wording.keepPausingKey),

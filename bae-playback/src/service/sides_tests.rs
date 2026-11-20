@@ -1,6 +1,6 @@
 use super::*;
 use crate::service::tests::*;
-use bae_types::mediums::TrackSide;
+use bae_types::mediums::{SideHeading, TrackSide};
 
 fn test_track_info(track_id: &str) -> PlaybackTrackInfo {
     PlaybackTrackInfo {
@@ -33,12 +33,13 @@ fn a_pause_carries_the_side_that_ended() {
         (sided("A"), sided("B")),
         (TrackSide::Disc { disc: 2 }, TrackSide::Disc { disc: 3 }),
     ] {
-        let (last_track, next_track) = tracks_across(last.clone(), next);
+        let heading = last.heading();
+        let (last_track, next_track) = tracks_across(last, next);
         let boundary = side_boundary_between(&last_track, &next_track).expect("the side ends");
-        assert_eq!(boundary.ended, last);
+        assert_eq!(Some(boundary.ended.clone()), heading);
         let prompt =
             SidePauseDecision { track_id: "next".to_string(), boundary, resumes_at: None }.prompt();
-        assert_eq!(prompt.ended, last);
+        assert_eq!(Some(prompt.ended), heading);
     }
 }
 
@@ -58,7 +59,7 @@ fn side_pause_prompt_carries_its_countdown() {
         track_id: "next".to_string(),
         boundary: SideBoundary {
             id: "next:disc 1".to_string(),
-            ended: TrackSide::Disc { disc: 1 },
+            ended: SideHeading::Disc { disc: 1 },
         },
         resumes_at: Some(countdown_deadline()),
     };
@@ -67,7 +68,7 @@ fn side_pause_prompt_carries_its_countdown() {
         decision.prompt(),
         PlaybackSidePausePrompt {
             id: "next:disc 1".to_string(),
-            ended: TrackSide::Disc { disc: 1 },
+            ended: SideHeading::Disc { disc: 1 },
             countdown: Some(PlaybackSideCountdown { resumes_at: countdown_deadline() }),
         }
     );
@@ -120,7 +121,7 @@ fn a_cd_release_pauses_at_disc_changes_only() {
     let third = info_on("third", &mediums, 2, disc(2));
     assert_eq!(side_boundary_between(&first, &second), None);
     let boundary = side_boundary_between(&second, &third).expect("disc 1 ends");
-    assert_eq!(boundary.ended, disc(1));
+    assert_eq!(boundary.ended, SideHeading::Disc { disc: 1 });
 }
 
 /// A 2×LP rip pauses at each side, named by its letter across both records.
@@ -143,7 +144,8 @@ fn a_two_record_release_pauses_at_each_side() {
         .windows(2)
         .map(|pair| side_boundary_between(&pair[0], &pair[1]).expect("a side ends").ended)
         .collect();
-    assert_eq!(labels, [sided("A"), sided("B"), sided("C")]);
+    let heading = |letter: &str| SideHeading::Sided { side_letter: letter.to_string() };
+    assert_eq!(labels, [heading("A"), heading("B"), heading("C")]);
 }
 
 /// A medium of no physical carrier never pauses.

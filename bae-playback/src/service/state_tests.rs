@@ -45,7 +45,7 @@ async fn playback_state_mapping() {
             track_id: "next".to_string(),
             boundary: SideBoundary {
                 id: "id".to_string(),
-                ended: bae_types::mediums::TrackSide::Sided { side_letter: "B".to_string() },
+                ended: bae_types::mediums::SideHeading::Sided { side_letter: "B".to_string() },
             },
             resumes_at: None,
         })),

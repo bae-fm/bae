@@ -21,7 +21,7 @@ struct SidePauseCountdownTests {
     }
 
     private static func prompt(
-        _ ended: BridgeTrackSide
+        _ ended: BridgeSideHeading
     ) -> BridgeSidePausePrompt {
         BridgeSidePausePrompt(
             id: "pause-1",

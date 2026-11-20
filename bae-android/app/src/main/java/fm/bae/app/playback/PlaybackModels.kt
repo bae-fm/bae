@@ -3,6 +3,7 @@ package fm.bae.app.playback
 import android.content.Context
 import fm.bae.app.coreString
 import fm.bae.app.creditLineText
+import fm.bae.app.text
 import uniffi.bae_bridge.BridgeNowPlayingDisplay
 import uniffi.bae_bridge.BridgePlaybackSourceKind
 import uniffi.bae_bridge.BridgeQueueEntry
@@ -36,13 +37,16 @@ fun BridgeNowPlayingDisplay.artist(context: Context): String? = library?.let { c
 /**
  * A side-pause prompt with the catalog keys its title and checkbox are worded
  * from, looked up from the side or disc that ended when the player receives
- * it. The title takes that side's heading.
+ * it.
  */
 data class SidePausePrompt(
     val prompt: BridgeSidePausePrompt,
     val titleKey: String,
     val keepPausingKey: String,
 ) {
+    /** The prompt's title, "Side A ended", from the heading of the side or disc that ended. */
+    fun title(context: Context): String = context.coreString(titleKey, mapOf("heading" to prompt.ended.text(context)))
+
     companion object {
         fun of(prompt: BridgeSidePausePrompt): SidePausePrompt =
             SidePausePrompt(

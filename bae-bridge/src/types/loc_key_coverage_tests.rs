@@ -85,6 +85,10 @@ const DIRECT_KEYS: &[&str] = &[
     "core.duration.hours",
     "core.duration.minutes",
     "core.duration.hours_minutes",
+    // A side's or disc's heading: the UI switches on `BridgeSideHeading` and
+    // words a side's letters or a disc's number.
+    "core.track.side",
+    "core.track.disc",
     // Source-audio formatters compose these labels and numeric facts directly.
     "core.audio.label",
     "core.audio.layout.cue",
@@ -173,14 +177,6 @@ fn produced_keys() -> Vec<String> {
         keys.extend(bridge_sheet_binding_offer_key(o));
     }
     assert!(bridge_sheet_binding_offer_key(BridgeSheetBindingOffer::Offered).is_none());
-
-    // bridge_track_side_heading_key — a flat side has no heading to word.
-    for s in
-        [BridgeTrackSide::Sided { side_letter: "A".to_string() }, BridgeTrackSide::Disc { disc: 1 }]
-    {
-        keys.extend(bridge_track_side_heading_key(s));
-    }
-    assert!(bridge_track_side_heading_key(BridgeTrackSide::Flat).is_none());
 
     // bridge_audio_channels_key — only 1 and 2 carry words.
     for channels in [1_i64, 2] {
@@ -619,9 +615,10 @@ fn produced_keys() -> Vec<String> {
     keys.extend(playability_messages().into_iter().map(|message| message.key));
     keys.extend(catalog_apply_step_lines().into_iter().map(|message| message.key));
 
-    for ended in
-        [BridgeTrackSide::Sided { side_letter: "A".to_string() }, BridgeTrackSide::Disc { disc: 1 }]
-    {
+    for ended in [
+        BridgeSideHeading::Sided { side_letter: "A".to_string() },
+        BridgeSideHeading::Disc { disc: 1 },
+    ] {
         keys.push(bridge_side_pause_title_key(ended.clone()));
         keys.push(side_pause_countdown_key(&ended));
         keys.push(bridge_side_pause_keep_pausing_key(ended));

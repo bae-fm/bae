@@ -505,7 +505,7 @@ pub(super) fn side_paused_between(
             track_id: next.to_string(),
             boundary: SideBoundary {
                 id: format!("{next}:side A"),
-                ended: bae_types::mediums::TrackSide::Sided { side_letter: "A".to_string() },
+                ended: bae_types::mediums::SideHeading::Sided { side_letter: "A".to_string() },
             },
             resumes_at,
         })),

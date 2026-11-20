@@ -15,7 +15,7 @@ async fn assert_sided_boundary_pauses(
     format: &str,
     positions: [&str; 3],
     start_track_index: usize,
-    expected_ended: TrackSide,
+    expected_ended: SideHeading,
 ) {
     let mut fixture =
         SidePauseTestFixture::new(format, positions, true).await.expect("side-pause fixture");

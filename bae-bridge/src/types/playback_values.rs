@@ -116,10 +116,10 @@ mirror_struct! {
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeSidePausePrompt {
     pub id: String,
-    /// The side or disc that ended. The title names it by its heading
-    /// ("Side A ended"), and the prompt's other lines by its kind (the next
-    /// side, or the next disc). Core never pauses after a flat side.
-    pub ended: crate::types::BridgeTrackSide,
+    /// The heading of the side or disc that ended, which the title names
+    /// ("Side A ended") and whose kind words the prompt's other lines (the
+    /// next side, or the next disc).
+    pub ended: crate::types::BridgeSideHeading,
     /// The countdown to the next side starting on its own, or `None` when the
     /// pause waits for Play.
     pub countdown: Option<BridgeCountdown>,
@@ -128,7 +128,7 @@ pub struct BridgeSidePausePrompt {
 impl BridgeSidePausePrompt {
     pub(crate) fn from_core(prompt: bae_playback::PlaybackSidePausePrompt) -> Self {
         let bae_playback::PlaybackSidePausePrompt { id, ended, countdown } = prompt;
-        let ended = crate::types::BridgeTrackSide::from_core(ended);
+        let ended = crate::types::BridgeSideHeading::from_core(ended);
         Self {
             id,
             countdown: countdown.map(|bae_playback::PlaybackSideCountdown { resumes_at }| {
@@ -139,32 +139,23 @@ impl BridgeSidePausePrompt {
     }
 }
 
-/// Whether the side that ended is a record's or cassette's side, which the
-/// prompt words as a side, or a disc. A flat side words as a disc: core never
-/// pauses after one, and a disc is the medium a flat side is on.
-fn ended_a_side(ended: &crate::types::BridgeTrackSide) -> bool {
-    matches!(ended, crate::types::BridgeTrackSide::Sided { .. })
-}
-
-/// The prompt's title for the side or disc `ended`, which takes the side's
-/// heading (`bridge_track_side_heading_key`) as `heading`.
+/// The prompt's title for the side or disc `ended`, which takes its heading
+/// ("Side A", "Disc 2") as `heading`.
 #[uniffi::export]
-pub fn bridge_side_pause_title_key(ended: crate::types::BridgeTrackSide) -> String {
-    if ended_a_side(&ended) {
-        "core.playback.pause.side_ended.title"
-    } else {
-        "core.playback.pause.disc_ended.title"
+pub fn bridge_side_pause_title_key(ended: crate::types::BridgeSideHeading) -> String {
+    match ended {
+        crate::types::BridgeSideHeading::Sided { .. } => "core.playback.pause.side_ended.title",
+        crate::types::BridgeSideHeading::Disc { .. } => "core.playback.pause.disc_ended.title",
     }
     .to_string()
 }
 
 /// The line counting down to the next side, which takes the whole seconds
 /// left, rounded up, as `seconds`.
-pub(crate) fn side_pause_countdown_key(ended: &crate::types::BridgeTrackSide) -> String {
-    if ended_a_side(ended) {
-        "core.playback.pause.side_ended.countdown"
-    } else {
-        "core.playback.pause.disc_ended.countdown"
+pub(crate) fn side_pause_countdown_key(ended: &crate::types::BridgeSideHeading) -> String {
+    match ended {
+        crate::types::BridgeSideHeading::Sided { .. } => "core.playback.pause.side_ended.countdown",
+        crate::types::BridgeSideHeading::Disc { .. } => "core.playback.pause.disc_ended.countdown",
     }
     .to_string()
 }
@@ -172,11 +163,14 @@ pub(crate) fn side_pause_countdown_key(ended: &crate::types::BridgeTrackSide) ->
 /// The prompt's checkbox that keeps pausing at boundaries like the one that
 /// ended.
 #[uniffi::export]
-pub fn bridge_side_pause_keep_pausing_key(ended: crate::types::BridgeTrackSide) -> String {
-    if ended_a_side(&ended) {
-        "core.playback.pause.side_ended.keep_pausing"
-    } else {
-        "core.playback.pause.disc_ended.keep_pausing"
+pub fn bridge_side_pause_keep_pausing_key(ended: crate::types::BridgeSideHeading) -> String {
+    match ended {
+        crate::types::BridgeSideHeading::Sided { .. } => {
+            "core.playback.pause.side_ended.keep_pausing"
+        }
+        crate::types::BridgeSideHeading::Disc { .. } => {
+            "core.playback.pause.disc_ended.keep_pausing"
+        }
     }
     .to_string()
 }

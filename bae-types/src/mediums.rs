@@ -97,6 +97,28 @@ pub enum TrackSide {
     Flat,
 }
 
+/// The heading that names a side or a disc on every screen, prompt and
+/// error: a record's or cassette's lettered side ("Side A"), or a disc of a
+/// release of several mediums ("Disc 2"). A flat side has none.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SideHeading {
+    Sided { side_letter: String },
+    Disc { disc: u32 },
+}
+
+impl TrackSide {
+    /// The side's heading; `None` for a flat side.
+    pub fn heading(&self) -> Option<SideHeading> {
+        match self {
+            Self::Sided { side_letter } => {
+                Some(SideHeading::Sided { side_letter: side_letter.clone() })
+            }
+            Self::Disc { disc } => Some(SideHeading::Disc { disc: *disc }),
+            Self::Flat => None,
+        }
+    }
+}
+
 impl TrackPosition {
     /// The per-track position label: "A1", or the track's number where the
     /// disc is the group header or there is none.

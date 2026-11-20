@@ -847,7 +847,7 @@ extension ShotScene {
 
     private static func sidePause(
         _ id: String,
-        ended: BridgeTrackSide,
+        ended: BridgeSideHeading,
         countdownKey: String?
     ) -> ShotScene {
         ShotScene(id: id, size: CGSize(width: 560, height: 340)) {

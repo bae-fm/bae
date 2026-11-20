@@ -76,7 +76,7 @@ async fn each_change_reads_back_as_written() {
             track: track.clone(),
             reason: PlaybackPauseReason::SideEnded(PlaybackSidePausePrompt {
                 id: "side-a".to_string(),
-                ended: bae_types::mediums::TrackSide::Disc { disc: 1 },
+                ended: bae_types::mediums::SideHeading::Disc { disc: 1 },
                 countdown: Some(PlaybackSideCountdown { resumes_at }),
             }),
         },

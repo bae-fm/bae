@@ -216,7 +216,7 @@ mod conversion_roundtrip {
         let resumes_at = bae_util::timestamp::parse_rfc3339("2026-01-01T00:00:05Z").unwrap();
         let prompt = BridgeSidePausePrompt::from_core(PlaybackSidePausePrompt {
             id: "next:disc 1".to_string(),
-            ended: bae_types::mediums::TrackSide::Disc { disc: 1 },
+            ended: bae_types::mediums::SideHeading::Disc { disc: 1 },
             countdown: Some(PlaybackSideCountdown { resumes_at }),
         });
 
@@ -224,7 +224,7 @@ mod conversion_roundtrip {
             prompt,
             BridgeSidePausePrompt {
                 id: "next:disc 1".to_string(),
-                ended: BridgeTrackSide::Disc { disc: 1 },
+                ended: BridgeSideHeading::Disc { disc: 1 },
                 countdown: Some(BridgeCountdown {
                     key: "core.playback.pause.disc_ended.countdown".to_string(),
                     until: std::time::UNIX_EPOCH + std::time::Duration::from_secs(1_767_225_605),

@@ -270,7 +270,7 @@ extension BridgeSidePausePrompt {
     public func title() -> String {
         String(
             format: localizedCoreString(bridgeSidePauseTitleKey(ended: ended)),
-            ended.headingText
+            ended.text
         )
     }
 
