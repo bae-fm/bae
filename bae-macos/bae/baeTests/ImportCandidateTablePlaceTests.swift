@@ -204,10 +204,13 @@ struct ImportCandidateTablePlaceTests {
             for row in [100, 150, 199] {
                 _ = table.view(atColumn: 0, row: row, makeIfNecessary: true)
             }
-            // A page asked for here would move the list's window within a
-            // few idles of the run loop.
-            try await Wait.untilSteady { list.topPosition }
+            // An ask for a page starts as a main-actor task that reports its
+            // rows to the view before it first waits, so once a task of our
+            // own has run behind the reads, every ask they made has reported.
+            await Task { @MainActor in }.value
             #expect(list.topPosition == top)
+            let answered = try #require(source.lastAnswer())
+            #expect(answered.shown.upperBound < 100)
             #expect(list.idAt(0) != nil)
             #expect(!source.hasDelivered(Self.stableKey(150)))
             #expect(Self.topRow(of: table) == 0)
