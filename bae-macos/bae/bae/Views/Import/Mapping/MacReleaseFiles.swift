@@ -15,11 +15,11 @@ struct MacReleaseFiles: View {
     /// Where a Found folder's track sheets can still be bound to audio and
     /// given a disc, the actions that do it; `nil` for a list that holds no
     /// sheet.
-    var sheetActions: ImportMappingActions?
+    var sheetActions: SheetCaptionActions?
     /// Where an audio file can play before import: the source window the
     /// second player plays now, and the actions that start and stop it.
     /// `nil` where the files play nothing.
-    var playing: (target: BridgePreviewTarget?, actions: ImportMappingActions)?
+    var playing: (target: BridgePreviewTarget?, actions: TrackAuditionActions)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
@@ -60,7 +60,7 @@ struct MacReleaseFiles: View {
             if let sheetActions {
                 ReleaseSheetCaption(
                     sheet: sheet,
-                    actions: sheetActions.sheetCaption
+                    actions: sheetActions
                 )
             }
         }

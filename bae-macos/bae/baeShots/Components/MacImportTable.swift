@@ -12,23 +12,23 @@ extension ShotScene {
                 width: 580,
                 height: 130
             ) {
-                importTable(
-                    mappingTable(sides: [
-                        BridgeTrackTableSide(
-                            side: .disc(disc: 1),
-                            runs: [.track(row: harborLights)]
-                        )
-                    ])
-                )
+                importTable([
+                    BridgeTrackTableSide(
+                        side: .disc(disc: 1),
+                        runs: [.track(row: harborLights)]
+                    )
+                ])
             }
         ]
 
-    private static func importTable(_ table: BridgeMappingTable) -> some View {
+    private static func importTable(
+        _ sides: [BridgeTrackTableSide]
+    ) -> some View {
         importStores(
             MacImportTable(
-                table: table,
+                sides: sides,
                 previewingTarget: nil,
-                actions: inertMappingActions(),
+                actions: inertMappingActions().trackTable,
                 editingCommands: EditingCommitCommands()
             )
             .frame(width: 580, alignment: .leading)

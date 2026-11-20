@@ -17,10 +17,9 @@ struct MacInvalidCandidateCard: View {
                 tone: .warning
             )
             HStack(alignment: .top, spacing: ThemeSpace.group) {
-                ImportCoverWell(
+                ReleaseCoverWell(
                     coverContent: invalid.cover.map(ImageContent.init(bridge:)),
-                    hasCoverOptions: false,
-                    onEditCover: {},
+                    onEditCover: nil,
                     onDropImage: nil
                 )
                 if let tags = invalid.tags {

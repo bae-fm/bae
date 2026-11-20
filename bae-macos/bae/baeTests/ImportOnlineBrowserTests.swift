@@ -24,28 +24,10 @@ struct ImportOnlineBrowserTests {
         )
         let candidate = try #require(store.candidate(forKey: key))
         var moves: [PaneMove] = []
-        let view = ImportMetadataSourceSection(
-            candidate: candidate,
-            actionable: true,
-            isReading: false,
-            coverContent: nil,
-            hasCoverOptions: false,
-            editActions: ReleaseFieldWriter { _, _ in },
-            albumActions: DraftAlbumActions(
-                pick: { _ in },
-                search: { _ in [] }
-            ),
-            editingCommands: EditingCommitCommands(),
+        let view = ImportOnlineMetadataBrowser(
+            candidateKey: candidate.key,
             endEditing: {},
-            commit: nil,
-            onMovePane: { moves.append($0) },
-            onIdentify: {},
-            onSearchForRelease: {},
-            onResetToFileMetadata: {},
-            onClearMetadata: {},
-            onUnlink: {},
-            onEditCover: {},
-            onDropCoverImage: { _ in }
+            onMovePane: { moves.append($0) }
         )
         .environment(store)
         .environment(Importer.stub())

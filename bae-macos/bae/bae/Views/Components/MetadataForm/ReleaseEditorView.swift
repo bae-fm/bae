@@ -45,45 +45,109 @@ struct ReleaseEditorView: View {
 
     var body: some View {
         Group {
-            if let searchSection {
-                VStack(
-                    alignment: .leading,
-                    spacing: ThemeSpace.group
-                ) {
-                    lead
-                        .padding(.vertical, ThemeSpace.edge)
-                        .padding(.horizontal, ThemeSpace.section)
-                        .card()
-                    search(searchSection)
-                }
-            }
-            else if let draft = session.draft {
-                ReleaseMetadataEditorContent(
-                    session: session,
-                    draft: draft,
-                    lead: { lead },
-                    onEditCover: presentCoverPicker,
-                    onPlayTrack: onPlayTrack,
-                    images: images,
-                    onOpenImages: onOpenImages,
-                    onOpenDocument: openDocument
+            if let draft = session.draft {
+                MacReleaseEditor(
+                    actionRow: .saving(saveRow(draft)),
+                    commands: ReleaseEditorCommands(
+                        identifyAutomatically: identifyAutomatically,
+                        search: { openSearch(.search) },
+                        metadataCommand: nil,
+                        unlink: nil,
+                        identifyDisabled: session.isBusy
+                    ),
+                    card: card(draft),
+                    tracks: ReleaseEditorTracks(
+                        images: images,
+                        onOpenImages: onOpenImages ?? { _ in },
+                        sides: draft.sides ?? [],
+                        files: (draft.files ?? []).map { .file(file: $0) },
+                        previewingTarget: nil,
+                        actions: tableActions
+                    ),
+                    editingCommands: session.editingCommands,
+                    editable: !session.isBusy,
+                    searching: searchSection != nil,
+                    search: {
+                        if let searchSection {
+                            search(searchSection)
+                        }
+                    }
                 )
             }
         }
         .onDisappear { endSearch() }
     }
 
-    /// What heads the draft card.
-    private var lead: some View {
-        ReleaseEditorLead(
-            session: session,
-            onAutomatic: { identifyAutomatically() },
-            onSearch: { openSearch(.search) },
-            onCancel: {
-                searchSection = nil
-                session.cancelChanges()
-            },
-            onSave: { session.save(onSuccess: onSaved) }
+    /// Cancel and Save, the step of an apply, and why the form can't be
+    /// saved.
+    private func saveRow(_ draft: BridgeReleaseEditDraft) -> ReleaseSaveRow {
+        ReleaseSaveRow(
+            controls: ReleaseEditControls(
+                changed: draft.changed,
+                isBusy: session.isBusy,
+                reading: session.readingLine,
+                onCancel: {
+                    searchSection = nil
+                    session.cancelChanges()
+                },
+                onSave: { session.save(onSuccess: onSaved) }
+            ),
+            applying: session.catalogApplying,
+            notice: session.validationMessage.map { DisplayError(line: $0) }
+                ?? session.failure
+        )
+    }
+
+    private func card(_ draft: BridgeReleaseEditDraft) -> ReleaseEditorCard {
+        let session = session
+        return ReleaseEditorCard(
+            values: { session.values },
+            pressingOffers: draft.pressingOffers,
+            albumArtists: draft.albumArtists,
+            writer: session.fieldWriter,
+            cover: ReleaseCover(
+                content: draft.cover.map { .libraryImage($0) },
+                onEdit: presentCoverPicker,
+                onDropImage: nil
+            ),
+            sourceAudio: draft.sourceAudio,
+            album: draft.album,
+            albumActions: session.albumActions,
+            records: draft.records,
+            pressingUnknown: false
+        )
+    }
+
+    /// The table's actions on the session's form: a side or disc picked for
+    /// a sheet, or an audio file for one of its lines. The caption offers
+    /// neither *Ignored* nor binding no audio, since the editor keeps every
+    /// track it opened on.
+    private var tableActions: ReleaseTrackTableActions {
+        let session = session
+        return ReleaseTrackTableActions(
+            sheetCaption: SheetCaptionActions(
+                open: openDocument,
+                place: { sheetId, place in
+                    if case .on(let side) = place {
+                        session.pickSheetSide(sheetId, side: side)
+                    }
+                },
+                bind: { sheetId, fileReference, audioFileId in
+                    if let audioFileId {
+                        session.pickSheetFile(
+                            sheetId,
+                            fileReference: fileReference,
+                            audioFileId: audioFileId
+                        )
+                    }
+                }
+            ),
+            audition: TrackAuditionActions(
+                preview: { _ in },
+                stopPreview: {},
+                playTrack: onPlayTrack
+            ),
+            editTrack: { await session.updateTrack($0) }
         )
     }
 
@@ -206,52 +270,6 @@ struct ReleaseEditorView: View {
         Task {
             do { try await importer.endReleaseIdentification(releaseId) }
             catch { uiStore.showError(error) }
-        }
-    }
-}
-
-/// What heads a library release's editor card: the identify entries the
-/// import pane offers, then the session's own Cancel and Save; the progress
-/// of applying a pressing; and the failure of the last save or check.
-struct ReleaseEditorLead: View {
-    let session: ReleaseMetadataEditSession
-    let onAutomatic: () -> Void
-    let onSearch: () -> Void
-    let onCancel: () -> Void
-    let onSave: () -> Void
-
-    var body: some View {
-        VStack(
-            alignment: .leading,
-            spacing: ReleaseMetadataLayout.blockSpacing
-        ) {
-            MacIdentifyBar(
-                spacing: ThemeSpace.edge,
-                identifyDisabled: session.isBusy,
-                onAutomatic: onAutomatic,
-                onSearch: onSearch,
-                onMetadataCommand: nil,
-                trailing: {
-                    ReleaseEditControls(
-                        changed: session.draft?.changed == true,
-                        isBusy: session.isBusy,
-                        reading: session.readingLine,
-                        onCancel: onCancel,
-                        onSave: onSave
-                    )
-                }
-            )
-            if let applying = session.catalogApplying {
-                CatalogApplyStepLine(apply: applying.apply)
-            }
-            if let shown = session.validationMessage.map({
-                DisplayError(line: $0)
-            })
-                ?? session.failure
-            {
-                MacNotice(error: shown)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
         }
     }
 }

@@ -19,4 +19,4 @@ A part with no value draws nothing: no audio line without `audio`, no album pick
 
 A skipped folder's pane is read-only and uses `MacInvalidCandidateCard`.
 
-**In the code:** macOS: `MacImportDraft` (`Views/Import/Mapping/MacImportDraft.swift`) in the import pane and `MacReleaseEditorCard` (`Views/Components/MetadataForm/MacReleaseEditorCard.swift`) in the Edit release sheet.
+**In the code:** macOS: `MacReleaseEditor` (`Views/Components/MetadataForm/MacReleaseEditor.swift`), whose `actionRow` is `importing` in the import pane (`ImportMappingPane`) and `saving` in the Edit release sheet and an imported folder's pane (`ReleaseEditorView`).

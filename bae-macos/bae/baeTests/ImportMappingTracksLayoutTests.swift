@@ -27,7 +27,8 @@ struct ImportMappingTracksLayoutTests {
                 columns: columns,
                 previewingTarget: nil,
                 editingCommands: EditingCommitCommands(),
-                actions: actions(recording: MappingTrackActionRecorder()),
+                actions: actions(recording: MappingTrackActionRecorder())
+                    .trackTable,
                 artistSearch: { _ in .fixed([], answers: UnansweredCount()) }
             )
             .padding(.horizontal, ImportMappingColumns.rowPadding)
@@ -82,7 +83,7 @@ struct ImportMappingTracksLayoutTests {
                 columns: columns,
                 previewingTarget: nil,
                 editingCommands: EditingCommitCommands(),
-                actions: actions(recording: recorder),
+                actions: actions(recording: recorder).trackTable,
                 artistSearch: { _ in .fixed([], answers: UnansweredCount()) }
             )
             .padding(.horizontal, ImportMappingColumns.rowPadding)
@@ -157,7 +158,7 @@ struct ImportMappingTracksLayoutTests {
         )
 
         #expect(stopped == playing)
-        #expect(playing >= ImportMappingSourceCell.auditionTargetSize)
+        #expect(playing >= TrackSourceCell.auditionTargetSize)
     }
 
     @MainActor
@@ -178,7 +179,8 @@ struct ImportMappingTracksLayoutTests {
                 columns: columns,
                 previewingTarget: nil,
                 editingCommands: EditingCommitCommands(),
-                actions: actions(recording: MappingTrackActionRecorder()),
+                actions: actions(recording: MappingTrackActionRecorder())
+                    .trackTable,
                 artistSearch: { _ in .fixed([], answers: UnansweredCount()) }
             )
             .frame(width: size.width, height: size.height, alignment: .leading)
@@ -291,11 +293,13 @@ extension ImportMappingTracksLayoutTests {
     func sheetEntrySourceShowsItsStartNotItsTrackNumber() {
         func width(number: UInt32) -> CGFloat {
             let host = NSHostingView(
-                rootView: ImportMappingSourceCell(
+                rootView: TrackSourceCell(
                     source: sheetEntryMapping(number: number).source,
-                    previewTarget: nil,
+                    audition: .libraryTrack,
+                    trackId: "sheet-track-\(number)",
                     previewingTarget: nil,
                     actions: actions(recording: MappingTrackActionRecorder())
+                        .audition
                 )
                 .fixedSize()
             )
@@ -443,7 +447,7 @@ extension ImportMappingTracksLayoutTests {
                 columns: columns,
                 previewingTarget: previewingTarget,
                 editingCommands: EditingCommitCommands(),
-                actions: actions(recording: recorder),
+                actions: actions(recording: recorder).trackTable,
                 artistSearch: { _ in .fixed([], answers: UnansweredCount()) }
             )
             .padding(.horizontal, ImportMappingColumns.rowPadding)
@@ -473,11 +477,13 @@ extension ImportMappingTracksLayoutTests {
         previewing: BridgePreviewTarget?
     ) -> CGFloat {
         let host = NSHostingView(
-            rootView: ImportMappingSourceCell(
+            rootView: TrackSourceCell(
                 source: source,
-                previewTarget: previewTarget,
+                audition: .preview(target: previewTarget),
+                trackId: "track",
                 previewingTarget: previewing,
                 actions: actions(recording: MappingTrackActionRecorder())
+                    .audition
             )
             .frame(width: 180, alignment: .leading)
         )

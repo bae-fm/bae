@@ -71,7 +71,7 @@ extension ShotScene {
             MacReleaseFiles(
                 rows: rows,
                 onOpenDocument: { _, _ in },
-                playing: (nil, inertMappingActions())
+                playing: (nil, inertMappingActions().audition)
             )
             .frame(width: 520, alignment: .leading)
         }

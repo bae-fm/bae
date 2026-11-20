@@ -2217,8 +2217,8 @@ import pane's draft, laid out the same way: the cover beside the album and
 pressing fields, the album the release files under, the track table (its
 rows play, and show lengths and a CUE image's starts as the import pane's do,
 §3.6), and the same *Identify* controls — *Automatic* identifies the release from its files
-and *Search* opens the typed search — whose results replace the draft in
-place until a pick applies one, or *Back* returns to it. *Save* writes the
+and *Search* opens the typed search — whose results replace the card in
+place, above the tracks, until a pick applies one, or *Back* returns to it. *Save* writes the
 form; *Cancel*, shown once something changed, discards its changes. While an apply
 reads a release from its catalog, the editor names the catalog it reads from,
 as an import's pick does (§3.5); saving, cancelling and picking an album are

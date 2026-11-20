@@ -1,13 +1,15 @@
 import BaeKit
 import SwiftUI
 
-/// The mapping pane's track table: every source the folder offers on the
-/// same row as the track committing makes of it.
+/// The release editor's track table, in the import pane and in the Edit
+/// release sheet alike: a heading for each side or disc, then its runs,
+/// each a track row or a CUE sheet's caption over the rows it carves.
 struct MacImportTable: View {
-    let table: BridgeMappingTable
-    /// The source window currently auditioning, if any — its row is accented.
+    let sides: [BridgeTrackTableSide]
+    /// The source window the preview player plays now, if any; its row is
+    /// accented.
     let previewingTarget: BridgePreviewTarget?
-    let actions: ImportMappingActions
+    let actions: ReleaseTrackTableActions
     let editingCommands: EditingCommitCommands
 
     @Environment(Library.self)
@@ -26,39 +28,12 @@ struct MacImportTable: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.edge) {
-            tracksSection
-            if !table.files.isEmpty {
-                MacReleaseFiles(
-                    rows: table.files,
-                    onOpenDocument: actions.openDocument,
-                    sheetActions: actions
-                )
-            }
-        }
-    }
-
-    private func rowStack<Rows: View>(
-        @ViewBuilder _ rows: () -> Rows
-    ) -> some View {
-        VStack(spacing: 0) {
-            rows()
-        }
-        .frame(width: tableWidth, alignment: .leading)
-    }
-
-    // MARK: - Tracks
-
-    /// One header per side or disc, then its runs: track mappings, or one
-    /// sheet and its entries.
-    private var tracksSection: some View {
         ScrollView(.horizontal) {
-            rowStack {
+            VStack(spacing: 0) {
                 trackHeaderRow
-                ForEach(
-                    Array(table.trackSides.enumerated()),
-                    id: \.offset
-                ) { index, side in
+                ForEach(Array(sides.enumerated()), id: \.offset) {
+                    index,
+                    side in
                     if !side.side.headingText.isEmpty {
                         sideHeader(side.side.headingText, index: index)
                     }
@@ -72,6 +47,7 @@ struct MacImportTable: View {
                     }
                 }
             }
+            .frame(width: tableWidth, alignment: .leading)
         }
         .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
         .onGeometryChange(for: CGFloat.self) { geo in
@@ -93,14 +69,10 @@ struct MacImportTable: View {
     private func sheetCaption(_ sheet: BridgeSheetGroup) -> some View {
         VStack(spacing: 0) {
             MacHairline()
-            sheetCaptionRow(sheet)
+            ReleaseSheetCaption(sheet: sheet, actions: actions.sheetCaption)
                 .padding(.horizontal, ImportMappingColumns.rowPadding)
                 .padding(.vertical, ThemeSpace.related)
         }
-    }
-
-    private func sheetCaptionRow(_ sheet: BridgeSheetGroup) -> some View {
-        ReleaseSheetCaption(sheet: sheet, actions: actions.sheetCaption)
     }
 
     private func trackRow(_ row: BridgeTrackTableRow) -> some View {
@@ -113,19 +85,17 @@ struct MacImportTable: View {
             artistSearch: library.artistSearch,
         )
         .mappingRowChrome(
-            background: row.audition.previewTarget == previewingTarget
+            background: row.audition.previewTarget != nil
+                && row.audition.previewTarget == previewingTarget
                 ? Theme.accentSoft : .clear
         )
     }
 
     // The leading cell names the section.
     private var trackHeaderRow: some View {
-        headerRow {
-            HStack(alignment: .firstTextBaseline, spacing: ThemeSpace.related) {
-                MacEyebrow("Source")
-                Spacer(minLength: 0)
-            }
-            .frame(width: columns.source, alignment: .leading)
+        HStack(spacing: ImportMappingColumns.spacing) {
+            MacEyebrow("Source")
+                .frame(width: columns.source, alignment: .leading)
             MacEyebrow("Track")
                 .frame(
                     width: ReleaseMetadataTrackColumns.track,
@@ -144,24 +114,36 @@ struct MacImportTable: View {
                     alignment: .leading
                 )
         }
-    }
-
-    // MARK: - Shared chrome
-
-    private func eyebrow(_ key: String) -> some View {
-        MacEyebrow(verbatim: localizedCoreString(key))
-    }
-
-    private func headerRow<Content: View>(
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        HStack(spacing: ImportMappingColumns.spacing) {
-            content()
-        }
         .padding(.horizontal, ImportMappingColumns.rowPadding)
         .padding(.top, ThemeSpace.inline)
         .padding(.bottom, ThemeSpace.compact)
     }
+
+    private func eyebrow(_ key: String) -> some View {
+        MacEyebrow(verbatim: localizedCoreString(key))
+    }
+}
+
+/// What the track table's controls do, as its host runs them.
+struct ReleaseTrackTableActions {
+    let sheetCaption: SheetCaptionActions
+    let audition: TrackAuditionActions
+    /// Write a row's edited title and artists onto the row that edits the
+    /// track.
+    let editTrack: @MainActor (BridgeRawTrackEdit) async -> Void
+}
+
+/// What a row's Play button does, as its host runs it: a folder's row plays
+/// a window of its file through the preview player, and a library release's
+/// row plays the release from its track.
+struct TrackAuditionActions {
+    /// Play the exact source window a folder's row carries.
+    let preview: (BridgePreviewTarget) -> Void
+    /// Stop whatever the preview player plays.
+    let stopPreview: () -> Void
+    /// Play the library release from the track this id names; `nil` where
+    /// the host plays no library track.
+    let playTrack: ((String) -> Void)?
 }
 
 extension View {

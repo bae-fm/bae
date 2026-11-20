@@ -47,7 +47,7 @@ struct InvalidCandidatePane: View {
         MacReleaseFiles(
             rows: detail.files.map { .file(file: $0) },
             onOpenDocument: mappingActions.openDocument,
-            playing: (previewingTarget, mappingActions)
+            playing: (previewingTarget, mappingActions.audition)
         )
     }
 }

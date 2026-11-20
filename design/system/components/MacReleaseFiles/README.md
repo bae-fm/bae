@@ -8,4 +8,4 @@ The files a release carries that are no track, such as a rip log or a track shee
 
 The heading is a `MacFormHeading`, and each line a `MacReleaseFileRow`.
 
-**In the code:** macOS: `ReleaseFilesView` (`Views/Import/Mapping/ReleaseFilesView.swift`), drawn under the Found pane's table (`ImportMappingTable`) and under the release editor's tracks (`ReleaseMetadataEditorContent`), which an imported release's pane and the Edit Release sheet both show.
+**In the code:** macOS: `MacReleaseFiles` (`Views/Import/Mapping/MacReleaseFiles.swift`), drawn under the tracks of `MacReleaseEditor`, in the import pane and the Edit release sheet alike, and on a skipped folder's pane.

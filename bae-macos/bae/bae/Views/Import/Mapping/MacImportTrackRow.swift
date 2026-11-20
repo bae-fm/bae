@@ -1,8 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// One of the folder's audio units alongside the track it becomes. The track's
-/// title and artist edit in place; its audio is the folder's.
+/// One row of the release editor's track table: what plays the track, its
+/// place, and its title and artists, which edit in place.
 struct MacImportTrackRow: View {
     let row: BridgeTrackTableRow
     /// The widths the table resolved for this pane, so the row's cells land
@@ -10,7 +10,7 @@ struct MacImportTrackRow: View {
     let columns: ReleaseMetadataTrackColumns
     let previewingTarget: BridgePreviewTarget?
     let editingCommands: EditingCommitCommands
-    let actions: ImportMappingActions
+    let actions: ReleaseTrackTableActions
     /// Opens the live artist search the track's artist field reads while
     /// open.
     let artistSearch: ArtistSearchOpener
@@ -27,28 +27,29 @@ struct MacImportTrackRow: View {
                 editingCommands: editingCommands,
                 position: row.position,
                 artistSearch: artistSearch,
-                onChange: { actions.editTrack($0) }
+                onChange: { await actions.editTrack($0) }
             )
         }
     }
 
     /// The file or CUE slice that supplies this track's audio.
     private var sourceCell: some View {
-        ImportMappingSourceCell(
+        TrackSourceCell(
             source: row.source,
-            previewTarget: row.audition.previewTarget,
+            audition: row.audition,
+            trackId: row.track.id,
             previewingTarget: previewingTarget,
-            actions: actions,
+            actions: actions.audition,
         )
         .frame(width: columns.source, alignment: .leading)
-        // Double-clicking anywhere in the cell auditions; simultaneous so the
-        // play glyph's single click is not delayed.
+        // Double-clicking anywhere in the cell auditions a folder's row;
+        // simultaneous so the play glyph's single click is not delayed.
         .contentShape(Rectangle())
         .simultaneousGesture(
             TapGesture(count: 2)
                 .onEnded {
                     if let target = row.audition.previewTarget {
-                        actions.preview(target)
+                        actions.audition.preview(target)
                     }
                 }
         )

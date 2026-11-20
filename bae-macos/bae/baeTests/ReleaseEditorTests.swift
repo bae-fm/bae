@@ -139,12 +139,23 @@ struct ReleaseEditorTests {
         let size = NSSize(width: width, height: 1_200)
         return try await SnapshotTestSupport.withHostedWindow(
             ScrollView {
-                ReleaseMetadataEditorContent(
-                    session: session,
-                    draft: release.draft,
-                    lead: { EmptyView() },
-                    onPlayTrack: { _ in },
-                    onOpenDocument: { _, _ in }
+                MacImportTable(
+                    sides: release.draft.sides ?? [],
+                    previewingTarget: nil,
+                    actions: ReleaseTrackTableActions(
+                        sheetCaption: SheetCaptionActions(
+                            open: { _, _ in },
+                            place: { _, _ in },
+                            bind: { _, _, _ in }
+                        ),
+                        audition: TrackAuditionActions(
+                            preview: { _ in },
+                            stopPreview: {},
+                            playTrack: { _ in }
+                        ),
+                        editTrack: { await session.updateTrack($0) }
+                    ),
+                    editingCommands: session.editingCommands
                 )
             }
             .environment(Library.stub())

@@ -57,19 +57,7 @@ struct ImportMappingPane: View {
                     }
                 )
                 banners
-                metadataSourceSection
-                if candidate.detail != nil {
-                    if !mapping.images.isEmpty {
-                        imagesSection
-                    }
-                    MacImportTable(
-                        table: mapping,
-                        previewingTarget: previewingTarget,
-                        actions: mappingActions,
-                        editingCommands: editingCommands,
-                    )
-                    .disabled(candidate.detail?.actionable != true)
-                }
+                editor
             }
             .padding(.horizontal, ThemeSpace.section)
             .padding(.top, ThemeSpace.section)
@@ -77,12 +65,92 @@ struct ImportMappingPane: View {
         }
     }
 
-    /// The folder's images under their own ruled heading.
-    private var imagesSection: some View {
-        MacImportImages(
-            images: mapping.images,
-            onOpen: mappingActions.openImages
+    private var actionable: Bool {
+        candidate.detail?.actionable == true
+    }
+
+    private var searching: Bool {
+        candidate.metadataPresentation == .findOnline
+    }
+
+    /// The release editor over the candidate's draft, or Find online while
+    /// the draft is still a read away.
+    @ViewBuilder
+    private var editor: some View {
+        if let edit = candidate.edit,
+            let offers = candidate.draft?.pressingOffers
+        {
+            MacReleaseEditor(
+                actionRow: .importing(commitControls),
+                commands: ReleaseEditorCommands(
+                    identifyAutomatically: onIdentify,
+                    search: onSearchForRelease,
+                    metadataCommand: { command in
+                        command.run(
+                            resetToFileMetadata: onResetToFileMetadata,
+                            clearMetadata: onClearMetadata
+                        )
+                    },
+                    unlink: onUnlink,
+                    identifyDisabled: isApplyingMetadata
+                ),
+                card: ReleaseEditorCard(
+                    values: { edit },
+                    pressingOffers: offers,
+                    albumArtists: candidate.draft?.albumArtists,
+                    writer: editActions,
+                    cover: ReleaseCover(
+                        content: coverContent,
+                        onEdit: hasCoverOptions ? onEditCover : nil,
+                        onDropImage: onDropCoverImage
+                    ),
+                    sourceAudio: candidate.files.sourceAudio,
+                    // A blank draft files under nothing yet.
+                    album: candidate.metadataDraftIsBlank
+                        ? nil : candidate.draft?.album,
+                    albumActions: albumActions,
+                    records: candidate.records,
+                    pressingUnknown: {
+                        if case .album = candidate.releaseLink {
+                            true
+                        }
+                        else {
+                            false
+                        }
+                    }()
+                ),
+                tracks: ReleaseEditorTracks(
+                    images: candidate.detail == nil ? [] : mapping.images,
+                    onOpenImages: mappingActions.openImages,
+                    sides: candidate.detail == nil ? [] : mapping.trackSides,
+                    files: candidate.detail == nil ? [] : mapping.files,
+                    previewingTarget: previewingTarget,
+                    actions: mappingActions.trackTable
+                ),
+                editingCommands: editingCommands,
+                editable: actionable,
+                searching: searching,
+                search: { onlineBrowser }
+            )
+        }
+        else if searching {
+            onlineBrowser
+        }
+        else {
+            // The candidate's draft is a local read; nothing shows until it
+            // lands.
+            Color.clear
+                .frame(maxWidth: .infinity, minHeight: 180)
+        }
+    }
+
+    private var onlineBrowser: some View {
+        ImportOnlineMetadataBrowser(
+            candidateKey: candidate.key,
+            endEditing: endEditing,
+            onMovePane: onMovePane
         )
+        .disabled(!actionable)
     }
 
     /// The card's commit row, absent while the draft is entirely blank.
@@ -96,29 +164,6 @@ struct ImportMappingPane: View {
             importStatus: candidate.importStatus,
             importDestination: $importDestination,
             actions: commitActions,
-        )
-    }
-
-    private var metadataSourceSection: some View {
-        ImportMetadataSourceSection(
-            candidate: candidate,
-            actionable: candidate.detail?.actionable == true,
-            isReading: isApplyingMetadata,
-            coverContent: coverContent,
-            hasCoverOptions: hasCoverOptions,
-            editActions: editActions,
-            albumActions: albumActions,
-            editingCommands: editingCommands,
-            endEditing: endEditing,
-            commit: commitControls,
-            onMovePane: onMovePane,
-            onIdentify: onIdentify,
-            onSearchForRelease: onSearchForRelease,
-            onResetToFileMetadata: onResetToFileMetadata,
-            onClearMetadata: onClearMetadata,
-            onUnlink: onUnlink,
-            onEditCover: onEditCover,
-            onDropCoverImage: onDropCoverImage,
         )
     }
 

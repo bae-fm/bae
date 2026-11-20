@@ -489,46 +489,67 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
                 metadataProvenance: provenance
             )
         )
-        return MacImportDraft(
-            releaseSummary: ImportReleaseSummary(
-                candidate: candidate,
-                editValues: editValues
+        return MacReleaseEditor(
+            actionRow: .importing(nil),
+            commands: commands(recording: recorder),
+            card: ReleaseEditorCard(
+                values: { editValues },
+                pressingOffers: PreviewData.pressingOffers,
+                albumArtists: nil,
+                writer: ReleaseFieldWriter { _, _ in },
+                cover: ReleaseCover(
+                    content: nil,
+                    onEdit: nil,
+                    onDropImage: { _ in }
+                ),
+                sourceAudio: candidate.files.sourceAudio,
+                album: nil,
+                albumActions: DraftAlbumActions(
+                    pick: { _ in },
+                    search: { _ in [] }
+                ),
+                records: [],
+                pressingUnknown: false
             ),
-            actionable: true,
-            isReading: false,
-            coverContent: nil,
-            hasCoverOptions: false,
-            editValues: editValues,
-            pressingOffers: PreviewData.pressingOffers,
-            albumArtists: nil,
-            records: [],
-            releaseLink: nil,
-            album: nil,
-            albumActions: DraftAlbumActions(
-                pick: { _ in },
-                search: { _ in [] }
+            tracks: ReleaseEditorTracks(
+                images: [],
+                onOpenImages: { _ in },
+                sides: [],
+                files: [],
+                previewingTarget: nil,
+                actions: inertMappingActions().trackTable
             ),
-            editActions: ReleaseFieldWriter { _, _ in },
             editingCommands: EditingCommitCommands(),
-            commit: nil,
-            sourceActions: sourceActions(recording: recorder),
-            onEditCover: {},
-            onDropCoverImage: { _ in }
+            editable: true,
+            searching: false,
+            search: { EmptyView() }
         )
         .frame(width: 900, height: 520)
         .importPreviewEnvironment()
         .environment(Library.stub())
     }
 
-    private func sourceActions(
+    private func commands(
         recording recorder: MetadataCardActionRecorder
-    ) -> ImportReleaseSourceActions {
-        ImportReleaseSourceActions(
+    ) -> ReleaseEditorCommands {
+        ReleaseEditorCommands(
             identifyAutomatically: { recorder.identifyCount += 1 },
-            searchForRelease: { recorder.searchCount += 1 },
+            search: { recorder.searchCount += 1 },
+            metadataCommand: { command in
+                self.runCommand(command, recording: recorder)
+            },
+            unlink: {},
+            identifyDisabled: false
+        )
+    }
+
+    private func runCommand(
+        _ command: ImportDraftCommand,
+        recording recorder: MetadataCardActionRecorder
+    ) {
+        command.run(
             resetToFileMetadata: { recorder.tagsCount += 1 },
-            clearMetadata: { recorder.clearCount += 1 },
-            unlink: {}
+            clearMetadata: { recorder.clearCount += 1 }
         )
     }
 
@@ -587,7 +608,7 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
     }
 
     private func coverFrame(in host: NSView) throws -> NSRect {
-        let side = ImportCoverWell.coverSize
+        let side = ReleaseCoverWell.coverSize
         let frames = SnapshotTestSupport.descendants(of: host)
             .filter { $0.bounds.width == side && $0.bounds.height == side }
             .map { $0.convert($0.bounds, to: host) }
@@ -618,7 +639,7 @@ extension ImportMetadataCardLayoutTests {
         ]
         for command in ImportDraftCommand.allCases {
             let recorder = MetadataCardActionRecorder()
-            command.run(with: sourceActions(recording: recorder))
+            runCommand(command, recording: recorder)
             XCTAssertEqual(
                 [recorder.tagsCount, recorder.clearCount],
                 runs[command],

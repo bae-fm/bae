@@ -112,14 +112,13 @@ extension ShotScene {
     }
 
     private static func coverWell(_ cover: Bool) -> some View {
-        ImportCoverWell(
+        ReleaseCoverWell(
             coverContent: cover
                 ? ImageContent.localFile(
                     PreviewData.previewArtFile("Low Tide Hours")
                 )
                 : nil,
-            hasCoverOptions: cover,
-            onEditCover: {},
+            onEditCover: cover ? {} : nil,
             onDropImage: nil
         )
     }

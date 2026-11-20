@@ -4,6 +4,6 @@ A track row: the Play button (Stop while `playing`) and its source, position, th
 
 The title is a `MacInlineField`.
 
-**In the code:** macOS: `MacImportTrackRow`, `ImportMappingSourceCell` and `ReleaseMetadataTrackRow` (`Views/Components/MetadataForm/`).
+**In the code:** macOS: `MacImportTrackRow` and `TrackSourceCell` (`Views/Import/Mapping/`) and `ReleaseMetadataTrackRow` (`Views/Components/MetadataForm/`).
 
 No file, track or image carries a label saying which clue was read from it (a Disc ID from the rip log, a barcode from an image): those labels are removed from the import everywhere.

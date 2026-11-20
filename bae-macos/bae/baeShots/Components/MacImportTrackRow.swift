@@ -112,15 +112,15 @@ extension ShotScene {
         ) {
             importStores(
                 MacImportTable(
-                    table: mappingTable(sides: [
+                    sides: [
                         BridgeTrackTableSide(
                             side: .flat,
                             runs: [.track(row: track)]
                         )
-                    ]),
+                    ],
                     previewingTarget: playing
                         ? track.audition.previewTarget : nil,
-                    actions: inertMappingActions(),
+                    actions: inertMappingActions().trackTable,
                     editingCommands: EditingCommitCommands()
                 )
                 .frame(width: 820, alignment: .leading)

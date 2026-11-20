@@ -23,7 +23,29 @@ struct ImportMappingActions {
     let stopPreview: () -> Void
     /// Write a row's edited title and artists back onto the row that commits
     /// it.
-    let editTrack: (BridgeRawTrackEdit) -> Void
+    let editTrack: @MainActor (BridgeRawTrackEdit) -> Void
+}
+
+extension ImportMappingActions {
+    /// The track table's actions on the candidate: its sheets' places and
+    /// bindings, the preview player, and its rows' titles and artists.
+    var trackTable: ReleaseTrackTableActions {
+        let editTrack = editTrack
+        return ReleaseTrackTableActions(
+            sheetCaption: sheetCaption,
+            audition: audition,
+            editTrack: { editTrack($0) }
+        )
+    }
+
+    /// The preview player's actions; a folder's rows play no library track.
+    var audition: TrackAuditionActions {
+        TrackAuditionActions(
+            preview: preview,
+            stopPreview: stopPreview,
+            playTrack: nil
+        )
+    }
 }
 
 /// What the commit bar calls back into.

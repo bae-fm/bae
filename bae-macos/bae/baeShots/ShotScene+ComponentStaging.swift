@@ -275,18 +275,6 @@ extension ShotScene {
         )
     }
 
-    /// The mapping table over `sides`, with no images or other files.
-    static func mappingTable(
-        sides: [BridgeTrackTableSide]
-    ) -> BridgeMappingTable {
-        BridgeMappingTable(
-            images: [],
-            trackSides: sides,
-            files: [],
-            untitledTrackCount: 0
-        )
-    }
-
     static func previewTarget(_ name: String) -> BridgePreviewTarget {
         BridgePreviewTarget(
             path: Data(name.utf8),
