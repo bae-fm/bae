@@ -169,13 +169,13 @@ extension PreviewData {
             year: "1992",
             pressing: BridgeRawPressingEdit(
                 year: "1992",
-                labels: [
+                storedLabels: [
                     BridgeRawLabelEdit(
                         name: "Harbor Records",
                         catalogNumber: "HR-1042"
                     )
                 ],
-                barcodes: ["0 41234 56789 2"],
+                storedBarcodes: ["0 41234 56789 2"],
                 facts: pressingFacts(
                     country: "US",
                     media: media(.cd),
@@ -424,13 +424,13 @@ extension PreviewData {
             albumYear: "1979",
             pressing: BridgeRawPressingEdit(
                 year: "1979",
-                labels: [
+                storedLabels: [
                     BridgeRawLabelEdit(
                         name: "Harbor Records",
                         catalogNumber: "HR-0779"
                     )
                 ],
-                barcodes: [],
+                storedBarcodes: [],
                 facts: pressingFacts(
                     country: "US",
                     media: media(.cd, 2),

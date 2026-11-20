@@ -5,14 +5,14 @@ extension BridgeRawPressingEdit {
     /// form bound to a value rather than to a draft in core.
     init(
         year: String,
-        labels: [BridgeRawLabelEdit],
-        barcodes: [String],
+        storedLabels: [BridgeRawLabelEdit],
+        storedBarcodes: [String],
         facts: BridgePressingFacts
     ) {
         self.init(
             year: year,
-            labels: bridgeLabelRows(labels: labels),
-            barcodes: bridgeBarcodeRows(barcodes: barcodes),
+            labels: bridgeLabelRows(labels: storedLabels),
+            barcodes: bridgeBarcodeRows(barcodes: storedBarcodes),
             facts: facts
         )
     }

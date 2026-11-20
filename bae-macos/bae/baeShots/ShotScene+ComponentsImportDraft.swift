@@ -21,13 +21,13 @@ extension ShotScene {
             year: "1992",
             pressing: BridgeRawPressingEdit(
                 year: "1992",
-                labels: [
+                storedLabels: [
                     BridgeRawLabelEdit(
                         name: "Harbor Records",
                         catalogNumber: "HR-1042"
                     )
                 ],
-                barcodes: [],
+                storedBarcodes: [],
                 facts: PreviewData.pressingFacts(
                     country: "US",
                     media: PreviewData.media(.cd),
@@ -456,8 +456,10 @@ extension ShotScene {
     ) -> BridgeRawPressingEdit {
         BridgeRawPressingEdit(
             year: "1992",
-            labels: [BridgeRawLabelEdit(name: label, catalogNumber: catalog)],
-            barcodes: barcode.map { [$0] } ?? [],
+            storedLabels: [
+                BridgeRawLabelEdit(name: label, catalogNumber: catalog)
+            ],
+            storedBarcodes: barcode.map { [$0] } ?? [],
             facts: PreviewData.pressingFacts(
                 country: "US",
                 media: PreviewData.media(.cd),

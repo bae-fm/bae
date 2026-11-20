@@ -212,8 +212,8 @@ extension PreviewData {
             pressing: pressing
                 ?? BridgeRawPressingEdit(
                     year: year,
-                    labels: [],
-                    barcodes: [],
+                    storedLabels: [],
+                    storedBarcodes: [],
                     facts: pressingFacts()
                 ),
             tracks: tracks.map {
@@ -235,13 +235,13 @@ extension PreviewData {
             year: "1974",
             pressing: BridgeRawPressingEdit(
                 year: "1974",
-                labels: [
+                storedLabels: [
                     BridgeRawLabelEdit(
                         name: "Harbor Records",
                         catalogNumber: "HR-0412"
                     )
                 ],
-                barcodes: [],
+                storedBarcodes: [],
                 facts: pressingFacts(
                     country: "US",
                     media: media(.cd),

@@ -29,7 +29,7 @@ extension PreviewData {
             albumYear: "1983",
             pressing: BridgeRawPressingEdit(
                 year: "1997",
-                labels: [
+                storedLabels: [
                     BridgeRawLabelEdit(
                         name: "Label A",
                         catalogNumber: "AB 100"
@@ -39,7 +39,7 @@ extension PreviewData {
                         catalogNumber: "CL 719"
                     ),
                 ],
-                barcodes: ["000000000000"],
+                storedBarcodes: ["000000000000"],
                 facts: PreviewData.pressingFacts(
                     country: "US",
                     media: PreviewData.media(.cd)
