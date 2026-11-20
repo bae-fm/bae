@@ -26,6 +26,9 @@ enum OverWindow {
                 .clipShape(RoundedRectangle(cornerRadius: 20))
                 .shadow(color: .black.opacity(0.3), radius: 15, y: 5)
                 .padding(.top, hangs)
+                // The app's sheet is a window of its own, read after the
+                // window it hangs from, not among what it covers.
+                .accessibilitySortPriority(-1)
         }
     }
 
