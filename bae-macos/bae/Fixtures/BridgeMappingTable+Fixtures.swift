@@ -1,6 +1,8 @@
 import BaeKit
 import Foundation
 
+@testable import bae
+
 extension BridgeMappingTable {
     /// A table of `trackSides`, holding as many track rows as they draw, as
     /// core counts them.
