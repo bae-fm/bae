@@ -153,7 +153,7 @@ struct MacPlaylistPage: View {
     /// the grid's order, and show the error when the write fails.
     private func insert(
         _ dropped: [String],
-        at place: BridgeBesideEntry,
+        at place: BridgeInsertPlace,
         in playlist: BridgePlaylistSummary
     ) async {
         do {

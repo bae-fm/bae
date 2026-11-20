@@ -7,7 +7,8 @@ import UniformTypeIdentifiers
 /// stays in place and dims, a copy follows the pointer, and a line marks the
 /// edge of the row the entry would go beside; letting go writes the move.
 /// Tracks or albums dragged from the window over the owner's rows draw the
-/// same line, and letting go of them writes them in at that place.
+/// same line, and letting go of them writes them in at that place; with no
+/// entries, the list takes them at its top.
 struct PlaylistEntryList: View {
     let detail: BridgePlaylistDetail
     let play: (BridgePlaylistEntryRow) -> Void
@@ -19,7 +20,7 @@ struct PlaylistEntryList: View {
     let move: (_ positionId: String, _ place: BridgeEntryPlace) async -> Void
     /// Put what `dropped` names at `place`, each string an album drag's
     /// payload or a track's id, returning when the write returns.
-    let insert: (_ dropped: [String], _ place: BridgeBesideEntry) async -> Void
+    let insert: (_ dropped: [String], _ place: BridgeInsertPlace) async -> Void
 
     @State
     private var drag: PlaylistEntryDrag?
@@ -33,13 +34,15 @@ struct PlaylistEntryList: View {
     /// Where the tracks dragged in from the window would go, while the
     /// pointer holds them over a row.
     @State
-    private var dropping: PlaylistEntryTarget?
+    private var dropping: PlaylistDropTarget?
     /// Where the list wrote dropped tracks, which it marks until the write
     /// returns and the playlist's rows hold them.
     @State
-    private var inserting: PlaylistEntryTarget?
+    private var inserting: PlaylistDropTarget?
 
     private static let space = "playlistEntries"
+    /// The height of the place a list with no entries takes dropped tracks.
+    private static let emptyDropHeight = ThemeSpace.page
 
     private var canChange: Bool { detail.summary.yours }
 
@@ -77,18 +80,26 @@ struct PlaylistEntryList: View {
             }
         }
         .coordinateSpace(name: Self.space)
+        .frame(
+            minHeight: detail.entries.isEmpty ? Self.emptyDropHeight : nil,
+            alignment: .top
+        )
         .onPreferenceChange(PlaylistEntryFramesKey.self) { rowFrames = $0 }
         .onDrop(
             of: [UTType.plainText],
             delegate: PlaylistDropDelegate(
                 accepts: canChange,
+                empty: detail.entries.isEmpty,
                 frames: rowFrames,
                 dropping: $dropping,
                 drop: drop
             )
         )
         .overlay(alignment: .topLeading) {
-            insertLine(drag?.target(over: rowFrames) ?? inserting ?? dropping)
+            insertLine(
+                drag?.target(over: rowFrames)?.edge ?? inserting?.edge
+                    ?? dropping?.edge
+            )
             if let drag {
                 floatingCopy(drag)
             }
@@ -97,7 +108,7 @@ struct PlaylistEntryList: View {
 
     /// Write what `dropped` names in at `target`, marking the place until the
     /// write returns.
-    private func drop(_ dropped: [String], at target: PlaylistEntryTarget) {
+    private func drop(_ dropped: [String], at target: PlaylistDropTarget) {
         inserting = target
         Task {
             await insert(dropped, target.place)
@@ -150,13 +161,13 @@ struct PlaylistEntryList: View {
         }
     }
 
-    /// The line at the edge of the row the dragged entry or tracks would go
-    /// beside; nothing while they are over no row they can go beside.
+    /// The line at `edge`, where the dragged entry or tracks would go;
+    /// nothing while they are over no place they can go.
     @ViewBuilder
-    private func insertLine(_ target: PlaylistEntryTarget?) -> some View {
-        if let target {
+    private func insertLine(_ edge: CGFloat?) -> some View {
+        if let edge {
             MacQueueInsertLine()
-                .offset(y: target.edge - 1)
+                .offset(y: edge - 1)
         }
     }
 
@@ -238,25 +249,58 @@ private struct PlaylistEntryTarget {
     }
 }
 
+/// Where tracks dragged in from the window go: the top of a list with no
+/// entries, which is the playlist's start, or beside a row.
+private enum PlaylistDropTarget {
+    case start
+    case beside(PlaylistEntryTarget)
+
+    /// The y the line marks.
+    var edge: CGFloat {
+        switch self {
+        case .start: 0
+        case .beside(let target): target.edge
+        }
+    }
+
+    /// The place core is sent.
+    var place: BridgeInsertPlace {
+        switch self {
+        case .start: .start
+        case .beside(let target): .beside(place: target.place)
+        }
+    }
+}
+
 /// Tracks and albums dragged in from the window over the playlist's rows:
-/// while they are held over a row, `dropping` is the place by it, and
-/// letting go hands their strings and that place to `drop`. Only an owner's
-/// list `accepts` them.
+/// while they are held over a row, or over a list with no entries,
+/// `dropping` is where they would go, and letting go hands their strings and
+/// that place to `drop`. Only an owner's list `accepts` them.
 private struct PlaylistDropDelegate: DropDelegate {
     let accepts: Bool
+    /// Whether the playlist has no entries, so its start is the one place.
+    let empty: Bool
     /// Each drawn row's frame, in the list's space, where the drop's
     /// location is too.
     let frames: [String: CGRect]
     @Binding
     var dropping: PlaylistEntryTarget?
-    let drop: (_ dropped: [String], _ target: PlaylistEntryTarget) -> Void
+    let drop: (_ dropped: [String], _ target: PlaylistDropTarget) -> Void
+
+    /// Where tracks at `y` would go.
+    private func target(at y: CGFloat) -> PlaylistDropTarget? {
+        if empty {
+            return .start
+        }
+        return PlaylistEntryTarget(at: y, over: frames).map { .beside($0) }
+    }
 
     func validateDrop(info: DropInfo) -> Bool {
         accepts && info.hasItemsConforming(to: [UTType.plainText])
     }
 
     func dropUpdated(info: DropInfo) -> DropProposal? {
-        dropping = PlaylistEntryTarget(at: info.location.y, over: frames)
+        dropping = target(at: info.location.y)
         return DropProposal(operation: dropping == nil ? .forbidden : .copy)
     }
 
@@ -265,7 +309,7 @@ private struct PlaylistDropDelegate: DropDelegate {
     }
 
     func performDrop(info: DropInfo) -> Bool {
-        let target = PlaylistEntryTarget(at: info.location.y, over: frames)
+        let target = target(at: info.location.y)
         dropping = nil
         guard let target else { return false }
         info.loadPlainText { dropped in

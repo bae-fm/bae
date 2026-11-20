@@ -21,6 +21,14 @@ pub enum BesideEntry {
     After(uuid::Uuid),
 }
 
+/// Where an insert puts new playlist entries: at the playlist's start, the
+/// one place a playlist with no entries has, or beside one of its entries.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum InsertPlace {
+    Start,
+    Beside(BesideEntry),
+}
+
 /// Where a move puts a playlist entry: beside another entry, or one place up
 /// or down.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

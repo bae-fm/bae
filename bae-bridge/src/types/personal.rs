@@ -65,6 +65,24 @@ impl BridgeBesideEntry {
     }
 }
 
+/// Where an insert puts new playlist entries: at the playlist's start, the
+/// one place a playlist with no entries has, or beside one of its entries.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeInsertPlace {
+    Start,
+    Beside { place: BridgeBesideEntry },
+}
+
+impl BridgeInsertPlace {
+    pub(crate) fn into_core(self) -> Result<bae_people::collections::InsertPlace, BridgeError> {
+        use bae_people::collections::InsertPlace;
+        Ok(match self {
+            Self::Start => InsertPlace::Start,
+            Self::Beside { place } => InsertPlace::Beside(place.into_core()?),
+        })
+    }
+}
+
 /// Where a move puts a playlist entry: beside another entry, or one place up
 /// or down.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]

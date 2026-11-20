@@ -26,7 +26,7 @@ public struct PlaylistWrites: Sendable {
         @Sendable (
             _ playlistId: String,
             _ trackIds: [String],
-            _ place: BridgeBesideEntry
+            _ place: BridgeInsertPlace
         ) async throws -> Void
     /// Set a playlist's name and who sees it, in one write.
     public let edit:
@@ -58,7 +58,7 @@ public struct PlaylistWrites: Sendable {
                 _ in throw StubError.notImplemented
             },
         insertPicked:
-            @escaping @Sendable (String, [String], BridgeBesideEntry)
+            @escaping @Sendable (String, [String], BridgeInsertPlace)
             async throws -> Void = { _, _, _ in
                 throw StubError.notImplemented
             },

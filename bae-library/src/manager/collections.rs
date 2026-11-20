@@ -48,7 +48,7 @@ impl LibraryManager {
         &self,
         playlist: uuid::Uuid,
         tracks: impl Into<bae_records::TrackList>,
-        place: bae_people::collections::BesideEntry,
+        place: bae_people::collections::InsertPlace,
     ) -> Result<(), CollectionError> {
         let tracks = tracks.into();
         let positions = (0..tracks.track_count()).map(|_| self.ids.new_id()).collect();

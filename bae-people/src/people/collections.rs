@@ -2,8 +2,8 @@ use super::*;
 #[cfg(any(test, feature = "test-utils"))]
 use crate::collections::Rating;
 use crate::collections::{
-    AlbumRatings, BesideEntry, CollectionError, EntryPlace, OtherRating, Playlist, PlaylistEntry,
-    RatingTarget, Stars,
+    AlbumRatings, BesideEntry, CollectionError, EntryPlace, InsertPlace, OtherRating, Playlist,
+    PlaylistEntry, RatingTarget, Stars,
 };
 use crate::people::Sharing;
 
@@ -193,17 +193,21 @@ impl People {
     /// Adds an entry for each of `tracks` at `place` in the playlist, in the
     /// list's order, with the fresh position ids `positions` (one per track),
     /// and renumbers every entry from 0 in the resulting order, in one write.
-    /// Fails as missing when the playlist holds no entry `place` names; a
-    /// track the library lacks fails the write.
+    /// Fails as missing when `place` is beside an entry the playlist does not
+    /// hold; a track the library lacks fails the write.
     pub async fn insert_playlist_entries(
         &self,
         playlist: uuid::Uuid,
         positions: Vec<uuid::Uuid>,
         tracks: bae_records::TrackList,
-        place: BesideEntry,
+        place: InsertPlace,
     ) -> Result<(), CollectionError> {
         self.change_playlist(playlist, move |sql| {
-            let Some(at) = entries_before_on(sql, playlist, place, None)? else {
+            let at = match place {
+                InsertPlace::Start => Some(0),
+                InsertPlace::Beside(beside) => entries_before_on(sql, playlist, beside, None)?,
+            };
+            let Some(at) = at else {
                 return Ok(Err(CollectionError::Missing));
             };
             let track_ids = tracks.ordered_on(sql, bae_records::TrackReading::Named)?;

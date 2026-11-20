@@ -276,7 +276,7 @@ async fn picked_tracks_go_into_a_playlist_in_their_release_s_order() {
 /// playlist lacks, or a pick the library lacks, adds none of them.
 #[tokio::test]
 async fn picked_tracks_go_into_a_playlist_at_the_place_they_are_dropped() {
-    use bae_people::collections::BesideEntry;
+    use bae_people::collections::{BesideEntry, InsertPlace};
     let directory = bae_util::test_files::TestFolder::new();
     let (library, _storage) = storage_library(
         directory.path(),
@@ -311,18 +311,30 @@ async fn picked_tracks_go_into_a_playlist_at_the_place_they_are_dropped() {
 
     library
         .manager()
-        .insert_playlist_entries(id, picked(&[&second, &first]), BesideEntry::After(top))
+        .insert_playlist_entries(
+            id,
+            picked(&[&second, &first]),
+            InsertPlace::Beside(BesideEntry::After(top)),
+        )
         .await
         .unwrap();
     assert_eq!(tracks().await, vec![third.clone(), first.clone(), second.clone(), third.clone()]);
     library
         .manager()
-        .insert_playlist_entries(id, picked(&[&first]), BesideEntry::Before(top))
+        .insert_playlist_entries(
+            id,
+            picked(&[&first]),
+            InsertPlace::Beside(BesideEntry::Before(top)),
+        )
         .await
         .unwrap();
     library
         .manager()
-        .insert_playlist_entries(id, picked(&[&second]), BesideEntry::After(bottom))
+        .insert_playlist_entries(
+            id,
+            picked(&[&second]),
+            InsertPlace::Beside(BesideEntry::After(bottom)),
+        )
         .await
         .unwrap();
     assert_eq!(
@@ -340,23 +352,91 @@ async fn picked_tracks_go_into_a_playlist_at_the_place_they_are_dropped() {
     let unknown = test_uuid("inserted-unknown");
     let missing_place = library
         .manager()
-        .insert_playlist_entries(id, picked(&[&first]), BesideEntry::Before(uuid::Uuid::nil()))
+        .insert_playlist_entries(
+            id,
+            picked(&[&first]),
+            InsertPlace::Beside(BesideEntry::Before(uuid::Uuid::nil())),
+        )
         .await;
     assert!(matches!(missing_place, Err(bae_people::collections::CollectionError::Missing)));
     let missing_track = library
         .manager()
-        .insert_playlist_entries(id, picked(&[&first, &unknown]), BesideEntry::After(top))
+        .insert_playlist_entries(
+            id,
+            picked(&[&first, &unknown]),
+            InsertPlace::Beside(BesideEntry::After(top)),
+        )
         .await;
     assert!(missing_track.is_err());
     assert_eq!(tracks().await.len(), 6);
     library
         .manager()
-        .insert_playlist_entries(id, picked(&[&third]), BesideEntry::Before(bottom))
+        .insert_playlist_entries(
+            id,
+            picked(&[&third]),
+            InsertPlace::Beside(BesideEntry::Before(bottom)),
+        )
         .await
         .unwrap();
     let after = entries().await;
     assert_eq!(after[5].position_id, bottom);
     assert_eq!(after[4].track_id, third);
+    library.manager().close().await.unwrap();
+}
+
+/// A playlist with no entries takes inserted picks at its start, the one
+/// place it has, in their release's order; once it holds entries, the start
+/// is before its first.
+#[tokio::test]
+async fn picked_tracks_go_into_an_empty_playlist_from_its_start() {
+    use bae_people::collections::InsertPlace;
+    let directory = bae_util::test_files::TestFolder::new();
+    let (library, _storage) = storage_library(
+        directory.path(),
+        bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
+        bae_util::http::Http::for_test(),
+    )
+    .await;
+    let people = bae_people::People::new(library.store().clone(), coven::FileBudget::for_test());
+    let first = test_uuid("started-first");
+    let second = test_uuid("started-second");
+    bae_records::test_fixtures::album_with_tracks(
+        library.records(),
+        (&test_uuid("started-album"), "Started"),
+        &test_uuid("started-release"),
+        &[(&first, "First"), (&second, "Second")],
+    )
+    .await;
+    let picked = |ids: &[&String]| {
+        bae_records::TrackList::Picked(ids.iter().map(|id| id.to_string()).collect())
+    };
+    let id = library
+        .manager()
+        .create_playlist("Evening", Sharing::Private, Vec::<String>::new())
+        .await
+        .unwrap();
+    let tracks = || async {
+        people
+            .playlist_entries(id)
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|entry| entry.track_id)
+            .collect::<Vec<_>>()
+    };
+
+    library
+        .manager()
+        .insert_playlist_entries(id, picked(&[&second, &first]), InsertPlace::Start)
+        .await
+        .unwrap();
+    assert_eq!(tracks().await, vec![first.clone(), second.clone()]);
+    library
+        .manager()
+        .insert_playlist_entries(id, picked(&[&second]), InsertPlace::Start)
+        .await
+        .unwrap();
+    assert_eq!(tracks().await, vec![second.clone(), first.clone(), second.clone()]);
     library.manager().close().await.unwrap();
 }
 

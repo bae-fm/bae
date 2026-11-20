@@ -3163,7 +3163,8 @@ Dragging tracks onto a playlist in the pane adds them to its end: while they
 are held over it the playlist is drawn in the accent. Dragging tracks or an
 album from the window onto the tracks of the person's own open playlist adds
 them where the person lets go, a line between the rows marking the spot: just
-before or just after the track under the pointer. bae adds them there in one
+before or just after the track under the pointer, or, on a playlist with no
+tracks, at its start, the line at the top of its empty list. bae adds them there in one
 write, in the order their release lists them, and when the library lacks any
 of them, or the playlist no longer holds the track beside the spot, bae adds
 none and shows why. The line stays until the write returns.
