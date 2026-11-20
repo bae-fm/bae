@@ -690,6 +690,7 @@ pub struct BridgeReleaseEditDraft {
 }
 
 /// The persisted file a track's body plays from in the release editor.
+#[cfg(desktop)]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeReleaseEditTrackSource {
     pub file_id: String,
@@ -700,6 +701,7 @@ pub struct BridgeReleaseEditTrackSource {
 /// The CUE sheet that carves a run of the release editor's tracks out of
 /// their file, as the run's caption names it. Mirrors
 /// `bae_import::ReleaseEditSheet`.
+#[cfg(desktop)]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeReleaseEditSheet {
     pub file_id: String,
@@ -719,6 +721,7 @@ pub struct BridgeReleaseEditSheet {
 
 /// One audio file of the release as a choice for a CUE sheet's `FILE` line
 /// in the release editor. Mirrors `bae_import::ReleaseEditAudioOption`.
+#[cfg(desktop)]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeReleaseEditAudioOption {
     pub file_id: String,
@@ -732,6 +735,7 @@ pub struct BridgeReleaseEditAudioOption {
 }
 
 /// Persisted, read-only context beside one editable track row.
+#[cfg(desktop)]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeReleaseEditTrackContext {
     pub track_id: String,
@@ -754,6 +758,7 @@ pub struct BridgeReleaseEditTrackContext {
 /// the library's facts about the track, and the track's own artists, each
 /// with how it stands to the library (`None` when it takes its album's or
 /// names none). Mirrors `bae_import::ReleaseEditTrackRow`.
+#[cfg(desktop)]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeReleaseEditTrackRow {
     pub edit: BridgeRawTrackEdit,
@@ -763,6 +768,7 @@ pub struct BridgeReleaseEditTrackRow {
 
 /// Consecutive rows of one side that the editor's table draws together.
 /// Mirrors `bae_import::ReleaseEditTrackRun`.
+#[cfg(desktop)]
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeReleaseEditTrackRun {
     /// A track whose row names its own source.
@@ -778,6 +784,7 @@ pub enum BridgeReleaseEditTrackRun {
 
 /// One side of the release in the editor's track table and the runs of
 /// rows on it. Mirrors `bae_import::ReleaseEditTrackSide`.
+#[cfg(desktop)]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeReleaseEditTrackSide {
     pub side: BridgeTrackSide,
