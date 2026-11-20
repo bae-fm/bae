@@ -200,4 +200,15 @@ struct QueuePresentationStateTests {
         store.setSidePanePresented(false)
         #expect(!store.showSidePane)
     }
+
+    @Test("toggling flips the side pane's shown state")
+    func togglingFlipsPresentation() {
+        let store = UiStore()
+
+        store.toggleSidePane()
+        #expect(store.showSidePane)
+
+        store.toggleSidePane()
+        #expect(!store.showSidePane)
+    }
 }

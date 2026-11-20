@@ -246,6 +246,10 @@ class UiStore: @unchecked Sendable {
         showSidePane = presented
     }
 
+    func toggleSidePane() {
+        showSidePane.toggle()
+    }
+
     /// Show the side pane on `tab`.
     func openSidePane(_ tab: SidePaneTab) {
         sidePaneTab = tab
