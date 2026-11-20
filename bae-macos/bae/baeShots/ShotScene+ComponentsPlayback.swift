@@ -485,7 +485,8 @@ extension ShotScene {
         track: Track,
         artist: String? = nil,
         hover: Bool = false,
-        current: Bool = false
+        current: Bool = false,
+        picked: Bool = false
     ) -> ShotScene {
         component(id, height: 70) {
             MacTrackRow(
@@ -495,6 +496,7 @@ extension ShotScene {
                 isCurrent: current,
                 isPlaying: current,
                 hover: hover,
+                picked: picked,
                 onPlay: {},
                 onTogglePlayPause: {}
             )
@@ -549,6 +551,25 @@ extension ShotScene {
                 displayArtist: "Mara Quill"
             ),
             artist: "Mara Quill"
+        ),
+        trackRow(
+            "mac.component.track-row.picked",
+            track: PreviewData.previewTrack(
+                title: "Low Tide Hours",
+                position: "4",
+                durationMs: 303_000
+            ),
+            picked: true
+        ),
+        trackRow(
+            "mac.component.track-row.picked-and-current",
+            track: PreviewData.previewTrack(
+                title: "Low Tide Hours",
+                position: "4",
+                durationMs: 303_000
+            ),
+            current: true,
+            picked: true
         ),
     ]
 
