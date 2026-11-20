@@ -6,7 +6,7 @@ import SwiftUI
 extension ShotScene {
     /// The Mac components the settings panes are built from: the accent
     /// swatches, the cast row, copy text, the disclosure, the field rows, the
-    /// file name field, the import destination and the info tip.
+    /// file name field, its token, the import destination and the info tip.
     static let settingsComponentScenes: [ShotScene] =
         [
             component("mac.component.accent-picker.resting", height: 60) {
@@ -34,7 +34,7 @@ extension ShotScene {
                 }
             },
         ] + checkboxScenes + castRowScenes + copyTextScenes + disclosureScenes
-        + fieldRowScenes + fileNameFieldScenes
+        + fieldRowScenes + fileNameFieldScenes + tokenScenes
         + importDestinationScenes
 
     /// `MacCheckbox`, off and on.

@@ -118,7 +118,15 @@ struct SaveNameFieldTests {
             NSRange(location: editor.string.count, length: 0)
         )
         editor.insertText(" - ", replacementRange: editor.selectedRange())
-        bench.coordinator.append(.artist)
+        await bench.settle()
+        var adds = SaveNameAdds<BridgeSaveFilenameValue>()
+        adds.add(.artist)
+        bench.coordinator.take(adds)
+        while bench.stored.last?.last != .value(value: .artist) {
+            await Task.yield()
+        }
+        // The same request again adds nothing more.
+        bench.coordinator.take(adds)
         await bench.settle()
         #expect(
             bench.stored.last == [
@@ -173,6 +181,24 @@ struct SaveNameFieldTests {
         bench.window.makeFirstResponder(nil)
         await bench.settle()
         #expect(failures >= 1)
+        #expect(bench.coordinator.pieces(in: bench.field) == Self.defaultPieces)
+    }
+
+    @Test(
+        "once its write returns, a field not typed in draws the stored pattern"
+    )
+    func theFieldDrawsTheStoredPatternOnceItsWriteReturns() async throws {
+        let bench = Bench(Self.defaultPieces)
+        let editor = try bench.edit()
+        editor.setSelectedRange(
+            NSRange(location: editor.string.count, length: 0)
+        )
+        editor.insertText("x", replacementRange: editor.selectedRange())
+        bench.window.makeFirstResponder(nil)
+        await bench.settle()
+        #expect(bench.stored.last == Self.defaultPieces + [.text(text: "x")])
+        // The store has not shown the write yet, so the field draws what it
+        // shows.
         #expect(bench.coordinator.pieces(in: bench.field) == Self.defaultPieces)
     }
 

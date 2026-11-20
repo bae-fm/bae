@@ -71,7 +71,7 @@ struct MacFileNameField<Piece: SaveNamePiece>: View {
     let fail: @MainActor (Error) -> Void
 
     @State
-    private var handle = MacFileNameFieldHandle<Piece>()
+    private var adds = SaveNameAdds<Piece.Value>()
     @State
     private var focused = false
 
@@ -81,7 +81,7 @@ struct MacFileNameField<Piece: SaveNamePiece>: View {
                 .themeText(.body)
             SaveNameField(
                 pieces: pieces,
-                handle: handle,
+                adds: adds,
                 focused: $focused,
                 setPieces: setPieces,
                 fail: fail
@@ -129,7 +129,7 @@ struct MacFileNameField<Piece: SaveNamePiece>: View {
                 .accessibilitySortPriority(Double(values.count + 1))
             ForEach(Array(values.enumerated()), id: \.element) { index, value in
                 Button(value.label) {
-                    handle.append(value)
+                    adds.add(value)
                 }
                 .buttonStyle(.accentPlain)
                 .themeText(.detail)

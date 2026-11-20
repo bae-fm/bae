@@ -10,7 +10,7 @@ final class SaveNameChip<Value: SaveNameValue>: NSTextAttachment {
     init(_ value: Value, accent: NSColor) {
         self.value = value
         super.init(data: nil, ofType: nil)
-        attachmentCell = SaveNameChipCell(label: value.label, accent: accent)
+        attachmentCell = MacToken(value.label, accent: accent)
     }
 
     @available(*, unavailable)
@@ -19,99 +19,15 @@ final class SaveNameChip<Value: SaveNameValue>: NSTextAttachment {
     }
 }
 
-/// How a chip draws, as the design system's MacToken draws it: the value's
-/// name in the accent, on the accent's tint, with the chip's small corners
-/// and no ×. VoiceOver reads the chip by the value's name.
-final class SaveNameChipCell: NSTextAttachmentCell {
-    private let label: String
-    private let accent: NSColor
+/// The values the pane's Add row asked the field to add, which the field
+/// adds once each: how many it asked for, and the last one.
+struct SaveNameAdds<Value: Hashable>: Equatable {
+    private(set) var count = 0
+    private(set) var last: Value?
 
-    /// The space inside the chip at each side of the name.
-    private static let padding: CGFloat = 8
-    /// The space outside the chip at each side, between it and the text.
-    private static let margin: CGFloat = 2
-    /// The chip's height: the body text's line.
-    private static let height: CGFloat = 16
-
-    private static var font: NSFont { ThemeText.body.nsFont }
-
-    init(label: String, accent: NSColor) {
-        self.label = label
-        self.accent = accent
-        super.init(textCell: "")
-    }
-
-    @available(*, unavailable)
-    required init(coder _: NSCoder) {
-        fatalError()
-    }
-
-    private var attributedLabel: NSAttributedString {
-        NSAttributedString(
-            string: label,
-            attributes: [.font: Self.font, .foregroundColor: accent]
-        )
-    }
-
-    override func cellSize() -> NSSize {
-        NSSize(
-            width: ceil(attributedLabel.size().width) + 2 * Self.padding
-                + 2 * Self.margin,
-            height: Self.height
-        )
-    }
-
-    /// The chip sits on the text's line: its bottom is the font's descender
-    /// below the baseline.
-    override func cellBaselineOffset() -> NSPoint {
-        NSPoint(x: 0, y: Self.font.descender - (Self.height - lineHeight) / 2)
-    }
-
-    private var lineHeight: CGFloat {
-        Self.font.ascender - Self.font.descender
-    }
-
-    override func draw(withFrame cellFrame: NSRect, in _: NSView?) {
-        let chip = cellFrame.insetBy(dx: Self.margin, dy: 0)
-        let tint = accent.withAlphaComponent(ThemeOpacity.tint)
-        tint.setFill()
-        NSBezierPath(
-            roundedRect: chip,
-            xRadius: ThemeRadius.chip,
-            yRadius: ThemeRadius.chip
-        )
-        .fill()
-        let text = attributedLabel
-        let size = text.size()
-        text.draw(
-            at: NSPoint(
-                x: chip.midX - size.width / 2,
-                y: chip.midY - size.height / 2
-            )
-        )
-    }
-
-    override func draw(
-        withFrame cellFrame: NSRect,
-        in controlView: NSView?,
-        characterIndex _: Int,
-        layoutManager _: NSLayoutManager
-    ) {
-        draw(withFrame: cellFrame, in: controlView)
-    }
-
-    override func accessibilityLabel() -> String? {
-        label
-    }
-}
-
-/// How the pane's Add row reaches the field it adds a chip to.
-@MainActor
-final class MacFileNameFieldHandle<Piece: SaveNamePiece> {
-    fileprivate weak var field: SaveNameField<Piece>.Coordinator?
-
-    func append(_ value: Piece.Value) {
-        field?.append(value)
+    mutating func add(_ value: Value) {
+        count += 1
+        last = value
     }
 }
 
@@ -129,7 +45,8 @@ struct SaveNameField<Piece: SaveNamePiece>: NSViewRepresentable {
 
     /// The stored pattern.
     let pieces: [Piece]
-    let handle: MacFileNameFieldHandle<Piece>
+    /// What the Add row asked the field to add.
+    let adds: SaveNameAdds<Piece.Value>
     /// Whether the field is the one being typed in.
     @Binding
     var focused: Bool
@@ -144,9 +61,7 @@ struct SaveNameField<Piece: SaveNamePiece>: NSViewRepresentable {
     }
 
     func makeNSView(context: Context) -> SaveNameFieldView {
-        let field = Self.makeField(coordinator: context.coordinator)
-        handle.field = context.coordinator
-        return field
+        Self.makeField(coordinator: context.coordinator)
     }
 
     func updateNSView(_ field: SaveNameFieldView, context: Context) {
@@ -158,6 +73,7 @@ struct SaveNameField<Piece: SaveNamePiece>: NSViewRepresentable {
         field.isSelectable = context.environment.isEnabled
         coordinator.accent = accent.appKitColor
         coordinator.stored(pieces)
+        coordinator.take(adds)
     }
 
     /// The proposed width, and the height its pieces take wrapped to it.
@@ -177,7 +93,7 @@ struct SaveNameField<Piece: SaveNamePiece>: NSViewRepresentable {
         field.drawsBackground = false
         field.focusRingType = .none
         field.font = ThemeText.body.nsFont
-        field.textColor = .labelColor
+        field.textColor = NSColor(Theme.textPrimary)
         field.isRichText = true
         field.importsGraphics = false
         field.allowsUndo = true
@@ -209,19 +125,22 @@ struct SaveNameField<Piece: SaveNamePiece>: NSViewRepresentable {
             didSet {
                 guard accent != oldValue, let field else { return }
                 let pieces = pieces(in: field)
-                field.textStorage?.setAttributedString(text(for: pieces))
+                field.storage.setAttributedString(text(for: pieces))
             }
         }
 
+        /// How many of the Add row's values the field has added.
+        private var added = 0
+
         /// The pattern as last stored.
         private var storedPieces: [Piece] = []
-        /// The last pattern handed to the store, until the store shows it:
-        /// a field that shows it already isn't reset to the older pattern
-        /// the store still shows.
-        private var lastSubmitted: [Piece]?
+        /// The pattern of the write in flight.
+        private var handed: [Piece]?
         /// The newest pattern waiting for the write in flight.
         private var queued: [Piece]?
-        /// Whether a write is in flight or queued.
+        /// Whether a write is in flight or queued. While one is, the field
+        /// draws what it handed over; once the writes return, it draws the
+        /// stored pattern.
         private(set) var writing = false
 
         func focus(_ focused: Bool) {
@@ -235,23 +154,21 @@ struct SaveNameField<Piece: SaveNamePiece>: NSViewRepresentable {
         /// The store shows `pieces`. A field not being typed in takes them.
         func stored(_ pieces: [Piece]) {
             storedPieces = pieces
-            if pieces == lastSubmitted {
-                lastSubmitted = nil
-            }
             settle()
         }
 
+        /// A field not being typed in and with no write in flight draws the
+        /// stored pattern.
         private func settle() {
-            guard let field, !field.isEditing else { return }
-            let shown = pieces(in: field)
-            guard shown != storedPieces, shown != lastSubmitted else { return }
-            field.textStorage?.setAttributedString(text(for: storedPieces))
+            guard let field, !field.isEditing, !writing else { return }
+            guard pieces(in: field) != storedPieces else { return }
+            field.storage.setAttributedString(text(for: storedPieces))
         }
 
         /// The pattern the field holds now: each chip a value, each run of
         /// text between them typed text.
-        func pieces(in field: NSTextView) -> [Piece] {
-            guard let storage = field.textStorage else { return [] }
+        func pieces(in field: SaveNameFieldView) -> [Piece] {
+            let storage = field.storage
             var pieces: [Piece] = []
             var text = ""
             func endText() {
@@ -265,15 +182,16 @@ struct SaveNameField<Piece: SaveNamePiece>: NSViewRepresentable {
                 attachment,
                 range,
                 _ in
-                if let chip = attachment as? Chip {
+                switch attachment {
+                case let chip as Chip:
                     endText()
                     pieces.append(Piece(value: chip.value))
-                }
-                else {
-                    // A character the text holds for an attachment that is
-                    // no chip is no text the person typed.
+                case nil:
                     text += (storage.string as NSString).substring(with: range)
-                        .replacingOccurrences(of: "\u{FFFC}", with: "")
+                default:
+                    preconditionFailure(
+                        "a name pattern's field holds only chips and text"
+                    )
                 }
             }
             endText()
@@ -310,13 +228,22 @@ struct SaveNameField<Piece: SaveNamePiece>: NSViewRepresentable {
                 .map { Chip($0, accent: accent) }
         }
 
+        /// Add the Add row's value that the field hasn't added yet. Adding it
+        /// ends the typing, which SwiftUI hears of, so it runs after the
+        /// update that brought it.
+        func take(_ adds: SaveNameAdds<Piece.Value>) {
+            guard adds.count > added, let value = adds.last else { return }
+            added = adds.count
+            Task { self.append(value) }
+        }
+
         /// Put `value` as a chip at the end, after what is typed.
         func append(_ value: Piece.Value) {
             guard let field else { return }
             // Ends the typing, which hands what is typed to the store.
             field.window?.makeFirstResponder(nil)
             let pieces = pieces(in: field) + [Piece(value: value)]
-            field.textStorage?.setAttributedString(text(for: pieces))
+            field.storage.setAttributedString(text(for: pieces))
             submit(pieces)
         }
 
@@ -333,8 +260,7 @@ struct SaveNameField<Piece: SaveNamePiece>: NSViewRepresentable {
         /// Store `pieces` after the writes before it, one at a time, so the
         /// store ends with the last one.
         private func submit(_ pieces: [Piece]) {
-            guard pieces != (lastSubmitted ?? storedPieces) else { return }
-            lastSubmitted = pieces
+            guard pieces != (queued ?? handed ?? storedPieces) else { return }
             queued = pieces
             guard !writing else { return }
             writing = true
@@ -346,15 +272,16 @@ struct SaveNameField<Piece: SaveNamePiece>: NSViewRepresentable {
         private func drain() async {
             while let next = queued {
                 queued = nil
+                handed = next
                 do {
                     try await setPieces(next)
                 }
                 catch {
                     // The store keeps the pattern it had.
-                    lastSubmitted = nil
                     fail(error)
                 }
             }
+            handed = nil
             writing = false
             settle()
         }
@@ -377,7 +304,21 @@ final class SaveNameFieldView: NSTextView {
 
     /// How typed text looks in the field.
     static var textAttributes: [NSAttributedString.Key: Any] {
-        [.font: ThemeText.body.nsFont, .foregroundColor: NSColor.labelColor]
+        [
+            .font: ThemeText.body.nsFont,
+            .foregroundColor: NSColor(Theme.textPrimary),
+        ]
+    }
+
+    /// The field's text, which a text view built with its own text system
+    /// always holds.
+    var storage: NSTextStorage {
+        guard let textStorage else {
+            preconditionFailure(
+                "a text view built whole holds its text storage"
+            )
+        }
+        return textStorage
     }
 
     /// Whether the field is the one being typed in.
@@ -403,9 +344,11 @@ final class SaveNameFieldView: NSTextView {
 
     /// The height the field's text takes wrapped to `width`.
     func height(forWidth width: CGFloat) -> CGFloat {
-        guard let container = textContainer,
-            let layout = layoutManager
-        else { return 0 }
+        guard let container = textContainer, let layout = layoutManager else {
+            preconditionFailure(
+                "a text view built whole holds its container and layout"
+            )
+        }
         let old = container.size
         container.size = NSSize(width: width, height: .greatestFiniteMagnitude)
         layout.ensureLayout(for: container)
@@ -420,7 +363,7 @@ final class SaveNameFieldView: NSTextView {
     /// The text in `range` as the person sees it: each chip by its value's
     /// name, where the text holds one attachment character for it.
     func readableText(in range: NSRange) -> String {
-        guard let storage = textStorage else { return "" }
+        let storage = self.storage
         var text = ""
         storage.enumerateAttribute(.attachment, in: range) {
             attachment,
@@ -442,7 +385,7 @@ final class SaveNameFieldView: NSTextView {
     /// VoiceOver reads the field as the person sees it, each chip by its
     /// value's name among the typed text.
     override func accessibilityValue() -> String? {
-        readableText(in: NSRange(location: 0, length: textStorage?.length ?? 0))
+        readableText(in: NSRange(location: 0, length: storage.length))
     }
 
     override func accessibilityString(for range: NSRange) -> String? {
@@ -466,7 +409,7 @@ final class SaveNameFieldView: NSTextView {
     /// The chip the selection is, when it is exactly one chip.
     private var selectedChip: NSTextAttachment? {
         let range = selectedRange()
-        guard range.length == 1, let storage = textStorage,
+        guard range.length == 1,
             range.location < storage.length
         else { return nil }
         return storage.attribute(
@@ -528,7 +471,7 @@ final class SaveNameFieldView: NSTextView {
         guard range.location != NSNotFound,
             shouldChangeText(in: range, replacementString: replacement.string)
         else { return false }
-        textStorage?.replaceCharacters(in: range, with: replacement)
+        storage.replaceCharacters(in: range, with: replacement)
         didChangeText()
         return true
     }
