@@ -23,17 +23,11 @@ public struct MacSpinner: View {
     }
 
     /// The spinner, named by the words beside it when it has them.
-    @ViewBuilder
     private var spinner: some View {
-        if let words {
-            ProgressView().controlSize(.small).accessibilityLabel(words)
-        }
-        else {
-            ProgressView().controlSize(.small)
-                .accessibilityLabel(
-                    Text("Loading", tableName: "Controls", bundle: .module)
-                )
-        }
+        SystemSpinner()
+            .accessibilityLabel(
+                words ?? Text("Loading", tableName: "Controls", bundle: .module)
+            )
     }
 
     public var body: some View {
@@ -41,9 +35,41 @@ public struct MacSpinner: View {
             spinner
             if let words {
                 words
-                    .themeText(.body)
+                    .themeText(.detail)
                     .foregroundStyle(.secondary)
             }
         }
     }
 }
+
+#if canImport(AppKit)
+    /// macOS's own small spinner, which AppKit draws and names a busy
+    /// indicator with no value. SwiftUI's indeterminate progress view draws
+    /// its own and reports a progress of 0.
+    private struct SystemSpinner: NSViewRepresentable {
+        func makeNSView(context: Context) -> NSProgressIndicator {
+            let indicator = NSProgressIndicator()
+            indicator.style = .spinning
+            indicator.isIndeterminate = true
+            indicator.controlSize = .small
+            indicator.startAnimation(nil)
+            return indicator
+        }
+
+        func updateNSView(_ indicator: NSProgressIndicator, context: Context) {}
+
+        func sizeThatFits(
+            _ proposal: ProposedViewSize,
+            nsView indicator: NSProgressIndicator,
+            context: Context
+        ) -> CGSize? {
+            indicator.intrinsicContentSize
+        }
+    }
+#else
+    private struct SystemSpinner: View {
+        var body: some View {
+            ProgressView().controlSize(.small)
+        }
+    }
+#endif
