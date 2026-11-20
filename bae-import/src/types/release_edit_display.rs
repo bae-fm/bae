@@ -117,16 +117,10 @@ impl ReleaseEditSheetChoices {
         let mut audio_options: std::collections::HashMap<_, Vec<_>> =
             std::collections::HashMap::new();
         for option in options {
-            use crate::folder_scanner::SheetBindingOffer;
-            let offer = if !crate::folder_scanner::codec_backs_cue(&option.content_type) {
-                SheetBindingOffer::RefusedCodec {
-                    codec: option.content_type.display_name().to_string(),
-                }
-            } else if option.fits {
-                SheetBindingOffer::Offered
-            } else {
-                SheetBindingOffer::RefusedTiming
-            };
+            let offer = crate::folder_scanner::SheetBindingOffer::of_probed(
+                &option.content_type,
+                option.fits,
+            );
             audio_options.entry((option.sheet_file_id, option.file_reference)).or_default().push(
                 ReleaseEditAudioOption {
                     file_id: option.file_id,

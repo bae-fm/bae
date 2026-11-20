@@ -29,29 +29,39 @@ pub(super) enum CueCodecLabel {
 /// its binding; one FFmpeg can't probe (`Unprobeable`) is corrupt audio and
 /// surfaces its folder as invalid, without aborting the watched-root walk.
 pub(super) fn cue_pair_codec_label(audio: &ScannedFile) -> CueCodecLabel {
-    let Some(probe) = &audio.source_audio else {
-        return CueCodecLabel::Unprobeable;
-    };
-    if codec_backs_cue(&probe.content_type) {
-        CueCodecLabel::Supported
-    } else {
-        CueCodecLabel::Unsupported(probe.content_type.display_name().to_string())
+    match &audio.source_audio {
+        Some(probe) => CueCodecLabel::of_codec(&probe.content_type),
+        None => CueCodecLabel::Unprobeable,
     }
 }
 
-/// Whether bae can carve a CUE sheet's tracks out of audio in the codec
-/// `content_type`.
-pub(crate) fn codec_backs_cue(content_type: &bae_util::content_type::ContentType) -> bool {
-    use bae_util::content_type::ContentType;
-    matches!(
-        content_type,
-        ContentType::Flac
+impl CueCodecLabel {
+    /// The label of audio FFmpeg probed as the codec `content_type`: bae
+    /// carves a CUE sheet's tracks out of a lossless codec only.
+    fn of_codec(content_type: &bae_util::content_type::ContentType) -> Self {
+        use bae_util::content_type::ContentType;
+        match content_type {
+            ContentType::Flac
             | ContentType::Ape
             | ContentType::Alac
             | ContentType::Pcm
             | ContentType::WavPack
-            | ContentType::Dsd
-    )
+            | ContentType::Dsd => Self::Supported,
+            other => Self::Unsupported(other.display_name().to_string()),
+        }
+    }
+
+    /// How a sheet's `FILE` line may be bound to audio of this label;
+    /// `fits` says whether the line's tracks lie inside the audio, and runs
+    /// only for a codec that backs the line.
+    fn offer(self, fits: impl FnOnce() -> bool) -> SheetBindingOffer {
+        match self {
+            Self::Supported if fits() => SheetBindingOffer::Offered,
+            Self::Supported => SheetBindingOffer::RefusedTiming,
+            Self::Unsupported(codec) => SheetBindingOffer::RefusedCodec { codec },
+            Self::Unprobeable => SheetBindingOffer::RefusedUnreadable,
+        }
+    }
 }
 
 pub(super) fn sheet_reference_fits_audio(
@@ -532,6 +542,18 @@ pub enum SheetBindingOffer {
     RefusedUnreadable,
 }
 
+impl SheetBindingOffer {
+    /// How a sheet's `FILE` line may be bound to audio FFmpeg probed as the
+    /// codec `content_type`, whose length the line's tracks `fits` or not,
+    /// as the import pane offers a folder's audio.
+    pub(crate) fn of_probed(
+        content_type: &bae_util::content_type::ContentType,
+        fits: bool,
+    ) -> Self {
+        CueCodecLabel::of_codec(content_type).offer(|| fits)
+    }
+}
+
 /// One of the folder's audio files, as a choice for a sheet's binding.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SheetBindingOption {
@@ -581,22 +603,9 @@ impl CategorizedFiles {
                         })
                         .map(|audio| SheetBindingOption {
                             file_id: audio.relative_path.clone(),
-                            offer: match cue_pair_codec_label(audio) {
-                                CueCodecLabel::Supported
-                                    if sheet_reference_fits_audio(
-                                        sheet.sheet,
-                                        reference,
-                                        audio,
-                                    ) =>
-                                {
-                                    SheetBindingOffer::Offered
-                                }
-                                CueCodecLabel::Supported => SheetBindingOffer::RefusedTiming,
-                                CueCodecLabel::Unsupported(codec) => {
-                                    SheetBindingOffer::RefusedCodec { codec }
-                                }
-                                CueCodecLabel::Unprobeable => SheetBindingOffer::RefusedUnreadable,
-                            },
+                            offer: cue_pair_codec_label(audio).offer(|| {
+                                sheet_reference_fits_audio(sheet.sheet, reference, audio)
+                            }),
                         })
                         .collect(),
                 }
