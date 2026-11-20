@@ -47,7 +47,7 @@ struct ReleaseEditorView: View {
         Group {
             if let draft = session.draft {
                 MacReleaseEditor(
-                    actionRow: .saving(saveRow(draft)),
+                    actionRow: .saving(saveRow),
                     commands: ReleaseEditorCommands(
                         identifyAutomatically: identifyAutomatically,
                         search: { openSearch(.search) },
@@ -84,22 +84,28 @@ struct ReleaseEditorView: View {
     }
 
     /// Cancel and Save, the step of an apply, and why the form can't be
-    /// saved.
-    private func saveRow(_ draft: BridgeReleaseEditDraft) -> ReleaseSaveRow {
-        ReleaseSaveRow(
-            controls: ReleaseEditControls(
-                changed: draft.changed,
-                isBusy: session.isBusy,
-                reading: session.readingLine,
-                onCancel: {
-                    searchSection = nil
-                    session.cancelChanges()
-                },
-                onSave: { session.save(onSuccess: onSaved) }
-            ),
-            applying: session.catalogApplying,
-            notice: session.validationMessage.map { DisplayError(line: $0) }
-                ?? session.failure
+    /// saved, each read where the row draws it.
+    private var saveRow: ReleaseSaveRow {
+        let session = session
+        let onSaved = onSaved
+        return ReleaseSaveRow(
+            controls: {
+                ReleaseEditControls(
+                    changed: session.draft?.changed == true,
+                    isBusy: session.isBusy,
+                    reading: session.readingLine,
+                    onCancel: {
+                        searchSection = nil
+                        session.cancelChanges()
+                    },
+                    onSave: { session.save(onSuccess: onSaved) }
+                )
+            },
+            applying: { session.catalogApplying },
+            notice: {
+                session.validationMessage.map { DisplayError(line: $0) }
+                    ?? session.failure
+            }
         )
     }
 

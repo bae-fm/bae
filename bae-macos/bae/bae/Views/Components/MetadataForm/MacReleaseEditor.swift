@@ -75,11 +75,13 @@ enum ReleaseEditorActionRow {
 }
 
 /// A form's action row: Cancel and Save, the network read an apply waits
-/// on while it runs, and the failure of the last save or check.
+/// on while it runs, and the failure of the last save or check. The row and
+/// its notices read each in their own body, so a change to one redraws that
+/// leaf alone and not the editor around it.
 struct ReleaseSaveRow {
-    let controls: ReleaseEditControls
-    let applying: CatalogApplying?
-    let notice: DisplayError?
+    let controls: @MainActor () -> ReleaseEditControls
+    let applying: @MainActor () -> CatalogApplying?
+    let notice: @MainActor () -> DisplayError?
 }
 
 /// A command in the release editor's Metadata menu, in both of its hosts.
@@ -277,7 +279,7 @@ private struct ReleaseEditorCardView: View {
                 ImportCommitRow(commit: commit)
             }
         case .saving(let row):
-            row.controls
+            SaveRowControls(row: row)
         }
     }
 
@@ -296,13 +298,7 @@ private struct ReleaseEditorCardView: View {
                 )
             }
         case .saving(let row):
-            if let applying = row.applying {
-                CatalogApplyStepLine(apply: applying.apply)
-            }
-            if let notice = row.notice {
-                MacNotice(error: notice)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
+            SaveRowNotices(row: row)
         }
     }
 
@@ -321,6 +317,31 @@ private struct ReleaseEditorCardView: View {
                     "Stop linking the release to these catalog records. The metadata stays as it is."
                 )
                 .disabled(!editable)
+        }
+    }
+}
+
+/// A form's Cancel and Save, read in their own body.
+private struct SaveRowControls: View {
+    let row: ReleaseSaveRow
+
+    var body: some View {
+        row.controls()
+    }
+}
+
+/// The step of a catalog apply and the failure of the last save or check,
+/// read in their own body.
+private struct SaveRowNotices: View {
+    let row: ReleaseSaveRow
+
+    var body: some View {
+        if let applying = row.applying() {
+            CatalogApplyStepLine(apply: applying.apply)
+        }
+        if let notice = row.notice() {
+            MacNotice(error: notice)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }
