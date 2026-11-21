@@ -14,6 +14,10 @@ extension ShotScene {
             MacProgress(title: "Uploading…", fraction: 0.3)
                 .frame(width: 380, alignment: .leading)
         },
+        component("mac.component.progress.named-only", height: 60) {
+            MacProgress(title: "Uploading", fraction: 0.3)
+                .frame(width: 380, alignment: .leading)
+        },
     ]
 }
 

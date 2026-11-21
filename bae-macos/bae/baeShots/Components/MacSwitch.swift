@@ -12,5 +12,9 @@ extension ShotScene {
         component("mac.component.switch.off", height: 50) {
             MacSwitch("Restore on launch", isOn: .constant(false))
         },
+        component("mac.component.switch.disabled", height: 50) {
+            MacSwitch("Restore on launch", isOn: .constant(true))
+                .disabled(true)
+        },
     ]
 }

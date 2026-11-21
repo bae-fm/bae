@@ -19,6 +19,32 @@ extension ShotScene {
                 }
             }
         },
+        component("mac.component.field-row.note", height: 110) {
+            ShotBox {
+                MacFieldRow("Name") {
+                    VStack(alignment: .leading, spacing: ThemeSpace.inline) {
+                        nameField
+                        FieldNote("People in this library see this name.")
+                    }
+                }
+            }
+        },
+        component("mac.component.field-row.no-label", height: 90) {
+            ShotBox {
+                MacFieldRow("") {
+                    TextField("Name", text: .constant(""))
+                        .labelsHidden()
+                        .boxedTextField()
+                        .frame(width: 160)
+                }
+            }
+        },
+        component("mac.component.field-row.text-aligned", height: 130) {
+            ShotBox {
+                MacRow("Home music") {}
+                MacFieldRow("") { nameField }
+            }
+        },
     ]
 
     private static var nameField: some View {

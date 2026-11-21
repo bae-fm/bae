@@ -21,6 +21,21 @@ extension ShotScene {
         ),
         textField("mac.component.text-field.off", state: .off),
         textField("mac.component.text-field.secret", state: .secret),
+        component("mac.component.text-field.label-inside", height: 90) {
+            FieldColumn {
+                GridRow {
+                    TextField("Name", text: .constant(""))
+                        .textFieldStyle(.plain)
+                        .themeText(.body)
+                        .modifier(FieldChrome(focused: false, style: .boxed))
+                        .accessibilityLabel("Name")
+                        .gridCellColumns(2)
+                }
+            }
+            .frame(width: 380, alignment: .leading)
+        },
+        textField("mac.component.text-field.code", code: true),
+        textField("mac.component.text-field.label-column"),
     ]
 
     /// How a text field's box stands.
@@ -32,7 +47,8 @@ extension ShotScene {
         _ id: String,
         note: LocalizedStringKey? = nil,
         text: String = "Home music",
-        state: FieldState = .resting
+        state: FieldState = .resting,
+        code: Bool = false
     ) -> ShotScene {
         component(id, height: 90) {
             FieldColumn {
@@ -48,6 +64,7 @@ extension ShotScene {
                     .labelsHidden()
                     .textFieldStyle(.plain)
                     .themeText(.body)
+                    .font(code ? .system(.body, design: .monospaced) : nil)
                     .modifier(
                         FieldChrome(
                             focused: state == .focused,

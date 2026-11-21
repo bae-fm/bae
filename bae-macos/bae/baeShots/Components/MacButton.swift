@@ -44,5 +44,26 @@ extension ShotScene {
                 .accessibilityLabel("Copied")
             }
         },
+        component("mac.component.button.destructive", height: 50) {
+            MacButton("Set up") {}
+                .tint(Theme.danger)
+        },
+        component("mac.component.button.menu", height: 50) {
+            MacButton(menu: { MacMenuItem("Details…") {} }) {
+                Text("Set up")
+            }
+        },
+        component("mac.component.button.muted", height: 50) {
+            MacButton("Set up") {}
+                .muted()
+        },
+        component("mac.component.button.size-alert", height: 50) {
+            MacButton("Set up") {}
+                .controlSize(.large)
+        },
+        component("mac.component.button.tinted", height: 50) {
+            MacButton("Set up") {}
+                .tint(Theme.accent)
+        },
     ]
 }

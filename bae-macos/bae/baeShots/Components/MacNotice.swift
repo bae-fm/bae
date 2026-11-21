@@ -129,6 +129,22 @@ extension ShotScene {
                 action: ErrorAction(perform: {})
             )
         },
+        notice("mac.component.notice.flush", height: 70) {
+            MacNotice(
+                title: "This library has no albums yet.",
+                advice: nil,
+                error: nil,
+                tone: .neutral
+            )
+        },
+        notice("mac.component.notice.stage", height: 70) {
+            MacNotice(
+                title: "This library has no albums yet.",
+                advice: nil,
+                error: nil,
+                tone: .neutral
+            )
+        },
     ]
 
     /// One notice, the state `id` names.

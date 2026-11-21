@@ -23,5 +23,8 @@ extension ShotScene {
                 radius: ThemeRadius.artwork
             )
         },
+        component("mac.component.placeholder-line.fixed", height: 40) {
+            MacPlaceholderLine(width: 140, height: 12)
+        },
     ]
 }

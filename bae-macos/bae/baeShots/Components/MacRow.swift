@@ -60,6 +60,52 @@ extension ShotScene {
         },
         pauseRows("mac.component.row.nested", off: false),
         pauseRows("mac.component.row.nested-off", off: true),
+        component("mac.component.row.note", width: 580, height: 90) {
+            ShotBox {
+                MacRow("Sync") {}
+                    .note(Text("This library is only on this Mac."))
+            }
+        },
+        component("mac.component.row.selected", width: 580, height: 70) {
+            ShotBox {
+                MacRow("Sync") {}
+            }
+        },
+        component("mac.component.row.button", width: 580, height: 70) {
+            ShotBox {
+                MacRow("Sync") {}
+                    .pressing(.opens {})
+            }
+        },
+        component("mac.component.row.info", width: 580, height: 70) {
+            ShotBox {
+                MacRow("Sync") {}
+            }
+        },
+        component("mac.component.row.note-tone-danger", width: 580, height: 90)
+        {
+            ShotBox {
+                MacRow("Sync") {}
+                    .note(
+                        Text("This library is only on this Mac."),
+                        tone: .danger
+                    )
+            }
+        },
+        component("mac.component.row.tone-danger", width: 580, height: 70) {
+            ShotBox {
+                MacRow("Sync") {
+                    ToneDotValue(text: "Synced", tone: .danger)
+                }
+            }
+        },
+        component("mac.component.row.tone-warning", width: 580, height: 70) {
+            ShotBox {
+                MacRow("Sync") {
+                    ToneDotValue(text: "Synced", tone: .warning)
+                }
+            }
+        },
     ]
 
     /// The Pause row and Resume automatically under it, which is off while

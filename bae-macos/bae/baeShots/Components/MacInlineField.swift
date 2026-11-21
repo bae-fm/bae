@@ -44,6 +44,22 @@ extension ShotScene {
             value: "",
             quiet: true
         ),
+        inlineFieldScene(
+            "mac.component.inline-field.fits-its-value",
+            placeholder: "—",
+            value: "Harbor Records"
+        ),
+        inlineFieldScene(
+            "mac.component.inline-field.fits-empty",
+            placeholder: "—",
+            value: ""
+        ),
+        inlineFieldScene(
+            "mac.component.inline-field.mono",
+            placeholder: "—",
+            value: "Harbor Records",
+            mono: true
+        ),
     ]
 
     /// One `MacInlineField` in the preview's 260pt column; `large` is the
@@ -53,7 +69,8 @@ extension ShotScene {
         placeholder: String,
         value: String,
         large: Bool = false,
-        quiet: Bool = false
+        quiet: Bool = false,
+        mono: Bool = false
     ) -> ShotScene {
         component(
             id,
@@ -64,6 +81,7 @@ extension ShotScene {
                 placeholder: placeholder,
                 value: value,
                 name: placeholder,
+                monospaced: mono,
                 fillsWidth: true,
                 font: large ? ThemeText.title.nsFont : ThemeText.body.nsFont,
                 textColor: quiet

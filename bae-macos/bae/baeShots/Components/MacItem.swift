@@ -71,7 +71,38 @@ extension ShotScene {
             }
             .frame(width: 380, alignment: .leading)
         },
+        component("mac.component.item.center-lead", height: 60) {
+            itemCentered()
+        },
+        component("mac.component.item.center-trail", height: 60) {
+            itemCentered()
+        },
+        component("mac.component.item.wide", height: 60) {
+            MacItem(wide: true) {
+                StatusGlyph(.danger).themeIcon(.medium)
+                    .accessibilityHidden(true)
+            } content: {
+                Text("Download failed")
+            } trail: {
+                Text("2m ago").themeText(.fine)
+            }
+            .frame(width: 380, alignment: .leading)
+        },
     ]
+
+    /// A download's row with its lead or its trailing end set in the middle.
+    /// `MacItem` centres both together, so each state is the item centred.
+    private static func itemCentered() -> some View {
+        MacItem(centered: true) {
+            StatusGlyph(.danger).themeIcon(.medium)
+                .accessibilityHidden(true)
+        } content: {
+            Text("Download failed")
+        } trail: {
+            Text("2m ago").themeText(.fine)
+        }
+        .frame(width: 380, alignment: .leading)
+    }
 
     /// A stored audio file's row.
     private static func itemFile(_ name: String, size: UInt64) -> MacFileRow {

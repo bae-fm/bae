@@ -4,7 +4,7 @@ import SwiftUI
 @testable import bae
 
 extension ShotScene {
-    /// `MacSeekBar`, with what is held in one stretch and in two.
+    /// `MacSeekBar`, with what is held in one stretch, in two, and off.
     static let macSeekBarScenes: [ShotScene] = [
         seekBar(
             "mac.component.seek-bar.playing",
@@ -19,12 +19,19 @@ extension ShotScene {
                 BridgeTrackSpan(start: 0.55, end: 0.7),
             ]
         ),
+        seekBar(
+            "mac.component.seek-bar.off",
+            position: 102.0 / 303.0,
+            held: [BridgeTrackSpan(start: 0, end: 0.6)],
+            off: true
+        ),
     ]
 
     private static func seekBar(
         _ id: String,
         position: Double,
-        held: [BridgeTrackSpan]
+        held: [BridgeTrackSpan],
+        off: Bool = false
     ) -> ShotScene {
         component(id, height: 60) {
             MacSeekBar(
@@ -48,6 +55,7 @@ extension ShotScene {
                 onToggleRemainingTime: nil
             )
             .frame(width: 380, height: 20)
+            .disabled(off)
         }
     }
 }

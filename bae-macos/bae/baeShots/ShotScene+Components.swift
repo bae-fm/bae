@@ -60,6 +60,7 @@ extension ShotScene {
             macFileRowScenes,
             macFindOnlineScenes,
             macFolderPickerScenes,
+            macFormFieldScenes,
             macFormHeadingScenes,
             macHairlineScenes,
             macIconButtonScenes,
