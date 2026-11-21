@@ -21,7 +21,11 @@ extension ShotScene {
         ),
         textField("mac.component.text-field.off", state: .off),
         textField("mac.component.text-field.secret", state: .secret),
-        component("mac.component.text-field.label-inside", height: 90) {
+        component(
+            "mac.component.text-field.label-inside",
+            width: previewWidth,
+            height: 90
+        ) {
             FieldColumn {
                 GridRow {
                     TextField("Name", text: .constant(""))
@@ -32,10 +36,10 @@ extension ShotScene {
                         .gridCellColumns(2)
                 }
             }
-            .frame(width: 380, alignment: .leading)
+            .frame(width: previewWidth, alignment: .leading)
         },
         textField("mac.component.text-field.code", code: true),
-        textField("mac.component.text-field.label-column"),
+        textField("mac.component.text-field.label-column", labelColumn: true),
     ]
 
     /// How a text field's box stands.
@@ -48,9 +52,10 @@ extension ShotScene {
         note: LocalizedStringKey? = nil,
         text: String = "Home music",
         state: FieldState = .resting,
-        code: Bool = false
+        code: Bool = false,
+        labelColumn: Bool = false
     ) -> ShotScene {
-        component(id, height: 90) {
+        component(id, width: previewWidth, height: 90) {
             FieldColumn {
                 MacTextField("Name", note: note) {
                     Group {
@@ -74,8 +79,18 @@ extension ShotScene {
                     )
                     .disabled(state == .off)
                 }
+                if labelColumn {
+                    // A column of fields holds every label at the widest
+                    // one's width; the preview's is 90.
+                    GridRow {
+                        Color.clear.frame(width: 90, height: 0)
+                    }
+                }
             }
-            .frame(width: 380, alignment: .leading)
+            .frame(width: previewWidth, alignment: .leading)
         }
     }
+
+    /// The width of a wide row of the preview, which the field fills.
+    private static let previewWidth: CGFloat = 842
 }
