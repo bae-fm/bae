@@ -497,7 +497,7 @@ extension ShotScene {
         .environment(fixture.configStore)
         .environment(fixture.membership)
         .environment(UiStore())
-        .environment(fixture.libraryName)
+        .environment(LibraryNameStore.stub(name: "Home music"))
         #if BAE_OAUTH_PROVIDERS
             .environment(CloudSyncSetup())
         #endif
