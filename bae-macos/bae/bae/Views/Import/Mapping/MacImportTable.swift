@@ -59,7 +59,6 @@ struct MacImportTable: View {
 
     private func sideHeader(_ text: String, index: Int) -> some View {
         MacEyebrow(verbatim: text)
-            .padding(.horizontal, ImportMappingColumns.rowPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.top, index == 0 ? ThemeSpace.line : ThemeSpace.edge)
             .padding(.bottom, ThemeSpace.compact)
@@ -70,7 +69,6 @@ struct MacImportTable: View {
         VStack(spacing: 0) {
             MacHairline()
             ReleaseSheetCaption(sheet: sheet, actions: actions.sheetCaption)
-                .padding(.horizontal, ImportMappingColumns.rowPadding)
                 .padding(.vertical, ThemeSpace.related)
         }
     }
@@ -111,7 +109,6 @@ struct MacImportTable: View {
                     alignment: .leading
                 )
         }
-        .padding(.horizontal, ImportMappingColumns.rowPadding)
         .padding(.top, ThemeSpace.inline)
         .padding(.bottom, ThemeSpace.compact)
     }
@@ -147,8 +144,7 @@ extension View {
     /// What every row of the mapping table, and of a skipped folder's file
     /// list, sits in: one leading edge, one height, and a hairline over it.
     func mappingRowChrome(background: Color = .clear) -> some View {
-        padding(.horizontal, ImportMappingColumns.rowPadding)
-            .padding(.vertical, ThemeSpace.compact)
+        padding(.vertical, ThemeSpace.compact)
             .frame(minHeight: 40)
             .background(background)
             .overlay(alignment: .top) {
@@ -159,7 +155,6 @@ extension View {
 
 enum ImportMappingColumns {
     static let spacing = ReleaseMetadataTrackColumns.spacing
-    static let rowPadding = ReleaseMetadataTrackColumns.rowPadding
 }
 
 extension BridgeMappingFileRow {

@@ -17,7 +17,6 @@ struct ImportMappingColumnsTests {
             + ReleaseMetadataTrackColumns.track
             + ReleaseMetadataTrackColumns.length
             + ReleaseMetadataTrackColumns.spacing * 4
-            + ReleaseMetadataTrackColumns.rowPadding * 2
     }
 
     @Test(

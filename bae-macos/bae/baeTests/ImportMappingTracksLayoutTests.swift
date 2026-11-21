@@ -34,7 +34,6 @@ struct ImportMappingTracksLayoutTests {
                     .trackTable,
                 artistSearch: { _ in .fixed([], answers: UnansweredCount()) }
             )
-            .padding(.horizontal, ImportMappingColumns.rowPadding)
             .frame(width: tableWidth, height: size.height, alignment: .leading)
             .environment(UiStore()),
             size: size
@@ -50,7 +49,7 @@ struct ImportMappingTracksLayoutTests {
                 to: host
             )
             let leading =
-                ImportMappingColumns.rowPadding + columns.source
+                columns.source
                 + ReleaseMetadataTrackColumns.track + 2
                 * ImportMappingColumns.spacing
                 + FieldChrome.inlineHorizontalPadding
@@ -89,7 +88,6 @@ struct ImportMappingTracksLayoutTests {
                 actions: actions(recording: recorder).trackTable,
                 artistSearch: { _ in .fixed([], answers: UnansweredCount()) }
             )
-            .padding(.horizontal, ImportMappingColumns.rowPadding)
             .frame(width: tableWidth, height: size.height, alignment: .leading)
             .environment(UiStore()),
             size: size
@@ -101,7 +99,7 @@ struct ImportMappingTracksLayoutTests {
             // placed later in the row both leave this click unanswered.
             try HostedInput.click(
                 at: NSPoint(
-                    x: ImportMappingColumns.rowPadding + 22,
+                    x: 22,
                     y: size.height / 2
                 ),
                 in: window
@@ -235,7 +233,6 @@ extension ImportMappingTracksLayoutTests {
                 actions: actions(recording: MappingTrackActionRecorder())
                     .sheetCaption
             )
-            .padding(.horizontal, ImportMappingColumns.rowPadding)
             .frame(width: tableWidth, height: size.height, alignment: .leading),
             size: size
         ) { _, host in
@@ -250,13 +247,10 @@ extension ImportMappingTracksLayoutTests {
             let discFrame = controls[0].convert(controls[0].bounds, to: host)
             let bindingFrame = controls[1].convert(controls[1].bounds, to: host)
 
-            #expect(discFrame.minX <= ImportMappingColumns.rowPadding + 1)
+            #expect(discFrame.minX <= 1)
             #expect(discFrame.maxX < bindingFrame.minX)
             #expect(bindingFrame.width >= 24)
-            #expect(
-                bindingFrame.maxX <= tableWidth
-                    - ImportMappingColumns.rowPadding
-            )
+            #expect(bindingFrame.maxX <= tableWidth)
         }
     }
 }
@@ -453,7 +447,6 @@ extension ImportMappingTracksLayoutTests {
                 actions: actions(recording: recorder).trackTable,
                 artistSearch: { _ in .fixed([], answers: UnansweredCount()) }
             )
-            .padding(.horizontal, ImportMappingColumns.rowPadding)
             .frame(width: tableWidth, height: size.height, alignment: .leading)
             .environment(UiStore()),
             size: size
@@ -461,7 +454,7 @@ extension ImportMappingTracksLayoutTests {
             try await SnapshotTestSupport.settle(host)
             try HostedInput.click(
                 at: NSPoint(
-                    x: ImportMappingColumns.rowPadding + 22,
+                    x: 22,
                     y: size.height / 2
                 ),
                 in: window

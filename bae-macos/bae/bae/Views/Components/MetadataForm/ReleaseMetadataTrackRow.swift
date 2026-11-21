@@ -93,7 +93,6 @@ struct ReleaseMetadataTrackColumns {
     static let length: CGFloat = 88
     /// The board's column gap, which no space token names.
     static let spacing: CGFloat = 10
-    static let rowPadding: CGFloat = 0
 
     private static let floorSource: CGFloat = 160
     private static let floorTitle: CGFloat = 120
@@ -102,7 +101,7 @@ struct ReleaseMetadataTrackColumns {
     private static let shareTitle: CGFloat = 1
     private static let shareArtist: CGFloat = 1
 
-    private static let chrome: CGFloat = rowPadding * 2 + spacing * 4
+    private static let chrome: CGFloat = spacing * 4
     private static let rigid: CGFloat = track + length
 
     static let minimumTableWidth: CGFloat =
@@ -117,10 +116,11 @@ struct ReleaseMetadataTrackColumns {
             (share: shareTitle, floor: floorTitle),
             (share: shareArtist, floor: floorArtist),
         ]
-        var widths = [CGFloat?](repeating: nil, count: columns.count)
+        var widths = columns.map(\.floor)
+        var settled = Set<Int>()
         var free = width - rigid - chrome
-        while true {
-            let open = columns.indices.filter { widths[$0] == nil }
+        while settled.count < columns.count {
+            let open = columns.indices.filter { !settled.contains($0) }
             let shares = open.reduce(0) { $0 + columns[$1].share }
             let clamped = open.filter {
                 free * columns[$0].share / shares < columns[$0].floor
@@ -132,15 +132,11 @@ struct ReleaseMetadataTrackColumns {
                 break
             }
             for index in clamped {
-                widths[index] = columns[index].floor
+                settled.insert(index)
                 free -= columns[index].floor
             }
         }
-        return Self(
-            source: widths[0] ?? floorSource,
-            title: widths[1] ?? floorTitle,
-            artist: widths[2] ?? floorArtist
-        )
+        return Self(source: widths[0], title: widths[1], artist: widths[2])
     }
 }
 
