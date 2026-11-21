@@ -176,12 +176,12 @@ the rating and macOS shows it after the ⋯ button (decisions #1219 and #1233). 
 release, wherever bae names a release under its album (decision #1230):
 
 - The edition line holds what is printed on the release and what a person looks
-  up: its own year, its country, then each label with the catalog numbers it
-  gives the pressing, such as `2001 · US · Harbor Records · HR-1042`. Where
+  up: its own year, each label with the catalog numbers it gives the pressing,
+  then its country, such as `2001 · Harbor Records · HR-1042 · US`. Where
   the album's year shows above the release lines, as on the album page, the
   edition line leaves out a year that matches it: the 1992 original of a 1992
-  album reads `US · Harbor Records · HR-1042` there, and
-  `1992 · US · Harbor Records · HR-1042` in a pressing row. A country shows in the short form
+  album reads `Harbor Records · HR-1042 · US` there, and
+  `1992 · Harbor Records · HR-1042 · US` in a pressing row. A country shows in the short form
   the person's language commonly uses where one exists (US, UK, EE. UU. in
   Spanish) and by its full name otherwise.
 - The copy line holds what the person has: the media and details, then the
@@ -1730,7 +1730,7 @@ row still applies its lead record alone. An album's card lists every title,
 every artist and every label its records state, each once, `Low Tide Hours /
 Low Tide Hours (Remastered)`: titles, artists and labels that differ only in
 case, accents or punctuation are one. A pressing row shows the release lines
-(§2.1): the edition line `1992 · US · Harbor Records · HR-1042`, then the copy
+(§2.1): the edition line `1992 · Harbor Records · HR-1042 · US`, then the copy
 line `CD`. A row whose lead record names a pressing the library already holds shows dimmed and marked In library, on every list of cards (a
 verdict's, a ledger cell's, a typed search's), and the mark comes and goes as
 the library gains and loses the release.
