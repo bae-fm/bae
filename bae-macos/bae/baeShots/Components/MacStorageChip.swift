@@ -37,6 +37,9 @@ extension ShotScene {
         storageChip("mac.component.storage-chip.queued-to-move-to-this-mac") {
             statusChip(.movingToThisDevice(step: .queued))
         },
+        storageChip("mac.component.storage-chip.upload-blocked") {
+            queuedUploadChip()
+        },
     ]
 
     private static let chipUploadingId = "rel-chip-upload"

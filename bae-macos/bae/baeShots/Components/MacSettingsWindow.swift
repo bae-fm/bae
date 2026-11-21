@@ -41,6 +41,35 @@ extension ShotScene {
                 SettingsWindowShot(shown: .fixtureOffline, page: libraryPane())
             )
         },
+        ShotScene(
+            id: "mac.component.settings-window.in-front",
+            size: settingsWindowSize,
+            frame: .window(title: "Settings", titleBar: .hidden)
+        ) {
+            ShotStage(
+                SettingsWindowShot(page: libraryPane())
+            )
+        },
+        ShotScene(
+            id: "mac.component.settings-window.a-pane-with-a-danger-status",
+            size: settingsWindowSize,
+            frame: .window(title: "Settings", titleBar: .hidden)
+        ) {
+            ShotStage(
+                SettingsWindowShot(
+                    shown: BridgeSyncShown(
+                        status: .offline,
+                        statusKey: "core.sync.offline",
+                        shortStatusKey: "core.sync.offline",
+                        tone: .danger,
+                        cause: nil,
+                        fix: nil,
+                        lastSynced: Date(timeIntervalSinceNow: -2 * 3_600)
+                    ),
+                    page: libraryPane()
+                )
+            )
+        },
     ]
 
     private static let settingsWindowSize = CGSize(width: 690, height: 600)

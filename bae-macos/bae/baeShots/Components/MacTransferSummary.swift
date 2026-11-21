@@ -50,6 +50,34 @@ extension ShotScene {
                 )
             )
             .environment(DownloadStore())
-        }
+        },
+        component("mac.component.transfer-summary.pin", height: 110) {
+            MacTransferSummary(
+                kind: .pin,
+                counts: [
+                    PreviewData.transferCount(
+                        "core.queue.uploading",
+                        1,
+                        .moving
+                    ),
+                    PreviewData.transferCount(
+                        "core.queue.queued_to_upload",
+                        2,
+                        .waiting
+                    ),
+                    PreviewData.transferCount(
+                        "core.queue.stored",
+                        4,
+                        .done
+                    ),
+                ],
+                releaseId: "rel-summary",
+                moving: true,
+                onCancel: {}
+            )
+            .frame(width: 380, alignment: .leading)
+            .environment(DownloadStore())
+            .environment(OutboxStore(uploadsPaused: false))
+        },
     ]
 }

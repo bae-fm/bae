@@ -10,6 +10,21 @@ extension ShotScene {
             "mac.component.album-picker.library-album",
             libraryAlbum
         ),
+        albumPickerScene(
+            "mac.component.album-picker.open-on-a-library-album",
+            libraryAlbum,
+            open: true
+        ),
+        albumPickerScene(
+            "mac.component.album-picker.open-on-a-new-album",
+            .new,
+            open: true
+        ),
+        albumPickerScene(
+            "mac.component.album-picker.open-on-a-picked-album",
+            libraryAlbum,
+            open: true
+        ),
     ]
 
     /// The pop-up of `albumOptions` drawn open in place, its first line on

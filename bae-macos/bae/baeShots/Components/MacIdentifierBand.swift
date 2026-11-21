@@ -23,6 +23,14 @@ extension ShotScene {
             width: 300,
             height: 130
         ),
+        identifierBandScene(
+            "mac.component.identifier-band.left-out",
+            PreviewData.identifyRunBandBoard
+        ),
+        identifierBandScene(
+            "mac.component.identifier-band.struck",
+            PreviewData.identifyRunBandBoard
+        ),
     ]
 
     /// The run where Disc ID and barcode each wait on, or found nothing

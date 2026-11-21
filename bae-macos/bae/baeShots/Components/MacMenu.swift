@@ -15,6 +15,16 @@ extension ShotScene {
                 },
                 highlighted: 1
             )
-        }
+        },
+        component("mac.component.menu.runs-past-the-screen", height: 140) {
+            MacMenuInPlace(
+                {
+                    MacMenuItem("Off") {}
+                    MacMenuItem("Only me", checked: true) {}
+                    MacMenuItem("Everyone") {}
+                },
+                highlighted: 1
+            )
+        },
     ]
 }

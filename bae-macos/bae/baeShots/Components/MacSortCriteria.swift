@@ -24,5 +24,18 @@ extension ShotScene {
                 ])
             )
         },
+        component("mac.component.sort-criteria.every-field", height: 60) {
+            MacSortCriteria(
+                criteria: .constant([
+                    BridgeSortCriterion(field: .artist, direction: .ascending),
+                    BridgeSortCriterion(field: .year, direction: .descending),
+                    BridgeSortCriterion(field: .title, direction: .ascending),
+                    BridgeSortCriterion(
+                        field: .dateAdded,
+                        direction: .descending
+                    ),
+                ])
+            )
+        },
     ]
 }

@@ -23,6 +23,11 @@ extension ShotScene {
             ended: .disc(disc: 2),
             countdownKey: "core.playback.pause.disc_ended.countdown"
         ),
+        sidePause(
+            "mac.component.side-pause.box-cleared",
+            ended: .sided(sideLetter: "A"),
+            countdownKey: nil
+        ),
     ]
 
     private static func sidePause(

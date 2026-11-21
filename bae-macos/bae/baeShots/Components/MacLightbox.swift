@@ -10,12 +10,14 @@ extension ShotScene {
     static let macLightboxScenes: [ShotScene] = [
         lightbox("mac.component.lightbox.resting"),
         lightbox("mac.component.lightbox.browse", browse: true),
+        lightbox("mac.component.lightbox.loading", state: .loading),
         lightbox("mac.component.lightbox.failed", state: .failed),
+        lightbox("mac.component.lightbox.one-image", single: true),
     ]
 
     /// What a lightbox shows of its image.
     private enum LightboxImageState {
-        case shown, failed
+        case shown, loading, failed
     }
 
     /// A store that gives the first image no bytes when it `failed`, and
@@ -30,6 +32,9 @@ extension ShotScene {
                     switch state {
                     case .shown:
                         return PreviewData.previewArtData(ref.id)
+                    case .loading:
+                        try? await Task.sleep(for: .seconds(3_600))
+                        return nil
                     case .failed:
                         return nil
                     }
@@ -42,7 +47,8 @@ extension ShotScene {
     private static func lightbox(
         _ id: String,
         state: LightboxImageState = .shown,
-        browse: Bool = false
+        browse: Bool = false,
+        single: Bool = false
     ) -> ShotScene {
         ShotScene(
             id: id,
@@ -53,12 +59,14 @@ extension ShotScene {
             let items = lightboxItems()
             let view = MacLightbox(
                 place: LightboxPlace(
-                    items: items,
+                    items: single ? [items[0]] : items,
                     current: items[0],
-                    neighbors: LightboxNeighbors(
-                        previous: items[3].id,
-                        next: items[1].id
-                    )
+                    neighbors: single
+                        ? nil
+                        : LightboxNeighbors(
+                            previous: items[3].id,
+                            next: items[1].id
+                        )
                 ),
                 load: load,
                 onSelect: { _ in },
@@ -70,6 +78,11 @@ extension ShotScene {
             case .shown:
                 return ShotStage(view, images: images) {
                     load.phase.image != nil
+                }
+            case .loading:
+                return ShotStage(view, images: images) {
+                    if case .loading = load.phase { return true }
+                    return false
                 }
             case .failed:
                 return ShotStage(view, images: images) {

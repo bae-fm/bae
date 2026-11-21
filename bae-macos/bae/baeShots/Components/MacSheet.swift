@@ -35,6 +35,20 @@ extension ShotScene {
                 },
                 over: Rectangle().fill(Theme.background)
             )
-        }
+        },
+        component("mac.component.sheet.without-scrim", width: 600, height: 240)
+        {
+            MacSheet("Set up sync", width: 460) {
+                Text(verbatim: "Content")
+                    .foregroundStyle(Theme.macTextSecondary)
+                    .padding(ThemeSpace.group)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } footer: {
+                MacSheetFooter {
+                    Button("Cancel") {}
+                    Button("Set up") {}.buttonStyle(PrimaryButtonStyle())
+                }
+            }
+        },
     ]
 }

@@ -17,6 +17,22 @@ extension ShotScene {
             "mac.component.album-artist-field.no-artist",
             artists: nil
         ),
+        albumArtistFieldScene(
+            "mac.component.album-artist-field.secondary",
+            artists: PreviewData.boardLibraryArtists("Mara Quill")
+        ),
+        albumArtistFieldScene(
+            "mac.component.album-artist-field.column",
+            artists: PreviewData.boardLibraryArtists("Mara Quill")
+        ),
+        albumArtistFieldScene(
+            "mac.component.album-artist-field.inherited",
+            artists: PreviewData.boardLibraryArtists("Mara Quill")
+        ),
+        albumArtistFieldScene(
+            "mac.component.album-artist-field.column-with-no-artist",
+            artists: nil
+        ),
     ]
 
     private static func albumArtistFieldScene(

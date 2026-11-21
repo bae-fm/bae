@@ -11,6 +11,7 @@ extension ShotScene {
         albumTileScene("mac.component.album-tile.selected", selected: true),
         albumTileScene("mac.component.album-tile.no-cover", covered: false),
         albumTileScene("mac.component.album-tile.no-year", year: nil),
+        albumTileScene("mac.component.album-tile.hover"),
     ]
 
     /// The cover a scene's albums show: placeholder art named after the album.

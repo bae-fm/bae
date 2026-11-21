@@ -21,6 +21,19 @@ extension ShotScene {
             tab: .appearance,
             shown: .fixtureOffline
         ),
+        sidebar(
+            "mac.component.settings-sidebar.status-tone-danger",
+            tab: .library,
+            shown: BridgeSyncShown(
+                status: .offline,
+                statusKey: "core.sync.offline",
+                shortStatusKey: "core.sync.offline",
+                tone: .danger,
+                cause: nil,
+                fix: nil,
+                lastSynced: Date(timeIntervalSinceNow: -2 * 3_600)
+            )
+        ),
     ]
 
     private static func sidebar(

@@ -1,3 +1,4 @@
+import AVFoundation
 import BaeKit
 import SwiftUI
 
@@ -11,6 +12,15 @@ extension ShotScene {
         qrScanner("mac.component.qr-scanner.starting", .requesting),
         qrScanner("mac.component.qr-scanner.camera-access-off", .denied),
         qrScanner("mac.component.qr-scanner.no-camera", .unavailable),
+        qrScanner(
+            "mac.component.qr-scanner.camera",
+            .ready(
+                CameraCapture(
+                    session: AVCaptureSession(),
+                    output: AVCaptureVideoDataOutput()
+                )
+            )
+        ),
     ]
 
     private static func qrScanner(

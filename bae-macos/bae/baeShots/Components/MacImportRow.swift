@@ -13,7 +13,48 @@ extension ShotScene {
         ) {
             importStores(importRows())
                 .frame(width: 420, alignment: .leading)
-        }
+        },
+        importRowScene("mac.component.import-row.badge-tone-danger") {
+            importRow(
+                listRow(
+                    .untitled07,
+                    live: PreviewData.needsYou(.nothingToLookUp)
+                )
+            )
+        },
+        importRowScene("mac.component.import-row.grouped") {
+            MacImportRow(
+                row: lowTideRow(),
+                coverContent: lowTideRow().cover
+                    .map(
+                        ImageContent.init(bridge:)
+                    ),
+                isGroupMember: true
+            )
+        },
+        importRowScene("mac.component.import-row.selected") {
+            importRow(lowTideRow())
+        },
+        importRowScene("mac.component.import-row.identifying") {
+            importRow(
+                listRow(
+                    .smallHours,
+                    title: "Small Hours",
+                    artist: "Tomas Brell",
+                    live: PreviewData.triageLive(
+                        [.skip, .revealFolder],
+                        identifying: .queued,
+                        standing: .identifying
+                    )
+                )
+            )
+        },
+        importRowScene("mac.component.import-row.import-queued") {
+            importRow(northboundRow())
+        },
+        importRowScene("mac.component.import-row.uploading") {
+            importRow(northboundRow())
+        },
     ]
 
     /// A Found row of the import list, as the boards draw it.
@@ -45,6 +86,35 @@ extension ShotScene {
             record: "component-low-tide-hours",
             live: PreviewData.needsYou(.matches(count: 3))
         )
+    }
+
+    private static func northboundRow() -> BridgeTriageRow {
+        listRow(
+            .northbound,
+            title: "Northbound",
+            artist: "Mara Quill",
+            record: "component-northbound",
+            live: PreviewData.northboundImportingLive
+        )
+    }
+
+    /// One row of the import list in the preview's 420pt column.
+    private static func importRowScene(
+        _ id: String,
+        @ViewBuilder row: @escaping @MainActor () -> some View
+    ) -> ShotScene {
+        component(
+            id,
+            width: 420,
+            height: 70,
+            images: PreviewData.artImageStore()
+        ) {
+            importStores(
+                row()
+                    .environment(\.importPercents, rowPercents())
+                    .frame(width: 420, alignment: .leading)
+            )
+        }
     }
 
     private static func importRow(_ row: BridgeTriageRow) -> some View {

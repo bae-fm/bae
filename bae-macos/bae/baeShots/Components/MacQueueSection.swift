@@ -38,5 +38,40 @@ extension ShotScene {
             )
             .frame(width: 380, alignment: .leading)
         },
+        component("mac.component.queue-section.without-clear", height: 60) {
+            MacQueueSection(
+                title: "Up next",
+                kind: .lane(MacQueueSection.Lane())
+            )
+            .frame(width: 380, alignment: .leading)
+        },
+        component("mac.component.queue-section.hang", height: 60) {
+            MacQueueSection(
+                title: "Up next",
+                kind: .lane(
+                    MacQueueSection.Lane(
+                        clear: MacQueueSection.Clear(
+                            label: "Clear up next",
+                            action: {}
+                        )
+                    )
+                )
+            )
+            .frame(width: 380, alignment: .leading)
+        },
+        component("mac.component.queue-section.wide", height: 60) {
+            MacQueueSection(
+                title: "Up next",
+                kind: .lane(
+                    MacQueueSection.Lane(
+                        clear: MacQueueSection.Clear(
+                            label: "Clear up next",
+                            action: {}
+                        )
+                    )
+                )
+            )
+            .frame(width: 380, alignment: .leading)
+        },
     ]
 }

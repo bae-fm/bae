@@ -37,6 +37,28 @@ extension ShotScene {
                 .padding(.top, 40 - 6 - 24)
             }
         },
+        component("mac.component.pop-up-button.menu-inside", height: 130) {
+            let options: [MacPopUpEntry<String>] = [
+                .option(MacPopUpOption(verbatim: "Off", value: "Off")),
+                .option(MacPopUpOption(verbatim: "Only me", value: "Only me")),
+                .option(
+                    MacPopUpOption(verbatim: "Everyone", value: "Everyone")
+                ),
+            ]
+            let menu = MacMenu(options, selection: "Only me", select: { _ in })
+            ZStack(alignment: .topLeading) {
+                popUp()
+                    .padding(.leading, 40)
+                    .padding(.top, 40)
+                MacMenuInPlace(
+                    { menu.entries },
+                    highlighted: menu.chosen,
+                    isPopUp: true
+                )
+                .padding(.leading, 40 - 31)
+                .padding(.top, 40 - 6 - 24)
+            }
+        },
     ]
 
     private static func popUp() -> some View {

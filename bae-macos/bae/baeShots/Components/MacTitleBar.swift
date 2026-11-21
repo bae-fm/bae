@@ -24,6 +24,12 @@ extension ShotScene {
             section: .library,
             activity: pausedActivity
         ),
+        titleBar(
+            "mac.component.title-bar.searching",
+            section: .library,
+            search: "harbor"
+        ),
+        titleBar("mac.component.title-bar.picture", section: .library),
     ]
 
     /// A store whose main window shows `section`.
@@ -37,13 +43,14 @@ extension ShotScene {
     private static func titleBar(
         _ id: String,
         section: MainSection,
-        activity: BridgeSyncActivity? = nil
+        activity: BridgeSyncActivity? = nil,
+        search: String = ""
     ) -> ShotScene {
         component(id, width: 1_100, height: 56) {
             let uiStore = storeShowing(section)
             let backing = boardLibraryBacking(uiStore: uiStore)
             MacTitleBar(
-                searchText: .constant(""),
+                searchText: .constant(search),
                 onSearchFieldFrame: { _ in }
             )
             .environment(uiStore)

@@ -20,6 +20,25 @@ extension ShotScene {
             cause: .changesStayOnDevice
         ),
         syncStatus(
+            "mac.component.sync-status.countdown",
+            height: 170,
+            cause: .message(
+                message: BridgeMessage(
+                    key: "core.sync.cause.provider_wait",
+                    args: [BridgeMessageArg(name: "provider", value: "Dropbox")]
+                ),
+                countdown: BridgeCountdown(
+                    key: "core.sync.cause.provider_wait.countdown",
+                    until: Date(timeIntervalSinceNow: 42)
+                )
+            )
+        ),
+        syncStatus(
+            "mac.component.sync-status.tone-success",
+            height: 100,
+            tone: .success
+        ),
+        syncStatus(
             "mac.component.sync-status.fix",
             height: 150,
             fix: .enterAccessKey

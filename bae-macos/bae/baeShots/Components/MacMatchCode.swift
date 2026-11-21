@@ -18,5 +18,12 @@ extension ShotScene {
         component("mac.component.match-code.alone", height: 70) {
             MacMatchCode(code: "412 778")
         },
+        component("mac.component.match-code.dialog", height: 110) {
+            MacMatchCode(
+                code: "412 778",
+                waiting: "Waiting for your other device…"
+            )
+            .frame(width: 380)
+        },
     ]
 }

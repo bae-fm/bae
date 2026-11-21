@@ -42,6 +42,16 @@ extension ShotScene {
             )
         ),
         releaseFieldsScene("mac.component.release-fields.empty", blankEdit()),
+        releaseFieldsScene(
+            "mac.component.release-fields.country-menu-open",
+            release(
+                pressing: pressing(
+                    barcode: "0 41234 56789 2",
+                    packaging: .jewelCase,
+                    details: [.remastered]
+                )
+            )
+        ),
     ]
 
     /// The release Low Tide Hours by Mara Quill with the pressing `pressing`.

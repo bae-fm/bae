@@ -22,6 +22,12 @@ extension ShotScene {
             secretKey: "abcdefghijkl",
             refused: true
         ),
+        s3KeyFields(
+            "mac.component.s3-key-fields.id-focused",
+            height: 130,
+            accessKey: "AKIA4EXAMPLENEW",
+            secretKey: "abcdefghijkl"
+        ),
     ]
 
     private static func s3KeyFields(

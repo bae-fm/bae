@@ -38,6 +38,11 @@ extension ShotScene {
                 items: []
             )
         ),
+        sidebarScene(
+            "mac.component.import-sidebar.narrow",
+            ColumnState(),
+            width: 300
+        ),
     ]
 
     /// The column as the app builds it: the container over a store and a
@@ -78,17 +83,18 @@ extension ShotScene {
 
     private static func sidebarScene(
         _ id: String,
-        _ state: ColumnState
+        _ state: ColumnState,
+        width: CGFloat = 420
     ) -> ShotScene {
         component(
             id,
-            width: 420,
+            width: width,
             height: 360,
             images: PreviewData.artImageStore()
         ) {
             importStores(
                 column(state)
-                    .frame(width: 420, height: 360, alignment: .top)
+                    .frame(width: width, height: 360, alignment: .top)
                     .background(Theme.surface)
             )
         }

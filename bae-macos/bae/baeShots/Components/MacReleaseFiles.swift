@@ -38,6 +38,14 @@ extension ShotScene {
             height: 80,
             rows: [fileRow("rip.log", size: 4_000, role: .document)]
         ),
+        releaseFilesScene(
+            "mac.component.release-files.image-bae-cannot-show",
+            height: 120,
+            rows: [
+                fileRow("rip.log", size: 4_000, role: .document),
+                fileRow("scan.bmp", size: 2_400_000, role: .other),
+            ]
+        ),
     ]
 
     private static func fileRow(

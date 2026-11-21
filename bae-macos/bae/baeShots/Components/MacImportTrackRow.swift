@@ -57,6 +57,16 @@ extension ShotScene {
                 seconds: 320
             )
         ),
+        trackRowScene(
+            "mac.component.import-track-row.no-artist",
+            mappingTrack(
+                file: "03 Salt Road.flac",
+                position: "3",
+                title: "Salt Road",
+                seconds: 320,
+                artists: .explicit(assignments: [])
+            )
+        ),
     ]
 
     /// The track `seconds` long that a CUE sheet carves out of its image,

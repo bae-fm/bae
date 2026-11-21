@@ -14,5 +14,9 @@ extension ShotScene {
             MacRecordLinks(records: PreviewData.releaseRecordsEveryCatalog)
                 .frame(width: 300, alignment: .leading)
         },
+        component("mac.component.record-links.buttons", height: 50) {
+            MacRecordLinks(records: PreviewData.releaseRecordsPair)
+                .frame(width: 380, alignment: .leading)
+        },
     ]
 }

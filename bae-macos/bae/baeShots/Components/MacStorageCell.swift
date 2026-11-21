@@ -38,6 +38,64 @@ extension ShotScene {
             ),
             .storage
         ),
+        storageCell(
+            "mac.component.storage-cell.local",
+            glassHarborRow(1, state: .onOneDevice, status: .onOneDevice),
+            .storage
+        ),
+        storageCell(
+            "mac.component.storage-cell.cloud",
+            glassHarborRow(1),
+            .storage
+        ),
+        storageCell(
+            "mac.component.storage-cell.pinning",
+            glassHarborRow(1, status: .pinning(step: .running)),
+            .storage
+        ),
+        storageCell(
+            "mac.component.storage-cell.detaching",
+            glassHarborRow(1, status: .movingToThisDevice(step: .running)),
+            .storage
+        ),
+        storageCell(
+            "mac.component.storage-cell.queued",
+            glassHarborRow(1, status: .pinning(step: .queued)),
+            .storage
+        ),
+        storageCell(
+            "mac.component.storage-cell.upload-queued",
+            fieldRecordingsRow(1),
+            .storage
+        ),
+        storageCell(
+            "mac.component.storage-cell.move-to-this-device-queued",
+            glassHarborRow(1, status: .movingToThisDevice(step: .queued)),
+            .storage
+        ),
+        storageCell(
+            "mac.component.storage-cell.upload-blocked",
+            fieldRecordingsRow(1),
+            .storage
+        ),
+        storageCell(
+            "mac.component.storage-cell.move-failed",
+            glassHarborRow(
+                1,
+                status: .moveFailed(fileName: "01 Harbor Lights.flac")
+            ),
+            .storage
+        ),
+        storageCell(
+            "mac.component.storage-cell.move-to-this-device-failed",
+            glassHarborRow(
+                1,
+                status: .moveToThisDeviceFailed(
+                    error: "The network connection was lost."
+                )
+            ),
+            .storage
+        ),
     ]
 
     /// `MacStorageCell`: `row`'s cell in `column`, `width` points wide, over

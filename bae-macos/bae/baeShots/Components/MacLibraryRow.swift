@@ -69,6 +69,11 @@ extension ShotScene {
             subtitle: "Arranger",
             credit: true
         ),
+        libraryRow(
+            "mac.component.library-row.dropping",
+            title: "Low Tide Hours",
+            subtitle: "Mara Quill (1992)"
+        ),
     ]
 
     /// One state of `MacLibraryRow`, in the preview's 380pt column.

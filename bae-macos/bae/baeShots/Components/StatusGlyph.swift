@@ -14,6 +14,34 @@ extension ShotScene {
                 StatusGlyph(.danger)
             }
             .font(.system(size: 17))
-        }
+        },
+        component("mac.component.status-glyph.inline", height: 60) {
+            HStack(spacing: 16) {
+                StatusGlyph(.info)
+                StatusGlyph(.success)
+                StatusGlyph(.warning)
+                StatusGlyph(.danger)
+            }
+            .font(.system(size: 17))
+        },
+        component("mac.component.status-glyph.muted", height: 60) {
+            HStack(spacing: 16) {
+                StatusGlyph(.info)
+                StatusGlyph(.success)
+                StatusGlyph(.warning)
+                StatusGlyph(.danger)
+            }
+            .font(.system(size: 17))
+            .foregroundStyle(Theme.macTextSecondary)
+        },
+        component("mac.component.status-glyph.android", height: 60) {
+            HStack(spacing: 16) {
+                StatusGlyph(.info)
+                StatusGlyph(.success)
+                StatusGlyph(.warning)
+                StatusGlyph(.danger)
+            }
+            .font(.system(size: 17))
+        },
     ]
 }

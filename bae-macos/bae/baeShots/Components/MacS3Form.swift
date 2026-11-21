@@ -11,6 +11,8 @@ extension ShotScene {
         s3Form("mac.component.s3-form.region", failing: .regionMismatch),
         s3Form("mac.component.s3-form.bucket", failing: .containerNotFound),
         s3Form("mac.component.s3-form.occupied", failing: .ownLocationRequired),
+        s3Form("mac.component.s3-form.key", failing: .authentication),
+        s3Form("mac.component.s3-form.denied", failing: .permissionDenied),
     ]
 
     private static func s3Form(

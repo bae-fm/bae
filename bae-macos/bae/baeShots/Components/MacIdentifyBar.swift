@@ -26,6 +26,9 @@ extension ShotScene {
             )
         ),
         identifyBarScene("mac.component.identify-bar.nothing-to-import"),
+        identifyBarScene("mac.component.identify-bar.save"),
+        identifyBarScene("mac.component.identify-bar.save-changed"),
+        identifyBarScene("mac.component.identify-bar.save-reading"),
     ]
 
     private static func commitControls(
