@@ -71,8 +71,9 @@ abstract class BoardShot {
         root.captureRoboImage(File(directory, "$board@android.png").path)
         val embedded =
             EmbeddedViews.of(compose.activity.window.decorView, compose.activity.resources.displayMetrics.density)
+        val unmerged = compose.onRoot(useUnmergedTree = true).fetchSemanticsNode()
         File(directory, "$board@android.json")
-            .writeText(ElementList.of(board, root.fetchSemanticsNode(), embedded).toString(JSON_INDENT) + "\n")
+            .writeText(ElementList.of(board, root.fetchSemanticsNode(), embedded, unmerged).toString(JSON_INDENT) + "\n")
     }
 }
 

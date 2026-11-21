@@ -1,6 +1,7 @@
 package fm.bae.app.shots
 
 import android.graphics.Paint
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.semantics.Role
@@ -17,7 +18,8 @@ import kotlin.math.roundToInt
 /**
  * The element list a shot writes beside its PNG as `<board>@android.json`: what Compose's merged
  * semantics tree holds, in the tree's order, in dp from the shot's top-left. This is the only
- * writer; every shot goes through [of].
+ * writer; every shot goes through [of]. A merged node of several texts is boxed from the texts the unmerged tree
+ * holds, since the merged node keeps only the first text's layout.
  */
 internal object ElementList {
     private const val PLATFORM = "android"
@@ -36,6 +38,7 @@ internal object ElementList {
         board: String,
         root: SemanticsNode,
         embedded: List<JSONObject> = emptyList(),
+        unmerged: SemanticsNode = root,
     ): JSONObject {
         val density = root.layoutInfo.density.density
         val listed = mutableListOf<Listed>()
@@ -47,7 +50,7 @@ internal object ElementList {
             node: SemanticsNode,
             parent: Listed?,
         ) {
-            val here = Listed(element(node, density), parent)
+            val here = Listed(element(node, density, unmerged), parent)
             listed.add(here)
             // The list visits a node's children in traversal order, the order TalkBack reads them in, not the order
             // Compose draws them in.
@@ -132,6 +135,7 @@ internal object ElementList {
     private fun element(
         node: SemanticsNode,
         density: Float,
+        unmerged: SemanticsNode,
     ): JSONObject {
         val config = node.config
         val role = config.getOrNull(SemanticsProperties.Role)
@@ -141,9 +145,7 @@ internal object ElementList {
         val kind = kind(config, role, editable != null, texts != null, description != null && node.children.isEmpty())
         // The box the node draws, not the 48 dp touch target Compose grows around a smaller one: a board draws the
         // box, and TouchTargetTest checks the touch target.
-        val bounds = node.boundsInRoot
-        val (top, height) =
-            if (kind == "text") contentBox(config, bounds.top, bounds.height) else bounds.top to bounds.height
+        val bounds = if (kind == "text") textBox(node, unmerged) else node.boundsInRoot
         val out =
             JSONObject()
                 .put("role", kind)
@@ -155,9 +157,9 @@ internal object ElementList {
                     "bounds",
                     JSONObject()
                         .put("x", dp(bounds.left, density))
-                        .put("y", dp(top, density))
+                        .put("y", dp(bounds.top, density))
                         .put("width", dp(bounds.width, density))
-                        .put("height", dp(height, density)),
+                        .put("height", dp(bounds.height, density)),
                 ).put("enabled", !config.contains(SemanticsProperties.Disabled))
                 .put("selected", orNull(config.getOrNull(SemanticsProperties.Selected)))
         config.getOrNull(SemanticsProperties.Focused)?.let { out.put("focused", it) }
@@ -166,25 +168,56 @@ internal object ElementList {
     }
 
     /**
-     * A text node's vertical box as a browser reports a text's: from the first line's ascent to the last line's
-     * descent, inside the line boxes whose height only spaces the lines. Compose's node box is the line boxes.
+     * A text node's box as a browser reports a text's: vertically from the first line's ascent to the last line's
+     * descent, inside the line boxes whose height only spaces the lines. Compose's node box is the line boxes. A node
+     * that merges several texts (a clickable row of a name and a kind) is the box around those texts, as the board's
+     * block of them is, not the row that holds them.
      */
-    private fun contentBox(
+    private fun textBox(
+        node: SemanticsNode,
+        unmerged: SemanticsNode,
+    ): Rect {
+        val words = node.config.getOrNull(SemanticsProperties.Text)?.joinToString(" ") { it.text }
+        val parts = textsUnder(find(unmerged, node.id) ?: node)
+        val holders = if (parts.joinToString(" ") { it.first } == words) parts.map { it.second } else listOf(node)
+        val boxes = holders.mapNotNull { text -> glyphBox(text.config, text.boundsInRoot)?.let { text.boundsInRoot to it } }
+        if (boxes.isEmpty()) return node.boundsInRoot
+        val box = if (holders.size > 1) boxes.map { it.first }.reduce { all, next -> all.expandedTo(next) } else node.boundsInRoot
+        return Rect(box.left, boxes.minOf { it.second.first }, box.right, boxes.maxOf { it.second.second })
+    }
+
+    private fun Rect.expandedTo(other: Rect) = Rect(minOf(left, other.left), top, maxOf(right, other.right), bottom)
+
+    /** The node of [id] at or under [from]. */
+    private fun find(
+        from: SemanticsNode,
+        id: Int,
+    ): SemanticsNode? = if (from.id == id) from else from.children.firstNotNullOfOrNull { find(it, id) }
+
+    /** The texts at or under [from] in the tree's order, each with the node that holds it. */
+    private fun textsUnder(from: SemanticsNode): List<Pair<String, SemanticsNode>> {
+        val own = from.config.getOrNull(SemanticsProperties.Text)?.joinToString(" ") { it.text }
+        val held = if (own == null) emptyList() else listOf(own to from)
+        return held + from.children.flatMap(::textsUnder)
+    }
+
+    /** From the first line's ascent to the last line's descent of the text [config] holds, from the box [bounds]. */
+    private fun glyphBox(
         config: SemanticsConfiguration,
-        top: Float,
-        height: Float,
-    ): Pair<Float, Float> {
+        bounds: Rect,
+    ): Pair<Float, Float>? {
+        val top = bounds.top
         val results = mutableListOf<TextLayoutResult>()
         val read = config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action
-        if (read == null || !read(results) || results.isEmpty()) return top to height
+        if (read == null || !read(results) || results.isEmpty()) return null
         val layout = results.first()
         val fontSize = layout.layoutInput.style.fontSize
-        if (!fontSize.isSp) return top to height
+        if (!fontSize.isSp) return null
         val size = with(layout.layoutInput.density) { fontSize.toPx() }
         val metrics = Paint().apply { textSize = size }.fontMetrics
-        val first = layout.getLineBaseline(0) + metrics.ascent
-        val last = layout.getLineBaseline(layout.lineCount - 1) + metrics.descent
-        return top + first to last - first
+        val first = top + layout.getLineBaseline(0) + metrics.ascent
+        val last = top + layout.getLineBaseline(layout.lineCount - 1) + metrics.descent
+        return first to last
     }
 
     /** JSON null for an absent value: [JSONObject.put] would drop the key. */
