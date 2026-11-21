@@ -11,7 +11,7 @@ struct MoveToCloudConfirmSheet: View {
             Text("Move to cloud")
                 .themeText(.heading)
             MacSheetFooter {
-                Button("Cancel") { onCancel() }
+                MacButton("Cancel") { onCancel() }
                     .keyboardShortcut(.cancelAction)
                 MacButton("Move to cloud", kind: .primary) { onConfirm() }
                     .keyboardShortcut(.defaultAction)

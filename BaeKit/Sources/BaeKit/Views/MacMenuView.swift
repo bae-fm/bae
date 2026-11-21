@@ -80,7 +80,7 @@
             // Hidden only in a panel: an explicit `accessibilityHidden(false)`
             // would show the marks each line hides too.
             if readsLines {
-                face
+                face.accessibilityElement(children: .contain)
             }
             else {
                 face.accessibilityHidden(true)

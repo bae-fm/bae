@@ -85,7 +85,7 @@ struct BootstrapCodeView: View {
                 .padding(.bottom, ThemeSpace.group)
             }
             HStack(spacing: ThemeSpace.group) {
-                Button(form.isRunning ? "Cancel" : "Back") {
+                MacButton(form.isRunning ? "Cancel" : "Back") {
                     if form.isRunning {
                         form.cancel()
                     }
@@ -93,7 +93,6 @@ struct BootstrapCodeView: View {
                         onBack()
                     }
                 }
-                .buttonStyle(.accentBordered)
                 MacButton(primaryTitle, kind: .primary) { form.submit() }
                     .disabled(!form.canContinue)
                     .keyboardShortcut(.defaultAction)
@@ -151,7 +150,7 @@ struct BootstrapCodeView: View {
         else {
             MacSection("Code") {
                 CodeField(form: form)
-                Button("Scan") { showScanner = true }
+                MacButton("Scan") { showScanner = true }
                 if let decodeError = form.decodeError {
                     MacNotice(error: decodeError)
                 }

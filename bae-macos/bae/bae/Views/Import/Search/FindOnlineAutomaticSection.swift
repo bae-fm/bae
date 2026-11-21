@@ -84,7 +84,7 @@ struct FindOnlineAutomaticSection: View {
                 Text("Queued to be identified")
                     .foregroundStyle(Theme.macTextSecondary)
                 if let onCancelIdentification {
-                    Button("Cancel", action: onCancelIdentification)
+                    MacButton("Cancel", action: onCancelIdentification)
                         .controlSize(.small)
                 }
             }

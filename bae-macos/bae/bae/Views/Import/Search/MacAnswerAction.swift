@@ -11,8 +11,7 @@ struct MacAnswerAction: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.line) {
-            Button(title, action: action)
-                .buttonStyle(.accentBordered)
+            MacButton(verbatim: title, action: action)
                 .controlSize(.small)
                 .disabled(off)
             Text(subtitle)

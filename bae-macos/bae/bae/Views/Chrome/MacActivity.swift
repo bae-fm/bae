@@ -48,8 +48,8 @@ struct MacActivity: View {
                 }
                 .padding(.top, Self.sectionGap)
                 if activity.hasTransferLine {
-                    Button(
-                        String(localized: "Open storage manager"),
+                    MacButton(
+                        verbatim: String(localized: "Open storage manager"),
                         action: onOpenStorageManager
                     )
                     .controlSize(.small)

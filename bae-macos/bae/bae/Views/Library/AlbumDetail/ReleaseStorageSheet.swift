@@ -84,7 +84,7 @@ struct ReleaseStorageSheet: View {
     var body: some View {
         VStack(spacing: 0) {
             MacModalHeader(title: "Storage") {
-                Button("Done") { onDone() }
+                MacButton("Done") { onDone() }
                     .keyboardShortcut(.cancelAction)
             }
             Divider()

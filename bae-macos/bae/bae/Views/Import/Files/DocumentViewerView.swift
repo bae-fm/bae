@@ -14,7 +14,7 @@ struct DocumentViewerView: View {
                     .themeText(.body)
                     .foregroundStyle(Theme.macTextSecondary)
                 Spacer()
-                Button("Done") { onClose() }
+                MacButton("Done") { onClose() }
                     .keyboardShortcut(.cancelAction)
             }
             .padding(.horizontal, ThemeSpace.edge)

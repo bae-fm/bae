@@ -33,7 +33,7 @@ struct ImportActivityIndicator: View {
                         .monospacedDigit()
                         .foregroundStyle(Theme.macTextSecondary)
                 }
-                Button("Cancel all") {
+                MacButton("Cancel all") {
                     detailsShown = false
                     onCancelAll()
                 }

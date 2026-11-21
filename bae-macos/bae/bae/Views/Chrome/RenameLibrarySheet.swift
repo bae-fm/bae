@@ -42,7 +42,7 @@ struct RenameLibrarySheet: View {
             }
         } footer: {
             MacSheetFooter {
-                Button("Cancel") { onCancel() }
+                MacButton("Cancel") { onCancel() }
                     .keyboardShortcut(.cancelAction)
                 MacButton("Rename", kind: .primary) { onCommit(state.newName) }
                     .keyboardShortcut(.defaultAction)

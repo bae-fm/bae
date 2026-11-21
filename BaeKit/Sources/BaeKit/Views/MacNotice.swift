@@ -193,10 +193,6 @@ public struct MacNotice: View {
         .notice(tone, look: look)
     }
 
-    /// The height of a button at the regular control size, design token
-    /// `size-control`: the box Details takes beside Retry.
-    private static let buttonHeight: CGFloat = 24
-
     /// The glyph is 1.19 times the notice's text, which the boards draw it at.
     private static var glyphFont: Font { glyphFont(scaledTo: .body) }
 
@@ -299,11 +295,9 @@ public struct MacNotice: View {
         HStack(spacing: ThemeSpace.related) {
             if let details, detailsOpening == .button {
                 if buttons == .below {
-                    // Under the words Details has the padding of the button
-                    // beside it, and pulls out by it so its text lines up with
-                    // the words above.
+                    // Under the words Details pulls out by its padding, so its
+                    // text lines up with the words above.
                     detailsButton(details)
-                        .padding(.horizontal, ThemeSpace.group)
                         .padding(.leading, -ThemeSpace.group)
                 }
                 else {
@@ -410,9 +404,7 @@ extension MacNotice {
             }
             HStack(spacing: ThemeSpace.group) {
                 if let details {
-                    // Details has the padding and height of the button beside
-                    // it, as the boards draw its box.
-                    detailsButton(details, boxed: true)
+                    detailsButton(details)
                 }
                 if let secondary {
                     actionButton(secondary)
@@ -439,36 +431,15 @@ extension MacNotice {
     /// Details opens an alert, which only AppKit has; the iOS app has no
     /// screens that show a notice.
     @ViewBuilder
-    private func detailsButton(_ details: ErrorDetails, boxed: Bool = false)
-        -> some View
-    {
+    private func detailsButton(_ details: ErrorDetails) -> some View {
         #if canImport(AppKit)
-            if boxed {
-                // The button's own box, which is what the accessibility frame
-                // and the click reach: the borderless style measures the words
-                // alone, so this one draws no style of its own.
-                colouredButton(
-                    Button {
-                        showErrorDetails(details)
-                    } label: {
-                        Text("Details")
-                            .padding(.horizontal, ThemeSpace.group)
-                            .frame(height: Self.buttonHeight)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.accentPlain),
-                    borderless: true
-                )
+            MacButton("Details", kind: .borderless) {
+                showErrorDetails(details)
             }
-            else {
-                MacButton("Details", kind: .borderless) {
-                    showErrorDetails(details)
-                }
-                .muted(
-                    isMuted(borderless: true),
-                    onStage: look == .centeredOnStage
-                )
-            }
+            .muted(
+                isMuted(borderless: true),
+                onStage: look == .centeredOnStage
+            )
         #endif
     }
 
@@ -479,6 +450,7 @@ extension MacNotice {
             MacButton(kind: .secondary, action: perform) {
                 actionLabel(action)
             }
+            .tinted(look == .filled)
             .muted(
                 isMuted(borderless: false),
                 onStage: look == .centeredOnStage
@@ -500,6 +472,7 @@ extension MacNotice {
                 ) {
                     action.title
                 }
+                .tinted(look == .filled)
                 .muted(
                     isMuted(borderless: false),
                     onStage: look == .centeredOnStage
@@ -519,8 +492,7 @@ extension MacNotice {
                         action.title
                     }
                     .menuStyle(.button)
-                    .fixedSize(),
-                    borderless: false
+                    .fixedSize()
                 )
                 .disabled(action.isDisabled)
             #endif
@@ -565,14 +537,9 @@ extension MacNotice {
     /// A button that is not a component, in the colour a centred notice's
     /// words take.
     @ViewBuilder
-    private func colouredButton(_ button: some View, borderless: Bool)
-        -> some View
-    {
-        if let tone = centeredSecondary, isMuted(borderless: borderless) {
+    private func colouredButton(_ button: some View) -> some View {
+        if let tone = centeredSecondary, isMuted(borderless: false) {
             button.foregroundStyle(tone).tint(tone)
-        }
-        else if borderless {
-            button.foregroundStyle(Theme.accent).tint(Theme.accent)
         }
         else {
             button

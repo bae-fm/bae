@@ -19,7 +19,7 @@ struct MacScanCode: View {
             QRCode(text: qr)
                 .accessibilityLabel("QR code")
             HStack(spacing: ThemeSpace.related) {
-                Button("Copy code") {
+                MacButton("Copy code") {
                     SystemActions.copyToPasteboard(code)
                 }
                 ShareLink(item: code) {

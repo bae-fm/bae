@@ -30,7 +30,7 @@ struct MacArtistOtherNames: View {
                 TextField("Another name", text: $newName)
                     .boxedTextField()
                     .onSubmit(add)
-                Button("Add", action: add)
+                MacButton("Add", action: add)
                     .disabled(trimmedNewName.isEmpty)
             }
             .frame(maxWidth: 320, alignment: .leading)

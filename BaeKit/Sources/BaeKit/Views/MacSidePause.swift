@@ -82,8 +82,7 @@ private struct SidePausePromptCard: View {
 
             HStack(spacing: ThemeSpace.related) {
                 Spacer()
-                Button("Close") { answer(play: false) }
-                    .buttonStyle(.accentBordered)
+                MacButton("Close") { answer(play: false) }
                     .keyboardShortcut(.cancelAction)
 
                 MacButton("Play", kind: .primary) { answer(play: true) }

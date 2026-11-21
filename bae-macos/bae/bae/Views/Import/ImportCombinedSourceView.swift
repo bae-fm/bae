@@ -28,7 +28,7 @@ struct ImportCombinedSourceView: View {
                 Text("Source folders")
             }
             .fixedSize()
-            Button("Keep as separate releases", action: onSeparate)
+            MacButton("Keep as separate releases", action: onSeparate)
                 .disabled(!canSeparate)
         }
         .padding(ThemeSpace.edge)

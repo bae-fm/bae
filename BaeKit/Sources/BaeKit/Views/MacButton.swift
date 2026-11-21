@@ -11,6 +11,8 @@ public enum MacButtonKind: Sendable {
     /// Only its label, which the caller draws in its own look (a glyph, a
     /// heading with a chevron).
     case plain
+    /// A glyph alone: secondary text in a box as high as a regular button.
+    case icon
 }
 
 /// A macOS push button: `primary` for the action a screen is for, `secondary`
@@ -21,6 +23,7 @@ public struct MacButton<Label: View>: View {
     private let press: Press
     private let label: Label
     private var tone = Tone.inherited
+    private var isTinted = false
     private var controlSize: ControlSize?
 
     /// What a press does.
@@ -57,6 +60,21 @@ public struct MacButton<Label: View>: View {
         return copy
     }
 
+    /// A secondary button on a filled notice: its fill is the primary text
+    /// colour at 12%, so it reads on a notice of every tone.
+    public func tinted(_ isTinted: Bool = true) -> MacButton {
+        var copy = self
+        copy.isTinted = isTinted
+        return copy
+    }
+
+    /// Words in the danger colour, for a button that removes or discards.
+    public func destructive() -> MacButton {
+        var copy = self
+        copy.tone = .destructive
+        return copy
+    }
+
     /// Words in secondary text, for a button under quiet words: a failed
     /// view's centred notice. `onStage` takes the image viewer's stage text.
     public func muted(_ isMuted: Bool = true, onStage: Bool = false)
@@ -76,23 +94,42 @@ public struct MacButton<Label: View>: View {
 
     public var body: some View {
         drawn
-            .modifier(MacButtonLook(tone: tone))
             .modifier(MacButtonSize(size: controlSize))
+    }
+
+    /// The label in the colour the tone sets. The colour goes on the label,
+    /// because the kind's style sets its own colour around it.
+    private var words: some View {
+        iconOrLabel.modifier(MacButtonLook(tone: tone))
+    }
+
+    @ViewBuilder
+    private var iconOrLabel: some View {
+        if kind == .icon {
+            label.themeIcon(.small)
+                .foregroundStyle(Theme.macTextSecondary)
+                .frame(width: 24, height: 24)
+                .contentShape(Rectangle())
+        }
+        else {
+            label
+        }
     }
 
     @ViewBuilder
     private var drawn: some View {
         if case .action(let action) = press {
-            Button(action: action) { label }
-                .macButtonStyle(kind)
+            Button(action: action) { words }
+                .macButtonStyle(kind, tinted: isTinted)
         }
         #if canImport(AppKit)
             if case .menu(let content, let isOpen) = press {
                 MacMenuOpener(
                     kind: kind,
+                    tinted: isTinted,
                     content: content,
                     isOpen: isOpen,
-                    label: label
+                    label: words
                 )
             }
         #endif
@@ -107,6 +144,8 @@ private enum Tone {
     case neutral
     /// The accent.
     case accent
+    /// The danger colour.
+    case destructive
     /// Secondary text, or a stage's secondary text `onStage`.
     case muted(onStage: Bool)
 }
@@ -119,12 +158,14 @@ private struct MacButtonLook: ViewModifier {
         case .inherited:
             content
         case .neutral:
-            content.foregroundStyle(Theme.textPrimary).tint(Theme.textPrimary)
+            content.foregroundStyle(Theme.textPrimary)
         case .accent:
-            content.foregroundStyle(Theme.accent).tint(Theme.accent)
+            content.foregroundStyle(Theme.accent)
+        case .destructive:
+            content.foregroundStyle(Theme.danger)
         case .muted(let onStage):
             let color = onStage ? Theme.onFillSecondary : Theme.macTextSecondary
-            content.foregroundStyle(color).tint(color)
+            content.foregroundStyle(color)
         }
     }
 }
@@ -145,15 +186,17 @@ private struct MacButtonSize: ViewModifier {
 extension View {
     /// This button drawn as `kind` says.
     @ViewBuilder
-    func macButtonStyle(_ kind: MacButtonKind) -> some View {
+    func macButtonStyle(_ kind: MacButtonKind, tinted: Bool = false)
+        -> some View
+    {
         switch kind {
         case .primary:
-            buttonStyle(PrimaryButtonStyle())
+            buttonStyle(PrimaryButtonStyle().accentFocus())
         case .secondary:
-            buttonStyle(SecondaryButtonStyle().accentFocus())
+            buttonStyle(SecondaryButtonStyle(tinted: tinted).accentFocus())
         case .borderless:
-            buttonStyle(.accentBorderless)
-        case .plain:
+            buttonStyle(.macBorderless)
+        case .plain, .icon:
             buttonStyle(.accentPlain)
         }
     }

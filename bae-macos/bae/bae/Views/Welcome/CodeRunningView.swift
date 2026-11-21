@@ -19,7 +19,7 @@ struct CodeRunningView: View {
                 }
                 .frame(maxWidth: StepProgressLayout.width)
             }
-            Button("Cancel", action: onCancel)
+            MacButton("Cancel", action: onCancel)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

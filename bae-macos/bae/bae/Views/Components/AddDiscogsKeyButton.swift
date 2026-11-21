@@ -20,7 +20,7 @@ struct AddDiscogsKeyButton: View {
 
     var body: some View {
         if !configStore.config.discogsUsable {
-            Button(
+            MacButton(
                 "Add \(bridgeCatalogName(catalog: .discogs)) key…"
             ) {
                 Self.openKeySettings(

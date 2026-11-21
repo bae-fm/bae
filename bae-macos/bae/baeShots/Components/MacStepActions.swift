@@ -8,8 +8,8 @@ extension ShotScene {
     static let macStepActionsScenes: [ShotScene] = [
         component("mac.component.step-actions.two-buttons", height: 60) {
             MacStepActions {
-                Button("Cancel") {}
-                Button("Join") {}.buttonStyle(PrimaryButtonStyle())
+                MacButton("Cancel") {}
+                MacButton("Join", kind: .primary) {}
             }
             .frame(width: 380, alignment: .leading)
         }

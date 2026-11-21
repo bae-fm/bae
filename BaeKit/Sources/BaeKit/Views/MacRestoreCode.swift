@@ -6,9 +6,8 @@ import SwiftUI
 /// People instead.
 ///
 /// The screen holding the section owns `reveal`, opens it when the screen
-/// opens and closes it when the screen goes away: a row of a lazy list leaves
-/// and returns as it scrolls, so the section can't tell that apart from the
-/// screen closing.
+/// opens and closes it when the screen goes away: the section itself can't
+/// tell the screen closing from its own view leaving and returning.
 public struct MacRestoreCode: View {
     let reveal: RestoreCodeReveal
     /// Prints the code, given in groups of four; nil where the app can't.
@@ -88,9 +87,7 @@ public struct MacRestoreCode: View {
                 .accessibilityLabel("Restore code, partly hidden")
                 .accessibilityAddTraits(.isImage)
             }
-            // Borderless, so a list row holding the buttons sends each tap to
-            // the button under it.
-            MacButton(shown ? "Hide" : "Show", kind: .borderless) {
+            MacButton(shown ? "Hide" : "Show") {
                 if shown {
                     reveal.hide()
                 }
@@ -99,9 +96,9 @@ public struct MacRestoreCode: View {
                 }
             }
             if let onPrint {
-                MacButton("Print…", kind: .borderless) { onPrint(share.code) }
+                MacButton("Print…") { onPrint(share.code) }
             }
-            MacButton(kind: .borderless) {
+            MacButton(kind: .icon) {
                 Pasteboard.copy(share.code)
                 copied = true
             } label: {

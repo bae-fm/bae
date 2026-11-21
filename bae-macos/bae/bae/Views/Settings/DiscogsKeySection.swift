@@ -232,7 +232,7 @@ struct DiscogsSettingsContent: View {
                 label: String(localized: "API key"),
                 prompt: String(localized: "Your free Discogs key")
             )
-            Button("Save", action: onSave)
+            MacButton("Save", action: onSave)
                 .controlSize(.large)
                 .disabled(draft.isEmpty || isValidating)
         }

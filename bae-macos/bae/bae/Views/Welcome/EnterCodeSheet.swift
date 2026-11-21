@@ -43,7 +43,7 @@ struct EnterCodeSheet: View {
             }
         } footer: {
             MacSheetFooter {
-                Button("Cancel", action: onCancel)
+                MacButton("Cancel", action: onCancel)
                     .keyboardShortcut(.cancelAction)
                 if resumedJoin != nil {
                     MacButton("Join", kind: .primary) { form.start() }

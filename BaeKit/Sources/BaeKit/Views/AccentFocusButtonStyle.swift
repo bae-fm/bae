@@ -7,12 +7,11 @@ public struct AccentFocusPrimitiveButtonStyle<Base: PrimitiveButtonStyle>:
     PrimitiveButtonStyle
 {
     let base: Base
-    let cornerRadius: CGFloat
 
     public func makeBody(configuration: Configuration) -> some View {
         Button(configuration)
             .buttonStyle(base)
-            .accentFocusRing(cornerRadius: cornerRadius)
+            .accentFocusRing(cornerRadius: ThemeRadius.control)
     }
 }
 
@@ -33,7 +32,7 @@ extension PrimitiveButtonStyle
 where Self == AccentFocusPrimitiveButtonStyle<PlainButtonStyle> {
     /// `.plain`, wearing the accent's focus ring.
     public static var accentPlain: Self {
-        .init(base: .plain, cornerRadius: ThemeRadius.control)
+        .init(base: .plain)
     }
 }
 
@@ -41,15 +40,7 @@ extension PrimitiveButtonStyle
 where Self == AccentFocusPrimitiveButtonStyle<BorderlessButtonStyle> {
     /// `.borderless`, wearing the accent's focus ring.
     public static var accentBorderless: Self {
-        .init(base: .borderless, cornerRadius: ThemeRadius.control)
-    }
-}
-
-extension PrimitiveButtonStyle
-where Self == AccentFocusPrimitiveButtonStyle<BorderedButtonStyle> {
-    /// `.bordered`, wearing the accent's focus ring round its capsule.
-    public static var accentBordered: Self {
-        .init(base: .bordered, cornerRadius: .infinity)
+        .init(base: .borderless)
     }
 }
 

@@ -6,31 +6,32 @@ import SwiftUI
 extension ShotScene {
     /// `MacSheetFooter`, a sheet's last row.
     static let macSheetFooterScenes: [ShotScene] = [
-        component("mac.component.sheet-footer.plain", height: 60) {
+        component("mac.component.sheet-footer.plain", width: 842, height: 60) {
             MacSheetFooter {
-                Button("Cancel") {}
-                Button("Set up") {}.buttonStyle(PrimaryButtonStyle())
+                MacButton("Cancel") {}
+                MacButton("Set up", kind: .primary) {}
             }
-            .frame(width: 380, alignment: .leading)
         },
-        component("mac.component.sheet-footer.split", height: 60) {
+        component("mac.component.sheet-footer.split", width: 842, height: 60) {
             MacSheetFooter {
-                Button("New folder…") {}
+                MacButton("New folder…") {}
             } trailing: {
-                Button("Cancel") {}
-                Button("Set up") {}.buttonStyle(PrimaryButtonStyle())
+                MacButton("Cancel") {}
+                MacButton("Set up", kind: .primary) {}
             }
-            .frame(width: 380, alignment: .leading)
         },
-        component("mac.component.sheet-footer.two-on-the-left", height: 60) {
+        component(
+            "mac.component.sheet-footer.two-on-the-left",
+            width: 842,
+            height: 60
+        ) {
             MacSheetFooter {
-                Button("New folder…") {}
-                Button("Look again") {}
+                MacButton("New folder…") {}
+                MacButton("Look again") {}
             } trailing: {
-                Button("Cancel") {}
-                Button("Set up") {}.buttonStyle(PrimaryButtonStyle())
+                MacButton("Cancel") {}
+                MacButton("Set up", kind: .primary) {}
             }
-            .frame(width: 380, alignment: .leading)
         },
     ]
 }

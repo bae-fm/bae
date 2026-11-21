@@ -15,7 +15,7 @@ struct MacImportEmptyState: View {
                 .themeText(.body)
                 .foregroundStyle(Theme.macTextSecondary)
             HStack(spacing: ThemeSpace.related) {
-                Button("Import folder…") {
+                MacButton("Import folder…") {
                     uiStore.setImportFolderPickerPresented(true)
                 }
                 AddDiscogsKeyButton()

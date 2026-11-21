@@ -36,10 +36,10 @@ struct MacCoverGallery: View {
         VStack(spacing: 0) {
             MacModalHeader(title: "Change cover", large: true) {
                 if let onRefresh, remoteItems.canRefresh {
-                    Button("Refresh", action: onRefresh)
+                    MacButton("Refresh", action: onRefresh)
                         .disabled(remoteItems.isLoading || isSaving)
                 }
-                Button("Done", action: onDone)
+                MacButton("Done", action: onDone)
                     .keyboardShortcut(.cancelAction)
                     .disabled(isSaving)
             }
@@ -318,7 +318,7 @@ extension MacCoverGallery {
                 .foregroundStyle(Theme.macTextSecondary)
                 .fixedSize(horizontal: false, vertical: true)
                 if let onFindRelease {
-                    Button("Find release…", action: onFindRelease)
+                    MacButton("Find release…", action: onFindRelease)
                         .disabled(isSaving)
                 }
             }

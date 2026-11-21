@@ -125,8 +125,7 @@ private struct UnreadableInstallationRow: View {
                     .cutLine(.prose)
             }
             Spacer(minLength: ThemeSpace.group)
-            Button("Discard…") { onDiscard(libraryId) }
-                .buttonStyle(.accentBordered)
+            MacButton("Discard…") { onDiscard(libraryId) }
         }
         .padding(.horizontal, ThemeSpace.group)
         .padding(.vertical, ThemeSpace.related + ThemeSpace.line)

@@ -109,7 +109,7 @@
                             .textFieldStyle(.plain)
                             .onSubmit { browser.createFolder() }
                             .onExitCommand { browser.stopNaming() }
-                        Button("Create") { browser.createFolder() }
+                        MacButton("Create") { browser.createFolder() }
                             .disabled(!browser.canCreateFolder)
                     }
                 }

@@ -146,8 +146,7 @@ private struct SavedCodeRow: View {
             }
             Spacer(minLength: ThemeSpace.group)
             if case .readable(let saved) = entry {
-                Button("Restore") { onRestore(saved) }
-                    .buttonStyle(.accentBordered)
+                MacButton("Restore") { onRestore(saved) }
             }
             MacMoreMenu {
                 MacMenuItem("Delete…", action: onDelete)

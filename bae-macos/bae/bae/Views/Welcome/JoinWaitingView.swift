@@ -39,8 +39,7 @@ struct JoinWaitingView: View {
                     }
                     if cancellable {
                         MacStepActions {
-                            Button("Cancel", action: onCancel)
-                                .buttonStyle(.accentBordered)
+                            MacButton("Cancel", action: onCancel)
                         }
                     }
                 }

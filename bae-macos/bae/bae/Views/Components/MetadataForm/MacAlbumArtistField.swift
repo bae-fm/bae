@@ -147,7 +147,7 @@ private struct ArtistAssignmentsEditor: View {
                 TextField("Search", text: $query)
                     .boxedTextField()
                     .onSubmit(addTypedArtist)
-                Button("Add", action: addTypedArtist)
+                MacButton("Add", action: addTypedArtist)
                     .disabled(trimmedQuery.isEmpty)
             }
             if let error = search?.error {

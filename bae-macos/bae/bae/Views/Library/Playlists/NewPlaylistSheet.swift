@@ -30,7 +30,7 @@ struct NewPlaylistSheet: View {
             }
         } footer: {
             MacSheetFooter {
-                Button("Cancel") { onCancel() }
+                MacButton("Cancel") { onCancel() }
                     .keyboardShortcut(.cancelAction)
                 MacButton("Create", kind: .primary) { onCreate(state) }
                     .keyboardShortcut(.defaultAction)

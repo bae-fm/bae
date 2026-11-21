@@ -29,8 +29,8 @@ extension ShotScene {
                         }
                 } footer: {
                     MacSheetFooter {
-                        Button("Cancel") {}
-                        Button("Set up") {}.buttonStyle(PrimaryButtonStyle())
+                        MacButton("Cancel") {}
+                        MacButton("Set up", kind: .primary) {}
                     }
                 },
                 over: Rectangle().fill(Theme.background)
@@ -45,8 +45,8 @@ extension ShotScene {
                     .frame(maxWidth: .infinity, alignment: .leading)
             } footer: {
                 MacSheetFooter {
-                    Button("Cancel") {}
-                    Button("Set up") {}.buttonStyle(PrimaryButtonStyle())
+                    MacButton("Cancel") {}
+                    MacButton("Set up", kind: .primary) {}
                 }
             }
         },

@@ -121,8 +121,7 @@ struct ImportSearchFormView: View {
 
                 fields
 
-                Button("Search", action: submitSearch)
-                    .buttonStyle(.accentBordered)
+                MacButton("Search", action: submitSearch)
                     .controlSize(.small)
                     .disabled(isSearchDisabled)
             }

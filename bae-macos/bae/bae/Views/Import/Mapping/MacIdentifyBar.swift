@@ -38,10 +38,8 @@ struct MacIdentifyBar<Trailing: View>: View {
             Text("Identify")
                 .themeText(.strong)
                 .foregroundStyle(Theme.macTextSecondary)
-            Button("Automatic") { onAutomatic() }
-                .buttonStyle(.accentBordered)
-            Button("Search") { onSearch() }
-                .buttonStyle(.accentBordered)
+            MacButton("Automatic") { onAutomatic() }
+            MacButton("Search") { onSearch() }
             metadataMenu(onMetadataCommand)
         }
         .disabled(identifyDisabled)

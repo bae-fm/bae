@@ -41,7 +41,7 @@ struct MacImportBulk: View {
                             else {
                                 Spacer(minLength: 0)
                             }
-                            Button("Cancel") { selection.cancel() }
+                            MacButton("Cancel") { selection.cancel() }
                         }
                     }
                 }

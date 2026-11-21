@@ -133,13 +133,13 @@ struct StorageSettingsForm: View {
             if let beforeReset = storage?.beforeReset {
                 MacSection {
                     MacRow {
-                        Button(
+                        MacButton(
                             "Delete…",
-                            role: .destructive,
                             action: {
                                 onDeleteBeforeReset(beforeReset.fileSizeText)
                             }
                         )
+                        .destructive()
                     } label: {
                         row(
                             "Old library",

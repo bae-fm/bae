@@ -25,7 +25,7 @@ struct MacTransferSummary: View {
             HStack(spacing: ThemeSpace.related) {
                 StorageTransferCounts(counts: counts, kind: kind)
                 Spacer()
-                Button("Cancel", action: onCancel)
+                MacButton("Cancel", action: onCancel)
                     .controlSize(.small)
             }
             if moving {

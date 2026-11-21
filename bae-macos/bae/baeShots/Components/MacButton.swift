@@ -34,11 +34,11 @@ extension ShotScene {
         },
         component("mac.component.button.icon", height: 50) {
             HStack(spacing: 8) {
-                MacButton(kind: .borderless, action: {}) {
+                MacButton(kind: .icon, action: {}) {
                     Image(systemName: "doc.on.doc")
                 }
                 .accessibilityLabel("Copy")
-                MacButton(kind: .borderless, action: {}) {
+                MacButton(kind: .icon, action: {}) {
                     Image(systemName: "checkmark")
                 }
                 .accessibilityLabel("Copied")
@@ -57,13 +57,15 @@ extension ShotScene {
             MacButton("Set up") {}
                 .muted()
         },
-        component("mac.component.button.size-alert", height: 50) {
-            MacButton("Set up") {}
-                .controlSize(.large)
+        component("mac.component.button.size-alert", width: 842, height: 50) {
+            MacButton(kind: .secondary, action: {}) {
+                Text("Set up").frame(maxWidth: .infinity)
+            }
+            .controlSize(.large)
         },
         component("mac.component.button.tinted", height: 50) {
             MacButton("Set up") {}
-                .tint(Theme.accent)
+                .tinted()
         },
     ]
 }

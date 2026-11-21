@@ -35,7 +35,7 @@ struct EditPlaylistSheet: View {
             }
         } footer: {
             MacSheetFooter {
-                Button("Cancel") { onCancel() }
+                MacButton("Cancel") { onCancel() }
                     .keyboardShortcut(.cancelAction)
                 MacButton("Save", kind: .primary) { onSave(state) }
                     .keyboardShortcut(.defaultAction)

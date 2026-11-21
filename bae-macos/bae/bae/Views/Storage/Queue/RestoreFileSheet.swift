@@ -38,7 +38,7 @@ struct RestoreFileSheet: View {
                 MacNotice(error: error)
             }
             MacSheetFooter {
-                Button("Cancel", action: onDismiss)
+                MacButton("Cancel", action: onDismiss)
                     .keyboardShortcut(.cancelAction)
                 MacButton("Retry", kind: .primary) { retry() }
                     .keyboardShortcut(.defaultAction)

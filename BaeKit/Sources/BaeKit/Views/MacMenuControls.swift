@@ -67,6 +67,7 @@
     /// menu opening under it.
     struct MacMenuOpener<Label: View>: View {
         let kind: MacButtonKind
+        let tinted: Bool
         let content: () -> [MacMenuEntry]
         /// True while the menu is open, for a caller that draws the button
         /// differently then.
@@ -83,11 +84,13 @@
 
         init(
             kind: MacButtonKind,
+            tinted: Bool,
             content: @escaping () -> [MacMenuEntry],
             isOpen: Binding<Bool>?,
             label: Label
         ) {
             self.kind = kind
+            self.tinted = tinted
             self.content = content
             self.isOpen = isOpen
             self.label = label
@@ -95,7 +98,7 @@
 
         var body: some View {
             Button(action: open) { label }
-                .macButtonStyle(kind)
+                .macButtonStyle(kind, tinted: tinted)
                 .background(MacMenuAnchorView(anchor: anchor))
                 .tracksMenuAppearance($appearance)
                 .accessibilityRepresentation {

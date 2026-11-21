@@ -12,7 +12,7 @@ extension ShotScene {
                 title: "Edit release",
                 subtitle: "Low Tide Hours · CD"
             ) {
-                Button("Close") {}
+                MacButton("Close") {}
             }
         },
         component("mac.component.modal-header.large", width: 544, height: 90) {
@@ -21,7 +21,7 @@ extension ShotScene {
                 subtitle: "Low Tide Hours · CD",
                 large: true
             ) {
-                Button("Close") {}
+                MacButton("Close") {}
             }
         },
     ]

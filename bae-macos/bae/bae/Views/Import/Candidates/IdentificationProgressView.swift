@@ -34,7 +34,7 @@ struct IdentificationProgressView: View {
             }
             .buttonStyle(.accentPlain)
             .help("Go to a candidate still being identified")
-            Button("Cancel all", action: onCancelAll)
+            MacButton("Cancel all", action: onCancelAll)
                 .controlSize(.small)
                 .help(
                     "Stop identifying every candidate still waiting or running"

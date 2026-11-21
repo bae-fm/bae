@@ -7,7 +7,6 @@ struct SearchManuallyButton: View {
     let action: () -> Void
 
     var body: some View {
-        Button("Search manually", action: action)
-            .buttonStyle(.accentBordered)
+        MacButton("Search manually", action: action)
     }
 }

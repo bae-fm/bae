@@ -102,7 +102,7 @@ struct ReleaseEditorSheet: View {
 
     private var header: some View {
         MacModalHeader(title: "Edit release", subtitle: displayName) {
-            Button("Close") { onClose() }
+            MacButton("Close") { onClose() }
                 .keyboardShortcut(.cancelAction)
         }
     }

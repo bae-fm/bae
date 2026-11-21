@@ -17,7 +17,7 @@ struct ReleaseEditControls: View {
             if let reading {
                 MacSpinner(Text(verbatim: reading))
             }
-            Button("Cancel", action: onCancel)
+            MacButton("Cancel", action: onCancel)
                 .opacity(changed ? 1 : 0)
                 .allowsHitTesting(changed)
                 .disabled(isBusy)
