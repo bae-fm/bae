@@ -17,49 +17,6 @@ extension ShotScene {
         inviteFields("mac.component.invite-fields.icloud", .iCloud),
     ]
 
-    private static func dropbox(_ names: [String]) -> FolderListing {
-        FolderListing(
-            provider: .dropbox,
-            path: [],
-            folders: names.map {
-                BridgeStorageFolder(
-                    name: $0,
-                    location: .dropbox(
-                        location: .sharedFolder(namespaceId: $0),
-                        accountLabel: nil,
-                        folderLabel: nil
-                    )
-                )
-            }
-        )
-    }
-
-    private static func oneDrive(_ names: [String]) -> FolderListing {
-        func folder(_ name: String) -> BridgeStorageFolder {
-            BridgeStorageFolder(
-                name: name,
-                location: .oneDrive(
-                    driveId: "drive",
-                    folderId: name,
-                    accountLabel: nil,
-                    folderLabel: nil
-                )
-            )
-        }
-        return FolderListing(
-            provider: .oneDrive,
-            path: [folder("OneDrive"), folder("Music")],
-            folders: names.map(folder)
-        )
-    }
-
-    /// The folders a provider lists, and the path to them.
-    private struct FolderListing {
-        let provider: StorageFolderBrowser.Provider
-        let path: [BridgeStorageFolder]
-        let folders: [BridgeStorageFolder]
-    }
-
     private static func inviteFields(
         _ id: String,
         _ storage: InviteStorage,
