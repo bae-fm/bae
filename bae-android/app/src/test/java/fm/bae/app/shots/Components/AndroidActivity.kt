@@ -34,7 +34,7 @@ class AndroidActivityShots : BoardShot() {
                     held = true,
                     pins = BridgeDownloadQueueActivity(BridgeTransferBatch(done = 1u, total = 3u), wait = null, paused = true),
                 )
-            Sheet(activity = paused, words = ActivityWords(failure = null, uploadsWait = null, pinsWait = "Paused"))
+            Sheet(activity = paused, pins = 0.3, words = ActivityWords(failure = null, uploadsWait = null, pinsWait = "Paused"))
         }
 
     @Test
