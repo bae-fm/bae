@@ -105,13 +105,19 @@ jobs:
       # findings.
       - name: Check
         run: builds shots check --shots all-shots --out site --sha "${GITHUB_SHA::9}"
-      # The report is the run's artifact whether or not the check passed.
+      # The report is the run's artifact and the Pages artifact whether or not
+      # the check passed, so the job's failure keeps the run red and the
+      # publish job still shows the findings.
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: shots-report
           path: site
           if-no-files-found: error
+      - uses: actions/upload-pages-artifact@v3
+        if: always()
+        with:
+          path: site
 
   publish:
     name: Publish report
@@ -126,12 +132,5 @@ jobs:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: shots-report
-          path: site
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: site
       - id: deploy
         uses: actions/deploy-pages@v4
