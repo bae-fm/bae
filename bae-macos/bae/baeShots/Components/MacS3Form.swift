@@ -25,7 +25,7 @@ extension ShotScene {
     }
 
     @MainActor
-    private static func s3Fields(
+    static func s3Fields(
         failing failure: BridgeStorageFailure?
     ) -> S3SetupFields {
         let fields = S3SetupFields()

@@ -115,16 +115,18 @@ public final class StorageFolderBrowser {
     }
 
     #if DEBUG
-        /// A browser already signed in and showing `listing`, for a shot or
-        /// a shot; its calls all fail.
+        /// A browser for a shot: showing `listing`, or not yet signed in
+        /// when it has none, and running `working` when given; its calls
+        /// all fail.
         public init(
             staged provider: Provider,
-            listing: Listing,
+            listing: Listing?,
             nests: Bool,
             selected: BridgeStorageFolder? = nil,
             isNaming: Bool = false,
             newFolderName: String = "",
-            notEmpty: BridgeStorageFolder? = nil
+            notEmpty: BridgeStorageFolder? = nil,
+            working: Work? = nil
         ) {
             self.provider = provider
             let inside:
@@ -149,6 +151,7 @@ public final class StorageFolderBrowser {
             self.isNaming = isNaming
             self.newFolderName = newFolderName
             self.notEmpty = notEmpty
+            self.working = working
         }
     #endif
 

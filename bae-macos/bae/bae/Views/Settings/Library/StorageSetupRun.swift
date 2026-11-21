@@ -25,6 +25,8 @@ final class StorageSetupRun {
     @ObservationIgnored
     private var task: Task<Void, Never>?
 
+    init() {}
+
     var isRunning: Bool {
         if case .idle = state {
             false
@@ -33,6 +35,14 @@ final class StorageSetupRun {
             true
         }
     }
+
+    #if DEBUG
+        // periphery:ignore - called by baeShots
+        /// A run already running `following`, for a shot.
+        init(staging following: StorageSetupFollowing) {
+            state = .running(following)
+        }
+    #endif
 
     /// Whether the person cancelled the running setup, which coven is undoing.
     var isCancelling: Bool {

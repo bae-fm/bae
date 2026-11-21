@@ -51,6 +51,28 @@ struct SyncSetupWizard: View {
         }
     }
 
+    #if DEBUG
+        private var staging: SyncSetupWizardStaging?
+
+        // periphery:ignore - called by baeShots
+        /// The wizard on the screen `staging` names.
+        init(staging: SyncSetupWizardStaging) {
+            onDone = {}
+            self.staging = staging
+            _choice = State(initialValue: staging.provider)
+            _run = State(initialValue: staging.run)
+            switch staging.screen {
+            case .providers:
+                _step = State(initialValue: .selectProvider)
+            case .provider:
+                _step = State(initialValue: .configure(staging.provider))
+            case .restoreCode(let reveal):
+                _step = State(initialValue: .restoreCode(staging.provider))
+                _restoreCode = State(initialValue: reveal)
+            }
+        }
+    #endif
+
     var body: some View {
         MacSheet(verbatim: headerTitle, message: headerMessage, width: 460) {
             Group {
@@ -188,12 +210,18 @@ struct SyncSetupWizard: View {
         private func folderBrowser(
             _ provider: StorageFolderBrowser.Provider
         ) -> StorageFolderBrowser {
-            cloudSyncSetup.folderBrowser(provider)
+            #if DEBUG
+                if let browser = staging?.browser { return browser }
+            #endif
+            return cloudSyncSetup.folderBrowser(provider)
         }
     #endif
 
     private var s3Form: MacS3Form {
-        MacS3Form(leave: leave, onConnected: connected)
+        #if DEBUG
+            if let form = staging?.s3 { return form }
+        #endif
+        return MacS3Form(leave: leave, onConnected: connected)
     }
 
     /// The storage is connected: show the restore code before the sheet
@@ -272,6 +300,7 @@ extension SetupStep where Leading == EmptyView {
         claim: @escaping (any Error) -> Bool = { _ in false },
         describe: @escaping (any Error) -> DisplayError? = { _ in nil },
         checkedFolder: String? = nil,
+        failure: DisplayError? = nil,
         @ViewBuilder fields: () -> Fields
     ) {
         self.init(
@@ -282,6 +311,7 @@ extension SetupStep where Leading == EmptyView {
             claim: claim,
             describe: describe,
             checkedFolder: checkedFolder,
+            failure: failure,
             leading: { EmptyView() },
             fields: fields
         )
@@ -323,6 +353,7 @@ struct SetupStep<Fields: View, Leading: View>: View {
         claim: @escaping (any Error) -> Bool = { _ in false },
         describe: @escaping (any Error) -> DisplayError? = { _ in nil },
         checkedFolder: String? = nil,
+        failure: DisplayError? = nil,
         @ViewBuilder leading: () -> Leading,
         @ViewBuilder fields: () -> Fields
     ) {
@@ -335,6 +366,7 @@ struct SetupStep<Fields: View, Leading: View>: View {
         self.checkedFolder = checkedFolder
         self.leading = leading()
         self.fields = fields()
+        _error = State(initialValue: failure)
     }
 
     @Environment(Sync.self)
@@ -407,3 +439,23 @@ struct SetupStep<Fields: View, Leading: View>: View {
         )
     }
 }
+
+#if DEBUG
+    /// What a shot stages in `SyncSetupWizard` in place of the person's steps.
+    @MainActor
+    struct SyncSetupWizardStaging {
+        enum Screen {
+            case providers
+            case provider
+            case restoreCode(RestoreCodeReveal)
+        }
+
+        let provider: BridgeCloudProvider
+        let screen: Screen
+        var run = StorageSetupRun()
+        /// Dropbox or OneDrive's folder choice, as it stands.
+        var browser: StorageFolderBrowser?
+        /// S3's form, as it stands.
+        var s3: MacS3Form?
+    }
+#endif

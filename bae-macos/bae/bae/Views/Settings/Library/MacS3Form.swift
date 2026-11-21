@@ -14,6 +14,8 @@ struct MacS3Form: View {
 
     @State
     private var fields: S3SetupFields
+    /// The failure the form opens showing at the top, which a shot stages.
+    private var failure: DisplayError?
 
     init(
         leave: @escaping () -> Void,
@@ -26,9 +28,10 @@ struct MacS3Form: View {
 
     #if DEBUG
         // periphery:ignore - called by baeShots
-        /// The form with `fields` typed in, and any reason a failed setup
-        /// gave under the field it names.
-        init(staged fields: S3SetupFields) {
+        /// The form with `fields` typed in, any reason a failed setup gave
+        /// under the field it names, and `failure` at the top.
+        init(staged fields: S3SetupFields, failure: DisplayError? = nil) {
+            self.failure = failure
             _fields = State(initialValue: fields)
             leave = {}
             onConnected = { _ in }
@@ -53,6 +56,7 @@ struct MacS3Form: View {
                         DisplayError(line: $0.words)
                     }
             },
+            failure: failure,
             fields: {
                 MacSection("Location") {
                     TextField("Endpoint", text: $fields.endpoint)

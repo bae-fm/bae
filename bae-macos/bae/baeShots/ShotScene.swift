@@ -22,6 +22,7 @@ struct ShotScene {
     /// deliberate omission, never a swallowed failure.
     static let all: [ShotScene] =
         welcomeScenes + componentScenes + syncSettingsScenes
+        + syncSetupScenes
         + storageSettingsScenes + storageManagerScenes + saveAsSettingsScenes
         + alertScenes
         + importListScenes

@@ -42,7 +42,7 @@ extension ShotScene {
             ),
         ]
 
-        private static func dropbox(_ names: [String]) -> FolderListing {
+        static func dropbox(_ names: [String]) -> FolderListing {
             FolderListing(
                 provider: .dropbox,
                 path: [],
@@ -59,7 +59,7 @@ extension ShotScene {
             )
         }
 
-        private static func oneDrive(_ names: [String]) -> FolderListing {
+        static func oneDrive(_ names: [String]) -> FolderListing {
             func folder(_ name: String) -> BridgeStorageFolder {
                 BridgeStorageFolder(
                     name: name,
@@ -79,7 +79,7 @@ extension ShotScene {
         }
 
         /// The folders a provider lists, and the path to them.
-        private struct FolderListing {
+        struct FolderListing {
             let provider: StorageFolderBrowser.Provider
             let path: [BridgeStorageFolder]
             let folders: [BridgeStorageFolder]
