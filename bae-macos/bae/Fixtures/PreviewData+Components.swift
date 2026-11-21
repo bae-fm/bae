@@ -10,14 +10,16 @@ extension PreviewData {
     /// would hold it.
     static func trackPosition(
         positionMs: Int64,
-        durationMs: UInt64
+        durationMs: UInt64,
+        progress: Double? = nil
     ) -> LatestSource<BridgeTrackPosition> {
         LatestStream.trackPositions(
             holding: [
                 "preview-track": BridgeTrackPosition(
                     positionMs: positionMs,
                     durationMs: durationMs,
-                    progress: Double(positionMs) / Double(durationMs),
+                    progress: progress ?? Double(positionMs)
+                        / Double(durationMs),
                     seeks: 0
                 )
             ]

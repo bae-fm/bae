@@ -1,5 +1,8 @@
 import AppKit
 import BaeKit
+import OSLog
+
+private let seekSliderLogger = Logger.bae("SeekSlider")
 
 /// NSSlider subclass that reports drag start/end and jumps to the clicked
 /// position. `mouseDown` blocks until the user releases, so `isDragging` is
@@ -63,6 +66,31 @@ class SeekSlider: NSSlider {
         isDragging = true
         super.mouseDown(with: event)
         isDragging = false
+        onSeekComplete?(doubleValue)
+    }
+
+    /// Screen readers read the position as a whole percent, 0 to 100, as a
+    /// player's seek slider says it.
+    override func accessibilityValue() -> Any? {
+        Int((doubleValue * 100).rounded())
+    }
+
+    override func accessibilityMaxValue() -> Any? {
+        100
+    }
+
+    override func setAccessibilityValue(_ value: Any?) {
+        guard isEnabled else {
+            seekSliderLogger.debug("Ignored a set of the disabled slider")
+            return
+        }
+        guard let percent = (value as? NSNumber)?.doubleValue else {
+            seekSliderLogger.error(
+                "Ignored a position that is no number: \(String(describing: value))"
+            )
+            return
+        }
+        doubleValue = max(0, min(1, percent / 100))
         onSeekComplete?(doubleValue)
     }
 

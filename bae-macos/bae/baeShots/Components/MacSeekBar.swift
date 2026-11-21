@@ -8,12 +8,14 @@ extension ShotScene {
     static let macSeekBarScenes: [ShotScene] = [
         seekBar(
             "mac.component.seek-bar.playing",
-            position: 102.0 / 303.0,
+            position: 0.35,
+            positionMs: 102_000,
             held: [BridgeTrackSpan(start: 0, end: 0.6)]
         ),
         seekBar(
             "mac.component.seek-bar.holes",
             position: 61.0 / 303.0,
+            positionMs: 61_000,
             held: [
                 BridgeTrackSpan(start: 0, end: 0.3),
                 BridgeTrackSpan(start: 0.55, end: 0.7),
@@ -21,7 +23,8 @@ extension ShotScene {
         ),
         seekBar(
             "mac.component.seek-bar.off",
-            position: 102.0 / 303.0,
+            position: 0.35,
+            positionMs: 102_000,
             held: [BridgeTrackSpan(start: 0, end: 0.6)],
             off: true
         ),
@@ -30,6 +33,7 @@ extension ShotScene {
     private static func seekBar(
         _ id: String,
         position: Double,
+        positionMs: Int64,
         held: [BridgeTrackSpan],
         off: Bool = false
     ) -> ShotScene {
@@ -37,8 +41,9 @@ extension ShotScene {
             MacSeekBar(
                 source: .track(
                     PreviewData.trackPosition(
-                        positionMs: Int64((position * 303_000).rounded()),
-                        durationMs: 303_000
+                        positionMs: positionMs,
+                        durationMs: 303_000,
+                        progress: position
                     ),
                     buffered:
                         LatestStream.trackBuffered(
