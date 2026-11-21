@@ -98,12 +98,12 @@ struct SyncSetupWizard: View {
     private var headerTitle: String {
         switch step {
         case .selectProvider:
-            String(localized: "Set up sync")
+            String(localized: "Set up a cloud home")
         case .configure(let provider), .restoreCode(let provider):
             String(
-                localized: "Set up sync: \(provider.displayName)",
+                localized: "Set up a cloud home: \(provider.displayName)",
                 comment:
-                    "Set up sync's sheet title once a provider is chosen; the argument is the provider's name"
+                    "Cloud home setup sheet title once a provider is chosen; the argument is the provider's name"
             )
         }
     }

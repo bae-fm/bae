@@ -1557,7 +1557,7 @@
   "mac.settings.sync-setup.choose-cloud.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: choose a cloud home",
+   "title": "macOS: Set up a cloud home: choose a cloud home",
    "w": 690,
    "x": 0,
    "y": 2852
@@ -1565,7 +1565,7 @@
   "mac.settings.sync-setup.dropbox-checking-folder.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: Dropbox, checking the folder",
+   "title": "macOS: Set up a cloud home: Dropbox, checking the folder",
    "w": 690,
    "x": 3080,
    "y": 4772
@@ -1573,7 +1573,7 @@
   "mac.settings.sync-setup.dropbox-choose-home.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: Dropbox, choose a cloud home",
+   "title": "macOS: Set up a cloud home: Dropbox, choose a cloud home",
    "w": 690,
    "x": 0,
    "y": 4772
@@ -1581,7 +1581,7 @@
   "mac.settings.sync-setup.dropbox-restore-code.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: Dropbox, restore code",
+   "title": "macOS: Set up a cloud home: Dropbox, restore code",
    "w": 690,
    "x": 9240,
    "y": 4772
@@ -1589,7 +1589,7 @@
   "mac.settings.sync-setup.dropbox-done.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: Dropbox, done",
+   "title": "macOS: Set up a cloud home: Dropbox, done",
    "w": 690,
    "x": 10010,
    "y": 4772
@@ -1597,7 +1597,7 @@
   "mac.settings.sync-setup.dropbox-choose-folder.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: Dropbox, choose a shared folder",
+   "title": "macOS: Set up a cloud home: Dropbox, choose a shared folder",
    "w": 690,
    "x": 2310,
    "y": 4772
@@ -1605,7 +1605,7 @@
   "mac.settings.sync-setup.dropbox-folder-made.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: Dropbox, new folder made",
+   "title": "macOS: Set up a cloud home: Dropbox, new folder made",
    "w": 690,
    "x": 6160,
    "y": 4772
@@ -1613,7 +1613,7 @@
   "mac.settings.sync-setup.dropbox-reading-folders.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: Dropbox, reading folders",
+   "title": "macOS: Set up a cloud home: Dropbox, reading folders",
    "w": 690,
    "x": 1540,
    "y": 4772
@@ -1621,7 +1621,7 @@
   "mac.settings.sync-setup.dropbox-making-folder.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: Dropbox, making the folder",
+   "title": "macOS: Set up a cloud home: Dropbox, making the folder",
    "w": 690,
    "x": 5390,
    "y": 4772
@@ -1629,7 +1629,7 @@
   "mac.settings.sync-setup.dropbox-naming-folder.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: Dropbox, naming a new folder",
+   "title": "macOS: Set up a cloud home: Dropbox, naming a new folder",
    "w": 690,
    "x": 4620,
    "y": 4772
@@ -1637,7 +1637,7 @@
   "mac.settings.sync-setup.dropbox-no-folders.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: Dropbox, no shared folders",
+   "title": "macOS: Set up a cloud home: Dropbox, no shared folders",
    "w": 690,
    "x": 10780,
    "y": 4772
@@ -1645,7 +1645,7 @@
   "mac.settings.sync-setup.dropbox-folder-not-empty.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: Dropbox, folder not empty",
+   "title": "macOS: Set up a cloud home: Dropbox, folder not empty",
    "w": 690,
    "x": 3850,
    "y": 4772
@@ -1653,7 +1653,7 @@
   "mac.settings.sync-setup.dropbox-signing-in.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: Dropbox, signing in",
+   "title": "macOS: Set up a cloud home: Dropbox, signing in",
    "w": 690,
    "x": 770,
    "y": 4772
@@ -1661,7 +1661,7 @@
   "mac.settings.sync-setup.dropbox-step-2.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: Dropbox, step 2 of 3",
+   "title": "macOS: Set up a cloud home: Dropbox, step 2 of 3",
    "w": 690,
    "x": 7700,
    "y": 4772
@@ -1669,7 +1669,7 @@
   "mac.settings.sync-setup.dropbox-step-3.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: Dropbox, step 3 of 3",
+   "title": "macOS: Set up a cloud home: Dropbox, step 3 of 3",
    "w": 690,
    "x": 8470,
    "y": 4772
@@ -1677,7 +1677,7 @@
   "mac.settings.sync-setup.dropbox-step-1.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: Dropbox, step 1 of 3",
+   "title": "macOS: Set up a cloud home: Dropbox, step 1 of 3",
    "w": 690,
    "x": 6930,
    "y": 4772
@@ -1685,7 +1685,7 @@
   "mac.settings.sync-setup.icloud.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: iCloud",
+   "title": "macOS: Set up a cloud home: iCloud",
    "w": 690,
    "x": 770,
    "y": 3812
@@ -1693,7 +1693,7 @@
   "mac.settings.sync-setup.icloud-choose-home.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: iCloud, choose a cloud home",
+   "title": "macOS: Set up a cloud home: iCloud, choose a cloud home",
    "w": 690,
    "x": 0,
    "y": 3812
@@ -1701,7 +1701,7 @@
   "mac.settings.sync-setup.icloud-restore-code.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: iCloud, restore code",
+   "title": "macOS: Set up a cloud home: iCloud, restore code",
    "w": 690,
    "x": 3850,
    "y": 3812
@@ -1709,7 +1709,7 @@
   "mac.settings.sync-setup.icloud-done.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: iCloud, done",
+   "title": "macOS: Set up a cloud home: iCloud, done",
    "w": 690,
    "x": 4620,
    "y": 3812
@@ -1717,7 +1717,7 @@
   "mac.settings.sync-setup.icloud-step-2.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: iCloud, step 2 of 3",
+   "title": "macOS: Set up a cloud home: iCloud, step 2 of 3",
    "w": 690,
    "x": 2310,
    "y": 3812
@@ -1725,7 +1725,7 @@
   "mac.settings.sync-setup.icloud-step-3.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: iCloud, step 3 of 3",
+   "title": "macOS: Set up a cloud home: iCloud, step 3 of 3",
    "w": 690,
    "x": 3080,
    "y": 3812
@@ -1733,7 +1733,7 @@
   "mac.settings.sync-setup.icloud-step-1.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: iCloud, step 1 of 3",
+   "title": "macOS: Set up a cloud home: iCloud, step 1 of 3",
    "w": 690,
    "x": 1540,
    "y": 3812
@@ -1741,7 +1741,7 @@
   "mac.settings.sync-setup.onedrive-choose-folder.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: OneDrive, choose a folder",
+   "title": "macOS: Set up a cloud home: OneDrive, choose a folder",
    "w": 690,
    "x": 2310,
    "y": 5732
@@ -1749,7 +1749,7 @@
   "mac.settings.sync-setup.onedrive-checking-folder.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: OneDrive, checking the folder",
+   "title": "macOS: Set up a cloud home: OneDrive, checking the folder",
    "w": 690,
    "x": 3080,
    "y": 5732
@@ -1757,7 +1757,7 @@
   "mac.settings.sync-setup.onedrive-choose-home.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: OneDrive, choose a cloud home",
+   "title": "macOS: Set up a cloud home: OneDrive, choose a cloud home",
    "w": 690,
    "x": 0,
    "y": 5732
@@ -1765,7 +1765,7 @@
   "mac.settings.sync-setup.onedrive-restore-code.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: OneDrive, restore code",
+   "title": "macOS: Set up a cloud home: OneDrive, restore code",
    "w": 690,
    "x": 9240,
    "y": 5732
@@ -1773,7 +1773,7 @@
   "mac.settings.sync-setup.onedrive-done.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: OneDrive, done",
+   "title": "macOS: Set up a cloud home: OneDrive, done",
    "w": 690,
    "x": 10010,
    "y": 5732
@@ -1781,7 +1781,7 @@
   "mac.settings.sync-setup.onedrive-folder-made.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: OneDrive, new folder made",
+   "title": "macOS: Set up a cloud home: OneDrive, new folder made",
    "w": 690,
    "x": 6160,
    "y": 5732
@@ -1789,7 +1789,7 @@
   "mac.settings.sync-setup.onedrive-reading-folders.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: OneDrive, reading folders",
+   "title": "macOS: Set up a cloud home: OneDrive, reading folders",
    "w": 690,
    "x": 1540,
    "y": 5732
@@ -1797,7 +1797,7 @@
   "mac.settings.sync-setup.onedrive-making-folder.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: OneDrive, making the folder",
+   "title": "macOS: Set up a cloud home: OneDrive, making the folder",
    "w": 690,
    "x": 5390,
    "y": 5732
@@ -1805,7 +1805,7 @@
   "mac.settings.sync-setup.onedrive-naming-folder.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: OneDrive, naming a new folder",
+   "title": "macOS: Set up a cloud home: OneDrive, naming a new folder",
    "w": 690,
    "x": 4620,
    "y": 5732
@@ -1813,7 +1813,7 @@
   "mac.settings.sync-setup.onedrive-no-folders.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: OneDrive, no folders",
+   "title": "macOS: Set up a cloud home: OneDrive, no folders",
    "w": 690,
    "x": 10780,
    "y": 5732
@@ -1821,7 +1821,7 @@
   "mac.settings.sync-setup.onedrive-folder-not-empty.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: OneDrive, folder not empty",
+   "title": "macOS: Set up a cloud home: OneDrive, folder not empty",
    "w": 690,
    "x": 3850,
    "y": 5732
@@ -1829,7 +1829,7 @@
   "mac.settings.sync-setup.onedrive-signing-in.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: OneDrive, signing in",
+   "title": "macOS: Set up a cloud home: OneDrive, signing in",
    "w": 690,
    "x": 770,
    "y": 5732
@@ -1837,7 +1837,7 @@
   "mac.settings.sync-setup.onedrive-step-2.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: OneDrive, step 2 of 3",
+   "title": "macOS: Set up a cloud home: OneDrive, step 2 of 3",
    "w": 690,
    "x": 7700,
    "y": 5732
@@ -1845,7 +1845,7 @@
   "mac.settings.sync-setup.onedrive-step-3.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: OneDrive, step 3 of 3",
+   "title": "macOS: Set up a cloud home: OneDrive, step 3 of 3",
    "w": 690,
    "x": 8470,
    "y": 5732
@@ -1853,7 +1853,7 @@
   "mac.settings.sync-setup.onedrive-step-1.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: OneDrive, step 1 of 3",
+   "title": "macOS: Set up a cloud home: OneDrive, step 1 of 3",
    "w": 690,
    "x": 6930,
    "y": 5732
@@ -1861,7 +1861,7 @@
   "mac.settings.sync-setup.s3.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: S3-compatible",
+   "title": "macOS: Set up a cloud home: S3-compatible",
    "w": 690,
    "x": 770,
    "y": 6692
@@ -1869,7 +1869,7 @@
   "mac.settings.sync-setup.s3-access-denied.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: S3-compatible, key can’t use the S3 storage",
+   "title": "macOS: Set up a cloud home: S3-compatible, key can’t use the S3 storage",
    "w": 690,
    "x": 6930,
    "y": 6692
@@ -1877,7 +1877,7 @@
   "mac.settings.sync-setup.s3-bucket-not-empty.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: S3-compatible, S3 storage not empty",
+   "title": "macOS: Set up a cloud home: S3-compatible, S3 storage not empty",
    "w": 690,
    "x": 9240,
    "y": 6692
@@ -1885,7 +1885,7 @@
   "mac.settings.sync-setup.s3-bucket-not-found.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: S3-compatible, S3 storage not found",
+   "title": "macOS: Set up a cloud home: S3-compatible, S3 storage not found",
    "w": 690,
    "x": 8470,
    "y": 6692
@@ -1893,7 +1893,7 @@
   "mac.settings.sync-setup.s3-choose-home.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: S3-compatible, choose a cloud home",
+   "title": "macOS: Set up a cloud home: S3-compatible, choose a cloud home",
    "w": 690,
    "x": 0,
    "y": 6692
@@ -1901,7 +1901,7 @@
   "mac.settings.sync-setup.s3-restore-code.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: S3-compatible, restore code",
+   "title": "macOS: Set up a cloud home: S3-compatible, restore code",
    "w": 690,
    "x": 4620,
    "y": 6692
@@ -1909,7 +1909,7 @@
   "mac.settings.sync-setup.s3-done.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: S3-compatible, done",
+   "title": "macOS: Set up a cloud home: S3-compatible, done",
    "w": 690,
    "x": 5390,
    "y": 6692
@@ -1917,7 +1917,7 @@
   "mac.settings.sync-setup.s3-key-not-accepted.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: S3-compatible, key not accepted",
+   "title": "macOS: Set up a cloud home: S3-compatible, key not accepted",
    "w": 690,
    "x": 6160,
    "y": 6692
@@ -1925,7 +1925,7 @@
   "mac.settings.sync-setup.s3-region-mismatch.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: S3-compatible, region doesn’t match",
+   "title": "macOS: Set up a cloud home: S3-compatible, region doesn’t match",
    "w": 690,
    "x": 7700,
    "y": 6692
@@ -1933,7 +1933,7 @@
   "mac.settings.sync-setup.s3-step-1.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: S3-compatible, step 1 of 4",
+   "title": "macOS: Set up a cloud home: S3-compatible, step 1 of 4",
    "w": 690,
    "x": 1540,
    "y": 6692
@@ -1941,7 +1941,7 @@
   "mac.settings.sync-setup.s3-step-3.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: S3-compatible, step 3 of 4",
+   "title": "macOS: Set up a cloud home: S3-compatible, step 3 of 4",
    "w": 690,
    "x": 3080,
    "y": 6692
@@ -1949,7 +1949,7 @@
   "mac.settings.sync-setup.s3-step-4.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: S3-compatible, step 4 of 4",
+   "title": "macOS: Set up a cloud home: S3-compatible, step 4 of 4",
    "w": 690,
    "x": 3850,
    "y": 6692
@@ -1957,7 +1957,7 @@
   "mac.settings.sync-setup.s3-step-2.dc.html": {
    "h": 600,
    "page": "library",
-   "title": "macOS: Set up sync: S3-compatible, step 2 of 4",
+   "title": "macOS: Set up a cloud home: S3-compatible, step 2 of 4",
    "w": 690,
    "x": 2310,
    "y": 6692
@@ -5169,7 +5169,7 @@
    "kind": "title1",
    "maxW": 1570,
    "page": "library",
-   "text": "Set up sync (macOS)",
+   "text": "Set up a cloud home (macOS)",
    "w": 240,
    "x": 0,
    "y": 2612
@@ -5178,7 +5178,7 @@
    "kind": "title1",
    "maxW": 8000,
    "page": "library",
-   "text": "Set up sync: Dropbox (macOS)",
+   "text": "Set up a cloud home: Dropbox (macOS)",
    "w": 240,
    "x": 0,
    "y": 4532
@@ -5187,7 +5187,7 @@
    "kind": "title1",
    "maxW": 5310,
    "page": "library",
-   "text": "Set up sync: iCloud (macOS)",
+   "text": "Set up a cloud home: iCloud (macOS)",
    "w": 240,
    "x": 0,
    "y": 3572
@@ -5196,7 +5196,7 @@
    "kind": "title1",
    "maxW": 8000,
    "page": "library",
-   "text": "Set up sync: OneDrive (macOS)",
+   "text": "Set up a cloud home: OneDrive (macOS)",
    "w": 240,
    "x": 0,
    "y": 5492
@@ -5205,7 +5205,7 @@
    "kind": "title1",
    "maxW": 8000,
    "page": "library",
-   "text": "Set up sync: S3 (macOS)",
+   "text": "Set up a cloud home: S3 (macOS)",
    "w": 240,
    "x": 0,
    "y": 6452
@@ -5537,7 +5537,7 @@
    "fill": "blue",
    "page": "library",
    "size": 24,
-   "text": "Set up sync:\ndesktop only, from Set up sync… on a library that isn't synced. The baeium edition offers S3 only, so it opens on the S3 form. Each step that waits says so: signing in in the browser, listing folders, then setup's own steps over a bar. When setup fails, its screen comes back with what was entered: the reason sits under the field it’s about, or at the top when it’s about no one field. Every screen has Cancel and no Back: Cancel takes you back one screen, and on Choose it closes the sheet. The sheet ends on the restore code, for every provider: bae can’t tell whether iCloud Keychain carries it off this Mac. Done lands on the Sync page, which reads Syncing… while the library uploads, then Synced, and holds the Restore code section.\n\nEach provider's row below shows every step coven reports, in order, with the words bae shows. No step has a count, so the bar moves without filling.",
+   "text": "Set up a cloud home:\ndesktop only, from Set up a cloud home… on a library that isn't synced. The baeium edition offers S3 only, so it opens on the S3 form. Each step that waits says so: signing in in the browser, listing folders, then setup's own steps over a bar. When setup fails, its screen comes back with what was entered: the reason sits under the field it’s about, or at the top when it’s about no one field. Every screen has Cancel and no Back: Cancel takes you back one screen, and on Choose it closes the sheet. The sheet ends on the restore code, for every provider: bae can’t tell whether iCloud Keychain carries it off this Mac. Done lands on the Sync page, which reads Syncing… while the library uploads, then Synced, and holds the Restore code section.\n\nEach provider's row below shows every step coven reports, in order, with the words bae shows. No step has a count, so the bar moves without filling.",
    "w": 380,
    "x": 770,
    "y": 2852

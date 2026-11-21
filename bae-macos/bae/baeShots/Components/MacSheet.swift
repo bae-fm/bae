@@ -12,7 +12,7 @@ extension ShotScene {
             height: 240
         ) {
             OverWindow.sheet(
-                MacSheet("Set up sync", width: 460) {
+                MacSheet("Set up a cloud home", width: 460) {
                     Text(verbatim: "Content")
                         .foregroundStyle(Theme.macTextSecondary)
                         .padding(ThemeSpace.group)
