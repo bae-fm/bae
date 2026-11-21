@@ -1,13 +1,10 @@
 package fm.bae.app.shots
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.Modifier
-import fm.bae.app.data.ImageStore
-import fm.bae.app.data.LocalImageStore
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
+import fm.bae.app.R
 import fm.bae.app.ui.playback.AndroidFullPlayer
+import fm.bae.app.ui.playback.AndroidQueueSection
 import fm.bae.app.ui.playback.AndroidTransport
 import fm.bae.app.ui.playback.AndroidVolumeSlider
 import fm.bae.app.ui.playback.ExpandedSecondaryControls
@@ -37,44 +34,41 @@ class PlaybackBoardShots : BoardShot() {
     @Test
     fun androidPlaybackFullPlayerTrackRemoved() =
         shot("android.playback.full-player.track-removed") {
-            ScreenScene {
-                CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
-                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                        AndroidFullPlayer(
-                            track = removed.track,
-                            failure = null,
-                            onCollapse = {},
-                            seek = { removed.SeekRow(SeekLineLook.LARGE) },
-                            transport = {
-                                AndroidTransport(true, removed.waitsOnStorage, onPrevious = {}, onPlayPause = {}, onNext = {}, full = true)
-                            },
-                            secondaryControls = { ExpandedSecondaryControls(BridgeRepeatMode.OFF, onCycleRepeat = {}) },
-                            volumeRow = { AndroidVolumeSlider(0.7f, false, {}, {}, {}) },
-                        )
-                    }
-                }
-            }
+            FullPlayerOverLibrary(removed) { AndroidVolumeSlider(0.7f, false, {}, {}, {}) }
         }
 
     @Test
     fun androidPlaybackFullPlayerNoVolume() =
         shot("android.playback.full-player.no-volume") {
-            ScreenScene {
-                CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
-                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                        AndroidFullPlayer(
-                            track = playing.track,
-                            failure = null,
-                            onCollapse = {},
-                            seek = { playing.SeekRow(SeekLineLook.LARGE) },
-                            transport = {
-                                AndroidTransport(true, playing.waitsOnStorage, onPrevious = {}, onPlayPause = {}, onNext = {}, full = true)
-                            },
-                            secondaryControls = { ExpandedSecondaryControls(BridgeRepeatMode.OFF, onCycleRepeat = {}) },
-                            volumeRow = { AndroidVolumeSlider(0.7f, false, {}, {}, {}, receiverWithoutVolume = "Living Room") },
-                        )
-                    }
-                }
-            }
+            FullPlayerOverLibrary(playing) { AndroidVolumeSlider(0.7f, false, {}, {}, {}, receiverWithoutVolume = "Living Room") }
         }
+}
+
+/**
+ * The full player as the boards draw it: a sheet over the library, which the scrim dims, with [staging]'s track in the
+ * bar behind it and the queue's Up next under the player.
+ */
+@Composable
+private fun FullPlayerOverLibrary(
+    staging: PlayerStaging,
+    volumeRow: @Composable () -> Unit,
+) = SheetScene(title = null, behind = { PlayingLibraryScreen(nowPlayingBar = { Bar(staging) }) }) {
+    Covers {
+        AndroidFullPlayer(
+            track = staging.track,
+            failure = null,
+            onCollapse = {},
+            seek = { staging.SeekRow(SeekLineLook.LARGE) },
+            transport = {
+                AndroidTransport(true, staging.waitsOnStorage, onPrevious = {}, onPlayPause = {}, onNext = {}, full = true)
+            },
+            secondaryControls = { ExpandedSecondaryControls(BridgeRepeatMode.OFF, onCycleRepeat = {}) },
+            volumeRow = volumeRow,
+        )
+        AndroidQueueSection(
+            title = stringResource(R.string.queue_section_up_next),
+            clearDescription = stringResource(R.string.queue_clear_up_next),
+            onClear = {},
+        )
+    }
 }
