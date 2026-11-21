@@ -17,14 +17,13 @@ internal fun tonalColors(): ButtonColors =
 internal fun outlinedColors(tone: Color): ButtonColors =
     ButtonDefaults.outlinedButtonColors(contentColor = tone, disabledContentColor = disabledContent())
 
-/** A text button's colours: the accent unless a [tone] says another. */
+/** A text button's colours: the accent unless a [tone] says another, whatever colour surrounds the button. */
 @Composable
 internal fun textColors(tone: Color?): ButtonColors =
-    if (tone == null) {
-        ButtonDefaults.textButtonColors(disabledContentColor = disabledContent())
-    } else {
-        ButtonDefaults.textButtonColors(contentColor = tone, disabledContentColor = disabledContent())
-    }
+    ButtonDefaults.textButtonColors(
+        contentColor = tone ?: MaterialTheme.colorScheme.primary,
+        disabledContentColor = disabledContent(),
+    )
 
 /** A disabled button's words: the screen's text at 38%, whatever the kind and tone. */
 @Composable
