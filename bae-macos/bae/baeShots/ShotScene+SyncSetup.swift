@@ -544,8 +544,7 @@ extension ShotScene {
         sheet(
             SyncSetupWizardStaging(
                 provider: provider,
-                screen: .provider,
-                browser: browser
+                screen: .provider(browser.map { .folders($0) } ?? .iCloud)
             )
         )
     }
@@ -560,10 +559,15 @@ extension ShotScene {
         sheet(
             SyncSetupWizardStaging(
                 provider: .s3,
-                screen: .provider,
-                s3: MacS3Form(
-                    staged: s3Fields(failing: failure),
-                    failure: rejection.map { DisplayError(line: $0.words) }
+                screen: .provider(
+                    .s3(
+                        MacS3Form(
+                            staged: s3Fields(failing: failure),
+                            failure: rejection.map {
+                                DisplayError(line: $0.words)
+                            }
+                        )
+                    )
                 )
             )
         )
@@ -579,11 +583,19 @@ extension ShotScene {
         browser: StorageFolderBrowser? = nil,
         s3: Bool = false
     ) -> ShotStage {
+        let fields: SyncSetupWizardStaging.Provider =
+            if let browser {
+                .folders(browser)
+            }
+            else if s3 {
+                .s3(MacS3Form(staged: s3Fields(failing: nil)))
+            }
+            else {
+                .iCloud
+            }
         var staging = SyncSetupWizardStaging(
             provider: provider,
-            screen: .provider,
-            browser: browser,
-            s3: s3 ? MacS3Form(staged: s3Fields(failing: nil)) : nil
+            screen: .provider(fields)
         )
         staging.run = StorageSetupRun(
             staging: StorageSetupFollowing(

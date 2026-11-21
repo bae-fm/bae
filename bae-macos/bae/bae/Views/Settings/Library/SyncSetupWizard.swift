@@ -211,7 +211,9 @@ struct SyncSetupWizard: View {
             _ provider: StorageFolderBrowser.Provider
         ) -> StorageFolderBrowser {
             #if DEBUG
-                if let browser = staging?.browser { return browser }
+                if case .provider(.folders(let browser)) = staging?.screen {
+                    return browser
+                }
             #endif
             return cloudSyncSetup.folderBrowser(provider)
         }
@@ -219,7 +221,9 @@ struct SyncSetupWizard: View {
 
     private var s3Form: MacS3Form {
         #if DEBUG
-            if let form = staging?.s3 { return form }
+            if case .provider(.s3(let form)) = staging?.screen {
+                return form
+            }
         #endif
         return MacS3Form(leave: leave, onConnected: connected)
     }
@@ -444,18 +448,24 @@ struct SetupStep<Fields: View, Leading: View>: View {
     /// What a shot stages in `SyncSetupWizard` in place of the person's steps.
     @MainActor
     struct SyncSetupWizardStaging {
+        /// What a provider's own screen holds.
+        enum Provider {
+            /// Dropbox or OneDrive's sign-in or folder choice, as it stands.
+            case folders(StorageFolderBrowser)
+            /// S3's form, as it stands.
+            case s3(MacS3Form)
+            /// iCloud's, which has no fields.
+            case iCloud
+        }
+
         enum Screen {
             case providers
-            case provider
+            case provider(Provider)
             case restoreCode(RestoreCodeReveal)
         }
 
         let provider: BridgeCloudProvider
         let screen: Screen
         var run = StorageSetupRun()
-        /// Dropbox or OneDrive's folder choice, as it stands.
-        var browser: StorageFolderBrowser?
-        /// S3's form, as it stands.
-        var s3: MacS3Form?
     }
 #endif
