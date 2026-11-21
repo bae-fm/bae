@@ -41,11 +41,13 @@ extension ShotScene {
     }
 
     /// A browse session over `boardAlbums`, with the first album open when
-    /// `openAlbum` is set, as the album boards draw it.
+    /// `openAlbum` is set, as the album boards draw it. `detailAnswered`
+    /// learns when the fixture has answered the open album's detail.
     @MainActor
     static func boardLibraryBacking(
         uiStore: UiStore,
         openAlbum: Bool = false,
+        detailAnswered: AlbumDetailAnswered? = nil,
         detail: BridgeAlbumDetail = PreviewData.boardAlbumDetail(),
         playlists: [BridgePlaylistSummary] = [],
         playlistDetails: [String: BridgePlaylistDetail] = [:],
@@ -61,10 +63,15 @@ extension ShotScene {
             },
             albumDetail: {
                 .fixed(answers: UnansweredCount()) { request in
-                    request.albumId == detail.album.id
-                        ? detail.showing(
-                            chosenReleaseId: request.chosenReleaseId
-                        ) : nil
+                    guard request.albumId == detail.album.id else {
+                        return nil
+                    }
+                    if let detailAnswered {
+                        Task { @MainActor in detailAnswered.answered = true }
+                    }
+                    return detail.showing(
+                        chosenReleaseId: request.chosenReleaseId
+                    )
                 }
             },
             releaseDetail: {
@@ -196,4 +203,12 @@ extension ShotScene {
         )
         return store
     }
+}
+
+/// Whether a scene's fixture has answered the open album's detail read, for
+/// a scene that waits until the album page behind it shows.
+@MainActor
+@Observable
+final class AlbumDetailAnswered {
+    var answered = false
 }

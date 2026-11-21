@@ -184,7 +184,12 @@ extension ShotScene {
         let size = CGSize(width: 1_200, height: 1_120)
         return ShotScene(id: id, size: size) {
             let uiStore = UiStore()
-            let backing = boardLibraryBacking(uiStore: uiStore, openAlbum: true)
+            let detailAnswered = AlbumDetailAnswered()
+            let backing = boardLibraryBacking(
+                uiStore: uiStore,
+                openAlbum: true,
+                detailAnswered: detailAnswered
+            )
             let images = coverGalleryImages(of: "Northbound")
             let session = editorSession(
                 release: release,
@@ -209,6 +214,7 @@ extension ShotScene {
                 images: images
             ) {
                 (backing.session.albums.list?.positionCount ?? 0) > 0
+                    && detailAnswered.answered
                     && (stage != .saving || session.readingLine != nil)
             }
         }
