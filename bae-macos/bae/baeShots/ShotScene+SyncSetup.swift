@@ -420,6 +420,16 @@ extension ShotScene {
         private static let syncSetupCloudKitScenes: [ShotScene] = []
     #endif
 
+    #if BAE_OAUTH_PROVIDERS
+        /// Dropbox's folder choice with more folders than the window is tall,
+        /// for the test that the sheet scrolls its folders and keeps its
+        /// buttons in the window. No board draws it.
+        @MainActor
+        static func syncSetupLongFolderList() -> ShotStage {
+            choosing(.dropbox, oauthBrowser(.dropbox, .long))
+        }
+    #endif
+
     // MARK: - Staging
 
     private static let dropboxStorage = PreviewData.previewDropboxStorage
@@ -648,7 +658,8 @@ extension ShotScene {
     #if BAE_OAUTH_PROVIDERS
         /// Which screen of Dropbox or OneDrive's folder choice a board draws.
         private enum BrowserState {
-            case signingIn, reading, list, naming, made, notEmpty, empty, making
+            case signingIn, reading, list, naming, made, notEmpty, empty,
+                making, long
         }
 
         @MainActor
@@ -697,6 +708,11 @@ extension ShotScene {
                 )
             case .list:
                 return staged(names, selected: chosen)
+            case .long:
+                return staged(
+                    (1...60).map { "Folder \($0)" },
+                    selected: "Folder 1"
+                )
             case .naming:
                 return staged(names, isNaming: true, newFolderName: "bae")
             case .made:

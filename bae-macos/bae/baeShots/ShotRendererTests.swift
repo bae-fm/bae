@@ -86,4 +86,36 @@ struct ShotRendererTests {
             "\(json)"
         )
     }
+
+    #if BAE_OAUTH_PROVIDERS
+        /// A step with more folders than the window is tall scrolls its
+        /// folders inside the sheet, which stays within the window with its
+        /// buttons under the folders.
+        @Test
+        func aSetupSheetTallerThanItsWindowScrollsItsForm() async throws {
+            let scene = ShotScene(
+                id: "a folder list taller than its window",
+                size: CGSize(width: 690, height: 600),
+                frame: .window(title: "Settings", titleBar: .hidden)
+            ) {
+                ShotScene.syncSetupLongFolderList()
+            }
+            let capture = try await ShotRenderer.render(scene, on: display)
+            let list = capture.elements
+            let height = list.size.height
+            let cancel = try #require(
+                list.elements.first {
+                    $0.role == "button" && $0.label == "Cancel"
+                }
+            )
+            let setUp = try #require(
+                list.elements.first {
+                    $0.role == "button" && $0.label == "Set up"
+                }
+            )
+            #expect(cancel.bounds.y + cancel.bounds.height <= height)
+            #expect(setUp.bounds.y + setUp.bounds.height <= height)
+            #expect(setUp.bounds.y > height / 2)
+        }
+    #endif
 }

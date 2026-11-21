@@ -43,6 +43,16 @@ struct SyncSetupWizard: View {
     /// once its call ends.
     @State
     private var run = StorageSetupRun()
+    /// The height of the window the sheet hangs from, once the sheet has one.
+    @State
+    private var parentHeight: CGFloat?
+
+    /// The tallest the sheet grows: its window's height less where the sheet
+    /// hangs. A taller step scrolls its form. Nothing limits the sheet
+    /// before it has a window.
+    private var allowedHeight: CGFloat? {
+        parentHeight.map { $0 - sheetHang }
+    }
 
     init(onDone: @escaping () -> Void) {
         self.onDone = onDone
@@ -81,6 +91,8 @@ struct SyncSetupWizard: View {
         } footer: {
             EmptyView()
         }
+        .frame(maxHeight: allowedHeight)
+        .background(ParentWindowHeight(height: $parentHeight))
         .environment(run)
     }
 
@@ -520,11 +532,34 @@ struct SetupStep<Fields: View, Leading: View>: View {
     }
 #endif
 
+/// How far below the top of its window a sheet hangs.
+private let sheetHang: CGFloat = 36
+
 extension View {
     /// Draws a grouped form at the height of its rows, so the sheet around
     /// it is as tall as its step needs and its buttons sit right under the
-    /// rows they act on.
+    /// rows they act on. When the rows are taller than the room the sheet
+    /// has, the form scrolls and the buttons stay under it.
     fileprivate func fitsItsContent() -> some View {
-        scrollDisabled(true).fixedSize(horizontal: false, vertical: true)
+        ViewThatFits(in: .vertical) {
+            scrollDisabled(true).fixedSize(horizontal: false, vertical: true)
+            self
+        }
+    }
+}
+
+/// Tells its owner the height of the window the sheet hangs from.
+private struct ParentWindowHeight: NSViewRepresentable {
+    @Binding
+    var height: CGFloat?
+
+    func makeNSView(context: Context) -> NSView {
+        NSView()
+    }
+
+    func updateNSView(_ view: NSView, context: Context) {
+        DispatchQueue.main.async {
+            height = view.window?.sheetParent?.frame.height
+        }
     }
 }
