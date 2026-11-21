@@ -39,12 +39,12 @@ import kotlin.math.roundToInt
 private const val VOLUME_STEPS = 1_000
 
 /**
- * The volume bar: the full player's seek line, drawn the same way, at [value] (0 to 1). It reports
- * the level under the finger as it moves, [onValueChange], and the level the drag ended on,
- * [onValueChangeFinished].
+ * The volume slider: the full player's seek line, drawn the same way, at [value] (0 to 1), a gap of
+ * [ThemeSpace.related] to each side. It reports the level under the finger as it moves,
+ * [onValueChange], and the level the drag ended on, [onValueChangeFinished].
  */
 @Composable
-private fun VolumeBar(
+internal fun AndroidVolumeSlider(
     value: Float,
     onValueChange: (Float) -> Unit,
     onValueChangeFinished: () -> Unit,
@@ -55,7 +55,7 @@ private fun VolumeBar(
     val onValueChangeNow by rememberUpdatedState(onValueChange)
     val onValueChangeFinishedNow by rememberUpdatedState(onValueChangeFinished)
     AndroidView(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().padding(horizontal = ThemeSpace.related),
         factory = { context ->
             val density = context.resources.displayMetrics.density
             val look = SeekLineLook.LARGE
@@ -99,11 +99,11 @@ private fun VolumeBar(
 }
 
 /**
- * The full player's volume: mute and the volume bar, or, casting to a receiver that takes no volume
- * from bae, the line saying where its volume is set.
+ * The full player's volume row: mute and the [AndroidVolumeSlider], or, casting to a receiver that
+ * takes no volume from bae, the line saying where its volume is set.
  */
 @Composable
-internal fun AndroidVolumeSlider(
+internal fun AndroidVolumeRow(
     volume: Float,
     isMuted: Boolean,
     onSetMuted: (Boolean) -> Unit,
@@ -137,7 +137,7 @@ internal fun AndroidVolumeSlider(
             onClick = { onSetMuted(!isMuted) },
             tone = IconTone.MUTED,
         )
-        VolumeBar(
+        AndroidVolumeSlider(
             value = dragVolume ?: volume,
             onValueChange = {
                 dragVolume = it
@@ -152,7 +152,7 @@ internal fun AndroidVolumeSlider(
                     }
                 }
             },
-            modifier = Modifier.weight(1f).padding(horizontal = ThemeSpace.related),
+            modifier = Modifier.weight(1f),
         )
     }
 }

@@ -20,4 +20,4 @@ class AndroidVolumeSliderShots : BoardShot() {
 }
 
 @Composable
-private fun Volume(level: Float) = AndroidVolumeSlider(level, false, {}, {}, {})
+private fun Volume(level: Float) = AndroidVolumeSlider(level, {}, {})

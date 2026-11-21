@@ -7,7 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import fm.bae.app.ui.playback.AndroidFullPlayer
 import fm.bae.app.ui.playback.AndroidTransport
-import fm.bae.app.ui.playback.AndroidVolumeSlider
+import fm.bae.app.ui.playback.AndroidVolumeRow
 import fm.bae.app.ui.playback.ExpandedSecondaryControls
 import fm.bae.app.ui.playback.SeekLineLook
 import org.junit.Test
@@ -59,7 +59,7 @@ internal fun FullPlayer(
                     AndroidTransport(isPlaying, staging.waitsOnStorage, onPrevious = {}, onPlayPause = {}, onNext = {}, full = true)
                 },
                 secondaryControls = { ExpandedSecondaryControls(repeatMode, onCycleRepeat = {}) },
-                volumeRow = { AndroidVolumeSlider(volume, false, {}, {}, {}, receiverWithoutVolume) },
+                volumeRow = { AndroidVolumeRow(volume, false, {}, {}, {}, receiverWithoutVolume) },
             )
         }
     }

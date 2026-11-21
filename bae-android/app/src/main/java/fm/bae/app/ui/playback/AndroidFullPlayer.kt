@@ -160,7 +160,7 @@ private fun ExpandedPlayer(
             )
         },
         volumeRow = {
-            AndroidVolumeSlider(
+            AndroidVolumeRow(
                 volume = volume,
                 isMuted = isMuted,
                 onSetMuted = { session.appHandle.setMuted(it) },

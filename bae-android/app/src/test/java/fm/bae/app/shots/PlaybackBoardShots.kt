@@ -6,7 +6,7 @@ import fm.bae.app.R
 import fm.bae.app.ui.playback.AndroidFullPlayer
 import fm.bae.app.ui.playback.AndroidQueueSection
 import fm.bae.app.ui.playback.AndroidTransport
-import fm.bae.app.ui.playback.AndroidVolumeSlider
+import fm.bae.app.ui.playback.AndroidVolumeRow
 import fm.bae.app.ui.playback.ExpandedSecondaryControls
 import fm.bae.app.ui.playback.SeekLineLook
 import org.junit.Test
@@ -34,13 +34,13 @@ class PlaybackBoardShots : BoardShot() {
     @Test
     fun androidPlaybackFullPlayerTrackRemoved() =
         shot("android.playback.full-player.track-removed") {
-            FullPlayerOverLibrary(removed) { AndroidVolumeSlider(0.7f, false, {}, {}, {}) }
+            FullPlayerOverLibrary(removed) { AndroidVolumeRow(0.7f, false, {}, {}, {}) }
         }
 
     @Test
     fun androidPlaybackFullPlayerNoVolume() =
         shot("android.playback.full-player.no-volume") {
-            FullPlayerOverLibrary(playing) { AndroidVolumeSlider(0.7f, false, {}, {}, {}, receiverWithoutVolume = "Living Room") }
+            FullPlayerOverLibrary(playing) { AndroidVolumeRow(0.7f, false, {}, {}, {}, receiverWithoutVolume = "Living Room") }
         }
 }
 
