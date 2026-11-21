@@ -18,11 +18,17 @@
                 let secondary = NSColor(Theme.macTextSecondary)
                 var mixed = secondary
                 appearance.performAsCurrentDrawingAppearance {
-                    mixed =
-                        secondary.blended(
+                    guard
+                        let blend = secondary.blended(
                             withFraction: 0.5,
                             of: NSColor(Theme.textTertiary)
-                        ) ?? secondary
+                        )
+                    else {
+                        preconditionFailure(
+                            "The text colours share no colour space to mix in"
+                        )
+                    }
+                    mixed = blend
                 }
                 return mixed
             }
