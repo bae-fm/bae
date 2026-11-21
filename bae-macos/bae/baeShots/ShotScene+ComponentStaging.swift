@@ -71,19 +71,27 @@ extension ShotScene {
         )
     }
 
-    /// The outbox with the upload of `releaseId`, 62 percent of its 902 MB
+    /// The outbox with the upload of `releaseId`, `fraction` of its 902 MB
     /// sent.
     @MainActor
     static func uploadingOutbox(_ releaseId: String) -> OutboxStore {
+        uploadingOutbox(releaseId, fraction: 0.62)
+    }
+
+    @MainActor
+    static func uploadingOutbox(
+        _ releaseId: String,
+        fraction: Double
+    ) -> OutboxStore {
         OutboxStore(
             uploadsPaused: false,
             releaseProgress: .releaseUploads(
                 holding: [
                     releaseId: BridgeReleaseUploadTransfer(
                         bar: BridgeUploadBar(
-                            bytesDone: 559_000_000,
+                            bytesDone: UInt64(902_000_000 * fraction),
                             bytesTotal: 902_000_000,
-                            fraction: 0.62
+                            fraction: fraction
                         ),
                         throughputBps: 6_400_000
                     )

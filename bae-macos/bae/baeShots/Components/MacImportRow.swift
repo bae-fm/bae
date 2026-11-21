@@ -16,9 +16,15 @@ extension ShotScene {
         },
         importRowScene("mac.component.import-row.badge-tone-danger") {
             importRow(
-                listRow(
-                    .untitled07,
-                    live: PreviewData.needsYou(.nothingToLookUp)
+                lowTideRow(
+                    live: PreviewData.triageLive(
+                        [.skip, .revealFolder],
+                        standing: .needsYou(reason: .matches(count: 3)),
+                        badge: BridgeRowBadge(
+                            says: .needsYou(reason: .matches(count: 3)),
+                            tone: .failure
+                        )
+                    )
                 )
             )
         },
@@ -34,26 +40,37 @@ extension ShotScene {
         },
         importRowScene("mac.component.import-row.selected") {
             importRow(lowTideRow())
+                .background(Theme.accentSoft)
         },
         importRowScene("mac.component.import-row.identifying") {
             importRow(
-                listRow(
-                    .smallHours,
-                    title: "Small Hours",
-                    artist: "Tomas Brell",
+                lowTideRow(
                     live: PreviewData.triageLive(
                         [.skip, .revealFolder],
-                        identifying: .queued,
+                        identifying: .running,
                         standing: .identifying
                     )
                 )
             )
         },
         importRowScene("mac.component.import-row.import-queued") {
-            importRow(northboundRow())
+            importRow(
+                lowTideRow(
+                    live: PreviewData.triageLive(
+                        [],
+                        importStep: .preparing(step: .queued)
+                    )
+                )
+            )
         },
         importRowScene("mac.component.import-row.uploading") {
-            importRow(northboundRow())
+            importRow(uploadingRow())
+                .environment(
+                    uploadingOutbox(
+                        PreviewData.boardImported(.lowTideHours).releaseId,
+                        fraction: 0.3
+                    )
+                )
         },
     ]
 
@@ -78,13 +95,39 @@ extension ShotScene {
         )
     }
 
-    private static func lowTideRow() -> BridgeTriageRow {
+    private static func lowTideRow(
+        live: BridgeCandidateLiveState = PreviewData.needsYou(
+            .matches(count: 3)
+        )
+    ) -> BridgeTriageRow {
         listRow(
             .lowTideHours,
             title: "Low Tide Hours",
             artist: "Mara Quill",
             record: "component-low-tide-hours",
-            live: PreviewData.needsYou(.matches(count: 3))
+            live: live
+        )
+    }
+
+    /// Low Tide Hours after its import, while its files upload.
+    private static func uploadingRow() -> BridgeTriageRow {
+        PreviewData.boardRow(
+            .lowTideHours,
+            summary: BridgeTriageMetadataSummary(
+                albumTitle: "Low Tide Hours",
+                albumArtists: .named("Mara Quill")
+            ),
+            record: "component-low-tide-hours",
+            placement: .done,
+            live: PreviewData.triageLive([.revealFolder]),
+            importStatus: .complete(
+                release: PreviewData.boardImported(.lowTideHours)
+            ),
+            upload: BridgeUploadProgress(
+                queued: 0,
+                uploading: 1,
+                activity: .uploading
+            )
         )
     }
 
