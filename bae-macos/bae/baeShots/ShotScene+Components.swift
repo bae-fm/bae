@@ -10,18 +10,38 @@ extension ShotScene {
     /// A component with a capture file, `Components/<Component>.swift`,
     /// keeps its scenes there.
     static let componentScenes: [ShotScene] =
-        libraryRowScenes + partsComponentScenes + playbackComponentScenes
-        + libraryComponentScenes + storageComponentScenes
-        + importComponentScenes + basicsComponentScenes
-        + browseComponentScenes + windowComponentScenes
-        + controlsComponentScenes + settingsPaneComponentScenes
-        + sidePaneComponentScenes + macAccentPickerScenes + macCastRowScenes
-        + macCheckboxScenes + macCloseButtonScenes + macCopyTextScenes
-        + macDisclosureScenes + macErrorDetailsScenes + macFieldRowScenes
-        + macFileNameFieldScenes + macImportDestinationScenes
-        + macInfoTipScenes + macStorageCellScenes + macStorageFooterScenes
-        + macStorageToolbarScenes + macStorageWindowScenes + macTableScenes
-        + macTokenScenes
+        [
+            libraryRowScenes,
+            partsComponentScenes,
+            playbackComponentScenes,
+            libraryComponentScenes,
+            storageComponentScenes,
+            importComponentScenes,
+            basicsComponentScenes,
+            browseComponentScenes,
+            windowComponentScenes,
+            controlsComponentScenes,
+            settingsPaneComponentScenes,
+            sidePaneComponentScenes,
+            macAccentPickerScenes,
+            macCastRowScenes,
+            macCheckboxScenes,
+            macCloseButtonScenes,
+            macCopyTextScenes,
+            macDisclosureScenes,
+            macErrorDetailsScenes,
+            macFieldRowScenes,
+            macFileNameFieldScenes,
+            macImportDestinationScenes,
+            macInfoTipScenes,
+            macStorageCellScenes,
+            macStorageFooterScenes,
+            macStorageToolbarScenes,
+            macStorageWindowScenes,
+            macTableScenes,
+            macTokenScenes,
+        ]
+        .flatMap { $0 }
 
     /// `MacLibraryRow`'s states.
     private static let libraryRowScenes: [ShotScene] = [
