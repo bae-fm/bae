@@ -273,10 +273,11 @@
   }
 
   // The system stepper: a small rounded box of an up and a down arrow beside a count, named by what it counts (`label`).
+  // macOS reads it as one stepper with that label, its arrows part of the control as a scroll bar's buttons are, so the arrows stay out of the reading order.
   function MacStepper(props) {
-    return h('span', { className: 'bae-m-stepper', role: 'group', 'aria-label': props.label },
-      h('button', { type: 'button', className: 'bae-plainbtn', 'aria-label': 'Increment' }, h(Glyph, { set: 'mac', name: 'down', size: 11, className: 'bae-m-stepper-up' })),
-      h('button', { type: 'button', className: 'bae-plainbtn', 'aria-label': 'Decrement' }, h(Glyph, { set: 'mac', name: 'down', size: 11 })));
+    return h('span', { className: 'bae-m-stepper', role: 'spinbutton', 'aria-label': props.label },
+      h('button', { type: 'button', className: 'bae-plainbtn', 'aria-hidden': true, tabIndex: -1 }, h(Glyph, { set: 'mac', name: 'down', size: 11, className: 'bae-m-stepper-up' })),
+      h('button', { type: 'button', className: 'bae-plainbtn', 'aria-hidden': true, tabIndex: -1 }, h(Glyph, { set: 'mac', name: 'down', size: 11 })));
   }
 
   // DisclosureGroup in a grouped form: its own box, the chevron leading inside the label row and turning down when open; the rows it shows are indented to the label.
