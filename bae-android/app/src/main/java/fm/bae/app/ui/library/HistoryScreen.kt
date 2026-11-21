@@ -121,7 +121,7 @@ internal fun RowScope.WhoseMenu(
         Row(
             modifier =
                 Modifier
-                    .clickable(role = Role.DropdownList) { onOpen(true) }
+                    .clickable(role = Role.Button) { onOpen(true) }
                     .padding(horizontal = ThemeSpace.group, vertical = ThemeSpace.related),
             verticalAlignment = Alignment.CenterVertically,
         ) {

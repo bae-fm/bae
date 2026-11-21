@@ -156,7 +156,7 @@ private fun LibraryViewHeading(
                     .clip(RoundedCornerShape(ThemeRadius.control))
                     .clickable(
                         onClickLabel = stringResource(R.string.library_switch_view),
-                        role = Role.DropdownList,
+                        role = Role.Button,
                     ) { state.openMenu = LibraryHeaderMenu.VIEWS }
                     .semantics { heading() },
             verticalAlignment = Alignment.CenterVertically,
