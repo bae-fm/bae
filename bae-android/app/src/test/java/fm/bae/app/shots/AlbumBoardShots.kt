@@ -102,7 +102,7 @@ class AlbumBoardShots : BoardShot() {
                     credits = credits,
                     sourceAudio = BridgeSourceAudioSummary.Uniform(BridgeSourceAudioDescriptor(BridgeSourceAudioLayout.FILE, flac)),
                 )
-            AlbumPage(detail.copy(releases = listOf(credited)))
+            AlbumPage(detail.copy(releases = listOf(credited), shownRelease = credited))
         }
 
     @Test
@@ -120,7 +120,7 @@ class AlbumBoardShots : BoardShot() {
                     "booklet.pdf" to BridgeFileKind.Pdf,
                 ).map { (name, kind) -> boardFile(name, kind) }
             val release = detail.releases[0].copy(records = records, hasRecords = true, otherFiles = files, hasOtherFiles = true)
-            AlbumPage(detail.copy(releases = listOf(release))) {
+            AlbumPage(detail.copy(releases = listOf(release), shownRelease = release)) {
                 when (it) {
                     BridgeCatalog.MUSIC_BRAINZ -> "MusicBrainz"
                     BridgeCatalog.DISCOGS -> "Discogs"
