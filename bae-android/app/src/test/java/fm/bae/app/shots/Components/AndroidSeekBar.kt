@@ -1,5 +1,6 @@
 package fm.bae.app.shots
 
+import fm.bae.app.ui.playback.SeekLineLook
 import org.junit.Test
 import uniffi.bae_bridge.BridgeTrackSpan
 
@@ -12,7 +13,7 @@ class AndroidSeekBarShots : BoardShot() {
     fun androidComponentSeekBarHoles() = component("android.component.seek-bar.holes") { holes.SeekRow() }
 
     @Test
-    fun androidComponentSeekBarLarge() = component("android.component.seek-bar.large") { playing.SeekRow() }
+    fun androidComponentSeekBarLarge() = component("android.component.seek-bar.large") { playing.SeekRow(SeekLineLook.LARGE) }
 }
 
 private val holes =
