@@ -407,7 +407,7 @@ the CUE sheet, the rip log, scans of the booklet. A release's folder comes back
 whole on export (§4.6).
 
 A release's detail lists the files no track plays from, by the rule of the
-release's *Files* list (§3.6), in the release's file order. An image bae can
+release's *Files* list (§3.8), in the release's file order. An image bae can
 show is in the release's images, never in that list.
 
 ### 2.3 Artists and credits
@@ -1181,9 +1181,9 @@ holds it now — its album's title and credits, each printed as the library
 prints it, its cover, and the arrow of a release a catalog's record describes
 — so retitling the album, editing its credits or merging an artist they name
 changes the row at once. It says nothing more but its release's
-upload: the tab says it is done. Its pane is that release, to edit as the
-library editor edits it (§3.8), with the folder's images and other files as
-its scan read them: the folder holds no draft once imported. While files of the release wait in this device's
+upload: the tab says it is done. Its pane shows that release in the release
+editor (§3.8), with Cancel and Save as its action row and the folder's images
+as its scan read them: the folder holds no draft once imported. While files of the release wait in this device's
 upload queue, the line under its title names the upload's phase, as the
 Storage manager does (§4.2): Uploading while any file is being sent, beside a
 bar of the bytes of the release's whole size stored or sent, or Queued to upload with no
@@ -1284,7 +1284,7 @@ that the statement computes over the scan's rows; whether the person skipped
 the candidate; the release this device imported from it; its current state
 and its verdict's cards, with the failure lines its ledger does not show; and,
 for a candidate this device has not imported, its draft, its cover choice,
-its mapping table with each row's draft track, what the library holds for
+its track table with each row's draft track, what the library holds for
 the draft's credits, the linked release's records, the covers the picker
 offers, the linked release's library status and the album an import files
 under. The statement for the records and the covers returns none unless the
@@ -1791,10 +1791,10 @@ the library lists the release's files in. Ben's download names its files by titl
 tags numbers it 7, and a catalog's tracklist lays its seventh track on it.
 
 **Mediums and places.** Applying a source writes the draft's mediums and each
-track's place. The library editor shows a track's position and edits only
+track's place. The release editor (§3.8) shows a track's place and edits only
 its title and artists; what changes mediums and places afterwards is applying
-another source in it, its CUE sheets' place pop-up (§3.8), which moves a
-sheet's tracks to another side or disc, and, before an import, the pane's file
+another source in it, its CUE sheets' place pop-up, which moves a sheet's
+tracks to another side or disc, and, before an import, the pane's file
 decisions below.
 
 - A MusicBrainz release gives each medium it reads its format; a record or
@@ -1815,8 +1815,8 @@ decisions below.
 
 A file decision that gains a track places that audio as the folder lays it
 out, adding a medium of unstated carrier where the draft holds fewer; a medium
-no track sits on any more is dropped. A CUE sheet's place pop-up, in the pane
-and in the library editor, moves the sheet's tracks onto a side or disc: they
+no track sits on any more is dropped. A CUE sheet's place pop-up in the
+release editor (§3.8) moves the sheet's tracks onto a side or disc: they
 go after the tracks already on that side, each numbered one more than the
 highest number on that side, so no two tracks of a side share a number; the
 medium the sheet left is dropped if no track sits on it any more, and the
@@ -1897,52 +1897,8 @@ undo: to start over, the person applies a source again (a catalog release, or
 the files' tags) or clears the metadata, and the file decisions stay as they
 are. The release editor offers the same two commands in both places (§3.8).
 
-The pane's draft card shows the folder's audio on one line under the album's
-year: the codec, the sample rate, the bit depth (a lossy codec's bitrate in
-its place) and the channels, in the order a track's audio format lists them
-(§2.2), as in `FLAC · 44.1 kHz · 16-bit · Stereo`. The line gives no count of
-files or tracks: the table under it lists the tracks.
-
-The mapping table pairs each unit with its draft track. Each row shows the
-length its audio measures; where the track's source lists a length more than
-three seconds apart, that listed length follows it in the warning colour, so
-the row says what disagrees. A CUE image's track names its image once, in its
-sheet's heading, and its source cell gives where the track starts in the
-image (10:22), in the found table and after import alike; the entry's title is
-in the title column only. Where the draft has several discs or
-record sides, each is headed once, however many runs of rows it holds: the
-loose files on it, and under its name each CUE sheet's entries on it (a sheet
-the release splits across sides names itself again on the next side). For a
-CUE sheet, the person can bind each `FILE` line to an audio file and say which
-side or disc each sheet is on, or ignore a sheet. The table also counts the tracks nobody
-has named yet, and the pane states that count beside Import without blocking
-it: importing titles each of them after its file.
-
-A release's *Files* list is one list, the same in the import pane and in the
-release editor (§3.8): the files no track plays from, such as a rip log, a track sheet that
-carves no tracks, or an audio file no track plays from. A CUE sheet that
-carves tracks plays, so it is not listed. The list holds no image bae can
-show: a JPEG, PNG, GIF or WebP image that bae can read appears only in the
-release's gallery above the tracks. An image in another format (a BMP or an
-SVG, for example), and an image in one of those four formats that bae finds
-damaged, stays in the list like any other file no track plays from. The list sits under the tracks
-beneath a ruled *Files* heading, one line per file: its name in monospace, its size at the right, a
-hairline between lines, a damaged file marked with why: *Empty file* for a file that holds no bytes, *No audio bae can read* for one that holds no audio bae can play. Every size bae shows, here
-and elsewhere, is in decimal units with at most one decimal and none when whole
-("3.9 GB", "420 MB", "1 GB", an empty file's "0 B"), the number and the unit in the person's language.
-A document opens in the
-viewer when clicked, over whatever else is open. A library release's editor
-(§3.8), on an imported folder's pane and in the album's *Edit release* sheet,
-lists the release's files the same way, under its tracks, and
-an imported folder's pane puts the folder's images above its tracks; a
-release's files show the same way in all three. On the Mac, a click on one of
-the folder's images opens the lightbox over the folder's images at that image.
-The lightbox shows the image the person last moved to while the folder holds
-it, otherwise the folder's first image, and its arrows move to the images
-before and after it, wrapping around the ends; a lone image has none.
-
-Before importing, the person can play a file through a second player, which
-pauses the library's playback and resumes it when it ends.
+The import pane shows the draft in the release editor (§3.8), with Import as
+its action row.
 
 ### 3.7 Importing
 
@@ -2008,16 +1964,10 @@ Ana clicks Import. bae:
    curator's: two albums the records name stay two, and no question is
    asked. Where one record names several, its group's own album wins if the
    library holds it, else the oldest. With neither, the album is new and
-   takes its id from its group (§2.6). The pane shows which: "New album", the
-   album the records name, or the one picked, as a pop-up under the identity
-   (an album's line is its title and its artists, or its title alone for an
-   album that credits no one), whose items are that album first, then New
-   album while that album is one the library holds (a new album even where
-   the records name one the library holds), the release's own album again
-   after a pick, and last Choose another album…, which searches the library's
-   albums; a picked album deleted meanwhile (§2.1)
-   is no longer picked, and the import files under the album the records name
-   or a new one. Re-identifying a library
+   takes its id from its group (§2.6). The release editor's album picker
+   (§3.8) shows which, and the person can pick another there; a picked album
+   deleted meanwhile (§2.1) is no longer picked, and the import files under
+   the album the records name or a new one. Re-identifying a library
    release files it the same way. The "already in your library" banner
    names every album holding the release, or another release of its album:
    those holding the release first, then oldest first. The banner and the
@@ -2211,89 +2161,221 @@ reported and stops for the session, as it does when the library closes.
   text.
 - **One import at a time.** bae runs imports one after another.
 
-### 3.8 Editing a library release
+### 3.8 The release editor
 
-One editor edits a library release: the album detail's release menu opens it
-with one *Edit…* item, and the import pane of an imported folder shows the
-same editor for each release the folder became. It has the parts of the
-import pane's draft, laid out the same way: the cover beside the album and
-pressing fields, the album the release files under, the track table (its
-rows play, and show lengths and a CUE image's starts as the import pane's do,
-§3.6), and the same *Identify* controls — *Automatic* identifies the release from its files
-and *Search* opens the typed search — whose results replace the card in
-place, above the tracks, until a pick applies one, or *Back* returns to it. *Save* writes the
-form; *Cancel*, shown once something changed, discards its changes. While an apply
-reads a release from its catalog, the editor names the catalog it reads from,
-as an import's pick does (§3.5); saving, cancelling and picking an album are
-local and show no spinner, their controls disabled until they end, except a
-save that binds a CUE sheet to another of the release's audio files: it reads
-that file, and every other file the sheet's lines then play from, first, and
-a spinner and *Reading <file name>…* sit before *Cancel* and *Save*, which
-stay disabled until the read ends. The card ends
-with the release's catalog records, the applied catalog's first while the form
-holds one, then *Unlink*, as the import pane's draft ends: it drops the link and
-its records and keeps every value, and a save then writes the release with
-none and leaves it in its album unless the person picked another. A catalog
-applied after Unlink links the release to that catalog's records.
+One editor edits a release, in three places. A Found folder's import pane edits
+the folder's draft (§3.6), and an imported folder's pane and the album detail's
+*Edit release* sheet, which the release menu's one *Edit…* item opens, edit a
+library release. The editor's parts, and what each does, are the same in all
+three places. Only the action row at the editor's top right differs:
 
-The editor opens with a *form* that holds the release's values as the
-library holds them, and the editor holds its form: bae stores none of the
-form's changes until a save. Each change the person makes (a field, a
-label or barcode row, a choice of what the pressing is, the album's artists,
-a track's title or artists) changes the form as it is made, in the order
-made, and the editor shows, for the form as it stands, how each credit in it
-stands to the library, whether anything changed, and why the form can't be
-saved, when it can't. The draft follows
-the library while the editor is open: how each credit stands to the
-library, the album's title and credits, and the cover show what the library
-holds after any write that changes them, including a write that merges an
-artist or renames the album, with no edit. Applying a catalog
-release to the form reads it once, against the release's stored track
-lengths and its files, and replaces every value the release holds — the
-album fields, the pressing, each track's title, artists, medium, side and
+- In a Found folder's pane, the row shows how many tracks nobody has named yet,
+  where the import goes and *Import* (§3.7), or *Retry import* after an import
+  failed; a folder with nothing to import shows no Import. The folder's check
+  (§3.5) sits in a warning under the row.
+- In an imported folder's pane and the *Edit release* sheet, the row shows
+  *Cancel* once something changed, and *Save*. The step of a catalog apply,
+  and why the form can't be saved or why its last save failed, sit under the
+  row.
+
+**Parts.** From the top, the editor shows *Identify* with *Automatic*, *Search*
+and the ⋯ button that opens the Metadata menu, then the action row; the card,
+which holds the cover beside the album's title, artists and year, the audio
+line and the album picker, then the pressing's fields, and ends with the
+release's catalog records and *Unlink*; the release's images; the track table;
+and the *Files* list. A part with nothing to show is left out: no audio line
+where nothing read the files, no album picker while a Found folder's draft is
+blank, no records line without records, no images, no table without tracks
+and no Files list without files.
+
+**The audio line.** The card shows the release's audio on one line under the
+album's year: the codec, the sample rate, the bit depth (a lossy codec's
+bitrate in its place) and the channels, in the order a track's audio format
+lists them (§2.2), as in `FLAC · 44.1 kHz · 16-bit · Stereo`. The line gives no
+count of files or tracks: the table lists the tracks. A Found folder's pane
+reads the line from the scan's rows, and a library release's editor from the
+release's stored audio.
+
+**The cover.** The cover sits beside the album's title, and a plain tile with
+no words and no invitation to add an image stands in for a missing one. A
+click on it opens the cover picker as the *Change cover* sheet (§3.7), in a
+Found folder's pane only when there is artwork to pick from, and bae writes a
+pick there at once. Dropping one of a Found folder's images on its pane's
+cover makes it the cover, or bae refuses it (§3.7).
+
+**The album.** Under the audio line, the album picker shows *Album* and a
+pop-up of the album the release files under: an album's line is its title and
+its artists, or its title alone for an album that credits no one. Its items are
+that album first, then *New album* while that album is one the library holds
+(a new album even where the records name one the library holds), the release's
+own album again after a pick, and last *Choose another album…*, which searches
+the library's albums. Until the person picks one, the album is the one a
+library release is in while the person applied nothing to it, else the
+library album the release's records name (§3.7, step 6), else a new album. A pick holds over
+a catalog applied after it. A library album the person picked stops being the
+pick once someone deletes it.
+
+**Records and Unlink.** The card ends with the release's catalog records, the
+applied catalog's first while the release holds one, beside *Pressing unknown*
+when the link names an album and no pressing of it, then *Unlink*: Unlink drops
+the link and its records and keeps every value. In a Found folder's pane, the
+candidate is then linked to nothing (§3.5). In a library release's editor, a
+save then writes the release with no records and leaves it in its album unless
+the person picked another. A catalog applied after Unlink links the release to
+that catalog's records.
+
+**Identify.** *Automatic* identifies the release from its files, and *Search*
+opens the typed search (§3.5). Their results replace the card in place, above
+the tracks, until a pick applies one, or *Back* returns to the card. A pick
+applies its release at once, with no confirm step, and the editor shows what it
+gave (§3.6). While a library release's editor reads a release from its catalog,
+it names the catalog it reads from, as an import's pick does (§3.5).
+
+**Starting over.** The Metadata menu holds two commands for starting over:
+applying the files' tags and clearing the metadata. Each asks before it runs,
+and each keeps the CUE sheets' places and files. Clearing keeps the release's
+records; in a library release's editor, applying the files' tags keeps them
+too, and both commands keep the album pick. Applying the files' tags writes
+what the release's audio files and CUE sheets say about it, read as §3.6
+reads a folder's: a Found folder's pane reads
+the folder's files, and a library release's editor reads the release's audio
+files on this device and its CUE sheets and lays what they say onto the
+release's tracks, and bae refuses it, naming the file, when this device holds
+no original of an audio file. Clearing the metadata empties the album's artists
+and year, the pressing, and each track's title, artists, listed length, roles
+and works. A Found folder's pane puts back the blank draft the scan wrote
+(§3.6). A library release's editor also empties the album's title and keeps
+the mediums and the tracks' places as the library holds them, and a save then
+stays refused until the album has a title and an artist.
+
+**The track table.** The table pairs each track with the audio it plays. Where
+the release has several discs or record sides, the table heads each once with
+its heading (*Side A*, *Side B* on a record or cassette, *Disc 1* elsewhere, §2.4),
+however many runs of rows it holds: the loose files on it, and under the
+sheet's caption each CUE sheet's tracks on it, however few (a sheet the
+release splits across sides names itself again on the next side). A row shows
+the track's place, which the table never edits, its title and artists, which
+edit in place as every artist field does (§2.3), and the length its audio
+measures. Where the release's source lists a length more than three seconds
+apart, that listed length follows the measured one in the warning colour, so
+the row says what disagrees; in a library release's editor, the listed length
+is the one the library stores for the track, or the one the catalog applied in
+the session lists. A row's source cell names the file the track plays, or, for
+a track a CUE sheet carves out of an image, where the track starts in the image
+(10:22), since the sheet's caption names the image once; a track's title is in
+the title column only. A row names one file: a pregap stored at the tail of the
+file before (§2.2) is not named, and every other track names the file its body,
+from its INDEX 01 on, plays from. A row's Play button plays the track: in a
+Found folder's pane through a second player, which pauses the library's
+playback and resumes it when it ends, and in a library release's editor by
+playing the release from that track. In a Found folder's pane, the table also
+counts the tracks nobody has named yet, and the action row states that count
+beside Import without blocking it: importing titles each of them after its
+file.
+
+A CUE sheet's caption holds the place pop-up of which of the release's sides
+and discs the sheet is on, each named by its heading, even on a release of one
+disc; the sheet's name, which opens it in the viewer; and the *Audio file*
+pop-up of which audio file each of the sheet's `FILE` lines plays from, a
+submenu for each line where the sheet has several. A pop-up lists, for each
+line, the file it plays from and each other audio file of the release it can
+play from, with the reason beside one it refuses: a codec bae can't carve
+tracks out of, or a file a track of the line ends, or its last track starts,
+past the end of. The rows show a pick at once, before an import or a save
+writes it: a sheet moved onto a side goes after the tracks already there
+(§3.6), and after a file pick the caption names the new file, the line's last
+track plays to its end, the listed lengths' warnings follow those lengths, and
+the *Files* list shows the file the line no longer plays from in the new file's
+place. In a Found folder's pane, the place pop-up also offers *Ignored*, and
+the Audio file pop-up offers no audio for a line, since the import decides
+which tracks the folder holds; a line that plays no audio shows *Choose
+audio…* in its place. A library release's editor adds and removes no tracks,
+so it offers neither, and lists for each line the file it plays from, the one
+it played from when the editor opened, and each other audio file of the
+release on this device that no track plays from. In a library release's
+editor, a catalog applied after a side pick lays the tracks out at its own
+places and clears the picks, so the pop-up then shows the catalog's side or
+disc; a pick made after it moves the sheet again, and a file pick stays.
+
+**Images.** A folder's pane shows the folder's images above the tracks, as its
+scan read them, under a ruled *Images* heading: each JPEG, PNG, GIF or WebP
+image bae can read. On the Mac, a click on one opens the lightbox over the
+folder's images at that image. The lightbox shows the image the person last
+moved to while the folder holds it, otherwise the folder's first image, and its
+arrows move to the images before and after it, wrapping around the ends; a lone
+image has none.
+
+**Files.** A release's *Files* list is one list, the same in all three places:
+the files no track plays from, such as a rip log, a track sheet that carves no
+tracks, or an audio file no track plays from, in the release's file order. A
+CUE sheet that carves tracks plays, so the list leaves it out. The list holds
+no image bae can show: a JPEG, PNG, GIF or WebP image that bae can read appears
+only among the release's images. An image in another format (a BMP or an SVG,
+for example), and an image in one of those four formats that bae finds damaged,
+stays in the list like any other file no track plays from. The list sits under
+the tracks beneath a ruled *Files* heading, one line per file: its name in
+monospace, its size at the right, a hairline between lines, and a damaged file
+marked with why: *Empty file* for a file that holds no bytes, *No audio bae can
+read* for one that holds no audio bae can play, and in a library release's
+editor, an image the scan found damaged. Every size bae shows, here and
+elsewhere, is in decimal units with at most one decimal and none when whole
+("3.9 GB", "420 MB", "1 GB", an empty file's "0 B"), the number and the unit in
+the person's language. A library release's editor shows each file as the role
+its import's scan gave it (§2.2) says, and a track sheet reads as the text it
+is. A document or a track sheet opens in the viewer when clicked, over whatever
+else is open, read from wherever this device can get the file and decoded as a
+folder's document is (§3.3).
+
+**While it writes.** Saving, cancelling and picking an album are local and
+show no spinner, their controls disabled until they end, except a save that
+binds a CUE sheet to another of the release's audio files: it reads that file,
+and every other file the sheet's lines then play from, first, and a spinner and
+*Reading <file name>…* sit before *Cancel* and *Save*, which stay disabled
+until the read ends. The cover, Unlink, the Metadata menu and the album
+pop-up stay disabled too, since a click on any of them would cancel the save.
+
+**A library release's form.** A library release's editor opens with a *form*
+that holds the release's values as the library holds them, and the editor
+holds its form: bae stores none of the form's changes until a save. Each change
+the person makes (a field, a label or barcode row, a choice of what the
+pressing is, the album's artists, a track's title or artists) changes the form
+as it is made, in the order made, and the editor shows, for the form as it
+stands, how each credit in it stands to the library, whether anything changed,
+and why the form can't be saved, when it can't. *Save* writes the form;
+*Cancel* discards its changes. The draft follows the library while the editor
+is open: how each credit stands to the library, the album's title and credits,
+and the cover show what the library holds after any write that changes them,
+including a write that merges an artist or renames the album, with no edit.
+Applying a catalog release to the form reads it once, against the release's
+stored track lengths and its files, and replaces every value the release holds:
+the album fields, the pressing, each track's title, artists, medium, side and
 number, the roles and works the catalog credits, the release's records (the
-applied one first) and the album those name — none of which is written yet;
+applied one first) and the album those name. None of them is written yet, and
 the cover stays the release's own. Saving writes the whole form in one
-transaction: the edited fields, and where a catalog was applied, its every
-value too, each track's listed length among them, so nothing a previous
-source credited survives, the sides the person picked for CUE sheets
-(each move of a sheet's tracks, with the sheet's side as its place decision),
-and the audio files they picked for sheets' `FILE` lines, each as the line's
-binding. For such a sheet, the save writes each track's format, segments,
-length, loudness and scrub points from the files the sheet's lines then play
-from, as the import reads them (§3.7), and keeps no row of the file a line
-played from before. The save also measures the album's loudness again over
-all the release's tracks, which coven reads from wherever it has them. The release lands
-in the album its records name (§3.7), or in a library album the person
-picked, which keeps its own title and artists. The editor names that album
-with the import pane's album picker: the album the release is in, the one an
-applied catalog's records name, or a new album where they name none the
-library holds, until the person picks one (a library album, or a new album,
-which a save writes with the release's edited title and year and the credits
-of the album it left); a pick holds over a catalog applied after it. A
-library album the person picked stops being the pick once someone deletes
-it. When someone deletes a library artist the person picked for a credit,
-the editor shows that credit by the artist's name as the form holds it, and
-how it stands to the library as for a name the person typed, and a save
-writes that credit as it writes a typed name. The cover is
-not part of the form: the editor writes a cover the person
-picks at once, and the form keeps what the person applied and picked.
-Cancelling discards the form's changes; bae reads no source again, since the
-library holds no pointer back into one. The editor offers the import pane's two
-commands for starting over (§3.6): applying the files' tags and clearing the
-metadata. Each changes the form and writes nothing until a save, and each
-keeps the form's records, its CUE sheets' picked sides and files, and its
-album pick. Applying the files' tags reads the release's audio files on this
-device and its CUE sheets as the import reads a folder's (§3.6), and lays what
-they say onto the release's tracks; bae refuses it, naming the file, when
-this device holds no original of an audio file. Clearing the metadata empties
-the album's title, artists and year, the pressing, and each track's title,
-artists, listed length, roles and works, and keeps the mediums and the
-tracks' places as the library holds them; a save stays refused until the
-album has a title and an artist. A release with nothing
-applied saves its edited fields alone, its mediums, roles and works as stored.
-A save decides each label as an import does (§2.3), and a label the person
-left as it was keeps the library label it named.
+transaction: the edited fields, and where the person applied values, every one
+of them too, each track's listed length among them, so nothing a previous
+source credited survives; the records the form holds; the sides the person
+picked for CUE sheets (each move of a sheet's tracks, with the sheet's side as
+its place decision); and the audio files they picked for sheets' `FILE` lines,
+each as the line's binding. For such a sheet, the save writes each track's
+format, segments, length, loudness and scrub points from the files the sheet's
+lines then play from, as the import reads them (§3.7), and keeps no row of the
+file a line played from before. The save also measures the album's loudness
+again over all the release's tracks, which coven reads from wherever it has
+them. The release lands in the album the album picker names. A library album
+the person picked keeps its own title and artists, and a new album the person
+picked takes the release's edited title and year and the credits of the album
+it left. When someone deletes a library artist the person picked for a credit,
+the editor shows that credit by the artist's name as the form holds it, and how
+it stands to the library as for a name the person typed, and a save writes that
+credit as it writes a typed name. The cover is not part of the form: the editor
+writes a cover the person picks at once, and the form keeps what the person
+applied and picked. Cancelling discards the form's changes; bae reads no source
+again, since the library holds no pointer back into one. Each command for
+starting over changes the form and writes nothing until a save. A release with
+nothing applied saves its edited fields alone, its mediums, roles and works as
+stored. A save decides each label as an import does (§2.3), and a label the
+person left as it was keeps the library label it named.
 
 Every editor holds a form of its own, so the editor sheet and the import
 pane open on the same release, or MCP's re-identify while either is open,
@@ -2303,46 +2385,12 @@ so (another editor saved it, MCP wrote its fields, or someone renamed an
 artist it credits), bae refuses the save and writes nothing, and the editor
 says the release changed after it opened; *Cancel* opens it again as it is
 now. Only the cover, which the editor writes at once, never makes a form out
-of date. The
-check and the rows are one write, so nothing lands between them. After a
-save, the editor works in a fresh form opened on what it saved. When the person, another device or MCP
-deletes a release while its editor is open, the editor closes: in the album
-detail the release's sheet closes, and in the import pane the folder
-returns to Found with its draft (A.5, `import_candidate_edit`).
-
-The editor lays the tracks out as the import's mapping table does (§3.6): a
-heading for each disc or record side where the release has several, and each
-CUE sheet's tracks on a side under the sheet's caption, however few, the
-sheet naming itself again on the next side. The caption is the import pane's:
-the place pop-up of which of the release's sides and discs the sheet is on (no
-*Ignored*), each named by its heading (*Side A*, *Side B* on a record or
-cassette, *Disc 1* elsewhere, even on a release of one disc), the sheet's
-name, and the *Audio file* pop-up of which of the release's audio files on
-this device each of the sheet's `FILE` lines plays from, a submenu for each
-line where the sheet has several (no *Choose audio…* and no choice of no
-audio, since the editor adds and removes no tracks): the file the line plays
-from, the one it played from when the editor opened, and each other audio
-file of the release on this device that no track plays from, with the import
-pane's reason beside one it refuses, a codec bae can't carve tracks out of or
-a file a track of the line ends, or its last track starts, past the end of. The
-rows show a new choice at once, from the editor's draft, before *Save* writes
-it (a catalog applied after a disc pick lays the tracks out at its own places
-and clears the picks, so the pop-up then shows the catalog's disc; a pick made
-after it moves the sheet again, and a file pick stays). After a file pick the
-caption names the new file, the line's last track plays to its end, the
-listed lengths' warnings follow those lengths, and the *Files* list shows the
-file the line no longer plays from in the new file's place. Every other track names in its row the file its body, from its
-INDEX 01 on, plays from. Each row's listed length is the one the library
-stores for the track, or the one the catalog applied in the session lists. A pregap stored at the tail of the file before
-(§2.2) is not named: a row names one file. An applied catalog lays them out
-again at the places it gives them.
-
-Under the tracks, the editor shows the release's *Files* list (§3.6), in the
-release's file order, each file as the role its import's scan gave it (§2.2)
-says.
-A track sheet reads as the text it is, an image the scan found damaged says
-so, and a document or track sheet opens in the viewer, read from wherever this
-device can get the file and decoded as a folder's document is (§3.3).
+of date. The check and the rows are one write, so nothing lands between them.
+After a save, the editor works in a fresh form opened on what it saved. When
+the person, another device or MCP deletes a release while its editor is open,
+the editor closes: in the album detail the release's sheet closes, and in the
+import pane the folder returns to Found with its draft (A.5,
+`import_candidate_edit`).
 
 ---
 ## 4. Files
