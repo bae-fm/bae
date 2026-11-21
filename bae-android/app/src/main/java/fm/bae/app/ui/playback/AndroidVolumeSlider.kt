@@ -35,7 +35,6 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.IconTone
 import kotlinx.coroutines.launch
-import kotlin.math.ceil
 import kotlin.math.roundToInt
 
 private const val VOLUME_STEPS = 1_000
@@ -58,7 +57,7 @@ internal fun AndroidVolumeSlider(
     val onValueChangeFinishedNow by rememberUpdatedState(onValueChangeFinished)
     // The view pads its line by the thumb's half, so the line itself, which the design draws a gap from
     // each side, starts that far inside the view: the view reaches past the gap by the same amount.
-    val thumbHalf = with(LocalDensity.current) { ceil(SeekLineLook.LARGE.thumbHalfWidthDp * density).toInt().toDp() }
+    val thumbHalf = with(LocalDensity.current) { SeekLineLook.LARGE.thumbHalfPx(density).toDp() }
     AndroidView(
         modifier = modifier.fillMaxWidth().padding(horizontal = ThemeSpace.related - thumbHalf),
         factory = { context ->
@@ -68,7 +67,7 @@ internal fun AndroidVolumeSlider(
                 max = VOLUME_STEPS
                 thumb = null
                 progressDrawable = SeekLineDrawable(density, look)
-                val thumbHalf = Math.ceil((look.thumbHalfWidthDp * density).toDouble()).toInt()
+                val thumbHalf = look.thumbHalfPx(density)
                 setPaddingRelative(thumbHalf, 0, thumbHalf, 0)
                 layoutParams =
                     ViewGroup.LayoutParams(

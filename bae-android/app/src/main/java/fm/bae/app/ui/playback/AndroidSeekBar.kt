@@ -237,7 +237,7 @@ internal class PlaybackProgressView(
         addView(leadingTextView)
         // The line runs to the labels, a gap from them: only the thumb's half, which it draws
         // past either end of the line, pads the bar, and the gap is what that leaves.
-        val thumbHalf = Math.ceil((look.thumbHalfWidthDp * resources.displayMetrics.density).toDouble()).toInt()
+        val thumbHalf = look.thumbHalfPx(resources.displayMetrics.density)
         seekBar.setPaddingRelative(thumbHalf, 0, thumbHalf, 0)
         addView(
             seekBar,

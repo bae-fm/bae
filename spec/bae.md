@@ -6524,7 +6524,8 @@ symbol that says something nothing else says is read as that: the speaker on the
 playing track as Now playing, a failed lookup's mark as Failed. On the Mac
 VoiceOver reads each progress bar and spinner by the words beside it ("Pinning",
 "Finding your libraries…"), and reads a spinner with no words beside it as
-Loading. The parts macOS draws itself, such as the menu bar's menus and the save
+Loading. On Android TalkBack reads each progress bar, the pin bar included, as a
+progress bar named by the words beside it, with its percent. The parts macOS draws itself, such as the menu bar's menus and the save
 panel's Format pop-up, take the Pink accent the app declares, as long as the
 Mac's own accent is Multicolor, and the person's Mac accent otherwise; they do
 not follow the accent chosen here. Checkboxes, switches, sliders, radio buttons,

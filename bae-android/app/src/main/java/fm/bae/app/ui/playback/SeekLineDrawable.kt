@@ -8,6 +8,7 @@ import android.graphics.PixelFormat
 import android.graphics.RectF
 import android.graphics.drawable.Drawable
 import android.util.LayoutDirection
+import kotlin.math.ceil
 
 /** The two ways a line with a position is drawn. */
 enum class SeekLineLook {
@@ -53,6 +54,9 @@ enum class SeekLineLook {
                 BAR -> BAR_THUMB_DP / 2f
                 LARGE -> LARGE_THUMB_WIDTH_DP / 2f
             }
+
+    /** [thumbHalfWidthDp] in whole pixels at [density], rounded up: the padding a view gives its line. */
+    fun thumbHalfPx(density: Float): Int = ceil(thumbHalfWidthDp * density).toInt()
 
     companion object {
         const val BAR_THUMB_DP = 14f
@@ -150,7 +154,7 @@ internal class SeekLineDrawable(
         rightToLeft: Boolean,
     ) {
         val area = bounds
-        val half = dp(BAR_LINE_DP) / 2f
+        val half = dp(look.lineHeightDp) / 2f
         val width = area.width().toFloat()
         val centreY = area.exactCenterY()
         shape.set(area.left.toFloat(), centreY - half, area.right.toFloat(), centreY + half)
@@ -175,7 +179,7 @@ internal class SeekLineDrawable(
         val left = area.left.toFloat()
         val right = area.right.toFloat()
         val centreY = area.exactCenterY()
-        val lineHalf = dp(SeekLineLook.LARGE_LINE_DP) / 2f
+        val lineHalf = dp(look.lineHeightDp) / 2f
         val thumbHalf = dp(SeekLineLook.LARGE_THUMB_WIDTH_DP) / 2f
         val thumbX = left + fraction * area.width()
         val playedEnd = thumbX - thumbHalf - dp(LARGE_GAP_DP)

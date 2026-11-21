@@ -16,7 +16,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.viewinterop.AndroidView
+import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.factsLine
 import fm.bae.app.formatFileSize
@@ -40,13 +42,12 @@ private const val PERCENT = 100f
  * [label] ("Pinning · 120 MB of 300 MB") when there is one, which a View reads
  * from [progress]'s latest value each display frame while the release
  * downloads: arriving bytes recompose nothing. Screen readers name the bar
- * [name], and read it as a progress bar of a percent. With [stopDot] the bar ends in a
+ * Pinning, and read it as a progress bar of a percent. With [stopDot] the bar ends in a
  * dot, as the album page's bar does.
  */
 @Composable
 internal fun DownloadProgress(
     progress: LatestSource<BridgeDownloadTransferProgress>,
-    name: String,
     label: String?,
     modifier: Modifier = Modifier,
     stopDot: Boolean = false,
@@ -54,6 +55,7 @@ internal fun DownloadProgress(
     val accent = MaterialTheme.colorScheme.primary.toArgb()
     val text = MaterialTheme.colorScheme.onSurfaceVariant.toArgb()
     val size = ThemeText.fine.style.fontSize.value
+    val name = stringResource(R.string.pinning)
     AndroidView(
         modifier = modifier,
         factory = { context -> DownloadProgressView(context) },
