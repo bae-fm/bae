@@ -1,25 +1,16 @@
 package fm.bae.app.ui.albumdetail
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -34,32 +25,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import fm.bae.app.DisplayError
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
-import fm.bae.app.creditLineText
+import fm.bae.app.audioLineText
 import fm.bae.app.data.LiveQueryState
 import fm.bae.app.data.answer
 import fm.bae.app.displayError
-import fm.bae.app.labelsLineText
-import fm.bae.app.pressingLineText
 import fm.bae.app.text
-import fm.bae.app.ui.appearance.SymbolIcons
-import fm.bae.app.ui.appearance.ThemeIcon
-import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidContentUnavailable
-import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.AndroidNotice
-import fm.bae.app.ui.components.AndroidPageActions
-import fm.bae.app.ui.components.Artwork
-import fm.bae.app.ui.components.IconTone
 import fm.bae.app.ui.components.NoticeLook
+import fm.bae.app.ui.components.PageDeletion
 import fm.bae.app.ui.components.PageDeletionShown
-import fm.bae.app.ui.components.QueueActions
 import fm.bae.app.ui.components.StatusChip
 import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.rememberPageDeletion
@@ -71,7 +51,6 @@ import fm.bae.app.ui.library.rememberTrackPlaylistAdd
 import fm.bae.app.ui.playback.AndroidNowPlayingBarContainer
 import fm.bae.app.ui.rememberScreenScope
 import fm.bae.app.ui.runTrackQueueCommand
-import fm.bae.app.yearText
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeAlbumDetailRequest
@@ -81,6 +60,7 @@ import uniffi.bae_bridge.BridgeRatingTarget
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeReleasePlayability
 import uniffi.bae_bridge.BridgeStars
+import uniffi.bae_bridge.bridgeAudioChannelsKey
 import uniffi.bae_bridge.bridgeCatalogName
 
 internal data class AlbumPlaybackState(
@@ -130,43 +110,95 @@ fun AlbumDetailScreen(
             session.appHandle.deleteAlbum(albumId)
         }
     val adding = rememberTrackPlaylistAdd(session)
+    val unpin = rememberReleaseUnpin(session)
+    var rating by remember(albumId) { mutableStateOf(false) }
     val request = BridgeAlbumDetailRequest(albumId = albumId, chosenReleaseId = selectedReleaseId)
-    // The page activates the album query again with each release the person picks, and deactivates
-    // it when the page closes or shows another album.
-    LaunchedEffect(request, session) { session.libraryQueries.album.activate(request) }
-    DisposableEffect(albumId, session) {
-        onDispose { session.libraryQueries.album.deactivate(request) }
-    }
+    ActivateAlbumQuery(session, albumId, request)
 
     val loadError = (query as? LiveQueryState.Failed)?.error?.let(LocalContext.current::displayError)
+    val callbacks =
+        detail?.let {
+            buildAlbumDetailCallbacks(session, it.shownRelease, adding, onOpenWork) { selectedReleaseId = it }
+        }
     AndroidDetailScreen(
         onBack = onBack,
         backLabel = backLabel,
         nowPlayingBar = { AndroidNowPlayingBarContainer(session = session) },
-        actions = { if (detail != null) AlbumBarActions(session, detail, deletion) },
+        actions = {
+            if (detail != null && callbacks != null) {
+                AlbumBarActions(
+                    session = session,
+                    detail = detail,
+                    callbacks = callbacks,
+                    deletion = deletion,
+                    unpin = unpin,
+                    onRate = { rating = true },
+                )
+            }
+        },
     ) {
-        PageDeletionShown(deletion) { _, onConfirm, onDismiss -> DeleteAlbumDialog(onConfirm, onDismiss) }
-        TrackPlaylistAddShown(session, adding)
+        AlbumPageOverlays(session, deletion, unpin, adding)
+        if (rating && detail != null && callbacks != null) {
+            AlbumRatingSheet(rating = detail.rating, onRate = callbacks.onRateAlbum, onDismiss = { rating = false })
+        }
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             val loaded = detail
-            if (loaded == null) {
+            if (loaded == null || callbacks == null) {
                 AlbumDetailPlaceholderBox(
                     placeholder = albumDetailPlaceholder(query, loadError),
                     onRetry = session.libraryQueries.album::retry,
                 )
             } else {
-                val release = loaded.shownRelease
-                AlbumDetailContent(
-                    detail = loaded,
-                    cover = release.cover,
-                    playback = AlbumPlaybackState(nowPlaying?.trackId, isPlaying),
-                    callbacks =
-                        buildAlbumDetailCallbacks(session, release, adding, onOpenWork) { selectedReleaseId = it },
-                    releaseDownloadControl = { rel -> ReleaseTransferLines(session = session, release = rel) },
-                )
+                AlbumLoaded(session, loaded, callbacks, AlbumPlaybackState(nowPlaying?.trackId, isPlaying))
             }
         }
     }
+}
+
+/** The album page's content for the loaded [detail]. */
+@Composable
+private fun AlbumLoaded(
+    session: OpenLibrary,
+    detail: BridgeAlbumDetail,
+    callbacks: AlbumDetailCallbacks,
+    playback: AlbumPlaybackState,
+) {
+    AlbumDetailContent(
+        detail = detail,
+        cover = detail.shownRelease.cover,
+        playback = playback,
+        callbacks = callbacks,
+        releaseDownloadControl = { rel -> ReleaseTransferLines(session = session, release = rel) },
+    )
+}
+
+/**
+ * The page activates the album query again with each release the person picks, and deactivates
+ * it when the page closes or shows another album.
+ */
+@Composable
+private fun ActivateAlbumQuery(
+    session: OpenLibrary,
+    albumId: String,
+    request: BridgeAlbumDetailRequest,
+) {
+    LaunchedEffect(request, session) { session.libraryQueries.album.activate(request) }
+    DisposableEffect(albumId, session) {
+        onDispose { session.libraryQueries.album.deactivate(request) }
+    }
+}
+
+/** What the page opens over its content: the delete and unpin confirmations, the playlist choice and their errors. */
+@Composable
+private fun AlbumPageOverlays(
+    session: OpenLibrary,
+    deletion: PageDeletion<BridgeAlbum>,
+    unpin: ReleaseUnpin,
+    adding: TrackPlaylistAdd,
+) {
+    PageDeletionShown(deletion) { _, onConfirm, onDismiss -> DeleteAlbumDialog(onConfirm, onDismiss) }
+    ReleaseUnpinShown(unpin)
+    TrackPlaylistAddShown(session, adding)
 }
 
 /** What the album page shows while it has no album to draw. */
@@ -302,8 +334,8 @@ internal fun AlbumDetailContent(
     callbacks: AlbumDetailCallbacks,
     releaseDownloadControl: @Composable (BridgeRelease) -> Unit,
     catalogName: (BridgeCatalog) -> String = ::bridgeCatalogName,
+    audioChannelsKey: (Long) -> String? = ::bridgeAudioChannelsKey,
 ) {
-    val album = detail.album
     val context = LocalContext.current
     val shown = detail.shownRelease
 
@@ -338,10 +370,11 @@ internal fun AlbumDetailContent(
                 galleryItemCount = shown.galleryItemCount,
                 onShowGallery = { showGallery = true },
                 onShowWhere = { showWhere = true },
+                actions = {
+                    AndroidButton(onClick = callbacks.onPlayRelease) { Text(stringResource(R.string.play)) }
+                },
             )
         }
-
-        block { AndroidAlbumRating(rating = detail.rating, onRate = callbacks.onRateAlbum) }
 
         if (detail.showsReleaseChoices) {
             block { AndroidReleasePicker(detail, onSelect = callbacks.onSelectRelease) }
@@ -355,103 +388,14 @@ internal fun AlbumDetailContent(
         if (!unplayable || shown.upload?.progress != null) {
             block { releaseDownloadControl(shown) }
         }
-        if (!unplayable) {
-            block {
-                AndroidPageActions(
-                    onPlay = callbacks.onPlayRelease,
-                    onShuffle = callbacks.onShuffleRelease,
-                    queue = QueueActions(callbacks.onPlayReleaseNext, callbacks.onAddReleaseToQueue),
-                )
-            }
-        }
         albumTrackGroups(shown, positionColumnWidth, playback, callbacks, context)
         albumCredits(shown)
         if (shown.hasOtherFiles) {
             item { AndroidReleaseFiles(shown.otherFiles) }
         }
-    }
-}
-
-@Composable
-internal fun AndroidAlbumHeader(
-    detail: BridgeAlbumDetail,
-    cover: BridgeImageRef?,
-    galleryItemCount: UInt,
-    onShowGallery: () -> Unit,
-    onShowWhere: () -> Unit,
-) {
-    val album = detail.album
-    val context = LocalContext.current
-    val unplayable = detail.shownRelease.playability is BridgeReleasePlayability.OnOtherDevice
-
-    Row(modifier = Modifier.height(IntrinsicSize.Min), verticalAlignment = Alignment.Top) {
-        Artwork(
-            cover = cover,
-            cornerRadius = ThemeRadius.cover,
-            iconPadding = ThemeSpace.page,
-            modifier =
-                Modifier
-                    .size(140.dp)
-                    .clickable(enabled = galleryItemCount > 0u, onClick = onShowGallery),
-            contentDescription = album.title,
-        )
-        Spacer(modifier = Modifier.width(ThemeSpace.edge))
-        Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
-            Text(text = album.title, style = ThemeText.hero.style)
-            Text(
-                text = LocalContext.current.creditLineText(album.artistLine),
-                style = ThemeText.body.style,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            album.year?.let {
-                Text(
-                    text = LocalContext.current.yearText(it),
-                    style = ThemeText.detail.style,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            // The pressing, then its labels, each on one line of its own.
-            val factLines =
-                listOfNotNull(
-                    detail.shownRelease.pressingLineText(context),
-                    detail.shownRelease.labelsLineText(context),
-                ).filter { it.isNotEmpty() }
-            if (factLines.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(ThemeSpace.inline))
-                factLines.forEach { line ->
-                    Text(
-                        text = line,
-                        style = ThemeText.detail.style,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
-            if (unplayable) {
-                Spacer(modifier = Modifier.weight(1f))
-                NotOnThisDevice(onShowWhere)
-            }
+        shown.audioLineText(context, audioChannelsKey).takeIf { it.isNotEmpty() }?.let {
+            item { AndroidAlbumAudio(it) }
         }
-    }
-}
-
-/** The words for a release only another device holds, where Play would stand, and the button that says where it is. */
-@Composable
-private fun NotOnThisDevice(onShowWhere: () -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            text = stringResource(R.string.release_not_on_this_device),
-            style = ThemeText.body.style,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        AndroidIconButton(
-            icon = SymbolIcons.Info,
-            contentDescription = stringResource(R.string.release_show_where),
-            onClick = onShowWhere,
-            tone = IconTone.MUTED,
-            glyph = ThemeIcon.medium,
-        )
     }
 }
 

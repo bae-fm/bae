@@ -10,8 +10,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.albumdetail.AlbumMenuActions
 import fm.bae.app.ui.albumdetail.AlbumOptionsMenu
 import fm.bae.app.ui.albumdetail.AndroidAlbumHeader
+import fm.bae.app.ui.albumdetail.PinMenuItem
+import fm.bae.app.ui.albumdetail.PlayMenuActions
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.library.AndroidDetailScreen
 import org.junit.Test
@@ -25,7 +28,17 @@ class AndroidDetailScreenShots : BoardShot() {
     @Test
     fun androidComponentDetailScreenMenu() =
         component("android.component.detail-screen.menu") {
-            Detail { AlbumOptionsMenu(onSetPrimaryRelease = null, onDelete = {}) }
+            Detail {
+                AlbumOptionsMenu(
+                    AlbumMenuActions(
+                        play = PlayMenuActions(onShuffle = {}, onPlayNext = {}, onAddToQueue = {}),
+                        onRate = {},
+                        pin = PinMenuItem(pinned = true) {},
+                        onSetPrimaryRelease = null,
+                        onDelete = {},
+                    ),
+                )
+            }
         }
 
     @Test
@@ -59,5 +72,5 @@ private fun Detail(actions: @Composable RowScope.() -> Unit) =
 private val plainDetail: BridgeAlbumDetail =
     PreviewData.albumDetail(
         harborDetail.album,
-        releases = listOf(harborRelease.copy(labels = emptyList(), pressingSummary = emptyList())),
+        releases = listOf(harborRelease.copy(labels = emptyList(), pressingSummary = emptyList(), mediaTerms = emptyList())),
     )

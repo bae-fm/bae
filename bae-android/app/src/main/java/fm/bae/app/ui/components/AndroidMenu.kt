@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -44,6 +45,22 @@ fun AndroidMenu(
 internal fun ColumnScope.AndroidMenuItemStyle(content: @Composable ColumnScope.() -> Unit) {
     val typography = MaterialTheme.typography
     MaterialTheme(typography = typography.copy(bodyLarge = ThemeText.androidLabel.style)) { content() }
+}
+
+/** One action of a menu: a tap closes the menu with [close], then runs [onClick]. */
+@Composable
+internal fun AndroidMenuAction(
+    label: String,
+    close: () -> Unit,
+    onClick: () -> Unit,
+) {
+    DropdownMenuItem(
+        text = { Text(label) },
+        onClick = {
+            close()
+            onClick()
+        },
+    )
 }
 
 /** A group's name over its items, in the secondary colour; a screen reader announces it as a heading. */

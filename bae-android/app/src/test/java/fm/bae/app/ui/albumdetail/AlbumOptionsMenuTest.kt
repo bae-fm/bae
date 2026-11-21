@@ -13,21 +13,37 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 
-/** The album's menu shows Set as primary release above Delete album only when the caller passes an action for it. */
+/**
+ * The album's menu offers Shuffle, Play next, Add to queue and Rate always, Pin or Unpin and Set as primary release
+ * only when the caller passes an action for them, and Delete album… last.
+ */
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class AlbumOptionsMenuTest {
     @get:Rule
     val compose = createComposeRule()
 
-    private val setPrimary = mutableListOf<Unit>()
+    private val ran = mutableListOf<String>()
 
-    private fun showMenu(withSetPrimary: Boolean) {
+    private fun showMenu(
+        pin: PinMenuItem? = null,
+        withSetPrimary: Boolean = false,
+    ) {
         compose.setContent {
             TestTheme {
                 AlbumOptionsMenu(
-                    onSetPrimaryRelease = if (withSetPrimary) ({ setPrimary.add(Unit) }) else null,
-                    onDelete = {},
+                    AlbumMenuActions(
+                        play =
+                            PlayMenuActions(
+                                onShuffle = { ran.add("shuffle") },
+                                onPlayNext = { ran.add("play next") },
+                                onAddToQueue = { ran.add("add to queue") },
+                            ),
+                        onRate = { ran.add("rate") },
+                        pin = pin,
+                        onSetPrimaryRelease = if (withSetPrimary) ({ ran.add("primary") }) else null,
+                        onDelete = { ran.add("delete") },
+                    ),
                 )
             }
         }
@@ -35,18 +51,38 @@ class AlbumOptionsMenuTest {
     }
 
     @Test
-    fun choosingSetAsPrimaryReleaseRunsItsAction() {
-        showMenu(withSetPrimary = true)
+    fun eachItemRunsItsAction() {
+        showMenu(pin = PinMenuItem(pinned = false) { ran.add("pin") }, withSetPrimary = true)
 
-        compose.onNodeWithText("Set as primary release").performClick()
-
-        assertEquals(1, setPrimary.size)
+        listOf(
+            "Shuffle" to "shuffle",
+            "Play next" to "play next",
+            "Add to queue" to "add to queue",
+            "Rate" to "rate",
+            "Pin" to "pin",
+            "Set as primary release" to "primary",
+            "Delete album…" to "delete",
+        ).forEach { (label, action) ->
+            compose.onNodeWithContentDescription("Album options").performClick()
+            compose.onNodeWithText(label).performClick()
+            assertEquals(action, ran.last())
+        }
     }
 
     @Test
-    fun withoutAnActionTheMenuHoldsOnlyDelete() {
-        showMenu(withSetPrimary = false)
+    fun aPinnedReleaseOffersUnpinInPlaceOfPin() {
+        showMenu(pin = PinMenuItem(pinned = true) {})
 
+        compose.onNodeWithText("Unpin").assertExists()
+        compose.onNodeWithText("Pin").assertDoesNotExist()
+    }
+
+    @Test
+    fun withoutActionsTheMenuHoldsNeitherPinNorSetAsPrimary() {
+        showMenu()
+
+        compose.onNodeWithText("Pin").assertDoesNotExist()
+        compose.onNodeWithText("Unpin").assertDoesNotExist()
         compose.onNodeWithText("Set as primary release").assertDoesNotExist()
         compose.onNodeWithText("Delete album…").assertExists()
     }

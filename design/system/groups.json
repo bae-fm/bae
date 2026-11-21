@@ -505,7 +505,6 @@
           "MacReleasePicker",
           "AndroidReleasePicker",
           "MacAlbumRating",
-          "AndroidAlbumRating",
           "AndroidRecordLinks",
           "AndroidPinControl",
           "AndroidUploadLine"

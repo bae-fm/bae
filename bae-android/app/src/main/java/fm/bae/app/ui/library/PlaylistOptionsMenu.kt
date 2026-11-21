@@ -1,8 +1,6 @@
 package fm.bae.app.ui.library
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -12,17 +10,28 @@ import androidx.compose.ui.res.stringResource
 import fm.bae.app.R
 import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.components.AndroidDialog
+import fm.bae.app.ui.components.AndroidDivider
 import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.AndroidMenu
+import fm.bae.app.ui.components.AndroidMenuAction
 import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.DialogParts
 import fm.bae.app.ui.components.WIDE_DIALOG_WIDTH
 
-/** The playlist's own actions, at the end of the page's bar: Edit playlist… and Delete playlist…. */
+/** What only the playlist's owner can do: change it and delete it. */
+internal class PlaylistOwnerActions(
+    val onEdit: () -> Unit,
+    val onDelete: () -> Unit,
+)
+
+/**
+ * The playlist's options, the ⋮ at the end of the page's bar: Shuffle, and for the playlist's owner,
+ * after a separator, Edit playlist… and Delete playlist….
+ */
 @Composable
 internal fun PlaylistOptionsMenu(
-    onEdit: () -> Unit,
-    onDelete: () -> Unit,
+    onShuffle: () -> Unit,
+    owner: PlaylistOwnerActions?,
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box {
@@ -32,20 +41,12 @@ internal fun PlaylistOptionsMenu(
             onClick = { expanded = true },
         )
         AndroidMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.playlist_edit_menu)) },
-                onClick = {
-                    expanded = false
-                    onEdit()
-                },
-            )
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.playlist_delete_menu)) },
-                onClick = {
-                    expanded = false
-                    onDelete()
-                },
-            )
+            AndroidMenuAction(stringResource(R.string.shuffle), { expanded = false }, onShuffle)
+            if (owner != null) {
+                AndroidDivider()
+                AndroidMenuAction(stringResource(R.string.playlist_edit_menu), { expanded = false }, owner.onEdit)
+                AndroidMenuAction(stringResource(R.string.playlist_delete_menu), { expanded = false }, owner.onDelete)
+            }
         }
     }
 }

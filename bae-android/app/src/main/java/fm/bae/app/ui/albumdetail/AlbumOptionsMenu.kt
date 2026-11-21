@@ -1,8 +1,6 @@
 package fm.bae.app.ui.albumdetail
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -15,39 +13,63 @@ import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidDivider
 import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.AndroidMenu
+import fm.bae.app.ui.components.AndroidMenuAction
 import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.WIDE_DIALOG_WIDTH
 
+/** The menu's Pin or Unpin item for the release in view. */
+internal class PinMenuItem(
+    val pinned: Boolean,
+    val onClick: () -> Unit,
+)
+
+/** The menu's first group: what plays the release or queues it. */
+internal class PlayMenuActions(
+    val onShuffle: () -> Unit,
+    val onPlayNext: () -> Unit,
+    val onAddToQueue: () -> Unit,
+)
+
 /**
- * The album's own actions, at the end of the page's bar: [onSetPrimaryRelease] makes the release in view
- * the album's primary one, and is `null` when it already is or the album holds one release.
+ * What the album's menu does. [play] is absent when the release cannot play on this device.
+ * [pin] is `null` while the page's own control is the way to act on the
+ * release's pin, and [onSetPrimaryRelease] is `null` when the release in view already is the album's
+ * primary one or the album holds one release.
+ */
+internal class AlbumMenuActions(
+    val play: PlayMenuActions?,
+    val onRate: () -> Unit,
+    val pin: PinMenuItem?,
+    val onSetPrimaryRelease: (() -> Unit)?,
+    val onDelete: () -> Unit,
+)
+
+/**
+ * The album's options, the ⋮ at the end of the page's bar: Shuffle, Play next and Add to queue, then
+ * Rate, Pin or Unpin and Set as primary release, then Delete album….
  */
 @Composable
-internal fun AlbumOptionsMenu(
-    onSetPrimaryRelease: (() -> Unit)?,
-    onDelete: () -> Unit,
-) {
+internal fun AlbumOptionsMenu(actions: AlbumMenuActions) {
     var expanded by remember { mutableStateOf(false) }
     Box {
         AndroidIconButton(SymbolIcons.MoreVert, stringResource(R.string.album_options), onClick = { expanded = true })
         AndroidMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            if (onSetPrimaryRelease != null) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.set_primary_release)) },
-                    onClick = {
-                        expanded = false
-                        onSetPrimaryRelease()
-                    },
-                )
+            val close = { expanded = false }
+            actions.play?.let { play ->
+                AndroidMenuAction(stringResource(R.string.shuffle), close, play.onShuffle)
+                AndroidMenuAction(stringResource(R.string.play_next), close, play.onPlayNext)
+                AndroidMenuAction(stringResource(R.string.add_to_queue), close, play.onAddToQueue)
                 AndroidDivider()
             }
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.delete_album)) },
-                onClick = {
-                    expanded = false
-                    onDelete()
-                },
-            )
+            AndroidMenuAction(stringResource(R.string.rate), close, actions.onRate)
+            actions.pin?.let {
+                AndroidMenuAction(stringResource(if (it.pinned) R.string.unpin else R.string.pin), close, it.onClick)
+            }
+            actions.onSetPrimaryRelease?.let {
+                AndroidMenuAction(stringResource(R.string.set_primary_release), close, it)
+            }
+            AndroidDivider()
+            AndroidMenuAction(stringResource(R.string.delete_album), close, actions.onDelete)
         }
     }
 }

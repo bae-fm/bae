@@ -11,13 +11,16 @@ import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.albumdetail.AlbumDetailCallbacks
 import fm.bae.app.ui.albumdetail.AlbumDetailContent
+import fm.bae.app.ui.albumdetail.AlbumMenuActions
 import fm.bae.app.ui.albumdetail.AlbumOptionsMenu
 import fm.bae.app.ui.albumdetail.AlbumPlaybackState
 import fm.bae.app.ui.albumdetail.unavailableReleaseHeading
+import fm.bae.app.ui.albumdetail.AlbumRatingChoices
 import fm.bae.app.ui.library.AndroidDetailScreen
 import org.junit.Test
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeAlbumRating
+import uniffi.bae_bridge.BridgeAudioFormat
 import uniffi.bae_bridge.BridgeCatalog
 import uniffi.bae_bridge.BridgeCreditRole
 import uniffi.bae_bridge.BridgeCreditRow
@@ -31,6 +34,9 @@ import uniffi.bae_bridge.BridgeOtherDevice
 import uniffi.bae_bridge.BridgeRater
 import uniffi.bae_bridge.BridgeReleasePlayability
 import uniffi.bae_bridge.BridgeReleaseRecord
+import uniffi.bae_bridge.BridgeSourceAudioDescriptor
+import uniffi.bae_bridge.BridgeSourceAudioLayout
+import uniffi.bae_bridge.BridgeSourceAudioSummary
 import uniffi.bae_bridge.BridgeStars
 import uniffi.bae_bridge.BridgeTermLabel
 import uniffi.bae_bridge.BridgeTrackSpan
@@ -53,6 +59,22 @@ class AlbumBoardShots : BoardShot() {
         }
 
     @Test
+    fun androidAlbumPage() = shot("android.album.page") { AlbumPage(boardAlbum()) }
+
+    @Test
+    fun androidAlbumRate() =
+        shot("android.album.rate") {
+            val rating =
+                BridgeAlbumRating(
+                    mine = BridgeStars.FOUR,
+                    raters = listOf(BridgeRater.You, BridgeRater.Person("Ana", BridgeStars.FIVE)),
+                )
+            SheetScene(title = stringResource(R.string.rate), behind = { AlbumPage(boardAlbum(rating = rating)) }) {
+                AlbumRatingChoices(rating = rating, onRate = {})
+            }
+        }
+
+    @Test
     fun androidAlbumCredits() =
         shot("android.album.credits") {
             val detail = boardAlbum()
@@ -70,8 +92,15 @@ class AlbumBoardShots : BoardShot() {
                         tracks = emptyList(),
                     )
                 }
+            val flac =
+                BridgeAudioFormat(codec = "FLAC", sampleRateHz = 44_100, bitsPerSample = 16, bitrateKbps = null, channels = 2)
             val credited =
-                release.copy(trackGroups = groups, tracks = groups.flatMap { it.tracks }, credits = credits)
+                release.copy(
+                    trackGroups = groups,
+                    tracks = groups.flatMap { it.tracks },
+                    credits = credits,
+                    sourceAudio = BridgeSourceAudioSummary.Uniform(BridgeSourceAudioDescriptor(BridgeSourceAudioLayout.FILE, flac)),
+                )
             AlbumPage(detail.copy(releases = listOf(credited)))
         }
 
@@ -129,12 +158,18 @@ internal fun boardFile(
     audioFormat = null,
 )
 
-/** "Low Tide Hours" by Mara Quill with the six tracks the boards list, one disc, with [rating] as its rating. */
+/** "Low Tide Hours" by Mara Quill, a CD on Harbor Records with the six tracks the boards list, one disc, with [rating] as its rating. */
 internal fun boardAlbum(rating: BridgeAlbumRating = BridgeAlbumRating(mine = null, raters = emptyList())): BridgeAlbumDetail {
     val titles = listOf("Harbor Lights", "The Long Way Home", "Second Floor", "Low Tide Hours", "Tin Roof", "Margins")
     val tracks = titles.mapIndexed { index, title -> PreviewData.track("trk-${index + 1}", title, index + 1) }
     val album = PreviewData.album(title = "Low Tide Hours", year = 1992, artistNames = "Mara Quill")
-    val release = PreviewData.release(albumId = album.id, trackGroups = listOf(PreviewData.trackGroup(tracks)))
+    val release =
+        harborRelease.copy(
+            id = "rel-alb-1",
+            albumId = album.id,
+            tracks = tracks,
+            trackGroups = listOf(PreviewData.trackGroup(tracks)),
+        )
     return PreviewData.albumDetail(album, listOf(release)).copy(rating = rating)
 }
 
@@ -169,7 +204,11 @@ private val onAnotherDevice: BridgeAlbumDetail =
                 playability = unavailablePlayability,
                 totalDuration = BridgeDurationUnits.MinutesOnly(52UL),
             )
-        detail.copy(releases = listOf(release), shownRelease = release)
+        detail.copy(
+            releases = listOf(release),
+            shownRelease = release,
+            rating = BridgeAlbumRating(mine = null, raters = emptyList()),
+        )
     }
 
 /** The track playing in the bar behind the album page, 1:28 into 4:51. */
@@ -179,7 +218,9 @@ private val northbound =
 @Composable
 private fun UnavailableAlbumPage() {
     AlbumPageContent(onAnotherDevice, northbound, catalogName = { it.name }) {
-        AlbumOptionsMenu(onSetPrimaryRelease = null, onDelete = {})
+        AlbumOptionsMenu(
+            AlbumMenuActions(play = null, onRate = {}, pin = null, onSetPrimaryRelease = null, onDelete = {}),
+        )
     }
 }
 
@@ -227,6 +268,7 @@ private fun AlbumPageContent(
                     ),
                 releaseDownloadControl = {},
                 catalogName = catalogName,
+                audioChannelsKey = { "core.audio.channels.stereo" },
             )
         }
     }

@@ -11,6 +11,7 @@ import fm.bae.app.ui.library.AndroidDetailScreen
 import fm.bae.app.ui.library.PlaylistContent
 import fm.bae.app.ui.library.PlaylistEntryActions
 import fm.bae.app.ui.library.PlaylistOptionsMenu
+import fm.bae.app.ui.library.PlaylistOwnerActions
 import fm.bae.app.ui.library.SHARING_CHOICES
 import fm.bae.app.ui.library.deletePlaylistParts
 import fm.bae.app.ui.library.playlistDialogParts
@@ -51,12 +52,12 @@ class PlaylistBoardShots : BoardShot() {
                 onBack = {},
                 backLabel = stringResource(R.string.back_to_library),
                 nowPlayingBar = { Bar(playing) },
-                actions = { PlaylistOptionsMenu(onEdit = {}, onDelete = {}) },
+                actions = { PlaylistOptionsMenu(onShuffle = {}, owner = PlaylistOwnerActions(onEdit = {}, onDelete = {})) },
             ) { PlaylistContent(detail = detail, actions = actions) }
         }
     }
 
-    /** A playlist's page: its picture, owner, count and who sees it, Play and Shuffle, and its tracks. */
+    /** A playlist's page: its picture, owner, count and who sees it, Play under them, and its tracks. */
     @Test
     fun androidPlaylistsPlaylist() = shot("android.playlists.playlist") { ScreenScene { Page() } }
 

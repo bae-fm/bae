@@ -240,7 +240,6 @@
     <string name="unpin_confirm_title">Desafixar este lançamento?</string>
     <string name="unpin_confirm_body">O bae vai remover os arquivos dele deste celular agora. O lançamento continua na nuvem, e o bae o transmite de lá enquanto você estiver online.</string>
     <string name="dont_show_again">Não mostrar isto novamente</string>
-    <string name="pinned">Fixado</string>
     <string name="pinning">Fixando</string>
     <string name="pin_cancel">Cancelar fixação</string>
     <string name="pin_queued">Na fila para fixar</string>
@@ -523,6 +522,8 @@
     <string name="stars_none">Sem avaliação</string>
     <string name="stars_of_five">%1$d de 5 estrelas</string>
     <string name="stars_rate">Avaliar com %1$d de 5 estrelas</string>
+    <string name="rate">Avaliar</string>
+    <string name="clear_rating">Limpar avaliação</string>
     <string name="file_kind_audio">Áudio %1$s</string>
     <string name="file_kind_image">Imagem %1$s</string>
     <string name="file_kind_damaged_image">Imagem danificada</string>

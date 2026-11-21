@@ -240,7 +240,6 @@
     <string name="unpin_confirm_title">Désépingler cette édition ?</string>
     <string name="unpin_confirm_body">bae supprimera ses fichiers de ce téléphone dès maintenant. L’édition reste dans le cloud, et bae la diffuse depuis celui-ci tant que vous êtes en ligne.</string>
     <string name="dont_show_again">Ne plus afficher ce message</string>
-    <string name="pinned">Épinglé</string>
     <string name="pinning">Épinglage</string>
     <string name="pin_cancel">Annuler l’épinglage</string>
     <string name="pin_queued">En file pour épinglage</string>
@@ -523,6 +522,8 @@
     <string name="stars_none">Non noté</string>
     <string name="stars_of_five">%1$d étoiles sur 5</string>
     <string name="stars_rate">Noter %1$d étoiles sur 5</string>
+    <string name="rate">Noter</string>
+    <string name="clear_rating">Effacer la note</string>
     <string name="file_kind_audio">Audio %1$s</string>
     <string name="file_kind_image">Image %1$s</string>
     <string name="file_kind_damaged_image">Image endommagée</string>

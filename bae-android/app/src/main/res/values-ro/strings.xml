@@ -244,7 +244,6 @@
     <string name="unpin_confirm_title">Anulezi fixarea pentru această ediție?</string>
     <string name="unpin_confirm_body">bae va elimina acum fișierele ei de pe acest telefon. Ediția rămâne în cloud, iar bae o redă de acolo în flux cât timp ești online.</string>
     <string name="dont_show_again">Nu mai afișa acest mesaj</string>
-    <string name="pinned">Fixat</string>
     <string name="pinning">Se fixează</string>
     <string name="pin_cancel">Oprește fixarea</string>
     <string name="pin_queued">În coadă pentru fixare</string>
@@ -523,6 +522,8 @@
     <string name="stars_none">Neevaluat</string>
     <string name="stars_of_five">%1$d din 5 stele</string>
     <string name="stars_rate">Evaluează cu %1$d din 5 stele</string>
+    <string name="rate">Evaluează</string>
+    <string name="clear_rating">Șterge evaluarea</string>
     <string name="file_kind_audio">Audio %1$s</string>
     <string name="file_kind_image">Imagine %1$s</string>
     <string name="file_kind_damaged_image">Imagine deteriorată</string>

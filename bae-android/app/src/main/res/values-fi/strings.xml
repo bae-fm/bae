@@ -238,7 +238,6 @@
     <string name="unpin_confirm_title">Irrotetaanko tämä julkaisu?</string>
     <string name="unpin_confirm_body">bae poistaa sen tiedostot tästä puhelimesta nyt. Julkaisu pysyy pilvessä, ja bae suoratoistaa sen sieltä, kun olet verkossa.</string>
     <string name="dont_show_again">Älä näytä tätä uudelleen</string>
-    <string name="pinned">Kiinnitetty</string>
     <string name="pinning">Kiinnitetään</string>
     <string name="pin_cancel">Peruuta kiinnitys</string>
     <string name="pin_queued">Jonossa kiinnitettäväksi</string>
@@ -514,6 +513,8 @@
     <string name="stars_none">Ei arvosteltu</string>
     <string name="stars_of_five">%1$d / 5 tähteä</string>
     <string name="stars_rate">Arvostele %1$d / 5 tähteä</string>
+    <string name="rate">Arvostele</string>
+    <string name="clear_rating">Poista arvostelu</string>
     <string name="file_kind_audio">%1$s-ääni</string>
     <string name="file_kind_image">%1$s-kuva</string>
     <string name="file_kind_damaged_image">Vioittunut kuva</string>

@@ -18,38 +18,50 @@ class BridgeReleaseFormatTest {
     private val context: Context = RuntimeEnvironment.getApplication()
     private val stereoKey: (Long) -> String? = { "core.audio.channels.stereo" }
 
-    /** What the pressing is sits after the year, its details after it. */
+    private fun release() = BridgeFixtures.release(id = "release-1", albumId = "album-1")
+
+    /** The edition line holds the label and catalog number, then the country. */
     @Test
-    fun pressingFactsTakeTheirPlacesInTheLine() {
+    fun theEditionLineNamesTheLabelBeforeTheCountry() {
         val release =
-            BridgeFixtures
-                .release(id = "release-1", albumId = "album-1")
-                .copy(
-                    pressingSummary =
-                        listOf(
-                            BridgeFactTerm.Country("JP"),
-                            BridgeFactTerm.Worded(BridgeTermLabel.Verbatim("CD")),
-                        ),
-                    pressingDetails =
-                        listOf(BridgeFactTerm.Worded(BridgeTermLabel.Localized("core.pressing.status.promotion"))),
-                )
-        assertEquals("Japan · CD · Promo", release.pressingLineText(context, stereoKey))
+            release().copy(
+                labels = listOf(BridgeLabelLine(names = listOf("Harbor Records"), catalogNumbers = listOf("HR-1042"))),
+                pressingSummary = listOf(BridgeFactTerm.Country("JP"), BridgeFactTerm.Worded(BridgeTermLabel.Verbatim("CD"))),
+                mediaTerms = listOf(BridgeFactTerm.Worded(BridgeTermLabel.Verbatim("CD"))),
+            )
+
+        assertEquals("Harbor Records · HR-1042 · Japan", release.editionLineText(context))
     }
 
     /** Core hands over the release's year only when it differs from the album's: the line starts with it then. */
     @Test
-    fun theLineNamesTheYearOnlyWhenCoreHandsOneOver() {
+    fun theEditionLineNamesTheYearOnlyWhenCoreHandsOneOver() {
         val base =
-            BridgeFixtures
-                .release(id = "release-1", albumId = "album-1")
-                .copy(pressingSummary = listOf(BridgeFactTerm.Worded(BridgeTermLabel.Verbatim("CD"))))
+            release().copy(
+                labels = listOf(BridgeLabelLine(names = listOf("Harbor Records"), catalogNumbers = emptyList())),
+                pressingSummary = emptyList(),
+                mediaTerms = emptyList(),
+            )
 
-        assertEquals("2001 · CD", base.copy(distinctYear = 2001).pressingLineText(context, stereoKey))
-        assertEquals("CD", base.copy(distinctYear = null).pressingLineText(context, stereoKey))
+        assertEquals("2001 · Harbor Records", base.copy(distinctYear = 2001).editionLineText(context))
+        assertEquals("Harbor Records", base.copy(distinctYear = null).editionLineText(context))
+    }
+
+    /** The copy line holds the media, then the details after them. */
+    @Test
+    fun theCopyLineNamesTheMediaThenTheDetails() {
+        val release =
+            release().copy(
+                pressingSummary = listOf(BridgeFactTerm.Country("JP"), BridgeFactTerm.Worded(BridgeTermLabel.Verbatim("CD"))),
+                mediaTerms = listOf(BridgeFactTerm.Worded(BridgeTermLabel.Verbatim("CD"))),
+                pressingDetails = listOf(BridgeFactTerm.Worded(BridgeTermLabel.Localized("core.pressing.status.promotion"))),
+            )
+
+        assertEquals("CD · Promo", release.copyLineText(context))
     }
 
     @Test
-    fun aMixedReleaseLineNamesWhatDiffers() {
+    fun aMixedReleaseAudioLineNamesWhatDiffers() {
         val release =
             BridgeFixtures.release(
                 id = "release-1",
@@ -66,8 +78,13 @@ class BridgeReleaseFormatTest {
         // A mixed release names what differs.
         assertEquals(
             "FLAC and MP3 · 44.1 kHz and 48 kHz",
-            release.pressingLineText(context, stereoKey),
+            release.audioLineText(context, stereoKey),
         )
+    }
+
+    @Test
+    fun aReleaseWithNoReadAudioHasNoAudioLine() {
+        assertEquals("", release().audioLineText(context, stereoKey))
     }
 
     /** Each label line shows its names, then the numbers they share, once. */

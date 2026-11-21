@@ -42,11 +42,7 @@ private fun Control(status: BridgeReleaseDownloadStatus) =
         AndroidPinControl(
             status = status,
             progress = PreviewData.downloadStore(downloadingReleaseId = "rel-1").latestProgress("rel-1"),
-            unpinning = false,
-            asksBeforeUnpinning = true,
-            onDownload = {},
             onCancel = {},
             onRetry = {},
-            onUnpin = {},
         )
     }

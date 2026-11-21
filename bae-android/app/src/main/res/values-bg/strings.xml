@@ -235,7 +235,6 @@
     <string name="unpin_confirm_title">Откачване на това издание?</string>
     <string name="unpin_confirm_body">bae ще премахне файловете му от този телефон сега. Изданието остава в облака и bae го възпроизвежда оттам, докато сте онлайн.</string>
     <string name="dont_show_again">Да не се показва отново</string>
-    <string name="pinned">Закачено</string>
     <string name="pinning">Закачва се</string>
     <string name="pin_cancel">Отмяна на закачването</string>
     <string name="pin_queued">В опашката за закачане</string>
@@ -516,6 +515,8 @@
     <string name="stars_none">Без оценка</string>
     <string name="stars_of_five">%1$d от 5 звезди</string>
     <string name="stars_rate">Оценка %1$d от 5 звезди</string>
+    <string name="rate">Оценка</string>
+    <string name="clear_rating">Изчистване на оценката</string>
     <string name="file_kind_audio">Аудио %1$s</string>
     <string name="file_kind_image">Изображение %1$s</string>
     <string name="file_kind_damaged_image">Повредено изображение</string>

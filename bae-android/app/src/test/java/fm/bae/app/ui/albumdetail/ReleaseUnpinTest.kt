@@ -34,7 +34,7 @@ class ReleaseUnpinTest {
         val handle = RecordingHandle()
         val unpin = unpin(handle)
 
-        unpin.unpin(stopAsking = false)
+        unpin.unpin("rel-1", stopAsking = false)
         shadowOf(Looper.getMainLooper()).idle()
 
         assertEquals(listOf("unpin rel-1"), handle.calls)
@@ -47,7 +47,7 @@ class ReleaseUnpinTest {
         val handle = RecordingHandle()
         val unpin = unpin(handle)
 
-        unpin.unpin(stopAsking = true)
+        unpin.unpin("rel-1", stopAsking = true)
         shadowOf(Looper.getMainLooper()).idle()
 
         assertEquals(listOf("ask false", "unpin rel-1"), handle.calls)
@@ -59,7 +59,7 @@ class ReleaseUnpinTest {
         val handle = RecordingHandle(settingFailure = BridgeException.Diagnostic(BridgeErrorCategory.Internal, "disk full"))
         val unpin = unpin(handle)
 
-        unpin.unpin(stopAsking = true)
+        unpin.unpin("rel-1", stopAsking = true)
         shadowOf(Looper.getMainLooper()).idle()
 
         assertEquals(listOf("ask false"), handle.calls)
@@ -69,7 +69,6 @@ class ReleaseUnpinTest {
 
     private fun unpin(handle: RecordingHandle) =
         ReleaseUnpin(
-            releaseId = "rel-1",
             appHandle = handle,
             errors = TestErrorDisplays,
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),

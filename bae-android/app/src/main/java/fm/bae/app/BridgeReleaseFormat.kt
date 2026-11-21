@@ -5,25 +5,41 @@ import uniffi.bae_bridge.BridgeLabelLine
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.bridgeAudioChannelsKey
 
-fun BridgeRelease.pressingLineText(context: Context): String = pressingLineText(context, ::bridgeAudioChannelsKey)
+// A release's three lines, worded for the current locale. Core carries the parts as terms and the
+// release's year only when it differs from its album's; these words and joins them, so the lines
+// read the same shape as the Mac's.
 
 /**
- * The pressing on one line: the release's year when it differs from the album's, where and what it
- * is, the source audio and the play time. The pressing lines come worded by core on the release
- * itself; the channel word comes in as a function, so the wording here is exercised without the
- * native bridge.
+ * The edition line: what is printed on the release. Its year when it differs from the album's,
+ * each label with its catalog numbers, then its country.
  */
-internal fun BridgeRelease.pressingLineText(
-    context: Context,
-    audioChannelsKey: (Long) -> String?,
-): String =
+fun BridgeRelease.editionLineText(context: Context): String =
     listOf(
         distinctYear?.let(context::yearText),
-        factLine(context, pressingSummary).ifEmpty { null },
+        labelsLineText(context).ifEmpty { null },
+        factLine(context, areaTerms).ifEmpty { null },
+    ).filterNotNull().joinToString(context.factSeparator())
+
+/** The copy line: the media and details, then the play time. */
+fun BridgeRelease.copyLineText(context: Context): String =
+    listOf(
+        factLine(context, mediaTerms).ifEmpty { null },
         factLine(context, pressingDetails).ifEmpty { null },
-        sourceAudio?.text(context, audioChannelsKey),
         context.durationUnitsText(totalDuration).ifEmpty { null },
-    ).filterNotNull().joinToString(context.coreString("core.audio.list_separator"))
+    ).filterNotNull().joinToString(context.factSeparator())
+
+/** The audio line: the files' audio as bae read it, or an empty line when no file was read. */
+fun BridgeRelease.audioLineText(
+    context: Context,
+    audioChannelsKey: (Long) -> String? = ::bridgeAudioChannelsKey,
+): String = sourceAudio?.text(context, audioChannelsKey).orEmpty()
+
+/**
+ * Where the pressing was released. The summary holds the area first and then the media, one term
+ * for each of [BridgeRelease.mediaTerms].
+ */
+private val BridgeRelease.areaTerms
+    get() = pressingSummary.dropLast(mediaTerms.size)
 
 /**
  * The labels on one line, as core grouped them: each line's names, then the

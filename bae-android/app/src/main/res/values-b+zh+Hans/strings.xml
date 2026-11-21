@@ -230,7 +230,6 @@
     <string name="unpin_confirm_title">取消固定此版本？</string>
     <string name="unpin_confirm_body">bae 将立即从这部手机上移除它的文件。该版本会保留在云端，联网时 bae 会从云端串流播放它。</string>
     <string name="dont_show_again">不再显示此提示</string>
-    <string name="pinned">已固定</string>
     <string name="pinning">正在固定</string>
     <string name="pin_cancel">停止固定</string>
     <string name="pin_queued">已排队，等待固定</string>
@@ -507,6 +506,8 @@
     <string name="stars_none">未评分</string>
     <string name="stars_of_five">5 星中的 %1$d 星</string>
     <string name="stars_rate">评为 5 星中的 %1$d 星</string>
+    <string name="rate">评分</string>
+    <string name="clear_rating">清除评分</string>
     <string name="file_kind_audio">%1$s 音频</string>
     <string name="file_kind_image">%1$s 图像</string>
     <string name="file_kind_damaged_image">损坏的图片</string>

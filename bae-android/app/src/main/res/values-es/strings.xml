@@ -240,7 +240,6 @@
     <string name="unpin_confirm_title">¿Desfijar esta edición?</string>
     <string name="unpin_confirm_body">bae eliminará sus archivos de este teléfono ahora mismo. La edición sigue en la nube y bae la reproduce desde ahí mientras tengas conexión.</string>
     <string name="dont_show_again">No volver a mostrar esto</string>
-    <string name="pinned">Fijada</string>
     <string name="pinning">Fijando</string>
     <string name="pin_cancel">Cancelar la fijación</string>
     <string name="pin_queued">En cola para fijar</string>
@@ -523,6 +522,8 @@
     <string name="stars_none">Sin valoración</string>
     <string name="stars_of_five">%1$d de 5 estrellas</string>
     <string name="stars_rate">Valorar con %1$d de 5 estrellas</string>
+    <string name="rate">Valorar</string>
+    <string name="clear_rating">Quitar valoración</string>
     <string name="file_kind_audio">Audio %1$s</string>
     <string name="file_kind_image">Imagen %1$s</string>
     <string name="file_kind_damaged_image">Imagen dañada</string>

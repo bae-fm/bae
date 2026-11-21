@@ -238,7 +238,6 @@
     <string name="unpin_confirm_title">Ξεκαρφίτσωμα αυτής της κυκλοφορίας;</string>
     <string name="unpin_confirm_body">Το bae θα αφαιρέσει τώρα τα αρχεία της από αυτό το τηλέφωνο. Η κυκλοφορία παραμένει στο cloud και το bae την αναπαράγει από εκεί όσο είστε online.</string>
     <string name="dont_show_again">Να μην εμφανιστεί ξανά</string>
-    <string name="pinned">Καρφιτσωμένο</string>
     <string name="pinning">Καρφίτσωμα</string>
     <string name="pin_cancel">Ακύρωση καρφιτσώματος</string>
     <string name="pin_queued">Σε ουρά για καρφίτσωμα</string>
@@ -514,6 +513,8 @@
     <string name="stars_none">Χωρίς βαθμολογία</string>
     <string name="stars_of_five">%1$d από 5 αστέρια</string>
     <string name="stars_rate">Βαθμολόγηση με %1$d από 5 αστέρια</string>
+    <string name="rate">Βαθμολόγηση</string>
+    <string name="clear_rating">Διαγραφή βαθμολογίας</string>
     <string name="file_kind_audio">Ήχος %1$s</string>
     <string name="file_kind_image">Εικόνα %1$s</string>
     <string name="file_kind_damaged_image">Κατεστραμμένη εικόνα</string>

@@ -4,8 +4,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -35,10 +37,11 @@ import fm.bae.app.factsLine
 import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidContentUnavailable
 import fm.bae.app.ui.components.AndroidNotice
-import fm.bae.app.ui.components.AndroidPageActions
 import fm.bae.app.ui.components.NoticeLook
+import fm.bae.app.ui.components.PageDeletion
 import fm.bae.app.ui.components.PageDeletionShown
 import fm.bae.app.ui.components.PlaylistPicture
 import fm.bae.app.ui.components.rememberPageDeletion
@@ -52,7 +55,7 @@ import uniffi.bae_bridge.BridgePlaylistSummary
 
 private val HEADER_PICTURE_SIZE = 96.dp
 
-/** A playlist's page: its header, Play and Shuffle, then its tracks in order. */
+/** A playlist's page: its header with Play, then its tracks in order. */
 @Composable
 internal fun PlaylistScreen(
     session: OpenLibrary,
@@ -79,11 +82,7 @@ internal fun PlaylistScreen(
         onBack = onBack,
         backLabel = backLabel,
         nowPlayingBar = { AndroidNowPlayingBarContainer(session = session) },
-        actions = {
-            if (detail?.summary?.yours == true) {
-                PlaylistOptionsMenu(onEdit = { editing = true }, onDelete = { deletion.ask(detail.summary) })
-            }
-        },
+        actions = { if (detail != null) PlaylistBarMenu(session, detail.summary, deletion) { editing = true } },
     ) {
         PageDeletionShown(deletion) { playlist, onConfirm, onDismiss ->
             DeletePlaylistDialog(name = playlist.name, onConfirm = onConfirm, onDismiss = onDismiss)
@@ -120,6 +119,30 @@ internal fun PlaylistScreen(
     }
 }
 
+/** The playlist's menu in the page's bar: Shuffle for everyone, and Edit and Delete when the person owns it. */
+@Composable
+private fun PlaylistBarMenu(
+    session: OpenLibrary,
+    summary: BridgePlaylistSummary,
+    deletion: PageDeletion<BridgePlaylistSummary>,
+    onEdit: () -> Unit,
+) {
+    val owner = if (summary.yours) PlaylistOwnerActions(onEdit, onDelete = { deletion.ask(summary) }) else null
+    PlaylistOptionsMenu(onShuffle = { session.playPlaylist(summary.id, null, shuffle = true) }, owner = owner)
+}
+
+/**
+ * Plays the playlist [playlistId] from [startPositionId] or its start: a play answers as an album's
+ * does, in the session's snackbar.
+ */
+private fun OpenLibrary.playPlaylist(
+    playlistId: String,
+    startPositionId: String?,
+    shuffle: Boolean,
+) {
+    messages.play("play playlist $playlistId") { appHandle.playPlaylist(playlistId, startPositionId, shuffle) }
+}
+
 /** [detail] playing through the session: a play answers as an album's does, in the session's snackbar. */
 @Composable
 internal fun PlaylistPage(
@@ -133,11 +156,7 @@ internal fun PlaylistPage(
         detail = detail,
         actions =
             PlaylistEntryActions(
-                onPlay = { startPositionId, shuffle ->
-                    session.messages.play("play playlist $playlistId") {
-                        session.appHandle.playPlaylist(playlistId, startPositionId, shuffle)
-                    }
-                },
+                onPlay = { startPositionId, shuffle -> session.playPlaylist(playlistId, startPositionId, shuffle) },
                 onPlayNext = { trackId ->
                     session.runTrackQueueCommand(trackId, "addNext", session.appHandle::addNext)
                 },
@@ -164,7 +183,7 @@ internal fun PlaylistPage(
 }
 
 /**
- * The playlist's header, Play and Shuffle, and its entries, with what each entry's menu and the
+ * The playlist's header with Play, and its entries, with what each entry's menu and the
  * playlist's own buttons do as [actions] says.
  */
 @Composable
@@ -184,55 +203,45 @@ internal fun PlaylistContent(
         }
     LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
         item {
-            AndroidPlaylistHeader(
-                summary = summary,
-                onPlay = { actions.onPlay(null, false) },
-                onShuffle = { actions.onPlay(null, true) },
-            )
+            AndroidPlaylistHeader(summary = summary, onPlay = { actions.onPlay(null, false) })
         }
         playlistEntries(detail, actions, reorder, reorderState, context)
     }
 }
 
-/** A playlist page's head: its picture, name and facts, then Play and Shuffle. */
+/** A playlist page's head: its picture, then its name and facts with Play under them. */
 @Composable
 internal fun AndroidPlaylistHeader(
     summary: BridgePlaylistSummary,
     onPlay: () -> Unit,
-    onShuffle: () -> Unit,
 ) {
     val context = LocalContext.current
-    Column {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge),
-            horizontalArrangement = Arrangement.spacedBy(ThemeSpace.edge),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            PlaylistPicture(
-                cover = summary.cover,
-                cornerRadius = ThemeRadius.cover,
-                modifier = Modifier.size(HEADER_PICTURE_SIZE),
-            )
-            Column {
-                Text(text = summary.name, style = ThemeText.title.style)
-                Text(
-                    text =
-                        context.factsLine(
-                            listOf(
-                                summary.owner.name,
-                                context.coreString(summary.trackCount),
-                                stringResource(summary.sharing.labelRes()),
-                            ),
-                        ),
-                    style = ThemeText.detail.style,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-        AndroidPageActions(
-            onPlay = onPlay,
-            onShuffle = onShuffle,
-            modifier = Modifier.padding(horizontal = ThemeSpace.edge).padding(bottom = ThemeSpace.related),
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge),
+        horizontalArrangement = Arrangement.spacedBy(ThemeSpace.edge),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        PlaylistPicture(
+            cover = summary.cover,
+            cornerRadius = ThemeRadius.cover,
+            modifier = Modifier.size(HEADER_PICTURE_SIZE),
         )
+        Column {
+            Text(text = summary.name, style = ThemeText.title.style)
+            Text(
+                text =
+                    context.factsLine(
+                        listOf(
+                            summary.owner.name,
+                            context.coreString(summary.trackCount),
+                            stringResource(summary.sharing.labelRes()),
+                        ),
+                    ),
+                style = ThemeText.detail.style,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(ThemeSpace.group))
+            AndroidButton(onClick = onPlay) { Text(stringResource(R.string.play)) }
+        }
     }
 }

@@ -255,7 +255,6 @@
     <string name="unpin_confirm_title">إلغاء تثبيت هذا الإصدار؟</string>
     <string name="unpin_confirm_body">سيزيل bae ملفاته من هذا الهاتف الآن. يبقى الإصدار في السحابة، ويبثّه bae منها أثناء اتصالك بالإنترنت.</string>
     <string name="dont_show_again">عدم إظهار هذا مرة أخرى</string>
-    <string name="pinned">مثبّت</string>
     <string name="pinning">جارٍ التثبيت</string>
     <string name="pin_cancel">إلغاء عملية التثبيت</string>
     <string name="pin_queued">في انتظار التثبيت</string>
@@ -552,6 +551,8 @@
     <string name="stars_none">غير مقيّم</string>
     <string name="stars_of_five">%1$d من 5 نجوم</string>
     <string name="stars_rate">تقييم بـ %1$d من 5 نجوم</string>
+    <string name="rate">تقييم</string>
+    <string name="clear_rating">مسح التقييم</string>
     <string name="file_kind_audio">صوت %1$s</string>
     <string name="file_kind_image">صورة %1$s</string>
     <string name="file_kind_damaged_image">صورة تالفة</string>

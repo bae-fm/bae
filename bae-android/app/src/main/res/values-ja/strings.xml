@@ -230,7 +230,6 @@
     <string name="unpin_confirm_title">このリリースのピン留めを解除しますか？</string>
     <string name="unpin_confirm_body">bae は、このリリースのファイルを今すぐこのスマートフォンから削除します。リリースはクラウドに残り、オンラインの間は bae がそこからストリーミング再生します。</string>
     <string name="dont_show_again">今後このメッセージを表示しない</string>
-    <string name="pinned">ピン留め済み</string>
     <string name="pinning">ピン留め中</string>
     <string name="pin_cancel">ピン留めをキャンセル</string>
     <string name="pin_queued">ピン留めの待機中</string>
@@ -507,6 +506,8 @@
     <string name="stars_none">未評価</string>
     <string name="stars_of_five">5つ星中%1$d</string>
     <string name="stars_rate">5つ星中%1$dで評価</string>
+    <string name="rate">評価</string>
+    <string name="clear_rating">評価を消去</string>
     <string name="file_kind_audio">%1$s オーディオ</string>
     <string name="file_kind_image">%1$s イメージ</string>
     <string name="file_kind_damaged_image">破損した画像</string>

@@ -1,11 +1,5 @@
   // ---- Android pieces: the album, artist and playlist pages, the gallery, the side pause, and the lines they share ----
 
-  // An album's stars under its header, as AlbumRating draws them: the person's own rating (`value`, 0 for none), tappable, then who else rated it (`raters`) in fine text.
-  function AndroidAlbumRating(props) {
-    return h('div', { className: 'bae-a-rating' }, h(Stars, { value: props.value || 0, size: 24, rate: true }), props.raters ? h('span', { className: 'bae-a-fine bae-muted' }, props.raters) : null);
-  }
-
-
   // An album's credits at the foot of its page: the Credits eyebrow, then one line per credit, its role in secondary text at the start and its names at the end. `credits`: "Role:Names", comma separated.
   function AndroidAlbumCredits(props) {
     return h('div', { className: 'bae-a-credits' }, h('div', { className: 'bae-a-credits-head' }, h(AndroidEyebrow, null, 'Credits')),

@@ -322,7 +322,7 @@ button (§6.4), ⋮, whose menu gives the view's sort under *Sort by* (the
 fields, the direction, and for albums *Group by artist*), then *Shuffle
 library*, and last the person's menu (below); screen readers name that ⋮ *More
 options*. On Android screen readers name the back arrow of an album, artist, composer or playlist page opened from the library *Back to library* (*Back* when
-opened from another page). On Android an album page's Play sits under its release details, beside the cover, and ⋮, *Album options* to screen readers, sits at the right of the top bar; its menu offers *Shuffle*, *Play next* and *Add to queue*, then after a separator *Rate*, *Pin* or *Unpin* and the album's other items, and after a last separator *Delete album…*. A card's title or artists, or a row's name, too long
+opened from another page). On Android an album page's Play sits under its release details, beside the cover, and ⋮, *Album options* to screen readers, sits at the right of the top bar; its menu offers *Shuffle*, *Play next* and *Add to queue*, then after a separator *Rate*, *Pin* or *Unpin* and the album's other items, and after a last separator *Delete album…*. While a pin of the shown release waits, runs or has failed, the page shows it under the release lines, with Cancel and, for a failure, Retry, and the menu offers neither Pin nor Unpin. A card's title or artists, or a row's name, too long
 for its one line ends in "…". On Android the grid grouped by artist opens each
 artist's albums with a header of the artist's round picture, name and album
 count, which opens the artist; the header of the artist being scrolled through

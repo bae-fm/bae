@@ -5,7 +5,6 @@
 .bae-a-othernames { padding: 0 var(--space-edge) var(--space-related); }
 .bae-a-othernames-head { padding: 0 0 var(--space-inline); }
 .bae-a-othernames-list { font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); color: var(--text-secondary); }
-.bae-a-rating { display: flex; flex-direction: column; gap: var(--space-line); }
 .bae-a-plhead-top { display: flex; gap: var(--space-edge); padding: var(--space-edge); align-items: center; }
 .bae-a-plhead-name { font: var(--type-android-title-weight) var(--type-android-title-size)/var(--type-android-title-line-height) var(--font-android); }
 .bae-a-plhead-actions { margin-top: var(--space-group); }

@@ -250,7 +250,6 @@
     <string name="unpin_confirm_title">Odopnúť toto vydanie?</string>
     <string name="unpin_confirm_body">bae hneď odstráni jeho súbory z tohto telefónu. Vydanie zostane v cloude a bae ho odtiaľ bude streamovať, kým si online.</string>
     <string name="dont_show_again">Už nezobrazovať</string>
-    <string name="pinned">Pripnuté</string>
     <string name="pinning">Pripína sa</string>
     <string name="pin_cancel">Zrušiť pripínanie</string>
     <string name="pin_queued">V rade na pripnutie</string>
@@ -532,6 +531,8 @@
     <string name="stars_none">Bez hodnotenia</string>
     <string name="stars_of_five">%1$d z 5 hviezdičiek</string>
     <string name="stars_rate">Ohodnotiť %1$d z 5 hviezdičiek</string>
+    <string name="rate">Ohodnotiť</string>
+    <string name="clear_rating">Zrušiť hodnotenie</string>
     <string name="file_kind_audio">Zvuk %1$s</string>
     <string name="file_kind_image">Obrázok %1$s</string>
     <string name="file_kind_damaged_image">Poškodený obrázok</string>

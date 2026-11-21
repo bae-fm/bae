@@ -38,4 +38,4 @@ class AndroidPlaylistHeaderShots : BoardShot() {
 }
 
 @Composable
-private fun Header(summary: BridgePlaylistSummary) = Images { AndroidPlaylistHeader(summary, onPlay = {}, onShuffle = {}) }
+private fun Header(summary: BridgePlaylistSummary) = Images { AndroidPlaylistHeader(summary, onPlay = {}) }

@@ -1,25 +1,34 @@
 package fm.bae.app.ui.albumdetail
 
 import android.app.Application
+import android.os.Looper
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.v2.createComposeRule
-import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import fm.bae.app.BaeRobolectricTestRunner
-import fm.bae.app.ui.PreviewData
+import fm.bae.app.DisplayError
+import fm.bae.app.ErrorDisplays
+import fm.bae.app.playback.FakeAppHandle
 import fm.bae.app.ui.TestTheme
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
-import uniffi.bae_bridge.BridgeReleaseDownloadStatus
+import uniffi.bae_bridge.BridgeException
+import uniffi.bae_bridge.BridgePlayOutcome
+import uniffi.bae_bridge.BridgePlaybackErrorReason
+import uniffi.bae_bridge.BridgeSyncRetryOutcome
 
 /**
  * Unpin on a pinned release asks first while "Ask before unpinning" is on, and unpins at once while
- * it is off. The dialog's "Don't show this again" is sent with the answer; Cancel sends nothing.
+ * it is off. The dialog's "Do not show this again" is sent with the answer; Cancel sends nothing.
  */
 @RunWith(BaeRobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
@@ -27,88 +36,102 @@ class UnpinAskTest {
     @get:Rule
     val compose = createComposeRule()
 
-    private val unpinned = mutableListOf<Boolean>()
+    private val handle = RecordingHandle()
+    private val unpin =
+        ReleaseUnpin(handle, NoErrorDisplays, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
 
-    private fun showControl(asksBeforeUnpinning: Boolean) {
+    private fun chooseUnpin(asksBeforeUnpinning: Boolean) {
         compose.setContent {
             TestTheme {
-                AndroidPinControl(
-                    status = BridgeReleaseDownloadStatus.Downloaded,
-                    progress = PreviewData.downloadStore().latestProgress("rel-1"),
-                    unpinning = false,
-                    asksBeforeUnpinning = asksBeforeUnpinning,
-                    onDownload = {},
-                    onCancel = {},
-                    onRetry = {},
-                    onUnpin = { unpinned.add(it) },
-                )
+                ReleaseUnpinShown(unpin)
             }
         }
+        unpin.request("rel-1", asksBeforeUnpinning)
+        compose.waitForIdle()
     }
 
     private fun inDialog(text: String) = hasText(text) and hasAnyAncestor(isDialog())
 
+    private fun unpinCalls(): List<String> {
+        shadowOf(Looper.getMainLooper()).idle()
+        return handle.calls
+    }
+
     @Test
     fun withTheSettingOnUnpinShowsTheDialogAndSendsNothingYet() {
-        showControl(asksBeforeUnpinning = true)
-
-        compose.onNodeWithText("Unpin").performClick()
+        chooseUnpin(asksBeforeUnpinning = true)
 
         compose.onNode(inDialog("Unpin this release?")).assertExists()
         compose.onNode(inDialog("Do not show this again")).assertExists()
-        assertEquals(emptyList<Boolean>(), unpinned)
+        assertEquals(emptyList<String>(), unpinCalls())
     }
 
     @Test
     fun cancelSendsNothingAndClosesTheDialog() {
-        showControl(asksBeforeUnpinning = true)
+        chooseUnpin(asksBeforeUnpinning = true)
 
-        compose.onNodeWithText("Unpin").performClick()
         compose.onNode(inDialog("Cancel")).performClick()
 
         compose.onNode(inDialog("Unpin this release?")).assertDoesNotExist()
-        assertEquals(emptyList<Boolean>(), unpinned)
+        assertEquals(emptyList<String>(), unpinCalls())
     }
 
     @Test
     fun cancelWithTheBoxTickedSendsNothing() {
-        showControl(asksBeforeUnpinning = true)
+        chooseUnpin(asksBeforeUnpinning = true)
 
-        compose.onNodeWithText("Unpin").performClick()
         compose.onNode(inDialog("Do not show this again")).performClick()
         compose.onNode(inDialog("Cancel")).performClick()
 
-        assertEquals(emptyList<Boolean>(), unpinned)
+        assertEquals(emptyList<String>(), unpinCalls())
     }
 
     @Test
     fun unpinInTheDialogUnpinsWithoutStoppingTheAsking() {
-        showControl(asksBeforeUnpinning = true)
+        chooseUnpin(asksBeforeUnpinning = true)
 
-        compose.onNodeWithText("Unpin").performClick()
         compose.onNode(inDialog("Unpin")).performClick()
 
-        assertEquals(listOf(false), unpinned)
+        assertEquals(listOf("unpin rel-1"), unpinCalls())
     }
 
     @Test
     fun unpinWithTheBoxTickedAlsoStopsTheAsking() {
-        showControl(asksBeforeUnpinning = true)
+        chooseUnpin(asksBeforeUnpinning = true)
 
-        compose.onNodeWithText("Unpin").performClick()
         compose.onNode(inDialog("Do not show this again")).performClick()
         compose.onNode(inDialog("Unpin")).performClick()
 
-        assertEquals(listOf(true), unpinned)
+        assertEquals(listOf("ask false", "unpin rel-1"), unpinCalls())
     }
 
     @Test
     fun withTheSettingOffUnpinUnpinsAtOnceWithoutADialog() {
-        showControl(asksBeforeUnpinning = false)
-
-        compose.onNodeWithText("Unpin").performClick()
+        chooseUnpin(asksBeforeUnpinning = false)
 
         compose.onNode(inDialog("Unpin this release?")).assertDoesNotExist()
-        assertEquals(listOf(false), unpinned)
+        assertEquals(listOf("unpin rel-1"), unpinCalls())
+    }
+
+    private data object NoErrorDisplays : ErrorDisplays {
+        override fun display(reason: BridgePlaybackErrorReason): DisplayError? = null
+
+        override fun display(error: BridgeException): DisplayError? = null
+
+        override fun display(outcome: BridgeSyncRetryOutcome): DisplayError? = null
+
+        override fun display(outcome: BridgePlayOutcome): DisplayError? = null
+    }
+
+    private class RecordingHandle : FakeAppHandle() {
+        val calls = mutableListOf<String>()
+
+        override suspend fun setAskBeforeUnpinning(enabled: Boolean) {
+            calls.add("ask $enabled")
+        }
+
+        override suspend fun unpinReleases(releaseIds: List<String>) {
+            calls.add("unpin ${releaseIds.joinToString()}")
+        }
     }
 }

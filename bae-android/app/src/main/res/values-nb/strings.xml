@@ -238,7 +238,6 @@
     <string name="unpin_confirm_title">Løsne denne utgivelsen?</string>
     <string name="unpin_confirm_body">bae vil fjerne filene fra denne telefonen nå. Utgivelsen blir værende i skyen, og bae strømmer den derfra mens du er på nett.</string>
     <string name="dont_show_again">Ikke vis dette igjen</string>
-    <string name="pinned">Festet</string>
     <string name="pinning">Fester</string>
     <string name="pin_cancel">Avbryt festing</string>
     <string name="pin_queued">I kø for festing</string>
@@ -514,6 +513,8 @@
     <string name="stars_none">Ikke vurdert</string>
     <string name="stars_of_five">%1$d av 5 stjerner</string>
     <string name="stars_rate">Gi %1$d av 5 stjerner</string>
+    <string name="rate">Vurder</string>
+    <string name="clear_rating">Fjern vurdering</string>
     <string name="file_kind_audio">%1$s-lyd</string>
     <string name="file_kind_image">%1$s-bilde</string>
     <string name="file_kind_damaged_image">Skadet bilde</string>

@@ -280,7 +280,6 @@
     <string name="unpin_confirm_title">Unpin this release?</string>
     <string name="unpin_confirm_body">bae will remove its files from this phone now. The release stays in the cloud and streams while you are online.</string>
     <string name="dont_show_again">Do not show this again</string>
-    <string name="pinned">Pinned</string>
     <string name="pinning">Pinning</string>
     <string name="pin_cancel">Cancel pinning</string>
     <string name="pin_queued">Queued to pin</string>
@@ -576,6 +575,8 @@
     <string name="stars_none">Not rated</string>
     <string name="stars_of_five">%1$d of 5 stars</string>
     <string name="stars_rate">Rate %1$d of 5 stars</string>
+    <string name="rate">Rate</string>
+    <string name="clear_rating">Clear rating</string>
     <string name="file_kind_audio">%1$s audio</string>
     <string name="file_kind_image">%1$s image</string>
     <string name="file_kind_damaged_image">Damaged image</string>

@@ -238,7 +238,6 @@
     <string name="unpin_confirm_title">Frigør denne udgivelse?</string>
     <string name="unpin_confirm_body">bae vil fjerne dens filer fra denne telefon nu. Udgivelsen bliver i skyen, og bae streamer den derfra, mens du er online.</string>
     <string name="dont_show_again">Vis ikke dette igen</string>
-    <string name="pinned">Fastgjort</string>
     <string name="pinning">Fastgør</string>
     <string name="pin_cancel">Annuller fastgørelse</string>
     <string name="pin_queued">I kø til fastgørelse</string>
@@ -514,6 +513,8 @@
     <string name="stars_none">Ikke bedømt</string>
     <string name="stars_of_five">%1$d af 5 stjerner</string>
     <string name="stars_rate">Giv %1$d af 5 stjerner</string>
+    <string name="rate">Bedøm</string>
+    <string name="clear_rating">Ryd bedømmelse</string>
     <string name="file_kind_audio">%1$s-lyd</string>
     <string name="file_kind_image">%1$s-billede</string>
     <string name="file_kind_damaged_image">Beskadiget billede</string>

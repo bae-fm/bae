@@ -235,7 +235,6 @@
     <string name="unpin_confirm_title">Deze release losmaken?</string>
     <string name="unpin_confirm_body">bae zal de bestanden nu van deze telefoon verwijderen. De release blijft in de cloud, en bae streamt hem daarvandaan zolang je online bent.</string>
     <string name="dont_show_again">Toon dit niet opnieuw</string>
-    <string name="pinned">Vastgezet</string>
     <string name="pinning">Vastzetten</string>
     <string name="pin_cancel">Vastzetten annuleren</string>
     <string name="pin_queued">In wachtrij om vast te zetten</string>
@@ -516,6 +515,8 @@
     <string name="stars_none">Niet beoordeeld</string>
     <string name="stars_of_five">%1$d van 5 sterren</string>
     <string name="stars_rate">Beoordeel met %1$d van 5 sterren</string>
+    <string name="rate">Beoordelen</string>
+    <string name="clear_rating">Beoordeling wissen</string>
     <string name="file_kind_audio">%1$s-audio</string>
     <string name="file_kind_image">%1$s-afbeelding</string>
     <string name="file_kind_damaged_image">Beschadigde afbeelding</string>

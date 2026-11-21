@@ -240,7 +240,6 @@
     <string name="unpin_confirm_title">לבטל את ההצמדה של המהדורה הזו?</string>
     <string name="unpin_confirm_body">bae יסיר את הקבצים שלה מהטלפון הזה עכשיו. המהדורה נשארת בענן, ו‑bae מזרים אותה משם כל עוד יש חיבור לאינטרנט.</string>
     <string name="dont_show_again">אל תציג זאת שוב</string>
-    <string name="pinned">מוצמד</string>
     <string name="pinning">מצמיד</string>
     <string name="pin_cancel">ביטול תהליך ההצמדה</string>
     <string name="pin_queued">בתור להצמדה</string>
@@ -525,6 +524,8 @@
     <string name="stars_none">ללא דירוג</string>
     <string name="stars_of_five">%1$d מתוך 5 כוכבים</string>
     <string name="stars_rate">דירוג של %1$d מתוך 5 כוכבים</string>
+    <string name="rate">דירוג</string>
+    <string name="clear_rating">ניקוי הדירוג</string>
     <string name="file_kind_audio">שמע %1$s</string>
     <string name="file_kind_image">תמונת %1$s</string>
     <string name="file_kind_damaged_image">תמונה פגומה</string>

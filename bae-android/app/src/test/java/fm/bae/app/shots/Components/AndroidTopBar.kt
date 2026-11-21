@@ -1,6 +1,8 @@
 package fm.bae.app.shots
 
+import fm.bae.app.ui.albumdetail.AlbumMenuActions
 import fm.bae.app.ui.albumdetail.AlbumOptionsMenu
+import fm.bae.app.ui.albumdetail.PlayMenuActions
 import fm.bae.app.ui.components.AndroidTopBar
 import fm.bae.app.ui.library.WhoseMenu
 import org.junit.Test
@@ -35,7 +37,15 @@ class AndroidTopBarShots : BoardShot() {
     fun androidComponentTopBarNoTitleWithMenu() =
         component("android.component.top-bar.no-title-with-menu") {
             AndroidTopBar(onBack = {}, backLabel = "Back to library") {
-                AlbumOptionsMenu(onSetPrimaryRelease = null, onDelete = {})
+                AlbumOptionsMenu(
+                    AlbumMenuActions(
+                        play = PlayMenuActions(onShuffle = {}, onPlayNext = {}, onAddToQueue = {}),
+                        onRate = {},
+                        pin = null,
+                        onSetPrimaryRelease = null,
+                        onDelete = {},
+                    ),
+                )
             }
         }
 }

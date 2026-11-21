@@ -245,7 +245,6 @@
     <string name="unpin_confirm_title">Відкріпити цей реліз?</string>
     <string name="unpin_confirm_body">bae одразу видалить його файли з цього телефона. Реліз залишиться в хмарі, і bae відтворюватиме його звідти, поки ви онлайн.</string>
     <string name="dont_show_again">Більше не показувати</string>
-    <string name="pinned">Закріплено</string>
     <string name="pinning">Закріплення</string>
     <string name="pin_cancel">Скасувати закріплення</string>
     <string name="pin_queued">У черзі на закріплення</string>
@@ -534,6 +533,8 @@
     <string name="stars_none">Без оцінки</string>
     <string name="stars_of_five">%1$d з 5 зірок</string>
     <string name="stars_rate">Оцінити на %1$d з 5 зірок</string>
+    <string name="rate">Оцінити</string>
+    <string name="clear_rating">Очистити оцінку</string>
     <string name="file_kind_audio">Аудіо %1$s</string>
     <string name="file_kind_image">Зображення %1$s</string>
     <string name="file_kind_damaged_image">Пошкоджене зображення</string>

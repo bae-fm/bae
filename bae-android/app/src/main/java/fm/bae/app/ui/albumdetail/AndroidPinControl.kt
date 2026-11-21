@@ -4,33 +4,24 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.DisplayError
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
-import fm.bae.app.coreString
 import fm.bae.app.ui.appearance.SymbolIcons
-import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidCheckbox
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidNotice
-import fm.bae.app.ui.components.AndroidSpinner
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.ErrorAction
@@ -42,8 +33,6 @@ import fm.bae.fastvalues.LatestSource
 import uniffi.bae_bridge.BridgeDownloadTransferProgress
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeReleaseDownloadStatus
-import uniffi.bae_bridge.BridgeReleaseStorageAction
-import uniffi.bae_bridge.bridgeTransferActionKey
 
 /**
  * The shown release's download control; nothing when core offers none for the
@@ -56,60 +45,31 @@ internal fun AndroidDownloadControlContainer(
 ) {
     // Core reads the release's place in the download queue into the release itself.
     val status = release.downloadStatus ?: return
-    PlayableReleaseDownloadControl(session = session, release = release, status = status)
+    AndroidPinControl(
+        status = status,
+        // Progress arrives through the download snapshot.
+        progress = session.downloadStore.latestProgress(release.id),
+        onCancel = {
+            session.messages.perform("cancel download") { session.appHandle.cancelDownload(release.id) }
+        },
+        onRetry = { session.messages.perform("retry download") { session.appHandle.retryDownload(release.id) } },
+    )
 }
 
-/** The control for a release this device can play, in the download [status] core read for it. */
-@Composable
-private fun PlayableReleaseDownloadControl(
-    session: OpenLibrary,
-    release: BridgeRelease,
-    status: BridgeReleaseDownloadStatus,
-) {
-    val unpin = rememberReleaseUnpin(session, release.id)
-    val config by session.configStore.config.collectAsState()
-
-    Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.compact)) {
-        AndroidPinControl(
-            status = status,
-            progress = session.downloadStore.latestProgress(release.id),
-            unpinning = unpin.unpinning,
-            asksBeforeUnpinning = config.askBeforeUnpinning,
-            // Progress arrives through the download snapshot; core skips ids already queued or pinned.
-            onDownload = {
-                session.messages.perform("queue release download") {
-                    session.appHandle.queuePinReleases(listOf(release.id))
-                }
-            },
-            onCancel = {
-                session.messages.perform("cancel download") { session.appHandle.cancelDownload(release.id) }
-            },
-            onRetry = { session.messages.perform("retry download") { session.appHandle.retryDownload(release.id) } },
-            onUnpin = unpin::unpin,
-        )
-        unpin.error?.let { shown ->
-            AndroidNotice(shown)
-        }
-    }
-}
-
+/**
+ * A pin under way or failed: Queued to pin with Cancel, Pinning with its bar and Cancel pinning, or
+ * Could not pin with Retry and Cancel. A release that is not pinned, or is pinned, shows nothing here:
+ * the album's menu offers Pin or Unpin for it.
+ */
 @Composable
 internal fun AndroidPinControl(
     status: BridgeReleaseDownloadStatus,
     progress: LatestSource<BridgeDownloadTransferProgress>,
-    unpinning: Boolean,
-    asksBeforeUnpinning: Boolean,
-    onDownload: () -> Unit,
     onCancel: () -> Unit,
     onRetry: () -> Unit,
-    onUnpin: (stopAsking: Boolean) -> Unit,
 ) {
     when (status) {
-        BridgeReleaseDownloadStatus.Available -> {
-            AndroidButton(kind = ButtonKind.OUTLINED, onClick = onDownload, icon = SymbolIcons.Keep) {
-                Text(stringResource(R.string.pin))
-            }
-        }
+        BridgeReleaseDownloadStatus.Available, BridgeReleaseDownloadStatus.Downloaded -> {}
 
         BridgeReleaseDownloadStatus.Queued -> {
             Row(
@@ -126,91 +86,34 @@ internal fun AndroidPinControl(
         }
 
         BridgeReleaseDownloadStatus.Downloading -> {
-            DownloadProgress(
-                progress,
-                label = stringResource(R.string.pinning),
-                modifier = Modifier.fillMaxWidth(),
-                stopDot = true,
-            )
-            AndroidButton(
-                kind = ButtonKind.OUTLINED,
-                onClick = onCancel,
-                icon = SymbolIcons.Close,
-            ) { Text(stringResource(R.string.pin_cancel)) }
+            Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.compact)) {
+                DownloadProgress(
+                    progress,
+                    label = stringResource(R.string.pinning),
+                    modifier = Modifier.fillMaxWidth(),
+                    stopDot = true,
+                )
+                AndroidButton(
+                    kind = ButtonKind.OUTLINED,
+                    onClick = onCancel,
+                    icon = SymbolIcons.Close,
+                ) { Text(stringResource(R.string.pin_cancel)) }
+            }
         }
 
         is BridgeReleaseDownloadStatus.Failed -> {
-            DownloadFailedControl(status.error, onRetry, onCancel)
-        }
-
-        BridgeReleaseDownloadStatus.Downloaded -> {
-            DownloadedControl(unpinning, asksBeforeUnpinning, onUnpin)
-        }
-    }
-}
-
-@Composable
-private fun DownloadFailedControl(
-    error: String,
-    onRetry: () -> Unit,
-    onCancel: () -> Unit,
-) {
-    AndroidNotice(
-        title = stringResource(R.string.pin_failed),
-        advice = null,
-        error = DisplayError(error),
-        action = ErrorAction(stringResource(R.string.retry), onClick = onRetry),
-        look = NoticeLook.QUIET,
-    )
-    AndroidButton(kind = ButtonKind.OUTLINED, onClick = onCancel, icon = SymbolIcons.Close) {
-        Text(stringResource(R.string.cancel))
-    }
-}
-
-@Composable
-private fun DownloadedControl(
-    unpinning: Boolean,
-    asksBeforeUnpinning: Boolean,
-    onUnpin: (stopAsking: Boolean) -> Unit,
-) {
-    var asking by remember { mutableStateOf(false) }
-    if (asking) {
-        UnpinDialog(
-            onConfirm = { stopAsking ->
-                asking = false
-                onUnpin(stopAsking)
-            },
-            onDismiss = { asking = false },
-        )
-    }
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            imageVector = SymbolIcons.Keep,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(ThemeIcon.small),
-        )
-        Text(
-            text = stringResource(R.string.pinned),
-            style = ThemeText.detail.style,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        if (unpinning) {
-            AndroidSpinner(size = ThemeIcon.medium)
-            Text(
-                text = LocalContext.current.coreString(bridgeTransferActionKey(BridgeReleaseStorageAction.UNPIN)),
-                style = ThemeText.detail.style,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        } else {
-            AndroidButton(
-                kind = ButtonKind.OUTLINED,
-                onClick = { if (asksBeforeUnpinning) asking = true else onUnpin(false) },
-                icon = SymbolIcons.KeepOff,
-            ) { Text(stringResource(R.string.unpin)) }
+            Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.compact)) {
+                AndroidNotice(
+                    title = stringResource(R.string.pin_failed),
+                    advice = null,
+                    error = DisplayError(status.error),
+                    action = ErrorAction(stringResource(R.string.retry), onClick = onRetry),
+                    look = NoticeLook.QUIET,
+                )
+                AndroidButton(kind = ButtonKind.OUTLINED, onClick = onCancel, icon = SymbolIcons.Close) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
         }
     }
 }

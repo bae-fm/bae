@@ -240,7 +240,6 @@
     <string name="unpin_confirm_title">Rimuovere il fissaggio di questa pubblicazione?</string>
     <string name="unpin_confirm_body">bae rimuoverà subito i suoi file da questo telefono. La pubblicazione resta nel cloud e bae la riproduce in streaming da lì finché sei online.</string>
     <string name="dont_show_again">Non mostrare più</string>
-    <string name="pinned">Fissato</string>
     <string name="pinning">Fissaggio</string>
     <string name="pin_cancel">Annulla fissaggio</string>
     <string name="pin_queued">In coda per il fissaggio</string>
@@ -523,6 +522,8 @@
     <string name="stars_none">Non valutato</string>
     <string name="stars_of_five">%1$d stelle su 5</string>
     <string name="stars_rate">Valuta %1$d stelle su 5</string>
+    <string name="rate">Valuta</string>
+    <string name="clear_rating">Rimuovi valutazione</string>
     <string name="file_kind_audio">Audio %1$s</string>
     <string name="file_kind_image">Immagine %1$s</string>
     <string name="file_kind_damaged_image">Immagine danneggiata</string>

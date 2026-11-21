@@ -235,7 +235,6 @@
     <string name="unpin_confirm_title">Diese Veröffentlichung loslösen?</string>
     <string name="unpin_confirm_body">bae wird ihre Dateien jetzt von diesem Smartphone entfernen. Die Veröffentlichung bleibt in der Cloud, und bae streamt sie von dort, solange du online bist.</string>
     <string name="dont_show_again">Nicht mehr anzeigen</string>
-    <string name="pinned">Angeheftet</string>
     <string name="pinning">Wird angeheftet</string>
     <string name="pin_cancel">Anheften abbrechen</string>
     <string name="pin_queued">In Warteschlange zum Anheften</string>
@@ -516,6 +515,8 @@
     <string name="stars_none">Nicht bewertet</string>
     <string name="stars_of_five">%1$d von 5 Sternen</string>
     <string name="stars_rate">Mit %1$d von 5 Sternen bewerten</string>
+    <string name="rate">Bewerten</string>
+    <string name="clear_rating">Bewertung entfernen</string>
     <string name="file_kind_audio">%1$s-Audio</string>
     <string name="file_kind_image">%1$s-Bild</string>
     <string name="file_kind_damaged_image">Beschädigtes Bild</string>
