@@ -3586,7 +3586,9 @@ from the end of its last check, and when it doesn't, on coven's doubling waits
 connecting, loading, registering, committing, an error) is the same step with the library's
 name as its headline, the progress line under it, and **Cancel** while it can cancel. When
 his request arrives, Ana's laptop shows a dialog titled "Dan wants to join", with the name Dan typed, says "Approve them if their screen shows this code:", and shows
-the same number under it, with **Approve** and **Decline**. Ana compares it with
+the same number under it, with **Approve** and **Decline**. On a Mac the sheet also
+has **Close**, and on Android back or a tap outside does the same: it puts the
+request away undecided, and the invite's row opens it again. Ana compares it with
 Dan's screen, or asks him for his number, and approves if it matches. Every
 invite waits for her approval: someone who saw the code could use it before Dan,
 and only the number shows whose request it is.
