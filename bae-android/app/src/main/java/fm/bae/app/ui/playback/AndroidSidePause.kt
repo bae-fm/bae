@@ -90,14 +90,9 @@ internal fun sidePauseParts(
     return DialogParts(
         title = title,
         width = SIDE_PAUSE_DIALOG_WIDTH,
+        message = context.coreString("core.playback.pause.message"),
         content = {
-            // The message is the first line of the content, a section step under the title.
             Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-                Text(
-                    text = context.coreString("core.playback.pause.message"),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
                 countdown?.let { SidePauseCountdownLine(countdown = it, nowMs = nowMs) }
                 AndroidCheckbox(label = keepPausingLabel, checked = keepPausing, onCheckedChange = onKeepPausingChange)
                 // Clearing the box turns the setting off, which also ends these prompts.
