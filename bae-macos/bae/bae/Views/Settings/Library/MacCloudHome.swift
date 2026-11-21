@@ -37,12 +37,8 @@ struct MacCloudHome: View {
             MacSection {
                 CloudProviderConnectedSection(location: location)
                 if let key {
-                    MacRow("Access key ID") {
-                        HStack {
-                            Text(verbatim: key.id)
-                                .foregroundStyle(Theme.macTextSecondary)
-                            Button("Replace key…", action: key.onReplace)
-                        }
+                    MacRow("Access key ID", value: key.id) {
+                        MacButton("Replace key…", action: key.onReplace)
                     }
                 }
                 if let folder = location.folderLabel {

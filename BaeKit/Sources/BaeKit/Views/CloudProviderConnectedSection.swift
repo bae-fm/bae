@@ -51,10 +51,10 @@ public struct OpenFolderInBrowserRow: View {
     private var openFailure: DisplayError?
 
     public var body: some View {
-        HStack {
-            Spacer()
-            Button("Open in browser", action: open)
-        }
+        MacRow(
+            content: { MacButton("Open in browser", action: open) },
+            label: { EmptyView() }
+        )
         if let openFailure {
             MacNotice(error: openFailure)
         }
