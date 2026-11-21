@@ -60,7 +60,7 @@ class AlbumBoardShots : BoardShot() {
         }
 
     @Test
-    fun androidAlbumPage() = shot("android.album.page") { AlbumPage(boardAlbum(trackCount = 9)) }
+    fun androidAlbumPage() = shot("android.album.page") { AlbumPage(boardAlbum()) }
 
     @Test
     fun androidAlbumRate() =
@@ -165,7 +165,7 @@ internal fun boardFile(
  */
 internal fun boardAlbum(
     rating: BridgeAlbumRating = BridgeAlbumRating(mine = null, raters = emptyList()),
-    trackCount: Int = 6,
+    trackCount: Int = 10,
 ): BridgeAlbumDetail {
     val titles =
         listOf(
@@ -178,6 +178,7 @@ internal fun boardAlbum(
             "Weather Report Card",
             "Old Dog",
             "Night Ferry",
+            "Slow Morning",
         ).take(trackCount)
     val tracks = titles.mapIndexed { index, title -> PreviewData.track("trk-${index + 1}", title, index + 1) }
     val album = PreviewData.album(title = "Low Tide Hours", year = 1992, artistNames = "Mara Quill")
