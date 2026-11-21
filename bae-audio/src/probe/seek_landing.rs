@@ -4,8 +4,8 @@
 //! desktop builds carry this code.
 
 use super::{content_type_from_codec_id, open_best_audio_stream};
+use crate::avio::ReadableFile;
 use bae_util::content_type::ContentType;
-use coven::LeasedFile;
 use std::os::raw::c_int;
 
 /// The timestamps of `samples` in `stream`, counted as a decode from the
@@ -62,11 +62,13 @@ pub const SEEK_LANDING_PLACES: usize = 2;
 /// twice at once (the searching opening and the one that reads its final
 /// frames), and every other format reads through the first. The search closes
 /// them all when it returns.
-pub fn seek_landing_bytes(
-    files: [LeasedFile<std::fs::File>; SEEK_LANDING_PLACES],
+pub fn seek_landing_bytes<F: ReadableFile + 'static>(
+    files: [F; SEEK_LANDING_PLACES],
     samples: &[u64],
 ) -> Result<Vec<u64>, String> {
     let [searching, final_frames] = files;
+    let (searching, final_frames): (Box<dyn ReadableFile>, Box<dyn ReadableFile>) =
+        (Box::new(searching), Box::new(final_frames));
     unsafe {
         let (opened, stream_index) =
             open_best_audio_stream(searching).map_err(|e| e.to_string())?;
@@ -133,7 +135,7 @@ const FLAC_TAIL_FRAMES: usize = 11;
 /// target. From the frame before, which the parser dates, the last frame's
 /// timestamp follows.
 unsafe fn flac_frame_landings(
-    final_frames: LeasedFile<std::fs::File>,
+    final_frames: Box<dyn ReadableFile>,
     fmt_ctx: *mut ffmpeg_sys_next::AVFormatContext,
     stream_index: c_int,
     targets: &[i64],
@@ -177,7 +179,7 @@ unsafe fn flac_frame_landings(
 /// wrong byte (the parser counts the leftover it passes over from where it
 /// stopped reading, not where that frame begins). The searching opening must
 /// not inherit that entry.
-unsafe fn flac_final_frames(file: LeasedFile<std::fs::File>) -> Result<Vec<(i64, u64)>, String> {
+unsafe fn flac_final_frames(file: Box<dyn ReadableFile>) -> Result<Vec<(i64, u64)>, String> {
     let (opened, stream_index) = open_best_audio_stream(file)
         .map_err(|reason| format!("cannot open it to read its final frames: {reason}"))?;
     let frames = flac_final_frames_in(opened.fmt_ctx, stream_index);

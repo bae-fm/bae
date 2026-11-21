@@ -373,30 +373,28 @@ fn unsettled_sheet(sheet: crate::cue_sheet::CueSheet) -> FileRole {
 /// about the sheets in the import pane (`sheet_decisions`, kept with the
 /// release: the audio of each `FILE` line and the disc of each sheet) apply
 /// over the scan's proposals. Holds only what a rip
-/// reading reads: artwork and other files are left out. Each sheet opens in a
-/// place of `lease`, one after the other, so call this off the async workers.
+/// reading reads: artwork and other files are left out. Each sheet is parsed
+/// from its bytes in `documents`, which holds every sheet among `files`.
 pub(crate) fn categorize_library_files(
     files: impl IntoIterator<Item = (ScannedFile, ReleaseFileRole)>,
+    documents: &crate::library_documents::LibraryDocuments,
     sheet_decisions: CandidateFileEdits,
-    lease: &coven::FileLease,
 ) -> CategorizedFiles {
     let mut files: Vec<CandidateFile> = files
         .into_iter()
         .filter_map(|(file, stored)| {
             let role = match stored {
                 ReleaseFileRole::Audio => FileRole::Audio,
-                ReleaseFileRole::TrackSheet => {
-                    match parse_cue_sheet(&file.version.path, lease.place_blocking()) {
-                        Ok(sheet) => unsettled_sheet(sheet),
-                        Err(error) => {
-                            info!(
-                                "CUE {:?} no longer parses, so it is read as a document: {error}",
-                                file.version.path
-                            );
-                            FileRole::Document { kind: DocumentKind::CueSheet }
-                        }
+                ReleaseFileRole::TrackSheet => match documents.parse_sheet(&file.version.path) {
+                    Ok(sheet) => unsettled_sheet(sheet),
+                    Err(error) => {
+                        info!(
+                            "CUE {:?} no longer parses, so it is read as a document: {error}",
+                            file.version.path
+                        );
+                        FileRole::Document { kind: DocumentKind::CueSheet }
                     }
-                }
+                },
                 ReleaseFileRole::Document(kind) => FileRole::Document { kind },
                 ReleaseFileRole::Artwork
                 | ReleaseFileRole::DamagedImage

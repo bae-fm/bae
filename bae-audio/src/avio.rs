@@ -217,12 +217,52 @@ pub(crate) unsafe extern "C" fn streaming_avio_seek_callback(
 
 // --- Reading AVIO over a file ---
 
-/// A file FFmpeg reads through the handle Rust opened it with, so FFmpeg
+/// A file the probe reads: bytes at a position, from wherever they are, such
+/// as an open file of the open-files budget or a coven stream.
+pub trait ReadableFile: Send {
+    /// Read up to `buf.len()` bytes at the position, and move it past them.
+    /// Zero bytes read means the end.
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize>;
+    /// Move the position, and give its new offset from the start.
+    fn seek(&mut self, to: SeekFrom) -> std::io::Result<u64>;
+    /// The file's whole size in bytes.
+    fn size(&self) -> std::io::Result<u64>;
+}
+
+impl ReadableFile for Box<dyn ReadableFile> {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        (**self).read(buf)
+    }
+
+    fn seek(&mut self, to: SeekFrom) -> std::io::Result<u64> {
+        (**self).seek(to)
+    }
+
+    fn size(&self) -> std::io::Result<u64> {
+        (**self).size()
+    }
+}
+
+/// An open file keeps its place of the open-files budget until it closes.
+impl ReadableFile for coven::LeasedFile<std::fs::File> {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        Read::read(&mut **self, buf)
+    }
+
+    fn seek(&mut self, to: SeekFrom) -> std::io::Result<u64> {
+        Seek::seek(&mut **self, to)
+    }
+
+    fn size(&self) -> std::io::Result<u64> {
+        Ok(self.metadata()?.len())
+    }
+}
+
+/// A file FFmpeg reads through the object Rust opened it with, so FFmpeg
 /// opens nothing by name: a name that isn't UTF-8, or one FFmpeg's own file
-/// protocol can't spell on Windows, opens like any other. The file holds its
-/// place of the open-files budget until it closes.
+/// protocol can't spell on Windows, opens like any other.
 pub(super) struct FileAvioContext {
-    file: coven::LeasedFile<std::fs::File>,
+    file: Box<dyn ReadableFile>,
     /// The first read of the file that failed, if one did. FFmpeg only sees
     /// an I/O error code from the read callback, and what it makes of one
     /// depends on where it lands (a probe that reads nothing is "Invalid data
@@ -232,7 +272,7 @@ pub(super) struct FileAvioContext {
 }
 
 impl FileAvioContext {
-    pub(super) fn new(file: coven::LeasedFile<std::fs::File>) -> Self {
+    pub(super) fn new(file: Box<dyn ReadableFile>) -> Self {
         Self { file, read_error: None }
     }
 
@@ -273,7 +313,7 @@ pub(super) unsafe extern "C" fn file_avio_seek_callback(
 ) -> i64 {
     let ctx = &mut *(opaque as *mut FileAvioContext);
     let position = if whence == ffmpeg_sys_next::AVSEEK_SIZE as c_int {
-        ctx.file.metadata().map(|metadata| metadata.len())
+        ctx.file.size()
     } else {
         let Some(seek_from) = seek_from(offset, whence, "file") else {
             return -1;

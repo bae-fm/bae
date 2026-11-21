@@ -75,14 +75,10 @@ pub(super) fn cue_audio_pregap(
 /// The scan opened and probed every image a sheet names, and admitted only
 /// audio of a usable format, so these offsets can always be read.
 /// An error saying why they couldn't fails the import.
-#[expect(
-    clippy::disallowed_methods,
-    reason = "file system: opens an image the scan read from the person's folder, before coven records it"
-)]
 pub(super) fn cue_file_landing_bytes(
     file: &crate::types::CueAnalyzedAudioFile,
     cue_sheet: &crate::cue_sheet::CueSheet,
-    lease: &coven::FileLease,
+    images: &dyn super::CueImageOpener,
 ) -> Result<HashMap<u64, u64>, ImportError> {
     ensure_probe_audio_format(&file.path, &file.probe)?;
     let sample_rate = u64::from(file.probe.sample_rate.get());
@@ -99,16 +95,8 @@ pub(super) fn cue_file_landing_bytes(
             file.path.display()
         ),
     };
-    // A search over a FLAC reads the file through two openings at once, so
-    // `lease` holds the places of both.
-    let open = || {
-        lease
-            .place_blocking()
-            .open(&file.path)
-            .map_err(|error| internal(format!("cannot open it: {error}")))
-    };
-    let landings =
-        bae_audio::seek_landing_bytes([open()?, open()?], &start_samples).map_err(internal)?;
+    let landings = bae_audio::seek_landing_bytes(images.open_for_search(file)?, &start_samples)
+        .map_err(internal)?;
     Ok(start_samples.into_iter().zip(landings).collect())
 }
 

@@ -255,6 +255,12 @@ pub fn parse_cue_sheet(
     crate::tests::reads::record(crate::tests::reads::FileRead::CueParse, cue_path);
     parse_cue_content(&crate::rip_reading::read_document_text(cue_path, place)?.text)
 }
+/// Parse the sheet `name`, whose text is in `bytes`, whatever its text
+/// encoding. A sheet over [`bae_util::text_encoding::MAX_DOCUMENT_BYTES`] is
+/// refused.
+pub fn parse_cue_document(name: &str, bytes: &[u8]) -> Result<CueSheet, CueSheetError> {
+    parse_cue_content(&bae_util::text_encoding::decode_document(name, bytes)?.text)
+}
 /// Parse CUE sheet content.
 ///
 /// The header (TITLE, PERFORMER, CATALOG, REM, the initial FILE) is accepted in

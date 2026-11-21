@@ -72,7 +72,28 @@ fn reading_a_text_file_gives_its_place_back() {
 
     let file = crate::test_files::open_in(lease.place_blocking(), &path).unwrap();
     assert_eq!(watch.holding(), 1);
-    let read = read_text_file(file).unwrap();
+    let read = read_text_file("sheet.cue", file).unwrap();
     assert_eq!(read.text, "TITLE \"One\"");
     assert_eq!(watch.holding(), 0);
+}
+
+/// A text document over the limit is refused with an error that names it and
+/// its size, whether its bytes are held or in a file, and one at the limit is
+/// read.
+#[test]
+fn a_text_document_over_the_limit_is_refused_naming_it_and_its_size() {
+    let at_limit = vec![b'a'; MAX_DOCUMENT_BYTES as usize];
+    assert_eq!(decode_document("a.log", &at_limit).unwrap().text.len(), at_limit.len());
+
+    let over = vec![b'a'; MAX_DOCUMENT_BYTES as usize + 1];
+    let error = decode_document("big.log", &over).unwrap_err().to_string();
+    assert!(error.contains("big.log") && error.contains(&over.len().to_string()), "{error}");
+
+    let folder = crate::test_files::TestFolder::new();
+    let path = folder.write("big.cue", "x".repeat(over.len()));
+    let budget = coven::FileBudget::for_test();
+    let lease = budget.lease_blocking(1).unwrap();
+    let file = crate::test_files::open_in(lease.place_blocking(), &path).unwrap();
+    let error = read_text_file("big.cue", file).unwrap_err().to_string();
+    assert!(error.contains("big.cue") && error.contains(&over.len().to_string()), "{error}");
 }

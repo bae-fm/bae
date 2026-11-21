@@ -4,11 +4,10 @@
 
 use crate::avio::{
     close_input_and_free_custom_avio, file_avio_read_callback, file_avio_seek_callback,
-    free_custom_avio_context, FileAvioContext,
+    free_custom_avio_context, FileAvioContext, ReadableFile,
 };
 use bae_util::audio_container::AudioContainer;
 use bae_util::content_type::ContentType;
-use coven::LeasedFile;
 use std::os::raw::{c_int, c_void};
 use std::path::Path;
 use std::ptr;
@@ -153,7 +152,7 @@ impl Drop for OpenedFile {
     reason = "file system: FFmpeg over a file its caller opened, with no URL"
 )]
 unsafe fn open_best_audio_stream(
-    file: LeasedFile<std::fs::File>,
+    file: Box<dyn ReadableFile>,
 ) -> Result<(OpenedFile, c_int), ProbeError> {
     use ffmpeg_sys_next::*;
 
@@ -349,16 +348,16 @@ fn stated_count(value: c_int) -> Option<std::num::NonZeroU32> {
 /// name, which the warnings and the test read counts use, never an open.
 /// Closes `file` when it returns.
 pub fn probe_audio(
-    file: LeasedFile<std::fs::File>,
+    file: impl ReadableFile + 'static,
     path: &Path,
 ) -> Result<ProbeResult, ProbeError> {
-    open_and_probe(file, path)
+    open_and_probe(Box::new(file), path)
 }
 
 /// Read the open file's best audio stream through FFmpeg. `NotAudio` when it
 /// has no audio stream, or states no sample rate, channels or usable
 /// duration; `Io` when a read of it failed, wherever FFmpeg met the failure.
-fn open_and_probe(file: LeasedFile<std::fs::File>, path: &Path) -> Result<ProbeResult, ProbeError> {
+fn open_and_probe(file: Box<dyn ReadableFile>, path: &Path) -> Result<ProbeResult, ProbeError> {
     #[cfg(feature = "test-instrumentation")]
     crate::test_reads::record_probe(path);
     unsafe {

@@ -159,6 +159,12 @@ shared_pointer_types = ["std::sync::Arc", "std::sync::Weak"]
 # lifetime of it: a message sent to a thread or task, the parameters one
 # operation is started with, and an operation's result.
 non_owner_types = [
+    # What one save's search of a CUE image reads the release's audio with:
+    # the release's records, one place of the open-files budget and where
+    # each image path's file is, and the coven stream it reads one image
+    # through. Both end with the search.
+    "bae_import::library_audio::LibraryImages",
+    "bae_import::library_audio::StreamFile",
     # Messages to the playback thread and the services' coordinators; they
     # carry reply channels for the one request they hold.
     "bae_playback::service::api::PlaybackCommand",

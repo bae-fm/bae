@@ -26,7 +26,7 @@ pub(crate) fn read_document_text(
     path: &Path,
     place: LeasePlace,
 ) -> std::io::Result<bae_util::text_encoding::DecodedText> {
-    bae_util::text_encoding::read_text_file(place.open(path)?)
+    bae_util::text_encoding::read_text_file(&path.display().to_string(), place.open(path)?)
 }
 
 /// A document's text, decoded whatever its encoding (an EAC log is UTF-16).
@@ -141,15 +141,18 @@ struct RipArtifacts<'a> {
 /// ID once. A document `read` cannot read fails the reading, as does a log
 /// or sheet `read` cannot hash to a disc. When `read` parses a log and finds
 /// no table of contents, it gets no Disc ID from that log, skips the log and
-/// logs a warning. `read` opens each document in a place of `lease`, one
-/// after the other.
-fn read(artifacts: RipArtifacts<'_>, lease: &FileLease) -> Result<RipReading, ImportError> {
+/// logs a warning. `text_of` gives each document's text, one after the
+/// other.
+fn read(
+    artifacts: RipArtifacts<'_>,
+    text_of: &dyn Fn(&RipDocument<'_>) -> Result<String, ImportError>,
+) -> Result<RipReading, ImportError> {
     let not_cd_rate = rate_ruling_out_cd(artifacts.audio.iter().copied());
     let mut discs: Vec<ComputedDiscId> = Vec::new();
     let mut read_logs: Vec<&RipDocument<'_>> = Vec::new();
     let mut report = None;
     for document in &artifacts.documents {
-        let text = read_document(document.path, lease.place_blocking())?;
+        let text = text_of(document)?;
         if document.kind == DocumentKind::RipLog {
             trace!("Reading LOG file: {:?}", document.path);
             let disc_id = discid_from_log_text(&text).map_err(|error| {
@@ -273,7 +276,9 @@ pub fn read_rip_artifacts(
     categorized: &crate::folder_scanner::CategorizedFiles,
     lease: &FileLease,
 ) -> Result<RipReading, ImportError> {
-    read_categorized(categorized, |file| Some(&file.relative_path), lease)
+    read_categorized(categorized, |file| Some(&file.relative_path), &|document| {
+        read_document(document.path, lease.place_blocking())
+    })
 }
 
 /// Read a library release's files as [`read_rip_artifacts`] reads a folder's
@@ -281,9 +286,13 @@ pub fn read_rip_artifacts(
 /// release's signals name none of its files.
 pub(crate) fn read_library_rip_artifacts(
     categorized: &crate::folder_scanner::CategorizedFiles,
-    lease: &FileLease,
+    documents: &crate::library_documents::LibraryDocuments,
 ) -> Result<RipReading, ImportError> {
-    read_categorized(categorized, |_| None, lease)
+    read_categorized(categorized, |_| None, &|document| {
+        documents.text(document.path).map(|decoded| decoded.text).map_err(|error| {
+            ImportError::DocumentRead { file: document.path.display().to_string(), error }
+        })
+    })
 }
 
 /// Read `categorized`'s rip files, `named` giving the name each disc and
@@ -291,7 +300,7 @@ pub(crate) fn read_library_rip_artifacts(
 fn read_categorized(
     categorized: &crate::folder_scanner::CategorizedFiles,
     named: fn(&crate::folder_scanner::ScannedFile) -> Option<&str>,
-    lease: &FileLease,
+    text_of: &dyn Fn(&RipDocument<'_>) -> Result<String, ImportError>,
 ) -> Result<RipReading, ImportError> {
     let documents = RIP_DOCUMENTS
         .into_iter()
@@ -334,7 +343,7 @@ fn read_categorized(
                 .map(|audio| &audio.format)
                 .collect(),
         },
-        lease,
+        text_of,
     )
 }
 

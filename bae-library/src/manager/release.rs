@@ -80,7 +80,6 @@ impl LibraryManager {
                 }
                 error => LibraryError::Database(error),
             },
-            ReleaseIdentityError::Staging(error) => LibraryError::Io(error),
             ReleaseIdentityError::Unreadable(error) => LibraryError::from(error),
             ReleaseIdentityError::Panicked(failed) => LibraryError::from(failed),
         })?

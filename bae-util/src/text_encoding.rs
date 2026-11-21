@@ -3,6 +3,7 @@
 use coven::LeasedFile;
 use std::io::Read;
 
+#[derive(Debug)]
 pub struct DecodedText {
     pub text: String,
     /// The encoding detected or used, e.g. "UTF-8", "Shift_JIS", "windows-1252".
@@ -31,13 +32,43 @@ pub fn decode_text(bytes: &[u8]) -> DecodedText {
     DecodedText { text: decoded.into_owned(), encoding: encoding.name().to_string() }
 }
 
-/// Read an open file to its end and decode its contents, detecting encoding
-/// automatically. read_text_file closes the file, which gives its place back,
-/// when it returns.
-pub fn read_text_file(mut file: LeasedFile<std::fs::File>) -> std::io::Result<DecodedText> {
+/// The most bytes of a text document that bae reads whole, such as a CUE
+/// sheet or a rip log.
+pub const MAX_DOCUMENT_BYTES: u64 = 5 * 1024 * 1024;
+
+/// Refuse a text document of `size` bytes that is over [`MAX_DOCUMENT_BYTES`],
+/// with an error that names `name` and its size.
+pub fn check_document_size(name: &str, size: u64) -> std::io::Result<()> {
+    if size > MAX_DOCUMENT_BYTES {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            format!(
+                "{name} is {size} bytes, and bae reads a text document of at most {MAX_DOCUMENT_BYTES} bytes"
+            ),
+        ));
+    }
+    Ok(())
+}
+
+/// Decode the text document `name` from its `bytes`, detecting the encoding
+/// as [`decode_text`] does. A document over [`MAX_DOCUMENT_BYTES`] is refused.
+pub fn decode_document(name: &str, bytes: &[u8]) -> std::io::Result<DecodedText> {
+    check_document_size(name, bytes.len() as u64)?;
+    Ok(decode_text(bytes))
+}
+
+/// Read the open text document `name` to its end and decode its contents,
+/// detecting encoding automatically. A document over [`MAX_DOCUMENT_BYTES`]
+/// is refused before any of it is read. read_text_file closes the file,
+/// which gives its place back, when it returns.
+pub fn read_text_file(
+    name: &str,
+    mut file: LeasedFile<std::fs::File>,
+) -> std::io::Result<DecodedText> {
+    check_document_size(name, file.metadata()?.len())?;
     let mut bytes = Vec::new();
     file.read_to_end(&mut bytes)?;
-    Ok(decode_text(&bytes))
+    decode_document(name, &bytes)
 }
 
 #[cfg(test)]

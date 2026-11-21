@@ -136,23 +136,58 @@ pub(super) fn audio_segment(
     }
 }
 
+/// Where a CUE image's bytes are read from when the build searches it for
+/// the byte each track starts on.
+pub trait CueImageOpener {
+    /// `image` opened [`bae_audio::SEEK_LANDING_PLACES`] times, as
+    /// [`bae_audio::seek_landing_bytes`] takes it. Blocking.
+    fn open_for_search(
+        &self,
+        image: &crate::types::CueAnalyzedAudioFile,
+    ) -> Result<[Box<dyn bae_audio::ReadableFile>; bae_audio::SEEK_LANDING_PLACES], ImportError>;
+}
+
+/// An image in the person's folder, opened in places of the budget it waits
+/// for, which the search holds until it ends.
+impl CueImageOpener for coven::FileBudget {
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "file system: opens an image the scan read from the person's folder, before coven records it"
+    )]
+    fn open_for_search(
+        &self,
+        image: &crate::types::CueAnalyzedAudioFile,
+    ) -> Result<[Box<dyn bae_audio::ReadableFile>; bae_audio::SEEK_LANDING_PLACES], ImportError>
+    {
+        let lease = self
+            .lease_blocking(bae_audio::SEEK_LANDING_PLACES)
+            .map_err(ImportError::TooManyFilesAtOnce)?;
+        let open = || {
+            lease.place_blocking().open(&image.path).map_err(|error| ImportError::Internal {
+                detail: format!(
+                    "could not read where each track of the CUE image {} starts: cannot open it: {error}",
+                    image.path.display()
+                ),
+            })
+        };
+        Ok([Box::new(open()?), Box::new(open()?)])
+    }
+}
+
 /// Build audio format records for all tracks from the scan's stored facts. A
 /// CUE image whose track starts can't be read fails the build: the records
 /// would otherwise be stored without their byte positions for good. The
-/// search of a CUE image opens its file in places of `files`.
+/// search of a CUE image reads it as `images` opens it.
 pub fn build_audio_formats(
     tracks_to_files: &[TrackFile],
     file_ids: &HashMap<PathBuf, String>,
     clock: &dyn coven::Clock,
     ids: &dyn coven::IdSource,
-    files: &coven::FileBudget,
+    images: &dyn CueImageOpener,
 ) -> Result<BuiltAudioFormats, ImportError> {
     let now = bae_store::utc_now(clock);
-    // When the first CUE image needs them, the build waits once for the
-    // places of the open-files budget it uses to find the byte where each
-    // track starts, and keeps them until the build ends.
-    // build_audio_formats runs on the blocking pool, so it may wait here.
-    let mut landing_places: Option<coven::FileLease> = None;
+    // build_audio_formats runs on the blocking pool, so opening an image may
+    // wait.
     let mut audio_formats = Vec::with_capacity(tracks_to_files.len());
     let mut audio_segments = Vec::new();
     let mut cue_landings_by_file: HashMap<PathBuf, HashMap<u64, u64>> = HashMap::new();
@@ -170,18 +205,8 @@ pub fn build_audio_formats(
                 )?;
                 for audio_file in &cue_pair.audio_files {
                     if !cue_landings_by_file.contains_key(&audio_file.path) {
-                        if landing_places.is_none() {
-                            landing_places = Some(
-                                files
-                                    .lease_blocking(bae_audio::SEEK_LANDING_PLACES)
-                                    .map_err(ImportError::TooManyFilesAtOnce)?,
-                            );
-                        }
-                        let landings = cue_file_landing_bytes(
-                            audio_file,
-                            &cue_pair.cue_sheet,
-                            landing_places.as_ref().expect("taken above"),
-                        )?;
+                        let landings =
+                            cue_file_landing_bytes(audio_file, &cue_pair.cue_sheet, images)?;
                         cue_landings_by_file.insert(audio_file.path.clone(), landings);
                     }
                 }

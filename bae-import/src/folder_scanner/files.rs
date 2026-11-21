@@ -49,13 +49,14 @@ impl ScannedFile {
         }
     }
 
-    /// A library release's file at `path`, the place re-identify lays it out
-    /// at below the folder it stages the release's files in, with the size
-    /// coven records for it. A coven file never changes its bytes, so no
-    /// modification time has to tell them from what a later write puts at
-    /// the path: every library file's is zero.
-    pub(crate) fn library(path: PathBuf, relative_path: String, size: u64) -> Self {
-        Self::new(path, relative_path, size, 0)
+    /// A library release's file named `relative_path` in its release, with
+    /// the size coven records for it. A library file is on no path: coven
+    /// holds its bytes, which the readers of a library release take from it,
+    /// so its version's path is its name in the release, only the file's
+    /// identity. A coven file never changes its bytes, so no modification
+    /// time tells them from a later write: every library file's is zero.
+    pub(crate) fn library(relative_path: String, size: u64) -> Self {
+        Self::new(PathBuf::from(&relative_path), relative_path, size, 0)
     }
 
     #[cfg(test)]

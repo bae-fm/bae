@@ -1325,7 +1325,10 @@ store markers: nothing else uses them.
 Text in the files is often in a code page older than Unicode. A CUE sheet, a
 rip log or a text file is decoded from its bytes: a byte order mark names its
 encoding, else text that is valid UTF-8 is read as UTF-8, else bae detects the
-code page, such as Windows-1252 or Shift_JIS. Tag text that declares Latin-1
+code page, such as Windows-1252 or Shift_JIS. bae reads a text document whole
+(a CUE sheet, a rip log, an AccurateRip report, or a document it shows) only up
+to 5 MB: a larger one fails its read with an error that names the file and its
+size. Tag text that declares Latin-1
 is decoded from its bytes the same way, since taggers wrote other code pages
 under that mark: an ID3v1 tag's title, artist and album, and the ID3v2 title,
 artist, album artist, album, publisher and copyright frames marked Latin-1.

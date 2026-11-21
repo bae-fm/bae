@@ -3,6 +3,7 @@
 //! artwork paths for the OCR pass. Reading the rip artifacts themselves lives
 //! in `import::discid`.
 
+use crate::library_documents::{LibraryDocumentError, LibraryDocuments};
 use bae_diagnostics::Diagnostics;
 use bae_records::LibraryImageType;
 use bae_records::Records;
@@ -28,9 +29,6 @@ pub enum ReleaseIdentityError {
     /// coven could not read one of the release's rip files.
     #[error("bae could not read the release's file {name}: {error}")]
     FileRead { name: String, error: DbError },
-    /// bae could not write the copies of the rip files its readers open.
-    #[error("bae could not copy the release's rip files to read them: {0}")]
-    Staging(std::io::Error),
     /// A rip file of the release could not be read.
     #[error(transparent)]
     Unreadable(#[from] crate::ImportError),
@@ -82,8 +80,9 @@ impl ReleaseIdentity {
 /// from wherever it has it: the original on this device, its cache or
 /// storage. A file coven can't read, such as an original that moved or
 /// changed since its import, or a file only on another device, fails the
-/// reading. Audio is read by the facts its import stored, so none of its
-/// bytes are read.
+/// reading, and so does a text document over the limit bae reads whole.
+/// Audio is read by the facts its import stored, so none of its bytes are
+/// read.
 pub async fn resolve_release_identity(
     tables: &crate::tables::ImportTables,
     records: &Records,
@@ -101,33 +100,26 @@ pub async fn resolve_release_identity(
     // is read against the discs these tracks are.
     let track_lengths_ms: Vec<u64> = tracks.iter().map(|track| track.duration_ms).collect();
     let sheet_decisions = tables.load_release_sheet_decisions(release_id).await?;
-    let staged = diagnostics
-        .blocking("make a folder for a release's rip files", StagedFiles::create)
-        .await?
-        .map_err(ReleaseIdentityError::Staging)?;
     let lease = bae_store::lease_one(budget).await;
-    for file in files.iter().filter(|file| crate::rip_reading::opens_library_file(&file.role)) {
-        let bytes = records.read_release_file(&file.id, &lease).await.map_err(|error| {
-            ReleaseIdentityError::FileRead { name: file.original_filename.clone(), error }
+    let read: Vec<&bae_records::DbFile> =
+        files.iter().filter(|file| crate::rip_reading::opens_library_file(&file.role)).collect();
+    let documents =
+        LibraryDocuments::read(records, &lease, &read).await.map_err(|error| match error {
+            LibraryDocumentError::Coven { name, error } => {
+                ReleaseIdentityError::FileRead { name, error }
+            }
+            refused @ LibraryDocumentError::Refused { .. } => {
+                ReleaseIdentityError::Unreadable(refused.into())
+            }
         })?;
-        staged
-            .write(diagnostics, staged.release_file(&file.original_filename), bytes)
-            .await?
-            .map_err(ReleaseIdentityError::Staging)?;
-    }
-    let library_files: Vec<_> = files
-        .into_iter()
-        .map(|file| {
-            let path = staged.release_file(&file.original_filename);
-            library_file(file, path)
-        })
-        .collect();
+    drop(lease);
+    let library_files: Vec<_> = files.into_iter().map(library_file).collect();
     let (rip, formats) = diagnostics
         .blocking("read a release's rip files", move || {
             let categorized = crate::folder_scanner::categorize_library_files(
                 library_files,
+                &documents,
                 sheet_decisions,
-                &lease,
             );
             let formats: Vec<bae_types::audio_format::AudioFormat> = categorized
                 .audio()
@@ -135,27 +127,24 @@ pub async fn resolve_release_identity(
                 .map(|audio| audio.format.clone())
                 .collect();
             Ok::<_, crate::ImportError>((
-                crate::rip_reading::read_library_rip_artifacts(&categorized, &lease)?,
+                crate::rip_reading::read_library_rip_artifacts(&categorized, &documents)?,
                 formats,
             ))
         })
         .await??;
-    // The readers are done with the copies.
-    drop(staged);
     let audio =
         bae_identify::signals::AudioFacts::of(tracks.len() as u32, track_lengths_ms, &formats);
 
     Ok(ReleaseIdentity { rip, audio })
 }
 
-/// A release file as the file at `path`, its place in the release's staged
-/// folder, with the audio facts the import stored and the role it stored.
+/// A release file as a scanned file, with the audio facts the import stored
+/// and the role it stored.
 pub(crate) fn library_file(
     file: bae_records::DbFile,
-    path: PathBuf,
 ) -> (crate::folder_scanner::ScannedFile, bae_records::ReleaseFileRole) {
     let mut scanned =
-        crate::folder_scanner::ScannedFile::library(path, file.original_filename, file.file_size);
+        crate::folder_scanner::ScannedFile::library(file.original_filename, file.file_size);
     scanned.source_audio = file.source_audio.map(|audio| crate::folder_scanner::ScannedAudio {
         content_type: audio.content_type,
         container: audio.container,
@@ -259,46 +248,6 @@ impl StagedFiles {
         bytes: Vec<u8>,
     ) -> Result<std::io::Result<()>, TaskFailed> {
         diagnostics.blocking("stage a release's file", move || write_file(&path, &bytes)).await
-    }
-
-    /// Copy the release file `file_id` to `path`, one of this folder's
-    /// paths, making the folders above it: coven reads it from wherever it
-    /// has it, in one place of `lease`, a window at a time, so no more than
-    /// a window of it is in memory.
-    pub(crate) async fn copy(
-        &self,
-        diagnostics: &Diagnostics,
-        records: &Records,
-        file_id: &str,
-        path: PathBuf,
-        lease: &coven::FileLease,
-    ) -> Result<std::io::Result<()>, crate::ImportError> {
-        const WINDOW: u64 = 8 * 1024 * 1024;
-        let stream = records.open_release_file(file_id, lease).await?;
-        let size = stream.plaintext_size();
-        let mut file =
-            match diagnostics.blocking("stage a release's file", move || create_file(&path)).await?
-            {
-                Ok(file) => file,
-                Err(error) => return Ok(Err(error)),
-            };
-        let mut offset = 0;
-        while offset < size {
-            let len = WINDOW.min(size - offset);
-            let bytes = stream.read_at(offset, len).await.map_err(bae_store::DbError::from)?;
-            file = match diagnostics
-                .blocking("stage a release's file", move || {
-                    use std::io::Write as _;
-                    file.write_all(&bytes).map(|()| file)
-                })
-                .await?
-            {
-                Ok(file) => file,
-                Err(error) => return Ok(Err(error)),
-            };
-            offset += len;
-        }
-        Ok(Ok(()))
     }
 }
 

@@ -64,6 +64,10 @@ pub(crate) mod import_cancel;
 #[cfg(desktop)]
 mod import_failure;
 #[cfg(desktop)]
+mod library_audio;
+#[cfg(desktop)]
+mod library_documents;
+#[cfg(desktop)]
 pub mod list;
 #[cfg(desktop)]
 pub mod loudness;

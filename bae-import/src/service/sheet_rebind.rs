@@ -1,7 +1,7 @@
 //! What a release editor's save writes for the tracks of the CUE sheets
 //! whose `FILE` lines the person bound to other audio files of the release.
 //! Each such track plays new bytes, so the save first reads the sheet and
-//! the files its lines then play from on this device and builds every
+//! the files its lines then play from, through coven, and builds every
 //! track's audio rows as the import builds them: its format, its segments
 //! with the bytes a seek to each boundary lands on, and its length. It then
 //! measures the loudness of every track of the release, since the album's
@@ -15,8 +15,10 @@ use std::sync::Arc;
 use bae_records::records::sheet_files::{DbReleaseAudio, ReboundAudio};
 use bae_records::{DbAudioSegmentRole, DbFile};
 
-use crate::extraction::release::{library_file, StagedFiles};
+use crate::extraction::release::library_file;
 use crate::folder_scanner::{SheetBinding, UserSheetBinding};
+use crate::library_audio::LibraryImages;
+use crate::library_documents::LibraryDocuments;
 use crate::types::{TrackAudio, TrackFile};
 use crate::ImportError;
 
@@ -70,30 +72,26 @@ pub async fn rebound_sheet_audio(
         }
     }
 
-    let staged = diagnostics
-        .blocking("make a folder for a release's CUE sheets and audio", StagedFiles::create)
-        .await?
-        .map_err(|error| staging_failed("a folder", error))?;
     let lease = bae_store::lease_one(budget).await;
-    for sheet in files.iter().filter(|file| sheets.contains(&file.original_filename)) {
-        let bytes = records.read_release_file(&sheet.id, &lease).await?;
-        staged
-            .write(diagnostics, staged.release_file(&sheet.original_filename), bytes)
-            .await?
-            .map_err(|error| staging_failed(&sheet.original_filename, error))?;
-    }
+    let read: Vec<&DbFile> =
+        files.iter().filter(|file| sheets.contains(&file.original_filename)).collect();
+    let documents = LibraryDocuments::read(records, &lease, &read).await?;
+    drop(lease);
     let library_files: Vec<_> = files
         .iter()
         .filter(|file| {
             sheets.contains(&file.original_filename)
                 || file.role == bae_records::ReleaseFileRole::Audio
         })
-        .map(|file| library_file(file.clone(), staged.release_file(&file.original_filename)))
+        .map(|file| library_file(file.clone()))
         .collect();
     let analyses = diagnostics
         .blocking("read a release's CUE sheets", move || {
-            let categorized =
-                crate::folder_scanner::categorize_library_files(library_files, decisions, &lease);
+            let categorized = crate::folder_scanner::categorize_library_files(
+                library_files,
+                &documents,
+                decisions,
+            );
             sheets
                 .iter()
                 .map(|sheet| sheet_analysis(&categorized, sheet).map(Arc::new))
@@ -101,37 +99,32 @@ pub async fn rebound_sheet_audio(
         })
         .await??;
 
-    let lease = bae_store::lease_one(budget).await;
     let mut file_ids: HashMap<PathBuf, String> = HashMap::new();
     for analysis in &analyses {
         for audio_file in &analysis.audio_files {
-            if file_ids.contains_key(&audio_file.path) {
-                continue;
+            if !file_ids.contains_key(&audio_file.path) {
+                let file = by_path(&files, &audio_file.path)?;
+                file_ids.insert(audio_file.path.clone(), file.id.clone());
             }
-            let file = by_path(&files, &staged, &audio_file.path)?;
-            staged
-                .copy(diagnostics, records, &file.id, audio_file.path.clone(), &lease)
-                .await?
-                .map_err(|error| staging_failed(&file.original_filename, error))?;
-            file_ids.insert(audio_file.path.clone(), file.id.clone());
         }
     }
-    drop(lease);
 
     let moved = moved_tracks(&tracks, &audio, &files, &analyses)?;
     let built = {
         let moved = moved.clone();
+        let images = LibraryImages::new(
+            records.clone(),
+            bae_store::lease_one(budget).await,
+            runtime.clone(),
+            file_ids.clone(),
+        );
         let file_ids = file_ids.clone();
-        let budget = budget.clone();
         diagnostics
             .blocking("build the audio formats of a CUE sheet's tracks", move || {
-                super::build_audio_formats(&moved, &file_ids, clock.as_ref(), ids.as_ref(), &budget)
+                super::build_audio_formats(&moved, &file_ids, clock.as_ref(), ids.as_ref(), &images)
             })
             .await??
     };
-    // The staged copies were read for where each track starts; the loudness
-    // pass reads the release's files through coven.
-    drop(staged);
 
     let moved_ids: HashSet<&str> = moved.iter().map(|track| track.db_track.id.as_str()).collect();
     let mut formats = Vec::with_capacity(tracks.len());
@@ -278,13 +271,10 @@ fn moved_tracks(
     Ok(moved)
 }
 
-/// The release file `files` holds at `path`, one of `staged`'s paths.
-fn by_path<'a>(
-    files: &'a [DbFile],
-    staged: &StagedFiles,
-    path: &std::path::Path,
-) -> Result<&'a DbFile, ImportError> {
-    files.iter().find(|file| staged.release_file(&file.original_filename) == path).ok_or_else(
+/// The release file `files` holds at `path`, the name it has in the
+/// release.
+fn by_path<'a>(files: &'a [DbFile], path: &std::path::Path) -> Result<&'a DbFile, ImportError> {
+    files.iter().find(|file| std::path::Path::new(&file.original_filename) == path).ok_or_else(
         || ImportError::Internal {
             detail: format!(
                 "a CUE sheet's audio at {} is none of the release's files",
@@ -292,9 +282,4 @@ fn by_path<'a>(
             ),
         },
     )
-}
-
-/// Why bae couldn't copy `what` to read it.
-fn staging_failed(what: &str, error: std::io::Error) -> ImportError {
-    ImportError::UnusableFile { detail: format!("bae couldn't copy {what} to read it: {error}") }
 }

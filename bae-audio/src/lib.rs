@@ -36,6 +36,8 @@ mod tests;
 /// FFmpeg uses for its own file IO.
 pub const AVIO_BUFFER_SIZE: usize = 32768;
 
+#[cfg(desktop)]
+pub use avio::ReadableFile;
 pub use decode::byte_jump_keeps_place;
 #[cfg(desktop)]
 pub use decode::verification::decode_audio_to_verifying_sink;
@@ -46,7 +48,6 @@ pub use decode::{
 #[cfg(any(test, feature = "test-utils"))]
 pub use encode::encode_i32;
 pub use encode::{EncodeFormat, StreamEncodeFormat, StreamingEncoder, WriteSeek};
-#[cfg(desktop)]
 pub use probe::seek_landing::{seek_landing_bytes, SEEK_LANDING_PLACES};
 pub use probe::{probe_audio, ProbeError, ProbeResult};
 pub use resample::Resampler;
