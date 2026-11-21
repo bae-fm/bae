@@ -124,7 +124,7 @@
     if (props.noVolume) return h('span', { className: 'bae-m-np-novolume' }, 'Volume is set on ' + props.noVolume);
     return h('div', { className: 'bae-m-volumeslider' },
       h(MacIconButton, { icon: 'speaker', label: 'Mute' }),
-      h('div', { className: 'bae-m-volume' }, h('div', { style: { width: ((props.volume != null ? Number(props.volume) : 0.7) * 100) + '%' } })));
+      h('div', { className: 'bae-m-volume', role: 'slider', 'aria-label': 'Volume', 'aria-valuenow': Math.round((props.volume != null ? Number(props.volume) : 0.7) * 100) }, h('div', { style: { width: ((props.volume != null ? Number(props.volume) : 0.7) * 100) + '%' } })));
   }
 
   function MacNowPlayingBar(props) {
