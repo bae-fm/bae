@@ -471,17 +471,11 @@ extension MappingFixtures {
         return store
     }
 
-    /// The mapping table the store's one candidate holds.
+    /// The mapping table the store's one candidate holds; `nil` until core
+    /// read its draft.
     @MainActor
-    static func mapping(of store: ImportStore) -> BridgeMappingTable {
+    static func mapping(of store: ImportStore) -> BridgeMappingTable? {
         store.selectedCandidates[candidateKey]?.mapping
-            ?? BridgeMappingTable(
-                images: nil,
-                trackSides: nil,
-                files: nil,
-                trackCount: 0,
-                untitledTrackCount: 0
-            )
     }
 
     /// Whether bae-library can shape what the pane would commit into a savable

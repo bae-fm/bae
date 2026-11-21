@@ -205,7 +205,7 @@ struct ImportMappingPaneTests {
         let store = MappingFixtures.store(
             mapping: MappingFixtures.unboundSheetTable
         )
-        #expect(MappingFixtures.mapping(of: store).trackRows.count == 1)
+        #expect(MappingFixtures.mapping(of: store)?.trackRows.count == 1)
 
         let recorder = Recorder()
         await ImportMappingFlow.bindSheet(
@@ -226,7 +226,7 @@ struct ImportMappingPaneTests {
         )
         // The pane does not rewrite its own table: it still shows what it was
         // handed, and the next read replaces it whole.
-        #expect(MappingFixtures.mapping(of: store).trackRows.count == 1)
+        #expect(MappingFixtures.mapping(of: store)?.trackRows.count == 1)
 
         // What that read comes back with is the sheet's group.
         store.applyCandidateDetail(
@@ -237,13 +237,13 @@ struct ImportMappingPaneTests {
         )
         let after = MappingFixtures.mapping(of: store)
         guard
-            let sides = after.trackSides,
+            let sides = after?.trackSides,
             sides.count == 1,
             sides[0].runs.count == 1,
             case .sheet(let sheet, let entries) = sides[0].runs[0]
         else {
             Issue.record(
-                "expected one sheet run, got \(String(describing: after.trackSides))"
+                "expected one sheet run, got \(String(describing: after?.trackSides))"
             )
             return
         }
@@ -265,11 +265,11 @@ struct ImportMappingPaneTests {
         let store = MappingFixtures.store(
             mapping: MappingFixtures.thirteenFileTable
         )
-        #expect(MappingFixtures.mapping(of: store).trackRows.count == 13)
-        #expect(MappingFixtures.mapping(of: store).untitledTrackCount == 1)
+        #expect(MappingFixtures.mapping(of: store)?.trackRows.count == 13)
+        #expect(MappingFixtures.mapping(of: store)?.untitledTrackCount == 1)
 
         let unnamed = try #require(
-            MappingFixtures.mapping(of: store).trackRows.last?.track
+            MappingFixtures.mapping(of: store)?.trackRows.last?.track
         )
         var named = unnamed
         named.title = "Hidden Track"
@@ -294,8 +294,8 @@ struct ImportMappingPaneTests {
                 )
             )
         )
-        #expect(MappingFixtures.mapping(of: store).trackRows.count == 13)
-        #expect(MappingFixtures.mapping(of: store).untitledTrackCount == 0)
+        #expect(MappingFixtures.mapping(of: store)?.trackRows.count == 13)
+        #expect(MappingFixtures.mapping(of: store)?.untitledTrackCount == 0)
     }
 }
 
@@ -309,7 +309,7 @@ extension ImportMappingPaneTests {
         )
         #expect(MappingFixtures.isCommittable(unanswered))
         #expect(
-            MappingFixtures.mapping(of: unanswered).trackRows.count == 13
+            MappingFixtures.mapping(of: unanswered)?.trackRows.count == 13
         )
 
         // An inactive CUE leaves one whole container track.
@@ -317,7 +317,7 @@ extension ImportMappingPaneTests {
             mapping: MappingFixtures.unboundSheetTable
         )
         #expect(MappingFixtures.isCommittable(unbacked))
-        #expect(MappingFixtures.mapping(of: unbacked).trackRows.count == 1)
+        #expect(MappingFixtures.mapping(of: unbacked)?.trackRows.count == 1)
     }
 
     // A failed release read leaves the draft unchanged and names the failed
@@ -433,7 +433,7 @@ extension ImportMappingPaneTests {
             services: recorder.services(store)
         )
         let entry = try #require(
-            MappingFixtures.mapping(of: store).trackRows[4].audition
+            MappingFixtures.mapping(of: store)?.trackRows[4].audition
                 .previewTarget
         )
 
@@ -474,7 +474,7 @@ extension ImportMappingPaneTests {
             )
         )
         guard
-            case .sheet(let sheet, _) = MappingFixtures.mapping(of: store)
+            case .sheet(let sheet, _) = MappingFixtures.mapping(of: store)?
                 .trackSides?[0]
                 .runs[0]
         else {
@@ -509,7 +509,7 @@ extension ImportMappingPaneTests {
             )
         )
         let mapping = MappingFixtures.mapping(of: store)
-        guard case .sheet(let sheet) = mapping.files?[0] else {
+        guard case .sheet(let sheet) = mapping?.files?[0] else {
             Issue.record("expected an unassociated sheet file")
             return
         }
