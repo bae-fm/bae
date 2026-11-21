@@ -128,7 +128,7 @@ class ElementListTest : BoardShot() {
 
     @Test
     fun aMergedNodeOfTwoTextsSpansBothTexts() {
-        compose.setContent {
+        compose.settle {
             Column(modifier = Modifier.clickable {}) {
                 Text("Name", fontSize = 16.sp)
                 Text("Kind", fontSize = 14.sp)
