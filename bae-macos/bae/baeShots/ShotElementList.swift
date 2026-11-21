@@ -103,9 +103,11 @@ struct ShotElementList: Encodable {
         // a board draws them and hides them from its reading order. A scroll
         // view's scroll bar, with the buttons it holds, is the platform's
         // too: it shows on the screen only while the person scrolls, and a
-        // board, which crops its window, draws none.
+        // board, which crops its window, draws none. A stepper's arrow buttons
+        // belong to the platform's control: the stepper is the one element.
         tree = tree.leavingOut { node in
             node.subrole.map(windowButtons.contains) == true
+                || node.subrole.map(stepperArrows.contains) == true
                 || node.role == NSAccessibility.Role.scrollBar.rawValue
         }
         return Self(
@@ -115,6 +117,12 @@ struct ShotElementList: Encodable {
             elements: tree.nodes.map(Element.init(node:))
         )
     }
+
+    /// The subroles of a stepper's two arrow buttons.
+    private static let stepperArrows: Set<String> = [
+        NSAccessibility.Subrole.incrementArrow.rawValue,
+        NSAccessibility.Subrole.decrementArrow.rawValue,
+    ]
 
     /// The subroles of a window's close, minimise, zoom and full screen
     /// buttons.
@@ -143,7 +151,7 @@ extension ShotElementList.Element {
             native: node.role,
             label: role == "text"
                 ? Self.words(node.value) : node.description ?? node.title,
-            value: role == "text" || role == "radio"
+            value: role == "text" || role == "radio" || role == "stepper"
                 ? nil : Self.valueText(node.value, role: role),
             placeholder: node.placeholder,
             bounds: ShotElementList.Bounds(
@@ -212,6 +220,7 @@ extension ShotElementList.Element {
         NSAccessibility.Role.link.rawValue: "link",
         NSAccessibility.Role.image.rawValue: "image",
         NSAccessibility.Role.slider.rawValue: "slider",
+        NSAccessibility.Role.incrementor.rawValue: "stepper",
         NSAccessibility.Role.progressIndicator.rawValue: "progress",
         // AppKit's name for a progress indicator of unknown length, which
         // is what a spinner is.

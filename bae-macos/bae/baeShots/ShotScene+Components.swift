@@ -158,6 +158,7 @@ extension ShotScene {
             macSpinnerScenes,
             macStepScenes,
             macStepActionsScenes,
+            macStepperScenes,
             macStorageBandScenes,
             macStorageCellScenes,
             macStorageChipScenes,
