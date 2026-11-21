@@ -184,11 +184,7 @@ private fun PlainOutlinedButton(
         onClick = onClick,
         modifier = modifier,
         enabled = enabled,
-        colors =
-            ButtonDefaults.outlinedButtonColors(
-                contentColor = MaterialTheme.colorScheme.onSurface,
-                disabledContentColor = disabledContent(),
-            ),
+        colors = outlinedColors(MaterialTheme.colorScheme.onSurface),
         border = BorderStroke(1.dp, outlineColor(enabled)),
         content = content,
     )
@@ -200,7 +196,7 @@ private fun outlineColor(enabled: Boolean): Color =
     if (enabled) {
         MaterialTheme.colorScheme.onSurfaceVariant
     } else {
-        MaterialTheme.colorScheme.onSurface.copy(alpha = DISABLED_FILL_ALPHA)
+        disabledContainer()
     }
 
 private val LARGE_HEIGHT = 48.dp

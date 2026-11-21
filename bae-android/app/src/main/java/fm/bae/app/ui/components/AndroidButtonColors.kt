@@ -29,11 +29,10 @@ internal fun textColors(tone: Color?): ButtonColors =
 @Composable
 internal fun disabledContent(): Color = MaterialTheme.colorScheme.onSurface.copy(alpha = DISABLED_CONTENT_ALPHA)
 
-/** A disabled filled or tonal button's fill: the screen's text at 12%. */
+/** A disabled filled or tonal button's fill, and a plain outlined one's outline: the screen's text at 12%. */
 @Composable
 internal fun disabledContainer(): Color = MaterialTheme.colorScheme.onSurface.copy(alpha = DISABLED_FILL_ALPHA)
 
 private const val DISABLED_CONTENT_ALPHA = 0.38f
 
-/** What a disabled button's fill, and a plain outlined one's outline, take of the screen's text colour. */
-internal const val DISABLED_FILL_ALPHA = 0.12f
+private const val DISABLED_FILL_ALPHA = 0.12f
