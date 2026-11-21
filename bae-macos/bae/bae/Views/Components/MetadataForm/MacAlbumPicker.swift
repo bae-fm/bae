@@ -46,17 +46,8 @@ struct MacAlbumPicker: View {
             Text("Album")
                 .themeText(.detail)
                 .foregroundStyle(Theme.macTextSecondary)
-            if canEdit {
-                albumPopUp
-            }
-            else {
-                Text(verbatim: album.standingTitle)
-                    .lineLimit(1)
-                    .foregroundStyle(
-                        album.standingAlbumId == nil
-                            ? Theme.textTertiary : Theme.textPrimary
-                    )
-            }
+            albumPopUp
+                .disabled(!canEdit)
             Spacer(minLength: 0)
         }
     }

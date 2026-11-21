@@ -148,10 +148,10 @@
         : [h('span', { key: 'a', className: 'bae-ellipsis' }, props.artist), props.chip ? h(StatusChip, { key: 'c', tone: props.chip === 'New' ? 'accent' : 'neutral' }, props.chip) : null]);
   }
   // The album the release files under (spec §3.7 step 6, §3.8): Album, then the pop-up showing the album as it stands (`album`): New album, the library album its records name, or one picked. `open` draws its menu: the album as it stands, New album when that album is the library's (`inLibrary`), Use the release’s album when the person picked another (`picked`), a line, then Choose another album…, which searches the library's albums.
-  // `fixed`: the album as plain text, no pop-up, while a save reads a file and a pick would cancel it.
+  // `off`: the pop-up turned off, while a save reads a file and a pick would cancel it.
   function MacAlbumPicker(props) {
     var items = [props.album].concat(props.inLibrary ? ['New album'] : [], props.picked ? ['Use the release’s album'] : [], ['-', 'Choose another album…']).join(',');
-    return h('div', { className: 'bae-m-idraft-album' }, h('span', { className: 'bae-muted' }, 'Album'), props.fixed ? h('span', null, props.album) : h(MacPopUpButton, { value: props.album, label: 'Album', open: props.open, items: items }));
+    return h('div', { className: 'bae-m-idraft-album' }, h('span', { className: 'bae-muted' }, 'Album'), h(MacPopUpButton, { value: props.album, label: 'Album', open: props.open, items: items, off: props.off }));
   }
   // The release's cover (a plain tile when it has none) beside its identity: the album title and year as fields and the album artist; then what the card it sits in puts under them, its children: the folder's audio line and the album picker.
   function MacReleaseIdentity(props) {
@@ -213,7 +213,7 @@
     return [
       h(MacReleaseIdentity, { key: 'id', cover: props.cover, title: props.title, artist: props.artist, artistChip: props.artistChip, year: props.year },
         audioLine(props.audio),
-        props.album ? h(MacAlbumPicker, { key: 'album', album: props.album, inLibrary: props.albumInLibrary, picked: props.albumPicked, open: props.albumOpen, fixed: !!props.reading }) : null),
+        props.album ? h(MacAlbumPicker, { key: 'album', album: props.album, inLibrary: props.albumInLibrary, picked: props.albumPicked, open: props.albumOpen, off: !!props.reading }) : null),
       h(MacReleaseFields, { key: 'fields', year: props.pressingYear, media: props.media, labels: props.labels, country: props.country, countryOpen: props.countryOpen, barcodes: props.barcodes, status: props.status, packaging: props.packaging, details: props.details })];
   }
   // The release editor, one component in the import pane and in the album's Edit release sheet; its `actions` row is the only difference. `actions` `import`: where the import goes (`cloud`, `to`) and Import, or Retry import (`retry`), or neither while the folder has nothing to import (`blank`), with the folder's `check` in a warning notice under that row. `actions` `save`: Cancel once something changed (`changed`), and Save. `reading`: the file a save or an import reads before it writes, while Unlink, the Metadata menu and the album pop-up are off, since a click on any of them would cancel the save. Then, in both: the release's identity and fields; the records under a rule, with Unlink; the folder's or release's images (`images`); the track table, the children (side headings, CUE captions and track rows); the Files list (`files`).

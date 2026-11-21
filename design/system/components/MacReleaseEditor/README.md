@@ -5,7 +5,7 @@ The one editor of a release, in the import pane (a found folder's draft or an im
 - **`import`:** where the import goes (`to`: This Mac or Cloud, shown when the library has cloud storage, `cloud`) and Import, or Retry import (`retry`). A folder with nothing to import (`blank`) shows neither. The folder's `check` sits in a warning `MacNotice` under that row.
 - **`save`:** Cancel once something changed (`changed`), and Save.
 
-`reading` shows a spinner and the file a save or an import reads before it writes, before the buttons, which are off until the read ends. While it reads, Unlink and the Metadata menu are off too, and the album shows as plain text, since a click on any of them would cancel the save.
+`reading` shows a spinner and the file a save or an import reads before it writes, before the buttons, which are off until the read ends. While it reads, Unlink, the Metadata menu and the album pop-up are off too, since a click on any of them would cancel the save.
 
 Everything else is the same in both:
 
