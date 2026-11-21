@@ -281,6 +281,7 @@
     </plurals>
     <!-- Now-playing home-screen widget -->
     <string name="widget_label">bae</string>
+    <string name="logo_label">bae</string>
     <string name="widget_description">عناصر التحكم في التشغيل الحالي على شاشتك الرئيسية.</string>
     <string name="widget_nothing_playing">لا شيء قيد التشغيل</string>
     <string name="shortcut_resume_long">استئناف التشغيل</string>

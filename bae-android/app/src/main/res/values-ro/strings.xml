@@ -258,6 +258,7 @@
         <item quantity="other">%1$d de fișiere</item>
     </plurals>
     <string name="widget_label">bae</string>
+    <string name="logo_label">bae</string>
     <string name="widget_description">Comenzi de redare pe ecranul principal.</string>
     <string name="widget_nothing_playing">Nu se redă nimic</string>
     <string name="shortcut_resume_long">Reia redarea</string>

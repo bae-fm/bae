@@ -252,6 +252,7 @@
         <item quantity="other">%1$d ficheiros</item>
     </plurals>
     <string name="widget_label">bae</string>
+    <string name="logo_label">bae</string>
     <string name="widget_description">Controlos de reprodução no ecrã principal.</string>
     <string name="widget_nothing_playing">Nada em reprodução</string>
     <string name="shortcut_resume_long">Retomar a reprodução</string>

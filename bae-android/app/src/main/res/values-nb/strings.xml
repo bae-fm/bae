@@ -251,6 +251,7 @@
         <item quantity="other">%1$d filer</item>
     </plurals>
     <string name="widget_label">bae</string>
+    <string name="logo_label">bae</string>
     <string name="widget_description">Avspillingskontroller på startskjermen.</string>
     <string name="widget_nothing_playing">Ingenting spilles av</string>
     <string name="shortcut_resume_long">Fortsett avspillingen</string>

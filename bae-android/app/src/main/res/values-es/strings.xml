@@ -259,6 +259,7 @@
     </plurals>
     <!-- Now-playing home-screen widget -->
     <string name="widget_label">bae</string>
+    <string name="logo_label">bae</string>
     <string name="widget_description">Controles de reproducción en tu pantalla de inicio.</string>
     <string name="widget_nothing_playing">No se está reproduciendo nada</string>
     <string name="shortcut_resume_long">Reanudar la reproducción</string>

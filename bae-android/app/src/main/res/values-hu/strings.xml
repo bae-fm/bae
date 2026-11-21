@@ -251,6 +251,7 @@
         <item quantity="other">%1$d fájl</item>
     </plurals>
     <string name="widget_label">bae</string>
+    <string name="logo_label">bae</string>
     <string name="widget_description">Lejátszásvezérlés a kezdőképernyőn.</string>
     <string name="widget_nothing_playing">Semmi sem szól</string>
     <string name="shortcut_resume_long">Lejátszás folytatása</string>

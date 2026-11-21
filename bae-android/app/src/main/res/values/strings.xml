@@ -295,6 +295,7 @@
 
     <!-- Now-playing home-screen widget -->
     <string name="widget_label">bae</string>
+    <string name="logo_label">bae</string>
     <string name="widget_description">Now playing controls on your home screen.</string>
     <string name="widget_nothing_playing">Nothing playing</string>
 

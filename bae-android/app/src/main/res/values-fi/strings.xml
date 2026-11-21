@@ -251,6 +251,7 @@
         <item quantity="other">%1$d tiedostoa</item>
     </plurals>
     <string name="widget_label">bae</string>
+    <string name="logo_label">bae</string>
     <string name="widget_description">Toiston hallinta aloitusnäytöllä.</string>
     <string name="widget_nothing_playing">Mitään ei toisteta</string>
     <string name="shortcut_resume_long">Jatka toistoa</string>

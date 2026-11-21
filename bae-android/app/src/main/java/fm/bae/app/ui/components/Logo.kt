@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.times
@@ -126,7 +127,7 @@ internal fun Logo(
             }
             Image(
                 painter = painterResource(R.drawable.logo_word),
-                contentDescription = "bae",
+                contentDescription = stringResource(R.string.logo_label),
                 colorFilter = ColorFilter.tint(if (glow) colors.logoWord else MaterialTheme.colorScheme.onSurface),
                 modifier = Modifier.size(wordWidth, wordHeight),
             )
