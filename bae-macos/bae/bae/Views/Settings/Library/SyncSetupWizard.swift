@@ -575,11 +575,6 @@ private struct ParentWindowHeight: NSViewRepresentable {
             resizes = nil
         }
 
-        override func viewWillMove(toWindow newWindow: NSWindow?) {
-            super.viewWillMove(toWindow: newWindow)
-            stopObserving()
-        }
-
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
             stopObserving()
