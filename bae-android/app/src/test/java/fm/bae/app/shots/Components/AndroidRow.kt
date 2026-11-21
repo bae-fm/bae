@@ -1,8 +1,11 @@
 package fm.bae.app.shots
 
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidCard
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.RowIcon
@@ -109,21 +112,21 @@ class AndroidRowShots : BoardShot() {
         }
 
     @Test
-    fun androidComponentRowButton() =
-        component("android.component.row.button") { RowInCard { AndroidRow(title = "Sync", onClick = {}) } }
+    fun androidComponentRowButton() = component("android.component.row.button") { RowInCard { AndroidRow(title = "Sync", onClick = {}) } }
 
     @Test
-    fun androidComponentRowOff() =
-        component("android.component.row.off") { RowInCard { AndroidRow(title = "Sync", enabled = false) } }
+    fun androidComponentRowOff() = component("android.component.row.off") { RowInCard { AndroidRow(title = "Sync", enabled = false) } }
 
     @Test
-    fun androidComponentRowPlaceMiddle() =
-        component("android.component.row.place-middle") { RowInCard { AndroidRow(title = "Sync") } }
+    fun androidComponentRowPlaceMiddle() = component("android.component.row.place-middle") { RowInCard { AndroidRow(title = "Sync") } }
 
     @Test
     fun androidComponentRowNoPlace() = component("android.component.row.no-place") { RowInCard { AndroidRow(title = "Sync") } }
 }
 
-/** A row in the card every row of a list is in. */
+/** A row in the card every row of a list is in, set in from the preview's edges as the design system's card is. */
 @Composable
-private fun RowInCard(content: @Composable () -> Unit) = AndroidCard { content() }
+private fun RowInCard(content: @Composable () -> Unit) =
+    AndroidCard(
+        modifier = Modifier.padding(start = ThemeSpace.edge, top = ThemeSpace.related, end = ThemeSpace.edge),
+    ) { content() }
