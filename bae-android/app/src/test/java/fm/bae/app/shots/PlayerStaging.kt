@@ -24,14 +24,12 @@ private const val MILLIS_PER_SECOND = 1_000L
 private const val SECONDS_PER_MINUTE = 60L
 
 /**
- * A playing track as a player draws it: where its line is, the seconds its clock says, which parts of it are
- * here, whether its load waits on storage. The boards give the line and the clock apart, as the design
- * system's previews do, so the staging takes the clock's seconds as given and does not work them out from the line.
- * With [removedFromLibrary], the library no longer holds the track, and with [noCover] it has no cover. The
+ * A playing track as a player draws it: the seconds its clock says, which parts of it are here, whether its
+ * load waits on storage. The line sits at the clock's share of the track, as the design system's seek bar
+ * draws it from its elapsed time and its duration. With [removedFromLibrary], the library no longer holds the track, and with [noCover] it has no cover. The
  * track is called [title].
  */
 internal class PlayerStaging(
-    progress: Double,
     elapsedSeconds: Long,
     held: List<BridgeTrackSpan>,
     val waitsOnStorage: Boolean = false,
@@ -43,7 +41,7 @@ internal class PlayerStaging(
         BridgeTrackPosition(
             positionMs = elapsedSeconds * MILLIS_PER_SECOND,
             durationMs = DURATION_MS.toULong(),
-            progress = progress,
+            progress = (elapsedSeconds * MILLIS_PER_SECOND).toDouble() / DURATION_MS,
             seeks = 0uL,
         )
     val positions = LatestStream.trackPositions(mapOf(TRACK_ID to position)).source(TRACK_ID)
@@ -106,25 +104,27 @@ internal class PlayerStaging(
 
 /** A track a third of the way in, with its first 60% buffered. */
 internal val playing =
-    PlayerStaging(progress = 0.35, elapsedSeconds = 102, held = listOf(BridgeTrackSpan(0.0, 0.6)))
+    PlayerStaging(elapsedSeconds = 102, held = listOf(BridgeTrackSpan(0.0, 0.6)))
 
 /** A track that has just started, with little buffered, waiting on storage for the rest. */
 internal val waiting =
     PlayerStaging(
-        progress = 0.02,
         elapsedSeconds = 5,
         held = listOf(BridgeTrackSpan(0.0, 0.04)),
         waitsOnStorage = true,
     )
 
+/** [playing], while its load waits on storage, as the full player's preview draws it. */
+internal val playingWaitingOnStorage =
+    PlayerStaging(elapsedSeconds = 102, held = listOf(BridgeTrackSpan(0.0, 0.6)), waitsOnStorage = true)
+
 /** [playing], for a track with no cover. */
 internal val withoutCover =
-    PlayerStaging(progress = 0.35, elapsedSeconds = 102, held = listOf(BridgeTrackSpan(0.0, 0.6)), noCover = true)
+    PlayerStaging(elapsedSeconds = 102, held = listOf(BridgeTrackSpan(0.0, 0.6)), noCover = true)
 
 /** [playing], for a track whose title is long. */
 internal val longTitled =
     PlayerStaging(
-        progress = 0.35,
         elapsedSeconds = 102,
         held = listOf(BridgeTrackSpan(0.0, 0.6)),
         title = "Low Tide Hours, the long version recorded live at the harbor",

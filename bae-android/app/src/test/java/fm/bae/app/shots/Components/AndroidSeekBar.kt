@@ -17,7 +17,6 @@ class AndroidSeekBarShots : BoardShot() {
 
 private val holes =
     PlayerStaging(
-        progress = 0.2,
         elapsedSeconds = 61,
         held = listOf(BridgeTrackSpan(0.0, 0.3), BridgeTrackSpan(0.55, 0.7)),
     )

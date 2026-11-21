@@ -113,7 +113,7 @@ internal fun boardAlbum(rating: BridgeAlbumRating = BridgeAlbumRating(mine = nul
     return PreviewData.albumDetail(album, listOf(release)).copy(rating = rating)
 }
 
-/** The album page as the boards draw it: its detail screen, with nothing playing. */
+/** The album page as the boards draw it: its detail screen, with the playing track in its bar. */
 @Composable
 internal fun AlbumPage(
     detail: BridgeAlbumDetail,
@@ -121,7 +121,7 @@ internal fun AlbumPage(
 ) {
     ScreenScene {
         CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
-            AndroidDetailScreen(onBack = {}, backLabel = "Library", nowPlayingBar = {}) {
+            AndroidDetailScreen(onBack = {}, backLabel = "Library", nowPlayingBar = { Bar(playing) }) {
                 AlbumDetailContent(
                     detail = detail,
                     cover = null,

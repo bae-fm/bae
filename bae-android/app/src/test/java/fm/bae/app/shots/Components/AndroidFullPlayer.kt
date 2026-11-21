@@ -22,7 +22,7 @@ class AndroidFullPlayerShots : BoardShot() {
     fun androidComponentFullPlayerPaused() = shot("android.component.full-player.paused") { FullPlayer(playing, isPlaying = false) }
 
     @Test
-    fun androidComponentFullPlayerWaiting() = shot("android.component.full-player.waiting") { FullPlayer(waiting) }
+    fun androidComponentFullPlayerWaiting() = shot("android.component.full-player.waiting") { FullPlayer(playingWaitingOnStorage) }
 
     @Test
     fun androidComponentFullPlayerRepeatOn() =

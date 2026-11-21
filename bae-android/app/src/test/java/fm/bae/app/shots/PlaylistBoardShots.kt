@@ -50,7 +50,7 @@ class PlaylistBoardShots : BoardShot() {
             AndroidDetailScreen(
                 onBack = {},
                 backLabel = stringResource(R.string.back_to_library),
-                nowPlayingBar = {},
+                nowPlayingBar = { Bar(playing) },
                 actions = { PlaylistOptionsMenu(onEdit = {}, onDelete = {}) },
             ) { PlaylistContent(detail = detail, actions = actions) }
         }

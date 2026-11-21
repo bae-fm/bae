@@ -15,7 +15,6 @@ import uniffi.bae_bridge.BridgeTrackSpan
 
 private val removed =
     PlayerStaging(
-        progress = 0.35,
         elapsedSeconds = 102,
         held = listOf(BridgeTrackSpan(0.0, 0.6)),
         removedFromLibrary = true,
