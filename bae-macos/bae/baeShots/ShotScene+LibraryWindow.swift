@@ -60,6 +60,17 @@ extension ShotScene {
             albumPlaceReads: { _, albumId, _, _ in
                 .fixed(boardAlbumPlace(albumId))
             },
+            librarySearch: {
+                // A search the title bar opens for typed text; it answers
+                // nothing, so the shot shows the field and no results.
+                LibrarySearch(
+                    setQuery: { _ in },
+                    values: PulledValues(read: {
+                        try await Task.sleep(for: .seconds(86_400))
+                        throw StubError.notImplemented
+                    })
+                )
+            },
             albumDetail: {
                 .fixed(answers: UnansweredCount()) { request in
                     guard request.albumId == detail.album.id else {
