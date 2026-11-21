@@ -5,7 +5,7 @@ An artist field: a button that opens the artist picker, drawn as its value until
 | Prop | What it does |
 |---|---|
 | `artist` | The artists the field names. |
-| `chip` | Library for an artist the library has, New for one the import adds. |
+| `chip` | New for an artist the import adds, or a count (how many are new, how many library artists a credit could be, how many credits are left to choose). A field whose artists are all in the library has none. |
 | `placeholder` | Shown in the tertiary colour while the field names no one: Album artist unless given (a track row's says Artist). |
 | `inherited` | A track that takes the album's artists: Album artist in the tertiary colour. |
 | `secondary` | The artists in secondary text, as the album identity draws them. |

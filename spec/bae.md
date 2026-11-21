@@ -532,10 +532,10 @@ name.
 The import pane and the release editor show beside each credit of a draft
 the artist these rules name for it now, or that it would be new, or the
 several artists it leaves ambiguous. Each artist field (the album's artists,
-or a track's own) shows one badge for all its artists: Library when every
-artist is in the library, New when every one is new, how many are new, how
-many library artists its one credit could be, or how many of its credits
-are left to choose. A picked artist counts as in the library. The badges
+or a track's own) shows at most one badge for all its artists: New when every
+one is new, how many are new, how many library artists its one credit could
+be, or how many of its credits are left to choose. A field whose artists are
+all in the library shows no badge. A picked artist counts as in the library. The badges
 always name the artists that importing or saving the draft would name.
 bae stores the answer of these rules for each credit of a candidate's
 draft. The write that adds or changes a credit, or changes an artist the
