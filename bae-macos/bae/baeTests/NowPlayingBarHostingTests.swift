@@ -99,13 +99,22 @@ struct NowPlayingBarHostingTests {
             .frame(width: 900, height: 100)
             .environment(ImageStore.stub())
         )
-        let hosts = Self.hostingViews(in: view).filter { $0 !== view }
-        let tree = Self.describe(view, depth: 0)
-        #expect(!hosts.isEmpty, "\(tree)")
-        #expect(
-            hosts.contains { !$0.registeredDraggedTypes.isEmpty },
-            "\(tree)"
-        )
+        let names = view.subviews.map { String(describing: type(of: $0)) }
+        let seek = names.firstIndex { $0.contains("MacSeekBar") }
+        let controls = names.firstIndex { $0.contains("SeparatelyHosted") }
+        #expect(seek != nil && controls != nil, "\(names)")
+        if let seek, let controls {
+            #expect(seek < controls, "\(names)")
+            #expect(
+                Self.holdsDropTarget(view.subviews[controls]),
+                "\(Self.describe(view, depth: 0))"
+            )
+        }
+    }
+
+    private static func holdsDropTarget(_ view: NSView) -> Bool {
+        !view.registeredDraggedTypes.isEmpty
+            || view.subviews.contains { holdsDropTarget($0) }
     }
 
     private static func describe(_ view: NSView, depth: Int) -> String {
@@ -117,14 +126,5 @@ struct NowPlayingBarHostingTests {
             text += describe(sub, depth: depth + 1)
         }
         return text
-    }
-
-    private static func hostingViews(in view: NSView) -> [NSView] {
-        var found: [NSView] = []
-        if String(describing: type(of: view)).contains("NSHostingView") {
-            found.append(view)
-        }
-        for sub in view.subviews { found += hostingViews(in: sub) }
-        return found
     }
 }
