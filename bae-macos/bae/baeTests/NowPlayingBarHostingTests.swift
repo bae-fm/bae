@@ -100,7 +100,23 @@ struct NowPlayingBarHostingTests {
             .environment(ImageStore.stub())
         )
         let hosts = Self.hostingViews(in: view).filter { $0 !== view }
-        #expect(hosts.contains { !$0.registeredDraggedTypes.isEmpty })
+        let tree = Self.describe(view, depth: 0)
+        #expect(!hosts.isEmpty, "\(tree)")
+        #expect(
+            hosts.contains { !$0.registeredDraggedTypes.isEmpty },
+            "\(tree)"
+        )
+    }
+
+    private static func describe(_ view: NSView, depth: Int) -> String {
+        let types = view.registeredDraggedTypes.map(\.rawValue)
+        var text =
+            String(repeating: " ", count: depth * 2)
+            + "\(type(of: view)) \(types)\n"
+        for sub in view.subviews {
+            text += describe(sub, depth: depth + 1)
+        }
+        return text
     }
 
     private static func hostingViews(in view: NSView) -> [NSView] {
