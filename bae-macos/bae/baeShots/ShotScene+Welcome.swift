@@ -479,7 +479,7 @@ extension ShotScene {
 
     /// The Enter code sheet's state: the code is read as `info` when the
     /// person chooses Continue, and nothing it starts reaches a library.
-    private static func enterCodeForm(
+    static func enterCodeForm(
         reading info: BridgeCodeInfo? = nil
     ) -> BootstrapCodeForm {
         BootstrapCodeForm(

@@ -38,9 +38,31 @@ extension ShotScene {
             }
             .frame(width: previewWidth, alignment: .leading)
         },
-        textField("mac.component.text-field.code", code: true),
+        codeField("mac.component.text-field.code"),
         textField("mac.component.text-field.label-column", labelColumn: true),
     ]
+
+    /// The code field, as the Enter code screen draws it: a typed code in
+    /// groups of four. A component's window is not the active app, so the
+    /// field's request for the keyboard leaves it at rest, as the board draws
+    /// it.
+    private static func codeField(_ id: String) -> ShotScene {
+        component(id, width: previewWidth, height: 90) {
+            codeFieldRow()
+        }
+    }
+
+    @MainActor
+    private static func codeFieldRow() -> some View {
+        let form = enterCodeForm()
+        form.edit(code: "Home music")
+        return FieldColumn {
+            MacTextField("Name") {
+                CodeField(form: form)
+            }
+        }
+        .frame(width: previewWidth, alignment: .leading)
+    }
 
     /// How a text field's box stands.
     private enum FieldState {
@@ -52,7 +74,6 @@ extension ShotScene {
         note: LocalizedStringKey? = nil,
         text: String = "Home music",
         state: FieldState = .resting,
-        code: Bool = false,
         labelColumn: Bool = false
     ) -> ShotScene {
         component(id, width: previewWidth, height: 90) {
@@ -69,7 +90,6 @@ extension ShotScene {
                     .labelsHidden()
                     .textFieldStyle(.plain)
                     .themeText(.body)
-                    .font(code ? .system(.body, design: .monospaced) : nil)
                     .modifier(
                         FieldChrome(
                             focused: state == .focused,
