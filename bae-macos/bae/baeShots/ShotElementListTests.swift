@@ -17,7 +17,11 @@ struct ShotElementListTests {
     }
 
     private func list(_ id: String) async throws -> ShotElementList {
-        let scene = try #require(ShotScene.all.first { $0.id == id })
+        var scene = try #require(ShotScene.all.first { $0.id == id })
+        // A component is drawn at its board's size, which only a builds
+        // shots run has; these tests read the tree, so the scene's own
+        // room is its frame.
+        if scene.frame == .component { scene.frame = .content }
         return try await ShotRenderer.render(scene, on: display).elements
     }
 
