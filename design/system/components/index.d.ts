@@ -235,7 +235,7 @@ export interface MacLibraryHeadingProps { view?: 'Albums' | 'Artists' | 'Compose
 export declare function MacLibraryHeading(props: MacLibraryHeadingProps): React.ReactElement;
 export interface MacAlbumGridProps { columns?: number; children?: React.ReactNode }
 export declare function MacAlbumGrid(props: MacAlbumGridProps): React.ReactElement;
-export interface MacAlbumTileProps { title: string; artist?: string; year?: string; noCover?: boolean; hover?: boolean; open?: boolean; selected?: boolean }
+export interface MacAlbumTileProps { /** Only another device holds the album's files: its cover and words show dimmed, and the tile still opens it. */ unplayable?: boolean; title: string; artist?: string; year?: string; noCover?: boolean; hover?: boolean; open?: boolean; selected?: boolean }
 export declare function MacAlbumTile(props: MacAlbumTileProps): React.ReactElement;
 export interface MacTrackRowProps { position?: string; title: string; artist?: string; duration?: string; current?: boolean; playing?: boolean; hover?: boolean; /** Among the tracks picked together. */ picked?: boolean; /** The stars you gave the track, 1 to 5; the row keeps their slot after it, empty without them. */ rating?: number | string }
 export declare function MacTrackRow(props: MacTrackRowProps): React.ReactElement;
@@ -258,19 +258,19 @@ export declare function AndroidNowPlayingBar(props: AndroidNowPlayingBarProps): 
 export interface AndroidPlayPauseProps { playing?: boolean; waiting?: boolean; size?: number }
 export declare function AndroidPlayPause(props: AndroidPlayPauseProps): React.ReactElement;
 export declare function AndroidAlbumGrid(props: { children?: React.ReactNode }): React.ReactElement;
-export interface AndroidAlbumTileProps { title: string; line?: string; noCover?: boolean }
+export interface AndroidAlbumTileProps { /** Only another device holds the album's files: its cover and words show dimmed, and the tile still opens it. */ unplayable?: boolean; title: string; line?: string; noCover?: boolean }
 export declare function AndroidAlbumTile(props: AndroidAlbumTileProps): React.ReactElement;
 export interface AndroidArtistGroupHeadingProps { name: string; count?: string; pinned?: boolean; noImage?: boolean }
 export declare function AndroidArtistGroupHeading(props: AndroidArtistGroupHeadingProps): React.ReactElement;
 export interface AndroidTrackRowProps { position?: string; title: string; artist?: string; duration?: string; current?: boolean; playing?: boolean; /** The work the track records and its composer, on a line under the row. */ work?: string }
 export declare function AndroidTrackRow(props: AndroidTrackRowProps): React.ReactElement;
 export declare function AndroidEyebrow(props: { children?: React.ReactNode }): React.ReactElement;
-export interface AndroidAlbumHeaderProps { title: string; artist?: string; year?: string; rating?: number | string; edition?: string; copy?: string; noCover?: boolean; children?: React.ReactNode }
+export interface AndroidAlbumHeaderProps { /** Only another device holds the files: Not on this device in place of Play, with an info button that opens a sheet naming the device. */ unplayable?: string; title: string; artist?: string; year?: string; rating?: number | string; edition?: string; copy?: string; noCover?: boolean; children?: React.ReactNode }
 export declare function AndroidAlbumHeader(props: AndroidAlbumHeaderProps): React.ReactElement;
 export interface AndroidPinControlProps { state?: 'available' | 'queued' | 'downloading' | 'failed' | 'downloaded' | 'elsewhere'; progress?: number; bytes?: string; where?: string }
 export declare function AndroidPinControl(props: AndroidPinControlProps): React.ReactElement;
 export declare function AndroidUploadLine(props: { phase?: string; missing?: string }): React.ReactElement;
-export interface MacAlbumPanelProps { title: string; artist?: string; year?: string; releases?: string; release?: string; edition?: string; copy?: string; /** The release's audio as bae read it, the panel's last line, after the tracks, credits and works. */ audio?: string; unplayable?: string; noCover?: boolean; options?: string; optionsOpen?: boolean; highlighted?: string; /** The album's stars, 0 while no one has rated it; leave it out to draw no rating. */ rating?: number | string; children?: React.ReactNode }
+export interface MacAlbumPanelProps { title: string; artist?: string; year?: string; releases?: string; release?: string; edition?: string; copy?: string; /** The release's audio as bae read it, the panel's last line, after the tracks, credits and works. */ audio?: string; unplayable?: string; unplayableHover?: boolean; noCover?: boolean; options?: string; optionsOpen?: boolean; highlighted?: string; /** The album's stars, 0 while no one has rated it; leave it out to draw no rating. */ rating?: number | string; children?: React.ReactNode }
 /** A line of progress: the phase, a bar filling the rest of the line, an optional count. No `value` is a wait of no known length. */
 export declare function MacProgressLine(props: { label: string; value?: number | string; detail?: string; activity?: boolean }): React.ReactElement;
 /** Every catalog that describes a release, as a wrapped row of links (`records`: catalog names, comma-separated). */
@@ -284,7 +284,7 @@ export declare function MacCloseButton(props: { label?: string }): React.ReactEl
 export declare function MacAlbumPanel(props: MacAlbumPanelProps): React.ReactElement;
 export declare function MacTrackColumns(props: { children?: React.ReactNode }): React.ReactElement;
 export declare function MacBrowseSplit(props: { children?: React.ReactNode }): React.ReactElement;
-export interface MacArtistAlbumTileProps { title: string; year?: string; noCover?: boolean }
+export interface MacArtistAlbumTileProps { /** Only another device holds the album's files: its cover and words show dimmed, and the tile still opens it. */ unplayable?: boolean; title: string; year?: string; noCover?: boolean }
 export declare function MacArtistAlbumTile(props: MacArtistAlbumTileProps): React.ReactElement;
 export interface MacSortCriteriaProps { criteria?: string; fields?: string }
 export declare function MacSortCriteria(props: MacSortCriteriaProps): React.ReactElement;
@@ -319,7 +319,7 @@ export interface MacCastPopoverProps { devices?: string; casting?: string; conne
 export declare function MacCastPopover(props: MacCastPopoverProps): React.ReactElement;
 export interface MacCastRowProps { name: string; kind?: 'cast' | 'airplay' | 'upnp'; active?: boolean; menu?: boolean; /** The words of a wait on this receiver, such as Connecting…: a spinner at the row's end and the words in place of its kind. */ waiting?: string }
 export declare function MacCastRow(props: MacCastRowProps): React.ReactElement;
-export declare function AndroidSheet(props: { top?: number; title?: string; children?: React.ReactNode }): React.ReactElement;
+export declare function AndroidSheet(props: { top?: number; title?: string; /** One sentence of secondary text under the title. */ note?: string; children?: React.ReactNode }): React.ReactElement;
 export interface AndroidQueueSectionProps { title: string; clear?: boolean; shuffle?: boolean }
 export declare function AndroidQueueSection(props: AndroidQueueSectionProps): React.ReactElement;
 export interface AndroidQueueRowProps { title: string; artist?: string; album?: string; duration?: string; current?: boolean; dragging?: boolean }
@@ -514,7 +514,10 @@ export declare function MacTitleBar(props: MacTitleBarProps): React.ReactElement
 export declare function MacTrackLead(props: { position?: string; hover?: boolean; current?: boolean; playing?: boolean }): React.ReactElement;
 export declare function MacReleasePicker(props: { releases?: string; selected?: string }): React.ReactElement | null;
 export declare function MacAlbumRating(props: { value?: number | string; who?: string }): React.ReactElement;
-export interface MacAlbumHeaderProps { title: string; artist?: string; year?: string; releases?: string; release?: string; edition?: string; copy?: string; unplayable?: string; options?: string; optionsOpen?: boolean; highlighted?: string; rating?: number | string; ratingWho?: string }
+/** A help tag: the short words macOS shows under a control the pointer rests on. */
+export interface MacHelpTagProps { text?: string; children?: React.ReactNode }
+export declare function MacHelpTag(props: MacHelpTagProps): React.ReactElement;
+export interface MacAlbumHeaderProps { title: string; artist?: string; year?: string; releases?: string; release?: string; edition?: string; copy?: string; /** Where the files are when only another device holds them; Play gives way to an inert Not on this device. */ unplayable?: string; /** Draws the help tag that names the device. */ unplayableHover?: boolean; options?: string; optionsOpen?: boolean; highlighted?: string; rating?: number | string; ratingWho?: string }
 export declare function MacAlbumHeader(props: MacAlbumHeaderProps): React.ReactElement;
 export declare function MacAlbumCredits(props: { /** "Role: name" pairs separated by semicolons. */ credits: string }): React.ReactElement;
 export declare function MacAlbumWorks(props: { /** "number|title|composer" entries separated by semicolons. */ works: string }): React.ReactElement;

@@ -837,7 +837,7 @@
   "android.album.page.on-another-device.dc.html": {
    "h": 916,
    "page": "home",
-   "title": "Album: on another device",
+   "title": "Album: not on this device",
    "w": 412,
    "x": 1476,
    "y": 8304
@@ -4433,6 +4433,30 @@
    "w": 1200,
    "x": 15500,
    "y": 21244
+  },
+  "android.album.page.on-another-device.sheet.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "Album: not on this device, its sheet open",
+   "w": 412,
+   "x": 2460,
+   "y": 8304
+  },
+  "mac.library.albums.album-not-on-this-device.dc.html": {
+   "h": 1020,
+   "page": "home",
+   "title": "macOS: Album not on this device, its help tag showing",
+   "w": 1200,
+   "x": 4920,
+   "y": 1636
+  },
+  "android.library.albums.not-on-this-device.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "Albums: one this phone can’t play, dimmed",
+   "w": 412,
+   "x": 1476,
+   "y": 240
   }
  },
  "createdOnFiles": {
@@ -4588,7 +4612,8 @@
   "code-s3-key",
   "row-play-pin-android",
   "row-play-pin-mac",
-  "code-casting-pin"
+  "code-casting-pin",
+  "code-unplayable-tiles"
  ],
  "notes": {
   "canvas-key-library": {
@@ -5893,6 +5918,14 @@
    "w": 420,
    "x": 5120,
    "y": 5112
+  },
+  "code-unplayable-tiles": {
+   "page": "home",
+   "size": 24,
+   "w": 420,
+   "x": 1928,
+   "y": 240,
+   "text": "What the code needs for these boards:\n- An album this device can't play shows its tile dimmed in the library: the cover and words at opacity-dimmed, and the tile still opens the album. Today no tile has that state: MacAlbumTile (bae-macos/bae/bae/Views/Library/Grid/MacAlbumTile.swift:6), MacArtistAlbumTile (bae-macos/bae/bae/Views/Library/Browse/MacArtistAlbumTile.swift:5) and AndroidAlbumTile (bae-android/app/src/main/java/fm/bae/app/ui/library/AndroidAlbumTile.kt:23) draw every album alike."
   }
  },
  "order": [
@@ -6083,10 +6116,12 @@
   "android.settings.playback.receiver-details.dc.html",
   "android.settings.playback.receiver-menu.dc.html",
   "android.library.albums.dc.html",
+  "android.library.albums.not-on-this-device.dc.html",
   "android.album.page.dc.html",
   "android.library.artist.dc.html",
   "mac.library.albums.dc.html",
   "mac.library.albums.album-open.dc.html",
+  "mac.library.albums.album-not-on-this-device.dc.html",
   "mac.library.artists.dc.html",
   "android.library.albums.scrolled.dc.html",
   "android.library.view-menu.dc.html",
@@ -6109,6 +6144,7 @@
   "android.album.page.pin-queued.dc.html",
   "android.album.page.pin-failed.dc.html",
   "android.album.page.on-another-device.dc.html",
+  "android.album.page.on-another-device.sheet.dc.html",
   "android.album.page.every-storage-state.dc.html",
   "mac.library.albums.album-two-releases.dc.html",
   "mac.library.album-menu.dc.html",

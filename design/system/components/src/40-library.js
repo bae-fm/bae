@@ -10,7 +10,7 @@
     if (size) { style.width = size; style.height = size; }
     if (props.round) style.borderRadius = '50%';
     if (!props.missing) style.backgroundImage = 'linear-gradient(135deg, hsl(' + hue + ' 42% 52%), hsl(' + ((hue + 48) % 360) + ' 46% 24%))';
-    return h('div', { className: cx('bae-art', props.missing && 'bae-art-missing', props.shadow && 'bae-art-shadow-' + props.shadow, props.ring && 'bae-art-ring', props.className), style: style, role: props.label ? 'img' : null, 'aria-label': props.label || null, 'aria-hidden': props.label ? null : true }, props.children);
+    return h('div', { className: cx('bae-art', props.missing && 'bae-art-missing', props.shadow && 'bae-art-shadow-' + props.shadow, props.ring && 'bae-art-ring', props.dimmed && 'bae-art-dimmed', props.className), style: style, role: props.label ? 'img' : null, 'aria-label': props.label || null, 'aria-hidden': props.label ? null : true }, props.children);
   }
 
   // A person's picture, round: their image when they have one, or the initials of their name on a tint. `image` stands for the picked image (the board draws it as artwork seeded by it).
@@ -198,10 +198,11 @@
     return h('div', { className: 'bae-m-grid', style: { gridTemplateColumns: 'repeat(' + n + ', minmax(0, 1fr))' } }, props.children);
   }
 
+  // `unplayable`: only another device holds the album's files, so its cover and words show dimmed; the tile still opens the album.
   function MacAlbumTile(props) {
-    return h('div', { className: cx('bae-m-tile', props.selected && 'bae-m-tile-selected') },
+    return h('div', { className: cx('bae-m-tile', props.selected && 'bae-m-tile-selected', props.unplayable && 'bae-tile-unplayable') },
       h('div', { className: 'bae-m-tile-art' },
-        h(Artwork, { title: props.title, missing: props.noCover, radius: 10, shadow: 'tile', ring: props.open }),
+        h(Artwork, { title: props.title, missing: props.noCover, radius: 10, shadow: 'tile', ring: props.open, dimmed: props.unplayable }),
         props.hover ? h('span', { className: 'bae-m-tile-menu' }, h(MacMoreMenu, { overlay: true, label: 'Album options' })) : null),
       h('div', { className: 'bae-m-tile-title' }, props.title),
       h('div', { className: 'bae-m-tile-artist' }, props.artist),
@@ -292,9 +293,14 @@
       h('div', { className: 'bae-m-albumpanel-sub' }, h('span', { className: 'bae-muted' }, props.artist), props.year ? [h('span', { key: 'd', className: 'bae-m-tertiary' }, '·'), h('span', { key: 'y', className: 'bae-m-tertiary' }, props.year)] : null),
       list(props.releases).length > 1 ? h('div', { className: 'bae-m-albumpanel-releases' }, picker) : null,
       props.edition || props.copy ? h('div', { className: 'bae-m-albumpanel-facts' }, props.edition ? h('div', null, props.edition) : null, props.copy ? h('div', null, props.copy) : null) : null,
-      props.unplayable ? h('div', { className: 'bae-m-albumpanel-unplayable' }, props.unplayable) : null,
-      h('div', { className: 'bae-m-albumpanel-actions' }, h(MacButton, { kind: 'primary' }, 'Play'), h(MacMoreMenu, { boxed: true, label: 'Album options', items: props.options, open: props.optionsOpen, highlighted: props.highlighted }),
+      // `unplayable`: where the files are, when only another device holds them; Play gives way to the words Not on this device, whose help tag names the device (`unplayableHover` draws it showing).
+      h('div', { className: 'bae-m-albumpanel-actions' }, props.unplayable ? h(MacHelpTag, { text: props.unplayableHover ? props.unplayable : null }, h('span', { className: 'bae-m-albumpanel-unplayable' }, 'Not on this device')) : h(MacButton, { kind: 'primary' }, 'Play'), h(MacMoreMenu, { boxed: true, label: 'Album options', items: props.options, open: props.optionsOpen, highlighted: props.highlighted }),
         props.rating ? h('span', { className: 'bae-m-albumpanel-rating bae-muted' }, h(Stars, { value: props.rating, size: 13, number: true })) : null));
+  }
+
+  // A help tag: the short words macOS shows under the pointer after it rests on a control (SwiftUI's `.help`), drawn under the control it describes; with no `text`, only the control.
+  function MacHelpTag(props) {
+    return h('span', { className: 'bae-m-helptag-anchor' }, props.children, props.text ? h('span', { role: 'tooltip', className: 'bae-m-helptag' }, props.text) : null);
   }
 
   // An album's credits: the Credits heading over its role and name pairs (`credits`: "Role: name" pairs separated by semicolons, as `MacFactsGrid` takes them).
@@ -317,7 +323,7 @@
       h('span', { className: 'bae-m-albumpanel-close' }, h(MacCloseButton)),
       h(Artwork, { title: props.title, size: 340, radius: 10, missing: props.noCover, className: 'bae-m-albumpanel-cover' }),
       h('div', { className: 'bae-m-albumpanel-body' },
-        h(MacAlbumHeader, { title: props.title, artist: props.artist, year: props.year, releases: props.releases, release: props.release, edition: props.edition, copy: props.copy, unplayable: props.unplayable, options: props.options, optionsOpen: props.optionsOpen, highlighted: props.highlighted, rating: props.rating }),
+        h(MacAlbumHeader, { title: props.title, artist: props.artist, year: props.year, releases: props.releases, release: props.release, edition: props.edition, copy: props.copy, unplayable: props.unplayable, unplayableHover: props.unplayableHover, options: props.options, optionsOpen: props.optionsOpen, highlighted: props.highlighted, rating: props.rating }),
         h('div', { className: 'bae-m-albumpanel-tracks bae-m-albumpanel-tracks-rated' }, props.children),
         props.audio ? h('div', { className: 'bae-m-albumpanel-audio' }, props.audio) : null));
   }
@@ -335,8 +341,9 @@
       h('div', { className: 'bae-m-split-detail' }, list.slice(1)));
   }
 
+  // `unplayable`: dimmed as `MacAlbumTile` draws it.
   function MacArtistAlbumTile(props) {
-    return h('div', { className: 'bae-m-atile' }, h(Artwork, { title: props.title, radius: 6, missing: props.noCover }),
+    return h('div', { className: cx('bae-m-atile', props.unplayable && 'bae-tile-unplayable') }, h(Artwork, { title: props.title, radius: 6, missing: props.noCover, dimmed: props.unplayable }),
       h('div', { className: 'bae-m-tile-title' }, props.title), h('div', { className: 'bae-m-atile-year' }, props.year || ' '));
   }
 
@@ -489,10 +496,10 @@
     return h('div', { className: 'bae-a-grid' }, props.children);
   }
 
-  // An album's tile: one button that opens the album, named by its title and line, as TalkBack reads the merged tile.
+  // An album's tile: one button that opens the album, named by its title and line, as TalkBack reads the merged tile. `unplayable`: only another device holds the album's files, so its cover and words show dimmed; the tile still opens the album.
   function AndroidAlbumTile(props) {
-    return h('button', { type: 'button', className: 'bae-plainbtn bae-a-tile' },
-      h(Artwork, { title: props.title, missing: props.noCover, radius: 10 }),
+    return h('button', { type: 'button', className: cx('bae-plainbtn', 'bae-a-tile', props.unplayable && 'bae-tile-unplayable') },
+      h(Artwork, { title: props.title, missing: props.noCover, radius: 10, dimmed: props.unplayable }),
       h('div', { className: 'bae-a-tile-title' }, props.title),
       h('div', { className: 'bae-a-tile-line' }, props.line));
   }
@@ -524,6 +531,8 @@
     return h('div', { className: 'bae-a-albumhead' }, h(Artwork, { title: props.title, size: 150, radius: 10, missing: props.noCover }),
       h('div', { className: 'bae-a-albumhead-text' }, h('div', { className: 'bae-a-albumhead-title' }, props.title), h('div', { className: 'bae-a-albumhead-artist' }, props.artist), props.year || props.rating ? h('div', { className: 'bae-a-albumhead-fact' }, props.year, props.year && props.rating ? ' · ' : null, props.rating ? h(Stars, { value: props.rating, size: 12, number: true }) : null) : null,
         props.edition ? h('div', { className: 'bae-a-albumhead-fact bae-a-albumhead-release bae-a-albumhead-gap' }, props.edition) : null, props.copy ? h('div', { className: 'bae-a-albumhead-fact bae-a-albumhead-release' }, props.copy) : null,
+        // `unplayable`: only another device holds the files, so the words Not on this device stand where Play stood, and the info button opens a sheet that names the device.
+        props.unplayable ? h('div', { className: 'bae-a-albumhead-actions' }, h('span', { className: 'bae-a-albumhead-unplayable' }, 'Not on this device'), h(AndroidIconButton, { icon: 'info', label: 'Show where it is', size: 20, tone: 'muted' })) : null,
         props.children ? h('div', { className: 'bae-a-albumhead-actions' }, props.children) : null));
   }
 

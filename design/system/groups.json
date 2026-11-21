@@ -493,6 +493,7 @@
         "about": "An album's header, each platform's version.",
         "components": [
           "MacAlbumHeader",
+          "MacHelpTag",
           "AndroidAlbumHeader"
         ]
       },
