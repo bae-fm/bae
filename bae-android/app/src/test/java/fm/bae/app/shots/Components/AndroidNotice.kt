@@ -1,38 +1,16 @@
 package fm.bae.app.shots
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import fm.bae.app.DisplayError
-import fm.bae.app.ui.appearance.AccentChoice
-import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.components.AndroidCard
-import fm.bae.app.ui.components.AndroidContentUnavailable
-import fm.bae.app.ui.components.AndroidDisclosure
-import fm.bae.app.ui.components.AndroidErrorDetails
-import fm.bae.app.ui.components.AndroidNote
 import fm.bae.app.ui.components.AndroidNotice
-import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.NoticeButtons
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.StatusTone
-import fm.bae.app.ui.library.ListPlaceholder
-import fm.bae.app.ui.settings.AndroidAccentPicker
 import org.junit.Test
 
-/**
- * The component shots of the notices and what hangs off them: the notice, its error details and banner, notes, disclosures,
- * the accent picker, and the line an empty screen says.
- */
-class NoticeComponentShots : BoardShot() {
+/** The component shots of `AndroidNotice`, one for each row of its preview. */
+class AndroidNoticeShots : BoardShot() {
     @Test
     fun androidComponentNoticeNeutral() =
         component("android.component.notice.neutral", wide = true) { Titled("This library has no albums yet.", StatusTone.NEUTRAL) }
@@ -136,57 +114,6 @@ class NoticeComponentShots : BoardShot() {
                 look = NoticeLook.CENTERED,
                 action = ErrorAction("Retry") {},
             )
-        }
-
-    @Test
-    fun androidComponentErrorDetailsCauses() =
-        component("android.component.error-details.causes") {
-            AndroidErrorDetails(
-                text = "The sign-in settings file is missing.\nOAuthConfig: missing client id",
-                copyText = "The sign-in settings file is missing.\nOAuthConfig: missing client id",
-                modifier = Modifier.width(320.dp),
-            )
-        }
-
-    @Test
-    fun androidComponentNoteDefault() =
-        component("android.component.note.default", wide = true) {
-            Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-                AndroidCard { AndroidRow(title = "Restore code", subtitle = "Shown") }
-                AndroidNote("Anyone with this code can open the library.")
-            }
-        }
-
-    @Test
-    fun androidComponentDisclosureClosed() =
-        component("android.component.disclosure.closed", wide = true) {
-            AndroidDisclosure(label = "Removed devices (2)", open = false, onToggle = {}) {}
-        }
-
-    @Test
-    fun androidComponentDisclosureOpen() =
-        component("android.component.disclosure.open", wide = true) {
-            AndroidDisclosure(label = "Removed devices (2)", open = true, onToggle = {}) {
-                AndroidRow(title = "Odile’s phone", subtitle = "Removed")
-                AndroidRow(title = "Kitchen tablet", subtitle = "Replaced")
-            }
-        }
-
-    @Test
-    fun androidComponentContentUnavailableDefault() =
-        component("android.component.content-unavailable.default") {
-            // The preview's box, 412 by 140, in which the library pages' placeholder centres the line.
-            Box(Modifier.size(412.dp, 140.dp)) { ListPlaceholder { AndroidContentUnavailable("No plays yet") } }
-        }
-
-    @Test
-    fun androidComponentAccentPickerResting() =
-        component("android.component.accent-picker.resting", wide = true) {
-            AndroidCard {
-                Box(Modifier.fillMaxWidth().padding(ThemeSpace.edge)) {
-                    AndroidAccentPicker(AccentChoice.PINK) {}
-                }
-            }
         }
 }
 

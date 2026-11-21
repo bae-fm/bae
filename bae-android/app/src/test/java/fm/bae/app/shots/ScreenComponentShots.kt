@@ -30,6 +30,7 @@ import fm.bae.app.ui.library.AndroidLibraryScreen
 import fm.bae.app.ui.library.LibraryBrowserState
 import fm.bae.app.ui.library.WhoseMenu
 import org.junit.Test
+import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeHistoryShown
 
 /** The component shots of the screen frames: a settings screen's, with its dialog and keyboard, the library screen's, and a library detail page's. */
@@ -149,3 +150,10 @@ internal fun PlayingLibraryScreen(
         }
     }
 }
+
+/** Low Tide Hours as the detail screen's preview draws its header: the title, artist and year. */
+private val plainDetail: BridgeAlbumDetail =
+    PreviewData.albumDetail(
+        harborDetail.album,
+        releases = listOf(harborRelease.copy(labels = emptyList(), pressingSummary = emptyList())),
+    )
