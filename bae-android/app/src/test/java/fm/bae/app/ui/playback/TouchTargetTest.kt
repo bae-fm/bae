@@ -4,8 +4,6 @@ import android.app.Application
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Cast
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -16,6 +14,7 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.ui.PreviewTheme
+import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.ICON_BUTTON_BAR_BOX
 import fm.bae.fastvalues.LatestStream
@@ -44,7 +43,7 @@ class TouchTargetTest {
         compose.setContent {
             PreviewTheme {
                 Box(modifier = Modifier.size(200.dp), contentAlignment = Alignment.Center) {
-                    AndroidIconButton(Icons.Filled.Cast, null, onClick = { presses++ }, box = ICON_BUTTON_BAR_BOX)
+                    AndroidIconButton(SymbolIcons.Cast, null, onClick = { presses++ }, box = ICON_BUTTON_BAR_BOX)
                 }
             }
         }

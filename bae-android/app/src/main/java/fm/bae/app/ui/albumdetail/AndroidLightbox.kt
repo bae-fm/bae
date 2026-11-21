@@ -26,8 +26,6 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -61,6 +59,7 @@ import fm.bae.app.data.DecodeSize
 import fm.bae.app.data.ImageContent
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidIconButton
@@ -214,7 +213,7 @@ private fun Context.galleryLabelText(label: BridgeGalleryLabel): String =
 @Composable
 private fun BoxScope.GalleryCloseButton(onDismiss: () -> Unit) {
     AndroidIconButton(
-        icon = Icons.Filled.Close,
+        icon = SymbolIcons.Close,
         contentDescription = stringResource(R.string.close),
         onClick = onDismiss,
         modifier =

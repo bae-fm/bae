@@ -5,15 +5,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
+import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidIconButton
@@ -41,7 +39,7 @@ internal fun AndroidTransport(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         AndroidIconButton(
-            icon = Icons.Filled.SkipPrevious,
+            icon = SymbolIcons.SkipPrevious,
             contentDescription = stringResource(R.string.player_previous),
             onClick = onPrevious,
             glyph = skipGlyph,
@@ -56,7 +54,7 @@ internal fun AndroidTransport(
         )
         if (full) Spacer(modifier = Modifier.width(ThemeSpace.section))
         AndroidIconButton(
-            icon = Icons.Filled.SkipNext,
+            icon = SymbolIcons.SkipNext,
             contentDescription = stringResource(R.string.player_next),
             onClick = onNext,
             glyph = skipGlyph,

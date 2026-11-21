@@ -7,9 +7,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -25,6 +22,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.factsLine
+import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.TrackOptionsMenu
@@ -148,7 +146,7 @@ internal fun AndroidTrackLead(
         Box(modifier = Modifier.width(width), contentAlignment = Alignment.CenterStart) {
             Icon(
                 imageVector =
-                    if (isPlaying) Icons.AutoMirrored.Filled.VolumeUp else Icons.Filled.PlayArrow,
+                    if (isPlaying) SymbolIcons.VolumeUp else SymbolIcons.PlayArrow,
                 contentDescription =
                     if (isPlaying) stringResource(R.string.now_playing) else stringResource(R.string.paused),
                 tint = MaterialTheme.colorScheme.primary,

@@ -9,9 +9,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -28,6 +25,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidIconButton
@@ -51,7 +49,7 @@ internal fun AndroidSearchBar(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             AndroidIconButton(
-                Icons.AutoMirrored.Filled.ArrowBack,
+                SymbolIcons.ArrowBack,
                 stringResource(R.string.close_search),
                 onClick = onClose,
             )
@@ -87,7 +85,7 @@ internal fun AndroidSearchBar(
                         }
                         if (query.isNotEmpty()) {
                             AndroidInlineIconButton(
-                                icon = Icons.Filled.Close,
+                                icon = SymbolIcons.Close,
                                 contentDescription = stringResource(R.string.clear_search),
                                 onClick = { onQueryChange("") },
                             )

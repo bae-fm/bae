@@ -8,9 +8,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -19,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.R
+import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSize
@@ -87,13 +85,13 @@ internal fun AndroidQueueRow(
                 )
             }
             AndroidIconButton(
-                icon = Icons.Filled.Close,
+                icon = SymbolIcons.Close,
                 contentDescription = stringResource(R.string.queue_remove),
                 onClick = onRemove,
                 tone = IconTone.MUTED,
             )
             Icon(
-                imageVector = Icons.Filled.DragHandle,
+                imageVector = SymbolIcons.DragHandle,
                 contentDescription = stringResource(R.string.queue_drag_to_reorder),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = dragHandleModifier.size(ThemeIcon.medium),

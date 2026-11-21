@@ -2,9 +2,6 @@ package fm.bae.app.ui.playback
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -15,6 +12,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import fm.bae.app.R
+import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.components.AndroidIconButton
 
 /** How far the arc sits outside the glyph, on each side. */
@@ -46,7 +44,7 @@ fun AndroidPlayPause(
         }
         // Room around the glyph, so the arc turns clear of it at either size.
         AndroidIconButton(
-            icon = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+            icon = if (isPlaying) SymbolIcons.Pause else SymbolIcons.PlayArrow,
             contentDescription = stringResource(if (isPlaying) R.string.pause else R.string.play),
             onClick = onToggle,
             modifier = Modifier.size(iconSize + arcClearance * 2),

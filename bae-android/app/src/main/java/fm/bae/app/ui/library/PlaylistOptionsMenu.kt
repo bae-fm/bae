@@ -1,8 +1,6 @@
 package fm.bae.app.ui.library
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -12,6 +10,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.R
+import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.AndroidMenu
@@ -28,7 +27,7 @@ internal fun PlaylistOptionsMenu(
     var expanded by remember { mutableStateOf(false) }
     Box {
         AndroidIconButton(
-            Icons.Filled.MoreVert,
+            SymbolIcons.MoreVert,
             stringResource(R.string.playlist_options),
             onClick = { expanded = true },
         )

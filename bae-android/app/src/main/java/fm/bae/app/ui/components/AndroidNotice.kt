@@ -14,9 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -34,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
@@ -347,7 +345,7 @@ private fun DismissButton(
 ) {
     Box(modifier = Modifier.padding(start = ThemeSpace.compact)) {
         AndroidInlineIconButton(
-            Icons.Filled.Close,
+            SymbolIcons.Close,
             stringResource(R.string.dismiss),
             onDismiss,
             tint = if (quiet) MaterialTheme.colorScheme.onSurfaceVariant else onNoticeSecondary,
@@ -386,7 +384,7 @@ fun AndroidErrorDetails(
             Text(text = text, style = ThemeText.mono.style, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         AndroidIconButton(
-            icon = Icons.Filled.ContentCopy,
+            icon = SymbolIcons.ContentCopy,
             contentDescription = stringResource(R.string.copy_details),
             onClick = { copy(copyText) },
             modifier =

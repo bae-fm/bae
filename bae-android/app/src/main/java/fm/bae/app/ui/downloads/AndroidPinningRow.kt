@@ -6,8 +6,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -22,6 +20,7 @@ import fm.bae.app.coreString
 import fm.bae.app.factSeparator
 import fm.bae.app.formatFileSize
 import fm.bae.app.requireDisplayableByteCount
+import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidInlineIconButton
@@ -68,7 +67,7 @@ internal fun AndroidPinningRow(
                     modifier = Modifier.weight(1f),
                 )
             }
-            AndroidInlineIconButton(Icons.Filled.Close, stringResource(R.string.cancel), onCancel)
+            AndroidInlineIconButton(SymbolIcons.Close, stringResource(R.string.cancel), onCancel)
         }
         Text(
             text = op.detailText(context),

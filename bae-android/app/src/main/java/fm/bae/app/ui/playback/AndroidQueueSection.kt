@@ -3,8 +3,6 @@ package fm.bae.app.ui.playback
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -14,6 +12,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
+import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidButton
@@ -49,7 +48,7 @@ internal fun AndroidQueueSection(
         }
         if (shuffled != null) {
             AndroidIconButton(
-                icon = Icons.Filled.Shuffle,
+                icon = SymbolIcons.Shuffle,
                 contentDescription =
                     stringResource(if (shuffled) R.string.queue_shuffle_off else R.string.queue_shuffle_on),
                 onClick = onShuffle,

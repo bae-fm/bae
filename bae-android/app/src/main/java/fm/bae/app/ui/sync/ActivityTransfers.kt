@@ -7,9 +7,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -20,6 +17,7 @@ import androidx.compose.ui.res.stringResource
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.releasesDoneText
+import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidEyebrow
@@ -126,7 +124,7 @@ internal fun PausePinning(
     onClick: () -> Unit,
 ) {
     AndroidIconButton(
-        icon = if (paused) Icons.Filled.PlayArrow else Icons.Filled.Pause,
+        icon = if (paused) SymbolIcons.PlayArrow else SymbolIcons.Pause,
         contentDescription = stringResource(if (paused) R.string.resume else R.string.pause),
         onClick = onClick,
         tone = IconTone.ACCENT,

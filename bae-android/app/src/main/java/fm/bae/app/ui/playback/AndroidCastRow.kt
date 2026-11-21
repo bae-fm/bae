@@ -7,10 +7,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Cast
-import androidx.compose.material.icons.outlined.Speaker
-import androidx.compose.material.icons.outlined.Tv
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -27,6 +23,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import fm.bae.app.R
 import fm.bae.app.data.CastStart
+import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
@@ -297,7 +294,7 @@ private val BridgeRendererKind.productName: String
 /** The icon for a receiver, by the kind of renderer it is. */
 private fun deviceIcon(kind: BridgeRendererKind): ImageVector =
     when (kind) {
-        BridgeRendererKind.CAST -> Icons.Outlined.Cast
-        BridgeRendererKind.AIR_PLAY -> Icons.Outlined.Speaker
-        BridgeRendererKind.DLNA -> Icons.Outlined.Tv
+        BridgeRendererKind.CAST -> SymbolIcons.Cast
+        BridgeRendererKind.AIR_PLAY -> SymbolIcons.Speaker
+        BridgeRendererKind.DLNA -> SymbolIcons.Tv
     }

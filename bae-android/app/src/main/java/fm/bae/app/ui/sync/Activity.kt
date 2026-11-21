@@ -8,8 +8,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -32,6 +30,7 @@ import fm.bae.app.coreString
 import fm.bae.app.data.SyncActivityStore
 import fm.bae.app.ui.ActivityProblemId
 import fm.bae.app.ui.AppProblem
+import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
@@ -134,7 +133,7 @@ private fun ActivityGlyph(
             AndroidSpinner(size = ThemeIcon.small)
         }
         if (held) {
-            Icon(imageVector = Icons.Filled.Pause, contentDescription = null, modifier = Modifier.size(ThemeIcon.large))
+            Icon(imageVector = SymbolIcons.Pause, contentDescription = null, modifier = Modifier.size(ThemeIcon.large))
         }
         if (needsAttention) {
             StatusGlyph(StatusTone.WARNING, size = ThemeIcon.large)

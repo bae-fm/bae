@@ -13,9 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
@@ -29,6 +26,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeOpacity
 import fm.bae.app.ui.appearance.ThemeSpace
@@ -39,8 +37,8 @@ internal enum class RowIcon(
     val image: ImageVector,
     val size: Dp,
 ) {
-    CHEVRON(Icons.AutoMirrored.Filled.KeyboardArrowRight, ThemeIcon.large),
-    EDIT(Icons.Outlined.Edit, EDIT_SIZE),
+    CHEVRON(SymbolIcons.ChevronRight, ThemeIcon.large),
+    EDIT(SymbolIcons.Edit, EDIT_SIZE),
 }
 
 /** A row's switch: whether it is [checked], and what a tap anywhere on the row does, [onChange]. */

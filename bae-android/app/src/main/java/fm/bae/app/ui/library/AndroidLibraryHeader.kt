@@ -15,9 +15,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -40,6 +37,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import fm.bae.app.R
+import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
@@ -135,7 +133,7 @@ internal fun AndroidLibraryHeader(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         LibraryViewHeading(state = state, progress = progress, modifier = Modifier.weight(1f))
-        AndroidIconButton(Icons.Filled.Search, stringResource(R.string.search), onClick = { state.searchOpen = true })
+        AndroidIconButton(SymbolIcons.Search, stringResource(R.string.search), onClick = { state.searchOpen = true })
         syncActivity()
         LibraryMoreMenu(state = state, onShuffleLibrary = onShuffleLibrary)
         person()
@@ -171,7 +169,7 @@ private fun LibraryViewHeading(
             )
             Spacer(modifier = Modifier.width(ThemeSpace.compact))
             Icon(
-                imageVector = Icons.Filled.KeyboardArrowDown,
+                imageVector = SymbolIcons.KeyboardArrowDown,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(lerp(ThemeIcon.medium, ThemeIcon.small, progress)),

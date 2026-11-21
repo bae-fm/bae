@@ -8,10 +8,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.Repeat
-import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -31,6 +27,7 @@ import fm.bae.app.playback.NowPlaying
 import fm.bae.app.playback.library
 import fm.bae.app.playback.title
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSize
 import fm.bae.app.ui.appearance.ThemeSpace
@@ -175,13 +172,13 @@ internal fun NowPlayingBarControls(
     )
     castButton()
     AndroidIconButton(
-        Icons.AutoMirrored.Filled.List,
+        SymbolIcons.List,
         stringResource(R.string.queue),
         onClick = onOpenQueue,
         box = ICON_BUTTON_BAR_BOX,
     )
     AndroidIconButton(
-        icon = if (repeatMode == BridgeRepeatMode.TRACK) Icons.Filled.RepeatOne else Icons.Filled.Repeat,
+        icon = if (repeatMode == BridgeRepeatMode.TRACK) SymbolIcons.RepeatOne else SymbolIcons.Repeat,
         contentDescription = stringResource(R.string.player_repeat),
         onClick = onCycleRepeat,
         tone = if (repeatMode == BridgeRepeatMode.OFF) IconTone.MUTED else IconTone.ACCENT,

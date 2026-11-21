@@ -1,8 +1,6 @@
 package fm.bae.app.ui.components
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -12,6 +10,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.R
+import fm.bae.app.ui.appearance.SymbolIcons
 
 /**
  * A track's options button and its menu: Play next, Add to queue, then Add to playlist… when the caller
@@ -28,7 +27,7 @@ internal fun TrackOptionsMenu(
     var expanded by remember { mutableStateOf(false) }
     Box {
         AndroidIconButton(
-            icon = Icons.Filled.MoreVert,
+            icon = SymbolIcons.MoreVert,
             contentDescription = stringResource(R.string.track_options),
             onClick = { expanded = true },
             tone = IconTone.MUTED,

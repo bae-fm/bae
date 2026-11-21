@@ -4,8 +4,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarData
 import androidx.compose.material3.SnackbarHost
@@ -24,6 +22,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
+import fm.bae.app.ui.appearance.SymbolIcons
 
 /**
  * How much of the screen's bottom the now-playing bars take, for the snackbar to float above. Each bar that is
@@ -101,7 +100,7 @@ private fun AndroidSnackbar(data: SnackbarData) {
             if (visuals.withDismissAction) {
                 {
                     AndroidIconButton(
-                        icon = Icons.Filled.Close,
+                        icon = SymbolIcons.Close,
                         contentDescription = stringResource(R.string.close),
                         onClick = data::dismiss,
                         modifier = Modifier.size(CLOSE_BOX),

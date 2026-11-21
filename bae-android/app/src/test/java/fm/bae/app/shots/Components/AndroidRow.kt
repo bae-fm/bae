@@ -1,10 +1,9 @@
 package fm.bae.app.shots
 
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidCard
 import fm.bae.app.ui.components.AndroidRow
@@ -77,7 +76,7 @@ class AndroidRowShots : BoardShot() {
     @Test
     fun androidComponentRowActionThatAdds() =
         component("android.component.row.action-that-adds") {
-            RowInCard { AndroidRow(title = "Sync", action = true, leadingIcon = Icons.Filled.Add, onClick = {}) }
+            RowInCard { AndroidRow(title = "Sync", action = true, leadingIcon = SymbolIcons.Add, onClick = {}) }
         }
 
     @Test

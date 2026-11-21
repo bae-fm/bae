@@ -7,8 +7,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -22,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.title
+import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
@@ -152,7 +151,7 @@ internal fun WelcomeLibrariesContent(
                     AndroidRow(
                         title = stringResource(R.string.welcome_add_library),
                         action = true,
-                        leadingIcon = Icons.Filled.Add,
+                        leadingIcon = SymbolIcons.Add,
                         enabled = running == null,
                         onClick = callbacks.onAdd,
                     )

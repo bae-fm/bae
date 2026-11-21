@@ -2,8 +2,6 @@ package fm.bae.app.ui.components
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -11,6 +9,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.R
+import fm.bae.app.ui.appearance.SymbolIcons
 
 /**
  * The ⋮ button of a row, with the row's actions in its menu: a row offers its actions here, not as a button of each.
@@ -24,7 +23,7 @@ fun AndroidMoreMenu(
     var expanded by remember { mutableStateOf(false) }
     Box {
         AndroidIconButton(
-            Icons.Filled.MoreVert,
+            SymbolIcons.MoreVert,
             stringResource(R.string.more),
             onClick = { expanded = true },
             enabled = enabled,

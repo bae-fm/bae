@@ -1,8 +1,6 @@
 package fm.bae.app.ui.playback
 
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Cast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -20,6 +18,7 @@ import fm.bae.app.R
 import fm.bae.app.data.CastStart
 import fm.bae.app.data.castEndedFailure
 import fm.bae.app.data.castingDevice
+import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.AndroidNotice
@@ -68,7 +67,7 @@ internal fun CastBarButton(
     onClick: () -> Unit,
 ) {
     AndroidIconButton(
-        icon = Icons.Filled.Cast,
+        icon = SymbolIcons.Cast,
         contentDescription = stringResource(R.string.cast_button),
         onClick = onClick,
         tone = if (casting) IconTone.ACCENT else IconTone.MUTED,

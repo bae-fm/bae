@@ -15,10 +15,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.Repeat
-import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -45,6 +41,7 @@ import fm.bae.app.playback.artist
 import fm.bae.app.playback.library
 import fm.bae.app.playback.title
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
@@ -193,7 +190,7 @@ internal fun AndroidFullPlayer(
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.section, vertical = ThemeSpace.related)) {
         // Pulled left so the glyph, not the button, sits at the cover's edge.
         AndroidIconButton(
-            Icons.Filled.ExpandMore,
+            SymbolIcons.ExpandMore,
             stringResource(R.string.collapse),
             onClick = onCollapse,
             modifier = Modifier.offset(x = -ThemeSpace.group),
@@ -294,7 +291,7 @@ internal fun ExpandedSecondaryControls(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         AndroidIconButton(
-            icon = if (repeatMode == BridgeRepeatMode.TRACK) Icons.Filled.RepeatOne else Icons.Filled.Repeat,
+            icon = if (repeatMode == BridgeRepeatMode.TRACK) SymbolIcons.RepeatOne else SymbolIcons.Repeat,
             contentDescription = stringResource(R.string.repeat_mode),
             onClick = onCycleRepeat,
             tone = if (repeatMode == BridgeRepeatMode.OFF) IconTone.MUTED else IconTone.ACCENT,

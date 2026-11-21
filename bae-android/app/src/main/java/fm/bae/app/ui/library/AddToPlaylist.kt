@@ -4,8 +4,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -20,6 +18,7 @@ import fm.bae.app.coreString
 import fm.bae.app.data.ListPageState
 import fm.bae.app.data.PlaylistListingStore
 import fm.bae.app.factsLine
+import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidLibraryRow
 import fm.bae.app.ui.components.AndroidNotice
@@ -74,7 +73,7 @@ internal fun TrackPlaylistAddShown(
             AndroidRow(
                 title = stringResource(R.string.playlist_new_row),
                 action = true,
-                leadingIcon = Icons.Filled.Add,
+                leadingIcon = SymbolIcons.Add,
                 onClick = { creating = true },
             )
             PlaylistTargets(session, add, trackId)

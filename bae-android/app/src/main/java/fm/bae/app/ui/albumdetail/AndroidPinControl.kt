@@ -5,8 +5,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -26,6 +24,7 @@ import fm.bae.app.DisplayError
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
+import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
@@ -141,7 +140,7 @@ internal fun AndroidPinControl(
                 AndroidButton(
                     kind = ButtonKind.OUTLINED,
                     onClick = onCancel,
-                    icon = Icons.Filled.Close,
+                    icon = SymbolIcons.Close,
                 ) { Text(stringResource(R.string.cancel)) }
             }
         }
@@ -156,7 +155,7 @@ internal fun AndroidPinControl(
             AndroidButton(
                 kind = ButtonKind.OUTLINED,
                 onClick = onCancel,
-                icon = Icons.Filled.Close,
+                icon = SymbolIcons.Close,
             ) { Text(stringResource(R.string.pin_cancel)) }
         }
 
@@ -183,7 +182,7 @@ private fun DownloadFailedControl(
         action = ErrorAction(stringResource(R.string.retry), onClick = onRetry),
         look = NoticeLook.QUIET,
     )
-    AndroidButton(kind = ButtonKind.OUTLINED, onClick = onCancel, icon = Icons.Filled.Close) {
+    AndroidButton(kind = ButtonKind.OUTLINED, onClick = onCancel, icon = SymbolIcons.Close) {
         Text(stringResource(R.string.cancel))
     }
 }

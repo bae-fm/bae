@@ -14,10 +14,6 @@ import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.ErrorOutline
-import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -35,6 +31,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeOpacity
 import fm.bae.app.ui.appearance.ThemeRadius
@@ -86,9 +83,9 @@ private val StatusTone.hasNoticeFill: Boolean
 private val StatusTone.icon: ImageVector?
     get() =
         when (this) {
-            StatusTone.INFO -> Icons.Outlined.Info
-            StatusTone.SUCCESS -> Icons.Outlined.CheckCircle
-            StatusTone.WARNING, StatusTone.DANGER -> Icons.Outlined.ErrorOutline
+            StatusTone.INFO -> SymbolIcons.Info
+            StatusTone.SUCCESS -> SymbolIcons.CheckCircle
+            StatusTone.WARNING, StatusTone.DANGER -> SymbolIcons.Error
             StatusTone.NEUTRAL, StatusTone.ACCENT, StatusTone.ACTIVITY -> null
         }
 

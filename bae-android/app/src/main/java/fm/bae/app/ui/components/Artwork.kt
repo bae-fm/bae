@@ -8,8 +8,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -35,6 +33,7 @@ import fm.bae.app.data.ImageContent
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.appearance.SymbolIcons
 import kotlinx.coroutines.CancellationException
 import uniffi.bae_bridge.BridgeImageRef
 
@@ -172,7 +171,7 @@ private fun SlotContent(
             val retry = stringResource(R.string.retry)
             CoverTile(modifier = Modifier.clickable(onClickLabel = retry, onClick = onRetry)) {
                 Icon(
-                    imageVector = Icons.Filled.BrokenImage,
+                    imageVector = SymbolIcons.BrokenImage,
                     contentDescription = stringResource(R.string.image_load_failed),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(iconPadding),

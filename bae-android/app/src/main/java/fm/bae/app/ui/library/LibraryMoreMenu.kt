@@ -3,9 +3,6 @@ package fm.bae.app.ui.library
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -17,6 +14,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import fm.bae.app.R
+import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidDivider
 import fm.bae.app.ui.components.AndroidIconButton
@@ -93,7 +91,7 @@ internal fun LibraryMoreMenu(
     val close = { state.openMenu = null }
     Box {
         AndroidIconButton(
-            Icons.Filled.MoreVert,
+            SymbolIcons.MoreVert,
             stringResource(R.string.more_options),
             onClick = { state.openMenu = LibraryHeaderMenu.MORE },
         )
@@ -225,7 +223,7 @@ internal fun GroupByArtistItem(
         modifier = Modifier.semantics { stateDescription = state },
         trailingIcon = {
             Icon(
-                imageVector = Icons.Filled.Check,
+                imageVector = SymbolIcons.Check,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.alpha(if (grouped) 1f else 0f),
