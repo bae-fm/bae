@@ -440,6 +440,48 @@ extension AccessibilityTree {
     }
 }
 
+extension AccessibilityTree {
+    /// This tree without the nodes a person cannot see: a node whose box lies
+    /// wholly outside the window's content rect, or wholly outside the box of
+    /// the scroll area that holds it, is a row scrolled out of view or
+    /// clipped. The nodes such a node holds go with it.
+    func leavingOutWhatIsNotVisible(windowSize: CGSize) -> Self {
+        let window = CGRect(origin: .zero, size: windowSize)
+        // The new index of each node kept, and the area its children show
+        // through, by the node's old index.
+        var kept: [Int: Int] = [:]
+        var shownThrough: [Int: CGRect] = [:]
+        var out: [Node] = []
+        for (index, node) in nodes.enumerated() {
+            var parent: Int?
+            var area = window
+            if let old = node.parent {
+                // A node whose holder was left out goes with it.
+                guard let new = kept[old], let held = shownThrough[old] else {
+                    continue
+                }
+                parent = new
+                area = held
+            }
+            let box = CGRect(
+                x: node.x,
+                y: node.y,
+                width: node.width,
+                height: node.height
+            )
+            let overlaps =
+                box.maxX > area.minX && box.minX < area.maxX
+                && box.maxY > area.minY && box.minY < area.maxY
+            guard overlaps else { continue }
+            kept[index] = out.count
+            shownThrough[index] =
+                node.role == kAXScrollAreaRole ? area.intersection(box) : area
+            out.append(node.placed(dx: 0, dy: 0, parent: parent))
+        }
+        return Self(nodes: out)
+    }
+}
+
 extension AccessibilityTree.Node {
     /// This node moved `dx`, `dy` points, held by the node at `parent`.
     fileprivate func placed(dx: Double, dy: Double, parent: Int?) -> Self {

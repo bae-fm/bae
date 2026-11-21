@@ -89,7 +89,10 @@ struct ShotElementList: Encodable {
         size: CGSize,
         scale: Int
     ) throws -> Self {
+        // A row scrolled out of its pane, or clipped by the window, is not on
+        // the screen, so the list leaves it out.
         var tree = try AccessibilityTree.read(of: window, subject: board)
+            .leavingOutWhatIsNotVisible(windowSize: size)
         // An alert is a separate window over this one, so this list adds the
         // alert's elements where the alert draws them over this window.
         for panel in AlertWindows.shared.panels {
