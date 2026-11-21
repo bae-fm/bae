@@ -1,5 +1,6 @@
 package fm.bae.app.shots
 
+import android.graphics.Paint
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.semantics.Role
@@ -139,6 +140,8 @@ internal object ElementList {
         val description = config.getOrNull(SemanticsProperties.ContentDescription)
         val kind = kind(config, role, editable != null, texts != null, description != null && node.children.isEmpty())
         val bounds = node.touchBoundsInRoot
+        val (top, height) =
+            if (kind == "text") contentBox(config, bounds.top, bounds.height) else bounds.top to bounds.height
         val out =
             JSONObject()
                 .put("role", kind)
@@ -149,14 +152,36 @@ internal object ElementList {
                     "bounds",
                     JSONObject()
                         .put("x", dp(bounds.left, density))
-                        .put("y", dp(bounds.top, density))
+                        .put("y", dp(top, density))
                         .put("width", dp(bounds.width, density))
-                        .put("height", dp(bounds.height, density)),
+                        .put("height", dp(height, density)),
                 ).put("enabled", !config.contains(SemanticsProperties.Disabled))
                 .put("selected", orNull(config.getOrNull(SemanticsProperties.Selected)))
         config.getOrNull(SemanticsProperties.Focused)?.let { out.put("focused", it) }
         if (kind == "text") textStyle(config)?.let { out.put("text", it) }
         return out
+    }
+
+    /**
+     * A text node's vertical box as a browser reports a text's: from the first line's ascent to the last line's
+     * descent, inside the line boxes whose height only spaces the lines. Compose's node box is the line boxes.
+     */
+    private fun contentBox(
+        config: SemanticsConfiguration,
+        top: Float,
+        height: Float,
+    ): Pair<Float, Float> {
+        val results = mutableListOf<TextLayoutResult>()
+        val read = config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action
+        if (read == null || !read(results) || results.isEmpty()) return top to height
+        val layout = results.first()
+        val fontSize = layout.layoutInput.style.fontSize
+        if (!fontSize.isSp) return top to height
+        val size = with(layout.layoutInput.density) { fontSize.toPx() }
+        val metrics = Paint().apply { textSize = size }.fontMetrics
+        val first = layout.getLineBaseline(0) + metrics.ascent
+        val last = layout.getLineBaseline(layout.lineCount - 1) + metrics.descent
+        return top + first to last - first
     }
 
     /** JSON null for an absent value: [JSONObject.put] would drop the key. */
