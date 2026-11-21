@@ -140,7 +140,7 @@
     },
     {
       "name": "Accents a person can choose",
-      "about": "Each of the eight accents, in the same four roles.",
+      "about": "Each of the six accents, in the same four roles.",
       "table": {
         "columns": [
           { "label": "accent-‹hue›", "text": true, "sets": "accent" },
@@ -174,24 +174,6 @@
               "accent-pink-fill",
               "on-accent-pink-fill",
               "accent-pink-selection"
-            ]
-          },
-          {
-            "label": "coral",
-            "colors": [
-              "accent-coral",
-              "accent-coral-fill",
-              "on-accent-coral-fill",
-              "accent-coral-selection"
-            ]
-          },
-          {
-            "label": "gold",
-            "colors": [
-              "accent-gold",
-              "accent-gold-fill",
-              "on-accent-gold-fill",
-              "accent-gold-selection"
             ]
           },
           {
@@ -253,10 +235,7 @@
           {
             "label": "success",
             "colors": ["success", "success-tint", "success-notice", "success-icon"]
-          },
-          { "label": "info", "colors": ["info", "info-tint", "info-notice", "info-icon"] },
-          { "label": "activity", "colors": ["activity", "activity-tint", null, null] },
-          { "label": "pinning", "colors": ["pinning", null, null, null] }
+          }
         ]
       },
       "clusters": [

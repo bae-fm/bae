@@ -60,7 +60,7 @@ class StorageUsageSegmentsTest {
     @Test
     fun eachKindKeepsItsAccentsSelectionColour() {
         assertEquals(AccentChoice.BLUE.colors.selection, BridgeStorageKind.PINNED.color)
-        assertEquals(AccentChoice.GOLD.colors.selection, BridgeStorageKind.CACHE.color)
+        assertEquals(AccentChoice.LIME.colors.selection, BridgeStorageKind.CACHE.color)
         assertEquals(AccentChoice.ORCHID.colors.selection, BridgeStorageKind.LIBRARY.color)
         assertEquals(AccentChoice.MINT.colors.selection, BridgeStorageKind.BEFORE_RESET.color)
         assertEquals(

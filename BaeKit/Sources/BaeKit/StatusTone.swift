@@ -1,6 +1,8 @@
 import SwiftUI
 
 /// What a chip or notice says about its subject, and the colour that says it.
+/// Info, like the accent tone, draws in the person's accent; so do uploads and
+/// pins, which have no tone of their own.
 public enum StatusTone: Sendable, Equatable {
     case neutral
     case accent
@@ -8,43 +10,44 @@ public enum StatusTone: Sendable, Equatable {
     case success
     case warning
     case danger
-    case activity
 
     /// The text, glyph and outline colour.
     public var color: Color {
         switch self {
         case .neutral: .secondary
         case .accent: Theme.accent
-        case .info: Theme.info
+        case .info: Theme.accent
         case .success: Theme.success
         case .warning: Theme.warning
         case .danger: Theme.danger
-        case .activity: Theme.activity
         }
     }
 
-    /// The glyph's colour: a tone with a glyph has its own icon token, since
-    /// a filled shape wants a different weight than text.
+    /// The glyph's colour: success, warning and danger have their own icon
+    /// token, since a filled shape wants a different weight than text; the
+    /// rest draw in `color`.
     public var iconColor: Color {
         switch self {
-        case .info: Theme.infoIcon
         case .success: Theme.successIcon
         case .warning: Theme.warningIcon
         case .danger: Theme.dangerIcon
-        case .neutral, .accent, .activity: color
+        case .neutral, .accent, .info: color
         }
     }
 
-    /// The fill of a filled notice: a toned notice has its own, a pale tone in
-    /// light mode and the neutral fill in dark; the tones with no glyph keep
-    /// their tint.
-    public var noticeFill: Color {
+    /// The fill of a filled notice: success, warning and danger have their
+    /// own, a pale tone in light mode and the neutral fill in dark; info has
+    /// the accent's tint in light mode and the neutral fill in dark; the tones
+    /// with no glyph keep their tint.
+    public func noticeFill(in scheme: ColorScheme) -> Color {
         switch self {
-        case .info: Theme.infoNotice
+        case .info:
+            scheme == .dark
+                ? StatusTone.neutral.fill : StatusTone.accent.fill
         case .success: Theme.successNotice
         case .warning: Theme.warningNotice
         case .danger: Theme.dangerNotice
-        case .neutral, .accent, .activity: fill
+        case .neutral, .accent: fill
         }
     }
 
@@ -66,7 +69,7 @@ public enum StatusTone: Sendable, Equatable {
         case .success: "checkmark.circle"
         case .warning: "exclamationmark.circle"
         case .danger: "exclamationmark.circle"
-        case .neutral, .accent, .activity: nil
+        case .neutral, .accent: nil
         }
     }
 }
@@ -135,10 +138,7 @@ extension View {
         switch look {
         case .filled:
             padding(ThemeSpace.group)
-                .background(
-                    tone.noticeFill,
-                    in: RoundedRectangle(cornerRadius: ThemeRadius.control)
-                )
+                .modifier(NoticeFill(tone: tone))
                 .foregroundStyle(
                     tone.hasNoticeFill ? Theme.onNotice : Theme.textPrimary
                 )
@@ -169,6 +169,20 @@ extension View {
             color: elevated ? Theme.shadow : .clear,
             radius: ThemeSpace.group,
             y: ThemeSpace.compact
+        )
+    }
+}
+
+/// A filled notice's rounded fill, which follows the appearance it is drawn in.
+private struct NoticeFill: ViewModifier {
+    let tone: StatusTone
+    @Environment(\.colorScheme)
+    private var scheme
+
+    func body(content: Content) -> some View {
+        content.background(
+            tone.noticeFill(in: scheme),
+            in: RoundedRectangle(cornerRadius: ThemeRadius.control)
         )
     }
 }

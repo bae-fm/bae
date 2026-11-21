@@ -28,7 +28,7 @@ extension ShotScene {
         component("mac.component.progress-line.upload", height: 50) {
             MacProgressLine(
                 "Uploading",
-                bar: ProgressTrackBar(progress: 0.15, tint: Theme.activity)
+                bar: ProgressTrackBar(progress: 0.15)
             )
             .themeText(.body)
             .frame(width: 380, alignment: .leading)

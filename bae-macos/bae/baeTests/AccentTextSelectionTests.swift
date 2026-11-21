@@ -13,7 +13,7 @@ struct AccentTextSelectionTests {
     /// the window is drawn in.
     @Test(
         "the window's field editor selects and points in the chosen accent",
-        arguments: [AccentChoice.coral, .mint]
+        arguments: [AccentChoice.orchid, .mint]
     )
     func fieldEditorTakesTheAccent(accent: AccentChoice) async throws {
         try await SnapshotTestSupport.withHostedWindow(

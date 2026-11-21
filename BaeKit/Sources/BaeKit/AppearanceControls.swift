@@ -177,10 +177,6 @@ extension AccentChoice {
             String(localized: "Orchid", table: "Appearance", bundle: .module)
         case .pink:
             String(localized: "Pink", table: "Appearance", bundle: .module)
-        case .coral:
-            String(localized: "Coral", table: "Appearance", bundle: .module)
-        case .gold:
-            String(localized: "Gold", table: "Appearance", bundle: .module)
         case .lime:
             String(localized: "Lime", table: "Appearance", bundle: .module)
         case .mint:

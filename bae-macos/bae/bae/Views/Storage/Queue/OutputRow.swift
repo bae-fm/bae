@@ -79,13 +79,13 @@ struct OutputRow: View {
         case .export:
             StatusChip(
                 "Exporting",
-                tone: .activity,
+                tone: .accent,
                 symbol: "square.and.arrow.up.fill"
             )
         case .save:
             StatusChip(
                 "Saving",
-                tone: .activity,
+                tone: .accent,
                 symbol: "square.and.arrow.down.fill"
             )
         }

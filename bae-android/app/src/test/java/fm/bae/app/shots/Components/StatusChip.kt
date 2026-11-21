@@ -27,8 +27,4 @@ class StatusChipShots : BoardShot() {
     @Test
     fun androidComponentStatusChipDanger() =
         component("android.component.status-chip.danger") { StatusChip("Synced", tone = StatusTone.DANGER) }
-
-    @Test
-    fun androidComponentStatusChipActivity() =
-        component("android.component.status-chip.activity") { StatusChip("Synced", tone = StatusTone.ACTIVITY) }
 }

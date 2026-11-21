@@ -11,11 +11,10 @@
 tone = "plum"
 accent = "pink"
 
-# Colors that mean the same in every tone. `activity` marks work in progress,
-# such as a transfer, an upload among them; `pinning` marks files downloading
-# to stay on this device; `onFill` and `onFillSecondary` sit on accent and
-# status fills, on artwork and on the image viewer's `backdrop`; `insetPanel`
-# shades the panel inset in a dialog, such as an error's causes.
+# Colors that mean the same in every tone. Info, uploads and pins have none:
+# they draw in the person's accent. `onFill` and `onFillSecondary` sit on
+# accent and status fills, on artwork and on the image viewer's `backdrop`;
+# `insetPanel` shades the panel inset in a dialog, such as an error's causes.
 # `textSecondary` is Android's: macOS draws secondary text in the system's own
 # secondary label colour, which follows Increase Contrast and vibrancy, and the
 # design system's `mac-text-secondary` draws that colour on the canvas.
@@ -23,29 +22,23 @@ accent = "pink"
 textPrimary = "#202124"
 textSecondary = "#62656C"
 textTertiary = "#42000000"
-danger = "#B63B3B"
-success = "#2D7447"
-warning = "#8C5D14"
-info = "#2463C7"
+danger = "#B93A13"
+success = "#255117"
+warning = "#965818"
 # A status icon in each tone: in light mode lighter and more saturated than the
 # tone, since a filled shape needs less darkness than text; in dark mode the
-# tone, danger mixed toward secondary text (design/system/tokens.json
-# `danger-icon` and the rest).
-dangerIcon = "#DB383D"
-warningIcon = "#C17900"
-infoIcon = "#1380FF"
-successIcon = "#269F5A"
-# A toned notice's own colours, from design/system/tokens.json (`info-notice`
+# tone (design/system/tokens.json `danger-icon` and the rest).
+dangerIcon = "#F84704"
+warningIcon = "#C97414"
+successIcon = "#029828"
+# A toned notice's own colours, from design/system/tokens.json (`danger-notice`
 # and the rest). Light: a pale, purer tone under `onNotice` text and the tone's
 # icon. Dark: the neutral fill under the screen's text, the glyph alone in the
 # tone.
-infoNotice = "#293278F0"
-successNotice = "#2E28AA5A"
-warningNotice = "#38F0A500"
-dangerNotice = "#29E63C3C"
+successNotice = "#29029828"
+warningNotice = "#2EC97414"
+dangerNotice = "#29F84704"
 onNotice = "#202124"
-activity = "#1F7274"
-pinning = "#4553B5"
 # The word under the sheep on Welcome: the outline's plum, which reads on the
 # light background (design/system/tokens.json `logo-word`).
 logoWord = "#40183D"
@@ -65,8 +58,6 @@ logoWordEdge = "#59FFFFFF"
 releaseFillBlue = "#8CAAFE"
 releaseFillOrchid = "#D28BFA"
 releaseFillPink = "#FF7BB8"
-releaseFillCoral = "#FE8768"
-releaseFillGold = "#DFA206"
 releaseFillLime = "#99BF2C"
 releaseFillMint = "#01CC96"
 releaseFillSky = "#0DC3DF"
@@ -87,27 +78,19 @@ onFillSecondary = "#B3FFFFFF"
 textPrimary = "#F2F2F4"
 textSecondary = "#A8A8B3"
 textTertiary = "#6A6A7A"
-danger = "#F06A7A"
-success = "#8BCBA4"
-warning = "#E6BE77"
-info = "#87B5FF"
-# A status icon in each tone: in light mode lighter and more saturated than the
-# tone, since a filled shape needs less darkness than text; in dark mode the
-# tone, danger mixed toward secondary text (design/system/tokens.json
-# `danger-icon` and the rest).
-dangerIcon = "#DB848E"
-warningIcon = "#E6BE77"
-infoIcon = "#87B5FF"
-successIcon = "#8BCBA4"
+danger = "#F26877"
+success = "#A2F2A1"
+warning = "#FBBD7A"
+# A status icon in each tone, as in `semantics.light`.
+dangerIcon = "#F26877"
+warningIcon = "#FBBD7A"
+successIcon = "#A2F2A1"
 # A toned notice's own colours (see `semantics.light`): every tone has the
 # neutral fill, and the text is the screen's.
-infoNotice = "#24B1B1BB"
 successNotice = "#24B1B1BB"
 warningNotice = "#24B1B1BB"
 dangerNotice = "#24B1B1BB"
 onNotice = "#F2F2F4"
-activity = "#80CCCE"
-pinning = "#A9B8FF"
 # The word under the sheep on Welcome: the wool's cream.
 logoWord = "#FFFCF4"
 # The glow behind the sheep on Welcome, the pool of light under it, and the
@@ -126,8 +109,6 @@ logoWordEdge = "#59FFFFFF"
 releaseFillBlue = "#8CAAFE"
 releaseFillOrchid = "#D28BFA"
 releaseFillPink = "#FF7BB8"
-releaseFillCoral = "#FE8768"
-releaseFillGold = "#DFA206"
 releaseFillLime = "#99BF2C"
 releaseFillMint = "#01CC96"
 releaseFillSky = "#0DC3DF"

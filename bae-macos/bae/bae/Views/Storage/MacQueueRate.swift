@@ -42,11 +42,11 @@ struct MacQueueRate<Progress: View>: View {
         switch queue {
         case .uploads:
             Image(systemName: "arrow.up")
-                .foregroundStyle(StorageTransferKind.upload.color)
+                .foregroundStyle(Theme.accent)
                 .accessibilityLabel(Text("Uploads"))
         case .downloads:
             Image(systemName: "arrow.down")
-                .foregroundStyle(StorageTransferKind.pin.color)
+                .foregroundStyle(Theme.accent)
                 .accessibilityLabel(Text("Downloads"))
         case .outputs:
             Image(systemName: "square.and.arrow.up")

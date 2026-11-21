@@ -43,15 +43,13 @@ final class StreamBarNSView: ProgressTrackNSView {
 }
 
 /// SwiftUI's place for a release transfer's bar: it hands the bar its stream
-/// and fill, never a value. With no tint the bar fills with the window's
-/// accent.
+/// and fill, never a value. The bar fills with the window's accent.
 struct StreamBar: NSViewRepresentable {
     @Environment(\.accentChoice)
     private var accent
     @Environment(\.colorScheme)
     private var colorScheme
     let stream: ReleaseProgressSource
-    var tint: Color?
 
     func makeNSView(context _: Context) -> StreamBarNSView {
         let view = StreamBarNSView(progress: 0, accent: fill)
@@ -69,7 +67,7 @@ struct StreamBar: NSViewRepresentable {
     }
 
     private var fill: NSColor {
-        NSColor(tint ?? accent.color(in: colorScheme))
+        NSColor(accent.color(in: colorScheme))
     }
 
     func sizeThatFits(

@@ -61,14 +61,14 @@ internal fun storageUsageSegments(
     }
 
 /**
- * The accent each kind keeps whatever its size and whichever kinds show: Pinned blue, Cache gold, Library orchid,
+ * The accent each kind keeps whatever its size and whichever kinds show: Pinned blue, Cache lime, Library orchid,
  * From before the reset mint. The same in both appearances.
  */
 internal val BridgeStorageKind.accent: AccentChoice
     get() =
         when (this) {
             BridgeStorageKind.PINNED -> AccentChoice.BLUE
-            BridgeStorageKind.CACHE -> AccentChoice.GOLD
+            BridgeStorageKind.CACHE -> AccentChoice.LIME
             BridgeStorageKind.LIBRARY -> AccentChoice.ORCHID
             BridgeStorageKind.BEFORE_RESET -> AccentChoice.MINT
         }

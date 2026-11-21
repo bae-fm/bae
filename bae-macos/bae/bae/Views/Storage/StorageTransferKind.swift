@@ -1,8 +1,7 @@
-import BaeKit
-import SwiftUI
+import Foundation
 
-/// The two ways a release's files move, each drawn in its own colour
-/// wherever the Storage Manager shows one under way.
+/// The two ways a release's files move, which the Storage Manager names
+/// wherever it shows one under way. Both draw in the person's accent.
 enum StorageTransferKind {
     /// Files going up to the cloud.
     case upload
@@ -14,13 +13,6 @@ enum StorageTransferKind {
         switch self {
         case .upload: String(localized: "Uploading")
         case .pin: String(localized: "Pinning")
-        }
-    }
-
-    var color: Color {
-        switch self {
-        case .upload: Theme.activity
-        case .pin: Theme.pinning
         }
     }
 }

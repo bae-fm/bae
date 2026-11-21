@@ -32,12 +32,12 @@ struct StorageUsage: Equatable {
 
 extension BridgeStorageKind {
     /// The accent whose selection step colors this kind, the same in both
-    /// themes: blue, gold, orchid and mint keep apart for colour-blind
+    /// themes: blue, lime, orchid and mint keep apart for colour-blind
     /// viewers and each reaches 3:1 on the surface.
     var accent: AccentChoice {
         switch self {
         case .pinned: .blue
-        case .cache: .gold
+        case .cache: .lime
         case .library: .orchid
         case .beforeReset: .mint
         }

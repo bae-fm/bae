@@ -26,7 +26,7 @@ struct StorageTransferCounts: View {
 
     private func style(_ stage: BridgeTransferStage) -> AnyShapeStyle {
         switch stage {
-        case .moving: AnyShapeStyle(kind.color)
+        case .moving: AnyShapeStyle(Theme.accent)
         case .waiting: AnyShapeStyle(.primary)
         case .done: AnyShapeStyle(Theme.macTextSecondary)
         }

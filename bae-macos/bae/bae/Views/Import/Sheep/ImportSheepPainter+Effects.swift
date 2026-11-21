@@ -61,7 +61,7 @@ extension ImportSheepPainter {
             moved(.star(index), around: .zero, placed) {
                 SheepInk.fillAndLine(
                     SheepShapes.star,
-                    fill: (index % 2 == 1 ? ReleaseTone.gold : .pink).color,
+                    fill: (index % 2 == 1 ? ReleaseTone.lime : .pink).color,
                     width: 7,
                     in: $0
                 )

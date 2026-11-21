@@ -37,12 +37,12 @@ struct StorageUsageTests {
     @Test("each kind keeps its own accent, whichever kinds show")
     func eachKindKeepsItsAccent() {
         #expect(BridgeStorageKind.pinned.accent == .blue)
-        #expect(BridgeStorageKind.cache.accent == .gold)
+        #expect(BridgeStorageKind.cache.accent == .lime)
         #expect(BridgeStorageKind.library.accent == .orchid)
         #expect(BridgeStorageKind.beforeReset.accent == .mint)
         #expect(
             StorageUsage(.previewNothingPinned).segments.map(\.kind.accent)
-                == [.gold, .orchid]
+                == [.lime, .orchid]
         )
     }
 

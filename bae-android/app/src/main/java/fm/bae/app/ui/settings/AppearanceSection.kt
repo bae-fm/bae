@@ -218,8 +218,6 @@ internal val AccentChoice.label: Int
             AccentChoice.BLUE -> R.string.appearance_blue
             AccentChoice.ORCHID -> R.string.appearance_orchid
             AccentChoice.PINK -> R.string.appearance_pink
-            AccentChoice.CORAL -> R.string.appearance_coral
-            AccentChoice.GOLD -> R.string.appearance_gold
             AccentChoice.LIME -> R.string.appearance_lime
             AccentChoice.MINT -> R.string.appearance_mint
             AccentChoice.SKY -> R.string.appearance_sky

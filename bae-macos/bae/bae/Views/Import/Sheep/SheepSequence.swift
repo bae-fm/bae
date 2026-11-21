@@ -7,16 +7,16 @@ enum SheepSequence {
     static let moments: [SheepMoment] = [
         .gobble(
             from: 1,
-            [(.cover, .blue), (.vinyl, .gold), (.cd, .pink)]
+            [(.cover, .blue), (.vinyl, .lime), (.cd, .pink)]
         ),
         .catching(from: .left, (.vinyl, .sky)),
         .bop(),
         .gobble(
             from: -1,
-            [(.cd, .mint), (.cover, .coral), (.vinyl, .orchid)]
+            [(.cd, .mint), (.cover, .pink), (.vinyl, .orchid)]
         ),
         .inhale(from: 1, (.sleeve(disc: .blue), .lime)),
-        .catching(from: .top, (.cd, .coral)),
+        .catching(from: .top, (.cd, .sky)),
         .roll(),
         .catching(from: .right, (.cover, .orchid)),
     ]

@@ -2,33 +2,29 @@ import AppKit
 import BaeKit
 import SwiftUI
 
-/// A storage chip for files on the move: its word on the transfer's tint,
+/// A storage chip for files on the move: its word on the accent's tint,
 /// filled left to right as far as the transfer has come. As wide as its word.
 /// The fill is a native view that reads the release's latest progress each
 /// display frame, so moving bytes run no SwiftUI update.
 struct StorageProgressChip: View {
     let label: Text
-    let kind: StorageTransferKind
     /// The release's stream; `nil` draws no fill, as for files only waiting
     /// their turn.
     let fill: ReleaseProgressSource?
 
     init(
         label: LocalizedStringKey,
-        kind: StorageTransferKind,
         fill: ReleaseProgressSource?
     ) {
-        self.init(text: Text(label), kind: kind, fill: fill)
+        self.init(text: Text(label), fill: fill)
     }
 
     /// A chip whose words are a `Text` already.
     init(
         text: Text,
-        kind: StorageTransferKind,
         fill: ReleaseProgressSource?
     ) {
         label = text
-        self.kind = kind
         self.fill = fill
     }
 
@@ -41,12 +37,9 @@ struct StorageProgressChip: View {
             .padding(.vertical, ThemeSpace.line)
             .background {
                 ZStack(alignment: .leading) {
-                    kind.color.opacity(ThemeOpacity.tint)
+                    Theme.accentSoft
                     if let fill {
-                        ChipFillView(
-                            fill: fill,
-                            color: kind.color.opacity(ThemeOpacity.tintStrong)
-                        )
+                        ChipFillView(fill: fill)
                     }
                 }
             }
@@ -149,20 +142,29 @@ final class ChipFillNSView: NSView {
 }
 
 /// SwiftUI's place for a chip's fill: it hands the fill its stream and
-/// colour, never a value.
+/// the window's accent, never a value.
 private struct ChipFillView: NSViewRepresentable {
+    @Environment(\.accentChoice)
+    private var accent
+    @Environment(\.colorScheme)
+    private var colorScheme
     let fill: ReleaseProgressSource
-    let color: Color
 
     func makeNSView(context _: Context) -> ChipFillNSView {
-        let view = ChipFillNSView(color: NSColor(color))
+        let view = ChipFillNSView(color: color)
         view.follow(fill)
         return view
     }
 
     func updateNSView(_ view: ChipFillNSView, context _: Context) {
-        view.color = NSColor(color)
+        view.color = color
         view.follow(fill)
+    }
+
+    private var color: NSColor {
+        NSColor(
+            accent.color(in: colorScheme).opacity(ThemeOpacity.tintStrong)
+        )
     }
 
     static func dismantleNSView(_ view: ChipFillNSView, coordinator _: ()) {

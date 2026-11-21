@@ -76,8 +76,7 @@ struct MacFileRow: View {
         switch place {
         case .stored, .stopped: AnyShapeStyle(.primary)
         case .queued: AnyShapeStyle(Theme.macTextSecondary)
-        case .sending: AnyShapeStyle(StorageTransferKind.upload.color)
-        case .pinning: AnyShapeStyle(StorageTransferKind.pin.color)
+        case .sending, .pinning: AnyShapeStyle(Theme.accent)
         }
     }
 
@@ -157,7 +156,7 @@ struct StorageFileMark: View {
                 .accessibilityElement()
                 .accessibilityLabel(queuedLabel(kind))
         case .moving(let kind, let source):
-            MacProgressRing(color: kind.color, source: source)
+            MacProgressRing(source: source)
                 .accessibilityElement()
                 .accessibilityLabel(movingLabel(kind))
         }

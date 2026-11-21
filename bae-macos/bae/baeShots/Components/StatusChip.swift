@@ -12,7 +12,6 @@ extension ShotScene {
         statusChip("mac.component.status-chip.success", .success),
         statusChip("mac.component.status-chip.warning", .warning),
         statusChip("mac.component.status-chip.danger", .danger),
-        statusChip("mac.component.status-chip.activity", .activity),
     ]
 
     private static func statusChip(_ id: String, _ tone: StatusTone)

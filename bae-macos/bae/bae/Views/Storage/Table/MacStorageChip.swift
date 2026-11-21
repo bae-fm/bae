@@ -118,7 +118,6 @@ struct StorageUploadingChipContainer: View {
     var body: some View {
         StorageProgressChip(
             label: "Uploading",
-            kind: .upload,
             fill: .upload(outboxStore.uploadProgress(forRelease: releaseId))
         )
     }
@@ -134,7 +133,6 @@ struct StoragePinningChipContainer: View {
     var body: some View {
         StorageProgressChip(
             label: "Pinning",
-            kind: .pin,
             fill: .pin(downloadStore.downloadProgress(forRelease: releaseId))
         )
     }
@@ -151,7 +149,6 @@ struct StorageMovingToThisDeviceChipContainer: View {
     var body: some View {
         StorageProgressChip(
             text: label,
-            kind: .pin,
             fill: .moveToThisDevice(
                 downloadStore.moveToThisDeviceProgress(forRelease: releaseId)
             )

@@ -14,7 +14,7 @@ struct AccentCheckboxStyleTests {
     /// renderer, so both sides go through one colour pipeline.
     @Test(
         "a checked box is filled in the chosen accent",
-        arguments: [AccentChoice.coral, .mint]
+        arguments: [AccentChoice.orchid, .mint]
     )
     func checkedBoxTakesTheAccent(accent: AccentChoice) throws {
         let box = try pixel(

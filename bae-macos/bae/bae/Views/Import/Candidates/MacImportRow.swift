@@ -154,8 +154,7 @@ private struct DoneRowUploadLineContainer: View {
                 bar: StreamBar(
                     stream: .upload(
                         outboxStore.uploadProgress(forRelease: releaseId)
-                    ),
-                    tint: StorageTransferKind.upload.color
+                    )
                 )
             )
         }

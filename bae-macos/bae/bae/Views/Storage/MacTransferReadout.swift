@@ -161,13 +161,17 @@ final class TransferReadoutNSView: NSView {
 }
 
 /// SwiftUI's place for a release transfer's readout: it hands the readout
-/// the release's stream and its tint, never a value.
+/// the release's stream and the window's accent, never a value.
 struct MacTransferReadout: NSViewRepresentable {
+    @Environment(\.accentChoice)
+    private var accent
+    @Environment(\.colorScheme)
+    private var colorScheme
     let stream: ReleaseProgressSource
     let kind: StorageTransferKind
 
     func makeNSView(context _: Context) -> TransferReadoutNSView {
-        let view = TransferReadoutNSView(tint: NSColor(kind.color))
+        let view = TransferReadoutNSView(tint: tint)
         view.name = kind.progressName
         view.follow(stream)
         return view
@@ -175,7 +179,7 @@ struct MacTransferReadout: NSViewRepresentable {
 
     func updateNSView(_ view: TransferReadoutNSView, context _: Context) {
         view.name = kind.progressName
-        view.tint = NSColor(kind.color)
+        view.tint = tint
         view.follow(stream)
     }
 
@@ -184,6 +188,10 @@ struct MacTransferReadout: NSViewRepresentable {
         coordinator _: ()
     ) {
         view.stopFollowing()
+    }
+
+    private var tint: NSColor {
+        NSColor(accent.color(in: colorScheme))
     }
 
     func sizeThatFits(

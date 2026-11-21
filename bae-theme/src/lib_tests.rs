@@ -81,7 +81,7 @@ fn the_shipped_theme_is_valid() {
     let theme = from_toml(THEME).unwrap();
     assert_eq!(theme.tones[0].name, "neutral");
     let names: Vec<&str> = theme.accents.iter().map(|accent| accent.name.as_str()).collect();
-    assert_eq!(names, ["blue", "orchid", "pink", "coral", "gold", "lime", "mint", "sky"]);
+    assert_eq!(names, ["blue", "orchid", "pink", "lime", "mint", "sky"]);
     assert_eq!(theme.accents[theme.standard.accent].name, "pink");
 }
 
