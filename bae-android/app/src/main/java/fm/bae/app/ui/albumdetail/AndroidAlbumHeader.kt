@@ -122,9 +122,10 @@ private fun YearAndRating(
     if (year == null && rating == null) return
     val color = MaterialTheme.colorScheme.onSurfaceVariant
     Row(verticalAlignment = Alignment.CenterVertically) {
-        val lead = listOfNotNull(year, rating?.number?.toString()).joinToString(" · ")
-        Text(text = lead, style = ThemeText.detail.style, color = color)
+        year?.let { Text(text = it, style = ThemeText.detail.style, color = color) }
         if (rating != null) {
+            if (year != null) Text(text = " · ", style = ThemeText.detail.style, color = color)
+            Text(text = rating.number.toString(), style = ThemeText.detail.style, color = color)
             val description = stringResource(R.string.stars_of_five, rating.number)
             Icon(
                 imageVector = Icons.Filled.Star,

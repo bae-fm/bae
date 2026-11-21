@@ -10,6 +10,7 @@ import fm.bae.app.ui.components.AndroidButton
 import org.junit.Test
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeAlbumRating
+import uniffi.bae_bridge.BridgeDurationUnits
 import uniffi.bae_bridge.BridgeFactTerm
 import uniffi.bae_bridge.BridgeLabelLine
 import uniffi.bae_bridge.BridgeMediaCount
@@ -94,6 +95,7 @@ internal val harborRelease: BridgeRelease =
             facts = release.facts.copy(area = BridgeReleaseArea.Country("US"), media = listOf(BridgeMediaCount(BridgeMedium.CD, 1u))),
             pressingSummary = listOf(BridgeFactTerm.Country("US"), cd),
             mediaTerms = listOf(cd),
+            totalDuration = BridgeDurationUnits.MinutesOnly(52u),
         )
     }
 

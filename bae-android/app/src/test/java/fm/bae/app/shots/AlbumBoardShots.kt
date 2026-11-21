@@ -16,6 +16,7 @@ import fm.bae.app.ui.albumdetail.AlbumOptionsMenu
 import fm.bae.app.ui.albumdetail.AlbumPlaybackState
 import fm.bae.app.ui.albumdetail.unavailableReleaseHeading
 import fm.bae.app.ui.albumdetail.AlbumRatingChoices
+import fm.bae.app.ui.albumdetail.PlayMenuActions
 import fm.bae.app.ui.library.AndroidDetailScreen
 import org.junit.Test
 import uniffi.bae_bridge.BridgeAlbumDetail
@@ -224,6 +225,15 @@ private fun UnavailableAlbumPage() {
     }
 }
 
+private val boardMenu =
+    AlbumMenuActions(
+        play = PlayMenuActions(onShuffle = {}, onPlayNext = {}, onAddToQueue = {}),
+        onRate = {},
+        pin = null,
+        onSetPrimaryRelease = null,
+        onDelete = {},
+    )
+
 /** The album page as the boards draw it: its detail screen, with [bar]'s track playing in its bar. */
 @Composable
 internal fun AlbumPage(
@@ -231,7 +241,7 @@ internal fun AlbumPage(
     bar: PlayerStaging = playing,
     catalogName: (BridgeCatalog) -> String = { it.name },
 ) {
-    ScreenScene { AlbumPageContent(detail, bar, catalogName) }
+    ScreenScene { AlbumPageContent(detail, bar, catalogName) { AlbumOptionsMenu(boardMenu) } }
 }
 
 @Composable
