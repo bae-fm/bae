@@ -21,10 +21,10 @@ struct MacStorageFooter: View {
                 Text("\(Int(count.rows)) releases")
             }
             if let totalSize {
-                Text(verbatim: FactList.glyph)
-                Text(
-                    "Total: \(totalSize.fileSizeText)"
-                )
+                // One text, as the preview's footer draws the dot with the
+                // total.
+                Text(verbatim: FactList.glyph + " ")
+                    + Text("Total: \(totalSize.fileSizeText)")
             }
             Spacer()
             if let uploads = queues?.uploads {
