@@ -337,6 +337,7 @@ impl Records {
 /// many `FILE` lines it has, the side its first track sat on, and each line,
 /// in the order the sheet's tracks reach them, with the audio files it can
 /// play from.
+#[cfg(desktop)]
 pub fn sheet_without_tracks_json_sql(file: &str, release: &str) -> String {
     let sided = super::release::SIDED;
     let side = super::release_tracks::sheet_side_sql(sided, "place.side");

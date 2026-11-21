@@ -8,8 +8,7 @@ extension ShotScene {
     /// it: on its own, with Change cover over it, with its album pop-up open
     /// over its row, over a release a CUE sheet carves from one image, and
     /// saving that release after its sheet's Audio file pop-up picked the
-    /// rip, while the save reads the rip, and asking before a save that
-    /// binds the sheet's line to no audio deletes tracks that have track data.
+    /// rip, while the save reads the rip.
     static let albumEditorScenes: [ShotScene] = [
         albumEditorScene(id: "mac.album.edit", stage: .editor),
         albumEditorScene(id: "mac.album.edit.cover", stage: .coverSheet),
@@ -27,11 +26,6 @@ extension ShotScene {
             stage: .saving,
             release: reboundCueRelease
         ),
-        albumEditorScene(
-            id: "mac.album.edit.drop-tracks",
-            stage: .dropTracksAlert,
-            release: noAudioCueRelease
-        ),
     ]
 
     private enum AlbumEditorStage {
@@ -40,8 +34,6 @@ extension ShotScene {
         case albumMenu
         /// The editor's Save runs and never finishes.
         case saving
-        /// Save asks before it deletes the tracks that have track data.
-        case dropTracksAlert
     }
 
     /// The image the edited release's sheet carves, and the rip of it the
@@ -175,19 +167,6 @@ extension ShotScene {
         return release
     }
 
-    /// The CUE release with its sheet's FILE line bound to no audio: one
-    /// track plays the image whole, the sheet is in the Files list, and the
-    /// save deletes tracks that have track data.
-    private static var noAudioCueRelease: PreviewReleaseEdit {
-        var release = editedCueRelease
-        PreviewReleaseLibrary.withoutAudio(
-            "Northbound.cue",
-            cueImage.name,
-            in: &release
-        )
-        return release
-    }
-
     /// The audio file `name` of the release, which no track plays from.
     private static func carriedAudio(_ name: String) -> BridgeMappingFile {
         PreviewData.mappingFile(
@@ -223,27 +202,16 @@ extension ShotScene {
             if stage == .coverSheet {
                 presentCoverSheet(on: uiStore, images: images)
             }
-            let window = ZStack(alignment: .topLeading) {
-                ShotScenes.libraryWindow(
-                    uiStore: uiStore,
-                    backing: backing,
-                    playbackStore: boardPlayback(),
-                    size: size
-                )
-                if stage == .albumMenu {
-                    albumMenu
-                }
-            }
             return ShotStage(
-                Group {
-                    if stage == .dropTracksAlert {
-                        OverWindow.alert(
-                            DropTracksConfirmation.alert {},
-                            over: window
-                        )
-                    }
-                    else {
-                        window
+                ZStack(alignment: .topLeading) {
+                    ShotScenes.libraryWindow(
+                        uiStore: uiStore,
+                        backing: backing,
+                        playbackStore: boardPlayback(),
+                        size: size
+                    )
+                    if stage == .albumMenu {
+                        albumMenu
                     }
                 },
                 images: images
