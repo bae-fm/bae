@@ -1,7 +1,8 @@
 /* ==== part: storage ==== */
 /* Shared helpers for the storage, album-action, import and error parts */
 .bae-num { font-variant-numeric: tabular-nums; }
-.bae-mono { font: 400 11px/14px var(--font-mono); }
+/* The design system's mono style, 12px (Codes and paths), on a 14px line: SF Mono's own line at 12pt, so a row holds it at the height it held the 11px text. */
+.bae-mono { font: 400 12px/14px var(--font-mono); }
 .bae-strong { font-weight: 600; }
 .bae-ellipsis { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bae-activity { color: var(--activity); }
