@@ -22,6 +22,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -34,6 +35,7 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.IconTone
 import kotlinx.coroutines.launch
+import kotlin.math.ceil
 import kotlin.math.roundToInt
 
 private const val VOLUME_STEPS = 1_000
@@ -54,8 +56,11 @@ internal fun AndroidVolumeSlider(
     val label = stringResource(R.string.volume)
     val onValueChangeNow by rememberUpdatedState(onValueChange)
     val onValueChangeFinishedNow by rememberUpdatedState(onValueChangeFinished)
+    // The view pads its line by the thumb's half, so the line itself, which the design draws a gap from
+    // each side, starts that far inside the view: the view reaches past the gap by the same amount.
+    val thumbHalf = with(LocalDensity.current) { ceil(SeekLineLook.LARGE.thumbHalfWidthDp * density).toInt().toDp() }
     AndroidView(
-        modifier = modifier.fillMaxWidth().padding(horizontal = ThemeSpace.related),
+        modifier = modifier.fillMaxWidth().padding(horizontal = ThemeSpace.related - thumbHalf),
         factory = { context ->
             val density = context.resources.displayMetrics.density
             val look = SeekLineLook.LARGE
