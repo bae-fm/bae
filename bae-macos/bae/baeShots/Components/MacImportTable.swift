@@ -9,7 +9,7 @@ extension ShotScene {
             component(
                 "mac.component.import-table.default",
                 page: true,
-                width: 580,
+                width: 968,
                 height: 130
             ) {
                 importTable([
@@ -31,7 +31,7 @@ extension ShotScene {
                 actions: inertMappingActions().trackTable,
                 editingCommands: EditingCommitCommands()
             )
-            .frame(width: 580, alignment: .leading)
+            .frame(width: 968, alignment: .leading)
         )
     }
 

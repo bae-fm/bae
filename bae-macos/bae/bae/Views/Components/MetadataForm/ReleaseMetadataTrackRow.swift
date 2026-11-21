@@ -46,7 +46,7 @@ struct ReleaseMetadataTrackRow: View {
             TrackLengthText(length: length, listedLength: listedLength)
                 .frame(
                     width: ReleaseMetadataTrackColumns.length,
-                    alignment: .leading
+                    alignment: .trailing
                 )
         }
     }
@@ -88,9 +88,9 @@ struct ReleaseMetadataTrackColumns {
     let artist: CGFloat
 
     static let track: CGFloat = 52
-    static let length: CGFloat = 124
+    static let length: CGFloat = 88
     static let spacing = ThemeSpace.related
-    static let rowPadding = ThemeSpace.line
+    static let rowPadding: CGFloat = 0
 
     private static let idealTitle: CGFloat = 220
     private static let floorTitle: CGFloat = 120
