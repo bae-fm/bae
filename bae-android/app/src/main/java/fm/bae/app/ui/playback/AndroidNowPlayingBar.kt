@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -120,7 +121,7 @@ internal fun AndroidNowPlayingTrack(
     Row(
         modifier =
             modifier
-                .clickable(onClick = onExpand)
+                .clickable(role = Role.Button, onClick = onExpand)
                 // One TalkBack element named for the track, instead of an
                 // unnamed button and loose text.
                 .semantics(mergeDescendants = true) { contentDescription = nowPlayingDescription },
