@@ -81,7 +81,13 @@ fun AndroidButton(
         }
 
         ButtonKind.TONAL -> {
-            FilledTonalButton(onClick = onClick, modifier = sized, enabled = enabled, content = labelled)
+            FilledTonalButton(
+                onClick = onClick,
+                modifier = sized,
+                enabled = enabled,
+                colors = tonalColors(),
+                content = labelled,
+            )
         }
 
         ButtonKind.OUTLINED -> {
@@ -92,7 +98,7 @@ fun AndroidButton(
                     onClick = onClick,
                     modifier = sized,
                     enabled = enabled,
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = toneColor),
+                    colors = outlinedColors(toneColor),
                     border = BorderStroke(1.dp, toneColor),
                     content = labelled,
                 )
@@ -104,12 +110,7 @@ fun AndroidButton(
                 onClick = onClick,
                 modifier = sized,
                 enabled = enabled,
-                colors =
-                    if (toneColor == null) {
-                        ButtonDefaults.textButtonColors()
-                    } else {
-                        ButtonDefaults.textButtonColors(contentColor = toneColor)
-                    },
+                colors = textColors(toneColor),
                 content = labelled,
             )
         }
@@ -122,9 +123,16 @@ private fun filledColors(tone: ButtonTone): ButtonColors =
         ButtonDefaults.buttonColors(
             containerColor = MaterialTheme.colorScheme.error,
             contentColor = MaterialTheme.colorScheme.background,
+            disabledContainerColor = disabledContainer(),
+            disabledContentColor = disabledContent(),
         )
     } else {
-        ButtonDefaults.buttonColors(containerColor = LocalPrimaryFill.current, contentColor = BaeTheme.colors.onFill)
+        ButtonDefaults.buttonColors(
+            containerColor = LocalPrimaryFill.current,
+            contentColor = BaeTheme.colors.onFill,
+            disabledContainerColor = disabledContainer(),
+            disabledContentColor = disabledContent(),
+        )
     }
 
 /** The tone's text colour, or null where the button's own is kept. */
@@ -176,7 +184,11 @@ private fun PlainOutlinedButton(
         onClick = onClick,
         modifier = modifier,
         enabled = enabled,
-        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
+        colors =
+            ButtonDefaults.outlinedButtonColors(
+                contentColor = MaterialTheme.colorScheme.onSurface,
+                disabledContentColor = disabledContent(),
+            ),
         border = BorderStroke(1.dp, outlineColor(enabled)),
         content = content,
     )
@@ -188,10 +200,8 @@ private fun outlineColor(enabled: Boolean): Color =
     if (enabled) {
         MaterialTheme.colorScheme.onSurfaceVariant
     } else {
-        MaterialTheme.colorScheme.onSurface.copy(alpha = DISABLED_OUTLINE_ALPHA)
+        MaterialTheme.colorScheme.onSurface.copy(alpha = DISABLED_FILL_ALPHA)
     }
-
-private const val DISABLED_OUTLINE_ALPHA = 0.12f
 
 private val LARGE_HEIGHT = 48.dp
 private val LARGE_LABEL_SIZE = 15.sp
