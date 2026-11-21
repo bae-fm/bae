@@ -70,7 +70,7 @@
 /* A text button draws no shape, so the 40dp shape Material draws on press never shows on a board; its words sit centred in the 48dp. */
 .bae-a-btn-text { padding: 0 12px; display: inline-flex; align-items: center; justify-content: center; color: var(--accent); }
 .bae-a-btn-text.bae-a-btn-destructive, .bae-a-btn-outlined.bae-a-btn-destructive { color: var(--danger); }
-/* neutral: a text button in the screen's own text colour, for Cancel beside a destructive action, so the accent and danger never sit side by side. */
+/* neutral: a text button in the screen's own text colour: every dialog button other than its action, so only the action carries the accent or the danger colour. */
 .bae-a-btn-text.bae-a-btn-neutral { color: var(--text-primary); }
 .bae-a-btn-align-text { align-self: flex-start; margin-left: -12px; }
 .bae-a-btn-align-field { align-self: flex-start; margin-left: calc(var(--space-edge) - 12px); }

@@ -88,7 +88,7 @@
         props.countdown ? h('div', { className: 'bae-a-sidepause-count' }, 'The next ' + (disc ? 'disc' : 'side') + ' starts in ' + props.countdown + ' seconds.') : null,
         h(AndroidCheckbox, { label: disc ? 'Pause between discs' : 'Pause between sides', on: !props.unchecked }),
         props.unchecked ? h('div', null, 'You can turn this back on in Settings › Playback.') : null),
-      h(AndroidDialogActions, null, h(AndroidButton, { kind: 'text' }, 'Close'), h(AndroidButton, null, 'Play')));
+      h(AndroidDialogActions, null, h(AndroidButton, { kind: 'text', neutral: true }, 'Close'), h(AndroidButton, null, 'Play')));
   }
 
   // A line saying what failed, in body text in the danger colour.
