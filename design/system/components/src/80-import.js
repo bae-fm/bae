@@ -156,7 +156,7 @@
   // The release's cover (a plain tile when it has none) beside its identity: the album title and year as fields and the album artist; then what the card it sits in puts under them, its children: the folder's audio line and the album picker.
   function MacReleaseIdentity(props) {
     return h('div', { className: 'bae-m-idraft-head' },
-      props.cover ? h('button', { type: 'button', className: 'bae-plainbtn', 'aria-label': 'Change cover' }, h(Artwork, { title: props.cover, size: 132, radius: 6 })) : h(Artwork, { size: 132, radius: 6, missing: true }),
+      props.cover ? h('button', { type: 'button', className: 'bae-plainbtn', 'aria-label': 'Change cover', disabled: !!props.coverOff }, h(Artwork, { title: props.cover, size: 132, radius: 6 })) : h(Artwork, { size: 132, radius: 6, missing: true }),
       h('div', { className: 'bae-m-idraft-id' },
         h(MacInlineField, { label: 'Album title', value: props.title, placeholder: 'Album title', large: true }),
         h(MacAlbumArtistField, { artist: props.artist, chip: props.artistChip, secondary: true }),
@@ -211,12 +211,12 @@
   // The release's identity and its fields, as both cards draw them under their lead: the cover and identity with the audio line and the album picker, then the Release grid.
   function releaseHeader(props) {
     return [
-      h(MacReleaseIdentity, { key: 'id', cover: props.cover, title: props.title, artist: props.artist, artistChip: props.artistChip, year: props.year },
+      h(MacReleaseIdentity, { key: 'id', cover: props.cover, coverOff: !!props.reading, title: props.title, artist: props.artist, artistChip: props.artistChip, year: props.year },
         audioLine(props.audio),
         props.album ? h(MacAlbumPicker, { key: 'album', album: props.album, inLibrary: props.albumInLibrary, picked: props.albumPicked, open: props.albumOpen, off: !!props.reading }) : null),
       h(MacReleaseFields, { key: 'fields', year: props.pressingYear, media: props.media, labels: props.labels, country: props.country, countryOpen: props.countryOpen, barcodes: props.barcodes, status: props.status, packaging: props.packaging, details: props.details })];
   }
-  // The release editor, one component in the import pane and in the album's Edit release sheet; its `actions` row is the only difference. `actions` `import`: where the import goes (`cloud`, `to`) and Import, or Retry import (`retry`), or neither while the folder has nothing to import (`blank`), with the folder's `check` in a warning notice under that row. `actions` `save`: Cancel once something changed (`changed`), and Save. `reading`: the file a save or an import reads before it writes, while Unlink, the Metadata menu and the album pop-up are off, since a click on any of them would cancel the save. Then, in both: the release's identity and fields; the records under a rule, with Unlink; the folder's or release's images (`images`); the track table, the children (side headings, CUE captions and track rows); the Files list (`files`).
+  // The release editor, one component in the import pane and in the album's Edit release sheet; its `actions` row is the only difference. `actions` `import`: where the import goes (`cloud`, `to`) and Import, or Retry import (`retry`), or neither while the folder has nothing to import (`blank`), with the folder's `check` in a warning notice under that row. `actions` `save`: Cancel once something changed (`changed`), and Save. `reading`: the file a save or an import reads before it writes, while the cover, Unlink, the Metadata menu and the album pop-up are off, since a click on any of them would cancel the save. Then, in both: the release's identity and fields; the records under a rule, with Unlink; the folder's or release's images (`images`); the track table, the children (side headings, CUE captions and track rows); the Files list (`files`).
   function MacReleaseEditor(props) {
     var tracks = kids(props.children);
     return h('div', { className: 'bae-m-reditor' },

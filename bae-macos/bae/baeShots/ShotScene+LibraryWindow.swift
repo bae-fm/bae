@@ -41,8 +41,7 @@ extension ShotScene {
     }
 
     /// A browse session over `boardAlbums`, with the first album open when
-    /// `openAlbum` is set, as the album boards draw it. `detailAnswered`
-    /// learns when the fixture has answered the open album's detail.
+    /// `openAlbum` is set; `detailAnswered` learns when its detail is answered.
     @MainActor
     static func boardLibraryBacking(
         uiStore: UiStore,
