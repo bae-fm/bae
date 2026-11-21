@@ -10,13 +10,18 @@ extension ShotScene {
     /// A component with a capture file, `Components/<Component>.swift`,
     /// keeps its scenes there.
     static let componentScenes: [ShotScene] =
-        macCheckboxScenes
-        + libraryRowScenes + settingsComponentScenes + partsComponentScenes
-        + playbackComponentScenes + libraryComponentScenes
-        + storageComponentScenes + importComponentScenes + basicsComponentScenes
+        libraryRowScenes + partsComponentScenes + playbackComponentScenes
+        + libraryComponentScenes + storageComponentScenes
+        + importComponentScenes + basicsComponentScenes
         + browseComponentScenes + windowComponentScenes
         + controlsComponentScenes + settingsPaneComponentScenes
-        + sidePaneComponentScenes
+        + sidePaneComponentScenes + macAccentPickerScenes + macCastRowScenes
+        + macCheckboxScenes + macCloseButtonScenes + macCopyTextScenes
+        + macDisclosureScenes + macErrorDetailsScenes + macFieldRowScenes
+        + macFileNameFieldScenes + macImportDestinationScenes
+        + macInfoTipScenes + macStorageCellScenes + macStorageFooterScenes
+        + macStorageToolbarScenes + macStorageWindowScenes + macTableScenes
+        + macTokenScenes
 
     /// `MacLibraryRow`'s states.
     private static let libraryRowScenes: [ShotScene] = [

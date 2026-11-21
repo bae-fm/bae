@@ -12,7 +12,6 @@ extension ShotScene {
         storageUsageScenes + usageKeyScenes + releaseCellScenes
         + transferSummaryScenes + scanCodeScenes + storageStateScenes
         + storageBandScenes + storageChipScenes + storageFileComponentScenes
-        + storageTableComponentScenes
 
     private static func storageUsage(
         _ id: String,

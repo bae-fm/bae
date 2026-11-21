@@ -7,7 +7,7 @@ import SwiftUI
 extension ShotScene {
     /// `MacToken`, a name pattern's value as a chip, on its own as its
     /// preview draws it: a value, and a longer value.
-    static let tokenScenes: [ShotScene] = [
+    static let macTokenScenes: [ShotScene] = [
         component("mac.component.token.value", height: 40) {
             TokenShot(label: "Artist")
         },
