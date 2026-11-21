@@ -20,7 +20,8 @@ struct MacStorageFooter: View {
                 // An Int, so the text reads the catalog's "%lld releases".
                 Text("\(Int(count.rows)) releases")
             }
-            if let totalSize {
+            // No releases, no total: the preview's empty footer counts only.
+            if let totalSize, totalSize > 0 {
                 // One text, as the preview's footer draws the dot with the
                 // total.
                 Text(verbatim: FactList.glyph + " ")
