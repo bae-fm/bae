@@ -10,77 +10,77 @@ extension ShotScene {
     static let macMainWindowScenes: [ShotScene] = [
         ShotScene(
             id: "mac.component.main-window.library",
-            size: CGSize(width: 1100, height: 520),
+            size: CGSize(width: 842, height: 520),
             frame: .window(title: "bae", titleBar: .hidden)
         ) {
             mainWindow(section: .library, playing: true)
         },
         ShotScene(
             id: "mac.component.main-window.import",
-            size: CGSize(width: 1100, height: 520),
+            size: CGSize(width: 842, height: 520),
             frame: .window(title: "bae", titleBar: .hidden)
         ) {
             mainWindow(section: .importing, playing: true)
         },
         ShotScene(
             id: "mac.component.main-window.nothing-played",
-            size: CGSize(width: 1100, height: 520),
+            size: CGSize(width: 842, height: 520),
             frame: .window(title: "bae", titleBar: .hidden)
         ) {
             mainWindow(section: .library, playing: false)
         },
         ShotScene(
             id: "mac.component.main-window.queue-open",
-            size: CGSize(width: 1100, height: 520),
+            size: CGSize(width: 842, height: 520),
             frame: .window(title: "bae", titleBar: .hidden)
         ) {
             mainWindow(section: .library, playing: true)
         },
         ShotScene(
             id: "mac.component.main-window.search-focused",
-            size: CGSize(width: 1100, height: 520),
+            size: CGSize(width: 842, height: 520),
             frame: .window(title: "bae", titleBar: .hidden)
         ) {
             mainWindow(section: .library, playing: true)
         },
         ShotScene(
             id: "mac.component.main-window.sync-attention",
-            size: CGSize(width: 1100, height: 520),
+            size: CGSize(width: 842, height: 520),
             frame: .window(title: "bae", titleBar: .hidden)
         ) {
             mainWindow(section: .library, playing: true)
         },
         ShotScene(
             id: "mac.component.main-window.sync-moving",
-            size: CGSize(width: 1100, height: 520),
+            size: CGSize(width: 842, height: 520),
             frame: .window(title: "bae", titleBar: .hidden)
         ) {
             mainWindow(section: .library, playing: true)
         },
         ShotScene(
             id: "mac.component.main-window.sync-paused",
-            size: CGSize(width: 1100, height: 520),
+            size: CGSize(width: 842, height: 520),
             frame: .window(title: "bae", titleBar: .hidden)
         ) {
             mainWindow(section: .library, playing: true)
         },
         ShotScene(
             id: "mac.component.main-window.track-no-cover",
-            size: CGSize(width: 1100, height: 520),
+            size: CGSize(width: 842, height: 520),
             frame: .window(title: "bae", titleBar: .hidden)
         ) {
             mainWindow(section: .library, playing: true)
         },
         ShotScene(
             id: "mac.component.main-window.waiting",
-            size: CGSize(width: 1100, height: 520),
+            size: CGSize(width: 842, height: 520),
             frame: .window(title: "bae", titleBar: .hidden)
         ) {
             mainWindow(section: .library, playing: true)
         },
     ]
 
-    /// The main window on `section`, 1100 by 520 as the preview draws it,
+    /// The main window on `section`, 842 by 520 as the preview row draws it, though the preview asks for 1100,
     /// with nothing in the space the section fills.
     @MainActor
     private static func mainWindow(
@@ -96,7 +96,7 @@ extension ShotScene {
                 needsAttention: false,
                 syncActivity: SyncActivityStore(),
                 playbackStore: playing ? boardPlayback() : PlaybackStore(),
-                size: CGSize(width: 1100, height: 520),
+                size: CGSize(width: 842, height: 520),
                 window: AnyView(
                     MacMainWindow(showSidePane: false) {
                         MacTitleBar(
