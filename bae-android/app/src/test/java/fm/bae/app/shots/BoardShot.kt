@@ -42,12 +42,19 @@ abstract class BoardShot {
     /**
      * Draws a design-system component in one of its states, as [id] (`android.component.<thing>.<state>`) names
      * it, on the page colour, at the size of its board's preview cell, which builds lists in the file
-     * `bae.shotsBoardSizes` names; a state with no entry fails.
+     * `bae.shotsBoardSizes` names; a selected state with no entry is skipped, so the run has no shot for it and
+     * the checker lists its preview row.
      */
     protected fun component(
         id: String,
         content: @Composable () -> Unit,
-    ) = shot(id) { ComponentScene(BoardSizes.of(id), content) }
+    ) {
+        assumeNotNull(System.getProperty("bae.shotsDir"))
+        assumeTrue("board '$id' is not selected", isSelected(id, System.getProperty("bae.shotsSelect")))
+        val size = BoardSizes.of(id)
+        assumeTrue("the board sizes list none for '$id'", size != null)
+        shot(id) { ComponentScene(checkNotNull(size), content) }
+    }
 
     /** Draws [content] as [board]. */
     protected fun shot(
@@ -101,8 +108,8 @@ internal object BoardSizes {
         JSONObject(File(path).readText())
     }
 
-    fun of(board: String): DpSize {
-        val entry = checkNotNull(sizes.optJSONObject(board)) { "the board sizes list none for '$board'" }
+    fun of(board: String): DpSize? {
+        val entry = sizes.optJSONObject(board) ?: return null
         return DpSize(entry.getDouble("width").dp, entry.getDouble("height").dp)
     }
 }
