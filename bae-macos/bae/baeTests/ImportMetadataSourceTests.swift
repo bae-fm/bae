@@ -480,7 +480,6 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
             detail: MappingFixtures.detail(
                 mapping: MappingFixtures.thirteenFileTable,
                 edit: editValues,
-                summaryCatalogNumber: draftIsBlank ? nil : "AB 100",
                 metadataProvenance: provenance
             )
         )

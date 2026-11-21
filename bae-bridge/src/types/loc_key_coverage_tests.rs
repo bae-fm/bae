@@ -13,8 +13,6 @@ use bae_types::credit_role::{CreditRoleKind, QualifierKind};
 /// `core.*` keys the UI names directly rather than through a `bridge_*_key`
 /// function.
 const DIRECT_KEYS: &[&str] = &[
-    // The import summary names a draft read from the folder's own metadata.
-    "core.import.metadata.file_metadata",
     // Storage queue summary (UI composes counts).
     "core.queue.uploading",
     "core.queue.failed",

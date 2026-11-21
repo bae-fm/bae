@@ -110,7 +110,6 @@ extension ShotScene {
                 )
             ),
             edit: edit,
-            summaryCatalogNumber: "HR-1042",
             mapping: BridgeMappingTable(
                 images: [],
                 trackSides: [],

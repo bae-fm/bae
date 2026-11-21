@@ -342,7 +342,6 @@ extension PreviewData {
         metadataProvenance: BridgeMetadataProvenance? = nil,
         releaseLink: BridgeReleaseLink? = nil,
         edit: BridgeRawReleaseEdit = blankDraftValues,
-        summaryCatalogNumber: String? = nil,
         mapping: BridgeMappingTable,
         cover: BridgeCoverChoice? = nil,
         failure: BridgeError? = nil,
@@ -384,7 +383,6 @@ extension PreviewData {
                         album: album,
                         metadataDraft: edit,
                         pressingOffers: pressingOffers,
-                        summaryCatalogNumber: summaryCatalogNumber,
                         albumArtists: albumArtists,
                         metadataDraftIsBlank: edit.albumTitle.isEmpty,
                         metadataProvenance: metadataProvenance,
@@ -427,7 +425,6 @@ extension PreviewData {
             )
         ),
         edit: confirmEditValues,
-        summaryCatalogNumber: "AB 100",
         mapping: mappingTable,
         cover: releaseDetailBridge.defaultCover,
         albumArtists: editMetadataAlbumArtists,
@@ -463,7 +460,6 @@ extension PreviewData {
             )
         ),
         edit: moreTracksEditValues,
-        summaryCatalogNumber: "AB 100",
         mapping: moreTracksMappingTable,
         cover: moreTracksReleaseDetail.defaultCover,
         albumArtists: editMetadataAlbumArtists,
@@ -495,7 +491,6 @@ extension PreviewData {
             )
         ),
         edit: confirmEditValues,
-        summaryCatalogNumber: "AB 100",
         mapping: everyRowKindMappingTable,
         cover: releaseDetailBridge.defaultCover,
         albumArtists: editMetadataAlbumArtists,

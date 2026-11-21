@@ -34,7 +34,6 @@ extension PreviewData {
             ),
             releaseLink: boardLink("board-northbound"),
             edit: northboundEdit(),
-            summaryCatalogNumber: "HR-0412",
             mapping: northboundMapping(),
             cover: boardCover("Northbound"),
             placement: .pending(
@@ -228,7 +227,6 @@ extension PreviewData {
             ),
             releaseLink: boardLink("board-low-tide-hours"),
             edit: edit,
-            summaryCatalogNumber: "HR-1042",
             mapping: BridgeMappingTable(
                 images: [boardImage("cover.jpg", art: "Low Tide Hours")],
                 trackSides: boardTrackSides(tracks, edit: edit),
@@ -274,7 +272,6 @@ extension PreviewData {
                 )
             ),
             edit: edit,
-            summaryCatalogNumber: nil,
             mapping: BridgeMappingTable(
                 images: [],
                 trackSides: boardTrackSides(untitledTracks, edit: edit),
@@ -445,7 +442,6 @@ extension PreviewData {
             ),
             releaseLink: boardLink("board-field-recordings"),
             edit: edit,
-            summaryCatalogNumber: "HR-0779",
             mapping: BridgeMappingTable(
                 images: [],
                 trackSides: [
@@ -535,7 +531,6 @@ extension PreviewData {
             ),
             metadataProvenance: .fileMetadata,
             edit: edit,
-            summaryCatalogNumber: nil,
             mapping: BridgeMappingTable(
                 images: [boardImage("\(found.album).jpg")],
                 trackSides: boardTrackSides(notFoundTracks, edit: edit),

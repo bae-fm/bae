@@ -311,16 +311,6 @@ pub struct PressingOffers {
 }
 
 impl RawPressingEdit {
-    /// The catalog number a one-line summary of the pressing shows: the first
-    /// label row that has one.
-    pub fn summary_catalog_number(&self) -> Option<String> {
-        self.labels
-            .iter()
-            .map(|label| &label.catalog_number)
-            .find(|number| !number.is_empty())
-            .cloned()
-    }
-
     /// The choices the pressing's Add menus offer.
     pub fn offers(&self) -> PressingOffers {
         PressingOffers {
