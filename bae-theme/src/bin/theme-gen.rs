@@ -2,8 +2,8 @@
 //! writes the platform's generated theme under `<dir>`.
 //!
 //! `--theme` defaults to `design/theme.toml` and `--tokens` to
-//! `design/system/tokens.json`, which holds the accents, relative to the repo
-//! root the build scripts run from.
+//! `design/system/tokens.json`, which holds the tones, the accents and the
+//! text styles, relative to the repo root the build scripts run from.
 
 use std::fs;
 use std::path::{Path, PathBuf};

@@ -1,6 +1,7 @@
 //! The apps' shared theme: `design/theme.toml` for the semantics and scales
-//! and `design/system/tokens.json` for the tones and accents, validated, and
-//! emitted as the typed Swift and Kotlin each platform compiles.
+//! and `design/system/tokens.json` for the tones, the accents and the text
+//! styles, validated, and emitted as the typed Swift and Kotlin each platform
+//! compiles.
 
 pub mod android;
 pub mod apple;
@@ -130,7 +131,8 @@ pub struct IconRole {
 /// A text role: weight, tracking and monospacing shared by every
 /// platform, and a size for each platform that uses it. Apple's code takes
 /// macOS and iOS together; a platform whose code reads a role it lacks fails
-/// to compile.
+/// to compile. tokens.json gives a role one text style per platform that
+/// draws it, each naming the role in its `role`.
 #[derive(Debug)]
 pub struct TextRole {
     pub weight: Weight,
@@ -211,7 +213,6 @@ struct RawTheme {
     semantics: RawModes,
     opacity: BTreeMap<String, f64>,
     radius: BTreeMap<String, f64>,
-    text: BTreeMap<String, RawTextRole>,
     space: BTreeMap<String, f64>,
     icon: BTreeMap<String, RawIconRole>,
     size: BTreeMap<String, RawPlatformLengths>,
@@ -265,20 +266,6 @@ impl RawPlatformLengths {
     }
 }
 
-/// A text role as written; a platform left out is reported rather than
-/// defaulted.
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct RawTextRole {
-    weight: Weight,
-    tracking: Option<f64>,
-    monospaced: Option<bool>,
-    macos: Option<f64>,
-    ios: Option<String>,
-    android: Option<f64>,
-    android_line: Option<f64>,
-}
-
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct RawModes {
@@ -286,11 +273,48 @@ struct RawModes {
     dark: BTreeMap<String, String>,
 }
 
-/// design/system/tokens.json, of which the tones and accents are read.
+/// design/system/tokens.json, of which the tones, the accents and the text
+/// styles are read.
 #[derive(Deserialize)]
 struct RawTokens {
     color: RawColorTokens,
+    #[serde(rename = "type")]
+    text: RawType,
 }
+
+#[derive(Deserialize)]
+struct RawType {
+    groups: Vec<RawTypeGroup>,
+}
+
+/// A group of text styles in one font family. The `android` family's styles
+/// are Android's sizes; every other family's are Apple's.
+#[derive(Deserialize)]
+struct RawTypeGroup {
+    family: String,
+    styles: Vec<RawTextStyle>,
+}
+
+/// A text style as tokens.json writes it for the design system's stylesheet,
+/// with the app role it draws and, on Apple, the Dynamic Type style iOS
+/// follows.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RawTextStyle {
+    name: String,
+    role: String,
+    family: Option<String>,
+    font_size: String,
+    font_weight: u16,
+    line_height: Option<String>,
+    letter_spacing: Option<String>,
+    ios: Option<String>,
+}
+
+/// The family whose text styles are Android's sizes.
+const ANDROID_FAMILY: &str = "android";
+/// The family whose text styles draw in the platform's monospaced face.
+const MONO_FAMILY: &str = "mono";
 
 #[derive(Deserialize)]
 struct RawColorTokens {
@@ -334,19 +358,170 @@ fn appearances(
     Some((light?, dark?))
 }
 
-/// The tones and the accents tokens.json defines, each in its order.
-fn read_tokens(tokens: &str, problems: &mut Vec<String>) -> (Vec<Tone>, Vec<Accent>) {
+/// What tokens.json defines for the apps: the tones and the accents, each in
+/// its order, and the text roles.
+struct TokenRoles {
+    tones: Vec<Tone>,
+    accents: Vec<Accent>,
+    text: BTreeMap<String, TextRole>,
+}
+
+fn read_tokens(tokens: &str, problems: &mut Vec<String>) -> TokenRoles {
     let raw: RawTokens = match serde_json::from_str(tokens) {
         Ok(raw) => raw,
         Err(error) => {
             problems.push(format!("tokens.json: {error}"));
-            return (Vec::new(), Vec::new());
+            return TokenRoles { tones: Vec::new(), accents: Vec::new(), text: BTreeMap::new() };
         }
     };
     let by_name: BTreeMap<&str, &serde_json::Value> =
         raw.color.tokens.iter().map(|token| (token.name.as_str(), &token.value)).collect();
     let names: Vec<&str> = raw.color.tokens.iter().map(|token| token.name.as_str()).collect();
-    (read_tones(&names, &by_name, problems), read_accents(&names, &by_name, problems))
+    TokenRoles {
+        tones: read_tones(&names, &by_name, problems),
+        accents: read_accents(&names, &by_name, problems),
+        text: read_text(&raw.text, problems),
+    }
+}
+
+/// A length tokens.json writes in CSS pixels (`13px`), as points and sp.
+fn pixels(style: &str, what: &str, css: &str, problems: &mut Vec<String>) -> f64 {
+    match css.strip_suffix("px").map(str::parse::<f64>) {
+        Some(Ok(value)) => value,
+        _ => {
+            problems.push(format!(
+                "tokens.json text style `{style}`: the {what} `{css}` is not a length in px"
+            ));
+            0.0
+        }
+    }
+}
+
+/// A CSS font weight as the weight the apps draw.
+fn css_weight(style: &str, weight: u16, problems: &mut Vec<String>) -> Weight {
+    match weight {
+        400 => Weight::Regular,
+        500 => Weight::Medium,
+        600 => Weight::Semibold,
+        700 => Weight::Bold,
+        800 => Weight::Heavy,
+        other => {
+            problems
+                .push(format!("tokens.json text style `{style}`: the apps draw no weight {other}"));
+            Weight::Regular
+        }
+    }
+}
+
+/// One platform's text style of a role, read.
+struct PlatformStyle<'a> {
+    name: &'a str,
+    weight: Weight,
+    tracking: f64,
+    monospaced: bool,
+    size: f64,
+    line: Option<f64>,
+    ios: Option<&'a String>,
+}
+
+/// The text roles of tokens.json's text styles: each role's weight, tracking
+/// and monospacing, which its styles share, Apple's size from its style in an
+/// Apple family and Android's from its style in the `android` family.
+fn read_text(raw: &RawType, problems: &mut Vec<String>) -> BTreeMap<String, TextRole> {
+    let mut roles: BTreeMap<&str, (Option<PlatformStyle>, Option<PlatformStyle>)> = BTreeMap::new();
+    for group in &raw.groups {
+        let android = group.family == ANDROID_FAMILY;
+        for style in &group.styles {
+            let name = style.name.as_str();
+            let read = PlatformStyle {
+                name,
+                weight: css_weight(name, style.font_weight, problems),
+                tracking: style
+                    .letter_spacing
+                    .as_ref()
+                    .map_or(0.0, |spacing| pixels(name, "letter spacing", spacing, problems)),
+                monospaced: style.family.as_ref().unwrap_or(&group.family) == MONO_FAMILY,
+                size: pixels(name, "size", &style.font_size, problems),
+                line: style
+                    .line_height
+                    .as_ref()
+                    .map(|line| pixels(name, "line height", line, problems)),
+                ios: style.ios.as_ref(),
+            };
+            let slots = roles.entry(style.role.as_str()).or_default();
+            let slot = if android { &mut slots.1 } else { &mut slots.0 };
+            if let Some(other) = slot.replace(read) {
+                problems.push(format!(
+                    "tokens.json text styles `{}` and `{name}` both give role `{}` {} size",
+                    other.name,
+                    style.role,
+                    if android { "Android's" } else { "Apple's" }
+                ));
+            }
+        }
+    }
+    check_role_names(roles.keys().copied(), problems);
+    roles
+        .into_iter()
+        .filter_map(|(role, (apple, android))| {
+            let shared = match (&apple, &android) {
+                (Some(apple), Some(android)) => {
+                    if (apple.weight, apple.tracking, apple.monospaced)
+                        != (android.weight, android.tracking, android.monospaced)
+                    {
+                        problems.push(format!(
+                            "tokens.json text styles `{}` and `{}` of role `{role}` differ in weight, letter spacing or face; the platforms share them",
+                            apple.name, android.name
+                        ));
+                    }
+                    apple
+                }
+                (Some(only), None) | (None, Some(only)) => only,
+                (None, None) => unreachable!("a role is read from one of its styles"),
+            };
+            let (weight, tracking, monospaced) = (shared.weight, shared.tracking, shared.monospaced);
+            if let Some(android) = &android {
+                if android.ios.is_some() {
+                    problems.push(format!(
+                        "tokens.json text style `{}` is Android's and names an ios style",
+                        android.name
+                    ));
+                }
+            }
+            let apple = match apple {
+                Some(style) => match style.ios {
+                    Some(ios) => {
+                        if !IOS_TEXT_STYLES.contains(&ios.as_str()) {
+                            problems.push(format!(
+                                "tokens.json text style `{}`: `{ios}` is not a Dynamic Type style",
+                                style.name
+                            ));
+                        }
+                        Some(AppleSize { macos: style.size, ios: ios.clone() })
+                    }
+                    None => {
+                        problems.push(format!(
+                            "tokens.json text style `{}` is Apple's and names no ios style",
+                            style.name
+                        ));
+                        return None;
+                    }
+                },
+                None => None,
+            };
+            Some((
+                role.to_string(),
+                TextRole {
+                    weight,
+                    tracking,
+                    monospaced,
+                    apple,
+                    android: android.as_ref().map(|style| style.size),
+                    android_line: android.and_then(|style| style.line),
+                },
+            ))
+        })
+        .collect()
 }
 
 /// Every `<name>` with a `tone-<name>-background` token, with each
@@ -470,7 +645,7 @@ impl Theme {
             light: roles("semantics.light", &raw.semantics.light),
             dark: roles("semantics.dark", &raw.semantics.dark),
         };
-        let (tones, accents) = read_tokens(tokens, &mut problems);
+        let TokenRoles { tones, accents, text } = read_tokens(tokens, &mut problems);
 
         check_choices("tone", tones.iter().map(|tone| tone.name.as_str()), &mut problems);
         check_choices("accent", accents.iter().map(|accent| accent.name.as_str()), &mut problems);
@@ -522,7 +697,6 @@ impl Theme {
             }
         }
         check_role_names(raw.radius.keys(), &mut problems);
-        check_role_names(raw.text.keys(), &mut problems);
         for (name, value) in &raw.space {
             if *value < 0.0 {
                 problems.push(format!("space {name}: {value} is negative"));
@@ -546,44 +720,6 @@ impl Theme {
             .iter()
             .map(|(name, lengths)| {
                 (name.clone(), lengths.check(&format!("size {name}"), &mut problems))
-            })
-            .collect();
-        let text = raw
-            .text
-            .iter()
-            .map(|(name, role)| {
-                let apple = match (role.macos, role.ios.as_ref()) {
-                    (Some(macos), Some(ios)) => {
-                        if !IOS_TEXT_STYLES.contains(&ios.as_str()) {
-                            problems
-                                .push(format!("text {name}: `{ios}` is not a Dynamic Type style"));
-                        }
-                        Some(AppleSize { macos, ios: ios.clone() })
-                    }
-                    (None, None) => None,
-                    (Some(_), None) => {
-                        problems.push(format!("text {name} has a macos size but no ios size"));
-                        None
-                    }
-                    (None, Some(_)) => {
-                        problems.push(format!("text {name} has an ios size but no macos size"));
-                        None
-                    }
-                };
-                if apple.is_none() && role.android.is_none() {
-                    problems.push(format!("text {name} has no size on any platform"));
-                }
-                (
-                    name.clone(),
-                    TextRole {
-                        weight: role.weight,
-                        tracking: role.tracking.unwrap_or(0.0),
-                        monospaced: role.monospaced.unwrap_or(false),
-                        apple,
-                        android: role.android,
-                        android_line: role.android_line,
-                    },
-                )
             })
             .collect();
 
@@ -642,8 +778,9 @@ fn standard_choice<'a>(
 }
 
 /// A role name becomes a property on both platforms.
-fn check_role_names<'a>(names: impl Iterator<Item = &'a String>, problems: &mut Vec<String>) {
+fn check_role_names(names: impl Iterator<Item = impl AsRef<str>>, problems: &mut Vec<String>) {
     for name in names {
+        let name = name.as_ref();
         let mut chars = name.chars();
         let starts_lower = chars.next().is_some_and(|c| c.is_ascii_lowercase());
         if !starts_lower || !chars.all(|c| c.is_ascii_alphanumeric()) {

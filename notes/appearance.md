@@ -1,8 +1,8 @@
 # Appearance
 
-Every colour the apps draw with is defined once: the tones and the accents in
-`design/system/tokens.json`, the design system's own file, and the rest in
-`design/theme.toml`. The `theme-gen` tool (`bae-theme`) turns them into typed
+Every colour and text style the apps draw with is defined once: the tones, the
+accents and the text styles in `design/system/tokens.json`, the design system's
+own file, and the rest in `design/theme.toml`. The `theme-gen` tool (`bae-theme`) turns them into typed
 Swift for BaeKit and Kotlin for Android; `build-macos.sh`, `build-ios.sh` and `build-android.sh` run it, and
 its output is not checked in. Both platforms get the same roles, so change
 values there rather than adding a platform palette.
@@ -53,11 +53,14 @@ in rows and lists, `cover` for a release's cover shown large, `chip`, `control`
 for fields, buttons, notices and row highlights, `card`, `panel` for floating
 panels and prompts, and `bar` for skeleton and progress bars.
 
-Text styles are roles as well: display, hero, title, heading, rowTitle, strong,
-body, detail, fine, chip, eyebrow and mono.
-Weight, letter spacing and monospacing are shared; each platform has its
-own size, and iOS names a Dynamic Type style so text follows the person's text
-size. Apple views set a role with `.themeText(_:)`. A section label is one
+Text styles are roles as well, such as display, hero, title, heading,
+rowTitle, strong, body, detail, fine, chip, eyebrow and mono. A role is one text
+style of tokens.json per platform that draws it, each naming the role in its
+`role`: a style in the `android` family gives Android's size and line height in
+sp, and a style in another family gives the macOS size in points, with `ios`
+naming the Dynamic Type style iOS follows so text follows the person's text
+size. A role's styles share their weight and letter spacing, and a style in the
+`mono` family draws in the platform's monospaced face. Apple views set a role with `.themeText(_:)`. A section label is one
 `MacEyebrow` on the Mac and one `AndroidEyebrow` on Android.
 
 Spacing is one shared scale named by meaning: hairline, line, inline, compact,

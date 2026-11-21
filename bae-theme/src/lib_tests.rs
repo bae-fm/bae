@@ -12,9 +12,33 @@ fn token(name: &str, light: &str, dark: &str) -> String {
     format!("{{\"name\": \"{name}\", \"value\": {{\"light\": \"{light}\", \"dark\": \"{dark}\"}}}}")
 }
 
-/// tokens.json with these color tokens.
+/// tokens.json with these color tokens and one text role, `body`, on both
+/// platforms.
 fn tokens_json(tokens: &[String]) -> String {
-    format!("{{\"color\": {{\"tokens\": [{}]}}}}", tokens.join(", "))
+    format!(
+        "{{\"color\": {{\"tokens\": [{}]}}, \"type\": {{\"groups\": {BODY}}}}}",
+        tokens.join(", ")
+    )
+}
+
+/// The text style groups of a tokens.json with one text role, `body`, on
+/// both platforms.
+const BODY: &str = r#"[
+  { "family": "sans", "styles": [{ "name": "body", "role": "body", "fontSize": "13px", "fontWeight": 400, "ios": "body" }] },
+  { "family": "android", "styles": [{ "name": "android-body", "role": "body", "fontSize": "14px", "fontWeight": 400, "lineHeight": "20px" }] }
+]"#;
+
+/// The shipped tokens.json with <groups> as its text style groups.
+fn tokens_with_text(groups: &str) -> String {
+    let mut tokens: serde_json::Value = serde_json::from_str(TOKENS).unwrap();
+    tokens["type"]["groups"] = serde_json::from_str(groups).unwrap();
+    tokens.to_string()
+}
+
+/// The theme with the shipped theme.toml and <groups> as tokens.json's text
+/// style groups.
+fn theme_with_text(groups: &str) -> Result<Theme, Vec<String>> {
+    Theme::from_sources(THEME, &tokens_with_text(groups))
 }
 
 /// The tokens of tone `name`, one per role, all black.
@@ -101,15 +125,13 @@ fn theme_with(standard: &str, tones: &[String], semantics: &str) -> Result<Theme
             .map(|name| token(name, "#000000", "#000000"));
     Theme::from_sources(&format!(
         "{standard}\n[opacity]\ntint = 0.14\n\n[radius]\nchip = 5\n\n[space]\nrelated = 8\n\n[icon.small]\nweight = \"semibold\"\nmacos = 11\nios = 13\nandroid = 16\n\n\
-         [size.hitTarget]\nmacos = 28\nios = 44\nandroid = 44\n\n{TEXT}\n{semantics}"
+         [size.hitTarget]\nmacos = 28\nios = 44\nandroid = 44\n\n{semantics}"
     ),
         &tokens_json(&[tones, &accent[..]].concat()),
     )
 }
 
 const STANDARD: &str = "[standard]\ntone = \"neutral\"\naccent = \"blue\"\n";
-
-const TEXT: &str = "[text.body]\nweight = \"regular\"\nmacos = 13\nios = \"body\"\nandroid = 14\n";
 
 const SEMANTICS: &str =
     "[semantics.light]\ndanger = \"#000000\"\n[semantics.dark]\ndanger = \"#000000\"\n";
@@ -259,21 +281,69 @@ fn both_platforms_carry_every_radius() {
 }
 
 #[test]
-fn a_text_role_names_macos_and_ios_together() {
-    let theme = from_toml(&THEME.replace(
-        "[text.body]\nweight = \"regular\"\nmacos = 13\n",
-        "[text.body]\nweight = \"regular\"\n",
-    ));
-    assert_eq!(theme.unwrap_err(), ["text body has an ios size but no macos size"]);
+fn a_role_takes_each_platforms_size_from_its_style_and_shares_the_rest() {
+    let theme = theme_with_text(BODY).unwrap();
+    let body = &theme.text["body"];
+    assert_eq!(body.weight, Weight::Regular);
+    assert_eq!(
+        body.apple.as_ref().map(|apple| (apple.macos, apple.ios.as_str())),
+        Some((13.0, "body"))
+    );
+    assert_eq!((body.android, body.android_line), (Some(14.0), Some(20.0)));
+    assert!(!body.monospaced);
+    let mono = &from_toml(THEME).unwrap().text["mono"];
+    assert!(mono.monospaced, "the Android style of mono draws in the mono family");
+    assert_eq!(mono.android, Some(15.0));
 }
 
 #[test]
-fn an_ios_size_names_a_dynamic_type_style() {
-    let theme = from_toml(&THEME.replace(
-        "[text.body]\nweight = \"regular\"\nmacos = 13\nios = \"body\"",
-        "[text.body]\nweight = \"regular\"\nmacos = 13\nios = \"huge\"",
+fn an_apple_style_names_a_dynamic_type_style() {
+    let theme = theme_with_text(&BODY.replace(r#", "ios": "body""#, ""));
+    assert_eq!(
+        theme.unwrap_err(),
+        ["tokens.json text style `body` is Apple's and names no ios style"]
+    );
+    let theme = theme_with_text(&BODY.replace(r#""ios": "body""#, r#""ios": "huge""#));
+    assert_eq!(
+        theme.unwrap_err(),
+        ["tokens.json text style `body`: `huge` is not a Dynamic Type style"]
+    );
+}
+
+#[test]
+fn a_roles_styles_share_weight_and_letter_spacing_and_one_style_gives_each_platform() {
+    let theme = theme_with_text(&BODY.replace(
+        r#""fontSize": "14px", "fontWeight": 400"#,
+        r#""fontSize": "14px", "fontWeight": 500"#,
     ));
-    assert_eq!(theme.unwrap_err(), ["text body: `huge` is not a Dynamic Type style"]);
+    assert_eq!(
+        theme.unwrap_err(),
+        ["tokens.json text styles `body` and `android-body` of role `body` differ in weight, letter spacing or face; the platforms share them"]
+    );
+    let twice = BODY.replace(
+        r#""styles": [{ "name": "body""#,
+        r#""styles": [{ "name": "copy", "role": "body", "fontSize": "12px", "fontWeight": 400, "ios": "body" }, { "name": "body""#,
+    );
+    assert_eq!(
+        theme_with_text(&twice).unwrap_err(),
+        ["tokens.json text styles `copy` and `body` both give role `body` Apple's size"]
+    );
+}
+
+#[test]
+fn a_text_style_measures_in_pixels_and_draws_a_weight_the_apps_have() {
+    let theme = theme_with_text(
+        &BODY
+            .replace(r#""13px""#, r#""13pt""#)
+            .replace(r#""fontWeight": 400, "ios""#, r#""fontWeight": 450, "ios""#),
+    );
+    assert_eq!(
+        theme.unwrap_err(),
+        [
+            "tokens.json text style `body`: the apps draw no weight 450",
+            "tokens.json text style `body`: the size `13pt` is not a length in px",
+        ]
+    );
 }
 
 #[test]
@@ -331,22 +401,9 @@ fn the_launch_background_is_the_standard_tones() {
 
 #[test]
 fn a_text_role_with_an_android_line_height_carries_it_into_kotlin() {
-    let theme = from_toml(&THEME.replace(
-        "[text.body]\nweight = \"regular\"\nmacos = 13\nios = \"body\"\nandroid = 14\nandroid_line = 20\n",
-        "[text.body]\nweight = \"regular\"\nmacos = 13\nios = \"body\"\nandroid = 14\nandroid_line = 22\n",
-    ))
-    .unwrap();
+    let theme = theme_with_text(&BODY.replace(r#""20px""#, r#""22px""#)).unwrap();
     let kotlin = android::kotlin(&theme);
     assert!(kotlin.contains("fontSize = 14.sp,\n                    lineHeight = 22.sp,\n"));
-}
-
-#[test]
-fn a_text_role_needs_a_size_somewhere() {
-    let theme = from_toml(&THEME.replace(
-        "[text.body]\nweight = \"regular\"\nmacos = 13\nios = \"body\"\nandroid = 14\n",
-        "[text.body]\nweight = \"regular\"\n",
-    ));
-    assert_eq!(theme.unwrap_err(), ["text body has no size on any platform"]);
 }
 
 /// The Mac app's AccentColor asset is the standard accent's selection colour,
