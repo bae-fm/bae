@@ -140,9 +140,19 @@ struct SyncSetupWizard: View {
                             )
                         }
                         .buttonStyle(.accentPlain)
-                        .accessibilityAddTraits(
-                            provider == choice ? .isSelected : []
-                        )
+                        // The row is a radio button of the provider group,
+                        // as the board draws it, and says so to VoiceOver.
+                        .accessibilityRepresentation {
+                            Picker(selection: $choice) {
+                                Text(
+                                    "\(provider.displayName) \(provider.setupSummary)"
+                                )
+                                .tag(provider)
+                            } label: {
+                                EmptyView()
+                            }
+                            .pickerStyle(.radioGroup)
+                        }
                     }
                 }
             }
