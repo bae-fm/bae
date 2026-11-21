@@ -160,10 +160,11 @@
 .bae-a-eyebrow { padding-top: 8px; font: 500 14px/20px var(--font-android); color: var(--text-secondary); }
 .bae-a-albumhead { display: flex; align-items: flex-start; gap: 16px; }
 .bae-a-albumhead-text { min-width: 0; }
-.bae-a-albumhead-title { font: 700 24px/30px var(--font-android); letter-spacing: -0.5px; }
-.bae-a-albumhead-artist { font: 400 14px/20px var(--font-android); color: var(--text-secondary); }
+.bae-a-albumhead-title { font: 700 24px/28px var(--font-android); letter-spacing: -0.5px; }
+.bae-a-albumhead-artist { font: 400 14px/19px var(--font-android); color: var(--text-secondary); }
 .bae-a-albumhead-fact { font: 400 12px/16px var(--font-android); color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.bae-a-albumhead-gap { margin-top: 4px; }
+.bae-a-albumhead-gap { margin-top: 2px; }
+.bae-a-albumhead-release { color: var(--text-tertiary); }
 .bae-a-dl { display: flex; flex-direction: column; gap: 6px; }
 .bae-a-dlrow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .bae-a-fineline { font: 400 12px var(--font-android); color: var(--text-secondary); }
@@ -179,7 +180,8 @@
 .bae-m-albumrating { display: flex; align-items: center; gap: 12px; }
 .bae-m-albumrating-who { font-size: 11.5px; color: var(--text-secondary); }
 .bae-m-albumpanel-title { margin: 0; font: 700 30px var(--font-sans); letter-spacing: -0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.bae-m-albumpanel-sub { display: flex; gap: 8px; font: 600 15px var(--font-sans); white-space: nowrap; }
+.bae-m-albumpanel-sub { font: 600 15px var(--font-sans); white-space: nowrap; }
+.bae-m-albumpanel-year { font: 400 13px var(--font-sans); }
 .bae-m-albumpanel-releases { padding: 4px 0 2px; }
 .bae-m-albumpanel-facts { display: flex; flex-direction: column; gap: 2px; font: 400 11.5px var(--font-sans); color: var(--text-tertiary); }
 .bae-m-albumpanel-facts > div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

@@ -284,14 +284,15 @@
     return h('div', { className: 'bae-m-albumrating' }, h(Stars, { value: props.value, size: 16, rate: true }), props.who ? h('span', { className: 'bae-m-albumrating-who' }, props.who) : null);
   }
 
-  // The open album's head: the title, the artist and year, the release picker (`releases`, `release`), the facts (`pressing`, `labels`), the line saying why this Mac can't play it (`unplayable`), Play and the album's ⋯ (`options`, `optionsOpen`, `highlighted`, a boxed MacMoreMenu), then the rating row, always: the stars (`rating`, empty while no one has rated it) and who else rated it (`ratingWho`).
+  // The open album's head: the title, the artist, the year, each on its own line, the release picker (`releases`, `release`), the edition line (`edition`) and the copy line (`copy`), the line saying why this Mac can't play it (`unplayable`), Play and the album's ⋯ (`options`, `optionsOpen`, `highlighted`, a boxed MacMoreMenu), then the rating row, always: the stars (`rating`, empty while no one has rated it) and who else rated it (`ratingWho`).
   function MacAlbumHeader(props) {
     var picker = h(MacReleasePicker, { releases: props.releases, selected: props.release });
     return h('div', { className: 'bae-m-albumhead' },
       h('h2', { className: 'bae-m-albumpanel-title' }, props.title),
-      h('div', { className: 'bae-m-albumpanel-sub' }, h('span', { className: 'bae-muted' }, props.artist), props.year ? [h('span', { key: 'd', className: 'bae-m-tertiary' }, '·'), h('span', { key: 'y', className: 'bae-m-tertiary' }, props.year)] : null),
+      h('div', { className: 'bae-m-albumpanel-sub bae-muted' }, props.artist),
+      props.year ? h('div', { className: 'bae-m-albumpanel-year bae-m-tertiary' }, props.year) : null,
       list(props.releases).length > 1 ? h('div', { className: 'bae-m-albumpanel-releases' }, picker) : null,
-      props.pressing || props.labels ? h('div', { className: 'bae-m-albumpanel-facts' }, props.pressing ? h('div', null, props.pressing) : null, props.labels ? h('div', null, props.labels) : null) : null,
+      props.edition || props.copy ? h('div', { className: 'bae-m-albumpanel-facts' }, props.edition ? h('div', null, props.edition) : null, props.copy ? h('div', null, props.copy) : null) : null,
       props.unplayable ? h('div', { className: 'bae-m-albumpanel-unplayable' }, props.unplayable) : null,
       h('div', { className: 'bae-m-albumpanel-actions' }, h(MacButton, { kind: 'primary' }, 'Play'), h(MacMoreMenu, { boxed: true, label: 'Album options', items: props.options, open: props.optionsOpen, highlighted: props.highlighted })),
       h('div', { className: 'bae-m-albumhead-rating' }, h(MacAlbumRating, { value: props.rating || 0, who: props.ratingWho })));
@@ -317,7 +318,7 @@
       h('span', { className: 'bae-m-albumpanel-close' }, h(MacCloseButton)),
       h(Artwork, { title: props.title, size: 340, radius: 10, missing: props.noCover, className: 'bae-m-albumpanel-cover' }),
       h('div', { className: 'bae-m-albumpanel-body' },
-        h(MacAlbumHeader, { title: props.title, artist: props.artist, year: props.year, releases: props.releases, release: props.release, pressing: props.pressing, labels: props.labels, unplayable: props.unplayable, options: props.options, optionsOpen: props.optionsOpen, highlighted: props.highlighted, rating: props.rating, ratingWho: props.ratingWho }),
+        h(MacAlbumHeader, { title: props.title, artist: props.artist, year: props.year, releases: props.releases, release: props.release, edition: props.edition, copy: props.copy, unplayable: props.unplayable, options: props.options, optionsOpen: props.optionsOpen, highlighted: props.highlighted, rating: props.rating, ratingWho: props.ratingWho }),
         h('div', { className: 'bae-m-albumpanel-tracks bae-m-albumpanel-tracks-rated' }, props.children)));
   }
 
@@ -520,9 +521,9 @@
   function AndroidEyebrow(props) { return h('div', { className: 'bae-a-eyebrow' }, props.children); }
 
   function AndroidAlbumHeader(props) {
-    return h('div', { className: 'bae-a-albumhead' }, h(Artwork, { title: props.title, size: 140, radius: 10, missing: props.noCover }),
+    return h('div', { className: 'bae-a-albumhead' }, h(Artwork, { title: props.title, size: 150, radius: 10, missing: props.noCover }),
       h('div', { className: 'bae-a-albumhead-text' }, h('div', { className: 'bae-a-albumhead-title' }, props.title), h('div', { className: 'bae-a-albumhead-artist' }, props.artist), h('div', { className: 'bae-a-albumhead-fact' }, props.year),
-        props.pressing ? h('div', { className: 'bae-a-albumhead-fact bae-a-albumhead-gap' }, props.pressing) : null, props.labels ? h('div', { className: 'bae-a-albumhead-fact' }, props.labels) : null));
+        props.edition ? h('div', { className: 'bae-a-albumhead-fact bae-a-albumhead-release bae-a-albumhead-gap' }, props.edition) : null, props.copy ? h('div', { className: 'bae-a-albumhead-fact bae-a-albumhead-release' }, props.copy) : null));
   }
 
   // The album page's pin control for one release, as AndroidDownloadControl draws it: Pin; Queued to pin, with Cancel; Pinning with its bar and bytes and Cancel pinning; Couldn’t pin with Details and Retry, and Cancel; Pinned with Unpin. On a release this phone can't play, one line saying where it is. Nothing says how many wait ahead or what holds the queue back.

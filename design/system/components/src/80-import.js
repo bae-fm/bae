@@ -48,13 +48,13 @@
       h('div', { className: 'bae-divider' }),
       props.empty ? h(MacContentUnavailable, { title: props.empty }) : h('div', { className: 'bae-m-isb-list' }, props.children));
   }
-  // The release a folder holds, as the import pane shows it beside its cover: the title (`placeholder` when the draft has none yet, in secondary text), the artist, the facts line (`facts`) and the audio the scan read (`audio`).
+  // The release a folder holds, as the import pane shows it beside its cover: the title (`placeholder` when the draft has none yet, in secondary text), the artist, the edition line (`edition`) and the copy line (`copy`).
   function MacImportReleaseSummary(props) {
     return h('div', { className: 'bae-m-isummary' },
       h('div', { className: cx('bae-m-isummary-title', props.placeholder && 'bae-muted') }, props.placeholder ? 'Album title' : props.title),
       props.artist ? h('div', { className: 'bae-m-isummary-artist' }, props.artist) : null,
-      props.facts ? h('div', { className: 'bae-m-isummary-facts' }, props.facts) : null,
-      props.audio ? h('div', { className: 'bae-m-isummary-audio' }, props.audio) : null);
+      props.edition ? h('div', { className: 'bae-m-isummary-facts' }, props.edition) : null,
+      props.copy ? h('div', { className: 'bae-m-isummary-audio' }, props.copy) : null);
   }
 
   // A way to answer a folder that waits on you, under the releases Identify found: a small button (`title`) over a line saying what it does (`subtitle`).
@@ -338,14 +338,15 @@
   function sourcedParts(text) {
     return String(text).split('|').map(function (v) { var at = v.lastIndexOf(':'); return { value: v.slice(0, at), catalog: v.slice(at + 1) }; });
   }
-  // A found pressing: its year, labels, catalog number, barcode and badges, then `summary` (" · "-separated facts) and `notes` (the records' notes, a release's disambiguation, with the Notes badge), each fact a MacSourcedValue; In library, dimmed whole, for one the library has; `sources`, the catalogs whose records it holds, only those that have answered; the chevron.
+  // A found pressing: its edition line (`edition`: " · "-separated facts, the year, country, each label and its catalog number), then its copy line (`copy`: " · "-separated facts, the media and details) with the barcode and badges after it, then `notes` (the records' notes, a release's disambiguation, with the Notes badge), each fact a MacSourcedValue; In library, dimmed whole, for one the library has; `sources`, the catalogs whose records it holds, only those that have answered; the chevron.
   function MacPressingRow(props) {
     var sv = function (v) { return h(MacSourcedValue, { value: v }); };
-    var summary = props.summary ? String(props.summary).split(' · ').map(function (part, i) { return h(React.Fragment, { key: i }, i ? ' · ' : null, sv(part)); }) : null;
+    var line = function (text) { return text ? String(text).split(' · ').map(function (part, i) { return h(React.Fragment, { key: i }, i ? ' · ' : null, sv(part)); }) : null; };
+    var edition = line(props.edition), copy = line(props.copy);
     return h('div', { className: cx('bae-m-prow', props.selected && 'bae-m-prow-selected'), style: props.inLibrary ? { opacity: 0.55 } : null },
       h('div', { style: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 } },
-        h('div', { style: { display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' } }, props.year ? h('span', { className: 'bae-strong bae-num' }, sv(props.year)) : h('span', { className: 'bae-m-tertiary' }, 'Year unknown'), h('span', { className: 'bae-muted' }, props.labels), props.catalog ? h(StatusChip, null, sv(props.catalog)) : null, props.barcode ? h('span', { className: 'bae-muted bae-num' }, sv(props.barcode)) : null, list(props.badges).map(function (b) { return h(StatusChip, { key: b, tone: 'accent' }, b); }), props.notes ? h('span', { title: String(props.notes).indexOf('|') < 0 ? props.notes : sourcedParts(props.notes).map(function (p) { return p.value + ' ' + p.catalog; }).join(' / ') }, h(StatusChip, { tone: 'accent' }, 'Notes')) : null),
-        summary ? h('div', { className: 'bae-m-tertiary', style: { fontSize: 11.5 } }, summary) : null,
+        edition ? h('div', { className: 'bae-num', style: { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, edition) : null,
+        h('div', { style: { display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' } }, copy ? h('span', { className: 'bae-m-tertiary', style: { fontSize: 11.5 } }, copy) : null, props.barcode ? h('span', { className: 'bae-muted bae-num' }, sv(props.barcode)) : null, list(props.badges).map(function (b) { return h(StatusChip, { key: b, tone: 'accent' }, b); }), props.notes ? h('span', { title: String(props.notes).indexOf('|') < 0 ? props.notes : sourcedParts(props.notes).map(function (p) { return p.value + ' ' + p.catalog; }).join(' / ') }, h(StatusChip, { tone: 'accent' }, 'Notes')) : null),
         // `notes`: the records' notes (a release's disambiguation), every record's that states one, each with its catalog when they differ. The Notes badge and this line come from the same records, so they show together.
         props.notes ? h('div', { className: 'bae-m-tertiary', style: { fontSize: 11.5, fontStyle: 'italic' } }, sv(props.notes)) : null),
       props.inLibrary ? h('span', { style: { display: 'flex', alignItems: 'center', gap: 4, fontSize: 11.5 }, className: 'bae-m-tertiary' }, h(Sym, { name: 'check', size: 11, className: 'bae-success' }), 'In library') : null,

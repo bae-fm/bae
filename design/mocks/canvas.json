@@ -99,7 +99,7 @@
    "y": 14416
   },
   "mac.album.change-cover.dc.html": {
-   "h": 1000,
+   "h": 1020,
    "page": "home",
    "title": "macOS: Change cover",
    "w": 1200,
@@ -107,7 +107,7 @@
    "y": 15812
   },
   "mac.album.change-cover.no-linked-release.dc.html": {
-   "h": 1000,
+   "h": 1020,
    "page": "home",
    "title": "macOS: Change cover, no linked release",
    "w": 1200,
@@ -115,7 +115,7 @@
    "y": 15812
   },
   "mac.album.delete-album.dc.html": {
-   "h": 1000,
+   "h": 1020,
    "page": "home",
    "title": "macOS: Delete Album…",
    "w": 1200,
@@ -123,7 +123,7 @@
    "y": 15812
   },
   "mac.album.delete-release.dc.html": {
-   "h": 1000,
+   "h": 1020,
    "page": "home",
    "title": "macOS: Delete Release",
    "w": 1200,
@@ -131,7 +131,7 @@
    "y": 15812
   },
   "mac.album.edit.dc.html": {
-   "h": 1300,
+   "h": 1320,
    "page": "home",
    "title": "macOS: Edit…",
    "w": 1200,
@@ -139,7 +139,7 @@
    "y": 15812
   },
   "mac.album.lightbox.dc.html": {
-   "h": 1000,
+   "h": 1020,
    "page": "home",
    "title": "macOS: the cover in the lightbox",
    "w": 1200,
@@ -147,7 +147,7 @@
    "y": 15812
   },
   "mac.album.lightbox.failed.dc.html": {
-   "h": 1000,
+   "h": 1020,
    "page": "home",
    "title": "macOS: lightbox, image failed",
    "w": 1200,
@@ -155,7 +155,7 @@
    "y": 15812
   },
   "mac.album.save-as.dc.html": {
-   "h": 1000,
+   "h": 1020,
    "page": "home",
    "title": "macOS: Save as… on a track",
    "w": 1200,
@@ -163,7 +163,7 @@
    "y": 15812
   },
   "mac.album.storage.dc.html": {
-   "h": 1000,
+   "h": 1020,
    "page": "home",
    "title": "macOS: Storage…",
    "w": 1200,
@@ -171,7 +171,7 @@
    "y": 15812
   },
   "mac.album.storage.on-another-mac.dc.html": {
-   "h": 1000,
+   "h": 1020,
    "page": "home",
    "title": "macOS: Storage…, on another Mac",
    "w": 1200,
@@ -179,7 +179,7 @@
    "y": 15812
   },
   "mac.album.storage.uploading.dc.html": {
-   "h": 1000,
+   "h": 1020,
    "page": "home",
    "title": "macOS: Storage…, uploading",
    "w": 1200,
@@ -491,7 +491,7 @@
    "y": 10548
   },
   "mac.playlists.add-to-playlist.dc.html": {
-   "h": 1000,
+   "h": 1020,
    "page": "explore",
    "title": "Exploration: macOS: Add to playlist",
    "w": 1200,
@@ -499,7 +499,7 @@
    "y": 1720
   },
   "mac.album.credits.dc.html": {
-   "h": 1200,
+   "h": 1220,
    "page": "explore",
    "title": "Exploration: macOS: who did what, and the works, on the album",
    "w": 1200,
@@ -523,7 +523,7 @@
    "y": 1720
   },
   "mac.album.play-picked-tracks.dc.html": {
-   "h": 1000,
+   "h": 1020,
    "page": "explore",
    "title": "Exploration: macOS: three tracks picked, played together",
    "w": 1200,
@@ -539,7 +539,7 @@
    "y": 1720
   },
   "mac.album.track-menu-rate.dc.html": {
-   "h": 1000,
+   "h": 1020,
    "page": "explore",
    "title": "Exploration: macOS: a track’s menu, Rate",
    "w": 1200,
@@ -547,7 +547,7 @@
    "y": 240
   },
   "mac.album.rating.dc.html": {
-   "h": 1000,
+   "h": 1020,
    "page": "explore",
    "title": "Exploration: macOS: rating an album and its tracks",
    "w": 1200,
@@ -987,7 +987,7 @@
    "y": 11180
   },
   "mac.library.album-menu.dc.html": {
-   "h": 1000,
+   "h": 1020,
    "page": "home",
    "title": "macOS: the album menu",
    "w": 1200,
@@ -995,7 +995,7 @@
    "y": 9700
   },
   "mac.library.albums.album-open.dc.html": {
-   "h": 1000,
+   "h": 1020,
    "page": "home",
    "title": "macOS: Album, opened in the grid",
    "w": 1200,
@@ -1003,7 +1003,7 @@
    "y": 1636
   },
   "mac.library.albums.album-two-releases.dc.html": {
-   "h": 1000,
+   "h": 1020,
    "page": "home",
    "title": "macOS: album with two releases, on another Mac",
    "w": 1200,
@@ -2939,7 +2939,7 @@
    "y": 15812
   },
   "mac.album.storage.unpin.dc.html": {
-   "h": 1000,
+   "h": 1020,
    "page": "home",
    "title": "macOS: Unpin, asking first",
    "w": 1200,
@@ -3307,7 +3307,7 @@
    "y": 9376
   },
   "mac.album.save-as.format-menu.dc.html": {
-   "h": 1000,
+   "h": 1020,
    "page": "home",
    "title": "macOS: Save as… on a track, its Format menu",
    "w": 1200,
@@ -3315,7 +3315,7 @@
    "y": 16892
   },
   "mac.album.save-as.edit-formats.dc.html": {
-   "h": 1000,
+   "h": 1020,
    "page": "home",
    "title": "macOS: Save as… on a track, Edit Formats…",
    "w": 1200,
@@ -3331,7 +3331,7 @@
    "y": 9376
   },
   "mac.album.save-as.edit-formats-adding.dc.html": {
-   "h": 1000,
+   "h": 1020,
    "page": "home",
    "title": "macOS: Save as… on a track, adding a format",
    "w": 1200,
@@ -3339,7 +3339,7 @@
    "y": 17972
   },
   "mac.album.save-as.edit-formats-added.dc.html": {
-   "h": 1000,
+   "h": 1020,
    "page": "home",
    "title": "macOS: Save as… on a track, the format added",
    "w": 1200,
@@ -3347,7 +3347,7 @@
    "y": 17972
   },
   "mac.album.save-as.new-format-chosen.dc.html": {
-   "h": 1000,
+   "h": 1020,
    "page": "home",
    "title": "macOS: Save as… on a track, back with the new format",
    "w": 1200,
@@ -3603,7 +3603,7 @@
    "y": 15556
   },
   "mac.album.record-sides.dc.html": {
-   "h": 1160,
+   "h": 1180,
    "page": "home",
    "title": "macOS: Album: a record’s sides",
    "w": 1200,
@@ -3787,7 +3787,7 @@
    "y": 11864
   },
   "mac.album.edit.album-picker.dc.html": {
-   "h": 1300,
+   "h": 1320,
    "page": "home",
    "title": "macOS: Edit…: the album picker",
    "w": 1200,
@@ -3795,7 +3795,7 @@
    "y": 21244
   },
   "mac.album.edit.cover.dc.html": {
-   "h": 1300,
+   "h": 1320,
    "page": "home",
    "title": "macOS: Edit…: its cover",
    "w": 1200,
@@ -3803,7 +3803,7 @@
    "y": 21244
   },
   "mac.album.edit.cue-image.dc.html": {
-   "h": 1300,
+   "h": 1320,
    "page": "home",
    "title": "macOS: Edit…: a release from a CUE image",
    "w": 1200,
@@ -4355,7 +4355,7 @@
    "y": 1720
   },
   "mac.album.edit.reading-file.dc.html": {
-   "h": 1300,
+   "h": 1320,
    "page": "home",
    "title": "macOS: Edit…: a release from a CUE image: reading a newly chosen audio file",
    "w": 1200,
@@ -4363,7 +4363,7 @@
    "y": 21244
   },
   "mac.album.edit.country.dc.html": {
-   "h": 1300,
+   "h": 1320,
    "page": "home",
    "title": "macOS: Edit…: the Country menu",
    "w": 1200,
