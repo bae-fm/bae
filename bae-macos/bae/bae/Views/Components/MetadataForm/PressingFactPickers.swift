@@ -94,6 +94,7 @@ struct MediaCountsEditor: View {
                 AddEntryLabel(words: String(localized: "Add"))
             }
             .fixedSize()
+            .accessibilityLabel(String(localized: "Add medium"))
         }
     }
 
@@ -238,7 +239,8 @@ struct DiscogsDetailsEditor: View {
         HStack(spacing: ThemeSpace.compact) {
             ForEach(details, id: \.self) { detail in
                 HStack(spacing: ThemeSpace.inline) {
-                    Text(bridgeDiscogsDetailLabel(detail: detail).text)
+                    let name = bridgeDiscogsDetailLabel(detail: detail).text
+                    Text(name)
                         .themeText(.body)
                     Button {
                         commit(details.filter { $0 != detail })
@@ -247,7 +249,7 @@ struct DiscogsDetailsEditor: View {
                             .foregroundStyle(Theme.textTertiary)
                     }
                     .buttonStyle(.accentPlain)
-                    .accessibilityLabel(String(localized: "Remove"))
+                    .accessibilityLabel(String(localized: "Remove \(name)"))
                 }
             }
             MacButton(
@@ -269,6 +271,7 @@ struct DiscogsDetailsEditor: View {
                 }
             }
             .fixedSize()
+            .accessibilityLabel(String(localized: "Details"))
         }
     }
 
