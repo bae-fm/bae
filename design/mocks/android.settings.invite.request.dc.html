@@ -30,6 +30,7 @@ a{color:var(--accent)}a:hover{color:#F6BFD9}
 <x-import component-from-global-scope="Bae.AndroidScreen" title="People and devices" back="{{yes}}">
   <x-import component-from-global-scope="Bae.AndroidSection" title="You"></x-import>
   <x-import component-from-global-scope="Bae.AndroidCard">
+    <x-import component-from-global-scope="Bae.AndroidRow" title="Picture" avatar="Ana" icon="edit"></x-import>
     <x-import component-from-global-scope="Bae.AndroidRow" title="Name" subtitle="Ana" icon="edit"></x-import>
     <x-import component-from-global-scope="Bae.AndroidRow" title="Role" subtitle="Admin"></x-import>
     <x-import component-from-global-scope="Bae.AndroidRow" title="Listening history" subtitle="Only me" button="{{yes}}"></x-import>
@@ -37,8 +38,8 @@ a{color:var(--accent)}a:hover{color:#F6BFD9}
   </x-import>
   <x-import component-from-global-scope="Bae.AndroidSection" title="People"></x-import>
   <x-import component-from-global-scope="Bae.AndroidCard">
-    <x-import component-from-global-scope="Bae.AndroidRow" title="Ben" subtitle="Member · 1 device" icon="chevron"></x-import>
-    <x-import component-from-global-scope="Bae.AndroidRow" title="dan@example.com" tag="Invited" icon="chevron"></x-import>
+    <x-import component-from-global-scope="Bae.AndroidRow" avatar="Ben" avatar-image="Ben" title="Ben" subtitle="Member · 1 device" icon="chevron"></x-import>
+    <x-import component-from-global-scope="Bae.AndroidRow" avatar="dan@example.com" title="dan@example.com" tag="Invited" icon="chevron"></x-import>
     <x-import component-from-global-scope="Bae.AndroidRow" title="Invite" action="{{yes}}" leading-icon="add"></x-import>
   </x-import>
   <x-import component-from-global-scope="Bae.AndroidDialog" title="Dan wants to join" width="340" message="Approve them if their screen shows this code:">
