@@ -27,6 +27,6 @@ struct MacPageHeading: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, SettingsPaneMetrics.sideInset)
         .padding(.top, SettingsPaneMetrics.topInset)
-        .padding(.bottom, ThemeSpace.group)
+        .padding(.bottom, ThemeSpace.edge)
     }
 }
