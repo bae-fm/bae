@@ -33,7 +33,7 @@ private struct TrafficLightPositioner: NSViewRepresentable {
     final class PositionerView: NSView {
         private let xOffset: CGFloat
         private let yOffset: CGFloat
-        private var resizeObservation: (any NSObjectProtocol)?
+        private var resizeWatch: WindowResizeWatch?
 
         init(xOffset: CGFloat, yOffset: CGFloat) {
             self.xOffset = xOffset
@@ -48,35 +48,13 @@ private struct TrafficLightPositioner: NSViewRepresentable {
 
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
-            stopObservingResize()
+            resizeWatch = nil
             guard let window else {
                 return
             }
             moveButtons(in: window)
-            resizeObservation = NotificationCenter.default.addObserver(
-                forName: NSWindow.didResizeNotification,
-                object: window,
-                queue: .main
-            ) { [weak self] notification in
-                guard let window = notification.object as? NSWindow else {
-                    return
-                }
-                MainActor.assumeIsolated {
-                    self?.moveButtons(in: window)
-                }
-            }
-        }
-
-        /// A window that closes lets go of its views without moving them out
-        /// of it first.
-        isolated deinit {
-            stopObservingResize()
-        }
-
-        private func stopObservingResize() {
-            if let resizeObservation {
-                NotificationCenter.default.removeObserver(resizeObservation)
-                self.resizeObservation = nil
+            resizeWatch = WindowResizeWatch(of: window) { [weak self] window in
+                self?.moveButtons(in: window)
             }
         }
 

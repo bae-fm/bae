@@ -549,8 +549,9 @@ extension View {
 }
 
 /// Tells its owner the height of the window the sheet hangs from, when the
-/// sheet gets its window and each time that window resizes.
-private struct ParentWindowHeight: NSViewRepresentable {
+/// sheet gets its window and each time that window resizes. The watch on the
+/// window ends when the view leaves its window and when the view is freed.
+struct ParentWindowHeight: NSViewRepresentable {
     @Binding
     var height: CGFloat?
 
@@ -566,28 +567,18 @@ private struct ParentWindowHeight: NSViewRepresentable {
 
     final class HostView: NSView {
         var report: (CGFloat?) -> Void = { _ in }
-        private var resizes: NSObjectProtocol?
-
-        private func stopObserving() {
-            if let resizes {
-                NotificationCenter.default.removeObserver(resizes)
-            }
-            resizes = nil
-        }
+        private var resizeWatch: WindowResizeWatch?
 
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
-            stopObserving()
+            resizeWatch = nil
             guard let parent = window?.sheetParent else {
                 report(nil)
                 return
             }
             report(parent.frame.height)
-            resizes = NotificationCenter.default.addObserver(
-                forName: NSWindow.didResizeNotification,
-                object: parent,
-                queue: .main
-            ) { [weak self] _ in
+            resizeWatch = WindowResizeWatch(of: parent) {
+                [weak self] parent in
                 self?.report(parent.frame.height)
             }
         }
