@@ -2319,7 +2319,10 @@ image has none.
 **Files.** A release's *Files* list is one list, the same in all three places:
 the files no track plays from, such as a rip log, a track sheet that carves no
 tracks, or an audio file no track plays from, in the release's file order. A
-CUE sheet that carves tracks plays, so the list leaves it out. The list holds
+CUE sheet that carves tracks plays, so the list leaves it out. A CUE sheet the
+person set to *Ignored* carves none, so it takes its place in the list as its
+caption, its place pop-up reading *Ignored*, and the person can place it back
+before importing or saving. The list holds
 no image bae can show: a JPEG, PNG, GIF or WebP image that bae can read appears
 only among the release's images. An image in another format (a BMP or an SVG,
 for example), and an image in one of those four formats that bae finds damaged,

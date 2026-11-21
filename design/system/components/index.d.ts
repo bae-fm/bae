@@ -143,7 +143,7 @@ export declare function AndroidRow(props: AndroidRowProps): React.ReactElement;
 /** kind: filled for the action a screen is for, outlined beside it, text in dialogs and rows. large is the full-width size on the welcome screen. */
 export interface MacImportImagesProps { /** "artwork title|file name", comma-separated. */ images?: string }
 export declare function MacImportImages(props: MacImportImagesProps): React.ReactElement;
-export interface MacReleaseFilesProps { /** "name|size[|kind]", comma-separated; kind is `other` (opens nothing), `audio` (plays) or `damaged:why`. */ files?: string }
+export interface MacReleaseFilesProps { /** "name|size[|kind]", comma-separated; kind is `other` (opens nothing), `audio` (plays), `ignored:audio` (a CUE sheet set to Ignored, drawn as its caption) or `damaged:why`. */ files?: string }
 export declare function MacReleaseFiles(props: MacReleaseFilesProps): React.ReactElement;
 export interface AndroidKeyboardProps {}
 export declare function AndroidKeyboard(props: AndroidKeyboardProps): React.ReactElement;

@@ -252,10 +252,12 @@
       h('span', { className: 'bae-m-tertiary bae-m-ifile-size' }, props.size || ''));
   }
   // The release's files that are no track (a rip log, a track sheet that carves no tracks; never an image bae can show), or on a skipped folder's pane every file but its images: a ruled Files heading, then a row per file (`files`: "name|size[|kind]", comma-separated, where kind is `other`, `audio` or `damaged:why`, and a file with none opens).
+  // A kind of `ignored:audio` is a CUE sheet the person set to Ignored, which carves no tracks, so it sits in its place in the list as its caption, its place pop-up reading Ignored and its FILE line playing from `audio`, and the person can place it back.
   function MacReleaseFiles(props) {
     return h('div', { className: 'bae-m-ifiles' }, h(MacFormHeading, null, 'Files'),
       h('div', null, list(props.files).map(function (f) {
         var p = f.split('|'), kind = p[2] || '', damaged = kind.indexOf('damaged:') === 0;
+        if (kind.indexOf('ignored:') === 0) return h(MacImportSheetCaption, { key: p[0], disc: 'Ignored', sheet: p[0], bound: kind.slice('ignored:'.length) });
         return h(MacReleaseFileRow, { key: p[0], name: p[0], size: p[1], kind: damaged ? null : kind || null, damaged: damaged ? kind.slice('damaged:'.length) : null });
       })));
   }

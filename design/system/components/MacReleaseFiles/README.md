@@ -4,6 +4,7 @@ The files a release carries that are no track, such as a rip log or a track shee
 
 - `other`: a file that opens nothing, a plain line.
 - `audio`: a track on a skipped folder's pane, which lists every file but the images bae can show; its Play button sits before the size.
+- `ignored:audio`: a CUE sheet the person set to Ignored, which carves no tracks, so it sits in its place in the list as its `MacImportSheetCaption`, its place pop-up reading Ignored, and the person can place it back before importing or saving.
 - `damaged:why`: a damaged file, marked with a warning glyph and why, opening nothing. The same part wherever a release's files show: a Found folder's pane, an imported release's pane, and the album's Edit Release sheet, each under the tracks. The apps draw all three with one view: never a second way to list a release's files.
 
 The heading is a `MacFormHeading`, and each line a `MacReleaseFileRow`.
