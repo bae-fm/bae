@@ -191,11 +191,11 @@ A release line with nothing in it is left out. bae's core words the release
 lines, and the Mac and Android apps show the lines core gives, so they read the
 same on both. The import pane's summary of the release a folder holds shows all
 three. The release editor, in the import pane and in the Edit release sheet,
-shows only the audio line under the release's title, artist and year, because
-its fields below define the edition and the copy; the Edit release sheet's
-header names the release by its title. Each pressing row of Identify and a
-typed search shows an edition line (the year, the country, the labels and the
-catalog number) and a copy line (the media and details).
+shows only the audio line under the album's title, artists and year, because
+its fields below define the edition and the copy (*The audio line* below); the
+Edit release sheet's header names the release by its title. Each pressing row
+of Identify and a typed search shows an edition line (the year, the country,
+the labels and the catalog number) and a copy line (the media and details).
 
 The person picks which of an album's releases its page shows. The page shows
 the picked release while the album holds it, and the primary release otherwise.
