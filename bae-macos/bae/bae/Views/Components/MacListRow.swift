@@ -80,17 +80,7 @@ struct MacListRow: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             if let who {
-                HStack(spacing: ThemeSpace.compact) {
-                    Avatar(
-                        initials: who.initials,
-                        picture: who.avatarVersion.map { (who.person, $0) },
-                        size: 18
-                    )
-                    Text(verbatim: who.name)
-                        .themeText(.detail)
-                        .lineLimit(1)
-                }
-                .foregroundStyle(Theme.macTextSecondary)
+                MacPersonTag(person: who)
             }
             if let duration {
                 Text(duration)

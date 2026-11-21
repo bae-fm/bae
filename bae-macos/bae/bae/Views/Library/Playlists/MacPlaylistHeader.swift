@@ -22,19 +22,7 @@ struct MacPlaylistHeader: View {
                 Text(summary.name)
                     .themeText(.title)
                     .lineLimit(2)
-                HStack(spacing: ThemeSpace.compact) {
-                    Avatar(
-                        initials: summary.owner.initials,
-                        picture: summary.owner.avatarVersion.map {
-                            (summary.owner.person, $0)
-                        },
-                        size: 16
-                    )
-                    Text(verbatim: summary.owner.name)
-                        .themeText(.strong)
-                        .lineLimit(1)
-                }
-                .foregroundStyle(Theme.macTextSecondary)
+                MacPersonTag(person: summary.owner, strong: true)
                 facts
                     .padding(.top, ThemeSpace.inline)
                 HStack(spacing: ThemeSpace.related) {

@@ -105,6 +105,7 @@ extension ShotScene {
             macNoticeScenes,
             macNowPlayingBarScenes,
             macPageHeadingScenes,
+            macPersonTagScenes,
             macPinFieldScenes,
             macPlaceholderLineScenes,
             macPlayPauseScenes,
