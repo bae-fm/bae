@@ -19,39 +19,61 @@ extension ShotScene {
         ),
         albumArtistFieldScene(
             "mac.component.album-artist-field.secondary",
-            artists: PreviewData.boardLibraryArtists("Mara Quill")
+            artists: PreviewData.boardLibraryArtists("Mara Quill"),
+            secondary: true
         ),
         albumArtistFieldScene(
             "mac.component.album-artist-field.column",
-            artists: PreviewData.boardLibraryArtists("Mara Quill")
+            artists: PreviewData.boardLibraryArtists("Mara Quill"),
+            column: true
         ),
         albumArtistFieldScene(
             "mac.component.album-artist-field.inherited",
-            artists: PreviewData.boardLibraryArtists("Mara Quill")
+            artists: nil,
+            column: true,
+            inherited: true
         ),
         albumArtistFieldScene(
             "mac.component.album-artist-field.column-with-no-artist",
-            artists: nil
+            artists: nil,
+            placeholder: "Artist",
+            column: true
         ),
     ]
 
+    /// One `MacAlbumArtistField`: on a header line as wide as its value, or
+    /// (`column`) filling a 240pt table column; `secondary` is the album
+    /// identity's text.
     private static func albumArtistFieldScene(
         _ id: String,
-        artists: BridgeArtistField?
+        artists: BridgeArtistField?,
+        placeholder: String = "Album artist",
+        secondary: Bool = false,
+        column: Bool = false,
+        inherited: Bool = false
     ) -> ShotScene {
         component(
             id,
-            width: 284,
+            width: column ? 240 : 284,
             height: 40
         ) {
             importStores(
                 MacAlbumArtistField(
                     field: artists,
-                    placeholder: "Album artist",
+                    placeholder: placeholder,
+                    width: column ? .column : .value,
+                    inheritsAlbumArtists: inherited,
                     artistSearch: artistSearch(),
                     onChange: { _ in }
                 )
-                .frame(width: 284, alignment: .leading)
+                .themeText(.body)
+                .foregroundStyle(
+                    secondary ? Theme.macTextSecondary : Theme.textPrimary
+                )
+                // The column holds the field's words at its edge, so the
+                // field reaches out by its padding, as its callers lay it out.
+                .padding(.leading, -FieldChrome.inlineHorizontalPadding)
+                .frame(width: column ? 240 : 284, alignment: .leading)
             )
         }
     }

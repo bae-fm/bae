@@ -8,7 +8,7 @@ import Testing
 /// core's read gives the whole field.
 @Suite("Artist assignments summary")
 struct ArtistAssignmentsSummaryTests {
-    @Test("one library artist reads as its own name and badge")
+    @Test("one library artist reads as its own name and no badge")
     func oneLibraryArtistSummary() throws {
         let summary = try #require(
             ArtistAssignmentsSummary(
@@ -28,7 +28,7 @@ struct ArtistAssignmentsSummaryTests {
         )
 
         #expect(summary.names == "Artist Name")
-        #expect(summary.identityLabel == "Library")
+        #expect(summary.identityLabel == nil)
     }
 
     @Test("one new artist reads as its own name and badge")

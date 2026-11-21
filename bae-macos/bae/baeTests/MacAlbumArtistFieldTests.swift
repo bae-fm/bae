@@ -7,10 +7,10 @@ import Testing
 
 @Suite("Artist assignments field")
 struct MacAlbumArtistFieldTests {
-    /// The closed field badges a library artist and a new one differently,
+    /// The closed field badges a new artist and none for a library artist,
     /// from the standing core's read gives the field.
     @MainActor
-    @Test("library and new artists remain visibly distinct")
+    @Test("a new artist shows a badge and a library artist none")
     func assignmentIdentityIsVisible() throws {
         let picked = PreviewData.pickedArtist(
             "Artist Name",
@@ -29,8 +29,7 @@ struct MacAlbumArtistFieldTests {
                         )
                     ]
                 )
-            )?
-            .identityLabel
+            )
         )
         let new = try #require(
             ArtistAssignmentsSummary(
@@ -43,10 +42,10 @@ struct MacAlbumArtistFieldTests {
                         )
                     ]
                 )
-            )?
-            .identityLabel
+            )
         )
-        #expect(linked != new, "both read \(linked)")
+        #expect(linked.identityLabel == nil)
+        #expect(new.identityLabel == "New")
     }
 
     /// A compilation credits more artists than the line can hold. The header

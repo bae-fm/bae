@@ -65,7 +65,6 @@ struct ReleaseMetadataTrackRow: View {
                 updateArtists(.explicit(assignments: $0))
             },
         )
-        .modifier(FieldChrome(focused: false, style: .inline))
         .frame(width: columns.artist)
     }
 

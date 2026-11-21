@@ -176,17 +176,22 @@ extension BridgeArtistsStanding {
 }
 
 /// A closed artist field's text: the names as one localized list and the
-/// badge core's read gives the whole set.
+/// badge core's read gives the whole set, which is `nil` when every artist
+/// is in the library.
 struct ArtistAssignmentsSummary: Equatable {
     let names: String
-    let identityLabel: String
+    let identityLabel: String?
 
     /// `nil` when the field names no artist, so the field shows its
     /// placeholder.
     init?(field: BridgeArtistField?) {
         guard let field else { return nil }
         names = bridgeCreditLine(credits: field.credits.map(\.credited)).text
-        identityLabel = field.standing.label
+        identityLabel =
+            switch field.standing {
+            case .library: nil
+            default: field.standing.label
+            }
     }
 }
 

@@ -35,6 +35,9 @@ struct MacAlbumArtistField: View {
                     Spacer(minLength: 0)
                 }
             }
+            // The field's fill and edge, as an inline field's: the button's
+            // frame is the box the person points at.
+            .modifier(FieldChrome(focused: false, style: .inline))
             .contentShape(Rectangle())
         }
         .buttonStyle(.accentPlain)
@@ -62,7 +65,8 @@ struct MacAlbumArtistField: View {
         if inheritsAlbumArtists { return String(localized: "Album artist") }
         guard let summary = ArtistAssignmentsSummary(field: field)
         else { return placeholder }
-        return "\(summary.names) \(summary.identityLabel)"
+        guard let label = summary.identityLabel else { return summary.names }
+        return "\(summary.names) \(label)"
     }
 
     @ViewBuilder
@@ -74,8 +78,10 @@ struct MacAlbumArtistField: View {
             HStack(spacing: ThemeSpace.inline) {
                 Text(summary.names)
                     .cutLine(.prose)
-                StatusChip(verbatim: summary.identityLabel)
-                    .fixedSize()
+                if let label = summary.identityLabel {
+                    StatusChip(verbatim: label)
+                        .fixedSize()
+                }
             }
         }
         else {
