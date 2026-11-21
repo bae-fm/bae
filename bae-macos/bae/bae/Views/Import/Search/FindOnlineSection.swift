@@ -88,7 +88,7 @@ struct FindOnlineSectionHeader: View {
                     .themeIcon(.small)
                     .foregroundStyle(
                         dimmed
-                            ? Theme.textTertiary.opacity(0.5)
+                            ? Theme.textTertiary.opacity(ThemeOpacity.off)
                             : Theme.textTertiary
                     )
                     .frame(width: ThemeIcon.small.size)

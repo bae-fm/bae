@@ -272,7 +272,9 @@ struct MacPressingRow: View {
                 if at > 0 {
                     Text(verbatim: FactList.glyph)
                         .themeText(.detail)
-                        .foregroundStyle(Theme.textTertiary.opacity(0.5))
+                        .foregroundStyle(
+                            Theme.textTertiary.opacity(ThemeOpacity.off)
+                        )
                 }
                 Text(bridgeLookupCatalogName(catalog: source))
                     .themeText(.detail)
@@ -322,7 +324,9 @@ extension MacPressingRow {
                 if !details.isEmpty {
                     Text(details)
                         .themeText(.detail)
-                        .foregroundStyle(Theme.textTertiary.opacity(0.5))
+                        .foregroundStyle(
+                            Theme.textTertiary.opacity(ThemeOpacity.off)
+                        )
                         .cutLine(.prose)
                 }
             }
