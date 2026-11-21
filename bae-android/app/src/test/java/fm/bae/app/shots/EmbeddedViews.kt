@@ -5,6 +5,7 @@ import android.view.ViewGroup
 import android.widget.ProgressBar
 import android.widget.SeekBar
 import android.widget.TextView
+import fm.bae.app.ui.playback.SeekLineDrawable
 import fm.bae.app.ui.sync.ShareBarView
 import org.json.JSONObject
 import kotlin.math.roundToInt
@@ -81,6 +82,7 @@ internal object EmbeddedViews {
                 else -> return null
             }
         val at = IntArray(2).also { view.getLocationInWindow(it) }
+        val box = boxOf(view, density)
         val out =
             JSONObject()
                 .put("role", kind)
@@ -90,15 +92,34 @@ internal object EmbeddedViews {
                 .put(
                     "bounds",
                     JSONObject()
-                        .put("x", dp(at[0] - origin[0], density))
-                        .put("y", dp(at[1] - origin[1], density))
-                        .put("width", dp(view.width, density))
-                        .put("height", dp(view.height, density)),
+                        .put("x", dp(at[0] - origin[0] + box.left, density))
+                        .put("y", dp(at[1] - origin[1] + box.top, density))
+                        .put("width", dp(box.width, density))
+                        .put("height", dp(box.height, density)),
                 ).put("enabled", view.isEnabled)
                 .put("selected", JSONObject.NULL)
                 .put("parent", JSONObject.NULL)
         if (view is TextView) out.put("text", style(view))
         return out
+    }
+
+    private class Box(
+        val left: Int,
+        val top: Int,
+        val width: Int,
+        val height: Int,
+    )
+
+    /** A seek line's box is the row the board draws, centred in the view's touch height and inside its thumb padding. */
+    private fun boxOf(
+        view: View,
+        density: Float,
+    ): Box {
+        val line =
+            (view as? SeekBar)?.progressDrawable as? SeekLineDrawable
+                ?: return Box(0, 0, view.width, view.height)
+        val row = (line.look.rowHeightDp * density).roundToInt()
+        return Box(view.paddingStart, (view.height - row) / 2, view.width - view.paddingStart - view.paddingEnd, row)
     }
 
     /** How far a bar is, as a whole percent, the way the boards give a bar's value; null for a text or a moving bar. */

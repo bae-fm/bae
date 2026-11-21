@@ -76,7 +76,7 @@ private const val DISABLED_ALPHA = 97
  */
 internal class SeekLineDrawable(
     private val density: Float,
-    private val look: SeekLineLook,
+    internal val look: SeekLineLook,
 ) : Drawable() {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val shape = RectF()
