@@ -101,12 +101,9 @@ struct MacImportTable: View {
                     width: ReleaseMetadataTrackColumns.track,
                     alignment: .leading
                 )
-            // Inset to line up with the fields' text.
             eyebrow("ui.import.mapping.column.title")
-                .padding(.leading, FieldChrome.inlineHorizontalPadding)
                 .frame(width: columns.title, alignment: .leading)
             eyebrow("ui.import.mapping.column.artist")
-                .padding(.leading, FieldChrome.inlineHorizontalPadding)
                 .frame(width: columns.artist, alignment: .leading)
             eyebrow("ui.import.slots.column.length")
                 .frame(
