@@ -12,7 +12,11 @@ struct RecordArrow: View {
 
     var body: some View {
         Image(systemName: "arrow.up.right")
-            .themeIcon(.small)
+            .themeIcon(.medium)
+            .frame(
+                width: ThemeIcon.medium.size,
+                height: ThemeIcon.medium.size
+            )
             .foregroundStyle(Theme.macTextSecondary)
             .accessibilityIdentifier("identified-glyph")
             .accessibilityLabel(localizedCoreString("core.identity.identified"))

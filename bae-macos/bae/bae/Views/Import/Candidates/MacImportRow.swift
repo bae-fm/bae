@@ -245,6 +245,10 @@ extension MacImportRow {
     {
         Image(systemName: systemName)
             .themeIcon(.small)
+            .frame(
+                width: QueuedImportIcon.box,
+                height: QueuedImportIcon.box
+            )
             .foregroundStyle(tint)
     }
 }
