@@ -23,6 +23,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.focused
 import androidx.compose.ui.semantics.semantics
@@ -105,6 +106,24 @@ class ElementListTest : BoardShot() {
         val focus = elements.single { it.optString("label") == "Focus" }
         assertTrue(focus.getBoolean("focused"))
         assertFalse(people.has("focused"))
+    }
+
+    @Test
+    fun namesANodeByItsContentDescriptionOverItsText() {
+        compose.setContent {
+            Box(
+                modifier =
+                    Modifier
+                        .clickable(role = Role.Button, onClick = {})
+                        .semantics(mergeDescendants = true) { contentDescription = "Now playing, Title by Artist" },
+            ) {
+                Text("Title Artist")
+            }
+        }
+        val elements = ElementList.of("android.test.named", compose.onRoot().fetchSemanticsNode()).getJSONArray("elements").objects()
+
+        val button = elements.single { it.getString("role") == "button" }
+        assertEquals("Now playing, Title by Artist", button.getString("label"))
     }
 
     @Test

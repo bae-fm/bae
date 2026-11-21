@@ -146,7 +146,8 @@ internal object ElementList {
             JSONObject()
                 .put("role", kind)
                 .put("native", role?.toString() ?: native(editable != null, texts != null, config))
-                .put("label", orNull(texts?.joinToString(" ") { it.text } ?: description?.joinToString(" ")))
+                // TalkBack names a node by its content description when it has one, over the text it holds.
+                .put("label", orNull(description?.joinToString(" ") ?: texts?.joinToString(" ") { it.text }))
                 .put("value", orNull(value(config, editable?.text)))
                 .put(
                     "bounds",
