@@ -25,7 +25,7 @@ struct CaptureSceneTests {
     @Test
     func captureAllScenes() async throws {
         let out = try Self.outputDirectory()
-        let display = try await ShotDisplay.add()
+        let display = try await ShotDisplay.shared()
 
         var failures: [String] = []
         for scene in try Self.selectedScenes() {

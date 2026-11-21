@@ -3,7 +3,7 @@ import ObjectiveC
 
 /// The display every scene shown in its window is drawn on: a virtual display
 /// of 1600 by 1200 points at 2 pixels a point, beside whatever displays the
-/// Mac has, which a shot test adds and hands to each render. A shot taken from a real display
+/// Mac has, which a shot test process adds once and hands to each render. A shot taken from a real display
 /// would depend on that display: a small display leaves less free area than the
 /// library window's scenes need, and a display at 1 pixel a
 /// point would back the window at half the shot's scale. On this display
@@ -49,8 +49,24 @@ final class ShotDisplay {
             as? CGDirectDisplayID
     }
 
+    /// The process's display, added by the first call and kept until the
+    /// process ends. One display per process means no display is created
+    /// within milliseconds of another's destruction, which WindowServer can
+    /// leave behind.
+    private static var added: Task<ShotDisplay, any Error>?
+
+    /// The display of this process. Each call returns the same display.
+    static func shared() async throws -> ShotDisplay {
+        if let added {
+            return try await added.value
+        }
+        let task = Task { try await add() }
+        added = task
+        return try await task.value
+    }
+
     /// Add the display, once AppKit lists it at its size and scale.
-    static func add() async throws -> ShotDisplay {
+    private static func add() async throws -> ShotDisplay {
         let width = Int(size.width)
         let height = Int(size.height)
         let display = try virtualDisplay(
@@ -193,7 +209,16 @@ final class ShotDisplay {
         )
         descriptor.setValue(0xBAE, forKey: "vendorID")
         descriptor.setValue(0xBAE, forKey: "productID")
-        descriptor.setValue(1, forKey: "serialNum")
+        // CoreGraphics refuses a display whose vendor, product and serial
+        // match a display WindowServer still holds, such as one a crashed
+        // test process left behind. The process ID differs from the serial
+        // of any display that an earlier process made.
+        descriptor.setValue(
+            UInt32(
+                truncatingIfNeeded: ProcessInfo.processInfo.processIdentifier
+            ),
+            forKey: "serialNum"
+        )
         return descriptor
     }
 

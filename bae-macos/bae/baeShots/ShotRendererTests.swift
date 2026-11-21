@@ -12,7 +12,7 @@ struct ShotRendererTests {
     private let display: ShotDisplay
 
     init() async throws {
-        display = try await ShotDisplay.add()
+        display = try await ShotDisplay.shared()
     }
 
     /// A scene shown in a window 100 points wider than the shot display.
