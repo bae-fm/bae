@@ -4,8 +4,8 @@ import SwiftUI
 @testable import bae
 
 extension ShotScene {
-    /// `MacImportWindow` with a folder picked and with none. With none, the
-    /// list holds the preview's two rows.
+    /// `MacImportWindow` with a folder picked and with none, over the
+    /// preview's list of two rows.
     static let macImportWindowScenes: [ShotScene] = [
         component(
             "mac.component.import-window.folder-picked",
@@ -13,7 +13,10 @@ extension ShotScene {
             height: 420,
             images: PreviewData.artImageStore()
         ) {
-            importWindow(.found(northbound: .identified, opening: .copperSky))
+            importWindow(
+                .found(northbound: .identified, opening: .lowTideHours),
+                items: previewRows()
+            )
         },
         component(
             "mac.component.import-window.no-selection",
@@ -29,11 +32,11 @@ extension ShotScene {
     ]
 
     /// The Import window's content as `board` draws it, with no work running
-    /// and the list holding two rows, at the preview's 1000 by 420 points.
+    /// and the list holding `items`, at the preview's 1000 by 420 points.
     @MainActor
     private static func importWindow(
         _ board: PreviewData.ImportBoard,
-        items: [BridgeImportListItem] = PreviewData.lookupItems()
+        items: [BridgeImportListItem]
     ) -> some View {
         let uiStore = UiStore()
         uiStore.activeSection = .importing
