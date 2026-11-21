@@ -313,13 +313,13 @@ internal fun OnTheBackdrop(content: @Composable () -> Unit) = Row(modifier = Mod
 internal fun Images(content: @Composable () -> Unit) =
     CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved(), content = content)
 
-/** [content] with an image store that draws a picture for every cover, a different one for each image's id. */
+/** [content] with an image store that draws a gradient for every cover, a different one for each image's id. */
 @Composable
 internal fun Covers(content: @Composable () -> Unit) =
     CompositionLocalProvider(
         LocalImageStore provides
             ImageStore(
-                fetchLibraryImageBytes = { TestImages.png(COVER_PIXELS, seed = it.id.hashCode()) },
+                fetchLibraryImageBytes = { TestImages.gradientPng(COVER_PIXELS, seed = it.id.hashCode()) },
                 dispatcher = Dispatchers.Unconfined,
             ),
         content = content,
