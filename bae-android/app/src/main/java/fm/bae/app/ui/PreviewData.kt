@@ -71,8 +71,20 @@ object PreviewData {
     // rather than through `bridgeClock` because a shot cannot
     // call the native bridge.
     private const val TRACK_DURATION_MS = 214_000uL
-    private val trackDurationClock =
-        BridgeDurationClock(negative = false, hours = null, minutes = 3u, seconds = 34u)
+
+    /** [durationMs] as a clock of minutes and seconds, as the bridge words a track under an hour. */
+    fun durationClock(durationMs: ULong): BridgeDurationClock {
+        val seconds = durationMs / MILLIS_PER_SECOND
+        return BridgeDurationClock(
+            negative = false,
+            hours = null,
+            minutes = (seconds / SECONDS_PER_MINUTE).toUInt(),
+            seconds = (seconds % SECONDS_PER_MINUTE).toUInt(),
+        )
+    }
+
+    private const val MILLIS_PER_SECOND = 1_000uL
+    private const val SECONDS_PER_MINUTE = 60uL
 
     fun imageRef(id: String = "img-1"): BridgeImageRef =
         BridgeImageRef(
@@ -108,7 +120,7 @@ object PreviewData {
             id = id,
             title = title,
             durationMs = TRACK_DURATION_MS,
-            durationClock = trackDurationClock,
+            durationClock = durationClock(TRACK_DURATION_MS),
             artistLine = creditLineNamed("Artist Name"),
             displayArtist = null,
             positionText = number.toString(),

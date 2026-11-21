@@ -1,7 +1,10 @@
 package fm.bae.app.shots
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.BridgeFixtures
 import fm.bae.app.R
@@ -16,20 +19,29 @@ import fm.bae.app.ui.library.SHARING_CHOICES
 import fm.bae.app.ui.library.deletePlaylistParts
 import fm.bae.app.ui.library.playlistDialogParts
 import org.junit.Test
+import uniffi.bae_bridge.BridgePersonRef
 import uniffi.bae_bridge.BridgePlaylistCover
 import uniffi.bae_bridge.BridgeSharing
 
 /** The shots of a playlist's page and the dialogs it opens, drawn as the boards draw them. */
 class PlaylistBoardShots : BoardShot() {
     private val entries =
-        listOf("Harbor Lights", "Copper Sky", "Night Ferry", "Small Hours", "Paper Lanterns", "Slow Morning")
-            .mapIndexed { index, title ->
-                BridgeFixtures.playlistEntry("position-$index", title, canMoveUp = index > 0, canMoveDown = index < 5)
-            }
+        lateNightTracks.mapIndexed { index, track ->
+            BridgeFixtures.playlistEntry(
+                "position-$index",
+                track.title,
+                canMoveUp = index > 0,
+                canMoveDown = index < lateNightTracks.lastIndex,
+                artist = track.artist,
+                album = track.album.title,
+                durationMs = track.durationMs,
+            )
+        }
 
     private val detail =
         BridgeFixtures.playlistDetail(
             BridgeFixtures.playlistSummary(name = "Late night", sharing = BridgeSharing.HOUSEHOLD).copy(
+                owner = BridgePersonRef(person = "person-ana", name = "Ana", initials = "A", avatarVersion = null),
                 cover = BridgePlaylistCover.Grid(covers = listOf(null, null, null, null)),
             ),
             entries,
@@ -53,7 +65,9 @@ class PlaylistBoardShots : BoardShot() {
                 backLabel = stringResource(R.string.back_to_library),
                 nowPlayingBar = { Bar(playingLowTideHours) },
                 actions = { PlaylistOptionsMenu(onShuffle = {}, owner = PlaylistOwnerActions(onEdit = {}, onDelete = {})) },
-            ) { PlaylistContent(detail = detail, actions = actions) }
+            ) {
+                Box(modifier = Modifier.weight(1f).fillMaxWidth()) { PlaylistContent(detail = detail, actions = actions) }
+            }
         }
     }
 

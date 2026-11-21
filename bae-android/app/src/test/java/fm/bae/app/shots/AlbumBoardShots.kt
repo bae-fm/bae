@@ -2,7 +2,9 @@ package fm.bae.app.shots
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -355,29 +357,31 @@ private fun AlbumPageContent(
             nowPlayingBar = { Bar(bar) },
             actions = actions,
         ) {
-            AlbumDetailContent(
-                detail = detail,
-                cover = detail.shownRelease.cover,
-                playback = playback,
-                callbacks =
-                    AlbumDetailCallbacks(
-                        onSelectRelease = {},
-                        onTogglePlayPause = {},
-                        onPlayTrack = {},
-                        onPlayRelease = {},
-                        onShuffleRelease = {},
-                        onPlayReleaseNext = {},
-                        onAddReleaseToQueue = {},
-                        onPlayTrackNext = {},
-                        onAddTrackToQueue = {},
-                        onRateAlbum = {},
-                        onSelectWork = {},
-                    ),
-                releaseDownloadControl = {},
-                shownRating = { detail.rating },
-                catalogName = catalogName,
-                audioChannelsKey = { "core.audio.channels.stereo" },
-            )
+            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                AlbumDetailContent(
+                    detail = detail,
+                    cover = detail.shownRelease.cover,
+                    playback = playback,
+                    callbacks =
+                        AlbumDetailCallbacks(
+                            onSelectRelease = {},
+                            onTogglePlayPause = {},
+                            onPlayTrack = {},
+                            onPlayRelease = {},
+                            onShuffleRelease = {},
+                            onPlayReleaseNext = {},
+                            onAddReleaseToQueue = {},
+                            onPlayTrackNext = {},
+                            onAddTrackToQueue = {},
+                            onRateAlbum = {},
+                            onSelectWork = {},
+                        ),
+                    releaseDownloadControl = {},
+                    shownRating = { detail.rating },
+                    catalogName = catalogName,
+                    audioChannelsKey = { "core.audio.channels.stereo" },
+                )
+            }
         }
     }
 }

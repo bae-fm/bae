@@ -1,5 +1,6 @@
 package fm.bae.app
 
+import fm.bae.app.ui.PreviewData
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeAlbumRating
@@ -225,16 +226,19 @@ object BridgeFixtures {
         title: String,
         canMoveUp: Boolean = false,
         canMoveDown: Boolean = false,
+        artist: String = "Artist Name",
+        album: String = "Album Title",
+        durationMs: ULong = 180_000uL,
     ): BridgePlaylistEntryRow =
         BridgePlaylistEntryRow(
             positionId = positionId,
             trackId = "track-$positionId",
             title = title,
-            artistLine = creditLineNamed("Artist Name"),
+            artistLine = creditLineNamed(artist),
             albumId = "album-1",
-            albumTitle = "Album Title",
+            albumTitle = album,
             releaseId = "rel-1",
-            durationClock = BridgeDurationClock(negative = false, hours = null, minutes = 3u, seconds = 0u),
+            durationClock = PreviewData.durationClock(durationMs),
             cover = null,
             number = 1uL,
             canMoveUp = canMoveUp,

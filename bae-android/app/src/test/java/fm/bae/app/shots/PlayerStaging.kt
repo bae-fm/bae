@@ -23,7 +23,6 @@ import uniffi.bae_bridge.BridgeTrackSpan
 private const val TRACK_ID = "shot-track"
 private const val DEFAULT_DURATION_SECONDS = 303L
 private const val MILLIS_PER_SECOND = 1_000L
-private const val SECONDS_PER_MINUTE = 60L
 
 internal fun northboundTrack(
     title: String = "Low Tide Hours",
@@ -86,15 +85,7 @@ internal class PlayerStaging(
         )
     }
 
-    private fun clock(ms: Long): BridgeDurationClock {
-        val seconds = ms / MILLIS_PER_SECOND
-        return BridgeDurationClock(
-            negative = false,
-            hours = null,
-            minutes = (seconds / SECONDS_PER_MINUTE).toUInt(),
-            seconds = (seconds % SECONDS_PER_MINUTE).toUInt(),
-        )
-    }
+    private fun clock(ms: Long): BridgeDurationClock = PreviewData.durationClock(ms.toULong())
 }
 
 /** A track a third of the way in, with its first 60% buffered. */

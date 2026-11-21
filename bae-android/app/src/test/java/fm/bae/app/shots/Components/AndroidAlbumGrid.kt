@@ -33,20 +33,30 @@ class AndroidAlbumGridShots : BoardShot() {
         }
 }
 
+/** An album as the boards name it: its title and the artist it is credited to. */
+internal class BoardAlbum(
+    val title: String,
+    val artist: String,
+)
+
+/** The eight albums the boards draw, in order. */
+internal val boardAlbumFacts =
+    listOf(
+        BoardAlbum("Low Tide Hours", "Mara Quill"),
+        BoardAlbum("Paper Lanterns", "The Slow Orchards"),
+        BoardAlbum("Glass Harbor", "Ines Varga Trio"),
+        BoardAlbum("Copper Sky", "Odile Fen"),
+        BoardAlbum("Salt and Cedar", "The Slow Orchards"),
+        BoardAlbum("Field Recordings", "Mara Quill"),
+        BoardAlbum("Winter Kitchen", "Odile Fen"),
+        BoardAlbum("Small Hours", "Tomas Brell"),
+    )
+
 /** The eight albums the boards' grids draw, in order, each with a cover picture. */
 internal val boardAlbums =
-    listOf(
-        "Low Tide Hours" to "Mara Quill",
-        "Paper Lanterns" to "The Slow Orchards",
-        "Glass Harbor" to "Ines Varga Trio",
-        "Copper Sky" to "Odile Fen",
-        "Salt and Cedar" to "The Slow Orchards",
-        "Field Recordings" to "Mara Quill",
-        "Winter Kitchen" to "Odile Fen",
-        "Small Hours" to "Tomas Brell",
-    ).mapIndexed { index, (title, artist) ->
+    boardAlbumFacts.mapIndexed { index, facts ->
         val id = "a${index + 1}"
-        val album = PreviewData.album(id = id, title = title, artistNames = artist, cover = PreviewData.imageRef(title))
+        val album = PreviewData.album(id = id, title = facts.title, artistNames = facts.artist, cover = PreviewData.imageRef(facts.title))
         BridgeAlbumAppearance(album, false, album.artistLine)
     }
 
