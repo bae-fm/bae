@@ -49,7 +49,7 @@ struct ShotElementListTests {
             "\(json)"
         )
         #expect(title.text?.size == 13, "\(json)")
-        #expect(title.text?.weight == 600, "\(json)")
+        #expect(title.text?.weight == 700, "\(json)")
         #expect(title.text?.color.hasPrefix("#F5F5F6") == true, "\(json)")
         #expect(abs(title.bounds.x - (left + 16)) <= 1, "\(json)")
         // The title sits 18 down from the sheet's top, as the board's
