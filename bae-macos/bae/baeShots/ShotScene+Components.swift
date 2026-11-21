@@ -128,6 +128,7 @@ extension ShotScene {
             macRecordLinksScenes,
             macReleaseCardScenes,
             macReleaseCellScenes,
+            macReleaseEditorScenes,
             macReleaseFieldsScenes,
             macReleaseFileRowScenes,
             macReleaseFileTableScenes,
