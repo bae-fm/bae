@@ -665,6 +665,18 @@ final class StorageTable: NSTableView {
         menus?.showContextMenu(forRow: row, in: self)
         return nil
     }
+
+    /// The header's column buttons first, then the rows: a person reading
+    /// the table with VoiceOver meets the column names before the cells.
+    override func accessibilityChildren() -> [Any]? {
+        guard let children = super.accessibilityChildren() else { return nil }
+        guard let header = headerView else { return children }
+        let isHeader: (Any) -> Bool = { child in
+            guard let view = child as? NSView else { return false }
+            return view === header || view.isDescendant(of: header)
+        }
+        return children.filter(isHeader) + children.filter { !isHeader($0) }
+    }
 }
 
 /// The storage table's header, whose right click opens bae's columns menu.
