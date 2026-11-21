@@ -53,11 +53,11 @@
 .bae-a-code-dialog, .bae-m-code-dialog { padding-top: var(--space-related); }
 .bae-a-code-dialog .bae-a-code-digits { font-size: 32px; line-height: 40px; letter-spacing: 2px; }
 /* Every button takes Material's 48dp touch target as its height; its 40dp shape (fill or outline) sits inside it, drawn by ::before. */
-.bae-a-btn { position: relative; isolation: isolate; height: 48px; padding: 0 var(--space-section); border-radius: 20px; border: 0; background: none; font: 500 14px var(--font-android); cursor: pointer; white-space: nowrap; }
-.bae-a-btn::before { content: ''; position: absolute; z-index: -1; inset: 4px 0; border-radius: inherit; }
+/* A button draws its 40 px pill, as Material's buttons do; the 4 px above and below make the 48 px touch target. */
+.bae-a-btn { position: relative; isolation: isolate; height: 40px; margin-block: 4px; padding: 0 var(--space-section); border-radius: 20px; border: 0; background: none; font: 500 14px var(--font-android); cursor: pointer; white-space: nowrap; }
+.bae-a-btn::before { content: ''; position: absolute; z-index: -1; inset: 0; border-radius: inherit; }
 .bae-a-btn-icon { display: inline-flex; align-items: center; gap: 8px; fill: currentColor; }
-.bae-a-btn-large { height: 48px; border-radius: 24px; font-size: 15px; }
-.bae-a-btn-large::before { inset: 0; }
+.bae-a-btn-large { height: 48px; margin-block: 0; border-radius: 24px; font-size: 15px; }
 .bae-a-btn-filled { color: var(--on-fill); }
 .bae-a-btn-filled::before { background: var(--accent-selection); }
 .bae-a-btn-filled.bae-a-btn-destructive { color: var(--background); }
@@ -81,7 +81,8 @@
 
 .bae-a-iconbtn { width: 48px; height: 48px; flex: none; display: flex; align-items: center; justify-content: center; background: none; border: 0; border-radius: 24px; padding: 0; fill: var(--text-primary); cursor: pointer; }
 .bae-a-inlineicon { flex: none; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; }
-.bae-a-inlineicon > .bae-a-iconbtn { margin: -14px; }
+/* The 40 px button (Material's state layer) centred on the 20 px slot; the touch target reaches 4 px further. */
+.bae-a-inlineicon > .bae-a-iconbtn { margin: -10px; }
 
 .bae-a-switch { position: relative; width: 52px; height: 32px; flex: none; border: 0; border-radius: 16px; padding: 0; cursor: pointer; background: var(--tile); box-shadow: inset 0 0 0 2px var(--text-secondary); }
 .bae-a-switch-thumb { position: absolute; left: 6px; top: 8px; width: 16px; height: 16px; border-radius: 12px; background: var(--text-secondary); }
