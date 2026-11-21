@@ -305,12 +305,18 @@ private fun FramedNotice(
                     hasDetails,
                     onDetails,
                     action,
-                    Modifier.offset(x = -TEXT_BUTTON_PADDING).pulledUpBy(ThemeSpace.related),
+                    Modifier
+                        .offset(x = -TEXT_BUTTON_PADDING)
+                        .pulledUpBy(top = BELOW_BUTTONS_PULL_TOP, bottom = BELOW_BUTTONS_PULL_BOTTOM),
                 )
             }
         }
     }
 }
+
+/** How far buttons below a notice's words overhang them: 5.5dp above, 13.5dp under. */
+private val BELOW_BUTTONS_PULL_TOP = 5.5.dp
+private val BELOW_BUTTONS_PULL_BOTTOM = 13.5.dp
 
 /** A notice's buttons in a row: Details first, then the primary [action]. */
 @Composable
@@ -320,7 +326,7 @@ private fun NoticeButtonRow(
     action: ErrorAction?,
     modifier: Modifier,
 ) {
-    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
+    Row(modifier = modifier) {
         if (hasDetails) {
             AndroidButton(onClick = onDetails, kind = ButtonKind.TEXT) {
                 Text(stringResource(R.string.details))
