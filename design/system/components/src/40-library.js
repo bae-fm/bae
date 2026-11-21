@@ -488,8 +488,9 @@
     return h('div', { className: 'bae-a-grid' }, props.children);
   }
 
+  // An album's tile: one button that opens the album, named by its title and line, as TalkBack reads the merged tile.
   function AndroidAlbumTile(props) {
-    return h('div', { className: 'bae-a-tile' },
+    return h('button', { type: 'button', className: 'bae-plainbtn bae-a-tile' },
       h(Artwork, { title: props.title, missing: props.noCover, radius: 10 }),
       h('div', { className: 'bae-a-tile-title' }, props.title),
       h('div', { className: 'bae-a-tile-line' }, props.line));
