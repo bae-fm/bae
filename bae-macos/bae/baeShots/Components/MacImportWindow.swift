@@ -4,7 +4,8 @@ import SwiftUI
 @testable import bae
 
 extension ShotScene {
-    /// `MacImportWindow` with a folder picked and with none.
+    /// `MacImportWindow` with a folder picked and with none. With none, the
+    /// list holds the preview's two rows.
     static let macImportWindowScenes: [ShotScene] = [
         component(
             "mac.component.import-window.folder-picked",
@@ -20,7 +21,10 @@ extension ShotScene {
             height: 420,
             images: PreviewData.artImageStore()
         ) {
-            importWindow(.found(northbound: .identified, opening: nil))
+            importWindow(
+                .found(northbound: .identified, opening: nil),
+                items: previewRows()
+            )
         },
     ]
 
@@ -28,7 +32,8 @@ extension ShotScene {
     /// and the list holding two rows, at the preview's 1000 by 420 points.
     @MainActor
     private static func importWindow(
-        _ board: PreviewData.ImportBoard
+        _ board: PreviewData.ImportBoard,
+        items: [BridgeImportListItem] = PreviewData.lookupItems()
     ) -> some View {
         let uiStore = UiStore()
         uiStore.activeSection = .importing
@@ -38,7 +43,7 @@ extension ShotScene {
         scene.fixture.store.importsInFlight = 0
         let fixture = ImportPreviewFixture(
             store: scene.fixture.store,
-            itemsByTab: [board.tab: PreviewData.lookupItems()],
+            itemsByTab: [board.tab: items],
             tabCounts: columnCounts
         )
         let slot = fixture.slot(uiStore: uiStore, selection: scene.selection)
@@ -62,5 +67,23 @@ extension ShotScene {
             .environment(\.importPercents, scene.importPercents)
             .mainWindowPreviewEnvironment()
             .frame(width: 1_000, height: 420)
+    }
+
+    /// The preview's list: Low Tide Hours read from its release, which
+    /// needs nothing from the person, and Copper Sky, not found.
+    private static func previewRows() -> [BridgeImportListItem] {
+        [
+            PreviewData.candidateItem(
+                PreviewData.boardRow(
+                    .lowTideHours,
+                    summary: BridgeTriageMetadataSummary(
+                        albumTitle: "Low Tide Hours",
+                        albumArtists: .named("Mara Quill")
+                    ),
+                    record: "board-low-tide-hours"
+                )
+            ),
+            PreviewData.lookupItems()[1],
+        ]
     }
 }
