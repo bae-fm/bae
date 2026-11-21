@@ -8,7 +8,7 @@
   var B = window.Bae, h = React.createElement;
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   // Each bar is as wide as the main window at its narrowest, 1100pt, as the app draws it.
-  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, h('div', { style: { width: 1100, flex: 'none' } }, c))); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell bae-preview-cell-fit' }, h('div', { style: { width: 1100, flex: 'none' } }, c))); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
     W('Playing', h(B.MacNowPlayingBar, { title: 'Low Tide Hours', artist: 'Mara Quill', playing: true, held: 0.6, elapsed: '1:42', duration: '5:03' })),

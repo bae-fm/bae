@@ -7,7 +7,7 @@
 <script>
   var B = window.Bae, h = React.createElement;
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
-  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
+  function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell bae-preview-cell-fit' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
     W('Release list', h(B.MacStorageWindow, { width: 1100, height: 300 }, h(B.MacTable, { columns: 'Release:280:up,Artist:200,Media:80,Storage:190,Files:60:right,Size:100:right,Date added:120', rows: 'Copper Sky|Odile Fen|CD|local|11|388 MB|Oct 4, 2026; Field Recordings|Mara Quill|2×CD|uploading 0.62|24|902 MB|Nov 6, 2026; Glass Harbor|Ines Varga Trio|CD|cloud|9|356 MB|Aug 30, 2026' }), h(B.MacStorageFooter, { releases: '3 releases', total: '1.6 GB' }))),
