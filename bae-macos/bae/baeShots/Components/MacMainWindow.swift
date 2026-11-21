@@ -4,8 +4,8 @@ import SwiftUI
 @testable import bae
 
 extension ShotScene {
-    /// `MacMainWindow` around the library's albums, or the Import section,
-    /// with "Low Tide Hours" playing 1:42 into 5:03 or nothing played, and
+    /// `MacMainWindow` around the library's albums, or with an empty section
+    /// where the preview draws a slot, with "Low Tide Hours" playing 1:42 into 5:03 or nothing played, and
     /// nothing in the Activity button.
     static let macMainWindowScenes: [ShotScene] = [
         ShotScene(
@@ -20,22 +20,25 @@ extension ShotScene {
             size: CGSize(width: 1100, height: 520),
             frame: .window(title: "bae", titleBar: .hidden)
         ) {
-            mainWindow(section: .importing, playing: true)
+            mainWindow(section: .importing, playing: true, emptySection: true)
         },
         ShotScene(
             id: "mac.component.main-window.nothing-played",
             size: CGSize(width: 1100, height: 520),
             frame: .window(title: "bae", titleBar: .hidden)
         ) {
-            mainWindow(section: .library, playing: false)
+            mainWindow(section: .library, playing: false, emptySection: true)
         },
     ]
 
-    /// The main window on `section`, 1100 by 520 as the preview draws it.
+    /// The main window on `section`, 1100 by 520 as the preview draws it,
+    /// with nothing in the space the section fills when `emptySection` is
+    /// set, where the preview draws a slot.
     @MainActor
     private static func mainWindow(
         section: MainSection,
-        playing: Bool
+        playing: Bool,
+        emptySection: Bool = false
     ) -> ShotStage {
         let uiStore = storeShowing(section)
         let backing = boardLibraryBacking(uiStore: uiStore)
@@ -46,7 +49,22 @@ extension ShotScene {
                 needsAttention: false,
                 syncActivity: SyncActivityStore(),
                 playbackStore: playing ? boardPlayback() : PlaybackStore(),
-                size: CGSize(width: 1100, height: 520)
+                size: CGSize(width: 1100, height: 520),
+                window: emptySection
+                    ? AnyView(
+                        MacMainWindow(showSidePane: false) {
+                            MacTitleBar(
+                                searchText: .constant(""),
+                                onSearchFieldFrame: { _ in }
+                            )
+                        } content: {
+                            Color.clear
+                        } queuePanel: {
+                            EmptyView()
+                        } nowPlayingBar: {
+                            MacNowPlayingBarContainer(onDropToQueue: { _ in })
+                        }
+                    ) : AnyView(MacMainWindowContainer())
             )
         ) {
             (backing.session.albums.list?.positionCount ?? 0) > 0

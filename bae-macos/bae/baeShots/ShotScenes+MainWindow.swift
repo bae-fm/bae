@@ -16,7 +16,8 @@ extension ShotScenes {
     /// stands in, with its own), what each candidate has in flight from
     /// `candidateRuntimes`, and its covers from `images`; `configStore`, `releaseEditor`, `outbox`
     /// and `importPercents` stand in for the ones a shot of the Import
-    /// section states.
+    /// section states. `window` is the view the environment surrounds: the
+    /// app's main window unless a shot lays out its own.
     static func libraryWindow(
         uiStore: UiStore,
         backing: (library: Library, session: LibraryBrowseSession),
@@ -38,12 +39,14 @@ extension ShotScenes {
         syncStatus: SyncStatusStore = PreviewData.syncStatus(
             hasCloudHome: true
         ),
-        size: CGSize = CGSize(width: 1280, height: 800)
+        size: CGSize = CGSize(width: 1280, height: 800),
+        window: AnyView = AnyView(MacMainWindowContainer())
     ) -> some View {
         let slot =
             importListSlot
             ?? importScene.slot(uiStore: uiStore, selection: importSelection)
-        return MacMainWindowContainer()
+        return
+            window
             .environment(backing.library)
             .environment(backing.session)
             .environment(
