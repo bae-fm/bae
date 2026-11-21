@@ -80,10 +80,15 @@ extension ShotScene {
                     load.phase.image != nil
                 }
             case .loading:
-                return ShotStage(view, images: images) {
-                    if case .loading = load.phase { return true }
-                    return false
-                }
+                // The first image never answers, so the stage cannot wait
+                // for the store to hand every image back.
+                return ShotStage(
+                    view,
+                    isReady: {
+                        if case .loading = load.phase { return true }
+                        return false
+                    }
+                )
             case .failed:
                 return ShotStage(view, images: images) {
                     if case .failed = load.phase { return true }
