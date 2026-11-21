@@ -8,5 +8,5 @@ import androidx.compose.ui.unit.Dp
 internal fun Modifier.pulledUpBy(by: Dp): Modifier =
     layout { measurable, constraints ->
         val placeable = measurable.measure(constraints)
-        layout(placeable.width, placeable.height - by.roundToPx()) { placeable.place(0, 0) }
+        layout(placeable.width, (placeable.height - by.roundToPx()).coerceAtLeast(0)) { placeable.place(0, 0) }
     }
