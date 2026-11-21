@@ -219,6 +219,8 @@ extensions.configure<ApplicationAndroidComponentsExtension> {
 // draws nothing. -Pbae.shotsSelect=<prefixes> (comma-separated board names' starts)
 // limits the boards drawn. -Pbae.shotsBoardSizes=<file> names the JSON of each component board's size.
 tasks.withType<Test>().configureEach {
+    // A failing test's message, not only its exception's name, so a shot that fails says why.
+    testLogging { exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL }
     providers.gradleProperty("bae.shotsDir").orNull?.let { dir ->
         systemProperty("bae.shotsDir", dir)
         systemProperty("roborazzi.test.record", "true")

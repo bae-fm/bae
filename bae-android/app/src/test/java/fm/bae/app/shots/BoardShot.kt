@@ -42,8 +42,7 @@ abstract class BoardShot {
     /**
      * Draws a design-system component in one of its states, as [id] (`android.component.<thing>.<state>`) names
      * it, on the page colour, at the size of its board's preview cell, which builds lists in the file
-     * `bae.shotsBoardSizes` names; a selected state with no entry is skipped, so the run has no shot for it and
-     * the checker lists its preview row.
+     * `bae.shotsBoardSizes` names; a selected state with no entry fails its test, by its board's name.
      */
     protected fun component(
         id: String,
@@ -51,9 +50,8 @@ abstract class BoardShot {
     ) {
         assumeNotNull(System.getProperty("bae.shotsDir"))
         assumeTrue("board '$id' is not selected", isSelected(id, System.getProperty("bae.shotsSelect")))
-        val size = BoardSizes.of(id)
-        assumeTrue("the board sizes list none for '$id'", size != null)
-        shot(id) { ComponentScene(checkNotNull(size), content) }
+        val size = checkNotNull(BoardSizes.of(id)) { "the board sizes list none for '$id'" }
+        shot(id) { ComponentScene(size, content) }
     }
 
     /** Draws [content] as [board]. */
