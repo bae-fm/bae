@@ -13,6 +13,7 @@
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
     N('New album', h(B.MacAlbumPicker, { album: 'New album' })),
     N('Library album', h(B.MacAlbumPicker, { album: 'Low Tide Hours · Mara Quill', inLibrary: true })),
+    N('Fixed while a save reads', h(B.MacAlbumPicker, { album: 'Low Tide Hours · Mara Quill', inLibrary: true, fixed: true })),
     N('Open on a library album', h('div', { style: { height: 130 } }, h(B.MacAlbumPicker, { album: 'Low Tide Hours · Mara Quill', inLibrary: true, open: true }))),
     N('Open on a new album', h('div', { style: { height: 110 } }, h(B.MacAlbumPicker, { album: 'New album', open: true }))),
     N('Open on a picked album', h('div', { style: { height: 150 } }, h(B.MacAlbumPicker, { album: 'Small Hours · Tomas Brell', inLibrary: true, picked: true, open: true })))));
