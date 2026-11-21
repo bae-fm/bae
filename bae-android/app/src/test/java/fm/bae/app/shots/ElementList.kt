@@ -139,7 +139,9 @@ internal object ElementList {
         val texts = config.getOrNull(SemanticsProperties.Text)
         val description = config.getOrNull(SemanticsProperties.ContentDescription)
         val kind = kind(config, role, editable != null, texts != null, description != null && node.children.isEmpty())
-        val bounds = node.touchBoundsInRoot
+        // The box the node draws, not the 48 dp touch target Compose grows around a smaller one: a board draws the
+        // box, and TouchTargetTest checks the touch target.
+        val bounds = node.boundsInRoot
         val (top, height) =
             if (kind == "text") contentBox(config, bounds.top, bounds.height) else bounds.top to bounds.height
         val out =
