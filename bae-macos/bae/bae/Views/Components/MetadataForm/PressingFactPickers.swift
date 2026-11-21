@@ -271,7 +271,11 @@ struct DiscogsDetailsEditor: View {
                 }
             }
             .fixedSize()
-            .accessibilityLabel(String(localized: "Details"))
+            .accessibilityLabel(
+                details.isEmpty
+                    ? String(localized: "Details")
+                    : String(localized: "Add detail")
+            )
         }
     }
 
