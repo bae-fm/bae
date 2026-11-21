@@ -253,7 +253,7 @@ struct ImportMappingPaneTests {
         }
         #expect(container.fileId == MappingFixtures.containerId)
         #expect(entries.count == 12)
-        #expect(after.trackRows.count == 12)
+        #expect(after?.trackRows.count == 12)
     }
 
     // 2. Naming a row writes that row. The count the bar states comes from the
@@ -514,7 +514,7 @@ extension ImportMappingPaneTests {
             return
         }
         #expect(sheet.assigned == nil)
-        #expect(mapping.trackRows.count == 1)
+        #expect(mapping?.trackRows.count == 1)
     }
 
     // 8. Applying each source writes that source. Browsing either source does
