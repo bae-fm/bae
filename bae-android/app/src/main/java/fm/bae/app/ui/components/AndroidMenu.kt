@@ -21,6 +21,23 @@ fun AndroidMenu(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismissRequest,
+        modifier = modifier,
+        shape = AndroidMenuShape,
+        containerColor = androidMenuColor(),
+    ) {
+        AndroidMenuItemStyle(content)
+    }
+}
+
+/**
+ * The words of a menu's items as the design draws them, medium 14 over a 20 line. A menu item sets its words in
+ * Material's body large, so the menu's own is that style.
+ */
+@Composable
+internal fun ColumnScope.AndroidMenuItemStyle(content: @Composable ColumnScope.() -> Unit) {
     val typography = MaterialTheme.typography
     val itemText =
         typography.bodyLarge.copy(
@@ -29,16 +46,12 @@ fun AndroidMenu(
             fontWeight = FontWeight.Medium,
             letterSpacing = 0.sp,
         )
-    DropdownMenu(
-        expanded = expanded,
-        onDismissRequest = onDismissRequest,
-        modifier = modifier,
-        shape = RoundedCornerShape(MENU_RADIUS),
-        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-    ) {
-        // A menu item sets its words in Material's body large, so the menu's own is that style.
-        MaterialTheme(typography = typography.copy(bodyLarge = itemText)) { content() }
-    }
+    MaterialTheme(typography = typography.copy(bodyLarge = itemText)) { content() }
 }
 
-private val MENU_RADIUS = 4.dp
+/** The menu's corners. */
+internal val AndroidMenuShape = RoundedCornerShape(4.dp)
+
+/** The menu's colour. */
+@Composable
+internal fun androidMenuColor() = MaterialTheme.colorScheme.surfaceContainerHigh
