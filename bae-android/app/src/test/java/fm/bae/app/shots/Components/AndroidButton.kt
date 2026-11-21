@@ -2,9 +2,11 @@ package fm.bae.app.shots
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
 import fm.bae.app.R
@@ -79,4 +81,11 @@ private fun JoinButton(
     tone: ButtonTone = ButtonTone.DEFAULT,
     large: Boolean = false,
     enabled: Boolean = true,
-) = AndroidButton(onClick = {}, kind = kind, tone = tone, large = large, enabled = enabled) { Text("Join library") }
+) = AndroidButton(
+    onClick = {},
+    modifier = if (large) Modifier.fillMaxWidth() else Modifier,
+    kind = kind,
+    tone = tone,
+    large = large,
+    enabled = enabled,
+) { Text("Join library") }
