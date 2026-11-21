@@ -26,12 +26,12 @@
 //!   `Vec` on most fields and a set on some
 //! - `cover: (opt BridgeImageRef)` — an `Option` of one
 //! - `sides: (opt each BridgeTrackTableSide)` — an `Option` of a collection,
-//!   absent where the other side has no list, every element converting
+//!   absent where the other side has no list, every element converting, in
+//!   `mirror_from` only
 //!
 //! `into` in place of a type name reaches the other side through the `From`
 //! impl the two types already have rather than through `from_core`/`into_core`
-//! — `source: (into)`, `providers: (each into)`, `action: (opt into)`,
-//! `labels: (opt each into)`.
+//! — `source: (into)`, `providers: (each into)`, `action: (opt into)`.
 
 /// One field or payload crossing outward, with its nested conversion applied.
 #[macro_export]
@@ -47,9 +47,6 @@ macro_rules! mirror_from {
     };
     ($value:expr, (opt into)) => {
         $value.map(Into::into)
-    };
-    ($value:expr, (opt each into)) => {
-        $value.map(|values| values.into_iter().map(Into::into).collect())
     };
     ($value:expr, (opt each $bridge:path)) => {
         $value.map(|values| values.into_iter().map(<$bridge>::from_core).collect())
@@ -79,12 +76,6 @@ macro_rules! mirror_into {
     };
     ($value:expr, (opt into)) => {
         $value.map(Into::into)
-    };
-    ($value:expr, (opt each into)) => {
-        $value.map(|values| values.into_iter().map(Into::into).collect())
-    };
-    ($value:expr, (opt each $bridge:path)) => {
-        $value.map(|values| values.into_iter().map(<$bridge>::into_core).collect())
     };
     ($value:expr, (each $bridge:path)) => {
         $value.into_iter().map(<$bridge>::into_core).collect()
