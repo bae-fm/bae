@@ -16,10 +16,7 @@ extension ImportMappingTracksLayoutTests {
     func boundReferencesHaveTheirOwnSubmenus() throws {
         let references = assignmentReferences(secondAssigned: true)
         #expect(
-            ImportSheetBindingChoice.choices(
-                for: references[0],
-                offersNone: true
-            )
+            ImportSheetBindingChoice.choices(for: references[0])
                 == [
                     .offered(
                         fileId: "First.flac",
@@ -37,10 +34,7 @@ extension ImportMappingTracksLayoutTests {
                 ]
         )
         #expect(
-            ImportSheetBindingChoice.choices(
-                for: references[1],
-                offersNone: true
-            )
+            ImportSheetBindingChoice.choices(for: references[1])
                 == [
                     .offered(
                         fileId: "Second.flac",
@@ -71,10 +65,7 @@ extension ImportMappingTracksLayoutTests {
         }
         let references = assignmentReferences(secondAssigned: false)
         #expect(
-            ImportSheetBindingChoice.choices(
-                for: references[1],
-                offersNone: true
-            )
+            ImportSheetBindingChoice.choices(for: references[1])
                 == [
                     .offered(
                         fileId: "Second.flac",

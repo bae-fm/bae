@@ -5,8 +5,8 @@ import SwiftUI
 /// the Edit release sheet alike: its side or disc, its name and the audio it
 /// describes. A FILE reference with no audio bound is chosen from the
 /// caption's amber menu; bound references are changed from the summary's
-/// menu. Where the host's actions offer them, the place pop-up offers
-/// *Ignored* and each reference offers binding no audio.
+/// menu. Where the host's actions offer it, the place pop-up offers
+/// *Ignored*; each reference offers binding no audio.
 struct ReleaseSheetCaption: View {
     let sheet: BridgeSheetGroup
     let actions: SheetCaptionActions
@@ -42,7 +42,6 @@ struct ReleaseSheetCaption: View {
     ) -> ImportSheetBindingItems {
         ImportSheetBindingItems(
             reference: reference,
-            offersNone: actions.offersNone,
             onBind: { bind(reference, to: $0) }
         )
     }
@@ -129,8 +128,6 @@ struct SheetCaptionActions {
     let bind: (String, String, String?) -> Void
     /// Whether the caption's place pop-up offers *Ignored*.
     let offersIgnored: Bool
-    /// Whether each FILE line offers binding no audio.
-    let offersNone: Bool
 }
 
 extension ImportMappingActions {
@@ -141,8 +138,7 @@ extension ImportMappingActions {
             open: openDocument,
             place: setSheetPlace,
             bind: bindSheet,
-            offersIgnored: true,
-            offersNone: true
+            offersIgnored: true
         )
     }
 }

@@ -65,15 +65,12 @@ pub struct DbReleaseEditTrack {
 }
 
 /// A track a save of the release editor's form adds, which plays a whole
-/// audio file no track plays any more: the file's id and name, its length,
-/// the title the person typed for the track (`None` until they type one) and
-/// the place the form's layout gives the track.
+/// audio file no track plays any more: the file, its length and the place
+/// the form's layout gives the track.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbReleaseEditAdded {
-    pub file_id: String,
-    pub name: String,
+    pub file: crate::records::sheet_files::AddedFile,
     pub duration_ms: u64,
-    pub typed_title: Option<String>,
     pub position: bae_types::mediums::TrackPosition,
 }
 

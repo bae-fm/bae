@@ -36,8 +36,8 @@ mod track_files;
 mod worker;
 
 use content_type::{release_file_role, resolve_file_content_type};
+pub(crate) use track_files::added_track_title;
 use track_files::resolve_track_files;
-pub(crate) use track_files::title_of_file_name;
 
 /// Which import run a progress event is about: the run the pane is watching and
 /// the candidate row it redraws.

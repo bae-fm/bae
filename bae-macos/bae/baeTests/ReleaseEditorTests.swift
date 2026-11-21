@@ -147,8 +147,7 @@ struct ReleaseEditorTests {
                             open: { _, _ in },
                             place: { _, _ in },
                             bind: { _, _, _ in },
-                            offersIgnored: false,
-                            offersNone: true
+                            offersIgnored: false
                         ),
                         audition: TrackAuditionActions(
                             preview: { _ in },

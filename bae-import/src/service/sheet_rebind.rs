@@ -108,7 +108,7 @@ pub async fn rebound_sheet_audio(
             let track = bae_records::DbTrack {
                 id: ids.new_id().to_string(),
                 release_id: release_id.to_string(),
-                title: plan.typed_title.unwrap_or_else(|| super::title_of_file_name(&plan.name)),
+                title: super::added_track_title(&plan),
                 medium_id: changes.medium_id.clone(),
                 side: std::num::NonZeroU8::MIN,
                 track_number: std::num::NonZeroU32::MIN,

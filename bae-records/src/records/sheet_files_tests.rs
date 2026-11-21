@@ -302,7 +302,7 @@ fn kinds(rows: &[DbReleaseEditRow]) -> Vec<String> {
     rows.iter()
         .map(|row| match row {
             DbReleaseEditRow::Stored(track) => track.track.id.clone(),
-            DbReleaseEditRow::Added(added) => format!("added {}", added.file_id),
+            DbReleaseEditRow::Added(added) => format!("added {}", added.file.file_id),
         })
         .collect()
 }
@@ -325,7 +325,7 @@ async fn the_editor_lists_an_added_track_where_the_sheet_began() {
     let rows = rows(&db, edits(&[("one", "image.flac")], &[])).await;
     assert_eq!(kinds(&rows), [uuid("a"), format!("added {}", uuid("image")), uuid("z")],);
     let DbReleaseEditRow::Added(added) = &rows[1] else { panic!("the second row is added") };
-    assert_eq!(added.name, "image.flac");
+    assert_eq!(added.file.name, "image.flac");
     assert_eq!(added.duration_ms, 600_000);
     assert_eq!(added.position.text(), "2");
     let DbReleaseEditRow::Stored(last) = &rows[2] else { panic!("the third row is stored") };
@@ -342,7 +342,7 @@ async fn a_typed_title_reaches_the_added_row_only() {
     let rows =
         rows(&db, edits(&[("one", "image.flac")], &[("image", "Typed"), ("last", "Stray")])).await;
     let DbReleaseEditRow::Added(added) = &rows[0] else { panic!("the first row is added") };
-    assert_eq!(added.typed_title.as_deref(), Some("Typed"));
+    assert_eq!(added.file.typed_title.as_deref(), Some("Typed"));
     assert_eq!(rows.len(), 2);
 }
 
@@ -481,7 +481,8 @@ async fn a_sheet_with_no_tracks_takes_its_place_in_the_files_list() {
         .await
         .unwrap();
     let Some(DbCarriedFile::Sheet(sheet)) = files.carried.first() else { panic!("a sheet") };
-    assert_eq!((sheet.line_count, sheet.medium, sheet.side), (2, 1, 1));
+    assert_eq!(sheet.place.side, bae_types::mediums::MediumSide::first_of(1));
+    assert_eq!(sheet.lines.len(), 2);
     assert!(sheet.lines[0].options.iter().any(|option| option.name == "first.flac"));
 }
 
@@ -503,7 +504,7 @@ async fn a_sheet_with_a_line_of_no_audio_lists_it_on_the_tracks_that_stay() {
         panic!("the first file gets a track, and the track of the other line stays: {rows:?}")
     };
     assert_eq!(stays.track.id, uuid("b2"));
-    assert_eq!(added.file_id, uuid("first"));
+    assert_eq!(added.file.file_id, uuid("first"));
     let sheet = stays.sheet.as_ref().expect("the sheet carves the track");
     assert_eq!(sheet.line_count, 1);
     let [line] = sheet.unbound_lines.as_slice() else { panic!("one line plays none: {sheet:?}") };

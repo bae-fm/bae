@@ -417,18 +417,20 @@ impl DraftRow {
             Self::Stored(track) => return track.table_row(unreadable),
             Self::Added(added) => added,
         };
-        let title =
-            added.typed_title.unwrap_or_else(|| crate::service::title_of_file_name(&added.name));
+        let title = crate::service::added_track_title(&added.file);
         Ok(crate::types::ReleaseEditTrackRow {
             edit: RawTrackEdit {
-                id: added.file_id.clone(),
+                id: added.file.file_id.clone(),
                 title,
                 artist_assignments: TrackArtistAssignments::AlbumArtists,
                 file: None,
             },
             context: crate::ReleaseEditTrackContext {
                 side: added.position.side(),
-                source: crate::MappingContainer { file_id: added.file_id, name: added.name },
+                source: crate::MappingContainer {
+                    file_id: added.file.file_id,
+                    name: added.file.name,
+                },
                 start_ms: 0,
                 duration_ms: added.duration_ms,
                 listed_length_ms: None,
@@ -474,27 +476,20 @@ impl ReleaseEditDraftRows {
             cover: bae_records::cover_ref(&release_id, cover_version),
             source_audio: files.source_audio.clone(),
             sides: has_tracks.then(|| crate::types::lay_out_tracks(rows, &side_choices)),
-            files: files
-                .has_others
-                .then(|| {
-                    files
-                        .carried
-                        .into_iter()
-                        .map(|carried| match carried {
-                            bae_records::DbCarriedFile::File(file) => {
-                                Ok(crate::MappingFileRow::File(crate::types::carried_file(&file)))
-                            }
-                            bae_records::DbCarriedFile::Sheet(sheet) => {
-                                crate::types::sheet_without_tracks_group(sheet, &side_choices)
-                                    .map(crate::MappingFileRow::Sheet)
-                            }
-                        })
-                        .collect::<Result<Vec<_>, _>>()
-                })
-                .transpose()
-                .map_err(|reason| {
-                    DbError::unreadable(format!("the files of release {release_id}"), reason)
-                })?,
+            files: files.has_others.then(|| {
+                files
+                    .carried
+                    .into_iter()
+                    .map(|carried| match carried {
+                        bae_records::DbCarriedFile::File(file) => {
+                            crate::MappingFileRow::File(crate::types::carried_file(&file))
+                        }
+                        bae_records::DbCarriedFile::Sheet(sheet) => crate::MappingFileRow::Sheet(
+                            crate::types::sheet_without_tracks_group(sheet, &side_choices),
+                        ),
+                    })
+                    .collect()
+            }),
             album,
             records: has_records.then_some(records),
             pressing_offers: form.edit.pressing.offers(),

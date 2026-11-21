@@ -594,10 +594,12 @@ pub fn release_edit_row_of_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<DbRe
     )
     .map_err(|reason| bae_store::read::column_conversion_error(row, "side_kind", reason))?;
     Ok(DbReleaseEditRow::Added(DbReleaseEditAdded {
-        file_id: row.get("row_id")?,
-        name: row.get("main_file_name")?,
+        file: super::sheet_files::AddedFile {
+            file_id: row.get("row_id")?,
+            name: row.get("main_file_name")?,
+            typed_title: row.get("added_title")?,
+        },
         duration_ms: count_column(row, "main_file_duration_ms")?,
-        typed_title: row.get("added_title")?,
         position,
     }))
 }
@@ -654,19 +656,14 @@ pub fn release_edit_track_of_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Db
                 line_count: count_column(row, "sheet_line_count")?,
                 file_reference: row.get("sheet_file_reference")?,
                 unbound_lines: {
-                    let lines: Option<String> = row.get("sheet_unbound_lines")?;
-                    lines
-                        .map(|lines| {
-                            serde_json::from_str(&lines).map_err(|error| {
-                                bae_store::read::column_conversion_error(
-                                    row,
-                                    "sheet_unbound_lines",
-                                    format!("{error}: {lines}"),
-                                )
-                            })
-                        })
-                        .transpose()?
-                        .unwrap_or_default()
+                    let lines: String = row.get("sheet_unbound_lines")?;
+                    serde_json::from_str(&lines).map_err(|error| {
+                        bae_store::read::column_conversion_error(
+                            row,
+                            "sheet_unbound_lines",
+                            format!("{error}: {lines}"),
+                        )
+                    })?
                 },
                 audio_options: {
                     let options: String = row.get("sheet_audio_options")?;

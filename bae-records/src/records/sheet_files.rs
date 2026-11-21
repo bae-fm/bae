@@ -349,8 +349,6 @@ pub fn sheet_without_tracks_json_sql(file: &str, release: &str) -> String {
     format!(
         "(SELECT json_object( \
                 'file_id', {file}, 'name', sheet.original_filename, \
-                'line_count', (SELECT COUNT(*) FROM laid_lines line \
-                               WHERE line.sheet_file_id = {file}), \
                 'medium', first.medium_position, 'side', first.side, \
                 'kind', first.kind, 'ordinal', first.ordinal, \
                 'lines', json((SELECT json_group_array(json_object( \
@@ -381,18 +379,40 @@ pub fn sheet_without_tracks_json_sql(file: &str, release: &str) -> String {
 }
 
 /// A CUE sheet none of whose tracks stay, as the editor's Files list shows
-/// it: the sheet's file, how many `FILE` lines it has, the side its first
-/// track sat on, and each line with the audio files it can play from.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+/// it: the sheet's file, the side its first track sat on, and each of its
+/// `FILE` lines with the audio files it can play from.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DbSheetWithoutTracks {
     pub file_id: String,
     pub name: String,
-    pub line_count: u32,
-    pub medium: u32,
-    pub side: u32,
-    pub kind: String,
-    pub ordinal: u32,
+    pub place: DbSheetSideChoice,
     pub lines: Vec<DbUnboundLine>,
+}
+
+/// A [`DbSheetWithoutTracks`] as [`sheet_without_tracks_json_sql`] returns it,
+/// with the columns of its side as [`DbSheetSideChoice::of_columns`] reads
+/// them.
+#[derive(Debug, Clone, serde::Deserialize)]
+pub(super) struct SheetWithoutTracksColumns {
+    file_id: String,
+    name: String,
+    medium: u32,
+    side: u32,
+    kind: String,
+    ordinal: u32,
+    lines: Vec<DbUnboundLine>,
+}
+
+impl SheetWithoutTracksColumns {
+    /// The sheet, or why its side's columns name no side.
+    pub(super) fn decoded(self) -> Result<DbSheetWithoutTracks, String> {
+        Ok(DbSheetWithoutTracks {
+            place: DbSheetSideChoice::of_columns(self.medium, self.side, &self.kind, self.ordinal)?,
+            file_id: self.file_id,
+            name: self.name,
+            lines: self.lines,
+        })
+    }
 }
 
 /// One `FILE` line of a [`DbSheetWithoutTracks`].

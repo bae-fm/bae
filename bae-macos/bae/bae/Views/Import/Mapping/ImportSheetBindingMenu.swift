@@ -19,7 +19,6 @@ struct ImportSheetUnboundMenu: View {
                 if let only = references.first, references.count == 1 {
                     ImportSheetBindingItems(
                         reference: only,
-                        offersNone: true,
                         onBind: { onBind(only, $0) }
                     )
                 }
@@ -28,7 +27,6 @@ struct ImportSheetUnboundMenu: View {
                         MacMenuSubmenu(verbatim: reference.fileReference) {
                             ImportSheetBindingItems(
                                 reference: reference,
-                                offersNone: true,
                                 onBind: { onBind(reference, $0) }
                             )
                         }
@@ -70,8 +68,7 @@ enum ImportSheetBindingChoice: Hashable {
     case describesNothing(isBound: Bool)
 
     static func choices(
-        for reference: BridgeSheetReferenceOptions,
-        offersNone: Bool
+        for reference: BridgeSheetReferenceOptions
     ) -> [Self] {
         let files: [Self] = reference.options.map { option in
             if let reason = option.offer.refusalLine {
@@ -83,9 +80,7 @@ enum ImportSheetBindingChoice: Hashable {
                 isBound: reference.bound?.fileId == option.fileId
             )
         }
-        return offersNone
-            ? files + [.describesNothing(isBound: reference.bound == nil)]
-            : files
+        return files + [.describesNothing(isBound: reference.bound == nil)]
     }
 }
 
@@ -93,16 +88,11 @@ enum ImportSheetBindingChoice: Hashable {
 /// `ImportSheetBindingChoice`.
 struct ImportSheetBindingItems: MacMenuPart {
     let reference: BridgeSheetReferenceOptions
-    /// Whether the menu offers binding no audio.
-    let offersNone: Bool
     let onBind: (String?) -> Void
 
     var entries: [MacMenuEntry] {
         var entries: [MacMenuEntry] = []
-        let choices = ImportSheetBindingChoice.choices(
-            for: reference,
-            offersNone: offersNone
-        )
+        let choices = ImportSheetBindingChoice.choices(for: reference)
         for choice in choices {
             switch choice {
             case .offered(let fileId, let name, let isBound):

@@ -239,23 +239,17 @@ fn unbound_references(
 pub(crate) fn sheet_without_tracks_group(
     sheet: bae_records::records::sheet_files::DbSheetWithoutTracks,
     side_choices: &[bae_records::DbSheetSideChoice],
-) -> Result<crate::SheetGroup, String> {
-    let assigned = bae_records::DbSheetSideChoice::of_columns(
-        sheet.medium,
-        sheet.side,
-        &sheet.kind,
-        sheet.ordinal,
-    )?;
+) -> crate::SheetGroup {
     let (bound, bound_audio) = bound_lines(0, Vec::new(), &sheet.lines);
-    Ok(crate::SheetGroup {
+    crate::SheetGroup {
         sheet_id: sheet.file_id,
         name: sheet.name,
         bound,
         bound_audio,
         unbound_references: unbound_references(&sheet.lines),
-        assigned: Some(assigned),
+        assigned: Some(sheet.place),
         side_choices: side_choices.to_vec(),
-    })
+    }
 }
 
 /// What the library holds about a release beside its form: the summary of

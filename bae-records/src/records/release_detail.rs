@@ -313,7 +313,7 @@ pub fn release_files_on(
 #[serde(rename_all = "snake_case")]
 enum CarriedColumns {
     File(FileColumns),
-    Sheet(super::sheet_files::DbSheetWithoutTracks),
+    Sheet(super::sheet_files::SheetWithoutTracksColumns),
 }
 
 /// The release's files as [`release_files_json_sql`] read them into `column`.
@@ -341,7 +341,10 @@ fn release_files_column(row: &Row<'_>, column: &str) -> rusqlite::Result<DbRelea
                     column_conversion_error(row, column, format!("{field}: {reason}"))
                 })
             }
-            CarriedColumns::Sheet(sheet) => Ok(DbCarriedFile::Sheet(sheet)),
+            CarriedColumns::Sheet(sheet) => sheet
+                .decoded()
+                .map(DbCarriedFile::Sheet)
+                .map_err(|reason| column_conversion_error(row, column, reason)),
         })
         .collect::<rusqlite::Result<Vec<_>>>()?;
     let files = |columns: Vec<FileColumns>| {

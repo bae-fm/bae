@@ -96,12 +96,19 @@ fn file_title(file: &ScannedFile) -> String {
 
 /// The title a track that plays a whole file takes from the file's name: the
 /// name without its extension.
-pub(crate) fn title_of_file_name(name: &str) -> String {
+fn title_of_file_name(name: &str) -> String {
     std::path::Path::new(name)
         .file_stem()
         .and_then(|stem| stem.to_str())
         .unwrap_or(name)
         .to_string()
+}
+
+/// The title of the track a save of a release editor's form adds for
+/// `added`: the title the person typed, else the file's name without its
+/// extension.
+pub(crate) fn added_track_title(added: &bae_records::records::sheet_files::AddedFile) -> String {
+    added.typed_title.clone().unwrap_or_else(|| title_of_file_name(&added.name))
 }
 
 #[cfg(test)]

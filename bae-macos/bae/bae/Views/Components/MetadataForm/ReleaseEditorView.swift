@@ -158,8 +158,19 @@ struct ReleaseEditorView: View {
             sheetCaption: SheetCaptionActions(
                 open: openDocument,
                 place: { sheetId, place in
-                    if case .on(let side) = place {
+                    switch place {
+                    case .on(let side):
                         session.pickSheetSide(sheetId, side: side)
+                    case .ignored:
+                        // The caption does not offer Ignored here.
+                        let detail =
+                            "the editor's place pop-up picked Ignored for sheet \(sheetId)"
+                        baeAppLogger.error("\(detail)")
+                        CoreBugReporter()
+                            .report(
+                                operation: "pick a CUE sheet's place",
+                                detail: detail
+                            )
                     }
                 },
                 bind: { sheetId, fileReference, audioFileId in
@@ -169,8 +180,7 @@ struct ReleaseEditorView: View {
                         audioFileId: audioFileId
                     )
                 },
-                offersIgnored: false,
-                offersNone: true
+                offersIgnored: false
             ),
             audition: TrackAuditionActions(
                 preview: { _ in },
