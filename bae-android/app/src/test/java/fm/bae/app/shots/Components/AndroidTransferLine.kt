@@ -10,11 +10,8 @@ import fm.bae.fastvalues.LatestStream
 import org.junit.Test
 import uniffi.bae_bridge.BridgeActivityLine
 
-private const val BAR_SHARE = 0.43
-private const val PIN_SHARE = 0.3
-
-/** The component shots of an Activity transfer line: syncing, uploading and pinning, waiting and paused. */
-class TransferComponentShots : BoardShot() {
+/** The component shots of `AndroidTransferLine`, one for each row of its preview. */
+class AndroidTransferLineShots : BoardShot() {
     @Test
     fun androidComponentTransferLineSyncing() =
         component("android.component.transfer-line.syncing", wide = true) { AndroidTransferLine("Syncing changes", batch = null) }
@@ -43,6 +40,10 @@ class TransferComponentShots : BoardShot() {
             Line("Pinning", "Paused", BridgeActivityLine.PINS, PIN_SHARE, paused = true)
         }
 }
+
+private const val BAR_SHARE = 0.43
+
+private const val PIN_SHARE = 0.3
 
 /** A transfer line whose bar holds [share] of [line]; [paused] gives it the Pause or Resume button, null leaves it out. */
 @Composable

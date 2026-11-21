@@ -1,12 +1,9 @@
 package fm.bae.app.shots
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
@@ -14,22 +11,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.AndroidInlineIconButton
 import fm.bae.app.ui.components.AndroidMoreMenu
 import org.junit.Test
 
-/** The component shots of the controls at the end of a row: the icon level with a line of text and the ⋮ with its menu. */
-class RowControlComponentShots : BoardShot() {
-    @Test
-    fun androidComponentInlineIconButtonBesideALine() =
-        component("android.component.inline-icon-button.beside-a-line", wide = true) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Low Tide Hours", style = ThemeText.rowTitle.style, modifier = Modifier.weight(1f))
-                AndroidInlineIconButton(Icons.Filled.Close, "Cancel", onClick = {})
-            }
-        }
-
+/** The component shots of `AndroidMoreMenu`, one for each row of its preview. */
+class AndroidMoreMenuShots : BoardShot() {
     @Test
     fun androidComponentMoreMenuClosed() =
         component("android.component.more-menu.closed", wide = true) {
@@ -55,4 +41,5 @@ class RowControlComponentShots : BoardShot() {
 }
 
 private val OPEN_MENU_HEIGHT = 200.dp
+
 private val MENU_TOP = 44.dp

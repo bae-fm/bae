@@ -12,8 +12,8 @@ import org.junit.Test
 import uniffi.bae_bridge.BridgeOpenProgress
 import uniffi.bae_bridge.BridgeOpenStep
 
-/** The component shots of a step's words over its bar. */
-class ProgressComponentShots : BoardShot() {
+/** The component shots of `AndroidProgress`, one for each row of its preview. */
+class AndroidProgressShots : BoardShot() {
     @Test
     fun androidComponentProgressLengthUnknown() =
         component("android.component.progress.length-unknown", wide = true) { Progress(fraction = null) }

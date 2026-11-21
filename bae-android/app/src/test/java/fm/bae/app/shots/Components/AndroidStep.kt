@@ -1,0 +1,27 @@
+package fm.bae.app.shots
+
+import androidx.compose.material3.Text
+import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidStep
+import fm.bae.app.ui.components.AndroidTextField
+import org.junit.Test
+
+/** The component shots of `AndroidStep`, one for each row of its preview. */
+class AndroidStepShots : BoardShot() {
+    @Test
+    fun androidComponentStepWithAField() =
+        component("android.component.step.with-a-field", wide = true) {
+            AndroidStep(title = "You are invited to Home music") {
+                AndroidTextField(value = "Dan", onValueChange = {}, label = "Your name", helper = "Everyone in the library sees this name.")
+                AndroidButton(onClick = {}, large = true) { Text("Join") }
+            }
+        }
+
+    @Test
+    fun androidComponentStepWithALine() =
+        component("android.component.step.with-a-line", wide = true) {
+            AndroidStep(title = "This invite has ended", text = "Ask Ben for a new one.") {
+                AndroidButton(onClick = {}, large = true) { Text("OK") }
+            }
+        }
+}

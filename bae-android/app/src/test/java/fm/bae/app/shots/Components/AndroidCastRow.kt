@@ -1,10 +1,7 @@
 package fm.bae.app.shots
 
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.R
-import fm.bae.app.ui.components.AndroidPinField
-import fm.bae.app.ui.components.focusOnShow
 import fm.bae.app.ui.playback.AndroidCastRow
 import fm.bae.app.ui.playback.CastReceiverPlace
 import fm.bae.app.ui.playback.CastReceiverRole
@@ -15,13 +12,8 @@ import uniffi.bae_bridge.BridgeCastReceiver
 import uniffi.bae_bridge.BridgeCastReceiverList
 import uniffi.bae_bridge.BridgeRendererKind
 
-private fun receiver(
-    name: String,
-    kind: BridgeRendererKind,
-) = BridgeCastReceiver(id = "id-$name", name = name, kind = kind, model = null, address = "192.168.1.42", takesVolume = true)
-
-/** The component shots of a cast receiver's row, as the cast picker lists it, and of the field a receiver's PIN is typed in. */
-class CastComponentShots : BoardShot() {
+/** The component shots of `AndroidCastRow`, one for each row of its preview. */
+class AndroidCastRowShots : BoardShot() {
     @Test
     fun androidComponentCastRowReceiver() =
         component("android.component.cast-row.receiver", wide = true) {
@@ -85,24 +77,9 @@ class CastComponentShots : BoardShot() {
                 null,
             )
         }
-
-    @Test
-    fun androidComponentPinFieldEmpty() = component("android.component.pin-field.empty") { AndroidPinField(4, "", {}) }
-
-    @Test
-    fun androidComponentPinFieldFocused() =
-        component("android.component.pin-field.focused") { AndroidPinField(4, "48", {}, Modifier.focusOnShow()) }
-
-    @Test
-    fun androidComponentPinFieldFilled() = component("android.component.pin-field.filled") { AndroidPinField(4, "4821", {}) }
-
-    @Test
-    fun androidComponentPinFieldError() =
-        component("android.component.pin-field.error") { AndroidPinField(4, "4821", {}, error = "That PIN did not match.") }
-
-    @Test
-    fun androidComponentPinFieldOff() = component("android.component.pin-field.off") { AndroidPinField(4, "4821", {}, enabled = false) }
-
-    @Test
-    fun androidComponentPinFieldSixDigits() = component("android.component.pin-field.six-digits") { AndroidPinField(6, "482", {}) }
 }
+
+private fun receiver(
+    name: String,
+    kind: BridgeRendererKind,
+) = BridgeCastReceiver(id = "id-$name", name = name, kind = kind, model = null, address = "192.168.1.42", takesVolume = true)

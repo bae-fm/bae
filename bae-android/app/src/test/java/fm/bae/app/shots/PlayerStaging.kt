@@ -101,3 +101,20 @@ internal class PlayerStaging(
         )
     }
 }
+
+/** A track a third of the way in, with its first 60% buffered. */
+internal val playing =
+    PlayerStaging(progress = 0.35, elapsedSeconds = 102, held = listOf(BridgeTrackSpan(0.0, 0.6)))
+
+/** A track that has just started, with little buffered, waiting on storage for the rest. */
+internal val waiting =
+    PlayerStaging(
+        progress = 0.02,
+        elapsedSeconds = 5,
+        held = listOf(BridgeTrackSpan(0.0, 0.04)),
+        waitsOnStorage = true,
+    )
+
+/** [playing], for a track with no cover. */
+internal val withoutCover =
+    PlayerStaging(progress = 0.35, elapsedSeconds = 102, held = listOf(BridgeTrackSpan(0.0, 0.6)), noCover = true)

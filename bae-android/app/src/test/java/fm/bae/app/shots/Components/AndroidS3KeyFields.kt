@@ -10,15 +10,10 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidS3KeyFields
-import fm.bae.app.ui.settings.AndroidRestoreCode
-import fm.bae.app.ui.settings.RestoreCodeState
 import org.junit.Test
 
-private const val KEY_ID = "AKIA4EXAMPLENEW"
-private const val SECRET = "abcdefghijkl"
-
-/** The component shots of the settings fields: the S3 access key's two fields and the library's restore code. */
-class SettingsFieldComponentShots : BoardShot() {
+/** The component shots of `AndroidS3KeyFields`, one for each row of its preview. */
+class AndroidS3KeyFieldsShots : BoardShot() {
     @Test
     fun androidComponentS3KeyFieldsEmpty() = component("android.component.s3-key-fields.empty", wide = true) { KeyFields("", "") }
 
@@ -38,21 +33,11 @@ class SettingsFieldComponentShots : BoardShot() {
         component("android.component.s3-key-fields.refused", wide = true) {
             KeyFields(KEY_ID, SECRET, note = "S3 refused this key.")
         }
-
-    @Test
-    fun androidComponentRestoreCodeHidden() =
-        component("android.component.restore-code.hidden", wide = true) { RestoreCode(RestoreCodeState.Masked(RESTORE_CODE), s3 = false) }
-
-    @Test
-    fun androidComponentRestoreCodeShown() =
-        component("android.component.restore-code.shown", wide = true) {
-            RestoreCode(RestoreCodeState.Shown(SHOWN_RESTORE_CODE), s3 = false)
-        }
-
-    @Test
-    fun androidComponentRestoreCodeS3() =
-        component("android.component.restore-code.s3", wide = true) { RestoreCode(RestoreCodeState.Masked(RESTORE_CODE), s3 = true) }
 }
+
+private const val KEY_ID = "AKIA4EXAMPLENEW"
+
+private const val SECRET = "abcdefghijkl"
 
 @Composable
 private fun KeyFields(
@@ -70,9 +55,3 @@ private fun KeyFields(
         accessKeyIdModifier = idModifier,
     )
 }
-
-@Composable
-private fun RestoreCode(
-    state: RestoreCodeState,
-    s3: Boolean,
-) = AndroidRestoreCode(needsS3Key = s3, state = state, onShow = {}, onHide = {}, onPrint = {})
