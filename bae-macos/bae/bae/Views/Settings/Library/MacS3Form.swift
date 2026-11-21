@@ -19,14 +19,6 @@ struct MacS3Form: View {
         private var stagedFailure: DisplayError?
     #endif
 
-    private var openingFailure: DisplayError? {
-        #if DEBUG
-            stagedFailure
-        #else
-            nil
-        #endif
-    }
-
     init(
         leave: @escaping () -> Void,
         onConnected: @escaping (BridgeStorageSetup) -> Void
@@ -51,7 +43,7 @@ struct MacS3Form: View {
     var body: some View {
         @Bindable
         var fields = fields
-        SetupStep(
+        let step = SetupStep(
             ready: fields.ready,
             operation: { [sync, fields] setup in
                 fields.clearFailure()
@@ -66,7 +58,6 @@ struct MacS3Form: View {
                         DisplayError(line: $0.words)
                     }
             },
-            failure: openingFailure,
             fields: {
                 MacSection("Location") {
                     TextField("Endpoint", text: $fields.endpoint)
@@ -80,6 +71,11 @@ struct MacS3Form: View {
                 }
             }
         )
+        #if DEBUG
+            return step.opening(on: stagedFailure)
+        #else
+            return step
+        #endif
     }
 
     /// A text field whose row also holds the reason a failed setup gives for

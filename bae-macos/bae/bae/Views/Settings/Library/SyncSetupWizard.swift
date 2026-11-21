@@ -304,7 +304,6 @@ extension SetupStep where Leading == EmptyView {
         claim: @escaping (any Error) -> Bool = { _ in false },
         describe: @escaping (any Error) -> DisplayError? = { _ in nil },
         checkedFolder: String? = nil,
-        failure: DisplayError? = nil,
         @ViewBuilder fields: () -> Fields
     ) {
         self.init(
@@ -315,7 +314,6 @@ extension SetupStep where Leading == EmptyView {
             claim: claim,
             describe: describe,
             checkedFolder: checkedFolder,
-            failure: failure,
             leading: { EmptyView() },
             fields: fields
         )
@@ -357,7 +355,6 @@ struct SetupStep<Fields: View, Leading: View>: View {
         claim: @escaping (any Error) -> Bool = { _ in false },
         describe: @escaping (any Error) -> DisplayError? = { _ in nil },
         checkedFolder: String? = nil,
-        failure: DisplayError? = nil,
         @ViewBuilder leading: () -> Leading,
         @ViewBuilder fields: () -> Fields
     ) {
@@ -370,7 +367,6 @@ struct SetupStep<Fields: View, Leading: View>: View {
         self.checkedFolder = checkedFolder
         self.leading = leading()
         self.fields = fields()
-        _error = State(initialValue: failure)
     }
 
     @Environment(Sync.self)
@@ -379,6 +375,16 @@ struct SetupStep<Fields: View, Leading: View>: View {
     private var run
     @State
     private var error: DisplayError?
+
+    #if DEBUG
+        // periphery:ignore - called by MacS3Form's staged form
+        /// This step opening on `failure`, which a shot stages.
+        func opening(on failure: DisplayError?) -> Self {
+            var step = self
+            step._error = State(initialValue: failure)
+            return step
+        }
+    #endif
 
     var body: some View {
         VStack(spacing: 0) {
