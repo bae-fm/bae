@@ -5,10 +5,6 @@
     return h('div', { className: 'bae-a-rating' }, h(Stars, { value: props.value || 0, size: 24, rate: true }), props.raters ? h('span', { className: 'bae-a-fine bae-muted' }, props.raters) : null);
   }
 
-  // An album's or playlist's page actions, left-aligned under its header: Play (filled), then the page's options button (`label` names it to screen readers, Album options unless given), whose menu holds every other action.
-  function AndroidPageActions(props) {
-    return h('div', { className: 'bae-a-pageactions' }, h(AndroidButton, null, 'Play'), h(AndroidIconButton, { icon: 'more', label: props.label || 'Album options' }));
-  }
 
   // An album's credits at the foot of its page: the Credits eyebrow, then one line per credit, its role in secondary text at the start and its names at the end. `credits`: "Role:Names", comma separated.
   function AndroidAlbumCredits(props) {

@@ -6,7 +6,6 @@
 .bae-a-othernames-head { padding: 0 0 4px; }
 .bae-a-othernames-list { font: 400 14px var(--font-android); color: var(--text-secondary); }
 .bae-a-rating { display: flex; flex-direction: column; gap: 2px; }
-.bae-a-pageactions { display: flex; align-items: center; gap: 8px; }
 .bae-a-plhead-top { display: flex; gap: 16px; padding: 16px; align-items: center; }
 .bae-a-plhead-name { font: 700 22px var(--font-android); }
 .bae-a-plhead-actions { margin-top: var(--space-group); }
