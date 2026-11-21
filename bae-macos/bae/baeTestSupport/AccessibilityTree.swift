@@ -422,18 +422,37 @@ extension AccessibilityTree {
 
     /// This tree without the nodes `isLeftOut` picks and the nodes they hold.
     func leavingOut(_ isLeftOut: (Node) -> Bool) -> Self {
-        // The new index of each node kept, by its old index.
+        pruned(from: ()) { node, _ in (!isLeftOut(node), ()) }
+    }
+
+    /// This tree without the nodes `visit` rejects and the nodes they hold.
+    /// `visit` takes a node and what the node that holds it passed down (`root`
+    /// for a node nothing holds), and says whether to keep the node and what
+    /// to pass to the nodes it holds.
+    private func pruned<Context>(
+        from root: Context,
+        _ visit: (Node, Context) -> (keep: Bool, passed: Context)
+    ) -> Self {
+        // The new index of each node kept, and what it passes down, by the
+        // node's old index.
         var kept: [Int: Int] = [:]
+        var passedDown: [Int: Context] = [:]
         var out: [Node] = []
         for (index, node) in nodes.enumerated() {
             var parent: Int?
+            var context = root
             if let old = node.parent {
                 // A node whose holder was left out goes with it.
-                guard let new = kept[old] else { continue }
+                guard let new = kept[old], let held = passedDown[old] else {
+                    continue
+                }
                 parent = new
+                context = held
             }
-            if isLeftOut(node) { continue }
+            let (keep, passed) = visit(node, context)
+            guard keep else { continue }
             kept[index] = out.count
+            passedDown[index] = passed
             out.append(node.placed(dx: 0, dy: 0, parent: parent))
         }
         return Self(nodes: out)
@@ -446,23 +465,9 @@ extension AccessibilityTree {
     /// the scroll area that holds it, is a row scrolled out of view or
     /// clipped. The nodes such a node holds go with it.
     func leavingOutWhatIsNotVisible(windowSize: CGSize) -> Self {
-        let window = CGRect(origin: .zero, size: windowSize)
-        // The new index of each node kept, and the area its children show
-        // through, by the node's old index.
-        var kept: [Int: Int] = [:]
-        var shownThrough: [Int: CGRect] = [:]
-        var out: [Node] = []
-        for (index, node) in nodes.enumerated() {
-            var parent: Int?
-            var area = window
-            if let old = node.parent {
-                // A node whose holder was left out goes with it.
-                guard let new = kept[old], let held = shownThrough[old] else {
-                    continue
-                }
-                parent = new
-                area = held
-            }
+        // What a node shows through: the window's rect, cut down by the
+        // scroll area that holds it.
+        pruned(from: CGRect(origin: .zero, size: windowSize)) { node, area in
             let box = CGRect(
                 x: node.x,
                 y: node.y,
@@ -472,13 +477,10 @@ extension AccessibilityTree {
             let overlaps =
                 box.maxX > area.minX && box.minX < area.maxX
                 && box.maxY > area.minY && box.minY < area.maxY
-            guard overlaps else { continue }
-            kept[index] = out.count
-            shownThrough[index] =
+            let passed =
                 node.role == kAXScrollAreaRole ? area.intersection(box) : area
-            out.append(node.placed(dx: 0, dy: 0, parent: parent))
+            return (overlaps, passed)
         }
-        return Self(nodes: out)
     }
 }
 

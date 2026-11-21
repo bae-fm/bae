@@ -37,7 +37,8 @@ struct NowPlayingBarHostingTests {
         }
     }
 
-    /// Shows `root` in an off-screen window and lays it out.
+    /// Shows `root` in an off-screen window and lays it out, twice: the first
+    /// pass makes the platform views, the second the views they host.
     private func shown<Root: View>(_ root: Root) -> NSHostingView<Root> {
         let view = NSHostingView(rootView: root)
         let window = NSWindow(
@@ -47,10 +48,10 @@ struct NowPlayingBarHostingTests {
             defer: true
         )
         window.contentView = view
-        for _ in 0..<3 {
-            view.layoutSubtreeIfNeeded()
-            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.05))
-        }
+        // Laying out the hosting view makes its platform views, and laying
+        // those out makes the views they host.
+        view.layoutSubtreeIfNeeded()
+        view.layoutSubtreeIfNeeded()
         return view
     }
 
