@@ -22,7 +22,6 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.title
-import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
@@ -37,14 +36,8 @@ import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.RemoveLibraryDialog
 import fm.bae.app.ui.settings.isUnopenableListing
 import fm.bae.app.ui.settings.libraryDetail
-import fm.bae.fastvalues.LatestStream
-import fm.bae.fastvalues.only
-import uniffi.bae_bridge.BridgeClosingProgress
-import uniffi.bae_bridge.BridgeClosingStep
-import uniffi.bae_bridge.BridgeDropboxLocation
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeLibraryState
-import uniffi.bae_bridge.BridgeStorageLocation
 
 /** The widest the library list grows, on a tablet or a phone held sideways. */
 private val librariesWidth = 400.dp
@@ -301,95 +294,3 @@ private fun RunningLibraryRow(
 
 /** The room the ⋮ takes, which the spinner takes in its place. */
 private val SPINNER_SLOT = 48.dp
-
-/**
- * The welcome on a phone that holds a synced library and one that was never
- * synced, for the `welcome-libraries` screenshot scene.
- */
-@Composable
-internal fun WelcomeLibrariesScene() {
-    AndroidWelcomeHome(libraries = WelcomeLibrariesView(listed = true) { onAdd -> WelcomeLibrariesSceneContent(onAdd) })
-}
-
-/**
- * The same welcome while the synced library is being removed and is at its
- * leaving step, for the `welcome-removing` screenshot scene.
- */
-@Composable
-internal fun WelcomeRemovingScene() {
-    val running =
-        RunningRemoval(
-            libraryId = "lib-1",
-            removing = true,
-            opening = null,
-            closing =
-                LatestStream
-                    .closingSteps(
-                        BridgeClosingProgress(
-                            BridgeClosingStep.LEAVING_LIBRARY,
-                            "core.library.closing_step.leaving_library",
-                        ),
-                    ).only,
-        )
-    AndroidWelcomeHome(
-        libraries = WelcomeLibrariesView(listed = true) { onAdd -> WelcomeLibrariesSceneContent(onAdd, running) },
-    )
-}
-
-/** The library whose unfinished join the damaged-join screenshot scenes show as unreadable. */
-internal const val SCENE_UNREADABLE_JOIN = "3b9e07d4-51a2-4c8f-b6e3-0f2d9a7c4e81"
-
-/**
- * The same welcome with an unfinished join this phone can't read after the
- * libraries, for the `welcome-libraries-damaged-join` screenshot scenes.
- */
-@Composable
-internal fun WelcomeDamagedJoinScene() {
-    AndroidWelcomeHome(
-        libraries =
-            WelcomeLibrariesView(listed = true) { onAdd ->
-                WelcomeLibrariesSceneContent(onAdd, unreadableInstallation = SCENE_UNREADABLE_JOIN)
-            },
-    )
-}
-
-@Composable
-internal fun WelcomeLibrariesSceneContent(
-    onAdd: () -> Unit,
-    running: RunningRemoval? = null,
-    unreadableInstallation: String? = null,
-) {
-    val dropbox =
-        BridgeLibraryState.Openable(
-            storage =
-                BridgeStorageLocation.Dropbox(
-                    location = BridgeDropboxLocation.AppFolder,
-                    accountLabel = "name@example.com",
-                    folderLabel = null,
-                ),
-        )
-    WelcomeLibrariesContent(
-        list =
-            WelcomeLibrariesList.Loaded(
-                listOf(
-                    BridgeLibrary(
-                        "lib-1",
-                        "Home music",
-                        "/tmp/lib-1",
-                        dropbox,
-                        isActive = false,
-                    ),
-                    PreviewData.library(id = "lib-2", name = "Odile’s records", isActive = false),
-                ),
-            ),
-        running = running,
-        callbacks =
-            WelcomeLibrariesCallbacks(
-                onOpen = {},
-                onDetails = {},
-                onRemove = {},
-                onAdd = onAdd,
-            ),
-        unreadableInstallation = unreadableInstallation,
-    )
-}

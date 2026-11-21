@@ -3,6 +3,7 @@ package fm.bae.app.shots
 import fm.bae.app.ui.onboarding.AndroidWelcomeHome
 import fm.bae.app.ui.onboarding.WelcomeDamagedJoinScene
 import fm.bae.app.ui.onboarding.WelcomeLibrariesScene
+import fm.bae.app.ui.onboarding.WelcomeLibrariesSceneContent
 import fm.bae.app.ui.onboarding.WelcomeLibrariesView
 import fm.bae.app.ui.onboarding.WelcomeRemovingScene
 import fm.bae.app.ui.onboarding.WelcomeSavedCodesScene
@@ -28,7 +29,10 @@ class AndroidWelcomeHomeShots : BoardShot() {
         shot("android.component.welcome-home.unreadable") {
             ScreenScene {
                 AndroidWelcomeHome(
-                    libraries = WelcomeLibrariesView(listed = true) { onAdd -> Libraries(extra = listOf(nameUnreadable), onAdd = onAdd) },
+                    libraries =
+                        WelcomeLibrariesView(
+                            listed = true,
+                        ) { onAdd -> WelcomeLibrariesSceneContent(onAdd, extra = listOf(nameUnreadable)) },
                 )
             }
         }
