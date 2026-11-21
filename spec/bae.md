@@ -172,8 +172,8 @@ An album's page heads with these lines, stacked in this order:
 its title, its artist and year (one line on macOS, `Mara Quill · 1992`, and
 two on Android), the edition line, the copy line, then the
 Play button. When the person rated the album, Android ends the year line with
-the rating and macOS shows it after the ⋯ button (decisions #1219 and #1233). The release lines are the three lines that name the selected
-release, wherever bae names a release under its album (decision #1230):
+the rating and macOS shows it after the ⋯ button. The release lines are the three lines that name the selected
+release, wherever bae names a release under its album:
 
 - The edition line holds what is printed on the release and what a person looks
   up: its own year, each label with the catalog numbers it gives the pressing,
@@ -188,7 +188,7 @@ release, wherever bae names a release under its album (decision #1230):
   length, such as `CD · 52 min` or `2×LP · Remastered · 52 min`.
 - The audio line holds the files' audio as bae read it, such as
   `FLAC · 44.1 kHz · 16-bit · Stereo`. On an album's page it comes after the
-  track list, last, after the credits and works (decision #1232).
+  track list, last, after the credits and works.
 
 A release line with nothing in it is left out. bae's core words the release
 lines, and the Mac and Android apps show the lines core gives, so they read the
@@ -322,7 +322,7 @@ button (§6.4), ⋮, whose menu gives the view's sort under *Sort by* (the
 fields, the direction, and for albums *Group by artist*), then *Shuffle
 library*, and last the person's menu (below); screen readers name that ⋮ *More
 options*. On Android screen readers name the back arrow of an album, artist, composer or playlist page opened from the library *Back to library* (*Back* when
-opened from another page). On Android an album page's Play sits under its release details, beside the cover, and ⋮, *Album options* to screen readers, sits at the right of the top bar; its menu offers *Shuffle*, *Play next* and *Add to queue*, then after a separator *Rate*, *Pin* or *Unpin* and the album's other items, and after a last separator *Delete album…* (decision #1217). A card's title or artists, or a row's name, too long
+opened from another page). On Android an album page's Play sits under its release details, beside the cover, and ⋮, *Album options* to screen readers, sits at the right of the top bar; its menu offers *Shuffle*, *Play next* and *Add to queue*, then after a separator *Rate*, *Pin* or *Unpin* and the album's other items, and after a last separator *Delete album…*. A card's title or artists, or a row's name, too long
 for its one line ends in "…". On Android the grid grouped by artist opens each
 artist's albums with a header of the artist's round picture, name and album
 count, which opens the artist; the header of the artist being scrolled through
@@ -865,7 +865,7 @@ Tags edited after an import are not read again: the library holds the values
 the import wrote, and the release editor changes them (§3.8). The one
 exception is the release editor's command that applies the files' tags,
 which reads them again from the release's files on this device when the
-person runs it (decision #963).
+person runs it.
 
 The hash covers files, never decisions. Carol tells bae which disc each CUE
 sheet is on; that is stored under the candidate's hash, and a hash that moved with
@@ -3176,9 +3176,9 @@ puts the hearted first and orders nothing by the stars it hides.
 On macOS the album's ⋯ menu offers *Rate*, as a track's menu does: a submenu
 whose first item, disabled, is the line of who rated the album, then five stars
 down to one with the person's own checked, then *Clear rating*; a click on a row
-rates the album with that many stars (decision #1217). When the person has
+rates the album with that many stars. When the person has
 rated an album, the rating shows read-only after the ⋯ button, on Play's row, as
-the number and one star, "4 ★" (decisions #1219 and #1233); an unrated album
+the number and one star, "4 ★"; an unrated album
 shows nothing there.
 
 On macOS a track's row shows the person's stars for it, and its menu offers
@@ -3189,10 +3189,9 @@ On Android the album's ⋮ menu offers *Rate*, which opens a bottom sheet titled
 *Rate*: under the title the line of who rated the album (*You*, then each other
 person who did, with their stars) in secondary text, then five stars down to one
 with the person's own checked, then *Clear rating*; a tap on a row rates the
-album with that many stars (decision #1217). When the person has rated an
+album with that many stars. When the person has rated an
 album, the end of the year line in its header shows the rating read-only, the
-number and one star, as "1992 · 4 ★"; an unrated album shows nothing there
-(decision #1219).
+number and one star, as "1992 · 4 ★"; an unrated album shows nothing there.
 
 Ben keeps his history private. Carol's devices never see what he played. He
 makes a playlist for a party and shares it: it moves from his circle to the
