@@ -30,7 +30,17 @@ struct MacSearchField: View {
             spacing: kind == .filter ? ThemeSpace.compact : ThemeSpace.related
         ) {
             glyph
-            TextField(prompt, text: $text)
+            // The prompt is drawn here, since a plain field on macOS draws
+            // its own in the system's placeholder colour.
+            TextField("", text: $text)
+                .overlay(alignment: .leading) {
+                    if text.isEmpty {
+                        Text(prompt)
+                            .foregroundStyle(Theme.textTertiary)
+                            .allowsHitTesting(false)
+                            .accessibilityHidden(true)
+                    }
+                }
                 .textFieldStyle(.plain)
                 .themeText(.body)
                 .focused(focused)
@@ -54,10 +64,12 @@ struct MacSearchField: View {
                 .accessibilityHidden(true)
                 // The design draws the glyph at 14, between the icon roles.
                 .font(.system(size: 14, weight: ThemeIcon.medium.weight))
+                .frame(width: 14, height: 14)
         case .filter:
             Image(systemName: "magnifyingglass")
                 .themeIcon(.small)
                 .foregroundStyle(Theme.macTextSecondary)
+                .frame(width: 12, height: 12)
                 .accessibilityHidden(true)
         case .inline:
             // The field's name says what it does, so the glyph says
@@ -65,6 +77,7 @@ struct MacSearchField: View {
             Image(systemName: "magnifyingglass")
                 .themeIcon(.medium)
                 .foregroundStyle(Theme.textTertiary)
+                .frame(width: 12, height: 12)
                 .accessibilityHidden(true)
         }
     }
