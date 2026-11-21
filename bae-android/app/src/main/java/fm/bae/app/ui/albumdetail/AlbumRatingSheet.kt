@@ -57,10 +57,10 @@ internal fun AlbumRatingSheet(
 
 /**
  * What the rating sheet holds under its title: who rated the album, five stars down to one with the person's own
- * checked, then Clear rating. A shot draws it in a sheet's place, because the sheet opens a window.
+ * checked, then Clear rating.
  */
 @Composable
-internal fun ColumnScope.AlbumRatingChoices(
+private fun ColumnScope.AlbumRatingChoices(
     rating: BridgeAlbumRating,
     onRate: (BridgeStars?) -> Unit,
 ) {

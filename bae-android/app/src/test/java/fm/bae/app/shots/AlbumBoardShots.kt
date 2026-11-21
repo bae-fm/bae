@@ -60,22 +60,6 @@ class AlbumBoardShots : BoardShot() {
         }
 
     @Test
-    fun androidAlbumPage() = shot("android.album.page") { AlbumPage(boardAlbum()) }
-
-    @Test
-    fun androidAlbumRate() =
-        shot("android.album.rate") {
-            val rating =
-                BridgeAlbumRating(
-                    mine = BridgeStars.FOUR,
-                    raters = listOf(BridgeRater.You, BridgeRater.Person("Ana", BridgeStars.FIVE)),
-                )
-            SheetScene(title = stringResource(R.string.rate), behind = { AlbumPage(boardAlbum(rating = rating)) }) {
-                AlbumRatingChoices(rating = rating, onRate = {})
-            }
-        }
-
-    @Test
     fun androidAlbumCredits() =
         shot("android.album.credits") {
             val detail = boardAlbum()

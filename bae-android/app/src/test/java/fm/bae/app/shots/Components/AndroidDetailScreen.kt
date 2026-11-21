@@ -74,6 +74,12 @@ private val plainDetail: BridgeAlbumDetail =
         harborDetail.album,
         releases =
             listOf(
-                harborRelease.copy(labels = emptyList(), pressingSummary = emptyList(), areaTerms = emptyList(), mediaTerms = emptyList()),
+                harborRelease.copy(
+                    labels = emptyList(),
+                    pressingSummary = emptyList(),
+                    areaTerms = emptyList(),
+                    mediaTerms = emptyList(),
+                    totalDuration = null,
+                ),
             ),
     )

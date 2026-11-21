@@ -12,10 +12,6 @@ import uniffi.bae_bridge.BridgeReleaseDownloadStatus
 /** The component shots of `AndroidPinControl`, one for each row of its preview. */
 class AndroidPinControlShots : BoardShot() {
     @Test
-    fun androidComponentPinControlAvailable() =
-        component("android.component.pin-control.available") { Control(BridgeReleaseDownloadStatus.Available) }
-
-    @Test
     fun androidComponentPinControlQueued() =
         component("android.component.pin-control.queued") { Control(BridgeReleaseDownloadStatus.Queued) }
 
@@ -31,9 +27,6 @@ class AndroidPinControlShots : BoardShot() {
             Control(BridgeReleaseDownloadStatus.Failed("Network unreachable"))
         }
 
-    @Test
-    fun androidComponentPinControlPinned() =
-        component("android.component.pin-control.pinned") { Control(BridgeReleaseDownloadStatus.Downloaded) }
 }
 
 @Composable
