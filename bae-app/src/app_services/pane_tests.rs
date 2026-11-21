@@ -2,7 +2,6 @@
 //! the identification queue.
 
 use super::*;
-use bae_import::extraction::{ArtworkAnalysis, ArtworkAnalyzer, ArtworkUnreadable};
 use bae_import::identification::MAX_IN_FLIGHT;
 use bae_import::{CandidateKey, ImportServiceHandle};
 use bae_util::test_channels::HANG_GUARD;
@@ -10,22 +9,6 @@ use bae_util::test_files::TestFolder;
 use bae_util::test_host::FakeHost;
 use std::path::PathBuf;
 use std::sync::Arc;
-
-/// A different barcode per numbered candidate folder, so each asks its own
-/// lookup rather than hitting the response cache.
-struct PerFolderBarcodeAnalyzer;
-
-impl ArtworkAnalyzer for PerFolderBarcodeAnalyzer {
-    fn analyze(&self, image: &[u8]) -> Result<ArtworkAnalysis, ArtworkUnreadable> {
-        let folder = bae_import::test_fixtures::image_name(image);
-        let digits: String = folder.chars().filter(|c| c.is_ascii_digit()).collect();
-        let ordinal: u32 = digits.parse().expect("a numbered candidate folder");
-        Ok(ArtworkAnalysis {
-            barcodes: vec![bae_types::barcode::with_check_digit(&format!("01234567{ordinal:04}"))],
-            text_lines: Vec::new(),
-        })
-    }
-}
 
 /// The app's services over a library whose providers are `provider`, and the
 /// import service under them.
@@ -158,7 +141,9 @@ impl Library {
 #[tokio::test(flavor = "multi_thread")]
 async fn cancelling_from_the_pane_takes_a_waiting_candidate_off_the_queue() {
     let library = Library::open().await;
-    library.services.extraction_register_analyzer(Arc::new(PerFolderBarcodeAnalyzer));
+    library.services.extraction_register_analyzer(Arc::new(
+        bae_import::test_fixtures::PerFolderBarcodeAnalyzer,
+    ));
     // Folders over the cap, each asking the provider a distinct question,
     // with the lookups held so the cap's worth run and the rest wait.
     let mut dirs = Vec::new();
@@ -225,7 +210,9 @@ async fn cancelling_from_the_pane_takes_a_waiting_candidate_off_the_queue() {
 #[tokio::test(flavor = "multi_thread")]
 async fn the_candidate_the_pane_shows_runs_ahead_of_waiting_requests() {
     let library = Library::open().await;
-    library.services.extraction_register_analyzer(Arc::new(PerFolderBarcodeAnalyzer));
+    library.services.extraction_register_analyzer(Arc::new(
+        bae_import::test_fixtures::PerFolderBarcodeAnalyzer,
+    ));
     library.services.set_identify_automatically(false).await.unwrap();
     let keys: Vec<CandidateKey> = (0..MAX_IN_FLIGHT + 2)
         .map(|index| {

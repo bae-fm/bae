@@ -12,7 +12,7 @@
 //! instead of waiting. A replaced extraction sends nothing more.
 
 use super::analyzer::ArtworkAnalyzer;
-use super::fast_pass::{gather_non_ocr_sources, ArtworkImage, FastPass, ImageSource};
+use super::fast_pass::{gather_non_ocr_sources, ArtworkImage, FastPass};
 use super::pool::Pool;
 use super::release::{resolve_release_artwork, resolve_release_identity};
 use crate::IdentifyRunId;
@@ -376,15 +376,11 @@ async fn extract(
             let analyzer = inner.analyzer.lock().expect("analyzer lock poisoned").clone();
             let artwork = if let Some(analyzer) = analyzer {
                 match resolve_release_artwork(&inner.records, &release_id).await {
-                    // A library release's images have no file id.
                     Ok(images) => Artwork::read(
                         analyzer,
                         images
                             .into_iter()
-                            .map(|(name, file)| ArtworkImage {
-                                source: ImageSource::Library { name, file },
-                                file_id: None,
-                            })
+                            .map(|(name, file)| ArtworkImage::Library { name, file })
                             .collect(),
                     ),
                     Err(e) => {

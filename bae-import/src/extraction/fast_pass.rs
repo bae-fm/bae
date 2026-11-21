@@ -16,32 +16,33 @@ use tracing::debug;
 /// Maximum size read from a single `.txt` file.
 const MAX_TEXT_FILE_BYTES: u64 = 100 * 1024;
 
-/// Where one image's bytes are.
+/// One image the artwork pass will read, and where its bytes are.
 #[derive(Debug, Clone)]
-pub(super) enum ImageSource {
-    /// A file of the person's folder.
-    OnDisk(PathBuf),
+pub(super) enum ArtworkImage {
+    /// A file of the person's folder, with the candidate-relative id a
+    /// barcode read off it names.
+    OnDisk { path: PathBuf, file_id: String },
     /// A file of a library release, which coven reads. `name` is its name
     /// in the release.
     Library { name: PathBuf, file: super::release::LibraryImageFile },
 }
 
-impl ImageSource {
+impl ArtworkImage {
     /// The image's path in its folder, or its name in its release.
     pub(super) fn name(&self) -> &Path {
         match self {
-            Self::OnDisk(path) | Self::Library { name: path, .. } => path,
+            Self::OnDisk { path, .. } | Self::Library { name: path, .. } => path,
         }
     }
-}
 
-/// One image the artwork pass will read: where its bytes are, and the
-/// candidate-relative id a barcode read off it names.
-#[derive(Debug, Clone)]
-pub(super) struct ArtworkImage {
-    pub(super) source: ImageSource,
-    /// `None` for a library release's image.
-    pub(super) file_id: Option<String>,
+    /// The candidate-relative id a barcode read off the image names; none
+    /// for a library release's image.
+    pub(super) fn file_id(&self) -> Option<&str> {
+        match self {
+            Self::OnDisk { file_id, .. } => Some(file_id),
+            Self::Library { .. } => None,
+        }
+    }
 }
 
 pub(super) struct FastPass {
@@ -208,9 +209,9 @@ pub(super) fn gather_non_ocr_sources(
 
     pass.artwork = categorized
         .artwork()
-        .map(|f| ArtworkImage {
-            source: ImageSource::OnDisk(f.version.path.clone()),
-            file_id: Some(f.relative_path.clone()),
+        .map(|f| ArtworkImage::OnDisk {
+            path: f.version.path.clone(),
+            file_id: f.relative_path.clone(),
         })
         .collect();
 

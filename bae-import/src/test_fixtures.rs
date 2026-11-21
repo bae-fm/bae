@@ -28,6 +28,26 @@ pub fn image_name(image: &[u8]) -> &str {
     std::str::from_utf8(&image[JPEG_MAGIC.len()..]).expect("an image named by image_named")
 }
 
+/// Reads a different barcode off the image of each numbered candidate folder,
+/// where `barcode_candidate`-style folders write [`image_named`] their own
+/// folder's name, so each folder asks its own lookup rather than hitting the
+/// response cache.
+pub struct PerFolderBarcodeAnalyzer;
+
+impl crate::extraction::ArtworkAnalyzer for PerFolderBarcodeAnalyzer {
+    fn analyze(
+        &self,
+        image: &[u8],
+    ) -> Result<crate::extraction::ArtworkAnalysis, crate::extraction::ArtworkUnreadable> {
+        let digits: String = image_name(image).chars().filter(|c| c.is_ascii_digit()).collect();
+        let ordinal: u32 = digits.parse().expect("a numbered candidate folder");
+        Ok(crate::extraction::ArtworkAnalysis {
+            barcodes: vec![bae_types::barcode::with_check_digit(&format!("01234567{ordinal:04}"))],
+            text_lines: Vec::new(),
+        })
+    }
+}
+
 /// The FLAC tracks' folder: `01 Test Track 1.flac` to `03 Test Track 3.flac`
 /// and `96khz_test.flac`.
 pub fn flac_dir() -> PathBuf {

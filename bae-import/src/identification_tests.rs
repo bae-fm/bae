@@ -71,22 +71,6 @@ impl ArtworkAnalyzer for BarcodeAnalyzer {
     }
 }
 
-/// A different barcode per numbered candidate folder, so each asks its own
-/// lookup rather than hitting the response cache.
-pub(crate) struct PerFolderBarcodeAnalyzer;
-
-impl ArtworkAnalyzer for PerFolderBarcodeAnalyzer {
-    fn analyze(&self, image: &[u8]) -> Result<ArtworkAnalysis, ArtworkUnreadable> {
-        let folder = crate::test_fixtures::image_name(image);
-        let digits: String = folder.chars().filter(|c| c.is_ascii_digit()).collect();
-        let ordinal: u32 = digits.parse().expect("a numbered candidate folder");
-        Ok(ArtworkAnalysis {
-            barcodes: vec![bae_types::barcode::with_check_digit(&format!("01234567{ordinal:04}"))],
-            text_lines: Vec::new(),
-        })
-    }
-}
-
 pub(crate) struct Fixture {
     /// What the fixture's import service was started from, for a test that
     /// starts another over the same store or writes a preference.

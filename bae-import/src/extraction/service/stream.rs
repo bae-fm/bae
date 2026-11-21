@@ -9,7 +9,7 @@ use super::{
 };
 use crate::extraction::analyzer::{ArtworkAnalysis, ArtworkAnalyzer, ArtworkUnreadable};
 use crate::extraction::candidate_text::{Source, SourcedLine};
-use crate::extraction::fast_pass::{ArtworkImage, ImageSource};
+use crate::extraction::fast_pass::ArtworkImage;
 use crate::extraction::release::read_library_image;
 use bae_catalogs::InternalFailure;
 use bae_identify::signals::{ArtworkScan, BarcodeSignal, Signals, SourcedValue, TextSignal};
@@ -44,8 +44,8 @@ impl<'a> ImageRead<'a> {
     ) -> Self {
         let analyzer = analyzer.clone();
         let unreadable = |detail: String| ArtworkUnreadable { detail };
-        let task = match &image.source {
-            ImageSource::Library { file, .. } => {
+        let task = match image {
+            ArtworkImage::Library { file, .. } => {
                 let bytes = read_library_image(&inner.store, &inner.records, &inner.files, file)
                     .await
                     .map_err(|error| unreadable(error.to_string()));
@@ -59,7 +59,7 @@ impl<'a> ImageRead<'a> {
                     },
                 )
             }
-            ImageSource::OnDisk(path) => {
+            ArtworkImage::OnDisk { path, .. } => {
                 let path = path.clone();
                 let lease = bae_store::lease_one(&inner.files).await;
                 coven::task::blocking_completing(
@@ -89,10 +89,10 @@ impl<'a> ImageRead<'a> {
         match self.task.await {
             Ok(Ok(analysis)) => Ok(analysis),
             Ok(Err(unreadable)) => Err(InternalFailure {
-                detail: format!("{:?}: {}", self.image.source.name(), unreadable.detail),
+                detail: format!("{:?}: {}", self.image.name(), unreadable.detail),
             }),
             Err(failed) => Err(InternalFailure {
-                detail: format!("{:?}: {}", self.image.source.name(), diagnostics.bug(failed)),
+                detail: format!("{:?}: {}", self.image.name(), diagnostics.bug(failed)),
             }),
         }
     }
@@ -145,7 +145,7 @@ pub(super) async fn stream_extraction(
     let total = artwork.as_ref().map_or(0, |pass| pass.images.len() as u32);
     let has_artwork = artwork.is_some();
     let position_of = |images: &[ArtworkImage], index: usize| ArtworkScan::Reading {
-        current: images[index].file_id.clone(),
+        current: images[index].file_id().map(str::to_string),
         position: index as u32 + 1,
         total,
     };
@@ -214,8 +214,9 @@ pub(super) async fn stream_extraction(
             let Some(read) = in_flight.pop_front() else {
                 break;
             };
-            let ArtworkImage { source, file_id } = read.image;
-            let path = source.name();
+            let image = read.image;
+            let path = image.name();
+            let file_id: Option<String> = image.file_id().map(str::to_string);
             let analysis = read.finish(&inner.diagnostics).await;
             if token.is_cancelled() {
                 abandon(in_flight, &inner.diagnostics).await;
@@ -241,7 +242,7 @@ pub(super) async fn stream_extraction(
                 let seen_here = gathered
                     .barcodes
                     .iter()
-                    .any(|b| b.value == code.as_str() && &b.origin_path == file_id);
+                    .any(|b| b.value == code.as_str() && b.origin_path == file_id);
                 if !seen_here {
                     gathered.barcodes.push(SourcedValue {
                         value: code.into_string(),

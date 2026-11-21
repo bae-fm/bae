@@ -5,6 +5,7 @@
 
 use super::*;
 use crate::identification::tests::*;
+use crate::test_fixtures::PerFolderBarcodeAnalyzer;
 use bae_catalogs::test_releases::{mb_release_json, mb_search_json};
 use bae_util::test_channels::HANG_GUARD;
 use std::path::PathBuf;
