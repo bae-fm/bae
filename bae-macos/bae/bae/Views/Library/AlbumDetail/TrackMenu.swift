@@ -48,7 +48,7 @@ struct TrackMenu: MacMenuPart {
             MacMenuItem("Add to queue") { onAddToQueue(track.id) }
             MacMenuItem.divider
             if case .stars(let mine) = rating {
-                TrackRateMenu(stars: mine, onRate: onRate)
+                RateMenu(stars: mine, onRate: onRate)
             }
             else if case .heart(let hearted) = rating {
                 HeartMenuItem(hearted: hearted, onSetHearted: onSetHearted)

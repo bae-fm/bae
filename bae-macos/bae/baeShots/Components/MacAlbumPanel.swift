@@ -56,15 +56,16 @@ extension ShotScene {
         release.id = id
         release.name = .named(name: name)
         release.facts = facts
-        release.pressingSummary = bridgePressingSummary(facts: facts)
         release.mediaTerms = bridgeMediaTerms(media: facts.media)
         release.pressingDetails = bridgePressingDetails(facts: facts)
         release.labels = [
             BridgeLabelLine(
                 names: ["Harbor Records"],
-                catalogNumbers: []
+                catalogNumbers: ["HR-1042"]
             )
         ]
+        release.sourceAudio = PreviewData.boardSourceAudio
+        release.totalDuration = .minutesOnly(minutes: 52)
         release.cover = covered ? cover("Low Tide Hours") : nil
         release.playability = playability
         let tracks = [

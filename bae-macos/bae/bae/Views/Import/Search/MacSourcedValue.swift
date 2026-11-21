@@ -20,7 +20,7 @@ struct MacSourcedValue: View {
         Text(attributed)
     }
 
-    private var attributed: AttributedString {
+    var attributed: AttributedString {
         let alternatives = localizedCoreString(
             "core.pressing.alternatives_separator"
         )

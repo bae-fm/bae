@@ -5,8 +5,8 @@ import Testing
 
 @testable import bae
 
-/// The album header's release facts: the pressing on one line and its labels
-/// on another, the labels as core grouped them.
+/// The album header's release facts: the edition line and the copy line, the
+/// labels as core grouped them and the country last.
 @MainActor
 @Suite("The album header's release facts")
 struct ReleaseFactsLineTests {
@@ -17,32 +17,65 @@ struct ReleaseFactsLineTests {
         return album.shownRelease
     }
 
-    @Test("the labels line shows each name group once, then its numbers")
-    func theLabelsLineShowsCoreGroups() throws {
+    @Test(
+        "the edition line shows each label group with its numbers, then the country"
+    )
+    func theEditionLineEndsWithTheCountry() throws {
         let release = try Self.release("a-21")
         let separator = localizedCoreString("core.audio.list_separator")
         let within = localizedCoreString("core.label.list_separator")
 
-        #expect(!release.pressingLine.isEmpty)
         #expect(
-            release.labelsLine
-                == ["Label A\(within)Label B", "AB 100", "Label C", "CL 719"]
+            release.editionLine
+                == [
+                    "Label A\(within)Label B", "AB 100", "Label C", "CL 719",
+                    PressingText.shortCountryName("US"),
+                ]
                 .joined(separator: separator)
         )
-        #expect(!release.pressingLine.contains("Label"))
+        #expect(!release.copyLine.contains("Label"))
+        #expect(!release.copyLine.contains(PressingText.shortCountryName("US")))
     }
 
-    @Test("the pressing line names the year only when core hands one over")
-    func thePressingLineNamesTheYearOnlyWhenCoreHandsOneOver() {
+    @Test("the edition line starts with the year only when core hands one over")
+    func theEditionLineNamesTheYearOnlyWhenCoreHandsOneOver() {
         let separator = localizedCoreString("core.audio.list_separator")
         let reissue = ReleaseDetail(
             bridge: makeBridgeRelease(distinctYear: 2001)
         )
         let original = ReleaseDetail(bridge: makeBridgeRelease())
 
-        #expect(reissue.pressingLine.hasPrefix("2001\(separator)"))
-        #expect(!original.pressingLine.contains("2024"))
-        #expect(!original.pressingLine.hasPrefix(separator))
+        #expect(reissue.editionLine.hasPrefix("2001"))
+        #expect(!original.editionLine.contains("2024"))
+        #expect(!original.editionLine.hasPrefix(separator))
+    }
+
+    @Test("the copy line holds the media, then the play time")
+    func theCopyLineHoldsTheMediaThenTheTime() {
+        let release = ReleaseDetail(bridge: makeBridgeRelease())
+
+        #expect(release.copyLine.hasPrefix("CD"))
+        #expect(release.copyLine.hasSuffix("45 min"))
+    }
+
+    @Test("a country shows in the short form its language uses")
+    func countriesShowInTheShortForm() {
+        let english = Locale(identifier: "en_US")
+        let spanish = Locale(identifier: "es_ES")
+        let japanese = Locale(identifier: "ja_JP")
+
+        #expect(PressingText.shortCountryName("US", locale: english) == "US")
+        #expect(PressingText.shortCountryName("GB", locale: english) == "UK")
+        #expect(
+            PressingText.shortCountryName("US", locale: spanish) == "EE. UU."
+        )
+        #expect(
+            PressingText.shortCountryName("US", locale: japanese)
+                == japanese.localizedString(forRegionCode: "US")
+        )
+        #expect(
+            PressingText.shortCountryName("DE", locale: english) == "Germany"
+        )
     }
 
     @Test("the facts draw as two lines, each on one line of its own")
@@ -55,28 +88,28 @@ struct ReleaseFactsLineTests {
             return host.fittingSize.height
         }
         let both = ReleaseFactsLine(
-            pressingLine: release.pressingLine,
-            labelsLine: release.labelsLine,
+            editionLine: release.editionLine,
+            copyLine: release.copyLine,
             records: [],
             hasRecords: false
         )
-        let pressingOnly = ReleaseFactsLine(
-            pressingLine: release.pressingLine,
-            labelsLine: "",
+        let editionOnly = ReleaseFactsLine(
+            editionLine: release.editionLine,
+            copyLine: "",
             records: [],
             hasRecords: false
         )
         let long = ReleaseFactsLine(
-            pressingLine: release.pressingLine,
-            labelsLine: String(repeating: release.labelsLine, count: 6),
+            editionLine: release.editionLine,
+            copyLine: String(repeating: release.copyLine, count: 6),
             records: [],
             hasRecords: false
         )
 
         #expect(both.shownLines.count == 2)
-        #expect(pressingOnly.shownLines.count == 1)
-        #expect(height(both) > height(pressingOnly))
-        // A long labels line is cut short rather than wrapping onto more.
+        #expect(editionOnly.shownLines.count == 1)
+        #expect(height(both) > height(editionOnly))
+        // A long copy line is cut short rather than wrapping onto more.
         #expect(abs(height(long) - height(both)) < 1)
     }
 }

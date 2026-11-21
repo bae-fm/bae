@@ -49,7 +49,7 @@ struct StatedValueTests {
 
         #expect(
             area.text
-                == "\(PressingText.countryName("US")) "
+                == "\(PressingText.shortCountryName("US")) "
                 + bridgeLookupCatalogName(catalog: .musicBrainz)
         )
     }

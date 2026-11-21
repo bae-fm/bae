@@ -57,7 +57,6 @@ extension ShotScene {
                 currentReleaseId: nil,
                 onSelectRelease: { _ in },
                 onPlay: {},
-                onRate: { _ in },
                 rating: detail.rating
             ) {
                 MacMenuItem("Edit…") {}
@@ -69,7 +68,7 @@ extension ShotScene {
             .frame(width: 540, alignment: .leading)
             .overlay(alignment: .bottomLeading) {
                 if optionsOpen {
-                    // Under the ⋯, which follows Play above the rating line.
+                    // Under the ⋯, which follows Play.
                     MacMenuInPlace(
                         {
                             MacMenuItem("Edit…") {}

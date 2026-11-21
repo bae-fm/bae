@@ -12,4 +12,4 @@ The open album's head, beside its cover, from the top:
 
 Rating, and every other action beyond Play, is an item of the ⋯ menu: Rate opens a submenu (decision #1217).
 
-**In the code:** macOS: `MacAlbumHeader` (`Views/Library/AlbumDetail/MacAlbumHeader.swift`), with `ReleaseFactsLine` for the release's facts, inside `MacAlbumPanel`.
+**In the code:** macOS: `MacAlbumHeader` (`Views/Library/AlbumDetail/MacAlbumHeader.swift`), with `ReleaseFactsLine` for the edition and copy lines, inside `MacAlbumPanel`.

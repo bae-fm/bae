@@ -284,7 +284,7 @@
                         labels: [
                             BridgeLabelLine(
                                 names: ["Harbor Records"],
-                                catalogNumbers: []
+                                catalogNumbers: ["HR-1042"]
                             )
                         ],
                         area: .country(code: "US")
@@ -311,9 +311,25 @@
                 )
             ]
             release.totalDuration = groupDuration(release.tracks)
+            release.sourceAudio = boardSourceAudio
             detail.releases = [release]
             return detail.showing(chosenReleaseId: nil)
         }
+
+        /// The audio the board's album reads: "FLAC · 44.1 kHz · 16-bit ·
+        /// Stereo".
+        static let boardSourceAudio = BridgeSourceAudioSummary.uniform(
+            descriptor: BridgeSourceAudioDescriptor(
+                layout: .file,
+                format: BridgeAudioFormat(
+                    codec: "FLAC",
+                    sampleRateHz: 44_100,
+                    bitsPerSample: 16,
+                    bitrateKbps: nil,
+                    channels: 2
+                )
+            )
+        )
 
         private static func makeDetail(
             album: AlbumFixture,

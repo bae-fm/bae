@@ -3182,7 +3182,9 @@ rating, so a rating nobody touched shows as it was when the system changes
 back. *None* hides ratings and keeps them. Sorting by rating under *Heart*
 puts the hearted first and orders nothing by the stars it hides.
 
-On macOS an album's options menu offers *Rate*. Its submenu starts with a
+On macOS an album's options menu, beside Play, offers *Shuffle*, *Play next*
+and *Add to queue*, then *Rate*, then the release's own items, and last
+*Delete release* and *Delete album…*. The *Rate* submenu starts with a
 disabled item that names who rated the album, then offers five stars down
 to one with the person's own marked as selected, then *Clear rating*.
 A click rates the album with that many stars. A rated album shows its

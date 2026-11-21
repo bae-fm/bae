@@ -376,50 +376,21 @@ struct LookupReleasesPopover: View {
 }
 
 /// One pressing a lookup found: the facts that tell pressings of one album
-/// apart.
+/// apart, as its edition line and then what it is made of.
 struct LookupReleaseLine: View {
     let pressing: Pressing
 
-    private var pressed: String {
-        pressing.summaryText
-    }
-
     var body: some View {
         HStack(spacing: ThemeSpace.compact) {
-            if !pressing.years.isEmpty {
-                Text(PressingText.alternatives(pressing.years))
-                    .themeText(.strong)
-                    .monospacedDigit()
-                    .lineLimit(1)
-            }
-            ForEach(Array(pressing.labels.enumerated()), id: \.offset) {
-                _,
-                label in
-                if !label.names.isEmpty {
-                    Text(
-                        label.names.joined(
-                            separator: localizedCoreString(
-                                "core.label.list_separator"
-                            )
-                        )
-                    )
-                    .themeText(.detail)
-                    .foregroundStyle(Theme.textSecondary)
-                    .lineLimit(1)
-                }
-                ForEach(
-                    Array(label.catalogNumbers.enumerated()),
-                    id: \.offset
-                ) { _, catalogNumber in
-                    StatusChip(verbatim: catalogNumber.stated.text)
-                }
-            }
-            if !pressed.isEmpty {
-                Text(pressed)
-                    .themeText(.fine)
-                    .foregroundStyle(Theme.textTertiary)
-                    .lineLimit(1)
-            }
+            MacSourcedValue(parts: pressing.editionParts)
+                .themeText(.detail)
+                .foregroundStyle(Theme.textSecondary)
+                .monospacedDigit()
+                .lineLimit(1)
+            MacSourcedValue(parts: pressing.copyParts)
+                .themeText(.fine)
+                .foregroundStyle(Theme.textTertiary)
+                .lineLimit(1)
             Spacer(minLength: 0)
         }
         .padding(.horizontal, ThemeSpace.compact)

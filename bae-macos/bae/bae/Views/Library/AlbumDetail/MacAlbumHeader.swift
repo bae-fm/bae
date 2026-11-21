@@ -3,9 +3,9 @@ import SwiftUI
 
 /// The open album's head: title, artist and year, the release picker when the
 /// album has several releases, the release's facts, why this Mac can't play
-/// it, then Play and ⋯ over the album's rating. Under Heart a filled heart
-/// follows the ⋯ when the person hearted the album; under None the album
-/// shows no rating.
+/// it, then Play and ⋯ with the person's rating after it: under Stars the
+/// number and one star, under Heart a filled heart when the person hearted
+/// the album, and under None nothing.
 struct MacAlbumHeader: View {
     /// The album and its releases as its detail read returned them.
     let detail: AlbumDetail
@@ -15,8 +15,6 @@ struct MacAlbumHeader: View {
     /// picker.
     let onSelectRelease: (String) -> Void
     let onPlay: () -> Void
-    /// Rate the album with these stars, or clear its rating with none.
-    let onRate: (BridgeStars?) -> Void
     /// The album's rating under the library's rating system, which the
     /// heart the person just chose can replace.
     let rating: BridgeAlbumRating
@@ -28,7 +26,6 @@ struct MacAlbumHeader: View {
         currentReleaseId: String?,
         onSelectRelease: @escaping (String) -> Void,
         onPlay: @escaping () -> Void,
-        onRate: @escaping (BridgeStars?) -> Void,
         rating: BridgeAlbumRating,
         @MacMenuBuilder menu: @escaping () -> [MacMenuEntry]
     ) {
@@ -36,7 +33,6 @@ struct MacAlbumHeader: View {
         self.currentReleaseId = currentReleaseId
         self.onSelectRelease = onSelectRelease
         self.onPlay = onPlay
-        self.onRate = onRate
         self.rating = rating
         self.menu = menu
     }
@@ -71,8 +67,8 @@ struct MacAlbumHeader: View {
                 )
             }
             ReleaseFactsLine(
-                pressingLine: selectedRelease.pressingLine,
-                labelsLine: selectedRelease.labelsLine,
+                editionLine: selectedRelease.editionLine,
+                copyLine: selectedRelease.copyLine,
                 records: selectedRelease.records,
                 hasRecords: selectedRelease.hasRecords
             )
@@ -90,18 +86,26 @@ struct MacAlbumHeader: View {
                     label: Text("Album options"),
                     items: menu
                 )
-                // Under Heart the person's heart follows the ⋯, read-only.
-                if case .heart(hearted: true, hearters: _) = rating {
-                    Heart(on: true, size: 13)
-                }
+                ratingMark
             }
             .padding(.top, ThemeSpace.group)
-            if case .stars(let mine, let raters) = rating {
-                MacAlbumRating(mine: mine, raters: raters, onRate: onRate)
-                    .padding(.top, ThemeSpace.related)
-            }
         }
         // Over the rows below the head, which the facts' card lies across.
         .zIndex(1)
+    }
+
+    /// The person's own rating after the ⋯, read-only.
+    @ViewBuilder
+    private var ratingMark: some View {
+        switch rating {
+        case .stars(mine: let mine?, raters: _):
+            Stars(rating: mine, size: 13)
+                .padding(.leading, ThemeSpace.inline)
+        case .heart(hearted: true, hearters: _):
+            Heart(on: true, size: 13)
+                .padding(.leading, ThemeSpace.inline)
+        case .stars, .heart, .hidden:
+            EmptyView()
+        }
     }
 }

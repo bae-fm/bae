@@ -1,13 +1,19 @@
 import BaeKit
 import SwiftUI
 
-/// The release identity shown throughout import: title, artist, release facts,
-/// and the source-audio facts observed by the scan.
+/// The release identity shown throughout import: title, artist, the edition
+/// and copy lines, and the source-audio facts observed by the scan.
 struct ImportReleaseSummary {
     let title: String
     let titleIsPlaceholder: Bool
     let artist: String?
-    let factsLine: String
+    /// What the catalog's release prints: its year, each label with its
+    /// catalog number, then its country; empty for a draft from the files'
+    /// own tags.
+    let editionLine: String
+    /// What the person has: the media and details; empty for a draft from the
+    /// files' own tags.
+    let copyLine: String
     let sourceAudio: BridgeSourceAudioSummary?
 
     /// `candidate`'s draft, `draft`, with the folder's audio.
@@ -22,24 +28,29 @@ struct ImportReleaseSummary {
             values.albumArtistAssignments.isEmpty
             ? nil
             : bridgeCreditLine(credits: values.albumArtistAssignments).text
-        let count = Int(draft.mapping.trackCount)
-        let trackText = String(localized: "\(count) tracks")
         switch provenance {
         case .externalRelease:
-            factsLine = Self.factsLine([
-                PressingText.media(values.pressing.facts.media),
-                values.pressing.year,
-                values.pressing.facts.area?.text,
-                draft.summaryCatalogNumber,
-                trackText,
+            let pressing = values.pressing
+            editionLine = FactList.joined([
+                pressing.year,
+                FactList.joined(
+                    pressing.labels.map { row in
+                        FactList.joined([
+                            row.label.name, row.label.catalogNumber,
+                        ])
+                    }
+                ),
+                pressing.facts.area?.editionText,
             ])
-        case .fileMetadata:
-            factsLine = Self.factsLine([
-                localizedCoreString("core.import.metadata.file_metadata"),
-                trackText,
+            copyLine = FactList.joined([
+                PressingText.media(pressing.facts.media),
+                PressingText.line(
+                    bridgePressingDetails(facts: pressing.facts)
+                ),
             ])
-        case nil:
-            factsLine = trackText
+        case .fileMetadata, nil:
+            editionLine = ""
+            copyLine = ""
         }
         sourceAudio = candidate.files.sourceAudio
     }
@@ -55,7 +66,8 @@ struct ImportReleaseSummary {
         artist =
             summary.albumArtists.names.isEmpty
             ? nil : summary.albumArtists.text
-        factsLine = ""
+        editionLine = ""
+        copyLine = ""
         sourceAudio = nil
     }
 
@@ -65,17 +77,14 @@ struct ImportReleaseSummary {
         titleIsPlaceholder = false
         title = tags.albumTitle
         artist = tags.artist?.text
-        factsLine = ""
+        editionLine = ""
+        copyLine = ""
         sourceAudio = nil
     }
 
     /// The title shown in place of a release's empty album title.
     private static var placeholderTitle: String {
         String(localized: "Album title")
-    }
-
-    private static func factsLine(_ facts: [String?]) -> String {
-        FactList.joined(facts)
     }
 }
 
@@ -96,13 +105,11 @@ struct MacImportReleaseSummary<TitleAccessory: View>: View {
         VStack(alignment: .leading, spacing: ThemeSpace.line) {
             titleLine
             artistLine
-            Text(summary.factsLine)
-                .themeText(.detail)
-                .foregroundStyle(Theme.textTertiary)
-                .lineLimit(1)
-                .padding(.top, style.factsTopPadding)
-                .frame(height: style.factsHeight)
-                .opacity(style.showsFacts ? 1 : 0)
+            if style.showsFacts {
+                factLine(summary.editionLine)
+                    .padding(.top, style.factsTopPadding)
+                factLine(summary.copyLine)
+            }
             if style.showsFacts, let sourceAudio = summary.sourceAudio {
                 SourceAudioLine(sourceAudio: sourceAudio)
             }
@@ -122,6 +129,16 @@ struct MacImportReleaseSummary<TitleAccessory: View>: View {
                 .cutLine(.prose)
             titleAccessory()
                 .layoutPriority(1)
+        }
+    }
+
+    @ViewBuilder
+    private func factLine(_ line: String) -> some View {
+        if !line.isEmpty {
+            Text(line)
+                .themeText(.detail)
+                .foregroundStyle(Theme.textTertiary)
+                .lineLimit(1)
         }
     }
 
@@ -168,13 +185,6 @@ extension MacImportReleaseSummary.Style {
         switch self {
         case .sidebar: false
         case .card: true
-        }
-    }
-
-    fileprivate var factsHeight: CGFloat? {
-        switch self {
-        case .sidebar: 0
-        case .card: nil
         }
     }
 }

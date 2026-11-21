@@ -3,12 +3,12 @@ import Testing
 
 @testable import bae
 
-struct TrackRateMenuTests {
+struct RateMenuTests {
     private func submenu(
         _ stars: BridgeStars?,
         onRate: @escaping (BridgeStars?) -> Void = { _ in }
     ) throws -> [MacMenuEntry] {
-        let entries = TrackRateMenu(stars: stars, onRate: onRate).entries
+        let entries = RateMenu(stars: stars, onRate: onRate).entries
         guard
             case .submenu(let title, let items, _) = try #require(
                 entries.first
@@ -52,5 +52,28 @@ struct TrackRateMenuTests {
         guard case .item(let five) = try #require(items.first) else { return }
         five.action()
         #expect(rated == [nil, .five])
+    }
+
+    @Test("an album's submenu leads with a disabled line of who rated it")
+    func leadsWithWhoRated() throws {
+        let entries = RateMenu(
+            stars: .four,
+            raters: [.you, .person(name: "Ana", stars: .five)],
+            onRate: { _ in }
+        )
+        .entries
+        guard
+            case .submenu(_, let items, _) = try #require(entries.first),
+            case .item(let line) = try #require(items.first)
+        else {
+            Issue.record("Rate is not a submenu led by a line")
+            return
+        }
+        #expect(line.title == "You · Ana rated it 5")
+        #expect(line.isDisabled)
+        guard case .divider = items[1] else {
+            Issue.record("No divider under the line")
+            return
+        }
     }
 }

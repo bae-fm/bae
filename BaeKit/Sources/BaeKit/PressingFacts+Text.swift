@@ -30,6 +30,29 @@ public enum PressingText {
     public static func countryName(_ code: String) -> String {
         Locale.current.localizedString(forRegionCode: code) ?? code
     }
+
+    /// The short form of a country's name that the locale's language commonly
+    /// uses ("US", "UK", "EE. UU." in Spanish), and its full name where the
+    /// language has none.
+    public static func shortCountryName(
+        _ code: String,
+        locale: Locale = .current
+    ) -> String {
+        let language = locale.language.languageCode?.identifier
+        let short = language.flatMap { shortCountryNames[$0]?[code] }
+        return short
+            ?? locale.localizedString(forRegionCode: code) ?? code
+    }
+
+    /// The short forms of the countries that record labels print most, by
+    /// language and ISO 3166-1 code.
+    private static let shortCountryNames: [String: [String: String]] = [
+        "en": ["US": "US", "GB": "UK"],
+        "es": ["US": "EE. UU."],
+        "pt": ["US": "EUA"],
+        "de": ["US": "USA"],
+        "it": ["US": "USA"],
+    ]
 }
 
 extension BridgeTermLabel {
@@ -48,7 +71,7 @@ extension BridgeFactTerm {
     public var text: String {
         switch self {
         case .country(let code):
-            PressingText.countryName(code)
+            PressingText.shortCountryName(code)
         case .worded(let label):
             label.text
         case .counted(let count, let label):
@@ -69,6 +92,16 @@ extension BridgeReleaseArea {
             PressingText.countryName(code)
         case .region(let region):
             localizedCoreString(bridgeRegionKey(region: region))
+        }
+    }
+
+    /// The area as an edition line ends with it: a country in its short form.
+    public var editionText: String {
+        switch self {
+        case .country(let code):
+            PressingText.shortCountryName(code)
+        case .region:
+            text
         }
     }
 }

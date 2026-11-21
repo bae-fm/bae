@@ -57,11 +57,8 @@ struct MacPressingRow: View {
 
             HStack(spacing: ThemeSpace.related) {
                 VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                    HStack(spacing: ThemeSpace.related) {
-                        facts
-                        signalBadges
-                    }
-                    summaryLine
+                    editionLine
+                    copyLine
                     noteLine
                 }
                 .allowsHitTesting(false)
@@ -158,48 +155,15 @@ struct MacPressingRow: View {
 
     // MARK: - What the pressing is
 
-    private var facts: some View {
-        HStack(spacing: ThemeSpace.related) {
-            if pressing.years.isEmpty {
-                Text("Year unknown")
-                    .themeText(.body)
-                    .foregroundStyle(Theme.textTertiary)
-            }
-            else {
-                MacSourcedValue(pressing.years)
-                    .themeText(.strong)
-                    .monospacedDigit()
-                    .lineLimit(1)
-            }
-            ForEach(Array(pressing.labels.enumerated()), id: \.offset) {
-                _,
-                label in
-                if !label.names.isEmpty {
-                    Text(
-                        label.names.joined(
-                            separator: localizedCoreString(
-                                "core.label.list_separator"
-                            )
-                        )
-                    )
-                    .themeText(.body)
-                    .foregroundStyle(Theme.textSecondary)
-                    .cutLine(.prose)
-                }
-                ForEach(
-                    Array(label.catalogNumbers.enumerated()),
-                    id: \.offset
-                ) { _, catalogNumber in
-                    StatusChip(verbatim: catalogNumber.stated.text)
-                }
-            }
-            if !pressing.barcodes.isEmpty {
-                MacSourcedValue(pressing.barcodes)
-                    .themeText(.body)
-                    .foregroundStyle(Theme.textSecondary)
-                    .monospacedDigit()
-                    .lineLimit(1)
-            }
+    /// The edition line: the years, each label with its catalog numbers,
+    /// then the country.
+    @ViewBuilder
+    private var editionLine: some View {
+        if pressing.editionParts.contains(where: { !$0.isEmpty }) {
+            MacSourcedValue(parts: pressing.editionParts)
+                .themeText(.body)
+                .monospacedDigit()
+                .cutLine(.prose)
         }
     }
 
@@ -307,30 +271,45 @@ struct MacPressingRow: View {
 }
 
 extension MacPressingRow {
-    /// The pressing's format and country, and its details, under the facts.
+    /// The copy line: what the pressing is made of and its details, then its
+    /// barcodes and the agreement badges.
     @ViewBuilder
-    private var summaryLine: some View {
+    private var copyLine: some View {
         let details = pressing.detailsText
-        if !pressing.areas.isEmpty || !pressing.media.isEmpty
+        let hasCopy =
+            pressing.copyParts.contains(where: { !$0.isEmpty })
             || !details.isEmpty
-        {
+        if hasCopy || !pressing.barcodes.isEmpty || agreements != nil {
             HStack(spacing: ThemeSpace.related) {
-                if !pressing.areas.isEmpty || !pressing.media.isEmpty {
-                    MacSourcedValue(parts: [pressing.media, pressing.areas])
+                if hasCopy {
+                    Text(copyText)
                         .themeText(.detail)
                         .foregroundStyle(Theme.textTertiary)
                         .cutLine(.prose)
                 }
-                if !details.isEmpty {
-                    Text(details)
-                        .themeText(.detail)
-                        .foregroundStyle(
-                            Theme.textTertiary
-                        )
-                        .cutLine(.prose)
+                if !pressing.barcodes.isEmpty {
+                    MacSourcedValue(pressing.barcodes)
+                        .themeText(.body)
+                        .foregroundStyle(Theme.textSecondary)
+                        .monospacedDigit()
+                        .lineLimit(1)
                 }
+                signalBadges
             }
         }
+    }
+
+    /// The media and details, each fact followed by the catalogs that state
+    /// it where they differ.
+    private var copyText: AttributedString {
+        var text = MacSourcedValue(parts: pressing.copyParts).attributed
+        if !pressing.detailsText.isEmpty {
+            if !text.characters.isEmpty {
+                text.append(AttributedString(FactList.separator))
+            }
+            text.append(AttributedString(pressing.detailsText))
+        }
+        return text
     }
 
     /// The notes of the pressing's records the folder names it by, each

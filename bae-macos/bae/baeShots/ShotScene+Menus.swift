@@ -33,8 +33,8 @@ extension ShotScene {
                             AlbumMenu(
                                 offersSetAsPrimary: false,
                                 rating: .stars(mine: nil, raters: []),
+                                onRate: { _ in },
                                 onSetHearted: { _ in },
-                                onPlay: {},
                                 onShuffle: {},
                                 onAddNext: {},
                                 onAddToQueue: {},

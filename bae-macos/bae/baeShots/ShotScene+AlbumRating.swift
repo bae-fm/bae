@@ -4,39 +4,17 @@ import SwiftUI
 @testable import bae
 
 extension ShotScene {
-    /// The album page with its rating: the person's four stars over "You ·
-    /// Ana rated it 5", and the stars they gave three of the tracks
-    /// (`mac.album.rating`), then the same page under the Heart and None
-    /// systems with the album's menu open (`mac.album.rating.heart` and
-    /// `.none`), and a track's menu under each (`mac.album.track-menu-heart`
-    /// and `-none`).
+    /// The album page with its rating under each system, its menu open:
+    /// under Stars with Rate's submenu open, the person's four stars checked
+    /// under "You · Ana rated it 5" (`mac.album.rating`), then under the
+    /// Heart and None systems (`mac.album.rating.heart` and `.none`), and a
+    /// track's menu under each (`mac.album.track-menu-heart` and `-none`).
     static let albumRatingScenes: [ShotScene] = [
-        ShotScene(
-            id: "mac.album.rating",
-            size: CGSize(width: 1_200, height: 1_000)
-        ) {
-            let size = CGSize(width: 1_200, height: 1_000)
-            let uiStore = UiStore()
-            let backing = boardLibraryBacking(
-                uiStore: uiStore,
-                openAlbum: true,
-                detail: ratedBoardAlbum()
-            )
-            return ShotStage(
-                ShotScenes.libraryWindow(
-                    uiStore: uiStore,
-                    backing: backing,
-                    playbackStore: boardPlayback(),
-                    size: size
-                )
-            ) {
-                (backing.session.albums.list?.positionCount ?? 0) > 0
-            }
-        },
+        ratingSystemScene("mac.album.rating", system: .stars, menu: .albumRate),
         ratingSystemScene(
             "mac.album.rating.heart",
             system: .heart,
-            menu: .album(highlighted: 7)
+            menu: .album(highlighted: 5)
         ),
         ratingSystemScene(
             "mac.album.rating.none",
@@ -59,11 +37,13 @@ extension ShotScene {
     /// is on.
     private enum OpenMenu {
         case album(highlighted: Int?)
+        /// The album's menu with the pointer on Rate, whose submenu is open.
+        case albumRate
         case track(highlighted: Int?)
     }
 
     /// The album page under the rating system `system` for its albums and its
-    /// tracks, rated as the Heart boards draw it, with `menu` open.
+    /// tracks, rated as the boards draw it, with `menu` open.
     private static func ratingSystemScene(
         _ id: String,
         system: BridgeRatingSystem,
@@ -72,16 +52,7 @@ extension ShotScene {
         let size = CGSize(width: 1_200, height: 1_020)
         return ShotScene(id: id, size: size) {
             let uiStore = UiStore()
-            let detail = ratedBoardAlbum(
-                albumRating: system == .heart
-                    ? .heart(
-                        hearted: true,
-                        hearters: [.you, .person(name: "Ana")]
-                    ) : .hidden,
-                trackRating: system == .heart
-                    ? .heart(hearted: false) : .hidden,
-                trackStars: [0: .five, 1: .two, 3: .four, 6: .three]
-            )
+            let detail = boardAlbum(ratedUnder: system)
             let backing = boardLibraryBacking(
                 uiStore: uiStore,
                 openAlbum: true,
@@ -104,6 +75,32 @@ extension ShotScene {
         }
     }
 
+    /// The board's album and its tracks as the person and Ana rated them,
+    /// under `system`.
+    private static func boardAlbum(
+        ratedUnder system: BridgeRatingSystem
+    ) -> BridgeAlbumDetail {
+        switch system {
+        case .stars:
+            ratedBoardAlbum()
+        case .heart:
+            ratedBoardAlbum(
+                albumRating: .heart(
+                    hearted: true,
+                    hearters: [.you, .person(name: "Ana")]
+                ),
+                trackRating: .heart(hearted: false),
+                trackStars: [0: .five, 1: .two, 3: .four, 6: .three]
+            )
+        case .hidden:
+            ratedBoardAlbum(
+                albumRating: .hidden,
+                trackRating: .hidden,
+                trackStars: [0: .five, 1: .two, 3: .four, 6: .three]
+            )
+        }
+    }
+
     @ViewBuilder
     private static func openMenu(
         _ menu: OpenMenu,
@@ -111,29 +108,14 @@ extension ShotScene {
     ) -> some View {
         switch menu {
         case .album(let highlighted):
-            MacMenuInPlace(
-                {
-                    AlbumMenu(
-                        offersSetAsPrimary: false,
-                        rating: album.rating,
-                        onSetHearted: { _ in },
-                        onPlay: {},
-                        onShuffle: {},
-                        onAddNext: {},
-                        onAddToQueue: {},
-                        onEdit: {},
-                        onOpenStorage: {},
-                        onExport: {},
-                        onSaveAs: {},
-                        onSetPrimaryRelease: {},
-                        onDeleteRelease: {},
-                        onDeleteAlbum: {}
-                    )
-                },
-                highlighted: highlighted
-            )
-            .padding(.leading, 478)
-            .padding(.top, 612)
+            albumMenu(album, highlighted: highlighted)
+        case .albumRate:
+            // Rate is the menu's fifth line, after Shuffle, Play next, Add
+            // to queue and a divider; its submenu opens beside it.
+            albumMenu(album, highlighted: 4)
+            MacMenuInPlace({ rateSubmenu(album) })
+                .padding(.leading, 626)
+                .padding(.top, 696)
         case .track(let highlighted):
             MacMenuInPlace(
                 {
@@ -156,6 +138,50 @@ extension ShotScene {
             .padding(.leading, 520)
             .padding(.top, 668)
         }
+    }
+
+    /// The album's menu, open under its ⋯, with the pointer on the line at
+    /// `highlighted`.
+    private static func albumMenu(
+        _ album: AlbumDetail,
+        highlighted: Int?
+    ) -> some View {
+        MacMenuInPlace(
+            {
+                AlbumMenu(
+                    offersSetAsPrimary: false,
+                    rating: album.rating,
+                    onRate: { _ in },
+                    onSetHearted: { _ in },
+                    onShuffle: {},
+                    onAddNext: {},
+                    onAddToQueue: {},
+                    onEdit: {},
+                    onOpenStorage: {},
+                    onExport: {},
+                    onSaveAs: {},
+                    onSetPrimaryRelease: {},
+                    onDeleteRelease: {},
+                    onDeleteAlbum: {}
+                )
+            },
+            highlighted: highlighted
+        )
+        .padding(.leading, 478)
+        .padding(.top, 612)
+    }
+
+    /// The lines of the album menu's Rate submenu.
+    private static func rateSubmenu(_ album: AlbumDetail) -> [MacMenuEntry] {
+        guard case .stars(let mine, let raters) = album.rating,
+            case .submenu(_, let items, _) = RateMenu(
+                stars: mine,
+                raters: raters,
+                onRate: { _ in }
+            )
+            .entries.first
+        else { return [] }
+        return items
     }
 
     /// The playlists a track menu offers to add its track to: none made yet,

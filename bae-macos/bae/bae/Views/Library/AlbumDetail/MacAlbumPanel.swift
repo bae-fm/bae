@@ -79,7 +79,6 @@ struct MacAlbumPanel: View {
                         currentReleaseId: currentReleaseId,
                         onSelectRelease: onSelectRelease,
                         onPlay: onPlay,
-                        onRate: onRateAlbum,
                         rating: shownRating
                     ) {
                         albumMenuItems
@@ -110,6 +109,10 @@ struct MacAlbumPanel: View {
                             onOpenWork: onOpenWork
                         )
                     }
+                    if let sourceAudio = selectedRelease.sourceAudio {
+                        SourceAudioLine(sourceAudio: sourceAudio)
+                            .padding(.top, ThemeSpace.related)
+                    }
                 }
             }
         }
@@ -133,8 +136,8 @@ struct MacAlbumPanel: View {
         AlbumMenu(
             offersSetAsPrimary: detail.shownReleaseCanBecomePrimary,
             rating: shownRating,
+            onRate: onRateAlbum,
             onSetHearted: { pendingHeart.choose($0, write: onSetAlbumHearted) },
-            onPlay: onPlay,
             onShuffle: onShuffle,
             onAddNext: onAddNextAlbum,
             onAddToQueue: onAddAlbumToQueue,
@@ -166,15 +169,14 @@ struct MacAlbumPanel: View {
     }
 }
 
-/// The release's facts on two lines, each cut short on its own: the pressing,
-/// then its labels. When a catalog describes the release, an arrow beside the
+/// The release's edition line and copy line, each cut short on its own. When a catalog describes the release, an arrow beside the
 /// first line marks them and a click toggles a card naming the catalogs.
 ///
 /// The card is drawn in the window rather than as a popover, so it carries its
 /// own monitor that closes it on a click away or Escape.
 struct ReleaseFactsLine: View {
-    let pressingLine: String
-    let labelsLine: String
+    let editionLine: String
+    let copyLine: String
     let records: [BridgeReleaseRecord]
     /// Whether any catalog describes the release, so the line offers the
     /// card naming them.
@@ -265,7 +267,7 @@ struct ReleaseFactsLine: View {
 
     /// The lines the release states, each on one line of its own.
     var shownLines: [String] {
-        [pressingLine, labelsLine].filter { !$0.isEmpty }
+        [editionLine, copyLine].filter { !$0.isEmpty }
     }
 
     private var factsText: some View {

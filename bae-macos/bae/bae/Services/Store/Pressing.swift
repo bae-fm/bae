@@ -41,13 +41,28 @@ struct Pressing: Equatable, Identifiable {
     /// it: the row shows dimmed.
     let inLibrary: Bool
 
-    /// Where it was released and what it is made of, as one line of text:
-    /// "2×CD · Japan".
-    var summaryText: String {
-        FactList.joined([
-            PressingText.alternatives(media),
-            PressingText.alternatives(areas),
-        ])
+    /// The parts of the edition line, each a fact with the catalogs that state
+    /// it: the years, each label's names and each of its catalog numbers,
+    /// then where it was released.
+    var editionParts: [[StatedValue]] {
+        var parts = [years]
+        for label in labels {
+            if !label.names.isEmpty {
+                let names = label.names.joined(
+                    separator: localizedCoreString("core.label.list_separator")
+                )
+                parts.append([StatedValue(value: names, catalogs: [])])
+            }
+            parts += label.catalogNumbers.map { [$0.stated] }
+        }
+        parts.append(areas)
+        return parts
+    }
+
+    /// The parts of the copy line, each a fact with the catalogs that state
+    /// it: what it is made of.
+    var copyParts: [[StatedValue]] {
+        [media]
     }
 
     /// Row identity is the lead release's id — stable across a re-search of
