@@ -1,7 +1,7 @@
 <style>
 .t-win { width: 300px; box-sizing: border-box; padding: 16px; background: var(--background); border-radius: 8px; display: flex; flex-direction: column; gap: 14px; }
 .t-box { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; background: var(--surface); border-radius: 8px; }
-.t-word { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; color: var(--logo-word); }
+.t-word { align-self: flex-start; color: var(--logo-word); }
 </style>
 <div class="t-win">
   <div class="t-box">
@@ -10,5 +10,5 @@
     <span style="font-size: 13px; color: var(--mac-text-secondary)" data-color="mac-text-secondary" data-point="below">12 tracks on a Mac</span>
     <span style="font-size: 13px; color: var(--text-tertiary)" data-color="text-tertiary" data-point="below">Search</span>
   </div>
-  <span class="t-word" data-color="logo-word" data-point="below">bae</span>
+  <span class="t-word" data-color="logo-word"><span data-component="Bae.Logo" data-props='{"kind": "word", "size": 100}'></span></span>
 </div>
