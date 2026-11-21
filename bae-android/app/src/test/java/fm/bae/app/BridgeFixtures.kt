@@ -109,6 +109,7 @@ object BridgeFixtures {
                     discogsDetails = emptyList(),
                 ),
             pressingSummary = emptyList(),
+            areaTerms = emptyList(),
             mediaTerms = emptyList(),
             pressingDetails = emptyList(),
             storageState = BridgeReleaseStorageState.OnOneDevice,

@@ -64,15 +64,12 @@ internal fun ColumnScope.AlbumRatingChoices(
     rating: BridgeAlbumRating,
     onRate: (BridgeStars?) -> Unit,
 ) {
-    val raters = LocalContext.current.ratersText(rating)
-    if (raters.isNotEmpty()) {
-        Text(
-            text = raters,
-            style = ThemeText.body.style,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(start = ThemeSpace.edge, end = ThemeSpace.edge, bottom = ThemeSpace.related),
-        )
-    }
+    Text(
+        text = LocalContext.current.ratersText(rating),
+        style = ThemeText.body.style,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(start = ThemeSpace.edge, end = ThemeSpace.edge, bottom = ThemeSpace.related),
+    )
     BridgeStars.entries.reversed().forEach { stars ->
         RatingRow(stars = stars, checked = stars == rating.mine, onClick = { onRate(rating.starsAfterTapping(stars)) })
     }

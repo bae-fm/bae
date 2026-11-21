@@ -100,6 +100,7 @@ extension PreviewData {
             ],
             facts: facts,
             pressingSummary: bridgePressingSummary(facts: facts),
+            areaTerms: bridgeAreaTerms(facts: facts),
             mediaTerms: bridgeMediaTerms(media: facts.media),
             pressingDetails: bridgePressingDetails(facts: facts),
             storageState: storageState,

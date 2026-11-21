@@ -37,7 +37,7 @@ class PlaylistBoardShots : BoardShot() {
 
     private val actions =
         PlaylistEntryActions(
-            onPlay = { _, _ -> },
+            onPlay = {},
             onPlayNext = {},
             onAddToQueue = {},
             onAddToPlaylist = {},

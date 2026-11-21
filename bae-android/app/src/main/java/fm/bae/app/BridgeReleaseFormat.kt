@@ -35,13 +35,6 @@ fun BridgeRelease.audioLineText(
 ): String = sourceAudio?.text(context, audioChannelsKey).orEmpty()
 
 /**
- * Where the pressing was released. The summary holds the area first and then the media, one term
- * for each of [BridgeRelease.mediaTerms].
- */
-private val BridgeRelease.areaTerms
-    get() = pressingSummary.dropLast(mediaTerms.size)
-
-/**
  * The labels on one line, as core grouped them: each line's names, then the
  * catalog numbers they share.
  */

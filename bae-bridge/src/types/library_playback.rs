@@ -439,6 +439,9 @@ pub struct BridgeRelease {
     /// asked for, so a surface draws the release with no call into the
     /// bridge, as Android's preview renderer has to.
     pub pressing_summary: Vec<crate::types::BridgeFactTerm>,
+    /// The facts' area alone, worded: where the release was released, which
+    /// the edition line ends with, and empty when it states none.
+    pub area_terms: Vec<crate::types::BridgeFactTerm>,
     /// The facts' media alone, worded, as the release's summary carries
     /// them.
     pub media_terms: Vec<crate::types::BridgeFactTerm>,

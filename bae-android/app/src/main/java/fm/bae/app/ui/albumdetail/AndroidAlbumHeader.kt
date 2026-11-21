@@ -28,6 +28,7 @@ import fm.bae.app.R
 import fm.bae.app.copyLineText
 import fm.bae.app.creditLineText
 import fm.bae.app.editionLineText
+import fm.bae.app.factSeparator
 import fm.bae.app.number
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.SymbolIcons
@@ -124,7 +125,9 @@ private fun YearAndRating(
     Row(verticalAlignment = Alignment.CenterVertically) {
         year?.let { Text(text = it, style = ThemeText.detail.style, color = color) }
         if (rating != null) {
-            if (year != null) Text(text = " · ", style = ThemeText.detail.style, color = color)
+            if (year != null) {
+                Text(text = LocalContext.current.factSeparator(), style = ThemeText.detail.style, color = color)
+            }
             Text(text = rating.number.toString(), style = ThemeText.detail.style, color = color)
             val description = stringResource(R.string.stars_of_five, rating.number)
             Icon(

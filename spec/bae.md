@@ -3351,7 +3351,7 @@ under them, or under *No playlists yet* when there are none, which opens a
 dialog for the name and who sees it, and the playlist made opens; a person
 without a profile sees *Playlists appear once you have a profile* and no
 button. A playlist opens as its own page on Android, with its picture, owner,
-count and who sees it, then Play under them, and ⋮ at the right of the top bar (*Playlist options* to screen readers), whose menu offers *Shuffle* to everyone, and its tracks in order, each with
+count and, on the person's own playlists, who sees it, then Play under them, and ⋮ at the right of the top bar (*Playlist options* to screen readers), whose menu offers *Shuffle* to everyone and, on the person's own playlists, after a separator *Edit playlist…* and *Delete playlist…*, and its tracks in order, each with
 its credit line and album, a tap on one playing from it; a playlist deleted while
 its page is open says it is not in the library anymore.
 

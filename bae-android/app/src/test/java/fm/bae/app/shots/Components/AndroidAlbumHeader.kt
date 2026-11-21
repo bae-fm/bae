@@ -49,7 +49,7 @@ class AndroidAlbumHeaderShots : BoardShot() {
                         harborRelease.copy(
                             distinctYear = 2001,
                             labels = listOf(BridgeLabelLine(names = listOf("Harbor Records"), catalogNumbers = listOf("HRJ-2201"))),
-                            pressingSummary = listOf(BridgeFactTerm.Country("JP"), BridgeFactTerm.Worded(BridgeTermLabel.Verbatim("CD"))),
+                            areaTerms = listOf(BridgeFactTerm.Country("JP")),
                         ),
                 ),
             )
@@ -94,8 +94,9 @@ internal val harborRelease: BridgeRelease =
             labels = listOf(BridgeLabelLine(names = listOf("Harbor Records"), catalogNumbers = listOf("HR-1042"))),
             facts = release.facts.copy(area = BridgeReleaseArea.Country("US"), media = listOf(BridgeMediaCount(BridgeMedium.CD, 1u))),
             pressingSummary = listOf(BridgeFactTerm.Country("US"), cd),
+            areaTerms = listOf(BridgeFactTerm.Country("US")),
             mediaTerms = listOf(cd),
-            totalDuration = BridgeDurationUnits.MinutesOnly(52u),
+            totalDuration = BridgeDurationUnits.MinutesOnly(29u),
         )
     }
 

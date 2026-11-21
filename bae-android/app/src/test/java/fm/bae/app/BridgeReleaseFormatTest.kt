@@ -26,8 +26,7 @@ class BridgeReleaseFormatTest {
         val release =
             release().copy(
                 labels = listOf(BridgeLabelLine(names = listOf("Harbor Records"), catalogNumbers = listOf("HR-1042"))),
-                pressingSummary = listOf(BridgeFactTerm.Country("JP"), BridgeFactTerm.Worded(BridgeTermLabel.Verbatim("CD"))),
-                mediaTerms = listOf(BridgeFactTerm.Worded(BridgeTermLabel.Verbatim("CD"))),
+                areaTerms = listOf(BridgeFactTerm.Country("JP")),
             )
 
         assertEquals("Harbor Records · HR-1042 · Japan", release.editionLineText(context))
@@ -39,8 +38,6 @@ class BridgeReleaseFormatTest {
         val base =
             release().copy(
                 labels = listOf(BridgeLabelLine(names = listOf("Harbor Records"), catalogNumbers = emptyList())),
-                pressingSummary = emptyList(),
-                mediaTerms = emptyList(),
             )
 
         assertEquals("2001 · Harbor Records", base.copy(distinctYear = 2001).editionLineText(context))
@@ -52,7 +49,6 @@ class BridgeReleaseFormatTest {
     fun theCopyLineNamesTheMediaThenTheDetails() {
         val release =
             release().copy(
-                pressingSummary = listOf(BridgeFactTerm.Country("JP"), BridgeFactTerm.Worded(BridgeTermLabel.Verbatim("CD"))),
                 mediaTerms = listOf(BridgeFactTerm.Worded(BridgeTermLabel.Verbatim("CD"))),
                 pressingDetails = listOf(BridgeFactTerm.Worded(BridgeTermLabel.Localized("core.pressing.status.promotion"))),
             )

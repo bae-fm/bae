@@ -6,8 +6,8 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.ui.components.PageDeletion
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
-import uniffi.bae_bridge.BridgeReleaseDownloadStatus
 import uniffi.bae_bridge.BridgeReleasePlayability
+import uniffi.bae_bridge.BridgeReleaseStorageAction
 
 /** The album's menu at the end of the page's bar, for the release in view. */
 @Composable
@@ -35,28 +35,23 @@ internal fun AlbumBarActions(
         } else {
             null
         }
-    // A release this device can't play has nothing to pin, and one being pinned has Cancel on the page.
+    // Core lists Pin or Unpin only while the release can take it: one being pinned has Cancel on the page.
     val pin =
-        if (!canPlayHere) {
-            null
-        } else {
-            when (shown.downloadStatus) {
-                BridgeReleaseDownloadStatus.Available -> {
-                    PinMenuItem(pinned = false) {
-                        session.messages.perform("queue release download") {
-                            session.appHandle.queuePinReleases(listOf(shown.id))
-                        }
+        when {
+            BridgeReleaseStorageAction.PIN in shown.storageActions -> {
+                PinMenuItem(pinned = false) {
+                    session.messages.perform("queue release download") {
+                        session.appHandle.queuePinReleases(listOf(shown.id))
                     }
                 }
+            }
 
-                BridgeReleaseDownloadStatus.Downloaded -> {
-                    PinMenuItem(pinned = true) { unpin.request(shown.id, asksBeforeUnpinning) }
-                        .takeUnless { unpin.unpinning }
-                }
+            BridgeReleaseStorageAction.UNPIN in shown.storageActions && !unpin.unpinning -> {
+                PinMenuItem(pinned = true) { unpin.request(shown.id, asksBeforeUnpinning) }
+            }
 
-                else -> {
-                    null
-                }
+            else -> {
+                null
             }
         }
     AlbumOptionsMenu(

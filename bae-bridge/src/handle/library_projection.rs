@@ -173,6 +173,7 @@ impl BridgeRelease {
             name: crate::types::BridgeReleaseName::from_core(name),
             distinct_year,
             labels,
+            area_terms: crate::types::bridge_area_terms(facts.clone()),
             media_terms,
             pressing_summary: crate::types::bridge_pressing_summary(facts.clone()),
             pressing_details: crate::types::bridge_pressing_details(facts.clone()),

@@ -156,7 +156,7 @@ internal fun PlaylistPage(
         detail = detail,
         actions =
             PlaylistEntryActions(
-                onPlay = { startPositionId, shuffle -> session.playPlaylist(playlistId, startPositionId, shuffle) },
+                onPlay = { startPositionId -> session.playPlaylist(playlistId, startPositionId, shuffle = false) },
                 onPlayNext = { trackId ->
                     session.runTrackQueueCommand(trackId, "addNext", session.appHandle::addNext)
                 },
@@ -203,7 +203,7 @@ internal fun PlaylistContent(
         }
     LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
         item {
-            AndroidPlaylistHeader(summary = summary, onPlay = { actions.onPlay(null, false) })
+            AndroidPlaylistHeader(summary = summary, onPlay = { actions.onPlay(null) })
         }
         playlistEntries(detail, actions, reorder, reorderState, context)
     }
@@ -231,10 +231,11 @@ internal fun AndroidPlaylistHeader(
             Text(
                 text =
                     context.factsLine(
-                        listOf(
+                        listOfNotNull(
                             summary.owner.name,
                             context.coreString(summary.trackCount),
-                            stringResource(summary.sharing.labelRes()),
+                            // Someone else's playlist is seen only through the share: no word on who sees it.
+                            if (summary.yours) stringResource(summary.sharing.labelRes()) else null,
                         ),
                     ),
                 style = ThemeText.detail.style,

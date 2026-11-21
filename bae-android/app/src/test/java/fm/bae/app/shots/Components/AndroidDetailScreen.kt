@@ -72,5 +72,8 @@ private fun Detail(actions: @Composable RowScope.() -> Unit) =
 private val plainDetail: BridgeAlbumDetail =
     PreviewData.albumDetail(
         harborDetail.album,
-        releases = listOf(harborRelease.copy(labels = emptyList(), pressingSummary = emptyList(), mediaTerms = emptyList())),
+        releases =
+            listOf(
+                harborRelease.copy(labels = emptyList(), pressingSummary = emptyList(), areaTerms = emptyList(), mediaTerms = emptyList()),
+            ),
     )

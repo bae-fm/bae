@@ -53,9 +53,11 @@ internal class ReleaseUnpin(
         asking = null
     }
 
-    /** Close the confirmation and unpin the release it named, first turning the asking off with [stopAsking]. */
-    fun confirm(stopAsking: Boolean) {
-        val releaseId = asking ?: return
+    /** Close the confirmation and unpin [releaseId], which it named, first turning the asking off with [stopAsking]. */
+    fun confirm(
+        releaseId: String,
+        stopAsking: Boolean,
+    ) {
         asking = null
         unpin(releaseId, stopAsking)
     }
@@ -100,5 +102,7 @@ internal fun ReleaseUnpinShown(unpin: ReleaseUnpin) {
             modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
         )
     }
-    if (unpin.asking != null) UnpinDialog(onConfirm = unpin::confirm, onDismiss = unpin::dismiss)
+    unpin.asking?.let { releaseId ->
+        UnpinDialog(onConfirm = { stopAsking -> unpin.confirm(releaseId, stopAsking) }, onDismiss = unpin::dismiss)
+    }
 }

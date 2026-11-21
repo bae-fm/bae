@@ -32,7 +32,7 @@ import uniffi.bae_bridge.BridgePlaylistEntryRow
 /** What a playlist's page does: its buttons, and the menu of each entry. */
 internal class PlaylistEntryActions(
     /** Play the playlist from the entry [startPositionId] names, or from its first, shuffled or not. */
-    val onPlay: (startPositionId: String?, shuffle: Boolean) -> Unit,
+    val onPlay: (startPositionId: String?) -> Unit,
     val onPlayNext: (trackId: String) -> Unit,
     val onAddToQueue: (trackId: String) -> Unit,
     /** The menu shows Add to playlist only when the person can make playlists; null hides it. */
@@ -184,7 +184,7 @@ private fun ReorderableCollectionItemScope.PlaylistEntry(
         subtitle = context.factsLine(listOf(context.creditLineText(entry.artistLine), entry.albumTitle)),
         trailing = context.durationClockLabel(entry.durationClock),
         art = entry.cover,
-        onClick = { actions.onPlay(entry.positionId, false) },
+        onClick = { actions.onPlay(entry.positionId) },
         dragging = lifted,
         modifier =
             if (yours) {
