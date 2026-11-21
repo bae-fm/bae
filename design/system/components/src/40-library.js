@@ -130,10 +130,10 @@
   function MacNowPlayingBar(props) {
     var none = !props.title;
     return h('div', { className: 'bae-m-npbar' },
-      // The playing track: its cover beside its title and artist.
-      h('div', { className: 'bae-m-np-left' }, none ? null : h('div', { className: 'bae-m-nptrack' },
+      // The playing track: one button, its cover beside its title and artist, named as VoiceOver reads the merged track.
+      h('div', { className: 'bae-m-np-left' }, none ? null : h('button', { type: 'button', className: 'bae-plainbtn bae-m-nptrack', 'aria-label': props.artist ? 'Now playing, ' + props.title + ' by ' + props.artist : props.title },
         h(Artwork, { title: props.album || props.title, size: 56, radius: 6, shadow: 'bar', missing: props.noCover }),
-        h('div', { className: 'bae-m-np-text' }, h('div', { className: 'bae-m-np-title' }, props.title), h('div', { className: 'bae-m-np-sub' }, props.artist)))),
+        h('div', { className: 'bae-m-np-text', 'aria-hidden': true }, h('div', { className: 'bae-m-np-title' }, props.title), h('div', { className: 'bae-m-np-sub' }, props.artist)))),
       h('div', { className: 'bae-m-np-center' },
         h(MacTransport, { playing: props.playing, waiting: props.waiting, shuffle: props.shuffle, repeat: props.repeat }),
         h(MacSeekBar, { held: props.held, elapsed: props.elapsed, duration: props.duration, off: none })),
