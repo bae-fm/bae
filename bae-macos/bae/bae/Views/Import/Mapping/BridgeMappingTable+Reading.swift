@@ -21,7 +21,7 @@ extension BridgeTrackAudition {
     var previewTarget: BridgePreviewTarget? {
         switch self {
         case .preview(let target): target
-        case .libraryTrack: nil
+        case .libraryTrack, .unsaved: nil
         }
     }
 }

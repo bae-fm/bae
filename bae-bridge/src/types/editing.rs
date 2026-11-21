@@ -319,11 +319,6 @@ pub struct BridgeSheetGroup {
     /// position up to the count of the folder's bound sheets that the draft
     /// lacks, so that each sheet can go on a disc of its own.
     pub side_choices: Vec<BridgeSheetSideChoice>,
-    /// Whether the caption offers taking the sheet's tracks out of the
-    /// table: putting the sheet on *Ignored*, and binding a FILE line to no
-    /// audio. An import can; a library release's editor adds and removes no
-    /// tracks.
-    pub ignorable: bool,
 }
 
 /// The FILE lines of a track sheet that play audio, by how the caption's
@@ -454,6 +449,9 @@ pub enum BridgeTrackAudition {
     /// The library plays the release from the row's track, the library
     /// track the row's `track.id` names.
     LibraryTrack,
+    /// The row is a track a save of the editor adds, which the library does
+    /// not hold yet, so nothing plays it.
+    Unsaved,
 }
 
 /// One row in the files section. Mirror of bae-library's `MappingFileRow`.
@@ -690,9 +688,10 @@ pub struct BridgeReleaseEditDraft {
     /// row that edits the track; `None` when the release has no tracks.
     pub sides: Option<Vec<BridgeTrackTableSide>>,
     /// The files the release carries that no track plays from, in the
-    /// release's file order: what its Files section lists under the tracks.
+    /// release's file order, headed by each CUE sheet the form ignores or
+    /// leaves with no audio: what its Files section lists under the tracks.
     /// `None` when it carries none.
-    pub files: Option<Vec<BridgeMappingFile>>,
+    pub files: Option<Vec<BridgeMappingFileRow>>,
     pub album: BridgeDraftAlbum,
     /// The catalogs that describe the release the form holds, the applied
     /// one first; `None` when none does.
@@ -707,6 +706,10 @@ pub struct BridgeReleaseEditDraft {
     /// the form binds CUE sheets' `FILE` lines to, in name order; `None`
     /// when a save reads none.
     pub files_to_read: Option<Vec<String>>,
+    /// Whether the save deletes a track that has a rating, a play in the
+    /// history or a playlist entry, which the editor warns about before it
+    /// saves.
+    pub deletes_track_data: bool,
     pub invalid: Option<BridgeValidationReason>,
 }
 

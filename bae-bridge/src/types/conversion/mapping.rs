@@ -155,12 +155,10 @@ impl BridgeSheetGroup {
             unbound_references,
             assigned,
             side_choices,
-            ignorable,
         } = sheet;
         BridgeSheetGroup {
             sheet_id,
             name,
-            ignorable,
             bound: BridgeSheetBound::from_core(bound),
             bound_audio: BridgeSheetBoundAudio::from_core(bound_audio),
             unbound_references: unbound_references.map(|references| {
@@ -225,6 +223,7 @@ impl BridgeTrackTableRow {
                     BridgeTrackAudition::Preview { target: BridgePreviewTarget::from_core(target) }
                 }
                 bae_import::TrackAudition::LibraryTrack => BridgeTrackAudition::LibraryTrack,
+                bae_import::TrackAudition::Unsaved => BridgeTrackAudition::Unsaved,
             },
             position,
             length: BridgeDurationClock::of_length(length_ms),
@@ -257,7 +256,7 @@ mirror_struct! {
 
 mirror_enum! {
     BridgeMappingFileRow = bae_import::MappingFileRow,
-    from_core: fn,
+    from_core: pub(crate) fn,
     variants: {
         File(file: (BridgeMappingFile)),
         Sheet(sheet: (BridgeSheetGroup)),

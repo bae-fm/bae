@@ -42,6 +42,9 @@ pub struct ReleaseEditTrackContext {
 pub(crate) struct ReleaseEditTrackRow {
     pub edit: crate::RawTrackEdit,
     pub context: ReleaseEditTrackContext,
+    /// What playing the row plays: the library's track, or nothing for a
+    /// track a save adds.
+    pub audition: crate::TrackAudition,
     pub artists: Option<crate::ArtistField>,
 }
 
@@ -53,7 +56,7 @@ impl ReleaseEditTrackRow {
         crate::TrackTableRow {
             track: self.edit,
             source,
-            audition: crate::TrackAudition::LibraryTrack,
+            audition: self.audition,
             position: self.context.position_text,
             length_ms: self.context.duration_ms,
             listed_length_ms: self.context.listed_length_ms,
@@ -105,6 +108,53 @@ pub(crate) fn lay_out_tracks(
     sides
 }
 
+/// The audio files a `FILE` line can play from, as the caption's Audio file
+/// pop-up offers them.
+#[cfg(desktop)]
+fn binding_options(
+    options: &[bae_records::DbSheetAudioOption],
+) -> Vec<crate::folder_scanner::SheetBindingOption> {
+    use crate::folder_scanner::{SheetBindingOffer, SheetBindingOption};
+    options
+        .iter()
+        .map(|option| SheetBindingOption {
+            file_id: option.file_id.clone(),
+            name: option.name.clone(),
+            offer: SheetBindingOffer::of_probed(&option.content_type, option.fits),
+        })
+        .collect()
+}
+
+/// The `bound` and `bound_audio` a caption names for a sheet whose lines
+/// that play audio are `lines`, each with the file it plays from, and whose
+/// lines that play none are `unbound`: a sheet with a line that plays none
+/// names what it requests, as a sheet whose binding the person cleared does;
+/// otherwise the one file, or how many files, `line_count` of them.
+#[cfg(desktop)]
+fn bound_lines(
+    line_count: u32,
+    mut lines: Vec<(crate::folder_scanner::SheetReferenceOptions, crate::MappingContainer)>,
+    unbound: &[bae_records::records::sheet_files::DbUnboundLine],
+) -> (crate::SheetBound, crate::SheetBoundAudio) {
+    let audio = match line_count {
+        0 => crate::SheetBoundAudio::None,
+        1 if unbound.is_empty() => {
+            let (line, played) = lines.pop().expect("one line");
+            return (crate::SheetBound::Describes(played), crate::SheetBoundAudio::One(line));
+        }
+        1 => crate::SheetBoundAudio::One(lines.pop().expect("one line").0),
+        _ => crate::SheetBoundAudio::Several(lines.iter().map(|(line, _)| line.clone()).collect()),
+    };
+    let bound = if unbound.is_empty() {
+        crate::SheetBound::DescribesFiles { audio_file_count: line_count }
+    } else {
+        crate::SheetBound::Unresolved {
+            requested: unbound.iter().map(|line| line.file_reference.clone()).collect(),
+        }
+    };
+    (bound, audio)
+}
+
 /// The caption of each CUE sheet that carves one of `rows`: the side its
 /// first track is on, the sides and discs `side_choices` its place pop-up
 /// offers, and each of its `FILE` lines in the order the rows reach them,
@@ -119,7 +169,7 @@ fn sheet_captions(
     rows: &[ReleaseEditTrackRow],
     side_choices: &[bae_records::DbSheetSideChoice],
 ) -> Vec<crate::SheetGroup> {
-    use crate::folder_scanner::{SheetBindingOffer, SheetBindingOption, SheetReferenceOptions};
+    use crate::folder_scanner::SheetReferenceOptions;
     /// A sheet and its `FILE` lines so far, each with the file it plays
     /// from.
     type Lines<'a> =
@@ -138,50 +188,74 @@ fn sheet_captions(
         if lines.iter().any(|(line, _)| line.file_reference == sheet.file_reference) {
             continue;
         }
-        let options = sheet
-            .audio_options
-            .iter()
-            .map(|option| SheetBindingOption {
-                file_id: option.file_id.clone(),
-                name: option.name.clone(),
-                offer: SheetBindingOffer::of_probed(&option.content_type, option.fits),
-            })
-            .collect();
         let played = row.context.source.clone();
         let line = SheetReferenceOptions {
             file_reference: sheet.file_reference.clone(),
             bound: Some(played.clone()),
-            options,
+            options: binding_options(&sheet.audio_options),
         };
         lines.push((line, played));
     }
     sheets
         .into_iter()
-        .map(|(sheet, mut lines)| {
-            let (bound, bound_audio) = if sheet.line_count == 1 {
-                let (line, played) =
-                    lines.pop().expect("a sheet that carves a row has the row's line");
-                (crate::SheetBound::Describes(played), crate::SheetBoundAudio::One(line))
-            } else {
-                (
-                    crate::SheetBound::DescribesFiles { audio_file_count: sheet.line_count },
-                    crate::SheetBoundAudio::Several(
-                        lines.into_iter().map(|(line, _)| line).collect(),
-                    ),
-                )
-            };
+        .map(|(sheet, lines)| {
+            let (bound, bound_audio) = bound_lines(sheet.line_count, lines, &sheet.unbound_lines);
             crate::SheetGroup {
                 sheet_id: sheet.file_id.clone(),
                 name: sheet.name.clone(),
                 bound,
                 bound_audio,
-                unbound_references: None,
+                unbound_references: unbound_references(&sheet.unbound_lines),
                 assigned: Some(sheet.place.clone()),
                 side_choices: side_choices.to_vec(),
-                ignorable: false,
             }
         })
         .collect()
+}
+
+/// The lines of a sheet that play no audio, each with the audio files it
+/// can play from, as the caption's amber menus offer them; `None` where every
+/// line plays audio.
+#[cfg(desktop)]
+fn unbound_references(
+    lines: &[bae_records::records::sheet_files::DbUnboundLine],
+) -> Option<Vec<crate::folder_scanner::SheetReferenceOptions>> {
+    (!lines.is_empty()).then(|| {
+        lines
+            .iter()
+            .map(|line| crate::folder_scanner::SheetReferenceOptions {
+                file_reference: line.file_reference.clone(),
+                bound: None,
+                options: binding_options(&line.options),
+            })
+            .collect()
+    })
+}
+
+/// The Files list's row of a CUE sheet none of whose tracks stay: the sheet's
+/// caption on the side its first track sat on, with every line playing no
+/// audio.
+#[cfg(desktop)]
+pub(crate) fn sheet_without_tracks_group(
+    sheet: bae_records::records::sheet_files::DbSheetWithoutTracks,
+    side_choices: &[bae_records::DbSheetSideChoice],
+) -> Result<crate::SheetGroup, String> {
+    let assigned = bae_records::DbSheetSideChoice::of_columns(
+        sheet.medium,
+        sheet.side,
+        &sheet.kind,
+        sheet.ordinal,
+    )?;
+    let (bound, bound_audio) = bound_lines(0, Vec::new(), &sheet.lines);
+    Ok(crate::SheetGroup {
+        sheet_id: sheet.file_id,
+        name: sheet.name,
+        bound,
+        bound_audio,
+        unbound_references: unbound_references(&sheet.lines),
+        assigned: Some(assigned),
+        side_choices: side_choices.to_vec(),
+    })
 }
 
 /// What the library holds about a release beside its form: the summary of
@@ -286,7 +360,7 @@ impl ReleaseEditDisplayContext {
 /// A file of the release no track plays from, as its Files section lists it.
 /// It shows no length and no audition: the release's tracks are what play.
 #[cfg(desktop)]
-fn carried_file(file: &bae_records::DbFile) -> crate::MappingFile {
+pub(crate) fn carried_file(file: &bae_records::DbFile) -> crate::MappingFile {
     use crate::MappingRole;
     use bae_records::ReleaseFileRole;
     crate::MappingFile {

@@ -205,6 +205,10 @@ pub struct ReleaseEditForm {
     /// line to that file, reading it first. A catalog applied after a pick
     /// keeps it.
     pub sheet_files: Vec<bae_records::records::sheet_files::SheetFilePick>,
+    /// The titles the person typed for the tracks a save adds, by the id of
+    /// the audio file each plays whole. The draft's statements work out which
+    /// tracks a save adds, and ignore a title for a file that gets none.
+    pub added_titles: std::collections::BTreeMap<String, String>,
 }
 
 #[cfg(desktop)]
@@ -221,6 +225,7 @@ impl ReleaseEditForm {
             album_pick: AlbumPick::Records,
             sheet_places: std::collections::BTreeMap::new(),
             sheet_files: Vec::new(),
+            added_titles: std::collections::BTreeMap::new(),
         }
     }
 
@@ -285,16 +290,17 @@ impl ReleaseEditForm {
 
     /// The form with the `FILE` line `file_reference` of the CUE sheet
     /// `sheet_file_id` picked onto the release's audio file
-    /// `audio_file_id`. A pick of the file the editor opened the line on is
-    /// no pick.
+    /// `audio_file_id`, or, for `None`, onto no audio, where a save deletes
+    /// the tracks under the line. A pick of the file the editor opened the
+    /// line on is no pick.
     pub fn with_sheet_file(
         mut self,
         sheet_file_id: String,
         file_reference: String,
-        audio_file_id: String,
+        audio_file_id: Option<String>,
     ) -> Self {
         let opened = self.opened.display.tracks.iter().any(|track| {
-            track.source.file_id == audio_file_id
+            audio_file_id.as_ref() == Some(&track.source.file_id)
                 && track.sheet.as_ref().is_some_and(|sheet| {
                     sheet.file_id == sheet_file_id && sheet.file_reference == file_reference
                 })
@@ -310,6 +316,36 @@ impl ReleaseEditForm {
             });
         }
         self
+    }
+
+    /// Whether the form has a row `id` names: a row of the release's tracks,
+    /// or the row of the track a save adds for one of the release's audio
+    /// files, which takes that file's id.
+    pub fn holds_row(&self, id: &str) -> bool {
+        self.edit.tracks.iter().any(|track| track.id == id)
+            || self.opened.display.tracks.iter().any(|track| track.source.file_id == id)
+            || self.opened.display.files.iter().any(|file| file.file_id == id)
+    }
+
+    /// The form with the track row `edited` as the person left it. A row
+    /// the form holds sets its title and artists. Any other row names the
+    /// audio file of a track that a save adds, and sets that track's title.
+    pub fn with_track(mut self, edited: crate::RawTrackEdit) -> Self {
+        if self.edit.tracks.iter().any(|track| track.id == edited.id) {
+            self.edit.set_track(edited);
+        } else {
+            self.added_titles.insert(edited.id, edited.title);
+        }
+        self
+    }
+
+    /// What the form chose about the release's CUE sheets and the tracks a
+    /// save adds, as the statements that lay the release out bind it.
+    pub fn sheet_edits(&self) -> bae_records::records::sheet_files::SheetEdits {
+        bae_records::records::sheet_files::SheetEdits {
+            picks: self.sheet_files.clone(),
+            titles: self.added_titles.clone(),
+        }
     }
 }
 
@@ -332,8 +368,9 @@ pub struct ReleaseEditDraft {
     /// release has no tracks.
     pub sides: Option<Vec<crate::TrackTableSide>>,
     /// The files the release carries that no track plays from, in the
-    /// release's file order; `None` when it carries none.
-    pub files: Option<Vec<crate::MappingFile>>,
+    /// release's file order, each CUE sheet none of whose tracks stay in its
+    /// place among them; `None` when it carries none.
+    pub files: Option<Vec<crate::MappingFileRow>>,
     pub album: DraftAlbum,
     /// The catalogs that describe the release the form holds: the applied
     /// catalog's records, the applied one first, else the release's own;
@@ -349,5 +386,8 @@ pub struct ReleaseEditDraft {
     /// the form binds CUE sheets' `FILE` lines to, in name order; `None`
     /// when a save reads none.
     pub files_to_read: Option<Vec<String>>,
+    /// Whether the save deletes a track that has a rating, a play in the
+    /// history or a playlist entry.
+    pub deletes_track_data: bool,
     pub invalid: Option<EditValidationError>,
 }

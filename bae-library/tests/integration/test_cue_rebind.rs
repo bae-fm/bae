@@ -128,7 +128,15 @@ async fn draft_where(
 
 /// The names the draft's Files list shows.
 fn listed_files(draft: &bae_import::ReleaseEditDraft) -> Vec<&str> {
-    draft.files.iter().flatten().map(|file| file.name.as_str()).collect()
+    draft
+        .files
+        .iter()
+        .flatten()
+        .map(|row| match row {
+            bae_import::MappingFileRow::File(file) => file.name.as_str(),
+            bae_import::MappingFileRow::Sheet(sheet) => panic!("no sheet is listed: {sheet:?}"),
+        })
+        .collect()
 }
 
 /// A CUE image's sheet moved to another audio file of its release: the
@@ -171,8 +179,11 @@ async fn a_cue_sheet_moves_to_another_audio_file_of_its_release() {
     assert_eq!(opened.files_to_read, None);
     let image = source.file_id.clone();
 
-    let picked =
-        form.with_sheet_file(sheet.sheet_id.clone(), line.file_reference.clone(), rip.clone());
+    let picked = form.with_sheet_file(
+        sheet.sheet_id.clone(),
+        line.file_reference.clone(),
+        Some(rip.clone()),
+    );
     let draft = draft_where(&drafts, &picked, |draft| sheet_run(draft).2.file_id == rip).await;
     assert_eq!(sheet_run(&draft).2.name, "Test Album (rip).flac");
     assert_eq!(listed_files(&draft), ["Test Album.flac"]);
@@ -303,7 +314,8 @@ async fn a_file_shorter_than_the_sheet_is_refused() {
     assert_eq!(offer, SheetBindingOffer::RefusedTiming);
     let image = source.file_id.clone();
 
-    let picked = form.with_sheet_file(sheet.sheet_id.clone(), line.file_reference.clone(), short);
+    let picked =
+        form.with_sheet_file(sheet.sheet_id.clone(), line.file_reference.clone(), Some(short));
     let error = manager
         .save_release_edit(picked, bae_library::GonePick::Refuse)
         .await

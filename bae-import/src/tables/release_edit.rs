@@ -126,6 +126,7 @@ impl ImportTables {
                         places: "[]",
                         carving: "[]",
                         moves: "[]",
+                        edits: "{}",
                     },
                 )
             })

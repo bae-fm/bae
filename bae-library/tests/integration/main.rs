@@ -20,6 +20,7 @@ mod test_candidate_text_fixtures;
 mod test_collections;
 mod test_coven_contract;
 mod test_cue_ape;
+mod test_cue_drop;
 mod test_cue_flac;
 mod test_cue_rebind;
 mod test_delete;

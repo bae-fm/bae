@@ -31,7 +31,7 @@ pub struct MappingTable {
 }
 
 /// One row in the files section of the mapping table.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MappingFileRow {
     File(MappingFile),
     /// A sheet that currently carves no track rows and can be assigned audio.

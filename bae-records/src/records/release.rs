@@ -459,7 +459,7 @@ impl Records {
 
 /// Each track of the release `release` (an SQL expression naming its id) in
 /// release order, on the mediums `source` names for it and on the files the
-/// picks `picks` (an SQL expression, see
+/// edits `edits` (an SQL expression, see
 /// [`super::sheet_files::sheet_files_ctes`]) lay its sheets' lines on: its
 /// side's kind and ordinal and its number there, its length, the length
 /// `source` lists for it where that length disagrees with the track's own
@@ -470,7 +470,7 @@ impl Records {
 /// with the sheet's name and the side its first track sits on (the first side
 /// of a medium that is not played side by side, whose sides share its one
 /// heading), how many of the sheet's `FILE` lines carve the release's
-/// tracks, the sheet's `FILE` line it is under and
+/// tracks that stay, the sheet's lines that play no audio, the sheet's `FILE` line it is under and
 /// the audio files that line can play from (`sheet_audio_options`, see
 /// [`super::sheet_files::sheet_audio_options_ctes`]). A track on a line moved to another file plays to that file's end where
 /// it played to the end of the file before. [`release_edit_track_of_row`]
@@ -478,73 +478,87 @@ impl Records {
 /// Whether the medium a `place` row of the editor's statement sits on is
 /// played side by side.
 #[cfg(desktop)]
-const SIDED: &str = "place.side_kind = 'sided'";
+pub(super) const SIDED: &str = "place.side_kind = 'sided'";
 
 #[cfg(desktop)]
-pub fn release_edit_tracks_sql(release: &str, source: MediumsSource<'_>, picks: &str) -> String {
+pub fn release_edit_tracks_sql(release: &str, source: MediumsSource<'_>, edits: &str) -> String {
     format!(
-        "WITH {placed}, {sheet_files}, {audio_options}, \
+        "WITH {places}, \
+         placed AS ( \
+            SELECT place.id AS id, place.position AS position, place.number AS number, \
+                   place.side_kind AS side_kind, place.side_ordinal AS side_ordinal, \
+                   place.stated_length_ms AS place_stated_length_ms, \
+                   FIRST_VALUE(place.medium_position) OVER {first} AS sheet_medium, \
+                   FIRST_VALUE({side}) OVER {first} AS sheet_side, \
+                   FIRST_VALUE({kind}) OVER {first} AS sheet_kind, \
+                   FIRST_VALUE({ordinal}) OVER {first} AS sheet_ordinal \
+            FROM place \
+            LEFT JOIN carved_tracks sheet_carved ON sheet_carved.track_id = place.id \
+            WHERE place.release_id = {release}), \
+         {sheet_files}, {audio_options}, \
          main AS ( \
             SELECT s.track_id, s.file_id, s.start_sample * 1000 / s.sample_rate AS start_ms, \
-                   s.end_sample IS NULL AND s.moved AS to_new_end, \
+                   s.end_sample IS NULL AND s.moved AS to_new_end, s.added, \
                    ROW_NUMBER() OVER (PARTITION BY s.track_id ORDER BY s.segment_index) AS n, \
                    COUNT(*) OVER (PARTITION BY s.track_id) AS main_count \
             FROM laid_segments s WHERE s.role = 'main'), \
          laid AS ( \
-            SELECT t.*, p.position AS placed_position, p.side_kind, p.side_ordinal, \
-               p.number AS place_number, p.place_stated_length_ms, \
+            SELECT t.*, p.id AS row_id, p.position AS placed_position, p.side_kind, \
+               p.side_ordinal, p.number AS place_number, p.place_stated_length_ms, \
                CASE WHEN main.to_new_end \
                     THEN f.source_audio_duration_ms - main.start_ms \
                     ELSE t.duration_ms END AS laid_duration_ms, \
-               (SELECT COUNT(*) FROM audio_formats af WHERE af.track_id = t.id) \
+               (SELECT COUNT(*) FROM audio_formats af WHERE af.track_id = p.id) \
                    AS audio_format_count, \
                COALESCE(main.main_count, 0) AS main_count, main.file_id AS main_file_id, \
                main.start_ms AS main_start_ms, \
                f.id IS NOT NULL AS main_file_found, f.original_filename AS main_file_name, \
                f.source_audio_layout AS main_file_layout, \
+               f.source_audio_duration_ms AS main_file_duration_ms, \
                carved.sheet_file_id, carved.file_reference AS sheet_file_reference, \
                sheet_file.original_filename AS sheet_name, p.sheet_medium, p.sheet_side, \
                p.sheet_kind, p.sheet_ordinal, \
                (SELECT COUNT(DISTINCT lines.file_reference) FROM carved_tracks lines \
-                WHERE lines.sheet_file_id = carved.sheet_file_id) AS sheet_line_count, \
-               options.options AS sheet_audio_options \
-            FROM tracks t JOIN placed p ON p.id = t.id \
-            LEFT JOIN main ON main.track_id = t.id AND main.n = 1 \
+                WHERE lines.sheet_file_id = carved.sheet_file_id \
+                  AND lines.track_id NOT IN (SELECT track_id FROM dropped_tracks)) \
+                   AS sheet_line_count, \
+               (SELECT json_group_array(json_object('file_reference', \
+                                                    line.value ->> 'file_reference', \
+                                                    'options', json(line.value ->> 'options'))) \
+                FROM json_each(sheet_lines.lines) AS line \
+                WHERE line.value ->> 'unbound') AS sheet_unbound_lines, \
+               (SELECT line.value ->> 'options' FROM json_each(sheet_lines.lines) AS line \
+                WHERE line.value ->> 'file_reference' = carved.file_reference) \
+                   AS sheet_audio_options, \
+               COALESCE(main.added, 0) AS is_added, \
+               (SELECT j.value FROM json_each(json_extract({edits}, '$.titles')) AS j \
+                WHERE j.key = p.id) AS added_title \
+            FROM placed p \
+            LEFT JOIN tracks t ON t.id = p.id \
+            LEFT JOIN main ON main.track_id = p.id AND main.n = 1 \
             LEFT JOIN laid_files f ON f.id = main.file_id \
             LEFT JOIN (carved_tracks carved \
                JOIN release_files sheet_file ON sheet_file.id = carved.sheet_file_id) \
-               ON carved.track_id = t.id \
-            LEFT JOIN line_audio_options options \
-               ON options.sheet_file_id = carved.sheet_file_id \
-              AND options.file_reference = carved.file_reference \
-            WHERE t.release_id = {release}) \
+               ON carved.track_id = p.id \
+            LEFT JOIN sheet_line_options sheet_lines \
+               ON sheet_lines.sheet_file_id = carved.sheet_file_id) \
      SELECT laid.*, \
         CASE WHEN laid.place_stated_length_ms IS NOT NULL \
                   AND bae_lengths_disagree(laid.laid_duration_ms, laid.place_stated_length_ms) \
              THEN laid.place_stated_length_ms END AS listed_length_ms \
      FROM laid ORDER BY laid.placed_position",
-        placed = super::release_tracks::placed_tracks_ctes(
-            release,
-            source,
-            &format!(
-                ", place.stated_length_ms AS place_stated_length_ms, \
-                 FIRST_VALUE(place.medium_position) OVER {first} AS sheet_medium, \
-                 FIRST_VALUE({side}) OVER {first} AS sheet_side, \
-                 FIRST_VALUE({kind}) OVER {first} AS sheet_kind, \
-                 FIRST_VALUE({ordinal}) OVER {first} AS sheet_ordinal",
-                first = "(PARTITION BY sheet_carved.sheet_file_id ORDER BY place.position)",
-                side = super::release_tracks::sheet_side_sql(SIDED, "place.side"),
-                kind = super::release_tracks::sheet_side_kind_sql(SIDED),
-                ordinal = super::release_tracks::sheet_side_ordinal_sql(
-                    SIDED,
-                    "place.side_ordinal",
-                    "place.medium_position"
-                ),
-            ),
-            "LEFT JOIN carved_tracks sheet_carved ON sheet_carved.track_id = track.id"
+        places =
+            super::release_tracks::track_places_ctes(source, &format!("m.release_id = {release}")),
+        first = "(PARTITION BY sheet_carved.sheet_file_id ORDER BY place.position)",
+        side = super::release_tracks::sheet_side_sql(SIDED, "place.side"),
+        kind = super::release_tracks::sheet_side_kind_sql(SIDED),
+        ordinal = super::release_tracks::sheet_side_ordinal_sql(
+            SIDED,
+            "place.side_ordinal",
+            "place.medium_position"
         ),
-        sheet_files = super::sheet_files::sheet_files_ctes(release, picks),
-        audio_options = super::sheet_files::sheet_audio_options_ctes(),
+        sheet_files = super::sheet_files::sheet_files_ctes(release, edits),
+        audio_options = super::sheet_files::sheet_audio_options_ctes(release),
     )
 }
 
@@ -560,10 +574,32 @@ pub fn release_edit_tracks_on(
     params: impl rusqlite::Params,
 ) -> Result<Vec<DbReleaseEditTrack>, DbError> {
     Ok(sql.query(
-        &release_edit_tracks_sql(release, source, "'[]'"),
+        &release_edit_tracks_sql(release, source, super::sheet_files::NO_SHEET_EDITS),
         params,
         release_edit_track_of_row,
     )?)
+}
+
+/// One row of [`release_edit_tracks_sql`] as the editor's draft reads it: a
+/// track the library holds, or the track a save adds for an audio file.
+#[cfg(desktop)]
+pub fn release_edit_row_of_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<DbReleaseEditRow> {
+    if !row.get::<_, bool>("is_added")? {
+        return release_edit_track_of_row(row).map(Box::new).map(DbReleaseEditRow::Stored);
+    }
+    let position = super::release_tracks::track_position_of(
+        &row.get::<_, String>("side_kind")?,
+        row.get("side_ordinal")?,
+        row.get("place_number")?,
+    )
+    .map_err(|reason| bae_store::read::column_conversion_error(row, "side_kind", reason))?;
+    Ok(DbReleaseEditRow::Added(DbReleaseEditAdded {
+        file_id: row.get("row_id")?,
+        name: row.get("main_file_name")?,
+        duration_ms: count_column(row, "main_file_duration_ms")?,
+        typed_title: row.get("added_title")?,
+        position,
+    }))
 }
 
 /// One row of [`release_edit_tracks_sql`]: a track as the release editor
@@ -617,6 +653,21 @@ pub fn release_edit_track_of_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Db
                 },
                 line_count: count_column(row, "sheet_line_count")?,
                 file_reference: row.get("sheet_file_reference")?,
+                unbound_lines: {
+                    let lines: Option<String> = row.get("sheet_unbound_lines")?;
+                    lines
+                        .map(|lines| {
+                            serde_json::from_str(&lines).map_err(|error| {
+                                bae_store::read::column_conversion_error(
+                                    row,
+                                    "sheet_unbound_lines",
+                                    format!("{error}: {lines}"),
+                                )
+                            })
+                        })
+                        .transpose()?
+                        .unwrap_or_default()
+                },
                 audio_options: {
                     let options: String = row.get("sheet_audio_options")?;
                     serde_json::from_str(&options).map_err(|error| {

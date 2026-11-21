@@ -98,6 +98,7 @@ async fn laid(db: &Store, picks: &[(&str, u32, u32)]) -> (Vec<(String, u16, u8, 
                     places: "[]",
                     carving: "[]",
                     moves: &moves,
+                    edits: "{}",
                 },
             )
         })
@@ -224,6 +225,7 @@ async fn a_sheet_can_go_on_each_side_of_a_record_and_on_each_disc() {
                     places: "[]",
                     carving: "[]",
                     moves: "[]",
+                    edits: "{}",
                 },
             )
         })

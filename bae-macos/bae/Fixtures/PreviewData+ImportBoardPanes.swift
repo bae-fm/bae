@@ -97,7 +97,7 @@ extension PreviewData {
                         }
                 )
             ],
-            files: carriedBoardFiles,
+            files: carriedBoardFiles.map { .file(file: $0) },
             album: .named(
                 albumId: boardImported(.northbound).albumId,
                 line: .titleAndArtists(
@@ -110,6 +110,7 @@ extension PreviewData {
             albumArtists: boardLibraryArtists("Mara Quill"),
             changed: false,
             filesToRead: nil,
+            deletesTrackData: false,
             invalid: nil
         )
         return PreviewReleaseEdit(values: edit, draft: draft)
@@ -343,8 +344,7 @@ extension PreviewData {
                 ? .none : .one(reference: reference),
             unboundReferences: reference.bound == nil ? [reference] : nil,
             assigned: .disc(UInt32(number)),
-            sideChoices: BridgeSheetSideChoice.discs(2),
-            ignorable: true
+            sideChoices: BridgeSheetSideChoice.discs(2)
         )
     }
 

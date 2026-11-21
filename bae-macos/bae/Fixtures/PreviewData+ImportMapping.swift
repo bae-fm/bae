@@ -236,8 +236,7 @@ extension PreviewData {
         boundAudio: .one(reference: sheetReferenceOptions),
         unboundReferences: nil,
         assigned: .disc(1),
-        sideChoices: BridgeSheetSideChoice.discs(2),
-        ignorable: true
+        sideChoices: BridgeSheetSideChoice.discs(2)
     )
 
     /// Every row kind the table draws, with the folder's gallery beside it:

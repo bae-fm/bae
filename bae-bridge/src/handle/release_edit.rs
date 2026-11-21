@@ -94,19 +94,18 @@ impl BridgeReleaseEditForm {
     }
 
     /// The form with one track row's title and artists as the person left
-    /// them, by the row's id. Refused for a row the form does not hold.
+    /// them, by the row's id: a row of the release's tracks, or the row of a
+    /// track a save adds, which takes only its title. Refused for a row the
+    /// form does not hold.
     pub fn with_track(
         &self,
         track: crate::types::BridgeRawTrackEdit,
     ) -> Result<std::sync::Arc<Self>, BridgeError> {
         let track = track.into_core();
-        let id = track.id.clone();
-        let mut inner = self.inner.clone();
-        if inner.edit.set_track(track) {
-            Ok(Self::of(inner))
-        } else {
-            Err(bae_library::LibraryError::EditRowMissing(id).into())
+        if !self.inner.holds_row(&track.id) {
+            return Err(bae_library::LibraryError::EditRowMissing(track.id).into());
         }
+        Ok(self.changed(|form| *form = form.clone().with_track(track)))
     }
 
     /// The form with the CUE sheet `sheet_file_id` on `side`, one of the
@@ -122,12 +121,14 @@ impl BridgeReleaseEditForm {
 
     /// The form with the `FILE` line `file_reference` of the CUE sheet
     /// `sheet_file_id` on the release's audio file `audio_file_id`: a save
-    /// reads that file and binds the line to it.
+    /// reads that file and binds the line to it. With no file, the line
+    /// plays no audio, and a save deletes the tracks under it, adding a
+    /// track for each audio file that then has none.
     pub fn with_sheet_file(
         &self,
         sheet_file_id: String,
         file_reference: String,
-        audio_file_id: String,
+        audio_file_id: Option<String>,
     ) -> std::sync::Arc<Self> {
         self.changed(|form| {
             *form = form.clone().with_sheet_file(sheet_file_id, file_reference, audio_file_id)

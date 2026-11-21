@@ -113,8 +113,7 @@ extension ImportMappingTracksLayoutTests {
                 : .one(reference: references[0]),
             unboundReferences: secondAssigned ? nil : [references[1]],
             assigned: secondAssigned ? .disc(1) : nil,
-            sideChoices: secondAssigned ? BridgeSheetSideChoice.discs(1) : [],
-            ignorable: true
+            sideChoices: secondAssigned ? BridgeSheetSideChoice.discs(1) : []
         )
     }
 
@@ -208,8 +207,7 @@ extension ImportMappingTracksLayoutTests {
             boundAudio: .several(references: references),
             unboundReferences: nil,
             assigned: .disc(1),
-            sideChoices: BridgeSheetSideChoice.discs(1),
-            ignorable: true
+            sideChoices: BridgeSheetSideChoice.discs(1)
         )
         let size = NSSize(width: 900, height: 180)
         try await withHostedSheet(group, size: size) { _, host in

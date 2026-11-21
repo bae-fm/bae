@@ -33,7 +33,10 @@ pub struct ReleaseLayout {
 /// catalog's, or an import draft's) rather than the release's own, the CUE
 /// sheets that carve tracks the library does not hold (`carving`), and the
 /// sides picked for CUE sheets (`moves`, a JSON array of objects with a
-/// `sheet_file_id`, a `medium` and a `side`).
+/// `sheet_file_id`, a `medium` and a `side`), and what the form does to the
+/// sheets (`edits`, the JSON object of a
+/// [`SheetEdits`](super::sheet_files::SheetEdits)), from which the
+/// statements work out the tracks a save deletes and adds.
 pub struct LayoutParams<'a> {
     /// The release, `None` for an import draft, which is no release yet.
     pub release_id: Option<&'a str>,
@@ -48,11 +51,12 @@ pub struct LayoutParams<'a> {
     /// `[]` for a library release.
     pub carving: &'a str,
     pub moves: &'a str,
+    pub edits: &'a str,
 }
 
 impl<'a> LayoutParams<'a> {
     /// The named parameters the statements of [`layout_ctes`] bind.
-    pub fn named(&'a self) -> [(&'static str, &'a dyn rusqlite::ToSql); 6] {
+    pub fn named(&'a self) -> [(&'static str, &'a dyn rusqlite::ToSql); 7] {
         [
             (":release", &self.release_id),
             (":applied", &self.applied),
@@ -60,9 +64,15 @@ impl<'a> LayoutParams<'a> {
             (":places", &self.places),
             (":carving", &self.carving),
             (":moves", &self.moves),
+            (":edits", &self.edits),
         ]
     }
 }
+
+/// Whether the form's edits delete or add a track, as an SQL condition over
+/// the `dropped_tracks` of [`sheet_changes_ctes`]: every track a save adds
+/// replaces deleted ones.
+const CHANGING: &str = "EXISTS (SELECT 1 FROM dropped_tracks)";
 
 /// The common table expressions that lay a release out, for statements
 /// binding [`LayoutParams::named`]: `laid_mediums` (`position`, `carrier`,
@@ -80,8 +90,20 @@ impl<'a> LayoutParams<'a> {
 /// dropped, the rest numbered from one, and the tracks take their playing
 /// order from their places. A form that moves no sheet lays the tracks out
 /// as they were.
-pub fn layout_ctes() -> &'static str {
-    "base_mediums (position, carrier, sides) AS ( \
+///
+/// A form that deletes or adds tracks (`edits`) lays out what is left: the
+/// deleted tracks go, each added track takes the place of its anchor, the
+/// first track of the sheet whose tracks it replaces, ahead of the track
+/// that holds it, and every side numbers its tracks from one in playing
+/// order. The media no track sits on are then dropped, as for a move. An
+/// added track is named by its file's id. The tracks the edits delete and
+/// add are those of [`sheet_changes_ctes`], which come first.
+pub fn layout_ctes() -> String {
+    let changes = super::sheet_files::sheet_changes_ctes(":release", ":edits");
+    format!("{changes}, {LAYOUT}").replace("{changing}", CHANGING)
+}
+
+const LAYOUT: &str = "base_mediums (position, carrier, sides) AS ( \
          SELECT j.value ->> 'position', j.value ->> 'carrier', j.value ->> 'sides' \
          FROM json_each(:mediums) AS j WHERE :applied \
          UNION ALL \
@@ -131,30 +153,50 @@ pub fn layout_ctes() -> &'static str {
          SELECT mv.track_id, mv.medium, mv.side, mv.number, place.stated_length_ms, \
                 place.position \
          FROM moved mv JOIN base_places place ON place.track_id = mv.track_id), \
-     moving (yes) AS (SELECT EXISTS (SELECT 1 FROM moves)), \
+     numbered (track_id, medium, side, number, stated_length_ms, position) AS ( \
+         SELECT CASE WHEN pass.fresh THEN a.file_id ELSE k.track_id END, k.medium, k.side, \
+                CASE WHEN {changing} \
+                     THEN ROW_NUMBER() OVER (PARTITION BY k.medium, k.side \
+                                             ORDER BY k.number, pass.fresh DESC, a.ord, k.position) \
+                     ELSE k.number END, \
+                CASE WHEN pass.fresh THEN NULL ELSE k.stated_length_ms END, k.position \
+         FROM kept k \
+         JOIN (SELECT 0 AS fresh UNION ALL SELECT 1) AS pass \
+         LEFT JOIN (SELECT added.file_id, st.track_id AS anchor, \
+                           added.first_position AS ord \
+                    FROM added_files added JOIN sheet_tracks st \
+                        ON st.sheet_file_id = added.sheet_file_id \
+                       AND st.position = st.first_position) AS a \
+             ON pass.fresh AND a.anchor = k.track_id \
+         WHERE (NOT pass.fresh AND k.track_id NOT IN (SELECT track_id FROM dropped_tracks)) \
+            OR (pass.fresh AND a.file_id IS NOT NULL)), \
+     moving (yes) AS (SELECT EXISTS (SELECT 1 FROM moves) OR {changing}), \
      used (medium, new_medium) AS ( \
          SELECT medium, DENSE_RANK() OVER (ORDER BY medium) \
-         FROM (SELECT DISTINCT medium FROM kept)), \
+         FROM (SELECT DISTINCT medium FROM numbered)), \
      laid_places (track_id, medium, side, number, stated_length_ms, position) AS ( \
-         SELECT k.track_id, CASE WHEN moving.yes THEN u.new_medium ELSE k.medium END, \
+         SELECT k.track_id, CASE WHEN moving.yes THEN k.new_medium ELSE k.medium END, \
                 k.side, k.number, k.stated_length_ms, \
                 CASE WHEN moving.yes \
-                     THEN ROW_NUMBER() OVER (ORDER BY u.new_medium, k.side, k.number) - 1 \
+                     THEN ROW_NUMBER() OVER (ORDER BY k.new_medium, k.side, k.number) - 1 \
                      ELSE k.position END \
-         FROM kept k JOIN used u ON u.medium = k.medium, moving), \
+         FROM (SELECT n.*, DENSE_RANK() OVER (ORDER BY n.medium) AS new_medium \
+               FROM numbered n) k, moving), \
      laid_mediums (position, carrier, sides) AS ( \
          SELECT CASE WHEN moving.yes THEN u.new_medium ELSE m.position END, m.carrier, m.sides \
          FROM base_mediums m LEFT JOIN used u ON u.medium = m.position, moving \
          WHERE NOT moving.yes OR u.medium IS NOT NULL), \
      laid_sheets (sheet_file_id, medium, side) AS ( \
-         SELECT st.sheet_file_id, place.medium, place.side FROM sheet_tracks st \
-         JOIN laid_places place ON place.track_id = st.track_id \
-         WHERE st.position = st.first_position), \
+         SELECT sheet_file_id, medium, side FROM ( \
+             SELECT st.sheet_file_id, place.medium, place.side, \
+                    ROW_NUMBER() OVER (PARTITION BY st.sheet_file_id \
+                                       ORDER BY place.position) AS n \
+             FROM sheet_tracks st JOIN laid_places place ON place.track_id = st.track_id) \
+         WHERE n = 1), \
      honored (sheet_file_id, medium, side) AS ( \
          SELECT pick.sheet_file_id, pick.medium, pick.side FROM picks pick \
          JOIN laid_sheets sheet ON sheet.sheet_file_id = pick.sheet_file_id \
-         WHERE sheet.medium = pick.medium AND sheet.side = pick.side)"
-}
+         WHERE sheet.medium = pick.medium AND sheet.side = pick.side)";
 
 /// A statement's table of the laid-out mediums in the shape
 /// [`MediumsSource::Draft`] takes for `mediums`: one row per medium with the

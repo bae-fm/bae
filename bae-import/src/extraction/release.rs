@@ -132,13 +132,20 @@ pub(crate) fn library_file(
 ) -> (crate::folder_scanner::ScannedFile, bae_records::ReleaseFileRole) {
     let mut scanned =
         crate::folder_scanner::ScannedFile::library(file.original_filename, file.file_size);
-    scanned.source_audio = file.source_audio.map(|audio| crate::folder_scanner::ScannedAudio {
+    scanned.source_audio = file.source_audio.map(scanned_audio);
+    (scanned, file.role)
+}
+
+/// The audio facts the import stored for a release file, as a scan holds them.
+pub(crate) fn scanned_audio(
+    audio: bae_records::source_audio::SourceAudioFile,
+) -> crate::folder_scanner::ScannedAudio {
+    crate::folder_scanner::ScannedAudio {
         content_type: audio.content_type,
         container: audio.container,
         duration_ms: audio.duration_ms,
         format: audio.format,
-    });
-    (scanned, file.role)
+    }
 }
 
 /// A file of a library release that the OCR pass reads as an image: coven

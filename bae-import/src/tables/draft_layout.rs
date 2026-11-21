@@ -51,6 +51,7 @@ impl ImportTables {
                         places: &places,
                         carving: &carving,
                         moves: &moves,
+                        edits: "{}",
                     },
                 )
             })

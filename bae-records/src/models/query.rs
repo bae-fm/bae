@@ -64,6 +64,27 @@ pub struct DbReleaseEditTrack {
     pub sheet: Option<DbReleaseEditSheet>,
 }
 
+/// A track a save of the release editor's form adds, which plays a whole
+/// audio file no track plays any more: the file's id and name, its length,
+/// the title the person typed for the track (`None` until they type one) and
+/// the place the form's layout gives the track.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DbReleaseEditAdded {
+    pub file_id: String,
+    pub name: String,
+    pub duration_ms: u64,
+    pub typed_title: Option<String>,
+    pub position: bae_types::mediums::TrackPosition,
+}
+
+/// One row of the release editor's tracks statement: a track the library
+/// holds, or a track the form's save adds.
+#[derive(Debug, Clone, PartialEq)]
+pub enum DbReleaseEditRow {
+    Stored(Box<DbReleaseEditTrack>),
+    Added(DbReleaseEditAdded),
+}
+
 /// A CUE sheet that carves a track out of an image, as the release editor
 /// names it: its file's id and name, the side of the release its first
 /// track sits on with that side's heading, as the release's choices of side
@@ -76,6 +97,9 @@ pub struct DbReleaseEditSheet {
     pub name: String,
     pub place: DbSheetSideChoice,
     pub line_count: u32,
+    /// The sheet's `FILE` lines that play no audio once the form's edits are
+    /// written, in the order the sheet's tracks reach them.
+    pub unbound_lines: Vec<crate::records::sheet_files::DbUnboundLine>,
     pub file_reference: String,
     pub audio_options: Vec<DbSheetAudioOption>,
 }
@@ -276,6 +300,10 @@ pub struct DbReleaseFiles {
     /// The files no track plays from: a file a track's segment reads, and a
     /// CUE sheet that carves a track, are played.
     pub others: Vec<DbFile>,
+    /// What the release editor's Files list shows: the files no track plays
+    /// from, each CUE sheet none of whose tracks stay in its place among them. Empty
+    /// where the read is not an editor's.
+    pub carried: Vec<DbCarriedFile>,
     /// Whether any file is one no track plays from.
     pub has_others: bool,
     pub count: i64,
@@ -285,6 +313,14 @@ pub struct DbReleaseFiles {
     /// What the release's audio is, summarized over the audio files its
     /// tracklist plays (`source_audio_summary_sql`); `None` when it has none.
     pub source_audio: Option<crate::source_audio::SourceAudioSummary>,
+}
+
+/// One entry of the release editor's Files list: a file no track plays from,
+/// or a CUE sheet none of whose tracks stay.
+#[derive(Debug, Clone, PartialEq)]
+pub enum DbCarriedFile {
+    File(DbFile),
+    Sheet(crate::records::sheet_files::DbSheetWithoutTracks),
 }
 
 /// A release's files in this device's upload queue, as one read finds them:

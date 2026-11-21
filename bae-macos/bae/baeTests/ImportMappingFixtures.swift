@@ -180,8 +180,7 @@ extension MappingFixtures {
                 ? .none : .one(reference: reference),
             unboundReferences: reference.bound == nil ? [reference] : nil,
             assigned: assigned,
-            sideChoices: BridgeSheetSideChoice.discs(2),
-            ignorable: true
+            sideChoices: BridgeSheetSideChoice.discs(2)
         )
     }
 

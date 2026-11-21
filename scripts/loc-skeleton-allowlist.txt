@@ -188,6 +188,7 @@ cs	S3-compatible
 cs	cloud_provider_s3
 cs	e.g. 4943674251780
 cs	e.g. WPCR-80001
+cs	Saving changes the release’s track layout, which deletes the current tracks’ ratings, play history and playlist entries.
 de	Access key
 de	Cloud sync
 de	S3-compatible

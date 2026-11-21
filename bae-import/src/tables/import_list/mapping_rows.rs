@@ -638,7 +638,6 @@ fn sheet_group(sheet: SheetJson) -> Result<SheetGroup, ImportError> {
         unbound_references,
         assigned,
         side_choices,
-        ignorable: true,
     })
 }
 

@@ -99,7 +99,13 @@ pub fn release_details_on<X>(
         credits = release_credits_json_sql("rel.id"),
         has_credits = super::release_credits::release_has_credits_sql("rel.id"),
         performs_works = performs_works_sql("rel.id"),
-        files = release_files_json_sql("rel.id", "release_files", "audio_format_segments"),
+        files = release_files_json_sql(
+            "rel.id",
+            "release_files",
+            "audio_format_segments",
+            "carved_tracks",
+            "NULL"
+        ),
         records = release_records_json_sql("rel.id"),
         elsewhere = ELSEWHERE_OF_RELEASE,
         upload_columns = super::queued_uploads::RELEASE_UPLOAD_COLUMNS,
@@ -197,8 +203,19 @@ fn performs_works_sql(release: &str) -> String {
 /// plays from each file a segment of the table `segments` (with the column
 /// `file_id` of `audio_format_segments`) reads, and from each CUE sheet that
 /// carves it, by [`super::files::unplayed_files_cte`], which leaves out the images
-/// the gallery shows.
-fn release_files_json_sql(release: &str, table: &str, segments: &str) -> String {
+/// the gallery shows. `carved` is the table of the CUE sheets' tracks
+/// (`carved_tracks`, or the part of it that stays), and `sheet_without_tracks` the SQL that
+/// gives the file `listed.id` the JSON of the row of a CUE sheet none of whose
+/// tracks stay, or NULL
+/// for any other file; `carried` then lists the files no track plays from in
+/// the same order as `others`, each file or sheet with no track in its place.
+fn release_files_json_sql(
+    release: &str,
+    table: &str,
+    segments: &str,
+    carved: &str,
+    sheet_without_tracks: &str,
+) -> String {
     let image = super::files::showable_image_sql("listed.content_type");
     let list = |condition: &str| {
         format!(
@@ -210,14 +227,14 @@ fn release_files_json_sql(release: &str, table: &str, segments: &str) -> String 
     format!(
         "(WITH {unplayed} SELECT json_object( \
               'files', json({files}), 'images', json({images}), \
-              'others', json({others}), \
+              'others', json({others}), 'carried', json({carried}), \
               'has_others', COALESCE(SUM(listed.in_files), 0) > 0, \
               'count', COUNT(*), 'image_count', COUNT(*) FILTER (WHERE {image}), \
               'total_size', COALESCE(SUM(listed.size), 0), \
               'source_audio', {source_audio}) \
           FROM (SELECT f.id, f.original_filename, f.content_type, \
                        f.id IN (SELECT file_id FROM unplayed_files) AS in_files, \
-                       coven.size AS size, {file_json} AS file_json \
+                       coven.size AS size, {file_json} AS file_json, {sheet_without_tracks} AS sheet_without_tracks \
                 FROM {table} AS f \
                 JOIN coven_files AS coven ON coven.id = f.file \
                 WHERE f.release_id = {release}) AS listed)",
@@ -230,12 +247,17 @@ fn release_files_json_sql(release: &str, table: &str, segments: &str) -> String 
             &format!(
                 "(SELECT file_id AS audio_file_id, NULL AS sheet_file_id FROM {segments} \
                   UNION ALL \
-                  SELECT NULL, sheet_file_id FROM carved_tracks)"
+                  SELECT NULL, sheet_file_id FROM {carved})"
             ),
         ),
         files = list("1"),
         images = list(&image),
         others = list("listed.in_files"),
+        carried = "json_group_array(CASE WHEN listed.sheet_without_tracks IS NULL \
+                                         THEN json_object('file', json(listed.file_json)) \
+                                         ELSE json_object('sheet', json(listed.sheet_without_tracks)) END \
+                       ORDER BY listed.original_filename COLLATE natural_order, listed.id) \
+                   FILTER (WHERE listed.in_files)",
         file_json = file_json_sql("coven.size", "coven.hash IS NOT NULL"),
         source_audio = crate::source_audio::source_audio_summary_sql(&format!(
             "SELECT ROW_NUMBER() OVER (ORDER BY f.original_filename COLLATE natural_order, \
@@ -255,23 +277,43 @@ fn release_files_json_sql(release: &str, table: &str, segments: &str) -> String 
 
 /// The files of the release `release` (an SQL expression over `params`
 /// naming its id), as its detail reads them, each audio file laid out as
-/// the picks `picks` lay it (see [`super::sheet_files::sheet_files_ctes`]).
+/// the edits `edits` lay it (see [`super::sheet_files::sheet_files_ctes`]).
 #[cfg(desktop)]
 pub fn release_files_on(
     sql: &impl coven::SqlRead,
     release: &str,
-    picks: &str,
+    edits: &str,
     params: impl rusqlite::Params,
 ) -> Result<DbReleaseFiles, DbError> {
     Ok(sql.query_row(
         &format!(
-            "WITH {} SELECT {} AS files",
-            super::sheet_files::sheet_files_ctes(release, picks),
-            release_files_json_sql(release, "laid_files", "laid_segments")
+            "WITH {}, {}, {} SELECT {} AS files",
+            super::release_tracks::track_places_ctes(
+                super::MediumsSource::Release,
+                &format!("m.release_id = {release}")
+            ),
+            super::sheet_files::sheet_files_ctes(release, edits),
+            super::sheet_files::sheet_audio_options_ctes(release),
+            release_files_json_sql(
+                release,
+                "laid_files",
+                "laid_segments",
+                "(SELECT * FROM carved_tracks \
+                  WHERE track_id NOT IN (SELECT track_id FROM dropped_tracks))",
+                &super::sheet_files::sheet_without_tracks_json_sql("f.id", release),
+            )
         ),
         params,
         |row| release_files_column(row, "files"),
     )?)
+}
+
+/// One entry of the `carried` list of [`release_files_json_sql`].
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum CarriedColumns {
+    File(FileColumns),
+    Sheet(super::sheet_files::DbSheetWithoutTracks),
 }
 
 /// The release's files as [`release_files_json_sql`] read them into `column`.
@@ -281,6 +323,7 @@ fn release_files_column(row: &Row<'_>, column: &str) -> rusqlite::Result<DbRelea
         files: Vec<FileColumns>,
         images: Vec<FileColumns>,
         others: Vec<FileColumns>,
+        carried: Vec<CarriedColumns>,
         has_others: i64,
         count: i64,
         image_count: u32,
@@ -289,6 +332,18 @@ fn release_files_column(row: &Row<'_>, column: &str) -> rusqlite::Result<DbRelea
         source_audio: Option<crate::source_audio::SourceAudioSummary>,
     }
     let stored: Stored = bae_store::read::json_column(row, column)?;
+    let carried = stored
+        .carried
+        .into_iter()
+        .map(|carried| match carried {
+            CarriedColumns::File(file) => {
+                file_of(file).map(DbCarriedFile::File).map_err(|(field, reason)| {
+                    column_conversion_error(row, column, format!("{field}: {reason}"))
+                })
+            }
+            CarriedColumns::Sheet(sheet) => Ok(DbCarriedFile::Sheet(sheet)),
+        })
+        .collect::<rusqlite::Result<Vec<_>>>()?;
     let files = |columns: Vec<FileColumns>| {
         columns
             .into_iter()
@@ -303,6 +358,7 @@ fn release_files_column(row: &Row<'_>, column: &str) -> rusqlite::Result<DbRelea
         files: files(stored.files)?,
         images: files(stored.images)?,
         others: files(stored.others)?,
+        carried,
         has_others: stored.has_others != 0,
         count: stored.count,
         image_count: stored.image_count,

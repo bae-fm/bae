@@ -380,8 +380,7 @@ extension ImportMappingTracksLayoutTests {
                 ? .none : .one(reference: reference),
             unboundReferences: reference.bound == nil ? [reference] : nil,
             assigned: .disc(1),
-            sideChoices: BridgeSheetSideChoice.discs(2),
-            ignorable: true
+            sideChoices: BridgeSheetSideChoice.discs(2)
         )
     }
 

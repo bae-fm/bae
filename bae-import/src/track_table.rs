@@ -89,6 +89,9 @@ pub enum TrackAudition {
     /// The library plays the release from the row's track, the library
     /// track the row's `track.id` names.
     LibraryTrack,
+    /// The row is a track a save of the editor adds, which the library does
+    /// not hold yet, so nothing plays it.
+    Unsaved,
 }
 
 /// A track sheet, as the caption over the rows it carves, or as a line of
@@ -111,11 +114,6 @@ pub struct SheetGroup {
     pub assigned: Option<bae_records::DbSheetSideChoice>,
     /// The sides and discs this sheet can be put on, in order.
     pub side_choices: Vec<bae_records::DbSheetSideChoice>,
-    /// Whether the caption offers taking the sheet's tracks out of the
-    /// table: putting the sheet on *Ignored*, and binding a FILE line to no
-    /// audio. An import can; a library release's editor adds and removes no
-    /// tracks.
-    pub ignorable: bool,
 }
 
 /// The FILE lines of a track sheet that play audio, by how the caption's

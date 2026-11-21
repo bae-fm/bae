@@ -91,10 +91,16 @@ fn audio_file<'a>(
 
 /// A file's name without its extension — the title an unnamed row writes.
 fn file_title(file: &ScannedFile) -> String {
-    std::path::Path::new(&file.file_name)
+    title_of_file_name(&file.file_name)
+}
+
+/// The title a track that plays a whole file takes from the file's name: the
+/// name without its extension.
+pub(crate) fn title_of_file_name(name: &str) -> String {
+    std::path::Path::new(name)
         .file_stem()
         .and_then(|stem| stem.to_str())
-        .unwrap_or(&file.file_name)
+        .unwrap_or(name)
         .to_string()
 }
 

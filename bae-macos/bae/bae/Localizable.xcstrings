@@ -118843,6 +118843,352 @@
         }
       }
     },
+    "Delete track data?" : {
+      "comment" : "Release editor: title of the alert asking before a save deletes tracks that have ratings, plays or playlist entries",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "حذف بيانات المقاطع؟"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Да се изтрият ли данните на песните?"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Smazat data stop?"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slet spordata?"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Track-Daten löschen?"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Διαγραφή δεδομένων κομματιών;"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete track data?"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Eliminar los datos de las pistas?"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Poistetaanko raitojen tiedot?"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer les données des pistes ?"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "למחוק את נתוני הרצועות?"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Izbrisati podatke o pjesmama?"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Törli a számok adatait?"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eliminare i dati dei brani?"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "トラックのデータを削除しますか？"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "트랙 데이터를 삭제할까요?"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slette spordata?"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nummergegevens verwijderen?"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usunąć dane ścieżek?"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Excluir os dados das faixas?"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eliminar os dados das faixas?"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ștergi datele pieselor?"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Odstrániť údaje skladieb?"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ta bort spårdata?"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Parça verileri silinsin mi?"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Видалити дані треків?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除曲目数据？"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "刪除曲目資料？"
+          }
+        }
+      }
+    },
+    "Saving changes the release’s track layout, which deletes the current tracks’ ratings, play history and playlist entries." : {
+      "comment" : "Release editor: message of the alert asking before a save deletes tracks that have ratings, plays or playlist entries",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يغيّر الحفظ تخطيط مقاطع الإصدار، مما يحذف تقييمات المقاطع الحالية وسجل تشغيلها وعناصرها في قوائم التشغيل."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запазването променя подредбата на песните в изданието и изтрива оценките, историята на слушане и записите в плейлисти на сегашните песни."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uložení změní rozvržení stop vydání a smaže hodnocení, historii přehrávání a položky seznamů skladeb u současných stop."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Når du gemmer, ændres udgivelsens sporopsætning, og de nuværende spors vurderinger, afspilningshistorik og elementer i afspilningslister slettes."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beim Speichern ändert sich die Track-Anordnung der Veröffentlichung, und Bewertungen, Wiedergabeverlauf und Wiedergabelisten-Einträge der aktuellen Tracks werden gelöscht."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Η αποθήκευση αλλάζει τη διάταξη των κομματιών της κυκλοφορίας και διαγράφει τις βαθμολογίες, το ιστορικό αναπαραγωγής και τις καταχωρίσεις λιστών αναπαραγωγής των τρεχόντων κομματιών."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saving changes the release’s track layout, which deletes the current tracks’ ratings, play history and playlist entries."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Al guardar se cambia la disposición de las pistas de la edición y se eliminan las valoraciones, el historial de reproducción y las entradas de listas de reproducción de las pistas actuales."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tallennus muuttaa julkaisun raitojen järjestystä ja poistaa nykyisten raitojen arviot, kuunteluhistorian ja soittolistamerkinnät."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L’enregistrement modifie la disposition des pistes de l’édition et supprime les notes, l’historique de lecture et les entrées de listes de lecture des pistes actuelles."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "השמירה משנה את סידור הרצועות של המהדורה ומוחקת את הדירוגים, היסטוריית ההשמעות והפריטים ברשימות ההשמעה של הרצועות הנוכחיות."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spremanje mijenja raspored pjesama izdanja i briše ocjene, povijest slušanja i stavke popisa za reprodukciju trenutačnih pjesama."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A mentés megváltoztatja a kiadás számainak elrendezését, és törli a jelenlegi számok értékeléseit, lejátszási előzményeit és lejátszási lista elemeit."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il salvataggio cambia la disposizione dei brani della pubblicazione ed elimina valutazioni, cronologia di riproduzione e voci delle playlist dei brani attuali."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保存すると、リリースのトラック構成が変わり、現在のトラックの評価、再生履歴、プレイリストの項目が削除されます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "저장하면 릴리스의 트랙 구성이 바뀌고, 현재 트랙의 평점, 재생 기록, 재생목록 항목이 삭제됩니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lagring endrer sporoppsettet i utgivelsen og sletter vurderinger, avspillingshistorikk og spillelisteoppføringer for de nåværende sporene."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bij het opslaan verandert de indeling van de nummers van de release, en worden de beoordelingen, de afspeelgeschiedenis en de afspeellijstitems van de huidige nummers verwijderd."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zapisanie zmienia układ ścieżek wydania i usuwa oceny, historię odtwarzania oraz wpisy w playlistach dotychczasowych ścieżek."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salvar altera a disposição das faixas do lançamento e exclui as avaliações, o histórico de reprodução e as entradas de playlists das faixas atuais."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guardar altera a disposição das faixas da edição e elimina as classificações, o histórico de reprodução e as entradas de listas de reprodução das faixas atuais."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salvarea schimbă aranjarea pieselor ediției și șterge evaluările, istoricul redării și intrările din listele de redare ale pieselor actuale."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uloženie zmení rozloženie skladieb vydania a odstráni hodnotenia, históriu prehrávania a položky zoznamov skladieb terajších skladieb."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "När du sparar ändras utgåvans spårordning, och de nuvarande spårens betyg, uppspelningshistorik och spellisteposter tas bort."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kaydetmek yayının parça düzenini değiştirir ve mevcut parçaların puanlarını, çalma geçmişini ve çalma listesi öğelerini siler."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Збереження змінює розташування треків релізу й видаляє оцінки, історію відтворення та записи в плейлистах поточних треків."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保存会更改版本的曲目排列，并删除当前曲目的评分、播放历史和播放列表条目。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "儲存會變更發行的曲目排列，並刪除目前曲目的評分、播放記錄和播放列表項目。"
+          }
+        }
+      }
+    },
     "Could not read sync status" : {
       "comment" : "The sync status line when reading the sync status failed; the error shows under it.",
       "extractionState" : "manual",

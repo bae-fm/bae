@@ -21,11 +21,17 @@ fn context(side: TrackSide, id: &str, file: &str, sheet: Option<&str>) -> Releas
                 heading: TrackSide::Disc { disc: 1 },
             },
             line_count: 1,
+            unbound_lines: Vec::new(),
             file_reference: format!("{file}.flac"),
             audio_options: Vec::new(),
         }),
     };
-    ReleaseEditTrackRow { edit: form_row(id), context, artists: None }
+    ReleaseEditTrackRow {
+        edit: form_row(id),
+        context,
+        audition: crate::TrackAudition::LibraryTrack,
+        artists: None,
+    }
 }
 
 fn side(letter: &str) -> TrackSide {
@@ -144,7 +150,6 @@ fn a_sheet_caption_offers_every_disc_of_the_release() {
         sheet.side_choices.iter().map(|choice| choice.side.medium).collect::<Vec<_>>(),
         [1, 2, 3]
     );
-    assert!(!sheet.ignorable);
 }
 
 /// A sheet's caption offers the audio files its line can play from as the
@@ -277,6 +282,7 @@ fn no_files() -> bae_records::DbReleaseFiles {
         files: Vec::new(),
         images: Vec::new(),
         others: Vec::new(),
+        carried: Vec::new(),
         has_others: false,
         count: 0,
         image_count: 0,
@@ -392,6 +398,7 @@ fn a_track_keeps_its_listed_length_and_its_sheet() {
             heading: TrackSide::Disc { disc: 2 },
         },
         line_count: 1,
+        unbound_lines: Vec::new(),
         file_reference: "disc.flac".to_string(),
         audio_options: Vec::new(),
     };

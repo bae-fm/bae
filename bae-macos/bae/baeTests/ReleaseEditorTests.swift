@@ -146,7 +146,9 @@ struct ReleaseEditorTests {
                         sheetCaption: SheetCaptionActions(
                             open: { _, _ in },
                             place: { _, _ in },
-                            bind: { _, _, _ in }
+                            bind: { _, _, _ in },
+                            offersIgnored: false,
+                            offersNone: true
                         ),
                         audition: TrackAuditionActions(
                             preview: { _ in },
@@ -253,8 +255,7 @@ extension ReleaseEditorTests {
             boundAudio: .one(reference: line),
             unboundReferences: nil,
             assigned: .disc(1),
-            sideChoices: BridgeSheetSideChoice.discs(2),
-            ignorable: false
+            sideChoices: BridgeSheetSideChoice.discs(2)
         )
     }
 }

@@ -57,6 +57,8 @@ struct TrackSourceCell: View {
                     playTrack(trackId)
                 }
             }
+        case .unsaved:
+            EmptyView()
         }
     }
 }

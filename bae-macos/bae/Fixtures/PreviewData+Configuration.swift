@@ -152,7 +152,7 @@ extension PreviewData {
                         }
                 )
             ],
-            files: libraryReleaseFiles,
+            files: libraryReleaseFiles.map { .file(file: $0) },
             album: .named(
                 albumId: "album-preview",
                 line: .titleAndArtists(
@@ -165,6 +165,7 @@ extension PreviewData {
             albumArtists: editMetadataAlbumArtists,
             changed: false,
             filesToRead: nil,
+            deletesTrackData: false,
             invalid: nil
         )
         return PreviewReleaseEdit(values: edit, draft: draft)
@@ -381,44 +382,6 @@ actor PreviewReleaseLibrary {
         }
     }
 
-    /// Bind the FILE line of the CUE sheet `sheetFileId` in `session`'s draft
-    /// to the audio file `audioFileId`, one of the line's options: the run
-    /// names it, the pop-up checks it, and a save reads it first.
-    nonisolated func putSheet(
-        _ sheetFileId: String,
-        onFile audioFileId: String,
-        in session: PreviewReleaseEditSession
-    ) async {
-        _ = await session.change { release in
-            var picked: [String] = []
-            release.draft.sides = release.draft.sides?
-                .map { side in
-                    var side = side
-                    side.runs = side.runs.map { run in
-                        guard
-                            case .sheet(var sheet, let rows) = run,
-                            sheet.sheetId == sheetFileId,
-                            case .one(var line) = sheet.boundAudio,
-                            let option = line.options.first(where: {
-                                $0.fileId == audioFileId
-                            })
-                        else { return run }
-                        let file = BridgeMappingContainer(
-                            fileId: option.fileId,
-                            name: option.name
-                        )
-                        line.bound = file
-                        sheet.boundAudio = .one(reference: line)
-                        sheet.bound = .describes(container: file)
-                        picked.append(option.name)
-                        return .sheet(sheet: sheet, rows: rows)
-                    }
-                    return side
-                }
-            release.draft.filesToRead = picked
-        }
-    }
-
     /// `release` with its metadata cleared, as core's clear leaves a form.
     private static func clear(_ release: inout PreviewReleaseEdit) {
         release.values.albumTitle = ""
@@ -487,9 +450,10 @@ actor PreviewReleaseLibrary {
             setSheetSide: { sheetFileId, side in
                 await self.putSheet(sheetFileId, onSide: side, in: session)
             },
-            setSheetFile: { sheetFileId, _, audioFileId in
+            setSheetFile: { sheetFileId, fileReference, audioFileId in
                 await self.putSheet(
                     sheetFileId,
+                    fileReference,
                     onFile: audioFileId,
                     in: session
                 )
@@ -500,6 +464,106 @@ actor PreviewReleaseLibrary {
                 return await self.save(session)
             }
         )
+    }
+}
+
+extension PreviewReleaseLibrary {
+    /// Bind the FILE line of the CUE sheet `sheetFileId` in `session`'s draft
+    /// to the audio file `audioFileId`, one of the line's options: the run
+    /// names it, the pop-up checks it, and a save reads it first.
+    nonisolated func putSheet(
+        _ sheetFileId: String,
+        _ fileReference: String,
+        onFile audioFileId: String?,
+        in session: PreviewReleaseEditSession
+    ) async {
+        guard let audioFileId else {
+            _ = await session.change {
+                Self.withoutAudio(sheetFileId, fileReference, in: &$0)
+            }
+            return
+        }
+        _ = await session.change { release in
+            var picked: [String] = []
+            release.draft.sides = release.draft.sides?
+                .map { side in
+                    var side = side
+                    side.runs = side.runs.map { run in
+                        guard
+                            case .sheet(var sheet, let rows) = run,
+                            sheet.sheetId == sheetFileId,
+                            case .one(var line) = sheet.boundAudio,
+                            let option = line.options.first(where: {
+                                $0.fileId == audioFileId
+                            })
+                        else { return run }
+                        let file = BridgeMappingContainer(
+                            fileId: option.fileId,
+                            name: option.name
+                        )
+                        line.bound = file
+                        sheet.boundAudio = .one(reference: line)
+                        sheet.bound = .describes(container: file)
+                        picked.append(option.name)
+                        return .sheet(sheet: sheet, rows: rows)
+                    }
+                    return side
+                }
+            release.draft.filesToRead = picked
+        }
+    }
+
+    /// `release` with the FILE line `fileReference` of the CUE sheet
+    /// `sheetFileId` bound to no audio, as core lays the draft out when the
+    /// sheet's only line plays none: the sheet's tracks give way to one track
+    /// that plays the sheet's audio file, and the sheet takes its place in the
+    /// Files list on the side it was on.
+    static func withoutAudio(
+        _ sheetFileId: String,
+        _ fileReference: String,
+        in release: inout PreviewReleaseEdit
+    ) {
+        guard
+            let sides = release.draft.sides,
+            let side = sides.first,
+            case .sheet(var sheet, _)? = side.runs.first(where: {
+                if case .sheet(let sheet, _) = $0 {
+                    return sheet.sheetId == sheetFileId
+                }
+                return false
+            }),
+            case .one(var line) = sheet.boundAudio,
+            line.fileReference == fileReference,
+            case .describes(let played) = sheet.bound
+        else { return }
+        let length = PreviewData.northboundTracks.reduce(0) {
+            $0 + $1.durationMs
+        }
+        var track = release.values.tracks[0]
+        track.title = (played.name as NSString).deletingPathExtension
+        release.draft.sides = [
+            BridgeTrackTableSide(
+                side: side.side,
+                runs: [
+                    .track(
+                        row: PreviewData.tableRow(
+                            track,
+                            source: .file(name: played.name),
+                            audition: .unsaved,
+                            position: "1",
+                            lengthMs: length
+                        )
+                    )
+                ]
+            )
+        ]
+        line.bound = nil
+        sheet.bound = .unresolved(requested: [fileReference])
+        sheet.boundAudio = .none
+        sheet.unboundReferences = [line]
+        release.draft.files =
+            [.sheet(sheet: sheet)] + (release.draft.files ?? [])
+        release.draft.deletesTrackData = true
     }
 }
 

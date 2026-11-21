@@ -24,6 +24,10 @@ struct ReleaseEditorView: View {
     /// The cover picker's lightbox image as it loads.
     @State
     private var coverLightboxLoad = LightboxImageLoad()
+    /// Save asks first, since the save deletes tracks that have ratings,
+    /// plays or playlist entries.
+    @State
+    private var confirmingSave = false
 
     @Environment(Importer.self)
     private var importer
@@ -33,10 +37,6 @@ struct ReleaseEditorView: View {
     private var releaseEditor
     @Environment(UiStore.self)
     private var uiStore
-    @Environment(\.openSettingsWindow)
-    private var openSettings
-    @Environment(SettingsNavigation.self)
-    private var settingsNavigation
 
     /// The key core runs the release's catalog search under.
     private var searchKey: Data {
@@ -65,7 +65,7 @@ struct ReleaseEditorView: View {
                         images: images,
                         onOpenImages: onOpenImages ?? { _ in },
                         sides: draft.sides,
-                        files: draft.files?.map { .file(file: $0) },
+                        files: draft.files,
                         previewingTarget: nil,
                         actions: tableActions
                     ),
@@ -74,13 +74,24 @@ struct ReleaseEditorView: View {
                     searching: searchSection != nil,
                     search: {
                         if let searchSection {
-                            search(searchSection)
+                            ReleaseEditorCatalogSearch(
+                                session: session,
+                                section: searchSection,
+                                searchKey: searchKey,
+                                onOpenSection: { self.searchSection = $0 },
+                                onBack: { self.searchSection = nil }
+                            )
                         }
                     }
                 )
             }
         }
         .onDisappear { endSearch() }
+        .macAlert(isPresented: $confirmingSave) {
+            DropTracksConfirmation.alert {
+                session.save(onSuccess: onSaved)
+            }
+        }
     }
 
     /// Cancel and Save, the step of an apply, and why the form can't be
@@ -88,6 +99,7 @@ struct ReleaseEditorView: View {
     private var saveRow: ReleaseSaveRow {
         let session = session
         let onSaved = onSaved
+        let confirmSave = $confirmingSave
         return ReleaseSaveRow(
             controls: {
                 ReleaseEditControls(
@@ -98,7 +110,14 @@ struct ReleaseEditorView: View {
                         searchSection = nil
                         session.cancelChanges()
                     },
-                    onSave: { session.save(onSuccess: onSaved) }
+                    onSave: {
+                        if session.draft?.deletesTrackData == true {
+                            confirmSave.wrappedValue = true
+                        }
+                        else {
+                            session.save(onSuccess: onSaved)
+                        }
+                    }
                 )
             },
             applying: { session.catalogApplying },
@@ -130,9 +149,9 @@ struct ReleaseEditorView: View {
     }
 
     /// The table's actions on the session's form: a side or disc picked for
-    /// a sheet, or an audio file for one of its lines. The caption offers
-    /// neither *Ignored* nor binding no audio, since the editor keeps every
-    /// track it opened on.
+    /// a sheet, or an audio file, or none, for one of its lines. The caption
+    /// offers binding no audio, which deletes the tracks under the line, and
+    /// not *Ignored*.
     private var tableActions: ReleaseTrackTableActions {
         let session = session
         return ReleaseTrackTableActions(
@@ -144,14 +163,14 @@ struct ReleaseEditorView: View {
                     }
                 },
                 bind: { sheetId, fileReference, audioFileId in
-                    if let audioFileId {
-                        session.pickSheetFile(
-                            sheetId,
-                            fileReference: fileReference,
-                            audioFileId: audioFileId
-                        )
-                    }
-                }
+                    session.pickSheetFile(
+                        sheetId,
+                        fileReference: fileReference,
+                        audioFileId: audioFileId
+                    )
+                },
+                offersIgnored: false,
+                offersNone: true
             ),
             audition: TrackAuditionActions(
                 preview: { _ in },
@@ -160,49 +179,6 @@ struct ReleaseEditorView: View {
             ),
             editTrack: { await session.updateTrack($0) }
         )
-    }
-
-    /// The catalog search under this release's key; picking a pressing
-    /// applies it to the session at once and goes back to the draft.
-    @ViewBuilder
-    private func search(_ section: FindOnlineSection) -> some View {
-        if let candidate = importStore.reIdentifyCandidates[searchKey] {
-            CandidateRuntimeReader(key: searchKey) { runtime in
-                ImportSearchFlow.buildSearchPane(
-                    services: ImportSearchFlow.ImportServices(
-                        importer: importer,
-                        importStore: importStore
-                    ),
-                    input: ImportSearchFlow.SearchPaneInput(
-                        candidate: candidate,
-                        key: searchKey,
-                        runtime: runtime,
-                        openSection: section,
-                        onOpenSection: { searchSection = $0 },
-                        // A library release has no folder draft to keep.
-                        onKeepOwnDraft: nil,
-                        // Nor a folder to link to an album.
-                        onLinkSharedAlbum: nil,
-                        // Its runs start straight away, never waiting on
-                        // the identification queue.
-                        onCancelIdentification: nil
-                    ),
-                    openSettings: {
-                        settingsNavigation.open(
-                            .importing,
-                            present: { openSettings() }
-                        )
-                    },
-                    onBack: { searchSection = nil },
-                    onSelect: { pressing in
-                        searchSection = nil
-                        session.apply(pressing.link)
-                    }
-                )
-            }
-            .frame(maxWidth: .infinity)
-            .card()
-        }
     }
 
     /// Open Change cover over the editor; a pick writes the cover at once.

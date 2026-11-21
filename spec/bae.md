@@ -2323,9 +2323,16 @@ and a file pick stays.
 
 A library release's save that ignores a sheet, or leaves a line playing no
 audio, deletes the tracks the sheet carved there, and bae matches none of them
-to a track the save adds. When a track the save deletes has a rating, a play in
-the history or a playlist entry, *Save* first shows an alert, *Delete track
-data?*: "Saving changes the release's track layout, which deletes the current
+to a track the save adds. The save adds one track for each audio file that
+then has no track, which plays the whole file, is titled after the file's name
+without its extension, takes the album's artists, and sits where the sheet's
+first track sat, ahead of that track, with the tracks of its side numbered
+again from one. A sheet with several `FILE` lines adds a track for each file
+that loses all its audio, and none for a file a track that stays still plays.
+Before the save, the table shows each track the save adds, which plays
+nothing, with a title the person can edit. When a track the save deletes has a
+rating, a play in the history or a playlist entry, *Save* first shows an
+alert, *Delete track data?*: "Saving changes the release's track layout, which deletes the current
 tracks' ratings, play history and playlist entries.", with *Cancel* and a
 destructive *Save*. A save that deletes only tracks with none of these shows no
 alert.
@@ -2344,7 +2351,9 @@ tracks, or an audio file no track plays from, in the release's file order. A
 CUE sheet that carves tracks plays, so the list leaves it out. A CUE sheet the
 person set to *Ignored* carves none, so it takes its place in the list as its
 caption, its place pop-up reading *Ignored*, and the person can place it back
-before importing or saving. The list holds
+before importing or saving. A CUE sheet all of whose `FILE` lines play no audio
+carves none either: it takes its place in the list as its caption, on the side
+it was on, and each line offers *Choose audio…*. The list holds
 no image bae can show: a JPEG, PNG, GIF or WebP image that bae can read appears
 only among the release's images. An image in another format (a BMP or an SVG,
 for example), and an image in one of those four formats that bae finds damaged,

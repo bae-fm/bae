@@ -114,9 +114,9 @@ impl Records {
     /// check, as `still_as_opened` says, that the release is still as the
     /// editor opened on it, then write `plan`: move the release and replace
     /// its records where its change says (see `set_records_on`), then write
-    /// its rows, then the layout of the tracks `layout` reads, when it reads
-    /// one, then the audio of the tracks `rebound` moves to other files,
-    /// then what `sheet_decisions` writes of the person's choices about CUE
+    /// its rows, then the audio of the tracks `rebound` moves to other
+    /// files and the tracks it deletes and adds, then the layout of the
+    /// tracks `layout` read before that, when it read one, then what `sheet_decisions` writes of the person's choices about CUE
     /// sheets.
     /// `gone` says what the save does with a picked artist or
     /// album the library no longer holds. Last it reads what `saved` reads
@@ -190,11 +190,21 @@ impl Records {
                     ),
                 }
                 .map_err(|error| error.map_refusal(ReleaseEditRefusal::Identity))?;
-                if let Some(layout) = layout(&sql)? {
-                    super::layout::write_layout_on(&sql, plan.release_id(), &layout, &*ids, &now)?;
-                }
+                // The layout is read before the rebound audio deletes and adds
+                // tracks, since it reads the tracks the release holds now.
+                let mut layout = layout(&sql)?;
                 if let Some(rebound) = &rebound {
                     super::sheet_files::write_rebound_audio_on(&sql, plan.release_id(), rebound)?;
+                    for track in layout.iter_mut().flat_map(|layout| &mut layout.tracks) {
+                        if let Some(added) =
+                            rebound.added.iter().find(|added| added.file_id == track.track_id)
+                        {
+                            track.track_id.clone_from(&added.track.id);
+                        }
+                    }
+                }
+                if let Some(layout) = layout {
+                    super::layout::write_layout_on(&sql, plan.release_id(), &layout, &*ids, &now)?;
                 }
                 sheet_decisions(&sql)?;
                 emptiable.remove_emptied(&sql)?;

@@ -76,7 +76,10 @@ pub use release_records::RecordsChange;
 mod release;
 pub use release::ReleaseMetadataRows;
 #[cfg(desktop)]
-pub use release::{release_edit_track_of_row, release_edit_tracks_on, release_edit_tracks_sql};
+pub use release::{
+    release_edit_row_of_row, release_edit_track_of_row, release_edit_tracks_on,
+    release_edit_tracks_sql,
+};
 // Only saving a release edit session writes metadata alongside records.
 #[cfg(desktop)]
 use release::write_release_metadata_on;

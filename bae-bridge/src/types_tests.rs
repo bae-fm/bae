@@ -542,6 +542,7 @@ mod conversion_roundtrip {
                 album_artists: None,
                 changed: true,
                 files_to_read: None,
+                deletes_track_data: false,
                 invalid: Some(bae_import::EditValidationError::NoAlbumArtist),
             });
             assert!(bridge.changed);

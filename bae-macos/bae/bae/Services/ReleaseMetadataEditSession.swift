@@ -45,7 +45,7 @@ struct ReleaseEditFormCommands: Sendable {
     /// Record the audio file the person picked for a CUE sheet's FILE line:
     /// the sheet's file id, the line's text and the audio file's id. A save
     /// reads the file and binds the line to it.
-    let setSheetFile: @Sendable (String, String, String) async throws -> Void
+    let setSheetFile: @Sendable (String, String, String?) async throws -> Void
     /// Discard every change: the editor opens its form again on the release
     /// as the library holds it now.
     let cancel: @Sendable () async throws -> BridgeRawReleaseEdit
@@ -405,11 +405,12 @@ extension ReleaseMetadataEditSession {
     }
 
     /// Record the audio file `audioFileId` the person picked for the FILE
-    /// line `fileReference` of the CUE sheet `sheetFileId`.
+    /// line `fileReference` of the CUE sheet `sheetFileId`, or, for `nil`,
+    /// that the line plays no audio.
     func pickSheetFile(
         _ sheetFileId: String,
         fileReference: String,
-        audioFileId: String
+        audioFileId: String?
     ) {
         run(.pickingSheetFile, committingEdits: false) {
             try await $0.setSheetFile(sheetFileId, fileReference, audioFileId)

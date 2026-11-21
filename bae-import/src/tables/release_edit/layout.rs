@@ -9,13 +9,15 @@ use super::*;
 use bae_records::records::layout::{honored_picks_on, laid_out_on, ReleaseLayout};
 
 /// The layout a save of `form` writes over the release's tracks, as `sql`
-/// finds the release; `None` where the form picks no side for a CUE sheet,
-/// since an applied catalog writes its own places with its rows.
+/// finds the release; `None` where the form picks no side for a CUE sheet
+/// and binds no line to no audio, since an applied catalog writes its own
+/// places with its rows.
 pub fn release_edit_layout_on(
     sql: &impl coven::SqlRead,
     form: &ReleaseEditForm,
 ) -> Result<Option<ReleaseLayout>, DbError> {
-    if form.sheet_places.is_empty() {
+    let deletes_tracks = form.sheet_files.iter().any(|pick| pick.audio_file_id.is_none());
+    if form.sheet_places.is_empty() && !deletes_tracks {
         return Ok(None);
     }
     let params = FormParams::of(form)?;

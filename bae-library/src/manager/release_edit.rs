@@ -136,7 +136,10 @@ impl LibraryManager {
     /// the release only to an album the person picked. A form that binds
     /// CUE sheets' `FILE` lines to other audio files reads those files
     /// first, and the write replaces the audio rows of the sheets' tracks
-    /// (see [`bae_import::service::rebound_sheet_audio`]). When the library no
+    /// (see [`bae_import::service::rebound_sheet_audio`]). A form that
+    /// binds a CUE sheet's `FILE` line to no audio deletes the tracks under
+    /// the line, and adds a track for each audio file that then has none (see
+    /// [`bae_import::service::rebound_sheet_audio`]). When the library no
     /// longer holds a library artist or album the person picked, `gone` says
     /// what the save does. The same write reads the release as this save
     /// wrote it, and the method returns the form opened on that.
