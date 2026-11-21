@@ -27,7 +27,9 @@ class ArtworkShots : BoardShot() {
     @Test
     fun androidComponentArtworkMissing() =
         component("android.component.artwork.missing") {
-            Artwork(cover = null, cornerRadius = ThemeRadius.artwork, iconPadding = ThemeSpace.group, modifier = Modifier.size(120.dp))
+            Images {
+                Artwork(cover = null, cornerRadius = ThemeRadius.artwork, iconPadding = ThemeSpace.group, modifier = Modifier.size(120.dp))
+            }
         }
 
     /** An artist's picture, round, as the artist heading draws it. */
