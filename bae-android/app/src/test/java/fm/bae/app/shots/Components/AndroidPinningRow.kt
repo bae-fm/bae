@@ -48,7 +48,11 @@ private fun previewDownload(
 private fun PinningRow(op: BridgeDownloadOp) =
     AndroidPinningRow(
         op,
-        PreviewData.downloadStore(downloadingReleaseId = op.releaseId).latestProgress(op.releaseId),
+        PreviewData
+            .downloadStore(
+                downloadingReleaseId = op.releaseId,
+                transfer = PreviewData.downloadTransferProgress(bytesDone = 120_000_000UL, bytesTotal = 344_000_000UL, fraction = 0.35),
+            ).latestProgress(op.releaseId),
         onCancel = {},
         onRetry = {},
     )
