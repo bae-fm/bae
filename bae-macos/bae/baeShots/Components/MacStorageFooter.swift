@@ -49,10 +49,8 @@ extension ShotScene {
             id: id,
             size: CGSize(width: 640, height: 40)
         ) {
-            var rows = boardStorageRows
-            rows[11].release.totalSize = 250_000_000
             let fixture = StorageManagerPreviewFixture(
-                rows: rows,
+                rows: boardStorageRows,
                 outputs: [],
                 queues: queues
             )
@@ -61,7 +59,7 @@ extension ShotScene {
                 list in
                 MacStorageFooter(
                     list: list,
-                    totalSize: store.totalSize,
+                    totalSize: 4_400_000_000,
                     queues: store.queues
                 )
             }
