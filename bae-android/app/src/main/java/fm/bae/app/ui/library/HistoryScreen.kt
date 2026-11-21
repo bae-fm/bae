@@ -2,12 +2,15 @@ package fm.bae.app.ui.library
 
 import android.content.Context
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -30,11 +33,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.dp
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.creditLineText
 import fm.bae.app.data.HistoryOf
 import fm.bae.app.data.HistoryPageStore
+import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidListRow
@@ -122,14 +127,17 @@ internal fun RowScope.WhoseMenu(
             modifier =
                 Modifier
                     .clickable(role = Role.Button) { onOpen(true) }
-                    .padding(horizontal = ThemeSpace.group, vertical = ThemeSpace.related),
+                    .heightIn(min = 48.dp)
+                    .padding(horizontal = ThemeSpace.related),
+            horizontalArrangement = Arrangement.spacedBy(ThemeSpace.line),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(text = label, style = ThemeText.rowTitle.style, color = MaterialTheme.colorScheme.onSurface)
+            Text(text = label, style = ThemeText.section.style, color = MaterialTheme.colorScheme.onSurface)
             Icon(
                 imageVector = Icons.Filled.KeyboardArrowDown,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.size(ThemeIcon.medium),
             )
         }
         AndroidMenu(expanded = open, onDismissRequest = { onOpen(false) }) {
