@@ -81,7 +81,8 @@ class FrameFollowing<V : Any>(
 
     /** Show the key's latest value if it changed, and return it: one read of the key. */
     private fun showLatest(): V? {
-        val latest = source?.latest
+        // Nothing is followed, so there is nothing to show: a view that draws by hand keeps what it drew.
+        val latest = (source ?: return null).latest
         if (shown == UNSHOWN || shown != latest) {
             shown = latest
             show(latest)

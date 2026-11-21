@@ -5,6 +5,7 @@ import android.view.ViewGroup
 import android.widget.ProgressBar
 import android.widget.SeekBar
 import android.widget.TextView
+import fm.bae.app.ui.sync.ShareBarView
 import org.json.JSONObject
 import kotlin.math.roundToInt
 
@@ -75,6 +76,7 @@ internal object EmbeddedViews {
             when {
                 view is SeekBar -> Triple("slider", "SeekBar", label)
                 view is ProgressBar -> Triple("progress", "ProgressBar", label)
+                view is ShareBarView -> Triple("progress", "ShareBarView", label)
                 view is TextView && view.text.isNotEmpty() -> Triple("text", "TextView", view.text.toString())
                 else -> return null
             }
@@ -101,9 +103,27 @@ internal object EmbeddedViews {
 
     /** How far a bar is, as a whole percent, the way the boards give a bar's value; null for a text or a moving bar. */
     private fun percent(view: View): String? =
-        (view as? ProgressBar)
-            ?.takeIf { !it.isIndeterminate && it.max > 0 }
-            ?.let { (it.progress * PERCENT / it.max).roundToInt().toString() }
+        when (view) {
+            is ShareBarView -> {
+                // The range a screen reader is told; none while the bar moves.
+                view
+                    .createAccessibilityNodeInfo()
+                    .rangeInfo
+                    ?.current
+                    ?.roundToInt()
+                    ?.toString()
+            }
+
+            is ProgressBar -> {
+                view
+                    .takeIf { !it.isIndeterminate && it.max > 0 }
+                    ?.let { (it.progress * PERCENT / it.max).roundToInt().toString() }
+            }
+
+            else -> {
+                null
+            }
+        }
 
     /** The words' size in sp and colour, as the view draws them. */
     private fun style(view: TextView): JSONObject {

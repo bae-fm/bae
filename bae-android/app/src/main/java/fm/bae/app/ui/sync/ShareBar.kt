@@ -105,6 +105,9 @@ internal class ShareBarView(
     private val following = FrameFollowing<Double>(this) { share -> showFraction((share ?: 0.0).toFloat()) }
     private var fraction = 0f
 
+    /** Whether a piece crosses the track, for a step that counts nothing. */
+    private var moving = false
+
     /** Where the moving piece is; before it first moves it sits part way, so a still frame shows it. */
     private var phase = MOVING_REST_PHASE
     private val crossing =
@@ -126,13 +129,15 @@ internal class ShareBarView(
     override fun onInitializeAccessibilityNodeInfo(info: AccessibilityNodeInfo) {
         super.onInitializeAccessibilityNodeInfo(info)
         info.className = ProgressBar::class.java.name
-        info.rangeInfo =
-            AccessibilityNodeInfo.RangeInfo.obtain(
-                AccessibilityNodeInfo.RangeInfo.RANGE_TYPE_PERCENT,
-                0f,
-                PERCENT,
-                fraction * PERCENT,
-            )
+        if (!moving) {
+            info.rangeInfo =
+                AccessibilityNodeInfo.RangeInfo.obtain(
+                    AccessibilityNodeInfo.RangeInfo.RANGE_TYPE_PERCENT,
+                    0f,
+                    PERCENT,
+                    fraction * PERCENT,
+                )
+        }
     }
 
     fun applyColors(
@@ -153,14 +158,21 @@ internal class ShareBarView(
     /** Shows [share] of the track filled. */
     fun showFraction(share: Float) {
         crossing.cancel()
+        moving = false
         fraction = share
         invalidate()
     }
 
     /** Shows a piece crossing the track, while a step counts nothing. */
     fun showMoving() {
+        moving = true
         if (!crossing.isStarted) crossing.start()
         invalidate()
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        if (moving && !crossing.isStarted) crossing.start()
     }
 
     override fun onDetachedFromWindow() {
@@ -185,7 +197,7 @@ internal class ShareBarView(
         val height = barHeight()
         val gap = dp(GAP_DP)
         val radius = height / 2f
-        if (crossing.isStarted) {
+        if (moving) {
             canvas.drawRoundRect(bounds.apply { set(0f, 0f, width.toFloat(), height) }, radius, radius, track)
             val piece = width * MOVING_SHARE
             val start = -piece + (width + piece) * phase
