@@ -6,7 +6,7 @@ import Testing
 
 /// Captures every registered scene to `<board>@macos.png`, with the elements
 /// its view lists beside it as `<board>@macos.json`, in the directory
-/// `BUILDS_SHOTS_OUT` names, which builds-shots passes to the test process
+/// `BUILDS_SHOTS_OUT` names, which builds shots passes to the test process
 /// through Xcode as `TEST_RUNNER_BUILDS_SHOTS_OUT`. Every scene is
 /// attempted; any failure — a scene that fails to render, encode, or write —
 /// fails the run with the full list, so a broken scene can never be a silent
@@ -19,7 +19,7 @@ import Testing
 /// A scene shown in its window brings the app to the front and makes its
 /// window key, taking the focus from whatever the person at the machine is
 /// doing, so those scenes render only when `BUILDS_SHOTS_WINDOWS` is `1`, as
-/// builds-shots sets it for a run given `--windows`.
+/// builds shots sets it for a run given `--windows`.
 @MainActor
 struct CaptureSceneTests {
     @Test

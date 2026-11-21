@@ -7,7 +7,7 @@ root = true
 [*.{kt,kts}]
 ktlint_function_naming_ignore_when_annotated_with = Composable,Preview
 
-# builds-shots names each component's capture file after the component
+# builds shots names each component's capture file after the component
 # (Components/AndroidButton.kt), while the class in it is the component's name
 # plus Shots, so the filename rule would flag every capture file.
 [app/src/test/java/fm/bae/app/shots/Components/*.kt]

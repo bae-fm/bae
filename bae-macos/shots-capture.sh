@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Takes the Mac shots: builds the bridge and the Xcode project, then runs the
 # baeShots test bundle, whose CaptureSceneTests draws each scene and writes
-# <board>@macos.png and <board>@macos.json. builds-shots runs this script from
+# <board>@macos.png and <board>@macos.json. builds shots runs this script from
 # the repo's top (`.app-build`'s `shots-capture mac` line) with
 # BUILDS_SHOTS_OUT, BUILDS_SHOTS_SELECT and BUILDS_SHOTS_WINDOWS, and with a
 # TEST_RUNNER_ copy of each, which xcodebuild passes on to the test process

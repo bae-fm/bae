@@ -1,41 +1,40 @@
-name: 'Install a builds program'
-description: 'Install builds or builds-shots from agent-instructions at the commit bae pins, and put it on PATH'
-
-inputs:
-  program:
-    description: 'The program to install: builds or builds-shots'
-    required: true
+name: 'Install builds'
+description: 'Install builds from agent-instructions at the commit bae pins, and put it on PATH'
 
 runs:
   using: 'composite'
   steps:
-    # The agent-instructions commit every builds program bae installs comes
-    # from, so builds and builds-shots always match.
+    # The agent-instructions commit builds comes from. It has the shots
+    # checker inside it (`builds shots`).
     - name: Name the agent-instructions commit
       id: pin
       shell: bash
-      run: echo "rev=79579746d6183dd009ab031ea130aba6c595410b" >> "$GITHUB_OUTPUT"
-    # builds uses macOS process and file-lock calls, so it compiles only on a
-    # Mac; builds-shots compiles on Linux too. Each goes in a folder of its own
-    # outside ~/.local/bin, so scripts/cargo.sh still runs cargo itself on CI.
-    - name: Restore ${{ inputs.program }}
+      run: echo "rev=405e9ae26a1a0111092bde923c79089b01f93369" >> "$GITHUB_OUTPUT"
+    # builds compiles on Linux too, since `builds host setup` builds it on
+    # Linux hosts. It goes in a folder of its own outside ~/.local/bin, so
+    # scripts/cargo.sh still runs cargo itself on CI.
+    - name: Restore builds
       id: cache
       uses: actions/cache@v5
       with:
-        path: ${{ runner.temp }}/${{ inputs.program }}
-        key: ${{ inputs.program }}-${{ runner.os }}-${{ runner.arch }}-${{ steps.pin.outputs.rev }}
-    - name: Install ${{ inputs.program }}
+        path: ${{ runner.temp }}/builds
+        key: builds-${{ runner.os }}-${{ runner.arch }}-${{ steps.pin.outputs.rev }}
+    - name: Install builds
       if: steps.cache.outputs.cache-hit != 'true'
       shell: bash
       env:
-        PROGRAM: ${{ inputs.program }}
         BUILDS_REV: ${{ steps.pin.outputs.rev }}
       run: |
-        cargo install --locked --root "$RUNNER_TEMP/$PROGRAM" \
+        cargo install --locked --root "$RUNNER_TEMP/builds" \
           --git https://github.com/hideselfview/agent-instructions \
-          --rev "$BUILDS_REV" "$PROGRAM"
-    - name: Put ${{ inputs.program }} on PATH
+          --rev "$BUILDS_REV" builds
+    - name: Put builds on PATH
       shell: bash
-      env:
-        PROGRAM: ${{ inputs.program }}
-      run: echo "$RUNNER_TEMP/$PROGRAM/bin" >> "$GITHUB_PATH"
+      run: echo "$RUNNER_TEMP/builds/bin" >> "$GITHUB_PATH"
+    # builds shots refuses to run without a build volume, and keeps its cache
+    # in the volume's caches folder. The folder must exist.
+    - name: Make the build volume
+      shell: bash
+      run: |
+        mkdir -p "$RUNNER_TEMP/builds-volume"
+        echo "BUILDS_ROOT=$RUNNER_TEMP/builds-volume" >> "$GITHUB_ENV"

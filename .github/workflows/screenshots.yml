@@ -1,6 +1,6 @@
 name: Screenshots
 
-# Captures the shots on macOS and Android (builds-shots, from agent-instructions
+# Captures the shots on macOS and Android (`builds shots`, from agent-instructions
 # at the commit .github/actions/install-builds pins), checks them against the
 # design boards and publishes the report to GitHub Pages. Setup steps mirror
 # each platform's build workflow (ci.yml / android-build.yml) — the
@@ -38,14 +38,12 @@ jobs:
       - uses: ./.github/actions/setup-macos
       - uses: ./.github/actions/setup-rust
       - uses: ./.github/actions/install-builds
-        with:
-          program: builds-shots
       - name: Install xcodegen
         run: brew install xcodegen
       - name: Capture
         # The runner has no one at it, so the scenes shown in their windows,
         # which bring the app to the front, render here too.
-        run: builds-shots capture --platform mac --windows --out shots-out
+        run: builds shots capture --platform mac --windows --out shots-out
       - uses: actions/upload-artifact@v4
         with:
           name: shots-macos
@@ -72,10 +70,8 @@ jobs:
         if: steps.ffmpeg-cache.outputs.cache-hit != 'true'
         run: ./scripts/build-ffmpeg-android.sh
       - uses: ./.github/actions/install-builds
-        with:
-          program: builds-shots
       - name: Capture
-        run: builds-shots capture --platform android --out shots-out
+        run: builds shots capture --platform android --out shots-out
       - uses: actions/upload-artifact@v4
         with:
           name: shots-android
@@ -92,27 +88,23 @@ jobs:
       - uses: actions/checkout@v6
       - uses: ./.github/actions/setup-rust
       - uses: ./.github/actions/install-builds
-        with:
-          program: builds-shots
-      - name: Point builds-shots at its cache
-        run: echo "BUILDS_SHOTS_CACHE=$RUNNER_TEMP/builds-shots-cache" >> "$GITHUB_ENV"
       - uses: actions/download-artifact@v4
         with:
           pattern: shots-*
           path: all-shots
           merge-multiple: true
-      # builds-shots keeps the Chrome build it pins in its cache. The install
-      # action names the builds-shots commit, so the cache key follows that
-      # file.
+      # builds shots keeps the Chrome build it pins in the build volume's
+      # caches folder, which the install action makes. The install
+      # action names the builds commit, so the cache key follows that file.
       - uses: actions/cache@v5
         with:
-          path: ${{ runner.temp }}/builds-shots-cache
+          path: ${{ runner.temp }}/builds-volume/caches/builds-shots
           key: builds-shots-cache-${{ hashFiles('.github/actions/install-builds/action.yml') }}
       # macOS has SF Pro, which the Mac boards are set in. A hard failure fails
       # this job, which is the pull request's check; the step summary holds the
       # findings.
       - name: Check
-        run: builds-shots check --shots all-shots --out site --sha "${GITHUB_SHA::9}"
+        run: builds shots check --shots all-shots --out site --sha "${GITHUB_SHA::9}"
       # The report is the run's artifact whether or not the check passed.
       - uses: actions/upload-artifact@v4
         if: always()
