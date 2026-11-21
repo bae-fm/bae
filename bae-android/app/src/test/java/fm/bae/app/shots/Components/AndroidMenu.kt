@@ -6,16 +6,13 @@ import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidDivider
+import fm.bae.app.ui.components.AndroidMenuHeading
 import fm.bae.app.ui.components.AndroidMenuItemStyle
 import fm.bae.app.ui.components.AndroidMenuShape
 import fm.bae.app.ui.components.androidMenuColor
@@ -40,15 +37,7 @@ class AndroidMenuShots : BoardShot() {
                 ) {
                     Column(modifier = Modifier.padding(vertical = ThemeSpace.related).width(IntrinsicSize.Max)) {
                         AndroidMenuItemStyle {
-                            Text(
-                                text = "Sort by",
-                                style = ThemeText.detail.style,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier =
-                                    Modifier
-                                        .padding(horizontal = ThemeSpace.group, vertical = ThemeSpace.inline)
-                                        .semantics { heading() },
-                            )
+                            AndroidMenuHeading("Sort by")
                             AndroidMenuItem(label = "Title", selected = false, onClick = {})
                             AndroidMenuItem(label = "Date added", selected = true, onClick = {})
                             DropdownMenuItem(text = { Text("Descending") }, onClick = {})

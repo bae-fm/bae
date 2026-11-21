@@ -1,14 +1,20 @@
 package fm.bae.app.ui.components
 
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.ui.appearance.ThemeText
 
 /**
  * A dropdown menu as the design draws it: as wide as its widest item, 4dp
@@ -47,6 +53,20 @@ internal fun ColumnScope.AndroidMenuItemStyle(content: @Composable ColumnScope.(
             letterSpacing = 0.sp,
         )
     MaterialTheme(typography = typography.copy(bodyLarge = itemText)) { content() }
+}
+
+/** A group's name over its items, in the secondary colour; a screen reader announces it as a heading. */
+@Composable
+internal fun AndroidMenuHeading(text: String) {
+    Text(
+        text = text,
+        style = ThemeText.detail.style,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier =
+            Modifier
+                .padding(horizontal = ThemeSpace.group, vertical = ThemeSpace.inline)
+                .semantics { heading() },
+    )
 }
 
 /** The menu's corners. */

@@ -14,15 +14,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import fm.bae.app.R
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidDivider
 import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.AndroidMenu
+import fm.bae.app.ui.components.AndroidMenuHeading
 import uniffi.bae_bridge.BridgeArtistSortCriterion
 import uniffi.bae_bridge.BridgeArtistSortField
 import uniffi.bae_bridge.BridgeComposerSortCriterion
@@ -115,15 +114,7 @@ internal fun LibraryMoreMenuItems(
     onShuffleLibrary: () -> Unit,
 ) {
     val close = { state.openMenu = null }
-    Text(
-        text = stringResource(R.string.sort_by),
-        style = ThemeText.detail.style,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier =
-            Modifier
-                .padding(horizontal = ThemeSpace.group, vertical = ThemeSpace.inline)
-                .semantics { heading() },
-    )
+    AndroidMenuHeading(stringResource(R.string.sort_by))
     ViewSortItems(state = state, close = close)
     AndroidDivider(modifier = Modifier.padding(vertical = ThemeSpace.related))
     DropdownMenuItem(
