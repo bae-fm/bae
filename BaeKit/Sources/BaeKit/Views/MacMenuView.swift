@@ -1,18 +1,17 @@
 #if canImport(AppKit)
     import SwiftUI
 
-    /// Sizes of a bae menu, from the design system's `MacMenu`: a face 12
-    /// points rounded with 6 points of padding, items 24 points tall, a
-    /// divider 11 points tall.
+    /// Sizes of a bae menu: a face 12 points rounded with 6 points of
+    /// padding, items 22 points tall as a native menu's rows are, a divider
+    /// 11 points tall.
     enum MacMenuMetrics {
         static let padding: CGFloat = 6
         static let cornerRadius: CGFloat = 12
         static let itemCornerRadius: CGFloat = 6
-        static let itemHeight: CGFloat = 24
+        static let itemHeight: CGFloat = 22
         static let headerHeight: CGFloat = 22
         static let dividerHeight: CGFloat = 11
         static let markWidth: CGFloat = 11
-        static let minWidth: CGFloat = 190
         /// Room around the face, for its shadow.
         static let shadowRoom: CGFloat = 24
         /// From the face's left edge to its items' words.
@@ -94,10 +93,6 @@
                 }
             }
             .padding(MacMenuMetrics.padding)
-            .frame(
-                minWidth: isPopUp ? 0 : MacMenuMetrics.minWidth,
-                alignment: .leading
-            )
             .fixedSize()
             // The shadow belongs to the face's shape alone: on the whole
             // face it would blur the highlighted line's shadow into the
