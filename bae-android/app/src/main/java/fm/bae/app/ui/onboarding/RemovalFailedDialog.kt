@@ -8,6 +8,7 @@ import fm.bae.app.title
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.DialogParts
+import fm.bae.app.ui.components.WIDE_DIALOG_WIDTH
 import uniffi.bae_bridge.BridgeLibrary
 
 /**
@@ -39,6 +40,7 @@ internal fun removalFailedParts(
     val title = stringResource(R.string.library_remove_failed_title, library.title())
     return if (error.offersRetry) {
         DialogParts(
+            width = WIDE_DIALOG_WIDTH,
             title = title,
             message = error.line,
             action = DialogAction(stringResource(R.string.retry), onRetry),
@@ -46,6 +48,7 @@ internal fun removalFailedParts(
         )
     } else {
         DialogParts(
+            width = WIDE_DIALOG_WIDTH,
             title = title,
             message = error.line,
             action = DialogAction(stringResource(android.R.string.ok), onCancel),

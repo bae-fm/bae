@@ -31,6 +31,7 @@ import fm.bae.app.ui.components.AndroidSpinner
 import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.DialogParts
 import fm.bae.app.ui.components.NoticeLook
+import fm.bae.app.ui.components.WIDE_DIALOG_WIDTH
 import fm.bae.app.ui.rememberScreenScope
 import fm.bae.screensubscription.ScreenSubscription
 import fm.bae.screensubscription.pulled
@@ -240,6 +241,7 @@ internal fun addDeviceParts(
         addDeviceRequestParts(face, error, onApprove, onDecline)
     } else {
         DialogParts(
+            width = WIDE_DIALOG_WIDTH,
             title = stringResource(R.string.add_device_title),
             content = { AddDeviceBody(adding = adding, face = face, error = error) },
             action = DialogAction(stringResource(R.string.done), onDismiss),
@@ -255,6 +257,7 @@ private fun addDeviceRequestParts(
     onDecline: () -> Unit,
 ): DialogParts =
     DialogParts(
+        width = WIDE_DIALOG_WIDTH,
         title = stringResource(R.string.join_request_title, request.deviceName),
         message = stringResource(R.string.add_device_request_match),
         content = {

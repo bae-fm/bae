@@ -152,7 +152,7 @@ internal val SYSTEM_APPEARANCE =
 
 /**
  * A dialog's [parts] drawn in place, as its window would show them: over [behind], dimmed by the scrim, centred on
- * the phone, with title, message, content and buttons on the dialog's surface, 312 dp wide unless it gives a width, 16 apart with the buttons 24 below
+ * the phone, with title, message, content and buttons on the dialog's surface, as wide as it says, 16 apart with the buttons 24 below
  * the content, as the design system's dialog sets them. With [keyboardUp], a field has focus: the keyboard's inset
  * holds the bottom of the screen, and the page and the dialog fit in the space above it, as the board's keyboard
  * leaves them.
@@ -181,12 +181,12 @@ internal fun InPlaceDialogScene(
 }
 
 /**
- * A dialog's [parts] on the dialog's surface, 312 dp wide unless it gives a width, 16 apart with the buttons 24 below the content, as the
+ * A dialog's [parts] on the dialog's surface, as wide as it says, 16 apart with the buttons 24 below the content, as the
  * design system's dialog sets them.
  */
 @Composable
 internal fun InPlaceDialog(parts: DialogParts) {
-    DialogSurface(modifier = Modifier.width(parts.width ?: DIALOG_WIDTH)) {
+    DialogSurface(modifier = Modifier.width(parts.width)) {
         // Material's dialog sets its content's text in bodyMedium, so unstyled text in [parts] draws as it does there.
         ProvideTextStyle(MaterialTheme.typography.bodyMedium) {
             Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(ThemeSpace.edge)) {
@@ -222,9 +222,6 @@ internal fun DialogInCell(parts: DialogParts) {
 internal fun KeyboardScene(content: @Composable () -> Unit) {
     ScreenScene { Box(modifier = Modifier.fillMaxSize().padding(bottom = KEYBOARD_HEIGHT)) { content() } }
 }
-
-/** The design system's dialog width, padding included, when a dialog gives none. */
-private val DIALOG_WIDTH = 312.dp
 
 /** What the count of History says about whose plays it shows: [shown], and the library's two other people to choose. */
 internal fun historyChoice(shown: BridgeHistoryShown) =

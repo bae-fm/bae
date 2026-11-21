@@ -37,6 +37,7 @@ import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.ErrorAction
+import fm.bae.app.ui.components.NARROW_DIALOG_WIDTH
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.ScreenFailureNotice
 import fm.bae.app.ui.components.StatusTone
@@ -61,6 +62,7 @@ internal fun DeviceResetDialog(
     AndroidDialog(
         onDismissRequest = onDismiss,
         title = stringResource(R.string.reset_device_confirm_title),
+        width = NARROW_DIALOG_WIDTH,
         message = LocalContext.current.coreString(prepared.warningKey),
         action = DialogAction(stringResource(R.string.reset_device_confirm), onConfirm, destructive = true),
         dismiss = DialogAction(stringResource(R.string.cancel), onDismiss),

@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindowProvider
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
@@ -42,6 +43,15 @@ fun DialogHead(
         }
     }
 }
+
+/** The width, padding included, that the design system gives a dialog whose board states none. */
+private val DIALOG_WIDTH = 312.dp
+
+/** The width, padding included, that the boards give most dialogs that state one. */
+internal val WIDE_DIALOG_WIDTH = 340.dp
+
+/** The width, padding included, that the boards of a device removal and a device reset give their dialogs. */
+internal val NARROW_DIALOG_WIDTH = 320.dp
 
 /**
  * One button of a dialog's last row: its [label], what a tap does, and whether it takes a tap now. An
@@ -101,13 +111,13 @@ internal class DialogParts(
     val title: String? = null,
     val message: String? = null,
     val content: @Composable (() -> Unit)? = null,
-    val width: Dp? = null,
+    val width: Dp = DIALOG_WIDTH,
 )
 
 /**
  * Material's [AlertDialog] with the line under the title set as the dialog's
  * [message] (see [DialogHead]); [content] is whatever follows it, and [AndroidDialogActions] ends it. A
- * dialog is [width] wide when one is given, else as wide as Material makes it for what it holds.
+ * dialog is [width] wide, padding included, which is 312 unless a board draws it otherwise.
  */
 @Composable
 internal fun AndroidDialog(
@@ -117,7 +127,7 @@ internal fun AndroidDialog(
     title: String? = null,
     message: String? = null,
     content: @Composable (() -> Unit)? = null,
-    width: Dp? = null,
+    width: Dp = DIALOG_WIDTH,
 ) {
     AndroidDialog(onDismissRequest, DialogParts(action, dismiss, title, message, content, width))
 }
@@ -130,7 +140,7 @@ internal fun AndroidDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismissRequest,
-        modifier = parts.width?.let { Modifier.width(it) } ?: Modifier,
+        modifier = Modifier.width(parts.width),
         title =
             if (parts.title != null || parts.message != null) ({ DialogHead(parts.title, parts.message) }) else null,
         text = parts.content,

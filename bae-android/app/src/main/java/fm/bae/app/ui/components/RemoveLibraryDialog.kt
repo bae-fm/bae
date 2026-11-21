@@ -49,6 +49,7 @@ internal fun removeLibraryParts(
 ): DialogParts {
     val words = removalWords(library, loss)
     return DialogParts(
+        width = WIDE_DIALOG_WIDTH,
         title = words.title,
         message = words.lead,
         content = words.rest,

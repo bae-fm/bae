@@ -30,6 +30,7 @@ import fm.bae.app.ui.components.AndroidStorageUsage
 import fm.bae.app.ui.components.AndroidSwitch
 import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.DialogParts
+import fm.bae.app.ui.components.WIDE_DIALOG_WIDTH
 import fm.bae.app.ui.components.storageUsageSegments
 import uniffi.bae_bridge.BridgeCacheLimit
 import uniffi.bae_bridge.BridgeCacheLimitChoice
@@ -192,6 +193,7 @@ internal fun deleteBeforeResetParts(
     onDismiss: () -> Unit,
 ): DialogParts =
     DialogParts(
+        width = WIDE_DIALOG_WIDTH,
         title = stringResource(R.string.storage_delete_before_reset_title),
         message = stringResource(R.string.storage_delete_before_reset_body, rememberByteFormat()(bytes)),
         action = DialogAction(stringResource(R.string.storage_delete), onConfirm, destructive = true),

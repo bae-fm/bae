@@ -38,6 +38,7 @@ import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.NoticeLook
+import fm.bae.app.ui.components.WIDE_DIALOG_WIDTH
 import fm.bae.app.ui.downloads.DownloadProgress
 import fm.bae.app.ui.downloads.PinQueuedText
 import fm.bae.fastvalues.LatestSource
@@ -246,6 +247,7 @@ internal fun UnpinDialog(
 ) {
     var dontShowAgain by remember { mutableStateOf(false) }
     AndroidDialog(
+        width = WIDE_DIALOG_WIDTH,
         onDismissRequest = onDismiss,
         title = stringResource(R.string.unpin_confirm_title),
         message = stringResource(R.string.unpin_confirm_body),

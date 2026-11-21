@@ -14,6 +14,7 @@ import fm.bae.app.ui.components.AndroidTextField
 import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.DialogParts
 import fm.bae.app.ui.components.NoticeLook
+import fm.bae.app.ui.components.WIDE_DIALOG_WIDTH
 import fm.bae.app.ui.components.focusOnShow
 import uniffi.bae_bridge.BridgeSharing
 
@@ -38,6 +39,7 @@ internal fun playlistDialogParts(
     onDismiss: () -> Unit,
 ): DialogParts =
     DialogParts(
+        width = WIDE_DIALOG_WIDTH,
         title = title,
         content = {
             Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.group)) {

@@ -6,6 +6,7 @@ import fm.bae.app.R
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.DialogParts
+import fm.bae.app.ui.components.WIDE_DIALOG_WIDTH
 import uniffi.bae_bridge.BridgeLibrary
 
 /**
@@ -28,6 +29,7 @@ private fun discardInstallationParts(
     onDismiss: () -> Unit,
 ): DialogParts =
     DialogParts(
+        width = WIDE_DIALOG_WIDTH,
         title = stringResource(R.string.onboarding_discard_join_title),
         message = stringResource(R.string.onboarding_discard_join_message),
         action = DialogAction(stringResource(R.string.onboarding_discard_join_confirm), onConfirm, destructive = true),

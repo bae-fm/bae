@@ -15,7 +15,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.playback.NowPlaying
@@ -25,10 +24,9 @@ import fm.bae.app.ui.components.AndroidCheckbox
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.DialogParts
+import fm.bae.app.ui.components.WIDE_DIALOG_WIDTH
 import fm.bae.app.ui.rememberCountdownLine
 import uniffi.bae_bridge.BridgeCountdown
-
-private val SIDE_PAUSE_DIALOG_WIDTH = 340.dp
 
 /**
  * The prompt core raises when playback pauses at the end of a side or disc; its
@@ -88,8 +86,8 @@ internal fun sidePauseParts(
 ): DialogParts {
     val context = LocalContext.current
     return DialogParts(
+        width = WIDE_DIALOG_WIDTH,
         title = title,
-        width = SIDE_PAUSE_DIALOG_WIDTH,
         message = context.coreString("core.playback.pause.message"),
         content = {
             Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {

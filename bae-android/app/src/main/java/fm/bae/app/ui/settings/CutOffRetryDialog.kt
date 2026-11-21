@@ -6,6 +6,7 @@ import fm.bae.app.R
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.DialogParts
+import fm.bae.app.ui.components.NARROW_DIALOG_WIDTH
 import uniffi.bae_bridge.BridgeDeviceCutOff
 
 /** The cut-off confirmation changed nothing: a request to the provider ran, or the removal hasn't arrived yet. */
@@ -29,6 +30,7 @@ internal fun cutOffRetryParts(
 ): DialogParts {
     val notGone = reason == BridgeDeviceCutOff.DEVICE_NOT_GONE
     return DialogParts(
+        width = NARROW_DIALOG_WIDTH,
         title =
             stringResource(
                 if (notGone) R.string.device_cut_off_not_gone_title else R.string.device_cut_off_running_title,

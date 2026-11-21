@@ -1,8 +1,8 @@
 package fm.bae.app.shots
 
-import androidx.compose.ui.unit.dp
 import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.DialogParts
+import fm.bae.app.ui.components.WIDE_DIALOG_WIDTH
 import org.junit.Test
 
 /** The component shots of `AndroidDialog`, one for each row of its preview. */
@@ -17,7 +17,7 @@ class AndroidDialogShots : BoardShot() {
                     message = "The library will remain in the cloud and on your other devices.",
                     dismiss = DialogAction("Cancel", {}),
                     action = DialogAction("Remove", {}),
-                    width = 340.dp,
+                    width = WIDE_DIALOG_WIDTH,
                 ),
             )
         }

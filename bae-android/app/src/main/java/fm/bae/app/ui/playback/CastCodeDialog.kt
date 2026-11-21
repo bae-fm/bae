@@ -10,7 +10,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.data.CastStart
@@ -22,14 +21,12 @@ import fm.bae.app.ui.components.AndroidTextField
 import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.DialogParts
 import fm.bae.app.ui.components.TextFieldKind
+import fm.bae.app.ui.components.WIDE_DIALOG_WIDTH
 import fm.bae.app.ui.components.focusOnShow
 import uniffi.bae_bridge.BridgeAirPlayCode
 import uniffi.bae_bridge.BridgeAirPlayCodeRequest
 import uniffi.bae_bridge.bridgeAirplayCodeFieldKey
 import uniffi.bae_bridge.bridgeAirplayCodeMessageKey
-
-/** The pairing dialog's width, as the boards draw it. */
-private val DIALOG_WIDTH = 340.dp
 
 /**
  * The dialog that asks for the PIN or password an AirPlay receiver wants while a cast to it connects, over
@@ -102,9 +99,9 @@ internal fun castCodeDialogParts(
     val full = if (digits != null) code.length == digits else code.isNotEmpty()
     val canPair = !pairing && full
     return DialogParts(
+        width = WIDE_DIALOG_WIDTH,
         title = stringResource(R.string.cast_pair_with, receiver),
         message = message,
-        width = DIALOG_WIDTH,
         content = {
             Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
                 // The field takes the keyboard as the dialog opens.

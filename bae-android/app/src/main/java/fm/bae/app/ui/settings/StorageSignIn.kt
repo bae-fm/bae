@@ -21,6 +21,7 @@ import fm.bae.app.ui.components.AndroidS3KeyFields
 import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.DialogParts
 import fm.bae.app.ui.components.NoticeLook
+import fm.bae.app.ui.components.WIDE_DIALOG_WIDTH
 import fm.bae.app.ui.components.focusOnShow
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -255,6 +256,7 @@ internal fun s3KeyDialogParts(
 ): DialogParts {
     val checking = sheet == S3KeyReplacement.Sheet.Checking
     return DialogParts(
+        width = WIDE_DIALOG_WIDTH,
         title = stringResource(R.string.s3_key_title),
         message = stringResource(R.string.s3_key_message),
         content = {

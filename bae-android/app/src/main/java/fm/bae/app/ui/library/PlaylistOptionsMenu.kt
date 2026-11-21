@@ -17,6 +17,7 @@ import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.AndroidMenu
 import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.DialogParts
+import fm.bae.app.ui.components.WIDE_DIALOG_WIDTH
 
 /** The playlist's own actions, at the end of the page's bar: Edit playlist… and Delete playlist…. */
 @Composable
@@ -71,6 +72,7 @@ internal fun deletePlaylistParts(
     onDismiss: () -> Unit,
 ): DialogParts =
     DialogParts(
+        width = WIDE_DIALOG_WIDTH,
         title = stringResource(R.string.playlist_delete_title, name),
         message = stringResource(R.string.playlist_delete_message),
         action = DialogAction(stringResource(R.string.playlist_delete_confirm), onConfirm, destructive = true),

@@ -25,6 +25,8 @@ import fm.bae.app.ui.components.AndroidMatchCode
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.DialogParts
+import fm.bae.app.ui.components.NARROW_DIALOG_WIDTH
+import fm.bae.app.ui.components.WIDE_DIALOG_WIDTH
 import uniffi.bae_bridge.BridgeActiveDevice
 import uniffi.bae_bridge.BridgeDeviceCutOff
 import uniffi.bae_bridge.BridgeInvite
@@ -280,6 +282,7 @@ private fun SignOutDialog(
     AndroidDialog(
         onDismissRequest = onDismiss,
         title = stringResource(R.string.device_removed_title),
+        width = NARROW_DIALOG_WIDTH,
         content = {
             Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
                 if (instruction is BridgeProviderSignOut.RemoveAppAccess) {
@@ -358,6 +361,7 @@ internal fun joinRequestParts(
     onDecline: () -> Unit,
 ): DialogParts =
     DialogParts(
+        width = WIDE_DIALOG_WIDTH,
         title = stringResource(R.string.join_request_title, name),
         message = stringResource(R.string.join_request_match),
         content = { AndroidMatchCode(confirmation, dialog = true) },

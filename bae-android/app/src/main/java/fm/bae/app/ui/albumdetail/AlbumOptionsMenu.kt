@@ -17,6 +17,7 @@ import fm.bae.app.ui.components.AndroidDivider
 import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.AndroidMenu
 import fm.bae.app.ui.components.DialogAction
+import fm.bae.app.ui.components.WIDE_DIALOG_WIDTH
 
 /**
  * The album's own actions, at the end of the page's bar: [onSetPrimaryRelease] makes the release in view
@@ -59,6 +60,7 @@ internal fun DeleteAlbumDialog(
     onDismiss: () -> Unit,
 ) {
     AndroidDialog(
+        width = WIDE_DIALOG_WIDTH,
         onDismissRequest = onDismiss,
         title = stringResource(R.string.delete_album_confirm_title),
         message = stringResource(R.string.delete_album_confirm_body),

@@ -35,6 +35,7 @@ import fm.bae.app.ui.components.AndroidScanCode
 import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.DialogParts
 import fm.bae.app.ui.components.NoticeLook
+import fm.bae.app.ui.components.WIDE_DIALOG_WIDTH
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeInvite
@@ -128,6 +129,7 @@ internal fun cancelInviteParts(
         }
     val wontUse = stringResource(R.string.invite_cancel_message, invite.label)
     return DialogParts(
+        width = WIDE_DIALOG_WIDTH,
         title = context.coreString("core.invite.cancel_confirm.title"),
         message = if (forgetLine == null) wontUse else "$wontUse\n\n$forgetLine",
         action = DialogAction(stringResource(R.string.invite_cancel), onConfirm),
@@ -181,6 +183,7 @@ internal fun inviteCodeParts(
     // Offline with nothing held: the dialog says the code waits, in place of a bar.
     val waitingOffline = offline && invite.shown is BridgeInviteShown.Granting && invite.held == null
     return DialogParts(
+        width = WIDE_DIALOG_WIDTH,
         title = title,
         message =
             if (waitingOffline) {

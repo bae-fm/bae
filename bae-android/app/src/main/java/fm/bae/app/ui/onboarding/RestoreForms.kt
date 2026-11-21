@@ -33,6 +33,7 @@ import fm.bae.app.ui.components.AndroidS3KeyFields
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.NoticeLook
+import fm.bae.app.ui.components.WIDE_DIALOG_WIDTH
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeS3Credentials
 
@@ -119,6 +120,7 @@ internal fun S3KeyDialog(
     onBack: () -> Unit,
 ) {
     AndroidDialog(
+        width = WIDE_DIALOG_WIDTH,
         onDismissRequest = onBack,
         title = stringResource(R.string.s3_key_title),
         message = stringResource(R.string.onboarding_s3_key_prompt),

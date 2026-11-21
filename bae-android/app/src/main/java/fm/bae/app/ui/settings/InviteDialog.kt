@@ -37,6 +37,7 @@ import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.DialogParts
 import fm.bae.app.ui.components.NoticeLook
+import fm.bae.app.ui.components.WIDE_DIALOG_WIDTH
 import fm.bae.app.ui.components.closerToAbove
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
@@ -180,6 +181,7 @@ internal fun inviteFormParts(
 ): DialogParts {
     val access = storage?.let(input::access)
     return DialogParts(
+        width = WIDE_DIALOG_WIDTH,
         title = stringResource(R.string.invite_person_title),
         content = { AndroidInviteFields(storage = storage, input = input, error = error) },
         action =

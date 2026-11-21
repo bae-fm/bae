@@ -7,6 +7,7 @@ import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidTextField
 import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.TextFieldKind
+import fm.bae.app.ui.components.WIDE_DIALOG_WIDTH
 
 /** The fixed wording of a [PasteCodeDialog], distinct per code it accepts. */
 class PasteDialogText(
@@ -25,6 +26,7 @@ fun PasteCodeDialog(
     onDismiss: () -> Unit,
 ) {
     AndroidDialog(
+        width = WIDE_DIALOG_WIDTH,
         onDismissRequest = onDismiss,
         title = text.title,
         message = text.instructions,
