@@ -46,19 +46,45 @@ private const val TAG = "AndroidQRScanner"
 private const val NANOS_PER_MILLI = 1_000_000L
 private const val SUMMARY_INTERVAL_NANOS = 1_000 * NANOS_PER_MILLI
 
+/**
+ * The scan screen: [camera] fills it and the overlay sits at its foot. [camera] calls the function it is given
+ * with each code it reads; the screen passes the first of them on to [onScanned]. The default is the device's
+ * camera, and a shot passes a stand-in for the picture.
+ */
 @Composable
 fun AndroidQRScanner(
     onScanned: (String) -> Unit,
     onDismiss: () -> Unit,
     instructions: String? = stringResource(R.string.qr_scanner_instructions),
+    camera: @Composable (onRead: (String) -> Unit) -> Unit = { QRCameraPreview(it) },
 ) {
-    val context = LocalContext.current
-    val bugs = LocalBugReports.current
-    val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
     // The camera view is built once, so its callback reads the latest
     // onScanned and the remembered flag rather than the first composition's.
     val currentOnScanned by rememberUpdatedState(onScanned)
     var scanned by remember { mutableStateOf(false) }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        camera {
+            if (!scanned) {
+                scanned = true
+                currentOnScanned(it)
+            }
+        }
+        AndroidQRScannerOverlay(
+            modifier = Modifier.align(Alignment.BottomCenter),
+            instructions = instructions,
+            onDismiss = onDismiss,
+        )
+    }
+}
+
+/** The device's back camera, which reads QR codes from its frames. */
+@Composable
+private fun QRCameraPreview(onRead: (String) -> Unit) {
+    val context = LocalContext.current
+    val bugs = LocalBugReports.current
+    val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
+    val currentOnRead by rememberUpdatedState(onRead)
     // ZXing decodes synchronously, so frames are analyzed off the main thread;
     // only that thread touches the decoder.
     val analysisExecutor =
@@ -68,29 +94,17 @@ fun AndroidQRScanner(
         }
     val decoder = remember { QrFrameDecoder() }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        AndroidView(
-            factory = { ctx ->
-                createQRPreviewView(
-                    context = ctx,
-                    cameraProviderFuture = cameraProviderFuture,
-                    analysisExecutor = analysisExecutor,
-                    decoder = decoder,
-                ) {
-                    if (!scanned) {
-                        scanned = true
-                        currentOnScanned(it)
-                    }
-                }
-            },
-            modifier = Modifier.fillMaxSize(),
-        )
-        AndroidQRScannerOverlay(
-            modifier = Modifier.align(Alignment.BottomCenter),
-            instructions = instructions,
-            onDismiss = onDismiss,
-        )
-    }
+    AndroidView(
+        factory = { ctx ->
+            createQRPreviewView(
+                context = ctx,
+                cameraProviderFuture = cameraProviderFuture,
+                analysisExecutor = analysisExecutor,
+                decoder = decoder,
+            ) { currentOnRead(it) }
+        },
+        modifier = Modifier.fillMaxSize(),
+    )
 
     DisposableEffect(Unit) {
         onDispose {
@@ -222,9 +236,8 @@ private class QrFrameTally(
     }
 }
 
-/** The instructions and Cancel over the camera's picture, which the scanner draws behind them. */
 @Composable
-internal fun AndroidQRScannerOverlay(
+private fun AndroidQRScannerOverlay(
     modifier: Modifier,
     instructions: String?,
     onDismiss: () -> Unit,
