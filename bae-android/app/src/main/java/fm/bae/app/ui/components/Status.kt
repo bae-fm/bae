@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -189,14 +190,26 @@ internal fun NoticeFrame(
                             Modifier.padding(ThemeSpace.group)
                         },
                     ),
-            lead = if (tone.icon != null) ({ StatusGlyph(tone, size = NoticeGlyphSize) }) else null,
+            lead = if (tone.icon != null) ({ NoticeGlyph(tone) }) else null,
+            leadAlignment = Alignment.TopCenter,
             content = content,
         )
     }
 }
 
-/** A notice's glyph is 1.19 times the height of its text. */
-private val NoticeGlyphSize: Dp = (ThemeText.body.style.fontSize.value * 1.19f).dp
+/** The ring of a notice's glyph is 15dp across, as its board draws it. */
+private val NoticeGlyphSize: Dp = 15.dp
+
+/** Material's status icons fill 20 of the 24 units of their box, so the icon's box is 1.2 times its ring. */
+private val NoticeGlyphBox: Dp = NoticeGlyphSize * 1.2f
+
+/** The tone's glyph with its ring [NoticeGlyphSize] across, in a box of that width. */
+@Composable
+private fun NoticeGlyph(tone: StatusTone) {
+    Box(Modifier.size(NoticeGlyphSize), contentAlignment = Alignment.Center) {
+        StatusGlyph(tone, modifier = Modifier.requiredSize(NoticeGlyphBox), size = NoticeGlyphBox)
+    }
+}
 
 /** Where a notice's words start, past its glyph: what a list of notices insets its dividers by. */
 internal val NoticeTextInset = NoticeGlyphSize + ThemeSpace.related
@@ -211,6 +224,7 @@ internal fun AndroidItem(
     modifier: Modifier = Modifier,
     lead: (@Composable BoxScope.() -> Unit)? = null,
     trail: (@Composable BoxScope.() -> Unit)? = null,
+    leadAlignment: Alignment = Alignment.Center,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Row(
@@ -218,7 +232,7 @@ internal fun AndroidItem(
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
-        lead?.let { FirstLine(content = it) }
+        lead?.let { FirstLine(alignment = leadAlignment, content = it) }
         Column(modifier = Modifier.weight(1f), content = content)
         trail?.let { FirstLine(content = it) }
     }
@@ -229,14 +243,17 @@ internal fun AndroidItem(
  * trail of an [AndroidItem] sit in one, on the first line of its text.
  */
 @Composable
-internal fun FirstLine(content: @Composable BoxScope.() -> Unit) {
+internal fun FirstLine(
+    alignment: Alignment = Alignment.Center,
+    content: @Composable BoxScope.() -> Unit,
+) {
     val measurer = rememberTextMeasurer()
     val style = ThemeText.body.style
     val lineHeight =
         with(LocalDensity.current) {
             remember(measurer, style) { measurer.measure("A", style).size.height }.toDp()
         }
-    Box(Modifier.height(lineHeight), contentAlignment = Alignment.Center) {
+    Box(Modifier.height(lineHeight), contentAlignment = alignment) {
         Box(Modifier.wrapContentHeight(unbounded = true), content = content)
     }
 }
