@@ -15,9 +15,11 @@ import org.junit.Assume.assumeNotNull
 import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.rules.TestName
+import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.io.File
+import kotlin.math.ceil
 
 /**
  * A board's shot: the real composable drawn at a current phone size in the boards' look (dark, Midnight,
@@ -51,7 +53,22 @@ abstract class BoardShot {
         assumeNotNull(System.getProperty("bae.shotsDir"))
         assumeTrue("board '$id' is not selected", isSelected(id, System.getProperty("bae.shotsSelect")))
         val size = checkNotNull(BoardSizes.of(id)) { "the board sizes list none for '$id'" }
+        sizeWindowTo(size)
         shot(id) { ComponentScene(size, content) }
+    }
+
+    /**
+     * Gives the activity a window as wide and as tall as [size], the board's preview cell, so a view that fills
+     * the cell (a dialog centred in it, a sheet at its foot) sits where its board draws it, even when the cell is
+     * wider than the phone.
+     */
+    private fun sizeWindowTo(size: DpSize) {
+        val width = ceil(size.width.value).toInt()
+        val height = ceil(size.height.value).toInt()
+        // Robolectric swaps the two when the orientation it infers disagrees with them, so the orientation is named.
+        val orientation = if (width > height) "land" else "port"
+        RuntimeEnvironment.setQualifiers("+w${width}dp-h${height}dp-$orientation")
+        compose.activityRule.scenario.recreate()
     }
 
     /** Draws [content] as [board]. */
