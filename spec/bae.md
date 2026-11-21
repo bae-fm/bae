@@ -5883,7 +5883,9 @@ first screen's list (§6.4).
 
 For an admin, a **Ratings** section follows, with an **Albums** and a
 **Tracks** pop-up, each *Stars*, *Heart* or *None*, and the note "Applies to
-everyone in this library". A member's Library settings has no Ratings section.
+everyone in this library". A member's Library settings shows the same section
+with each system as a plain value, as the **Name** row shows the name, and no
+pop-up.
 
 On Android, Settings has one **Library** row that opens the Library page. Its
 card holds **Name**, with an edit mark and *Rename* for an admin, **Sync**
@@ -5894,7 +5896,8 @@ another library on this device under the Library row.
 For an admin, the Library page has a **Ratings** card under it, with an
 **Albums** and a **Tracks** row, each showing its system and opening *Stars*,
 *Heart* or *None*, and the note "Applies to everyone in this library". A
-member's Library page has no Ratings card.
+member's Library page shows the same card with each system as a plain value,
+and its rows open nothing.
 
 ### 9.6 Errors
 
