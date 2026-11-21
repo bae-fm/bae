@@ -52,16 +52,23 @@
 .bae-a-code-digits { font: 500 40px/48px var(--font-android); letter-spacing: 3px; color: var(--text-primary); }
 .bae-a-code-dialog, .bae-m-code-dialog { padding-top: var(--space-related); }
 .bae-a-code-dialog .bae-a-code-digits { font-size: 32px; line-height: 40px; letter-spacing: 2px; }
-.bae-a-btn { height: 40px; padding: 0 var(--space-section); border-radius: 20px; border: 0; font: 500 14px var(--font-android); cursor: pointer; white-space: nowrap; }
+/* Every button takes Material's 48dp touch target as its height; its 40dp shape (fill or outline) sits inside it, drawn by ::before. */
+.bae-a-btn { position: relative; isolation: isolate; height: 48px; padding: 0 var(--space-section); border-radius: 20px; border: 0; background: none; font: 500 14px var(--font-android); cursor: pointer; white-space: nowrap; }
+.bae-a-btn::before { content: ''; position: absolute; z-index: -1; inset: 4px 0; border-radius: inherit; }
 .bae-a-btn-icon { display: inline-flex; align-items: center; gap: 8px; fill: currentColor; }
 .bae-a-btn-large { height: 48px; border-radius: 24px; font-size: 15px; }
-.bae-a-btn-filled { background: var(--accent-selection); color: var(--on-fill); }
-.bae-a-btn-filled.bae-a-btn-destructive { background: var(--danger); color: var(--background); }
+.bae-a-btn-large::before { inset: 0; }
+.bae-a-btn-filled { color: var(--on-fill); }
+.bae-a-btn-filled::before { background: var(--accent-selection); }
+.bae-a-btn-filled.bae-a-btn-destructive { color: var(--background); }
+.bae-a-btn-filled.bae-a-btn-destructive::before { background: var(--danger); }
 /* tonal: Material's filled tonal button, a raised fill with the screen's text: an action that stands alone (a failed view's Retry, Check now), where an outline reads as the lesser of two. */
-.bae-a-btn-tonal { background: var(--tile); color: var(--text-primary); }
-.bae-a-btn-outlined { background: none; color: var(--text-primary); box-shadow: inset 0 0 0 1px var(--text-secondary); }
-/* A text button takes Material's 48dp touch target as its height, with its words centred in it; it draws no box, so the 40dp shape Material draws on press never shows on a board. */
-.bae-a-btn-text { height: 48px; padding: 0 12px; display: inline-flex; align-items: center; justify-content: center; background: none; color: var(--accent); border-radius: 20px; }
+.bae-a-btn-tonal { color: var(--text-primary); }
+.bae-a-btn-tonal::before { background: var(--tile); }
+.bae-a-btn-outlined { color: var(--text-primary); }
+.bae-a-btn-outlined::before { box-shadow: inset 0 0 0 1px var(--text-secondary); }
+/* A text button draws no shape, so the 40dp shape Material draws on press never shows on a board; its words sit centred in the 48dp. */
+.bae-a-btn-text { padding: 0 12px; display: inline-flex; align-items: center; justify-content: center; color: var(--accent); }
 .bae-a-btn-text.bae-a-btn-destructive, .bae-a-btn-outlined.bae-a-btn-destructive { color: var(--danger); }
 /* neutral: a text button in the screen's own text colour, for Cancel beside a destructive action, so the accent and danger never sit side by side. */
 .bae-a-btn-text.bae-a-btn-neutral { color: var(--text-primary); }
@@ -69,8 +76,8 @@
 .bae-a-btn-align-field { align-self: flex-start; margin-left: calc(var(--space-edge) - 12px); }
 /* Material's disabled button: the words in the screen's text at 38%, a filled or tonal button's fill and an outline in it at 12%, whatever the kind or tone. */
 .bae-a-btn:disabled { cursor: default; color: color-mix(in srgb, var(--text-primary) 38%, transparent); }
-.bae-a-btn-filled:disabled, .bae-a-btn-tonal:disabled { background: color-mix(in srgb, var(--text-primary) 12%, transparent); }
-.bae-a-btn-outlined:disabled { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text-primary) 12%, transparent); }
+.bae-a-btn-filled:disabled::before, .bae-a-btn-tonal:disabled::before { background: color-mix(in srgb, var(--text-primary) 12%, transparent); }
+.bae-a-btn-outlined:disabled::before { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text-primary) 12%, transparent); }
 
 .bae-a-iconbtn { width: 48px; height: 48px; flex: none; display: flex; align-items: center; justify-content: center; background: none; border: 0; border-radius: 24px; padding: 0; fill: var(--text-primary); cursor: pointer; }
 .bae-a-inlineicon { flex: none; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; }
@@ -81,7 +88,8 @@
 .bae-a-switch-on { background: var(--accent); box-shadow: none; }
 .bae-a-switch-on .bae-a-switch-thumb { left: 24px; top: 4px; width: 24px; height: 24px; background: var(--background); }
 
-.bae-a-field { display: flex; flex-direction: column; gap: var(--space-inline); text-align: start; font-family: var(--font-android); }
+/* The field's top 8dp holds the label that sits on the box's top edge, as Material lays an outlined field out 64dp tall. */
+.bae-a-field { display: flex; flex-direction: column; gap: var(--space-inline); padding-top: 8px; text-align: start; font-family: var(--font-android); }
 .bae-a-field-box { position: relative; display: block; border-radius: 4px; box-shadow: inset 0 0 0 1px var(--text-secondary); }
 .bae-a-field-label { position: absolute; top: -9px; left: 12px; padding: 0 4px; background: var(--elevated); font-size: 12px; line-height: 16px; color: var(--text-secondary); }
 .bae-a-input { width: 100%; box-sizing: border-box; min-height: 56px; padding: 16px var(--space-edge); border: 0; outline: none; background: none; color: var(--text-primary); font: 400 16px/24px var(--font-android); }

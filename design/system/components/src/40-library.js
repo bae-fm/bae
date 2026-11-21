@@ -411,8 +411,9 @@
 
   // The playing track on Android: its cover beside its title and artist.
   function AndroidNowPlayingTrack(props) {
-    return h('div', { className: 'bae-a-np-info' }, h(Artwork, { title: props.album || props.title, size: 48, radius: 6, missing: props.noCover }),
-      h('div', { className: 'bae-a-np-text' }, h('div', { className: 'bae-a-np-title' }, props.title), h('div', { className: 'bae-a-np-sub' }, props.artist)));
+    // One button that opens the full player, named as TalkBack reads the merged track.
+    return h('button', { type: 'button', className: 'bae-a-np-info', 'aria-label': props.artist ? 'Now playing, ' + props.title + ' by ' + props.artist : props.title }, h(Artwork, { title: props.album || props.title, size: 48, radius: 6, missing: props.noCover }),
+      h('div', { className: 'bae-a-np-text', 'aria-hidden': true }, h('div', { className: 'bae-a-np-title' }, props.title), h('div', { className: 'bae-a-np-sub' }, props.artist)));
   }
 
   // Previous, play and pause, next. `large` is the full player's: bigger buttons, spread across the sheet; `waiting` draws the arc around play while the track waits on storage.
