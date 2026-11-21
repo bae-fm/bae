@@ -19,7 +19,6 @@ struct PlaybackProgressView: View {
             onSeek: onSeek,
             onToggleRemainingTime: onToggleRemainingTime
         )
-        .accessibilityElement(children: .contain)
     }
 
     private var source: SeekBarSource? {
