@@ -48,13 +48,14 @@
       h('div', { className: 'bae-divider' }),
       props.empty ? h(MacContentUnavailable, { title: props.empty }) : h('div', { className: 'bae-m-isb-list' }, props.children));
   }
-  // The release a folder holds, as the import pane shows it beside its cover: the title (`placeholder` when the draft has none yet, in secondary text), the artist, the edition line (`edition`) and the copy line (`copy`).
+  // The release a folder holds, as the import pane shows it beside its cover: the title (`placeholder` when the draft has none yet, in secondary text), the artist, then the release lines: the edition line (`edition`), the copy line (`copy`) and the audio line (`audio`).
   function MacImportReleaseSummary(props) {
     return h('div', { className: 'bae-m-isummary' },
       h('div', { className: cx('bae-m-isummary-title', props.placeholder && 'bae-muted') }, props.placeholder ? 'Album title' : props.title),
       props.artist ? h('div', { className: 'bae-m-isummary-artist' }, props.artist) : null,
       props.edition ? h('div', { className: 'bae-m-isummary-facts' }, props.edition) : null,
-      props.copy ? h('div', { className: 'bae-m-isummary-audio' }, props.copy) : null);
+      props.copy ? h('div', { className: 'bae-m-isummary-audio' }, props.copy) : null,
+      props.audio ? h('div', { className: 'bae-m-isummary-audio' }, props.audio) : null);
   }
 
   // A way to answer a folder that waits on you, under the releases Identify found: a small button (`title`) over a line saying what it does (`subtitle`).
@@ -181,7 +182,7 @@
   function MacReleaseFields(props) {
     // A fact chosen from a menu shows its value as plain text, or the form's dash.
     var face = function (label, value) { return h('button', { type: 'button', role: 'combobox', 'aria-expanded': false, 'aria-label': label, className: cx('bae-plainbtn', !value && 'bae-m-tertiary') }, value || '—'); };
-    var field = function (label, value, mono) { return h(MacInlineField, { label: label, value: value, placeholder: '—', fit: true, mono: mono }); };
+    var field = function (label, value) { return h(MacInlineField, { label: label, value: value, placeholder: '—', fit: true }); };
     // A list kept one row per entry (labels, barcodes): its name on the first row only, each entry with ⊗, then Add on its own line under the last row; with none, Add alone beside the name.
     var rows = function (name, entries, draw, noun) {
       var addLine = addEntry('Add ' + name.toLowerCase(), false);
@@ -199,10 +200,10 @@
       : face('Country', props.country);
     var grid = [['Year', field('Year', props.year)], ['Media', mediaLine]]
       // `labels`: each label with the catalog number it gives the pressing, as "Name|Catalog", comma-separated.
-      .concat(rows('Label', list(props.labels), function (l) { var p = l.split('|'); return [h(React.Fragment, { key: 'n' }, field('Label', p[0])), h(React.Fragment, { key: 'c' }, field('Catalog number', p[1] || '', true))]; }, function (l) { var p = l.split('|'); return p[0] || p[1]; }))
+      .concat(rows('Label', list(props.labels), function (l) { var p = l.split('|'); return [h(React.Fragment, { key: 'n' }, field('Label', p[0])), h(React.Fragment, { key: 'c' }, field('Catalog number', p[1] || ''))]; }, function (l) { var p = l.split('|'); return p[0] || p[1]; }))
       .concat([['Country', country]])
       // `barcodes`: comma-separated, each a row.
-      .concat(rows('Barcode', list(props.barcodes), function (b) { return field('Barcode', b, true); }, function (b) { return b; }))
+      .concat(rows('Barcode', list(props.barcodes), function (b) { return field('Barcode', b); }, function (b) { return b; }))
       .concat([['Status', face('Status', props.status)], ['Packaging', face('Packaging', props.packaging)], ['Details', discogsDetails(list(props.details))]]);
     return h('div', { className: 'bae-m-relfields' },
       h(MacFormHeading, null, 'Release'),

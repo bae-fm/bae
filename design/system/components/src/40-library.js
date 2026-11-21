@@ -312,14 +312,15 @@
       })));
   }
 
-  // The album opened in the grid: a panel under the album's row, its 340pt cover beside its header (`MacAlbumHeader`, which takes the same props) and then its tracks as children.
+  // The album opened in the grid: a panel under the album's row, its 340pt cover beside its header (`MacAlbumHeader`, which takes the same props), then its tracks, credits and works as children, then the release's audio line (`audio`).
   function MacAlbumPanel(props) {
     return h('section', { className: 'bae-m-albumpanel' },
       h('span', { className: 'bae-m-albumpanel-close' }, h(MacCloseButton)),
       h(Artwork, { title: props.title, size: 340, radius: 10, missing: props.noCover, className: 'bae-m-albumpanel-cover' }),
       h('div', { className: 'bae-m-albumpanel-body' },
         h(MacAlbumHeader, { title: props.title, artist: props.artist, year: props.year, releases: props.releases, release: props.release, edition: props.edition, copy: props.copy, unplayable: props.unplayable, options: props.options, optionsOpen: props.optionsOpen, highlighted: props.highlighted, rating: props.rating, ratingWho: props.ratingWho }),
-        h('div', { className: 'bae-m-albumpanel-tracks bae-m-albumpanel-tracks-rated' }, props.children)));
+        h('div', { className: 'bae-m-albumpanel-tracks bae-m-albumpanel-tracks-rated' }, props.children),
+        props.audio ? h('div', { className: 'bae-m-albumpanel-audio' }, props.audio) : null));
   }
 
   // A side's tracks in two columns once it has more than eight.

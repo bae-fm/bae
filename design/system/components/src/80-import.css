@@ -42,7 +42,7 @@
 .bae-m-idraft-trail { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 .bae-m-idraft-reading { display: flex; align-items: center; gap: 8px; margin-right: 4px; }
 .bae-m-idraft-head { display: flex; gap: 12px; }
-.bae-m-idraft-id { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.bae-m-idraft-id { display: flex; flex-direction: column; gap: 0; min-width: 0; }
 .bae-m-idraft-grid { display: grid; grid-template-columns: 64px 1fr; align-items: start; gap: 6px 12px; font: 400 13px var(--font-sans); }
 /* A label sits level with its value's first line, so a list fact's name heads its first row. */
 .bae-m-idraft-grid > .bae-muted { text-align: right; font-size: 11.5px; line-height: 24px; }

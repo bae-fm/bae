@@ -530,6 +530,7 @@
         "components": [
           "MacAlbumCredits",
           "AndroidAlbumCredits",
+          "AndroidAlbumAudio",
           "MacAlbumWorks",
           "AndroidReleaseFiles",
           "MacSavePanelFormat"

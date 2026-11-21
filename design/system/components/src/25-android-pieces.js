@@ -18,6 +18,11 @@
       list(props.credits).map(function (c, i) { var at = c.indexOf(':'); return h('div', { key: i, className: 'bae-a-credit' }, h('span', { className: 'bae-muted' }, c.slice(0, at)), h('span', { className: 'bae-a-credit-names' }, c.slice(at + 1))); }));
   }
 
+  // The release's audio as bae read it from its files (`children`, such as FLAC · 44.1 kHz · 16-bit · Stereo), one line in tertiary text at the foot of the album page, after its credits (decision #1232).
+  function AndroidAlbumAudio(props) {
+    return h('div', { className: 'bae-a-albumaudio' }, props.children);
+  }
+
   // The other names an artist's tracks credit them by, under the artist's row: the Also credited as eyebrow over the names (`names`, comma separated), joined by middle dots in secondary text.
   function AndroidArtistOtherNames(props) {
     return h('div', { className: 'bae-a-othernames' }, h('div', { className: 'bae-a-othernames-head' }, h(AndroidEyebrow, null, 'Also credited as')),

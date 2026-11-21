@@ -4,9 +4,9 @@
   function MacModal(props) {
     return h('div', { className: 'bae-m-scrim', style: { alignItems: 'center' } }, h('div', { className: 'bae-m-modal', style: { width: Number(props.width || 760), height: props.height ? Number(props.height) : null } }, props.children));
   }
-  // A modal's header: title, a second line (`subtitle`), then a release's edition line (`edition`) and copy line (`copy`), its buttons on the right.
+  // A modal's header: title, a second line, its buttons on the right.
   function MacModalHeader(props) {
-    return h('div', { className: 'bae-m-modalhead' }, h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { className: props.large ? 'bae-m-modalhead-large' : 'bae-strong', style: props.large ? null : { fontSize: 15 } }, props.title), props.subtitle ? h('div', { className: 'bae-muted bae-ellipsis', style: { fontSize: 11.5 } }, props.subtitle) : null, props.edition ? h('div', { className: 'bae-muted bae-ellipsis', style: { fontSize: 11.5 } }, props.edition) : null, props.copy ? h('div', { className: 'bae-muted bae-ellipsis', style: { fontSize: 11.5 } }, props.copy) : null), props.children);
+    return h('div', { className: 'bae-m-modalhead' }, h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { className: props.large ? 'bae-m-modalhead-large' : 'bae-strong', style: props.large ? null : { fontSize: 15 } }, props.title), props.subtitle ? h('div', { className: 'bae-muted bae-ellipsis', style: { fontSize: 11.5 } }, props.subtitle) : null), props.children);
   }
   // One cover in the cover gallery: its image over its name, with no source line, since the section heading says where it comes from. `image` stands for the picture (the board draws it as artwork seeded by it, the name unless given); `selected` rings the one the preview shows.
   function MacCoverTile(props) {

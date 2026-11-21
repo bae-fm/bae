@@ -4,6 +4,7 @@
 .bae-a-credits-head { padding: 4px 0; }
 .bae-a-credit { display: flex; justify-content: space-between; gap: 16px; padding: 6px 0; font: 400 14px var(--font-android); }
 .bae-a-credit-names { text-align: end; }
+.bae-a-albumaudio { padding: 8px 0; font: 400 12px/16px var(--font-android); color: var(--text-tertiary); }
 .bae-a-othernames { padding: 0 16px 8px; }
 .bae-a-othernames-head { padding: 0 0 4px; }
 .bae-a-othernames-list { font: 400 14px var(--font-android); color: var(--text-secondary); }

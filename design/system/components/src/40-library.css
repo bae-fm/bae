@@ -184,6 +184,7 @@
 .bae-m-albumpanel-year { font: 400 13px var(--font-sans); }
 .bae-m-albumpanel-releases { padding: 4px 0 2px; }
 .bae-m-albumpanel-facts { display: flex; flex-direction: column; gap: 2px; font: 400 11.5px var(--font-sans); color: var(--text-tertiary); }
+.bae-m-albumpanel-audio { padding-top: var(--space-related); font: 400 11.5px var(--font-sans); color: var(--text-tertiary); }
 .bae-m-albumpanel-facts > div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bae-m-albumpanel-unplayable { font: 400 11.5px var(--font-sans); color: var(--text-secondary); }
 .bae-m-albumpanel-actions { display: flex; align-items: center; gap: 8px; padding-top: 12px; }

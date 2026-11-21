@@ -270,7 +270,7 @@ export declare function AndroidAlbumHeader(props: AndroidAlbumHeaderProps): Reac
 export interface AndroidPinControlProps { state?: 'available' | 'queued' | 'downloading' | 'failed' | 'downloaded' | 'elsewhere'; progress?: number; bytes?: string; where?: string }
 export declare function AndroidPinControl(props: AndroidPinControlProps): React.ReactElement;
 export declare function AndroidUploadLine(props: { phase?: string; missing?: string }): React.ReactElement;
-export interface MacAlbumPanelProps { title: string; artist?: string; year?: string; releases?: string; release?: string; edition?: string; copy?: string; unplayable?: string; noCover?: boolean; options?: string; optionsOpen?: boolean; highlighted?: string; /** The album's stars, 0 while no one has rated it; leave it out to draw no rating. */ rating?: number | string; /** Who else rated it. */ ratingWho?: string; children?: React.ReactNode }
+export interface MacAlbumPanelProps { title: string; artist?: string; year?: string; releases?: string; release?: string; edition?: string; copy?: string; /** The release's audio as bae read it, the panel's last line, after the tracks, credits and works. */ audio?: string; unplayable?: string; noCover?: boolean; options?: string; optionsOpen?: boolean; highlighted?: string; /** The album's stars, 0 while no one has rated it; leave it out to draw no rating. */ rating?: number | string; /** Who else rated it. */ ratingWho?: string; children?: React.ReactNode }
 /** A line of progress: the phase, a bar filling the rest of the line, an optional count. No `value` is a wait of no known length. */
 export declare function MacProgressLine(props: { label: string; value?: number | string; detail?: string; activity?: boolean }): React.ReactElement;
 /** Every catalog that describes a release, as a wrapped row of links (`records`: catalog names, comma-separated). */
@@ -386,7 +386,7 @@ export declare function MacReleaseGroup(props: { title: string; artist?: string;
 export declare function MacPressingRow(props: { edition?: string; copy?: string; barcode?: string; badges?: string; /** The notes of the pressing's records: the line under the copy line and the Notes badge, with the same notes shown on the badge's hover. */ notes?: string; sources?: string; inLibrary?: boolean; selected?: boolean }): React.ReactElement;
 export declare function MacImportBulk(props: { count?: number; ready?: number; running?: string; cloud?: boolean; to?: 'This Mac' | 'Cloud' }): React.ReactElement;
 export declare function MacModal(props: { width?: number; height?: number; children?: React.ReactNode }): React.ReactElement;
-export declare function MacModalHeader(props: { title: string; subtitle?: string; edition?: string; copy?: string; large?: boolean; children?: React.ReactNode }): React.ReactElement;
+export declare function MacModalHeader(props: { title: string; subtitle?: string; large?: boolean; children?: React.ReactNode }): React.ReactElement;
 export declare function MacCoverGallery(props: { title?: string; selected?: string; source?: string; current?: string; remote?: 'unlinked'; remoteNames?: string; files?: string }): React.ReactElement;
 export declare function MacLightbox(props: { title?: string; label?: string; source?: string; images?: string; selected?: string; browse?: boolean; state?: 'loading' | 'failed' }): React.ReactElement;
 export declare function MacStorageBand(props: { state?: 'local' | 'pinned' | 'cloud' | 'uploading' | 'waiting'; missing?: string; download?: 'queued' | 'downloading' | 'failed'; moveToThisDevice?: 'queued' | 'moving' | 'failed'; progress?: number; why?: string; actions?: string }): React.ReactElement;
@@ -473,7 +473,7 @@ export declare function MacImportTabs(props: { tab?: 'Found' | 'Imported' | 'Ski
 /** The import list's filter row: the Filter field, the narrowed count, the identifying ring, importing, scanning and the ⋯ menu with its filter dot. */
 export declare function MacImportFilterRow(props: { filter?: string; narrowed?: string; identifying?: number | string; importing?: boolean; scanning?: boolean; filtered?: boolean }): React.ReactElement;
 /** The release a folder holds, beside its cover in the import pane: title (or the placeholder), artist, facts line, audio line. */
-export declare function MacImportReleaseSummary(props: { title?: string; placeholder?: boolean; artist?: string; edition?: string; copy?: string }): React.ReactElement;
+export declare function MacImportReleaseSummary(props: { title?: string; placeholder?: boolean; artist?: string; edition?: string; copy?: string; audio?: string }): React.ReactElement;
 /** A way to answer a folder that waits on you: a small button over the line saying what it does. */
 export declare function MacAnswerAction(props: { title: string; subtitle: string; off?: boolean }): React.ReactElement;
 /** A catalog a typed search still waits on: searching, or failed with Retry. */
@@ -573,6 +573,8 @@ export declare function AndroidAlbumRating(props: AndroidAlbumRatingProps): Reac
 export interface AndroidPageActionsProps { short?: boolean }
 export declare function AndroidPageActions(props: AndroidPageActionsProps): React.ReactElement;
 export interface AndroidAlbumCreditsProps { credits: string }
+export interface AndroidAlbumAudioProps { /** The release's audio as bae read it, such as FLAC · 44.1 kHz · 16-bit · Stereo. */ children?: React.ReactNode }
+export declare function AndroidAlbumAudio(props: AndroidAlbumAudioProps): React.ReactElement;
 export declare function AndroidAlbumCredits(props: AndroidAlbumCreditsProps): React.ReactElement;
 export interface AndroidArtistOtherNamesProps { names: string }
 export declare function AndroidArtistOtherNames(props: AndroidArtistOtherNamesProps): React.ReactElement;
