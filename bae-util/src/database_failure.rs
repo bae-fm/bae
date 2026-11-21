@@ -127,6 +127,7 @@ fn coven_database_failure(error: &coven::DbError) -> DatabaseFailure {
         | E::DeletedCircle(_)
         | E::NotInCircle(_)
         | E::NotOwner { .. }
+        | E::NotAdmin { .. }
         | E::InvalidForeignKeyEffect { .. }
         | E::KeyNotUuid { .. }
         | E::InvalidAudience { .. }

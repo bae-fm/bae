@@ -128,7 +128,7 @@ cast = ["dep:bae-cast"]
 # touch the login keychain, over a bae directory in a temporary folder. Debug
 # macOS builds turn it on. It takes only those two, so a debug app builds none
 # of bae's other test support.
-test-keyring = ["coven/test-utils", "bae-app-dir/test-utils"]
+test-keyring = ["coven/in-memory-keychain", "bae-app-dir/test-utils"]
 # A debug app's dev reset, which recreates its library from a profile file.
 # Debug macOS builds turn it on.
 dev-reset = ["bae-library/dev-reset"]

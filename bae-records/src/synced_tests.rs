@@ -70,7 +70,7 @@ fn library_declarations_match_the_store_audience_and_file_contract() {
         assert_eq!(table.get_key_columns(), keys);
         assert_eq!(table.get_audience_column(), None);
         assert_eq!(table.get_audience_from(), None);
-        assert!(!table.is_owner_only(), "{}", table.name());
+        assert_eq!(table.write_permission(), coven::WritePermission::Anyone, "{}", table.name());
         let columns: Vec<(&str, &Binding, bool)> = table
             .file_columns()
             .iter()

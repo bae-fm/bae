@@ -29,7 +29,7 @@ fn people_declarations_match_the_store_audience_and_file_contract() {
             table.get_audience_from(),
             (table.name() == "playlist_entries").then_some("playlist_id")
         );
-        assert!(table.is_owner_only(), "{}", table.name());
+        assert_eq!(table.write_permission(), coven::WritePermission::Owner, "{}", table.name());
         let columns: Vec<(&str, &Binding, bool)> = table
             .file_columns()
             .iter()
