@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -36,7 +37,7 @@ internal fun AndroidRadio(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         RadioButton(selected = checked, onClick = null)
-        Text(text = label, style = ThemeText.androidRowTitle.style)
+        Text(text = label, style = ThemeText.androidRowTitle.style, color = MaterialTheme.colorScheme.onSurface)
     }
 }
 
