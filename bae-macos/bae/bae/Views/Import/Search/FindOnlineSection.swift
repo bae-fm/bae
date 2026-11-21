@@ -87,9 +87,7 @@ struct FindOnlineSectionHeader: View {
                 Image(systemName: isOpen ? "chevron.down" : "chevron.forward")
                     .themeIcon(.small)
                     .foregroundStyle(
-                        dimmed
-                            ? Theme.textTertiary.opacity(ThemeOpacity.off)
-                            : Theme.textTertiary
+                        dimmed ? Theme.textTertiary : Theme.macTextSecondary
                     )
                     .frame(width: ThemeIcon.small.size)
                 MacEyebrow(section == .automatic ? "Automatic" : "Search")

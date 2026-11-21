@@ -273,7 +273,7 @@ struct MacPressingRow: View {
                     Text(verbatim: FactList.glyph)
                         .themeText(.detail)
                         .foregroundStyle(
-                            Theme.textTertiary.opacity(ThemeOpacity.off)
+                            Theme.textTertiary
                         )
                 }
                 Text(bridgeLookupCatalogName(catalog: source))
@@ -325,7 +325,7 @@ extension MacPressingRow {
                     Text(details)
                         .themeText(.detail)
                         .foregroundStyle(
-                            Theme.textTertiary.opacity(ThemeOpacity.off)
+                            Theme.textTertiary
                         )
                         .cutLine(.prose)
                 }
