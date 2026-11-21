@@ -20,7 +20,7 @@ class AndroidSnackbarShots : BoardShot() {
         component("android.component.snackbar.default", wide = true) {
             val state = remember { SnackbarHostState() }
             LaunchedEffect(Unit) {
-                state.showSnackbar("Couldn't open the album", actionLabel = "Retry", duration = SnackbarDuration.Indefinite)
+                state.showSnackbar("Could not reach the cloud.", actionLabel = "Retry", duration = SnackbarDuration.Indefinite)
             }
             Box(Modifier.fillMaxWidth().height(SNACKBAR_HEIGHT)) { AndroidSnackbarHost(state = state, lift = remember { SnackbarLift() }) }
         }

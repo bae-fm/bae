@@ -1,5 +1,6 @@
 package fm.bae.app.shots
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.unit.dp
 import fm.bae.app.ui.components.StatusGlyph
@@ -11,8 +12,8 @@ class StatusGlyphShots : BoardShot() {
     @Test
     fun androidComponentStatusGlyphAndroid() =
         component("android.component.status-glyph.android") {
-            // The preview's cell sets the glyphs side by side with no gap.
-            Row {
+            // The preview's cell sets the glyphs side by side, 16 apart.
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 listOf(StatusTone.INFO, StatusTone.SUCCESS, StatusTone.WARNING, StatusTone.DANGER).forEach { tone ->
                     StatusGlyph(tone, size = 24.dp)
                 }
