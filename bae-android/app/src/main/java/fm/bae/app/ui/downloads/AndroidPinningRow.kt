@@ -91,7 +91,7 @@ private fun DownloadRowState(
         }
 
         BridgeDownloadState.Active -> {
-            DownloadProgress(progress, label = null)
+            DownloadProgress(progress, name = stringResource(R.string.pinning), label = null)
         }
 
         is BridgeDownloadState.Failed -> {

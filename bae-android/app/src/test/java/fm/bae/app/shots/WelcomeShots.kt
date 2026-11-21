@@ -265,7 +265,7 @@ class WelcomeShots : BoardShot() {
     @Test
     fun androidWelcomeOpeningSteps() =
         shot("android.welcome.opening.steps") {
-            val progress = BridgeOpenProgress(BridgeOpenStep.REBUILDING, "core.library.open_step.rebuilding", 4uL, 9uL, 4.0 / 9)
+            val progress = BridgeOpenProgress(BridgeOpenStep.REBUILDING, "core.library.open_step.rebuilding", 9uL, 20uL, 0.45)
             ScreenScene { InProgressScreen(AppScreen.Opening(LatestStream.openProgress(progress).only)) }
         }
 
@@ -273,7 +273,7 @@ class WelcomeShots : BoardShot() {
     @Test
     fun androidWelcomeOpeningResetting() =
         shot("android.welcome.opening.resetting") {
-            ScreenScene { InProgressScreen(AppScreen.Resetting(BridgeBootstrapStatus.Loading, loadingSteps())) }
+            ScreenScene { InProgressScreen(AppScreen.Resetting(BridgeBootstrapStatus.Loading, loadingSteps(done = 5uL, fraction = 0.5))) }
         }
 
     /** A reset that stopped partway: the reset's line, centred, with Finish reset from cloud. */
@@ -360,19 +360,21 @@ class WelcomeShots : BoardShot() {
         }
 }
 
-private fun loadingSteps() =
-    LatestStream
-        .bootstrapSteps(
-            BridgeBootstrapStep.Loading(
-                BridgeLoadProgress(
-                    BridgeLoadStep.STREAMING_LIBRARY,
-                    "core.library.load_step.streaming_library",
-                    3uL,
-                    10uL,
-                    0.3,
-                ),
+private fun loadingSteps(
+    done: ULong = 3uL,
+    fraction: Double = 0.3,
+) = LatestStream
+    .bootstrapSteps(
+        BridgeBootstrapStep.Loading(
+            BridgeLoadProgress(
+                BridgeLoadStep.STREAMING_LIBRARY,
+                "core.library.load_step.streaming_library",
+                done,
+                10uL,
+                fraction,
             ),
-        ).only
+        ),
+    ).only
 
 @Composable
 private fun LibraryDetailsScene(state: BridgeStandingState) {

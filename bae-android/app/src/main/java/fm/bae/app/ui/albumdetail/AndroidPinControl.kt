@@ -149,6 +149,7 @@ internal fun AndroidPinControl(
         BridgeReleaseDownloadStatus.Downloading -> {
             DownloadProgress(
                 progress,
+                name = stringResource(R.string.pinning),
                 label = stringResource(R.string.pinning),
                 modifier = Modifier.fillMaxWidth(),
                 stopDot = true,

@@ -7,7 +7,9 @@ import android.graphics.RectF
 import android.util.TypedValue
 import android.view.View
 import android.view.ViewGroup
+import android.view.accessibility.AccessibilityNodeInfo
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -30,16 +32,21 @@ private const val BAR_GAP_DP = 4f
 private const val BAR_MARGIN_TOP_DP = 4
 private const val BAR_MARGIN_BOTTOM_DP = 2
 
+/** The range that the bar reports to a screen reader. */
+private const val PERCENT = 100f
+
 /**
  * A download's progress bar over its "{done} of {total}" byte line, led by
  * [label] ("Pinning · 120 MB of 300 MB") when there is one, which a View reads
  * from [progress]'s latest value each display frame while the release
- * downloads: arriving bytes recompose nothing. With [stopDot] the bar ends in a
+ * downloads: arriving bytes recompose nothing. Screen readers name the bar
+ * [name], and read it as a progress bar of a percent. With [stopDot] the bar ends in a
  * dot, as the album page's bar does.
  */
 @Composable
 internal fun DownloadProgress(
     progress: LatestSource<BridgeDownloadTransferProgress>,
+    name: String,
     label: String?,
     modifier: Modifier = Modifier,
     stopDot: Boolean = false,
@@ -52,6 +59,7 @@ internal fun DownloadProgress(
         factory = { context -> DownloadProgressView(context) },
         update = { view ->
             view.applyStyle(accent = accent, text = text, textSizeSp = size, stopDot = stopDot)
+            view.name = name
             view.label = label
             view.follow(progress)
         },
@@ -72,6 +80,23 @@ internal class PinBarView(
     private val rect = RectF()
     private var accent = 0
     private var stopDot = false
+
+    init {
+        importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_YES
+    }
+
+    /** Reports the bar to a screen reader as a progress bar of a percent. */
+    override fun onInitializeAccessibilityNodeInfo(info: AccessibilityNodeInfo) {
+        super.onInitializeAccessibilityNodeInfo(info)
+        info.className = ProgressBar::class.java.name
+        info.rangeInfo =
+            AccessibilityNodeInfo.RangeInfo.obtain(
+                AccessibilityNodeInfo.RangeInfo.RANGE_TYPE_PERCENT,
+                0f,
+                PERCENT,
+                fraction * PERCENT,
+            )
+    }
 
     /** How much of the bar is filled, 0 to 1. */
     var fraction: Float = 0f
@@ -132,6 +157,13 @@ internal class DownloadProgressView(
 
     /** The words that lead the byte line, or null for the bytes alone. */
     var label: String? = null
+
+    /** What screen readers call the bar. */
+    var name: String = ""
+        set(value) {
+            field = value
+            bar.contentDescription = value
+        }
 
     init {
         orientation = VERTICAL

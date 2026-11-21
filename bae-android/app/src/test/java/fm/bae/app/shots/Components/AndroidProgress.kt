@@ -1,10 +1,9 @@
 package fm.bae.app.shots
 
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import fm.bae.app.ui.components.AndroidProgress
 import fm.bae.fastvalues.LatestStream
 import fm.bae.fastvalues.only
@@ -34,6 +33,6 @@ private fun Progress(fraction: Double?) {
         steps = steps,
         title = { "Uploading…" },
         fraction = { fraction },
-        modifier = Modifier.width(360.dp),
+        modifier = Modifier.fillMaxWidth(),
     ) {}
 }
