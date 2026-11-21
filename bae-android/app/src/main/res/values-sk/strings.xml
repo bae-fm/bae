@@ -273,6 +273,7 @@
     <string name="cast_picker_title">Prehrať na</string>
     <string name="cast_receiver_playing">Prehráva sa</string>
     <string name="cast_disconnect">Odpojiť</string>
+    <string name="volume">Hlasitosť</string>
     <string name="volume_set_on_receiver">Hlasitosť sa nastavuje na zariadení %1$s</string>
     <string name="cast_receiver_type">Typ</string>
     <string name="cast_receiver_model">Model</string>

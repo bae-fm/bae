@@ -259,6 +259,7 @@
     <string name="cast_picker_title">Spill av på</string>
     <string name="cast_receiver_playing">Spiller av</string>
     <string name="cast_disconnect">Koble fra</string>
+    <string name="volume">Volum</string>
     <string name="volume_set_on_receiver">Volumet stilles inn på %1$s</string>
     <string name="cast_receiver_type">Type</string>
     <string name="cast_receiver_model">Modell</string>

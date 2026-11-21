@@ -254,6 +254,7 @@
     <string name="cast_picker_title">再生先</string>
     <string name="cast_receiver_playing">再生中</string>
     <string name="cast_disconnect">切断</string>
+    <string name="volume">音量</string>
     <string name="volume_set_on_receiver">音量は %1$s で設定します</string>
     <string name="cast_receiver_type">種類</string>
     <string name="cast_receiver_model">モデル</string>

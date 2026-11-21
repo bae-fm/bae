@@ -260,6 +260,7 @@
     <string name="cast_picker_title">Reproduzir em</string>
     <string name="cast_receiver_playing">A reproduzir</string>
     <string name="cast_disconnect">Desligar</string>
+    <string name="volume">Volume</string>
     <string name="volume_set_on_receiver">O volume é definido em %1$s</string>
     <string name="cast_receiver_type">Tipo</string>
     <string name="cast_receiver_model">Modelo</string>

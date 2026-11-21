@@ -289,6 +289,7 @@
     <string name="cast_picker_title">التشغيل على</string>
     <string name="cast_receiver_playing">قيد التشغيل</string>
     <string name="cast_disconnect">قطع الاتصال</string>
+    <string name="volume">مستوى الصوت</string>
     <string name="volume_set_on_receiver">يتم ضبط مستوى الصوت على %1$s</string>
     <string name="cast_receiver_type">النوع</string>
     <string name="cast_receiver_model">الطراز</string>

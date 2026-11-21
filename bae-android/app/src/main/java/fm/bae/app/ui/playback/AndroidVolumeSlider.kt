@@ -51,6 +51,7 @@ private fun VolumeBar(
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
+    val label = stringResource(R.string.volume)
     val onValueChangeNow by rememberUpdatedState(onValueChange)
     val onValueChangeFinishedNow by rememberUpdatedState(onValueChangeFinished)
     AndroidView(
@@ -87,6 +88,7 @@ private fun VolumeBar(
             }
         },
         update = { bar ->
+            bar.contentDescription = label
             val line = bar.progressDrawable as SeekLineDrawable
             line.accent = colors.primary.toArgb()
             line.track = colors.primary.copy(alpha = ThemeOpacity.tintStrong).toArgb()

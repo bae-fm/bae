@@ -254,6 +254,7 @@
     <string name="cast_picker_title">재생할 기기</string>
     <string name="cast_receiver_playing">재생 중</string>
     <string name="cast_disconnect">연결 해제</string>
+    <string name="volume">볼륨</string>
     <string name="volume_set_on_receiver">음량은 %1$s에서 설정합니다</string>
     <string name="cast_receiver_type">유형</string>
     <string name="cast_receiver_model">모델</string>

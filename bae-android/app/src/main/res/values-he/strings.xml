@@ -268,6 +268,7 @@
     <string name="cast_picker_title">ניגון במכשיר</string>
     <string name="cast_receiver_playing">מנגן</string>
     <string name="cast_disconnect">התנתק</string>
+    <string name="volume">עוצמת שמע</string>
     <string name="volume_set_on_receiver">עוצמת הקול נקבעת ב־%1$s</string>
     <string name="cast_receiver_type">סוג</string>
     <string name="cast_receiver_model">דגם</string>

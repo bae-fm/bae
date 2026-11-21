@@ -308,6 +308,7 @@
     <string name="cast_picker_title">Play on</string>
     <string name="cast_receiver_playing">Playing</string>
     <string name="cast_disconnect">Disconnect</string>
+    <string name="volume">Volume</string>
     <string name="volume_set_on_receiver">Volume is set on %1$s</string>
     <string name="cast_receiver_type">Type</string>
     <string name="cast_receiver_model">Model</string>

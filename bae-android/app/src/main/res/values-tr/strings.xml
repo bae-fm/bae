@@ -261,6 +261,7 @@
     <string name="cast_picker_title">Şurada oynat</string>
     <string name="cast_receiver_playing">Oynatılıyor</string>
     <string name="cast_disconnect">Bağlantıyı kes</string>
+    <string name="volume">Ses düzeyi</string>
     <string name="volume_set_on_receiver">Ses düzeyi %1$s üzerinde ayarlanır</string>
     <string name="cast_receiver_type">Tür</string>
     <string name="cast_receiver_model">Model</string>

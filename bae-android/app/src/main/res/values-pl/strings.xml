@@ -275,6 +275,7 @@
     <string name="cast_picker_title">Odtwarzaj na</string>
     <string name="cast_receiver_playing">Odtwarzanie</string>
     <string name="cast_disconnect">Rozłącz</string>
+    <string name="volume">Głośność</string>
     <string name="volume_set_on_receiver">Głośność ustawia się na urządzeniu %1$s</string>
     <string name="cast_receiver_type">Typ</string>
     <string name="cast_receiver_model">Model</string>
