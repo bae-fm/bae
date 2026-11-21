@@ -27,7 +27,8 @@ private const val SECONDS_PER_MINUTE = 60L
  * A playing track as a player draws it: where its line is, the seconds its clock says, which parts of it are
  * here, whether its load waits on storage. The boards give the line and the clock apart, as the design
  * system's previews do, so the staging takes the clock's seconds as given and does not work them out from the line.
- * With [removedFromLibrary], the library no longer holds the track, and with [noCover] it has no cover.
+ * With [removedFromLibrary], the library no longer holds the track, and with [noCover] it has no cover. The
+ * track is called [title].
  */
 internal class PlayerStaging(
     progress: Double,
@@ -36,6 +37,7 @@ internal class PlayerStaging(
     val waitsOnStorage: Boolean = false,
     removedFromLibrary: Boolean = false,
     noCover: Boolean = false,
+    title: String = "Low Tide Hours",
 ) {
     private val position =
         BridgeTrackPosition(
@@ -58,7 +60,7 @@ internal class PlayerStaging(
                 } else {
                     BridgeNowPlayingDisplay.Library(
                         BridgeTrackDisplay(
-                            title = "Low Tide Hours",
+                            title = title,
                             artistLine = creditLineNamed("Mara Quill"),
                             albumId = "alb-1",
                             releaseId = "rel-1",
@@ -118,3 +120,12 @@ internal val waiting =
 /** [playing], for a track with no cover. */
 internal val withoutCover =
     PlayerStaging(progress = 0.35, elapsedSeconds = 102, held = listOf(BridgeTrackSpan(0.0, 0.6)), noCover = true)
+
+/** [playing], for a track whose title is long. */
+internal val longTitled =
+    PlayerStaging(
+        progress = 0.35,
+        elapsedSeconds = 102,
+        held = listOf(BridgeTrackSpan(0.0, 0.6)),
+        title = "Low Tide Hours, the long version recorded live at the harbor",
+    )

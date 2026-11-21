@@ -20,11 +20,9 @@ class AndroidNowPlayingTrackShots : BoardShot() {
     @Test
     fun androidComponentNowPlayingTrackLongTitle() =
         component("android.component.now-playing-track.long-title") {
-            Row(modifier = Modifier.width(260.dp)) { Track(longTitle) }
+            Row(modifier = Modifier.width(260.dp)) { Track(longTitled) }
         }
 }
-
-private val longTitle = playing
 
 @Composable
 private fun Track(staging: PlayerStaging) = Images { Column { AndroidNowPlayingTrack(staging.track, onExpand = {}) } }
