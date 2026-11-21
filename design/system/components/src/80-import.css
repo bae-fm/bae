@@ -54,7 +54,7 @@
 .bae-m-reclink { display: inline-flex; align-items: center; gap: 3px; font: 600 10.5px var(--font-sans); color: var(--text-secondary); }
 .bae-m-itable-scroll { overflow-x: auto; }
 .bae-m-itable { display: flex; flex-direction: column; min-width: 560px; font: 400 13px var(--font-sans); }
-.bae-m-itable-row { display: grid; grid-template-columns: minmax(160px, 1.2fr) 52px minmax(120px, 1fr) minmax(100px, 1fr) 88px; gap: 10px; align-items: center; }
+.bae-m-itable-row { display: grid; grid-template-columns: minmax(160px, 1.2fr) 52px minmax(120px, 1fr) minmax(100px, 1fr) 88px; gap: var(--space-related); align-items: center; }
 .bae-m-itable-head { padding-bottom: 6px; }
 .bae-m-itable-track { min-height: 40px; border-top: 1px solid var(--hairline); }
 .bae-m-itable-playing { background: var(--accent-tint); }
