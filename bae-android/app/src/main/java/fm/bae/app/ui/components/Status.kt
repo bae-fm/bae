@@ -23,7 +23,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -81,18 +80,6 @@ private val StatusTone.noticeFill: Color
 /** Whether a filled notice in this tone has its own fill, under `onNotice` text: the tones with a glyph. */
 private val StatusTone.hasNoticeFill: Boolean
     get() = icon != null
-
-/** Whether the content sits on a filled notice's own fill. */
-private val LocalOnNoticeFill = compositionLocalOf { false }
-
-/**
- * The colour of a button in a notice. On a filled toned notice's own fill: the accent. Anywhere else,
- * the screen's text.
- */
-internal val noticeButtonColor: Color
-    @Composable
-    get() =
-        if (LocalOnNoticeFill.current) MaterialTheme.colorScheme.primary else LocalContentColor.current
 
 /** The glyph a notice in this tone leads with: the outline of a circle with its mark. */
 private val StatusTone.icon: ImageVector?
@@ -188,7 +175,6 @@ internal fun NoticeFrame(
     val onFill = !quiet && tone.hasNoticeFill
     val shape = RoundedCornerShape(ThemeRadius.control)
     CompositionLocalProvider(
-        LocalOnNoticeFill provides onFill,
         LocalContentColor provides if (onFill) BaeTheme.colors.onNotice else MaterialTheme.colorScheme.onSurface,
     ) {
         AndroidItem(

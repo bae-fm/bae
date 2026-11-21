@@ -5,7 +5,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,11 +17,9 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -278,10 +275,10 @@ private fun FramedNotice(
             ) {
                 AndroidItem(
                     modifier = Modifier.weight(1f),
-                    // The buttons' own padding overhangs: a label's right edge is the notice's.
+                    // The buttons' own 12dp padding overhangs: a label's right edge is the notice's.
                     trail =
                         if (hasButtons && buttons == NoticeButtons.INLINE) {
-                            { NoticeButtonRow(hasDetails, onDetails, action, Modifier.offset(x = ThemeSpace.related)) }
+                            { NoticeButtonRow(hasDetails, onDetails, action, Modifier.offset(x = TEXT_BUTTON_PADDING)) }
                         } else {
                             null
                         },
@@ -303,12 +300,12 @@ private fun FramedNotice(
                 onDismiss?.let { DismissButton(it, quiet = look == NoticeLook.QUIET) }
             }
             if (hasButtons && buttons == NoticeButtons.BELOW) {
-                // The buttons' own padding overhangs: a label starts on the words' edge.
+                // The buttons' own 12dp padding overhangs: a label starts on the words' edge.
                 NoticeButtonRow(
                     hasDetails,
                     onDetails,
                     action,
-                    Modifier.offset(x = -ThemeSpace.related).pulledUpBy(ThemeSpace.related),
+                    Modifier.offset(x = -TEXT_BUTTON_PADDING).pulledUpBy(ThemeSpace.related),
                 )
             }
         }
@@ -325,11 +322,7 @@ private fun NoticeButtonRow(
 ) {
     Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
         if (hasDetails) {
-            TextButton(
-                onClick = onDetails,
-                colors = ButtonDefaults.textButtonColors(contentColor = noticeButtonColor),
-                contentPadding = ACTION_PADDING,
-            ) {
+            AndroidButton(onClick = onDetails, kind = ButtonKind.TEXT) {
                 Text(stringResource(R.string.details))
             }
         }
@@ -356,16 +349,9 @@ private fun DismissButton(
     }
 }
 
-private val ACTION_PADDING = PaddingValues(horizontal = ThemeSpace.related)
-
 @Composable
 private fun ErrorActionButton(action: ErrorAction) {
-    TextButton(
-        onClick = action.onClick,
-        enabled = action.enabled,
-        colors = ButtonDefaults.textButtonColors(contentColor = noticeButtonColor),
-        contentPadding = ACTION_PADDING,
-    ) { Text(action.label) }
+    AndroidButton(onClick = action.onClick, kind = ButtonKind.TEXT, enabled = action.enabled) { Text(action.label) }
 }
 
 /** The causes, one a line, in an inset panel with a copy button at its corner. */

@@ -197,7 +197,7 @@ private val LARGE_HEIGHT = 48.dp
 private val LARGE_LABEL_SIZE = 15.sp
 
 /** Material's text button pads its words 12dp from each side. */
-private val TEXT_BUTTON_PADDING = 12.dp
+internal val TEXT_BUTTON_PADDING = 12.dp
 
 /** A text field's text sits 16dp in from its edge. */
 private val FIELD_TEXT_INSET = 16.dp
