@@ -75,32 +75,47 @@ struct MacNowPlayingBar: View {
 
     // MARK: - Left: track info
 
+    /// The cover, title and artist are one button that opens the playing
+    /// album, named "Now playing, <title> by <artist>".
+    @ViewBuilder
     private var trackInfo: some View {
+        if let title = trackTitle {
+            Button(action: onNavigateToAlbum) {
+                trackLabel(title: title)
+            }
+            .buttonStyle(.accentPlain)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(buttonName(title: title))
+        }
+        else {
+            trackLabel(title: nil)
+        }
+    }
+
+    private func buttonName(title: String) -> String {
+        guard let secondaryLine else { return title }
+        return String(localized: "Now playing, \(title) by \(secondaryLine)")
+    }
+
+    private func trackLabel(title: String?) -> some View {
         HStack(spacing: ThemeSpace.group) {
-            if trackTitle != nil {
-                Button(action: onNavigateToAlbum) {
-                    albumArt
-                        .frame(
-                            width: ThemeSize.barArtwork,
-                            height: ThemeSize.barArtwork
-                        )
-                        .clipShape(
-                            RoundedRectangle(cornerRadius: ThemeRadius.artwork)
-                        )
-                        .shadow(color: Theme.shadow, radius: 8, y: 4)
-                        .accessibilityLabel("Album art")
-                }
-                .buttonStyle(.accentPlain)
+            if title != nil {
+                albumArt
+                    .frame(
+                        width: ThemeSize.barArtwork,
+                        height: ThemeSize.barArtwork
+                    )
+                    .clipShape(
+                        RoundedRectangle(cornerRadius: ThemeRadius.artwork)
+                    )
+                    .shadow(color: Theme.shadow, radius: 8, y: 4)
             }
 
             VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                if let title = trackTitle {
-                    Button(action: onNavigateToAlbum) {
-                        Text(title)
-                            .themeText(.rowTitle)
-                            .lineLimit(1)
-                    }
-                    .buttonStyle(.accentPlain)
+                if let title {
+                    Text(title)
+                        .themeText(.rowTitle)
+                        .lineLimit(1)
                 }
 
                 if let secondaryLine {

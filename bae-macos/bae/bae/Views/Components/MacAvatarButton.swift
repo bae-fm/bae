@@ -26,6 +26,7 @@ struct MacAvatarButton: View {
             MacButton(kind: .plain, menu: { items(hasCloudHome: hasCloudHome) })
             {
                 picture
+                    .accessibilityLabel("Your menu")
                     .frame(
                         width: ThemeSize.hitTarget,
                         height: ThemeSize.hitTarget
@@ -33,7 +34,6 @@ struct MacAvatarButton: View {
                     .contentShape(Rectangle())
             }
             .help("Your menu")
-            .accessibilityLabel("Your menu")
             .sheet(item: $sheet) { shown in
                 sheetContent(shown)
             }
