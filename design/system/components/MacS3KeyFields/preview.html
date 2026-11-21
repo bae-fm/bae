@@ -9,7 +9,7 @@
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Empty', h(B.MacS3KeyFields, null)), W('Typed', h(B.MacS3KeyFields, { keyId: 'AKIA4EXAMPLENEW', secret: 'abcdefghijkl' })), W('ID focused', h(B.MacS3KeyFields, { keyId: 'AKIA4EXAMPLENEW', secret: 'abcdefghijkl', focus: 'id' })), W('Refused', h(B.MacS3KeyFields, { keyId: 'AKIA4EXAMPLENEW', secret: 'abcdefghijkl', refused: true }))));
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Empty', h(B.MacS3KeyFields, null)), W('Typed', h(B.MacS3KeyFields, { keyId: 'AKIA4EXAMPLENEW', secret: 'abcdefghijkl' })), W('ID focused', h(B.MacS3KeyFields, { keyId: 'AKIA4EXAMPLENEW', secret: 'abcdefghijkl', focus: 'id' })), W('Refused', h(B.MacS3KeyFields, { keyId: 'AKIA4EXAMPLENEW', secret: 'abcdefghijkl', refused: 'true' }))));
 </script>
 </body>
 </html>

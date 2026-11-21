@@ -1,4 +1,4 @@
-<!-- @dsCard group="Import" height=2300 -->
+<!-- @dsCard group="Import" height=2680 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>MacImportSidebar</title></head>
@@ -16,7 +16,8 @@
     W('Skipped open', col(h(B.MacImportSidebar, { found: '14', imported: '31', skipped: '2', tab: 'Skipped' }, h(B.MacImportRow, { title: 'Low Tide Hours', artist: 'Mara Quill', badge: '3 matches', record: true, cover: 'Low Tide Hours' }), h(B.MacImportRow, { title: 'Copper Sky', artist: 'Odile Fen', badge: 'Not found', cover: 'Copper Sky' })))),
     W('Filtered', col(h(B.MacImportSidebar, { found: '14', imported: '31', skipped: '2', filter: 'tide', narrowed: '1 of 14', filtered: true }, h(B.MacImportRow, { title: 'Low Tide Hours', artist: 'Mara Quill', badge: '3 matches', record: true, cover: 'Low Tide Hours' })))),
     W('Busy', col(h(B.MacImportSidebar, { found: '14', imported: '31', skipped: '2', identifying: 0.4, importing: true, scanning: true }, h(B.MacImportRow, { title: 'Low Tide Hours', artist: 'Mara Quill', badge: '3 matches', record: true, cover: 'Low Tide Hours' }), h(B.MacImportRow, { title: 'Copper Sky', artist: 'Odile Fen', badge: 'Not found', cover: 'Copper Sky' })))),
-    W('Empty', col(h(B.MacImportSidebar, { found: '14', imported: '31', skipped: '2', filter: 'harbor', narrowed: '0 of 14', filtered: true, empty: 'No matches' })))));
+    W('Empty', col(h(B.MacImportSidebar, { found: '14', imported: '31', skipped: '2', filter: 'harbor', narrowed: '0 of 14', filtered: true, empty: 'No matches' }))),
+    W('Narrow', col(h(B.MacImportSidebar, { found: '14', imported: '31', skipped: '2', narrow: true }, h(B.MacImportRow, { title: 'Low Tide Hours', artist: 'Mara Quill', badge: '3 matches', record: true, cover: 'Low Tide Hours' }), h(B.MacImportRow, { title: 'Copper Sky', artist: 'Odile Fen', badge: 'Not found', cover: 'Copper Sky' }))))));
 </script>
 </body>
 </html>

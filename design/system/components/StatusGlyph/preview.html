@@ -1,4 +1,4 @@
-<!-- @dsCard group="Pictures and marks" height=140 -->
+<!-- @dsCard group="Pictures and marks" height=260 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>StatusGlyph</title></head>
@@ -10,6 +10,8 @@
   var tones = ['info', 'success', 'warning', 'danger'];
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
     N('macOS', tones.map(function (t) { return h(B.StatusGlyph, { key: t, tone: t, set: 'mac', size: 20 }); })),
+    N('Inline', tones.map(function (t) { return h(B.StatusGlyph, { key: t, tone: t, set: 'mac', size: 20, inline: true }); })),
+    N('Muted', tones.map(function (t) { return h(B.StatusGlyph, { key: t, tone: t, set: 'mac', size: 20, muted: true }); })),
     N('Android', tones.map(function (t) { return h(B.StatusGlyph, { key: t, tone: t, size: 24 }); }))));
 </script>
 </body>

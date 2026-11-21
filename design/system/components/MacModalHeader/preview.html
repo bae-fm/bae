@@ -1,4 +1,4 @@
-<!-- @dsCard group="Alerts, sheets and popovers" height=80 -->
+<!-- @dsCard group="Alerts, sheets and popovers" height=160 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>MacModalHeader</title></head>
@@ -9,7 +9,7 @@
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h(B.MacModalHeader, { title: 'Edit Release', subtitle: 'Low Tide Hours · CD' }, h(B.MacButton, null, 'Close'))));
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Default', h(B.MacModalHeader, { title: 'Edit Release', subtitle: 'Low Tide Hours · CD' }, h(B.MacButton, null, 'Close'))), W('Large', h(B.MacModalHeader, { title: 'Edit Release', subtitle: 'Low Tide Hours · CD', large: true }, h(B.MacButton, null, 'Close')))));
 </script>
 </body>
 </html>

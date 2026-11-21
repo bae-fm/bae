@@ -1,4 +1,4 @@
-<!-- @dsCard group="Storage and transfers" height=240 -->
+<!-- @dsCard group="Storage and transfers" height=542 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>MacStorageCell</title></head>
@@ -14,7 +14,17 @@
     N('Number', h('div', { style: { width: 100, display: 'flex' } }, h(B.MacStorageCell, { value: '356 MB', numeric: true }))),
     N('Storage at rest', h(B.MacStorageCell, { state: 'pinned' })),
     N('Storage moving', h(B.MacStorageCell, { state: 'uploading', progress: 0.62 })),
-    N('Storage failed', h(B.MacStorageCell, { state: 'downloadFailed' }))));
+    N('Storage failed', h(B.MacStorageCell, { state: 'downloadFailed' })),
+    N('Local', h(B.MacStorageCell, { state: 'local' })),
+    N('Cloud', h(B.MacStorageCell, { state: 'cloud' })),
+    N('Pinning', h(B.MacStorageCell, { state: 'pinning', progress: 0.62 })),
+    N('Detaching', h(B.MacStorageCell, { state: 'detaching', progress: 0.62 })),
+    N('Queued', h(B.MacStorageCell, { state: 'queued' })),
+    N('Upload queued', h(B.MacStorageCell, { state: 'uploadQueued' })),
+    N('Move to this device queued', h(B.MacStorageCell, { state: 'moveToThisDeviceQueued' })),
+    N('Upload blocked', h(B.MacStorageCell, { state: 'uploadBlocked' })),
+    N('Move failed', h(B.MacStorageCell, { state: 'moveFailed' })),
+    N('Move to this device failed', h(B.MacStorageCell, { state: 'moveToThisDeviceFailed' }))));
 </script>
 </body>
 </html>

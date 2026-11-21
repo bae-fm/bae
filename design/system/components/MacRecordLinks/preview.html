@@ -1,4 +1,4 @@
-<!-- @dsCard group="Import" height=150 -->
+<!-- @dsCard group="Import" height=184 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>MacRecordLinks</title></head>
@@ -12,7 +12,8 @@
 
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
     W('Two catalogs', h(B.MacRecordLinks, { records: 'MusicBrainz,Discogs' })),
-    W('Wrapped', box(300, h(B.MacRecordLinks, { records: 'MusicBrainz,Discogs,AllMusic,Apple Music,Bandcamp,Deezer,Genius' })))));
+    W('Wrapped', box(300, h(B.MacRecordLinks, { records: 'MusicBrainz,Discogs,AllMusic,Apple Music,Bandcamp,Deezer,Genius' }))),
+    W('Buttons', h(B.MacRecordLinks, { records: 'MusicBrainz,Discogs', buttons: true }))));
 </script>
 </body>
 </html>

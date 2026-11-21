@@ -1,4 +1,4 @@
-<!-- @dsCard group="Windows and screens" height=1140 -->
+<!-- @dsCard group="Windows and screens" height=1710 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>AndroidDetailScreen</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&amp;display=swap"></head>
@@ -11,7 +11,8 @@
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
     W('Resting', h(B.AndroidDetailScreen, { height: 520, trackTitle: 'Low Tide Hours', trackArtist: 'Mara Quill', trackAlbum: 'Low Tide Hours', playing: true, position: 0.35, held: 0.6, elapsed: '1:42', duration: '5:03' }, slot('The page'))),
-    W('Menu', h(B.AndroidDetailScreen, Object.assign({ height: 520, trackTitle: 'Low Tide Hours', trackArtist: 'Mara Quill', trackAlbum: 'Low Tide Hours', playing: true, position: 0.35, held: 0.6, elapsed: '1:42', duration: '5:03' }, { menu: true }), slot('The page')))));
+    W('Menu', h(B.AndroidDetailScreen, Object.assign({ height: 520, trackTitle: 'Low Tide Hours', trackArtist: 'Mara Quill', trackAlbum: 'Low Tide Hours', playing: true, position: 0.35, held: 0.6, elapsed: '1:42', duration: '5:03' }, { menu: true }), slot('The page'))),
+    W('Flush', h(B.AndroidDetailScreen, Object.assign({ height: 520, trackTitle: 'Low Tide Hours', trackArtist: 'Mara Quill', trackAlbum: 'Low Tide Hours', playing: true, position: 0.35, held: 0.6, elapsed: '1:42', duration: '5:03' }, { flush: true }), slot('The page')))));
 </script>
 </body>
 </html>

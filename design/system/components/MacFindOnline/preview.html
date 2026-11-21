@@ -1,4 +1,4 @@
-<!-- @dsCard group="Import" height=360 -->
+<!-- @dsCard group="Import" height=530 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>MacFindOnline</title></head>
@@ -9,7 +9,7 @@
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h(B.MacFindOnline, { discogsBar: true }, h('div', null, 'No catalog has this.'))));
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Default', h(B.MacFindOnline, { discogsBar: true }, h('div', null, 'No catalog has this.'))), W('No Discogs bar', h(B.MacFindOnline, null, h('div', null, 'No catalog has this.')))));
 </script>
 </body>
 </html>

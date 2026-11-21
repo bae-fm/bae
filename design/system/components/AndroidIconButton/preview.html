@@ -1,4 +1,4 @@
-<!-- @dsCard group="Buttons and choices" height=260 -->
+<!-- @dsCard group="Buttons and choices" height=630 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>AndroidIconButton</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&amp;display=swap"></head>
@@ -9,7 +9,7 @@
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, N('Back', h(B.AndroidIconButton, { icon: 'back', label: 'Back' })), N('Search', h(B.AndroidIconButton, { icon: 'search', label: 'Search' })), N('More', h(B.AndroidIconButton, { icon: 'more', label: 'More' })), N('On the backdrop', h('div', { style: { display: 'inline-flex', background: 'var(--backdrop)', borderRadius: 8 } }, h(B.AndroidIconButton, { icon: 'close', label: 'Close', tone: 'onfill' })))));
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, N('Back', h(B.AndroidIconButton, { icon: 'back', label: 'Back' })), N('Menu', h(B.AndroidIconButton, { icon: 'back', label: 'Back', menu: true })), N('Off', h(B.AndroidIconButton, { icon: 'back', label: 'Back', off: true })), N('Tonal', h(B.AndroidIconButton, { icon: 'back', label: 'Back', tonal: true })), N('Tone accent', h(B.AndroidIconButton, { icon: 'back', label: 'Back', tone: 'accent' })), N('Tone muted', h(B.AndroidIconButton, { icon: 'back', label: 'Back', tone: 'muted' })), N('Tone warning', h(B.AndroidIconButton, { icon: 'back', label: 'Back', tone: 'warning' })), N('Search', h(B.AndroidIconButton, { icon: 'search', label: 'Search' })), N('More', h(B.AndroidIconButton, { icon: 'more', label: 'More' })), N('On the backdrop', h('div', { style: { display: 'inline-flex', background: 'var(--backdrop)', borderRadius: 8 } }, h(B.AndroidIconButton, { icon: 'close', label: 'Close', tone: 'onfill' })))));
 </script>
 </body>
 </html>

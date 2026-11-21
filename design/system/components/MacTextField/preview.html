@@ -1,4 +1,4 @@
-<!-- @dsCard group="Fields" height=380 -->
+<!-- @dsCard group="Fields" height=512 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>MacTextField</title></head>
@@ -9,7 +9,7 @@
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Resting', h(B.MacTextField, { labelWidth: 'auto', label: 'Name', value: 'Home music' })), W('Focused', h(B.MacTextField, { labelWidth: 'auto', label: 'Name', state: 'focused', value: 'Home music' })), W('Empty', h(B.MacTextField, { labelWidth: 'auto', label: 'Name' })), W('Note', h(B.MacTextField, { labelWidth: 'auto', label: 'Name', value: 'Home music', note: 'People in this library see this name.' })), W('Error', h(B.MacTextField, { labelWidth: 'auto', label: 'Name', state: 'error', error: 'Enter a name.' })), W('Off', h(B.MacTextField, { labelWidth: 'auto', label: 'Name', state: 'off', value: 'Home music' })), W('Secret', h(B.MacTextField, { labelWidth: 'auto', label: 'Name', secret: true, value: 'Home music' })), W('Label inside', h(B.MacTextField, { labelWidth: 'auto', label: 'Name', labelHidden: true }))));
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Resting', h(B.MacTextField, { labelWidth: 'auto', label: 'Name', value: 'Home music' })), W('Focused', h(B.MacTextField, { labelWidth: 'auto', label: 'Name', state: 'focused', value: 'Home music' })), W('Empty', h(B.MacTextField, { labelWidth: 'auto', label: 'Name' })), W('Note', h(B.MacTextField, { labelWidth: 'auto', label: 'Name', value: 'Home music', note: 'People in this library see this name.' })), W('Error', h(B.MacTextField, { labelWidth: 'auto', label: 'Name', state: 'error', error: 'Enter a name.' })), W('Off', h(B.MacTextField, { labelWidth: 'auto', label: 'Name', state: 'off', value: 'Home music' })), W('Secret', h(B.MacTextField, { labelWidth: 'auto', label: 'Name', secret: true, value: 'Home music' })), W('Label inside', h(B.MacTextField, { labelWidth: 'auto', label: 'Name', labelHidden: true })), W('Code', h(B.MacTextField, { labelWidth: 'auto', label: 'Name', code: true, value: 'Home music' })), W('Label column', h(B.MacTextField, { label: 'Name', value: 'Home music' }))));
 </script>
 </body>
 </html>

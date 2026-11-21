@@ -1,4 +1,4 @@
-<!-- @dsCard group="Windows and screens" height=1700 -->
+<!-- @dsCard group="Windows and screens" height=5430 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>MacMainWindow</title></head>
@@ -12,7 +12,14 @@
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
     W('Library', h(B.MacMainWindow, { width: 1100, height: 520, trackTitle: 'Low Tide Hours', trackArtist: 'Mara Quill', trackAlbum: 'Low Tide Hours', playing: true, position: 0.35, held: 0.6, elapsed: '1:42', duration: '5:03' }, slot('The section’s content'))),
     W('Import', h(B.MacMainWindow, Object.assign({ width: 1100, height: 520, trackTitle: 'Low Tide Hours', trackArtist: 'Mara Quill', trackAlbum: 'Low Tide Hours', playing: true, position: 0.35, held: 0.6, elapsed: '1:42', duration: '5:03' }, { section: 'Import' }), slot('The section’s content'))),
-    W('Nothing played', h(B.MacMainWindow, { width: 1100, height: 520 }, slot('The section’s content')))));
+    W('Nothing played', h(B.MacMainWindow, { width: 1100, height: 520 }, slot('The section’s content'))),
+    W('Queue open', h(B.MacMainWindow, { width: 1100, height: 520, trackTitle: 'Low Tide Hours', trackArtist: 'Mara Quill', trackAlbum: 'Low Tide Hours', playing: true, position: 0.35, held: 0.6, elapsed: '1:42', duration: '5:03', queueOpen: true }, slot('The section’s content'))),
+    W('Search focused', h(B.MacMainWindow, { width: 1100, height: 520, trackTitle: 'Low Tide Hours', trackArtist: 'Mara Quill', trackAlbum: 'Low Tide Hours', playing: true, position: 0.35, held: 0.6, elapsed: '1:42', duration: '5:03', searchFocused: true }, slot('The section’s content'))),
+    W('Sync attention', h(B.MacMainWindow, { width: 1100, height: 520, trackTitle: 'Low Tide Hours', trackArtist: 'Mara Quill', trackAlbum: 'Low Tide Hours', playing: true, position: 0.35, held: 0.6, elapsed: '1:42', duration: '5:03', sync: 'attention' }, slot('The section’s content'))),
+    W('Sync moving', h(B.MacMainWindow, { width: 1100, height: 520, trackTitle: 'Low Tide Hours', trackArtist: 'Mara Quill', trackAlbum: 'Low Tide Hours', playing: true, position: 0.35, held: 0.6, elapsed: '1:42', duration: '5:03', sync: 'moving' }, slot('The section’s content'))),
+    W('Sync paused', h(B.MacMainWindow, { width: 1100, height: 520, trackTitle: 'Low Tide Hours', trackArtist: 'Mara Quill', trackAlbum: 'Low Tide Hours', playing: true, position: 0.35, held: 0.6, elapsed: '1:42', duration: '5:03', sync: 'paused' }, slot('The section’s content'))),
+    W('Track no cover', h(B.MacMainWindow, { width: 1100, height: 520, trackTitle: 'Low Tide Hours', trackArtist: 'Mara Quill', trackAlbum: 'Low Tide Hours', playing: true, position: 0.35, held: 0.6, elapsed: '1:42', duration: '5:03', trackNoCover: true }, slot('The section’s content'))),
+    W('Waiting', h(B.MacMainWindow, { width: 1100, height: 520, trackTitle: 'Low Tide Hours', trackArtist: 'Mara Quill', trackAlbum: 'Low Tide Hours', playing: true, position: 0.35, held: 0.6, elapsed: '1:42', duration: '5:03', waiting: true }, slot('The section’s content')))));
 </script>
 </body>
 </html>
