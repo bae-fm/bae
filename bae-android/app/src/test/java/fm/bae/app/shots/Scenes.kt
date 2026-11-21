@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
+import fm.bae.app.data.TestImages
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.AccentChoice
 import fm.bae.app.ui.appearance.AppearanceMode
@@ -40,6 +41,7 @@ import fm.bae.app.ui.components.AndroidDialogActions
 import fm.bae.app.ui.components.AndroidSheetBody
 import fm.bae.app.ui.components.DialogHead
 import fm.bae.app.ui.components.DialogParts
+import kotlinx.coroutines.Dispatchers
 import uniffi.bae_bridge.BridgeDropboxLocation
 import uniffi.bae_bridge.BridgeFolderLabel
 import uniffi.bae_bridge.BridgeHistoryPerson
@@ -311,3 +313,18 @@ internal fun OnTheBackdrop(content: @Composable () -> Unit) = Row(modifier = Mod
 @Composable
 internal fun Images(content: @Composable () -> Unit) =
     CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved(), content = content)
+
+/** [content] with an image store that draws a picture for every cover, a different one for each image's id. */
+@Composable
+internal fun Covers(content: @Composable () -> Unit) =
+    CompositionLocalProvider(
+        LocalImageStore provides
+            ImageStore(
+                fetchLibraryImageBytes = { TestImages.png(COVER_PIXELS, seed = it.id.hashCode()) },
+                dispatcher = Dispatchers.Unconfined,
+            ),
+        content = content,
+    )
+
+/** The width of a test cover's picture, as wide as the largest cover a preview draws at two pixels a point. */
+private const val COVER_PIXELS = 240
