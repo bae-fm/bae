@@ -101,8 +101,10 @@ pub fn sheet_files_ctes(release: &str, picks: &str) -> String {
 /// `WITH`: the audio files each `FILE` line of the release's sheets can play
 /// from once the picks are written, as a JSON array of
 /// [`DbSheetAudioOption`]: the file it then plays from, the one it plays from
-/// now, and every audio file of the release on this device that no track
-/// then plays from, in file name order.
+/// now, and every audio file of the release that coven can read on this
+/// device (`coven_file_reads.source` is `stored` or `here`) that no track then
+/// plays from, in file name order. A file that lives on another device only
+/// (`source` NULL) is left out, since a read here fails with `DeviceOnly`.
 pub fn sheet_audio_options_ctes() -> &'static str {
     "line_ends (sheet_file_id, file_reference, end_ms) AS ( \
          SELECT c.sheet_file_id, c.file_reference, \
@@ -127,7 +129,7 @@ pub fn sheet_audio_options_ctes() -> &'static str {
          JOIN laid_files f ON f.role = 'audio' \
          LEFT JOIN coven_file_reads reads ON reads.file = f.file \
          WHERE f.id = line.file_id OR f.id = line.stored_file_id \
-            OR (f.source_audio_layout IS NULL AND reads.source = 'here') \
+            OR (f.source_audio_layout IS NULL AND reads.source IS NOT NULL) \
          GROUP BY line.sheet_file_id, line.file_reference)"
 }
 

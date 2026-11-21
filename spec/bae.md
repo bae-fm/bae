@@ -2292,10 +2292,12 @@ which tracks the folder holds; a line that plays no audio shows *Choose
 audio…* in its place. A library release's editor adds and removes no tracks,
 so it offers neither, and lists for each line the file it plays from, the one
 it played from when the editor opened, and each other audio file of the
-release on this device that no track plays from. In a library release's
-editor, a catalog applied after a side pick lays the tracks out at its own
-places and clears the picks, so the pop-up then shows the catalog's side or
-disc; a pick made after it moves the sheet again, and a file pick stays.
+release that bae can read on this device, stored or on this device only,
+that no track plays from; a file that lives on another device only is not
+offered. In a library release's editor, a catalog applied after a side pick
+lays the tracks out at its own places and clears the picks, so the pop-up then
+shows the catalog's side or disc; a pick made after it moves the sheet again,
+and a file pick stays.
 
 **Images.** A folder's pane shows the folder's images above the tracks, as its
 scan read them, under a ruled *Images* heading: each JPEG, PNG, GIF or WebP

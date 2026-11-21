@@ -17,9 +17,9 @@ fn cue_image_release() -> DiscogsRelease {
 }
 
 /// The 3-track CUE image fixture, imported, with the fixture file
-/// `fixture` beside it as `name`: an audio file of the release that no
-/// track plays from, with the image's audio facts and `duration_ms` as its
-/// length.
+/// `fixture` beside it as `name`: an audio file of the release, on this
+/// device only, that no track plays from, with the image's audio facts and
+/// `duration_ms` as its length.
 async fn imported_with_carried_audio(
     name: &str,
     fixture: &str,
@@ -39,17 +39,41 @@ async fn imported_with_carried_audio(
     )
     .await
     .expect("import the CUE image");
-    let files = library.records().get_files_for_release(&imported.release_id).await.unwrap();
+    let id = add_carried_audio(
+        &library,
+        &imported.release_id,
+        &imported.album_dir,
+        name,
+        fixture,
+        duration_ms,
+        coven::Place::DeviceOnly,
+    )
+    .await;
+    (library, imported, id)
+}
+
+/// The audio file `name` made from the fixture `fixture`, added to the
+/// imported release as [`imported_with_carried_audio`] describes, placed as
+/// `place` says.
+async fn add_carried_audio(
+    library: &bae_library::test_libraries::TestLibrary,
+    release_id: &str,
+    folder: &bae_util::test_files::TestFolder,
+    name: &str,
+    fixture: &str,
+    duration_ms: u64,
+    place: coven::Place,
+) -> String {
+    let files = library.records().get_files_for_release(release_id).await.unwrap();
     let image = files.iter().find(|file| file.original_filename == "Test Album.flac").unwrap();
     let source_audio = image.source_audio.clone().map(|audio| {
         bae_records::source_audio::SourceAudioFile { layout: None, duration_ms, ..audio }
     });
-    let original = imported
-        .album_dir
-        .copy_fixture(bae_audio::test_fixtures::cue_flac_dir().join(fixture), name);
+    let original =
+        folder.copy_fixture(bae_audio::test_fixtures::cue_flac_dir().join(fixture), name);
     let id = coven::IdSource::new_id(&coven::UuidIds).to_string();
     let mut row = bae_records::NewReleaseFile::new(
-        &imported.release_id,
+        release_id,
         name,
         image.content_type.clone(),
         bae_records::ReleaseFileRole::Audio,
@@ -57,8 +81,8 @@ async fn imported_with_carried_audio(
         time::UtcDateTime::now(),
     );
     row.source_audio = source_audio;
-    library.records().insert_file_for_test(&row, &original).await.unwrap();
-    (library, imported, id)
+    library.records().insert_files_placed_for_test(vec![(row, original, place)]).await.unwrap();
+    id
 }
 
 /// The only run of the draft's tracks, the sheet over every track: its
@@ -200,6 +224,63 @@ async fn a_cue_sheet_moves_to_another_audio_file_of_its_release() {
     let reopened = draft_where(&drafts, &saved, |_| true).await;
     assert_eq!(sheet_run(&reopened).2.file_id, rip);
     assert_eq!(listed_files(&reopened), ["Test Album.flac"]);
+}
+
+/// An audio file that coven stores, which a read takes from its cache or the
+/// cloud storage, is offered like one on this device only.
+#[tokio::test]
+async fn the_editor_offers_an_audio_file_the_cloud_stores() {
+    bae_util::test_logs::install();
+    let temp_dir = bae_util::test_files::TestFolder::new();
+    let album_dir = temp_dir.path().join("album");
+    temp_dir.create_folder(&album_dir);
+    let fakes = bae_catalogs::fake_catalogs::FakeCatalogs::offline();
+    let (library, cloud) = bae_library::test_libraries::storage_library(
+        temp_dir.path(),
+        fakes.providers(),
+        bae_util::http::Http::for_test(),
+    )
+    .await;
+    bae_library::test_libraries::connect_storage(library.manager(), library.store(), &cloud).await;
+    let fixtures = bae_audio::test_fixtures::cue_flac_dir();
+    temp_dir.copy_fixture(fixtures.join("Test Album.flac"), album_dir.join("Test Album.flac"));
+    temp_dir.copy_fixture(fixtures.join("Test Album.cue"), album_dir.join("Test Album.cue"));
+    let release_key = fakes.seed_discogs_test_release(cue_image_release());
+    let import_handle = library.start_discogs_import().await;
+    let import_id = coven::IdSource::new_id(&coven::UuidIds).to_string();
+    import_handle
+        .send_command(bae_import::ImportCommand {
+            destination: bae_import::ImportDestination::Cloud,
+            ..bae_import::test_imports::folder_import(
+                &import_id,
+                album_dir.clone(),
+                bae_import::test_imports::discogs_release(release_key),
+            )
+        })
+        .await
+        .unwrap();
+    let (release_id, _) = bae_import::test_imports::wait_for_import_complete(
+        &mut import_handle.subscribe_import(import_id),
+    )
+    .await;
+    add_carried_audio(
+        &library,
+        &release_id,
+        &temp_dir,
+        "Test Album (rip).flac",
+        "Test Album.flac",
+        30_000,
+        coven::Place::Cloud,
+    )
+    .await;
+    library.manager().drain_uploads_expecting_work().await.expect("the cloud takes the uploads");
+    let manager = library.manager();
+    let form = manager.open_release_edit(&release_id).await.unwrap();
+    let drafts = manager.subscribe_release_edit_draft();
+    let opened = draft_where(&drafts, &form, |_| true).await;
+    let (_, line, _) = sheet_run(&opened);
+    let names: Vec<_> = line.options.iter().map(|option| option.name.as_str()).collect();
+    assert_eq!(names, ["Test Album (rip).flac", "Test Album.flac"]);
 }
 
 /// An audio file shorter than where the sheet's last track starts can't
