@@ -2283,10 +2283,10 @@ library holds no pointer back into one. The editor offers the import pane's two
 commands for starting over (§3.6): applying the files' tags and clearing the
 metadata. Each changes the form and writes nothing until a save, and each
 keeps the form's records, its CUE sheets' picked sides and files, and its
-album pick. Applying the files' tags reads the release's audio files and CUE
-sheets on this device as the import reads a folder's (§3.6), and lays what
+album pick. Applying the files' tags reads the release's audio files on this
+device and its CUE sheets as the import reads a folder's (§3.6), and lays what
 they say onto the release's tracks; bae refuses it, naming the file, when
-this device holds no original of one of them. Clearing the metadata empties
+this device holds no original of an audio file. Clearing the metadata empties
 the album's title, artists and year, the pressing, and each track's title,
 artists, listed length, roles and works, and keeps the mediums and the
 tracks' places as the library holds them; a save stays refused until the

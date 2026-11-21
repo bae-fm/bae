@@ -125,12 +125,10 @@ impl Records {
         self.store.user_file(row.file).await
     }
 
-    /// The audio files and track sheets of the release `release_id`, in the
-    /// release's file order, each with the path of the original this device
-    /// records for its coven file: the person's file it was imported from,
-    /// or the copy making the release local again wrote. The path is `None`
-    /// for a file with no original here, as for a release another device
-    /// imported.
+    /// The audio files and track sheets of the release `release_id`, in its
+    /// file order, each with the path of its coven file's original on this
+    /// device (the person's imported file, or the copy making the release
+    /// local wrote), `None` where this device has none.
     pub async fn release_audio_and_sheet_originals(
         &self,
         release_id: &str,

@@ -31,10 +31,9 @@ fn titles(form: &bae_import::ReleaseEditForm) -> Vec<&str> {
     form.edit.tracks.iter().map(|track| track.title.as_str()).collect()
 }
 
-/// Applying the files' tags puts what the CUE sheet says in the form, keeps
-/// the records, and a save writes it.
+/// Applying the files' tags fills the form from the CUE sheet; a save writes it.
 #[tokio::test]
-async fn applying_the_files_tags_reads_the_sheet_on_this_device() {
+async fn applying_the_files_tags_reads_the_cue_sheet() {
     let (library, imported) = imported_cue_image().await;
     let manager = library.manager();
     let import = library.start_discogs_import().await;

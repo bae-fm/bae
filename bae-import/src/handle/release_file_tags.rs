@@ -1,19 +1,16 @@
-//! A library release's files' own tags, as its editor applies them: read
-//! from the release's audio files where this device holds their originals,
-//! and laid onto the release's tracks.
+//! A library release's files' own tags, as its editor applies them: read from
+//! its audio files on this device and its CUE sheets through coven.
 
 use super::ImportServiceHandle;
+use crate::ImportError;
 use std::collections::HashMap;
 
 impl ImportServiceHandle {
-    /// What the audio files of `form`'s release and its CUE sheets say about
-    /// it, read as the import reads a folder's (§3.6), laid onto the form's
-    /// tracks: each track takes what its file's tags, or its sheet's entry,
-    /// say about it. The read refuses with
+    /// What `form`'s release's audio files and CUE sheets say about each of
+    /// its tracks, read as the import reads a folder's (§3.6). Refused with
     /// [`crate::ImportError::FileNotOnThisDevice`] when this device holds no
-    /// original of one of the release's audio files or sheets, and with
-    /// [`crate::ImportError::MetadataTrackCount`] when the files describe
-    /// another number of tracks than one file's tracks in the release.
+    /// original of an audio file, and [`crate::ImportError::MetadataTrackCount`]
+    /// when the files describe another number of tracks than a file holds.
     pub async fn release_file_tag_values(
         &self,
         form: &crate::ReleaseEditForm,
@@ -26,27 +23,37 @@ impl ImportServiceHandle {
             .iter()
             .map(|(file, _)| (file.id.clone(), file.original_filename.clone()))
             .collect();
-        let library_files = files
-            .into_iter()
-            .map(|(file, original)| match original {
-                Some(path) => Ok(crate::extraction::release::library_file(file, path)),
-                None => {
-                    Err(crate::ImportError::FileNotOnThisDevice { name: file.original_filename })
-                }
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-        let reader = self.services.file_tags.clone();
         let lease = bae_store::lease_one(&self.services.files).await;
+        let sheet = |file: &bae_records::DbFile| crate::rip_reading::opens_library_file(&file.role);
+        let sheets: Vec<_> = files.iter().map(|(file, _)| file).filter(|f| sheet(f)).collect();
+        let documents =
+            crate::library_documents::LibraryDocuments::read(records, &lease, &sheets).await?;
+        let originals = files
+            .iter()
+            .filter(|(file, _)| !sheet(file))
+            .map(|(f, original)| match original {
+                Some(path) => Ok((f.original_filename.clone(), path.clone())),
+                None => Err(ImportError::FileNotOnThisDevice { name: f.original_filename.clone() }),
+            })
+            .collect::<Result<HashMap<_, _>, _>>()?;
+        let library_files: Vec<_> = files
+            .into_iter()
+            .map(|(file, _)| crate::extraction::release::library_file(file))
+            .collect();
+        let reader = self.services.file_tags.clone();
         let (values, units) = self
             .services
             .diagnostics
             .blocking("read a release's file tags", move || {
                 let categorized = crate::folder_scanner::categorize_library_files(
                     library_files,
+                    &documents,
                     decisions,
-                    &lease,
                 );
-                let audio_files = categorized.audio().cloned().collect::<Vec<_>>();
+                let mut audio_files = categorized.audio().cloned().collect::<Vec<_>>();
+                for file in &mut audio_files {
+                    file.version.path = originals[&file.relative_path].clone();
+                }
                 let snapshot = crate::file_tag_snapshot::extract_file_tag_snapshot(
                     &audio_files,
                     0,
@@ -70,11 +77,9 @@ impl ImportServiceHandle {
     }
 }
 
-/// For each of the form's tracks, in the form's order, the index of the
-/// audio unit it plays among `units`: a file's tracks pair with that file's
-/// units in the order they play, a sheet's slices in the sheet's order and
-/// a track's start in the file. Refused when a file's units and its tracks
-/// differ in number.
+/// For each of the form's tracks, in order, the index of the unit it plays
+/// among `units`: a file's tracks pair with its units in play order, by start.
+/// Refused when a file's units and its tracks differ in number.
 fn tracks_by_unit(
     form: &crate::ReleaseEditForm,
     names: &HashMap<String, String>,
@@ -118,8 +123,7 @@ fn tracks_by_unit(
     Ok(order)
 }
 
-/// `values` with its tracks, one per audio unit, put in the form's order:
-/// track `i` is the one `order[i]` names.
+/// `values` with its tracks, one per unit, in the form's order (`order[i]`).
 fn in_release_order(
     mut values: bae_catalogs::release_values::ReleaseValues,
     order: &[usize],

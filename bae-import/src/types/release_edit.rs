@@ -255,8 +255,7 @@ impl ReleaseEditForm {
         Self { edit: values.release_edit(), applied: Some(values), ..self }
     }
 
-    /// The form linked to no record: a save drops the release's records,
-    /// and every value stays as the form holds it.
+    /// The form linked to no record: a save drops the release's records and keeps every value.
     pub fn unlinked(self) -> Self {
         Self { records: Some(Vec::new()), ..self }
     }
