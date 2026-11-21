@@ -175,7 +175,10 @@
         ) -> some View {
             let highlighted = level.highlighted == index && !disabled
             return HStack(spacing: ThemeSpace.compact) {
-                Group {
+                // A stack, which keeps its width with no mark in it: an
+                // empty view drawn with a frame takes no room, and the words
+                // of unchecked lines would sit left of the checked line's.
+                ZStack {
                     if checked {
                         Image(systemName: "checkmark")
                             .font(.system(size: 10, weight: .bold))
@@ -205,6 +208,7 @@
                         .accessibilityHidden(true)
                 }
             }
+            .accessibilityElement(children: .combine)
             .themeText(.body)
             .padding(.leading, ThemeSpace.related)
             .padding(.trailing, isPopUp ? ThemeSpace.edge : ThemeSpace.related)
