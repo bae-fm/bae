@@ -162,8 +162,7 @@ struct MacLightbox<Item: LightboxImage>: View {
             loadFailedView
         }
         else {
-            VStack(spacing: ThemeSpace.related) {
-                MacSpinner()
+            ProgressView {
                 Text(
                     "Loading the image…",
                     comment:
@@ -172,6 +171,7 @@ struct MacLightbox<Item: LightboxImage>: View {
                 .themeText(.body)
                 .foregroundStyle(Theme.onFillSecondary)
             }
+            .controlSize(.large)
         }
     }
 
