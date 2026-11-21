@@ -2289,8 +2289,8 @@ the *Files* list shows the file the line no longer plays from in the new file's
 place. In a Found folder's pane, the place pop-up also offers *Ignored*, and
 the Audio file pop-up offers no audio for a line, since the import decides
 which tracks the folder holds; a line that plays no audio shows *Choose
-audio…* in its place. A library release's editor adds and removes no tracks,
-so it offers neither, and lists for each line the file it plays from, the one
+audio…* in its place. A library release's editor offers both as well, and
+lists for each line the file it plays from, the one
 it played from when the editor opened, and each other audio file of the
 release that bae can read on this device, stored or on this device only,
 that no track plays from; a file that lives on another device only is not
@@ -2298,6 +2298,15 @@ offered. In a library release's editor, a catalog applied after a side pick
 lays the tracks out at its own places and clears the picks, so the pop-up then
 shows the catalog's side or disc; a pick made after it moves the sheet again,
 and a file pick stays.
+
+A library release's save that ignores a sheet, or leaves a line playing no
+audio, deletes the tracks the sheet carved there, and bae matches none of them
+to a track the save adds. When a track the save deletes has a rating, a play in
+the history or a playlist entry, *Save* first shows an alert, *Delete track
+data?*: "Saving changes the release's track layout, which deletes the current
+tracks' ratings, play history and playlist entries.", with *Cancel* and a
+destructive *Save*. A save that deletes only tracks with none of these shows no
+alert.
 
 **Images.** A folder's pane shows the folder's images above the tracks, as its
 scan read them, under a ruled *Images* heading: each JPEG, PNG, GIF or WebP
@@ -6145,11 +6154,11 @@ All sync (§5), except `admin_operations`.
 | Table | One row per |
 |---|---|
 | `people` | person, keyed by their `MemberId`: name, private circle, history setting (private or household), and the coven file of their avatar (`avatar_id`), with an index by it |
-| `ratings` | rating by a person of an album or of a track, one to five stars |
+| `ratings` | rating by a person of an album or of a track, one to five stars; deleting the album or the track deletes it |
 | `rating_systems` | the library's one row: the rating system for albums and for tracks, each Stars, Heart or None; admin-only |
-| `history` | play: person, track, when it started, the day it was played on, how much was played, audience |
+| `history` | play: person, track, when it started, the day it was played on, how much was played, audience; deleting the track deletes it |
 | `playlists` | playlist: whose it is, its name and its audience |
-| `playlist_entries` | place in a playlist, keyed by the playlist and a position id: the track there and its position |
+| `playlist_entries` | place in a playlist, keyed by the playlist and a position id: the track there and its position; deleting the track deletes it |
 | `admin_operations` | admin change this device asked for, while coven lists its operation: keyed by that operation, the library's new name, the person and their new role, the person removed, the device removed, or the person an approval lets in with the name their invite gave them (§5.6) |
 
 ### A.3 Playback

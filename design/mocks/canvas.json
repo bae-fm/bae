@@ -4417,6 +4417,14 @@
    "w": 412,
    "x": 7580,
    "y": 5444
+  },
+  "mac.album.edit.drop-tracks.dc.html": {
+   "h": 1300,
+   "page": "home",
+   "title": "macOS: Edit…: a release from a CUE image: saving drops the sheet's tracks",
+   "w": 1200,
+   "x": 15500,
+   "y": 21244
   }
  },
  "createdOnFiles": {
@@ -6382,6 +6390,7 @@
   "mac.album.edit.cover.dc.html",
   "mac.album.edit.cue-image.dc.html",
   "mac.album.edit.reading-file.dc.html",
+  "mac.album.edit.drop-tracks.dc.html",
   "mac.album.edit.country.dc.html",
   "mac.import.identify.records-differ.dc.html",
   "mac.import.list.folder-not-watched.dc.html",
