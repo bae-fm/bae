@@ -2,7 +2,7 @@
 
   // An album's stars under its header, as AlbumRating draws them: the person's own rating (`value`, 0 for none), tappable, then who else rated it (`raters`) in fine text.
   function AndroidAlbumRating(props) {
-    return h('div', { className: 'bae-a-rating' }, h(Stars, { value: props.value || 0, size: 24 }), props.raters ? h('span', { className: 'bae-a-fine bae-muted' }, props.raters) : null);
+    return h('div', { className: 'bae-a-rating' }, h(Stars, { value: props.value || 0, size: 24, rate: true }), props.raters ? h('span', { className: 'bae-a-fine bae-muted' }, props.raters) : null);
   }
 
   // An album or playlist page's play buttons: Play and Shuffle, then Play next and Add to queue on a second line. `short`: Play and Shuffle alone, as a playlist page has them.

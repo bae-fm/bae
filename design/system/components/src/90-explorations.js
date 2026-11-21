@@ -1,12 +1,14 @@
   // ==== part: explore ====
   // ---- Explorations: parts for screens bae doesn't have yet ----
   // 1–5 stars, filled up to value; empty draws all five faint. who adds a line of who else rated it.
+  // `rate`: each star is a button that rates with that many stars, as an album's rating is; without it the stars are one picture of the rating.
   function Stars(props) {
     var v = Number(props.value || 0), s = Number(props.size || 14);
     var star = 'M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7L12 17.3 5.8 20.9l1.6-7L2 9.2l7.1-.6z';
-    return h('span', { className: 'bae-stars', role: 'img', 'aria-label': v ? v + ' stars' : 'Not rated' },
-      [1, 2, 3, 4, 5].map(function (i) { return h('svg', { key: i, width: s, height: s, viewBox: '0 0 24 24', 'aria-hidden': true }, h('path', { d: star, fill: i <= v ? 'var(--accent)' : 'none', stroke: i <= v ? 'var(--accent)' : 'var(--hairline-strong)', strokeWidth: 1.5, strokeLinejoin: 'round' })); }),
-      props.who ? h('span', { className: 'bae-muted', style: { marginLeft: 6, fontSize: '0.85em' } }, props.who) : null);
+    var draw = function (i) { return h('svg', { key: i, width: s, height: s, viewBox: '0 0 24 24', 'aria-hidden': true }, h('path', { d: star, fill: i <= v ? 'var(--accent)' : 'none', stroke: i <= v ? 'var(--accent)' : 'var(--hairline-strong)', strokeWidth: 1.5, strokeLinejoin: 'round' })); };
+    var stars = [1, 2, 3, 4, 5].map(function (i) { return props.rate ? h('button', { key: i, type: 'button', className: 'bae-stars-btn', 'aria-label': 'Rate ' + i + ' of 5 stars' }, draw(i)) : draw(i); });
+    return h('span', props.rate ? { className: 'bae-stars' } : { className: 'bae-stars', role: 'img', 'aria-label': v ? v + ' of 5 stars' : 'Not rated' },
+      stars, props.who ? h('span', { className: 'bae-muted', style: { marginLeft: 6, fontSize: '0.85em' } }, props.who) : null);
   }
   // A person's small picture, or initials, beside their name (`name`), as a history row ends in whose play it was. `strong` is a playlist header's owner line: the name in the header's semibold, at the size of the text around it.
   function MacPersonTag(props) {

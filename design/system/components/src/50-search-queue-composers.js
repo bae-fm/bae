@@ -144,7 +144,7 @@
       h(AndroidIconButton, { icon: 'down', label: 'Collapse' }),
       h(Artwork, { title: props.album || props.title, radius: 10, missing: props.noCover }),
       h('div', { className: 'bae-a-fp-title' }, props.title), h('div', { className: 'bae-a-fp-artist' }, props.artist),
-      h(AndroidSeekBar, { large: true, position: props.position, held: props.held, elapsed: props.elapsed, duration: props.duration }),
+      h(AndroidSeekBar, { large: true, held: props.held, elapsed: props.elapsed, duration: props.duration }),
       h(AndroidTransport, { large: true, playing: props.playing, waiting: props.waiting }),
       h('div', { className: 'bae-a-fp-repeat' }, h(AndroidIconButton, { icon: 'repeat', label: 'Repeat mode', tone: props.repeat ? 'accent' : 'muted' })),
       // `noVolume`, as the Mac bar's: a receiver that takes no volume from bae shows where its volume is set in place of the slider.

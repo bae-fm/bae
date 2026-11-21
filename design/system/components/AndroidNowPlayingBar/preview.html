@@ -10,12 +10,12 @@
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
-    W('Playing', h(B.AndroidNowPlayingBar, { title: 'Low Tide Hours', artist: 'Mara Quill', playing: true, position: 0.35, held: 0.6, elapsed: '1:42', duration: '5:03' })),
-    W('Waiting on the cloud', h(B.AndroidNowPlayingBar, { title: 'Low Tide Hours', artist: 'Mara Quill', waiting: true, position: 0.02, held: 0.04, elapsed: '0:05', duration: '5:03' })),
-    W('No cover', h(B.AndroidNowPlayingBar, Object.assign({ title: 'Low Tide Hours', artist: 'Mara Quill', playing: true, position: 0.35, held: 0.6, elapsed: '1:42', duration: '5:03' }, { noCover: true }))),
-    W('Casting', h(B.AndroidNowPlayingBar, Object.assign({ title: 'Low Tide Hours', artist: 'Mara Quill', playing: true, position: 0.35, held: 0.6, elapsed: '1:42', duration: '5:03' }, { casting: 'Living Room' }))),
-    W('Cast off', h(B.AndroidNowPlayingBar, Object.assign({ title: 'Low Tide Hours', artist: 'Mara Quill', playing: true, position: 0.35, held: 0.6, elapsed: '1:42', duration: '5:03' }, { castOff: true }))),
-    W('Repeat', h(B.AndroidNowPlayingBar, Object.assign({ title: 'Low Tide Hours', artist: 'Mara Quill', playing: true, position: 0.35, held: 0.6, elapsed: '1:42', duration: '5:03' }, { repeat: true }))),
+    W('Playing', h(B.AndroidNowPlayingBar, { title: 'Low Tide Hours', artist: 'Mara Quill', playing: true, held: 0.6, elapsed: '1:42', duration: '5:03' })),
+    W('Waiting on the cloud', h(B.AndroidNowPlayingBar, { title: 'Low Tide Hours', artist: 'Mara Quill', waiting: true, held: 0.04, elapsed: '0:05', duration: '5:03' })),
+    W('No cover', h(B.AndroidNowPlayingBar, Object.assign({ title: 'Low Tide Hours', artist: 'Mara Quill', playing: true, held: 0.6, elapsed: '1:42', duration: '5:03' }, { noCover: true }))),
+    W('Casting', h(B.AndroidNowPlayingBar, Object.assign({ title: 'Low Tide Hours', artist: 'Mara Quill', playing: true, held: 0.6, elapsed: '1:42', duration: '5:03' }, { casting: 'Living Room' }))),
+    W('Cast off', h(B.AndroidNowPlayingBar, Object.assign({ title: 'Low Tide Hours', artist: 'Mara Quill', playing: true, held: 0.6, elapsed: '1:42', duration: '5:03' }, { castOff: true }))),
+    W('Repeat', h(B.AndroidNowPlayingBar, Object.assign({ title: 'Low Tide Hours', artist: 'Mara Quill', playing: true, held: 0.6, elapsed: '1:42', duration: '5:03' }, { repeat: true }))),
     W('Error', h(B.AndroidNowPlayingBar, { error: 'Could not read what is playing.' }))));
 </script>
 </body>

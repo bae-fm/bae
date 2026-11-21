@@ -146,7 +146,7 @@
     var icon = { moveToThisDevice: 'folder', upload: 'up', pin: 'pin' }[kind];
     var notice = props.notice || (kind === 'moveToThisDevice' ? 'Could not move to This Mac' : 'Could not pin');
     return h('div', { className: 'bae-m-dlrow' },
-      h(MacItem, { lead: h(Sym, { name: icon, size: 16, className: 'bae-muted' }), trail: h('span', { className: 'bae-muted', title: 'Cancel' }, h(Sym, { name: 'xcircle', size: 15 })) },
+      h(MacItem, { lead: h(Sym, { name: icon, size: 16, className: 'bae-muted' }), trail: h('button', { type: 'button', className: 'bae-plainbtn bae-muted', 'aria-label': 'Cancel', title: 'Cancel' }, h(Sym, { name: 'xcircle', size: 15 })) },
         h('div', { className: 'bae-m-dlrow-text' }, h('span', { className: 'bae-ellipsis' }, props.title || 'Glass Harbor'), h('span', { className: 'bae-muted bae-num bae-m-dlrow-detail' }, props.detail || '9 files · 356 MB'))),
       h(MacNotice, { quiet: true, tone: props.tone || 'danger', title: notice, subtitle: props.subtitle, secondary: props.secondary === undefined ? 'Details' : props.secondary || null, action: props.action || 'Retry', buttons: props.subtitle ? 'below' : null }));
   }

@@ -180,7 +180,7 @@
   // The release's fields under a Release heading: Year, Media, Label with its catalog number, Country, Barcode, Status, Packaging and Details, the typed ones as fields and the chosen ones as pop-ups, each showing — while empty.
   function MacReleaseFields(props) {
     // A fact chosen from a menu shows its value as plain text, or the form's dash.
-    var face = function (label, value) { return h('button', { type: 'button', 'aria-haspopup': 'menu', 'aria-label': label, className: cx('bae-plainbtn', !value && 'bae-m-tertiary') }, value || '—'); };
+    var face = function (label, value) { return h('button', { type: 'button', role: 'combobox', 'aria-expanded': false, 'aria-label': label, className: cx('bae-plainbtn', !value && 'bae-m-tertiary') }, value || '—'); };
     var field = function (label, value, mono) { return h(MacInlineField, { label: label, value: value, placeholder: '—', fit: true, mono: mono }); };
     // A list kept one row per entry (labels, barcodes): its name on the first row only, each entry with ⊗, then Add on its own line under the last row; with none, Add alone beside the name.
     var rows = function (name, entries, draw, noun) {
@@ -354,7 +354,7 @@
   // One bulk action: its glyph, its name, then how many of the selected folders it applies to (`count`), dimmed when none. `strong` sets the action in the accent, for Import and Combine. A child sits before the count: Import's destination, on Import's own line.
   function MacBulkActionRow(props) {
     var n = props.count;
-    return h('div', { className: cx('bae-m-bulkrow', !n && 'bae-m-bulkrow-off') }, h(Sym, { name: props.icon, size: 15, className: props.strong ? 'bae-accent' : 'bae-muted' }), h('span', { className: props.strong ? 'bae-strong' : 'bae-muted', style: { flex: 1 } }, props.label), props.children || null, h(StatusChip, { tone: props.strong ? 'accent' : 'neutral' }, String(n || 0)));
+    return h('button', { type: 'button', disabled: !n || null, className: cx('bae-m-bulkrow', !n && 'bae-m-bulkrow-off') }, h(Sym, { name: props.icon, size: 15, className: props.strong ? 'bae-accent' : 'bae-muted' }), h('span', { className: props.strong ? 'bae-strong' : 'bae-muted', style: { flex: 1 } }, props.label), props.children || null, h(StatusChip, { tone: props.strong ? 'accent' : 'neutral' }, String(n || 0)));
   }
   // Several rows selected: the count, then the actions in groups, each with how many it applies to.
   function MacImportBulk(props) {

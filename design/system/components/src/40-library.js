@@ -60,9 +60,12 @@
     if (typeof held === 'number') return [[0, held]];
     return String(held).split(',').map(function (r) { var p = r.split('-'); return [Number(p[0]), Number(p[1])]; });
   }
+  // A time as m:ss or h:mm:ss, in seconds.
+  function seconds(t) { return String(t || '0').split(':').reduce(function (n, p) { return n * 60 + Number(p); }, 0); }
+  // The line fills the elapsed time's share of the duration.
   function SeekLine(prefix) {
     return function (props) {
-      var pos = Number(props.position || 0);
+      var total = seconds(props.duration), pos = total ? seconds(props.elapsed) / total : 0;
       return h('div', { className: cx('bae-seek', prefix + '-seek', props.off && 'bae-seek-off', props.large && prefix + '-seek-large') },
         h('span', { className: 'bae-seek-time' }, props.elapsed || '0:00'),
         h('div', { className: 'bae-seek-track', role: 'slider', 'aria-label': 'Position', 'aria-valuenow': Math.round(pos * 100) },
@@ -78,7 +81,7 @@
   // ---- macOS library ----
 
   function MacIconButton(props) {
-    return h('button', { type: 'button', disabled: props.off ? true : null, className: cx('bae-m-iconbtn', props.active && 'bae-m-iconbtn-on', props.faint && 'bae-m-iconbtn-faint', props.small && 'bae-m-iconbtn-small', props.boxed && 'bae-m-iconbtn-boxed', props.overlay && 'bae-m-iconbtn-overlay', props.off && 'bae-off'), 'aria-label': props.label || props.icon, 'aria-haspopup': props.menu ? 'menu' : null, 'aria-expanded': props.menu ? !!props.active : null, title: props.label },
+    return h('button', { type: 'button', disabled: props.off ? true : null, className: cx('bae-m-iconbtn', props.active && 'bae-m-iconbtn-on', props.faint && 'bae-m-iconbtn-faint', props.small && 'bae-m-iconbtn-small', props.boxed && 'bae-m-iconbtn-boxed', props.overlay && 'bae-m-iconbtn-overlay', props.off && 'bae-off'), 'aria-label': props.label || props.icon, 'aria-haspopup': props.menu ? 'menu' : null, 'aria-expanded': props.menu ? !!props.active : null, title: props.help || props.label },
       h(Glyph, { set: 'mac', name: props.icon, size: props.size || 17 }));
   }
 
@@ -109,7 +112,7 @@
   // Shuffle, previous, play and pause, next, repeat; `shuffle` and `repeat` light theirs while on, `waiting` draws the arc around play while the track waits on storage.
   function MacTransport(props) {
     return h('div', { className: 'bae-m-transport' },
-      h(MacIconButton, { icon: 'shuffle', label: 'Shuffle', active: props.shuffle }),
+      h(MacIconButton, { icon: 'shuffle', label: props.shuffle ? 'Turn off shuffle' : 'Shuffle', active: props.shuffle }),
       h(MacIconButton, { icon: 'previous', label: 'Previous' }),
       h(MacPlayPause, { playing: props.playing, waiting: props.waiting }),
       h(MacIconButton, { icon: 'next', label: 'Next' }),
@@ -133,9 +136,9 @@
         h('div', { className: 'bae-m-np-text' }, h('div', { className: 'bae-m-np-title' }, props.title), h('div', { className: 'bae-m-np-sub' }, props.artist)))),
       h('div', { className: 'bae-m-np-center' },
         h(MacTransport, { playing: props.playing, waiting: props.waiting, shuffle: props.shuffle, repeat: props.repeat }),
-        h(MacSeekBar, { position: props.position, held: props.held, elapsed: props.elapsed, duration: props.duration, off: none })),
+        h(MacSeekBar, { held: props.held, elapsed: props.elapsed, duration: props.duration, off: none })),
       h('div', { className: 'bae-m-np-right' },
-        h(MacIconButton, { icon: 'cast', label: props.casting ? 'Playing on ' + props.casting : 'Play on…', active: !!props.casting }),
+        h(MacIconButton, { icon: 'cast', label: 'Play on…', help: props.casting ? 'Playing on ' + props.casting : null, active: !!props.casting }),
         h(MacIconButton, { icon: 'queue', label: 'Queue', active: props.queueOpen }),
         h(MacVolumeSlider, { volume: props.volume, noVolume: props.noVolume })));
   }
@@ -176,7 +179,7 @@
     return h('div', { className: 'bae-m-mainwin', style: { width: Number(props.width || 1200), height: Number(props.height || 760) } }, macLights(),
       h(MacTitleBar, { section: props.section, search: props.search, searchFocused: props.searchFocused, sync: props.sync, avatar: props.avatar, avatarImage: props.avatarImage }),
       h('div', { className: 'bae-m-main-body' }, h('div', { className: 'bae-m-main-content' }, kids(props.children).filter(function (c) { var p = inner(c); return !(p && p.type === MacQueuePanel); })), kids(props.children).filter(function (c) { var p = inner(c); return p && p.type === MacQueuePanel; })),
-      h(MacNowPlayingBar, { title: props.trackTitle, artist: props.trackArtist, album: props.trackAlbum, noCover: props.trackNoCover, playing: props.playing, waiting: props.waiting, position: props.position, held: props.held, elapsed: props.elapsed, duration: props.duration, shuffle: props.shuffle, repeat: props.repeat, casting: props.casting, noVolume: props.noVolume, queueOpen: props.queueOpen }));
+      h(MacNowPlayingBar, { title: props.trackTitle, artist: props.trackArtist, album: props.trackAlbum, noCover: props.trackNoCover, playing: props.playing, waiting: props.waiting, held: props.held, elapsed: props.elapsed, duration: props.duration, shuffle: props.shuffle, repeat: props.repeat, casting: props.casting, noVolume: props.noVolume, queueOpen: props.queueOpen }));
   }
 
   function MacLibraryHeading(props) {
@@ -276,7 +279,7 @@
 
   // An album's stars (`value`, 0 for none yet) and, beside them, `who`: a line of who else rated it.
   function MacAlbumRating(props) {
-    return h('div', { className: 'bae-m-albumrating' }, h(Stars, { value: props.value, size: 16 }), props.who ? h('span', { className: 'bae-m-albumrating-who' }, props.who) : null);
+    return h('div', { className: 'bae-m-albumrating' }, h(Stars, { value: props.value, size: 16, rate: true }), props.who ? h('span', { className: 'bae-m-albumrating-who' }, props.who) : null);
   }
 
   // The open album's head: the title, the artist and year, the release picker (`releases`, `release`), the facts (`pressing`, `labels`), the line saying why this Mac can't play it (`unplayable`), Play and the album's ⋯ (`options`, `optionsOpen`, `highlighted`, a boxed MacMoreMenu), then the rating row, always: the stars (`rating`, empty while no one has rated it) and who else rated it (`ratingWho`).
@@ -430,7 +433,7 @@
         props.castOff ? null : h(AndroidIconButton, { box: 40, icon: 'cast', label: 'Play on…', tone: props.casting ? 'accent' : 'muted' }),
         h(AndroidIconButton, { box: 40, icon: 'queue', label: 'Queue' }),
         h(AndroidIconButton, { box: 40, icon: 'repeat', label: 'Repeat', tone: props.repeat ? 'accent' : 'muted' })),
-      h(AndroidSeekBar, { position: props.position, held: props.held, elapsed: props.elapsed, duration: props.duration }));
+      h(AndroidSeekBar, { held: props.held, elapsed: props.elapsed, duration: props.duration }));
   }
 
   // The library header while searching: back, and the search field with what was typed (`search`) and its clear button, or the prompt.
@@ -465,7 +468,7 @@
     return h('div', { className: 'bae-a-screen bae-a-libscreen', style: { width: Number(props.width || 412), height: Number(props.height || 916) } },
       h(AndroidLibraryHeader, { view: props.view, collapsed: props.collapsed, searching: props.searching, search: props.search, sync: props.sync, avatar: props.avatar, avatarImage: props.avatarImage }),
       h('main', { className: 'bae-a-libbody' }, split.content),
-      h(AndroidNowPlayingBar, { title: props.trackTitle, artist: props.trackArtist, album: props.trackAlbum, noCover: props.trackNoCover, playing: props.playing, waiting: props.waiting, position: props.position, held: props.held, elapsed: props.elapsed, duration: props.duration, casting: props.casting, repeat: props.repeat, error: props.barError }),
+      h(AndroidNowPlayingBar, { title: props.trackTitle, artist: props.trackArtist, album: props.trackAlbum, noCover: props.trackNoCover, playing: props.playing, waiting: props.waiting, held: props.held, elapsed: props.elapsed, duration: props.duration, casting: props.casting, repeat: props.repeat, error: props.barError }),
       split.over);
   }
 
@@ -474,7 +477,7 @@
     return h('div', { className: 'bae-a-screen bae-a-libscreen', style: { width: Number(props.width || 412), height: Number(props.height || 916) } },
       h(AndroidTopBar, { back: true, backLabel: props.back ? 'Back to ' + props.back : 'Back to library', more: props.menu ? 'Album options' : null }),
       h('main', { className: props.flush ? 'bae-a-libbody' : 'bae-a-libbody bae-a-detailbody' }, split.content),
-      h(AndroidNowPlayingBar, { title: props.trackTitle, artist: props.trackArtist, album: props.trackAlbum, noCover: props.trackNoCover, playing: props.playing, waiting: props.waiting, position: props.position, held: props.held, elapsed: props.elapsed, duration: props.duration, casting: props.casting, repeat: props.repeat }),
+      h(AndroidNowPlayingBar, { title: props.trackTitle, artist: props.trackArtist, album: props.trackAlbum, noCover: props.trackNoCover, playing: props.playing, waiting: props.waiting, held: props.held, elapsed: props.elapsed, duration: props.duration, casting: props.casting, repeat: props.repeat }),
       split.over);
   }
 
