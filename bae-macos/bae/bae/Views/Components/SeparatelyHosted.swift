@@ -32,7 +32,11 @@ struct SeparatelyHosted<Content: View>: NSViewRepresentable {
         nsView view: NSHostingView<AnyView>,
         context _: Context
     ) -> CGSize? {
-        view.sizeThatFits(proposal)
+        let fitting = view.fittingSize
+        return CGSize(
+            width: proposal.width ?? fitting.width,
+            height: fitting.height
+        )
     }
 
     private var shown: AnyView {
