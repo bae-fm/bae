@@ -1,5 +1,5 @@
-//! The apps' shared theme: `design/theme.toml` for the tones, semantics and
-//! scales and `design/system/tokens.json` for the accents, validated, and
+//! The apps' shared theme: `design/theme.toml` for the semantics and scales
+//! and `design/system/tokens.json` for the tones and accents, validated, and
 //! emitted as the typed Swift and Kotlin each platform compiles.
 
 pub mod android;
@@ -40,7 +40,9 @@ pub struct Modes {
     pub dark: Roles,
 }
 
-/// A background tone the person can choose.
+/// A background tone the person can choose, as design/system/tokens.json
+/// defines it: one `tone-<name>-<role>` token per surface role, with a colour
+/// per appearance. The role is the token's kebab-case suffix in lowerCamelCase.
 #[derive(Debug)]
 pub struct Tone {
     pub name: String,
@@ -206,7 +208,6 @@ const IOS_TEXT_STYLES: &[&str] = &[
 #[serde(deny_unknown_fields)]
 struct RawTheme {
     standard: RawStandard,
-    tones: Vec<RawTone>,
     semantics: RawModes,
     opacity: BTreeMap<String, f64>,
     radius: BTreeMap<String, f64>,
@@ -285,15 +286,7 @@ struct RawModes {
     dark: BTreeMap<String, String>,
 }
 
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct RawTone {
-    name: String,
-    light: BTreeMap<String, String>,
-    dark: BTreeMap<String, String>,
-}
-
-/// design/system/tokens.json, of which the accents are read.
+/// design/system/tokens.json, of which the tones and accents are read.
 #[derive(Deserialize)]
 struct RawTokens {
     color: RawColorTokens,
@@ -310,51 +303,114 @@ struct RawToken {
     value: serde_json::Value,
 }
 
-/// The accents tokens.json defines, in its order: every `<name>` with an
-/// `accent-<name>-fill` token. A problem is reported for each accent missing
-/// one of its four tokens or whose swatch, its content or selection differs
-/// between appearances.
-fn read_accents(tokens: &str, problems: &mut Vec<String>) -> Vec<Accent> {
+/// A token's colour in each appearance, as (light, dark), or a problem for
+/// each appearance it lacks or whose colour does not parse.
+fn appearances(
+    by_name: &BTreeMap<&str, &serde_json::Value>,
+    token: &str,
+    owner: &str,
+    problems: &mut Vec<String>,
+) -> Option<(Argb, Argb)> {
+    let Some(value) = by_name.get(token) else {
+        problems.push(format!("tokens.json has no `{token}`, which {owner} needs"));
+        return None;
+    };
+    let mut read = |mode: &str| {
+        let hex = value.get(mode).and_then(serde_json::Value::as_str);
+        match hex.map(Argb::parse) {
+            Some(Ok(colour)) => Some(colour),
+            Some(Err(problem)) => {
+                problems.push(format!("tokens.json `{token}`.{mode}: {problem}"));
+                None
+            }
+            None => {
+                problems.push(format!("tokens.json `{token}` has no {mode} colour"));
+                None
+            }
+        }
+    };
+    let light = read("light");
+    let dark = read("dark");
+    Some((light?, dark?))
+}
+
+/// The tones and the accents tokens.json defines, each in its order.
+fn read_tokens(tokens: &str, problems: &mut Vec<String>) -> (Vec<Tone>, Vec<Accent>) {
     let raw: RawTokens = match serde_json::from_str(tokens) {
         Ok(raw) => raw,
         Err(error) => {
             problems.push(format!("tokens.json: {error}"));
-            return Vec::new();
+            return (Vec::new(), Vec::new());
         }
     };
     let by_name: BTreeMap<&str, &serde_json::Value> =
         raw.color.tokens.iter().map(|token| (token.name.as_str(), &token.value)).collect();
-    let names = raw.color.tokens.iter().filter_map(|token| {
-        let name = token.name.strip_prefix("accent-")?.strip_suffix("-fill")?;
+    let names: Vec<&str> = raw.color.tokens.iter().map(|token| token.name.as_str()).collect();
+    (read_tones(&names, &by_name, problems), read_accents(&names, &by_name, problems))
+}
+
+/// Every `<name>` with a `tone-<name>-background` token, with each
+/// `tone-<name>-<role>` token as a surface role.
+fn read_tones(
+    names: &[&str],
+    by_name: &BTreeMap<&str, &serde_json::Value>,
+    problems: &mut Vec<String>,
+) -> Vec<Tone> {
+    let tones = names.iter().filter_map(|token| {
+        let name = token.strip_prefix("tone-")?.strip_suffix("-background")?;
         (!name.is_empty()).then_some(name)
     });
-    let mut accents = Vec::new();
-    for name in names {
-        let mut appearances = |token: String| -> Option<(Argb, Argb)> {
-            let Some(value) = by_name.get(token.as_str()) else {
-                problems.push(format!("tokens.json has no `{token}`, which accent `{name}` needs"));
-                return None;
-            };
-            let mut read = |mode: &str| {
-                let hex = value.get(mode).and_then(serde_json::Value::as_str);
-                match hex.map(Argb::parse) {
-                    Some(Ok(colour)) => Some(colour),
-                    Some(Err(problem)) => {
-                        problems.push(format!("tokens.json `{token}`.{mode}: {problem}"));
-                        None
-                    }
-                    None => {
-                        problems.push(format!("tokens.json `{token}` has no {mode} colour"));
-                        None
-                    }
-                }
-            };
-            Some((read("light")?, read("dark")?))
-        };
-        let text = appearances(format!("accent-{name}"));
-        let fill = appearances(format!("accent-{name}-fill"));
-        let on_fill = appearances(format!("on-accent-{name}-fill"));
-        let selection = appearances(format!("accent-{name}-selection"));
+    let mut out = Vec::new();
+    for name in tones {
+        let prefix = format!("tone-{name}-");
+        let mut surfaces = Modes { light: Roles::new(), dark: Roles::new() };
+        for token in names.iter().filter(|token| token.starts_with(&prefix)) {
+            let role = camel_case(&token[prefix.len()..]);
+            let owner = format!("tone `{name}`");
+            if let Some((light, dark)) = appearances(by_name, token, &owner, problems) {
+                surfaces.light.insert(role.clone(), light);
+                surfaces.dark.insert(role, dark);
+            }
+        }
+        out.push(Tone { name: name.to_string(), surfaces });
+    }
+    out
+}
+
+/// `field-hover` as `fieldHover`.
+fn camel_case(kebab: &str) -> String {
+    let mut parts = kebab.split('-');
+    let mut out = parts.next().unwrap_or_default().to_string();
+    for part in parts {
+        let mut chars = part.chars();
+        if let Some(first) = chars.next() {
+            out.push(first.to_ascii_uppercase());
+            out.push_str(chars.as_str());
+        }
+    }
+    out
+}
+
+/// Every `<name>` with an `accent-<name>-fill` token. A problem is reported
+/// for each accent missing one of its four tokens or whose swatch, its
+/// content or selection differs between appearances.
+fn read_accents(
+    names: &[&str],
+    by_name: &BTreeMap<&str, &serde_json::Value>,
+    problems: &mut Vec<String>,
+) -> Vec<Accent> {
+    let accents = names.iter().filter_map(|token| {
+        let name = token.strip_prefix("accent-")?.strip_suffix("-fill")?;
+        (!name.is_empty()).then_some(name)
+    });
+    let mut out = Vec::new();
+    for name in accents {
+        let owner = format!("accent `{name}`");
+        let mut read = |token: String| appearances(by_name, &token, &owner, problems);
+        let text = read(format!("accent-{name}"));
+        let fill = read(format!("accent-{name}-fill"));
+        let on_fill = read(format!("on-accent-{name}-fill"));
+        let selection = read(format!("accent-{name}-selection"));
         let (Some(text), Some(fill), Some(on_fill), Some(selection)) =
             (text, fill, on_fill, selection)
         else {
@@ -371,7 +427,7 @@ fn read_accents(tokens: &str, problems: &mut Vec<String>) -> Vec<Accent> {
                 ));
             }
         }
-        accents.push(Accent {
+        out.push(Accent {
             name: name.to_string(),
             light: text.0,
             dark: text.1,
@@ -380,11 +436,11 @@ fn read_accents(tokens: &str, problems: &mut Vec<String>) -> Vec<Accent> {
             selection: selection.0,
         });
     }
-    accents
+    out
 }
 
 impl Theme {
-    /// Parses and validates `design/theme.toml` and the accents in
+    /// Parses and validates `design/theme.toml` and the tones and accents in
     /// `design/system/tokens.json`, naming every problem found.
     pub fn from_sources(source: &str, tokens: &str) -> Result<Self, Vec<String>> {
         let raw: RawTheme = toml::from_str(source).map_err(|error| vec![error.to_string()])?;
@@ -400,22 +456,11 @@ impl Theme {
                 .map(|(name, hex)| (name.clone(), colour(&format!("{context}.{name}"), hex)))
                 .collect()
         };
-        let tones: Vec<Tone> = raw
-            .tones
-            .iter()
-            .map(|tone| Tone {
-                name: tone.name.clone(),
-                surfaces: Modes {
-                    light: roles(&format!("tone {}.light", tone.name), &tone.light),
-                    dark: roles(&format!("tone {}.dark", tone.name), &tone.dark),
-                },
-            })
-            .collect();
         let semantics = Modes {
             light: roles("semantics.light", &raw.semantics.light),
             dark: roles("semantics.dark", &raw.semantics.dark),
         };
-        let accents = read_accents(tokens, &mut problems);
+        let (tones, accents) = read_tokens(tokens, &mut problems);
 
         check_choices("tone", tones.iter().map(|tone| tone.name.as_str()), &mut problems);
         check_choices("accent", accents.iter().map(|accent| accent.name.as_str()), &mut problems);

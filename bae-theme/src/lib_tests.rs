@@ -7,7 +7,23 @@ fn from_toml(source: &str) -> Result<Theme, Vec<String>> {
     Theme::from_sources(source, TOKENS)
 }
 
-/// tokens.json with only the accent `name`, in the given colours.
+/// One color token of tokens.json.
+fn token(name: &str, light: &str, dark: &str) -> String {
+    format!("{{\"name\": \"{name}\", \"value\": {{\"light\": \"{light}\", \"dark\": \"{dark}\"}}}}")
+}
+
+/// tokens.json with these color tokens.
+fn tokens_json(tokens: &[String]) -> String {
+    format!("{{\"color\": {{\"tokens\": [{}]}}}}", tokens.join(", "))
+}
+
+/// The tokens of tone `name`, one per role, all black.
+fn tone(name: &str, roles: &[&str]) -> Vec<String> {
+    roles.iter().map(|role| token(&format!("tone-{name}-{role}"), "#000000", "#000000")).collect()
+}
+
+/// tokens.json with the tone `plum` and only the accent `name`, in the given
+/// colours.
 fn tokens_with_accent(
     name: &str,
     text: &str,
@@ -15,16 +31,13 @@ fn tokens_with_accent(
     on_fill: &str,
     selection: &str,
 ) -> String {
-    let token = |token: &str, light: &str, dark: &str| {
-        format!("{{\"name\": \"{token}\", \"value\": {{\"light\": \"{light}\", \"dark\": \"{dark}\"}}}}")
-    };
-    format!(
-        "{{\"color\": {{\"tokens\": [{}, {}, {}, {}]}}}}",
+    let accent = [
         token(&format!("accent-{name}"), text, text),
         token(&format!("accent-{name}-fill"), fill, fill),
         token(&format!("on-accent-{name}-fill"), on_fill, on_fill),
         token(&format!("accent-{name}-selection"), selection, selection),
-    )
+    ];
+    tokens_json(&[tone("plum", &["background"]), accent.to_vec()].concat())
 }
 
 #[test]
@@ -82,12 +95,15 @@ fn colours_read_with_and_without_alpha() {
     assert!(Argb::parse("#+5F5F5F").is_err());
 }
 
-fn theme_with(standard: &str, tones: &str, semantics: &str) -> Result<Theme, Vec<String>> {
+fn theme_with(standard: &str, tones: &[String], semantics: &str) -> Result<Theme, Vec<String>> {
+    let accent =
+        ["accent-blue", "accent-blue-fill", "on-accent-blue-fill", "accent-blue-selection"]
+            .map(|name| token(name, "#000000", "#000000"));
     Theme::from_sources(&format!(
         "{standard}\n[opacity]\ntint = 0.14\n\n[radius]\nchip = 5\n\n[space]\nrelated = 8\n\n[icon.small]\nweight = \"semibold\"\nmacos = 11\nios = 13\nandroid = 16\n\n\
-         [size.hitTarget]\nmacos = 28\nios = 44\nandroid = 44\n\n{TEXT}\n{tones}\n{semantics}"
+         [size.hitTarget]\nmacos = 28\nios = 44\nandroid = 44\n\n{TEXT}\n{semantics}"
     ),
-        &tokens_with_accent("blue", "#000000", "#000000", "#000000", "#000000"),
+        &tokens_json(&[tones, &accent[..]].concat()),
     )
 }
 
@@ -100,21 +116,43 @@ const SEMANTICS: &str =
 
 #[test]
 fn a_tone_missing_a_surface_is_refused() {
-    let tones = "[[tones]]\nname = \"neutral\"\n[tones.light]\nbackground = \"#000000\"\nwell = \"#000000\"\n\
-                 [tones.dark]\nbackground = \"#000000\"\nwell = \"#000000\"\n\
-                 [[tones]]\nname = \"slate\"\n[tones.light]\nbackground = \"#000000\"\nwell = \"#000000\"\n\
-                 [tones.dark]\nbackground = \"#000000\"\n";
-    let problems = theme_with(STANDARD, tones, SEMANTICS).unwrap_err();
-    assert_eq!(problems, ["tone slate.dark lacks `well`, which tone neutral.light has"]);
+    let tones = [tone("neutral", &["background", "well"]), tone("slate", &["background"])].concat();
+    let problems = theme_with(STANDARD, &tones, SEMANTICS).unwrap_err();
+    assert_eq!(
+        problems,
+        [
+            "tone slate.light lacks `well`, which tone neutral.light has",
+            "tone slate.dark lacks `well`, which tone neutral.light has",
+        ]
+    );
+}
+
+#[test]
+fn a_tone_token_needs_both_appearances() {
+    let tones = [
+        tone("neutral", &["background"]),
+        vec!["{\"name\": \"tone-neutral-field-hover\", \"value\": {\"light\": \"#000000\"}}"
+            .to_string()],
+    ]
+    .concat();
+    let problems = theme_with(STANDARD, &tones, SEMANTICS).unwrap_err();
+    assert_eq!(problems, ["tokens.json `tone-neutral-field-hover` has no dark colour"]);
+}
+
+#[test]
+fn a_tone_reads_its_roles_in_camel_case() {
+    let tones = tone("neutral", &["background", "field-hover"]);
+    let theme = theme_with(STANDARD, &tones, SEMANTICS).unwrap();
+    let roles: Vec<&str> = theme.tones[0].surfaces.dark.keys().map(String::as_str).collect();
+    assert_eq!(roles, ["background", "fieldHover"]);
 }
 
 #[test]
 fn semantics_must_match_across_appearances() {
-    let tones = "[[tones]]\nname = \"neutral\"\n[tones.light]\nbackground = \"#000000\"\n\
-                 [tones.dark]\nbackground = \"#000000\"\n";
+    let tones = tone("neutral", &["background"]);
     let semantics =
         "[semantics.light]\ndanger = \"#000000\"\n[semantics.dark]\nwarning = \"#000000\"\n";
-    let problems = theme_with(STANDARD, tones, semantics).unwrap_err();
+    let problems = theme_with(STANDARD, &tones, semantics).unwrap_err();
     assert_eq!(
         problems,
         [
@@ -126,10 +164,9 @@ fn semantics_must_match_across_appearances() {
 
 #[test]
 fn the_standard_choices_must_be_listed() {
-    let tones = "[[tones]]\nname = \"neutral\"\n[tones.light]\nbackground = \"#000000\"\n\
-                 [tones.dark]\nbackground = \"#000000\"\n";
+    let tones = tone("neutral", &["background"]);
     let standard = "[standard]\ntone = \"dusk\"\naccent = \"mauve\"\n";
-    let problems = theme_with(standard, tones, SEMANTICS).unwrap_err();
+    let problems = theme_with(standard, &tones, SEMANTICS).unwrap_err();
     assert_eq!(
         problems,
         [
@@ -154,15 +191,14 @@ fn both_platforms_carry_the_standard_choices() {
 
 #[test]
 fn names_must_become_identifiers() {
-    let tones = "[[tones]]\nname = \"Neutral\"\n[tones.light]\nBack-ground = \"#000000\"\n\
-                 [tones.dark]\nBack-ground = \"#000000\"\n";
+    let tones = tone("Neutral", &["background", "Back-ground"]);
     let standard = "[standard]\ntone = \"Neutral\"\naccent = \"blue\"\n";
-    let problems = theme_with(standard, tones, SEMANTICS).unwrap_err();
+    let problems = theme_with(standard, &tones, SEMANTICS).unwrap_err();
     assert_eq!(
         problems,
         [
             "tone `Neutral`: a name is lowercase letters",
-            "role `Back-ground`: a role name is lowerCamelCase",
+            "role `BackGround`: a role name is lowerCamelCase",
         ]
     );
 }

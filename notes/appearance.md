@@ -1,6 +1,6 @@
 # Appearance
 
-Every colour the apps draw with is defined once: the accents in
+Every colour the apps draw with is defined once: the tones and the accents in
 `design/system/tokens.json`, the design system's own file, and the rest in
 `design/theme.toml`. The `theme-gen` tool (`bae-theme`) turns them into typed
 Swift for BaeKit and Kotlin for Android; `build-macos.sh`, `build-ios.sh` and `build-android.sh` run it, and
@@ -12,10 +12,12 @@ Blue/Orchid/Pink/Coral/Gold/Lime/Mint/Sky accent, and
 Neutral/Slate/Plum/Midnight/Forest/Sand background tone. A new installation
 shows System mode, the Pink accent and the Plum tone. The mode default is
 each app's own. The accent and tone are the ones `[standard]` in
-`design/theme.toml` names (the accent is one tokens.json defines), which theme-gen emits as `standard` on the Swift
+`design/theme.toml` names (a tone and an accent tokens.json defines), which theme-gen emits as `standard` on the Swift
 enums and `STANDARD` on the Kotlin ones; the standard tone also colours
-Android's launch window before the app has read the chosen one. Each tone
-defines both light and dark surfaces. Preferences belong to the app
+Android's launch window before the app has read the chosen one. A tone is
+eight tokens in tokens.json, `tone-<name>-<role>`, each with a light and a dark
+surface; theme-gen names the role in lowerCamelCase (`tone-plum-field-hover` is
+plum's `fieldHover`). The picker lists the tones in tokens.json's order. Preferences belong to the app
 installation rather than a library, so switching libraries preserves the
 selection.
 
