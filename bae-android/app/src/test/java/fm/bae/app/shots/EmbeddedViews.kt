@@ -6,7 +6,6 @@ import android.widget.ProgressBar
 import android.widget.SeekBar
 import android.widget.TextView
 import fm.bae.app.ui.playback.SeekLineDrawable
-import fm.bae.app.ui.sync.ShareBarView
 import org.json.JSONObject
 import kotlin.math.roundToInt
 
@@ -73,12 +72,15 @@ internal object EmbeddedViews {
         density: Float,
     ): JSONObject? {
         val label = view.contentDescription?.toString()
-        val (kind, native, words) =
+        // The role is what the view tells TalkBack it is, so a view that reports a progress bar is listed as one.
+        val reported = view.createAccessibilityNodeInfo().className?.toString() ?: return null
+        val reportedClass = Class.forName(reported)
+        val native = reported.substringAfterLast('.')
+        val (kind, words) =
             when {
-                view is SeekBar -> Triple("slider", "SeekBar", label)
-                view is ProgressBar -> Triple("progress", "ProgressBar", label)
-                view is ShareBarView -> Triple("progress", "ShareBarView", label)
-                view is TextView && view.text.isNotEmpty() -> Triple("text", "TextView", view.text.toString())
+                SeekBar::class.java.isAssignableFrom(reportedClass) -> "slider" to label
+                ProgressBar::class.java.isAssignableFrom(reportedClass) -> "progress" to label
+                view is TextView && view.text.isNotEmpty() -> "text" to view.text.toString()
                 else -> return null
             }
         val at = IntArray(2).also { view.getLocationInWindow(it) }
@@ -110,7 +112,7 @@ internal object EmbeddedViews {
         val height: Int,
     )
 
-    /** A seek line's box is the row the board draws, centred in the view's touch height and inside its thumb padding. */
+    /** A seek line's box is the line the board draws as the bar's track, centred in the view's touch height and inside its thumb padding. */
     private fun boxOf(
         view: View,
         density: Float,
@@ -118,32 +120,24 @@ internal object EmbeddedViews {
         val line =
             (view as? SeekBar)?.progressDrawable as? SeekLineDrawable
                 ?: return Box(0, 0, view.width, view.height)
-        val row = (line.look.rowHeightDp * density).roundToInt()
+        val row = (line.look.lineHeightDp * density).roundToInt()
         return Box(view.paddingStart, (view.height - row) / 2, view.width - view.paddingStart - view.paddingEnd, row)
     }
 
     /** How far a bar is, as a whole percent, the way the boards give a bar's value; null for a text or a moving bar. */
     private fun percent(view: View): String? =
-        when (view) {
-            is ShareBarView -> {
-                // The range a screen reader is told; none while the bar moves.
-                view
-                    .createAccessibilityNodeInfo()
-                    .rangeInfo
-                    ?.current
-                    ?.roundToInt()
-                    ?.toString()
-            }
-
-            is ProgressBar -> {
-                view
-                    .takeIf { !it.isIndeterminate && it.max > 0 }
-                    ?.let { (it.progress * PERCENT / it.max).roundToInt().toString() }
-            }
-
-            else -> {
-                null
-            }
+        if (view is ProgressBar) {
+            view
+                .takeIf { !it.isIndeterminate && it.max > 0 }
+                ?.let { (it.progress * PERCENT / it.max).roundToInt().toString() }
+        } else {
+            // A view of its own tells a screen reader the range it is at; none while a bar moves.
+            view
+                .createAccessibilityNodeInfo()
+                .rangeInfo
+                ?.current
+                ?.roundToInt()
+                ?.toString()
         }
 
     /** The words' size in sp and colour, as the view draws them. */

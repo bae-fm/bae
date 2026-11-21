@@ -34,6 +34,14 @@ enum class SeekLineLook {
                 LARGE -> LARGE_LINE_DP
             }
 
+    /** How tall the line itself is, which the design draws as the bar's track. */
+    val lineHeightDp: Float
+        get() =
+            when (this) {
+                BAR -> BAR_LINE_DP
+                LARGE -> LARGE_LINE_DP
+            }
+
     /** How tall the line's view is: Android's 48 dp touch target, or the thumb when that is taller. */
     val touchHeightDp: Float
         get() = maxOf(MIN_TOUCH_DP, thumbHeightDp)
