@@ -15,7 +15,7 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
@@ -40,7 +40,7 @@ internal enum class RowIcon(
     val size: Dp,
 ) {
     CHEVRON(Icons.AutoMirrored.Filled.KeyboardArrowRight, ThemeIcon.large),
-    EDIT(Icons.Filled.Edit, EDIT_SIZE),
+    EDIT(Icons.Outlined.Edit, EDIT_SIZE),
 }
 
 /** A row's switch: whether it is [checked], and what a tap anywhere on the row does, [onChange]. */
