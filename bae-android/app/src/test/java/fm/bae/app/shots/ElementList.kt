@@ -138,7 +138,7 @@ internal object ElementList {
         val texts = config.getOrNull(SemanticsProperties.Text)
         val description = config.getOrNull(SemanticsProperties.ContentDescription)
         val kind = kind(config, role, editable != null, texts != null, description != null && node.children.isEmpty())
-        val bounds = node.boundsInRoot
+        val bounds = node.touchBoundsInRoot
         val out =
             JSONObject()
                 .put("role", kind)
