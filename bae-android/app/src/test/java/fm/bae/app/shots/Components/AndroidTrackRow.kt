@@ -13,25 +13,25 @@ import uniffi.bae_bridge.BridgeTrackWork
 class AndroidTrackRowShots : BoardShot() {
     @Test
     fun androidComponentTrackRowResting() =
-        component("android.component.track-row.resting", wide = true) {
+        component("android.component.track-row.resting") {
             TrackRowShot(TrackRowData("1", "Harbor Lights", null, "4:32", isCurrent = false, isPlaying = false))
         }
 
     @Test
     fun androidComponentTrackRowCurrent() =
-        component("android.component.track-row.current", wide = true) {
+        component("android.component.track-row.current") {
             TrackRowShot(TrackRowData("2", "The Long Way Home", null, "5:12", isCurrent = true, isPlaying = false))
         }
 
     @Test
     fun androidComponentTrackRowPlaying() =
-        component("android.component.track-row.playing", wide = true) {
+        component("android.component.track-row.playing") {
             TrackRowShot(TrackRowData("2", "The Long Way Home", null, "5:12", isCurrent = true, isPlaying = true))
         }
 
     @Test
     fun androidComponentTrackRowWork() =
-        component("android.component.track-row.work", wide = true) {
+        component("android.component.track-row.work") {
             Column {
                 AndroidTrackRow(
                     TrackRowData("4", "Low Tide Hours", null, "5:03", isCurrent = false, isPlaying = false),
@@ -44,7 +44,7 @@ class AndroidTrackRowShots : BoardShot() {
 
     @Test
     fun androidComponentTrackRowCompilation() =
-        component("android.component.track-row.compilation", wide = true) {
+        component("android.component.track-row.compilation") {
             TrackRowShot(TrackRowData("3", "Low Tide Hours", "Mara Quill", "5:03", isCurrent = false, isPlaying = false))
         }
 }

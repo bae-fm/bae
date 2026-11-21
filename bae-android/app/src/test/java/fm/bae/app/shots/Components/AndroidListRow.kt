@@ -10,18 +10,17 @@ import org.junit.Test
 /** The component shots of `AndroidListRow`, one for each row of its preview. */
 class AndroidListRowShots : BoardShot() {
     @Test
-    fun androidComponentListRowResting() = component("android.component.list-row.resting", wide = true) { Entry() }
+    fun androidComponentListRowResting() = component("android.component.list-row.resting") { Entry() }
 
     @Test
-    fun androidComponentListRowWho() =
-        component("android.component.list-row.who", wide = true) { Entry(who = AvatarFace("A", picture = null)) }
+    fun androidComponentListRowWho() = component("android.component.list-row.who") { Entry(who = AvatarFace("A", picture = null)) }
 
     @Test
-    fun androidComponentListRowMenu() = component("android.component.list-row.menu", wide = true) { Entry(menu = true) }
+    fun androidComponentListRowMenu() = component("android.component.list-row.menu") { Entry(menu = true) }
 
     @Test
     fun androidComponentListRowDragging() =
-        component("android.component.list-row.dragging", wide = true) {
+        component("android.component.list-row.dragging") {
             Entry(menu = true, dragging = true)
         }
 }

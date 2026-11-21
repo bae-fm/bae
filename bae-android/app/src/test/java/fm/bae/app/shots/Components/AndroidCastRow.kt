@@ -16,19 +16,19 @@ import uniffi.bae_bridge.BridgeRendererKind
 class AndroidCastRowShots : BoardShot() {
     @Test
     fun androidComponentCastRowReceiver() =
-        component("android.component.cast-row.receiver", wide = true) {
+        component("android.component.cast-row.receiver") {
             AndroidCastRow(receiver("Kitchen", BridgeRendererKind.AIR_PLAY), CastReceiverRole.Found {}, CastReceiverPlace.PICKER, null)
         }
 
     @Test
     fun androidComponentCastRowCasting() =
-        component("android.component.cast-row.casting", wide = true) {
+        component("android.component.cast-row.casting") {
             AndroidCastRow(receiver("Living Room", BridgeRendererKind.CAST), CastReceiverRole.Casting {}, CastReceiverPlace.PICKER, null)
         }
 
     @Test
     fun androidComponentCastRowLooking() =
-        component("android.component.cast-row.looking", wide = true) {
+        component("android.component.cast-row.looking") {
             CastReceiverRows(
                 place = CastReceiverPlace.PICKER,
                 receivers = BridgeCastReceiverList(casting = null, found = emptyList(), isEmpty = true),
@@ -41,7 +41,7 @@ class AndroidCastRowShots : BoardShot() {
 
     @Test
     fun androidComponentCastRowConnecting() =
-        component("android.component.cast-row.connecting", wide = true) {
+        component("android.component.cast-row.connecting") {
             AndroidCastRow(
                 receiver("Kitchen", BridgeRendererKind.AIR_PLAY),
                 CastReceiverRole.Found {},
@@ -52,7 +52,7 @@ class AndroidCastRowShots : BoardShot() {
 
     @Test
     fun androidComponentCastRowOwnerDeciding() =
-        component("android.component.cast-row.owner-deciding", wide = true) {
+        component("android.component.cast-row.owner-deciding") {
             AndroidCastRow(
                 receiver("Kitchen", BridgeRendererKind.AIR_PLAY),
                 CastReceiverRole.Found {},
@@ -63,13 +63,13 @@ class AndroidCastRowShots : BoardShot() {
 
     @Test
     fun androidComponentCastRowMenu() =
-        component("android.component.cast-row.menu", wide = true) {
+        component("android.component.cast-row.menu") {
             AndroidCastRow(receiver("Kitchen", BridgeRendererKind.AIR_PLAY), CastReceiverRole.Found {}, CastReceiverPlace.PAGE, null)
         }
 
     @Test
     fun androidComponentCastRowLongName() =
-        component("android.component.cast-row.long-name", wide = true) {
+        component("android.component.cast-row.long-name") {
             AndroidCastRow(
                 receiver("Denon AVR-X3800H Home Theater Receiver (Basement)", BridgeRendererKind.DLNA),
                 CastReceiverRole.Casting {},

@@ -55,6 +55,7 @@ enum ShotRenderer {
         let (window, captured) = try hostWindow(
             rootView,
             for: scene,
+            size: try frameSize(of: scene),
             on: display
         )
         window.appearance = NSAppearance(
@@ -71,7 +72,7 @@ enum ShotRenderer {
             window.close()
         }
         switch scene.frame {
-        case .content:
+        case .content, .component:
             // The renderer makes the window key without activating the app.
             // The window sits past every display, and a focused field draws
             // its ring only in a key window.
@@ -107,7 +108,7 @@ enum ShotRenderer {
     ) async throws -> Capture {
         let pixels: Data
         switch scene.frame {
-        case .content:
+        case .content, .component:
             pixels = try png(of: host, size: host.bounds.size, scene: scene)
         case .window:
             // The app shows the alerts a few run loop passes after AppKit
@@ -146,11 +147,12 @@ enum ShotRenderer {
     private static func hostWindow(
         _ rootView: some View,
         for scene: ShotScene,
+        size: CGSize,
         on display: ShotDisplay
     ) throws -> (NSWindow, NSView) {
-        let bounds = NSRect(origin: .zero, size: scene.size)
+        let bounds = NSRect(origin: .zero, size: size)
         switch scene.frame {
-        case .content:
+        case .content, .component:
             // Drawn as in the key window of the active app, as the app is
             // seen in use, without making it either: a window of an app that
             // is not active is never key, and draws its controls inactive.
@@ -159,7 +161,7 @@ enum ShotRenderer {
             )
             host.frame = bounds
             let window = ShotWindow(
-                contentRect: NSRect(origin: offscreenOrigin, size: scene.size),
+                contentRect: NSRect(origin: offscreenOrigin, size: size),
                 styleMask: [.borderless],
                 backing: .buffered,
                 defer: false
@@ -218,6 +220,16 @@ enum ShotRenderer {
                 preconditionFailure("A titled window has a frame view")
             }
             return (window, frame)
+        }
+    }
+
+    /// The size a scene is drawn at: a component's is its board's, which
+    /// the view is proposed and the shot is cut to; any other scene's is its
+    /// own.
+    private static func frameSize(of scene: ShotScene) throws -> CGSize {
+        switch scene.frame {
+        case .component: try ShotBoardSizes.size(of: scene.id)
+        case .content, .window: scene.size
         }
     }
 
@@ -321,6 +333,8 @@ enum ShotError: Error, CustomStringConvertible {
         room: CGSize
     )
     case unknownSelection(String, String)
+    case missingBoardSizes
+    case noBoardSize(String)
 
     var description: String {
         switch self {
@@ -365,6 +379,12 @@ enum ShotError: Error, CustomStringConvertible {
             "scene \(id) asks for \(content) points of content, and its "
                 + "window of \(window) points shows \(shown) of it, on a shot "
                 + "display with a free area of \(room) points"
+        case .missingBoardSizes:
+            "BUILDS_SHOTS_BOARD_SIZES is unset: builds shots writes the "
+                + "boards' sizes and passes the file's path through "
+                + "TEST_RUNNER_BUILDS_SHOTS_BOARD_SIZES."
+        case .noBoardSize(let id):
+            "the boards' sizes list none for component scene \(id)"
         case .unknownSelection(let kind, let name):
             "no \(kind) matches \(name)"
         }

@@ -16,31 +16,30 @@ import uniffi.bae_bridge.BridgeSyncActivity
 /** The component shots of `AndroidLibraryHeader`, one for each row of its preview. */
 class AndroidLibraryHeaderShots : BoardShot() {
     @Test
-    fun androidComponentLibraryHeaderTop() = component("android.component.library-header.top", wide = true) { LibraryHeader() }
+    fun androidComponentLibraryHeaderTop() = component("android.component.library-header.top") { LibraryHeader() }
 
     @Test
-    fun androidComponentLibraryHeaderScrolled() =
-        component("android.component.library-header.scrolled", wide = true) { LibraryHeader(collapse = 1f) }
+    fun androidComponentLibraryHeaderScrolled() = component("android.component.library-header.scrolled") { LibraryHeader(collapse = 1f) }
 
     @Test
     fun androidComponentLibraryHeaderMoving() =
-        component("android.component.library-header.moving", wide = true) {
+        component("android.component.library-header.moving") {
             LibraryHeader(activity = PreviewData.syncActivity(needsAttention = false))
         }
 
     @Test
     fun androidComponentLibraryHeaderAttention() =
-        component("android.component.library-header.attention", wide = true) {
+        component("android.component.library-header.attention") {
             LibraryHeader(activity = idleActivity.copy(failure = PreviewData.syncActivity(needsAttention = true).failure))
         }
 
     @Test
     fun androidComponentLibraryHeaderPaused() =
-        component("android.component.library-header.paused", wide = true) { LibraryHeader(activity = idleActivity.copy(held = true)) }
+        component("android.component.library-header.paused") { LibraryHeader(activity = idleActivity.copy(held = true)) }
 
     @Test
     fun androidComponentLibraryHeaderPicture() =
-        component("android.component.library-header.picture", wide = true) {
+        component("android.component.library-header.picture") {
             LibraryHeader(face = AvatarFace(initials = "A", picture = ImageContent.Avatar(person = "ana", version = "1")))
         }
 }

@@ -14,7 +14,7 @@ import org.junit.Test
 class AndroidAccentPickerShots : BoardShot() {
     @Test
     fun androidComponentAccentPickerResting() =
-        component("android.component.accent-picker.resting", wide = true) {
+        component("android.component.accent-picker.resting") {
             AndroidCard {
                 Box(Modifier.fillMaxWidth().padding(ThemeSpace.edge)) {
                     AndroidAccentPicker(AccentChoice.PINK) {}

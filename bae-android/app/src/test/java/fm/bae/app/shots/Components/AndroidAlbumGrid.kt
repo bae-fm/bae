@@ -16,7 +16,7 @@ import uniffi.bae_bridge.BridgeAlbumAppearance
 class AndroidAlbumGridShots : BoardShot() {
     @Test
     fun androidComponentAlbumGridDefault() =
-        component("android.component.album-grid.default", wide = true) {
+        component("android.component.album-grid.default") {
             Images {
                 val rows = previewAlbums
                 Box(Modifier.width(380.dp).height(240.dp)) {

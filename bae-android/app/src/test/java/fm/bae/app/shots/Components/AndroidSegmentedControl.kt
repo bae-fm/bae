@@ -7,19 +7,19 @@ import org.junit.Test
 class AndroidSegmentedControlShots : BoardShot() {
     @Test
     fun androidComponentSegmentedControlChoice() =
-        component("android.component.segmented-control.choice", wide = true) {
+        component("android.component.segmented-control.choice") {
             AndroidSegmentedControl(options = (1..6).map { "$it" }, selected = 2, onSelect = {})
         }
 
     @Test
     fun androidComponentSegmentedControlWithALabel() =
-        component("android.component.segmented-control.with-a-label", wide = true) {
+        component("android.component.segmented-control.with-a-label") {
             AndroidSegmentedControl(options = listOf("Member", "Owner"), selected = 0, onSelect = {}, label = "Role")
         }
 
     @Test
     fun androidComponentSegmentedControlWithAHelper() =
-        component("android.component.segmented-control.with-a-helper", wide = true) {
+        component("android.component.segmented-control.with-a-helper") {
             AndroidSegmentedControl(
                 options = listOf("Only me", "Everyone"),
                 selected = 1,

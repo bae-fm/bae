@@ -7,7 +7,7 @@ import org.junit.Test
 class AndroidSearchSectionShots : BoardShot() {
     @Test
     fun androidComponentSearchSectionDefault() =
-        component("android.component.search-section.default", wide = true) {
+        component("android.component.search-section.default") {
             AndroidSearchSection("Albums")
         }
 }

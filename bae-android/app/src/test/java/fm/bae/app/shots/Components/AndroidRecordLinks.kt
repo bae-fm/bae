@@ -10,17 +10,17 @@ import uniffi.bae_bridge.BridgeReleaseRecord
 class AndroidRecordLinksShots : BoardShot() {
     @Test
     fun androidComponentRecordLinksOneCatalog() =
-        component("android.component.record-links.one-catalog", wide = true) { Links(BridgeCatalog.MUSIC_BRAINZ) }
+        component("android.component.record-links.one-catalog") { Links(BridgeCatalog.MUSIC_BRAINZ) }
 
     @Test
     fun androidComponentRecordLinksTwoCatalogs() =
-        component("android.component.record-links.two-catalogs", wide = true) {
+        component("android.component.record-links.two-catalogs") {
             Links(BridgeCatalog.MUSIC_BRAINZ, BridgeCatalog.DISCOGS)
         }
 
     @Test
     fun androidComponentRecordLinksWrapping() =
-        component("android.component.record-links.wrapping", wide = true) {
+        component("android.component.record-links.wrapping") {
             Links(
                 BridgeCatalog.MUSIC_BRAINZ,
                 BridgeCatalog.DISCOGS,

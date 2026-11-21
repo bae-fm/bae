@@ -18,7 +18,7 @@ import org.junit.Test
 class AndroidMoreMenuShots : BoardShot() {
     @Test
     fun androidComponentMoreMenuClosed() =
-        component("android.component.more-menu.closed", wide = true) {
+        component("android.component.more-menu.closed") {
             Box(modifier = Modifier.fillMaxWidth()) {
                 Box(modifier = Modifier.align(Alignment.TopEnd)) { AndroidMoreMenu {} }
             }
@@ -27,7 +27,7 @@ class AndroidMoreMenuShots : BoardShot() {
     /** The menu's contents in a surface like its own, under the ⋮: layoutlib draws an open menu's popup blank. */
     @Test
     fun androidComponentMoreMenuOpen() =
-        component("android.component.more-menu.open", wide = true) {
+        component("android.component.more-menu.open") {
             Box(modifier = Modifier.fillMaxWidth().height(OPEN_MENU_HEIGHT)) {
                 Box(modifier = Modifier.align(Alignment.TopEnd)) { AndroidMoreMenu {} }
                 OpenMenu(top = MENU_TOP) {

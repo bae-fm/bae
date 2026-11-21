@@ -18,18 +18,17 @@ import uniffi.bae_bridge.BridgeTransferBatch
 /** The component shots of `AndroidActivity`, one for each row of its preview. */
 class AndroidActivityShots : BoardShot() {
     @Test
-    fun androidComponentActivityUpToDate() =
-        component("android.component.activity.up-to-date", wide = true) { Sheet(activity = idleActivity) }
+    fun androidComponentActivityUpToDate() = component("android.component.activity.up-to-date") { Sheet(activity = idleActivity) }
 
     @Test
     fun androidComponentActivityTransfers() =
-        component("android.component.activity.transfers", wide = true) {
+        component("android.component.activity.transfers") {
             Sheet(activity = PreviewData.syncActivity(needsAttention = false), uploads = 0.43, pins = 0.3)
         }
 
     @Test
     fun androidComponentActivityPinningPaused() =
-        component("android.component.activity.pinning-paused", wide = true) {
+        component("android.component.activity.pinning-paused") {
             val paused =
                 idleActivity.copy(
                     held = true,
@@ -40,7 +39,7 @@ class AndroidActivityShots : BoardShot() {
 
     @Test
     fun androidComponentActivityStatusUnknown() =
-        component("android.component.activity.status-unknown", wide = true) {
+        component("android.component.activity.status-unknown") {
             Sheet(activity = null, error = DisplayError("bae couldn’t read the sync status."))
         }
 }

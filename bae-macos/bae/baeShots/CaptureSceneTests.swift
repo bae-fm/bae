@@ -56,7 +56,7 @@ struct CaptureSceneTests {
     static func selectedScenes() throws -> [ShotScene] {
         let rendered = ShotScene.all.filter { scene in
             switch scene.frame {
-            case .content: true
+            case .content, .component: true
             case .window: Self.rendersWindows
             }
         }

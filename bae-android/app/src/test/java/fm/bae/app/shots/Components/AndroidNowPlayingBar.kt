@@ -11,32 +11,31 @@ import uniffi.bae_bridge.BridgeRepeatMode
 /** The component shots of `AndroidNowPlayingBar`, one for each row of its preview. */
 class AndroidNowPlayingBarShots : BoardShot() {
     @Test
-    fun androidComponentNowPlayingBarPlaying() = component("android.component.now-playing-bar.playing", wide = true) { Bar(playing) }
+    fun androidComponentNowPlayingBarPlaying() = component("android.component.now-playing-bar.playing") { Bar(playing) }
 
     @Test
     fun androidComponentNowPlayingBarWaitingOnTheCloud() =
-        component("android.component.now-playing-bar.waiting-on-the-cloud", wide = true) { Bar(waiting) }
+        component("android.component.now-playing-bar.waiting-on-the-cloud") { Bar(waiting) }
 
     @Test
-    fun androidComponentNowPlayingBarNoCover() = component("android.component.now-playing-bar.no-cover", wide = true) { Bar(withoutCover) }
+    fun androidComponentNowPlayingBarNoCover() = component("android.component.now-playing-bar.no-cover") { Bar(withoutCover) }
 
     @Test
     fun androidComponentNowPlayingBarCasting() =
-        component("android.component.now-playing-bar.casting", wide = true) {
+        component("android.component.now-playing-bar.casting") {
             Bar(playing, castButton = { CastBarButton(casting = true, onClick = {}) })
         }
 
     @Test
-    fun androidComponentNowPlayingBarCastOff() =
-        component("android.component.now-playing-bar.cast-off", wide = true) { Bar(playing, castButton = {}) }
+    fun androidComponentNowPlayingBarCastOff() = component("android.component.now-playing-bar.cast-off") { Bar(playing, castButton = {}) }
 
     @Test
     fun androidComponentNowPlayingBarRepeat() =
-        component("android.component.now-playing-bar.repeat", wide = true) { Bar(playing, repeatMode = BridgeRepeatMode.CONTEXT) }
+        component("android.component.now-playing-bar.repeat") { Bar(playing, repeatMode = BridgeRepeatMode.CONTEXT) }
 
     @Test
     fun androidComponentNowPlayingBarError() =
-        component("android.component.now-playing-bar.error", wide = true) {
+        component("android.component.now-playing-bar.error") {
             Bar(playing, failure = DisplayError("Could not read what is playing."))
         }
 }

@@ -13,7 +13,7 @@ import org.junit.Test
 class AndroidDividerShots : BoardShot() {
     @Test
     fun androidComponentDividerDivider() =
-        component("android.component.divider.divider", wide = true) {
+        component("android.component.divider.divider") {
             Column {
                 Text("Above", modifier = Modifier.fillMaxWidth().padding(vertical = ThemeSpace.related))
                 AndroidDivider()

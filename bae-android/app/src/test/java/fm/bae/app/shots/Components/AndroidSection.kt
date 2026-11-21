@@ -12,7 +12,7 @@ import org.junit.Test
 class AndroidSectionShots : BoardShot() {
     @Test
     fun androidComponentSectionDefault() =
-        component("android.component.section.default", wide = true) {
+        component("android.component.section.default") {
             Column {
                 AndroidSection("People")
                 Text("The card that follows", modifier = Modifier.padding(ThemeSpace.edge))

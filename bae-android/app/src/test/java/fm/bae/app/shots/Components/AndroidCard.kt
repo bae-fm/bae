@@ -8,7 +8,7 @@ import org.junit.Test
 class AndroidCardShots : BoardShot() {
     @Test
     fun androidComponentCardRows() =
-        component("android.component.card.rows", wide = true) {
+        component("android.component.card.rows") {
             AndroidCard {
                 AndroidRow(title = "Phone")
                 AndroidRow(title = "Laptop")

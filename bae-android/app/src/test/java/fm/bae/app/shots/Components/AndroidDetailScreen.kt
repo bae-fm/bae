@@ -20,11 +20,11 @@ import uniffi.bae_bridge.BridgeAlbumDetail
 /** The component shots of `AndroidDetailScreen`, one for each row of its preview. */
 class AndroidDetailScreenShots : BoardShot() {
     @Test
-    fun androidComponentDetailScreenResting() = component("android.component.detail-screen.resting", wide = true) { Detail {} }
+    fun androidComponentDetailScreenResting() = component("android.component.detail-screen.resting") { Detail {} }
 
     @Test
     fun androidComponentDetailScreenMenu() =
-        component("android.component.detail-screen.menu", wide = true) {
+        component("android.component.detail-screen.menu") {
             Detail { AlbumOptionsMenu(onSetPrimaryRelease = null, onDelete = {}) }
         }
 }

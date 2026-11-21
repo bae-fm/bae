@@ -10,25 +10,25 @@ import uniffi.bae_bridge.BridgeStorageLocation
 class AndroidInviteFieldsShots : BoardShot() {
     @Test
     fun androidComponentInviteFieldsS3TheirKey() =
-        component("android.component.invite-fields.s3-their-key", wide = true) {
+        component("android.component.invite-fields.s3-their-key") {
             Fields(sceneS3, InviteAccessInput(accessKeyId = "AKIAEXAMPLEKEY", secretAccessKey = "••••••••••••••••"))
         }
 
     @Test
     fun androidComponentInviteFieldsS3MyKey() =
-        component("android.component.invite-fields.s3-my-key", wide = true) {
+        component("android.component.invite-fields.s3-my-key") {
             Fields(sceneS3, InviteAccessInput().apply { usesOwnKey = true })
         }
 
     @Test
     fun androidComponentInviteFieldsDropbox() =
-        component("android.component.invite-fields.dropbox", wide = true) {
+        component("android.component.invite-fields.dropbox") {
             Fields(sceneDropbox, InviteAccessInput(email = "dan@example.com"))
         }
 
     @Test
     fun androidComponentInviteFieldsOnedrive() =
-        component("android.component.invite-fields.onedrive", wide = true) {
+        component("android.component.invite-fields.onedrive") {
             Fields(
                 BridgeStorageLocation.OneDrive("drive", "folder", "name@example.com", null),
                 InviteAccessInput(email = "dan@example.com"),

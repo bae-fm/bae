@@ -17,7 +17,7 @@ import org.junit.Test
 class AndroidSnackbarShots : BoardShot() {
     @Test
     fun androidComponentSnackbarDefault() =
-        component("android.component.snackbar.default", wide = true) {
+        component("android.component.snackbar.default") {
             val state = remember { SnackbarHostState() }
             LaunchedEffect(Unit) {
                 state.showSnackbar("Could not reach the cloud.", actionLabel = "Retry", duration = SnackbarDuration.Indefinite)

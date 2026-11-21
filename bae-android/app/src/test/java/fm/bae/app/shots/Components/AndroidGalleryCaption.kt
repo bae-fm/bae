@@ -7,13 +7,13 @@ import org.junit.Test
 class AndroidGalleryCaptionShots : BoardShot() {
     @Test
     fun androidComponentGalleryCaptionSeveralImages() =
-        component("android.component.gallery-caption.several-images", wide = true) {
+        component("android.component.gallery-caption.several-images") {
             OnTheBackdrop { AndroidGalleryCaption(label = "cover.jpg", page = 1, count = 4u) }
         }
 
     @Test
     fun androidComponentGalleryCaptionOneImage() =
-        component("android.component.gallery-caption.one-image", wide = true) {
+        component("android.component.gallery-caption.one-image") {
             OnTheBackdrop { AndroidGalleryCaption(label = "cover.jpg", page = 1, count = 1u) }
         }
 }

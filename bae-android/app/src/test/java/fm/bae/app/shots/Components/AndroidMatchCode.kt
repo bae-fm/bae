@@ -7,11 +7,11 @@ import org.junit.Test
 class AndroidMatchCodeShots : BoardShot() {
     @Test
     fun androidComponentMatchCodeOnAScreen() =
-        component("android.component.match-code.on-a-screen", wide = true) {
+        component("android.component.match-code.on-a-screen") {
             AndroidMatchCode("412 778", waiting = "Waiting for your other device…")
         }
 
     @Test
     fun androidComponentMatchCodeInADialog() =
-        component("android.component.match-code.in-a-dialog", wide = true) { AndroidMatchCode("412 778", dialog = true) }
+        component("android.component.match-code.in-a-dialog") { AndroidMatchCode("412 778", dialog = true) }
 }

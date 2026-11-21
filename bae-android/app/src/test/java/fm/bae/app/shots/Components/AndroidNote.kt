@@ -12,7 +12,7 @@ import org.junit.Test
 class AndroidNoteShots : BoardShot() {
     @Test
     fun androidComponentNoteDefault() =
-        component("android.component.note.default", wide = true) {
+        component("android.component.note.default") {
             Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
                 AndroidCard { AndroidRow(title = "Restore code", subtitle = "Shown") }
                 AndroidNote("Anyone with this code can open the library.")

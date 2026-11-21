@@ -10,12 +10,10 @@ import uniffi.bae_bridge.BridgeReleaseName
 /** The component shots of `AndroidReleasePicker`, one for each row of its preview. */
 class AndroidReleasePickerShots : BoardShot() {
     @Test
-    fun androidComponentReleasePickerTwoReleases() =
-        component("android.component.release-picker.two-releases", wide = true) { Picker(shown = 0) }
+    fun androidComponentReleasePickerTwoReleases() = component("android.component.release-picker.two-releases") { Picker(shown = 0) }
 
     @Test
-    fun androidComponentReleasePickerSecondShown() =
-        component("android.component.release-picker.second-shown", wide = true) { Picker(shown = 1) }
+    fun androidComponentReleasePickerSecondShown() = component("android.component.release-picker.second-shown") { Picker(shown = 1) }
 }
 
 @Composable

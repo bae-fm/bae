@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.BottomSheetDefaults
@@ -27,6 +28,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
@@ -113,23 +115,20 @@ private fun SheetWithHandle(
 }
 
 /**
- * A component on the page colour, at the top left with no margin, as a preview cell holds it; [wide] makes it as wide
- * as a phone screen's margins leave a component.
+ * A component on the page colour, at the top left with no margin and at [size], its board's: a preview cell
+ * holds it, and the view is proposed the cell's size.
  */
 @Composable
 internal fun ComponentScene(
-    wide: Boolean,
+    size: DpSize,
     content: @Composable () -> Unit,
 ) {
     ShotTheme {
         Surface(color = MaterialTheme.colorScheme.background) {
-            Box(modifier = if (wide) Modifier.width(PHONE_COLUMN) else Modifier) { content() }
+            Box(modifier = Modifier.size(size)) { content() }
         }
     }
 }
-
-/** A phone 411 dp wide, less the screen's margin on each side. */
-private val PHONE_COLUMN = 411.dp - ThemeSpace.edge * 2
 
 /** A screen of its own, on the screen's background, in the look [appearance] gives (the boards' by default). */
 @Composable

@@ -13,12 +13,11 @@ import org.junit.Test
 /** The component shots of `AndroidTextField`, one for each row of its preview. */
 class AndroidTextFieldShots : BoardShot() {
     @Test
-    fun androidComponentTextFieldResting() =
-        component("android.component.text-field.resting", wide = true) { NameField(value = "Home music") }
+    fun androidComponentTextFieldResting() = component("android.component.text-field.resting") { NameField(value = "Home music") }
 
     @Test
     fun androidComponentTextFieldFocused() =
-        component("android.component.text-field.focused", wide = true) {
+        component("android.component.text-field.focused") {
             val focus = remember { FocusRequester() }
             NameField(value = "Home music", modifier = Modifier.focusRequester(focus))
             LaunchedEffect(Unit) { focus.requestFocus() }
@@ -26,17 +25,17 @@ class AndroidTextFieldShots : BoardShot() {
 
     @Test
     fun androidComponentTextFieldHelper() =
-        component("android.component.text-field.helper", wide = true) {
+        component("android.component.text-field.helper") {
             NameField(value = "Home music", helper = "People in this library see this name.")
         }
 
     @Test
     fun androidComponentTextFieldError() =
-        component("android.component.text-field.error", wide = true) { NameField(value = "", helper = "Enter a name.", error = true) }
+        component("android.component.text-field.error") { NameField(value = "", helper = "Enter a name.", error = true) }
 
     @Test
     fun androidComponentTextFieldSecret() =
-        component("android.component.text-field.secret", wide = true) { NameField(value = "Home music", kind = TextFieldKind.SECRET) }
+        component("android.component.text-field.secret") { NameField(value = "Home music", kind = TextFieldKind.SECRET) }
 }
 
 @Composable

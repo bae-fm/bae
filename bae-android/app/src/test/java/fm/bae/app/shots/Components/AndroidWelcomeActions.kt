@@ -7,5 +7,5 @@ import org.junit.Test
 class AndroidWelcomeActionsShots : BoardShot() {
     @Test
     fun androidComponentWelcomeActionsResting() =
-        component("android.component.welcome-actions.resting", wide = true) { AndroidWelcomeActions(onScan = {}, onEnter = {}) }
+        component("android.component.welcome-actions.resting") { AndroidWelcomeActions(onScan = {}, onEnter = {}) }
 }

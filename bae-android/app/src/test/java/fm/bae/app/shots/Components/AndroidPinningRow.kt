@@ -11,19 +11,19 @@ import uniffi.bae_bridge.BridgeDownloadState
 class AndroidPinningRowShots : BoardShot() {
     @Test
     fun androidComponentPinningRowQueued() =
-        component("android.component.pinning-row.queued", wide = true) {
+        component("android.component.pinning-row.queued") {
             PinningRow(previewDownload("rel-1", "Winter Kitchen", 10UL, 331_000_000UL, BridgeDownloadState.Queued))
         }
 
     @Test
     fun androidComponentPinningRowPinning() =
-        component("android.component.pinning-row.pinning", wide = true) {
+        component("android.component.pinning-row.pinning") {
             PinningRow(previewDownload("rel-2", "Late Arrivals", 10UL, 344_000_000UL, BridgeDownloadState.Active))
         }
 
     @Test
     fun androidComponentPinningRowFailed() =
-        component("android.component.pinning-row.failed", wide = true) {
+        component("android.component.pinning-row.failed") {
             PinningRow(
                 previewDownload("rel-3", "Glass Harbor", 9UL, 356_000_000UL, BridgeDownloadState.Failed("Network unreachable")),
             )
@@ -31,7 +31,7 @@ class AndroidPinningRowShots : BoardShot() {
 
     @Test
     fun androidComponentPinningRowReleaseRemoved() =
-        component("android.component.pinning-row.release-removed", wide = true) {
+        component("android.component.pinning-row.release-removed") {
             PinningRow(previewDownload("rel-4", null, 9UL, 356_000_000UL, BridgeDownloadState.Queued))
         }
 }

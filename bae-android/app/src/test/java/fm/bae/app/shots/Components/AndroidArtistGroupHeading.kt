@@ -9,13 +9,13 @@ import uniffi.bae_bridge.BridgeLibraryBrowseSection
 class AndroidArtistGroupHeadingShots : BoardShot() {
     @Test
     fun androidComponentArtistGroupHeadingTop() =
-        component("android.component.artist-group-heading.top", wide = true) {
+        component("android.component.artist-group-heading.top") {
             Images { AndroidArtistGroupHeading(section, pinned = false, gridPadding = 16.dp, onClick = {}) }
         }
 
     @Test
     fun androidComponentArtistGroupHeadingPinned() =
-        component("android.component.artist-group-heading.pinned", wide = true) {
+        component("android.component.artist-group-heading.pinned") {
             Images { AndroidArtistGroupHeading(section, pinned = true, gridPadding = 16.dp, onClick = {}) }
         }
 }

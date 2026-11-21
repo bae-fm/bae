@@ -11,7 +11,7 @@ import uniffi.bae_bridge.BridgeTermLabel
 class AndroidAlbumCreditsShots : BoardShot() {
     @Test
     fun androidComponentAlbumCreditsCredits() =
-        component("android.component.album-credits.credits", wide = true) {
+        component("android.component.album-credits.credits") {
             AndroidAlbumCredits(
                 listOf(credit("Producer", "Ines Varga"), credit("Engineer", "Pell Marsh"), credit("Arranger", "Ada Lindqvist")),
             )
@@ -19,7 +19,7 @@ class AndroidAlbumCreditsShots : BoardShot() {
 
     @Test
     fun androidComponentAlbumCreditsLongNames() =
-        component("android.component.album-credits.long-names", wide = true) {
+        component("android.component.album-credits.long-names") {
             AndroidAlbumCredits(
                 listOf(
                     credit("Producer", "Ines Varga and Tomas Brell"),

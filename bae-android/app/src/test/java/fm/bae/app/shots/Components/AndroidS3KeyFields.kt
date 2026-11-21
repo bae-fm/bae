@@ -15,14 +15,14 @@ import org.junit.Test
 /** The component shots of `AndroidS3KeyFields`, one for each row of its preview. */
 class AndroidS3KeyFieldsShots : BoardShot() {
     @Test
-    fun androidComponentS3KeyFieldsEmpty() = component("android.component.s3-key-fields.empty", wide = true) { KeyFields("", "") }
+    fun androidComponentS3KeyFieldsEmpty() = component("android.component.s3-key-fields.empty") { KeyFields("", "") }
 
     @Test
-    fun androidComponentS3KeyFieldsTyped() = component("android.component.s3-key-fields.typed", wide = true) { KeyFields(KEY_ID, SECRET) }
+    fun androidComponentS3KeyFieldsTyped() = component("android.component.s3-key-fields.typed") { KeyFields(KEY_ID, SECRET) }
 
     @Test
     fun androidComponentS3KeyFieldsIdFocused() =
-        component("android.component.s3-key-fields.id-focused", wide = true) {
+        component("android.component.s3-key-fields.id-focused") {
             val focus = remember { FocusRequester() }
             KeyFields(KEY_ID, SECRET, idModifier = Modifier.focusRequester(focus))
             LaunchedEffect(Unit) { focus.requestFocus() }
@@ -30,7 +30,7 @@ class AndroidS3KeyFieldsShots : BoardShot() {
 
     @Test
     fun androidComponentS3KeyFieldsRefused() =
-        component("android.component.s3-key-fields.refused", wide = true) {
+        component("android.component.s3-key-fields.refused") {
             KeyFields(KEY_ID, SECRET, note = "S3 refused this key.")
         }
 }

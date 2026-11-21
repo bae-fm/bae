@@ -22,5 +22,8 @@ properties=("-Pbae.shotsDir=$BUILDS_SHOTS_OUT")
 if [[ -n "${BUILDS_SHOTS_SELECT:-}" ]]; then
     properties+=("-Pbae.shotsSelect=$BUILDS_SHOTS_SELECT")
 fi
+if [[ -n "${BUILDS_SHOTS_BOARD_SIZES:-}" ]]; then
+    properties+=("-Pbae.shotsBoardSizes=$BUILDS_SHOTS_BOARD_SIZES")
+fi
 ./bae-android/gradle.sh --no-daemon :app:testFullDebugUnitTest --tests 'fm.bae.app.shots.*' \
     "${properties[@]}"

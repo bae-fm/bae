@@ -13,47 +13,46 @@ import org.junit.Test
 class AndroidNoticeShots : BoardShot() {
     @Test
     fun androidComponentNoticeNeutral() =
-        component("android.component.notice.neutral", wide = true) { Titled("This library has no albums yet.", StatusTone.NEUTRAL) }
+        component("android.component.notice.neutral") { Titled("This library has no albums yet.", StatusTone.NEUTRAL) }
 
     @Test
     fun androidComponentNoticeInfo() =
-        component("android.component.notice.info", wide = true) {
+        component("android.component.notice.info") {
             Titled("A newer version of this release is on Discogs.", StatusTone.INFO)
         }
 
     @Test
-    fun androidComponentNoticeSuccess() =
-        component("android.component.notice.success", wide = true) { Titled("Cloud connected.", StatusTone.SUCCESS) }
+    fun androidComponentNoticeSuccess() = component("android.component.notice.success") { Titled("Cloud connected.", StatusTone.SUCCESS) }
 
     @Test
     fun androidComponentNoticeWarning() =
-        component("android.component.notice.warning", wide = true) { Titled("Unsent changes will be lost", StatusTone.WARNING) }
+        component("android.component.notice.warning") { Titled("Unsent changes will be lost", StatusTone.WARNING) }
 
     @Test
     fun androidComponentNoticeWarningTitleAndSubtitle() =
-        component("android.component.notice.warning-title-and-subtitle", wide = true) {
+        component("android.component.notice.warning-title-and-subtitle") {
             Titled("Mara Quill’s phone is out of date", StatusTone.WARNING, advice = "Update bae on it to keep syncing.")
         }
 
     @Test
     fun androidComponentNoticeDanger() =
-        component("android.component.notice.danger", wide = true) { Titled("Could not reach the cloud.", StatusTone.DANGER) }
+        component("android.component.notice.danger") { Titled("Could not reach the cloud.", StatusTone.DANGER) }
 
     @Test
     fun androidComponentNoticeDangerRetry() =
-        component("android.component.notice.danger-retry", wide = true) {
+        component("android.component.notice.danger-retry") {
             Titled("Could not reach the cloud.", StatusTone.DANGER, action = ErrorAction("Retry") {})
         }
 
     @Test
     fun androidComponentNoticeDangerDetailsAndRetry() =
-        component("android.component.notice.danger-details-and-retry", wide = true) {
+        component("android.component.notice.danger-details-and-retry") {
             AndroidNotice(error = CLOUD_ERROR, action = ErrorAction("Retry") {})
         }
 
     @Test
     fun androidComponentNoticeDangerActionsBelowLongText() =
-        component("android.component.notice.danger-actions-below-long-text", wide = true) {
+        component("android.component.notice.danger-actions-below-long-text") {
             AndroidNotice(
                 error =
                     DisplayError(
@@ -68,7 +67,7 @@ class AndroidNoticeShots : BoardShot() {
 
     @Test
     fun androidComponentNoticeDangerTitleAndSubtitle() =
-        component("android.component.notice.danger-title-and-subtitle", wide = true) {
+        component("android.component.notice.danger-title-and-subtitle") {
             Titled(
                 "bae could not open your library",
                 StatusTone.DANGER,
@@ -78,7 +77,7 @@ class AndroidNoticeShots : BoardShot() {
 
     @Test
     fun androidComponentNoticeWarningQuietActionsBelow() =
-        component("android.component.notice.warning-quiet-actions-below", wide = true) {
+        component("android.component.notice.warning-quiet-actions-below") {
             AndroidNotice(
                 title = "Dropbox signed this device out.",
                 advice = null,
@@ -93,7 +92,7 @@ class AndroidNoticeShots : BoardShot() {
 
     @Test
     fun androidComponentNoticeDangerQuietWith() =
-        component("android.component.notice.danger-quiet-with", wide = true) {
+        component("android.component.notice.danger-quiet-with") {
             AndroidNotice(
                 title = "Could not close the library",
                 advice = null,
@@ -106,7 +105,7 @@ class AndroidNoticeShots : BoardShot() {
 
     @Test
     fun androidComponentNoticeDangerCentredAFailedView() =
-        component("android.component.notice.danger-centred-a-failed-view", wide = true) {
+        component("android.component.notice.danger-centred-a-failed-view") {
             AndroidNotice(
                 title = "Could not read your library",
                 advice = null,

@@ -12,15 +12,14 @@ import org.junit.Test
 /** The component shots of `AndroidNowPlayingTrack`, one for each row of its preview. */
 class AndroidNowPlayingTrackShots : BoardShot() {
     @Test
-    fun androidComponentNowPlayingTrackPlaying() = component("android.component.now-playing-track.playing", wide = true) { Track(playing) }
+    fun androidComponentNowPlayingTrackPlaying() = component("android.component.now-playing-track.playing") { Track(playing) }
 
     @Test
-    fun androidComponentNowPlayingTrackNoCover() =
-        component("android.component.now-playing-track.no-cover", wide = true) { Track(withoutCover) }
+    fun androidComponentNowPlayingTrackNoCover() = component("android.component.now-playing-track.no-cover") { Track(withoutCover) }
 
     @Test
     fun androidComponentNowPlayingTrackLongTitle() =
-        component("android.component.now-playing-track.long-title", wide = true) {
+        component("android.component.now-playing-track.long-title") {
             Row(modifier = Modifier.width(260.dp)) { Track(longTitle) }
         }
 }

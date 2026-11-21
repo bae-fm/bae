@@ -14,13 +14,13 @@ import org.junit.Test
 class AndroidItemShots : BoardShot() {
     @Test
     fun androidComponentItemOneLine() =
-        component("android.component.item.one-line", wide = true) {
+        component("android.component.item.one-line") {
             AndroidItem(lead = { StatusGlyph(StatusTone.SUCCESS) }) { ItemText("Pinned on this phone") }
         }
 
     @Test
     fun androidComponentItemTwoLines() =
-        component("android.component.item.two-lines", wide = true) {
+        component("android.component.item.two-lines") {
             AndroidItem(lead = { StatusGlyph(StatusTone.SUCCESS) }) {
                 ItemText("Pinned on this phone. bae plays it from this phone without the network.")
             }
@@ -28,7 +28,7 @@ class AndroidItemShots : BoardShot() {
 
     @Test
     fun androidComponentItemWithTrail() =
-        component("android.component.item.with-trail", wide = true) {
+        component("android.component.item.with-trail") {
             AndroidItem(
                 lead = { StatusGlyph(StatusTone.DANGER) },
                 trail = { AndroidButton(kind = ButtonKind.TEXT, onClick = {}) { Text("Retry") } },

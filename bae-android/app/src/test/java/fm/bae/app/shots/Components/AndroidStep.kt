@@ -10,7 +10,7 @@ import org.junit.Test
 class AndroidStepShots : BoardShot() {
     @Test
     fun androidComponentStepWithAField() =
-        component("android.component.step.with-a-field", wide = true) {
+        component("android.component.step.with-a-field") {
             AndroidStep(title = "You are invited to Home music") {
                 AndroidTextField(value = "Dan", onValueChange = {}, label = "Your name", helper = "Everyone in the library sees this name.")
                 AndroidButton(onClick = {}, large = true) { Text("Join") }
@@ -19,7 +19,7 @@ class AndroidStepShots : BoardShot() {
 
     @Test
     fun androidComponentStepWithALine() =
-        component("android.component.step.with-a-line", wide = true) {
+        component("android.component.step.with-a-line") {
             AndroidStep(title = "This invite has ended", text = "Ask Ben for a new one.") {
                 AndroidButton(onClick = {}, large = true) { Text("OK") }
             }

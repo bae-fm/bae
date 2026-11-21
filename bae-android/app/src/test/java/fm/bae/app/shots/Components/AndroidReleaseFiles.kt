@@ -8,7 +8,7 @@ import uniffi.bae_bridge.BridgeFileKind
 class AndroidReleaseFilesShots : BoardShot() {
     @Test
     fun androidComponentReleaseFilesThreeFiles() =
-        component("android.component.release-files.three-files", wide = true) {
+        component("android.component.release-files.three-files") {
             AndroidReleaseFiles(
                 listOf(
                     boardFile("Low Tide Hours.cue", BridgeFileKind.CueSheet),
@@ -20,13 +20,13 @@ class AndroidReleaseFilesShots : BoardShot() {
 
     @Test
     fun androidComponentReleaseFilesOneFile() =
-        component("android.component.release-files.one-file", wide = true) {
+        component("android.component.release-files.one-file") {
             AndroidReleaseFiles(listOf(boardFile("Low Tide Hours.log", BridgeFileKind.RipLog)))
         }
 
     @Test
     fun androidComponentReleaseFilesLongName() =
-        component("android.component.release-files.long-name", wide = true) {
+        component("android.component.release-files.long-name") {
             AndroidReleaseFiles(
                 listOf(boardFile("Songs for the Slow Orchards, Recorded Live at the Harbor Hall.cue", BridgeFileKind.CueSheet)),
             )

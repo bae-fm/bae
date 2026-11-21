@@ -15,7 +15,7 @@ import uniffi.bae_bridge.BridgeSharing
 class AndroidPlaylistHeaderShots : BoardShot() {
     @Test
     fun androidComponentPlaylistHeaderPlaylist() =
-        component("android.component.playlist-header.playlist", wide = true) {
+        component("android.component.playlist-header.playlist") {
             Header(
                 BridgeFixtures.playlistSummary(name = "Late night", sharing = BridgeSharing.HOUSEHOLD).copy(
                     owner = BridgePersonRef(person = "person-1", name = "Ana", initials = "A", avatarVersion = null),
@@ -26,7 +26,7 @@ class AndroidPlaylistHeaderShots : BoardShot() {
 
     @Test
     fun androidComponentPlaylistHeaderLongName() =
-        component("android.component.playlist-header.long-name", wide = true) {
+        component("android.component.playlist-header.long-name") {
             Header(
                 BridgeFixtures.playlistSummary(name = "Sunday mornings in the kitchen").copy(
                     owner = BridgePersonRef(person = "person-2", name = "Ben", initials = "B", avatarVersion = null),

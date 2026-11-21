@@ -9,12 +9,11 @@ import uniffi.bae_bridge.BridgeMemberAccess
 /** The component shots of `AndroidCloudHome`, one for each row of its preview. */
 class AndroidCloudHomeShots : BoardShot() {
     @Test
-    fun androidComponentCloudHomeResting() =
-        component("android.component.cloud-home.resting", wide = true) { CloudHome(key = "AKIA4EXAMPLEOLD") }
+    fun androidComponentCloudHomeResting() = component("android.component.cloud-home.resting") { CloudHome(key = "AKIA4EXAMPLEOLD") }
 
     @Test
     fun androidComponentCloudHomeKeyReplaced() =
-        component("android.component.cloud-home.key-replaced", wide = true) {
+        component("android.component.cloud-home.key-replaced") {
             CloudHome(key = "AKIA4EXAMPLENEW", keyLine = S3KeyReplacement.Line.Saved("AKIA4EXAMPLEOLD"))
         }
 }

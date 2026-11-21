@@ -22,7 +22,7 @@ import uniffi.bae_bridge.BridgeHistoryShown
 class AndroidScreenShots : BoardShot() {
     @Test
     fun androidComponentScreenBack() =
-        component("android.component.screen.back", wide = true) {
+        component("android.component.screen.back") {
             AndroidScreen(title = "Library", onBack = {}, modifier = Modifier.height(360.dp)) {
                 Text("The screen’s content", modifier = Modifier.padding(ThemeSpace.edge))
             }
@@ -30,7 +30,7 @@ class AndroidScreenShots : BoardShot() {
 
     @Test
     fun androidComponentScreenMenu() =
-        component("android.component.screen.menu", wide = true) {
+        component("android.component.screen.menu") {
             AndroidScreen(
                 title = "History",
                 onBack = {},

@@ -7,11 +7,11 @@ import org.junit.Test
 class AndroidArtistOtherNamesShots : BoardShot() {
     @Test
     fun androidComponentArtistOtherNamesOneName() =
-        component("android.component.artist-other-names.one-name", wide = true) { AndroidArtistOtherNames(listOf("Slow Orchards")) }
+        component("android.component.artist-other-names.one-name") { AndroidArtistOtherNames(listOf("Slow Orchards")) }
 
     @Test
     fun androidComponentArtistOtherNamesTwoNames() =
-        component("android.component.artist-other-names.two-names", wide = true) {
+        component("android.component.artist-other-names.two-names") {
             AndroidArtistOtherNames(listOf("Slow Orchards", "The Slow Orchards Band"))
         }
 }

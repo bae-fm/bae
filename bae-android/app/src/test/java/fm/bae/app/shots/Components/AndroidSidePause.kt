@@ -15,19 +15,18 @@ class AndroidSidePauseShots : BoardShot() {
     fun androidComponentSidePauseCountingDown() =
         component(
             "android.component.side-pause.counting-down",
-            wide = true,
         ) { SidePause(PreviewData.sidePausePrompt(Instant.ofEpochSecond(12))) }
 
     @Test
-    fun androidComponentSidePausePaused() = component("android.component.side-pause.paused", wide = true) { SidePause(side()) }
+    fun androidComponentSidePausePaused() = component("android.component.side-pause.paused") { SidePause(side()) }
 
     @Test
     fun androidComponentSidePauseBoxCleared() =
-        component("android.component.side-pause.box-cleared", wide = true) { SidePause(side(), keepPausing = false) }
+        component("android.component.side-pause.box-cleared") { SidePause(side(), keepPausing = false) }
 
     @Test
     fun androidComponentSidePauseDisc() =
-        component("android.component.side-pause.disc", wide = true) { SidePause(PreviewData.discPausePrompt(Instant.ofEpochSecond(12))) }
+        component("android.component.side-pause.disc") { SidePause(PreviewData.discPausePrompt(Instant.ofEpochSecond(12))) }
 }
 
 private fun side() = PreviewData.sidePausePrompt()

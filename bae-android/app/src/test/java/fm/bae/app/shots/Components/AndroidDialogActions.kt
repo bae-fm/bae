@@ -8,13 +8,13 @@ import org.junit.Test
 class AndroidDialogActionsShots : BoardShot() {
     @Test
     fun androidComponentDialogActionsPlain() =
-        component("android.component.dialog-actions.plain", wide = true) {
+        component("android.component.dialog-actions.plain") {
             AndroidDialogActions(action = DialogAction("Save", {}), dismiss = DialogAction("Cancel", {}))
         }
 
     @Test
     fun androidComponentDialogActionsDestructive() =
-        component("android.component.dialog-actions.destructive", wide = true) {
+        component("android.component.dialog-actions.destructive") {
             AndroidDialogActions(action = DialogAction("Save", {}, destructive = true), dismiss = DialogAction("Cancel", {}))
         }
 }

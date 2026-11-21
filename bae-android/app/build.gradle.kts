@@ -217,12 +217,13 @@ extensions.configure<ApplicationAndroidComponentsExtension> {
 // bae-android/shots-capture.sh passes -Pbae.shotsDir=<dir>: the shot tests then write
 // <board>@android.png there; without it they skip, so the ordinary unit test run
 // draws nothing. -Pbae.shotsSelect=<prefixes> (comma-separated board names' starts)
-// limits the boards drawn.
+// limits the boards drawn. -Pbae.shotsBoardSizes=<file> names the JSON of each component board's size.
 tasks.withType<Test>().configureEach {
     providers.gradleProperty("bae.shotsDir").orNull?.let { dir ->
         systemProperty("bae.shotsDir", dir)
         systemProperty("roborazzi.test.record", "true")
         providers.gradleProperty("bae.shotsSelect").orNull?.let { systemProperty("bae.shotsSelect", it) }
+        providers.gradleProperty("bae.shotsBoardSizes").orNull?.let { systemProperty("bae.shotsBoardSizes", it) }
         outputs.upToDateWhen { false }
     }
 }

@@ -10,7 +10,7 @@ import uniffi.bae_bridge.BridgeStorageKind
 class AndroidStorageUsageShots : BoardShot() {
     @Test
     fun androidComponentStorageUsageUsual() =
-        component("android.component.storage-usage.usual", wide = true) {
+        component("android.component.storage-usage.usual") {
             Usage(
                 "8.3 GB",
                 segment(BridgeStorageKind.PINNED, "Pinned", "6.1 GB", 0.73f),
@@ -21,7 +21,7 @@ class AndroidStorageUsageShots : BoardShot() {
 
     @Test
     fun androidComponentStorageUsageFromBeforeAReset() =
-        component("android.component.storage-usage.from-before-a-reset", wide = true) {
+        component("android.component.storage-usage.from-before-a-reset") {
             Usage(
                 "9.3 GB",
                 segment(BridgeStorageKind.PINNED, "Pinned", "6.1 GB", 0.66f),
@@ -33,7 +33,7 @@ class AndroidStorageUsageShots : BoardShot() {
 
     @Test
     fun androidComponentStorageUsageNothingPinned() =
-        component("android.component.storage-usage.nothing-pinned", wide = true) {
+        component("android.component.storage-usage.nothing-pinned") {
             Usage(
                 "640 MB",
                 segment(BridgeStorageKind.CACHE, "Cache", "220 MB", 0.34f),

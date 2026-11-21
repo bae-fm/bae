@@ -16,5 +16,5 @@ class AndroidTransportShots : BoardShot() {
 
     @Test
     fun androidComponentTransportLarge() =
-        component("android.component.transport.large", wide = true) { AndroidTransport(true, false, {}, {}, {}, full = true) }
+        component("android.component.transport.large") { AndroidTransport(true, false, {}, {}, {}, full = true) }
 }

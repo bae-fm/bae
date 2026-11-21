@@ -8,11 +8,11 @@ import org.junit.Test
 class AndroidPageActionsShots : BoardShot() {
     @Test
     fun androidComponentPageActionsAlbum() =
-        component("android.component.page-actions.album", wide = true) {
+        component("android.component.page-actions.album") {
             AndroidPageActions(onPlay = {}, onShuffle = {}, queue = QueueActions({}, {}))
         }
 
     @Test
     fun androidComponentPageActionsPlaylist() =
-        component("android.component.page-actions.playlist", wide = true) { AndroidPageActions(onPlay = {}, onShuffle = {}) }
+        component("android.component.page-actions.playlist") { AndroidPageActions(onPlay = {}, onShuffle = {}) }
 }

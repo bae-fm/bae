@@ -216,7 +216,7 @@ extension ShotScene {
             width: width + 2 * margin,
             height: height + 2 * margin
         )
-        return ShotScene(id: id, size: size) {
+        return ShotScene(id: id, size: size, frame: .component) {
             let content = view()
                 .padding(margin)
                 .frame(

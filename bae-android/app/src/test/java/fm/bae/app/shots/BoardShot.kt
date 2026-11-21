@@ -6,8 +6,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
 import fm.bae.app.BaeRobolectricTestRunner
+import org.json.JSONObject
 import org.junit.Assume.assumeNotNull
 import org.junit.Assume.assumeTrue
 import org.junit.Rule
@@ -38,14 +41,13 @@ abstract class BoardShot {
 
     /**
      * Draws a design-system component in one of its states, as [id] (`android.component.<thing>.<state>`) names
-     * it, on the page colour. A [wide] state is drawn as wide as a phone screen's margins leave it, as the design
-     * system's wide rows fill their cell.
+     * it, on the page colour, at the size of its board's preview cell, which builds lists in the file
+     * `bae.shotsBoardSizes` names; a state with no entry fails.
      */
     protected fun component(
         id: String,
-        wide: Boolean = false,
         content: @Composable () -> Unit,
-    ) = shot(id) { ComponentScene(wide, content) }
+    ) = shot(id) { ComponentScene(BoardSizes.of(id), content) }
 
     /** Draws [content] as [board]. */
     protected fun shot(
@@ -91,3 +93,16 @@ internal fun ComposeContentTestRule.settle(content: @Composable () -> Unit) {
 internal const val PHONE_QUALIFIERS = "w411dp-h914dp-night-420dpi"
 private const val SETTLE_MILLIS = 100L
 private const val JSON_INDENT = 2
+
+/** The size of each component board in dp, from the JSON file `bae.shotsBoardSizes` names: `{"<board>": {"width", "height"}}`. */
+internal object BoardSizes {
+    private val sizes: JSONObject by lazy {
+        val path = checkNotNull(System.getProperty("bae.shotsBoardSizes")) { "builds shots gives no board sizes file" }
+        JSONObject(File(path).readText())
+    }
+
+    fun of(board: String): DpSize {
+        val entry = checkNotNull(sizes.optJSONObject(board)) { "the board sizes list none for '$board'" }
+        return DpSize(entry.getDouble("width").dp, entry.getDouble("height").dp)
+    }
+}

@@ -14,7 +14,7 @@ import org.junit.Test
 class AndroidInlineIconButtonShots : BoardShot() {
     @Test
     fun androidComponentInlineIconButtonBesideALine() =
-        component("android.component.inline-icon-button.beside-a-line", wide = true) {
+        component("android.component.inline-icon-button.beside-a-line") {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Low Tide Hours", style = ThemeText.rowTitle.style, modifier = Modifier.weight(1f))
                 AndroidInlineIconButton(Icons.Filled.Close, "Cancel", onClick = {})

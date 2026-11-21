@@ -9,17 +9,17 @@ import org.junit.Test
 class AndroidRestoreCodeShots : BoardShot() {
     @Test
     fun androidComponentRestoreCodeHidden() =
-        component("android.component.restore-code.hidden", wide = true) { RestoreCode(RestoreCodeState.Masked(RESTORE_CODE), s3 = false) }
+        component("android.component.restore-code.hidden") { RestoreCode(RestoreCodeState.Masked(RESTORE_CODE), s3 = false) }
 
     @Test
     fun androidComponentRestoreCodeShown() =
-        component("android.component.restore-code.shown", wide = true) {
+        component("android.component.restore-code.shown") {
             RestoreCode(RestoreCodeState.Shown(SHOWN_RESTORE_CODE), s3 = false)
         }
 
     @Test
     fun androidComponentRestoreCodeS3() =
-        component("android.component.restore-code.s3", wide = true) { RestoreCode(RestoreCodeState.Masked(RESTORE_CODE), s3 = true) }
+        component("android.component.restore-code.s3") { RestoreCode(RestoreCodeState.Masked(RESTORE_CODE), s3 = true) }
 }
 
 @Composable

@@ -10,26 +10,23 @@ class AndroidPinningBarShots : BoardShot() {
     fun androidComponentPinningBarPinning() =
         component(
             "android.component.pinning-bar.pinning",
-            wide = true,
         ) { PinningBar(paused = false, hasDownloads = true, hasFailures = false) }
 
     @Test
     fun androidComponentPinningBarFailed() =
         component(
             "android.component.pinning-bar.failed",
-            wide = true,
         ) { PinningBar(paused = false, hasDownloads = true, hasFailures = true) }
 
     @Test
     fun androidComponentPinningBarPaused() =
         component(
             "android.component.pinning-bar.paused",
-            wide = true,
         ) { PinningBar(paused = true, hasDownloads = true, hasFailures = false) }
 
     @Test
     fun androidComponentPinningBarNothingToPin() =
-        component("android.component.pinning-bar.nothing-to-pin", wide = true) {
+        component("android.component.pinning-bar.nothing-to-pin") {
             PinningBar(paused = false, hasDownloads = false, hasFailures = false)
         }
 }

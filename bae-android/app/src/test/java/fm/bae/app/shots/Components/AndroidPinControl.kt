@@ -24,13 +24,13 @@ class AndroidPinControlShots : BoardShot() {
 
     @Test
     fun androidComponentPinControlPinning() =
-        component("android.component.pin-control.pinning", wide = true) {
+        component("android.component.pin-control.pinning") {
             Control(BridgeReleaseDownloadStatus.Downloading)
         }
 
     @Test
     fun androidComponentPinControlFailed() =
-        component("android.component.pin-control.failed", wide = true) {
+        component("android.component.pin-control.failed") {
             Control(BridgeReleaseDownloadStatus.Failed("Network unreachable"))
         }
 

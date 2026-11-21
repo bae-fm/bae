@@ -15,7 +15,7 @@ import uniffi.bae_bridge.BridgeTermLabel
 class AndroidAlbumHeaderShots : BoardShot() {
     @Test
     fun androidComponentAlbumHeaderDefault() =
-        component("android.component.album-header.default", wide = true) {
+        component("android.component.album-header.default") {
             Images {
                 AndroidAlbumHeader(
                     detail = harborDetail,
@@ -28,7 +28,7 @@ class AndroidAlbumHeaderShots : BoardShot() {
 
     @Test
     fun androidComponentAlbumHeaderAReissue() =
-        component("android.component.album-header.a-reissue", wide = true) {
+        component("android.component.album-header.a-reissue") {
             Images {
                 AndroidAlbumHeader(
                     detail = harborDetail.copy(shownRelease = harborRelease.copy(distinctYear = 2001)),

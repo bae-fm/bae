@@ -7,7 +7,7 @@ import org.junit.Test
 class AndroidQueueRowShots : BoardShot() {
     @Test
     fun androidComponentQueueRowQueued() =
-        component("android.component.queue-row.queued", wide = true) {
+        component("android.component.queue-row.queued") {
             Images {
                 AndroidQueueRow(
                     title = "Margins",
@@ -21,7 +21,7 @@ class AndroidQueueRowShots : BoardShot() {
 
     @Test
     fun androidComponentQueueRowNowPlaying() =
-        component("android.component.queue-row.now-playing", wide = true) {
+        component("android.component.queue-row.now-playing") {
             Images {
                 AndroidQueueRow(title = "Low Tide Hours", artist = "Mara Quill", cover = playing.cover, current = true)
             }

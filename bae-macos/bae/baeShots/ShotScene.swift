@@ -91,6 +91,9 @@ struct ShotStage {
 /// without `--windows` reports these shots as not taken, never as missing.
 enum ShotFrame {
     case content
+    /// A design-system component, drawn at its board's size, the preview
+    /// row's cell (`ShotBoardSizes`), whatever `size` says.
+    case component
     case window(title: String, titleBar: TitleBar = .shown)
 
     /// How a window draws its title bar: as a titled window does, or, as

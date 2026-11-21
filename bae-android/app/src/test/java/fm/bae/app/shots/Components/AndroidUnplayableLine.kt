@@ -10,11 +10,10 @@ import uniffi.bae_bridge.BridgeMessageArg
 class AndroidUnplayableLineShots : BoardShot() {
     @Test
     fun androidComponentUnplayableLineOnAnotherDevice() =
-        component("android.component.unplayable-line.on-another-device", wide = true) { Elsewhere("Ana’s Mac") }
+        component("android.component.unplayable-line.on-another-device") { Elsewhere("Ana’s Mac") }
 
     @Test
-    fun androidComponentUnplayableLineOnAPhone() =
-        component("android.component.unplayable-line.on-a-phone", wide = true) { Elsewhere("Ben’s phone") }
+    fun androidComponentUnplayableLineOnAPhone() = component("android.component.unplayable-line.on-a-phone") { Elsewhere("Ben’s phone") }
 }
 
 @Composable

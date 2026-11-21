@@ -9,11 +9,11 @@ import org.junit.Test
 class AndroidQueuePlaceholderRowShots : BoardShot() {
     @Test
     fun androidComponentQueuePlaceholderRowNotLoaded() =
-        component("android.component.queue-placeholder-row.not-loaded", wide = true) { AndroidQueuePlaceholderRow() }
+        component("android.component.queue-placeholder-row.not-loaded") { AndroidQueuePlaceholderRow() }
 
     @Test
     fun androidComponentQueuePlaceholderRowBesideALoadedRow() =
-        component("android.component.queue-placeholder-row.beside-a-loaded-row", wide = true) {
+        component("android.component.queue-placeholder-row.beside-a-loaded-row") {
             Images {
                 Column {
                     AndroidQueueRow(

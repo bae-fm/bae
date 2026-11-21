@@ -35,11 +35,11 @@ class AndroidButtonShots : BoardShot() {
     fun androidComponentButtonOff() = component("android.component.button.off") { JoinButton(enabled = false) }
 
     @Test
-    fun androidComponentButtonLarge() = component("android.component.button.large", wide = true) { JoinButton(large = true) }
+    fun androidComponentButtonLarge() = component("android.component.button.large") { JoinButton(large = true) }
 
     @Test
     fun androidComponentButtonUnderText() =
-        component("android.component.button.under-text", wide = true) {
+        component("android.component.button.under-text") {
             Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
                 Text(
                     "They will use your key.",
@@ -52,7 +52,7 @@ class AndroidButtonShots : BoardShot() {
 
     @Test
     fun androidComponentButtonUnderAField() =
-        component("android.component.button.under-a-field", wide = true) {
+        component("android.component.button.under-a-field") {
             Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
                 AndroidTextField(value = "AKIAEXAMPLEKEY", onValueChange = {}, label = "Access key ID")
                 AndroidButton(onClick = {}, kind = ButtonKind.TEXT, alignTo = ButtonAlign.FIELD) { Text("Use my key instead") }

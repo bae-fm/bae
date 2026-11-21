@@ -7,11 +7,11 @@ import org.junit.Test
 class AndroidErrorLineShots : BoardShot() {
     @Test
     fun androidComponentErrorLineError() =
-        component("android.component.error-line.error", wide = true) { AndroidErrorLine("bae couldn’t read the queue.") }
+        component("android.component.error-line.error") { AndroidErrorLine("bae couldn’t read the queue.") }
 
     @Test
     fun androidComponentErrorLineLongError() =
-        component("android.component.error-line.long-error", wide = true) {
+        component("android.component.error-line.long-error") {
             AndroidErrorLine("bae couldn’t read the queue. The library file on this phone is damaged; open the library again to repair it.")
         }
 }

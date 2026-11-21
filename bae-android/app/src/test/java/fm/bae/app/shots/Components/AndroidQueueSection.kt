@@ -7,17 +7,17 @@ import org.junit.Test
 class AndroidQueueSectionShots : BoardShot() {
     @Test
     fun androidComponentQueueSectionUpNext() =
-        component("android.component.queue-section.up-next", wide = true) { AndroidQueueSection("Up next", "Clear up next", {}) }
+        component("android.component.queue-section.up-next") { AndroidQueueSection("Up next", "Clear up next", {}) }
 
     @Test
     fun androidComponentQueueSectionPlayingFrom() =
-        component("android.component.queue-section.playing-from", wide = true) {
+        component("android.component.queue-section.playing-from") {
             AndroidQueueSection("Playing from", "Clear playing from", {}, shuffled = false)
         }
 
     @Test
     fun androidComponentQueueSectionShuffleOn() =
-        component("android.component.queue-section.shuffle-on", wide = true) {
+        component("android.component.queue-section.shuffle-on") {
             AndroidQueueSection("Playing from", "Clear playing from", {}, shuffled = true)
         }
 }

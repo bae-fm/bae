@@ -7,11 +7,11 @@ import org.junit.Test
 class AndroidSearchBarShots : BoardShot() {
     @Test
     fun androidComponentSearchBarEmpty() =
-        component("android.component.search-bar.empty", wide = true) { AndroidSearchBar(query = "", onQueryChange = {}, onClose = {}) }
+        component("android.component.search-bar.empty") { AndroidSearchBar(query = "", onQueryChange = {}, onClose = {}) }
 
     @Test
     fun androidComponentSearchBarTyped() =
-        component("android.component.search-bar.typed", wide = true) {
+        component("android.component.search-bar.typed") {
             AndroidSearchBar(query = "harbor", onQueryChange = {}, onClose = {})
         }
 }

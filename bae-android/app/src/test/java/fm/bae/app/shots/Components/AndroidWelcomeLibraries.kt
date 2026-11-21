@@ -11,25 +11,25 @@ import uniffi.bae_bridge.BridgeLibraryState
 class AndroidWelcomeLibrariesShots : BoardShot() {
     @Test
     fun androidComponentWelcomeLibrariesOpen() =
-        component("android.component.welcome-libraries.open", wide = true) {
+        component("android.component.welcome-libraries.open") {
             WelcomeLibrariesSceneContent(onAdd = {})
         }
 
     @Test
     fun androidComponentWelcomeLibrariesRemoving() =
-        component("android.component.welcome-libraries.removing", wide = true) {
+        component("android.component.welcome-libraries.removing") {
             WelcomeLibrariesSceneContent(onAdd = {}, running = sceneLeavingRemoval())
         }
 
     @Test
     fun androidComponentWelcomeLibrariesUnreadable() =
-        component("android.component.welcome-libraries.unreadable", wide = true) {
+        component("android.component.welcome-libraries.unreadable") {
             WelcomeLibrariesSceneContent(onAdd = {}, extra = listOf(nameUnreadable))
         }
 
     @Test
     fun androidComponentWelcomeLibrariesDamagedJoin() =
-        component("android.component.welcome-libraries.damaged-join", wide = true) {
+        component("android.component.welcome-libraries.damaged-join") {
             WelcomeLibrariesSceneContent(onAdd = {}, unreadableInstallation = SCENE_UNREADABLE_JOIN)
         }
 }

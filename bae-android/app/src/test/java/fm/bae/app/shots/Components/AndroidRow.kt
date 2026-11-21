@@ -13,21 +13,21 @@ import org.junit.Test
 /** The component shots of `AndroidRow`, one for each row of its preview. */
 class AndroidRowShots : BoardShot() {
     @Test
-    fun androidComponentRowTitle() = component("android.component.row.title", wide = true) { RowInCard { AndroidRow(title = "Sync") } }
+    fun androidComponentRowTitle() = component("android.component.row.title") { RowInCard { AndroidRow(title = "Sync") } }
 
     @Test
     fun androidComponentRowSubtitle() =
-        component("android.component.row.subtitle", wide = true) { RowInCard { AndroidRow(title = "Sync", subtitle = "Synced") } }
+        component("android.component.row.subtitle") { RowInCard { AndroidRow(title = "Sync", subtitle = "Synced") } }
 
     @Test
     fun androidComponentRowTone() =
-        component("android.component.row.tone", wide = true) {
+        component("android.component.row.tone") {
             RowInCard { AndroidRow(title = "Sync", subtitle = "Synced", tone = StatusTone.SUCCESS) }
         }
 
     @Test
     fun androidComponentRowOpensAPage() =
-        component("android.component.row.opens-a-page", wide = true) {
+        component("android.component.row.opens-a-page") {
             RowInCard {
                 AndroidRow(
                     title = "Sync",
@@ -39,7 +39,7 @@ class AndroidRowShots : BoardShot() {
 
     @Test
     fun androidComponentRowOpensADialog() =
-        component("android.component.row.opens-a-dialog", wide = true) {
+        component("android.component.row.opens-a-dialog") {
             RowInCard {
                 AndroidRow(
                     title = "Sync",
@@ -51,17 +51,17 @@ class AndroidRowShots : BoardShot() {
 
     @Test
     fun androidComponentRowValue() =
-        component("android.component.row.value", wide = true) { RowInCard { AndroidRow(title = "Joined", value = "March 2026") } }
+        component("android.component.row.value") { RowInCard { AndroidRow(title = "Joined", value = "March 2026") } }
 
     @Test
     fun androidComponentRowControls() =
-        component("android.component.row.controls", wide = true) {
+        component("android.component.row.controls") {
             RowInCard { AndroidRow(title = "Sync", switch = RowSwitch(true) {}) }
         }
 
     @Test
     fun androidComponentRowTag() =
-        component("android.component.row.tag", wide = true) {
+        component("android.component.row.tag") {
             RowInCard {
                 AndroidRow(title = "Sync", tag = "Member")
             }
@@ -69,27 +69,27 @@ class AndroidRowShots : BoardShot() {
 
     @Test
     fun androidComponentRowAction() =
-        component("android.component.row.action", wide = true) { RowInCard { AndroidRow(title = "Sync", action = true, onClick = {}) } }
+        component("android.component.row.action") { RowInCard { AndroidRow(title = "Sync", action = true, onClick = {}) } }
 
     @Test
     fun androidComponentRowActionThatAdds() =
-        component("android.component.row.action-that-adds", wide = true) {
+        component("android.component.row.action-that-adds") {
             RowInCard { AndroidRow(title = "Sync", action = true, leadingIcon = Icons.Filled.Add, onClick = {}) }
         }
 
     @Test
     fun androidComponentRowDestructiveAction() =
-        component("android.component.row.destructive-action", wide = true) {
+        component("android.component.row.destructive-action") {
             RowInCard { AndroidRow(title = "Sync", action = true, destructive = true, onClick = {}) }
         }
 
     @Test
     fun androidComponentRowSelected() =
-        component("android.component.row.selected", wide = true) { RowInCard { AndroidRow(title = "Sync", selected = true) } }
+        component("android.component.row.selected") { RowInCard { AndroidRow(title = "Sync", selected = true) } }
 
     @Test
     fun androidComponentRowNested() =
-        component("android.component.row.nested", wide = true) {
+        component("android.component.row.nested") {
             RowInCard {
                 AndroidRow(title = "Pause between sides and discs", switch = RowSwitch(true) {})
                 AndroidRow(title = "Countdown", subtitle = "Off", nested = true)

@@ -14,29 +14,29 @@ import uniffi.bae_bridge.BridgeActivityLine
 class AndroidTransferLineShots : BoardShot() {
     @Test
     fun androidComponentTransferLineSyncing() =
-        component("android.component.transfer-line.syncing", wide = true) { AndroidTransferLine("Syncing changes", batch = null) }
+        component("android.component.transfer-line.syncing") { AndroidTransferLine("Syncing changes", batch = null) }
 
     @Test
     fun androidComponentTransferLineUploading() =
-        component("android.component.transfer-line.uploading", wide = true) {
+        component("android.component.transfer-line.uploading") {
             Line("Uploading", "1 of 2 releases", BridgeActivityLine.UPLOADS, BAR_SHARE)
         }
 
     @Test
     fun androidComponentTransferLinePinning() =
-        component("android.component.transfer-line.pinning", wide = true) {
+        component("android.component.transfer-line.pinning") {
             Line("Pinning", "1 of 3 releases", BridgeActivityLine.PINS, PIN_SHARE, paused = false)
         }
 
     @Test
     fun androidComponentTransferLineWaiting() =
-        component("android.component.transfer-line.waiting", wide = true) {
+        component("android.component.transfer-line.waiting") {
             Line("Pinning", "Waiting for network", BridgeActivityLine.PINS, PIN_SHARE, paused = false)
         }
 
     @Test
     fun androidComponentTransferLinePaused() =
-        component("android.component.transfer-line.paused", wide = true) {
+        component("android.component.transfer-line.paused") {
             Line("Pinning", "Paused", BridgeActivityLine.PINS, PIN_SHARE, paused = true)
         }
 }
