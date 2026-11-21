@@ -222,8 +222,9 @@ private class QrFrameTally(
     }
 }
 
+/** The instructions and Cancel over the camera's picture, which the scanner draws behind them. */
 @Composable
-private fun AndroidQRScannerOverlay(
+internal fun AndroidQRScannerOverlay(
     modifier: Modifier,
     instructions: String?,
     onDismiss: () -> Unit,
