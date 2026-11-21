@@ -42,6 +42,19 @@ class AndroidActivityShots : BoardShot() {
         component("android.component.activity.status-unknown") {
             Sheet(activity = null, error = DisplayError("bae couldn’t read the sync status."))
         }
+
+    @Test
+    fun androidComponentActivitySyncNeedsYou() =
+        component("android.component.activity.sync-needs-you") {
+            Sheet(
+                activity = PreviewData.syncActivity(needsAttention = true),
+                words = ActivityWords(failure = DisplayError("Sync can’t send a change."), uploadsWait = null, pinsWait = null),
+            )
+        }
+
+    @Test
+    fun androidComponentActivityAScreenSProblem() =
+        component("android.component.activity.a-screen-s-problem") { Sheet(activity = idleActivity) }
 }
 
 @Composable

@@ -5,6 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import fm.bae.app.DisplayError
+import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.library.AlbumGridLayout
 import fm.bae.app.ui.library.AndroidAlbumGrid
 import fm.bae.app.ui.library.AndroidLibraryScreen
@@ -59,6 +60,35 @@ class AndroidLibraryScreenShots : BoardShot() {
                 )
             }
         }
+
+    @Test
+    fun androidComponentLibraryScreenSyncMoving() =
+        shot("android.component.library-screen.sync-moving") {
+            ScreenScene { PlayingLibraryScreen(syncActivity = { ActivityButton(PreviewData.syncActivity(needsAttention = false)) }) }
+        }
+
+    @Test
+    fun androidComponentLibraryScreenSyncAttention() =
+        shot("android.component.library-screen.sync-attention") {
+            ScreenScene {
+                PlayingLibraryScreen(syncActivity = {
+                    ActivityButton(idleActivity.copy(failure = PreviewData.syncActivity(needsAttention = true).failure))
+                })
+            }
+        }
+
+    @Test
+    fun androidComponentLibraryScreenSyncPaused() =
+        shot("android.component.library-screen.sync-paused") {
+            ScreenScene { PlayingLibraryScreen(syncActivity = { ActivityButton(idleActivity.copy(held = true)) }) }
+        }
+
+    @Test
+    fun androidComponentLibraryScreenTrackNoCover() =
+        shot("android.component.library-screen.track-no-cover") { ScreenScene { PlayingLibraryScreen() } }
+
+    @Test
+    fun androidComponentLibraryScreenWaiting() = shot("android.component.library-screen.waiting") { ScreenScene { PlayingLibraryScreen() } }
 }
 
 /**
@@ -71,13 +101,14 @@ internal fun PlayingLibraryScreen(
     person: @Composable () -> Unit = {},
     albums: List<BridgeAlbumAppearance> = previewAlbums,
     nowPlayingBar: @Composable () -> Unit = { Bar(playing) },
+    syncActivity: @Composable () -> Unit = {},
 ) {
     Images {
         AndroidLibraryScreen(
             state = state,
             onShuffleLibrary = {},
             person = person,
-            syncActivity = {},
+            syncActivity = syncActivity,
             nowPlayingBar = nowPlayingBar,
         ) { modifier ->
             Box(modifier) {

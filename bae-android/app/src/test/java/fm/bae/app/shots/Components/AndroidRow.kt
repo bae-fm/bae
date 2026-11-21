@@ -95,6 +95,33 @@ class AndroidRowShots : BoardShot() {
                 AndroidRow(title = "Countdown", subtitle = "Off", nested = true)
             }
         }
+
+    @Test
+    fun androidComponentRowToneWarning() =
+        component("android.component.row.tone-warning") {
+            RowInCard { AndroidRow(title = "Sync", subtitle = "Synced", tone = StatusTone.WARNING) }
+        }
+
+    @Test
+    fun androidComponentRowToneDanger() =
+        component("android.component.row.tone-danger") {
+            RowInCard { AndroidRow(title = "Sync", subtitle = "Synced", tone = StatusTone.DANGER) }
+        }
+
+    @Test
+    fun androidComponentRowButton() =
+        component("android.component.row.button") { RowInCard { AndroidRow(title = "Sync", onClick = {}) } }
+
+    @Test
+    fun androidComponentRowOff() =
+        component("android.component.row.off") { RowInCard { AndroidRow(title = "Sync", enabled = false) } }
+
+    @Test
+    fun androidComponentRowPlaceMiddle() =
+        component("android.component.row.place-middle") { RowInCard { AndroidRow(title = "Sync") } }
+
+    @Test
+    fun androidComponentRowNoPlace() = component("android.component.row.no-place") { RowInCard { AndroidRow(title = "Sync") } }
 }
 
 /** A row in the card every row of a list is in. */

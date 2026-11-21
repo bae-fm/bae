@@ -36,6 +36,10 @@ class AndroidTextFieldShots : BoardShot() {
     @Test
     fun androidComponentTextFieldSecret() =
         component("android.component.text-field.secret") { NameField(value = "Home music", kind = TextFieldKind.SECRET) }
+
+    @Test
+    fun androidComponentTextFieldCode() =
+        component("android.component.text-field.code") { NameField(value = "Home music", kind = TextFieldKind.CODE) }
 }
 
 @Composable

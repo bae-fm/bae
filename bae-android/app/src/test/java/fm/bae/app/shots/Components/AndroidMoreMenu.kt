@@ -38,6 +38,14 @@ class AndroidMoreMenuShots : BoardShot() {
                 }
             }
         }
+
+    @Test
+    fun androidComponentMoreMenuOff() =
+        component("android.component.more-menu.off") {
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+            ) { Box(modifier = Modifier.align(Alignment.TopEnd)) { AndroidMoreMenu(enabled = false) {} } }
+        }
 }
 
 private val OPEN_MENU_HEIGHT = 200.dp

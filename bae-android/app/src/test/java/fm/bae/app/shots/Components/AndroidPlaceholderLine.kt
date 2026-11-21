@@ -13,4 +13,8 @@ class AndroidPlaceholderLineShots : BoardShot() {
     @Test
     fun androidComponentPlaceholderLineShortLine() =
         component("android.component.placeholder-line.short-line") { AndroidPlaceholderLine(width = 100.dp, height = 10.dp) }
+
+    @Test
+    fun androidComponentPlaceholderLinePicture() =
+        component("android.component.placeholder-line.picture") { AndroidPlaceholderLine(width = 48.dp, height = 48.dp) }
 }

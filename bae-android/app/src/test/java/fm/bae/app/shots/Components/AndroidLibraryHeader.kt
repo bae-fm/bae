@@ -42,6 +42,10 @@ class AndroidLibraryHeaderShots : BoardShot() {
         component("android.component.library-header.picture") {
             LibraryHeader(face = AvatarFace(initials = "A", picture = ImageContent.Avatar(person = "ana", version = "1")))
         }
+
+    @Test
+    fun androidComponentLibraryHeaderSearching() =
+        component("android.component.library-header.searching") { LibraryHeader(searching = true) }
 }
 
 /**
@@ -53,8 +57,9 @@ private fun LibraryHeader(
     collapse: Float = 0f,
     activity: BridgeSyncActivity = idleActivity,
     face: AvatarFace = AvatarFace(initials = "A", picture = null),
+    searching: Boolean = false,
 ) {
-    val state = remember { LibraryBrowserState() }
+    val state = remember { LibraryBrowserState().apply { searchOpen = searching } }
     CompositionLocalProvider(LocalImageStore provides avatarStore()) {
         AndroidLibraryHeader(
             state = state,

@@ -34,6 +34,16 @@ class AndroidSyncStatusShots : BoardShot() {
         component("android.component.sync-status.last-synced") {
             SignedOutOfS3(BridgeSyncTone.WARNING, lastSynced = true)
         }
+
+    @Test
+    fun androidComponentSyncStatusToneSuccess() =
+        component("android.component.sync-status.tone-success") { SignedOutOfS3(BridgeSyncTone.SUCCESS) }
+
+    @Test
+    fun androidComponentSyncStatusRemedy() =
+        component("android.component.sync-status.remedy") {
+            SignedOutOfS3(BridgeSyncTone.WARNING, cause = BridgeSyncCause.ChangesStayOnDevice)
+        }
 }
 
 /** The status the preview shows, Signed out of S3, in [tone], with the [cause], [fix] and last sync it is given. */

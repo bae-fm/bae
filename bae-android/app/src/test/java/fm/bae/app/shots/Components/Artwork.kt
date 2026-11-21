@@ -1,7 +1,10 @@
 package fm.bae.app.shots
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.unit.dp
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeRadius
@@ -42,6 +45,45 @@ class ArtworkShots : BoardShot() {
                     cornerRadius = 24.dp,
                     iconPadding = ThemeSpace.related,
                     modifier = Modifier.size(48.dp),
+                )
+            }
+        }
+
+    @Test
+    fun androidComponentArtworkRing() =
+        component("android.component.artwork.ring") {
+            Covers {
+                Artwork(
+                    cover = PreviewData.imageRef(),
+                    cornerRadius = ThemeRadius.artwork,
+                    iconPadding = ThemeSpace.group,
+                    modifier = Modifier.size(120.dp).border(2.dp, MaterialTheme.colorScheme.primary),
+                )
+            }
+        }
+
+    @Test
+    fun androidComponentArtworkShadowTile() =
+        component("android.component.artwork.shadow-tile") {
+            Covers {
+                Artwork(
+                    cover = PreviewData.imageRef(),
+                    cornerRadius = ThemeRadius.artwork,
+                    iconPadding = ThemeSpace.group,
+                    modifier = Modifier.size(120.dp).shadow(6.dp),
+                )
+            }
+        }
+
+    @Test
+    fun androidComponentArtworkShadowBar() =
+        component("android.component.artwork.shadow-bar") {
+            Covers {
+                Artwork(
+                    cover = PreviewData.imageRef(),
+                    cornerRadius = ThemeRadius.artwork,
+                    iconPadding = ThemeSpace.group,
+                    modifier = Modifier.size(120.dp).shadow(3.dp),
                 )
             }
         }

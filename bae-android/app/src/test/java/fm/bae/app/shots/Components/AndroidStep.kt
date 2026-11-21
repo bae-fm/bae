@@ -24,4 +24,13 @@ class AndroidStepShots : BoardShot() {
                 AndroidButton(onClick = {}, large = true) { Text("OK") }
             }
         }
+
+    @Test
+    fun androidComponentStepTop() =
+        component("android.component.step.top") {
+            AndroidStep(title = "You are invited to Home music", top = true) {
+                AndroidTextField(value = "Dan", onValueChange = {}, label = "Your name", helper = "Everyone in the library sees this name.")
+                AndroidButton(onClick = {}, large = true) { Text("Join") }
+            }
+        }
 }

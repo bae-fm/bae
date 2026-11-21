@@ -1,8 +1,10 @@
 package fm.bae.app.shots
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import fm.bae.app.ui.library.AndroidMenuItem
 import fm.bae.app.ui.library.GroupByArtistItem
 import org.junit.Test
@@ -20,6 +22,24 @@ class AndroidMenuItemShots : BoardShot() {
                     AndroidMenuItem("Composers (pressed)", selected = false, onClick = {})
                     GroupByArtistItem(grouped = false, onChange = {})
                     GroupByArtistItem(grouped = true, onChange = {})
+                }
+            }
+        }
+
+    @Test
+    fun androidComponentMenuItemHeading() =
+        component("android.component.menu-item.heading") {
+            Surface(color = MenuDefaults.containerColor, shape = MenuDefaults.shape) { Text("Artists") }
+        }
+
+    @Test
+    fun androidComponentMenuItemDivider() =
+        component("android.component.menu-item.divider") {
+            Surface(color = MenuDefaults.containerColor, shape = MenuDefaults.shape) {
+                Column {
+                    AndroidMenuItem("Artists", selected = false, onClick = {})
+                    HorizontalDivider()
+                    AndroidMenuItem("Artists", selected = false, onClick = {})
                 }
             }
         }

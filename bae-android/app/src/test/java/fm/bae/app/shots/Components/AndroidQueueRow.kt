@@ -26,4 +26,18 @@ class AndroidQueueRowShots : BoardShot() {
                 AndroidQueueRow(title = "Low Tide Hours", artist = "Mara Quill", cover = playing.cover, current = true)
             }
         }
+
+    @Test
+    fun androidComponentQueueRowDragging() =
+        component("android.component.queue-row.dragging") {
+            Images {
+                AndroidQueueRow(
+                    title = "Margins",
+                    artist = "Mara Quill",
+                    cover = playing.cover,
+                    album = "Northbound",
+                    duration = "4:55",
+                )
+            }
+        }
 }

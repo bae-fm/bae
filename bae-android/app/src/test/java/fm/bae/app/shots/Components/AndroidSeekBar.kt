@@ -10,6 +10,9 @@ class AndroidSeekBarShots : BoardShot() {
 
     @Test
     fun androidComponentSeekBarHoles() = component("android.component.seek-bar.holes") { holes.SeekRow() }
+
+    @Test
+    fun androidComponentSeekBarLarge() = component("android.component.seek-bar.large") { playing.SeekRow() }
 }
 
 private val holes =

@@ -64,6 +64,13 @@ class AndroidButtonShots : BoardShot() {
         component("android.component.button.with-icon") {
             AndroidButton(kind = ButtonKind.OUTLINED, onClick = {}, icon = ImageVector.vectorResource(R.drawable.ic_keep)) { Text("Pin") }
         }
+
+    @Test
+    fun androidComponentButtonTonal() = component("android.component.button.tonal") { JoinButton(ButtonKind.TONAL) }
+
+    @Test
+    fun androidComponentButtonNeutral() =
+        component("android.component.button.neutral") { JoinButton(ButtonKind.TEXT, tone = ButtonTone.NEUTRAL) }
 }
 
 @Composable

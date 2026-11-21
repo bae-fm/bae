@@ -28,4 +28,38 @@ class AndroidIconButtonShots : BoardShot() {
         component("android.component.icon-button.on-the-backdrop") {
             OnTheBackdrop { AndroidIconButton(Icons.Filled.Close, "Close", onClick = {}, tone = IconTone.ON_FILL) }
         }
+
+    @Test
+    fun androidComponentIconButtonMenu() =
+        component("android.component.icon-button.menu") { AndroidIconButton(Icons.AutoMirrored.Filled.ArrowBack, "Back", onClick = {}) }
+
+    @Test
+    fun androidComponentIconButtonOff() =
+        component("android.component.icon-button.off") {
+            AndroidIconButton(Icons.AutoMirrored.Filled.ArrowBack, "Back", onClick = {}, enabled = false)
+        }
+
+    @Test
+    fun androidComponentIconButtonTonal() =
+        component("android.component.icon-button.tonal") {
+            AndroidIconButton(Icons.AutoMirrored.Filled.ArrowBack, "Back", onClick = {}, tonal = true)
+        }
+
+    @Test
+    fun androidComponentIconButtonToneAccent() =
+        component("android.component.icon-button.tone-accent") {
+            AndroidIconButton(Icons.AutoMirrored.Filled.ArrowBack, "Back", onClick = {}, tone = IconTone.ACCENT)
+        }
+
+    @Test
+    fun androidComponentIconButtonToneMuted() =
+        component("android.component.icon-button.tone-muted") {
+            AndroidIconButton(Icons.AutoMirrored.Filled.ArrowBack, "Back", onClick = {}, tone = IconTone.MUTED)
+        }
+
+    @Test
+    fun androidComponentIconButtonToneWarning() =
+        component(
+            "android.component.icon-button.tone-warning",
+        ) { AndroidIconButton(Icons.AutoMirrored.Filled.ArrowBack, "Back", onClick = {}) }
 }

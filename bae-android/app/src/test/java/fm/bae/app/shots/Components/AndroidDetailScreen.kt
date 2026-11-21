@@ -27,6 +27,9 @@ class AndroidDetailScreenShots : BoardShot() {
         component("android.component.detail-screen.menu") {
             Detail { AlbumOptionsMenu(onSetPrimaryRelease = null, onDelete = {}) }
         }
+
+    @Test
+    fun androidComponentDetailScreenFlush() = component("android.component.detail-screen.flush") { Detail {} }
 }
 
 /** The detail screen over an album's header, with [actions] in its bar. */

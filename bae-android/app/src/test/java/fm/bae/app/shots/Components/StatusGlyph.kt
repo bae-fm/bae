@@ -19,4 +19,34 @@ class StatusGlyphShots : BoardShot() {
                 }
             }
         }
+
+    @Test
+    fun androidComponentStatusGlyphMacos() =
+        component("android.component.status-glyph.macos") {
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                listOf(StatusTone.INFO, StatusTone.SUCCESS, StatusTone.WARNING, StatusTone.DANGER).forEach { tone ->
+                    StatusGlyph(tone, size = 24.dp)
+                }
+            }
+        }
+
+    @Test
+    fun androidComponentStatusGlyphInline() =
+        component("android.component.status-glyph.inline") {
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                listOf(StatusTone.INFO, StatusTone.SUCCESS, StatusTone.WARNING, StatusTone.DANGER).forEach { tone ->
+                    StatusGlyph(tone, size = 24.dp)
+                }
+            }
+        }
+
+    @Test
+    fun androidComponentStatusGlyphMuted() =
+        component("android.component.status-glyph.muted") {
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                listOf(StatusTone.INFO, StatusTone.SUCCESS, StatusTone.WARNING, StatusTone.DANGER).forEach { tone ->
+                    StatusGlyph(tone, size = 24.dp, muted = true)
+                }
+            }
+        }
 }
