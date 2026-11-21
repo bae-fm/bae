@@ -8,6 +8,7 @@ import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.components.AvatarFace
 import fm.bae.app.ui.library.AndroidLibraryHeader
+import fm.bae.app.ui.library.AndroidSearchBar
 import fm.bae.app.ui.library.LibraryBrowserState
 import fm.bae.app.ui.library.PersonButton
 import org.junit.Test
@@ -49,7 +50,7 @@ class AndroidLibraryHeaderShots : BoardShot() {
 }
 
 /**
- * The library's header on Albums, [collapse] of the way to its slim bar, with the Activity button over [activity] and Ana's
+ * The library's header on Albums, or while [searching] the search bar that takes its place on the screen, [collapse] of the way to its slim bar, with the Activity button over [activity] and Ana's
  * [face] at its end, which opens her menu.
  */
 @Composable
@@ -59,8 +60,12 @@ private fun LibraryHeader(
     face: AvatarFace = AvatarFace(initials = "A", picture = null),
     searching: Boolean = false,
 ) {
-    val state = remember { LibraryBrowserState().apply { searchOpen = searching } }
+    val state = remember { LibraryBrowserState() }
     CompositionLocalProvider(LocalImageStore provides avatarStore()) {
+        if (searching) {
+            AndroidSearchBar(query = "", onQueryChange = {}, onClose = {})
+            return@CompositionLocalProvider
+        }
         AndroidLibraryHeader(
             state = state,
             collapse = { collapse },

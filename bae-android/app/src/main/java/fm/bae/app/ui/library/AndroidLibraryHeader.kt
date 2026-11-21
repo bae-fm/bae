@@ -153,6 +153,7 @@ private fun LibraryViewHeading(
         Row(
             modifier =
                 Modifier
+                    .fillMaxWidth()
                     .clip(RoundedCornerShape(ThemeRadius.control))
                     .clickable(
                         onClickLabel = stringResource(R.string.library_switch_view),
