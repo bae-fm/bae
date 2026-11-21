@@ -127491,175 +127491,175 @@
         }
       }
     },
-    "A bucket you manage." : {
+    "S3 storage you manage." : {
       "comment" : "Set up sync's list: what the S3-compatible choice is.",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "حاوية تديرها بنفسك."
+            "value" : "تخزين S3 تديره بنفسك."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Кофа, която управлявате вие."
+            "value" : "Хранилище S3, което управлявате вие."
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bucket, který spravujete vy."
+            "value" : "Úložiště S3, které spravujete vy."
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "En bucket, du selv administrerer."
+            "value" : "S3-lager, du selv administrerer."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ein Bucket, den du selbst verwaltest."
+            "value" : "S3-Speicher, den du selbst verwaltest."
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ένας κάδος που διαχειρίζεστε εσείς."
+            "value" : "Αποθηκευτικός χώρος S3 που διαχειρίζεστε εσείς."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A bucket you manage."
+            "value" : "S3 storage you manage."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un bucket que administras tú."
+            "value" : "Almacenamiento S3 que administras tú."
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Säilö, jota hallinnoit itse."
+            "value" : "S3-tallennustila, jota hallinnoit itse."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un bucket que vous gérez."
+            "value" : "Un stockage S3 que vous gérez."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "דלי שאתם מנהלים."
+            "value" : "אחסון S3 שאתם מנהלים."
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Spremnik kojim upravljate vi."
+            "value" : "S3 pohrana kojom upravljate vi."
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Egy általad kezelt tároló."
+            "value" : "Egy általad kezelt S3-tárhely."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un bucket che gestisci tu."
+            "value" : "Archiviazione S3 che gestisci tu."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ご自身で管理するバケット。"
+            "value" : "ご自身で管理する S3 ストレージ。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "직접 관리하는 버킷입니다."
+            "value" : "직접 관리하는 S3 스토리지입니다."
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "En bøtte du selv administrerer."
+            "value" : "S3-lagring du selv administrerer."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Een bucket die je zelf beheert."
+            "value" : "S3-opslag die je zelf beheert."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zasobnik, którym sam zarządzasz."
+            "value" : "Magazyn S3, którym sam zarządzasz."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Um bucket que você gerencia."
+            "value" : "Um armazenamento S3 que você gerencia."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Um contentor que gere."
+            "value" : "Um armazenamento S3 que gere."
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un container pe care îl gestionezi tu."
+            "value" : "Stocare S3 pe care o gestionezi tu."
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kontajner, ktorý spravujete vy."
+            "value" : "Úložisko S3, ktoré spravujete vy."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "En bucket som du själv hanterar."
+            "value" : "S3-lagring som du själv hanterar."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kendi yönettiğiniz bir bucket."
+            "value" : "Kendi yönettiğiniz S3 depolama."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Бакет, яким ви керуєте."
+            "value" : "Сховище S3, яким ви керуєте."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "由你自己管理的存储桶。"
+            "value" : "由你自己管理的 S3 存储。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "由你自己管理的儲存桶。"
+            "value" : "由你自己管理的 S3 儲存空間。"
           }
         }
       }

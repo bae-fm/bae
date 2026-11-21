@@ -10,7 +10,7 @@ extension BridgeCloudProvider {
             )
         case .dropbox: String(localized: "A shared folder in your Dropbox.")
         case .oneDrive: String(localized: "A folder in your OneDrive.")
-        case .s3: String(localized: "A bucket you manage.")
+        case .s3: String(localized: "S3 storage you manage.")
         }
     }
 }
