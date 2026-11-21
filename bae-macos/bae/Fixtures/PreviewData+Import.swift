@@ -1,5 +1,6 @@
 import AppKit
 import BaeKit
+import CryptoKit
 import Foundation
 
 @testable import bae
@@ -15,15 +16,21 @@ extension PreviewData {
 
     // MARK: - Generated placeholder art
 
-    /// A generated placeholder PNG for a fixture image, written to the
-    /// temporary directory on first use.
+    /// A generated stand-in cover PNG for a fixture image, written to the
+    /// temporary directory under a name that holds a digest of its pixels,
+    /// so a change to how the cover is drawn never reads an older file.
     static func previewArtPath(_ name: String) -> String {
         let directory = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("bae-preview-art", isDirectory: true)
+        let data = previewArtData(name)
+        let digest = SHA256.hash(data: data).prefix(8)
+            .map { String(format: "%02x", $0) }
+            .joined()
         let file =
             directory
             .appendingPathComponent(
                 name.replacingOccurrences(of: "/", with: "-")
+                    + "-\(digest)"
             )
             .appendingPathExtension("png")
         if !FileManager.default.fileExists(atPath: file.path) {
@@ -33,7 +40,7 @@ extension PreviewData {
                 at: directory,
                 withIntermediateDirectories: true
             )
-            try! previewArtData(name).write(to: file)
+            try! data.write(to: file)
             // swiftlint:enable force_try
         }
         return file.path
@@ -62,40 +69,23 @@ extension PreviewData {
         )
     }
 
-    /// PNG bytes for one placeholder, its hue decided by the name.
+    /// PNG bytes for one stand-in cover, drawn as the design system's
+    /// Artwork draws it: a 135-degree fade from `hsl(hue 42% 52%)` to
+    /// `hsl(hue+48 46% 24%)`, with the hue the name folds to (`hueOf`:
+    /// `x = (x * 31 + code) mod 360` over its UTF-16 code units).
     static func previewArtData(_ name: String) -> Data {
         let side: CGFloat = 600
-        let hash = name.unicodeScalars.reduce(into: UInt32(5381)) {
-            $0 = $0 &* 33 &+ $1.value
-        }
-        let fill = NSColor(
-            hue: CGFloat(hash % 360) / 360,
-            saturation: 0.35,
-            brightness: 0.5,
-            alpha: 1
+        let hue = name.utf16.reduce(0) { ($0 * 31 + Int($1)) % 360 }
+        let gradient = NSGradient(
+            starting: hsl(hue, saturation: 0.42, lightness: 0.52),
+            ending: hsl(hue + 48, saturation: 0.46, lightness: 0.24)
         )
         let image = NSImage(
             size: NSSize(width: side, height: side),
             flipped: false
         ) { rect in
-            fill.setFill()
-            rect.fill()
-            let text = NSAttributedString(
-                string: name,
-                attributes: [
-                    .font: NSFont.systemFont(ofSize: 56, weight: .semibold),
-                    .foregroundColor: NSColor.white.withAlphaComponent(
-                        0.85
-                    ),
-                ]
-            )
-            let textSize = text.size()
-            text.draw(
-                at: NSPoint(
-                    x: (rect.width - textSize.width) / 2,
-                    y: (rect.height - textSize.height) / 2
-                )
-            )
+            // From the top left corner to the bottom right one.
+            gradient?.draw(in: rect, angle: -45)
             return true
         }
         guard
@@ -106,6 +96,22 @@ extension PreviewData {
             preconditionFailure("placeholder art must encode as PNG")
         }
         return png
+    }
+
+    /// The colour CSS's `hsl(hue saturation lightness)` names, with the
+    /// hue in degrees.
+    private static func hsl(
+        _ hue: Int,
+        saturation: CGFloat,
+        lightness: CGFloat
+    ) -> NSColor {
+        let brightness = lightness + saturation * min(lightness, 1 - lightness)
+        return NSColor(
+            hue: CGFloat(hue % 360) / 360,
+            saturation: brightness == 0 ? 0 : 2 * (1 - lightness / brightness),
+            brightness: brightness,
+            alpha: 1
+        )
     }
 
     /// An image store that serves fixture "URLs", which are paths to
