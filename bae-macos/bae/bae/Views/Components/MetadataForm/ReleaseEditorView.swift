@@ -154,6 +154,7 @@ struct ReleaseEditorView: View {
     /// not *Ignored*.
     private var tableActions: ReleaseTrackTableActions {
         let session = session
+        let uiStore = uiStore
         return ReleaseTrackTableActions(
             sheetCaption: SheetCaptionActions(
                 open: openDocument,
@@ -171,6 +172,13 @@ struct ReleaseEditorView: View {
                                 operation: "pick a CUE sheet's place",
                                 detail: detail
                             )
+                        uiStore.showError(
+                            DisplayError(
+                                line: localizedCoreString(
+                                    "core.error.category.internal"
+                                )
+                            )
+                        )
                     }
                 },
                 bind: { sheetId, fileReference, audioFileId in
