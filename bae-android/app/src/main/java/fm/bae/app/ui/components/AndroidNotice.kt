@@ -212,7 +212,7 @@ private fun CenteredNotice(
             horizontalArrangement = Arrangement.spacedBy(ThemeSpace.compact),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            StatusGlyph(tone, muted = true)
+            NoticeRing(tone, size = ThemeIcon.medium, muted = true)
             Text(
                 text = title,
                 style = ThemeText.androidBodyLarge.style,

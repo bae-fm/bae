@@ -31,6 +31,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.appearance.StatusRingIcons
 import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeOpacity
@@ -79,13 +80,23 @@ private val StatusTone.noticeFill: Color
 private val StatusTone.hasNoticeFill: Boolean
     get() = icon != null
 
-/** The glyph a notice in this tone leads with: the outline of a circle with its mark. */
+/** The glyph a status in this tone draws: the outline of a circle with its mark. */
 private val StatusTone.icon: ImageVector?
     get() =
         when (this) {
             StatusTone.INFO -> SymbolIcons.Info
             StatusTone.SUCCESS -> SymbolIcons.CheckCircle
             StatusTone.WARNING, StatusTone.DANGER -> SymbolIcons.Error
+            StatusTone.NEUTRAL, StatusTone.ACCENT, StatusTone.ACTIVITY -> null
+        }
+
+/** The glyph a notice in this tone leads with: a ring with its mark, as the design system draws it. */
+private val StatusTone.ringIcon: ImageVector?
+    get() =
+        when (this) {
+            StatusTone.INFO -> StatusRingIcons.Info
+            StatusTone.SUCCESS -> StatusRingIcons.Success
+            StatusTone.WARNING, StatusTone.DANGER -> StatusRingIcons.Bang
             StatusTone.NEUTRAL, StatusTone.ACCENT, StatusTone.ACTIVITY -> null
         }
 
@@ -196,14 +207,27 @@ internal fun NoticeFrame(
 /** The ring of a notice's glyph is 15dp across, as its board draws it. */
 private val NoticeGlyphSize: Dp = 15.dp
 
-/** Material's status icons fill 20 of the 24 units of their box, so the icon's box is 1.2 times its ring. */
+/** The ring fills 20 of the 24 units of its icon, so the icon's box is 1.2 times its ring. */
 private val NoticeGlyphBox: Dp = NoticeGlyphSize * 1.2f
 
-/** The tone's glyph with its ring [NoticeGlyphSize] across, in a box of that width. */
+/** The tone's ring with its mark, with its ring [NoticeGlyphSize] across in a box of that width. */
 @Composable
 private fun NoticeGlyph(tone: StatusTone) {
     Box(Modifier.size(NoticeGlyphSize), contentAlignment = Alignment.Center) {
-        StatusGlyph(tone, modifier = Modifier.requiredSize(NoticeGlyphBox), size = NoticeGlyphBox)
+        NoticeRing(tone, size = NoticeGlyphBox, modifier = Modifier.requiredSize(NoticeGlyphBox))
+    }
+}
+
+/** The tone's ring with its mark in an icon box [size] across, tinted as the tone's glyph (or muted). */
+@Composable
+internal fun NoticeRing(
+    tone: StatusTone,
+    size: Dp,
+    modifier: Modifier = Modifier,
+    muted: Boolean = false,
+) {
+    tone.ringIcon?.let { icon ->
+        Icon(icon, contentDescription = null, tint = glyphTint(tone, muted), modifier = modifier.size(size))
     }
 }
 
