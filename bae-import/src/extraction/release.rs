@@ -26,9 +26,9 @@ pub enum ReleaseIdentityError {
     Database(#[from] DbError),
     #[error("release '{release_id}' not found")]
     NotFound { release_id: String },
-    /// coven could not read one of the release's rip files.
-    #[error("bae could not read the release's file {name}: {error}")]
-    FileRead { name: String, error: DbError },
+    /// One of the release's rip files could not be read.
+    #[error(transparent)]
+    Document(#[from] LibraryDocumentError),
     /// A rip file of the release could not be read.
     #[error(transparent)]
     Unreadable(#[from] crate::ImportError),
@@ -103,15 +103,7 @@ pub async fn resolve_release_identity(
     let lease = bae_store::lease_one(budget).await;
     let read: Vec<&bae_records::DbFile> =
         files.iter().filter(|file| crate::rip_reading::opens_library_file(&file.role)).collect();
-    let documents =
-        LibraryDocuments::read(records, &lease, &read).await.map_err(|error| match error {
-            LibraryDocumentError::Coven { name, error } => {
-                ReleaseIdentityError::FileRead { name, error }
-            }
-            refused @ LibraryDocumentError::Refused { .. } => {
-                ReleaseIdentityError::Unreadable(refused.into())
-            }
-        })?;
+    let documents = LibraryDocuments::read(records, &lease, &read).await?;
     drop(lease);
     let library_files: Vec<_> = files.into_iter().map(library_file).collect();
     let (rip, formats) = diagnostics

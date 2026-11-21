@@ -26,6 +26,8 @@ impl LibraryManager {
                 file.role.as_str()
             )));
         }
+        bae_util::text_encoding::check_document_size(&file.original_filename, file.file_size)
+            .map_err(LibraryError::Io)?;
         let bytes = self.read_release_file(&file).await?;
         Ok(bae_util::text_encoding::decode_text(&bytes).text)
     }

@@ -288,11 +288,7 @@ pub(crate) fn read_library_rip_artifacts(
     categorized: &crate::folder_scanner::CategorizedFiles,
     documents: &crate::library_documents::LibraryDocuments,
 ) -> Result<RipReading, ImportError> {
-    read_categorized(categorized, |_| None, &|document| {
-        documents.text(document.path).map(|decoded| decoded.text).map_err(|error| {
-            ImportError::DocumentRead { file: document.path.display().to_string(), error }
-        })
-    })
+    read_categorized(categorized, |_| None, &|document| Ok(documents.text(document.path).text))
 }
 
 /// Read `categorized`'s rip files, `named` giving the name each disc and

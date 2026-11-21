@@ -68,6 +68,8 @@ mod library_audio;
 #[cfg(desktop)]
 mod library_documents;
 #[cfg(desktop)]
+pub use library_documents::LibraryDocumentError;
+#[cfg(desktop)]
 pub mod list;
 #[cfg(desktop)]
 pub mod loudness;

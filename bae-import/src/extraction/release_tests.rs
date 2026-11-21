@@ -132,9 +132,10 @@ fn file_read_failure(
     result: Result<ReleaseIdentity, ReleaseIdentityError>,
 ) -> coven::FileReadError {
     match result {
-        Err(ReleaseIdentityError::FileRead {
-            error: bae_store::DbError::FileRead(error), ..
-        }) => *error,
+        Err(ReleaseIdentityError::Document(crate::LibraryDocumentError::Coven {
+            error: bae_store::DbError::FileRead(error),
+            ..
+        })) => *error,
         Err(error) => panic!("the reading failed otherwise: {error}"),
         Ok(_) => panic!("the reading succeeded"),
     }

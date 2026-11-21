@@ -3,16 +3,16 @@
 //! release and saving a CUE sheet's binding read. The readers take each
 //! document's bytes, so nothing is copied to a folder first.
 
-use crate::cue_sheet::{parse_cue_document, CueSheet, CueSheetError};
+use crate::cue_sheet::{parse_cue_content, CueSheet, CueSheetError};
 use bae_records::{DbFile, Records};
 use bae_store::DbError;
-use bae_util::text_encoding::{check_document_size, decode_document, DecodedText};
+use bae_util::text_encoding::{check_document_size, decode_text, DecodedText};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 /// Why a document of a library release could not be read.
 #[derive(Debug, thiserror::Error)]
-pub(crate) enum LibraryDocumentError {
+pub enum LibraryDocumentError {
     /// coven could not read the file.
     #[error("bae could not read the release's file {name}: {error}")]
     Coven { name: String, error: DbError },
@@ -67,12 +67,13 @@ impl LibraryDocuments {
     }
 
     /// The text of the document at `path`, decoded whatever its encoding.
-    pub(crate) fn text(&self, path: &Path) -> std::io::Result<DecodedText> {
-        decode_document(&path.display().to_string(), self.bytes(path))
+    /// `read` refused each document over the size limit.
+    pub(crate) fn text(&self, path: &Path) -> DecodedText {
+        decode_text(self.bytes(path))
     }
 
     /// The track sheet at `path`, parsed.
     pub(crate) fn parse_sheet(&self, path: &Path) -> Result<CueSheet, CueSheetError> {
-        parse_cue_document(&path.display().to_string(), self.bytes(path))
+        parse_cue_content(&self.text(path).text)
     }
 }

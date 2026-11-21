@@ -348,7 +348,7 @@ fn stated_count(value: c_int) -> Option<std::num::NonZeroU32> {
 /// name, which the warnings and the test read counts use, never an open.
 /// Closes `file` when it returns.
 pub fn probe_audio(
-    file: impl ReadableFile + 'static,
+    file: coven::LeasedFile<std::fs::File>,
     path: &Path,
 ) -> Result<ProbeResult, ProbeError> {
     open_and_probe(Box::new(file), path)
