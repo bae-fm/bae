@@ -38,7 +38,7 @@ private fun SidePause(
     keepPausing: Boolean = true,
 ) {
     val context = LocalContext.current
-    InPlaceDialog(
+    DialogInCell(
         sidePauseParts(
             title = wording.title(context),
             countdown = wording.prompt.countdown,

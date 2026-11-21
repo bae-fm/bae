@@ -19,13 +19,15 @@ class SettingsInviteShots : BoardShot() {
     /** The invite form for a Dropbox library. */
     @Test
     fun androidSettingsInviteDropbox() =
-        shot("android.settings.invite.dropbox") { Invite { InviteForm(sceneDropbox, InviteAccessInput(email = "dan@example.com")) } }
+        shot("android.settings.invite.dropbox") {
+            Invite(keyboardUp = true) { InviteForm(sceneDropbox, InviteAccessInput(email = "dan@example.com")) }
+        }
 
     /** The invite form for a OneDrive library. */
     @Test
     fun androidSettingsInviteOnedrive() =
         shot("android.settings.invite.onedrive") {
-            Invite {
+            Invite(keyboardUp = true) {
                 InviteForm(
                     BridgeStorageLocation.OneDrive("drive", "folder", "name@example.com", null),
                     InviteAccessInput(email = "dan@example.com"),
@@ -37,7 +39,7 @@ class SettingsInviteShots : BoardShot() {
     @Test
     fun androidSettingsInviteS3() =
         shot("android.settings.invite.s3") {
-            Invite {
+            Invite(keyboardUp = true) {
                 InviteForm(
                     BridgeStorageLocation.S3("my-bucket", "us-east-1", "https://s3.home.lan", null),
                     InviteAccessInput(accessKeyId = "AKIAEXAMPLEKEY", secretAccessKey = "••••••••••••••••"),
@@ -112,8 +114,9 @@ class SettingsInviteShots : BoardShot() {
 @Composable
 private fun Invite(
     invites: List<BridgeInvite> = emptyList(),
+    keyboardUp: Boolean = false,
     dialog: @Composable () -> DialogParts,
-) = InPlaceDialogScene(behind = { PeoplePageScene(anaAndBen(), invites = invites) }, dialog = dialog)
+) = InPlaceDialogScene(behind = { PeoplePageScene(anaAndBen(), invites = invites) }, keyboardUp = keyboardUp, dialog = dialog)
 
 @Composable
 private fun InviteForm(

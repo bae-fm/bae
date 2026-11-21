@@ -19,6 +19,7 @@ import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuDefaults
+import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -64,39 +65,40 @@ import java.time.Instant
 // they are staged with.
 
 /**
- * A titled sheet's body on the sheet's surface: the sheet's own window isn't drawn in a test. With [behind], the sheet
- * rises from the foot of that screen, which the scrim dims, as a bottom sheet opens over its page.
+ * A titled sheet's body on the sheet's surface, rising from the foot of [behind], which the scrim dims, as a bottom
+ * sheet opens over its page. The sheet's own window isn't drawn in a test.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun SheetScene(
     title: String?,
-    behind: (@Composable () -> Unit)? = null,
+    behind: @Composable () -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    if (behind == null) {
-        ShotTheme {
-            Surface(color = BottomSheetDefaults.ContainerColor) {
-                SheetWithHandle(title, content)
-            }
+    ScreenScene {
+        Box(modifier = Modifier.fillMaxSize()) {
+            behind()
+            SheetOverScrim(title, content)
         }
-    } else {
-        ScreenScene {
-            Box(modifier = Modifier.fillMaxSize()) {
-                behind()
-                Box(
-                    modifier = Modifier.fillMaxSize().background(BaeTheme.colors.scrim),
-                    contentAlignment = Alignment.BottomCenter,
-                ) {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = BottomSheetDefaults.ExpandedShape,
-                        color = BottomSheetDefaults.ContainerColor,
-                    ) {
-                        SheetWithHandle(title, content)
-                    }
-                }
-            }
+    }
+}
+
+/** A titled sheet at the foot of the space it is in, with the scrim over the rest of that space. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun SheetOverScrim(
+    title: String?,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Box(
+        modifier = Modifier.fillMaxSize().background(BaeTheme.colors.scrim),
+        contentAlignment = Alignment.BottomCenter,
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = BottomSheetDefaults.ExpandedShape,
+            color = BottomSheetDefaults.ContainerColor,
+        ) {
+            SheetWithHandle(title, content)
         }
     }
 }
@@ -150,7 +152,7 @@ internal val SYSTEM_APPEARANCE =
 
 /**
  * A dialog's [parts] drawn in place, as its window would show them: over [behind], dimmed by the scrim, centred on
- * the phone, with title, message, content and buttons on the dialog's surface, 340 dp wide, 16 apart with the buttons 24 below
+ * the phone, with title, message, content and buttons on the dialog's surface, 312 dp wide unless it gives a width, 16 apart with the buttons 24 below
  * the content, as the design system's dialog sets them. With [keyboardUp], a field has focus: the keyboard's inset
  * holds the bottom of the screen, and the page and the dialog fit in the space above it, as the board's keyboard
  * leaves them.
@@ -179,22 +181,39 @@ internal fun InPlaceDialogScene(
 }
 
 /**
- * A dialog's [parts] on the dialog's surface, 340 dp wide, 16 apart with the buttons 24 below the content, as the
+ * A dialog's [parts] on the dialog's surface, 312 dp wide unless it gives a width, 16 apart with the buttons 24 below the content, as the
  * design system's dialog sets them.
  */
 @Composable
 internal fun InPlaceDialog(parts: DialogParts) {
     DialogSurface {
-        Column(modifier = Modifier.width(DIALOG_WIDTH), verticalArrangement = Arrangement.spacedBy(ThemeSpace.edge)) {
-            if (parts.title != null || parts.message != null) DialogHead(parts.title, parts.message)
-            parts.content?.invoke()
-            Box(
-                modifier = Modifier.fillMaxWidth().padding(top = ThemeSpace.related),
-                contentAlignment = Alignment.CenterEnd,
-            ) {
-                AndroidDialogActions(parts.action, parts.dismiss)
+        // Material's dialog sets its content's text in bodyMedium, so unstyled text in [parts] draws as it does there.
+        ProvideTextStyle(MaterialTheme.typography.bodyMedium) {
+            Column(modifier = Modifier.width(parts.width ?: DIALOG_WIDTH), verticalArrangement = Arrangement.spacedBy(ThemeSpace.edge)) {
+                if (parts.title != null || parts.message != null) DialogHead(parts.title, parts.message)
+                parts.content?.invoke()
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(top = ThemeSpace.related),
+                    contentAlignment = Alignment.CenterEnd,
+                ) {
+                    AndroidDialogActions(parts.action, parts.dismiss)
+                }
             }
         }
+    }
+}
+
+/**
+ * A component board's dialog: [parts] centred in the board's cell and dimmed by the scrim over the whole cell, as the
+ * design system's dialog draws inside the preview cell that holds it.
+ */
+@Composable
+internal fun DialogInCell(parts: DialogParts) {
+    Box(
+        modifier = Modifier.fillMaxSize().background(BaeTheme.colors.scrim),
+        contentAlignment = Alignment.Center,
+    ) {
+        InPlaceDialog(parts)
     }
 }
 
@@ -204,7 +223,8 @@ internal fun KeyboardScene(content: @Composable () -> Unit) {
     ScreenScene { Box(modifier = Modifier.fillMaxSize().padding(bottom = KEYBOARD_HEIGHT)) { content() } }
 }
 
-private val DIALOG_WIDTH = 340.dp
+/** The design system's dialog width when a dialog gives none. */
+private val DIALOG_WIDTH = 312.dp
 
 /** What the count of History says about whose plays it shows: [shown], and the library's two other people to choose. */
 internal fun historyChoice(shown: BridgeHistoryShown) =

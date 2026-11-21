@@ -52,6 +52,6 @@ class SettingsYouShots : BoardShot() {
 private fun YourName(
     draft: String,
     error: DisplayError?,
-) = InPlaceDialogScene(behind = { PeoplePageScene(anaAndBen()) }) {
+) = InPlaceDialogScene(behind = { PeoplePageScene(anaAndBen()) }, keyboardUp = true) {
     renameProfileParts(draft = draft, error = error, saving = false, onDraftChange = {}, onSave = {}, onDismiss = {})
 }

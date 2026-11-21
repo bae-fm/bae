@@ -21,7 +21,7 @@ class SettingsLibraryShots : BoardShot() {
     @Test
     fun androidSettingsLibraryRename() =
         shot("android.settings.library.rename") {
-            InPlaceDialogScene(behind = { Library() }) {
+            InPlaceDialogScene(behind = { Library() }, keyboardUp = true) {
                 renameLibraryParts(
                     draft = "Our music",
                     error = null,
