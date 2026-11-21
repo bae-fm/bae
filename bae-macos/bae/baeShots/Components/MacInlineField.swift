@@ -47,12 +47,14 @@ extension ShotScene {
         inlineFieldScene(
             "mac.component.inline-field.fits-its-value",
             placeholder: "—",
-            value: "Harbor Records"
+            value: "Harbor Records",
+            fits: true
         ),
         inlineFieldScene(
             "mac.component.inline-field.fits-empty",
             placeholder: "—",
-            value: ""
+            value: "",
+            fits: true
         ),
         inlineFieldScene(
             "mac.component.inline-field.mono",
@@ -63,14 +65,17 @@ extension ShotScene {
     ]
 
     /// One `MacInlineField` in the preview's 260pt column; `large` is the
-    /// album title's size and `quiet` the album year's tertiary colour.
+    /// album title's size, `quiet` the album year's tertiary colour and
+    /// `fits` a field as wide as its value. The field's name is its label
+    /// on the board, which is the placeholder for the two that name it so.
     private static func inlineFieldScene(
         _ id: String,
         placeholder: String,
         value: String,
         large: Bool = false,
         quiet: Bool = false,
-        mono: Bool = false
+        mono: Bool = false,
+        fits: Bool = false
     ) -> ShotScene {
         component(
             id,
@@ -80,9 +85,10 @@ extension ShotScene {
             MacInlineField(
                 placeholder: placeholder,
                 value: value,
-                name: placeholder,
+                name: placeholder == "—" ? "Label" : placeholder,
                 monospaced: mono,
-                fillsWidth: true,
+                fillsWidth: !fits,
+                fitsValue: fits,
                 font: large ? ThemeText.title.nsFont : ThemeText.body.nsFont,
                 textColor: quiet
                     ? NSColor(Theme.textTertiary) : NSColor(Theme.textPrimary),
@@ -90,6 +96,9 @@ extension ShotScene {
                 editingCommands: EditingCommitCommands(),
                 onCommit: { _ in }
             )
+            // The column holds the field's words at its edge, so the field
+            // reaches out by its padding, as its callers lay it out.
+            .padding(.leading, -FieldChrome.inlineHorizontalPadding)
             .frame(width: 260, alignment: .leading)
         }
     }

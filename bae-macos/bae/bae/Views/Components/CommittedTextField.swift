@@ -38,11 +38,10 @@ final class EditingCommitCommands {
 struct CommittedTextField: View {
     /// What the placeholder is for.
     enum PlaceholderRole {
-        /// The system placeholder: says what goes here, and stays while the
-        /// empty field is focused.
+        /// Says what goes here, and stays while the empty field is focused.
         case hint
-        /// A fact sheet's mark for "nothing here": the tertiary label color
-        /// at rest, gone the moment the field is focused.
+        /// A fact sheet's mark for "nothing here": gone the moment the field
+        /// is focused.
         case emptyMark
     }
 
@@ -55,6 +54,9 @@ struct CommittedTextField: View {
     var monospaced: Bool = false
     var chrome: FieldChrome.Style = .boxed
     var fillsWidth = false
+    /// The field's least width, chrome included, while it is empty, so there
+    /// is something to click into.
+    var emptyMinWidth: CGFloat?
     var font: NSFont = ThemeText.body.nsFont
     /// The typed value's color. The placeholder takes its own, by role.
     var textColor = NSColor(Theme.textPrimary)
@@ -114,6 +116,24 @@ struct CommittedTextField: View {
             .modifier(
                 FieldChrome(focused: focused, style: chrome, invalid: invalid)
             )
+            // Over the whole chrome, so the editor's frame is the box the
+            // person sees and its text sits inside the chrome's padding.
+            .overlay {
+                CommittedTextEditor(
+                    text: $draft,
+                    secret: secret,
+                    filter: filter,
+                    focused: $focused,
+                    placeholder: placeholder,
+                    placeholderRole: placeholderRole,
+                    name: name,
+                    font: valueFont,
+                    placeholderFont: font,
+                    textColor: textColor,
+                    insets: FieldChrome.padding(of: chrome),
+                    onSubmit: { startCommit(draft) }
+                )
+            }
             .onAppear { draft = value }
             .onChange(of: value) { _, next in
                 // A field being typed into owns what it shows; anything else
@@ -144,30 +164,23 @@ struct CommittedTextField: View {
     /// across both sides for every font the fields use.
     private static let cellInset: CGFloat = 2
 
-    /// The field, drawn in the frame of a hidden Text of the same font and
-    /// content, since a `TextField` can take a neighbour's height and clip.
+    /// The frame of a hidden Text of the same font and content, which the
+    /// chrome pads and the editor fills, since a `TextField` can take a
+    /// neighbour's height and clip.
     private var field: some View {
         Text(verbatim: draft.isEmpty ? placeholder : draft)
             .font(Font(draft.isEmpty ? font : valueFont))
             .lineLimit(1)
             .padding(.horizontal, Self.cellInset)
             .hidden()
-            .frame(maxWidth: fillsWidth ? .infinity : nil, alignment: .leading)
-            .overlay {
-                CommittedTextEditor(
-                    text: $draft,
-                    secret: secret,
-                    filter: filter,
-                    focused: $focused,
-                    placeholder: placeholder,
-                    placeholderRole: placeholderRole,
-                    name: name,
-                    font: valueFont,
-                    placeholderFont: font,
-                    textColor: textColor,
-                    onSubmit: { startCommit(draft) }
-                )
-            }
+            .frame(
+                minWidth: draft.isEmpty
+                    ? emptyMinWidth.map {
+                        $0 - 2 * FieldChrome.padding(of: chrome).width
+                    } : nil,
+                maxWidth: fillsWidth ? .infinity : nil,
+                alignment: .leading
+            )
     }
 
     /// The value takes the monospaced design; the placeholder keeps `font`
@@ -211,6 +224,8 @@ private struct CommittedTextEditor: NSViewRepresentable {
     let font: NSFont
     let placeholderFont: NSFont
     let textColor: NSColor
+    /// How far the text sits inside the field's frame.
+    let insets: NSSize
     let onSubmit: () -> Void
 
     func makeCoordinator() -> Coordinator {
@@ -228,6 +243,13 @@ private struct CommittedTextEditor: NSViewRepresentable {
             editor.onEditingChange = reportEditing
             field = editor
         }
+        let cell: NSTextFieldCell =
+            secret
+            ? InsetSecureTextFieldCell(textCell: "")
+            : InsetTextFieldCell(textCell: "")
+        cell.isEditable = true
+        cell.isSelectable = true
+        field.cell = cell
         field.isBordered = false
         field.isBezeled = false
         field.drawsBackground = false
@@ -252,26 +274,25 @@ private struct CommittedTextEditor: NSViewRepresentable {
         if field.stringValue != text {
             field.stringValue = text
         }
+        (field.cell as? any InsetCell)?.insets = insets
         field.font = font
         field.textColor = textColor
         field.isEnabled = context.environment.isEnabled
         field.setAccessibilityLabel(name)
-        switch placeholderRole {
-        case .hint:
-            field.placeholderString = placeholder
-        case .emptyMark:
-            // Gone while editing, so the caret sits alone at the leading edge.
-            field.placeholderAttributedString =
-                focused
-                ? nil
-                : NSAttributedString(
-                    string: placeholder,
-                    attributes: [
-                        .font: placeholderFont,
-                        .foregroundColor: NSColor(Theme.textTertiary),
-                    ]
-                )
-        }
+        // The placeholder is the tertiary label colour in both roles; an
+        // empty mark is gone while editing, so the caret sits alone at the
+        // leading edge.
+        let showsPlaceholder = placeholderRole == .hint || !focused
+        field.placeholderAttributedString =
+            showsPlaceholder
+            ? NSAttributedString(
+                string: placeholder,
+                attributes: [
+                    .font: placeholderFont,
+                    .foregroundColor: NSColor(Theme.textTertiary),
+                ]
+            )
+            : nil
         if !focused, (field as? any EditingField)?.isEditing == true {
             field.window?.makeFirstResponder(nil)
         }

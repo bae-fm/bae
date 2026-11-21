@@ -15,9 +15,6 @@ struct MacReleaseFields: View {
     /// Between one row's text and the next, counting the fields' own inline
     /// padding.
     static let rowSpacing = ThemeSpace.compact
-    /// An empty field's width, so there is something to click into.
-    static let emptyValueWidth: CGFloat = 96
-
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
             MacFormHeading(title: String(localized: "Release"))
@@ -212,9 +209,8 @@ struct MacReleaseFields: View {
         .buttonStyle(.accentPlain)
     }
 
-    /// A field as wide as its value, or `emptyValueWidth` when empty, when
-    /// it shows the form's dash. `name` is what assistive technology calls
-    /// it.
+    /// A field as wide as its value, or as wide as an empty field is, showing
+    /// the form's dash. `name` is what assistive technology calls it.
     private func valueText(
         _ text: String,
         name: String,
@@ -226,15 +222,11 @@ struct MacReleaseFields: View {
             value: text,
             name: name,
             monospaced: monospaced,
+            fitsValue: true,
             font: ThemeText.body.nsFont,
             placeholderRole: .emptyMark,
             editingCommands: editingCommands,
             onCommit: onCommit
-        )
-        .fixedSize(horizontal: true, vertical: false)
-        .frame(
-            minWidth: text.isEmpty ? Self.emptyValueWidth : nil,
-            alignment: .leading
         )
     }
 

@@ -52,15 +52,8 @@ struct ImportMappingTracksLayoutTests {
                 columns.source
                 + ReleaseMetadataTrackColumns.track + 2
                 * ImportMappingColumns.spacing
-                + FieldChrome.inlineHorizontalPadding
             #expect(abs(frame.minX - leading) < 1)
-            #expect(
-                abs(
-                    frame.width
-                        - (columns.title - 2
-                            * FieldChrome.inlineHorizontalPadding)
-                ) < 1
-            )
+            #expect(abs(frame.width - columns.title) < 1)
         }
     }
 

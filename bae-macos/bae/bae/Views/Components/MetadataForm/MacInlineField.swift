@@ -12,6 +12,9 @@ struct MacInlineField: View {
     var name: String?
     var monospaced = false
     var fillsWidth = false
+    /// The field is as wide as its value, and `emptyWidth` while it is empty,
+    /// so there is something to click into: for a field in a list row.
+    var fitsValue = false
     var font: NSFont = ThemeText.body.nsFont
     var textColor = NSColor(Theme.textPrimary)
     var placeholderRole: CommittedTextField.PlaceholderRole = .hint
@@ -19,7 +22,19 @@ struct MacInlineField: View {
     /// Send the typed value to wherever it lives.
     let onCommit: @MainActor (String) async -> Void
 
+    static let emptyWidth: CGFloat = 96
+
     var body: some View {
+        if fitsValue {
+            field
+                .fixedSize(horizontal: true, vertical: false)
+        }
+        else {
+            field
+        }
+    }
+
+    private var field: some View {
         CommittedTextField(
             placeholder: placeholder,
             value: value,
@@ -27,6 +42,7 @@ struct MacInlineField: View {
             monospaced: monospaced,
             chrome: .inline,
             fillsWidth: fillsWidth,
+            emptyMinWidth: fitsValue ? Self.emptyWidth : nil,
             font: font,
             textColor: textColor,
             placeholderRole: placeholderRole,

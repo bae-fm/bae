@@ -71,20 +71,23 @@ struct FieldChrome: ViewModifier {
             }
     }
 
-    private var horizontalPadding: CGFloat {
+    /// How far a style's text sits inside its chrome, on each side.
+    static func padding(of style: Style) -> NSSize {
         switch style {
-        case .boxed, .boxedMultiline: ThemeSpace.fieldInset
-        case .inline: Self.inlineHorizontalPadding
+        case .boxed: NSSize(width: ThemeSpace.fieldInset, height: 0)
+        case .boxedMultiline:
+            NSSize(width: ThemeSpace.fieldInset, height: ThemeSpace.related)
+        case .inline:
+            NSSize(
+                width: inlineHorizontalPadding,
+                height: inlineVerticalPadding
+            )
         }
     }
 
-    private var verticalPadding: CGFloat {
-        switch style {
-        case .boxed: 0
-        case .boxedMultiline: ThemeSpace.related
-        case .inline: Self.inlineVerticalPadding
-        }
-    }
+    private var horizontalPadding: CGFloat { Self.padding(of: style).width }
+
+    private var verticalPadding: CGFloat { Self.padding(of: style).height }
 
     private var cornerRadius: CGFloat {
         switch style {
