@@ -17,6 +17,9 @@ struct QueuePauseButton: View {
     let paused: Bool
     /// The glyph's size.
     var glyph: ThemeIcon = .chip
+    /// Whether the line the button ends already names its queue, so the
+    /// button is only Pause or Resume.
+    var queueNamed = false
     @Environment(Sync.self)
     private var sync
     @Environment(Downloads.self)
@@ -36,7 +39,10 @@ struct QueuePauseButton: View {
     }
 
     private var pauseLabel: Text {
-        switch (queue, paused) {
+        if queueNamed {
+            return paused ? Text("Resume") : Text("Pause")
+        }
+        return switch (queue, paused) {
         case (.uploads, false): Text("Pause uploads")
         case (.uploads, true): Text("Resume uploads")
         case (.downloads, false): Text("Pause downloads")

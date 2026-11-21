@@ -78,7 +78,11 @@ struct MacAlbumHeader: View {
             }
             HStack(spacing: ThemeSpace.related) {
                 MacButton("Play", kind: .primary, action: onPlay)
-                MacMoreMenu(look: .boxed, items: menu)
+                MacMoreMenu(
+                    look: .boxed,
+                    label: Text("Album options"),
+                    items: menu
+                )
             }
             .padding(.top, ThemeSpace.group)
             MacAlbumRating(rating: detail.rating, onRate: onRate)

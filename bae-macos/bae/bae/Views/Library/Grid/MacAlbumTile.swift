@@ -45,7 +45,11 @@ struct MacAlbumTile: View {
                     )
                 )
                 .overlay(alignment: .topTrailing) {
-                    MacMoreMenu(look: .overlay, isOpen: $menuOpen) {
+                    MacMoreMenu(
+                        look: .overlay,
+                        label: Text("Album options"),
+                        isOpen: $menuOpen
+                    ) {
                         MacMenuItem(
                             verbatim: menu.playLabel,
                             action: menu.onPlay

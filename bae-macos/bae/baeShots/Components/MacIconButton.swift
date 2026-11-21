@@ -10,7 +10,7 @@ extension ShotScene {
             MacIconButton(symbol: "shuffle", label: "Shuffle") {}
         },
         component("mac.component.icon-button.active", height: 60) {
-            MacIconButton(symbol: "repeat", label: "Repeat", active: true) {}
+            MacIconButton(symbol: "shuffle", label: "Shuffle", active: true) {}
         },
         component("mac.component.icon-button.faint", height: 60) {
             MacIconButton(symbol: "shuffle", label: "Shuffle") {}
