@@ -289,8 +289,7 @@
     var picker = h(MacReleasePicker, { releases: props.releases, selected: props.release });
     return h('div', { className: 'bae-m-albumhead' },
       h('h2', { className: 'bae-m-albumpanel-title' }, props.title),
-      h('div', { className: 'bae-m-albumpanel-sub bae-muted' }, props.artist),
-      props.year ? h('div', { className: 'bae-m-albumpanel-year bae-m-tertiary' }, props.year) : null,
+      h('div', { className: 'bae-m-albumpanel-sub' }, h('span', { className: 'bae-muted' }, props.artist), props.year ? [h('span', { key: 'd', className: 'bae-m-tertiary' }, '·'), h('span', { key: 'y', className: 'bae-m-tertiary' }, props.year)] : null),
       list(props.releases).length > 1 ? h('div', { className: 'bae-m-albumpanel-releases' }, picker) : null,
       props.edition || props.copy ? h('div', { className: 'bae-m-albumpanel-facts' }, props.edition ? h('div', null, props.edition) : null, props.copy ? h('div', null, props.copy) : null) : null,
       props.unplayable ? h('div', { className: 'bae-m-albumpanel-unplayable' }, props.unplayable) : null,

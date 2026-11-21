@@ -179,8 +179,7 @@
 .bae-m-albumrating { display: flex; align-items: center; gap: 12px; }
 .bae-m-albumrating-who { font-size: 11.5px; color: var(--text-secondary); }
 .bae-m-albumpanel-title { margin: 0; font: 700 30px var(--font-sans); letter-spacing: -0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.bae-m-albumpanel-sub { font: 600 15px var(--font-sans); white-space: nowrap; }
-.bae-m-albumpanel-year { font: 400 13px var(--font-sans); }
+.bae-m-albumpanel-sub { display: flex; gap: 8px; font: 600 15px var(--font-sans); white-space: nowrap; }
 .bae-m-albumpanel-releases { padding: 4px 0 2px; }
 .bae-m-albumpanel-facts { display: flex; flex-direction: column; gap: 2px; font: 400 11.5px var(--font-sans); color: var(--text-tertiary); }
 .bae-m-albumpanel-audio { padding-top: var(--space-related); font: 400 11.5px var(--font-sans); color: var(--text-tertiary); }

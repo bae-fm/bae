@@ -168,17 +168,20 @@ album    Album Title, Artist Name
   release  download                           (Ben's MP3s)
 ```
 
-An album's page heads with lines stacked in this order, each on its own line:
-its title, its artist, its year, the edition line, the copy line, then the
+An album's page heads with these lines, stacked in this order:
+its title, its artist and year (one line on macOS, `Mara Quill · 1992`, and
+two on Android), the edition line, the copy line, then the
 Play button. When the person rated the album, Android ends the year line with
 the rating and macOS shows it after the ⋯ button (decisions #1219 and #1233). The release lines are the three lines that name the selected
 release, wherever bae names a release under its album (decision #1230):
 
 - The edition line holds what is printed on the release and what a person looks
-  up: its own year, even when it matches the album's year shown above it,
-  its country, then each label with the catalog numbers it gives the pressing,
-  such as `2001 · US · Harbor Records · HR-1042`. The 1992 original of a 1992
-  album reads `1992 · US · Harbor Records · HR-1042`. A country shows in the short form
+  up: its own year, its country, then each label with the catalog numbers it
+  gives the pressing, such as `2001 · US · Harbor Records · HR-1042`. Where
+  the album's year shows above the release lines, as on the album page, the
+  edition line leaves out a year that matches it: the 1992 original of a 1992
+  album reads `US · Harbor Records · HR-1042` there, and
+  `1992 · US · Harbor Records · HR-1042` in a pressing row. A country shows in the short form
   the person's language commonly uses where one exists (US, UK, EE. UU. in
   Spanish) and by its full name otherwise.
 - The copy line holds what the person has: the media and details, then the
