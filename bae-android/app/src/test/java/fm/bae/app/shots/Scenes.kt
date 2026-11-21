@@ -186,10 +186,10 @@ internal fun InPlaceDialogScene(
  */
 @Composable
 internal fun InPlaceDialog(parts: DialogParts) {
-    DialogSurface {
+    DialogSurface(modifier = Modifier.width(parts.width ?: DIALOG_WIDTH)) {
         // Material's dialog sets its content's text in bodyMedium, so unstyled text in [parts] draws as it does there.
         ProvideTextStyle(MaterialTheme.typography.bodyMedium) {
-            Column(modifier = Modifier.width(parts.width ?: DIALOG_WIDTH), verticalArrangement = Arrangement.spacedBy(ThemeSpace.edge)) {
+            Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(ThemeSpace.edge)) {
                 if (parts.title != null || parts.message != null) DialogHead(parts.title, parts.message)
                 parts.content?.invoke()
                 Box(
@@ -223,7 +223,7 @@ internal fun KeyboardScene(content: @Composable () -> Unit) {
     ScreenScene { Box(modifier = Modifier.fillMaxSize().padding(bottom = KEYBOARD_HEIGHT)) { content() } }
 }
 
-/** The design system's dialog width when a dialog gives none. */
+/** The design system's dialog width, padding included, when a dialog gives none. */
 private val DIALOG_WIDTH = 312.dp
 
 /** What the count of History says about whose plays it shows: [shown], and the library's two other people to choose. */
@@ -245,8 +245,12 @@ private val KEYBOARD_HEIGHT = 262.dp
 
 /** The surface a dialog's words sit on. */
 @Composable
-internal fun DialogSurface(content: @Composable () -> Unit) {
+internal fun DialogSurface(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
     Surface(
+        modifier = modifier,
         shape = AlertDialogDefaults.shape,
         color = AlertDialogDefaults.containerColor,
         tonalElevation = AlertDialogDefaults.TonalElevation,
