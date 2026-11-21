@@ -204,8 +204,8 @@ internal fun NoticeFrame(
     }
 }
 
-/** The ring of a notice's glyph is 15dp across, as its board draws it. */
-private val NoticeGlyphSize: Dp = 15.dp
+/** The ring of a notice's glyph is 15.5dp across, as its board draws it. */
+private val NoticeGlyphSize: Dp = 15.5.dp
 
 /** The ring fills 20 of the 24 units of its icon, so the icon's box is 1.2 times its ring. */
 private val NoticeGlyphBox: Dp = NoticeGlyphSize * 1.2f
