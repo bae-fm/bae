@@ -156,7 +156,7 @@
   // The release's cover (a plain tile when it has none) beside its identity: the album title and year as fields and the album artist; then what the card it sits in puts under them, its children: the folder's audio line and the album picker.
   function MacReleaseIdentity(props) {
     return h('div', { className: 'bae-m-idraft-head' },
-      h(Artwork, { title: props.cover, size: 132, radius: 6, missing: !props.cover }),
+      props.cover ? h('button', { type: 'button', className: 'bae-plainbtn', 'aria-label': 'Change cover' }, h(Artwork, { title: props.cover, size: 132, radius: 6 })) : h(Artwork, { size: 132, radius: 6, missing: true }),
       h('div', { className: 'bae-m-idraft-id' },
         h(MacInlineField, { label: 'Album title', value: props.title, placeholder: 'Album title', large: true }),
         h(MacAlbumArtistField, { artist: props.artist, chip: props.artistChip, secondary: true }),

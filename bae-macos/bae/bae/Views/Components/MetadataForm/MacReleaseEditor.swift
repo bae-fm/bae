@@ -414,6 +414,7 @@ struct ReleaseCoverWell: View {
             }
             .accessibilityAddTraits(onEditCover == nil ? [] : .isButton)
             .accessibilityLabel(Text("Change cover"))
+            .accessibilityHidden(onEditCover == nil)
             .overlay {
                 RoundedRectangle(cornerRadius: ThemeRadius.artwork)
                     .stroke(

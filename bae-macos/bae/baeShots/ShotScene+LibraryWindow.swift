@@ -205,8 +205,7 @@ extension ShotScene {
     }
 }
 
-/// Whether a scene's fixture has answered the open album's detail read, for
-/// a scene that waits until the album page behind it shows.
+/// Whether the fixture has answered the open album's detail read.
 @MainActor
 @Observable
 final class AlbumDetailAnswered {
