@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -25,8 +26,6 @@ import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.times
@@ -93,7 +92,7 @@ internal fun Logo(
     val wordRise = Proportion.WORD_RISE * wordHeight
     val seconds = rememberBobSeconds(bob)
     Column(
-        modifier = modifier.semantics(mergeDescendants = true) { contentDescription = "bae" },
+        modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(size * Proportion.GAP),
     ) {
@@ -112,19 +111,23 @@ internal fun Logo(
                 modifier = Modifier.size(size, sheepHeight).bobbing(seconds, Proportion.SHEEP_RISE * sheepHeight, 0.0),
             )
         }
+        // The word is the logo's one element for a screen reader, as on the board: the sheep is decoration.
         Box(
             modifier = Modifier.size(wordWidth, wordHeight).bobbing(seconds, wordRise, Motion.WORD_DELAY_SECONDS),
         ) {
+            // With the glow, the word is cream with a thin edge; without it, the word takes the text colour around it.
+            if (glow) {
+                Image(
+                    painter = painterResource(R.drawable.logo_word),
+                    contentDescription = null,
+                    colorFilter = ColorFilter.tint(colors.logoWordEdge),
+                    modifier = Modifier.size(wordWidth, wordHeight).offset(wordEdgeOffset, wordEdgeOffset),
+                )
+            }
             Image(
                 painter = painterResource(R.drawable.logo_word),
-                contentDescription = null,
-                colorFilter = ColorFilter.tint(colors.logoWordEdge),
-                modifier = Modifier.size(wordWidth, wordHeight).offset(wordEdgeOffset, wordEdgeOffset),
-            )
-            Image(
-                painter = painterResource(R.drawable.logo_word),
-                contentDescription = null,
-                colorFilter = ColorFilter.tint(colors.logoWord),
+                contentDescription = "bae",
+                colorFilter = ColorFilter.tint(if (glow) colors.logoWord else MaterialTheme.colorScheme.onSurface),
                 modifier = Modifier.size(wordWidth, wordHeight),
             )
         }
