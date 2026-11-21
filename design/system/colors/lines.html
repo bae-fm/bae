@@ -1,0 +1,26 @@
+<style>
+.l-win { width: 300px; box-sizing: border-box; padding: 16px; background: var(--background); border-radius: 8px; display: flex; flex-direction: column; gap: 14px; }
+.l-box { background: var(--surface); border-radius: 8px; overflow: hidden; font-size: 12px; color: var(--text-primary); }
+.l-row { position: relative; height: 30px; padding-left: 14px; line-height: 30px; }
+.l-line { height: 1px; margin-left: 14px; background: var(--hairline); }
+.l-strong { height: 1px; background: var(--hairline-strong); }
+.l-over { position: absolute; inset: 0; }
+.l-dim { position: relative; height: 96px; border-radius: 8px; overflow: hidden; background: var(--surface); }
+.l-scrim { position: absolute; inset: 0; background: var(--scrim); }
+.l-sheet { position: absolute; left: 40px; right: 40px; top: 16px; bottom: 16px; border-radius: 8px; background: var(--elevated); box-shadow: 0 8px 24px var(--shadow); }
+.l-viewer { position: relative; height: 56px; border-radius: 8px; background: var(--backdrop); }
+.l-viewer div { position: absolute; left: 50%; top: 8px; width: 40px; height: 40px; margin-left: -20px; border-radius: 4px; background: var(--placeholder); }
+</style>
+<div class="l-win">
+  <div class="l-box">
+    <div class="l-row">Album Title</div>
+    <div class="l-line" data-color="hairline"></div>
+    <div class="l-row"><div class="l-over" style="background: var(--hover)" data-color="hover"></div>Album Title</div>
+    <div class="l-line"></div>
+    <div class="l-row"><div class="l-over" style="background: var(--pressed)" data-color="pressed"></div>Album Title</div>
+    <div class="l-strong" data-color="hairline-strong"></div>
+    <div class="l-row" style="color: var(--text-secondary)">3 albums</div>
+  </div>
+  <div class="l-dim"><div class="l-scrim" data-color="scrim"></div><div class="l-sheet" data-color="shadow"></div></div>
+  <div class="l-viewer" data-color="backdrop"><div></div></div>
+</div>

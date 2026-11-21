@@ -1,0 +1,23 @@
+<style>
+.n-win { width: 300px; box-sizing: border-box; padding: 16px; background: var(--background); border-radius: 8px; display: flex; flex-direction: column; gap: 12px; }
+.n-notice { display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; border-radius: 8px; background: var(--danger-notice); font-size: 12px; color: var(--on-notice); }
+.n-icon { flex: none; width: 14px; height: 14px; margin-top: 1px; border-radius: 50%; background: var(--danger-icon); }
+.n-chips { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.n-chip { height: 20px; padding: 0 8px; border-radius: 10px; font-size: 11px; font-weight: 500; line-height: 20px; }
+</style>
+<div class="n-win">
+  <div class="n-notice" data-color="danger-notice">
+    <span class="n-icon" data-color="danger-icon"></span>
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <span data-color="on-notice" data-point="below">bae could not reach the cloud.</span>
+      <span style="font-weight: 500; color: var(--notice-accent)" data-color="notice-accent" data-point="below">Details</span>
+    </div>
+  </div>
+  <div class="n-chips">
+    <span class="n-chip" style="background: var(--success-tint); color: var(--success)" data-color="success-tint">Synced</span>
+    <span class="n-chip" style="background: var(--warning-tint); color: var(--warning)"><span data-color="warning" data-point="below">Offline</span></span>
+    <span class="n-chip" style="background: var(--activity-tint); color: var(--activity)" data-color="activity-tint">Uploading</span>
+    <span style="font-size: 12px; color: var(--pinning)" data-color="pinning" data-point="below">Pinning 3 albums</span>
+    <span class="n-chip" style="background: var(--neutral-tint); color: var(--text-secondary)" data-color="neutral-tint">Paused</span>
+  </div>
+</div>

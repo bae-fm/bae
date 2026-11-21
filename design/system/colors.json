@@ -1,0 +1,102 @@
+{
+  "ground": "background",
+  "groups": [
+    {
+      "name": "Surfaces",
+      "about": "What everything sits on, from the window up to a popover, and the fields and controls on it.",
+      "clusters": [
+        { "colors": ["background", "surface", "elevated"] },
+        { "colors": ["field", "field-edge", "field-hover"] },
+        { "colors": ["placeholder", "well"] },
+        { "colors": ["tile", "control", "control-edge"] }
+      ],
+      "scene": "surfaces"
+    },
+    {
+      "name": "Text",
+      "about": "Words on a surface, by how much they matter. Mac windows draw secondary text in mac-text-secondary, macOS's own color.",
+      "clusters": [
+        { "colors": ["text-primary", "text-secondary", "text-tertiary"], "text": true },
+        { "colors": ["mac-text-secondary"], "text": true },
+        { "colors": ["logo-word"], "text": true }
+      ],
+      "scene": "text"
+    },
+    {
+      "name": "Accent",
+      "about": "The accent the person chose, as text, a fill and a selection. The boards draw pink.",
+      "clusters": [
+        { "colors": ["accent"], "text": true },
+        { "colors": ["accent-fill", "on-accent-fill", "on-accent-fill-secondary"] },
+        { "colors": ["accent-selection", "accent-tint", "accent-tint-strong"] }
+      ],
+      "scene": "accent"
+    },
+    {
+      "name": "Accents a person can choose",
+      "about": "Each of the eight accents, in the same four roles.",
+      "table": {
+        "columns": [
+          { "label": "accent-‹hue›", "text": true },
+          { "label": "accent-‹hue›-fill" },
+          { "label": "on-accent-‹hue›-fill" },
+          { "label": "accent-‹hue›-selection" }
+        ],
+        "rows": [
+          { "label": "blue", "colors": ["accent-blue", "accent-blue-fill", "on-accent-blue-fill", "accent-blue-selection"] },
+          { "label": "orchid", "colors": ["accent-orchid", "accent-orchid-fill", "on-accent-orchid-fill", "accent-orchid-selection"] },
+          { "label": "pink", "colors": ["accent-pink", "accent-pink-fill", "on-accent-pink-fill", "accent-pink-selection"] },
+          { "label": "coral", "colors": ["accent-coral", "accent-coral-fill", "on-accent-coral-fill", "accent-coral-selection"] },
+          { "label": "gold", "colors": ["accent-gold", "accent-gold-fill", "on-accent-gold-fill", "accent-gold-selection"] },
+          { "label": "lime", "colors": ["accent-lime", "accent-lime-fill", "on-accent-lime-fill", "accent-lime-selection"] },
+          { "label": "mint", "colors": ["accent-mint", "accent-mint-fill", "on-accent-mint-fill", "accent-mint-selection"] },
+          { "label": "sky", "colors": ["accent-sky", "accent-sky-fill", "on-accent-sky-fill", "accent-sky-selection"] }
+        ]
+      },
+      "scene": "accents"
+    },
+    {
+      "name": "Status",
+      "about": "Each tone as text, a chip's fill, a notice's fill and a notice's icon. A word always goes with the tone.",
+      "table": {
+        "columns": [
+          { "label": "‹tone›", "text": true },
+          { "label": "‹tone›-tint" },
+          { "label": "‹tone›-notice" },
+          { "label": "‹tone›-icon" }
+        ],
+        "rows": [
+          { "label": "danger", "colors": ["danger", "danger-tint", "danger-notice", "danger-icon"] },
+          { "label": "warning", "colors": ["warning", "warning-tint", "warning-notice", "warning-icon"] },
+          { "label": "success", "colors": ["success", "success-tint", "success-notice", "success-icon"] },
+          { "label": "info", "colors": ["info", "info-tint", "info-notice", "info-icon"] },
+          { "label": "activity", "colors": ["activity", "activity-tint", null, null] },
+          { "label": "pinning", "colors": ["pinning", null, null, null] }
+        ]
+      },
+      "clusters": [
+        { "colors": ["on-notice", "notice-accent"], "text": true },
+        { "colors": ["neutral-tint"] }
+      ],
+      "scene": "status"
+    },
+    {
+      "name": "Lines and overlays",
+      "about": "Dividers, and the layers drawn over a surface: hover, pressed, the dimming behind a sheet.",
+      "clusters": [
+        { "colors": ["hairline", "hairline-strong"] },
+        { "colors": ["hover", "pressed"] },
+        { "colors": ["scrim", "shadow", "backdrop"] }
+      ],
+      "scene": "lines"
+    },
+    {
+      "name": "Colors on fills",
+      "about": "Text and glyphs on a selection, a status fill or artwork.",
+      "clusters": [
+        { "colors": ["on-fill", "on-fill-secondary"] }
+      ],
+      "scene": "fills"
+    }
+  ]
+}

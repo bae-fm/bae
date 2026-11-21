@@ -1,0 +1,21 @@
+<style>
+.p-win { width: 300px; box-sizing: border-box; padding: 16px; background: var(--background); border-radius: 8px; display: flex; flex-direction: column; align-items: flex-start; gap: 14px; }
+.p-dots { display: flex; gap: 8px; }
+.p-dot { position: relative; width: 24px; height: 24px; border-radius: 50%; }
+.p-dot svg { position: absolute; left: 6px; top: 6px; }
+.p-button { height: 26px; padding: 0 14px; border-radius: 6px; background: var(--accent-blue-selection); color: var(--on-fill); font-size: 12px; font-weight: 500; line-height: 26px; }
+</style>
+<div class="p-win">
+  <div class="p-dots">
+    <div class="p-dot" style="background: var(--accent-blue-fill)" data-color="accent-blue-fill"><svg width="12" height="12" viewBox="0 0 12 12" data-color="on-accent-blue-fill"><path d="M2 6.5 L5 9 L10 3" fill="none" stroke="var(--on-accent-blue-fill)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    <div class="p-dot" style="background: var(--accent-orchid-fill)"></div>
+    <div class="p-dot" style="background: var(--accent-pink-fill)"></div>
+    <div class="p-dot" style="background: var(--accent-coral-fill)"></div>
+    <div class="p-dot" style="background: var(--accent-gold-fill)"></div>
+    <div class="p-dot" style="background: var(--accent-lime-fill)"></div>
+    <div class="p-dot" style="background: var(--accent-mint-fill)"></div>
+    <div class="p-dot" style="background: var(--accent-sky-fill)"></div>
+  </div>
+  <span style="font-size: 13px; font-weight: 500; color: var(--accent-blue)" data-color="accent-blue" data-point="below">Show all</span>
+  <div class="p-button" data-color="accent-blue-selection">Import</div>
+</div>

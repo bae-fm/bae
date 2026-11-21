@@ -1,0 +1,21 @@
+<style>
+.a-win { width: 300px; box-sizing: border-box; padding: 16px; background: var(--background); border-radius: 8px; }
+.a-box { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; padding: 12px 0; background: var(--surface); border-radius: 8px; overflow: hidden; }
+.a-pad { padding: 0 14px; }
+.a-seg { display: flex; height: 24px; border-radius: 6px; background: var(--well); font-size: 12px; }
+.a-seg span { padding: 0 12px; line-height: 24px; color: var(--text-primary); }
+.a-seg .a-on { border-radius: 6px; background: var(--accent-fill); color: var(--on-accent-fill); font-weight: 500; }
+.a-button { height: 26px; padding: 0 14px; border-radius: 6px; background: var(--accent-selection); color: var(--on-fill); font-size: 12px; font-weight: 500; line-height: 26px; }
+.a-row { align-self: stretch; height: 28px; padding-left: 14px; font-size: 12px; line-height: 28px; color: var(--text-primary); }
+</style>
+<div class="a-win">
+  <div class="a-box">
+    <span class="a-pad" style="font-size: 13px; font-weight: 500; color: var(--accent)" data-color="accent" data-point="below">Show all</span>
+    <div class="a-pad"><div class="a-seg"><span class="a-on" data-color="accent-fill"><span data-color="on-accent-fill" data-point="below">Albums</span></span><span>Artists</span><span>Songs</span></div></div>
+    <div class="a-pad"><div class="a-button" data-color="accent-selection">Import</div></div>
+    <div style="align-self: stretch; display: flex; flex-direction: column; gap: 0">
+      <div class="a-row" style="background: var(--accent-tint)" data-color="accent-tint">Album Title</div>
+      <div class="a-row" style="background: var(--accent-tint-strong)" data-color="accent-tint-strong">Album Title</div>
+    </div>
+  </div>
+</div>
