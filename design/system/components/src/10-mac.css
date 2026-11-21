@@ -1,8 +1,9 @@
 /* ---- macOS ---- */
 
-.bae-m-window { position: relative; display: flex; overflow: hidden; border-radius: 16px; background: var(--background); color: var(--text-primary); font: 400 13px var(--font-sans); box-shadow: inset 0 0 0 1px var(--hairline); }
+/* macOS rounds a window's corners at 17pt and lights its top edge with a 1pt line; its other edges draw no ring. */
+.bae-m-window { position: relative; display: flex; overflow: hidden; border-radius: 17px; background: var(--background); color: var(--text-primary); font: 400 13px var(--font-sans); box-shadow: inset 0 1px 0 var(--hairline-strong); }
 .bae-m-window-column { flex-direction: column; }
-.bae-m-window-front { box-shadow: inset 0 0 0 1px var(--hairline), 0 20px 60px var(--shadow); }
+.bae-m-window-front { box-shadow: inset 0 1px 0 var(--hairline-strong), 0 20px 60px var(--shadow); }
 .bae-m-alert { box-sizing: border-box; width: 260px; margin-top: 36px; padding: 20px 16px 16px; border-radius: 20px; background: var(--elevated); box-shadow: 0 10px 30px var(--shadow); display: flex; flex-direction: column; gap: 10px; text-align: left; color: var(--text-primary); font: 400 13px var(--font-sans); }
 .bae-m-alert-title { font-weight: 700; }
 .bae-m-alert-message { font-size: 11px; line-height: 14px; color: var(--text-secondary); }
@@ -10,9 +11,10 @@
 .bae-m-alert-buttons > :not(.sc-host-x), .bae-m-alert-buttons > .sc-host-x > * { flex: 1; min-width: 0; }
 .bae-m-alert-buttons:has(> :nth-child(3)) { flex-direction: column; }
 .bae-m-sidebar { width: 190px; flex: none; margin: 8px 0 8px 8px; border-radius: 12px; background: var(--surface); box-shadow: 0 1px 4px var(--shadow); padding: 32px 8px 8px; box-sizing: border-box; display: flex; flex-direction: column; gap: 2px; position: relative; }
-.bae-m-lights { position: absolute; top: 14px; left: 14px; display: flex; gap: var(--space-related); }
-.bae-m-lights-inset { top: 22px; left: 22px; }
-.bae-m-lights span { width: 12px; height: 12px; border-radius: 6px; background: #FF5F57; }
+/* The system's lights: 14pt each, 9pt apart. */
+.bae-m-lights { position: absolute; top: 14px; left: 14px; display: flex; gap: 9px; }
+.bae-m-lights-inset { top: 20px; left: 20px; }
+.bae-m-lights span { width: 14px; height: 14px; border-radius: 7px; background: #FF5F57; }
 .bae-m-lights span + span { background: #FEBC2E; }
 .bae-m-lights span + span + span { background: #28C840; }
 .bae-m-pane { display: block; width: 100%; text-align: left; border: 0; background: none; color: var(--text-primary); font: 400 13px var(--font-sans); padding: 5px 10px; border-radius: 8px; cursor: pointer; }
