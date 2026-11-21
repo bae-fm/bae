@@ -33,7 +33,6 @@ internal fun AndroidAlbumTile(
             cornerRadius = ThemeRadius.cover,
             iconPadding = 40.dp,
             modifier = Modifier.fillMaxWidth().aspectRatio(1f),
-            contentDescription = title,
         )
         Spacer(modifier = Modifier.height(ThemeSpace.compact))
         Text(
