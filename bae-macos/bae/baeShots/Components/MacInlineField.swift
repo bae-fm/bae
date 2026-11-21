@@ -1,0 +1,78 @@
+import BaeKit
+import SwiftUI
+
+@testable import bae
+
+extension ShotScene {
+    static let macInlineFieldScenes: [ShotScene] = [
+        inlineFieldScene(
+            "mac.component.inline-field.value",
+            placeholder: "—",
+            value: "Harbor Records"
+        ),
+        inlineFieldScene(
+            "mac.component.inline-field.empty",
+            placeholder: "—",
+            value: ""
+        ),
+        inlineFieldScene(
+            "mac.component.inline-field.long-value",
+            placeholder: "—",
+            value: "Harbor Records and the Northern Sound Company"
+        ),
+        inlineFieldScene(
+            "mac.component.inline-field.large",
+            placeholder: "Album title",
+            value: "Low Tide Hours",
+            large: true
+        ),
+        inlineFieldScene(
+            "mac.component.inline-field.large-empty",
+            placeholder: "Album title",
+            value: "",
+            large: true
+        ),
+        inlineFieldScene(
+            "mac.component.inline-field.quiet",
+            placeholder: "Album year",
+            value: "1992",
+            quiet: true
+        ),
+        inlineFieldScene(
+            "mac.component.inline-field.quiet-empty",
+            placeholder: "Album year",
+            value: "",
+            quiet: true
+        ),
+    ]
+
+    /// One `MacInlineField` in the preview's 260pt column; `large` is the
+    /// album title's size and `quiet` the album year's tertiary colour.
+    private static func inlineFieldScene(
+        _ id: String,
+        placeholder: String,
+        value: String,
+        large: Bool = false,
+        quiet: Bool = false
+    ) -> ShotScene {
+        component(
+            id,
+            width: 260,
+            height: large ? 46 : 38
+        ) {
+            MacInlineField(
+                placeholder: placeholder,
+                value: value,
+                name: placeholder,
+                fillsWidth: true,
+                font: large ? ThemeText.title.nsFont : ThemeText.body.nsFont,
+                textColor: quiet
+                    ? .tertiaryLabelColor : NSColor(Theme.textPrimary),
+                placeholderRole: large || quiet ? .hint : .emptyMark,
+                editingCommands: EditingCommitCommands(),
+                onCommit: { _ in }
+            )
+            .frame(width: 260, alignment: .leading)
+        }
+    }
+}
