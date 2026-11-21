@@ -4,8 +4,8 @@ import ObjectiveC
 /// The display every scene shown in its window is drawn on: a virtual display
 /// of 1600 by 1200 points at 2 pixels a point, beside whatever displays the
 /// Mac has, which a shot test adds and hands to each render. A shot taken from a real display
-/// would depend on that display: the CI runner's leaves 1024 by 674 points
-/// free, less than the library window's scenes, and a display at 1 pixel a
+/// would depend on that display: a small display leaves less free area than the
+/// library window's scenes need, and a display at 1 pixel a
 /// point would back the window at half the shot's scale. On this display
 /// every Mac draws a window scene the same way, and the window server still
 /// composes the window with the alert panels the app raises over it.

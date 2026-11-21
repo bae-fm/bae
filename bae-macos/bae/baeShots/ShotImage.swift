@@ -4,7 +4,7 @@ import CoreGraphics
 enum ShotImage {
     /// `image` at exactly `width` by `height` pixels. The window server
     /// captures a window at its display's scale, whatever size the capture
-    /// asks for: a host whose display is not Retina (a CI runner's) hands
+    /// asks for: a host whose display is not Retina (an external monitor, say) hands
     /// back a 1x image, which would fill a corner of the 2x file with the
     /// rest empty. Drawing it up to the asked size puts every host's shot
     /// on the same pixel grid.

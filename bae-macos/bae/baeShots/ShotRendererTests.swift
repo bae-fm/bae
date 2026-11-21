@@ -30,7 +30,7 @@ struct ShotRendererTests {
 
     /// A scene shown in a window at its full size: the library window with
     /// an alert over it, 1200 by 1000 points, taller than the free area of a
-    /// 1728 by 1117 laptop display and wider than the CI runner's.
+    /// 1728 by 1117 laptop display and wider than a small display's.
     @Test
     func aWindowLargerThanTheMacsDisplayRendersWhole() async throws {
         let scene = try #require(
