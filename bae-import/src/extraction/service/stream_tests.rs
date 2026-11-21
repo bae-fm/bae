@@ -9,7 +9,7 @@ use crate::extraction::{ArtworkAnalysis, ArtworkAnalyzer, ArtworkUnreadable};
 use bae_identify::signals::{ArtworkScan, TextOrigin};
 use bae_util::test_channels::HANG_GUARD;
 use bae_util::test_files::TestFolder;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::sync::Condvar;
@@ -24,8 +24,8 @@ async fn emits_fast_pass_then_ocr_then_settled() {
     let folder = parent.join("1989 - Album Title [XX34b]");
     tmp.create_folder(&folder);
     tmp.write(folder.join("01 - Track.flac"), fixture_flac());
-    tmp.write(folder.join("Cover.jpg"), minimal_jpeg());
-    tmp.write(folder.join("Back.jpg"), minimal_jpeg());
+    tmp.write(folder.join("Cover.jpg"), crate::test_fixtures::image_named("Cover.jpg"));
+    tmp.write(folder.join("Back.jpg"), crate::test_fixtures::image_named("Back.jpg"));
 
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(
         StubAnalyzer::new()
@@ -90,7 +90,7 @@ async fn a_barcode_printed_as_text_on_the_artwork_is_a_barcode_sighting() {
     let folder = tmp.path().join("Some Folder");
     tmp.create_folder(&folder);
     tmp.write(folder.join("audio.flac"), fixture_flac());
-    tmp.write(folder.join("Back.jpg"), minimal_jpeg());
+    tmp.write(folder.join("Back.jpg"), crate::test_fixtures::image_named("Back.jpg"));
     let cue = "CATALOG 0012345678905\n\
 FILE \"audio.flac\" WAVE\n  \
   TRACK 01 AUDIO\n    \
@@ -131,7 +131,7 @@ FILE \"audio.flac\" WAVE\n  \
 async fn the_bars_and_their_printed_digits_are_one_sighting() {
     struct BarsAndDigits;
     impl ArtworkAnalyzer for BarsAndDigits {
-        fn analyze(&self, _path: &Path) -> Result<ArtworkAnalysis, ArtworkUnreadable> {
+        fn analyze(&self, _image: &[u8]) -> Result<ArtworkAnalysis, ArtworkUnreadable> {
             Ok(ArtworkAnalysis {
                 barcodes: vec!["5012345678900".to_string()],
                 text_lines: vec!["5 012345 678900".to_string()],
@@ -143,7 +143,7 @@ async fn the_bars_and_their_printed_digits_are_one_sighting() {
     let folder = tmp.path().join("Some Folder");
     tmp.create_folder(&folder);
     tmp.write(folder.join("audio.flac"), fixture_flac());
-    tmp.write(folder.join("Back.jpg"), minimal_jpeg());
+    tmp.write(folder.join("Back.jpg"), crate::test_fixtures::image_named("Back.jpg"));
 
     let (_handle, mut rx, _run, _lib_tmp) = start_signals(folder, Arc::new(BarsAndDigits)).await;
 
@@ -262,7 +262,7 @@ async fn an_image_read_that_panics_fails_the_text_and_barcode_signals() {
 async fn an_unreadable_image_fails_the_scan_and_is_not_kept_as_settled() {
     struct Unreadable;
     impl ArtworkAnalyzer for Unreadable {
-        fn analyze(&self, _path: &Path) -> Result<ArtworkAnalysis, ArtworkUnreadable> {
+        fn analyze(&self, _image: &[u8]) -> Result<ArtworkAnalysis, ArtworkUnreadable> {
             Err(ArtworkUnreadable { detail: "truncated JPEG".to_string() })
         }
     }
@@ -384,8 +384,8 @@ impl OrderedAnalyzer {
 }
 
 impl ArtworkAnalyzer for OrderedAnalyzer {
-    fn analyze(&self, path: &Path) -> Result<ArtworkAnalysis, ArtworkUnreadable> {
-        let name = path.file_name().unwrap().to_str().unwrap().to_string();
+    fn analyze(&self, image: &[u8]) -> Result<ArtworkAnalysis, ArtworkUnreadable> {
+        let name = crate::test_fixtures::image_name(image).to_string();
         let turn = self
             .finish_order
             .iter()
@@ -500,7 +500,7 @@ struct ConcurrencyAnalyzer {
 }
 
 impl ArtworkAnalyzer for ConcurrencyAnalyzer {
-    fn analyze(&self, _path: &Path) -> Result<ArtworkAnalysis, ArtworkUnreadable> {
+    fn analyze(&self, _image: &[u8]) -> Result<ArtworkAnalysis, ArtworkUnreadable> {
         self.calls.fetch_add(1, Ordering::SeqCst);
         let reading = self.reading.fetch_add(1, Ordering::SeqCst) + 1;
         self.most_at_once.fetch_max(reading, Ordering::SeqCst);

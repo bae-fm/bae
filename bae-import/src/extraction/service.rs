@@ -12,9 +12,9 @@
 //! instead of waiting. A replaced extraction sends nothing more.
 
 use super::analyzer::ArtworkAnalyzer;
-use super::fast_pass::{gather_non_ocr_sources, ArtworkImage, FastPass};
+use super::fast_pass::{gather_non_ocr_sources, ArtworkImage, FastPass, ImageSource};
 use super::pool::Pool;
-use super::release::{resolve_release_artwork_paths, resolve_release_identity};
+use super::release::{resolve_release_artwork, resolve_release_identity};
 use crate::IdentifyRunId;
 use crate::{CandidateRuntime, CandidateWork, ImportEvent, ImportEventBus};
 use bae_catalogs::{AudioOrigin, InternalFailure};
@@ -370,31 +370,22 @@ async fn extract(
             if token.is_cancelled() {
                 return;
             }
-            // The artwork is resolved only when there is an analyzer to read
-            // it. `_artwork_staging` holds the staged artwork's temp folder
-            // until `stream_extraction` returns; a resolve error means the
-            // release's artwork cannot be read, so the extraction aborts.
+            // The artwork is listed only when there is an analyzer to read it;
+            // a listing error means the release's artwork cannot be read, so
+            // the extraction aborts.
             let analyzer = inner.analyzer.lock().expect("analyzer lock poisoned").clone();
-            let (artwork, _artwork_staging) = if let Some(analyzer) = analyzer {
-                match resolve_release_artwork_paths(
-                    &inner.store,
-                    &inner.records,
-                    &inner.files,
-                    &inner.diagnostics,
-                    &release_id,
-                )
-                .await
-                {
+            let artwork = if let Some(analyzer) = analyzer {
+                match resolve_release_artwork(&inner.records, &release_id).await {
                     // A library release's images have no file id.
-                    Ok((paths, staging)) => (
-                        Artwork::read(
-                            analyzer,
-                            paths
-                                .into_iter()
-                                .map(|path| ArtworkImage { path, file_id: None })
-                                .collect(),
-                        ),
-                        Some(staging),
+                    Ok(images) => Artwork::read(
+                        analyzer,
+                        images
+                            .into_iter()
+                            .map(|(name, file)| ArtworkImage {
+                                source: ImageSource::Library { name, file },
+                                file_id: None,
+                            })
+                            .collect(),
                     ),
                     Err(e) => {
                         error!("signals: cannot read release {release_id} for artwork: {e}; aborting extraction");
@@ -408,7 +399,7 @@ async fn extract(
                     }
                 }
             } else {
-                (Artwork::Absent, None)
+                Artwork::Absent
             };
             stream_extraction(
                 inner,

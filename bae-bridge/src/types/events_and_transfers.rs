@@ -15,9 +15,8 @@ pub struct BridgeArtworkAnalysis {
 #[uniffi::export(callback_interface)]
 pub trait ArtworkAnalyzerCallback: Send + Sync {
     /// An image with nothing printed on it reads as empty; one that can't be
-    /// decoded or prepared throws. `path` is the image's path as coven's
-    /// bytes (`coven::path_bytes`).
-    fn analyze(&self, path: Vec<u8>) -> Result<BridgeArtworkAnalysis, BridgeArtworkUnreadable>;
+    /// decoded or prepared throws. `image` is the bytes of the image's file.
+    fn analyze(&self, image: Vec<u8>) -> Result<BridgeArtworkAnalysis, BridgeArtworkUnreadable>;
 }
 
 /// An image the platform could not read at all.

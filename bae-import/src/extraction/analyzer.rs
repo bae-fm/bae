@@ -3,7 +3,6 @@
 //! then no signal source at all rather than an empty read.
 
 use bae_types::barcode::Barcode;
-use std::path::Path;
 
 /// What one pass over an image surfaces, from a single decode.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -48,10 +47,10 @@ impl coven::task::CarriesBug for ArtworkUnreadable {
 
 /// Called on blocking threads, several images at once.
 pub trait ArtworkAnalyzer: Send + Sync {
-    /// Read the image at `path`. An image with nothing on it reads as
-    /// [`ArtworkAnalysis::empty`]; one that can't be decoded or prepared is
-    /// [`ArtworkUnreadable`].
-    fn analyze(&self, path: &Path) -> Result<ArtworkAnalysis, ArtworkUnreadable>;
+    /// Read the image whose file holds `image`. An image with nothing on it
+    /// reads as [`ArtworkAnalysis::empty`]; one that can't be decoded or
+    /// prepared is [`ArtworkUnreadable`].
+    fn analyze(&self, image: &[u8]) -> Result<ArtworkAnalysis, ArtworkUnreadable>;
 }
 
 #[cfg(test)]

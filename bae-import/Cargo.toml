@@ -59,8 +59,6 @@ regex = { workspace = true }
 # A watched folder's volume and file times on macOS and Linux
 # (src/volume.rs, src/folder_scanner/folder_times/).
 libc = { workspace = true }
-# Extraction stages a library release's cover for barcode OCR.
-tempfile = { workspace = true }
 
 # The import pipeline's dependencies. The predicate is the pipeline's own, the
 # `desktop` cfg's (bae-desktop-cfg): a mobile build compiles only import's

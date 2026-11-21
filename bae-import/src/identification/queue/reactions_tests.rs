@@ -8,14 +8,13 @@ use crate::extraction::{ArtworkAnalysis, ArtworkAnalyzer, ArtworkUnreadable};
 use crate::identification::tests::*;
 use bae_catalogs::test_releases::{mb_release_json, mb_search_json};
 use bae_util::test_channels::HANG_GUARD;
-use std::path::Path;
 use std::sync::Arc;
 
 /// An analyzer held at each image behind a [`crate::tests::gate::Gate`].
 struct GatedAnalyzer(crate::tests::gate::Held);
 
 impl ArtworkAnalyzer for GatedAnalyzer {
-    fn analyze(&self, _path: &Path) -> Result<ArtworkAnalysis, ArtworkUnreadable> {
+    fn analyze(&self, _image: &[u8]) -> Result<ArtworkAnalysis, ArtworkUnreadable> {
         self.0.pass();
         Ok(ArtworkAnalysis::empty())
     }

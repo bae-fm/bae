@@ -4,7 +4,6 @@
 use super::*;
 use crate::handle::tests::*;
 use bae_util::test_channels::HANG_GUARD;
-use std::path::Path;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn removing_a_watched_folder_cancels_in_flight_extraction() {
@@ -21,7 +20,7 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
         held: crate::tests::gate::Held,
     }
     impl ArtworkAnalyzer for HeldAnalyzer {
-        fn analyze(&self, _path: &Path) -> Result<ArtworkAnalysis, ArtworkUnreadable> {
+        fn analyze(&self, _image: &[u8]) -> Result<ArtworkAnalysis, ArtworkUnreadable> {
             self.calls.fetch_add(1, Ordering::SeqCst);
             self.held.pass();
             Ok(ArtworkAnalysis { barcodes: Vec::new(), text_lines: vec!["Line".to_string()] })

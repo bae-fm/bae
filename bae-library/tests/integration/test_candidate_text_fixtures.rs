@@ -73,25 +73,32 @@ fn minimal_jpeg() -> Vec<u8> {
 
 /// Returns the fixture's OCR lines for an absolute path, none for others.
 struct FixtureAnalyzer {
-    responses: Mutex<HashMap<PathBuf, Vec<String>>>,
+    /// The lines each image reads, by the name its bytes hold.
+    responses: Mutex<HashMap<String, Vec<String>>>,
 }
 
 impl FixtureAnalyzer {
-    fn new(responses: HashMap<PathBuf, Vec<String>>) -> Self {
+    fn new(responses: HashMap<String, Vec<String>>) -> Self {
         Self { responses: Mutex::new(responses) }
     }
 }
 
 impl ArtworkAnalyzer for FixtureAnalyzer {
-    fn analyze(&self, path: &Path) -> Result<ArtworkAnalysis, ArtworkUnreadable> {
-        let text_lines = self.responses.lock().unwrap().get(path).cloned().unwrap_or_default();
+    fn analyze(&self, image: &[u8]) -> Result<ArtworkAnalysis, ArtworkUnreadable> {
+        let text_lines = self
+            .responses
+            .lock()
+            .unwrap()
+            .get(bae_import::test_fixtures::image_name(image))
+            .cloned()
+            .unwrap_or_default();
         Ok(ArtworkAnalysis { barcodes: Vec::new(), text_lines })
     }
 }
 
 /// Build a fixture's release folder in `tmp`, returning it and the OCR lines
-/// keyed by each artwork file's absolute path.
-fn materialize(fixture: &Fixture, tmp: &TestFolder) -> (PathBuf, HashMap<PathBuf, Vec<String>>) {
+/// keyed by each artwork file's name.
+fn materialize(fixture: &Fixture, tmp: &TestFolder) -> (PathBuf, HashMap<String, Vec<String>>) {
     // `{tmp}/{parent}/{release}`, from the last two path components.
     let (parent_name, release_base) = match fixture.sources.path_components.as_slice() {
         [] => (None, "release".to_string()),
@@ -148,17 +155,16 @@ fn materialize(fixture: &Fixture, tmp: &TestFolder) -> (PathBuf, HashMap<PathBuf
     }
 
     // Each artwork file is a stub JPEG; the OCR map carries its lines.
-    let mut ocr_map: HashMap<PathBuf, Vec<String>> = HashMap::new();
+    let mut ocr_map: HashMap<String, Vec<String>> = HashMap::new();
     for art in &fixture.sources.artwork {
         let basename = Path::new(&art.path)
             .file_name()
             .map(|n| n.to_string_lossy().into_owned())
             .unwrap_or_else(|| "Cover.jpg".to_string());
         let materialized = folder.join(&basename);
-        tmp.write(&materialized, minimal_jpeg());
-        // The analyzer receives the canonical path.
-        let canonical = tmp.canonicalize(&materialized);
-        ocr_map.insert(canonical, art.lines.clone());
+        tmp.write(&materialized, bae_import::test_fixtures::image_named(&basename));
+        // The analyzer receives the bytes, which hold the name.
+        ocr_map.insert(basename, art.lines.clone());
     }
 
     let canonical_folder = tmp.canonicalize(&folder);
@@ -176,7 +182,7 @@ async fn make_database() -> (bae_store::Store, TestFolder) {
 async fn drive_fixture(
     fixture: &Fixture,
     folder: PathBuf,
-    ocr_map: HashMap<PathBuf, Vec<String>>,
+    ocr_map: HashMap<String, Vec<String>>,
 ) -> (Vec<String>, Vec<String>) {
     let candidates = bae_import::CandidateRuntime::for_test().await;
     let tx = ImportEventBus::new(candidates.clone());

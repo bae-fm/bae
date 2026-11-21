@@ -9,7 +9,7 @@ use bae_records::LibraryImageType;
 use bae_records::Records;
 use bae_store::DbError;
 use bae_util::task_failure::TaskFailed;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use tracing::debug;
 
 /// What a release already in the library was copied from: what its rip
@@ -37,7 +37,8 @@ pub enum ReleaseIdentityError {
     Panicked(#[from] TaskFailed),
 }
 
-/// Why a library release's artwork could not be gathered for the OCR pass.
+/// Why a library release's artwork could not be listed or read for the OCR
+/// pass.
 #[derive(Debug, thiserror::Error)]
 pub enum ReleaseArtworkError {
     #[error(transparent)]
@@ -47,12 +48,6 @@ pub enum ReleaseArtworkError {
     /// coven could not read one of the release's image files.
     #[error("bae could not read the release's image {name}: {error}")]
     ImageRead { name: String, error: DbError },
-    /// bae could not write the copies of the artwork the OCR reader opens.
-    #[error("bae could not copy the release's artwork to read it: {0}")]
-    Staging(std::io::Error),
-    /// Staging the artwork panicked, reported as the bug it is.
-    #[error(transparent)]
-    Panicked(#[from] TaskFailed),
 }
 
 impl ReleaseIdentity {
@@ -146,120 +141,62 @@ pub(crate) fn library_file(
     (scanned, file.role)
 }
 
+/// A file of a library release that the OCR pass reads as an image: coven
+/// holds its bytes.
+#[derive(Debug, Clone)]
+pub(crate) enum LibraryImageFile {
+    /// The release's cover.
+    Cover(coven::FileRef),
+    /// An image among the release's files.
+    ReleaseFile { id: String, name: String },
+}
+
 /// The artwork the re-identify OCR pass reads: the release's cover, plus every
-/// image file of the release. coven reads each from wherever it has it, and
-/// one coven can't read fails the gathering.
-///
-/// The OCR reader opens paths, so the function stages a copy of each image
-/// in a temp folder, whose guard comes back alongside the paths and must
-/// outlive the OCR pass. A panic staging the artwork is reported to
-/// `diagnostics`.
-pub(crate) async fn resolve_release_artwork_paths(
+/// image file of the release, each named by where coven has it. The pass
+/// reads each one's bytes as it reaches it ([`read_library_image`]).
+pub(crate) async fn resolve_release_artwork(
+    records: &Records,
+    release_id: &str,
+) -> Result<Vec<(PathBuf, LibraryImageFile)>, ReleaseArtworkError> {
+    let files = records.get_files_for_release(release_id).await?;
+    let mut images = Vec::new();
+    match records.library_image_file(release_id, &LibraryImageType::Cover).await? {
+        Some(file) => images.push((PathBuf::from("cover"), LibraryImageFile::Cover(file))),
+        None => {
+            debug!("artwork OCR: release {release_id} has no cover file; skipping the cover");
+        }
+    }
+    // In-folder artwork (cover.jpg and the like).
+    for file in files.iter().filter(|file| file.content_type.is_image()) {
+        images.push((
+            PathBuf::from(&file.original_filename),
+            LibraryImageFile::ReleaseFile {
+                id: file.id.clone(),
+                name: file.original_filename.clone(),
+            },
+        ));
+    }
+    Ok(images)
+}
+
+/// The bytes of `image`, which coven reads from wherever it has them, in one
+/// place of `budget`. An image coven can't read fails the read.
+pub(crate) async fn read_library_image(
     store: &bae_store::Store,
     records: &Records,
     budget: &coven::FileBudget,
-    diagnostics: &Diagnostics,
-    release_id: &str,
-) -> Result<(Vec<PathBuf>, StagedFiles), ReleaseArtworkError> {
-    let files = records.get_files_for_release(release_id).await?;
-    let staged = diagnostics
-        .blocking("make a folder for a release's artwork", StagedFiles::create)
-        .await?
-        .map_err(ReleaseArtworkError::Staging)?;
+    image: &LibraryImageFile,
+) -> Result<Vec<u8>, ReleaseArtworkError> {
     let lease = bae_store::lease_one(budget).await;
-    let mut paths: Vec<PathBuf> = Vec::new();
-
-    match records.library_image_file(release_id, &LibraryImageType::Cover).await? {
-        Some(file) => {
-            let bytes =
-                store.read_file(&file, &lease).await.map_err(ReleaseArtworkError::CoverRead)?;
-            let path = staged.cover();
-            staged
-                .write(diagnostics, path.clone(), bytes)
-                .await?
-                .map_err(ReleaseArtworkError::Staging)?;
-            paths.push(path);
+    match image {
+        LibraryImageFile::Cover(file) => {
+            store.read_file(file, &lease).await.map_err(ReleaseArtworkError::CoverRead)
         }
-        None => {
-            debug!("artwork OCR: release {release_id} has no cover file; skipping cover staging");
-        }
+        LibraryImageFile::ReleaseFile { id, name } => records
+            .read_release_file(id, &lease)
+            .await
+            .map_err(|error| ReleaseArtworkError::ImageRead { name: name.clone(), error }),
     }
-
-    // In-folder artwork (cover.jpg and the like).
-    for file in files.iter().filter(|file| file.content_type.is_image()) {
-        let bytes = records.read_release_file(&file.id, &lease).await.map_err(|error| {
-            ReleaseArtworkError::ImageRead { name: file.original_filename.clone(), error }
-        })?;
-        let path = staged.release_file(&file.original_filename);
-        staged
-            .write(diagnostics, path.clone(), bytes)
-            .await?
-            .map_err(ReleaseArtworkError::Staging)?;
-        paths.push(path);
-    }
-
-    Ok((paths, staged))
-}
-
-/// A temp folder holding copies of a release's files that coven read, for
-/// readers that open a path. The release's files sit below `files/` at the
-/// paths their names in the release give, each name written as coven writes
-/// it (see [`bae_records::stored_name`]), so a sheet finds the audio its
-/// `FILE` lines name where it did in the release's folder. The folder goes
-/// when this drops.
-pub(crate) struct StagedFiles {
-    dir: tempfile::TempDir,
-}
-
-impl StagedFiles {
-    /// A new, empty folder. Blocking.
-    #[expect(
-        clippy::disallowed_methods,
-        reason = "file system: temporary copies of a release's files for readers that open a path, which coven does not own"
-    )]
-    pub(crate) fn create() -> std::io::Result<Self> {
-        Ok(Self { dir: tempfile::tempdir()? })
-    }
-
-    /// Where the release file named `name` in its release is staged.
-    pub(crate) fn release_file(&self, name: &str) -> PathBuf {
-        self.dir.path().join("files").join(bae_records::stored_name::file_path(name).local_path())
-    }
-
-    /// Where the release's cover is staged.
-    fn cover(&self) -> PathBuf {
-        self.dir.path().join("cover")
-    }
-
-    /// Write `bytes` to `path`, one of this folder's paths, making the
-    /// folders above it.
-    pub(crate) async fn write(
-        &self,
-        diagnostics: &Diagnostics,
-        path: PathBuf,
-        bytes: Vec<u8>,
-    ) -> Result<std::io::Result<()>, TaskFailed> {
-        diagnostics.blocking("stage a release's file", move || write_file(&path, &bytes)).await
-    }
-}
-
-/// Create a file at `path`, making the folders above it. Blocking.
-#[expect(
-    clippy::disallowed_methods,
-    reason = "file system: temporary copies of a release's files for readers that open a path, which coven does not own"
-)]
-fn create_file(path: &Path) -> std::io::Result<std::fs::File> {
-    if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent)?;
-    }
-    std::fs::File::create(path)
-}
-
-/// Write `bytes` to a file at `path`, making the folders above it.
-/// Blocking.
-fn write_file(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
-    use std::io::Write as _;
-    create_file(path)?.write_all(bytes)
 }
 
 #[cfg(test)]

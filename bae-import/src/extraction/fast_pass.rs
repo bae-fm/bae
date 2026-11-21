@@ -16,12 +16,31 @@ use tracing::debug;
 /// Maximum size read from a single `.txt` file.
 const MAX_TEXT_FILE_BYTES: u64 = 100 * 1024;
 
-/// One image the artwork pass will read: the path the analyzer opens, and the
+/// Where one image's bytes are.
+#[derive(Debug, Clone)]
+pub(super) enum ImageSource {
+    /// A file of the person's folder.
+    OnDisk(PathBuf),
+    /// A file of a library release, which coven reads. `name` is its name
+    /// in the release.
+    Library { name: PathBuf, file: super::release::LibraryImageFile },
+}
+
+impl ImageSource {
+    /// The image's path in its folder, or its name in its release.
+    pub(super) fn name(&self) -> &Path {
+        match self {
+            Self::OnDisk(path) | Self::Library { name: path, .. } => path,
+        }
+    }
+}
+
+/// One image the artwork pass will read: where its bytes are, and the
 /// candidate-relative id a barcode read off it names.
 #[derive(Debug, Clone)]
 pub(super) struct ArtworkImage {
-    pub(super) path: PathBuf,
-    /// `None` for a library release's stored cover.
+    pub(super) source: ImageSource,
+    /// `None` for a library release's image.
     pub(super) file_id: Option<String>,
 }
 
@@ -190,7 +209,7 @@ pub(super) fn gather_non_ocr_sources(
     pass.artwork = categorized
         .artwork()
         .map(|f| ArtworkImage {
-            path: f.version.path.clone(),
+            source: ImageSource::OnDisk(f.version.path.clone()),
             file_id: Some(f.relative_path.clone()),
         })
         .collect();

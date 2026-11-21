@@ -141,8 +141,8 @@ fn file_read_failure(
     }
 }
 
-/// An image of the release whose original is gone fails the gathering of the
-/// release's artwork with coven's reason, rather than being skipped.
+/// An image of the release whose original is gone fails its read with coven's
+/// reason, rather than being skipped.
 #[tokio::test]
 async fn a_missing_image_original_fails_the_artwork_gathering() {
     use bae_util::content_type::ContentType;
@@ -160,14 +160,9 @@ async fn a_missing_image_original_fails_the_artwork_gathering() {
     records.insert_file_for_test(&file, &original).await.unwrap();
     temp.remove(&original);
 
-    let result = resolve_release_artwork_paths(
-        &db,
-        &records,
-        db.test_sources().files(),
-        &bae_diagnostics::Diagnostics::noop(),
-        &release_id,
-    )
-    .await;
+    let images = resolve_release_artwork(&records, &release_id).await.unwrap();
+    let (_, image) = &images[0];
+    let result = read_library_image(&db, &records, db.test_sources().files(), image).await;
 
     match result {
         Err(ReleaseArtworkError::ImageRead {
@@ -180,19 +175,15 @@ async fn a_missing_image_original_fails_the_artwork_gathering() {
                 "coven reports the original missing: {error}"
             );
         }
-        Err(error) => panic!("the gathering failed otherwise: {error}"),
-        Ok(_) => panic!("the gathering succeeded without the image"),
+        Err(error) => panic!("the read failed otherwise: {error}"),
+        Ok(_) => panic!("the read succeeded without the image"),
     }
 }
 
-/// The OCR pass reads a copy of each image of the release, holding the bytes
-/// coven read.
+/// The OCR pass lists each image of the release by its name in the release and
+/// reads the bytes coven holds for it.
 #[tokio::test]
-#[expect(
-    clippy::disallowed_methods,
-    reason = "file system: reads the copy bae staged in its own temporary folder, a file no library holds"
-)]
-async fn the_artwork_gathering_stages_each_image_coven_reads() {
+async fn the_artwork_listing_names_each_image_and_coven_reads_its_bytes() {
     use bae_util::content_type::ContentType;
 
     let temp = TestFolder::new();
@@ -212,19 +203,13 @@ async fn the_artwork_gathering_stages_each_image_coven_reads() {
         .await
         .unwrap();
 
-    let (paths, _staged) = resolve_release_artwork_paths(
-        &db,
-        &records,
-        db.test_sources().files(),
-        &bae_diagnostics::Diagnostics::noop(),
-        &release_id,
-    )
-    .await
-    .unwrap();
+    let images = resolve_release_artwork(&records, &release_id).await.unwrap();
 
-    assert_eq!(paths.len(), 1, "one image and no cover: {paths:?}");
-    assert!(paths[0].ends_with("Scans/back.jpg"), "{paths:?}");
-    assert_eq!(std::fs::read(&paths[0]).unwrap(), b"the back cover");
+    assert_eq!(images.len(), 1, "one image and no cover: {images:?}");
+    assert_eq!(images[0].0, std::path::Path::new("Scans/back.jpg"));
+    let bytes =
+        read_library_image(&db, &records, db.test_sources().files(), &images[0].1).await.unwrap();
+    assert_eq!(bytes, b"the back cover");
 }
 
 /// Re-identify reads LOG/CUE from the release's library files, not from a

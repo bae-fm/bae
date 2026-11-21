@@ -11,6 +11,23 @@ use lofty::config::WriteOptions;
 use lofty::file::{AudioFile, TaggedFile};
 use lofty::tag::TagExt;
 
+/// The JPEG magic bytes, which are all the import checks to take a file as an
+/// image.
+const JPEG_MAGIC: [u8; 5] = [0xFF, 0xD8, 0xFF, 0xE0, 0x00];
+
+/// The bytes of an image file that holds `name` after the JPEG magic, so an
+/// analyzer that is handed only an image's bytes can tell which image it is.
+pub fn image_named(name: &str) -> Vec<u8> {
+    let mut image = JPEG_MAGIC.to_vec();
+    image.extend_from_slice(name.as_bytes());
+    image
+}
+
+/// The name [`image_named`] put in `image`; empty for an image with none.
+pub fn image_name(image: &[u8]) -> &str {
+    std::str::from_utf8(&image[JPEG_MAGIC.len()..]).expect("an image named by image_named")
+}
+
 /// The FLAC tracks' folder: `01 Test Track 1.flac` to `03 Test Track 3.flac`
 /// and `96khz_test.flac`.
 pub fn flac_dir() -> PathBuf {

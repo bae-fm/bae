@@ -9,10 +9,11 @@ use super::{
 };
 use crate::extraction::analyzer::{ArtworkAnalysis, ArtworkAnalyzer, ArtworkUnreadable};
 use crate::extraction::candidate_text::{Source, SourcedLine};
-use crate::extraction::fast_pass::ArtworkImage;
+use crate::extraction::fast_pass::{ArtworkImage, ImageSource};
+use crate::extraction::release::read_library_image;
 use bae_catalogs::InternalFailure;
 use bae_identify::signals::{ArtworkScan, BarcodeSignal, Signals, SourcedValue, TextSignal};
-use coven::task::{BugSinkRef, CompletingTask};
+use coven::task::CompletingTask;
 use std::collections::VecDeque;
 use std::sync::Arc;
 use tokio::sync::{OwnedSemaphorePermit, TryAcquireError};
@@ -30,22 +31,53 @@ struct ImageRead<'a> {
 }
 
 impl<'a> ImageRead<'a> {
-    fn start(
-        bugs: BugSinkRef,
+    /// Take the image's bytes and hand them to the analyzer on the blocking
+    /// pool. A library image's bytes come from coven here, in one place of
+    /// the open-files budget; a folder's image opens in its own place on the
+    /// pool. An image that can't be read is as unreadable as one the
+    /// analyzer can't decode.
+    async fn start(
+        inner: &ExtractionServiceInner,
         analyzer: &Arc<dyn ArtworkAnalyzer>,
         image: &'a ArtworkImage,
         permit: OwnedSemaphorePermit,
     ) -> Self {
         let analyzer = analyzer.clone();
-        let path = image.path.clone();
-        ImageRead {
-            image,
-            task: coven::task::blocking_completing(READ_IMAGE, bugs, move || {
-                let analysis = analyzer.analyze(&path);
-                drop(permit);
-                analysis
-            }),
-        }
+        let unreadable = |detail: String| ArtworkUnreadable { detail };
+        let task = match &image.source {
+            ImageSource::Library { file, .. } => {
+                let bytes = read_library_image(&inner.store, &inner.records, &inner.files, file)
+                    .await
+                    .map_err(|error| unreadable(error.to_string()));
+                coven::task::blocking_completing(
+                    READ_IMAGE,
+                    inner.diagnostics.bug_sink(),
+                    move || {
+                        let analysis = bytes.and_then(|bytes| analyzer.analyze(&bytes));
+                        drop(permit);
+                        analysis
+                    },
+                )
+            }
+            ImageSource::OnDisk(path) => {
+                let path = path.clone();
+                let lease = bae_store::lease_one(&inner.files).await;
+                coven::task::blocking_completing(
+                    READ_IMAGE,
+                    inner.diagnostics.bug_sink(),
+                    move || {
+                        let analysis = read_image_file(&path, &lease)
+                            .map_err(|error| {
+                                unreadable(format!("the image couldn't be read: {error}"))
+                            })
+                            .and_then(|bytes| analyzer.analyze(&bytes));
+                        drop(permit);
+                        analysis
+                    },
+                )
+            }
+        };
+        ImageRead { image, task }
     }
 
     /// What the analyzer read off the image, why it could not read it, or why
@@ -57,13 +89,26 @@ impl<'a> ImageRead<'a> {
         match self.task.await {
             Ok(Ok(analysis)) => Ok(analysis),
             Ok(Err(unreadable)) => Err(InternalFailure {
-                detail: format!("{:?}: {}", self.image.path, unreadable.detail),
+                detail: format!("{:?}: {}", self.image.source.name(), unreadable.detail),
             }),
             Err(failed) => Err(InternalFailure {
-                detail: format!("{:?}: {}", self.image.path, diagnostics.bug(failed)),
+                detail: format!("{:?}: {}", self.image.source.name(), diagnostics.bug(failed)),
             }),
         }
     }
+}
+
+/// The bytes of the image file at `path`, opened in a place of `lease`.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "file system: reads an image of the person's folder before coven records it"
+)]
+fn read_image_file(path: &std::path::Path, lease: &coven::FileLease) -> std::io::Result<Vec<u8>> {
+    use std::io::Read as _;
+    let file = lease.place_blocking().open(path)?;
+    let mut bytes = Vec::new();
+    (&*file).read_to_end(&mut bytes)?;
+    Ok(bytes)
 }
 
 /// Wait out the reads a pass that is stopping no longer wants, so none
@@ -164,17 +209,13 @@ pub(super) async fn stream_extraction(
                     }
                 };
                 unstarted.next();
-                in_flight.push_back(ImageRead::start(
-                    inner.diagnostics.bug_sink(),
-                    &analyzer,
-                    image,
-                    permit,
-                ));
+                in_flight.push_back(ImageRead::start(inner, &analyzer, image, permit).await);
             }
             let Some(read) = in_flight.pop_front() else {
                 break;
             };
-            let ArtworkImage { path, file_id } = read.image;
+            let ArtworkImage { source, file_id } = read.image;
+            let path = source.name();
             let analysis = read.finish(&inner.diagnostics).await;
             if token.is_cancelled() {
                 abandon(in_flight, &inner.diagnostics).await;
@@ -209,7 +250,9 @@ pub(super) async fn stream_extraction(
                 }
             }
             for text in analysis.text_lines {
-                gathered.pool.push(SourcedLine::new(Source::Artwork { path: path.clone() }, text));
+                gathered
+                    .pool
+                    .push(SourcedLine::new(Source::Artwork { path: path.to_path_buf() }, text));
             }
             index += 1;
 

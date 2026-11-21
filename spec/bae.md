@@ -1336,9 +1336,12 @@ Tag text declared UTF-8 or UTF-16 is taken as it is.
 
 Reading the artwork means reading text off images, which bae does on macOS
 only. An image the system can't decode or read is not an image with nothing
-printed on it: the candidate's artwork scan fails with the image's path and the
-reason, its barcode and text signals show that failure, and the next run reads
-the image again.
+printed on it: the candidate's artwork scan fails with the image's path (a
+library release's image, its name in the release) and the reason, its barcode
+and text signals show that failure, and the next run reads the image again.
+The reader of the image takes the image file's bytes, which bae reads from the
+person's folder for a candidate and through coven for a library release, with
+no copy of the file kept.
 
 Ana's folder yields a Disc ID from her CUE sheet, the barcode from her scan of
 the case, LBL-1001 from the folder's text, and eleven ISRCs. The fast clues

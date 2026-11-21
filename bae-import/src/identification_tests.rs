@@ -66,7 +66,7 @@ pub(crate) struct BarcodeAnalyzer {
 }
 
 impl ArtworkAnalyzer for BarcodeAnalyzer {
-    fn analyze(&self, _path: &Path) -> Result<ArtworkAnalysis, ArtworkUnreadable> {
+    fn analyze(&self, _image: &[u8]) -> Result<ArtworkAnalysis, ArtworkUnreadable> {
         Ok(ArtworkAnalysis { barcodes: vec![self.barcode.clone()], text_lines: Vec::new() })
     }
 }
@@ -76,12 +76,8 @@ impl ArtworkAnalyzer for BarcodeAnalyzer {
 pub(crate) struct PerFolderBarcodeAnalyzer;
 
 impl ArtworkAnalyzer for PerFolderBarcodeAnalyzer {
-    fn analyze(&self, path: &Path) -> Result<ArtworkAnalysis, ArtworkUnreadable> {
-        let folder = path
-            .parent()
-            .and_then(|dir| dir.file_name())
-            .and_then(|name| name.to_str())
-            .expect("a candidate image sits in a named folder");
+    fn analyze(&self, image: &[u8]) -> Result<ArtworkAnalysis, ArtworkUnreadable> {
+        let folder = crate::test_fixtures::image_name(image);
         let digits: String = folder.chars().filter(|c| c.is_ascii_digit()).collect();
         let ordinal: u32 = digits.parse().expect("a numbered candidate folder");
         Ok(ArtworkAnalysis {
@@ -274,7 +270,9 @@ impl Fixture {
     /// identification runs through the artwork barcode.
     pub(crate) fn barcode_candidate(&self, folder: &str) -> PathBuf {
         let dir = self.candidate_dir(folder);
-        self.temp.write(dir.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0, 0x00]);
+        // The image holds its folder's name, which the analyzer reads.
+        let folder_name = dir.file_name().and_then(|name| name.to_str()).expect("a named folder");
+        self.temp.write(dir.join("cover.jpg"), crate::test_fixtures::image_named(folder_name));
         dir
     }
 

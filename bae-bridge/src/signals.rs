@@ -2,7 +2,6 @@
 //! lives here because the callback trait is a uniffi export.
 
 use bae_import::extraction::{ArtworkAnalysis, ArtworkAnalyzer, ArtworkUnreadable};
-use std::path::Path;
 
 use crate::types::{ArtworkAnalyzerCallback, BridgeArtworkUnreadable};
 
@@ -19,8 +18,8 @@ impl ArtworkAnalyzerAdapter {
 }
 
 impl ArtworkAnalyzer for ArtworkAnalyzerAdapter {
-    fn analyze(&self, path: &Path) -> Result<ArtworkAnalysis, ArtworkUnreadable> {
-        match self.callback.analyze(coven::path_bytes(path)) {
+    fn analyze(&self, image: &[u8]) -> Result<ArtworkAnalysis, ArtworkUnreadable> {
+        match self.callback.analyze(image.to_vec()) {
             Ok(analysis) => Ok(analysis.into_core()),
             Err(BridgeArtworkUnreadable::Unreadable { detail }) => {
                 Err(ArtworkUnreadable { detail })

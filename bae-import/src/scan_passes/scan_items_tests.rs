@@ -981,7 +981,7 @@ struct CountingAnalyzer {
 }
 
 impl ArtworkAnalyzer for CountingAnalyzer {
-    fn analyze(&self, _path: &Path) -> Result<ArtworkAnalysis, ArtworkUnreadable> {
+    fn analyze(&self, _image: &[u8]) -> Result<ArtworkAnalysis, ArtworkUnreadable> {
         self.calls.fetch_add(1, Ordering::Relaxed);
         Ok(ArtworkAnalysis::empty())
     }

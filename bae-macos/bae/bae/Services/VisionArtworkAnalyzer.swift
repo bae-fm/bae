@@ -34,16 +34,17 @@ final class VisionArtworkAnalyzer: ArtworkAnalyzerCallback {
 
     /// An image nothing is printed on reads as empty; one that can't be
     /// decoded, prepared or read throws, so core says the image went unread.
-    func analyze(path: Data) throws -> BridgeArtworkAnalysis {
-        let url = URL(filePathBytes: path, isDirectory: false)
-        guard let decoded = decode(url: url) else {
-            logger.error("analyze could not decode \(url.path)")
+    func analyze(image: Data) throws -> BridgeArtworkAnalysis {
+        guard let decoded = decode(data: image) else {
+            logger.error(
+                "analyze could not decode an image of \(image.count) bytes"
+            )
             throw BridgeArtworkUnreadable.Unreadable(
                 detail: "the image couldn't be decoded"
             )
         }
         guard let cgImage = prepared(decoded.image) else {
-            logger.error("analyze could not prepare \(url.path) for reading")
+            logger.error("analyze could not prepare an image for reading")
             throw BridgeArtworkUnreadable.Unreadable(
                 detail: "the image couldn't be prepared for reading"
             )
@@ -95,7 +96,7 @@ final class VisionArtworkAnalyzer: ArtworkAnalyzerCallback {
         }
         catch {
             logger.error(
-                "analyze perform failed for \(url.path): \(String(reflecting: error))"
+                "analyze perform failed: \(String(reflecting: error))"
             )
             throw BridgeArtworkUnreadable.Unreadable(
                 detail:
@@ -113,12 +114,12 @@ final class VisionArtworkAnalyzer: ArtworkAnalyzerCallback {
         Set(observations.compactMap(\.payloadStringValue)).sorted()
     }
 
-    /// The stored image as ImageIO decodes it, with the orientation its
-    /// EXIF names so Vision reads it upright.
+    /// The image file's bytes as ImageIO decodes them, with the orientation
+    /// its EXIF names so Vision reads it upright.
     private func decode(
-        url: URL
+        data: Data
     ) -> (image: CGImage, orientation: CGImagePropertyOrientation)? {
-        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
             let image = CGImageSourceCreateImageAtIndex(source, 0, nil)
         else {
             return nil

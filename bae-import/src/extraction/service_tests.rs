@@ -9,7 +9,7 @@ use bae_identify::signals::ArtworkScan;
 use bae_util::test_channels::HANG_GUARD;
 use bae_util::test_files::TestFolder;
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::Mutex as StdMutex;
 use std::time::Duration;
@@ -48,12 +48,12 @@ impl StubAnalyzer {
 }
 
 impl ArtworkAnalyzer for StubAnalyzer {
-    fn analyze(&self, path: &Path) -> Result<ArtworkAnalysis, ArtworkUnreadable> {
+    fn analyze(&self, image: &[u8]) -> Result<ArtworkAnalysis, ArtworkUnreadable> {
         self.calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         if let Some(gate) = &self.gate {
             gate.pass();
         }
-        let filename = path.file_name().and_then(|n| n.to_str()).unwrap_or_default().to_string();
+        let filename = crate::test_fixtures::image_name(image).to_string();
         let text_lines = self.responses.lock().unwrap().get(&filename).cloned().unwrap_or_default();
         Ok(ArtworkAnalysis { barcodes: Vec::new(), text_lines })
     }
@@ -62,7 +62,7 @@ impl ArtworkAnalyzer for StubAnalyzer {
 pub(super) struct PanicAnalyzer;
 
 impl ArtworkAnalyzer for PanicAnalyzer {
-    fn analyze(&self, _path: &Path) -> Result<ArtworkAnalysis, ArtworkUnreadable> {
+    fn analyze(&self, _image: &[u8]) -> Result<ArtworkAnalysis, ArtworkUnreadable> {
         panic!("OCR analyzer panicked");
     }
 }
@@ -162,11 +162,6 @@ pub(super) fn fixture_flac() -> Vec<u8> {
     ))
 }
 
-/// Just the JPEG magic — enough for `is_valid_image` to accept it.
-pub(super) fn minimal_jpeg() -> Vec<u8> {
-    vec![0xFF, 0xD8, 0xFF, 0xE0, 0x00]
-}
-
 /// A release folder holding one FLAC plus the given images and documents.
 pub(super) fn build_release(
     tmp: &TestFolder,
@@ -178,7 +173,7 @@ pub(super) fn build_release(
     tmp.create_folder(&folder);
     tmp.write(folder.join("01 - Track.flac"), fixture_flac());
     for img in images {
-        tmp.write(folder.join(img), minimal_jpeg());
+        tmp.write(folder.join(img), crate::test_fixtures::image_named(img));
     }
     for (name, content) in documents {
         tmp.write(folder.join(name), content.as_bytes());
@@ -441,7 +436,7 @@ async fn no_analyzer_still_settles_cue_catalog_barcodes() {
     let folder = tmp.path().join("Album Title");
     tmp.create_folder(&folder);
     tmp.write(folder.join("audio.flac"), fixture_flac());
-    tmp.write(folder.join("Cover.jpg"), minimal_jpeg());
+    tmp.write(folder.join("Cover.jpg"), crate::test_fixtures::image_named("Cover.jpg"));
     let cue = "CATALOG 0075678164521\n\
 FILE \"audio.flac\" WAVE\n  \
   TRACK 01 AUDIO\n    \
