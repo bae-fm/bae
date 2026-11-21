@@ -457,14 +457,55 @@ struct SetupStep<Fields: View, Leading: View>: View {
             case iCloud
         }
 
-        /// The screen the wizard opens on.
-        let step: WizardStep
+        /// The screen the wizard opens on, with what it holds.
+        enum Screen {
+            /// The list of providers, with one selected.
+            case providers(chosen: BridgeCloudProvider)
+            /// A provider's own screen.
+            case provider(BridgeCloudProvider, Provider)
+            /// The restore code's screen.
+            case restoreCode(BridgeCloudProvider, RestoreCodeReveal)
+        }
+
+        let screen: Screen
+
+        /// The wizard's step for `screen`.
+        var step: WizardStep {
+            switch screen {
+            case .providers: .selectProvider
+            case .provider(let provider, _): .configure(provider)
+            case .restoreCode(let provider, _): .restoreCode(provider)
+            }
+        }
+
         /// The provider the list has selected.
-        let choice: BridgeCloudProvider
-        /// What the provider's own screen holds, when `step` is that screen.
-        var fields = Provider.iCloud
-        /// The restore code, when `step` is its screen.
-        var reveal = RestoreCodeReveal()
+        var choice: BridgeCloudProvider {
+            switch screen {
+            case .providers(let chosen): chosen
+            case .provider(let provider, _), .restoreCode(let provider, _):
+                provider
+            }
+        }
+
+        /// The provider's own screen, when `screen` is that.
+        var fields: Provider? {
+            if case .provider(_, let fields) = screen {
+                fields
+            }
+            else {
+                nil
+            }
+        }
+
+        /// The restore code, when `screen` is its screen.
+        var reveal: RestoreCodeReveal {
+            if case .restoreCode(_, let reveal) = screen {
+                reveal
+            }
+            else {
+                RestoreCodeReveal()
+            }
+        }
         var run = StorageSetupRun()
     }
 #endif
