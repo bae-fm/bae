@@ -20,36 +20,36 @@ import uniffi.bae_bridge.BridgeAlbumDetail
 /** The component shots of `AndroidDetailScreen`, one for each row of its preview. */
 class AndroidDetailScreenShots : BoardShot() {
     @Test
-    fun androidComponentDetailScreenResting() = detail("android.component.detail-screen.resting") {}
+    fun androidComponentDetailScreenResting() = component("android.component.detail-screen.resting", wide = true) { Detail {} }
 
     @Test
     fun androidComponentDetailScreenMenu() =
-        detail("android.component.detail-screen.menu") { AlbumOptionsMenu(onSetPrimaryRelease = null, onDelete = {}) }
+        component("android.component.detail-screen.menu", wide = true) {
+            Detail { AlbumOptionsMenu(onSetPrimaryRelease = null, onDelete = {}) }
+        }
+}
 
-    private fun detail(
-        id: String,
-        actions: @Composable RowScope.() -> Unit,
-    ) = component(id, wide = true) {
-        Images {
-            AndroidDetailScreen(
-                onBack = {},
-                backLabel = stringResource(R.string.back_to_library),
-                nowPlayingBar = { Bar(playing) },
-                modifier = Modifier.height(480.dp),
-                actions = actions,
-            ) {
-                Box(Modifier.padding(ThemeSpace.edge).weight(1f)) {
-                    AndroidAlbumHeader(
-                        detail = plainDetail,
-                        cover = PreviewData.imageRef(),
-                        galleryItemCount = 0u,
-                        onShowGallery = {},
-                    )
-                }
+/** The detail screen over an album's header, with [actions] in its bar. */
+@Composable
+private fun Detail(actions: @Composable RowScope.() -> Unit) =
+    Images {
+        AndroidDetailScreen(
+            onBack = {},
+            backLabel = stringResource(R.string.back_to_library),
+            nowPlayingBar = { Bar(playing) },
+            modifier = Modifier.height(480.dp),
+            actions = actions,
+        ) {
+            Box(Modifier.padding(ThemeSpace.edge).weight(1f)) {
+                AndroidAlbumHeader(
+                    detail = plainDetail,
+                    cover = PreviewData.imageRef(),
+                    galleryItemCount = 0u,
+                    onShowGallery = {},
+                )
             }
         }
     }
-}
 
 /** Low Tide Hours as the detail screen's preview draws its header: the title, artist and year. */
 private val plainDetail: BridgeAlbumDetail =
