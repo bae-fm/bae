@@ -29,6 +29,30 @@ extension ShotScene {
         )
     }
 
+    static func copperSkyRow(_ number: Int) -> BridgeStorageRow {
+        storageRow(
+            BoardRow(
+                title: "Copper Sky",
+                artist: "Odile Fen",
+                media: PreviewData.media(.cd),
+                state: .onOneDevice,
+                status: .onOneDevice,
+                files: 11,
+                megabytes: 388,
+                added: "2026-10-04"
+            ),
+            releaseId: "rel-shot-\(number)",
+            albumId: "album-shot-\(number)"
+        )
+    }
+
+    /// The three releases the design system's previews list: Copper Sky on
+    /// one device, Field Recordings uploading, Glass Harbor in the cloud,
+    /// as releases 1 to 3.
+    static func threeReleases() -> [BridgeStorageRow] {
+        [copperSkyRow(1), fieldRecordingsRow(2), glassHarborRow(3)]
+    }
+
     static func fieldRecordingsRow(_ number: Int) -> BridgeStorageRow {
         storageRow(
             BoardRow(

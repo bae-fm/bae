@@ -21,7 +21,7 @@ extension ShotScene {
             size: storageWindowSize,
             frame: .window(title: "Storage Manager")
         ) {
-            storageWindow(selected: "rel-row-3", inspector: true)
+            storageWindow(selected: "rel-shot-2", inspector: true)
         },
         ShotScene(
             id: "mac.component.storage-window.filtered",
@@ -29,7 +29,7 @@ extension ShotScene {
             frame: .window(title: "Storage Manager")
         ) {
             storageWindow(
-                rows: [glassHarborRow(1)],
+                rows: threeReleases(),
                 filter: .remote,
                 search: "harbor"
             )
@@ -52,11 +52,11 @@ extension ShotScene {
 
     private static let storageWindowSize = CGSize(width: 900, height: 400)
 
-    /// The Storage Manager window over the board's twelve releases, as the
-    /// app opens it, or over `rows` for a search.
+    /// The Storage Manager window over the preview's three releases, with
+    /// no transfer running, or over `rows` for a search.
     @MainActor
     private static func storageWindow(
-        rows: [BridgeStorageRow] = boardStorageRows,
+        rows: [BridgeStorageRow] = threeReleases(),
         filter: BridgeStorageFilter = .all,
         search: String = "",
         selected: String? = nil,
@@ -66,7 +66,14 @@ extension ShotScene {
             rows: rows,
             search: search,
             selectedReleaseId: selected,
-            inspectorPresented: inspector
+            inspectorPresented: inspector,
+            downloads: [],
+            outputs: [],
+            queues: BridgeStorageQueues(
+                uploads: nil,
+                downloads: nil,
+                outputs: nil
+            )
         )
         let window = MacStorageWindow(
             initialFilter: filter,
@@ -79,7 +86,11 @@ extension ShotScene {
             height: storageWindowSize.height
         )
         return ShotStage(
-            fixture.environment(of: window)
+            fixture.environment(
+                of: window,
+                outputs: OutputStore(),
+                outbox: uploadingOutbox("rel-shot-2")
+            )
         ) {
             fixture.storageManagerStore.list?.count != nil
         }

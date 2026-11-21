@@ -36,23 +36,6 @@ extension ShotScene {
         ),
     ]
 
-    private static func copperSkyRow(_ number: Int) -> BridgeStorageRow {
-        storageRow(
-            BoardRow(
-                title: "Copper Sky",
-                artist: "Odile Fen",
-                media: PreviewData.media(.cd),
-                state: .onOneDevice,
-                status: .onOneDevice,
-                files: 11,
-                megabytes: 388,
-                added: "2026-10-04"
-            ),
-            releaseId: "rel-shot-\(number)",
-            albumId: "album-shot-\(number)"
-        )
-    }
-
     /// Every column at the width the table starts with.
     private static let everyColumn: StorageTableLayout = {
         let layout = StorageTableLayout(
@@ -129,8 +112,4 @@ extension ShotScene {
     }
 
     private static let fullTableWidth: CGFloat = 1_080
-
-    private static func threeReleases() -> [BridgeStorageRow] {
-        [copperSkyRow(1), fieldRecordingsRow(2), glassHarborRow(3)]
-    }
 }
