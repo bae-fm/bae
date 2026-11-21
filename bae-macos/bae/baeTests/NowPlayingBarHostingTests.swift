@@ -97,6 +97,7 @@ struct NowPlayingBarHostingTests {
                 castControl: AnyView(EmptyView())
             )
             .frame(width: 900, height: 100)
+            .environment(ImageStore.stub())
         )
         let hosts = Self.hostingViews(in: view).filter { $0 !== view }
         #expect(hosts.contains { !$0.registeredDraggedTypes.isEmpty })
