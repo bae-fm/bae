@@ -290,12 +290,12 @@
 
   // The sequence, one moment after another, then round again. It never plays the same moment twice running, and the releases differ each time.
   var IMPORT_SHEEP_SEQUENCE = [
-    function (id) { return gobbleMoment(id, 1, [{ kind: 'cover', tone: 'blue' }, { kind: 'vinyl', tone: 'gold' }, { kind: 'cd', tone: 'pink' }]); },
+    function (id) { return gobbleMoment(id, 1, [{ kind: 'cover', tone: 'blue' }, { kind: 'vinyl', tone: 'lime' }, { kind: 'cd', tone: 'pink' }]); },
     function (id) { return catchMoment(id, 'left', { kind: 'vinyl', tone: 'sky' }); },
     function () { return bopMoment(); },
-    function (id) { return gobbleMoment(id, -1, [{ kind: 'cd', tone: 'mint' }, { kind: 'cover', tone: 'coral' }, { kind: 'vinyl', tone: 'orchid' }]); },
+    function (id) { return gobbleMoment(id, -1, [{ kind: 'cd', tone: 'mint' }, { kind: 'cover', tone: 'pink' }, { kind: 'vinyl', tone: 'orchid' }]); },
     function (id) { return inhaleMoment(id, 1, { kind: 'sleeve', tone: 'lime', disc: 'blue' }); },
-    function (id) { return catchMoment(id, 'top', { kind: 'cd', tone: 'coral' }); },
+    function (id) { return catchMoment(id, 'top', { kind: 'cd', tone: 'sky' }); },
     function () { return rollMoment(); },
     function (id) { return catchMoment(id, 'right', { kind: 'cover', tone: 'orchid' }); }
   ];
@@ -398,6 +398,6 @@
         h('g', Object.assign({ key: 'ml', className: 'bae-isheep-marks-left' }, accentLine), h('path', { d: 'M28 -6l-22-40M-12 22l-40-22M-20 72l-44 2' })),
         h('g', Object.assign({ key: 'mt', className: 'bae-isheep-marks-top' }, accentLine), h('path', { d: 'M180 -20l-14-40M240 -30v-44M300 -20l14-40' })),
         // Stars that burst out after a catch, and the heart that floats up.
-        h('g', { key: 'stars' }, [[500, 110, 1.5], [-30, 40, 1.2], [590, 330, 1.1], [-70, 310, 1.35], [250, -150, 1]].map(function (p, i) { return star(i, p, i % 2 ? 'var(--accent-gold-fill)' : 'var(--accent-pink-fill)'); })),
+        h('g', { key: 'stars' }, [[500, 110, 1.5], [-30, 40, 1.2], [590, 330, 1.1], [-70, 310, 1.35], [250, -150, 1]].map(function (p, i) { return star(i, p, i % 2 ? 'var(--accent-lime-fill)' : 'var(--accent-pink-fill)'); })),
         h('g', { key: 'rise', className: 'bae-isheep-rise' }, h('path', { d: 'M0 14C-14 2-26-8-26-20C-26-34-8-38 0-24C8-38 26-34 26-20C26-8 14 2 0 14Z', strokeWidth: 8, style: { fill: 'var(--accent-pink-fill)' } }))));
   }

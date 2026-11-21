@@ -8,10 +8,10 @@
       h(Glyph, { set: 'mac', name: 'search', size: kind === 'search' ? 'medium' : 'small', className: kind === 'inline' ? 'bae-m-tertiary' : null }),
       h('input', { type: 'text', className: 'bae-m-bareinput', defaultValue: props.value || '', placeholder: label, 'aria-label': label, spellCheck: false, disabled: props.off ? true : null }));
   }
-  // A file's transfer ring in the Storage Manager's inspector, filling clockwise from the top: `value` from 0 to 1. `tone`: `activity` (the default), a file moving to or from storage, or `pinning`, a file bae is pinning, over a hairline. `label` names the ring for VoiceOver; without one, the row around it names it.
+  // A file's transfer ring in the Storage Manager's inspector, filling clockwise from the top in the accent over a hairline: `value` from 0 to 1, for a file moving to or from storage or one bae is pinning. `label` names the ring for VoiceOver; without one, the row around it names it.
   function MacProgressRing(props) {
-    var C = 2 * Math.PI * 6, tone = props.tone || 'activity';
-    return h('svg', { width: 16, height: 16, viewBox: '0 0 16 16', className: 'bae-' + tone, role: props.label ? 'img' : null, 'aria-label': props.label || null, 'aria-hidden': props.label ? null : true },
+    var C = 2 * Math.PI * 6;
+    return h('svg', { width: 16, height: 16, viewBox: '0 0 16 16', className: 'bae-accent', role: props.label ? 'img' : null, 'aria-label': props.label || null, 'aria-hidden': props.label ? null : true },
       h('circle', { cx: 8, cy: 8, r: 6, fill: 'none', stroke: 'var(--hairline)', strokeWidth: 2 }),
       h('circle', { cx: 8, cy: 8, r: 6, fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeDasharray: (C * Number(props.value)) + ' ' + C, transform: 'rotate(-90 8 8)' }));
   }
@@ -93,12 +93,12 @@
   function MacImportGroupHeader(props) {
     return h('button', { type: 'button', className: 'bae-plainbtn bae-m-igh', 'aria-expanded': !props.closed }, h(Glyph, { set: 'mac', name: 'down', size: 'badge', className: 'bae-m-tertiary', point: props.closed ? 'forward' : null }), h('span', { className: 'bae-ellipsis' }, props.name));
   }
-  // A line of progress in the surrounding font: the phase, a bar filling the rest of the line, and an optional count. No `value` is a wait of no known length; `activity` fills the bar in the activity colour, for files moving to or from storage.
+  // A line of progress in the surrounding font: the phase, a bar filling the rest of the line, and an optional count. No `value` is a wait of no known length.
   function MacProgressLine(props) {
     var value = props.value == null || props.value === '' ? NaN : Number(props.value);
     return h('div', { className: 'bae-m-pline' },
       h('span', { className: 'bae-m-pline-label' }, props.label),
-      h(ProgressBar, { value: isNaN(value) ? null : value, className: cx('bae-m-pline-bar', props.activity && 'bae-progress-activity'), label: props.label }),
+      h(ProgressBar, { value: isNaN(value) ? null : value, className: 'bae-m-pline-bar', label: props.label }),
       props.detail ? h('span', { className: 'bae-m-pline-detail' }, props.detail) : null);
   }
   // One candidate: cover, title over artist (or the folder's name), the state line, the trailing badge or wait mark. `error` is a skipped folder's reason, under the title and artist or the folder's name.
@@ -109,7 +109,7 @@
     var line1 = props.folder ? h('div', { className: 'bae-m-irow-folder' }, h(Sym, { name: 'folder', size: 13, className: 'bae-muted' }), h('span', { className: 'bae-mono bae-ellipsis' }, props.folder))
       : h('div', { className: 'bae-m-irow-t' }, h('span', { className: cx('bae-ellipsis', !props.title && 'bae-muted') }, props.title || 'Album title'), h('span', props.record ? { className: 'bae-linkout', role: 'img', 'aria-label': 'Identified' } : { className: 'bae-linkout', style: { opacity: 0 }, 'aria-hidden': true }, h(Sym, { name: 'external', size: 13, className: 'bae-muted' })));
     var line2 = props.state === 'importing' ? h('div', { className: 'bae-m-irow-step' }, h(MacProgressLine, { label: props.step || 'Reading files…', value: props.progress == null ? 0.4 : props.progress }))
-      : props.state === 'uploading' ? h('div', { className: 'bae-m-irow-step' }, h(MacProgressLine, { label: 'Uploading', value: props.progress == null ? 0.4 : props.progress, activity: true }))
+      : props.state === 'uploading' ? h('div', { className: 'bae-m-irow-step' }, h(MacProgressLine, { label: 'Uploading', value: props.progress == null ? 0.4 : props.progress }))
       : props.folder ? null : h('div', { className: 'bae-m-irow-sub bae-ellipsis' }, props.artist);
     var line3 = props.error ? h('div', { className: 'bae-m-irow-sub bae-ellipsis' }, props.error) : null;
     return h('div', { className: cx('bae-m-irow', props.grouped && 'bae-m-irow-grouped', props.selected && 'bae-m-irow-selected') },

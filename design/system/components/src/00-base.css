@@ -18,11 +18,13 @@
 
 .bae-tone-neutral { --bae-tone: var(--text-secondary); --bae-tone-tint: var(--neutral-tint); }
 .bae-tone-accent { --bae-tone: var(--accent); --bae-tone-tint: var(--accent-tint); }
-.bae-tone-info { --bae-tone: var(--info); --bae-tone-tint: var(--info-tint); --bae-tone-notice: var(--info-notice); --bae-tone-icon: var(--info-icon); }
+/* Info draws in the accent. An info notice takes the neutral fill in dark, as every toned notice does, and the accent's tint in light. The nearest theme sets which, as tokens.css sets the tokens. */
+:root, [data-theme="dark"] { --bae-info-notice: var(--neutral-tint); }
+[data-theme="light"] { --bae-info-notice: var(--accent-tint); }
+.bae-tone-info { --bae-tone: var(--accent); --bae-tone-tint: var(--accent-tint); --bae-tone-notice: var(--bae-info-notice); --bae-tone-icon: var(--accent); }
 .bae-tone-success { --bae-tone: var(--success); --bae-tone-tint: var(--success-tint); --bae-tone-notice: var(--success-notice); --bae-tone-icon: var(--success-icon); }
 .bae-tone-warning { --bae-tone: var(--warning); --bae-tone-tint: var(--warning-tint); --bae-tone-notice: var(--warning-notice); --bae-tone-icon: var(--warning-icon); }
 .bae-tone-danger { --bae-tone: var(--danger); --bae-tone-tint: var(--danger-tint); --bae-tone-notice: var(--danger-notice); --bae-tone-icon: var(--danger-icon); }
-.bae-tone-activity { --bae-tone: var(--activity); --bae-tone-tint: var(--activity-tint); }
 .bae-chip { display: inline-flex; align-items: center; gap: var(--space-inline); padding: var(--space-line) var(--space-compact); border-radius: var(--radius-chip); font: var(--type-chip-weight) var(--type-chip-size) var(--font-sans); white-space: nowrap; color: var(--bae-tone); background: var(--bae-tone-tint); }
 .bae-notice { padding: var(--space-group); border-radius: var(--radius-control); color: var(--text-primary); background: var(--bae-tone-notice, var(--bae-tone-tint)); }
 .bae-notice-with-icon { display: flex; align-items: flex-start; gap: var(--space-related); }

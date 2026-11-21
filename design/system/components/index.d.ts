@@ -3,7 +3,7 @@ import type * as React from 'react';
 // ---- macOS ----
 
 /** The Settings window: the pane list on the left, the pane on the right. title heads the pane; back names the pane a Back button returns to. status puts a short status beside statusPane in the pane list, in statusTone. A MacSheet with overlay inside covers the whole window. The window is 600 pt tall; a pane taller than that runs under its bottom edge, and scroll (px) draws it scrolled that far, and the heading stays in place. */
-export interface MacSettingsWindowProps { pane: 'Appearance' | 'Library' | 'Playback' | 'Transfers' | 'Storage' | 'Import' | 'Save as' | 'Subsonic' | 'Automation' | 'About'; title: string; back?: string; statusPane?: string; status?: string; statusTone?: 'warning' | 'danger' | 'success' | 'activity'; width?: number; height?: number; front?: boolean; children?: React.ReactNode }
+export interface MacSettingsWindowProps { pane: 'Appearance' | 'Library' | 'Playback' | 'Transfers' | 'Storage' | 'Import' | 'Save as' | 'Subsonic' | 'Automation' | 'About'; title: string; back?: string; statusPane?: string; status?: string; statusTone?: 'warning' | 'danger' | 'success'; width?: number; height?: number; front?: boolean; children?: React.ReactNode }
 export declare function MacSettingsWindow(props: MacSettingsWindowProps): React.ReactElement;
 
 /** A plain macOS window with traffic lights and no sidebar (the welcome window). A MacAlert inside covers it. */
@@ -33,7 +33,7 @@ export interface MacBoxProps { empty?: string; children?: React.ReactNode }
 export declare function MacBox(props: MacBoxProps): React.ReactElement;
 
 /** One line of a MacBox: label on the left, then value (grey, or in tone with a dot), controls passed as children, and a chevron when it opens something. action draws the label as an accent action ("Invite…"); destructive colors it danger, for an action that removes something. */
-export interface MacRowProps { label?: string; info?: boolean; destructive?: boolean; strong?: boolean; tag?: string; note?: string; /** Text after the note, as MacCopyText: selectable, with a copy button on hover. A list of more than one ends the note in a colon and puts each in a bullet under it, with `after` words that aren't copied (“(Wi-Fi)”). */ copy?: string | { text: string; after?: string }[]; copyHover?: boolean; noteTone?: 'danger' | 'warning' | 'success'; value?: string; tone?: 'success' | 'warning' | 'danger' | 'activity' | 'accent'; chevron?: boolean; selected?: boolean; action?: boolean; nested?: boolean; off?: boolean; onClick?: () => void; /** A row the person clicks that neither `chevron`, `action` nor `destructive` marks: a Welcome library. It reads as a button named by its words. */ button?: boolean; children?: React.ReactNode }
+export interface MacRowProps { label?: string; info?: boolean; destructive?: boolean; strong?: boolean; tag?: string; note?: string; /** Text after the note, as MacCopyText: selectable, with a copy button on hover. A list of more than one ends the note in a colon and puts each in a bullet under it, with `after` words that aren't copied (“(Wi-Fi)”). */ copy?: string | { text: string; after?: string }[]; copyHover?: boolean; noteTone?: 'danger' | 'warning' | 'success'; value?: string; tone?: 'success' | 'warning' | 'danger' | 'accent'; chevron?: boolean; selected?: boolean; action?: boolean; nested?: boolean; off?: boolean; onClick?: () => void; /** A row the person clicks that neither `chevron`, `action` nor `destructive` marks: a Welcome library. It reads as a button named by its words. */ button?: boolean; children?: React.ReactNode }
 /** What belongs to the row above it and is more than one setting (a field with its explanation): joined to that row with no line, text in secondary. */
 export declare function MacNested(props: { children?: React.ReactNode }): React.ReactElement;
 /** An ⓘ after a row's name that opens a popover saying what the name can't. */
@@ -77,7 +77,7 @@ export interface MacSwitchProps { on?: boolean; label: string; off?: boolean }
 export declare function MacSwitch(props: MacSwitchProps): React.ReactElement;
 
 /** The eight accent swatches in the order the appearance settings offer them; selected names the chosen one. */
-export interface MacAccentPickerProps { selected?: 'blue' | 'orchid' | 'pink' | 'coral' | 'gold' | 'lime' | 'mint' | 'sky'; label?: string }
+export interface MacAccentPickerProps { selected?: 'blue' | 'orchid' | 'pink' | 'lime' | 'mint' | 'sky'; label?: string }
 export declare function MacAccentPicker(props: MacAccentPickerProps): React.ReactElement;
 
 /** A menu as it shows when open: MacMenuItems in a panel. */
@@ -137,7 +137,7 @@ export interface AndroidStepProps { title: string; text?: string; top?: boolean;
 export declare function AndroidStep(props: AndroidStepProps): React.ReactElement;
 
 /** One line of a card: title (with a tag chip after it), a subtitle under it (in tone with a dot), controls as children, and an icon on the right. action draws the title as an accent action; destructive colors it danger, for an action that removes something. place and joinsNext are AndroidCard's: it passes each row its place among its rows (first, middle, last, alone), which sets the row's tile and corners, and whether the next row is nested under it. */
-export interface AndroidRowProps { title: string; tag?: string; subtitle?: string; value?: string; tone?: 'success' | 'warning' | 'danger' | 'activity' | 'accent'; icon?: 'chevron' | 'edit' | 'expand' | 'more' | 'refresh'; leadingIcon?: 'add'; action?: boolean; destructive?: boolean; selected?: boolean; nested?: boolean; place?: 'first' | 'middle' | 'last' | 'alone'; joinsNext?: boolean; onClick?: () => void; /** A row the person taps that none of `icon`, `action`, `destructive` marks: a Settings page's entry, a row that opens a dialog. It reads as a button named by its words. */ button?: boolean; /** On a row that opens and closes rows under it: whether they show. */ expanded?: boolean; /** Dims a row that can't be used for now, such as the other libraries while one is being removed; a tappable one reads as a disabled button. */ off?: boolean; children?: React.ReactNode }
+export interface AndroidRowProps { title: string; tag?: string; subtitle?: string; value?: string; tone?: 'success' | 'warning' | 'danger' | 'accent'; icon?: 'chevron' | 'edit' | 'expand' | 'more' | 'refresh'; leadingIcon?: 'add'; action?: boolean; destructive?: boolean; selected?: boolean; nested?: boolean; place?: 'first' | 'middle' | 'last' | 'alone'; joinsNext?: boolean; onClick?: () => void; /** A row the person taps that none of `icon`, `action`, `destructive` marks: a Settings page's entry, a row that opens a dialog. It reads as a button named by its words. */ button?: boolean; /** On a row that opens and closes rows under it: whether they show. */ expanded?: boolean; /** Dims a row that can't be used for now, such as the other libraries while one is being removed; a tappable one reads as a disabled button. */ off?: boolean; children?: React.ReactNode }
 export declare function AndroidRow(props: AndroidRowProps): React.ReactElement;
 
 /** kind: filled for the action a screen is for, outlined beside it, text in dialogs and rows. large is the full-width size on the welcome screen. */
@@ -161,7 +161,7 @@ export interface AndroidSwitchProps { on?: boolean; label: string }
 export declare function AndroidSwitch(props: AndroidSwitchProps): React.ReactElement;
 
 /** The eight accent swatches in the order the appearance settings offer them; selected names the chosen one. */
-export interface AndroidAccentPickerProps { selected?: 'blue' | 'orchid' | 'pink' | 'coral' | 'gold' | 'lime' | 'mint' | 'sky'; label?: string }
+export interface AndroidAccentPickerProps { selected?: 'blue' | 'orchid' | 'pink' | 'lime' | 'mint' | 'sky'; label?: string }
 export declare function AndroidAccentPicker(props: AndroidAccentPickerProps): React.ReactElement;
 
 /** An outlined text field with its label on the border. helper is a grey line under it; error a red one, shown when state is error. */
@@ -197,7 +197,7 @@ export declare function AndroidSpinner(props: AndroidSpinnerProps): React.ReactE
 
 // ---- Both ----
 
-export type StatusTone = 'neutral' | 'accent' | 'info' | 'success' | 'warning' | 'danger' | 'activity';
+export type StatusTone = 'neutral' | 'accent' | 'info' | 'success' | 'warning' | 'danger';
 /** A short label on its tone's tint: a status, a count, a tag or a role. */
 export interface StatusChipProps { tone?: StatusTone; children?: React.ReactNode }
 export declare function StatusChip(props: StatusChipProps): React.ReactElement;
@@ -211,7 +211,7 @@ export declare function AndroidScanCode(props: AndroidScanCodeProps): React.Reac
 /** A message on its tone's tint. */
 /** A tinted box in a tone, led by the tone's glyph unless `icon` is false; `set: 'mac'` draws macOS's glyph, top-aligned. */
 export interface NoticeProps { tone?: StatusTone; title?: string; subtitle?: string; action?: string; secondary?: string; layout?: 'paragraph' | 'centered'; buttons?: 'inline' | 'below'; dismiss?: boolean; quiet?: boolean; stage?: boolean; icon?: boolean; children?: React.ReactNode }
-/** A tone's glyph in the tone's colour, a filled circle with its mark; `set: 'mac'` draws the macOS stand-in. Neutral, accent and activity draw nothing. */
+/** A tone's glyph in the tone's colour, a filled circle with its mark; `set: 'mac'` draws the macOS stand-in. Neutral and accent draw nothing. */
 /** Material's disclosure row: its own card, expand_more or expand_less at the end; the AndroidRows it shows join the card. */
 export declare function AndroidDisclosure(props: { label: string; summary?: string; open?: boolean; children?: React.ReactNode }): React.ReactElement;
 export declare function StatusGlyph(props: { tone: StatusTone; set?: 'mac'; muted?: boolean; inline?: boolean; size?: number; className?: string }): React.ReactElement | null;
@@ -272,7 +272,7 @@ export declare function AndroidPinControl(props: AndroidPinControlProps): React.
 export declare function AndroidUploadLine(props: { phase?: string; missing?: string }): React.ReactElement;
 export interface MacAlbumPanelProps { title: string; artist?: string; year?: string; releases?: string; release?: string; edition?: string; copy?: string; /** The release's audio as bae read it, the panel's last line, after the tracks, credits and works. */ audio?: string; unplayable?: string; unplayableHover?: boolean; noCover?: boolean; options?: string; optionsOpen?: boolean; highlighted?: string; /** The album's stars, 0 while no one has rated it; leave it out to draw no rating. */ rating?: number | string; children?: React.ReactNode; /** The library's rating system for albums: `heart` shows one heart at three stars or more in place of the rating, `none` shows no rating. */ ratingSystem?: 'stars' | 'heart' | 'none'; }
 /** A line of progress: the phase, a bar filling the rest of the line, an optional count. No `value` is a wait of no known length. */
-export declare function MacProgressLine(props: { label: string; value?: number | string; detail?: string; activity?: boolean }): React.ReactElement;
+export declare function MacProgressLine(props: { label: string; value?: number | string; detail?: string }): React.ReactElement;
 /** Every catalog that describes a release, as a wrapped row of links (`records`: catalog names, comma-separated). */
 export declare function MacRecordLinks(props: { records: string; /** Each catalog is a button, as on a found album's card. */ buttons?: boolean }): React.ReactElement;
 /** A row's ⋯ / ⋮ button with the row's actions in its menu; `open` draws the menu, `items` its entries ("-" for a line). */
@@ -468,8 +468,8 @@ export interface MacSavePanelFormatProps { value: string; open?: boolean; items?
 export declare function MacSavePanelFormat(props: MacSavePanelFormatProps): React.ReactElement;
 /** A search or filter field: the magnifier, then the text. kind search is the title bar's rounded field, filter a toolbar's 160pt field, inline a field with no box that fills the rest of its row. label names it and shows while it is empty. off dims a field that has nothing to filter. */
 export declare function MacSearchField(props: { kind?: 'search' | 'filter' | 'inline'; label?: string; value?: string; focused?: boolean; off?: boolean }): React.ReactElement;
-/** A ring that fills clockwise from the top with value, from 0 to 1: accent, or activity and pinning for a file's transfer. label names it for VoiceOver. */
-export declare function MacProgressRing(props: { value: number | string; tone?: 'activity' | 'pinning'; label?: string }): React.ReactElement;
+/** A ring that fills clockwise from the top with value, from 0 to 1, in the accent, for a file's transfer. label names it for VoiceOver. */
+export declare function MacProgressRing(props: { value: number | string; label?: string }): React.ReactElement;
 /** Found, Imported and Skipped, each a tab with its count; tab is the open one. */
 export declare function MacImportTabs(props: { tab?: 'Found' | 'Imported' | 'Skipped'; found?: string; imported?: string; skipped?: string }): React.ReactElement;
 /** The import list's filter row: the Filter field, the narrowed count, the identifying ring, importing, scanning and the ⋯ menu with its filter dot. */

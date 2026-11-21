@@ -8,7 +8,7 @@ its output is not checked in. Both platforms get the same roles, so change
 values there rather than adding a platform palette.
 
 Appearance settings have three independent choices: System/Light/Dark mode,
-Blue/Orchid/Pink/Coral/Gold/Lime/Mint/Sky accent, and
+Blue/Orchid/Pink/Lime/Mint/Sky accent, and
 Neutral/Slate/Plum/Midnight/Forest/Sand background tone. A new installation
 shows System mode, the Pink accent and the Plum tone. The mode default is
 each app's own. The accent and tone are the ones `[standard]` in
@@ -41,9 +41,10 @@ Multicolor. macOS cannot change that colour while the app runs, so what the
 person's chosen accent must colour, such as the chosen Settings pane, is drawn
 by the app.
 Semantic colours do not change with the tone or accent: danger for errors,
-warning for what needs attention, success, info, activity for work in
-progress such as a transfer, an upload among them, and pinning for files
-downloading to stay on a device. Hover, pressed, hairline, scrim, shadow and the
+warning for what needs attention, and success. Info, uploads and pins have no
+colour of their own: an info notice's glyph and the bars, rings and chips of
+uploads and pins draw in the chosen accent, and in light an info notice fills
+with the accent's tint. Hover, pressed, hairline, scrim, shadow and the
 image viewer's backdrop are semantic too, as are onFill and onFillSecondary for
 text on fills, artwork and the backdrop. A colour laid behind its own text,
 such as a status chip's fill, uses it at the `tint` opacity. The opacities
@@ -96,7 +97,7 @@ an icon role as their `size` and draw it at `--icon-<role>` on macOS and
 drawing.
 
 The shared components are defined once per platform: `StatusTone` (neutral,
-accent, info, success, warning, danger, activity), a `StatusChip` for short
+accent, info, success, warning, danger), a `StatusChip` for short
 labels on a tone's fill, a notice (`MacNotice` on the Mac, `AndroidNotice` on
 Android) for a message in a tone, `.card(elevated:)` on Apple, and
 `MacErrorLine` for a failure line on the Mac. A failing sync cycle is one warning `AndroidNotice` in the Activity sheet on Android.

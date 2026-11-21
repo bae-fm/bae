@@ -132,7 +132,7 @@
     var word = function (tone, label) { return h('span', { className: cx('bae-m-storeword', tone && 'bae-tone-' + tone + ' bae-m-storeword-tone') }, label); };
     if (s === 'uploading' || s === 'pinning' || s === 'detaching') {
       var label = s === 'uploading' ? 'Uploading' : s === 'pinning' ? 'Pinning' : props.long ? 'Moving to This Mac…' : 'Moving';
-      return h('span', { className: cx('bae-m-progchip', s === 'uploading' ? 'bae-m-progchip-up' : 'bae-m-progchip-pin') }, h('span', { className: 'bae-m-progchip-fill', style: { width: (Number(props.progress || 0.4) * 100) + '%' } }), h('span', { className: 'bae-m-progchip-label' }, label));
+      return h('span', { className: 'bae-m-progchip' }, h('span', { className: 'bae-m-progchip-fill', style: { width: (Number(props.progress || 0.4) * 100) + '%' } }), h('span', { className: 'bae-m-progchip-label' }, label));
     }
     if (s === 'downloadFailed' || s === 'moveFailed' || s === 'moveToThisDeviceFailed') return word('danger', 'Error');
     if (s === 'queued' || s === 'uploadQueued' || s === 'moveToThisDeviceQueued') return word(null, props.long ? { queued: 'Queued to pin', uploadQueued: 'Queued to upload', moveToThisDeviceQueued: 'Queued to move to This Mac' }[s] : 'Queued');
@@ -156,7 +156,7 @@
   function MacQueueRate(props) {
     var kind = props.kind || 'uploads', wait = props.wait, paused = wait === 'Paused', label = QUEUE_PAUSE[kind];
     return h('span', { className: 'bae-m-storefoot-q' },
-      h(Sym, { name: kind === 'exports' ? 'export' : kind === 'uploads' ? 'up' : 'down', size: 11, className: kind === 'uploads' ? 'bae-activity' : kind === 'pins' ? 'bae-pinning' : null }),
+      h(Sym, { name: kind === 'exports' ? 'export' : kind === 'uploads' ? 'up' : 'down', size: 11, className: kind === 'exports' ? null : 'bae-accent' }),
       wait ? h('span', null, wait) : props.rate ? h('span', { className: 'bae-num' }, props.rate) : null,
       h('span', { title: paused ? label.replace('Pause', 'Resume') : label }, h(Sym, { name: paused ? 'play' : 'pause', size: 10 })));
   }
@@ -175,16 +175,16 @@
     var parts = list(props.counts);
     return h('div', { className: 'bae-m-tsum' },
       h('div', { className: 'bae-m-tsum-line' },
-        h('span', { className: 'bae-m-tsum-counts' }, parts.map(function (p, i) { return h(React.Fragment, { key: i }, i ? h('span', { className: 'bae-muted' }, ' · ') : null, h('span', { className: i === 0 ? cx('bae-strong', kind === 'upload' ? 'bae-activity' : 'bae-pinning') : i === parts.length - 1 ? 'bae-muted' : null }, p)); })),
+        h('span', { className: 'bae-m-tsum-counts' }, parts.map(function (p, i) { return h(React.Fragment, { key: i }, i ? h('span', { className: 'bae-muted' }, ' · ') : null, h('span', { className: i === 0 ? 'bae-strong bae-accent' : i === parts.length - 1 ? 'bae-muted' : null }, p)); })),
         h('span', { style: { flex: 1 } }), props.cancel === false ? null : h(MacButton, { size: 'small' }, 'Cancel')),
       props.bytes ? h(MacTransferReadout, { kind: kind, bytes: props.bytes, rate: props.rate, progress: props.progress }) : null);
   }
-  // A transfer's bytes and rate over its 4pt bar, AppKit's own view, since both change many times a second: the bytes moved (`bytes`) at the start and the rate (`rate`, or for a move to This Mac the current file's bytes) at the end, in secondary tabular figures, then the bar filled to `progress` in the upload's colour, or the pin's (`kind: 'pin'`).
+  // A transfer's bytes and rate over its 4pt bar, AppKit's own view, since both change many times a second: the bytes moved (`bytes`) at the start and the rate (`rate`, or for a move to This Mac the current file's bytes) at the end, in secondary tabular figures, then the bar filled to `progress` in the accent; `kind: 'pin'` names the bar Pinning, and an upload's is Uploading.
   function MacTransferReadout(props) {
     var pin = props.kind === 'pin';
     return h('div', { className: 'bae-m-readout' },
       h('div', { className: 'bae-m-readout-line bae-num' }, h('span', null, props.bytes), h('span', null, props.rate)),
-      h('div', { className: cx('bae-m-readout-bar', pin ? 'bae-m-readout-pin' : 'bae-m-readout-up') }, h(ProgressBar, { value: Number(props.progress || 0.3), label: pin ? 'Pinning' : 'Uploading' })));
+      h('div', { className: 'bae-m-readout-bar' }, h(ProgressBar, { value: Number(props.progress || 0.3), label: pin ? 'Pinning' : 'Uploading' })));
   }
   // One file in the inspector: a mark for queued to upload (`queued`), to pin (`pin-queued`) or to move to This Mac (`move-queued`), all dashed, sending, pinning or moving to This Mac (`moving`, a ring filling), or the file a move stopped on (`error`, in danger) or an upload waits for (`waiting`, in warning); its name and size. The mark is the only thing on the row that says where the file stands, so it is an image named by those words.
   function MacFileRow(props) {
@@ -195,10 +195,10 @@
     var download = s === 'pinning' || s === 'moving';
     var mark = s === 'rest' ? null : s === 'error' ? bang('danger') : s === 'waiting' ? bang('warning') :
       queued ? h('svg', { width: 16, height: 16, viewBox: '0 0 16 16', role: 'img', 'aria-label': label, className: 'bae-muted' }, h('circle', { cx: 8, cy: 8, r: 6, fill: 'none', stroke: 'currentColor', strokeWidth: 1.75, strokeDasharray: '2 2' })) :
-      h(MacProgressRing, { tone: download ? 'pinning' : 'activity', value: props.progress || 0.4, label: label });
+      h(MacProgressRing, { value: props.progress || 0.4, label: label });
     return h('div', { className: cx('bae-m-filerow', props.selected && 'bae-m-filerow-selected') },
       h(MacItem, { lead: mark, trail: h('span', { className: 'bae-muted bae-num' }, props.size) },
-        h('div', { className: cx('bae-ellipsis', queued && 'bae-muted', s === 'sending' && 'bae-activity', download && 'bae-pinning') }, props.name)));
+        h('div', { className: cx('bae-ellipsis', queued && 'bae-muted', (s === 'sending' || download) && 'bae-accent') }, props.name)));
   }
   // Label and value pairs in two columns, the labels in secondary text: a file's facts, a release's fields, an album's credits. `facts` is a list of [label, value] pairs, or text with one "Label: value" a pair, separated by semicolons; a pair with no value is left out. `numeric` names the labels whose values are numbers, drawn in tabular figures (Size).
   function MacFactsGrid(props) {

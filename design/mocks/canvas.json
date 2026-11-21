@@ -3083,7 +3083,7 @@
    "y": 1200
   },
   "brand.accents.neutral.dc.html": {
-   "h": 480,
+   "h": 380,
    "page": "logo",
    "title": "Accents: Neutral",
    "w": 1460,
@@ -3091,7 +3091,7 @@
    "y": 2160
   },
   "brand.accents.slate.dc.html": {
-   "h": 480,
+   "h": 380,
    "page": "logo",
    "title": "Accents: Slate",
    "w": 1460,
@@ -3099,7 +3099,7 @@
    "y": 2720
   },
   "brand.accents.plum.dc.html": {
-   "h": 480,
+   "h": 380,
    "page": "logo",
    "title": "Accents: Plum",
    "w": 1460,
@@ -3107,7 +3107,7 @@
    "y": 3280
   },
   "brand.accents.forest.dc.html": {
-   "h": 480,
+   "h": 380,
    "page": "logo",
    "title": "Accents: Forest",
    "w": 1460,
@@ -3115,7 +3115,7 @@
    "y": 4400
   },
   "brand.accents.sand.dc.html": {
-   "h": 480,
+   "h": 380,
    "page": "logo",
    "title": "Accents: Sand",
    "w": 1460,
@@ -3123,7 +3123,7 @@
    "y": 4960
   },
   "brand.accents.midnight.dc.html": {
-   "h": 480,
+   "h": 380,
    "page": "logo",
    "title": "Accents: Midnight",
    "w": 1460,

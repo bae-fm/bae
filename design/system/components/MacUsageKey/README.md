@@ -1,6 +1,6 @@
 # MacUsageKey
 
-One kind in the storage legend of Settings → Storage (`MacStorageUsage`): the kind's colour as a dot, its name and its size. There are four kinds, and the name picks the colour: Pinned blue, Cache gold, Library orchid, From before the reset mint.
+One kind in the storage legend of Settings → Storage (`MacStorageUsage`): the kind's colour as a dot, its name and its size. There are four kinds, and the name picks the colour: Pinned blue, Cache lime, Library orchid, From before the reset mint.
 
 | Prop | |
 | --- | --- |

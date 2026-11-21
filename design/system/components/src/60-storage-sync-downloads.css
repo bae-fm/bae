@@ -5,8 +5,6 @@
 .bae-mono { font: var(--type-mono-weight) var(--type-mono-size) var(--font-mono); }
 .bae-strong { font-weight: var(--type-strong-weight); }
 .bae-ellipsis { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.bae-activity { color: var(--activity); }
-.bae-pinning { color: var(--pinning); }
 .bae-sym { flex: none; }
 .bae-m-iconbtn-on { color: var(--accent); }
 
@@ -36,10 +34,8 @@
 .bae-m-table-td { padding: 0 var(--space-inline); min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; }
 .bae-m-storecell-num { margin-left: auto; }
 .bae-m-relcell { display: flex; align-items: center; gap: var(--space-related); min-width: 0; }
-.bae-m-progchip { position: relative; display: inline-flex; overflow: hidden; padding: var(--space-line) var(--space-compact); border-radius: var(--radius-chip); font: var(--type-chip-weight) var(--type-chip-size) var(--font-sans); color: var(--text-primary); }
-.bae-m-progchip-up { background: var(--activity-tint); --bae-fill: color-mix(in srgb, var(--activity) 26%, transparent); }
-.bae-m-progchip-pin { background: color-mix(in srgb, var(--pinning) 14%, transparent); --bae-fill: color-mix(in srgb, var(--pinning) 26%, transparent); }
-.bae-m-progchip-fill { position: absolute; inset: 0 auto 0 0; background: var(--bae-fill); }
+.bae-m-progchip { position: relative; display: inline-flex; overflow: hidden; padding: var(--space-line) var(--space-compact); border-radius: var(--radius-chip); font: var(--type-chip-weight) var(--type-chip-size) var(--font-sans); color: var(--text-primary); background: var(--accent-tint); }
+.bae-m-progchip-fill { position: absolute; inset: 0 auto 0 0; background: var(--accent-tint-strong); }
 .bae-m-progchip-label { position: relative; }
 .bae-m-storefoot { flex: none; display: flex; align-items: center; gap: var(--space-group); padding: var(--space-related) var(--space-edge); border-top: 1px solid var(--hairline); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); color: var(--text-secondary); }
 .bae-m-storefoot-q { display: inline-flex; align-items: center; gap: var(--space-compact); }
@@ -48,8 +44,6 @@
 .bae-m-readout { display: flex; flex-direction: column; gap: calc(var(--space-related) + var(--space-line)); }
 .bae-m-readout-line { display: flex; justify-content: space-between; font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-secondary); }
 .bae-m-readout-bar .bae-progress-track { height: 4px; }
-.bae-m-readout-up .bae-progress-fill { background: var(--activity); }
-.bae-m-readout-pin .bae-progress-fill { background: var(--pinning); }
 .bae-m-filerow { padding: var(--space-related) var(--space-edge); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
 .bae-m-filerow-selected { background: var(--accent-tint); }
 .bae-m-filedet { margin-top: auto; background: var(--elevated); padding: calc(var(--space-group) + var(--space-line)) var(--space-edge) var(--space-edge); display: flex; flex-direction: column; gap: var(--space-group); border-top: 1px solid var(--hairline); }
@@ -121,7 +115,7 @@
 .bae-m-filename-preview { font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-secondary); }
 /* The dashed edge is drawn inside the value, as the app strokes an overlay, so it adds nothing to its width. */
 .bae-m-tokenadd { padding: var(--space-hairline) var(--space-compact); border-radius: var(--radius-chip); outline: 1px dashed var(--hairline-strong); outline-offset: -1px; color: var(--text-primary); }
-/* Settings → Storage's usage: the total, one bar in kinds, a legend. Each kind keeps one of the accents' selection steps (Pinned blue, Cache gold, Library orchid, From before the reset mint, anything else neutral), the same in both themes, checked for colour-blind separation and 3:1 on the surface in that order. A 2px gap parts the segments. */
+/* Settings → Storage's usage: the total, one bar in kinds, a legend. Each kind keeps one of the accents' selection steps (Pinned blue, Cache lime, Library orchid, From before the reset mint, anything else neutral), the same in both themes, checked for colour-blind separation and 3:1 on the surface in that order. A 2px gap parts the segments. */
 .bae-usage { display: flex; flex-direction: column; gap: var(--space-related); padding: var(--space-group); }
 .bae-usage-total { display: flex; align-items: baseline; gap: var(--space-inline); }
 .bae-usage-num { color: var(--text-primary); }
@@ -131,7 +125,7 @@
 .bae-usage-bar > .bae-usage-seg:first-child { border-radius: var(--radius-bar) var(--radius-bar) var(--radius-bar) var(--radius-bar); }
 .bae-usage-bar > .bae-usage-seg:last-child { border-radius: var(--radius-bar) var(--radius-bar) var(--radius-bar) var(--radius-bar); }
 .bae-usage-seg-1 { background: var(--accent-blue-selection); }
-.bae-usage-seg-2 { background: var(--accent-gold-selection); }
+.bae-usage-seg-2 { background: var(--accent-lime-selection); }
 .bae-usage-seg-3 { background: var(--accent-orchid-selection); }
 .bae-usage-seg-4 { background: var(--accent-mint-selection); }
 .bae-usage-seg-5 { background: var(--hairline-strong); }

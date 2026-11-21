@@ -373,7 +373,7 @@
   }
 
   // The accents in the order the appearance settings offer them.
-  var ACCENTS = ['blue', 'orchid', 'pink', 'coral', 'gold', 'lime', 'mint', 'sky'];
+  var ACCENTS = ['blue', 'orchid', 'pink', 'lime', 'mint', 'sky'];
 
   function accentPicker(className) {
     return function (props) {

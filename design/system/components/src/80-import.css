@@ -31,7 +31,6 @@
 .bae-m-pline-label { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bae-m-pline-bar.bae-progress-track { flex: 1 1 0; min-width: 48px; height: 4px; }
 .bae-m-pline-detail { flex: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.bae-progress-activity .bae-progress-fill { background: var(--activity); }
 .bae-m-ifl { display: flex; align-items: center; gap: var(--space-related); }
 /* The pane scrolls, so it reaches the window's bottom edge and its content runs under that edge; a band of padding below a scrolling pane would cut its content off above the edge. */
 .bae-m-ipane { flex: 1; min-width: 0; height: 100%; overflow: hidden; display: flex; flex-direction: column; gap: var(--space-group); padding: var(--space-section) var(--space-section) 0; box-sizing: border-box; font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }

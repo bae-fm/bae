@@ -6523,10 +6523,12 @@ Platform settings, such as the appearance and restoring playback on launch,
 live in each app. Appearance reads Theme (System, Light, Dark), then Tone, then
 Accent, so named in every locale; Accent names the chosen colour under its
 title, as Theme and Tone show theirs. The apps start with the System theme, the
-Plum tone and the Pink accent. The accents are Blue, Orchid, Pink, Coral, Gold,
-Lime, Mint and Sky, in that order, each named in every locale; a stored accent
-the app doesn't have reads as Pink. On the Mac the chosen Settings pane
-is drawn in the chosen accent's selection colour, and so is the highlighted item
+Plum tone and the Pink accent. The accents are Blue, Orchid, Pink, Lime, Mint
+and Sky, in that order, each named in every locale; a stored accent the app
+doesn't have reads as Pink. bae draws the bars, rings and chips of uploads and
+pins, and the glyph of an info notice, in the chosen accent. On the Mac the
+chosen Settings pane is drawn in the chosen accent's selection colour, and so
+is the highlighted item
 of every menu and pop-up bae draws: a raised face with a hairline edge, the
 chosen item of a pop-up checked, its round chevron button in the control fill.
 Those menus open over or under what opened them, or at the click for a context

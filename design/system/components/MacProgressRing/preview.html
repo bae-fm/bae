@@ -11,8 +11,8 @@
   function box(w, c) { return h('div', { style: { width: w, flex: 'none' } }, c); }
 
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
-    N('Activity', h(B.MacProgressRing, { value: 0.4, tone: 'activity' })),
-    N('Pinning', h(B.MacProgressRing, { value: 0.4, tone: 'pinning' }))));
+    N('Activity', h(B.MacProgressRing, { value: 0.4 })),
+    N('Pinning', h(B.MacProgressRing, { value: 0.4 }))));
 </script>
 </body>
 </html>
