@@ -575,10 +575,9 @@ private struct ParentWindowHeight: NSViewRepresentable {
             resizes = nil
         }
 
-        deinit {
-            if let resizes {
-                NotificationCenter.default.removeObserver(resizes)
-            }
+        override func viewWillMove(toWindow newWindow: NSWindow?) {
+            super.viewWillMove(toWindow: newWindow)
+            stopObserving()
         }
 
         override func viewDidMoveToWindow() {
