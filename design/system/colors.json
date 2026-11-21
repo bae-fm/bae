@@ -1,5 +1,11 @@
 {
   "ground": "background",
+  "comparison": {
+    "name": "Every accent with the status colors",
+    "about": "Each scene draws one accent with the status colors. These switches choose the tone and mode of every scene here.",
+    "scene": "accents-status",
+    "switch": "Accent"
+  },
   "groups": [
     {
       "name": "Surfaces",
@@ -11,6 +17,106 @@
         { "colors": ["tile", "control", "control-edge"] }
       ],
       "scene": "surfaces"
+    },
+    {
+      "name": "Tones a person can choose",
+      "about": "Each of the six tones, in the same eight surfaces. The token of a cell is tone-‹tone›-‹surface›.",
+      "table": {
+        "columns": [
+          { "label": "background", "sets": "background" },
+          { "label": "surface", "sets": "surface" },
+          { "label": "elevated", "sets": "elevated" },
+          { "label": "field", "sets": "field" },
+          { "label": "field-hover", "sets": "field-hover" },
+          { "label": "placeholder", "sets": "placeholder" },
+          { "label": "well", "sets": "well" },
+          { "label": "tile", "sets": "tile", "dot": true }
+        ],
+        "rows": [
+          {
+            "label": "neutral",
+            "colors": [
+              "tone-neutral-background",
+              "tone-neutral-surface",
+              "tone-neutral-elevated",
+              "tone-neutral-field",
+              "tone-neutral-field-hover",
+              "tone-neutral-placeholder",
+              "tone-neutral-well",
+              "tone-neutral-tile"
+            ]
+          },
+          {
+            "label": "slate",
+            "colors": [
+              "tone-slate-background",
+              "tone-slate-surface",
+              "tone-slate-elevated",
+              "tone-slate-field",
+              "tone-slate-field-hover",
+              "tone-slate-placeholder",
+              "tone-slate-well",
+              "tone-slate-tile"
+            ]
+          },
+          {
+            "label": "plum",
+            "colors": [
+              "tone-plum-background",
+              "tone-plum-surface",
+              "tone-plum-elevated",
+              "tone-plum-field",
+              "tone-plum-field-hover",
+              "tone-plum-placeholder",
+              "tone-plum-well",
+              "tone-plum-tile"
+            ]
+          },
+          {
+            "label": "midnight",
+            "colors": [
+              "tone-midnight-background",
+              "tone-midnight-surface",
+              "tone-midnight-elevated",
+              "tone-midnight-field",
+              "tone-midnight-field-hover",
+              "tone-midnight-placeholder",
+              "tone-midnight-well",
+              "tone-midnight-tile"
+            ]
+          },
+          {
+            "label": "forest",
+            "colors": [
+              "tone-forest-background",
+              "tone-forest-surface",
+              "tone-forest-elevated",
+              "tone-forest-field",
+              "tone-forest-field-hover",
+              "tone-forest-placeholder",
+              "tone-forest-well",
+              "tone-forest-tile"
+            ]
+          },
+          {
+            "label": "sand",
+            "colors": [
+              "tone-sand-background",
+              "tone-sand-surface",
+              "tone-sand-elevated",
+              "tone-sand-field",
+              "tone-sand-field-hover",
+              "tone-sand-placeholder",
+              "tone-sand-well",
+              "tone-sand-tile"
+            ]
+          }
+        ]
+      },
+      "switch": {
+        "name": "Tone",
+        "derived": [{ "color": "control", "from": "tile", "themes": ["dark"] }]
+      }
     },
     {
       "name": "Text",
@@ -37,23 +143,96 @@
       "about": "Each of the eight accents, in the same four roles.",
       "table": {
         "columns": [
-          { "label": "accent-‹hue›", "text": true },
-          { "label": "accent-‹hue›-fill" },
-          { "label": "on-accent-‹hue›-fill" },
-          { "label": "accent-‹hue›-selection" }
+          { "label": "accent-‹hue›", "text": true, "sets": "accent" },
+          { "label": "accent-‹hue›-fill", "sets": "accent-fill", "dot": true },
+          { "label": "on-accent-‹hue›-fill", "sets": "on-accent-fill" },
+          { "label": "accent-‹hue›-selection", "sets": "accent-selection" }
         ],
         "rows": [
-          { "label": "blue", "colors": ["accent-blue", "accent-blue-fill", "on-accent-blue-fill", "accent-blue-selection"] },
-          { "label": "orchid", "colors": ["accent-orchid", "accent-orchid-fill", "on-accent-orchid-fill", "accent-orchid-selection"] },
-          { "label": "pink", "colors": ["accent-pink", "accent-pink-fill", "on-accent-pink-fill", "accent-pink-selection"] },
-          { "label": "coral", "colors": ["accent-coral", "accent-coral-fill", "on-accent-coral-fill", "accent-coral-selection"] },
-          { "label": "gold", "colors": ["accent-gold", "accent-gold-fill", "on-accent-gold-fill", "accent-gold-selection"] },
-          { "label": "lime", "colors": ["accent-lime", "accent-lime-fill", "on-accent-lime-fill", "accent-lime-selection"] },
-          { "label": "mint", "colors": ["accent-mint", "accent-mint-fill", "on-accent-mint-fill", "accent-mint-selection"] },
-          { "label": "sky", "colors": ["accent-sky", "accent-sky-fill", "on-accent-sky-fill", "accent-sky-selection"] }
+          {
+            "label": "blue",
+            "colors": [
+              "accent-blue",
+              "accent-blue-fill",
+              "on-accent-blue-fill",
+              "accent-blue-selection"
+            ]
+          },
+          {
+            "label": "orchid",
+            "colors": [
+              "accent-orchid",
+              "accent-orchid-fill",
+              "on-accent-orchid-fill",
+              "accent-orchid-selection"
+            ]
+          },
+          {
+            "label": "pink",
+            "colors": [
+              "accent-pink",
+              "accent-pink-fill",
+              "on-accent-pink-fill",
+              "accent-pink-selection"
+            ]
+          },
+          {
+            "label": "coral",
+            "colors": [
+              "accent-coral",
+              "accent-coral-fill",
+              "on-accent-coral-fill",
+              "accent-coral-selection"
+            ]
+          },
+          {
+            "label": "gold",
+            "colors": [
+              "accent-gold",
+              "accent-gold-fill",
+              "on-accent-gold-fill",
+              "accent-gold-selection"
+            ]
+          },
+          {
+            "label": "lime",
+            "colors": [
+              "accent-lime",
+              "accent-lime-fill",
+              "on-accent-lime-fill",
+              "accent-lime-selection"
+            ]
+          },
+          {
+            "label": "mint",
+            "colors": [
+              "accent-mint",
+              "accent-mint-fill",
+              "on-accent-mint-fill",
+              "accent-mint-selection"
+            ]
+          },
+          {
+            "label": "sky",
+            "colors": [
+              "accent-sky",
+              "accent-sky-fill",
+              "on-accent-sky-fill",
+              "accent-sky-selection"
+            ]
+          }
         ]
       },
-      "scene": "accents"
+      "scene": "accents",
+      "switch": {
+        "name": "Accent",
+        "derived": [
+          { "color": "accent-tint", "from": "accent", "opacity": "opacity-tint" },
+          { "color": "accent-tint-strong", "from": "accent", "opacity": "opacity-tint-strong" },
+          { "color": "on-accent-fill-secondary", "from": "on-accent-fill", "opacity": "0.7" },
+          { "color": "notice-accent", "from": "accent" }
+        ]
+      }
     },
     {
       "name": "Status",
@@ -67,8 +246,14 @@
         ],
         "rows": [
           { "label": "danger", "colors": ["danger", "danger-tint", "danger-notice", "danger-icon"] },
-          { "label": "warning", "colors": ["warning", "warning-tint", "warning-notice", "warning-icon"] },
-          { "label": "success", "colors": ["success", "success-tint", "success-notice", "success-icon"] },
+          {
+            "label": "warning",
+            "colors": ["warning", "warning-tint", "warning-notice", "warning-icon"]
+          },
+          {
+            "label": "success",
+            "colors": ["success", "success-tint", "success-notice", "success-icon"]
+          },
           { "label": "info", "colors": ["info", "info-tint", "info-notice", "info-icon"] },
           { "label": "activity", "colors": ["activity", "activity-tint", null, null] },
           { "label": "pinning", "colors": ["pinning", null, null, null] }
@@ -93,9 +278,7 @@
     {
       "name": "Colors on fills",
       "about": "Text and glyphs on a selection, a status fill or artwork.",
-      "clusters": [
-        { "colors": ["on-fill", "on-fill-secondary"] }
-      ],
+      "clusters": [{ "colors": ["on-fill", "on-fill-secondary"] }],
       "scene": "fills"
     }
   ]

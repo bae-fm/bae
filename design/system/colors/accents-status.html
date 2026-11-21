@@ -1,0 +1,19 @@
+<style>
+.as-win { width: 170px; box-sizing: border-box; padding: 10px; border-radius: 8px; background: var(--background); display: flex; flex-direction: column; gap: 6px; font-size: 11px; color: var(--text-primary); }
+.as-top { display: flex; justify-content: space-between; align-items: center; }
+.as-link { color: var(--accent); font-weight: 500; }
+.as-play { background: var(--accent-fill); color: var(--on-accent-fill); border-radius: 12px; padding: 3px 10px; font-weight: 600; }
+.as-notice { display: flex; gap: 6px; align-items: center; padding: 5px 7px; border-radius: 6px; color: var(--on-notice); }
+.as-row { display: flex; flex-direction: column; gap: 3px; padding: 2px 0; }
+.as-bar { height: 3px; border-radius: 2px; background: var(--well); }
+.as-bar i { display: block; height: 3px; width: 55%; border-radius: 2px; }
+</style>
+<div class="as-win">
+  <div class="as-top"><span class="as-link">Show all</span><span class="as-play">Play</span></div>
+  <div class="as-notice" style="background: var(--danger-notice)"><span data-component="Bae.StatusGlyph" data-props='{"tone": "danger", "set": "mac", "size": 13}'></span>Sync failed</div>
+  <div class="as-notice" style="background: var(--warning-notice)"><span data-component="Bae.StatusGlyph" data-props='{"tone": "warning", "set": "mac", "size": 13}'></span>Offline</div>
+  <div class="as-notice" style="background: var(--success-notice)"><span data-component="Bae.StatusGlyph" data-props='{"tone": "success", "set": "mac", "size": 13}'></span>Synced</div>
+  <div class="as-notice" style="background: var(--info-notice)"><span data-component="Bae.StatusGlyph" data-props='{"tone": "info", "set": "mac", "size": 13}'></span>Update ready</div>
+  <div class="as-row" style="color: var(--activity)">Uploading 3 albums<div class="as-bar"><i style="background: var(--activity)"></i></div></div>
+  <div class="as-row" style="color: var(--pinning)">Downloading 2 albums<div class="as-bar"><i style="background: var(--pinning)"></i></div></div>
+</div>
