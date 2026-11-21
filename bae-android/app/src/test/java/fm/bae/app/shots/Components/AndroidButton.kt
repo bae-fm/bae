@@ -7,9 +7,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.vectorResource
-import fm.bae.app.R
+import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidTextField
@@ -64,7 +62,7 @@ class AndroidButtonShots : BoardShot() {
     @Test
     fun androidComponentButtonWithIcon() =
         component("android.component.button.with-icon") {
-            AndroidButton(kind = ButtonKind.OUTLINED, onClick = {}, icon = ImageVector.vectorResource(R.drawable.ic_keep)) { Text("Pin") }
+            AndroidButton(kind = ButtonKind.OUTLINED, onClick = {}, icon = SymbolIcons.Keep) { Text("Pin") }
         }
 
     @Test

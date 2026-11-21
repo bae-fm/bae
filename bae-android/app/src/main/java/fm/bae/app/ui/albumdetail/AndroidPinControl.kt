@@ -16,10 +16,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.res.vectorResource
 import fm.bae.app.DisplayError
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
@@ -126,7 +124,7 @@ internal fun AndroidPinControl(
 ) {
     when (status) {
         BridgeReleaseDownloadStatus.Available -> {
-            AndroidButton(kind = ButtonKind.OUTLINED, onClick = onDownload, icon = pinGlyph()) {
+            AndroidButton(kind = ButtonKind.OUTLINED, onClick = onDownload, icon = SymbolIcons.Keep) {
                 Text(stringResource(R.string.pin))
             }
         }
@@ -208,7 +206,7 @@ private fun DownloadedControl(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
-            imageVector = pinGlyph(),
+            imageVector = SymbolIcons.Keep,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(ThemeIcon.small),
@@ -229,7 +227,7 @@ private fun DownloadedControl(
             AndroidButton(
                 kind = ButtonKind.OUTLINED,
                 onClick = { if (asksBeforeUnpinning) asking = true else onUnpin(false) },
-                icon = ImageVector.vectorResource(R.drawable.ic_keep_off),
+                icon = SymbolIcons.KeepOff,
             ) { Text(stringResource(R.string.unpin)) }
         }
     }
@@ -261,7 +259,3 @@ internal fun UnpinDialog(
         dismiss = DialogAction(stringResource(R.string.cancel), onDismiss),
     )
 }
-
-/** The Pin glyph, the board's `keep` symbol. */
-@Composable
-private fun pinGlyph(): ImageVector = ImageVector.vectorResource(R.drawable.ic_keep)
