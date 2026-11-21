@@ -46,7 +46,7 @@ internal fun Bar(
     repeatMode: BridgeRepeatMode = BridgeRepeatMode.OFF,
     castButton: @Composable () -> Unit = { CastBarButton(casting = false, onClick = {}) },
     failure: DisplayError? = null,
-) = Images {
+) = Covers {
     AndroidNowPlayingBar(
         track = if (failure == null) staging.track else null,
         failure = failure,

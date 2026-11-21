@@ -99,11 +99,11 @@ class AndroidLibraryScreenShots : BoardShot() {
 internal fun PlayingLibraryScreen(
     state: LibraryBrowserState = remember { LibraryBrowserState() },
     person: @Composable () -> Unit = {},
-    albums: List<BridgeAlbumAppearance> = previewAlbums,
+    albums: List<BridgeAlbumAppearance> = boardAlbums,
     nowPlayingBar: @Composable () -> Unit = { Bar(playing) },
     syncActivity: @Composable () -> Unit = {},
 ) {
-    Images {
+    Covers {
         AndroidLibraryScreen(
             state = state,
             onShuffleLibrary = {},

@@ -17,7 +17,7 @@ class AndroidAlbumGridShots : BoardShot() {
     @Test
     fun androidComponentAlbumGridDefault() =
         component("android.component.album-grid.default") {
-            Images {
+            Covers {
                 val rows = previewAlbums
                 Box(Modifier.width(380.dp).height(240.dp)) {
                     AndroidAlbumGrid(
@@ -33,9 +33,21 @@ class AndroidAlbumGridShots : BoardShot() {
         }
 }
 
-/** The two albums the album grid's and library screen's previews hold. */
-internal val previewAlbums =
+/** The eight albums the boards' grids draw, in order, each with a cover picture. */
+internal val boardAlbums =
     listOf(
-        BridgeAlbumAppearance(PreviewData.album(id = "a1", title = "Low Tide Hours", artistNames = "Mara Quill"), null),
-        BridgeAlbumAppearance(PreviewData.album(id = "a2", title = "Paper Lanterns", artistNames = "The Slow Orchards"), null),
-    )
+        "Low Tide Hours" to "Mara Quill",
+        "Paper Lanterns" to "The Slow Orchards",
+        "Glass Harbor" to "Ines Varga Trio",
+        "Copper Sky" to "Odile Fen",
+        "Salt and Cedar" to "The Slow Orchards",
+        "Field Recordings" to "Mara Quill",
+        "Winter Kitchen" to "Odile Fen",
+        "Small Hours" to "Tomas Brell",
+    ).mapIndexed { index, (title, artist) ->
+        val id = "a${index + 1}"
+        BridgeAlbumAppearance(PreviewData.album(id = id, title = title, artistNames = artist, cover = PreviewData.imageRef(id)), null)
+    }
+
+/** The two albums the album grid's preview holds: the first two of the boards' albums. */
+internal val previewAlbums = boardAlbums.take(2)
