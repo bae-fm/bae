@@ -78,11 +78,9 @@ struct SyncSetupWizard: View {
                     RestoreCodeStep(onDone: onDone, reveal: restoreCode)
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
         } footer: {
             EmptyView()
         }
-        .frame(height: 560)
         .environment(run)
     }
 
@@ -157,6 +155,7 @@ struct SyncSetupWizard: View {
                 }
             }
             .formStyle(.grouped)
+            .fitsItsContent()
 
             MacSheetFooter {
                 MacButton("Cancel") { onDone() }
@@ -278,6 +277,7 @@ private struct RestoreCodeStep: View {
                 MacRestoreCode(reveal: reveal)
             }
             .formStyle(.grouped)
+            .fitsItsContent()
 
             MacSheetFooter {
                 MacButton("Done", kind: .primary) { onDone() }
@@ -395,7 +395,6 @@ struct SetupStep<Fields: View, Leading: View>: View {
                 StorageSetupRunLine(run: run, checkedFolder: checkedFolder)
                     .padding()
                     .frame(maxWidth: .infinity, alignment: .leading)
-                Spacer(minLength: 0)
             }
             else {
                 if let error {
@@ -407,6 +406,7 @@ struct SetupStep<Fields: View, Leading: View>: View {
                     fields
                 }
                 .formStyle(.grouped)
+                .fitsItsContent()
             }
             MacSheetFooter(
                 lead: { if !run.isRunning { leading } },
@@ -519,3 +519,12 @@ struct SetupStep<Fields: View, Leading: View>: View {
         var run = StorageSetupRun()
     }
 #endif
+
+extension View {
+    /// Draws a grouped form at the height of its rows, so the sheet around
+    /// it is as tall as its step needs and its buttons sit right under the
+    /// rows they act on.
+    fileprivate func fitsItsContent() -> some View {
+        scrollDisabled(true).fixedSize(horizontal: false, vertical: true)
+    }
+}
