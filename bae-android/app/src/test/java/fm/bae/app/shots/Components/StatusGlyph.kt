@@ -3,11 +3,12 @@ package fm.bae.app.shots
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.unit.dp
+import fm.bae.app.ui.components.NoticeRing
 import fm.bae.app.ui.components.StatusGlyph
 import fm.bae.app.ui.components.StatusTone
 import org.junit.Test
 
-/** The component shots of `StatusGlyph` on Android: its preview's macOS row draws the Mac's set, which Android has none of. */
+/** The component shots of `StatusGlyph` on Android: its macOS and muted rows draw the ring a notice leads with. */
 class StatusGlyphShots : BoardShot() {
     @Test
     fun androidComponentStatusGlyphAndroid() =
@@ -25,7 +26,8 @@ class StatusGlyphShots : BoardShot() {
         component("android.component.status-glyph.macos") {
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 listOf(StatusTone.INFO, StatusTone.SUCCESS, StatusTone.WARNING, StatusTone.DANGER).forEach { tone ->
-                    StatusGlyph(tone, size = 24.dp)
+                    // The preview sets the ring 20 across; the icon's box is 1.2 times that.
+                    NoticeRing(tone, size = 24.dp)
                 }
             }
         }
@@ -45,7 +47,7 @@ class StatusGlyphShots : BoardShot() {
         component("android.component.status-glyph.muted") {
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 listOf(StatusTone.INFO, StatusTone.SUCCESS, StatusTone.WARNING, StatusTone.DANGER).forEach { tone ->
-                    StatusGlyph(tone, size = 24.dp, muted = true)
+                    NoticeRing(tone, size = 24.dp, muted = true)
                 }
             }
         }

@@ -204,11 +204,8 @@ internal fun NoticeFrame(
     }
 }
 
-/**
- * The ring of a notice's glyph is 1.19 times 13, as its board draws it: the board sizes the glyph in `em`
- * of the notice box, which inherits 13 from the page, not the notice's 14sp words.
- */
-private val NoticeGlyphSize: Dp = (13f * 1.19f).dp
+/** The ring of a notice's glyph is 1.19 times the size of the notice's words, as its board draws it. */
+private val NoticeGlyphSize: Dp = (ThemeText.body.style.fontSize.value * 1.19f).dp
 
 /** The ring fills 20 of the 24 units of its icon, so the icon's box is 1.2 times its ring. */
 private val NoticeGlyphBox: Dp = NoticeGlyphSize * 1.2f
