@@ -9,7 +9,7 @@ extension ShotScene {
     static let macImportWindowScenes: [ShotScene] = [
         component(
             "mac.component.import-window.folder-picked",
-            width: 1_000,
+            width: 842,
             height: 420,
             images: PreviewData.artImageStore()
         ) {
@@ -20,7 +20,7 @@ extension ShotScene {
         },
         component(
             "mac.component.import-window.no-selection",
-            width: 1_000,
+            width: 842,
             height: 420,
             images: PreviewData.artImageStore()
         ) {
@@ -32,7 +32,7 @@ extension ShotScene {
     ]
 
     /// The Import window's content as `board` draws it, with no work running
-    /// and the list holding `items`, at the preview's 1000 by 420 points.
+    /// and the list holding `items`, at 842 by 420 points, the size the preview row draws though it asks for 1000.
     @MainActor
     private static func importWindow(
         _ board: PreviewData.ImportBoard,
@@ -69,7 +69,7 @@ extension ShotScene {
             .environment(scene.outbox)
             .environment(\.importPercents, scene.importPercents)
             .mainWindowPreviewEnvironment()
-            .frame(width: 1_000, height: 420)
+            .frame(width: 842, height: 420)
     }
 
     /// The preview's list: Low Tide Hours read from its release, which
