@@ -62,7 +62,7 @@ internal fun AndroidTextField(
         visualTransformation =
             when (kind) {
                 TextFieldKind.PLAIN -> VisualTransformation.None
-                TextFieldKind.CODE -> WordGapTransformation
+                TextFieldKind.CODE -> CodeGroupTransformation
                 TextFieldKind.SECRET -> PasswordVisualTransformation()
             },
         keyboardOptions =
