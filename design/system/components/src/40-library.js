@@ -176,7 +176,7 @@
 
   // The main window's frame, its own as in the app (MainWindowChrome): the rounded window with the traffic lights, the title bar over the library or Import and the side pane, then the now playing bar.
   function MacMainWindow(props) {
-    return h('div', { className: 'bae-m-mainwin', style: { width: Number(props.width || 1200), height: Number(props.height || 760) } }, macLights(),
+    return h('div', { className: 'bae-m-mainwin', style: { width: Number(props.width || 1200), height: Number(props.height || 760), flex: 'none' } }, macLights(),
       h(MacTitleBar, { section: props.section, search: props.search, searchFocused: props.searchFocused, sync: props.sync, avatar: props.avatar, avatarImage: props.avatarImage }),
       h('div', { className: 'bae-m-main-body' }, h('div', { className: 'bae-m-main-content' }, kids(props.children).filter(function (c) { var p = inner(c); return !(p && p.type === MacQueuePanel); })), kids(props.children).filter(function (c) { var p = inner(c); return p && p.type === MacQueuePanel; })),
       h(MacNowPlayingBar, { title: props.trackTitle, artist: props.trackArtist, album: props.trackAlbum, noCover: props.trackNoCover, playing: props.playing, waiting: props.waiting, held: props.held, elapsed: props.elapsed, duration: props.duration, shuffle: props.shuffle, repeat: props.repeat, casting: props.casting, noVolume: props.noVolume, queueOpen: props.queueOpen }));
