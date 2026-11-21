@@ -38,6 +38,8 @@ whole swift-owner-boundary BaeKit/Sources/**/*.swift,bae-macos/bae/bae/**/*.swif
 whole keyed-value-stream-boundary bae-bridge/src/**/*.rs,BaeKit/Sources/**/*.swift,bae-macos/bae/bae/**/*.swift,bae-ios/bae/bae/**/*.swift,bae-android/app/src/main/**/*.kt,bae-android/fastvalues/src/main/**/*.kt,bae-avalonia/**/*.cs,scripts/keyed-value-stream-boundary.py python3 scripts/keyed-value-stream-boundary.py
 check test-keychain *.rs,*.swift,*.kt,*.cs python3 scripts/check-test-keychain.py {files}
 whole test-keychain-all project.yml,*.csproj,scripts/check-test-keychain.py,scripts/rust_modules.py,scripts/source_tokens.py python3 scripts/check-test-keychain.py
+check system-text-colours BaeKit/Sources/**/*.swift,bae-macos/bae/bae/**/*.swift python3 scripts/check-system-text-colours.py {files}
+whole system-text-colours-all scripts/check-system-text-colours.py,scripts/source_tokens.py python3 scripts/check-system-text-colours.py
 check no-ide-previews *.swift,*.kt python3 scripts/check-no-previews.py {files}
 whole no-ide-previews-all scripts/check-no-previews.py,scripts/source_tokens.py python3 scripts/check-no-previews.py
 check xcode-trees * python3 scripts/check-xcode-trees.py {files}
@@ -76,6 +78,7 @@ test keyed-value-stream-boundary-test scripts/keyed-value-stream-boundary.py,scr
 test uniffi-boundary-test scripts/check-uniffi-runtime-boundary.py,scripts/tests/check-uniffi-runtime-boundary-test.py python3 scripts/tests/check-uniffi-runtime-boundary-test.py
 test screen-pulls-test scripts/check-screen-pulls.py,scripts/source_tokens.py,scripts/tests/check-screen-pulls-test.py python3 scripts/tests/check-screen-pulls-test.py
 test whole-file-marks-test scripts/check-whole-file-marks.py,scripts/source_tokens.py,scripts/tests/check-whole-file-marks-test.py python3 scripts/tests/check-whole-file-marks-test.py
+test system-text-colours-test scripts/check-system-text-colours.py,scripts/source_tokens.py,scripts/tests/check-system-text-colours-test.py python3 scripts/tests/check-system-text-colours-test.py
 test no-ide-previews-test scripts/check-no-previews.py,scripts/source_tokens.py,scripts/tests/check-no-previews-test.py python3 scripts/tests/check-no-previews-test.py
 test loc-words-test scripts/loc-words.py,scripts/tests/loc-words-test.py python3 scripts/tests/loc-words-test.py
 test bundled-libraries-test scripts/check-bundled-libraries.py,scripts/tests/check-bundled-libraries-test.py python3 scripts/tests/check-bundled-libraries-test.py
