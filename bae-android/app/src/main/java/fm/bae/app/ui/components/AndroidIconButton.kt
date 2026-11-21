@@ -39,7 +39,7 @@ internal enum class IconTone {
 
 /**
  * An icon button: [icon] in [tone], at [glyph] when given, else the icon's own size. [box] gives the
- * button that side instead of Material's 48dp layout, as a bar or the full player draws it; Compose still
+ * button that side instead of the usual 48dp, as a bar or the full player draws it; Compose still
  * takes a press up to 48dp from its centre. [tonal] draws the glyph on a 32dp disc tinted with [tone],
  * for a control inside a line, with the usual 48dp touch area around it.
  */
@@ -96,12 +96,13 @@ internal fun AndroidIconButton(
     box: Dp? = null,
     content: @Composable () -> Unit,
 ) {
-    if (box == null) {
-        IconButton(onClick = onClick, modifier = modifier, enabled = enabled, content = content)
-    } else {
-        CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
-            IconButton(onClick = onClick, modifier = modifier.size(box), enabled = enabled, content = content)
-        }
+    CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+        IconButton(
+            onClick = onClick,
+            modifier = modifier.size(box ?: ICON_BUTTON_BOX),
+            enabled = enabled,
+            content = content,
+        )
     }
 }
 
@@ -114,6 +115,9 @@ private fun IconTone.color(): Color =
         IconTone.ACCENT -> MaterialTheme.colorScheme.primary
         IconTone.ON_FILL -> BaeTheme.colors.onFill
     }
+
+/** The side of an icon button that gives no [box], as the design draws it. */
+private val ICON_BUTTON_BOX = 48.dp
 
 /** The side of the bar's buttons, as the design draws them. */
 internal val ICON_BUTTON_BAR_BOX = 40.dp
