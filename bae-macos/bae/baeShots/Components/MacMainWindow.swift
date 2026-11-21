@@ -4,8 +4,8 @@ import SwiftUI
 @testable import bae
 
 extension ShotScene {
-    /// `MacMainWindow` around the library's albums, or with an empty section
-    /// where the preview draws a slot, with "Low Tide Hours" playing 1:42 into 5:03 or nothing played, and
+    /// `MacMainWindow` around an empty section, where the preview draws a
+    /// slot, with "Low Tide Hours" playing 1:42 into 5:03 or nothing played, and
     /// nothing in the Activity button.
     static let macMainWindowScenes: [ShotScene] = [
         ShotScene(
@@ -20,14 +20,14 @@ extension ShotScene {
             size: CGSize(width: 1100, height: 520),
             frame: .window(title: "bae", titleBar: .hidden)
         ) {
-            mainWindow(section: .importing, playing: true, emptySection: true)
+            mainWindow(section: .importing, playing: true)
         },
         ShotScene(
             id: "mac.component.main-window.nothing-played",
             size: CGSize(width: 1100, height: 520),
             frame: .window(title: "bae", titleBar: .hidden)
         ) {
-            mainWindow(section: .library, playing: false, emptySection: true)
+            mainWindow(section: .library, playing: false)
         },
         ShotScene(
             id: "mac.component.main-window.queue-open",
@@ -81,13 +81,11 @@ extension ShotScene {
     ]
 
     /// The main window on `section`, 1100 by 520 as the preview draws it,
-    /// with nothing in the space the section fills when `emptySection` is
-    /// set, where the preview draws a slot.
+    /// with nothing in the space the section fills.
     @MainActor
     private static func mainWindow(
         section: MainSection,
-        playing: Bool,
-        emptySection: Bool = false
+        playing: Bool
     ) -> ShotStage {
         let uiStore = storeShowing(section)
         let backing = boardLibraryBacking(uiStore: uiStore)
@@ -99,21 +97,20 @@ extension ShotScene {
                 syncActivity: SyncActivityStore(),
                 playbackStore: playing ? boardPlayback() : PlaybackStore(),
                 size: CGSize(width: 1100, height: 520),
-                window: emptySection
-                    ? AnyView(
-                        MacMainWindow(showSidePane: false) {
-                            MacTitleBar(
-                                searchText: .constant(""),
-                                onSearchFieldFrame: { _ in }
-                            )
-                        } content: {
-                            Color.clear
-                        } queuePanel: {
-                            EmptyView()
-                        } nowPlayingBar: {
-                            MacNowPlayingBarContainer(onDropToQueue: { _ in })
-                        }
-                    ) : AnyView(MacMainWindowContainer())
+                window: AnyView(
+                    MacMainWindow(showSidePane: false) {
+                        MacTitleBar(
+                            searchText: .constant(""),
+                            onSearchFieldFrame: { _ in }
+                        )
+                    } content: {
+                        Color.clear
+                    } queuePanel: {
+                        EmptyView()
+                    } nowPlayingBar: {
+                        MacNowPlayingBarContainer(onDropToQueue: { _ in })
+                    }
+                )
             )
         ) {
             (backing.session.albums.list?.positionCount ?? 0) > 0
