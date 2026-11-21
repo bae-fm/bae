@@ -19,12 +19,13 @@
 .bae-m-pane-on { background: var(--accent-selection); color: var(--on-fill); }
 .bae-m-pane { display: flex; align-items: center; justify-content: space-between; gap: var(--space-related); }
 .bae-m-main { flex: 1; min-width: 0; padding: 18px 20px; box-sizing: border-box; overflow: hidden; display: flex; flex-direction: column; }
-.bae-m-heading { display: flex; align-items: center; gap: var(--space-related); margin: 0 0 12px; }
+/* A page's first content, a bare box or a section's title, sits 16pt under its heading. */
+.bae-m-heading { display: flex; align-items: center; gap: var(--space-related); margin: 0 0 16px; }
 .bae-m-heading h1 { margin: 0; font: 600 15px var(--font-sans); }
 .bae-m-back { width: var(--size-control); height: var(--size-control); border-radius: 999px; border: 0; background: var(--control); display: flex; align-items: center; justify-content: center; padding: 0; fill: var(--text-primary); box-shadow: 0 0 0 0.5px var(--control-edge), 0 0.5px 1px var(--control-edge); }
 
 .bae-m-section { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; }
-.bae-m-heading + .bae-m-section, .bae-m-heading + .sc-host-x > .bae-m-section { margin-top: 4px; }
+.bae-m-heading + .bae-m-section, .bae-m-heading + .sc-host-x > .bae-m-section { margin-top: 0; }
 .bae-m-section-title { margin: 0 4px; font: 600 13px var(--font-sans); color: var(--text-secondary); }
 
 .bae-m-box { display: flex; flex-direction: column; background: var(--surface); border-radius: var(--radius-card); overflow: hidden; color: var(--text-primary); font: 400 13px var(--font-sans); }
