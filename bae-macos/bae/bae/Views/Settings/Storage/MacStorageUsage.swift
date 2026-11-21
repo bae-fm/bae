@@ -16,7 +16,7 @@ struct MacStorageUsage: View {
                 Text(verbatim: usage.total.fileSizeText)
                     .themeText(.title)
                 Text("on this Mac")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.macTextSecondary)
             }
             bar
             legend

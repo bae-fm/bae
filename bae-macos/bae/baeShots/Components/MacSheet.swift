@@ -14,7 +14,7 @@ extension ShotScene {
             OverWindow.sheet(
                 MacSheet("Set up sync", width: 460) {
                     Text(verbatim: "Content")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.macTextSecondary)
                         .padding(ThemeSpace.group)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .overlay {

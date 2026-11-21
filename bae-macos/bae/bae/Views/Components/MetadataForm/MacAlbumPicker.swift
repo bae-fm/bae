@@ -45,7 +45,7 @@ struct MacAlbumPicker: View {
         HStack(spacing: ThemeSpace.related) {
             Text("Album")
                 .themeText(.detail)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.macTextSecondary)
             if canEdit {
                 albumPopUp
             }
@@ -53,7 +53,8 @@ struct MacAlbumPicker: View {
                 Text(verbatim: album.standingTitle)
                     .lineLimit(1)
                     .foregroundStyle(
-                        album.standingAlbumId == nil ? .tertiary : .primary
+                        album.standingAlbumId == nil
+                            ? Theme.textTertiary : Theme.textPrimary
                     )
             }
             Spacer(minLength: 0)
@@ -125,7 +126,7 @@ struct MacAlbumPicker: View {
                         Text(verbatim: result.title)
                         Text(verbatim: line(of: result))
                             .themeText(.detail)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.macTextSecondary)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())

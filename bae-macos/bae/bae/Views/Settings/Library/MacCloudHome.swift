@@ -40,7 +40,7 @@ struct MacCloudHome: View {
                     MacRow("Access key ID") {
                         HStack {
                             Text(verbatim: key.id)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(Theme.macTextSecondary)
                             Button("Replace key…", action: key.onReplace)
                         }
                     }

@@ -119,7 +119,7 @@
                     message
                         .themeText(.alertMessage)
                         .lineSpacing(ThemeSpace.line / 2)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.macTextSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 if let details = words.details {

@@ -273,7 +273,7 @@ extension MacCoverGallery {
                     .themeText(.heading)
                     .fontWeight(.regular)
                     .monospacedDigit()
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.macTextSecondary)
             }
             LazyVGrid(
                 columns: [
@@ -315,7 +315,7 @@ extension MacCoverGallery {
                 Text(
                     "Link a Discogs or MusicBrainz release to browse its artwork."
                 )
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.macTextSecondary)
                 .fixedSize(horizontal: false, vertical: true)
                 if let onFindRelease {
                     Button("Find release…", action: onFindRelease)
@@ -323,7 +323,8 @@ extension MacCoverGallery {
                 }
             }
         case .linked(let items) where items.isEmpty:
-            Text("No remote covers found").foregroundStyle(.secondary)
+            Text("No remote covers found")
+                .foregroundStyle(Theme.macTextSecondary)
         case .linked, .failed:
             EmptyView()
         }

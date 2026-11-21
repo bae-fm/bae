@@ -14,7 +14,7 @@ struct KeychainLockedView: View {
             // Core's sentence for this failure, as every surface shows it.
             Text(BridgeErrorCategory.keyringLocked.localizedLine)
                 .themeText(.body)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.macTextSecondary)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: WelcomeLayout.columnWidth)
             MacButton("Try again", kind: .primary, action: onRetry)

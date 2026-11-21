@@ -30,7 +30,7 @@ public struct MacSection<Header: View, Content: View, Footer: View>: View {
         Section {
             if let emptyWords {
                 Text(emptyWords)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.macTextSecondary)
             }
             else {
                 content

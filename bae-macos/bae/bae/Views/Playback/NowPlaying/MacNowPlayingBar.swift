@@ -106,7 +106,7 @@ struct MacNowPlayingBar: View {
                 if let secondaryLine {
                     Text(secondaryLine)
                         .themeText(.detail)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.macTextSecondary)
                         .lineLimit(1)
                 }
             }

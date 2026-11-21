@@ -13,7 +13,7 @@ struct MacCloseButton: View {
         } label: {
             Image(systemName: "xmark")
                 .themeIcon(.medium)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.macTextSecondary)
                 .frame(width: ThemeSize.hitTarget, height: ThemeSize.hitTarget)
                 .background(Theme.hover, in: Circle())
         }

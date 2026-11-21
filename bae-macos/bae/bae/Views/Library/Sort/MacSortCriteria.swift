@@ -61,7 +61,7 @@ struct MacSortCriteria<Criterion: SortCriterionRepresentable>: View {
                 ) {
                     Image(systemName: "plus")
                         .themeIcon(.medium)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.macTextSecondary)
                         .frame(
                             width: ThemeSize.hitTarget,
                             height: ThemeSize.hitTarget

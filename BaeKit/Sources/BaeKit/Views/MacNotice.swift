@@ -268,8 +268,8 @@ public struct MacNotice: View {
                 .themeText(.body)
                 .foregroundStyle(
                     tone == .neutral
-                        ? HierarchicalShapeStyle.secondary
-                        : HierarchicalShapeStyle.primary
+                        ? Theme.macTextSecondary
+                        : Theme.textPrimary
                 )
         case .titled(let title, let advice, _):
             let shownAdvice = opensFromRow ? nil : advice
@@ -278,7 +278,7 @@ public struct MacNotice: View {
             if let shownAdvice {
                 Text(verbatim: shownAdvice)
                     .themeText(.body)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.macTextSecondary)
             }
         }
     }
@@ -347,7 +347,7 @@ extension MacNotice {
         Button(action: onDismiss) {
             Image(systemName: "xmark")
                 .font(.system(size: 14))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.textTertiary)
                 .frame(width: ThemeSize.hitTarget, height: ThemeSize.hitTarget)
                 .contentShape(Rectangle())
                 // The box reaches past the row's inset and the title's line,
@@ -546,7 +546,7 @@ extension MacNotice {
     private var centeredSecondary: Color? {
         switch look {
         case .filled, .quiet: nil
-        case .centered, .centeredNoGlyph: Color.secondary
+        case .centered, .centeredNoGlyph: Theme.macTextSecondary
         case .centeredOnStage: Theme.onFillSecondary
         }
     }

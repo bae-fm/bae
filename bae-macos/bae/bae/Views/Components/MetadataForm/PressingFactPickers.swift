@@ -131,7 +131,7 @@ private struct MediumCountRow: View {
             Text(name)
             Text(verbatim: "\u{00D7}\(counted.count.formatted())")
                 .monospacedDigit()
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.macTextSecondary)
             MacStepper(
                 label: String(localized: "Number of \(name)"),
                 value: Binding(
@@ -141,7 +141,7 @@ private struct MediumCountRow: View {
             )
             Button(action: remove) {
                 Image(systemName: "xmark.circle.fill")
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.textTertiary)
             }
             .buttonStyle(.accentPlain)
             .help(String(localized: "Remove \(name)"))
@@ -244,7 +244,7 @@ struct DiscogsDetailsEditor: View {
                         commit(details.filter { $0 != detail })
                     } label: {
                         Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(Theme.textTertiary)
                     }
                     .buttonStyle(.accentPlain)
                     .accessibilityLabel(String(localized: "Remove"))
@@ -289,6 +289,8 @@ private struct FactMenuLabel: View {
     var body: some View {
         Text(Self.shown(text))
             .themeText(.body)
-            .foregroundStyle(text == nil ? .tertiary : .primary)
+            .foregroundStyle(
+                text == nil ? Theme.textTertiary : Theme.textPrimary
+            )
     }
 }

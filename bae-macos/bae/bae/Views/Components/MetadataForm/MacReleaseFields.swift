@@ -124,7 +124,7 @@ struct MacReleaseFields: View {
                         Task { await writer.setLabels(next) }
                     } label: {
                         Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(Theme.textTertiary)
                     }
                     .buttonStyle(.accentPlain)
                     .help(String(localized: "Remove \(named)"))
@@ -184,7 +184,7 @@ struct MacReleaseFields: View {
                         Task { await writer.setBarcodes(next) }
                     } label: {
                         Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(Theme.textTertiary)
                     }
                     .buttonStyle(.accentPlain)
                     .help(String(localized: "Remove \(row.barcode)"))
@@ -242,7 +242,7 @@ struct MacReleaseFields: View {
     private func rowLabel(_ label: String) -> some View {
         Text(label)
             .themeText(.detail)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Theme.macTextSecondary)
             .lineLimit(1)
             .frame(width: Self.labelWidth, alignment: .trailing)
     }

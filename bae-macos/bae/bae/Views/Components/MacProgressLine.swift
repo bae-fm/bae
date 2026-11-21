@@ -35,7 +35,7 @@ struct MacProgressLine<Label: View, Bar: View>: View {
     private func line(detail: String?) -> some View {
         HStack(spacing: ThemeSpace.related) {
             label
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.macTextSecondary)
                 // A long phase truncates rather than squeezing out the bar.
                 .cutLine(.prose)
                 .layoutPriority(1)
@@ -46,7 +46,7 @@ struct MacProgressLine<Label: View, Bar: View>: View {
                 Text(detail)
                     .monospacedDigit()
                     .lineLimit(1)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.macTextSecondary)
                     .fixedSize()
             }
         }

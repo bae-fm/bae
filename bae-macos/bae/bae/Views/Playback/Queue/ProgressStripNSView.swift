@@ -38,7 +38,7 @@ final class ProgressStripNSView: NSView {
             ofSize: 10,
             weight: .semibold
         )
-        elapsedField.textColor = .secondaryLabelColor
+        elapsedField.textColor = NSColor(Theme.macTextSecondary)
         elapsedField.alignment = .right
         elapsedField.translatesAutoresizingMaskIntoConstraints = false
         bar.translatesAutoresizingMaskIntoConstraints = false

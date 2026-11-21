@@ -96,7 +96,7 @@ struct MacImportReleaseSummary<TitleAccessory: View>: View {
             artistLine
             Text(summary.factsLine)
                 .themeText(.detail)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.textTertiary)
                 .lineLimit(1)
                 .padding(.top, style.factsTopPadding)
                 .frame(height: style.factsHeight)
@@ -114,7 +114,8 @@ struct MacImportReleaseSummary<TitleAccessory: View>: View {
             Text(summary.title)
                 .themeText(style.titleText)
                 .foregroundStyle(
-                    summary.titleIsPlaceholder ? .secondary : .primary
+                    summary.titleIsPlaceholder
+                        ? Theme.macTextSecondary : Theme.textPrimary
                 )
                 .cutLine(.prose)
             titleAccessory()
@@ -127,7 +128,7 @@ struct MacImportReleaseSummary<TitleAccessory: View>: View {
         if let artist = summary.artist {
             Text(artist)
                 .themeText(style.artistText)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.macTextSecondary)
                 .cutLine(.prose)
         }
     }
@@ -184,7 +185,7 @@ struct SourceAudioLine: View {
     var body: some View {
         Text(sourceAudio.text)
             .themeText(.detail)
-            .foregroundStyle(.tertiary)
+            .foregroundStyle(Theme.textTertiary)
             .multilineTextAlignment(.leading)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)

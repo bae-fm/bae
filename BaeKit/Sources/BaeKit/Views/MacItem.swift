@@ -53,7 +53,7 @@ public struct MacItem<Lead: View, Content: View, Trail: View>: View {
                 .overlay { lead }
             content.frame(maxWidth: .infinity, alignment: .leading)
             HStack(spacing: ThemeSpace.related) { trail }
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.macTextSecondary)
         }
     }
 }

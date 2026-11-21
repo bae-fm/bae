@@ -95,7 +95,7 @@ struct MissingSourceNote: View {
     var body: some View {
         Text(text)
             .themeText(.detail)
-            .foregroundStyle(.tertiary)
+            .foregroundStyle(Theme.textTertiary)
             .padding(.leading, MacReleaseGroup.rowTextInset)
     }
 }

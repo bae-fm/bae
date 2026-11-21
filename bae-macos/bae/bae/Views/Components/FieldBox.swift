@@ -76,7 +76,7 @@ struct FieldNote: View {
         Text(text)
             .themeText(.detail)
             .lineSpacing(ThemeSpace.line / 2)
-            .foregroundStyle(Color.secondary.opacity(0.7))
+            .foregroundStyle(Theme.macTextSecondary.opacity(0.7))
             .padding(.leading, ThemeSpace.fieldInset)
             .fixedSize(horizontal: false, vertical: true)
     }

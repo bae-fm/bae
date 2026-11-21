@@ -68,7 +68,7 @@ struct MacAlbumArtistField: View {
     @ViewBuilder
     private var fieldValue: some View {
         if inheritsAlbumArtists {
-            Text("Album artist").foregroundStyle(.tertiary)
+            Text("Album artist").foregroundStyle(Theme.textTertiary)
         }
         else if let summary = ArtistAssignmentsSummary(field: field) {
             HStack(spacing: ThemeSpace.inline) {
@@ -79,7 +79,7 @@ struct MacAlbumArtistField: View {
             }
         }
         else {
-            Text(placeholder).foregroundStyle(.tertiary)
+            Text(placeholder).foregroundStyle(Theme.textTertiary)
         }
     }
 }
@@ -196,7 +196,7 @@ private struct ArtistAssignmentsEditor: View {
         VStack(alignment: .leading, spacing: ThemeSpace.line) {
             Text("Which one?")
                 .themeText(.detail)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.macTextSecondary)
             ForEach(choices, id: \.artistId) { choice in
                 Button {
                     var next = assignments

@@ -38,7 +38,7 @@ struct MacWelcomeLibraries: View {
         VStack(alignment: .leading, spacing: ThemeSpace.compact) {
             Text("Your libraries")
                 .themeText(.strong)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.macTextSecondary)
                 .padding(.horizontal, ThemeSpace.inline)
             VStack(spacing: 0) {
                 ForEach(
@@ -121,7 +121,7 @@ private struct UnreadableInstallationRow: View {
                     .foregroundStyle(Theme.textPrimary)
                 Text(verbatim: libraryId)
                     .themeText(.detail)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.macTextSecondary)
                     .cutLine(.prose)
             }
             Spacer(minLength: ThemeSpace.group)
@@ -242,7 +242,7 @@ private struct LibraryRow: View {
                                     .foregroundStyle(
                                         isUnreadable
                                             ? StatusTone.danger.color
-                                            : Color.secondary
+                                            : Theme.macTextSecondary
                                     )
                             }
                         }

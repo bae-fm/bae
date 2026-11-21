@@ -33,7 +33,7 @@ struct ImportListFilterField: View {
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .themeIcon(ImportFilterBarLayout.glyph)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(Theme.textTertiary)
                         .filterBarControl()
                 }
                 .buttonStyle(.accentPlain)
@@ -45,7 +45,7 @@ struct ImportListFilterField: View {
         Text("\(shown) of \(total)")
             .themeText(.detail)
             .monospacedDigit()
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Theme.macTextSecondary)
             .fixedSize()
     }
 }

@@ -30,7 +30,7 @@ struct MacQueueRate<Progress: View>: View {
                 .buttonStyle(.accentBorderless)
         }
         .lineLimit(1)
-        .foregroundStyle(.secondary)
+        .foregroundStyle(Theme.macTextSecondary)
         .themeText(.body)
         // A narrow table keeps each queue's rate whole on one line; the
         // release count and total give way instead.

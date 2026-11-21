@@ -18,7 +18,7 @@ struct MacModalHeader<Buttons: View>: View {
                 if let subtitle {
                     Text(subtitle)
                         .themeText(.detail)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.macTextSecondary)
                         .lineLimit(1)
                 }
             }

@@ -66,7 +66,7 @@ struct CandidateListMenu: View {
                 }
             }
             .filterBarControl()
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Theme.macTextSecondary)
             // The trigger above it is the element a person and VoiceOver
             // press.
             .accessibilityHidden(true)

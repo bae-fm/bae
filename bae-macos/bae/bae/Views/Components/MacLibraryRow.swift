@@ -61,7 +61,7 @@ struct MacLibraryRow: View {
                     Text(trailing)
                         .themeText(.detail)
                         .monospacedDigit()
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.macTextSecondary)
                 }
             }
         }

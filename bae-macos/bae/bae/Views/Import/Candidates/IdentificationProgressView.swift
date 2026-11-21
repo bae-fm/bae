@@ -63,7 +63,7 @@ struct IdentificationProgressIndicator: View {
             lineShown = true
         } label: {
             ring
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.macTextSecondary)
                 .filterBarControl()
         }
         .buttonStyle(.accentPlain)
@@ -172,7 +172,7 @@ struct FolderScanProgressIndicator: View {
                     width: ImportFilterBarLayout.glyph.size,
                     height: ImportFilterBarLayout.glyph.size
                 )
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.macTextSecondary)
                 .filterBarControl()
         }
         .buttonStyle(.accentPlain)
@@ -208,7 +208,7 @@ private struct ScanningFoldersList: View {
                         )
                     )
                     .monospacedDigit()
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.macTextSecondary)
                 }
             }
         }

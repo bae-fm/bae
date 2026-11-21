@@ -27,11 +27,11 @@ struct MacQueueRow: View {
                     .lineLimit(1)
                 Text(item.display.artistLine.text)
                     .themeText(.detail)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.macTextSecondary)
                     .lineLimit(1)
                 Text(item.display.albumTitle)
                     .themeText(.detail)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.macTextSecondary)
                     .lineLimit(1)
             }
 
@@ -43,12 +43,12 @@ struct MacQueueRow: View {
                 Text(item.durationLabel)
                     .themeText(.detail)
                     .monospacedDigit()
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.macTextSecondary)
                     .opacity(isHovered ? 0 : 1)
                 Button(action: { onRemove(item.id) }) {
                     Image(systemName: "xmark")
                         .themeIcon(.small)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.macTextSecondary)
                         // A larger click target than the glyph.
                         .frame(
                             width: ThemeSize.hitTarget,

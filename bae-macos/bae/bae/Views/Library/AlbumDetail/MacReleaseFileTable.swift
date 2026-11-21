@@ -23,19 +23,19 @@ struct MacReleaseFileTable: View {
                 // Non-audio files (images, cue) leave the cell empty.
                 if let format = file.audioFormat {
                     Text(format.text)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.macTextSecondary)
                         .lineLimit(1)
                 }
             }
             TableColumn("Size", value: \.fileSize) { file in
                 Text(file.fileSizeText)
                     .monospacedDigit()
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.macTextSecondary)
             }
             .width(min: 70, ideal: 80)
             TableColumn("Kind", value: \.contentType) { file in
                 Text(file.contentType)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.textTertiary)
                     .lineLimit(1)
             }
             .width(min: 90, ideal: 130)

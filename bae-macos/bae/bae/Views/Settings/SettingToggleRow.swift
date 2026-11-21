@@ -37,7 +37,7 @@ struct SettingToggleRow<Help: View>: View {
                 if let note {
                     Text(note)
                         .themeText(.detail)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.macTextSecondary)
                 }
             }
             Spacer(minLength: 0)

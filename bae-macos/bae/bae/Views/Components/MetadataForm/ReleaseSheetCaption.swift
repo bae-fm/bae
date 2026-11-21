@@ -78,7 +78,7 @@ struct ReleaseSheetCaption: View {
     private var boundText: some View {
         Text(sheet.bound.descriptionText)
             .themeText(.mono)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Theme.macTextSecondary)
             .cutLine(sheet.bound.lineCut)
             .help(sheet.bound.descriptionText)
     }

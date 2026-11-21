@@ -100,7 +100,7 @@ struct MacCastPopover: View {
             if receivers.isEmpty {
                 Text("No receivers found")
                     .themeText(.body)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.macTextSecondary)
                     .padding(.vertical, ThemeSpace.compact)
                     .padding(.horizontal, ThemeSpace.inline)
             }

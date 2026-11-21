@@ -17,7 +17,7 @@ struct MacAnswerAction: View {
                 .disabled(off)
             Text(subtitle)
                 .themeText(.detail)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.textTertiary)
         }
     }
 }

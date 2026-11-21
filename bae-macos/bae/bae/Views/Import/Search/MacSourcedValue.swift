@@ -44,7 +44,7 @@ struct MacSourcedValue: View {
 
     private func grey(_ text: String) -> AttributedString {
         var grey = AttributedString(text)
-        grey.foregroundColor = Color(nsColor: .tertiaryLabelColor)
+        grey.foregroundColor = Theme.textTertiary
         return grey
     }
 }

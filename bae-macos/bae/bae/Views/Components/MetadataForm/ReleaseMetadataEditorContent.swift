@@ -72,7 +72,7 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
                         headerRow
                         Text("No tracks")
                             .themeText(.body)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.macTextSecondary)
                             .frame(width: tableWidth)
                             .padding(.vertical, ThemeSpace.edge)
                     }
@@ -214,7 +214,7 @@ struct ReleaseMetadataEditorContent<Lead: View>: View {
                     .themeIcon(.small)
             }
             .buttonStyle(.accentPlain)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Theme.macTextSecondary)
             .opacity(onPlayTrack == nil ? 0 : 1)
             .allowsHitTesting(onPlayTrack != nil)
             switch source {

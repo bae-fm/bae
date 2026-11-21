@@ -49,7 +49,7 @@ struct MacReleaseIdentity<Cover: View, AudioFacts: View, AlbumRow: View>: View {
                 },
             )
             .themeText(.body)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Theme.macTextSecondary)
             .modifier(FieldChrome(focused: false, style: .inline))
             // The album's original year; the pressing's year is under Release.
             MacInlineField(
@@ -57,7 +57,7 @@ struct MacReleaseIdentity<Cover: View, AudioFacts: View, AlbumRow: View>: View {
                 value: values.albumYear,
                 name: String(localized: "Album year"),
                 font: ThemeText.body.nsFont,
-                textColor: .tertiaryLabelColor,
+                textColor: NSColor(Theme.textTertiary),
                 editingCommands: editingCommands,
                 onCommit: { await writer.setField(.albumYear, $0) }
             )

@@ -91,7 +91,7 @@
         }
 
         public var body: some View {
-            let text = Color.secondary
+            let text = Theme.macTextSecondary
             Text(excerpt)
                 .themeText(.mono)
                 .foregroundStyle(text)

@@ -48,7 +48,7 @@ struct LibrarySettingsTab: View {
                     MacRow("Name") {
                         HStack {
                             Text(libraryName.name ?? "")
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(Theme.macTextSecondary)
                             if canRename {
                                 MacButton("Rename…", action: onRenameLibrary)
                             }

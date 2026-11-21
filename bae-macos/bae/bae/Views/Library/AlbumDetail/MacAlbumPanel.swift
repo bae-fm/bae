@@ -184,7 +184,7 @@ struct ReleaseFactsLine: View {
                     factsText
                     Image(systemName: "arrow.up.right")
                         .themeText(.detail)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.macTextSecondary)
                         .allowsHitTesting(false)
                         .accessibilityLabel(
                             localizedCoreString("core.identity.identified")
@@ -252,6 +252,6 @@ struct ReleaseFactsLine: View {
             }
         }
         .themeText(.detail)
-        .foregroundStyle(.tertiary)
+        .foregroundStyle(Theme.textTertiary)
     }
 }

@@ -117,7 +117,7 @@ public struct StatusGlyph: View {
     /// The glyph carries the tone in both modes: its icon colour, or the
     /// grey of the words beside it when muted.
     private var color: Color {
-        muted ? Color.secondary : tone.iconColor
+        muted ? Theme.macTextSecondary : tone.iconColor
     }
 }
 

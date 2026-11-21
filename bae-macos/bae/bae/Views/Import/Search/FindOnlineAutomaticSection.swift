@@ -70,7 +70,7 @@ struct FindOnlineAutomaticSection: View {
                 }
                 else {
                     Text("No source to search")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.macTextSecondary)
                     MacButton(
                         "Open settings",
                         kind: .primary,
@@ -82,7 +82,7 @@ struct FindOnlineAutomaticSection: View {
         case .queued:
             FindOnlineEmptyZone {
                 Text("Queued to be identified")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.macTextSecondary)
                 if let onCancelIdentification {
                     Button("Cancel", action: onCancelIdentification)
                         .controlSize(.small)
@@ -96,7 +96,7 @@ struct FindOnlineAutomaticSection: View {
                 }
                 else {
                     Text("No Disc ID, barcode, or catalog number found")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.macTextSecondary)
                 }
                 SearchManuallyButton(action: onSearchManually)
                 keepOwnDraft
@@ -178,7 +178,7 @@ struct FindOnlineAutomaticSection: View {
         case .nothingFound:
             FindOnlineEmptyZone {
                 Text("No results")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.macTextSecondary)
                 SearchManuallyButton(action: onSearchManually)
                 keepOwnDraft
             }

@@ -129,7 +129,7 @@ struct ImportSearchFormView: View {
             if let note = Self.artworkReadNote(signals?.text, tab: activeTab) {
                 Text(verbatim: note)
                     .themeText(.body)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.textTertiary)
             }
             if let signalFailure {
                 Label {

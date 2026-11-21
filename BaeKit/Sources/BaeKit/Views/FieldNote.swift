@@ -15,13 +15,14 @@
     private enum FieldNote {
         static let color = Color(
             nsColor: NSColor(name: nil) { appearance in
-                var mixed = NSColor.secondaryLabelColor
+                let secondary = NSColor(Theme.macTextSecondary)
+                var mixed = secondary
                 appearance.performAsCurrentDrawingAppearance {
                     mixed =
-                        NSColor.secondaryLabelColor.blended(
+                        secondary.blended(
                             withFraction: 0.5,
-                            of: .tertiaryLabelColor
-                        ) ?? .secondaryLabelColor
+                            of: NSColor(Theme.textTertiary)
+                        ) ?? secondary
                 }
                 return mixed
             }

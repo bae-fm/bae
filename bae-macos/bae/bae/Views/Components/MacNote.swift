@@ -23,7 +23,7 @@ extension View {
     func noteText(above: CGFloat) -> some View {
         themeText(.detail)
             .lineSpacing(ThemeSpace.line / 2)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Theme.macTextSecondary)
             .padding(.horizontal, RowMetrics.inset)
             .padding(.top, above)
             .fixedSize(horizontal: false, vertical: true)

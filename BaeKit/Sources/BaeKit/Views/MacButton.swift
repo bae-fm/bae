@@ -123,7 +123,7 @@ private struct MacButtonLook: ViewModifier {
         case .accent:
             content.foregroundStyle(Theme.accent).tint(Theme.accent)
         case .muted(let onStage):
-            let color = onStage ? Theme.onFillSecondary : Color.secondary
+            let color = onStage ? Theme.onFillSecondary : Theme.macTextSecondary
             content.foregroundStyle(color).tint(color)
         }
     }

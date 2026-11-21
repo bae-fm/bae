@@ -18,14 +18,14 @@ struct AboutSettingsTab: View {
                 "CFBundleShortVersionString"
             ] as? String {
                 Text("Version \(version)")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.macTextSecondary)
             }
             if let commit = Bundle.main.infoDictionary?["BaeGitCommit"]
                 as? String
             {
                 Text(commit)
                     .themeText(.mono)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.textTertiary)
             }
             MacButton("Check for updates…") {
                 onCheckForUpdates()

@@ -97,7 +97,8 @@ struct MacIdentifierChip<Trailing: View>: View {
 
     private var valueStyle: AnyShapeStyle {
         style == .filled
-            ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tertiary)
+            ? AnyShapeStyle(Theme.macTextSecondary)
+            : AnyShapeStyle(Theme.textTertiary)
     }
 
     private var fill: Color {
@@ -236,7 +237,7 @@ struct ChipWait: View {
     var body: some View {
         Text(verbatim: words)
             .themeText(.chip)
-            .foregroundStyle(.tertiary)
+            .foregroundStyle(Theme.textTertiary)
             .fixedSize()
     }
 }
@@ -349,7 +350,7 @@ struct LookupReleasesPopover: View {
                         if let artist = group.artist {
                             Text(verbatim: "\(FactList.glyph) \(artist)")
                                 .themeText(.detail)
-                                .foregroundStyle(.tertiary)
+                                .foregroundStyle(Theme.textTertiary)
                                 .lineLimit(1)
                         }
                     }
@@ -401,7 +402,7 @@ struct LookupReleaseLine: View {
                         )
                     )
                     .themeText(.detail)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.macTextSecondary)
                     .lineLimit(1)
                 }
                 ForEach(
@@ -414,7 +415,7 @@ struct LookupReleaseLine: View {
             if !pressed.isEmpty {
                 Text(pressed)
                     .themeText(.fine)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.textTertiary)
                     .lineLimit(1)
             }
             Spacer(minLength: 0)
@@ -431,7 +432,7 @@ struct IdentifierLabel: View {
     var body: some View {
         Text(text)
             .themeText(.chip)
-            .foregroundStyle(.tertiary)
+            .foregroundStyle(Theme.textTertiary)
             .fixedSize()
     }
 }

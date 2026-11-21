@@ -171,7 +171,7 @@ struct StorageSettingsForm: View {
             Text(title)
             Text(note)
                 .themeText(.detail)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.macTextSecondary)
         }
     }
 

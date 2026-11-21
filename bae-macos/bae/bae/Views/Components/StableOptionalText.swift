@@ -46,9 +46,9 @@ struct StableOptionalText: View {
         case .primary:
             baseText
         case .secondary:
-            baseText.foregroundStyle(.secondary)
+            baseText.foregroundStyle(Theme.macTextSecondary)
         case .tertiary:
-            baseText.foregroundStyle(.tertiary)
+            baseText.foregroundStyle(Theme.textTertiary)
         }
     }
 

@@ -61,7 +61,7 @@ struct MacTrackColumns: View {
                 if group.showsTime, !group.totalDurationText.isEmpty {
                     Text(group.totalDurationText)
                         .themeText(.fine)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(Theme.textTertiary)
                         .padding(.top, ThemeSpace.related)
                 }
             }

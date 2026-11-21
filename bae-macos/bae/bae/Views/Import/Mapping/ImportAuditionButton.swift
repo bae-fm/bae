@@ -19,7 +19,7 @@ struct MacAuditionButton: View {
                 .foregroundStyle(
                     isPlaying
                         ? AnyShapeStyle(Theme.accent)
-                        : AnyShapeStyle(.secondary)
+                        : AnyShapeStyle(Theme.macTextSecondary)
                 )
                 .frame(width: hitSize, height: hitSize)
                 .contentShape(Rectangle())

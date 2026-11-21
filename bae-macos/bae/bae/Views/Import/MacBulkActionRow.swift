@@ -17,13 +17,14 @@ struct MacBulkActionRow: View {
                 Image(systemName: offer.action.symbol)
                     .themeIcon(ImportBulkActionRowMetrics.icon)
                     .foregroundStyle(
-                        isConstructive ? Theme.accent : Color.secondary
+                        isConstructive ? Theme.accent : Theme.macTextSecondary
                     )
                     .frame(width: ImportBulkActionRowMetrics.iconWidth)
                 Text(verbatim: offer.action.label)
                     .themeText(isConstructive ? .strong : .body)
                     .foregroundStyle(
-                        isConstructive ? Theme.textPrimary : Color.secondary
+                        isConstructive
+                            ? Theme.textPrimary : Theme.macTextSecondary
                     )
                     .frame(maxWidth: .infinity, alignment: .leading)
                 if let importDestination {

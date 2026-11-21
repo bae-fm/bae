@@ -137,14 +137,14 @@ public struct MacRow<Lead: View, Label: View, Content: View>: View {
                         // A value stays on one line, as the boards keep
                         // it, and the name beside it wraps instead.
                         Text(verbatim: value)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.macTextSecondary)
                             .fixedSize(horizontal: true, vertical: false)
                     }
                     content
                     if chevron {
                         Image(systemName: "chevron.forward")
                             .themeIcon(.small)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.macTextSecondary)
                     }
                 }
             } label: {
@@ -165,7 +165,7 @@ public struct MacRow<Lead: View, Label: View, Content: View>: View {
                             .themeText(.detail)
                             .foregroundStyle(
                                 noteTone.map { AnyShapeStyle($0.color) }
-                                    ?? AnyShapeStyle(.secondary)
+                                    ?? AnyShapeStyle(Theme.macTextSecondary)
                             )
                     }
                 }

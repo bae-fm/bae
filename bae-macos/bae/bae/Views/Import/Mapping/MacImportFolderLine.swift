@@ -31,7 +31,7 @@ struct MacImportFolderLine: View {
                 .fixedSize()
                 Image(systemName: "chevron.forward")
                     .themeIcon(.small)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.textTertiary)
                     .accessibilityHidden(true)
             }
             Button {
@@ -41,7 +41,7 @@ struct MacImportFolderLine: View {
             } label: {
                 Image(systemName: "folder")
                     .themeIcon(.medium)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.macTextSecondary)
             }
             .buttonStyle(.accentPlain)
             .help("Reveal in Finder")

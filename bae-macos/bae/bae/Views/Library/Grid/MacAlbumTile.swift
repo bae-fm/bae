@@ -119,7 +119,7 @@ private struct AlbumCardStack<Art: View>: View {
                 .lineLimit(1)
             Text(artistNames)
                 .themeText(.detail)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.macTextSecondary)
                 .lineLimit(1)
             StableOptionalText(
                 text: year.map(String.init),

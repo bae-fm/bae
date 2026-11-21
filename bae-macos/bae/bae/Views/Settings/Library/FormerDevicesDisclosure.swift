@@ -17,10 +17,10 @@ struct FormerDevicesDisclosure: View {
                 HStack(spacing: ThemeSpace.related) {
                     Text(device.name)
                         .themeText(.body)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.macTextSecondary)
                     Text(device.state.label)
                         .themeText(.detail)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.macTextSecondary)
                     Spacer()
                 }
             }
@@ -29,7 +29,7 @@ struct FormerDevicesDisclosure: View {
             // catalog has it.
             Text("Removed devices (\(Int(count)))")
                 .themeText(.detail)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.macTextSecondary)
         }
     }
 }

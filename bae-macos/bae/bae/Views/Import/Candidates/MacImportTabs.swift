@@ -80,7 +80,7 @@ struct MacImportTabs: View {
                     // A squeezed badge must overflow, never stack its digits.
                     .fixedSize()
             }
-            .foregroundStyle(isActive ? Theme.accent : Color.secondary)
+            .foregroundStyle(isActive ? Theme.accent : Theme.macTextSecondary)
             .frame(maxWidth: .infinity)
             .padding(.horizontal, ThemeSpace.related)
             .padding(.vertical, ThemeSpace.compact)

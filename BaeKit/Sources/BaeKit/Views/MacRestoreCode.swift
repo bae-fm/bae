@@ -80,7 +80,7 @@ public struct MacRestoreCode: View {
                     }
                 }
                 .themeText(.mono)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.macTextSecondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 // A picture of the code, not words to read out: the dots
                 // say nothing, and the code stays hidden until Show.
@@ -118,11 +118,11 @@ public struct MacRestoreCode: View {
                 "Print this code or save it in a password manager. It gets you back into your library if you lose all your devices."
             )
             .themeText(.detail)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Theme.macTextSecondary)
             if needsS3Key {
                 Text("You will also need your S3 access key and secret.")
                     .themeText(.detail)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.macTextSecondary)
             }
         }
     }

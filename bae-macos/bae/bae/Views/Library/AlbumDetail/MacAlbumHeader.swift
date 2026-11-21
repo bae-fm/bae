@@ -46,12 +46,12 @@ struct MacAlbumHeader: View {
                 .lineLimit(1)
             HStack(spacing: ThemeSpace.related) {
                 Text(album.artistLine.text)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.macTextSecondary)
                 if let year = album.year {
                     Text(verbatim: FactList.glyph)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(Theme.textTertiary)
                     Text(PressingText.year(year))
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(Theme.textTertiary)
                 }
             }
             .themeText(.heading)
@@ -74,7 +74,7 @@ struct MacAlbumHeader: View {
             if let unplayable = selectedRelease.unplayableLine {
                 Text(unplayable)
                     .themeText(.detail)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.macTextSecondary)
             }
             HStack(spacing: ThemeSpace.related) {
                 MacButton("Play", kind: .primary, action: onPlay)

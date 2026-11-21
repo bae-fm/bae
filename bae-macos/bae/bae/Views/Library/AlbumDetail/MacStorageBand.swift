@@ -35,7 +35,7 @@ struct MacStorageBand: View {
             if let unplayable = release.unplayableLine {
                 Text(unplayable)
                     .themeText(.detail)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.macTextSecondary)
             }
             if !release.summary.transitioning {
                 transferActions

@@ -77,7 +77,7 @@ struct ImportCandidateBulkSelectionCard: View {
                     .themeText(.title)
                 Text("Each action applies only to eligible selected folders.")
                     .themeText(.body)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.macTextSecondary)
             }
             groupedList
         }

@@ -73,7 +73,7 @@
             MacSection {
                 Text(words.heading)
                     .themeText(.body)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.macTextSecondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 if browser.nests {
                     HStack {

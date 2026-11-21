@@ -66,7 +66,7 @@ extension ShotScene {
                     Text("3 uploading")
                     Text("96 MB of 221 MB")
                         .themeText(.detail)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.macTextSecondary)
                 }
             }
             .frame(width: 380, alignment: .leading)

@@ -17,11 +17,11 @@ struct MacImportGroupHeader: View {
             HStack(spacing: ImportListHierarchyLayout.headerSpacing) {
                 Image(systemName: expanded ? "chevron.down" : "chevron.forward")
                     .themeIcon(ImportListHierarchyLayout.headerChevron)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.textTertiary)
                     .frame(width: ImportListHierarchyLayout.headerChevron.size)
                 Text(group.name)
                     .themeText(.strong)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.macTextSecondary)
                     .cutLine(.fileName)
                 Spacer(minLength: 0)
             }

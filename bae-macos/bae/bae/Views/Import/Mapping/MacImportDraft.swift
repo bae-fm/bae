@@ -181,7 +181,7 @@ struct MacImportDraft: View {
                         if case .album = releaseLink {
                             Text("Pressing unknown")
                                 .themeText(.detail)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(Theme.macTextSecondary)
                                 .fixedSize()
                         }
                         Spacer(minLength: ThemeSpace.group)

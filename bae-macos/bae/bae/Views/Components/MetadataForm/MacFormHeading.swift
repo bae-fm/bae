@@ -9,7 +9,7 @@ struct MacFormHeading: View {
         Text(verbatim: title)
             .themeText(.detail)
             .fontWeight(.semibold)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Theme.macTextSecondary)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.bottom, ThemeSpace.inline)
             .overlay(alignment: .bottom) {

@@ -29,21 +29,21 @@ struct MacSearchSourceLine: View {
                         comment:
                             "Find online, under a typed search's results: a catalog still searching; the argument is the catalog's name."
                     )
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.textTertiary)
                 }
             case .failed(let reason):
                 HStack(spacing: ThemeSpace.compact) {
                     StatusGlyph(.warning)
                         .accessibilityLabel("Failed")
                     Text(catalog)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(Theme.textTertiary)
                         .help(reason)
                     MacButton("Retry", kind: .borderless, action: onRetry)
                 }
             }
         }
         .themeText(.detail)
-        .foregroundStyle(.secondary)
+        .foregroundStyle(Theme.macTextSecondary)
         .padding(.leading, ThemeSpace.group)
     }
 }

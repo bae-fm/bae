@@ -50,21 +50,21 @@ struct MacSearchField: View {
         switch kind {
         case .search:
             Image(systemName: "magnifyingglass")
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.textTertiary)
                 .accessibilityHidden(true)
                 // The design draws the glyph at 14, between the icon roles.
                 .font(.system(size: 14, weight: ThemeIcon.medium.weight))
         case .filter:
             Image(systemName: "magnifyingglass")
                 .themeIcon(.small)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.macTextSecondary)
                 .accessibilityHidden(true)
         case .inline:
             // The field's name says what it does, so the glyph says
             // nothing more to assistive technology.
             Image(systemName: "magnifyingglass")
                 .themeIcon(.medium)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.textTertiary)
                 .accessibilityHidden(true)
         }
     }

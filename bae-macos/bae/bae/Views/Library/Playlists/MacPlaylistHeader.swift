@@ -34,7 +34,7 @@ struct MacPlaylistHeader: View {
                         .themeText(.strong)
                         .lineLimit(1)
                 }
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.macTextSecondary)
                 facts
                     .padding(.top, ThemeSpace.inline)
                 HStack(spacing: ThemeSpace.related) {
@@ -81,6 +81,6 @@ struct MacPlaylistHeader: View {
                 .accessibilityLabel(Text(verbatim: summary.sharing.label))
             }
         }
-        .foregroundStyle(.tertiary)
+        .foregroundStyle(Theme.textTertiary)
     }
 }

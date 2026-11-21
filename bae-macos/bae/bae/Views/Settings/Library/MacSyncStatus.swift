@@ -91,7 +91,7 @@ private struct SyncCauseText: View {
         Text(text)
             .themeText(.detail)
             .lineSpacing(ThemeSpace.line)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Theme.macTextSecondary)
     }
 }
 

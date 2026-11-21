@@ -86,7 +86,7 @@ struct MacBox<Content: View>: View {
 extension View {
     func settingsSectionTitle() -> some View {
         themeText(.strong)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Theme.macTextSecondary)
             .padding(.horizontal, ThemeSpace.inline)
             .padding(.bottom, ThemeSpace.compact)
     }

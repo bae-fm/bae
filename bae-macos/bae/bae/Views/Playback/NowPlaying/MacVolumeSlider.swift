@@ -32,7 +32,7 @@ struct MacVolumeSlider: View {
             case .setOnReceiver(let name):
                 Text("Volume is set on \(name)")
                     .themeText(.detail)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.macTextSecondary)
                     .lineLimit(1)
             case .controls(let settings):
                 muteButton(settings)

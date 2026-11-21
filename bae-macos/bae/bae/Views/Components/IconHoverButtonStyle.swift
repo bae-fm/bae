@@ -26,7 +26,7 @@ struct IconHoverButtonStyle: ButtonStyle {
                     isOn
                         ? Theme.accent
                         : hovering && isEnabled
-                            ? Theme.textPrimary : Color.secondary
+                            ? Theme.textPrimary : Theme.macTextSecondary
                 )
                 .background(
                     RoundedRectangle(cornerRadius: ThemeRadius.control)

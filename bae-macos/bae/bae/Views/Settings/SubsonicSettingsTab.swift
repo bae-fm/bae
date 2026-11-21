@@ -185,7 +185,7 @@ struct SubsonicSettingsContent: View {
                     copyText(address)
                 }
                 .themeText(.detail)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.macTextSecondary)
             }
             else if !addresses.isEmpty {
                 VStack(alignment: .leading, spacing: 0) {
@@ -211,7 +211,7 @@ struct SubsonicSettingsContent: View {
                     .padding(.top, 2)
                 }
                 .themeText(.detail)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.macTextSecondary)
             }
         }
     }

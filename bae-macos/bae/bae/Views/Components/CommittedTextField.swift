@@ -268,7 +268,7 @@ private struct CommittedTextEditor: NSViewRepresentable {
                     string: placeholder,
                     attributes: [
                         .font: placeholderFont,
-                        .foregroundColor: NSColor.tertiaryLabelColor,
+                        .foregroundColor: NSColor(Theme.textTertiary),
                     ]
                 )
         }

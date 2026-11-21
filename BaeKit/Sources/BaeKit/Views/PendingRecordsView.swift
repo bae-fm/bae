@@ -43,7 +43,7 @@ private struct PendingRecordRow: View {
                     .themeText(.strong)
                 Text(reason.line)
                     .themeText(.detail)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.macTextSecondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             #if canImport(AppKit)

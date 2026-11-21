@@ -145,7 +145,7 @@ struct TrackStartText: View {
         Text(DurationClock.label(start))
             .themeText(.body)
             .monospacedDigit()
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Theme.macTextSecondary)
     }
 }
 

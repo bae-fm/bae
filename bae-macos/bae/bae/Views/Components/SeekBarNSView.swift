@@ -128,7 +128,7 @@ final class SeekBarNSView: NSView {
             ofSize: ThemeText.fine.macOSSize,
             weight: ThemeText.fine.nsWeight
         )
-        let color = NSColor.secondaryLabelColor
+        let color = NSColor(Theme.macTextSecondary)
 
         elapsedField = NSTextField(labelWithString: "")
         elapsedField.font = font

@@ -8,7 +8,7 @@ struct QueuedImportIcon: View {
         let waiting = String(localized: "Queued to import")
         Image(systemName: "clock")
             .themeIcon(.small)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Theme.macTextSecondary)
             .help(waiting)
             .accessibilityLabel(waiting)
     }

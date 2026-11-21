@@ -101,7 +101,7 @@ struct MacPressingRow: View {
                 "Find online, under the pressing identification picked on its own: bae reads the release from its catalogs before it stores the answer."
         )
         .themeText(.body)
-        .foregroundStyle(.secondary)
+        .foregroundStyle(Theme.macTextSecondary)
         .padding(.horizontal, Self.horizontalPadding)
         .padding(.bottom, ThemeSpace.related)
         .frame(height: isReadingUnattended ? nil : 0, alignment: .top)
@@ -163,7 +163,7 @@ struct MacPressingRow: View {
             if pressing.years.isEmpty {
                 Text("Year unknown")
                     .themeText(.body)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.textTertiary)
             }
             else {
                 MacSourcedValue(pressing.years)
@@ -183,7 +183,7 @@ struct MacPressingRow: View {
                         )
                     )
                     .themeText(.body)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.macTextSecondary)
                     .cutLine(.prose)
                 }
                 ForEach(
@@ -196,7 +196,7 @@ struct MacPressingRow: View {
             if !pressing.barcodes.isEmpty {
                 MacSourcedValue(pressing.barcodes)
                     .themeText(.body)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.macTextSecondary)
                     .monospacedDigit()
                     .lineLimit(1)
             }
@@ -272,11 +272,11 @@ struct MacPressingRow: View {
                 if at > 0 {
                     Text(verbatim: FactList.glyph)
                         .themeText(.detail)
-                        .foregroundStyle(.quaternary)
+                        .foregroundStyle(Theme.textTertiary.opacity(0.5))
                 }
                 Text(bridgeLookupCatalogName(catalog: source))
                     .themeText(.detail)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.textTertiary)
             }
         }
     }
@@ -289,7 +289,7 @@ struct MacPressingRow: View {
             Text("In library")
         }
         .themeText(.detail)
-        .foregroundStyle(.tertiary)
+        .foregroundStyle(Theme.textTertiary)
         .opacity(isInLibrary ? 1 : 0)
         .accessibilityHidden(!isInLibrary)
     }
@@ -316,13 +316,13 @@ extension MacPressingRow {
                 if !pressing.areas.isEmpty || !pressing.media.isEmpty {
                     MacSourcedValue(parts: [pressing.media, pressing.areas])
                         .themeText(.detail)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(Theme.textTertiary)
                         .cutLine(.prose)
                 }
                 if !details.isEmpty {
                     Text(details)
                         .themeText(.detail)
-                        .foregroundStyle(.quaternary)
+                        .foregroundStyle(Theme.textTertiary.opacity(0.5))
                         .cutLine(.prose)
                 }
             }
@@ -337,7 +337,7 @@ extension MacPressingRow {
             MacSourcedValue(notes.map(\.stated))
                 .themeText(.detail)
                 .italic()
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.textTertiary)
                 .cutLine(.prose)
         }
     }

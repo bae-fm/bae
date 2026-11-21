@@ -27,7 +27,7 @@ struct MacImportSheetCaption<Place: View, Audio: View>: View {
             // follows it says what it is.
             Image(systemName: "arrow.forward")
                 .themeIcon(.small)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.textTertiary)
                 .fixedSize()
                 .accessibilityHidden(true)
             audio

@@ -1,3 +1,4 @@
+import BaeKit
 import SwiftUI
 
 /// A sheet's line under its title, in secondary text: what the sheet asks for
@@ -12,7 +13,7 @@ struct SheetMessage: View {
     var body: some View {
         text
             .themeText(.body)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Theme.macTextSecondary)
             .fixedSize(horizontal: false, vertical: true)
     }
 }

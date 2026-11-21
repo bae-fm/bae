@@ -19,7 +19,7 @@ struct NarrowedOutDisclosure: View {
                 Text(verbatim: Self.title(count: count, isExpanded: isExpanded))
             }
             .themeText(.body)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Theme.macTextSecondary)
             .contentShape(.rect)
         }
         .buttonStyle(.accentPlain)

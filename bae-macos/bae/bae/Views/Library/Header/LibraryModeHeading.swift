@@ -39,7 +39,7 @@ struct LibraryModeHeading: View {
                 .font(.system(size: chevronSize, weight: .bold))
                 // Centered on the heading's cap height.
                 .baselineOffset(size * Self.chevronLift)
-                .foregroundColor(.secondary))
+                .foregroundColor(Theme.macTextSecondary))
                 .contentTransition(.interpolate)
                 // Trims the unused descender space so the menu opens near the
                 // text.

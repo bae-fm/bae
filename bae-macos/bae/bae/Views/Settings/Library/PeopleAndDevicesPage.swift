@@ -502,7 +502,7 @@ extension PeopleAndDevicesPage {
             if let keyLine = member.access?.keyLine {
                 Text(verbatim: keyLine)
                     .themeText(.detail)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.macTextSecondary)
                     .textSelection(.enabled)
             }
             if member.canRemove {
@@ -544,7 +544,7 @@ extension PeopleAndDevicesPage {
                         if device.isSelf {
                             Text("This device")
                                 .themeText(.detail)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(Theme.macTextSecondary)
                         }
                     }
                 }

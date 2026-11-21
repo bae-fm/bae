@@ -67,7 +67,7 @@ extension ShotScene {
                 fillsWidth: true,
                 font: large ? ThemeText.title.nsFont : ThemeText.body.nsFont,
                 textColor: quiet
-                    ? .tertiaryLabelColor : NSColor(Theme.textPrimary),
+                    ? NSColor(Theme.textTertiary) : NSColor(Theme.textPrimary),
                 placeholderRole: large || quiet ? .hint : .emptyMark,
                 editingCommands: EditingCommitCommands(),
                 onCommit: { _ in }

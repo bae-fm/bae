@@ -108,7 +108,9 @@ struct MacQueueSection: View {
         } label: {
             Image(systemName: "shuffle")
                 .themeIcon(.small)
-                .foregroundStyle(shuffled ? Theme.accent : .secondary)
+                .foregroundStyle(
+                    shuffled ? Theme.accent : Theme.macTextSecondary
+                )
                 // The same slot as the rows' remove button, so they line up.
                 .frame(width: ThemeSize.hitTarget, height: ThemeSize.hitTarget)
                 .background(

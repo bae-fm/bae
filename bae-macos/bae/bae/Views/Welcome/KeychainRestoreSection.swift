@@ -41,7 +41,7 @@ struct KeychainRestoreSection: View {
                 "Restore codes your other Apple devices saved. Restoring brings that library onto this Mac."
             )
             .themeText(.detail)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Theme.macTextSecondary)
             .padding(.horizontal, ThemeSpace.inline)
         }
         .frame(maxWidth: WelcomeLayout.columnWidth)
@@ -141,7 +141,7 @@ private struct SavedCodeRow: View {
                     .lineLimit(1)
                 Text(verbatim: detail)
                     .themeText(.detail)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.macTextSecondary)
                     .cutLine(.prose)
             }
             Spacer(minLength: ThemeSpace.group)

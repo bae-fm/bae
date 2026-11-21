@@ -37,7 +37,7 @@ struct MacIdentifyBar<Trailing: View>: View {
         HStack(spacing: ThemeSpace.related) {
             Text("Identify")
                 .themeText(.strong)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.macTextSecondary)
             Button("Automatic") { onAutomatic() }
                 .buttonStyle(.accentBordered)
             Button("Search") { onSearch() }

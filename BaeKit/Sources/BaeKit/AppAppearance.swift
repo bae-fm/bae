@@ -73,8 +73,8 @@ extension View {
         fileprivate var textStyles: some View {
             foregroundStyle(
                 Theme.textPrimary,
-                Color(nsColor: .secondaryLabelColor),
-                Color(nsColor: .tertiaryLabelColor)
+                Theme.macTextSecondary,
+                Theme.textTertiary
             )
         }
     #else
@@ -90,9 +90,9 @@ extension View {
     ) -> some View {
         // Text with no colour of its own, and `.primary`, draw in the design
         // system's text-primary, not the system label colour (#DDDDDF in
-        // Dark). `.secondary` and `.tertiary` stay the system's own label
-        // colours (the design system's mac-text-secondary), which the
-        // hierarchy would otherwise derive from text-primary.
+        // Dark). The secondary and tertiary styles are the design system's
+        // mac-text-secondary and text-tertiary, which the hierarchy would
+        // otherwise derive from text-primary.
         textStyles
             .environment(\.surfaceTone, tone)
             .environment(\.accentChoice, accent)

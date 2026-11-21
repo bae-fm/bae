@@ -144,7 +144,7 @@ struct ImportingCandidatePane: View {
                         String(localized: "Queued to import"),
                         systemImage: "clock"
                     )
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.macTextSecondary)
                 case .preparing, .running:
                     // Reads the percent itself, so a percent tick redraws
                     // the line and not the pane.

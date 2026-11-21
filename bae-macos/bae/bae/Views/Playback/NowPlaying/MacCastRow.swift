@@ -138,7 +138,9 @@ struct MacCastRow: View {
         MacItem(centered: true, wide: true) {
             Image(systemName: icon)
                 .font(.system(size: 15))
-                .foregroundStyle(casting ? Theme.accent : .secondary)
+                .foregroundStyle(
+                    casting ? Theme.accent : Theme.macTextSecondary
+                )
                 .accessibilityHidden(true)
         } content: {
             VStack(alignment: .leading, spacing: 0) {
@@ -150,7 +152,7 @@ struct MacCastRow: View {
                     Text(verbatim: waitWords(wait))
                         .themeText(.detail)
                         .italic()
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.macTextSecondary)
                 }
                 else if casting {
                     Text(
@@ -167,7 +169,7 @@ struct MacCastRow: View {
                 else {
                     Text(verbatim: receiver.kind.productName)
                         .themeText(.detail)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.macTextSecondary)
                 }
             }
             // Read before the row's end in a row read in its own order.

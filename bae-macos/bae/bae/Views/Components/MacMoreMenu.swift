@@ -52,7 +52,7 @@ struct MacMoreMenu: View {
         Image(systemName: "ellipsis")
             // The design draws the dots at 15, a size above the icon roles.
             .font(.system(size: 15, weight: ThemeIcon.medium.weight))
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Theme.macTextSecondary)
             .frame(
                 width: ThemeSize.hitTarget,
                 height: ThemeSize.hitTarget

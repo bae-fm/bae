@@ -33,7 +33,7 @@ struct MacTrackLead: View {
         // never changes.
         ZStack(alignment: .trailing) {
             Self.number(text)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.textTertiary)
                 .opacity(!isCurrent && !hover ? 1 : 0)
 
             Button(action: isCurrent ? onTogglePlayPause : onPlay) {

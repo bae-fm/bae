@@ -47,7 +47,7 @@ struct MacReleaseFileRow: View {
             }
             Text(size)
                 .themeText(.fine)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.textTertiary)
                 // A squeezed row truncates the name, never wraps the size.
                 .fixedSize()
         }
