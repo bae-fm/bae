@@ -96,7 +96,7 @@ internal val harborRelease: BridgeRelease =
             pressingSummary = listOf(BridgeFactTerm.Country("US"), cd),
             areaTerms = listOf(BridgeFactTerm.Country("US")),
             mediaTerms = listOf(cd),
-            totalDuration = BridgeDurationUnits.MinutesOnly(29u),
+            totalDuration = BridgeDurationUnits.MinutesOnly(52u),
         )
     }
 

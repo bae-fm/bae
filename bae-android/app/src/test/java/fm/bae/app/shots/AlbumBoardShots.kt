@@ -60,6 +60,22 @@ class AlbumBoardShots : BoardShot() {
         }
 
     @Test
+    fun androidAlbumPage() = shot("android.album.page") { AlbumPage(boardAlbum(trackCount = 9)) }
+
+    @Test
+    fun androidAlbumRate() =
+        shot("android.album.rate") {
+            val rating =
+                BridgeAlbumRating(
+                    mine = BridgeStars.FOUR,
+                    raters = listOf(BridgeRater.You, BridgeRater.Person("Ana", BridgeStars.FIVE)),
+                )
+            SheetScene(title = stringResource(R.string.rate), behind = { AlbumPage(boardAlbum(rating = rating)) }) {
+                AlbumRatingChoices(rating = rating, onRate = {})
+            }
+        }
+
+    @Test
     fun androidAlbumCredits() =
         shot("android.album.credits") {
             val detail = boardAlbum()
@@ -143,9 +159,26 @@ internal fun boardFile(
     audioFormat = null,
 )
 
-/** "Low Tide Hours" by Mara Quill, a CD on Harbor Records with the six tracks the boards list, one disc, with [rating] as its rating. */
-internal fun boardAlbum(rating: BridgeAlbumRating = BridgeAlbumRating(mine = null, raters = emptyList())): BridgeAlbumDetail {
-    val titles = listOf("Harbor Lights", "The Long Way Home", "Second Floor", "Low Tide Hours", "Tin Roof", "Margins")
+/**
+ * "Low Tide Hours" by Mara Quill, a CD on Harbor Records with the first [trackCount] tracks the boards list, one disc,
+ * with [rating] as its rating.
+ */
+internal fun boardAlbum(
+    rating: BridgeAlbumRating = BridgeAlbumRating(mine = null, raters = emptyList()),
+    trackCount: Int = 6,
+): BridgeAlbumDetail {
+    val titles =
+        listOf(
+            "Harbor Lights",
+            "The Long Way Home",
+            "Second Floor",
+            "Low Tide Hours",
+            "Tin Roof",
+            "Margins",
+            "Weather Report Card",
+            "Old Dog",
+            "Night Ferry",
+        ).take(trackCount)
     val tracks = titles.mapIndexed { index, title -> PreviewData.track("trk-${index + 1}", title, index + 1) }
     val album = PreviewData.album(title = "Low Tide Hours", year = 1992, artistNames = "Mara Quill")
     val release =

@@ -20,8 +20,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
@@ -114,7 +114,7 @@ private fun ReleaseLine(text: String) {
     )
 }
 
-/** The album's [year], then the rating the person gave it, as one star and its number, when it has one. */
+/** The album's [year], then the rating the person gave it, as its number and one star, when it has one. */
 @Composable
 private fun YearAndRating(
     year: String?,
@@ -129,22 +129,19 @@ private fun YearAndRating(
                 Text(text = LocalContext.current.factSeparator(), style = ThemeText.detail.style, color = color)
             }
             val description = stringResource(R.string.stars_of_five, rating.number)
-            Icon(
-                imageVector = Icons.Filled.Star,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier =
-                    Modifier
-                        .padding(start = ThemeSpace.line)
-                        .size(STAR_SIZE)
-                        .semantics { contentDescription = description },
-            )
-            Text(
-                text = rating.number.toString(),
-                style = ThemeText.detail.style,
-                color = color,
-                modifier = Modifier.padding(start = ThemeSpace.line),
-            )
+            // The number and the star read as one image, "4 of 5 stars".
+            Row(
+                modifier = Modifier.clearAndSetSemantics { contentDescription = description },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(text = rating.number.toString(), style = ThemeText.detail.style, color = color)
+                Icon(
+                    imageVector = Icons.Filled.Star,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(start = ThemeSpace.line).size(STAR_SIZE),
+                )
+            }
         }
     }
 }
