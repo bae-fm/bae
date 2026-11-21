@@ -90,8 +90,7 @@ struct ReleaseMetadataTrackColumns {
 
     static let track: CGFloat = 52
     static let length: CGFloat = 88
-    /// The board's column gap, which no space token names.
-    static let spacing: CGFloat = 10
+    static let spacing = ThemeSpace.related
 
     private static let floorSource: CGFloat = 160
     private static let floorTitle: CGFloat = 120
