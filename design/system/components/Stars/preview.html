@@ -9,7 +9,7 @@
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, N('Rated', h(B.Stars, { value: 4, size: 16 })), N('Not rated', h(B.Stars, { size: 16 }))));
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, N('Rated', h(B.Stars, { value: 4, size: 16 })), N('Not rated', h(B.Stars, { size: 16 })), N('Number and one star', h(B.Stars, { value: 4, size: 16, number: true }))));
 </script>
 </body>
 </html>

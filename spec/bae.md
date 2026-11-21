@@ -169,9 +169,9 @@ album    Album Title, Artist Name
 ```
 
 An album's page heads with lines stacked in this order, each on its own line:
-its title, its artist, its year (with the person's rating
-after it when they rated the album), the edition line, the copy line, then the
-Play button. The release lines are the three lines that name the selected
+its title, its artist, its year, the edition line, the copy line, then the
+Play button. When the person rated the album, Android ends the year line with
+the rating and macOS shows it after the ⋯ button (decisions #1219 and #1233). The release lines are the three lines that name the selected
 release, wherever bae names a release under its album (decision #1230):
 
 - The edition line holds what is printed on the release and what a person looks
@@ -319,7 +319,7 @@ button (§6.4), ⋮, whose menu gives the view's sort under *Sort by* (the
 fields, the direction, and for albums *Group by artist*), then *Shuffle
 library*, and last the person's menu (below); screen readers name that ⋮ *More
 options*. On Android screen readers name the back arrow of an album, artist, composer or playlist page opened from the library *Back to library* (*Back* when
-opened from another page), and the album page's ⋮ *Album options*. A card's title or artists, or a row's name, too long
+opened from another page). On Android an album page's Play sits under its release details, beside the cover, and ⋮, *Album options* to screen readers, sits at the right of the top bar; its menu offers *Shuffle*, *Play next* and *Add to queue*, then after a separator *Rate*, *Pin* or *Unpin* and the album's other items, and after a last separator *Delete album…* (decision #1217). A card's title or artists, or a row's name, too long
 for its one line ends in "…". On Android the grid grouped by artist opens each
 artist's albums with a header of the artist's round picture, name and album
 count, which opens the artist; the header of the artist being scrolled through
@@ -2822,7 +2822,7 @@ Unpin asks first while the device's `ask_before_unpinning` setting is on, in
 both apps and everywhere Unpin is offered: the Mac's Storage sheet for a
 release, the Storage Manager's row menu (one alert for the whole selection,
 naming the release when it is one and counting them when several), and the
-Android album page's download control. The alert says the files leave this
+Android album's ⋮ menu. The alert says the files leave this
 device now and the release stays in the cloud and plays from there while online.
 Unpin in the alert unpins; with "Do not show this again" ticked it first turns
 the setting off, and if that write fails nothing unpins and the error reaches
@@ -3150,10 +3150,10 @@ to a track. Ana gives *Album Title* four stars; Ben gives it two. They are two
 rows, one per person, keyed by the person and the album, so Ana rating it again
 from her phone changes her one row. Clearing a rating deletes the row. A
 track's rating belongs to one release's track, so the tracks of two copies of a
-pressing (§2.7) are rated apart. An album's page shows the person's own stars
-for it and a line naming who rated it: *You* when they did, then each other
-person who did, with their stars, by name. A track's stars on the page are the
-person's own.
+pressing (§2.7) are rated apart. An album's menu offers *Rate*, whose submenu
+(macOS) or sheet (Android) shows the person's own stars for it and a line naming
+who rated it: *You* when they did, then each other person who did, with their
+stars, by name. A track's stars on the page are the person's own.
 
 **Rating systems.** A library rates albums one way and tracks one way: each
 with *Stars*, *Heart* or *None*. The choice belongs to the library, not to a
@@ -3170,16 +3170,26 @@ rating, so a rating nobody touched shows as it was when the system changes
 back. *None* hides ratings and keeps them. Sorting by rating under *Heart*
 puts the hearted first and orders nothing by the stars it hides.
 
-On macOS the album's stars sit above its tracks: clicking a star rates the album
-with that many stars, and clicking the star the person already gave clears the
-rating.
+On macOS the album's ⋯ menu offers *Rate*, as a track's menu does: a submenu
+whose first item, disabled, is the line of who rated the album, then five stars
+down to one with the person's own checked, then *Clear rating*; a click on a row
+rates the album with that many stars (decision #1217). When the person has
+rated an album, the rating shows read-only after the ⋯ button, on Play's row, as
+the number and one star, "4 ★" (decisions #1219 and #1233); an unrated album
+shows nothing there.
 
 On macOS a track's row shows the person's stars for it, and its menu offers
 *Rate*: a submenu of five stars down to one, the person's own checked, then
 *Clear rating*.
 
-On Android the album's stars sit under its header with the line of who rated
-the album under them, and a tap on a star rates and clears as on macOS.
+On Android the album's ⋮ menu offers *Rate*, which opens a bottom sheet titled
+*Rate*: under the title the line of who rated the album (*You*, then each other
+person who did, with their stars) in secondary text, then five stars down to one
+with the person's own checked, then *Clear rating*; a tap on a row rates the
+album with that many stars (decision #1217). When the person has rated an
+album, the end of the year line in its header shows the rating read-only, the
+number and one star, as "1992 · 4 ★"; an unrated album shows nothing there
+(decision #1219).
 
 Ben keeps his history private. Carol's devices never see what he played. He
 makes a playlist for a party and shares it: it moves from his circle to the
@@ -3240,7 +3250,7 @@ moment the device registers (§5.4), and before that the device holds none of
 the library's rows, so it has nothing to play or rate. A device removed from
 the library keeps its copy and keeps writing to it, plays and ratings
 included: each is a row under its person's profile, as on any device, and the
-album's page there still shows the person's own ratings as *You*. The rows
+album's Rate menu there still shows the person's own ratings as *You*. The rows
 stay on that device, which no longer syncs. When an admin removes the person,
 each of their own devices keeps their circle and every row in it, and keeps
 recording their plays the same way, the private ones under *Only me* included
@@ -3310,7 +3320,7 @@ under them, or under *No playlists yet* when there are none, which opens a
 dialog for the name and who sees it, and the playlist made opens; a person
 without a profile sees *Playlists appear once you have a profile* and no
 button. A playlist opens as its own page on Android, with its picture, owner,
-count and who sees it, then Play and Shuffle and its tracks in order, each with
+count and who sees it, then Play under them, and ⋮ at the right of the top bar (*Playlist options* to screen readers), whose menu offers *Shuffle* to everyone, and its tracks in order, each with
 its credit line and album, a tap on one playing from it; a playlist deleted while
 its page is open says it is not in the library anymore.
 
@@ -3320,7 +3330,7 @@ end of the one chosen, then *New playlist…*, which opens the sheet holding the
 track.
 
 A playlist's owner changes it from its page; no one else sees these controls.
-The page's options menu (the ⋯ button after Play on macOS, the bar's menu on
+The page's options menu (the ⋯ button after Play on macOS, the ⋮ in the top bar on
 Android) offers the owner *Edit playlist…*, which changes its name and who sees it, and
 *Delete playlist…*, which asks first ("bae will delete this playlist from every
 device. Its tracks stay in the library.") and then deletes it on every device. Saving

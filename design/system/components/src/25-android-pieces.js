@@ -5,11 +5,9 @@
     return h('div', { className: 'bae-a-rating' }, h(Stars, { value: props.value || 0, size: 24, rate: true }), props.raters ? h('span', { className: 'bae-a-fine bae-muted' }, props.raters) : null);
   }
 
-  // An album or playlist page's play buttons: Play and Shuffle, then Play next and Add to queue on a second line. `short`: Play and Shuffle alone, as a playlist page has them.
+  // An album's or playlist's page actions, left-aligned under its header: Play (filled), then the page's options button (`label` names it to screen readers, Album options unless given), whose menu holds every other action.
   function AndroidPageActions(props) {
-    var play = h('div', { className: 'bae-a-pageactions-line' }, h(AndroidButton, null, 'Play'), h(AndroidButton, { kind: 'outlined' }, 'Shuffle'));
-    return h('div', { className: 'bae-a-pageactions' }, play,
-      props.short ? null : h('div', { className: 'bae-a-pageactions-line' }, h(AndroidButton, { kind: 'outlined' }, 'Play next'), h(AndroidButton, { kind: 'outlined' }, 'Add to queue')));
+    return h('div', { className: 'bae-a-pageactions' }, h(AndroidButton, null, 'Play'), h(AndroidIconButton, { icon: 'more', label: props.label || 'Album options' }));
   }
 
   // An album's credits at the foot of its page: the Credits eyebrow, then one line per credit, its role in secondary text at the start and its names at the end. `credits`: "Role:Names", comma separated.
@@ -29,12 +27,12 @@
       h('div', { className: 'bae-a-othernames-list' }, list(props.names).join(' · ')));
   }
 
-  // A playlist page's head: its picture (`covers`), its name over the owner, track count and sharing (`facts`), then Play and Shuffle.
+  // A playlist page's head: its picture (`covers`), its name over the owner, track count and sharing (`facts`), and Play under them. The playlist's options are the ⋮ of the screen's top bar.
   function AndroidPlaylistHeader(props) {
     return h('div', { className: 'bae-a-plhead' },
       h('div', { className: 'bae-a-plhead-top' }, h(PlaylistPicture, { covers: props.covers, size: 96, radius: 10 }),
-        h('div', null, h('div', { className: 'bae-a-plhead-name' }, props.name), h('div', { className: 'bae-a-fine bae-muted' }, props.facts))),
-      h('div', { className: 'bae-a-plhead-actions' }, h(AndroidPageActions, { short: true })));
+        h('div', null, h('div', { className: 'bae-a-plhead-name' }, props.name), h('div', { className: 'bae-a-fine bae-muted' }, props.facts),
+          h('div', { className: 'bae-a-plhead-actions' }, h(AndroidButton, null, 'Play')))));
   }
 
   // The Pinning screen's choice of how many releases pin at once: Pins at once over one button per number up to `limit` (6 unless given), `selected` checked.

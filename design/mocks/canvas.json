@@ -93,9 +93,17 @@
   "android.album.menu.dc.html": {
    "h": 916,
    "page": "home",
-   "title": "Album options: one item",
+   "title": "Album options",
    "w": 412,
    "x": 0,
+   "y": 14416
+  },
+  "android.album.rate.dc.html": {
+   "h": 916,
+   "page": "home",
+   "title": "Album: Rate",
+   "w": 412,
+   "x": 2952,
    "y": 14416
   },
   "mac.album.change-cover.dc.html": {
@@ -6200,6 +6208,7 @@
   "mac.settings.automation.running.dc.html",
   "mac.settings.automation.start-failed.dc.html",
   "android.album.menu.dc.html",
+  "android.album.rate.dc.html",
   "android.album.delete.dc.html",
   "android.album.unpin.dc.html",
   "android.album.delete.failed.dc.html",

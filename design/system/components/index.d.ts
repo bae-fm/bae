@@ -251,7 +251,7 @@ export interface MacQueueRowProps { title: string; artist?: string; album?: stri
 export declare function MacQueueRow(props: MacQueueRowProps): React.ReactElement;
 export interface AndroidLibraryScreenProps extends NowPlayingProps { view?: 'Albums' | 'Artists' | 'Composers'; collapsed?: boolean; searching?: boolean; search?: string; sync?: 'moving' | 'attention' | 'paused'; width?: number; height?: number; children?: React.ReactNode }
 export declare function AndroidLibraryScreen(props: AndroidLibraryScreenProps): React.ReactElement;
-export interface AndroidDetailScreenProps extends NowPlayingProps { back?: string; menu?: boolean; flush?: boolean; width?: number; height?: number; children?: React.ReactNode }
+export interface AndroidDetailScreenProps extends NowPlayingProps { back?: string; menu?: boolean; menuLabel?: string; flush?: boolean; width?: number; height?: number; children?: React.ReactNode }
 export declare function AndroidDetailScreen(props: AndroidDetailScreenProps): React.ReactElement;
 export interface AndroidNowPlayingBarProps { title?: string; artist?: string; album?: string; playing?: boolean; waiting?: boolean; position?: number; held?: number | string; elapsed?: string; duration?: string; repeat?: boolean; casting?: string; castOff?: boolean }
 export declare function AndroidNowPlayingBar(props: AndroidNowPlayingBarProps): React.ReactElement;
@@ -265,12 +265,12 @@ export declare function AndroidArtistGroupHeading(props: AndroidArtistGroupHeadi
 export interface AndroidTrackRowProps { position?: string; title: string; artist?: string; duration?: string; current?: boolean; playing?: boolean; /** The work the track records and its composer, on a line under the row. */ work?: string }
 export declare function AndroidTrackRow(props: AndroidTrackRowProps): React.ReactElement;
 export declare function AndroidEyebrow(props: { children?: React.ReactNode }): React.ReactElement;
-export interface AndroidAlbumHeaderProps { title: string; artist?: string; year?: string; edition?: string; copy?: string; noCover?: boolean }
+export interface AndroidAlbumHeaderProps { title: string; artist?: string; year?: string; rating?: number | string; edition?: string; copy?: string; noCover?: boolean; children?: React.ReactNode }
 export declare function AndroidAlbumHeader(props: AndroidAlbumHeaderProps): React.ReactElement;
 export interface AndroidPinControlProps { state?: 'available' | 'queued' | 'downloading' | 'failed' | 'downloaded' | 'elsewhere'; progress?: number; bytes?: string; where?: string }
 export declare function AndroidPinControl(props: AndroidPinControlProps): React.ReactElement;
 export declare function AndroidUploadLine(props: { phase?: string; missing?: string }): React.ReactElement;
-export interface MacAlbumPanelProps { title: string; artist?: string; year?: string; releases?: string; release?: string; edition?: string; copy?: string; /** The release's audio as bae read it, the panel's last line, after the tracks, credits and works. */ audio?: string; unplayable?: string; noCover?: boolean; options?: string; optionsOpen?: boolean; highlighted?: string; /** The album's stars, 0 while no one has rated it; leave it out to draw no rating. */ rating?: number | string; /** Who else rated it. */ ratingWho?: string; children?: React.ReactNode }
+export interface MacAlbumPanelProps { title: string; artist?: string; year?: string; releases?: string; release?: string; edition?: string; copy?: string; /** The release's audio as bae read it, the panel's last line, after the tracks, credits and works. */ audio?: string; unplayable?: string; noCover?: boolean; options?: string; optionsOpen?: boolean; highlighted?: string; /** The album's stars, 0 while no one has rated it; leave it out to draw no rating. */ rating?: number | string; children?: React.ReactNode }
 /** A line of progress: the phase, a bar filling the rest of the line, an optional count. No `value` is a wait of no known length. */
 export declare function MacProgressLine(props: { label: string; value?: number | string; detail?: string; activity?: boolean }): React.ReactElement;
 /** Every catalog that describes a release, as a wrapped row of links (`records`: catalog names, comma-separated). */
@@ -568,10 +568,6 @@ export interface AndroidVolumeSliderProps { value?: number | string }
 export declare function AndroidVolumeSlider(props: AndroidVolumeSliderProps): React.ReactElement;
 export interface AndroidPlaceholderLineProps { width: number | string; height: number | string; radius?: number | string; fixed?: boolean }
 export declare function AndroidPlaceholderLine(props: AndroidPlaceholderLineProps): React.ReactElement;
-export interface AndroidAlbumRatingProps { value?: number | string; raters?: string }
-export declare function AndroidAlbumRating(props: AndroidAlbumRatingProps): React.ReactElement;
-export interface AndroidPageActionsProps { short?: boolean }
-export declare function AndroidPageActions(props: AndroidPageActionsProps): React.ReactElement;
 export interface AndroidAlbumCreditsProps { credits: string }
 export interface AndroidAlbumAudioProps { /** The release's audio as bae read it, such as FLAC · 44.1 kHz · 16-bit · Stereo. */ children?: React.ReactNode }
 export declare function AndroidAlbumAudio(props: AndroidAlbumAudioProps): React.ReactElement;

@@ -8,6 +8,8 @@ The open album's head, beside its cover, from the top:
 - The copy line (`copy`): the media and details, then the length, as in `2×LP · Remastered · 52 min`. The audio line ends the album page instead (`MacAlbumPanel`'s `audio`). Core words the lines, and Android shows the same words. A line with nothing in it is left out;
 - the line that says where the album is, when this Mac can't play it (`unplayable`);
 - Play and the album's ⋯ (`MacMoreMenu`, boxed), whose menu holds `options`; `optionsOpen` draws it open, `highlighted` the item under the pointer;
-- the rating row (`MacAlbumRating`), always: the stars (`rating`, empty while no one has rated it) and `ratingWho`, the line of who else rated it.
+- after the ⋯, the person's own rating when they have rated the album: the number and one star in the accent, read-only (`rating`, "4 ★", decisions #1219 and #1233).
+
+Rating, and every other action beyond Play, is an item of the ⋯ menu: Rate opens a submenu (decision #1217).
 
 **In the code:** macOS: `MacAlbumHeader` (`Views/Library/AlbumDetail/MacAlbumHeader.swift`), with `ReleaseFactsLine` for the release's facts, inside `MacAlbumPanel`.
