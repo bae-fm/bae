@@ -5,7 +5,7 @@ import SwiftUI
 
 // MARK: - Wizard Steps
 
-private enum WizardStep: Equatable {
+enum WizardStep: Equatable {
     case selectProvider
     case configure(BridgeCloudProvider)
     /// The storage is connected: the last screen shows the restore code.
@@ -59,17 +59,10 @@ struct SyncSetupWizard: View {
         init(staging: SyncSetupWizardStaging) {
             onDone = {}
             self.staging = staging
-            _choice = State(initialValue: staging.provider)
+            _choice = State(initialValue: staging.choice)
             _run = State(initialValue: staging.run)
-            switch staging.screen {
-            case .providers:
-                _step = State(initialValue: .selectProvider)
-            case .provider:
-                _step = State(initialValue: .configure(staging.provider))
-            case .restoreCode(let reveal):
-                _step = State(initialValue: .restoreCode(staging.provider))
-                _restoreCode = State(initialValue: reveal)
-            }
+            _step = State(initialValue: staging.step)
+            _restoreCode = State(initialValue: staging.reveal)
         }
     #endif
 
@@ -211,7 +204,7 @@ struct SyncSetupWizard: View {
             _ provider: StorageFolderBrowser.Provider
         ) -> StorageFolderBrowser {
             #if DEBUG
-                if case .provider(.folders(let browser)) = staging?.screen {
+                if case .folders(let browser)? = staging?.fields {
                     return browser
                 }
             #endif
@@ -221,7 +214,7 @@ struct SyncSetupWizard: View {
 
     private var s3Form: MacS3Form {
         #if DEBUG
-            if case .provider(.s3(let form)) = staging?.screen {
+            if case .s3(let form)? = staging?.fields {
                 return form
             }
         #endif
@@ -464,14 +457,14 @@ struct SetupStep<Fields: View, Leading: View>: View {
             case iCloud
         }
 
-        enum Screen {
-            case providers
-            case provider(Provider)
-            case restoreCode(RestoreCodeReveal)
-        }
-
-        let provider: BridgeCloudProvider
-        let screen: Screen
+        /// The screen the wizard opens on.
+        let step: WizardStep
+        /// The provider the list has selected.
+        let choice: BridgeCloudProvider
+        /// What the provider's own screen holds, when `step` is that screen.
+        var fields = Provider.iCloud
+        /// The restore code, when `step` is its screen.
+        var reveal = RestoreCodeReveal()
         var run = StorageSetupRun()
     }
 #endif

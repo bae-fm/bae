@@ -531,7 +531,7 @@ extension ShotScene {
     /// The list of providers, with `chosen` selected.
     @MainActor
     private static func providers(_ chosen: BridgeCloudProvider) -> ShotStage {
-        sheet(SyncSetupWizardStaging(provider: chosen, screen: .providers))
+        sheet(SyncSetupWizardStaging(step: .selectProvider, choice: chosen))
     }
 
     /// A provider's own screen: the folder choice or sign-in of `browser`,
@@ -543,8 +543,9 @@ extension ShotScene {
     ) -> ShotStage {
         sheet(
             SyncSetupWizardStaging(
-                provider: provider,
-                screen: .provider(browser.map { .folders($0) } ?? .iCloud)
+                step: .configure(provider),
+                choice: provider,
+                fields: browser.map { .folders($0) } ?? .iCloud
             )
         )
     }
@@ -558,15 +559,14 @@ extension ShotScene {
     ) -> ShotStage {
         sheet(
             SyncSetupWizardStaging(
-                provider: .s3,
-                screen: .provider(
-                    .s3(
-                        MacS3Form(
-                            staged: s3Fields(failing: failure),
-                            failure: rejection.map {
-                                DisplayError(line: $0.words)
-                            }
-                        )
+                step: .configure(.s3),
+                choice: .s3,
+                fields: .s3(
+                    MacS3Form(
+                        staged: s3Fields(failing: failure),
+                        failure: rejection.map {
+                            DisplayError(line: $0.words)
+                        }
                     )
                 )
             )
@@ -594,8 +594,9 @@ extension ShotScene {
                 .iCloud
             }
         var staging = SyncSetupWizardStaging(
-            provider: provider,
-            screen: .provider(fields)
+            step: .configure(provider),
+            choice: provider,
+            fields: fields
         )
         staging.run = StorageSetupRun(
             staging: StorageSetupFollowing(
@@ -633,11 +634,10 @@ extension ShotScene {
     ) -> ShotStage {
         sheet(
             SyncSetupWizardStaging(
-                provider: provider,
-                screen: .restoreCode(
-                    RestoreCodeReveal(
-                        previewState: .masked(PreviewData.restoreCodeShare)
-                    )
+                step: .restoreCode(provider),
+                choice: provider,
+                reveal: RestoreCodeReveal(
+                    previewState: .masked(PreviewData.restoreCodeShare)
                 )
             ),
             connected: connected
