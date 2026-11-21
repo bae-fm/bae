@@ -114,7 +114,7 @@ private fun ReleaseLine(text: String) {
     )
 }
 
-/** The album's [year], then the rating the person gave it, as its number and one star, when it has one. */
+/** The album's [year], then the rating the person gave it, as one star and its number, when it has one. */
 @Composable
 private fun YearAndRating(
     year: String?,
@@ -128,7 +128,6 @@ private fun YearAndRating(
             if (year != null) {
                 Text(text = LocalContext.current.factSeparator(), style = ThemeText.detail.style, color = color)
             }
-            Text(text = rating.number.toString(), style = ThemeText.detail.style, color = color)
             val description = stringResource(R.string.stars_of_five, rating.number)
             Icon(
                 imageVector = Icons.Filled.Star,
@@ -139,6 +138,12 @@ private fun YearAndRating(
                         .padding(start = ThemeSpace.line)
                         .size(STAR_SIZE)
                         .semantics { contentDescription = description },
+            )
+            Text(
+                text = rating.number.toString(),
+                style = ThemeText.detail.style,
+                color = color,
+                modifier = Modifier.padding(start = ThemeSpace.line),
             )
         }
     }
