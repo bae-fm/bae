@@ -36,7 +36,6 @@ mod tests;
 /// FFmpeg uses for its own file IO.
 pub const AVIO_BUFFER_SIZE: usize = 32768;
 
-#[cfg(desktop)]
 pub use avio::ReadableFile;
 pub use decode::byte_jump_keeps_place;
 #[cfg(desktop)]
