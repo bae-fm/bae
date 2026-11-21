@@ -46,6 +46,7 @@ fn write_kotlin(out: &mut String, theme: &Theme) -> std::fmt::Result {
          import androidx.compose.ui.text.TextStyle\n\
          import androidx.compose.ui.text.font.FontFamily\n\
          import androidx.compose.ui.text.font.FontWeight\n\
+         import androidx.compose.ui.text.style.LineHeightStyle\n\
          import androidx.compose.ui.unit.dp\n\
          import androidx.compose.ui.unit.sp\n",
     );
@@ -121,7 +122,12 @@ fn write_kotlin(out: &mut String, theme: &Theme) -> std::fmt::Result {
         let family = if text.monospaced { "FontFamily.Monospace" } else { "FontFamily.Default" };
         let line = text
             .android_line
-            .map(|line| format!("                    lineHeight = {line}.sp,\n"))
+            .map(|line| {
+                format!(
+                    "                    lineHeight = {line}.sp,\n                    \
+                     lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None),\n"
+                )
+            })
             .unwrap_or_default();
         writeln!(
             out,
