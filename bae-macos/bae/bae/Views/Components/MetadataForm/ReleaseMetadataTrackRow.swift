@@ -81,7 +81,9 @@ struct ReleaseMetadataTrackRow: View {
     }
 }
 
-/// Column widths shared by every release metadata table.
+/// Column widths shared by every release metadata table, as the board's grid
+/// lays them out: Track and Length keep their widths, and Source, Title and
+/// Artist share what is left in the ratio 1.2 : 1 : 1, none under its floor.
 struct ReleaseMetadataTrackColumns {
     let source: CGFloat
     let title: CGFloat
@@ -89,50 +91,56 @@ struct ReleaseMetadataTrackColumns {
 
     static let track: CGFloat = 52
     static let length: CGFloat = 88
-    static let spacing = ThemeSpace.related
+    /// The board's column gap, which no space token names.
+    static let spacing: CGFloat = 10
     static let rowPadding: CGFloat = 0
 
-    private static let idealTitle: CGFloat = 220
-    private static let floorTitle: CGFloat = 120
-    private static let idealArtist: CGFloat = 180
-    private static let floorArtist: CGFloat = 100
-    private static let idealSource: CGFloat = 260
     private static let floorSource: CGFloat = 160
+    private static let floorTitle: CGFloat = 120
+    private static let floorArtist: CGFloat = 100
+    private static let shareSource: CGFloat = 1.2
+    private static let shareTitle: CGFloat = 1
+    private static let shareArtist: CGFloat = 1
 
     private static let chrome: CGFloat = rowPadding * 2 + spacing * 4
     private static let rigid: CGFloat = track + length
 
-    static let idealTableWidth: CGFloat =
-        idealTitle + idealArtist + idealSource + rigid + chrome
     static let minimumTableWidth: CGFloat =
-        floorTitle + floorArtist + floorSource + rigid + chrome
+        floorSource + floorTitle + floorArtist + rigid + chrome
 
     static func resolved(tableWidth: CGFloat) -> Self {
         let width = max(tableWidth, minimumTableWidth)
-        let fraction =
-            width < idealTableWidth
-            ? (idealTableWidth - width)
-                / ((idealTitle - floorTitle) + (idealArtist - floorArtist)
-                    + (idealSource - floorSource))
-            : 0
-        let title = shrunk(idealTitle, to: floorTitle, by: fraction)
-        let artist = shrunk(idealArtist, to: floorArtist, by: fraction)
+        // A column whose share falls under its floor keeps the floor, and
+        // the others share the rest, as a grid's minmax() tracks do.
+        let columns = [
+            (share: shareSource, floor: floorSource),
+            (share: shareTitle, floor: floorTitle),
+            (share: shareArtist, floor: floorArtist),
+        ]
+        var widths = [CGFloat?](repeating: nil, count: columns.count)
+        var free = width - rigid - chrome
+        while true {
+            let open = columns.indices.filter { widths[$0] == nil }
+            let shares = open.reduce(0) { $0 + columns[$1].share }
+            let clamped = open.filter {
+                free * columns[$0].share / shares < columns[$0].floor
+            }
+            if clamped.isEmpty {
+                for index in open {
+                    widths[index] = free * columns[index].share / shares
+                }
+                break
+            }
+            for index in clamped {
+                widths[index] = columns[index].floor
+                free -= columns[index].floor
+            }
+        }
         return Self(
-            source: max(
-                floorSource,
-                width - rigid - chrome - title - artist
-            ),
-            title: title,
-            artist: artist
+            source: widths[0] ?? floorSource,
+            title: widths[1] ?? floorTitle,
+            artist: widths[2] ?? floorArtist
         )
-    }
-
-    private static func shrunk(
-        _ ideal: CGFloat,
-        to floor: CGFloat,
-        by fraction: CGFloat
-    ) -> CGFloat {
-        max(floor, ideal - (ideal - floor) * fraction)
     }
 }
 

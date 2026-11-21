@@ -24,7 +24,6 @@ struct ImportMappingColumnsTests {
         arguments: [
             ReleaseMetadataTrackColumns.minimumTableWidth,
             700, 733.5, 800, 900,
-            ReleaseMetadataTrackColumns.idealTableWidth,
             1200, 1600, 2400,
         ] as [CGFloat]
     )
@@ -64,41 +63,37 @@ struct ImportMappingColumnsTests {
         #expect(columns.artist == atMinimum.artist)
     }
 
-    /// Wide enough and every Tracks column has the width it asks for, with the
-    /// surplus going to Source and nowhere else.
-    @Test(arguments: [0, 1, 200, 900] as [CGFloat])
-    func theSurplusAboveTheIdealWidthIsAllTheSource(surplus: CGFloat) {
-        let columns = ReleaseMetadataTrackColumns.resolved(
-            tableWidth: ReleaseMetadataTrackColumns.idealTableWidth + surplus
-        )
+    /// Wide enough that no column sits at its floor, Source, Title and Artist
+    /// share the width the fixed columns leave in the ratio 1.2 : 1 : 1, as
+    /// the board's grid does.
+    @Test(arguments: [900, 1200, 2400] as [CGFloat])
+    func theColumnsShareTheRestInTheBoardsRatio(width: CGFloat) {
+        let columns = ReleaseMetadataTrackColumns.resolved(tableWidth: width)
 
-        #expect(columns.title == 220)
-        #expect(columns.artist == 180)
-        #expect(columns.source == 260 + surplus)
+        #expect(abs(columns.source - columns.title * 1.2) < 0.001)
+        #expect(abs(columns.artist - columns.title) < 0.001)
     }
 
-    /// Narrowing takes from all three at once. A column that kept its width
-    /// while its neighbour collapsed would be the same bug in miniature: the
-    /// row still fits, and one cell has stopped saying anything.
+    /// At the board's 820pt column the columns are 240, 200 and 200.
     @Test
-    func narrowingTakesFromEveryColumnThatHasGive() {
-        let wide = ReleaseMetadataTrackColumns.resolved(
-            tableWidth: ReleaseMetadataTrackColumns.idealTableWidth
-        )
-        let middle = ReleaseMetadataTrackColumns.resolved(
-            tableWidth: (ReleaseMetadataTrackColumns.idealTableWidth
-                + ReleaseMetadataTrackColumns.minimumTableWidth) / 2
-        )
-        let narrow = ReleaseMetadataTrackColumns.resolved(
-            tableWidth: ReleaseMetadataTrackColumns.minimumTableWidth
-        )
+    func theBoardsEightHundredTwentyPointTable() {
+        let columns = ReleaseMetadataTrackColumns.resolved(tableWidth: 820)
 
-        #expect(middle.source < wide.source)
-        #expect(middle.title < wide.title)
-        #expect(middle.artist < wide.artist)
-        #expect(narrow.source < middle.source)
-        #expect(narrow.title < middle.title)
-        #expect(narrow.artist < middle.artist)
+        #expect(abs(columns.source - 240) < 0.001)
+        #expect(abs(columns.title - 200) < 0.001)
+        #expect(abs(columns.artist - 200) < 0.001)
+    }
+
+    /// A column that would fall under its floor keeps the floor, and the
+    /// others share what is left.
+    @Test
+    func aColumnUnderItsFloorKeepsTheFloor() {
+        let columns = ReleaseMetadataTrackColumns.resolved(tableWidth: 600)
+
+        #expect(columns.artist >= 100)
+        #expect(columns.title >= 120)
+        #expect(columns.source >= 160)
+        #expect(rowWidth(columns) == 600)
     }
 
     /// Widening never narrows a column and narrowing never widens one, at every

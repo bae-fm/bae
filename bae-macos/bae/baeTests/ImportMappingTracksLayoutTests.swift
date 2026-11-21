@@ -6,6 +6,9 @@ import Testing
 
 @testable import bae
 
+/// A table width with room for every column beyond its floor.
+private let wideTableWidth: CGFloat = 840
+
 @Suite("Import mapping Tracks layout")
 struct ImportMappingTracksLayoutTests {
     @MainActor
@@ -13,7 +16,7 @@ struct ImportMappingTracksLayoutTests {
         "title editor fills its column and starts at the leading edge",
         arguments: [
             ReleaseMetadataTrackColumns.minimumTableWidth,
-            ReleaseMetadataTrackColumns.idealTableWidth,
+            wideTableWidth,
         ] as [CGFloat]
     )
     func titleEditorFillsColumn(tableWidth: CGFloat) async throws {
@@ -67,7 +70,7 @@ struct ImportMappingTracksLayoutTests {
         "playable source leads the row with the standard playback target",
         arguments: [
             ReleaseMetadataTrackColumns.minimumTableWidth,
-            ReleaseMetadataTrackColumns.idealTableWidth,
+            wideTableWidth,
             1200,
         ] as [CGFloat]
     )
@@ -112,7 +115,7 @@ struct ImportMappingTracksLayoutTests {
     @MainActor
     @Test("preview state keeps the playable row geometry stable")
     func previewStateKeepsRowGeometryStable() async throws {
-        let tableWidth = ReleaseMetadataTrackColumns.idealTableWidth
+        let tableWidth = wideTableWidth
         let stopped = try await hostedTrack(
             tableWidth: tableWidth,
             previewingTarget: nil
@@ -137,7 +140,7 @@ struct ImportMappingTracksLayoutTests {
             endSample: 88_200
         )
         let hosted = try await hostedTrack(
-            tableWidth: ReleaseMetadataTrackColumns.idealTableWidth,
+            tableWidth: wideTableWidth,
             previewingTarget: otherWindow
         )
 
@@ -165,12 +168,12 @@ struct ImportMappingTracksLayoutTests {
     @Test("a row with no listed length shows its measured length alone")
     func rowWithNoListedLengthShowsItsMeasuredLength() async throws {
         let columns = ReleaseMetadataTrackColumns.resolved(
-            tableWidth: ReleaseMetadataTrackColumns.idealTableWidth
+            tableWidth: wideTableWidth
         )
         var mapping = pairedMapping
         mapping.artists = nil
         let size = NSSize(
-            width: ReleaseMetadataTrackColumns.idealTableWidth,
+            width: wideTableWidth,
             height: 40
         )
         try await SnapshotTestSupport.withHostedWindow(
@@ -217,7 +220,7 @@ extension ImportMappingTracksLayoutTests {
         arguments: [
             (ReleaseMetadataTrackColumns.minimumTableWidth, false),
             (ReleaseMetadataTrackColumns.minimumTableWidth, true),
-            (ReleaseMetadataTrackColumns.idealTableWidth, false),
+            (wideTableWidth, false),
             (1200, true),
         ] as [(CGFloat, Bool)]
     )
