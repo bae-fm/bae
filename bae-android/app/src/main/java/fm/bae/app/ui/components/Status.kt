@@ -191,7 +191,6 @@ internal fun NoticeFrame(
                         },
                     ),
             lead = if (tone.icon != null) ({ NoticeGlyph(tone) }) else null,
-            leadAlignment = Alignment.TopCenter,
             content = content,
         )
     }
@@ -224,7 +223,6 @@ internal fun AndroidItem(
     modifier: Modifier = Modifier,
     lead: (@Composable BoxScope.() -> Unit)? = null,
     trail: (@Composable BoxScope.() -> Unit)? = null,
-    leadAlignment: Alignment = Alignment.Center,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Row(
@@ -232,15 +230,15 @@ internal fun AndroidItem(
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
-        lead?.let { FirstLine(alignment = leadAlignment, content = it) }
+        lead?.let { FirstLine(alignment = Alignment.TopCenter, content = it) }
         Column(modifier = Modifier.weight(1f), content = content)
         trail?.let { FirstLine(content = it) }
     }
 }
 
 /**
- * A box one body line tall, its [content] centred in it; the content may overhang the box. The lead and
- * trail of an [AndroidItem] sit in one, on the first line of its text.
+ * A box one body line tall, its [content] placed in it by [alignment]; the content may overhang the box. The
+ * lead of an [AndroidItem] sits in one at the top of the first line of its text, the trail centred on it.
  */
 @Composable
 internal fun FirstLine(
