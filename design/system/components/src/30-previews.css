@@ -6,6 +6,8 @@
 .bae-preview-row-wide { align-items: flex-start; }
 .bae-preview-row-wide > .bae-preview-name { padding-top: 7px; }
 .bae-preview-row-wide > .bae-preview-cell > * { flex: 1; min-width: 0; }
+/* An Android wide row draws at the phone's width, 411dp, as the app's component shot takes it. */
+.bae-preview-android .bae-preview-row-wide > .bae-preview-cell { flex: none; width: 411px; }
 .bae-preview-name { width: 110px; flex: none; font: 400 11.5px/15px var(--font-sans); color: var(--text-secondary); }
 .bae-preview-cell { flex: 1; min-width: 0; display: flex; align-items: center; }
 .bae-preview-slot { padding: var(--space-group); border: 1px dashed var(--hairline-strong); border-radius: var(--radius-card); color: var(--text-secondary); }
