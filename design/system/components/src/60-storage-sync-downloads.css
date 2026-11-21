@@ -104,16 +104,18 @@
 .bae-m-switch-off { opacity: 0.45; }
 
 /* Formats pane: button-style toggles, the token field */
-.bae-m-tokenfield { min-height: 24px; padding: 6px; border-radius: 7px; background: var(--field); box-shadow: inset 0 0 0 1px var(--field-edge); display: flex; row-gap: 6px; flex-wrap: wrap; align-items: center; }
+/* A multi-line field's chrome: 8pt above and below its line, 10pt at its sides, as the app's boxed multi-line field pads it. */
+.bae-m-tokenfield { min-height: 17px; padding: var(--space-related) 10px; border-radius: 7px; background: var(--field); box-shadow: inset 0 0 0 1px var(--field-edge); display: flex; row-gap: 6px; flex-wrap: wrap; align-items: center; }
 /* A value is macOS's own token (NSTokenField's): the system's blue, its words in the field's font, small corners, no ×. Typed text sits between the tokens as typed, its spaces kept: they are the spacing, so a token keeps only a hair of margin of its own. */
-.bae-m-token { margin: 0 2px; padding: 0 8px; border-radius: var(--radius-chip); background: var(--accent-tint); color: var(--accent); font: 400 13px/16px var(--font-sans); white-space: nowrap; }
+.bae-m-token { margin: 0 2px; padding: 0 8px; border-radius: var(--radius-chip); background: var(--accent-tint); color: var(--accent); font: 400 13px/17px var(--font-sans); white-space: nowrap; }
 .bae-m-tokenfield-error { box-shadow: inset 0 0 0 1px var(--danger), 0 0 0 3px color-mix(in srgb, var(--danger) 35%, transparent); }
 .bae-m-tokentext { white-space: pre; font: 400 13px var(--font-sans); color: var(--text-primary); }
 .bae-m-filename { padding: 10px var(--space-group); display: flex; flex-direction: column; gap: var(--space-related); }
 .bae-m-filename-label { font: 400 13px var(--font-sans); color: var(--text-primary); }
 .bae-m-filename-add { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font: 400 11.5px var(--font-sans); color: var(--text-secondary); }
 .bae-m-filename-preview { font: 400 11.5px var(--font-sans); color: var(--text-secondary); }
-.bae-m-tokenadd { padding: 1px 6px; border-radius: 5px; border: 1px dashed var(--hairline-strong); color: var(--text-primary); }
+/* The dashed edge is drawn inside the value, as the app strokes an overlay, so it adds nothing to its width. */
+.bae-m-tokenadd { padding: 1px 6px; border-radius: var(--radius-chip); outline: 1px dashed var(--hairline-strong); outline-offset: -1px; color: var(--text-primary); }
 /* Settings → Storage's usage: the total, one bar in kinds, a legend. Each kind keeps one of the accents' selection steps (Pinned blue, Cache gold, Library orchid, From before the reset mint, anything else neutral), the same in both themes, checked for colour-blind separation and 3:1 on the surface in that order. A 2px gap parts the segments. */
 .bae-usage { display: flex; flex-direction: column; gap: var(--space-related); padding: var(--space-group); }
 .bae-usage-total { display: flex; align-items: baseline; gap: var(--space-inline); }
