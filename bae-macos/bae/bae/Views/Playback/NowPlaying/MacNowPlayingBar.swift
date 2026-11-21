@@ -85,6 +85,7 @@ struct MacNowPlayingBar: View {
             }
             .buttonStyle(.accentPlain)
             .accessibilityElement(children: .ignore)
+            .accessibilityAddTraits(.isButton)
             .accessibilityLabel(buttonName(title: title))
         }
         else {

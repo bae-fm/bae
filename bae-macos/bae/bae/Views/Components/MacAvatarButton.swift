@@ -26,12 +26,13 @@ struct MacAvatarButton: View {
             MacButton(kind: .plain, menu: { items(hasCloudHome: hasCloudHome) })
             {
                 picture
-                    .accessibilityLabel("Your menu")
                     .frame(
                         width: ThemeSize.hitTarget,
                         height: ThemeSize.hitTarget
                     )
                     .contentShape(Rectangle())
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Your menu")
             }
             .help("Your menu")
             .sheet(item: $sheet) { shown in
