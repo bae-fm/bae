@@ -60,7 +60,8 @@
 /* tonal: Material's filled tonal button, a raised fill with the screen's text: an action that stands alone (a failed view's Retry, Check now), where an outline reads as the lesser of two. */
 .bae-a-btn-tonal { background: var(--tile); color: var(--text-primary); }
 .bae-a-btn-outlined { background: none; color: var(--text-primary); box-shadow: inset 0 0 0 1px var(--text-secondary); }
-.bae-a-btn-text { height: auto; padding: 10px 12px; background: none; color: var(--accent); border-radius: 20px; }
+/* A text button takes Material's 48dp touch target as its height, with its words centred in it; it draws no box, so the 40dp shape Material draws on press never shows on a board. */
+.bae-a-btn-text { height: 48px; padding: 0 12px; display: inline-flex; align-items: center; justify-content: center; background: none; color: var(--accent); border-radius: 20px; }
 .bae-a-btn-text.bae-a-btn-destructive, .bae-a-btn-outlined.bae-a-btn-destructive { color: var(--danger); }
 /* neutral: a text button in the screen's own text colour, for Cancel beside a destructive action, so the accent and danger never sit side by side. */
 .bae-a-btn-text.bae-a-btn-neutral { color: var(--text-primary); }
