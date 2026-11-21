@@ -60,8 +60,13 @@ struct MacNowPlayingBar: View {
             centerColumn
                 .frame(width: 460)
 
-            trailingControls
-                .frame(maxWidth: .infinity, alignment: .trailing)
+            // Hosted on its own, so VoiceOver reads these controls after the
+            // seek bar's native views, which the hosting view lists last.
+            SeparatelyHosted {
+                trailingControls
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+            }
+            .frame(maxWidth: .infinity)
         }
         .padding(.vertical, ThemeSpace.group)
         .padding(.horizontal, ThemeSpace.section)
