@@ -111,11 +111,11 @@
               "tone-sand-tile"
             ]
           }
-        ]
-      },
-      "switch": {
-        "name": "Tone",
-        "derived": [{ "color": "control", "from": "tile", "themes": ["dark"] }]
+        ],
+        "switch": {
+          "name": "Tone",
+          "derived": [{ "color": "control", "from": "tile", "themes": ["dark"] }]
+        }
       }
     },
     {
@@ -221,18 +221,18 @@
               "accent-sky-selection"
             ]
           }
-        ]
+        ],
+        "switch": {
+          "name": "Accent",
+          "derived": [
+            { "color": "accent-tint", "from": "accent", "opacity": "opacity-tint" },
+            { "color": "accent-tint-strong", "from": "accent", "opacity": "opacity-tint-strong" },
+            { "color": "on-accent-fill-secondary", "from": "on-accent-fill", "opacity": "0.7" },
+            { "color": "notice-accent", "from": "accent" }
+          ]
+        }
       },
-      "scene": "accents",
-      "switch": {
-        "name": "Accent",
-        "derived": [
-          { "color": "accent-tint", "from": "accent", "opacity": "opacity-tint" },
-          { "color": "accent-tint-strong", "from": "accent", "opacity": "opacity-tint-strong" },
-          { "color": "on-accent-fill-secondary", "from": "on-accent-fill", "opacity": "0.7" },
-          { "color": "notice-accent", "from": "accent" }
-        ]
-      }
+      "scene": "accents"
     },
     {
       "name": "Status",

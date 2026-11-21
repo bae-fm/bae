@@ -140,6 +140,20 @@ fn a_tone_token_needs_both_appearances() {
 }
 
 #[test]
+fn a_tone_token_with_an_empty_word_or_a_role_twice_is_refused() {
+    let tones =
+        tone("neutral", &["background", "field--hover", "well", "field-hover", "fieldHover"]);
+    let problems = theme_with(STANDARD, &tones, SEMANTICS).unwrap_err();
+    assert_eq!(
+        problems,
+        [
+            "tokens.json `tone-neutral-field--hover`: a tone token ends in its role, kebab-case words with no empty one",
+            "tokens.json `tone-neutral-field-hover` and `tone-neutral-fieldHover` are both tone `neutral`'s role `fieldHover`",
+        ]
+    );
+}
+
+#[test]
 fn a_tone_reads_its_roles_in_camel_case() {
     let tones = tone("neutral", &["background", "field-hover"]);
     let theme = theme_with(STANDARD, &tones, SEMANTICS).unwrap();

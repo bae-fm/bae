@@ -364,8 +364,20 @@ fn read_tones(
     for name in tones {
         let prefix = format!("tone-{name}-");
         let mut surfaces = Modes { light: Roles::new(), dark: Roles::new() };
+        let mut tokens_of: BTreeMap<String, &str> = BTreeMap::new();
         for token in names.iter().filter(|token| token.starts_with(&prefix)) {
-            let role = camel_case(&token[prefix.len()..]);
+            let Some(role) = camel_case(&token[prefix.len()..]) else {
+                problems.push(format!(
+                    "tokens.json `{token}`: a tone token ends in its role, kebab-case words with no empty one"
+                ));
+                continue;
+            };
+            if let Some(other) = tokens_of.insert(role.clone(), token) {
+                problems.push(format!(
+                    "tokens.json `{other}` and `{token}` are both tone `{name}`'s role `{role}`"
+                ));
+                continue;
+            }
             let owner = format!("tone `{name}`");
             if let Some((light, dark)) = appearances(by_name, token, &owner, problems) {
                 surfaces.light.insert(role.clone(), light);
@@ -377,18 +389,16 @@ fn read_tones(
     out
 }
 
-/// `field-hover` as `fieldHover`.
-fn camel_case(kebab: &str) -> String {
-    let mut parts = kebab.split('-');
-    let mut out = parts.next().unwrap_or_default().to_string();
-    for part in parts {
+/// `field-hover` as `fieldHover`, or none when a word of <kebab> is empty.
+fn camel_case(kebab: &str) -> Option<String> {
+    let mut out = String::new();
+    for (at, part) in kebab.split('-').enumerate() {
         let mut chars = part.chars();
-        if let Some(first) = chars.next() {
-            out.push(first.to_ascii_uppercase());
-            out.push_str(chars.as_str());
-        }
+        let first = chars.next()?;
+        out.push(if at == 0 { first } else { first.to_ascii_uppercase() });
+        out.push_str(chars.as_str());
     }
-    out
+    Some(out)
 }
 
 /// Every `<name>` with an `accent-<name>-fill` token. A problem is reported
