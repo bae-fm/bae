@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
@@ -26,6 +27,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
@@ -77,16 +79,20 @@ internal fun SheetScene(
     ScreenScene {
         Box(modifier = Modifier.fillMaxSize()) {
             behind()
-            SheetOverScrim(title, content)
+            SheetOverScrim(title, content = content)
         }
     }
 }
 
-/** A titled sheet at the foot of the space it is in, with the scrim over the rest of that space. */
+/**
+ * A titled sheet at the foot of the space it is in, with the scrim over the rest of that space. With [top], the
+ * sheet is pinned to that height from the top of the space, as the design system's `top` pins a tall one.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun SheetOverScrim(
     title: String?,
+    top: Dp? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Box(
@@ -94,7 +100,7 @@ internal fun SheetOverScrim(
         contentAlignment = Alignment.BottomCenter,
     ) {
         Surface(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().then(if (top == null) Modifier else Modifier.fillMaxHeight().padding(top = top)),
             shape = BottomSheetDefaults.ExpandedShape,
             color = BottomSheetDefaults.ContainerColor,
         ) {
@@ -111,9 +117,27 @@ private fun SheetWithHandle(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        BottomSheetDefaults.DragHandle(modifier = Modifier.semantics { role = Role.Button })
+        DragHandleBar()
         Column(modifier = Modifier.fillMaxWidth()) { AndroidSheetBody(title, content) }
     }
+}
+
+/**
+ * Material's drag handle, drawn as it draws it: a 32 by 4 bar with 22 above and below it. The button TalkBack
+ * names "Drag handle" is the bar, as the board's is, and not the 48 dp that the bar and its margins take.
+ */
+@Composable
+private fun DragHandleBar() {
+    Box(
+        modifier =
+            Modifier
+                .padding(vertical = 22.dp)
+                .semantics {
+                    role = Role.Button
+                    contentDescription = "Drag handle"
+                }.size(width = 32.dp, height = 4.dp)
+                .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f), MaterialTheme.shapes.extraLarge),
+    )
 }
 
 /**
