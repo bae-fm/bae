@@ -1,6 +1,6 @@
   // ==== part: explore ====
   // ---- Explorations: parts for screens bae doesn't have yet ----
-  // 1–5 stars, filled up to value; empty draws all five faint. who adds a line of who else rated it. `number` is the read-only form: the number and one filled star ("4 ★"), nothing when value is 0.
+  // 1–5 stars, filled up to value; empty draws all five faint. `number` is the read-only form: the number and one filled star ("4 ★"), nothing when value is 0.
   // `rate`: each star is a button that rates with that many stars, as an album's rating is; without it the stars are one picture of the rating.
   function Stars(props) {
     var v = Number(props.value || 0), s = Number(props.size || 14);
@@ -10,7 +10,7 @@
     var draw = function (i) { return h('svg', { key: i, width: s, height: s, viewBox: '0 0 24 24', 'aria-hidden': true }, h('path', { d: star, fill: i <= v ? 'var(--accent)' : 'none', stroke: i <= v ? 'var(--accent)' : 'var(--hairline-strong)', strokeWidth: 1.5, strokeLinejoin: 'round' })); };
     var stars = [1, 2, 3, 4, 5].map(function (i) { return props.rate ? h('button', { key: i, type: 'button', className: 'bae-stars-btn', 'aria-label': 'Rate ' + i + ' of 5 stars' }, draw(i)) : draw(i); });
     return h('span', props.rate ? { className: 'bae-stars' } : { className: 'bae-stars', role: 'img', 'aria-label': v ? v + ' of 5 stars' : 'Not rated' },
-      stars, props.who ? h('span', { className: 'bae-muted', style: { marginLeft: 'var(--space-compact)', fontSize: '0.85em' } }, props.who) : null);
+      stars);
   }
   // A heart, the rating of a library whose system is Heart, read-only: filled when `on` (the person's stars are three or more), an outline otherwise.
   function Heart(props) {
