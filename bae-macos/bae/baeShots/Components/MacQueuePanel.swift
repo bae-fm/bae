@@ -74,8 +74,8 @@ extension ShotScene {
         covered: Bool = true
     ) -> BridgeQueueEntry {
         BridgeQueueEntry(
-            entryId: "e-\(title)",
-            trackId: "t-\(title)",
+            entryId: "e-\(album)-\(title)",
+            trackId: "t-\(album)-\(title)",
             display: BridgeTrackDisplay(
                 title: title,
                 artistLine: .named("Mara Quill"),

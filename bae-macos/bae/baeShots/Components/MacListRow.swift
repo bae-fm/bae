@@ -59,7 +59,8 @@ extension ShotScene {
                 wide: wide,
                 hover: hover,
                 lift: lift,
-                onRemove: removable ? {} : nil
+                removal: removable
+                    ? MacListRow.Removal(label: "Remove from queue") {} : nil
             )
             .padding(
                 .leading,

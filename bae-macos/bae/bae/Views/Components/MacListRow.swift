@@ -21,6 +21,11 @@ struct MacListRow: View {
         case dragging
     }
 
+    struct Removal {
+        let label: LocalizedStringKey
+        let action: () -> Void
+    }
+
     var lead: String?
     var leadWidth: CGFloat = 56
     var hanging = false
@@ -35,7 +40,7 @@ struct MacListRow: View {
     var wide = false
     var hover = false
     var lift = Lift.resting
-    var onRemove: (() -> Void)?
+    var removal: Removal?
 
     /// The space between the row's columns.
     static let gap = ThemeSpace.related + ThemeSpace.line
@@ -102,25 +107,22 @@ struct MacListRow: View {
                     .monospacedDigit()
                     .foregroundStyle(Theme.macTextSecondary)
                     .frame(width: Self.durationWidth, alignment: .trailing)
-                    // Move the duration to the trailing edge when the
-                    // remove button is hidden, without resizing the row.
-                    .offset(
-                        x: onRemove != nil && !hover
-                            ? Self.removeWidth + Self.gap : 0
-                    )
                     .accessibilitySortPriority(-2)
             }
-            if let onRemove {
+        }
+        .padding(.trailing, showsRemoval ? Self.removeWidth + Self.gap : 0)
+        .overlay(alignment: .trailing) {
+            if let removal {
                 MacIconButton(
                     symbol: "xmark",
-                    label: "Remove from queue",
+                    label: removal.label,
                     iconSize: .small,
                     hitSize: Self.removeWidth,
-                    action: onRemove
+                    action: removal.action
                 )
-                .opacity(hover ? 1 : 0)
-                .allowsHitTesting(hover)
-                .accessibilityHidden(!hover)
+                .opacity(showsRemoval ? 1 : 0)
+                .allowsHitTesting(showsRemoval)
+                .accessibilityHidden(!showsRemoval)
                 .accessibilitySortPriority(-3)
             }
         }
@@ -145,6 +147,8 @@ struct MacListRow: View {
         )
         .padding(.leading, hanging ? -Self.hang(leadWidth: leadWidth) : 0)
     }
+
+    private var showsRemoval: Bool { removal != nil && hover }
 
     private var fill: AnyShapeStyle {
         if lift == .dragging {

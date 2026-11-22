@@ -21,7 +21,9 @@ struct MacQueueRow: View {
             subtitle: item.display.artistLine.text,
             duration: item.durationLabel,
             hover: isHovered,
-            onRemove: { onRemove(item.id) }
+            removal: MacListRow.Removal(label: "Remove from queue") {
+                onRemove(item.id)
+            }
         )
         .onHover(perform: onHoverChanged)
         .onTapGesture(count: 2) {
