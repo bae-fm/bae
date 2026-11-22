@@ -118,6 +118,7 @@ struct MacBoxRows: View {
     let rows: SubviewsCollection
 
     var body: some View {
+        let outline = RoundedRectangle(cornerRadius: ThemeRadius.card)
         VStack(alignment: .leading, spacing: 0) {
             ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
                 // The first row has none above it to join.
@@ -149,10 +150,8 @@ struct MacBoxRows: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            Theme.surface,
-            in: RoundedRectangle(cornerRadius: ThemeRadius.card)
-        )
+        .background(Theme.surface, in: outline)
+        .clipShape(outline)
     }
 }
 
