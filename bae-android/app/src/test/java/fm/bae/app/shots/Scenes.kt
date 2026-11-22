@@ -67,12 +67,12 @@ import java.time.Duration
 // they are staged with.
 
 /**
- * A titled sheet's body on the sheet's surface, rising from the foot of [behind], which the scrim dims, as a bottom
+ * A sheet's body on the sheet's surface, rising from the foot of [behind], which the scrim dims, as a bottom
  * sheet opens over its page. The sheet's own window isn't drawn in a test.
  */
 @Composable
 internal fun SheetScene(
-    heading: AndroidSheetHeading?,
+    heading: AndroidSheetHeading = AndroidSheetHeading(),
     behind: @Composable () -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -85,13 +85,13 @@ internal fun SheetScene(
 }
 
 /**
- * A titled sheet at the foot of the space it is in, with the scrim over the rest of that space. With [top], the
+ * A sheet at the foot of the space it is in, with the scrim over the rest of that space. With [top], the
  * sheet is pinned to that height from the top of the space, as the design system's `top` pins a tall one.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun SheetOverScrim(
-    heading: AndroidSheetHeading?,
+    heading: AndroidSheetHeading = AndroidSheetHeading(),
     top: Dp? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -113,7 +113,7 @@ internal fun SheetOverScrim(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SheetWithHandle(
-    heading: AndroidSheetHeading?,
+    heading: AndroidSheetHeading,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {

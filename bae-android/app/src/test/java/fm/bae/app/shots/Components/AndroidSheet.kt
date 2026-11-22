@@ -14,7 +14,7 @@ import org.junit.Test
 class AndroidSheetShots : BoardShot() {
     /** The preview pins the sheet 60 from the top of its cell and holds a padded slot in it. */
     @Test
-    fun androidComponentSheetDefault() = component("android.component.sheet.default") { SheetOverScrim(null, top = 60.dp) { Slot() } }
+    fun androidComponentSheetDefault() = component("android.component.sheet.default") { SheetOverScrim(top = 60.dp) { Slot() } }
 
     @Test
     fun androidComponentSheetNote() =

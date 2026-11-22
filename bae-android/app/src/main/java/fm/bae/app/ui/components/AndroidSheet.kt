@@ -18,13 +18,13 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 
 internal data class AndroidSheetHeading(
-    val title: String,
+    val title: String? = null,
     val note: String? = null,
 )
 
 /**
  * A bottom sheet that holds [content] as tall as it is, up to near the top of the screen, under
- * the [heading] that names it when it has one and may include a note. Swiping it down or tapping
+ * the [heading], which can supply a title, a note, or both. Swiping it down or tapping
  * outside it closes it, so it has no Close button. The sheet insets its content by
  * `ThemeSpace.related`, so rows that inset themselves by `ThemeSpace.edge` put their text 24dp in,
  * where the title sits too.
@@ -33,7 +33,7 @@ internal data class AndroidSheetHeading(
 @Composable
 internal fun AndroidSheet(
     onDismiss: () -> Unit,
-    heading: AndroidSheetHeading? = null,
+    heading: AndroidSheetHeading = AndroidSheetHeading(),
     content: @Composable ColumnScope.() -> Unit,
 ) {
     ModalBottomSheet(
@@ -51,7 +51,7 @@ internal fun AndroidSheet(
  */
 @Composable
 internal fun AndroidSheetBody(
-    heading: AndroidSheetHeading?,
+    heading: AndroidSheetHeading,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -63,26 +63,26 @@ internal fun AndroidSheetBody(
                 bottom = bottomInset + ThemeSpace.section,
             ),
     ) {
-        heading?.let { header ->
+        heading.title?.let {
             Text(
-                text = header.title,
+                text = it,
                 style = ThemeText.androidBarTitle.style,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(start = ThemeSpace.edge, end = ThemeSpace.edge, bottom = ThemeSpace.group),
             )
-            header.note?.let {
-                Text(
-                    text = it,
-                    style = ThemeText.body.style,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier =
-                        Modifier.padding(
-                            start = ThemeSpace.edge,
-                            end = ThemeSpace.edge,
-                            bottom = ThemeSpace.section,
-                        ),
-                )
-            }
+        }
+        heading.note?.let {
+            Text(
+                text = it,
+                style = ThemeText.body.style,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier =
+                    Modifier.padding(
+                        start = ThemeSpace.edge,
+                        end = ThemeSpace.edge,
+                        bottom = ThemeSpace.section,
+                    ),
+            )
         }
         content()
     }
