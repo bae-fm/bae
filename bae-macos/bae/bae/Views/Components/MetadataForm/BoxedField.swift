@@ -29,8 +29,16 @@ struct BoxedField<Focus: Hashable>: View {
     @FocusState
     private var ownFocus: Bool
 
+    /// A multiline field is at least this many lines of its text tall, as
+    /// the boards draw a code field.
+    private static var multilineMinHeight: CGFloat { 3 * 20 }
+
     var body: some View {
         focusedField
+            .frame(
+                minHeight: multiline ? Self.multilineMinHeight : nil,
+                alignment: .topLeading
+            )
             .modifier(
                 FieldChrome(
                     focused: isFocused,
