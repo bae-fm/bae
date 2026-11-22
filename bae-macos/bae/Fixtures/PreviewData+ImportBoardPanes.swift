@@ -110,12 +110,12 @@ extension PreviewData {
                 albumId: boardImported(.northbound).albumId,
                 line: .titleAndArtists(
                     title: edit.albumTitle,
-                    artistLine: .named("Mara Quill")
+                    artistLine: .named(northboundArtist)
                 )
             ),
             records: boardRecords("board-northbound"),
             pressingOffers: pressingOffers,
-            albumArtists: boardLibraryArtists("Mara Quill"),
+            albumArtists: boardLibraryArtists(northboundArtist),
             changed: false,
             filesToRead: nil,
             deletesTrackData: false,
