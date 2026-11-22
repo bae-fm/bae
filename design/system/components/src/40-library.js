@@ -412,9 +412,11 @@
     return h('label', { className: 'bae-m-checkbox', role: 'checkbox', 'aria-checked': !!props.on }, h('span', { className: cx('bae-m-checkbox-box', props.on && 'bae-m-checkbox-on') }, props.on ? h(CheckGlyph, { size: 'chip' }) : null), props.label);
   }
 
-  // Names an artist above their albums when the grid is grouped by artist.
+  // Heads an artist's albums when the grid is grouped by artist: the artist's picture, as the artist list draws it, beside the name over the album count. `noImage`: the artist has no picture.
   function MacArtistGroupHeading(props) {
-    return h('div', { className: 'bae-m-groupheading' }, props.name);
+    return h('div', { className: 'bae-m-groupheading' },
+      h(Artwork, { title: props.name, size: 'size-row-artwork', radius: 'radius-artwork', missing: props.noImage }),
+      h('div', { className: 'bae-m-groupheading-text' }, h('div', { className: 'bae-m-groupheading-name' }, props.name), h('div', { className: 'bae-m-groupheading-count' }, props.count)));
   }
 
   // A Material menu: `AndroidMenuItem`s, a "Sort by" style label, dividers.

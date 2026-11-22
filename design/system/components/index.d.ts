@@ -290,7 +290,7 @@ export interface MacSortCriteriaProps { criteria?: string; fields?: string }
 export declare function MacSortCriteria(props: MacSortCriteriaProps): React.ReactElement;
 export interface MacCheckboxProps { label: string; on?: boolean }
 export declare function MacCheckbox(props: MacCheckboxProps): React.ReactElement;
-export declare function MacArtistGroupHeading(props: { name: string }): React.ReactElement;
+export declare function MacArtistGroupHeading(props: { name: string; /** How many albums the group holds, such as "3 albums". */ count?: string; /** The artist has no picture. */ noImage?: boolean }): React.ReactElement;
 export interface AndroidMenuProps { top?: number; left?: number; right?: number; width?: number; children?: React.ReactNode }
 export declare function AndroidMenu(props: AndroidMenuProps): React.ReactElement;
 export interface AndroidMenuItemProps { selected?: boolean; check?: boolean; heading?: boolean; divider?: boolean; pressed?: boolean; children?: React.ReactNode }
