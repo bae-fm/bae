@@ -24,7 +24,13 @@ extension ShotScene {
             id: "mac.library.avatar-menu.no-cloud-home-sheet",
             size: CGSize(width: 1200, height: 760)
         ) {
-            let window = personMenuLibrary(hasCloudHome: false)
+            let uiStore = UiStore()
+            let backing = boardLibraryBacking(uiStore: uiStore)
+            let window = personMenuLibrary(
+                hasCloudHome: false,
+                uiStore: uiStore,
+                backing: backing
+            )
             return ShotStage(
                 OverWindow.sheet(
                     CloudHomeFirstSheet(
@@ -34,7 +40,9 @@ extension ShotScene {
                     ),
                     over: window
                 )
-            )
+            ) {
+                (backing.session.albums.list?.positionCount ?? 0) > 0
+            }
         },
     ]
 
@@ -44,9 +52,15 @@ extension ShotScene {
         hasCloudHome: Bool,
         highlighted: Int
     ) -> ShotStage {
-        ShotStage(
+        let uiStore = UiStore()
+        let backing = boardLibraryBacking(uiStore: uiStore)
+        return ShotStage(
             ZStack(alignment: .topTrailing) {
-                personMenuLibrary(hasCloudHome: hasCloudHome)
+                personMenuLibrary(
+                    hasCloudHome: hasCloudHome,
+                    uiStore: uiStore,
+                    backing: backing
+                )
                 MacMenuInPlace(
                     {
                         PersonMenuItems(
@@ -66,17 +80,21 @@ extension ShotScene {
                 .padding(.trailing, 10)
                 .padding(.top, 44)
             }
-        )
+        ) {
+            (backing.session.albums.list?.positionCount ?? 0) > 0
+        }
     }
 
     /// The library window the boards draw behind the menu, Ana an admin of a
     /// library with a cloud home when `hasCloudHome` is set.
-    private static func personMenuLibrary(hasCloudHome: Bool) -> some View {
-        let uiStore = UiStore()
-        let backing = boardLibraryBacking(uiStore: uiStore)
-        return ShotScenes.libraryWindow(
+    private static func personMenuLibrary(
+        hasCloudHome: Bool,
+        uiStore: UiStore,
+        backing: (library: Library, session: LibraryBrowseSession)
+    ) -> some View {
+        ShotScenes.libraryWindow(
             uiStore: uiStore,
-            backing: (backing.library, backing.session),
+            backing: backing,
             playbackStore: boardPlayback(),
             configStore: PreviewData.makeConfigStore(
                 libraryFullWidth: false,

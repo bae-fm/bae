@@ -13,9 +13,12 @@ extension ShotScene {
             size: CGSize(width: 1_200, height: 1_000)
         ) {
             let uiStore = UiStore()
+            let detailAnswered = AlbumDetailAnswered()
             let backing = boardLibraryBacking(
                 uiStore: uiStore,
-                albumCount: 4
+                albumCount: 4,
+                openAlbum: true,
+                detailAnswered: detailAnswered
             )
             return ShotStage(
                 ZStack(alignment: .topLeading) {
@@ -49,6 +52,7 @@ extension ShotScene {
                 }
             ) {
                 (backing.session.albums.list?.positionCount ?? 0) > 0
+                    && detailAnswered.answered
             }
         },
     ]
