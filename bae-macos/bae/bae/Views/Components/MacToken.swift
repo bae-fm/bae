@@ -15,7 +15,7 @@ final class MacToken: NSTextAttachmentCell {
     private static let margin: CGFloat = 2
     /// The chip's height: one line of body text.
     private static var height: CGFloat {
-        NSLayoutManager().defaultLineHeight(for: font)
+        font.naturalLineHeight
     }
 
     private static var font: NSFont { ThemeText.body.nsFont }

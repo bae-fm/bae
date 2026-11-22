@@ -92,7 +92,11 @@ private struct BalancedText: NSViewRepresentable {
     ) -> CGSize? {
         let width = min(proposal.width ?? maxWidth, maxWidth)
         field.preferredMaxLayoutWidth = width
-        let height = field.cell?
+        guard let cell = field.cell else {
+            preconditionFailure("a text field made with a label has a cell")
+        }
+        let height =
+            cell
             .cellSize(
                 forBounds: NSRect(
                     x: 0,
@@ -102,7 +106,7 @@ private struct BalancedText: NSViewRepresentable {
                 )
             )
             .height
-        return CGSize(width: width, height: ceil(height ?? 0))
+        return CGSize(width: width, height: ceil(height))
     }
 }
 

@@ -64,7 +64,7 @@ extension View {
 
     extension NSFont {
         /// The height of one line of this font with no line height set.
-        fileprivate var naturalLineHeight: CGFloat {
+        public var naturalLineHeight: CGFloat {
             NSLayoutManager().defaultLineHeight(for: self)
         }
     }
