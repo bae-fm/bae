@@ -6,12 +6,14 @@ import fm.bae.app.clockText
 import fm.bae.app.creditLineNamed
 import fm.bae.app.currentLocale
 import fm.bae.app.playback.NowPlaying
+import fm.bae.app.playback.library
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.playback.AndroidSeekBar
 import fm.bae.app.ui.playback.SeekBarState
 import fm.bae.app.ui.playback.SeekLineLook
 import fm.bae.fastvalues.LatestStream
 import uniffi.bae_bridge.BridgeDurationClock
+import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeNowPlayingDisplay
 import uniffi.bae_bridge.BridgeTrackBuffered
 import uniffi.bae_bridge.BridgeTrackDisplay
@@ -23,19 +25,31 @@ private const val DEFAULT_DURATION_SECONDS = 303L
 private const val MILLIS_PER_SECOND = 1_000L
 private const val SECONDS_PER_MINUTE = 60L
 
-/**
- * A playing track as a player draws it: the seconds its clock says, which parts of it are here, whether its
- * load waits on storage. The line sits at the clock's share of the track, as the design system's seek bar
- * draws it from its elapsed time and its duration. With [removedFromLibrary], the library no longer holds the track, and with [noCover] it has no cover. The
- * track is called [title] and lasts [durationSeconds].
- */
+internal fun northboundTrack(
+    title: String = "Low Tide Hours",
+    cover: BridgeImageRef? = PreviewData.imageRef("Northbound"),
+) = NowPlaying(
+    trackId = TRACK_ID,
+    display =
+        BridgeNowPlayingDisplay.Library(
+            BridgeTrackDisplay(
+                title = title,
+                artistLine = creditLineNamed("Mara Quill"),
+                albumId = "alb-northbound",
+                releaseId = "rel-northbound",
+                albumTitle = "Northbound",
+                coverImage = cover,
+            ),
+        ),
+    sidePausePrompt = null,
+)
+
+/** A playing track, its clock and its buffered audio spans. */
 internal class PlayerStaging(
     elapsedSeconds: Long,
     held: List<BridgeTrackSpan>,
     val waitsOnStorage: Boolean = false,
-    removedFromLibrary: Boolean = false,
-    noCover: Boolean = false,
-    title: String = "Low Tide Hours",
+    val track: NowPlaying = northboundTrack(),
     durationSeconds: Long = DEFAULT_DURATION_SECONDS,
 ) {
     private val durationMs = durationSeconds * MILLIS_PER_SECOND
@@ -47,31 +61,9 @@ internal class PlayerStaging(
             progress = (elapsedSeconds * MILLIS_PER_SECOND).toDouble() / durationMs,
             seeks = 0uL,
         )
-    val positions = LatestStream.trackPositions(mapOf(TRACK_ID to position)).source(TRACK_ID)
-    val buffered = LatestStream.trackBuffered(mapOf(TRACK_ID to BridgeTrackBuffered(held))).source(TRACK_ID)
-
-    val cover = PreviewData.imageRef("rel-1")
-
-    val track =
-        NowPlaying(
-            trackId = TRACK_ID,
-            display =
-                if (removedFromLibrary) {
-                    BridgeNowPlayingDisplay.Removed
-                } else {
-                    BridgeNowPlayingDisplay.Library(
-                        BridgeTrackDisplay(
-                            title = title,
-                            artistLine = creditLineNamed("Mara Quill"),
-                            albumId = "alb-1",
-                            releaseId = "rel-1",
-                            albumTitle = "Northbound",
-                            coverImage = if (noCover) null else cover,
-                        ),
-                    )
-                },
-            sidePausePrompt = null,
-        )
+    val positions = LatestStream.trackPositions(mapOf(track.trackId to position)).source(track.trackId)
+    val buffered = LatestStream.trackBuffered(mapOf(track.trackId to BridgeTrackBuffered(held))).source(track.trackId)
+    val cover get() = track.display.library?.coverImage
 
     /** The seek row, with its clocks as the bar's words give them. */
     @Composable
@@ -123,12 +115,12 @@ internal val playingWaitingOnStorage =
 
 /** [playing], for a track with no cover. */
 internal val withoutCover =
-    PlayerStaging(elapsedSeconds = 102, held = listOf(BridgeTrackSpan(0.0, 0.6)), noCover = true)
+    PlayerStaging(elapsedSeconds = 102, held = listOf(BridgeTrackSpan(0.0, 0.6)), track = northboundTrack(cover = null))
 
 /** [playing], for a track whose title is long. */
 internal val longTitled =
     PlayerStaging(
         elapsedSeconds = 102,
         held = listOf(BridgeTrackSpan(0.0, 0.6)),
-        title = "Low Tide Hours, the long version recorded live at the harbor",
+        track = northboundTrack(title = "Low Tide Hours, the long version recorded live at the harbor"),
     )

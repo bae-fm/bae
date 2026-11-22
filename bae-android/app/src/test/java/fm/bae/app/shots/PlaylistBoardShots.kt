@@ -51,7 +51,7 @@ class PlaylistBoardShots : BoardShot() {
             AndroidDetailScreen(
                 onBack = {},
                 backLabel = stringResource(R.string.back_to_library),
-                nowPlayingBar = { Bar(playing) },
+                nowPlayingBar = { Bar(playingLowTideHours) },
                 actions = { PlaylistOptionsMenu(onShuffle = {}, owner = PlaylistOwnerActions(onEdit = {}, onDelete = {})) },
             ) { PlaylistContent(detail = detail, actions = actions) }
         }

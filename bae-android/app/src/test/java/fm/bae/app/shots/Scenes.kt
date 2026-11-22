@@ -364,7 +364,7 @@ internal fun Covers(content: @Composable () -> Unit) =
     CompositionLocalProvider(
         LocalImageStore provides
             ImageStore(
-                fetchLibraryImageBytes = { TestImages.gradientPng(COVER_PIXELS, seed = it.id.hashCode()) },
+                fetchLibraryImageBytes = { TestImages.gradientPng(COVER_PIXELS, title = it.id) },
                 dispatcher = Dispatchers.Unconfined,
             ),
         content = content,

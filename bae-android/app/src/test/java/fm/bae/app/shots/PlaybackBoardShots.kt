@@ -3,6 +3,7 @@ package fm.bae.app.shots
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.R
+import fm.bae.app.playback.NowPlaying
 import fm.bae.app.ui.playback.AndroidFullPlayer
 import fm.bae.app.ui.playback.AndroidQueueSection
 import fm.bae.app.ui.playback.AndroidTransport
@@ -10,6 +11,7 @@ import fm.bae.app.ui.playback.AndroidVolumeRow
 import fm.bae.app.ui.playback.ExpandedSecondaryControls
 import fm.bae.app.ui.playback.SeekLineLook
 import org.junit.Test
+import uniffi.bae_bridge.BridgeNowPlayingDisplay
 import uniffi.bae_bridge.BridgeRepeatMode
 import uniffi.bae_bridge.BridgeTrackSpan
 
@@ -17,7 +19,7 @@ private val removed =
     PlayerStaging(
         elapsedSeconds = 102,
         held = listOf(BridgeTrackSpan(0.0, 0.6)),
-        removedFromLibrary = true,
+        track = NowPlaying(playing.track.trackId, BridgeNowPlayingDisplay.Removed, sidePausePrompt = null),
     )
 
 /** The playback boards' shots: the bar and the full player in the states the boards draw. */

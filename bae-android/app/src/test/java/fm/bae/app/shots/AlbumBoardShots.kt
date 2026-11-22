@@ -9,6 +9,7 @@ import fm.bae.app.R
 import fm.bae.app.creditLineNamed
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
+import fm.bae.app.playback.NowPlaying
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.albumdetail.AlbumDetailCallbacks
 import fm.bae.app.ui.albumdetail.AlbumDetailContent
@@ -32,6 +33,7 @@ import uniffi.bae_bridge.BridgeFile
 import uniffi.bae_bridge.BridgeFileKind
 import uniffi.bae_bridge.BridgeMessage
 import uniffi.bae_bridge.BridgeMessageArg
+import uniffi.bae_bridge.BridgeNowPlayingDisplay
 import uniffi.bae_bridge.BridgeOtherDevice
 import uniffi.bae_bridge.BridgeRater
 import uniffi.bae_bridge.BridgeReleasePlayability
@@ -41,6 +43,7 @@ import uniffi.bae_bridge.BridgeSourceAudioLayout
 import uniffi.bae_bridge.BridgeSourceAudioSummary
 import uniffi.bae_bridge.BridgeStars
 import uniffi.bae_bridge.BridgeTermLabel
+import uniffi.bae_bridge.BridgeTrackDisplay
 import uniffi.bae_bridge.BridgeTrackSpan
 import uniffi.bae_bridge.BridgeTrackWork
 
@@ -184,12 +187,21 @@ internal fun boardAlbum(
             "Night Ferry",
             "Slow Morning",
         ).take(trackCount)
-    val tracks = titles.mapIndexed { index, title -> PreviewData.track("trk-${index + 1}", title, index + 1) }
+    val tracks =
+        titles.mapIndexed { index, title ->
+            val track = PreviewData.track("trk-${index + 1}", title, index + 1)
+            if (title == "Low Tide Hours") {
+                track.copy(durationMs = 303_000uL, durationClock = BridgeDurationClock(false, null, 5u, 3u))
+            } else {
+                track
+            }
+        }
     val album = PreviewData.album(title = "Low Tide Hours", year = 1992, artistNames = "Mara Quill")
     val release =
         harborRelease.copy(
             id = "rel-alb-1",
             albumId = album.id,
+            cover = PreviewData.imageRef(album.title),
             tracks = tracks,
             trackGroups = listOf(PreviewData.trackGroup(tracks)),
         )
@@ -236,7 +248,12 @@ private val onAnotherDevice: BridgeAlbumDetail =
 
 /** The track playing in the bar behind the album page, 1:28 into 4:51. */
 private val northbound =
-    PlayerStaging(elapsedSeconds = 88, held = listOf(BridgeTrackSpan(0.0, 0.3)), title = "Northbound", durationSeconds = 291)
+    PlayerStaging(
+        elapsedSeconds = 88,
+        held = listOf(BridgeTrackSpan(0.0, 0.3)),
+        track = northboundTrack(title = "Northbound"),
+        durationSeconds = 291,
+    )
 
 @Composable
 private fun UnavailableAlbumPage() {
@@ -246,6 +263,33 @@ private fun UnavailableAlbumPage() {
         )
     }
 }
+
+/** The title track of the release shown on both the album and playlist boards. */
+internal val playingLowTideHours =
+    boardAlbum().let { detail ->
+        val release = detail.shownRelease
+        val track = release.tracks.single { it.title == detail.album.title }
+        PlayerStaging(
+            elapsedSeconds = 102,
+            held = listOf(BridgeTrackSpan(0.0, 0.6)),
+            track =
+                NowPlaying(
+                    trackId = track.id,
+                    display =
+                        BridgeNowPlayingDisplay.Library(
+                            BridgeTrackDisplay(
+                                title = track.title,
+                                artistLine = detail.album.artistLine,
+                                albumId = detail.album.id,
+                                releaseId = release.id,
+                                albumTitle = detail.album.title,
+                                coverImage = release.cover,
+                            ),
+                        ),
+                    sidePausePrompt = null,
+                ),
+        )
+    }
 
 private val boardMenu =
     AlbumMenuActions(
@@ -260,7 +304,7 @@ private val boardMenu =
 @Composable
 internal fun AlbumPage(
     detail: BridgeAlbumDetail,
-    bar: PlayerStaging = playing,
+    bar: PlayerStaging = playingLowTideHours,
     catalogName: (BridgeCatalog) -> String = { it.name },
 ) {
     ScreenScene { AlbumPageContent(detail, bar, catalogName) { AlbumOptionsMenu(boardMenu) } }
@@ -283,7 +327,7 @@ private fun AlbumPageContent(
             AlbumDetailContent(
                 detail = detail,
                 cover = null,
-                playback = AlbumPlaybackState(currentTrackId = null, isPlaying = false),
+                playback = AlbumPlaybackState(currentTrackId = bar.track.trackId, isPlaying = true),
                 callbacks =
                     AlbumDetailCallbacks(
                         onSelectRelease = {},

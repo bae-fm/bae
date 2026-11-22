@@ -1,7 +1,6 @@
 package fm.bae.app.data
 
 import android.graphics.Bitmap
-import android.graphics.Color
 import androidx.core.graphics.ColorUtils
 import java.io.ByteArrayOutputStream
 import kotlin.random.Random
@@ -13,8 +12,6 @@ import kotlin.random.Random
  * in bytes.
  */
 object TestImages {
-    private const val GRADIENT_HUES = 12
-
     fun png(
         width: Int,
         height: Int = width,
@@ -23,12 +20,12 @@ object TestImages {
 
     /**
      * A cover as the boards draw one: a diagonal fade from a light colour at the top left to a dark one at the
-     * bottom right, both from a hue that [seed] picks.
+     * bottom right, both from the hue of its [title].
      */
     fun gradientPng(
         size: Int,
-        seed: Int,
-    ): ByteArray = encode(gradient(size, seed), Bitmap.CompressFormat.PNG)
+        title: String,
+    ): ByteArray = encode(gradient(size, title), Bitmap.CompressFormat.PNG)
 
     fun jpeg(
         width: Int,
@@ -59,11 +56,11 @@ object TestImages {
 
     private fun gradient(
         size: Int,
-        seed: Int,
+        title: String,
     ): Bitmap {
-        val hue = Math.floorMod(seed, GRADIENT_HUES) * (360f / GRADIENT_HUES)
-        val light = Color.HSVToColor(floatArrayOf(hue, 0.55f, 0.70f))
-        val dark = Color.HSVToColor(floatArrayOf((hue + 40f) % 360f, 0.70f, 0.35f))
+        val hue = title.fold(0) { value, letter -> (31 * value + letter.code) % 360 }
+        val light = ColorUtils.HSLToColor(floatArrayOf(hue.toFloat(), 0.42f, 0.52f))
+        val dark = ColorUtils.HSLToColor(floatArrayOf((hue + 48f) % 360f, 0.46f, 0.24f))
         val pixels =
             IntArray(size * size) { index ->
                 val fade = ((index % size) + (index / size)) / (2f * (size - 1))
