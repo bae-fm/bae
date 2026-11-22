@@ -21,6 +21,16 @@ extension ShotScene {
                 audio: true
             ) { coverWell(true) }
         },
+        identityScene(
+            "mac.component.release-identity.cover-off-while-a-save-reads"
+        ) {
+            identity(
+                lowTideEdit(),
+                artists: PreviewData.boardLibraryArtists("Mara Quill"),
+                album: libraryAlbum,
+                audio: true
+            ) { coverWell(true, canEdit: false) }
+        },
         identityScene("mac.component.release-identity.no-cover") {
             identity(
                 lowTideEdit(),
@@ -114,7 +124,9 @@ extension ShotScene {
         return ImportReleaseSummary(candidate: candidate, draft: draft)
     }
 
-    private static func coverWell(_ cover: Bool) -> some View {
+    private static func coverWell(_ cover: Bool, canEdit: Bool = true)
+        -> some View
+    {
         ReleaseCoverWell(
             coverContent: cover
                 ? ImageContent.localFile(
@@ -124,6 +136,7 @@ extension ShotScene {
             onEditCover: cover ? {} : nil,
             onDropImage: nil
         )
+        .disabled(!canEdit)
     }
 
     private static func identity<Cover: View>(
