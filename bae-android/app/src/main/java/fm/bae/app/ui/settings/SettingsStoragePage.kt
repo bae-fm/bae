@@ -14,8 +14,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import fm.bae.app.R
 import fm.bae.app.formatFileSize
 import fm.bae.app.requireDisplayableByteCount
@@ -27,9 +25,9 @@ import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidScreen
 import fm.bae.app.ui.components.AndroidSection
 import fm.bae.app.ui.components.AndroidStorageUsage
-import fm.bae.app.ui.components.AndroidSwitch
 import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.DialogParts
+import fm.bae.app.ui.components.RowSwitch
 import fm.bae.app.ui.components.WIDE_DIALOG_WIDTH
 import fm.bae.app.ui.components.storageUsageSegments
 import uniffi.bae_bridge.BridgeCacheLimit
@@ -111,13 +109,7 @@ private fun PinnedSection(
         AndroidRow(
             title = askTitle,
             subtitle = stringResource(R.string.storage_ask_before_unpinning_note),
-            trailing = {
-                AndroidSwitch(
-                    checked = asksBeforeUnpinning,
-                    onCheckedChange = onAskBeforeUnpinning,
-                    modifier = Modifier.semantics { contentDescription = askTitle },
-                )
-            },
+            switch = RowSwitch(asksBeforeUnpinning, onAskBeforeUnpinning),
         )
     }
     AndroidNote(stringResource(R.string.storage_pinned_note))

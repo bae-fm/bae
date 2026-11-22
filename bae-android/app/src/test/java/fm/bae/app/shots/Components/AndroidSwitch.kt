@@ -1,7 +1,10 @@
 package fm.bae.app.shots
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import fm.bae.app.ui.components.AndroidSwitch
@@ -18,9 +21,12 @@ class AndroidSwitchShots : BoardShot() {
 
 /** The switch as the preview draws it, named for its setting. */
 @Composable
-private fun RestoreOnLaunch(checked: Boolean) =
-    AndroidSwitch(
-        checked = checked,
-        onCheckedChange = {},
-        modifier = Modifier.semantics { contentDescription = "Restore on launch" },
-    )
+private fun RestoreOnLaunch(checked: Boolean) {
+    Box(
+        Modifier
+            .toggleable(value = checked, role = Role.Switch, onValueChange = {})
+            .semantics { contentDescription = "Restore on launch" },
+    ) {
+        AndroidSwitch(checked = checked, enabled = true)
+    }
+}

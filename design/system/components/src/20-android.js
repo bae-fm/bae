@@ -70,14 +70,17 @@
   // `place` is AndroidCard's: the row's place among the card's rows.
   function AndroidRow(props) {
     var trail = kids(props.children);
+    var control = trail.length === 1 ? inner(trail[0]) : null;
+    var switchRow = control && control.type === AndroidSwitch;
+    if (switchRow) trail = [rewrap(trail[0], React.cloneElement(control, { rowLabel: [props.title, props.subtitle].filter(Boolean).join(' '), off: props.off }))];
     // A row the person taps is a button, as Compose reads it, named by its words: on the whole row, or, when the row ends in controls of its own, on its words alone so a button never holds one.
     var tap = !!(props.onClick || props.icon || props.action || props.destructive || props.button);
     var press = tap ? { role: 'button', 'aria-disabled': props.off ? true : null, 'aria-expanded': props.expanded != null ? !!props.expanded : null } : {};
-    var lines = h('div', Object.assign({ className: 'bae-a-row-lines' }, trail.length ? press : null),
+    var lines = h('div', Object.assign({ className: 'bae-a-row-lines', 'aria-hidden': switchRow || undefined }, trail.length && !switchRow ? press : null),
       h('div', { className: cx('bae-a-row-title', props.action && 'bae-a-row-action', props.destructive && 'bae-a-row-destructive') }, props.title, props.tag ? h(StatusChip, null, props.tag) : null),
       props.subtitle ? h('div', { className: cx('bae-a-row-subtitle', props.tone && 'bae-tone-' + props.tone) },
         props.tone ? h('span', { className: 'bae-dot', 'aria-hidden': true }) : null, props.subtitle) : null);
-    return h('div', { className: cx('bae-a-row', props.place && 'bae-a-card-tile bae-a-card-tile-' + props.place, props.nested && 'bae-a-row-nested', !props.subtitle && 'bae-a-row-one', props.selected && 'bae-a-row-selected', props.off && 'bae-off'), role: trail.length ? null : press.role, 'aria-disabled': trail.length ? null : press['aria-disabled'], 'aria-expanded': trail.length ? null : press['aria-expanded'], onClick: props.onClick },
+    return h('div', { className: cx('bae-a-row', switchRow && 'bae-a-switch-row', props.place && 'bae-a-card-tile bae-a-card-tile-' + props.place, props.nested && 'bae-a-row-nested', !props.subtitle && 'bae-a-row-one', props.selected && 'bae-a-row-selected', props.off && 'bae-off'), role: trail.length ? null : press.role, 'aria-disabled': trail.length ? null : press['aria-disabled'], 'aria-expanded': trail.length ? null : press['aria-expanded'], onClick: props.onClick },
       props.leadingIcon ? h(Material, { name: props.leadingIcon, className: cx('bae-a-row-lead', props.action && 'bae-a-row-lead-action') }) : null,
       // `avatar`: a person's name, whose picture (`avatarImage`) or initials lead the row.
       props.avatar != null ? h('span', { className: 'bae-a-row-lead bae-a-row-lead-node' }, h(Avatar, { name: props.avatar, image: props.avatarImage, size: 40 })) : null,
@@ -111,6 +114,12 @@
   function AndroidSwitch(props) {
     var s = React.useState(!!props.on);
     var on = s[0];
+    if (props.rowLabel) {
+      return h(React.Fragment, null,
+        h('input', { type: 'checkbox', role: 'switch', className: 'bae-a-row-switch-input', 'aria-label': props.rowLabel,
+          checked: on, disabled: !!props.off, onChange: function (event) { s[1](event.target.checked); } }),
+        h('span', { className: cx('bae-a-switch', on && 'bae-a-switch-on'), 'aria-hidden': true }, h('span', { className: 'bae-a-switch-thumb' })));
+    }
     return h('button', { type: 'button', role: 'switch', 'aria-checked': on, 'aria-label': props.label, className: cx('bae-a-switch', on && 'bae-a-switch-on'), onClick: function () { s[1](!on); } },
       h('span', { className: 'bae-a-switch-thumb' }));
   }
