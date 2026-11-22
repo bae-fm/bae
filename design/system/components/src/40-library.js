@@ -74,7 +74,7 @@
       var total = seconds(props.duration), pos = total ? seconds(props.elapsed) / total : 0;
       return h('div', { className: cx('bae-seek', prefix + '-seek', props.off && 'bae-seek-off', props.large && prefix + '-seek-large') },
         h('span', { className: 'bae-seek-time' }, props.elapsed || '0:00'),
-        h('div', { className: 'bae-seek-track', role: 'slider', 'aria-label': 'Position', 'aria-valuenow': Math.round(pos * 100) },
+        h('div', { className: 'bae-seek-track', role: 'slider', 'aria-label': 'Position', 'aria-valuenow': Math.round(pos * 100), 'aria-disabled': props.off || undefined },
           heldRanges(props.held).map(function (r, i) { return h('div', { key: i, className: 'bae-seek-held', style: { left: (r[0] * 100) + '%', width: ((r[1] - r[0]) * 100) + '%' } }); }),
           props.off ? null : h('div', { className: 'bae-seek-played', style: { width: (pos * 100) + '%' } }),
           prefix === 'bae-a' && !props.off ? h('div', { className: 'bae-seek-thumb', style: { left: (pos * 100) + '%' } }) : null),
