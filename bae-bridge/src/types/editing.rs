@@ -518,14 +518,10 @@ pub enum BridgePressingFactEdit {
     Area {
         area: Option<BridgeReleaseArea>,
     },
-    Media {
-        media: Vec<BridgeMediaCount>,
-    },
     /// How many of one carrier the pressing holds: zero removes it, and a
     /// carrier the pressing lacks is added.
     MediumCount {
-        medium: BridgeMedium,
-        count: u32,
+        media_count: BridgeMediaCount,
     },
     Status {
         status: Option<BridgeReleaseStatus>,
@@ -544,11 +540,8 @@ impl BridgePressingFactEdit {
         use bae_import::PressingFactEdit;
         match self {
             Self::Area { area } => PressingFactEdit::Area(area.map(BridgeReleaseArea::into_core)),
-            Self::Media { media } => PressingFactEdit::Media(
-                media.into_iter().map(BridgeMediaCount::into_core).collect(),
-            ),
-            Self::MediumCount { medium, count } => {
-                PressingFactEdit::MediumCount { medium: medium.into_core(), count }
+            Self::MediumCount { media_count } => {
+                PressingFactEdit::MediumCount(media_count.into_core())
             }
             Self::Status { status } => {
                 PressingFactEdit::Status(status.map(BridgeReleaseStatus::into_core))
