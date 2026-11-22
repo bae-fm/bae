@@ -120,8 +120,8 @@ extension ShotScene {
         size: CGSize,
         discogsUsable: Bool = true,
         releaseEditor: ReleaseEditor? = nil,
-        isDrawn: @escaping @MainActor (NSView) throws -> Bool = { _ in true }
-    ) -> ShotStage {
+        isDrawn: @escaping @MainActor (NSView) -> Bool = { _ in true }
+    ) throws -> ShotStage {
         let uiStore = UiStore()
         uiStore.activeSection = .importing
         uiStore.setImportCandidateTab(board.tab)
