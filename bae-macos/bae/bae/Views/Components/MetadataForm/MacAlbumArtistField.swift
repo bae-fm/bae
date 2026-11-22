@@ -66,7 +66,12 @@ struct MacAlbumArtistField: View {
         guard let summary = ArtistAssignmentsSummary(field: field)
         else { return placeholder }
         guard let label = summary.identityLabel else { return summary.names }
-        return "\(summary.names) \(label)"
+        return String(
+            localized: "album-artist-field.name",
+            defaultValue: "\(summary.names) \(label)",
+            comment:
+                "The album artist button's spoken name: %1$@ is the artist names, %2$@ the badge beside them"
+        )
     }
 
     @ViewBuilder
