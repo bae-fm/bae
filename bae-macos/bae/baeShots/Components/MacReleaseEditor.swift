@@ -22,6 +22,7 @@ extension ShotScene {
         ),
         editorScene(
             "mac.component.release-editor.import-with-a-folder-check",
+            content: .unlisted,
             actionRow: .importing(
                 commitControls(folderCheck: .sourceTracksUnknown)
             )
@@ -93,7 +94,7 @@ extension ShotScene {
         )
     }
 
-    private enum EditorContent { case identified, blank, unread }
+    private enum EditorContent { case identified, unlisted, blank, unread }
 
     private static func editorScene(
         _ id: String,
@@ -113,7 +114,7 @@ extension ShotScene {
             let importDraft = isImport(actionRow)
             let release = cueRelease(importDraft ? .importing : .rebound)
             let draft = release.draft
-            let identified = content == .identified
+            let identified = content == .identified || content == .unlisted
             let scanned = content != .unread
             let art =
                 scanned
@@ -196,7 +197,7 @@ extension ShotScene {
             images: art.map { [$0] },
             onOpenImages: { _ in },
             sides: content == .unread
-                ? nil : editorSides(draft.sides, blank: content == .blank),
+                ? nil : editorSides(draft.sides, content: content),
             files: content == .unread ? nil : draft.files,
             previewingTarget: nil,
             actions: actions
@@ -208,7 +209,9 @@ extension ShotScene {
         content: EditorContent,
         secondLabel: Bool
     ) -> BridgeRawReleaseEdit {
-        guard content == .identified else { return blankEdit() }
+        guard content == .identified || content == .unlisted else {
+            return blankEdit()
+        }
         guard secondLabel else { return source }
         var values = source
         values.pressing.labels = [
@@ -232,12 +235,16 @@ extension ShotScene {
 
     private static func editorSides(
         _ sides: [BridgeTrackTableSide]?,
-        blank: Bool
+        content: EditorContent
     ) -> [BridgeTrackTableSide]? {
-        guard blank else { return sides }
-        func unnamed(_ row: BridgeTrackTableRow) -> BridgeTrackTableRow {
+        guard content == .blank || content == .unlisted else { return sides }
+        func unlisted(_ row: BridgeTrackTableRow) -> BridgeTrackTableRow {
             var row = row
-            row.track.title = ""
+            row.listedLength = nil
+            if content == .blank {
+                row.track.title = ""
+                row.track.artistAssignments = .explicit(assignments: [])
+            }
             return row
         }
         return sides?
@@ -245,9 +252,9 @@ extension ShotScene {
                 var side = side
                 side.runs = side.runs.map { run in
                     switch run {
-                    case .track(let row): .track(row: unnamed(row))
+                    case .track(let row): .track(row: unlisted(row))
                     case .sheet(let sheet, let rows):
-                        .sheet(sheet: sheet, rows: rows.map(unnamed))
+                        .sheet(sheet: sheet, rows: rows.map(unlisted))
                     }
                 }
                 return side

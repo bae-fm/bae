@@ -22,7 +22,7 @@
     });
     function track(start, position, title, length, listed) {
       return h(B.MacImportTrackRow, { start: start, position: position, title: options.blank ? '' : title,
-        inherited: !options.blank, length: length, listed: listed });
+        inherited: !options.blank, length: length, listed: options.check || options.blank ? null : listed });
     }
     return box(720, h(B.MacReleaseEditor, Object.assign(props, options),
       h(B.MacImportSheetCaption, { disc: 'Disc 1', sheet: 'Northbound.cue', bound: 'Northbound (2019 rip).flac' }),
