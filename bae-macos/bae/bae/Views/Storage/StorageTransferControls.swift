@@ -14,22 +14,28 @@ struct StorageTransferControls: View {
     private var sync
     @Environment(UiStore.self)
     private var uiStore
+    @Environment(\.currentMoment)
+    private var currentMoment
 
     let items: [BridgeStorageInspectorTransfer]
 
     var body: some View {
+        // Read once, so every row words its queued time against the same
+        // moment.
+        let now = currentMoment
         VStack(spacing: 0) {
             ForEach(items, id: \.queueId) { item in
-                transfer(item)
+                transfer(item, now: now)
                 Divider()
             }
         }
     }
 
     @ViewBuilder
-    private func transfer(_ item: BridgeStorageInspectorTransfer)
-        -> some View
-    {
+    private func transfer(
+        _ item: BridgeStorageInspectorTransfer,
+        now: Date
+    ) -> some View {
         switch item {
         case .download(let operation, let summary?):
             MacTransferSummary(
@@ -49,6 +55,7 @@ struct StorageTransferControls: View {
             // reaches.
             OutputRow(
                 op: operation,
+                now: now,
                 percent: outputStore.exportProgress(
                     forRelease: operation.releaseId
                 )

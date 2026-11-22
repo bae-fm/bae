@@ -11,13 +11,19 @@ struct QueueRow<Content: View, Below: View>: View {
         let action: () -> Void
     }
 
+    /// When an entry was queued, and the moment its list words that against,
+    /// which the list reads once for all its rows.
+    struct Queued {
+        /// The enqueue time, in milliseconds since the epoch.
+        let createdAt: Int64
+        let now: Date
+    }
+
     let icon: String
-    /// When the entry was queued, in milliseconds since the epoch; nil for a
-    /// row that shows no time.
-    let createdAt: Int64?
+    /// When the entry was queued, worded against the moment the whole list
+    /// shares; nil for a row that shows no time.
+    var queued: Queued?
     var cancel: CancelAction?
-    @Environment(\.currentMoment)
-    private var now
     @ViewBuilder
     let content: () -> Content
     /// What sits under the row at its edge, such as a failure's notice, whose
@@ -37,13 +43,15 @@ struct QueueRow<Content: View, Below: View>: View {
                     content()
                 }
             } trail: {
-                if let createdAt {
+                if let queued {
                     Text(
                         Date(
-                            timeIntervalSince1970: TimeInterval(createdAt)
+                            timeIntervalSince1970: TimeInterval(
+                                queued.createdAt
+                            )
                                 / 1000
                         )
-                        .agoLine(now: now, style: .abbreviated)
+                        .agoLine(now: queued.now, style: .abbreviated)
                     )
                     .themeText(.fine)
                     .fixedSize()

@@ -48,7 +48,6 @@ struct MacFailedTransferRow: View {
     var body: some View {
         QueueRow(
             icon: icon,
-            createdAt: nil,
             cancel: .init(help: "Cancel", action: onCancel)
         ) {
             HStack(

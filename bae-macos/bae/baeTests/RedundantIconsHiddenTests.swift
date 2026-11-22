@@ -93,7 +93,6 @@ struct RedundantIconsHiddenTests {
         let nodes = try await elements(
             in: QueueRow(
                 icon: "pin",
-                createdAt: nil,
                 cancel: .init(help: "Cancel", action: {})
             ) {
                 Text("Blue Room")

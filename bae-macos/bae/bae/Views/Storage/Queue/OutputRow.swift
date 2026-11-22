@@ -5,6 +5,8 @@ import SwiftUI
 /// save, a state chip, and a cancel button.
 struct OutputRow: View {
     let op: BridgeOutputOp
+    /// The moment the list words the row's queued time against.
+    let now: Date
     /// The latest percent of the export, which a native label beside the
     /// state chip reads each display frame while the export runs.
     let percent: LatestSource<UInt8>
@@ -25,7 +27,7 @@ struct OutputRow: View {
     var body: some View {
         QueueRow(
             icon: "square.and.arrow.up",
-            createdAt: op.createdAt,
+            queued: .init(createdAt: op.createdAt, now: now),
             cancel: .init(help: "Cancel this export", action: onCancel)
         ) {
             Text(op.titleText)
