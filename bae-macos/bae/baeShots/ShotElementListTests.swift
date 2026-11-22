@@ -29,6 +29,27 @@ struct ShotElementListTests {
         try #require(String(bytes: try list.json(), encoding: .utf8))
     }
 
+    @Test(arguments: ["empty", "filled"])
+    func listsSecureFieldsByWhetherTheyAreFilled(state: String) async throws {
+        let list = try await list("mac.settings.sync.s3-replace-key-\(state)")
+        let secret = try #require(
+            list.elements.first {
+                $0.role == "field" && $0.label == "Secret access key"
+            }
+        )
+        #expect(
+            secret.native == NSAccessibility.Subrole.secureTextField.rawValue
+        )
+        #expect(secret.value == (state == "filled" ? "\u{F79A}" : nil))
+
+        let accessKey = try #require(
+            list.elements.first {
+                $0.role == "field" && $0.label == "Access key ID"
+            }
+        )
+        #expect(accessKey.native == NSAccessibility.Role.textField.rawValue)
+    }
+
     @Test
     func listsTheSheetsWordsFieldAndButtons() async throws {
         let list = try await list("mac.welcome.add-code.entering")

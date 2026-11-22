@@ -47,7 +47,7 @@ struct ShotElementList: Encodable {
 
     struct Element: Encodable {
         let role: String
-        /// The platform's own role string, as read.
+        /// The platform's own role string or its secure text field subrole.
         let native: String
         let label: String?
         let value: String?
@@ -149,13 +149,17 @@ extension ShotElementList.Element {
     /// words, value and look as the tree gives them.
     init(node: AccessibilityTree.Node) {
         let role = Self.role(native: node.role, subrole: node.subrole)
+        let secureSubrole = NSAccessibility.Subrole.secureTextField.rawValue
+        let isSecure = node.subrole == secureSubrole
+        let value =
+            role == "text" || role == "radio" || role == "stepper"
+            ? nil : Self.valueText(node.value, role: role)
         self.init(
             role: role,
-            native: node.role,
+            native: isSecure ? secureSubrole : node.role,
             label: role == "text"
                 ? Self.words(node.value) : node.description ?? node.title,
-            value: role == "text" || role == "radio" || role == "stepper"
-                ? nil : Self.valueText(node.value, role: role),
+            value: isSecure && value != nil ? "\u{F79A}" : value,
             placeholder: node.placeholder,
             bounds: ShotElementList.Bounds(
                 x: node.x,
