@@ -12,6 +12,13 @@
     return h('span', props.rate ? { className: 'bae-stars' } : { className: 'bae-stars', role: 'img', 'aria-label': v ? v + ' of 5 stars' : 'Not rated' },
       stars, props.who ? h('span', { className: 'bae-muted', style: { marginLeft: 6, fontSize: '0.85em' } }, props.who) : null);
   }
+  // A heart, the rating of a library whose system is Heart, read-only: filled when `on` (the person's stars are three or more), an outline otherwise.
+  function Heart(props) {
+    var s = Number(props.size || 14), on = !!props.on;
+    var path = 'M12 20.5s-7.6-4.6-9.5-9.3C1.1 7.8 3.3 4.3 6.8 4.3c2 0 3.6 1 5.2 2.9 1.6-1.9 3.2-2.9 5.2-2.9 3.5 0 5.7 3.5 4.3 6.9-1.9 4.7-9.5 9.3-9.5 9.3z';
+    return h('span', { className: 'bae-stars', role: 'img', 'aria-label': on ? 'Hearted' : 'Not hearted' },
+      h('svg', { width: s, height: s, viewBox: '0 0 24 24', 'aria-hidden': true }, h('path', { d: path, fill: on ? 'var(--accent)' : 'none', stroke: on ? 'var(--accent)' : 'var(--hairline-strong)', strokeWidth: 1.5, strokeLinejoin: 'round' })));
+  }
   // A person's small picture, or initials, beside their name (`name`), as a history row ends in whose play it was. `strong` is a playlist header's owner line: the name in the header's semibold, at the size of the text around it.
   function MacPersonTag(props) {
     return h('span', { className: cx('bae-m-persontag', props.strong && 'bae-m-persontag-strong') },

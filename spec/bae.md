@@ -3172,8 +3172,8 @@ person's rating stays one to five stars or none, whatever the system. With
 *Heart*, an album or track the person rated three stars or more shows a heart;
 turning the heart on stores five stars, and turning it off clears the rating.
 Ana rated *Album Title* one star; with *Heart* it shows no heart, and her one
-star stays. She hearts it, which stores five stars, then unhearts it, which
-clears it: with *Stars* again it is unrated. Changing the system writes no
+star stays. From its menu she hearts it, which stores five stars, then unhearts
+it, which clears it: with *Stars* again it is unrated. Changing the system writes no
 rating, so a rating nobody touched shows as it was when the system changes
 back. *None* hides ratings and keeps them. Sorting by rating under *Heart*
 puts the hearted first and orders nothing by the stars it hides.
@@ -3197,6 +3197,19 @@ with the person's own checked, then *Clear rating*; a tap on a row rates the
 album with that many stars. When the person has rated an
 album, the end of the year line in its header shows the rating read-only, the
 number and one star, as "1992 · 4 ★"; an unrated album shows nothing there.
+
+Under *Heart*, the album's menu (⋯ on macOS, ⋮ on Android) offers *Heart*,
+or *Remove heart* on an album the person hearted, in place of *Rate*, with no
+submenu or sheet. Above it a line that does nothing names who has a heart on the album,
+*You* first, then each other person by name, with no stars: "You · Ana hearted
+it". Where "4 ★" would show, a hearted album shows one filled heart, read-only,
+and an album the person hasn't hearted shows nothing there. On macOS a track's
+row shows a small heart in place of its stars when the person rated it three
+stars or more, and nothing otherwise, and its menu offers *Heart*, or *Remove
+heart* on a hearted track, in place of *Rate*.
+
+Under *None*, the album's and the track's menus have no *Rate*, the album shows
+no rating after ⋯ or the year, and a track's row shows no stars.
 
 Ben keeps his history private. Carol's devices never see what he played. He
 makes a playlist for a party and shares it: it moves from his circle to the

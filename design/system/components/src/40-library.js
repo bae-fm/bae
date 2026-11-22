@@ -224,7 +224,7 @@
         : h('span', { className: 'bae-m-track-pos' }, props.position));
   }
 
-  // One track of an album's list. `picked`: among the tracks picked together, on the soft accent. `rating`: the row of an album's list, which keeps a slot for the track's stars after the row (0 leaves the slot empty, as the app does for a track nobody rated).
+  // One track of an album's list. `picked`: among the tracks picked together, on the soft accent. `rating`: the row of an album's list, which keeps a slot for the track's stars after the row (0 leaves the slot empty, as the app does for a track nobody rated). `ratingSystem`: the library's system for tracks; `heart` fills the slot with a heart when the stars are three or more, `none` draws no slot.
   function MacTrackRow(props) {
     var row = h('div', { className: cx('bae-m-track', props.picked ? 'bae-m-track-picked' : props.hover && 'bae-m-track-hover', props.artist && 'bae-m-track-two') },
       h(MacTrackLead, { position: props.position, hover: props.hover, current: props.current, playing: props.playing }),
@@ -233,9 +233,10 @@
         props.artist ? h('div', { className: 'bae-m-track-artist' }, props.artist) : null),
       h('span', { className: 'bae-m-track-time' }, props.duration));
     // Every album list keeps a slot for the track's stars after the row, empty when you gave it none, so every row's duration lines up.
-    var n = Number(props.rating || 0);
+    if (props.ratingSystem === 'none') return row;
+    var n = Number(props.rating || 0), heart = props.ratingSystem === 'heart', shown = heart ? n >= 3 : n > 0;
     return h('div', { className: 'bae-m-track-rated' }, h('div', { className: 'bae-m-track-rated-row' }, row),
-      h('span', { className: cx('bae-m-track-stars', !n && 'bae-m-track-stars-none'), 'aria-hidden': !n || null }, h(Stars, { value: n, size: 10 })));
+      h('span', { className: cx('bae-m-track-stars', !shown && 'bae-m-track-stars-none'), 'aria-hidden': !shown || null }, heart ? h(Heart, { on: true, size: 10 }) : h(Stars, { value: n, size: 10 })));
   }
 
   function MacEyebrow(props) { return h('div', { className: 'bae-m-eyebrow' }, props.children); }
@@ -293,6 +294,14 @@
   }
 
   // The open album's head: the title, the artist, the year, each on its own line, the release picker (`releases`, `release`), the edition line (`edition`) and the copy line (`copy`), the line saying why this Mac can't play it (`unplayable`), Play and the album's ⋯ (`options`, `optionsOpen`, `highlighted`, a boxed MacMoreMenu). After the ⋯ comes the person's own rating, read-only (`rating`, "4 ★"): nothing while they have not rated the album. The rest of the album's actions, the rating included, are items of the ⋯ menu.
+  // The album's read-only rating after its ⋯ or year: "4 ★" under Stars, one filled heart under Heart at three stars or more, nothing under None or while the person has not rated it (or not hearted it).
+  function albumMark(rating, system, size, className) {
+    var n = Number(rating || 0);
+    if (system === 'none' || !n || (system === 'heart' && n < 3)) return null;
+    var mark = system === 'heart' ? h(Heart, { on: true, size: size }) : h(Stars, { value: n, size: size, number: true });
+    return className ? h('span', { className: className }, mark) : mark;
+  }
+
   function MacAlbumHeader(props) {
     var picker = h(MacReleasePicker, { releases: props.releases, selected: props.release });
     return h('div', { className: 'bae-m-albumhead' },
@@ -302,7 +311,7 @@
       props.edition || props.copy ? h('div', { className: 'bae-m-albumpanel-facts' }, props.edition ? h('div', null, props.edition) : null, props.copy ? h('div', null, props.copy) : null) : null,
       // `unplayable`: where the files are, when only another device holds them; Play gives way to the words Not on this device, whose help tag names the device (`unplayableHover` draws it showing).
       h('div', { className: 'bae-m-albumpanel-actions' }, props.unplayable ? h(MacHelpTag, { text: props.unplayableHover ? props.unplayable : null }, h('span', { className: 'bae-m-albumpanel-unplayable' }, 'Not on this device')) : h(MacButton, { kind: 'primary' }, 'Play'), h(MacMoreMenu, { boxed: true, label: 'Album options', items: props.options, open: props.optionsOpen, highlighted: props.highlighted }),
-        props.rating ? h('span', { className: 'bae-m-albumpanel-rating bae-muted' }, h(Stars, { value: props.rating, size: 13, number: true })) : null));
+        albumMark(props.rating, props.ratingSystem, 13, 'bae-m-albumpanel-rating')));
   }
 
   // A help tag: the short words macOS shows under the pointer after it rests on a control (SwiftUI's `.help`), drawn under the control it describes; with no `text`, only the control.
@@ -330,7 +339,7 @@
       h('span', { className: 'bae-m-albumpanel-close' }, h(MacCloseButton)),
       h(Artwork, { title: props.title, size: 340, radius: 10, missing: props.noCover, className: 'bae-m-albumpanel-cover' }),
       h('div', { className: 'bae-m-albumpanel-body' },
-        h(MacAlbumHeader, { title: props.title, artist: props.artist, year: props.year, releases: props.releases, release: props.release, edition: props.edition, copy: props.copy, unplayable: props.unplayable, unplayableHover: props.unplayableHover, options: props.options, optionsOpen: props.optionsOpen, highlighted: props.highlighted, rating: props.rating }),
+        h(MacAlbumHeader, { title: props.title, artist: props.artist, year: props.year, releases: props.releases, release: props.release, edition: props.edition, copy: props.copy, unplayable: props.unplayable, unplayableHover: props.unplayableHover, options: props.options, optionsOpen: props.optionsOpen, highlighted: props.highlighted, rating: props.rating, ratingSystem: props.ratingSystem }),
         h('div', { className: 'bae-m-albumpanel-tracks bae-m-albumpanel-tracks-rated' }, props.children),
         props.audio ? h('div', { className: 'bae-m-albumpanel-audio' }, props.audio) : null));
   }
@@ -536,8 +545,9 @@
   function AndroidEyebrow(props) { return h('div', { className: 'bae-a-eyebrow' }, props.children); }
 
   function AndroidAlbumHeader(props) {
+    var mark = albumMark(props.rating, props.ratingSystem, 12);
     return h('div', { className: 'bae-a-albumhead' }, h(Artwork, { title: props.title, size: 150, radius: 10, missing: props.noCover }),
-      h('div', { className: 'bae-a-albumhead-text' }, h('div', { className: 'bae-a-albumhead-title' }, props.title), h('div', { className: 'bae-a-albumhead-artist' }, props.artist), props.year || props.rating ? h('div', { className: 'bae-a-albumhead-fact' }, props.year, props.year && props.rating ? ' · ' : null, props.rating ? h(Stars, { value: props.rating, size: 12, number: true }) : null) : null,
+      h('div', { className: 'bae-a-albumhead-text' }, h('div', { className: 'bae-a-albumhead-title' }, props.title), h('div', { className: 'bae-a-albumhead-artist' }, props.artist), props.year || mark ? h('div', { className: 'bae-a-albumhead-fact' }, props.year, props.year && mark ? ' · ' : null, mark) : null,
         props.edition ? h('div', { className: 'bae-a-albumhead-fact bae-a-albumhead-release bae-a-albumhead-gap' }, props.edition) : null, props.copy ? h('div', { className: 'bae-a-albumhead-fact bae-a-albumhead-release' }, props.copy) : null,
         // `unplayable`: only another device holds the files, so the words Not on this device stand where Play stood, and the info button opens a sheet that names the device.
         props.unplayable ? h('div', { className: 'bae-a-albumhead-actions' }, h('span', { className: 'bae-a-albumhead-unplayable' }, 'Not on this device'), h(AndroidIconButton, { icon: 'info', label: 'Show where it is', size: 'medium', tone: 'muted' })) : null,

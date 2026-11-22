@@ -1,6 +1,6 @@
 /* ==== part: explore ==== */.bae-stars { display: inline-flex; align-items: center; gap: 2px; }
 .bae-stars-btn { display: flex; padding: 0; border: 0; background: none; cursor: pointer; }
-.bae-stars-number { vertical-align: -1px; }
+.bae-stars-number { vertical-align: -1px; color: var(--text-secondary); }
 .bae-m-lrow { display: flex; align-items: center; gap: 10px; padding: 5px 8px; border-radius: 6px; font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
 .bae-m-lrow-lead { width: 56px; flex: none; font-size: var(--type-detail-size); font-weight: var(--type-detail-weight); line-height: var(--type-detail-line-height); }
 .bae-m-lrow-wide { padding-right: 16px; }

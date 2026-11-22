@@ -4457,6 +4457,54 @@
    "w": 412,
    "x": 1476,
    "y": 240
+  },
+  "mac.album.rating.heart.dc.html": {
+   "h": 1000,
+   "page": "explore",
+   "title": "Exploration: macOS: an album and its tracks under Heart",
+   "w": 1200,
+   "x": 3052,
+   "y": 240
+  },
+  "mac.album.track-menu-heart.dc.html": {
+   "h": 1000,
+   "page": "explore",
+   "title": "Exploration: macOS: a track’s menu under Heart",
+   "w": 1200,
+   "x": 4332,
+   "y": 240
+  },
+  "mac.album.rating.none.dc.html": {
+   "h": 1000,
+   "page": "explore",
+   "title": "Exploration: macOS: an album and its tracks under None",
+   "w": 1200,
+   "x": 5612,
+   "y": 240
+  },
+  "mac.album.track-menu-none.dc.html": {
+   "h": 1000,
+   "page": "explore",
+   "title": "Exploration: macOS: a track’s menu under None",
+   "w": 1200,
+   "x": 6892,
+   "y": 240
+  },
+  "android.album.rating.heart.dc.html": {
+   "h": 916,
+   "page": "explore",
+   "title": "Exploration: album options under Heart",
+   "w": 412,
+   "x": 8172,
+   "y": 240
+  },
+  "android.album.rating.none.dc.html": {
+   "h": 916,
+   "page": "explore",
+   "title": "Exploration: album options under None",
+   "w": 412,
+   "x": 8664,
+   "y": 240
   }
  },
  "createdOnFiles": {
@@ -6302,6 +6350,12 @@
   "mac.album.rating.dc.html",
   "mac.album.track-menu-rate.dc.html",
   "android.album.rating.dc.html",
+  "mac.album.rating.heart.dc.html",
+  "mac.album.track-menu-heart.dc.html",
+  "mac.album.rating.none.dc.html",
+  "mac.album.track-menu-none.dc.html",
+  "android.album.rating.heart.dc.html",
+  "android.album.rating.none.dc.html",
   "mac.playlists.list.dc.html",
   "mac.playlists.add-to-playlist.dc.html",
   "mac.playlists.new-playlist.dc.html",
