@@ -37,8 +37,7 @@ extension ShotScene {
         ShotScene(
             id: "mac.settings.storage.delete-from-before-reset",
             size: CGSize(width: 690, height: 600),
-            frame: .window(title: "Settings", titleBar: .hidden),
-            takesFocus: true
+            frame: .window(title: "Settings", titleBar: .hidden)
         ) {
             let store = DeviceStorageStore.staging(.previewBeforeReset)
             return ShotStage(

@@ -15,13 +15,6 @@ struct ShotScene {
     /// window's title bar.
     let size: CGSize
     var frame: ShotFrame = .content
-    /// Whether the scene's window must be drawn by an app that holds the
-    /// focus: a scene that shows an alert, whose panel only an active app
-    /// makes key. It is written as `takesFocus: true` among the arguments of
-    /// the scene's `ShotScene(` call, which builds shots reads from the
-    /// source to hold the host's window lock for these scenes alone. Every
-    /// other window scene is drawn without the app taking the focus.
-    var takesFocus = false
     let stage: () -> ShotStage
 
     /// Every macOS scene, one for each board it is shot for. A scene is

@@ -12,8 +12,7 @@ extension ShotScene {
             ShotScene(
                 id: "mac.album.delete-album",
                 size: CGSize(width: 1_200, height: 1_000),
-                frame: .window(title: "bae", titleBar: .hidden),
-                takesFocus: true
+                frame: .window(title: "bae", titleBar: .hidden)
             ) {
                 libraryAlertStage(
                     DeleteAlbumConfirmation.alert {},
@@ -24,8 +23,7 @@ extension ShotScene {
             ShotScene(
                 id: "mac.album.delete-release",
                 size: CGSize(width: 1_200, height: 1_000),
-                frame: .window(title: "bae", titleBar: .hidden),
-                takesFocus: true
+                frame: .window(title: "bae", titleBar: .hidden)
             ) {
                 libraryAlertStage(
                     DeleteReleaseConfirmation.alert {},
@@ -36,8 +34,7 @@ extension ShotScene {
             ShotScene(
                 id: "mac.album.storage.unpin",
                 size: CGSize(width: 1_200, height: 1_000),
-                frame: .window(title: "bae", titleBar: .hidden),
-                takesFocus: true
+                frame: .window(title: "bae", titleBar: .hidden)
             ) {
                 libraryAlertStage(
                     UnpinConfirmation.alert(
@@ -55,8 +52,7 @@ extension ShotScene {
             ShotScene(
                 id: "mac.errors.alert",
                 size: CGSize(width: 1_200, height: 760),
-                frame: .window(title: "bae", titleBar: .hidden),
-                takesFocus: true
+                frame: .window(title: "bae", titleBar: .hidden)
             ) {
                 libraryAlertStage(
                     ErrorAlertContent.alert(
@@ -72,8 +68,7 @@ extension ShotScene {
             ShotScene(
                 id: "mac.errors.alert.play-outcome",
                 size: CGSize(width: 1_200, height: 760),
-                frame: .window(title: "bae", titleBar: .hidden),
-                takesFocus: true
+                frame: .window(title: "bae", titleBar: .hidden)
             ) {
                 libraryAlertStage(
                     ErrorAlertContent.alert(
@@ -93,8 +88,7 @@ extension ShotScene {
         ShotScene(
             id: "mac.settings.import.turn-off-discogs",
             size: CGSize(width: 690, height: 600),
-            frame: .window(title: "Settings", titleBar: .hidden),
-            takesFocus: true
+            frame: .window(title: "Settings", titleBar: .hidden)
         ) {
             ShotStage(
                 OverWindow.alert(
@@ -119,8 +113,7 @@ extension ShotScene {
         ShotScene(
             id: "mac.settings.save-as.delete-format",
             size: CGSize(width: 690, height: 600),
-            frame: .window(title: "Settings", titleBar: .hidden),
-            takesFocus: true
+            frame: .window(title: "Settings", titleBar: .hidden)
         ) {
             ShotStage(
                 OverWindow.alert(
@@ -142,8 +135,7 @@ extension ShotScene {
         ShotScene(
             id: "mac.settings.devices.cut-off",
             size: CGSize(width: 690, height: 600),
-            frame: .window(title: "Settings", titleBar: .hidden),
-            takesFocus: true
+            frame: .window(title: "Settings", titleBar: .hidden)
         ) {
             ShotStage(
                 peopleSettingsWindow(
@@ -158,8 +150,7 @@ extension ShotScene {
         ShotScene(
             id: "mac.settings.devices.cut-off-other",
             size: CGSize(width: 690, height: 600),
-            frame: .window(title: "Settings", titleBar: .hidden),
-            takesFocus: true
+            frame: .window(title: "Settings", titleBar: .hidden)
         ) {
             ShotStage(
                 peopleSettingsWindow(
@@ -174,8 +165,7 @@ extension ShotScene {
         ShotScene(
             id: "mac.settings.devices.cut-off-running",
             size: CGSize(width: 690, height: 600),
-            frame: .window(title: "Settings", titleBar: .hidden),
-            takesFocus: true
+            frame: .window(title: "Settings", titleBar: .hidden)
         ) {
             ShotStage(
                 peopleSettingsWindow(
@@ -187,8 +177,7 @@ extension ShotScene {
         ShotScene(
             id: "mac.settings.devices.cut-off-not-here",
             size: CGSize(width: 690, height: 600),
-            frame: .window(title: "Settings", titleBar: .hidden),
-            takesFocus: true
+            frame: .window(title: "Settings", titleBar: .hidden)
         ) {
             ShotStage(
                 peopleSettingsWindow(
@@ -200,8 +189,7 @@ extension ShotScene {
         ShotScene(
             id: "mac.settings.invite.cancel",
             size: CGSize(width: 690, height: 600),
-            frame: .window(title: "Settings", titleBar: .hidden),
-            takesFocus: true
+            frame: .window(title: "Settings", titleBar: .hidden)
         ) {
             let invite = BridgeInvite(
                 id: "11",
@@ -229,8 +217,7 @@ extension ShotScene {
         ShotScene(
             id: "mac.welcome.reset.confirm",
             size: WelcomeWindow.size,
-            frame: .window(title: "bae", titleBar: .hidden),
-            takesFocus: true
+            frame: .window(title: "bae", titleBar: .hidden)
         ) {
             ShotStage(
                 OverWindow.alert(
@@ -242,8 +229,7 @@ extension ShotScene {
         ShotScene(
             id: "mac.library.view-failed",
             size: CGSize(width: 1200, height: 760),
-            frame: .window(title: "bae", titleBar: .hidden),
-            takesFocus: true
+            frame: .window(title: "bae", titleBar: .hidden)
         ) {
             let uiStore = UiStore()
             let error = DisplayError(
@@ -290,8 +276,7 @@ extension ShotScene {
         ShotScene(
             id: "mac.activity.panel.problem-open",
             size: CGSize(width: 1200, height: 760),
-            frame: .window(title: "bae", titleBar: .hidden),
-            takesFocus: true
+            frame: .window(title: "bae", titleBar: .hidden)
         ) {
             let uiStore = UiStore()
             let problem = LaunchProblems(
@@ -358,8 +343,7 @@ extension ShotScene {
         ShotScene(
             id: "mac.storage.unpin-several",
             size: CGSize(width: 1_100, height: 660),
-            frame: .window(title: "Storage Manager"),
-            takesFocus: true
+            frame: .window(title: "Storage Manager")
         ) {
             let pinned: Set<String> = ["rel-row-3", "rel-row-10", "rel-row-12"]
             // Core's answer for the three: core returns no storage actions

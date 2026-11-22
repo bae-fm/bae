@@ -10,8 +10,7 @@ import SwiftUI
 /// sized bitmap, without the app ever taking the focus; a scene shown in its
 /// window through the window server, which draws the toolbar's glass, from a
 /// non-activating window made key on the `ShotDisplay`, without the app
-/// taking the focus, except a scene that shows an alert, whose window is
-/// brought to the front of the active app.
+/// taking the focus; an alert it shows is a non-activating panel too.
 @MainActor
 enum ShotRenderer {
     /// Backing-store scale for every capture. Fixed rather than read from the
@@ -82,11 +81,8 @@ enum ShotRenderer {
             window.makeKey()
         case .window:
             try place(window, on: display, scene: scene)
-            if scene.takesFocus {
-                NSApp.activate(ignoringOtherApps: true)
-            }
-            // Without the focus, the window is a non-activating panel, key
-            // without the app taking the focus from the app that holds it.
+            // The window is a non-activating panel, key without the app
+            // taking the focus from the app that holds it.
             window.makeKeyAndOrderFront(nil)
             window.makeMain()
         }
@@ -225,7 +221,7 @@ enum ShotRenderer {
     }
 
     /// The empty window of a scene shown in its window: a panel that does
-    /// not activate the app, unless the scene takes the focus.
+    /// not activate the app.
     private static func shownWindow(
         for scene: ShotScene,
         at origin: NSPoint
@@ -234,14 +230,6 @@ enum ShotRenderer {
         let titled: NSWindow.StyleMask = [
             .titled, .closable, .miniaturizable, .resizable,
         ]
-        if scene.takesFocus {
-            return ShotWindow(
-                contentRect: contentRect,
-                styleMask: titled,
-                backing: .buffered,
-                defer: false
-            )
-        }
         let panel = ShotPanel(
             contentRect: contentRect,
             styleMask: titled.union(.nonactivatingPanel),
@@ -352,9 +340,6 @@ enum ShotError: Error, CustomStringConvertible {
     /// The scene's window never became key; `focus` is the app macOS named
     /// as the front app when the wait ended.
     case windowNotKey(String, focus: FocusHolder)
-    /// A scene that does not take the focus showed an alert, whose panel
-    /// only an active app makes key.
-    case alertWithoutFocus(String)
     case noScreen(String)
     case noShotDisplay(String)
     case noContentView(String)
@@ -395,9 +380,6 @@ enum ShotError: Error, CustomStringConvertible {
         case .windowNotKey(let id, .noApp):
             "macOS names no front app, and scene \(id)'s window never became "
                 + "key, so it would draw inactive"
-        case .alertWithoutFocus(let id):
-            "scene \(id) shows an alert but is not declared with "
-                + "takesFocus: true"
         case .noScreen(let id):
             "ScreenCaptureKit shares no shot display for scene \(id)'s window"
         case .noContentView(let id):
@@ -441,7 +423,7 @@ private final class ShotWindow: NSWindow {
     ) -> NSRect { frameRect }
 }
 
-/// The window of a scene that does not take the focus. A panel that does not
+/// The window of a scene shown in its window. A panel that does not
 /// activate the app is key, and draws its title bar and toolbar as active,
 /// while another app holds the focus: a window of an app that is not active
 /// is never key.

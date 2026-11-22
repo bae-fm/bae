@@ -260,7 +260,9 @@
     }
 
     /// A borderless clear panel that takes the keyboard, so an alert's
-    /// buttons answer Return and Escape.
+    /// buttons answer Return and Escape. It does not activate the app: an
+    /// alert only sits over a window of the app, and a panel that activates
+    /// can be key only while the app is the active one.
     private final class AlertPanel: NSPanel {
         override var canBecomeKey: Bool { true }
     }
@@ -448,7 +450,7 @@
             )
             let panel = AlertPanel(
                 contentRect: NSRect(origin: .zero, size: host.fittingSize),
-                styleMask: [.borderless],
+                styleMask: [.borderless, .nonactivatingPanel],
                 backing: .buffered,
                 defer: false
             )
