@@ -118,14 +118,13 @@ struct BoxedField<Focus: Hashable>: View {
     /// A field whose focus the caller owns: it is focused when `focus` holds
     /// `value`.
     init(
-        placeholder: LocalizedStringKey? = nil,
         text: Binding<String>,
         focus: FocusState<Focus>.Binding,
         equals value: Focus,
         secret: Bool = false,
         invalid: Bool = false
     ) {
-        self.placeholder = placeholder
+        placeholder = nil
         _text = text
         font = .body
         self.secret = secret
