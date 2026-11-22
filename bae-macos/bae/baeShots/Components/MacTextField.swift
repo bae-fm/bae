@@ -43,9 +43,18 @@ extension ShotScene {
     /// field's request for the keyboard leaves it at rest, as the board draws
     /// it.
     private static func codeField(_ id: String) -> ShotScene {
-        component(id, width: previewWidth, height: 90) {
-            codeFieldRow()
-        }
+        component(
+            id,
+            width: previewWidth,
+            height: 90,
+            // AppKit hands a key window's first text field the keyboard, and
+            // the board draws this row's field with nobody on it.
+            isDrawn: { host in
+                host.window?.makeFirstResponder(nil)
+                return !(host.window?.firstResponder is NSText)
+            },
+            view: { codeFieldRow() }
+        )
     }
 
     @MainActor

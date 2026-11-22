@@ -215,6 +215,7 @@ extension ShotScene {
         height: CGFloat,
         images: ImageStore? = nil,
         isReady: @escaping @MainActor () -> Bool = { true },
+        isDrawn: @escaping @MainActor (NSView) -> Bool = { _ in true },
         @ViewBuilder view: @escaping @MainActor () -> Content
     ) -> ShotScene {
         let margin = page ? ThemeSpace.edge : 0
@@ -236,13 +237,15 @@ extension ShotScene {
             guard let images else {
                 return ShotStage(
                     content.environment(ImageStore.stub()),
-                    isReady: isReady
+                    isReady: isReady,
+                    isDrawn: isDrawn
                 )
             }
             return ShotStage(
                 content.environment(images),
                 images: images,
-                isReady: isReady
+                isReady: isReady,
+                isDrawn: isDrawn
             )
         }
     }
