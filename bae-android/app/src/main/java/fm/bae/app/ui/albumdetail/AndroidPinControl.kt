@@ -16,7 +16,6 @@ import androidx.compose.ui.res.stringResource
 import fm.bae.app.DisplayError
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
-import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidCheckbox
@@ -80,7 +79,6 @@ internal fun AndroidPinControl(
                 AndroidButton(
                     kind = ButtonKind.OUTLINED,
                     onClick = onCancel,
-                    icon = SymbolIcons.Close,
                 ) { Text(stringResource(R.string.cancel)) }
             }
         }
@@ -96,7 +94,6 @@ internal fun AndroidPinControl(
                 AndroidButton(
                     kind = ButtonKind.OUTLINED,
                     onClick = onCancel,
-                    icon = SymbolIcons.Close,
                 ) { Text(stringResource(R.string.pin_cancel)) }
             }
         }
@@ -110,7 +107,7 @@ internal fun AndroidPinControl(
                     action = ErrorAction(stringResource(R.string.retry), onClick = onRetry),
                     look = NoticeLook.QUIET,
                 )
-                AndroidButton(kind = ButtonKind.OUTLINED, onClick = onCancel, icon = SymbolIcons.Close) {
+                AndroidButton(kind = ButtonKind.OUTLINED, onClick = onCancel) {
                     Text(stringResource(R.string.cancel))
                 }
             }
