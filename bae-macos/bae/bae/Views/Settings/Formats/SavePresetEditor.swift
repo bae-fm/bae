@@ -36,23 +36,19 @@ struct SavePresetEditor: View {
     private var renaming: Task<Void, Never>?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.related) {
+        MacSheet(width: 480) {
             MacBox {
                 nameRow
                 formatRow
                 qualityRow
             }
+        } footer: {
             MacSheetFooter {
                 MacButton("Done", kind: .primary) { dismiss() }
                     .keyboardShortcut(.defaultAction)
                     .disabled(!nameValid)
             }
         }
-        .padding(.horizontal, ThemeSpace.edge)
-        .padding(.top, ThemeSpace.group)
-        .padding(.bottom, ThemeSpace.edge)
-        .frame(width: 480)
-        .macSheetSurface()
         .task(id: preset.name) {
             nameDraft = preset.name
         }

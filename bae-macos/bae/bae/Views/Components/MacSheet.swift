@@ -5,8 +5,12 @@ import SwiftUI
 /// secondary text, then its content and its footer. The line is what the
 /// sheet asks for or reports, as an alert's message is.
 struct MacSheet<Content: View, Footer: View>: View {
-    let title: Text
-    let message: Text?
+    private struct Header {
+        let title: Text
+        let message: Text?
+    }
+
+    private let header: Header?
     let width: CGFloat
     private let content: Content
     private let footer: Footer
@@ -18,8 +22,10 @@ struct MacSheet<Content: View, Footer: View>: View {
         @ViewBuilder content: () -> Content,
         @ViewBuilder footer: () -> Footer
     ) {
-        self.title = Text(title)
-        self.message = message.map { Text($0) }
+        self.header = Header(
+            title: Text(title),
+            message: message.map { Text($0) }
+        )
         self.width = width
         self.content = content()
         self.footer = footer()
@@ -34,8 +40,10 @@ struct MacSheet<Content: View, Footer: View>: View {
         @ViewBuilder content: () -> Content,
         @ViewBuilder footer: () -> Footer
     ) {
-        self.title = Text(verbatim: title)
-        self.message = message.map { Text($0) }
+        self.header = Header(
+            title: Text(verbatim: title),
+            message: message.map { Text($0) }
+        )
         self.width = width
         self.content = content()
         self.footer = footer()
@@ -50,8 +58,19 @@ struct MacSheet<Content: View, Footer: View>: View {
         @ViewBuilder content: () -> Content,
         @ViewBuilder footer: () -> Footer
     ) {
-        self.title = title
-        self.message = message
+        self.header = Header(title: title, message: message)
+        self.width = width
+        self.content = content()
+        self.footer = footer()
+    }
+
+    /// A sheet whose fields name the task, such as the save format editor.
+    init(
+        width: CGFloat,
+        @ViewBuilder content: () -> Content,
+        @ViewBuilder footer: () -> Footer
+    ) {
+        self.header = nil
         self.width = width
         self.content = content()
         self.footer = footer()
@@ -66,26 +85,24 @@ struct MacSheet<Content: View, Footer: View>: View {
             alignment: .leading,
             spacing: ThemeSpace.related + ThemeSpace.line
         ) {
-            title
-                .themeText(.strong)
-                .padding(.bottom, ThemeSpace.line)
-            if let message {
-                SheetMessage(message)
+            if let header {
+                header.title
+                    .themeText(.strong)
+                    .padding(.bottom, ThemeSpace.line)
+                if let message = header.message {
+                    SheetMessage(message)
+                }
             }
             content
             footer
         }
         .padding([.horizontal, .bottom], ThemeSpace.edge)
-        .padding(.top, ThemeSpace.edge + ThemeSpace.line)
+        .padding(
+            .top,
+            header == nil ? ThemeSpace.group : ThemeSpace.edge + ThemeSpace.line
+        )
         .frame(width: width, alignment: .leading)
-        .macSheetSurface()
-    }
-}
-
-extension View {
-    /// Draws the sheet's surface in the content, with a clear native backdrop.
-    func macSheetSurface() -> some View {
-        background(Theme.surfaceElevated)
-            .presentationBackground(.clear)
+        .background(Theme.surfaceElevated)
+        .presentationBackground(.clear)
     }
 }
