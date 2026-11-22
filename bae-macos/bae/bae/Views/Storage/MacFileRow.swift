@@ -17,7 +17,6 @@ struct MacFileRow: View {
         MacItem {
             mark
                 .frame(width: ThemeSize.lead, height: ThemeSize.lead)
-                .accessibilityHidden(true)
         } content: {
             Text(row.file.originalFilename)
                 .cutLine(.fileName)
@@ -32,7 +31,6 @@ struct MacFileRow: View {
         .padding(.horizontal, ThemeSpace.edge)
         .help(help)
         .accessibilityElement(children: .contain)
-        .accessibilityHint(stateWords ?? "")
         .accessibilityIdentifier("file:\(row.file.id)")
     }
 
@@ -60,19 +58,6 @@ struct MacFileRow: View {
         case .waiting: return .queued(.pin)
         case .downloading(let fileId): return .pinning(fileId: fileId)
         case .kept, nil: return .stored
-        }
-    }
-
-    /// What the mark shows, in words, for the row's accessibility hint: the
-    /// mark itself is drawn only, as the board draws it.
-    private var stateWords: String? {
-        switch place {
-        case .stored: nil
-        case .stopped(let problem): problem.words
-        case .queued(.upload): BridgeUploadActivity.queued.phaseText
-        case .queued(.pin): String(localized: "Queued to pin")
-        case .sending: String(localized: "Uploading")
-        case .pinning: String(localized: "Pinning")
         }
     }
 
