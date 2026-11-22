@@ -16,7 +16,7 @@ extension ShotScene {
             id,
             height: 50,
             images: ImageStore(fetchAvatarBytes: {
-                PreviewData.previewArtData($0)
+                try BoardArtwork.data(named: $0)
             })
         ) {
             MacAvatarButton()

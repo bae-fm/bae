@@ -99,7 +99,7 @@ extension ShotScene {
             size: CGSize(width: 1100, height: 100)
         ) {
             let images = ImageStore(
-                fetchLibraryImageBytes: { PreviewData.previewArtData($0.id) }
+                fetchLibraryImageBytes: { try BoardArtwork.data(named: $0.id) }
             )
             return ShotStage(
                 NowPlayingBarPreview(

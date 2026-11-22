@@ -12,7 +12,7 @@ extension ShotScene {
 
     private static func queueRow(_ id: String, hover: Bool) -> ShotScene {
         let images = ImageStore(
-            fetchLibraryImageBytes: { PreviewData.previewArtData($0.id) }
+            fetchLibraryImageBytes: { try BoardArtwork.data(named: $0.id) }
         )
         return component(id, height: 90, images: images) {
             MacQueueRow(

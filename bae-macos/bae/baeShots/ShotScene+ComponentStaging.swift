@@ -297,12 +297,12 @@ extension ShotScene {
     /// release's cover.
     static func coverImages() -> ImageStore {
         ImageStore(
-            fetchLibraryImageBytes: { PreviewData.previewArtData($0.id) },
+            fetchLibraryImageBytes: { try BoardArtwork.data(named: $0.id) },
             fetchReleaseImageBytes: { _, _ in
-                PreviewData.previewArtData("cover.jpg")
+                try BoardArtwork.data(named: "cover.jpg")
             },
             fetchRemoteImage: { image, _ in
-                PreviewData.previewArtData(image.url)
+                try BoardArtwork.data(named: image.url)
             }
         )
     }
@@ -603,7 +603,7 @@ extension ShotScene {
 
     static func coverStore() -> ImageStore {
         ImageStore(
-            fetchLibraryImageBytes: { PreviewData.previewArtData($0.id) }
+            fetchLibraryImageBytes: { try BoardArtwork.data(named: $0.id) }
         )
     }
 

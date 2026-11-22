@@ -13,7 +13,7 @@ extension ShotScene {
             "mac.component.avatar.picture",
             height: 48,
             images: ImageStore(fetchAvatarBytes: {
-                PreviewData.previewArtData($0)
+                try BoardArtwork.data(named: $0)
             })
         ) {
             Avatar(

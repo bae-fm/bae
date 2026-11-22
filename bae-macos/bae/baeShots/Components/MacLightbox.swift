@@ -31,7 +31,7 @@ extension ShotScene {
                 if ref.id == first {
                     switch state {
                     case .shown:
-                        return PreviewData.previewArtData(ref.id)
+                        return try BoardArtwork.data(named: ref.id)
                     case .loading:
                         try? await Task.sleep(for: .seconds(3_600))
                         return nil
@@ -39,7 +39,7 @@ extension ShotScene {
                         return nil
                     }
                 }
-                return PreviewData.previewArtData(ref.id)
+                return try BoardArtwork.data(named: ref.id)
             }
         )
     }

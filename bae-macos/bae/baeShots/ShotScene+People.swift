@@ -510,7 +510,7 @@ extension ShotScene {
                 .environment(membership)
                 .environment(
                     ImageStore(fetchAvatarBytes: {
-                        PreviewData.previewArtData($0)
+                        try BoardArtwork.data(named: $0)
                     })
                 )
         )
