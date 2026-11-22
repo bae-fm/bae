@@ -20,24 +20,14 @@ extension ShotScene {
             )
             .frame(width: 380, alignment: .leading)
         },
-        component(
+        playingFrom(
+            "mac.component.queue-section.playing-from",
+            shuffled: false
+        ),
+        playingFrom(
             "mac.component.queue-section.playing-from-shuffled",
-            height: 60
-        ) {
-            MacQueueSection(
-                title: "Playing from · Low Tide Hours",
-                kind: .lane(
-                    MacQueueSection.Lane(
-                        clear: MacQueueSection.Clear(
-                            label: "Clear playing from",
-                            action: {}
-                        ),
-                        shuffle: MacQueueSection.Shuffle(on: true) { _ in }
-                    )
-                )
-            )
-            .frame(width: 380, alignment: .leading)
-        },
+            shuffled: true
+        ),
         component("mac.component.queue-section.without-clear", height: 60) {
             MacQueueSection(
                 title: "Up next",
@@ -74,4 +64,22 @@ extension ShotScene {
             .frame(width: 380, alignment: .leading)
         },
     ]
+    private static func playingFrom(_ id: String, shuffled: Bool) -> ShotScene {
+        component(id, height: 60) {
+            MacQueueSection(
+                title: "Playing from · Low Tide Hours",
+                kind: .lane(
+                    MacQueueSection.Lane(
+                        clear: MacQueueSection.Clear(
+                            label: "Clear playing from",
+                            action: {}
+                        ),
+                        shuffle: MacQueueSection.Shuffle(on: shuffled) { _ in }
+                    )
+                )
+            )
+            .frame(width: 380, alignment: .leading)
+        }
+    }
+
 }
