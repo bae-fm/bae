@@ -14,8 +14,12 @@ use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 use tokio::sync::oneshot;
 
-/// How much audio the ring holds, whatever the sample rate.
-const DEFAULT_BUFFER_MS: u32 = 100;
+/// How much audio the ring holds, whatever the sample rate. A track is ready to
+/// sound once the ring is full, so this is also the lead a track starts with:
+/// longer than the next window of a file streamed from storage takes to arrive,
+/// which is seconds, so the decoder reaches the end of the window it started in
+/// and waits on the next one before the track sounds, not after.
+const DEFAULT_BUFFER_MS: u32 = 4000;
 
 /// Shared state between sink and stream.
 pub struct StreamingState {
@@ -138,9 +142,9 @@ impl StreamingState {
 pub struct TrackSink {
     producer: Producer<f32>,
     state: Arc<StreamingState>,
-    /// Fires once the ring is 50% full (or the producer finishes).
+    /// Fires once the ring is full (or the producer finishes).
     ready_tx: Option<oneshot::Sender<()>>,
-    /// Ring capacity, for the 50% ready threshold.
+    /// Ring capacity, the number of samples that make the track ready.
     capacity: usize,
     samples_pushed: usize,
 }
@@ -171,7 +175,7 @@ impl TrackSink {
     /// Push every sample, blocking until they all land or the stream is
     /// cancelled. Writes in bulk (memcpy) rather than per-sample. On a full ring
     /// it parks until the consumer drains, cancels or drops the stream, so a
-    /// paused player wakes it zero times. Signals ready at 50% capacity.
+    /// paused player wakes it zero times. Signals ready once the ring has filled.
     pub fn push_samples_blocking(&mut self, samples: &[f32]) -> usize {
         #[expect(
             clippy::let_underscore_must_use,
@@ -209,7 +213,7 @@ impl TrackSink {
             self.state.add_samples_decoded(n as u64);
             self.state.wake_consumer();
 
-            if self.ready_tx.is_some() && self.samples_pushed >= self.capacity / 2 {
+            if self.ready_tx.is_some() && self.samples_pushed >= self.capacity {
                 if let Some(tx) = self.ready_tx.take() {
                     #[expect(
                         clippy::let_underscore_must_use,
@@ -250,7 +254,7 @@ impl TrackSink {
     }
 
     /// EOF: every sample has been pushed. Also signals ready if it hasn't fired —
-    /// a track shorter than half the ring never reaches the 50% threshold.
+    /// a track shorter than the ring never fills it.
     pub fn mark_finished(&mut self) {
         if let Some(tx) = self.ready_tx.take() {
             #[expect(
@@ -400,7 +404,7 @@ impl Drop for TrackStream {
     }
 }
 
-/// Resolves when the ring is 50% full or the producer finishes, whichever comes
+/// Resolves when the ring is full or the producer finishes, whichever comes
 /// first.
 pub type ReadyReceiver = oneshot::Receiver<()>;
 

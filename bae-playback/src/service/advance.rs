@@ -579,9 +579,6 @@ impl PlaybackService {
     /// Reads only the `TrackCrossing` payload — both track ids and the finishing
     /// stats come from the event, not from a shared cell.
     pub(super) async fn handle_track_crossed(&mut self, crossing: TrackCrossing) {
-        if !self.resolve_pending_load().await {
-            return;
-        }
         self.finish_listening_audio(crossing.finished_fmt.clone(), crossing.samples_decoded);
         self.finish_listening().await;
         // A gaplessly-advanced track never reaches the completion path, so this is

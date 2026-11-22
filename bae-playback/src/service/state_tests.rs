@@ -103,6 +103,32 @@ async fn next_after_natural_completion_resumes_audibly() {
     );
 }
 
+/// A load toward playing is silent until its track is ready: its first samples
+/// would sound and run out while the next window of the file is still on its
+/// way.
+#[tokio::test]
+async fn a_load_is_silent_until_its_track_is_ready() {
+    let (_home, mut service, _progress_rx) = test_playback_service().await;
+    let generation = service.next_load_generation();
+    service.slot = active_slot(
+        test_prepared_track(TRACK_T, create_sparse_buffer(1_024)),
+        TrackPhase::Loading { generation, target: PlayTarget::Playing },
+    );
+    service.sync_audio_state();
+    assert_eq!(
+        service.audio_output.get_state(),
+        crate::audio_output::AudioState::Paused,
+        "a loading track makes no sound"
+    );
+
+    service.resolve_track_ready(TRACK_T.to_string(), generation).await;
+    assert_eq!(
+        service.audio_output.get_state(),
+        crate::audio_output::AudioState::Playing,
+        "a ready track plays"
+    );
+}
+
 /// A `TrackReady` from a superseded load (same track id, replayed through a
 /// fresh load) carries the old generation and must be dropped; only the live
 /// load's generation resolves the phase and emits. A same-id replay is exactly

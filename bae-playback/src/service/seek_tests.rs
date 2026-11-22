@@ -70,6 +70,14 @@ async fn seek_after_natural_completion_resumes_audibly() {
     service.audio_output.set_state(crate::audio_output::AudioState::Stopped);
 
     service.seek(StreamPosition::from_duration(std::time::Duration::from_millis(500))).await;
+    let generation = match &service.slot {
+        PlaybackSlot::Active(cur) => match cur.phase {
+            TrackPhase::Loading { generation, .. } => generation,
+            _ => panic!("the seek loads the track from the target"),
+        },
+        _ => panic!("the seek keeps the track"),
+    };
+    service.resolve_track_ready(FINISHED_TRACK.to_string(), generation).await;
 
     assert_eq!(
         service.audio_output.get_state(),

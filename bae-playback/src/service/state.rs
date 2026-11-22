@@ -121,6 +121,12 @@ impl PlaybackService {
             // resolved intent. This is what keeps the old ring from leaking audio
             // during play_track's swap and seek's rebuild.
             PlaybackSlot::Loading(_) => AudioState::Stopped,
+            // A track loading toward playing stays silent until it is ready:
+            // its first samples would otherwise sound, and run out, while the
+            // next window of its file is still on its way.
+            PlaybackSlot::Active(cur) if matches!(cur.phase, TrackPhase::Loading { .. }) => {
+                AudioState::Paused
+            }
             PlaybackSlot::Active(cur) => match cur.phase.intent() {
                 PlayIntent::Playing => AudioState::Playing,
                 PlayIntent::Paused => AudioState::Paused,
@@ -199,32 +205,6 @@ impl PlaybackService {
         } else {
             debug!(track_id, "ignoring stale TrackReady from an abandoned load");
         }
-    }
-
-    /// Resolve the load the current track is still in, when its audio reached
-    /// its end or a crossing into the next track before its `TrackReady` was
-    /// handled: a Loading phase whose intent is Playing already pulls samples,
-    /// so under load the track can play through before the command loop gets
-    /// to the ready signal. Its first samples were there, so it was heard, and
-    /// it reports Playing (and starts its listening) before what ended it
-    /// reports. The `TrackReady` that arrives afterwards finds no Loading phase
-    /// and is dropped. Returns whether the slot is still active: a failed
-    /// start of the listening stops playback.
-    pub(super) async fn resolve_pending_load(&mut self) -> bool {
-        let pending = match &self.slot {
-            PlaybackSlot::Active(cur) => match &cur.phase {
-                TrackPhase::Loading { generation, .. } => {
-                    Some((cur.prepared.track_id.clone(), *generation))
-                }
-                _ => None,
-            },
-            _ => None,
-        };
-        let Some((track_id, generation)) = pending else {
-            return true;
-        };
-        self.resolve_track_ready(track_id, generation).await;
-        matches!(self.slot, PlaybackSlot::Active(_))
     }
 
     /// Take up what the tables and rows hold after another service ended:

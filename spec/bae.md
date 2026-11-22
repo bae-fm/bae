@@ -5130,7 +5130,11 @@ next track, and a load this device serves from its own copy or the cache show
 no arc. The playing track's reads, in every file it plays from (a pregap at
 the end of the file before included), go ahead of a preload's, which waits
 while one of them is fetching. The control itself shows pause while a track loads to play, and a
-press lands the load paused.
+press lands the load paused. A track makes no sound while it loads: it starts
+once bae has decoded four seconds of it, which is longer than the next
+window of a file in storage takes to arrive, so playback does not run dry
+while that window comes. A track shorter than that starts once it is
+decoded whole.
 
 Offline, a track whose bytes aren't on the device stops playback with a typed
 reason the UI shows. A decoder that stops producing for good is caught and
@@ -5638,12 +5642,12 @@ connects to his laptop, lists the artists, opens an album and plays it.
   port, a network with no address on the line itself, any other failure
   under the switch. The
   server starts as soon as nothing stands in its way; the switch stays on.
+  While another program holds the port, bae tries it again every second, so
+  the server starts when that program lets go, with no change to a setting.
   Each field saves on its own when the person presses Return or leaves it; a
   port or network change restarts the server at its new address, and a
   username or password change applies to the next sign-in.
   On but not running, it also shows outside Settings: a mark on the
-  While another program holds the port, bae tries it again every second, so
-  the server starts when that program lets go, with no change to a setting.
   Subsonic pane in Settings' sidebar, and a row under *Needs attention* in
   the Activity panel that opens this pane. Both read as a warning, or as
   danger when the server could not start for a reason of its own. The row's

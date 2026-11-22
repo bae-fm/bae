@@ -80,33 +80,54 @@ fn test_buffer_empty() {
     assert_eq!(pulled, 0);
 }
 
-/// Ready fires when the ring is half full, not before: 49 samples of a
-/// 100-sample ring leave it unfired, the 50th fires it.
+/// Ready fires when the ring is full, not before: 99 samples of a 100-sample
+/// ring leave it unfired, the 100th fires it.
 #[test]
-fn test_ready_signal_fires_at_threshold() {
+fn test_ready_signal_fires_when_the_ring_is_full() {
     let (mut sink, _source, mut ready_rx) = create_track_stream_pair_with_capacity(44100, 2, 100);
 
-    let samples: Vec<f32> = (0..50).map(|i| i as f32 * 0.01).collect();
-    sink.push_samples_blocking(&samples[..49]);
+    let samples: Vec<f32> = (0..100).map(|i| i as f32 * 0.01).collect();
+    sink.push_samples_blocking(&samples[..99]);
     assert!(
         matches!(ready_rx.try_recv(), Err(oneshot::error::TryRecvError::Empty)),
-        "Ready signal should not fire below 50%"
+        "Ready signal should not fire before the ring is full"
     );
-    sink.push_samples_blocking(&samples[49..]);
-    assert!(ready_rx.try_recv().is_ok(), "Ready signal should fire at 50%");
+    sink.push_samples_blocking(&samples[99..]);
+    assert!(ready_rx.try_recv().is_ok(), "Ready signal should fire once the ring is full");
+}
+
+/// A track starts with a lead of seconds of audio decoded: the ring a stream
+/// pair makes holds enough that the decoder crosses into a file's next window
+/// before the track is ready, not after.
+#[test]
+fn a_stream_pair_holds_seconds_of_lead() {
+    let (mut sink, _source, mut ready_rx) = create_track_stream_pair(44100, 2);
+
+    // A tenth of a second of audio is far from a lead.
+    sink.push_samples_blocking(&vec![0.0; 44100 * 2 / 10]);
+    assert!(
+        matches!(ready_rx.try_recv(), Err(oneshot::error::TryRecvError::Empty)),
+        "a tenth of a second is not ready"
+    );
+    // Two seconds still is not.
+    sink.push_samples_blocking(&vec![0.0; 44100 * 2 * 19 / 10]);
+    assert!(
+        matches!(ready_rx.try_recv(), Err(oneshot::error::TryRecvError::Empty)),
+        "two seconds is not ready"
+    );
 }
 
 /// A track shorter than the threshold is ready once it finishes.
 #[test]
 fn test_ready_signal_on_finish() {
-    // Capacity 1000, so the 50% threshold is 500.
+    // Capacity 1000, which 100 samples never fill.
     let (mut sink, _source, mut ready_rx) = create_track_stream_pair_with_capacity(44100, 2, 1000);
 
     let samples: Vec<f32> = (0..100).map(|i| i as f32 * 0.001).collect();
     sink.push_samples_blocking(&samples);
     assert!(
         matches!(ready_rx.try_recv(), Err(oneshot::error::TryRecvError::Empty)),
-        "100 samples never reach the threshold"
+        "100 samples never fill the ring"
     );
     sink.mark_finished();
     assert!(ready_rx.try_recv().is_ok(), "Ready signal should fire on finish");
