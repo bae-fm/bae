@@ -28,21 +28,11 @@ struct SettingToggleRow<Help: View>: View {
     }
 
     var body: some View {
-        HStack(alignment: .center, spacing: ThemeSpace.group) {
-            VStack(alignment: .leading, spacing: ThemeSpace.inline) {
-                HStack(spacing: ThemeSpace.inline) {
-                    Text(title)
-                    help
-                }
-                if let note {
-                    Text(note)
-                        .themeText(.detail)
-                        .foregroundStyle(Theme.macTextSecondary)
-                }
-            }
-            Spacer(minLength: 0)
+        MacRow(title) {
             MacSwitch(title, isOn: $isOn)
                 .disabled(!canChange)
         }
+        .note(note.map { Text($0) })
+        .info { help }
     }
 }

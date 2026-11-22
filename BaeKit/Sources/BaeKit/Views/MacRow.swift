@@ -10,60 +10,80 @@ public enum MacRowPress {
     case removes(() -> Void)
 }
 
+private struct MacRowOptions {
+    var value: String?
+    var note: Text?
+    var noteTone: StatusTone?
+    var chip: String?
+    var isStrong = false
+    var press: MacRowPress?
+    var selection: Bool?
+}
+
 /// A settings row, as the design system's `MacRow` draws one: a lead such as
 /// a person's picture, the row's name with a note under it, then its value in
 /// secondary text and its controls at the right, a group's space apart.
 /// Inside a settings box the row is one line of the box.
-public struct MacRow<Lead: View, Label: View, Content: View>: View {
+public struct MacRow<Lead: View, Label: View, Content: View, Info: View>: View {
     /// What pressing the row does, which also says how it reads.
     public typealias Press = MacRowPress
 
     private let lead: Lead
     private let label: Label
     private let content: Content
-    private var value: String?
-    private var note: Text?
-    private var noteTone: StatusTone?
-    private var chip: String?
-    private var isStrong = false
-    private var press: Press?
-    private var selection: Bool?
+    private let info: Info
+    private var options: MacRowOptions
 
     @Environment(\.macRowPlacement)
     private var placement
     @Environment(\.isEnabled)
     private var isEnabled
 
-    private init(lead: Lead, label: Label, content: Content) {
+    private init(
+        lead: Lead,
+        label: Label,
+        content: Content,
+        info: Info,
+        options: MacRowOptions
+    ) {
         self.lead = lead
         self.label = label
         self.content = content
+        self.info = info
+        self.options = options
     }
 
     /// The row with `lead` before its name, such as a person's picture.
     public func lead<NewLead: View>(
         @ViewBuilder _ lead: () -> NewLead
-    ) -> MacRow<NewLead, Label, Content> where Lead == EmptyView {
-        var row = MacRow<NewLead, Label, Content>(
+    ) -> MacRow<NewLead, Label, Content, Info> where Lead == EmptyView {
+        MacRow<NewLead, Label, Content, Info>(
             lead: lead(),
             label: label,
-            content: content
+            content: content,
+            info: info,
+            options: options
         )
-        row.value = value
-        row.note = note
-        row.noteTone = noteTone
-        row.chip = chip
-        row.isStrong = isStrong
-        row.press = press
-        row.selection = selection
-        return row
+    }
+
+    /// Places an info button beside the row's name.
+    public func info<NewInfo: View>(
+        @ViewBuilder _ info: () -> NewInfo
+    ) -> MacRow<Lead, Label, Content, NewInfo> where Info == EmptyView {
+        MacRow<Lead, Label, Content, NewInfo>(
+            lead: lead,
+            label: label,
+            content: content,
+            info: info(),
+            options: options
+        )
     }
 
     /// The row's value, in secondary text before its controls; nil or empty
     /// draws none.
     public func value(_ words: String?) -> MacRow {
         var copy = self
-        copy.value = words
+        copy.options.value = words
         return copy
     }
 
@@ -71,15 +91,15 @@ public struct MacRow<Lead: View, Label: View, Content: View>: View {
     /// when it says something in that tone, such as why an invite failed.
     public func note(_ text: Text?, tone: StatusTone? = nil) -> MacRow {
         var copy = self
-        copy.note = text
-        copy.noteTone = tone
+        copy.options.note = text
+        copy.options.noteTone = tone
         return copy
     }
 
     /// A chip after the row's name, such as a person's role.
     public func chip(_ words: String?) -> MacRow {
         var copy = self
-        copy.chip = words
+        copy.options.chip = words
         return copy
     }
 
@@ -87,21 +107,21 @@ public struct MacRow<Lead: View, Label: View, Content: View>: View {
     /// person's.
     public func strong(_ on: Bool = true) -> MacRow {
         var copy = self
-        copy.isStrong = on
+        copy.options.isStrong = on
         return copy
     }
 
     /// The row as a button that does `press`.
     public func pressing(_ press: Press?) -> MacRow {
         var copy = self
-        copy.press = press
+        copy.options.press = press
         return copy
     }
 
     /// Draws a choice row, filling it when selected.
     public func selected(_ selected: Bool) -> MacRow {
         var copy = self
-        copy.selection = selected
+        copy.options.selection = selected
         return copy
     }
 
@@ -111,7 +131,7 @@ public struct MacRow<Lead: View, Label: View, Content: View>: View {
 
     @ViewBuilder
     private var rowAppearance: some View {
-        if let selection {
+        if let selection = options.selection {
             rowControl.macSelection(selection, in: Rectangle())
         }
         else {
@@ -121,7 +141,7 @@ public struct MacRow<Lead: View, Label: View, Content: View>: View {
 
     @ViewBuilder
     private var rowControl: some View {
-        switch press {
+        switch options.press {
         case .opens(let action)?:
             Button(action: action) { rowWithPlacement(chevron: true) }
                 .buttonStyle(.accentPlain)
@@ -166,7 +186,7 @@ public struct MacRow<Lead: View, Label: View, Content: View>: View {
         chevron: Bool,
         labelAction: (() -> Void)? = nil
     ) -> some View {
-        if selection != nil {
+        if options.selection != nil {
             rowWithPlacement(chevron: chevron, labelAction: labelAction)
                 .placesItselfInRow()
         }
@@ -176,7 +196,8 @@ public struct MacRow<Lead: View, Label: View, Content: View>: View {
     }
 
     private var secondaryColor: Color {
-        selection == true ? Theme.onFillSecondary : Theme.macTextSecondary
+        options.selection == true
+            ? Theme.onFillSecondary : Theme.macTextSecondary
     }
 
     private func row(
@@ -187,7 +208,7 @@ public struct MacRow<Lead: View, Label: View, Content: View>: View {
             lead
             LabeledContent {
                 HStack(spacing: ThemeSpace.group) {
-                    if let value, !value.isEmpty {
+                    if let value = options.value, !value.isEmpty {
                         // A value stays on one line, as the boards keep
                         // it, and the name beside it wraps instead.
                         Text(verbatim: value)
@@ -224,21 +245,22 @@ public struct MacRow<Lead: View, Label: View, Content: View>: View {
     private var rowWords: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.inline) {
             HStack(spacing: ThemeSpace.compact) {
-                if isStrong {
+                if options.isStrong {
                     label.themeText(.strong)
                 }
                 else {
                     label
                 }
-                if let chip {
+                if let chip = options.chip {
                     StatusChip(verbatim: chip)
                 }
+                info
             }
-            if let note {
+            if let note = options.note {
                 note
                     .themeText(.detail)
                     .foregroundStyle(
-                        noteTone.map { AnyShapeStyle($0.color) }
+                        options.noteTone.map { AnyShapeStyle($0.color) }
                             ?? AnyShapeStyle(secondaryColor)
                     )
             }
@@ -246,16 +268,22 @@ public struct MacRow<Lead: View, Label: View, Content: View>: View {
     }
 }
 
-extension MacRow where Lead == EmptyView {
+extension MacRow where Lead == EmptyView, Info == EmptyView {
     public init(
         @ViewBuilder content: () -> Content,
         @ViewBuilder label: () -> Label
     ) {
-        self.init(lead: EmptyView(), label: label(), content: content())
+        self.init(
+            lead: EmptyView(),
+            label: label(),
+            content: content(),
+            info: EmptyView(),
+            options: MacRowOptions()
+        )
     }
 }
 
-extension MacRow where Lead == EmptyView, Label == Text {
+extension MacRow where Lead == EmptyView, Label == Text, Info == EmptyView {
     public init(
         _ title: LocalizedStringKey,
         @ViewBuilder content: () -> Content
@@ -274,7 +302,9 @@ extension MacRow where Lead == EmptyView, Label == Text {
     }
 }
 
-extension MacRow where Lead == EmptyView, Label == Text, Content == EmptyView {
+extension MacRow
+where Lead == EmptyView, Label == Text, Content == EmptyView, Info == EmptyView
+{
     /// A row whose right side is `value` in secondary text.
     public init<S: StringProtocol>(_ title: LocalizedStringKey, value: S) {
         self.init(title, value: value) {}
@@ -285,7 +315,8 @@ extension MacRow
 where
     Lead == EmptyView,
     Label == Text,
-    Content == ToneDotValue
+    Content == ToneDotValue,
+    Info == EmptyView
 {
     /// A row whose right side is `value` in `tone`, after a dot of it.
     public init(

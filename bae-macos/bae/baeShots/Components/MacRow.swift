@@ -80,15 +80,12 @@ extension ShotScene {
         },
         component("mac.component.row.info", width: 580, height: 70) {
             ShotBox {
-                MacRow {
-                } label: {
-                    HStack(spacing: ThemeSpace.compact) {
-                        Text(verbatim: "Sync")
+                MacRow("Sync") {}
+                    .info {
                         MacInfoTip(label: "About Sync") {
                             Text(verbatim: "This library is only on this Mac.")
                         }
                     }
-                }
             }
         },
         component("mac.component.row.note-tone-danger", width: 580, height: 90)
