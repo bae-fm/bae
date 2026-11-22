@@ -1,10 +1,11 @@
 //! The apps' shared theme: `design/theme.toml` for the semantics and scales
-//! and `design/system/tokens.json` for the tones, the accents and the text
-//! styles, validated, and emitted as the typed Swift and Kotlin each platform
+//! and `design/system/tokens.json` for the tones, the accents, the text
+//! styles and the icon roles, validated, and emitted as the typed Swift and Kotlin each platform
 //! compiles.
 
 pub mod android;
 pub mod apple;
+mod lengths;
 
 use std::collections::BTreeMap;
 
@@ -214,31 +215,13 @@ struct RawTheme {
     opacity: BTreeMap<String, f64>,
     radius: BTreeMap<String, f64>,
     space: BTreeMap<String, f64>,
-    icon: BTreeMap<String, RawIconRole>,
     size: BTreeMap<String, RawPlatformLengths>,
-}
-
-/// The standard tone and accent by name.
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct RawStandard {
-    tone: String,
-    accent: String,
 }
 
 /// Lengths as written; a platform left out is reported rather than defaulted.
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct RawPlatformLengths {
-    macos: Option<f64>,
-    ios: Option<f64>,
-    android: Option<f64>,
-}
-
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct RawIconRole {
-    weight: Weight,
     macos: Option<f64>,
     ios: Option<f64>,
     android: Option<f64>,
@@ -266,6 +249,14 @@ impl RawPlatformLengths {
     }
 }
 
+/// The standard tone and accent by name.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RawStandard {
+    tone: String,
+    accent: String,
+}
+
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct RawModes {
@@ -273,13 +264,16 @@ struct RawModes {
     dark: BTreeMap<String, String>,
 }
 
-/// design/system/tokens.json, of which the tones, the accents and the text
-/// styles are read.
+/// design/system/tokens.json, of which the tones, the accents, the text
+/// styles and the icon roles are read.
 #[derive(Deserialize)]
 struct RawTokens {
     color: RawColorTokens,
     #[serde(rename = "type")]
     text: RawType,
+    icon: lengths::RawLengthFamily,
+    #[serde(rename = "icon-android")]
+    icon_android: lengths::RawLengthFamily,
 }
 
 #[derive(Deserialize)]
@@ -359,11 +353,12 @@ fn appearances(
 }
 
 /// What tokens.json defines for the apps: the tones and the accents, each in
-/// its order, and the text roles.
+/// its order, and the text and icon roles.
 struct TokenRoles {
     tones: Vec<Tone>,
     accents: Vec<Accent>,
     text: BTreeMap<String, TextRole>,
+    icon: BTreeMap<String, IconRole>,
 }
 
 fn read_tokens(tokens: &str, problems: &mut Vec<String>) -> TokenRoles {
@@ -371,7 +366,12 @@ fn read_tokens(tokens: &str, problems: &mut Vec<String>) -> TokenRoles {
         Ok(raw) => raw,
         Err(error) => {
             problems.push(format!("tokens.json: {error}"));
-            return TokenRoles { tones: Vec::new(), accents: Vec::new(), text: BTreeMap::new() };
+            return TokenRoles {
+                tones: Vec::new(),
+                accents: Vec::new(),
+                text: BTreeMap::new(),
+                icon: BTreeMap::new(),
+            };
         }
     };
     let by_name: BTreeMap<&str, &serde_json::Value> =
@@ -381,17 +381,18 @@ fn read_tokens(tokens: &str, problems: &mut Vec<String>) -> TokenRoles {
         tones: read_tones(&names, &by_name, problems),
         accents: read_accents(&names, &by_name, problems),
         text: read_text(&raw.text, problems),
+        icon: lengths::read_icons(&raw.icon, &raw.icon_android, problems),
     }
 }
 
-/// A length tokens.json writes in CSS pixels (`13px`), as points and sp.
-fn pixels(style: &str, what: &str, css: &str, problems: &mut Vec<String>) -> f64 {
+/// A length tokens.json writes in CSS pixels (`13px`) for its token or text
+/// style <name>, as points, sp and dp.
+fn pixels(name: &str, what: &str, css: &str, problems: &mut Vec<String>) -> f64 {
     match css.strip_suffix("px").map(str::parse::<f64>) {
         Some(Ok(value)) => value,
         _ => {
-            problems.push(format!(
-                "tokens.json text style `{style}`: the {what} `{css}` is not a length in px"
-            ));
+            problems
+                .push(format!("tokens.json `{name}`: the {what} `{css}` is not a length in px"));
             0.0
         }
     }
@@ -645,7 +646,7 @@ impl Theme {
             light: roles("semantics.light", &raw.semantics.light),
             dark: roles("semantics.dark", &raw.semantics.dark),
         };
-        let TokenRoles { tones, accents, text } = read_tokens(tokens, &mut problems);
+        let TokenRoles { tones, accents, text, icon } = read_tokens(tokens, &mut problems);
 
         check_choices("tone", tones.iter().map(|tone| tone.name.as_str()), &mut problems);
         check_choices("accent", accents.iter().map(|accent| accent.name.as_str()), &mut problems);
@@ -703,17 +704,7 @@ impl Theme {
             }
         }
         check_role_names(raw.space.keys(), &mut problems);
-        check_role_names(raw.icon.keys(), &mut problems);
-        let icon = raw
-            .icon
-            .iter()
-            .map(|(name, role)| {
-                let lengths =
-                    RawPlatformLengths { macos: role.macos, ios: role.ios, android: role.android };
-                let sizes = lengths.check(&format!("icon {name}"), &mut problems);
-                (name.clone(), IconRole { weight: role.weight, sizes })
-            })
-            .collect();
+
         check_role_names(raw.size.keys(), &mut problems);
         let size = raw
             .size

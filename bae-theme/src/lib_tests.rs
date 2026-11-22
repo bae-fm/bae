@@ -16,7 +16,7 @@ fn token(name: &str, light: &str, dark: &str) -> String {
 /// platforms.
 fn tokens_json(tokens: &[String]) -> String {
     format!(
-        "{{\"color\": {{\"tokens\": [{}]}}, \"type\": {{\"groups\": {BODY}}}}}",
+        "{{\"color\": {{\"tokens\": [{}]}}, \"type\": {{\"groups\": {BODY}}}, {LENGTHS}}}",
         tokens.join(", ")
     )
 }
@@ -27,6 +27,10 @@ const BODY: &str = r#"[
   { "family": "sans", "styles": [{ "name": "body", "role": "body", "fontSize": "13px", "fontWeight": 400, "ios": "body" }] },
   { "family": "android", "styles": [{ "name": "android-body", "role": "body", "fontSize": "14px", "fontWeight": 400, "lineHeight": "20px" }] }
 ]"#;
+
+/// The icon families of a tokens.json with one icon role, `small`.
+const LENGTHS: &str = r#""icon": { "tokens": [{ "name": "icon-small", "role": "small", "value": "11px", "ios": "13px", "weight": "semibold" }] },
+  "icon-android": { "tokens": [{ "name": "icon-android-small", "role": "small", "value": "16px" }] }"#;
 
 /// The shipped tokens.json with <groups> as its text style groups.
 fn tokens_with_text(groups: &str) -> String {
@@ -124,8 +128,7 @@ fn theme_with(standard: &str, tones: &[String], semantics: &str) -> Result<Theme
         ["accent-blue", "accent-blue-fill", "on-accent-blue-fill", "accent-blue-selection"]
             .map(|name| token(name, "#000000", "#000000"));
     Theme::from_sources(&format!(
-        "{standard}\n[opacity]\ntint = 0.14\n\n[radius]\nchip = 5\n\n[space]\nrelated = 8\n\n[icon.small]\nweight = \"semibold\"\nmacos = 11\nios = 13\nandroid = 16\n\n\
-         [size.hitTarget]\nmacos = 28\nios = 44\nandroid = 44\n\n{semantics}"
+        "{standard}\n[opacity]\ntint = 0.14\n\n[radius]\nchip = 5\n\n[space]\nrelated = 8\n\n[size.hitTarget]\nmacos = 28\nios = 44\nandroid = 44\n\n{semantics}"
     ),
         &tokens_json(&[tones, &accent[..]].concat()),
     )
@@ -341,7 +344,7 @@ fn a_text_style_measures_in_pixels_and_draws_a_weight_the_apps_have() {
         theme.unwrap_err(),
         [
             "tokens.json text style `body`: the apps draw no weight 450",
-            "tokens.json text style `body`: the size `13pt` is not a length in px",
+            "tokens.json `body`: the size `13pt` is not a length in px",
         ]
     );
 }
@@ -360,13 +363,54 @@ fn both_platforms_carry_every_text_role() {
     }
 }
 
+/// The theme of a tokens.json with one tone, one accent, the `body` text
+/// role and the icon families of <lengths>.
+fn theme_with_lengths(lengths: &str) -> Result<Theme, Vec<String>> {
+    let accent =
+        ["accent-blue", "accent-blue-fill", "on-accent-blue-fill", "accent-blue-selection"]
+            .map(|name| token(name, "#000000", "#000000"));
+    let tokens = tokens_json(&[tone("neutral", &["background"]), accent.to_vec()].concat())
+        .replace(LENGTHS, lengths);
+    Theme::from_sources(
+        &format!("{STANDARD}\n[opacity]\n[radius]\n[space]\n[size]\n{SEMANTICS}"),
+        &tokens,
+    )
+}
+
 #[test]
-fn an_icon_needs_every_platforms_size() {
-    let theme = from_toml(&THEME.replace(
-        "[icon.small]\nweight = \"semibold\"\nmacos = 11\nios = 13\nandroid = 16\n",
-        "[icon.small]\nweight = \"semibold\"\nmacos = 11\nios = 13\n",
-    ));
-    assert_eq!(theme.unwrap_err(), ["icon small has no android length"]);
+fn an_icon_takes_apples_and_androids_lengths_from_its_tokens() {
+    let theme = theme_with_lengths(LENGTHS).unwrap();
+    let small = &theme.icon["small"];
+    assert_eq!(small.weight, Weight::Semibold);
+    assert_eq!((small.sizes.macos, small.sizes.ios, small.sizes.android), (11.0, 13.0, 16.0));
+}
+
+#[test]
+fn a_role_needs_a_token_on_each_platform_and_an_icon_its_weight() {
+    let no_android = LENGTHS
+        .replace(r#"{ "name": "icon-android-small", "role": "small", "value": "16px" }"#, "");
+    assert_eq!(
+        theme_with_lengths(&no_android).unwrap_err(),
+        ["icon role `small` has no Android token in tokens.json"]
+    );
+    let no_weight = LENGTHS.replace(r#", "weight": "semibold""#, "");
+    assert_eq!(
+        theme_with_lengths(&no_weight).unwrap_err(),
+        ["icon role `small` names no weight in tokens.json"]
+    );
+    let no_ios = LENGTHS.replace(r#", "ios": "13px""#, "");
+    assert_eq!(
+        theme_with_lengths(&no_ios).unwrap_err(),
+        ["tokens.json `icon-small` names no ios length"]
+    );
+    let no_role = LENGTHS.replace(r#""role": "small", "value": "16px""#, r#""value": "16px""#);
+    assert_eq!(
+        theme_with_lengths(&no_role).unwrap_err(),
+        [
+            "tokens.json `icon-android-small` names no role",
+            "icon role `small` has no Android token in tokens.json",
+        ]
+    );
 }
 
 #[test]

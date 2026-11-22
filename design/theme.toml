@@ -1,6 +1,7 @@
 # The apps' colors and measures, read by every platform through code theme-gen
 # generates from this file and from design/system/tokens.json, which holds the
-# tones, the accents and the text styles (see notes/appearance.md). The appearance settings offer the
+# tones, the accents, the text styles and the icon roles (see
+# notes/appearance.md). The appearance settings offer the
 # tones and the accents in tokens.json's order.
 
 # The tone and accent a new installation shows until the person chooses: a tone
@@ -180,67 +181,6 @@ fieldInset = 10
 edge = 16
 section = 24
 page = 32
-
-# Glyph sizes, which each platform sets by its own convention: SF Symbols in
-# points on macOS and iOS, Material icons in dp. `hero` marks an empty or
-# failed state.
-[icon.badge]
-weight = "bold"
-macos = 8.5
-ios = 9
-android = 12
-
-# A status chip's glyph, and the pause or play mark in the Storage Manager's
-# footer.
-[icon.chip]
-weight = "bold"
-macos = 10
-ios = 10
-android = 12
-
-[icon.small]
-weight = "semibold"
-macos = 11
-ios = 13
-android = 16
-
-[icon.medium]
-weight = "semibold"
-macos = 13
-ios = 17
-android = 20
-
-[icon.large]
-weight = "medium"
-macos = 17
-ios = 22
-android = 24
-
-# The lightbox's close glyph, arrows and "Browse all images" glyph, as the
-# design's stage draws them.
-[icon.stageClose]
-weight = "semibold"
-macos = 15
-ios = 17
-android = 20
-
-[icon.stageBrowse]
-weight = "regular"
-macos = 12
-ios = 13
-android = 16
-
-[icon.stageArrow]
-weight = "medium"
-macos = 22
-ios = 22
-android = 24
-
-[icon.hero]
-weight = "thin"
-macos = 44
-ios = 56
-android = 56
 
 # Sizes that recur across screens: cover art in a list row and in the
 # now-playing bar, a text field's height, and the least an icon button takes to

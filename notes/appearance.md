@@ -70,9 +70,12 @@ there. Apple views set a role with `.themeText(_:)`. A section label is one
 
 Spacing is one shared scale named by meaning: hairline, line, inline, compact,
 related, group, edge, section and page. Glyph sizes (badge, small, medium,
-large, hero) and a few recurring sizes (row and now-playing bar artwork, the
-least an icon button takes to press) are roles whose values each platform sets
-by its own convention.
+large, hero and the rest) and a few recurring sizes (row and now-playing bar
+artwork, the least an icon button takes to press) are roles whose values each
+platform sets by its own convention. A glyph role is a token in tokens.json's
+`icon` family, whose value is the macOS length, whose `ios` is iOS's and whose
+`weight` is the one SF Symbols draw it at, and a token in `icon-android` with
+Android's length, each naming the role in its `role`.
 
 The shared components are defined once per platform: `StatusTone` (neutral,
 accent, info, success, warning, danger, activity), a `StatusChip` for short
