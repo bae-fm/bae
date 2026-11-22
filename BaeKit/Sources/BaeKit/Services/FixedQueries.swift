@@ -376,7 +376,7 @@
                 BridgeAlbumAppearance(
                     album: $0,
                     primaryReleaseUnplayable: false,
-                    creditedWith: nil
+                    displayArtistLine: $0.artistLine
                 )
             }
             let list = AlbumList(

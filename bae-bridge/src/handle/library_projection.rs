@@ -437,8 +437,8 @@ mirror_struct! {
     from_core: pub(crate) fn,
     fields: {
         album: (BridgeAlbum),
+        display_artist_line: (opt crate::types::BridgeCreditLine),
         primary_release_unplayable,
-        credited_with: (opt crate::types::BridgeCreditLine),
     },
 }
 

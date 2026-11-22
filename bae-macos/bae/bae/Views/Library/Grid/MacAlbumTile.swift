@@ -17,6 +17,9 @@ struct MacAlbumTile: View {
     let width: CGFloat
     let menu: AlbumCardMenu
 
+    @Environment(\.accessibilityVoiceOverEnabled)
+    private var voiceOverEnabled
+
     /// Whether the ⋯ menu is open, which keeps the ⋯ shown after the pointer
     /// leaves the cover for the menu.
     @State
@@ -24,26 +27,18 @@ struct MacAlbumTile: View {
 
     private static let ringGap: CGFloat = 4.5
     private static let ringWidth: CGFloat = 3
-    private static let unplayableOpacity: Double = 0.5
-
-    private var showsMenu: Bool { isHovered || menuOpen }
+    private var showsMenu: Bool { isHovered || menuOpen || voiceOverEnabled }
 
     var body: some View {
         AlbumCardStack(
             title: title,
             artistNames: artistNames,
             year: year,
-            textOpacity: isUnplayable ? Self.unplayableOpacity : 1,
+            isUnplayable: isUnplayable,
             width: width
         ) { side in
-            Artwork(imageRef: cover, pointSize: side)
+            Artwork(imageRef: cover, pointSize: side, dimmed: isUnplayable)
                 .frame(width: side, height: side)
-                .overlay {
-                    Rectangle()
-                        .fill(Theme.background)
-                        .opacity(isUnplayable ? 1 - Self.unplayableOpacity : 0)
-                        .allowsHitTesting(false)
-                }
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.cover))
                 .shadow(
                     color: isExpanded ? .clear : Theme.shadow,
@@ -140,8 +135,7 @@ struct MacAlbumTileContainer: View {
     }
 }
 
-/// A grid slot whose album has not loaded: a card's footprint with nothing
-/// drawn, laid out as a card so its row keeps its height when the album lands.
+/// The space the grid reserves while an album's row loads.
 struct AlbumCardPlaceholder: View {
     let width: CGFloat
 
@@ -159,10 +153,12 @@ private struct AlbumCardStack<Art: View>: View {
     let title: String
     let artistNames: String?
     let year: Int32?
-    var textOpacity = 1.0
+    var isUnplayable = false
     let width: CGFloat
     @ViewBuilder
     let art: (CGFloat) -> Art
+
+    private var textOpacity: Double { isUnplayable ? ThemeOpacity.dimmed : 1 }
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.line) {
@@ -173,6 +169,10 @@ private struct AlbumCardStack<Art: View>: View {
                 .foregroundStyle(Theme.textPrimary)
                 .lineLimit(1)
                 .opacity(textOpacity)
+                .accessibilityHint(
+                    "Not on this device",
+                    isEnabled: isUnplayable
+                )
             if let artistNames {
                 Text(artistNames)
                     .themeText(.detail)

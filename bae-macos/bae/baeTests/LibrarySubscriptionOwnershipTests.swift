@@ -40,7 +40,7 @@ private final class AlbumListProbe: @unchecked Sendable {
             BridgeAlbumAppearance(
                 album: $0,
                 primaryReleaseUnplayable: false,
-                creditedWith: nil
+                displayArtistLine: $0.artistLine
             )
         }
         views.emit(ListViewDelivery(start: 0, rows: appearances))

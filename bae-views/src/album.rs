@@ -7,9 +7,7 @@ use super::*;
 use listing::{
     album_appearance_count_on, album_count_on, album_sections_on, grouped_artist_direction,
 };
-pub(crate) use listing::{
-    album_browse_order, album_rows_before_on, album_rows_on, AlbumAppearanceRow,
-};
+pub(crate) use listing::{album_browse_order, album_rows_before_on, album_rows_on};
 
 mod listing;
 pub(super) use listing::SQL as LISTING_SQL;
@@ -202,7 +200,7 @@ impl LibraryViews {
             .subscribe_list_window(initial, order, move |sql, seek, limit| {
                 album_rows_on(sql, group_by_artist, &read_order, seek, limit)
             })
-            .process(|window| window.try_map_rows(AlbumAppearanceRow::process))
+            .process(move |window| window.try_map_rows(|row| row.process(group_by_artist)))
     }
 
     /// Follow one page of the flat album list under `sort`: the albums from
@@ -221,7 +219,7 @@ impl LibraryViews {
             move |sql, seek, limit| album_rows_on(sql, false, &read_order, seek, limit),
             |rows| {
                 Ok(album_rows(
-                    rows.into_iter().map(AlbumAppearanceRow::process).collect::<Result<_, _>>()?,
+                    rows.into_iter().map(|row| row.process(false)).collect::<Result<_, _>>()?,
                 ))
             },
         )

@@ -21,7 +21,7 @@ extension ShotScene {
             BridgeAlbumAppearance(
                 album: $0,
                 primaryReleaseUnplayable: false,
-                creditedWith: nil
+                displayArtistLine: nil
             )
         }
         let sections = [
@@ -40,14 +40,17 @@ extension ShotScene {
                 albumCount: 1
             ),
         ]
-        let library = Library(albumList: { _, _ in
-            .fixed(
-                rows,
-                answers: UnansweredCount(),
-                sections: sections,
-                extra: .albumGrid(canShuffle: true, grouped: true)
-            )
-        })
+        let library = Library(
+            albumList: { _, _ in
+                .fixed(
+                    rows,
+                    answers: UnansweredCount(),
+                    sections: sections,
+                    extra: .albumGrid(canShuffle: true, grouped: true)
+                )
+            },
+            playlists: LibraryView.noPlaylists
+        )
         let uiStore = UiStore()
         let session = LibraryBrowseSession(library: library, uiStore: uiStore)
         session.setGroupAlbumsByArtist(true)
@@ -91,7 +94,7 @@ extension ShotScene {
                 cover: nil
             ),
             primaryReleaseUnplayable: false,
-            creditedWith: nil
+            displayArtistLine: .named(album.1)
         )
     }
 

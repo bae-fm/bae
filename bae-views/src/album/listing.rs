@@ -87,12 +87,10 @@ pub(crate) fn album_window_statement(
     order: &ListOrder,
     seek: &Seek,
 ) -> String {
-    let select = format!(
-        "{}, (SELECT storage.audio_elsewhere_device IS NOT NULL FROM release_storage storage \
-               WHERE storage.release_id = {}) AS primary_release_unplayable",
-        album_summary_select(),
-        bae_records::records::query::album_primary_release_sql(),
-    );
+    let primary = album_primary_release_sql();
+    let album = album_summary_columns_for_primary("primary_release.id");
+    let availability = "(SELECT audio_elsewhere_device IS NOT NULL FROM release_storage \
+                        WHERE release_id = primary_release.id)";
     if !seek.by_offset() {
         let listing = if group_by_artist {
             "CROSS JOIN album_listing listing ON listing.album_id = link.album_id"
@@ -100,9 +98,10 @@ pub(crate) fn album_window_statement(
             ""
         };
         return format!(
-            "{select}, {beside} AS credited_with, {keys} \
+            "SELECT {album}, {beside} AS credited_with, {availability} AS primary_release_unplayable, {keys} \
              {tables} {listing} \
              JOIN albums a ON a.id = listing.album_id \
+             LEFT JOIN releases primary_release ON primary_release.id = {primary} \
              WHERE {condition} \
              ORDER BY {ordering} {limit}",
             beside = album_credits_beside_sql(group_by_artist),
@@ -127,11 +126,12 @@ pub(crate) fn album_window_statement(
         )
     };
     format!(
-        "{select}, {beside} AS credited_with, {keys} \
+        "SELECT {album}, {beside} AS credited_with, {availability} AS primary_release_unplayable, {keys} \
          FROM (SELECT {picked} {tables} WHERE {condition} \
                ORDER BY {ordering} {limit}) picked \
          {picked_ids} \
          JOIN albums a ON a.id = picked.picked_album_id \
+         LEFT JOIN releases primary_release ON primary_release.id = {primary} \
          ORDER BY {ordering}",
         beside = album_credits_beside_sql(group_by_artist),
         tables = album_order_tables(group_by_artist),
@@ -177,10 +177,13 @@ pub(crate) struct AlbumAppearanceRow {
 }
 
 impl AlbumAppearanceRow {
-    pub(super) fn process(self) -> Result<DbAlbumAppearance, DbError> {
+    pub(super) fn process(self, group_by_artist: bool) -> Result<DbAlbumAppearance, DbError> {
+        let album = self.row.process()?;
+        let display_artist_line =
+            if group_by_artist { self.credited_with } else { Some(album.artist_line.clone()) };
         Ok(DbAlbumAppearance {
-            album: self.row.process()?,
-            credited_with: self.credited_with,
+            album,
+            display_artist_line,
             primary_release_unplayable: self.primary_release_unplayable,
         })
     }

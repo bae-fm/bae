@@ -33,17 +33,19 @@ struct HostedAlbumGrid {
         preloaded: Bool,
         openAlbumId: String? = nil,
         sections: [BridgeLibraryBrowseSection] = [],
+        rows fixtureRows: [BridgeAlbumAppearance]? = nil,
         grid: (AlbumList) -> some View
     ) async throws -> HostedAlbumGrid {
         let uiStore = UiStore()
-        let albums = Self.albums
-        let rows = albums.map {
-            BridgeAlbumAppearance(
-                album: $0,
-                primaryReleaseUnplayable: false,
-                creditedWith: nil
-            )
-        }
+        let rows =
+            fixtureRows
+            ?? Self.albums.map {
+                BridgeAlbumAppearance(
+                    album: $0,
+                    primaryReleaseUnplayable: false,
+                    displayArtistLine: sections.isEmpty ? $0.artistLine : nil
+                )
+            }
         let answers = UnansweredCount()
         let list = AlbumList(
             queries: .fixed(rows, answers: answers, sections: sections),
@@ -56,7 +58,7 @@ struct HostedAlbumGrid {
             list.preloadRows(rows: rows, extra: .none)
         }
         uiStore.selectAlbum(openAlbumId)
-        let place = Self.place(in: albums, sections: sections)
+        let place = Self.place(in: rows.map(\.album), sections: sections)
         let library = Library(
             albumPlaceReads: { _, albumId, groupByArtist, _ in
                 .fixed(place(albumId, groupByArtist))

@@ -141,9 +141,16 @@ private fun LazyGridScope.albumItems(
         val index = positions.first + local
         val row = rowAt(index)
         if (row != null) {
+            val context = LocalContext.current
+            val line =
+                if (grouped) {
+                    groupedCardLine(row)
+                } else {
+                    row.displayArtistLine?.let(context::creditLineText).orEmpty()
+                }
             AndroidAlbumTile(
                 title = row.album.title,
-                line = if (grouped) groupedCardLine(row) else LocalContext.current.creditLineText(row.album.artistLine),
+                line = line,
                 cover = row.album.cover,
                 unplayable = row.primaryReleaseUnplayable,
                 onClick = { onSelectAlbum(row.album.id) },
@@ -159,7 +166,7 @@ private fun LazyGridScope.albumItems(
 private fun groupedCardLine(row: BridgeAlbumAppearance): String {
     val context = LocalContext.current
     val year = row.album.year?.let(context::yearText)
-    val creditedWith = row.creditedWith?.let(context::creditLineText)
+    val creditedWith = row.displayArtistLine?.let(context::creditLineText)
     return when {
         creditedWith == null -> year.orEmpty()
         year == null -> stringResource(R.string.album_credited_with, creditedWith)
@@ -175,8 +182,8 @@ private fun AlbumGridCardPreview() {
             val row =
                 BridgeAlbumAppearance(
                     album = PreviewData.album(),
+                    displayArtistLine = creditLineNamed("Another Artist"),
                     primaryReleaseUnplayable = false,
-                    creditedWith = creditLineNamed("Another Artist"),
                 )
             AndroidAlbumTile(
                 title = row.album.title,

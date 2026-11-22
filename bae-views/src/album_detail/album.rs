@@ -142,19 +142,18 @@ impl AlbumSummary {
 #[derive(Debug, Clone, PartialEq)]
 pub struct AlbumAppearance {
     pub album: AlbumSummary,
-    /// Another device alone holds at least one audio file of the primary release.
+    /// The credit line this card shows: all credits in the flat grid, or
+    /// the other credits, if any, in an artist's group.
+    pub display_artist_line: Option<bae_types::credits::CreditLine>,
+    /// Another device alone holds audio from the album's default release.
     pub primary_release_unplayable: bool,
-    /// Grouped by artist: the album's credits other than the artist whose
-    /// group lists it, printed as a line; `None` when that artist is its only
-    /// credit, or when the grid is flat.
-    pub credited_with: Option<bae_types::credits::CreditLine>,
 }
 
 impl AlbumAppearance {
     pub(crate) fn from_raw(raw: DbAlbumAppearance) -> AlbumAppearance {
         AlbumAppearance {
             album: AlbumSummary::from_raw(raw.album),
-            credited_with: raw.credited_with,
+            display_artist_line: raw.display_artist_line,
             primary_release_unplayable: raw.primary_release_unplayable,
         }
     }

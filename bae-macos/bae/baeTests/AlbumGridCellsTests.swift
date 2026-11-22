@@ -1,10 +1,76 @@
 import BaeKit
+import SwiftUI
 import Testing
 
 @testable import bae
 
 @Suite("AlbumGridCells")
 struct AlbumGridCellsTests {
+    @MainActor
+    @Test("a grouped card names only the artists outside its group")
+    func groupedCardCredits() async throws {
+        let section = BridgeLibraryBrowseSection(
+            id: "artist-a",
+            title: "Artist A",
+            image: nil,
+            firstPosition: 0,
+            albumCount: 2
+        )
+        let rows = [
+            BridgeAlbumAppearance(
+                album: makeBridgeAlbum(
+                    id: "duet",
+                    title: "Duet Album",
+                    artistNames: "Artist A and Artist B"
+                ),
+                primaryReleaseUnplayable: false,
+                displayArtistLine: .named("Artist B")
+            ),
+            BridgeAlbumAppearance(
+                album: makeBridgeAlbum(
+                    id: "solo",
+                    title: "Solo Album",
+                    artistNames: "Artist A"
+                ),
+                primaryReleaseUnplayable: false,
+                displayArtistLine: nil
+            ),
+        ]
+        let hosted = try await HostedAlbumGrid.host(
+            preloaded: true,
+            sections: [section],
+            rows: rows
+        ) { list in
+            MacAlbumGrid(
+                list: list,
+                sortCriteria: [],
+                groupByArtist: true,
+                fullWidth: true,
+                selection: AlbumGridSelection(),
+                onPlay: { _ in },
+                onAddToQueue: { _ in },
+                onAddNext: { _ in },
+                onDeleteAlbum: { _ in },
+                expansionContent: { _ in EmptyView() }
+            )
+            .transaction { $0.disablesAnimations = true }
+        }
+        defer { hosted.window.close() }
+        let tree = try AccessibilityTree.read(
+            of: hosted.window,
+            subject: "album credits in a grouped grid"
+        )
+        let texts = tree.nodes.compactMap { node -> String? in
+            guard case .text(let text) = node.value else { return nil }
+            return text
+        }
+        #expect(texts.contains("Duet Album"))
+        #expect(texts.contains("Solo Album"))
+        #expect(texts.contains("Artist B"))
+        #expect(!texts.contains("Artist A and Artist B"))
+        #expect(texts.filter { $0 == "Artist A" }.count == 1)
+    }
+
     @Test("artist headings and albums start full rows with one open appearance")
     func groupedLayoutRows() throws {
         let sections = [

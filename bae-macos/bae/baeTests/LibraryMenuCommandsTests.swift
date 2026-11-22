@@ -112,10 +112,11 @@ struct LibraryMenuCommandsTests {
         let uiStore = UiStore()
         let rows = (0..<3)
             .map {
-                BridgeAlbumAppearance(
-                    album: makeBridgeAlbum(id: "album-\($0)"),
+                let album = makeBridgeAlbum(id: "album-\($0)")
+                return BridgeAlbumAppearance(
+                    album: album,
                     primaryReleaseUnplayable: false,
-                    creditedWith: nil
+                    displayArtistLine: album.artistLine
                 )
             }
         return MainAppMenuTarget(

@@ -112,11 +112,10 @@ pub struct DbAlbumDetail {
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbAlbumAppearance {
     pub album: DbAlbumSummary,
+    /// The credit line this card shows: all credits in the flat grid, or
+    /// the other credits, if any, in an artist's group.
+    pub display_artist_line: Option<bae_types::credits::CreditLine>,
     pub primary_release_unplayable: bool,
-    /// Grouped by artist: the album's credits other than the artist whose
-    /// group lists it, printed as a line; `None` when that artist is its only
-    /// credit, or when the grid is flat.
-    pub credited_with: Option<bae_types::credits::CreditLine>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

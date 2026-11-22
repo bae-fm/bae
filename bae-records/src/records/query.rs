@@ -169,14 +169,18 @@ pub fn album_primary_release_sql() -> &'static str {
 /// (releases in album order), `primary_release_id` and the version of that
 /// release's cover, `primary_cover_version`.
 pub fn album_summary_columns() -> String {
+    album_summary_columns_for_primary(album_primary_release_sql())
+}
+
+/// Album-summary columns when the caller has selected the primary release.
+pub fn album_summary_columns_for_primary(primary: &str) -> String {
     format!(
         "a.id, a.title, a.year, a.is_compilation, \
             {primary} AS primary_release_id, \
             {cover} AS primary_cover_version, \
             {album_credits} AS album_credits, \
             {release_ids} AS release_ids_json",
-        primary = album_primary_release_sql(),
-        cover = super::files::cover_version_sql(album_primary_release_sql()),
+        cover = super::files::cover_version_sql(primary),
         album_credits = album_credits_json_sql(),
         release_ids = album_release_ids_json_sql()
     )

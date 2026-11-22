@@ -37,17 +37,17 @@ class LibraryGridTest {
             BridgeAlbumAppearance(
                 album = PreviewData.album(id = "alb-0", title = "Solo Album", year = 1971),
                 primaryReleaseUnplayable = true,
-                creditedWith = null,
+                displayArtistLine = null,
             ),
             BridgeAlbumAppearance(
                 album = PreviewData.album(id = "alb-1", title = "Shared Album", year = 1974),
                 primaryReleaseUnplayable = false,
-                creditedWith = creditLineNamed("Other Artist"),
+                displayArtistLine = creditLineNamed("Other Artist"),
             ),
             BridgeAlbumAppearance(
                 album = PreviewData.album(id = "alb-2", title = "Undated Album", year = null),
                 primaryReleaseUnplayable = false,
-                creditedWith = creditLineNamed("Other Artist"),
+                displayArtistLine = creditLineNamed("Other Artist"),
             ),
         )
 

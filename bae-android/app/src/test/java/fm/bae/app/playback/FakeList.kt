@@ -218,7 +218,11 @@ internal class FakeAlbumList(
         albums,
         idOf = { it.id },
         wrap = { held ->
-            BridgeListRows.Albums(held.map { BridgeAlbumAppearance(album = it, primaryReleaseUnplayable = false, creditedWith = null) })
+            BridgeListRows.Albums(
+                held.map {
+                    BridgeAlbumAppearance(album = it, displayArtistLine = it.artistLine, primaryReleaseUnplayable = false)
+                },
+            )
         },
         extra = { BridgeListCountExtra.AlbumGrid(it > 0, grouped = false) },
         deliverImmediately = deliverImmediately,

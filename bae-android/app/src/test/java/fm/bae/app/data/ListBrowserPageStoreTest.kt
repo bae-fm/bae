@@ -194,18 +194,11 @@ class ListBrowserPageStoreTest {
 
         fixture.store.activate(BridgeSortCriterion(BridgeSortField.TITLE, BridgeSortDirection.DESCENDING))
         fixture.idle()
+        val staleAlbum = BridgeFixtures.album(id = "stale")
         old.deliver(
             BridgeListView(
                 0uL,
-                BridgeListRows.Albums(
-                    listOf(
-                        BridgeAlbumAppearance(
-                            album = BridgeFixtures.album(id = "stale"),
-                            primaryReleaseUnplayable = false,
-                            creditedWith = null,
-                        ),
-                    ),
-                ),
+                BridgeListRows.Albums(listOf(BridgeAlbumAppearance(staleAlbum, false, staleAlbum.artistLine))),
             ),
         )
         fixture.idle()

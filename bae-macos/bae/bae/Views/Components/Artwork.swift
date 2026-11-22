@@ -9,6 +9,7 @@ struct Artwork: View {
     let content: ImageContent?
     var contentMode: ContentMode = .fill
     let pointSize: CGFloat
+    let dimmed: Bool
 
     @Environment(ImageStore.self)
     private var imageStore
@@ -26,11 +27,13 @@ struct Artwork: View {
     init(
         content: ImageContent?,
         contentMode: ContentMode = .fill,
-        pointSize: CGFloat
+        pointSize: CGFloat,
+        dimmed: Bool = false
     ) {
         self.content = content
         self.contentMode = contentMode
         self.pointSize = pointSize
+        self.dimmed = dimmed
         _lastLoad = State(
             initialValue: SlotLoad(content: content, state: .pending(.empty))
         )
@@ -42,6 +45,14 @@ struct Artwork: View {
 
     var body: some View {
         contentView
+            .overlay {
+                if dimmed {
+                    Rectangle()
+                        .fill(Theme.background)
+                        .opacity(1 - ThemeOpacity.dimmed)
+                        .allowsHitTesting(false)
+                }
+            }
             .contentShape(Rectangle())
             .task(id: LoadRequest(content: content, attempt: attempt)) {
                 await load()
@@ -201,12 +212,14 @@ extension Artwork {
     init(
         imageRef: BridgeImageRef?,
         contentMode: ContentMode = .fill,
-        pointSize: CGFloat
+        pointSize: CGFloat,
+        dimmed: Bool = false
     ) {
         self.init(
             content: imageRef.map { .libraryImage($0) },
             contentMode: contentMode,
-            pointSize: pointSize
+            pointSize: pointSize,
+            dimmed: dimmed
         )
     }
 }

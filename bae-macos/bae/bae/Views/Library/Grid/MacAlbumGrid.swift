@@ -535,8 +535,7 @@ extension MacAlbumGrid {
             let album = appearance.album
             MacAlbumTileContainer(
                 album: album,
-                artistNames: sectionId == nil
-                    ? album.artistLine.text : appearance.creditedWith?.text,
+                artistNames: appearance.displayArtistLine?.text,
                 isExpanded: uiStore.selectedAlbumId == albumId
                     && (!groupByArtist || expandedSectionId == sectionId),
                 isSelected: selection.contains(albumId),

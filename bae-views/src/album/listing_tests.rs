@@ -681,7 +681,7 @@ async fn a_selection_is_read_in_the_grids_order() {
 
 /// Grouped by artist, a row names the album's other credits beside the
 /// artist whose group lists it, and nothing when that artist is the only
-/// credit; the flat grid names none.
+/// credit. A flat row names all the album's credits.
 #[tokio::test]
 async fn a_grouped_row_names_the_albums_other_credits() {
     let (db, _dir) = grouped_library().await;
@@ -700,7 +700,7 @@ async fn a_grouped_row_names_the_albums_other_credits() {
             credited_with.insert((
                 section.id.as_str(),
                 row.album.title.as_str(),
-                row.credited_with.as_ref().map(|line| line.plain_text()),
+                row.display_artist_line.as_ref().map(|line| line.plain_text()),
             ));
         }
     }
@@ -717,7 +717,10 @@ async fn a_grouped_row_names_the_albums_other_credits() {
         .into()
     );
     let flat = window_under(&db, &[], false, top(20)).await;
-    assert!(flat.rows.iter().all(|(row, _key)| row.credited_with.is_none()));
+    assert!(flat
+        .rows
+        .iter()
+        .all(|(row, _key)| { row.display_artist_line.as_ref() == Some(&row.album.artist_line) }));
 }
 
 /// An artist's group carries the artist's picture, and follows it as it

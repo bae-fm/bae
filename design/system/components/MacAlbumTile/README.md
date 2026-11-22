@@ -6,4 +6,4 @@ The options button is a `MacMoreMenu` with `overlay`, labelled Album options.
 
 `unplayable`: when only another device holds the album's files, the cover and words show dimmed at `opacity-dimmed`, and the tile still opens the album.
 
-**In the code:** macOS: `MacAlbumTile` (`Views/Library/Grid/MacAlbumTile.swift`), with an overlay `MacMoreMenu`, the round ⋯ at the cover's top right while the pointer is over the tile. `MacAlbumTile.swift` has no unplayable state yet.
+**In the code:** macOS: `MacAlbumTile` (`Views/Library/Grid/MacAlbumTile.swift`), with an overlay `MacMoreMenu`, the round ⋯ at the cover's top right while the pointer is over the tile.
