@@ -773,14 +773,14 @@ private struct RenameProfileSheet: View {
                 FieldColumn {
                     MacTextField(
                         "Name",
-                        note: "Everyone in the library sees this name."
+                        note: "Everyone in the library sees this name.",
+                        off: task != nil
                     ) {
                         TextField("Name", text: $name)
                             .labelsHidden()
                             .boxedTextField()
                     }
                 }
-                .disabled(task != nil)
                 if let error {
                     MacNotice(
                         title: String(localized: "Could not save the name."),

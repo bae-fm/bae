@@ -65,19 +65,32 @@ struct FieldBoxRow<Field: View>: View {
 
 /// The line under a field: what the field is for, 11.5 over 15, in a colour
 /// between secondary and tertiary text, starting where the field's text does.
+/// An error line says what is wrong with the field, in the danger colour.
 struct FieldNote: View {
     private let text: LocalizedStringKey
+    private let isError: Bool
 
-    init(_ text: LocalizedStringKey) {
+    init(_ text: LocalizedStringKey, isError: Bool = false) {
         self.text = text
+        self.isError = isError
     }
 
     var body: some View {
-        Text(text)
-            .themeText(.detail)
+        line
             .lineSpacing(ThemeSpace.line / 2)
-            .foregroundStyle(Theme.macTextSecondary.opacity(0.7))
             .padding(.leading, ThemeSpace.fieldInset)
             .fixedSize(horizontal: false, vertical: true)
+    }
+
+    @ViewBuilder
+    private var line: some View {
+        if isError {
+            Text(text)
+                .themeText(.detail)
+                .foregroundStyle(Theme.danger)
+        }
+        else {
+            Text(text).fieldNote()
+        }
     }
 }

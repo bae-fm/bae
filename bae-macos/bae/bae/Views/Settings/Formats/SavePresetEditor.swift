@@ -97,16 +97,12 @@ struct SavePresetEditor: View {
         }
     }
 
-    /// How wide the label column of a row holding a field is.
-    private static let labelWidth: CGFloat = 90
-
     private var nameRow: some View {
-        HStack(alignment: .top, spacing: ThemeSpace.group) {
-            Text("Name")
-                .frame(width: Self.labelWidth, alignment: .leading)
-                // On the field's own line of text.
-                .padding(.top, ThemeSpace.related)
-            VStack(alignment: .leading, spacing: ThemeSpace.line) {
+        FieldColumn {
+            MacTextField(
+                "Name",
+                error: nameTaken ? "Another format has this name." : nil
+            ) {
                 TextField("Name", text: $nameDraft)
                     .labelsHidden()
                     .textFieldStyle(.plain)
@@ -125,12 +121,6 @@ struct SavePresetEditor: View {
                             commitName()
                         }
                     }
-                if nameTaken {
-                    Text("Another format has this name.")
-                        .themeText(.detail)
-                        .foregroundStyle(Theme.danger)
-                        .padding(.leading, ThemeSpace.fieldInset)
-                }
             }
         }
         .settingsRowInset(ThemeSpace.compact)

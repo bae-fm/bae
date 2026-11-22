@@ -15,7 +15,7 @@ extension ShotScene {
         ),
         textField(
             "mac.component.text-field.error",
-            note: "Enter a name.",
+            error: "Enter a name.",
             text: "",
             state: .invalid
         ),
@@ -72,13 +72,19 @@ extension ShotScene {
     private static func textField(
         _ id: String,
         note: LocalizedStringKey? = nil,
+        error: LocalizedStringKey? = nil,
         text: String = "Home music",
         state: FieldState = .resting,
         labelColumn: Bool = false
     ) -> ShotScene {
         component(id, width: previewWidth, height: 90) {
             FieldColumn {
-                MacTextField("Name", note: note) {
+                MacTextField(
+                    "Name",
+                    note: note,
+                    error: error,
+                    off: state == .off
+                ) {
                     Group {
                         if state == .secret {
                             SecureField("", text: .constant(text))
@@ -97,7 +103,6 @@ extension ShotScene {
                             invalid: state == .invalid
                         )
                     )
-                    .disabled(state == .off)
                 }
                 if labelColumn {
                     // A column of fields holds every label at the widest
