@@ -43,28 +43,53 @@ public struct MacSpinner: View {
 }
 
 #if canImport(AppKit)
+    extension MacSpinner {
+        final class NativeIndicator: NSProgressIndicator {
+            private(set) var spinning = false
+
+            override func accessibilityValue() -> NSNumber? { nil }
+
+            /// Spins unless the transaction disables animations, as the shot
+            /// renderer's does, so a capture draws the same still frame each
+            /// time. The stopped spinner stays drawn.
+            func applyAnimationPolicy(_ transaction: Transaction) {
+                let spinning = !transaction.disablesAnimations
+                guard self.spinning != spinning else { return }
+                self.spinning = spinning
+                if spinning {
+                    startAnimation(nil)
+                }
+                else {
+                    stopAnimation(nil)
+                }
+            }
+        }
+    }
+
     /// macOS's own small spinner, which AppKit draws. A wait of no known
     /// length has no amount done, so VoiceOver reads no value: SwiftUI's
     /// indeterminate progress view reports 0, and AppKit's spinner 1.
     private struct SystemSpinner: NSViewRepresentable {
-        final class Indicator: NSProgressIndicator {
-            override func accessibilityValue() -> NSNumber? { nil }
-        }
-
-        func makeNSView(context: Context) -> NSProgressIndicator {
-            let indicator = Indicator()
+        func makeNSView(context: Context) -> MacSpinner.NativeIndicator {
+            let indicator = MacSpinner.NativeIndicator()
             indicator.style = .spinning
             indicator.isIndeterminate = true
             indicator.controlSize = .small
-            indicator.startAnimation(nil)
+            indicator.isDisplayedWhenStopped = true
+            indicator.applyAnimationPolicy(context.transaction)
             return indicator
         }
 
-        func updateNSView(_ indicator: NSProgressIndicator, context: Context) {}
+        func updateNSView(
+            _ indicator: MacSpinner.NativeIndicator,
+            context: Context
+        ) {
+            indicator.applyAnimationPolicy(context.transaction)
+        }
 
         func sizeThatFits(
             _ proposal: ProposedViewSize,
-            nsView indicator: NSProgressIndicator,
+            nsView indicator: MacSpinner.NativeIndicator,
             context: Context
         ) -> CGSize? {
             indicator.intrinsicContentSize
