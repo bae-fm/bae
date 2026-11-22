@@ -14,8 +14,8 @@ struct MediaCountsEditor: View {
             ForEach(media, id: \.medium) { counted in
                 MediumCountRow(
                     counted: counted,
-                    setCount: { replace(counted.medium, count: $0) },
-                    remove: { remove(counted.medium) }
+                    setCount: { commit(counted.medium, count: $0) },
+                    remove: { commit(counted.medium, count: 0) }
                 )
             }
             MacButton(
@@ -25,11 +25,7 @@ struct MediaCountsEditor: View {
                         MacMenuItem(
                             verbatim: bridgeMediumLabel(medium: medium).text
                         ) {
-                            commit(
-                                media + [
-                                    BridgeMediaCount(medium: medium, count: 1)
-                                ]
-                            )
+                            commit(medium, count: 1)
                         }
                     }
                 }
@@ -41,21 +37,10 @@ struct MediaCountsEditor: View {
         }
     }
 
-    private func replace(_ medium: BridgeMedium, count: UInt32) {
-        commit(
-            media.map {
-                $0.medium == medium
-                    ? BridgeMediaCount(medium: medium, count: count) : $0
-            }
-        )
-    }
-
-    private func remove(_ medium: BridgeMedium) {
-        commit(media.filter { $0.medium != medium })
-    }
-
-    private func commit(_ media: [BridgeMediaCount]) {
-        Task { await write(.media(media: media)) }
+    /// Sends the one medium's new count, with zero removing it, for core to
+    /// apply to the media it holds.
+    private func commit(_ medium: BridgeMedium, count: UInt32) {
+        Task { await write(.mediumCount(medium: medium, count: count)) }
     }
 }
 
