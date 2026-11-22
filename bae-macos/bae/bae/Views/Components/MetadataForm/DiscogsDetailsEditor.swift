@@ -10,7 +10,10 @@ struct DiscogsDetailsEditor: View {
     let write: @MainActor (BridgePressingFactEdit) async -> Void
 
     var body: some View {
-        HStack(spacing: ThemeSpace.compact) {
+        FlowLayout(
+            spacing: ThemeSpace.related + ThemeSpace.line,
+            rowSpacing: ThemeSpace.compact
+        ) {
             ForEach(details, id: \.self) { detail in
                 HStack(spacing: ThemeSpace.inline) {
                     let name = bridgeDiscogsDetailLabel(detail: detail).text
