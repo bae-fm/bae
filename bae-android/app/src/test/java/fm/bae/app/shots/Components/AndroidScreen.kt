@@ -29,6 +29,14 @@ class AndroidScreenShots : BoardShot() {
         }
 
     @Test
+    fun androidComponentScreenNoBack() =
+        component("android.component.screen.no-back") {
+            AndroidScreen(title = "Storage", onBack = null, modifier = Modifier.height(360.dp)) {
+                Text("The screen’s content", modifier = Modifier.padding(ThemeSpace.edge))
+            }
+        }
+
+    @Test
     fun androidComponentScreenMenu() =
         component("android.component.screen.menu") {
             AndroidScreen(
