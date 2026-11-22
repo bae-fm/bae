@@ -24,7 +24,8 @@ extension PreviewData {
     static func northboundDraftCandidate(
         importStep: BridgeImportStep? = nil
     ) throws -> Candidate {
-        paneCandidate(
+        let mapping = try northboundMapping()
+        return paneCandidate(
             folder: northboundFolder(),
             metadataProvenance: .externalRelease(
                 record: BridgeLookupRef(
@@ -35,8 +36,8 @@ extension PreviewData {
             releaseLink: boardLink("board-northbound"),
             edit: northboundEdit(),
             releaseLines: releaseLines(of: northboundEdit(), minutes: 18),
-            mapping: try northboundMapping(),
-            cover: try boardCover("Northbound"),
+            mapping: mapping,
+            cover: mapping.images.first.map(boardCover),
             placement: .pending(
                 folderCheck: nil,
                 records: boardRecords("board-northbound")
@@ -208,6 +209,7 @@ extension PreviewData {
     static func lowTideHoursCandidate() throws -> Candidate {
         let tracks = lowTideHoursTracks
         let edit = lowTideHoursEdit()
+        let cover = try boardImage("cover.jpg", art: "Low Tide Hours")
         let records =
             boardRecords("board-low-tide-hours") + [
                 BridgeReleaseRecord(
@@ -232,12 +234,12 @@ extension PreviewData {
             releaseLink: boardLink("board-low-tide-hours"),
             edit: edit,
             mapping: BridgeMappingTable(
-                images: [try boardImage("cover.jpg", art: "Low Tide Hours")],
+                images: [cover],
                 trackSides: boardTrackSides(tracks, edit: edit),
                 files: lowTideHoursFiles.map { .file(file: $0) },
                 untitledTrackCount: 0
             ),
-            cover: try boardCover("Low Tide Hours"),
+            cover: boardCover(cover),
             placement: .pending(folderCheck: nil, records: records),
             live: needsYou(.matches(count: 3)),
             libraryStatus: lowTideHoursInLibrary,
@@ -413,6 +415,26 @@ extension PreviewData {
         )
     }
 
+    /// The catalog supplies the cover because the scanned folder has no image files.
+    private static func fieldRecordingsCatalogCover() throws
+        -> BridgeCoverChoice
+    {
+        let cover = BridgeRemoteImageSet(
+            url: try BoardArtwork.scannedFile(named: "Field Recordings").url
+                .path,
+            downscaled: []
+        )
+        return BridgeCoverChoice(
+            selection: .remoteCover(
+                selection: BridgeRemoteCoverSelection(
+                    image: cover,
+                    source: .musicBrainz
+                )
+            ),
+            image: .remote(image: cover)
+        )
+    }
+
     /// Field Recordings: two CD sheets, the first bound to its audio and
     /// carving three tracks, the second waiting for the audio it names. The
     /// release lists no tracks.
@@ -463,7 +485,7 @@ extension PreviewData {
                 files: [],
                 untitledTrackCount: 0
             ),
-            cover: try boardCover("Field Recordings"),
+            cover: try fieldRecordingsCatalogCover(),
             placement: .pending(
                 folderCheck: .sourceTracksUnknown,
                 records: boardRecords("board-field-recordings")
@@ -542,10 +564,7 @@ extension PreviewData {
                 files: [],
                 untitledTrackCount: 0
             ),
-            cover: BridgeCoverChoice(
-                selection: .releaseImage(fileId: image.fileId),
-                image: .local(file: image.file)
-            ),
+            cover: boardCover(image),
             session: session,
             live: needsYou(.notFound),
             albumArtists: boardLibraryArtists(found.artist)
@@ -694,9 +713,10 @@ extension PreviewData {
     /// files, two of its audio files damaged.
     static func boardHarborWaltzDetail() throws -> BridgeInvalidCandidateDetail
     {
-        BridgeInvalidCandidateDetail(
-            candidate: try boardHarborWaltz(),
-            images: [try boardImage("folder.jpg", art: "Glass Harbor")],
+        let image = try boardImage("folder.jpg", art: "Glass Harbor")
+        return BridgeInvalidCandidateDetail(
+            candidate: boardHarborWaltz(cover: image.file),
+            images: [image],
             files: [
                 mappingFile(
                     previewFile(

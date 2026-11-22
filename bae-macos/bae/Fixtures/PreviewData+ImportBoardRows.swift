@@ -312,7 +312,9 @@ extension PreviewData {
 
     /// The folder whose tags name a release, two of its audio files
     /// damaged.
-    static func boardHarborWaltz() throws -> BridgeInvalidCandidate {
+    static func boardHarborWaltz(cover: BridgeFileVersion)
+        -> BridgeInvalidCandidate
+    {
         BridgeInvalidCandidate(
             candidateKey: BoardFolder.harborWaltz.key,
             folderPath: BoardFolder.harborWaltz.key,
@@ -324,15 +326,19 @@ extension PreviewData {
                 albumTitle: "Harbor Waltz",
                 artist: .named("Ada Lindqvist")
             ),
-            cover: .local(
-                file: try BoardArtwork.scannedFile(named: "Glass Harbor")
-            )
+            cover: .local(file: cover)
         )
 
     }
 
     /// The Skipped tab's rows as the board lists them.
     static func skippedItems() throws -> [BridgeImportListItem] {
-        [boardEmptyFolder, try boardHarborWaltz()].map(invalidItem)
+        [
+            boardEmptyFolder,
+            boardHarborWaltz(
+                cover: try BoardArtwork.scannedFile(named: "Glass Harbor")
+            ),
+        ]
+        .map(invalidItem)
     }
 }

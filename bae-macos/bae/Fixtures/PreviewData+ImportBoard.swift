@@ -144,11 +144,6 @@ extension PreviewData {
         )
     }
 
-    /// The image `name`, as the folder's gallery shows it.
-    static func boardImage(_ name: String) -> BridgeMappingImage {
-        mappingImage(previewFile(name: name, size: 1_100_000, role: .artwork))
-    }
-
     /// The folder's image file `name`, drawn as the artwork `art`.
     static func boardImage(_ name: String, art: String) throws
         -> BridgeMappingImage
@@ -167,10 +162,10 @@ extension PreviewData {
         ]
     }
 
-    static func boardCover(_ name: String) throws -> BridgeCoverChoice {
+    static func boardCover(_ image: BridgeMappingImage) -> BridgeCoverChoice {
         BridgeCoverChoice(
-            selection: .releaseImage(fileId: "\(name).jpg"),
-            image: .local(file: try BoardArtwork.scannedFile(named: name))
+            selection: .releaseImage(fileId: image.fileId),
+            image: .local(file: image.file)
         )
     }
 
