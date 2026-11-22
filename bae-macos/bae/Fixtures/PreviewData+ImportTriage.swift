@@ -92,7 +92,7 @@ extension PreviewData {
     )
 
     @MainActor
-    private static let importTabGroupedReadyCandidate = paneCandidate(
+    private static let importTabGroupedReadyCandidate = paneFixture(
         folder: BridgeFolderCandidate(
             parts: [],
             candidateKey: Data(
@@ -118,6 +118,7 @@ extension PreviewData {
         cover: releaseDetailBridge.defaultCover,
         albumArtists: editMetadataAlbumArtists
     )
+    .candidate
 
     @MainActor
     private static let importTabGroupedCandidates = [

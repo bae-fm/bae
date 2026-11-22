@@ -26,9 +26,9 @@ extension PreviewData {
     static func northboundDraftCandidate(
         cover: BridgeMappingImage,
         importStep: BridgeImportStep? = nil
-    ) throws -> Candidate {
+    ) throws -> ImportPaneFixture {
         let images = try NorthboundImages(cover: cover)
-        return paneCandidate(
+        return paneFixture(
             folder: northboundFolder(images: images),
             metadataProvenance: .externalRelease(
                 record: BridgeLookupRef(
@@ -57,10 +57,10 @@ extension PreviewData {
     @MainActor
     static func northboundImportedCandidate(
         cover: BridgeMappingImage
-    ) throws -> Candidate {
+    ) throws -> ImportPaneFixture {
         let images = try NorthboundImages(cover: cover)
         let release = boardImported(.northbound)
-        return Candidate(
+        return ImportPaneFixture(
             detail: BridgeImportCandidateDetail(
                 candidate: northboundFolder(images: images),
                 partCount: 0,
@@ -216,7 +216,9 @@ extension PreviewData {
     /// Low Tide Hours' draft, a release the library already holds: its
     /// pick read from MusicBrainz and Discogs, its artist in the library.
     @MainActor
-    static func lowTideHoursCandidate(cover: BridgeMappingImage) -> Candidate {
+    static func lowTideHoursCandidate(cover: BridgeMappingImage)
+        -> ImportPaneFixture
+    {
         let tracks = lowTideHoursTracks
         let edit = lowTideHoursEdit()
         let records =
@@ -226,7 +228,7 @@ extension PreviewData {
                     url: "https://www.discogs.com/release/board-low-tide-hours"
                 )
             ]
-        return paneCandidate(
+        return paneFixture(
             folder: boardFolder(
                 .lowTideHours,
                 files: boardFolderFiles(
@@ -275,9 +277,9 @@ extension PreviewData {
     /// untitled 07, from whose files bae read nothing to look it up by: a
     /// blank draft over its three files.
     @MainActor
-    static func untitledCandidate() -> Candidate {
+    static func untitledCandidate() -> ImportPaneFixture {
         let edit = blankDraft(files: untitledTracks.map(\.file))
-        return paneCandidate(
+        return paneFixture(
             folder: boardFolder(
                 .untitled07,
                 files: boardFolderFiles(
@@ -439,7 +441,8 @@ extension PreviewData {
     /// carving three tracks, the second waiting for the audio it names. The
     /// release lists no tracks.
     @MainActor
-    static func fieldRecordingsCandidate(cover: BridgeCoverChoice) -> Candidate
+    static func fieldRecordingsCandidate(cover: BridgeCoverChoice)
+        -> ImportPaneFixture
     {
         let sheetOne = fieldRecordingsSheet(
             1,
@@ -459,7 +462,7 @@ extension PreviewData {
                 format: previewSourceAudioFormat
             )
         )
-        return paneCandidate(
+        return paneFixture(
             folder: boardFolder(.fieldRecordings, files: files),
             metadataProvenance: .externalRelease(
                 record: BridgeLookupRef(
@@ -541,7 +544,7 @@ extension PreviewData {
         _ found: NotFoundFolder,
         image: BridgeMappingImage,
         session: CandidatePaneState
-    ) -> Candidate {
+    ) -> ImportPaneFixture {
         let edit = boardEdit(
             title: found.album,
             artist: found.artist,
@@ -555,7 +558,7 @@ extension PreviewData {
                     )
                 }
         )
-        return paneCandidate(
+        return paneFixture(
             folder: boardFolder(
                 found.folder,
                 files: boardFolderFiles(

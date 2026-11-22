@@ -108,22 +108,24 @@ extension ShotScene {
     /// What the draft card knows of the folder: its audio.
     private static func draftSummary() -> ImportReleaseSummary {
         let edit = lowTideEdit()
-        let candidate = PreviewData.paneCandidate(
-            folder: PreviewData.boardFolder(
-                .lowTideHours,
-                files: PreviewData.boardFolderFiles(
-                    tracks: [PreviewData.northboundTracks[0]],
-                    images: []
+        let candidate =
+            PreviewData.paneFixture(
+                folder: PreviewData.boardFolder(
+                    .lowTideHours,
+                    files: PreviewData.boardFolderFiles(
+                        tracks: [PreviewData.northboundTracks[0]],
+                        images: []
+                    )
+                ),
+                edit: edit,
+                mapping: BridgeMappingTable(
+                    images: [],
+                    trackSides: [],
+                    files: [],
+                    untitledTrackCount: 0
                 )
-            ),
-            edit: edit,
-            mapping: BridgeMappingTable(
-                images: [],
-                trackSides: [],
-                files: [],
-                untitledTrackCount: 0
             )
-        )
+            .candidate
         guard let draft = candidate.draft else {
             preconditionFailure("the pane candidate holds a draft")
         }

@@ -43,7 +43,7 @@ extension ShotScene {
         )
         let selection =
             if openingLowTideHours {
-                try PreviewData.selectBoardCandidate(
+                PreviewData.selectBoardCandidate(
                     PreviewData.lowTideHoursCandidate(cover: cover),
                     in: store
                 )

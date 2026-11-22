@@ -354,12 +354,24 @@ extension PreviewData {
         )
     }
 
+    struct ImportPaneFixture {
+        let detail: BridgeImportCandidateDetail
+        var session = CandidatePaneState()
+
+        @MainActor
+        var candidate: Candidate {
+            var value = Candidate(detail: detail)
+            value.pane = session
+            return value
+        }
+    }
+
     /// A candidate as the per-candidate read answers for it: the folder,
     /// where the queue places it, what runs for it, and everything the pane
     /// draws. The pane holds none of it — this is the one value it renders
     /// from.
     @MainActor
-    static func paneCandidate(
+    static func paneFixture(
         folder: BridgeFolderCandidate,
         metadataProvenance: BridgeMetadataProvenance? = nil,
         releaseLink: BridgeReleaseLink? = nil,
@@ -378,8 +390,8 @@ extension PreviewData {
         libraryStatus: BridgeLibraryStatus? = nil,
         album: BridgeDraftAlbum = .new,
         albumArtists: BridgeArtistField? = nil
-    ) -> Candidate {
-        var candidate = Candidate(
+    ) -> ImportPaneFixture {
+        ImportPaneFixture(
             detail: BridgeImportCandidateDetail(
                 candidate: folder,
                 partCount: 0,
@@ -418,17 +430,16 @@ extension PreviewData {
                         opensOn: .draft
                     )
                 )
-            )
+            ),
+            session: session
         )
-        candidate.pane = session
-        return candidate
     }
 
     /// A candidate with a release selected: the metadata card states what
     /// it is, the mapping table pairs nine files with nine tracks,
     /// and the commit bar counts them.
     @MainActor
-    static let mappingCandidate: Candidate = paneCandidate(
+    static let mappingCandidate: Candidate = paneFixture(
         folder: mappingFolder(
             name: "Album Title One",
             files: candidateFilesTracks
@@ -453,11 +464,12 @@ extension PreviewData {
         cover: releaseDetailBridge.defaultCover,
         albumArtists: editMetadataAlbumArtists,
     )
+    .candidate
 
     /// The applied release remains recorded after its CUE is ignored;
     /// the track list contains the whole file with its own metadata.
     @MainActor
-    static let moreTracksMappingCandidate: Candidate = paneCandidate(
+    static let moreTracksMappingCandidate: Candidate = paneFixture(
         folder: BridgeFolderCandidate(
             parts: [],
             candidateKey: Data("/Music/Downloads/Partial Album".utf8),
@@ -488,13 +500,14 @@ extension PreviewData {
         cover: moreTracksReleaseDetail.defaultCover,
         albumArtists: editMetadataAlbumArtists,
     )
+    .candidate
 
     /// The candidate the Import-tab shot selects: the settled release
     /// read off the CUE+FLAC folder it came from, with every row kind in
     /// its table. Keyed to `folderCandidates`' first, so the row the
     /// sidebar selects and the pane behind it are the same folder.
     @MainActor
-    static let importTabCandidate: Candidate = paneCandidate(
+    static let importTabCandidate: Candidate = paneFixture(
         folder: mappingFolder(
             name: "Album Title One",
             files: bridgeCandidateFiles
@@ -519,6 +532,7 @@ extension PreviewData {
         cover: releaseDetailBridge.defaultCover,
         albumArtists: editMetadataAlbumArtists,
     )
+    .candidate
 
     /// Direct entry starts with blank editable metadata while retaining the
     /// candidate's physical audio-to-track mapping.

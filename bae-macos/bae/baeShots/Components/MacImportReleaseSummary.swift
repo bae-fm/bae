@@ -72,19 +72,22 @@ extension ShotScene {
     ) -> ImportReleaseSummary {
         var files = PreviewData.boardFolderFiles(tracks: tracks, images: [])
         files.sourceAudio = audio
-        let candidate = PreviewData.paneCandidate(
-            folder: PreviewData.boardFolder(.northbound, files: files),
-            metadataProvenance: provenance,
-            edit: edit,
-            releaseLines: provenance == .fileMetadata
-                ? nil : PreviewData.releaseLines(of: edit, minutes: minutes),
-            mapping: BridgeMappingTable(
-                images: [],
-                trackSides: PreviewData.boardTrackSides(tracks, edit: edit),
-                files: [],
-                untitledTrackCount: 0
+        let candidate =
+            PreviewData.paneFixture(
+                folder: PreviewData.boardFolder(.northbound, files: files),
+                metadataProvenance: provenance,
+                edit: edit,
+                releaseLines: provenance == .fileMetadata
+                    ? nil
+                    : PreviewData.releaseLines(of: edit, minutes: minutes),
+                mapping: BridgeMappingTable(
+                    images: [],
+                    trackSides: PreviewData.boardTrackSides(tracks, edit: edit),
+                    files: [],
+                    untitledTrackCount: 0
+                )
             )
-        )
+            .candidate
         guard let draft = candidate.draft else {
             preconditionFailure("the pane candidate holds a draft")
         }
