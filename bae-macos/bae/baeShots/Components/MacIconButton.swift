@@ -13,12 +13,10 @@ extension ShotScene {
             MacIconButton(symbol: "shuffle", label: "Shuffle", active: true) {}
         },
         component("mac.component.icon-button.faint", height: 60) {
-            MacIconButton(symbol: "shuffle", label: "Shuffle") {}
-                .foregroundStyle(Theme.textTertiary)
+            MacIconButton(symbol: "shuffle", label: "Shuffle", faint: true) {}
         },
         component("mac.component.icon-button.small", height: 60) {
-            MacIconButton(symbol: "shuffle", label: "Shuffle") {}
-                .controlSize(.small)
+            MacIconButton(symbol: "shuffle", label: "Shuffle", small: true) {}
         },
         component("mac.component.icon-button.boxed", height: 60) {
             MacIconButton(symbol: "shuffle", label: "Shuffle") {}

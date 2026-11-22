@@ -140,14 +140,7 @@ private struct MediumCountRow: View {
                     set: { setCount(UInt32($0)) }
                 )
             )
-            MacIconButton(
-                symbol: "xmark.circle.fill",
-                label: "Remove \(name)",
-                faint: true,
-                iconSize: .medium,
-                hitSize: BoxedIconButtonStyle.Size.small.side,
-                action: remove
-            )
+            MacIconButton.remove(name, action: remove)
         }
         .themeText(.body)
         .fixedSize()
@@ -243,13 +236,7 @@ struct DiscogsDetailsEditor: View {
                     let name = bridgeDiscogsDetailLabel(detail: detail).text
                     Text(name)
                         .themeText(.body)
-                    MacIconButton(
-                        symbol: "xmark.circle.fill",
-                        label: "Remove \(name)",
-                        faint: true,
-                        iconSize: .medium,
-                        hitSize: BoxedIconButtonStyle.Size.small.side
-                    ) {
+                    MacIconButton.remove(name) {
                         commit(details.filter { $0 != detail })
                     }
                 }

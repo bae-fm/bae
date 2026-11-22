@@ -14,10 +14,22 @@ struct MacIconButton: View {
     var faint = false
     var iconSize: ThemeIcon = .large
     var hitSize = ThemeSize.hitTarget
+    var role: ButtonRole?
     let action: () -> Void
 
+    static func remove(_ name: String, action: @escaping () -> Void) -> Self {
+        Self(
+            symbol: "xmark.circle.fill",
+            label: "Remove \(name)",
+            faint: true,
+            iconSize: .medium,
+            hitSize: BoxedIconButtonStyle.Size.small.side,
+            action: action
+        )
+    }
+
     var body: some View {
-        Button(action: action) {
+        Button(role: role, action: action) {
             Image(systemName: symbol)
                 .themeIcon(iconSize)
                 .frame(width: hitSize, height: hitSize)

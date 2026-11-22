@@ -119,13 +119,7 @@ struct MacReleaseFields: View {
                     let named =
                         row.label.name.isEmpty
                         ? row.label.catalogNumber : row.label.name
-                    MacIconButton(
-                        symbol: "xmark.circle.fill",
-                        label: "Remove \(named)",
-                        faint: true,
-                        iconSize: .medium,
-                        hitSize: BoxedIconButtonStyle.Size.small.side
-                    ) {
+                    MacIconButton.remove(named) {
                         var next = rows.map(\.label)
                         next.remove(at: index)
                         Task { await writer.setLabels(next) }
@@ -177,13 +171,7 @@ struct MacReleaseFields: View {
                         next[index] = barcode
                         await writer.setBarcodes(next)
                     }
-                    MacIconButton(
-                        symbol: "xmark.circle.fill",
-                        label: "Remove \(row.barcode)",
-                        faint: true,
-                        iconSize: .medium,
-                        hitSize: BoxedIconButtonStyle.Size.small.side
-                    ) {
+                    MacIconButton.remove(row.barcode) {
                         var next = rows.map(\.barcode)
                         next.remove(at: index)
                         Task { await writer.setBarcodes(next) }
