@@ -75,10 +75,6 @@ struct LibrarySettingsTab: View {
                         }
                         .pressing(.opens { path.append(.people) })
                     }
-                } footer: {
-                    if !configStore.syncs, !setupRunning {
-                        Text("This library is only on this Mac.")
-                    }
                 }
             }
             .formStyle(.settings)
