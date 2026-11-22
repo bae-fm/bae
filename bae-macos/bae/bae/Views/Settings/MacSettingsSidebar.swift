@@ -54,9 +54,6 @@ struct MacSettingsSidebar: View {
     private var syncStatus
     @Environment(SubsonicStore.self)
     private var subsonicStore
-    @Environment(\.accentChoice)
-    private var accent
-
     @FocusState
     private var focused: Bool
 
@@ -115,10 +112,8 @@ struct MacSettingsSidebar: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, ThemeSpace.fieldInset)
             .padding(.vertical, ThemeSpace.inline + ThemeSpace.hairline)
-            .foregroundStyle(chosen ? Theme.onFill : Theme.textPrimary)
-            .environment(\.chipsOnFill, chosen)
-            .background(
-                chosen ? accent.buttonColor : Color.clear,
+            .macSelection(
+                chosen,
                 in: RoundedRectangle(cornerRadius: ThemeRadius.field)
             )
             .contentShape(Rectangle())

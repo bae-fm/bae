@@ -29,8 +29,6 @@ public struct MacRow<Lead: View, Label: View, Content: View>: View {
     private var press: Press?
     private var selection: Bool?
 
-    @Environment(\.accentChoice)
-    private var accent
     @Environment(\.macRowPlacement)
     private var placement
     @Environment(\.isEnabled)
@@ -114,9 +112,7 @@ public struct MacRow<Lead: View, Label: View, Content: View>: View {
     @ViewBuilder
     private var rowAppearance: some View {
         if let selection {
-            rowControl
-                .foregroundStyle(selection ? Theme.onFill : Theme.textPrimary)
-                .background(selection ? accent.buttonColor : Color.clear)
+            rowControl.macSelection(selection, in: Rectangle())
         }
         else {
             rowControl
