@@ -34,19 +34,17 @@ final class ShotDisplay {
 
     /// The screen AppKit lists for the display, with its free area.
     func screen() throws -> NSScreen {
-        guard
-            let screen = NSScreen.screens.first(where: {
-                Self.number(of: $0) == id
-            })
-        else {
+        guard let screen = Self.screen(for: id) else {
             throw ShotError.noShotDisplay("AppKit no longer lists it")
         }
         return screen
     }
 
-    private static func number(of screen: NSScreen) -> CGDirectDisplayID? {
-        screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")]
-            as? CGDirectDisplayID
+    static func screen(for id: CGDirectDisplayID) -> NSScreen? {
+        NSScreen.screens.first { screen in
+            (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")]
+                as? CGDirectDisplayID) == id
+        }
     }
 
     /// The process's display, added by the first call and kept until the
@@ -60,19 +58,21 @@ final class ShotDisplay {
         if let added {
             return try await added.value
         }
-        let task = Task { try await add() }
+        let serial = UInt32(ProcessInfo.processInfo.processIdentifier)
+        let task = Task { try await add(serial: serial) }
         added = task
         return try await task.value
     }
 
     /// Add the display, once AppKit lists it at its size and scale.
-    private static func add() async throws -> ShotDisplay {
+    static func add(serial: UInt32) async throws -> ShotDisplay {
         let width = Int(size.width)
         let height = Int(size.height)
         let display = try virtualDisplay(
             pixelsWide: width * scale,
             pixelsHigh: height * scale,
-            mode: (width, height)
+            mode: (width, height),
+            serial: serial
         )
         guard
             let id = display.value(forKey: "displayID") as? CGDirectDisplayID,
@@ -83,8 +83,7 @@ final class ShotDisplay {
         // CoreGraphics lists the display's modes once the display is
         // connected, which AppKit announces by listing its screen.
         try await listed(id, as: "a screen") { _ in true }
-        // The display starts in a mode of 1 pixel a point; its modes include
-        // the same size at 2.
+        // The display offers a mode at 2 pixels a point alongside 1x modes.
         let options =
             [kCGDisplayShowDuplicateLowResolutionModes: true] as CFDictionary
         guard
@@ -105,12 +104,7 @@ final class ShotDisplay {
                     + "\(scale) pixels a point"
             )
         }
-        let status = CGDisplaySetDisplayMode(id, mode, nil)
-        guard status == .success else {
-            throw ShotError.noShotDisplay(
-                "CoreGraphics refused its mode with error \(status.rawValue)"
-            )
-        }
+        try select(mode, for: id)
         try await listed(
             id,
             as: "\(width) by \(height) points at \(scale) pixels a point"
@@ -136,7 +130,7 @@ final class ShotDisplay {
                     )
                 ]
             ) {
-                NSScreen.screens.contains { number(of: $0) == id && holds($0) }
+                screen(for: id).map { holds($0) } == true
             }
         }
         catch is Wait.TimedOut {
@@ -151,7 +145,8 @@ final class ShotDisplay {
     private static func virtualDisplay(
         pixelsWide: Int,
         pixelsHigh: Int,
-        mode: (width: Int, height: Int)
+        mode: (width: Int, height: Int),
+        serial: UInt32
     ) throws -> NSObject {
         let displayClass = try privateClass("CGVirtualDisplay")
         typealias InitWithDescriptor =
@@ -166,7 +161,11 @@ final class ShotDisplay {
             )(
                 try allocate(displayClass),
                 NSSelectorFromString("initWithDescriptor:"),
-                try descriptor(pixelsWide: pixelsWide, pixelsHigh: pixelsHigh)
+                try descriptor(
+                    pixelsWide: pixelsWide,
+                    pixelsHigh: pixelsHigh,
+                    serial: serial
+                )
             )?
             .takeRetainedValue()
         else {
@@ -195,7 +194,8 @@ final class ShotDisplay {
     /// `pixelsHigh`.
     private static func descriptor(
         pixelsWide: Int,
-        pixelsHigh: Int
+        pixelsHigh: Int,
+        serial: UInt32
     ) throws -> NSObject {
         let descriptor = try privateClass("CGVirtualDisplayDescriptor").init()
         descriptor.setValue(DispatchQueue.main, forKey: "queue")
@@ -211,14 +211,8 @@ final class ShotDisplay {
         descriptor.setValue(0xBAE, forKey: "productID")
         // CoreGraphics refuses a display whose vendor, product and serial
         // match a display WindowServer still holds, such as one a crashed
-        // test process left behind. The process ID differs from the serial
-        // of any display that an earlier process made.
-        descriptor.setValue(
-            UInt32(
-                truncatingIfNeeded: ProcessInfo.processInfo.processIdentifier
-            ),
-            forKey: "serialNum"
-        )
+        // test process left behind. Use a distinct serial for each display.
+        descriptor.setValue(serial, forKey: "serialNum")
         return descriptor
     }
 
@@ -284,5 +278,47 @@ final class ShotDisplay {
             )
         }
         return unsafeBitCast(implementation, to: signature)
+    }
+}
+
+extension ShotDisplay {
+    /// WindowServer restores the session's display configuration when
+    /// another virtual display closes. Save the shot display's 2x mode in
+    /// that configuration so it keeps the same size and scale.
+    fileprivate static func select(
+        _ mode: CGDisplayMode,
+        for id: CGDirectDisplayID
+    ) throws {
+        var configuration: CGDisplayConfigRef?
+        let begin = CGBeginDisplayConfiguration(&configuration)
+        guard begin == .success, let configuration else {
+            throw ShotError.noShotDisplay(
+                "CoreGraphics could not start the mode change for display \(id) "
+                    + "(error \(begin.rawValue))"
+            )
+        }
+        let change = CGConfigureDisplayWithDisplayMode(
+            configuration,
+            id,
+            mode,
+            nil
+        )
+        guard change == .success else {
+            CGCancelDisplayConfiguration(configuration)
+            throw ShotError.noShotDisplay(
+                "CoreGraphics refused the mode for display \(id) "
+                    + "(error \(change.rawValue))"
+            )
+        }
+        let complete = CGCompleteDisplayConfiguration(
+            configuration,
+            .forSession
+        )
+        guard complete == .success else {
+            throw ShotError.noShotDisplay(
+                "CoreGraphics could not save the session mode for display \(id) "
+                    + "(error \(complete.rawValue))"
+            )
+        }
     }
 }

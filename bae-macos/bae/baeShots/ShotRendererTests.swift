@@ -50,7 +50,11 @@ struct ShotRendererTests {
     /// AppKit would shrink the window to fit the shot display; the render
     /// fails instead of capturing the scene narrower than it is.
     @Test
-    func aWindowWiderThanTheShotDisplayFails() async throws {
+    func aWindowWiderThanTheShotDisplayFails() async {
+        await expectOversizedWindowToFail()
+    }
+
+    private func expectOversizedWindowToFail() async {
         let error = await #expect(throws: ShotError.self) {
             try await ShotRenderer.render(Self.tooWide(), on: display)
         }
@@ -60,6 +64,39 @@ struct ShotRendererTests {
             )
             return
         }
+    }
+
+    @Test
+    func removingAnotherDisplayKeepsTheShotDisplayAtItsSizeAndScale()
+        async throws
+    {
+        let otherID: CGDirectDisplayID
+        do {
+            let serial = UInt32(ProcessInfo.processInfo.processIdentifier)
+            let other = try await ShotDisplay.add(serial: serial | (1 << 31))
+            otherID = other.id
+            let scene = ShotScene(
+                id: "a scene on the display that closes",
+                size: CGSize(width: 300, height: 200),
+                frame: .window(title: "bae", titleBar: .hidden)
+            ) {
+                ShotStage(Color.clear)
+            }
+            _ = try await ShotRenderer.render(scene, on: other)
+        }
+        try await Wait.until(notices: [
+            Wait.Notice(
+                NSApplication.didChangeScreenParametersNotification,
+                of: nil
+            )
+        ]) {
+            ShotDisplay.screen(for: otherID) == nil
+        }
+
+        let screen = try display.screen()
+        #expect(screen.frame.size == CGSize(width: 1_600, height: 1_200))
+        #expect(screen.backingScaleFactor == 2)
+        await expectOversizedWindowToFail()
     }
 
     /// A scene that fails to place its window takes down the window and the

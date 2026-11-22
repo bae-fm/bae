@@ -1,6 +1,9 @@
 import AppKit
 import BaeKit
+import OSLog
 import ScreenCaptureKit
+
+private let logger = Logger.bae("ShotRenderer")
 
 extension ShotRenderer {
     /// Put `window` wholly on `display`, at the top left of its free area:
@@ -17,7 +20,13 @@ extension ShotRenderer {
         on display: ShotDisplay,
         scene: ShotScene
     ) throws {
-        let room = try display.screen().visibleFrame
+        let screen = try display.screen()
+        let room = screen.visibleFrame
+        logger.info(
+            "The renderer is placing scene \(scene.id), window \(window.windowNumber) with frame \(window.frame), "
+                + "on display \(display.id) with frame \(screen.frame) at \(screen.backingScaleFactor)x "
+                + "and free area \(room)."
+        )
         guard let shown = window.contentView?.frame.size else {
             throw ShotError.noContentView(scene.id)
         }
