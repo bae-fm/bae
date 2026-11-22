@@ -29,7 +29,7 @@ extension ShotScene {
                 ),
                 countdown: BridgeCountdown(
                     key: "core.sync.cause.provider_wait.countdown",
-                    until: Date(timeIntervalSinceNow: 42)
+                    until: ShotClock.moment(secondsLeft: 42)
                 )
             )
         ),
@@ -89,6 +89,7 @@ extension ShotScene {
                     )
                 )
             )
+            .environment(\.countdownNow, ShotClock.now)
             .environment(Sync.stub())
             #if BAE_OAUTH_PROVIDERS
                 .environment(CloudSyncSetup())

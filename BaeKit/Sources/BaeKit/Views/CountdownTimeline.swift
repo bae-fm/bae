@@ -4,6 +4,8 @@ import SwiftUI
 /// before the countdown's moment passes. The timer is this view's own: core
 /// owns the moment and acts at it, and the view only counts down to it.
 public struct CountdownTimeline<Content: View>: View {
+    @Environment(\.countdownNow)
+    private var fixedNow
     private let countdown: BridgeCountdown
     private let content: (String) -> Content
 
@@ -17,7 +19,7 @@ public struct CountdownTimeline<Content: View>: View {
 
     public var body: some View {
         TimelineView(.periodic(from: tickAnchor, by: 1)) { context in
-            content(countdown.line(at: context.date))
+            content(countdown.line(at: fixedNow ?? context.date))
         }
     }
 
@@ -26,6 +28,13 @@ public struct CountdownTimeline<Content: View>: View {
     private var tickAnchor: Date {
         countdown.until.addingTimeInterval(-86_400)
     }
+}
+
+extension EnvironmentValues {
+    /// The moment a countdown counts from, in place of the clock. A shot sets
+    /// it, so a countdown draws the same line whenever the shot is taken.
+    @Entry
+    public var countdownNow: Date?
 }
 
 extension BridgeCountdown {

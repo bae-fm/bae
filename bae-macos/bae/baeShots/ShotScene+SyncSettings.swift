@@ -24,6 +24,7 @@ extension ShotScene {
                         ),
                         shown: dropboxAskedToWait
                     )
+                    .environment(\.countdownNow, ShotClock.now)
                 )
             },
             ShotScene(
@@ -148,7 +149,7 @@ extension ShotScene {
             ),
             countdown: BridgeCountdown(
                 key: "core.sync.cause.provider_wait.countdown",
-                until: Date(timeIntervalSinceNow: 42)
+                until: ShotClock.moment(secondsLeft: 42)
             )
         ),
         fix: nil,
