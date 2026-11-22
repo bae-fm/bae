@@ -27,4 +27,4 @@ class AndroidNowPlayingTrackShots : BoardShot() {
 private fun Track(
     staging: PlayerStaging,
     modifier: Modifier = Modifier,
-) = Images { AndroidNowPlayingTrack(staging.track, onExpand = {}, modifier = modifier) }
+) = Covers { AndroidNowPlayingTrack(staging.track, onExpand = {}, modifier = modifier) }

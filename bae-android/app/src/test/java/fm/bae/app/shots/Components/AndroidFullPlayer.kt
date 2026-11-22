@@ -48,7 +48,7 @@ internal fun FullPlayer(
     volume: Float = 0.7f,
     receiverWithoutVolume: String? = null,
 ) = ScreenScene {
-    Images {
+    Covers {
         Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
             AndroidFullPlayer(
                 track = staging.track,
