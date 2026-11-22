@@ -30,6 +30,8 @@ public struct MacRow<Lead: View, Label: View, Content: View>: View {
 
     @Environment(\.macRowPlacement)
     private var placement
+    @Environment(\.isEnabled)
+    private var isEnabled
 
     private init(lead: Lead, label: Label, content: Content) {
         self.lead = lead
@@ -95,6 +97,11 @@ public struct MacRow<Lead: View, Label: View, Content: View>: View {
     }
 
     public var body: some View {
+        rowControl.opacity(isEnabled ? 1 : ThemeOpacity.off)
+    }
+
+    @ViewBuilder
+    private var rowControl: some View {
         switch press {
         case .opens(let action)?:
             Button(action: action) { pressable(chevron: true) }
