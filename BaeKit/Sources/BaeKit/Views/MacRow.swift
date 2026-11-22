@@ -4,8 +4,8 @@ import SwiftUI
 public enum MacRowPress {
     /// The row opens something: a chevron ends it.
     case opens(() -> Void)
-    /// The label opens something, with the row's other controls beside it.
-    case opensFromLabel(() -> Void)
+    /// The label is a button, with the row's other controls beside it.
+    case label(showsChevron: Bool, action: () -> Void)
     /// The row is itself an action that removes something.
     case removes(() -> Void)
 }
@@ -130,8 +130,8 @@ public struct MacRow<Lead: View, Label: View, Content: View>: View {
             Button(action: action) { rowWithPlacement(chevron: true) }
                 .buttonStyle(.accentPlain)
                 .placesItselfInRow()
-        case .opensFromLabel(let action)?:
-            displayRow(chevron: true, labelAction: action)
+        case .label(let chevron, let action)?:
+            displayRow(chevron: chevron, labelAction: action)
                 .accessibilityElement(children: .contain)
         case .removes(let action)?:
             Button(role: .destructive, action: action) {

@@ -156,6 +156,11 @@
             } label: {
                 Text(verbatim: folder.name)
             }
+            .pressing(
+                browser.nests
+                    ? .label(showsChevron: false) { browser.select(folder) }
+                    : nil
+            )
             .selected(chosen)
             .contentShape(Rectangle())
             .onTapGesture { browser.select(folder) }
