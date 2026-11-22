@@ -31,7 +31,7 @@ extension ShotScene {
         identifyBarScene("mac.component.identify-bar.save-reading"),
     ]
 
-    private static func commitControls(
+    static func commitControls(
         folderCheck: BridgeFolderCheck? = nil,
         importStatus: BridgeCandidateImportStatus? = nil
     ) -> ImportCommitControls {

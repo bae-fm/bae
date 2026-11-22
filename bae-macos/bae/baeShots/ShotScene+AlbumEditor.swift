@@ -140,7 +140,7 @@ extension ShotScene {
     /// The CUE release with its sheet's FILE line moved onto the rip: the run
     /// names the rip, the pop-up checks it, the Files list holds the image
     /// in its place, and a save reads the rip first.
-    private static var reboundCueRelease: PreviewReleaseEdit {
+    static var reboundCueRelease: PreviewReleaseEdit {
         var release = editedCueRelease
         release.draft.sides = release.draft.sides?
             .map { side in

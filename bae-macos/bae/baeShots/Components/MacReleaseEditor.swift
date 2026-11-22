@@ -4,92 +4,237 @@ import SwiftUI
 @testable import bae
 
 extension ShotScene {
-    /// `MacReleaseEditor`, one shot for each row of its preview. The editor
-    /// is drawn in the two places the app shows it: the import pane's
-    /// release editor and the library's Edit release sheet, so each row
-    /// is the board scene of that place, shot again under the row's name.
+    /// Every editor state uses the same Northbound pressing and its CUE image.
     static let macReleaseEditorScenes: [ShotScene] = [
-        reshot(
+        editorScene(
             "mac.component.release-editor.import",
-            from: .identified
+            actionRow: .importing(commitControls())
         ),
-        reshot(
+        editorScene(
             "mac.component.release-editor.two-labels",
-            from: .identified
+            secondLabel: true,
+            actionRow: .importing(commitControls())
         ),
-        reshot(
+        editorScene(
             "mac.component.release-editor.import-to-the-cloud",
-            from: .identified
+            syncs: true,
+            actionRow: .importing(commitControls())
         ),
-        reshot(
+        editorScene(
             "mac.component.release-editor.import-with-a-folder-check",
-            from: .identified
+            actionRow: .importing(
+                commitControls(folderCheck: .sourceTracksUnknown)
+            )
         ),
-        reshot(
+        editorScene(
             "mac.component.release-editor.retry-import",
-            from: .importing
+            actionRow: .importing(
+                commitControls(
+                    importStatus: .error(
+                        error: .Diagnostic(
+                            category: .import,
+                            detail: "decode verification failed for 1 track"
+                        )
+                    )
+                )
+            )
         ),
-        reshot(
+        editorScene(
             "mac.component.release-editor.nothing-to-import",
-            from: .nothingRead
+            content: .blank,
+            actionRow: .importing(nil)
         ),
-        reshot(
-            "mac.component.release-editor.import-reading-a-file",
-            from: .importing
-        ),
-        reshot(
-            "mac.component.release-editor.import-album-picker-open",
-            from: .identified
-        ),
-        reshot(
+        editorScene(
             "mac.component.release-editor.import-nothing-read",
-            from: .nothingRead
+            content: .unread,
+            actionRow: .importing(nil)
         ),
-        reshot(
+        editorScene(
             "mac.component.release-editor.save",
-            from: .edit
+            actionRow: .saving(saveRow(changed: false))
         ),
-        reshot(
+        editorScene(
             "mac.component.release-editor.save-changed",
-            from: .edit
+            actionRow: .saving(saveRow(changed: true))
         ),
-        reshot(
+        editorScene(
             "mac.component.release-editor.save-reading-a-file",
-            from: .reading
+            actionRow: .saving(
+                saveRow(
+                    changed: true,
+                    reading: "Reading Northbound (2019 rip).flac…"
+                )
+            ),
+            editable: false
         ),
-        reshot(
+        editorScene(
             "mac.component.release-editor.save-album-picker-open",
-            from: .albumPicker
+            actionRow: .saving(saveRow(changed: false)),
+            openAlbum: true
         ),
     ]
 
-    /// The board scenes the rows are shot from.
-    @MainActor
-    private enum Source {
-        case identified, importing, nothingRead, edit, reading, albumPicker
+    private static func saveRow(
+        changed: Bool,
+        reading: String? = nil
+    ) -> ReleaseSaveRow {
+        ReleaseSaveRow(
+            controls: {
+                ReleaseEditControls(
+                    changed: changed,
+                    isBusy: reading != nil,
+                    reading: reading,
+                    onCancel: {},
+                    onSave: {}
+                )
+            },
+            applying: { nil },
+            notice: { nil }
+        )
+    }
 
-        /// The import pane's scenes, and the editor sheet's, in the order
-        /// their lists declare them.
-        var scene: ShotScene {
-            switch self {
-            case .identified: ShotScene.importPaneScenes[1]
-            case .importing: ShotScene.importPaneScenes[2]
-            case .nothingRead: ShotScene.importPaneScenes[4]
-            case .edit: ShotScene.albumEditorScenes[0]
-            case .albumPicker: ShotScene.albumEditorScenes[2]
-            case .reading: ShotScene.albumEditorScenes[4]
+    private enum EditorContent { case identified, blank, unread }
+
+    private static func editorScene(
+        _ id: String,
+        syncs: Bool = false,
+        content: EditorContent = .identified,
+        secondLabel: Bool = false,
+        actionRow: ReleaseEditorActionRow,
+        editable: Bool = true,
+        openAlbum: Bool = false
+    ) -> ShotScene {
+        component(
+            id,
+            width: 720,
+            height: content == .unread ? 480 : 1100,
+            images: PreviewData.artImageStore()
+        ) {
+            let release = reboundCueRelease
+            let draft = release.draft
+            let identified = content == .identified
+            let scanned = content != .unread
+            let art =
+                scanned
+                ? PreviewData.boardImage("cover.jpg", art: "Northbound") : nil
+            let values = editorValues(
+                release.values,
+                content: content,
+                secondLabel: secondLabel
+            )
+            let album = identified ? draft.album : nil
+            ZStack(alignment: .topLeading) {
+                importStores(
+                    MacReleaseEditor(
+                        actionRow: actionRow,
+                        commands: inertEditorCommands,
+                        card: ReleaseEditorCard(
+                            values: { values },
+                            pressingOffers: draft.pressingOffers,
+                            albumArtists: identified ? draft.albumArtists : nil,
+                            writer: ReleaseFieldWriter { _, _ in },
+                            cover: ReleaseCover(
+                                content: art.map { .localFile($0.file) },
+                                onEdit: scanned ? {} : nil,
+                                onDropImage: nil
+                            ),
+                            sourceAudio: scanned ? draft.sourceAudio : nil,
+                            album: album,
+                            albumActions: inertAlbumActions,
+                            records: identified ? draft.records : nil,
+                            pressingUnknown: false
+                        ),
+                        tracks: editorTracks(
+                            draft: draft,
+                            content: content,
+                            art: art
+                        ),
+                        editingCommands: EditingCommitCommands(),
+                        editable: editable,
+                        searching: false,
+                        search: { EmptyView() }
+                    ),
+                    syncs: syncs
+                )
+                if openAlbum, let album {
+                    albumMenu(album, x: 209, y: 139)
+                }
             }
         }
     }
 
-    /// The scene `source` draws, under the name `id`.
-    private static func reshot(_ id: String, from source: Source) -> ShotScene {
-        let scene = source.scene
-        return ShotScene(
-            id: id,
-            size: scene.size,
-            frame: scene.frame,
-            stage: scene.stage
+    private static func editorTracks(
+        draft: BridgeReleaseEditDraft,
+        content: EditorContent,
+        art: BridgeMappingImage?
+    ) -> ReleaseEditorTracks {
+        ReleaseEditorTracks(
+            images: art.map { [$0] },
+            onOpenImages: { _ in },
+            sides: content == .unread
+                ? nil : editorSides(draft.sides, blank: content == .blank),
+            files: content == .unread ? nil : draft.files,
+            previewingTarget: nil,
+            actions: inertMappingActions().trackTable
         )
     }
+
+    private static func editorValues(
+        _ source: BridgeRawReleaseEdit,
+        content: EditorContent,
+        secondLabel: Bool
+    ) -> BridgeRawReleaseEdit {
+        guard content == .identified else { return blankEdit() }
+        guard secondLabel else { return source }
+        var values = source
+        values.pressing.labels = [
+            BridgeLabelRow(
+                label: BridgeRawLabelEdit(
+                    name: "Harbor Records",
+                    catalogNumber: "HR-0412"
+                ),
+                place: .first
+            ),
+            BridgeLabelRow(
+                label: BridgeRawLabelEdit(
+                    name: "Tidewater Music",
+                    catalogNumber: "TW-88"
+                ),
+                place: .last
+            ),
+        ]
+        return values
+    }
+
+    private static func editorSides(
+        _ sides: [BridgeTrackTableSide]?,
+        blank: Bool
+    ) -> [BridgeTrackTableSide]? {
+        guard blank else { return sides }
+        func unnamed(_ row: BridgeTrackTableRow) -> BridgeTrackTableRow {
+            var row = row
+            row.track.title = ""
+            return row
+        }
+        return sides?
+            .map { side in
+                var side = side
+                side.runs = side.runs.map { run in
+                    switch run {
+                    case .track(let row): .track(row: unnamed(row))
+                    case .sheet(let sheet, let rows):
+                        .sheet(sheet: sheet, rows: rows.map(unnamed))
+                    }
+                }
+                return side
+            }
+    }
+
+    private static let inertEditorCommands = ReleaseEditorCommands(
+        identifyAutomatically: {},
+        search: {},
+        metadataCommand: { _ in },
+        unlink: {},
+        identifyDisabled: false
+    )
 }

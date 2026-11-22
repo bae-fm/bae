@@ -9,44 +9,39 @@
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function box(w, c) { return h('div', { style: { width: w, flex: 'none' } }, c); }
 
+  function editor(options) {
+    if (options.unread) return box(720, h(B.MacReleaseEditor, { actions: 'import', blank: true }));
+    var props = {
+      actions: 'import', cover: 'Northbound', audio: 'FLAC · 44.1 kHz · 16-bit · Stereo',
+      images: 'Northbound|cover.jpg', files: 'Northbound.flac|121 MB|other,Northbound.log|4 KB'
+    };
+    if (!options.blank) Object.assign(props, {
+      album: 'Northbound · Mara Quill', albumInLibrary: true, title: 'Northbound', artist: 'Mara Quill',
+      year: '1974', pressingYear: '1974', media: 'CD', labels: 'Harbor Records|HR-0412',
+      country: 'United States', status: 'Official', records: 'MusicBrainz'
+    });
+    function track(start, position, title, length, listed) {
+      return h(B.MacImportTrackRow, { start: start, position: position, title: options.blank ? '' : title,
+        inherited: !options.blank, length: length, listed: listed });
+    }
+    return box(720, h(B.MacReleaseEditor, Object.assign(props, options),
+      h(B.MacImportSheetCaption, { disc: 'Disc 1', sheet: 'Northbound.cue', bound: 'Northbound (2019 rip).flac' }),
+      track('0:00', '1', 'Northbound', '4:51'), track('4:51', '2', 'Margins', '3:58'),
+      track('8:49', '3', 'Salt Road', '5:20', '5:27'), track('14:09', '4', 'Winter Light', '4:07')));
+  }
+
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
-    W('Import', box(720, h(B.MacReleaseEditor, { actions: 'import', album: 'New album', title: 'Low Tide Hours', artist: 'Mara Quill', year: '1992', audio: 'FLAC · 44.1 kHz · 16-bit · Stereo', cover: 'Low Tide Hours', pressingYear: '1992', media: 'CD', labels: 'Harbor Records|HR-1042', country: 'United States', status: 'Official', records: 'MusicBrainz,Discogs', images: 'Low Tide Hours|cover.jpg', files: 'rip.log|4 KB' },
-        h(B.MacImportTrackRow, { file: '01 Low Tide.flac', position: '1', title: 'Low Tide', inherited: true, length: '4:51' }),
-        h(B.MacImportTrackRow, { file: '02 Margins.flac', position: '2', title: 'Margins', inherited: true, length: '3:58' })))),
-    W('Two labels', box(720, h(B.MacReleaseEditor, { actions: 'import', album: 'New album', title: 'Low Tide Hours', artist: 'Mara Quill', year: '1992', audio: 'FLAC · 44.1 kHz · 16-bit · Stereo', cover: 'Low Tide Hours', pressingYear: '1992', media: 'CD', labels: 'Harbor Records|HR-1042,Tidewater Music|TW-88', country: 'United States', status: 'Official', records: 'MusicBrainz,Discogs', images: 'Low Tide Hours|cover.jpg', files: 'rip.log|4 KB' },
-        h(B.MacImportTrackRow, { file: '01 Low Tide.flac', position: '1', title: 'Low Tide', inherited: true, length: '4:51' }),
-        h(B.MacImportTrackRow, { file: '02 Margins.flac', position: '2', title: 'Margins', inherited: true, length: '3:58' })))),
-    W('Import to the cloud', box(720, h(B.MacReleaseEditor, { actions: 'import', album: 'New album', cloud: true, to: 'Cloud', title: 'Low Tide Hours', artist: 'Mara Quill', year: '1992', audio: 'FLAC · 44.1 kHz · 16-bit · Stereo', cover: 'Low Tide Hours', pressingYear: '1992', media: 'CD', labels: 'Harbor Records|HR-1042', country: 'United States', status: 'Official', records: 'MusicBrainz,Discogs', images: 'Low Tide Hours|cover.jpg', files: 'rip.log|4 KB' },
-        h(B.MacImportTrackRow, { file: '01 Low Tide.flac', position: '1', title: 'Low Tide', inherited: true, length: '4:51' }),
-        h(B.MacImportTrackRow, { file: '02 Margins.flac', position: '2', title: 'Margins', inherited: true, length: '3:58' })))),
-    W('Import with a folder check', box(720, h(B.MacReleaseEditor, { actions: 'import', album: 'New album', check: 'The release lists no tracks', title: 'Low Tide Hours', artist: 'Mara Quill', year: '1992', audio: 'FLAC · 44.1 kHz · 16-bit · Stereo', cover: 'Low Tide Hours', pressingYear: '1992', media: 'CD', labels: 'Harbor Records|HR-1042', country: 'United States', status: 'Official', records: 'MusicBrainz,Discogs', images: 'Low Tide Hours|cover.jpg', files: 'rip.log|4 KB' },
-        h(B.MacImportTrackRow, { file: '01 Low Tide.flac', position: '1', title: 'Low Tide', inherited: true, length: '4:51' }),
-        h(B.MacImportTrackRow, { file: '02 Margins.flac', position: '2', title: 'Margins', inherited: true, length: '3:58' })))),
-    W('Retry import', box(720, h(B.MacReleaseEditor, { actions: 'import', album: 'New album', retry: true, title: 'Low Tide Hours', artist: 'Mara Quill', year: '1992', audio: 'FLAC · 44.1 kHz · 16-bit · Stereo', cover: 'Low Tide Hours', pressingYear: '1992', media: 'CD', labels: 'Harbor Records|HR-1042', country: 'United States', status: 'Official', records: 'MusicBrainz,Discogs', images: 'Low Tide Hours|cover.jpg', files: 'rip.log|4 KB' },
-        h(B.MacImportTrackRow, { file: '01 Low Tide.flac', position: '1', title: 'Low Tide', inherited: true, length: '4:51' }),
-        h(B.MacImportTrackRow, { file: '02 Margins.flac', position: '2', title: 'Margins', inherited: true, length: '3:58' })))),
-    W('Nothing to import', box(720, h(B.MacReleaseEditor, { actions: 'import', album: 'New album', blank: true, title: 'Low Tide Hours', artist: 'Mara Quill', year: '1992', audio: 'FLAC · 44.1 kHz · 16-bit · Stereo', cover: 'Low Tide Hours', pressingYear: '1992', media: 'CD', labels: 'Harbor Records|HR-1042', country: 'United States', status: 'Official', records: 'MusicBrainz,Discogs', images: 'Low Tide Hours|cover.jpg', files: 'rip.log|4 KB' },
-        h(B.MacImportTrackRow, { file: '01 Low Tide.flac', position: '1', title: 'Low Tide', inherited: true, length: '4:51' }),
-        h(B.MacImportTrackRow, { file: '02 Margins.flac', position: '2', title: 'Margins', inherited: true, length: '3:58' })))),
-    W('Import, reading a file', box(720, h(B.MacReleaseEditor, { actions: 'import', album: 'New album', reading: 'Reading Low Tide Hours (2019 rip).flac…', title: 'Low Tide Hours', artist: 'Mara Quill', year: '1992', audio: 'FLAC · 44.1 kHz · 16-bit · Stereo', cover: 'Low Tide Hours', pressingYear: '1992', media: 'CD', labels: 'Harbor Records|HR-1042', country: 'United States', status: 'Official', records: 'MusicBrainz,Discogs', images: 'Low Tide Hours|cover.jpg', files: 'rip.log|4 KB' },
-        h(B.MacImportTrackRow, { file: '01 Low Tide.flac', position: '1', title: 'Low Tide', inherited: true, length: '4:51' }),
-        h(B.MacImportTrackRow, { file: '02 Margins.flac', position: '2', title: 'Margins', inherited: true, length: '3:58' })))),
-    W('Import, album picker open', box(720, h(B.MacReleaseEditor, { actions: 'import', album: 'New album', albumOpen: true, title: 'Low Tide Hours', artist: 'Mara Quill', year: '1992', audio: 'FLAC · 44.1 kHz · 16-bit · Stereo', cover: 'Low Tide Hours', pressingYear: '1992', media: 'CD', labels: 'Harbor Records|HR-1042', country: 'United States', status: 'Official', records: 'MusicBrainz,Discogs', images: 'Low Tide Hours|cover.jpg', files: 'rip.log|4 KB' },
-        h(B.MacImportTrackRow, { file: '01 Low Tide.flac', position: '1', title: 'Low Tide', inherited: true, length: '4:51' }),
-        h(B.MacImportTrackRow, { file: '02 Margins.flac', position: '2', title: 'Margins', inherited: true, length: '3:58' })))),
-    W('Import, nothing read', box(720, h(B.MacReleaseEditor, { actions: 'import', album: 'New album' }))),
-    W('Save', box(720, h(B.MacReleaseEditor, { actions: 'save', album: 'Low Tide Hours · Mara Quill', albumInLibrary: true, title: 'Low Tide Hours', artist: 'Mara Quill', year: '1992', audio: 'FLAC · 44.1 kHz · 16-bit · Stereo', cover: 'Low Tide Hours', pressingYear: '1992', media: 'CD', labels: 'Harbor Records|HR-1042', country: 'United States', status: 'Official', records: 'MusicBrainz,Discogs', images: 'Low Tide Hours|cover.jpg', files: 'rip.log|4 KB' },
-        h(B.MacImportTrackRow, { file: '01 Low Tide.flac', position: '1', title: 'Low Tide', inherited: true, length: '4:51' }),
-        h(B.MacImportTrackRow, { file: '02 Margins.flac', position: '2', title: 'Margins', inherited: true, length: '3:58' })))),
-    W('Save, changed', box(720, h(B.MacReleaseEditor, { actions: 'save', album: 'Low Tide Hours · Mara Quill', albumInLibrary: true, changed: true, title: 'Low Tide Hours', artist: 'Mara Quill', year: '1992', audio: 'FLAC · 44.1 kHz · 16-bit · Stereo', cover: 'Low Tide Hours', pressingYear: '1992', media: 'CD', labels: 'Harbor Records|HR-1042', country: 'United States', status: 'Official', records: 'MusicBrainz,Discogs', images: 'Low Tide Hours|cover.jpg', files: 'rip.log|4 KB' },
-        h(B.MacImportTrackRow, { file: '01 Low Tide.flac', position: '1', title: 'Low Tide', inherited: true, length: '4:51' }),
-        h(B.MacImportTrackRow, { file: '02 Margins.flac', position: '2', title: 'Margins', inherited: true, length: '3:58' })))),
-    W('Save, reading a file', box(720, h(B.MacReleaseEditor, { actions: 'save', album: 'Low Tide Hours · Mara Quill', albumInLibrary: true, changed: true, reading: 'Reading Low Tide Hours (2019 rip).flac…', title: 'Low Tide Hours', artist: 'Mara Quill', year: '1992', audio: 'FLAC · 44.1 kHz · 16-bit · Stereo', cover: 'Low Tide Hours', pressingYear: '1992', media: 'CD', labels: 'Harbor Records|HR-1042', country: 'United States', status: 'Official', records: 'MusicBrainz,Discogs', images: 'Low Tide Hours|cover.jpg', files: 'rip.log|4 KB' },
-        h(B.MacImportTrackRow, { file: '01 Low Tide.flac', position: '1', title: 'Low Tide', inherited: true, length: '4:51' }),
-        h(B.MacImportTrackRow, { file: '02 Margins.flac', position: '2', title: 'Margins', inherited: true, length: '3:58' })))),
-    W('Save, album picker open', box(720, h(B.MacReleaseEditor, { actions: 'save', album: 'Low Tide Hours · Mara Quill', albumInLibrary: true, albumOpen: true, title: 'Low Tide Hours', artist: 'Mara Quill', year: '1992', audio: 'FLAC · 44.1 kHz · 16-bit · Stereo', cover: 'Low Tide Hours', pressingYear: '1992', media: 'CD', labels: 'Harbor Records|HR-1042', country: 'United States', status: 'Official', records: 'MusicBrainz,Discogs', images: 'Low Tide Hours|cover.jpg', files: 'rip.log|4 KB' },
-        h(B.MacImportTrackRow, { file: '01 Low Tide.flac', position: '1', title: 'Low Tide', inherited: true, length: '4:51' }),
-        h(B.MacImportTrackRow, { file: '02 Margins.flac', position: '2', title: 'Margins', inherited: true, length: '3:58' }))))));
+    W('Import', editor({})),
+    W('Two labels', editor({ labels: 'Harbor Records|HR-0412,Tidewater Music|TW-88' })),
+    W('Import to the cloud', editor({ cloud: true, to: 'Cloud' })),
+    W('Import with a folder check', editor({ check: 'The release lists no tracks' })),
+    W('Retry import', editor({ retry: true })),
+    W('Nothing to import', editor({ blank: true })),
+    W('Import, nothing read', editor({ unread: true })),
+    W('Save', editor({ actions: 'save' })),
+    W('Save, changed', editor({ actions: 'save', changed: true })),
+    W('Save, reading a file', editor({ actions: 'save', changed: true, reading: 'Reading Northbound (2019 rip).flac…' })),
+    W('Save, album picker open', editor({ actions: 'save', albumOpen: true }))));
 </script>
 </body>
 </html>
