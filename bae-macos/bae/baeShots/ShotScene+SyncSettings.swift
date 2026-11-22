@@ -24,7 +24,6 @@ extension ShotScene {
                         ),
                         shown: dropboxAskedToWait
                     )
-                    .environment(\.countdownNow, ShotClock.now)
                 )
             },
             ShotScene(
@@ -153,7 +152,7 @@ extension ShotScene {
             )
         ),
         fix: nil,
-        lastSynced: Date(timeIntervalSinceNow: -2 * 3_600)
+        lastSynced: ShotClock.moment(secondsAgo: 2 * 3_600)
     )
 
     /// The new key the boards' sheets show typed.
@@ -169,7 +168,7 @@ extension ShotScene {
         tone: .warning,
         cause: .changesStayOnDevice,
         fix: .enterAccessKey,
-        lastSynced: Date(timeIntervalSinceNow: -3 * 86_400)
+        lastSynced: ShotClock.moment(secondsAgo: 3 * 86_400)
     )
 
     /// The S3 storage the boards draw.

@@ -123,7 +123,7 @@ extension ShotScene {
     @MainActor
     static var boardPlays: [BridgeHistoryPlay] {
         let calendar = Calendar.current
-        let today = calendar.startOfDay(for: .now)
+        let today = calendar.startOfDay(for: ShotClock.now)
         return boardPlayList.enumerated()
             .map { index, play in
                 guard

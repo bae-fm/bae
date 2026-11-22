@@ -46,7 +46,7 @@ extension ShotScene {
         syncStatus(
             "mac.component.sync-status.last-synced",
             height: 140,
-            lastSynced: Date(timeIntervalSinceNow: -3 * 86_400)
+            lastSynced: ShotClock.moment(secondsAgo: 3 * 86_400)
         ),
     ]
 
@@ -89,7 +89,6 @@ extension ShotScene {
                     )
                 )
             )
-            .environment(\.countdownNow, ShotClock.now)
             .environment(Sync.stub())
             #if BAE_OAUTH_PROVIDERS
                 .environment(CloudSyncSetup())

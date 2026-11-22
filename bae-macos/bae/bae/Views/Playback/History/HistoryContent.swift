@@ -142,6 +142,8 @@ private struct HistoryPlays: View {
 
     @State
     private var fit = ListScreenFit()
+    @Environment(\.clockNow)
+    private var clockNow
 
     var body: some View {
         ScrollView {
@@ -176,7 +178,10 @@ private struct HistoryPlays: View {
             VStack(alignment: .leading, spacing: 0) {
                 if play.opensDay {
                     MacQueueSection(
-                        title: HistoryWords.day(play.playedOn),
+                        title: HistoryWords.day(
+                            play.playedOn,
+                            now: clockNow ?? Date()
+                        ),
                         kind: .day(menu: index == 0 ? menu : nil)
                     )
                 }

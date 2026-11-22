@@ -31,7 +31,7 @@ extension ShotScene {
                 tone: .danger,
                 cause: nil,
                 fix: nil,
-                lastSynced: Date(timeIntervalSinceNow: -2 * 3_600)
+                lastSynced: ShotClock.moment(secondsAgo: 2 * 3_600)
             )
         ),
     ]

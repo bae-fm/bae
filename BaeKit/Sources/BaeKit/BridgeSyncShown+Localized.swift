@@ -22,18 +22,18 @@ extension BridgeSyncShown {
         }
     }
 
-    /// When sync last finished, as "2 hours ago", while the state is a
-    /// problem.
-    public var lastSyncedLine: String? {
-        lastSynced.map(\.agoLine)
+    /// When sync last finished, as "2 hours ago" at `now`, while the state is
+    /// a problem.
+    public func lastSyncedLine(now: Date) -> String? {
+        lastSynced.map { $0.agoLine(now: now) }
     }
 }
 
 extension Date {
-    /// How long ago this moment was, as "2 hours ago".
-    public var agoLine: String {
+    /// How long before `now` this moment was, as "2 hours ago".
+    public func agoLine(now: Date) -> String {
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .full
-        return formatter.localizedString(for: self, relativeTo: Date())
+        return formatter.localizedString(for: self, relativeTo: now)
     }
 }

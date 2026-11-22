@@ -16,6 +16,8 @@ struct WelcomeLibraryDetails: View {
     /// library with storage has one.
     @State
     private var status: SectionLoad<BridgeLibraryStanding> = .loading
+    @Environment(\.clockNow)
+    private var clockNow
 
     private var storage: BridgeStorageLocation? {
         if case .openable(let storage) = library.state { return storage }
@@ -53,7 +55,10 @@ struct WelcomeLibraryDetails: View {
                     tone: status.statusTone
                 )
                 if let lastSynced = status.lastSynced {
-                    MacRow("Last synced", value: lastSynced.agoLine)
+                    MacRow(
+                        "Last synced",
+                        value: lastSynced.agoLine(now: clockNow ?? Date())
+                    )
                 }
             }
             MacCloudHome(location: storage, shown: .bare)

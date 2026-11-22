@@ -14,7 +14,7 @@ extension PreviewData {
     /// An enqueue time `minutes` in the past, as Unix epoch milliseconds —
     /// what the queue rows render as a "2m ago" relative label.
     static func queuedAt(minutesAgo minutes: Int) -> Int64 {
-        Int64(Date().timeIntervalSince1970 * 1000)
+        Int64(ShotClock.now.timeIntervalSince1970 * 1000)
             - Int64(minutes) * 60_000
     }
 

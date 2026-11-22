@@ -43,7 +43,7 @@ extension ShotScene {
                 countdown: countdownKey.map {
                     BridgeCountdown(
                         key: $0,
-                        until: Date().addingTimeInterval(11.95)
+                        until: ShotClock.moment(secondsLeft: 11.95)
                     )
                 }
             )

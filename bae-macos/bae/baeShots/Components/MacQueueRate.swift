@@ -101,8 +101,8 @@ extension ShotScene {
                 bySettingHour: 18,
                 minute: 40,
                 second: 0,
-                of: Date()
-            ) ?? Date()
+                of: ShotClock.now
+            ) ?? ShotClock.now
         return Int64(time.timeIntervalSince1970 * 1000)
     }()
 }

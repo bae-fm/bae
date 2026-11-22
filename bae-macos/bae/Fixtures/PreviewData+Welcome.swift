@@ -106,7 +106,7 @@ extension PreviewData {
                 lastSynced: nil
             )
         ),
-        lastSynced: Date(timeIntervalSinceNow: -2 * 3_600)
+        lastSynced: ShotClock.moment(secondsAgo: 2 * 3_600)
     )
 
     /// The sync status of a library that is synced, or, with no cloud home,
@@ -126,7 +126,7 @@ extension PreviewData {
     /// The same library holding changes this Mac never uploaded.
     static let standingUnsent = BridgeLibraryStanding(
         state: .unsentChanges,
-        lastSynced: Date(timeIntervalSinceNow: -2 * 3_600)
+        lastSynced: ShotClock.moment(secondsAgo: 2 * 3_600)
     )
 
     /// A `LibrarySetup` whose reads serve the fixtures above — the

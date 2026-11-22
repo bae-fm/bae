@@ -142,7 +142,7 @@ struct SyncStatusStoreTests {
             countdown.line(at: resumes.addingTimeInterval(-0.5))
                 == "Resuming in 1 second."
         )
-        #expect(shown.lastSyncedLine == "2 hours ago")
+        #expect(shown.lastSyncedLine(now: Date()) == "2 hours ago")
         #expect(shown.statusTone.color == StatusTone.warning.color)
     }
 
