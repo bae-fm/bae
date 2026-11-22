@@ -24,16 +24,17 @@ extension PreviewData {
         live: BridgeCandidateLiveState = triageLive(boardDraftActions),
         importStatus: BridgeTriageImportStatus? = nil,
         upload: BridgeUploadProgress? = nil
-    ) -> BridgeTriageRow {
+    ) throws -> BridgeTriageRow {
         triageRow(
             for: boardCandidate(folder),
             placement: placement,
             metadataSummary: summary,
             cover:
-                summary.flatMap {
-                    BoardArtwork.scannedFile(named: $0.albumTitle)
-                }
-                .map { .local(file: $0) },
+                try summary.map {
+                    .local(
+                        file: try BoardArtwork.scannedFile(named: $0.albumTitle)
+                    )
+                },
             importStatus: importStatus,
             upload: upload,
             metadataProvenance: record.map {
@@ -85,12 +86,12 @@ extension PreviewData {
     /// The Found tab's rows as the boards list them.
     static func foundItems(
         northbound: NorthboundStanding
-    ) -> [BridgeImportListItem] {
-        groupItems() + lookupItems() + importItems(northbound: northbound)
+    ) throws -> [BridgeImportListItem] {
+        try groupItems() + lookupItems() + importItems(northbound: northbound)
     }
 
     /// Field Recordings' two discs, listed under their folder's header.
-    static func groupItems() -> [BridgeImportListItem] {
+    static func groupItems() throws -> [BridgeImportListItem] {
         let header = groupHeader(
             key: fieldRecordingsGroupKey,
             name: "Mara Quill \u{2014} Field Recordings (1979)",
@@ -99,7 +100,7 @@ extension PreviewData {
         return [
             .groupHeader(header: header),
             candidateItem(
-                boardRow(
+                try boardRow(
                     .fieldRecordings,
                     summary: BridgeTriageMetadataSummary(
                         albumTitle: "Field Recordings",
@@ -110,7 +111,7 @@ extension PreviewData {
                 header: header
             ),
             candidateItem(
-                boardRow(
+                try boardRow(
                     .fieldRecordingsDisc2,
                     live: triageLive(
                         [.skip, .revealFolder],
@@ -125,10 +126,10 @@ extension PreviewData {
     }
 
     /// The rows the lookups left to the person or have not reached.
-    static func lookupItems() -> [BridgeImportListItem] {
+    static func lookupItems() throws -> [BridgeImportListItem] {
         [
             candidateItem(
-                boardRow(
+                try boardRow(
                     .lowTideHours,
                     summary: BridgeTriageMetadataSummary(
                         albumTitle: "Low Tide Hours",
@@ -139,7 +140,7 @@ extension PreviewData {
                 )
             ),
             candidateItem(
-                boardRow(
+                try boardRow(
                     .copperSky,
                     summary: BridgeTriageMetadataSummary(
                         albumTitle: "Copper Sky",
@@ -149,10 +150,10 @@ extension PreviewData {
                 )
             ),
             candidateItem(
-                boardRow(.untitled07, live: needsYou(.nothingToLookUp))
+                try boardRow(.untitled07, live: needsYou(.nothingToLookUp))
             ),
             candidateItem(
-                boardRow(
+                try boardRow(
                     .smallHours,
                     summary: BridgeTriageMetadataSummary(
                         albumTitle: "Small Hours",
@@ -166,7 +167,7 @@ extension PreviewData {
                 )
             ),
             candidateItem(
-                boardRow(
+                try boardRow(
                     .winterKitchen,
                     summary: BridgeTriageMetadataSummary(
                         albumTitle: "Winter Kitchen",
@@ -182,11 +183,11 @@ extension PreviewData {
     /// `northbound` has it.
     static func importItems(
         northbound: NorthboundStanding
-    ) -> [BridgeImportListItem] {
+    ) throws -> [BridgeImportListItem] {
         let northboundRow: BridgeTriageRow =
             switch northbound {
             case .importing:
-                boardRow(
+                try boardRow(
                     .northbound,
                     summary: BridgeTriageMetadataSummary(
                         albumTitle: "Northbound",
@@ -196,7 +197,7 @@ extension PreviewData {
                     live: northboundImportingLive
                 )
             case .identified:
-                boardRow(
+                try boardRow(
                     .northbound,
                     summary: BridgeTriageMetadataSummary(
                         albumTitle: "Northbound",
@@ -208,7 +209,7 @@ extension PreviewData {
         return [
             candidateItem(northboundRow),
             candidateItem(
-                boardRow(
+                try boardRow(
                     .saltAndCedar,
                     summary: BridgeTriageMetadataSummary(
                         albumTitle: "Salt and Cedar",
@@ -219,7 +220,7 @@ extension PreviewData {
                 )
             ),
             candidateItem(
-                boardRow(
+                try boardRow(
                     .paperLanterns,
                     summary: BridgeTriageMetadataSummary(
                         albumTitle: "Paper Lanterns",
@@ -256,15 +257,15 @@ extension PreviewData {
     }
 
     /// The Imported tab's rows as the boards list them.
-    static func doneItems() -> [BridgeImportListItem] {
+    static func doneItems() throws -> [BridgeImportListItem] {
         func done(
             _ folder: BoardFolder,
             _ title: String,
             _ artist: String,
             upload: BridgeUploadProgress? = nil
-        ) -> BridgeImportListItem {
+        ) throws -> BridgeImportListItem {
             candidateItem(
-                boardRow(
+                try boardRow(
                     folder,
                     summary: BridgeTriageMetadataSummary(
                         albumTitle: title,
@@ -279,7 +280,7 @@ extension PreviewData {
             )
         }
         return [
-            done(
+            try done(
                 .northbound,
                 "Northbound",
                 "Mara Quill",
@@ -289,9 +290,9 @@ extension PreviewData {
                     activity: .uploading
                 )
             ),
-            done(.driftwood, "Driftwood", "Mara Quill"),
-            done(.glassHarbor, "Glass Harbor", "Ines Varga Trio"),
-            done(.lateArrivals, "Late Arrivals", "The Slow Orchards"),
+            try done(.driftwood, "Driftwood", "Mara Quill"),
+            try done(.glassHarbor, "Glass Harbor", "Ines Varga Trio"),
+            try done(.lateArrivals, "Late Arrivals", "The Slow Orchards"),
         ]
     }
 
@@ -311,23 +312,27 @@ extension PreviewData {
 
     /// The folder whose tags name a release, two of its audio files
     /// damaged.
-    static let boardHarborWaltz = BridgeInvalidCandidate(
-        candidateKey: BoardFolder.harborWaltz.key,
-        folderPath: BoardFolder.harborWaltz.key,
-        sourceFolderName: BoardFolder.harborWaltz.name,
-        watchedFolderPath: importWatchedFolderPath,
-        separable: false,
-        reason: .damagedAudio(count: 2),
-        tags: BridgeSkippedTags(
-            albumTitle: "Harbor Waltz",
-            artist: .named("Ada Lindqvist")
-        ),
-        cover: BoardArtwork.scannedFile(named: "Glass Harbor")
-            .map { .local(file: $0) }
-    )
+    static func boardHarborWaltz() throws -> BridgeInvalidCandidate {
+        BridgeInvalidCandidate(
+            candidateKey: BoardFolder.harborWaltz.key,
+            folderPath: BoardFolder.harborWaltz.key,
+            sourceFolderName: BoardFolder.harborWaltz.name,
+            watchedFolderPath: importWatchedFolderPath,
+            separable: false,
+            reason: .damagedAudio(count: 2),
+            tags: BridgeSkippedTags(
+                albumTitle: "Harbor Waltz",
+                artist: .named("Ada Lindqvist")
+            ),
+            cover: .local(
+                file: try BoardArtwork.scannedFile(named: "Glass Harbor")
+            )
+        )
+
+    }
 
     /// The Skipped tab's rows as the board lists them.
-    static func skippedItems() -> [BridgeImportListItem] {
-        [boardEmptyFolder, boardHarborWaltz].map(invalidItem)
+    static func skippedItems() throws -> [BridgeImportListItem] {
+        [boardEmptyFolder, try boardHarborWaltz()].map(invalidItem)
     }
 }

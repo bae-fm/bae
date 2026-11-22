@@ -20,7 +20,7 @@ struct ShotScene {
     /// of an app that is not active, which is never key; this one is in a
     /// panel that does not activate the app.
     var keyWindow = false
-    let stage: () -> ShotStage
+    let stage: () throws -> ShotStage
 
     /// Every macOS scene, one for each board it is shot for. A scene is
     /// present only when it has a real staging; a missing scene is a

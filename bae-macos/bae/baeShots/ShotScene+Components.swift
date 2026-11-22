@@ -216,7 +216,7 @@ extension ShotScene {
         images: ImageStore? = nil,
         isReady: @escaping @MainActor () -> Bool = { true },
         isDrawn: @escaping @MainActor (NSView) -> Bool = { _ in true },
-        @ViewBuilder view: @escaping @MainActor () -> Content
+        @ViewBuilder view: @escaping @MainActor () throws -> Content
     ) -> ShotScene {
         let margin = page ? ThemeSpace.edge : 0
         let size = CGSize(
@@ -224,7 +224,7 @@ extension ShotScene {
             height: height + 2 * margin
         )
         return ShotScene(id: id, size: size, frame: .component) {
-            let content = view()
+            let content = try view()
                 .padding(margin)
                 .frame(
                     maxWidth: .infinity,

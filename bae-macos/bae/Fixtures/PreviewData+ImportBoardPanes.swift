@@ -23,7 +23,7 @@ extension PreviewData {
     @MainActor
     static func northboundDraftCandidate(
         importStep: BridgeImportStep? = nil
-    ) -> Candidate {
+    ) throws -> Candidate {
         paneCandidate(
             folder: northboundFolder(),
             metadataProvenance: .externalRelease(
@@ -35,8 +35,8 @@ extension PreviewData {
             releaseLink: boardLink("board-northbound"),
             edit: northboundEdit(),
             releaseLines: releaseLines(of: northboundEdit(), minutes: 18),
-            mapping: northboundMapping(),
-            cover: boardCover("Northbound"),
+            mapping: try northboundMapping(),
+            cover: try boardCover("Northbound"),
             placement: .pending(
                 folderCheck: nil,
                 records: boardRecords("board-northbound")
@@ -51,7 +51,7 @@ extension PreviewData {
     /// Northbound after its import: the release this device made and the
     /// images its scan read.
     @MainActor
-    static func northboundImportedCandidate() -> Candidate {
+    static func northboundImportedCandidate() throws -> Candidate {
         let release = boardImported(.northbound)
         return Candidate(
             detail: BridgeImportCandidateDetail(
@@ -62,7 +62,10 @@ extension PreviewData {
                 live: triageLive([.revealFolder]),
                 importStatus: .complete(release: release),
                 signals: nil,
-                stage: .imported(release: release, images: northboundImages)
+                stage: .imported(
+                    release: release,
+                    images: try northboundImages()
+                )
             )
         )
     }
@@ -202,7 +205,7 @@ extension PreviewData {
     /// Low Tide Hours' draft, a release the library already holds: its
     /// pick read from MusicBrainz and Discogs, its artist in the library.
     @MainActor
-    static func lowTideHoursCandidate() -> Candidate {
+    static func lowTideHoursCandidate() throws -> Candidate {
         let tracks = lowTideHoursTracks
         let edit = lowTideHoursEdit()
         let records =
@@ -229,13 +232,12 @@ extension PreviewData {
             releaseLink: boardLink("board-low-tide-hours"),
             edit: edit,
             mapping: BridgeMappingTable(
-                images: boardImage("cover.jpg", art: "Low Tide Hours")
-                    .map { [$0] } ?? [],
+                images: [try boardImage("cover.jpg", art: "Low Tide Hours")],
                 trackSides: boardTrackSides(tracks, edit: edit),
                 files: lowTideHoursFiles.map { .file(file: $0) },
                 untitledTrackCount: 0
             ),
-            cover: boardCover("Low Tide Hours"),
+            cover: try boardCover("Low Tide Hours"),
             placement: .pending(folderCheck: nil, records: records),
             live: needsYou(.matches(count: 3)),
             libraryStatus: lowTideHoursInLibrary,
@@ -415,7 +417,7 @@ extension PreviewData {
     /// carving three tracks, the second waiting for the audio it names. The
     /// release lists no tracks.
     @MainActor
-    static func fieldRecordingsCandidate() -> Candidate {
+    static func fieldRecordingsCandidate() throws -> Candidate {
         let sheetOne = fieldRecordingsSheet(
             1,
             bound: .describes(container: fieldRecordingsContainer)
@@ -461,7 +463,7 @@ extension PreviewData {
                 files: [],
                 untitledTrackCount: 0
             ),
-            cover: boardCover("Field Recordings"),
+            cover: try boardCover("Field Recordings"),
             placement: .pending(
                 folderCheck: .sourceTracksUnknown,
                 records: boardRecords("board-field-recordings")
@@ -509,7 +511,7 @@ extension PreviewData {
     static func notFoundCandidate(
         _ found: NotFoundFolder,
         session: CandidatePaneState
-    ) -> Candidate {
+    ) throws -> Candidate {
         let edit = boardEdit(
             title: found.album,
             artist: found.artist,
@@ -523,7 +525,7 @@ extension PreviewData {
                     )
                 }
         )
-        let image = boardImage("\(found.album).jpg", art: found.album)
+        let image = try boardImage("\(found.album).jpg", art: found.album)
         return paneCandidate(
             folder: boardFolder(
                 found.folder,
@@ -535,17 +537,15 @@ extension PreviewData {
             metadataProvenance: .fileMetadata,
             edit: edit,
             mapping: BridgeMappingTable(
-                images: image.map { [$0] } ?? [],
+                images: [image],
                 trackSides: boardTrackSides(notFoundTracks, edit: edit),
                 files: [],
                 untitledTrackCount: 0
             ),
-            cover: image.map {
-                BridgeCoverChoice(
-                    selection: .releaseImage(fileId: $0.fileId),
-                    image: .local(file: $0.file)
-                )
-            },
+            cover: BridgeCoverChoice(
+                selection: .releaseImage(fileId: image.fileId),
+                image: .local(file: image.file)
+            ),
             session: session,
             live: needsYou(.notFound),
             albumArtists: boardLibraryArtists(found.artist)
@@ -692,43 +692,53 @@ extension PreviewData {
 
     /// Harbor Waltz as its read answers it: its one image, then its other
     /// files, two of its audio files damaged.
-    static let boardHarborWaltzDetail = BridgeInvalidCandidateDetail(
-        candidate: boardHarborWaltz,
-        images: boardImage("folder.jpg", art: "Glass Harbor").map { [$0] }
-            ?? [],
-        files: [
-            mappingFile(
-                previewFile(
-                    name: "01 Harbor Waltz.flac",
-                    size: 28_400_000,
+    static func boardHarborWaltzDetail() throws -> BridgeInvalidCandidateDetail
+    {
+        BridgeInvalidCandidateDetail(
+            candidate: try boardHarborWaltz(),
+            images: [try boardImage("folder.jpg", art: "Glass Harbor")],
+            files: [
+                mappingFile(
+                    previewFile(
+                        name: "01 Harbor Waltz.flac",
+                        size: 28_400_000,
+                        role: .audio
+                    ),
                     role: .audio
                 ),
-                role: .audio
-            ),
-            mappingFile(
-                previewFile(name: "02 Night Shift.flac", size: 0, role: .audio),
-                role: .damagedAudio(damage: .empty)
-            ),
-            mappingFile(
-                previewFile(
-                    name: "03 Tide Table.flac",
-                    size: 31_200_000,
+                mappingFile(
+                    previewFile(
+                        name: "02 Night Shift.flac",
+                        size: 0,
+                        role: .audio
+                    ),
+                    role: .damagedAudio(damage: .empty)
+                ),
+                mappingFile(
+                    previewFile(
+                        name: "03 Tide Table.flac",
+                        size: 31_200_000,
+                        role: .audio
+                    ),
+                    role: .damagedAudio(damage: .unreadable)
+                ),
+                mappingFile(
+                    previewFile(
+                        name: "04 Last Ferry.flac",
+                        size: 26_900_000,
+                        role: .audio
+                    ),
                     role: .audio
                 ),
-                role: .damagedAudio(damage: .unreadable)
-            ),
-            mappingFile(
-                previewFile(
-                    name: "04 Last Ferry.flac",
-                    size: 26_900_000,
-                    role: .audio
+                mappingFile(
+                    previewFile(
+                        name: "notes.txt",
+                        size: 2_000,
+                        role: .document
+                    ),
+                    role: .document
                 ),
-                role: .audio
-            ),
-            mappingFile(
-                previewFile(name: "notes.txt", size: 2_000, role: .document),
-                role: .document
-            ),
-        ]
-    )
+            ]
+        )
+    }
 }

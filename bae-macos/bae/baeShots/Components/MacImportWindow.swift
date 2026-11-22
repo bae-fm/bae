@@ -13,9 +13,9 @@ extension ShotScene {
             height: 420,
             images: PreviewData.artImageStore()
         ) {
-            importWindow(
+            try importWindow(
                 .found(northbound: .identified, opening: .lowTideHours),
-                items: previewRows()
+                items: try previewRows()
             )
         },
         component(
@@ -24,9 +24,9 @@ extension ShotScene {
             height: 420,
             images: PreviewData.artImageStore()
         ) {
-            importWindow(
+            try importWindow(
                 .found(northbound: .identified, opening: nil),
-                items: previewRows()
+                items: try previewRows()
             )
         },
     ]
@@ -37,11 +37,11 @@ extension ShotScene {
     private static func importWindow(
         _ board: PreviewData.ImportBoard,
         items: [BridgeImportListItem]
-    ) -> some View {
+    ) throws -> some View {
         let uiStore = UiStore()
         uiStore.activeSection = .importing
         uiStore.setImportCandidateTab(board.tab)
-        let scene = PreviewData.importBoardScene(board)
+        let scene = try PreviewData.importBoardScene(board)
         scene.fixture.store.identificationProgress = nil
         scene.fixture.store.importsInFlight = 0
         let fixture = ImportPreviewFixture(
@@ -74,10 +74,10 @@ extension ShotScene {
 
     /// The preview's list: Low Tide Hours read from its release, which
     /// needs nothing from the person, and Copper Sky, not found.
-    private static func previewRows() -> [BridgeImportListItem] {
+    private static func previewRows() throws -> [BridgeImportListItem] {
         [
             PreviewData.candidateItem(
-                PreviewData.boardRow(
+                try PreviewData.boardRow(
                     .lowTideHours,
                     summary: BridgeTriageMetadataSummary(
                         albumTitle: "Low Tide Hours",
@@ -86,7 +86,7 @@ extension ShotScene {
                     record: "board-low-tide-hours"
                 )
             ),
-            PreviewData.lookupItems()[1],
+            try PreviewData.lookupItems()[1],
         ]
     }
 }

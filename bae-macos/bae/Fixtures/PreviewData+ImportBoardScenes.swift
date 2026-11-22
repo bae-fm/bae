@@ -74,22 +74,22 @@ extension PreviewData {
     static func openedCandidate(
         _ pane: FoundPane,
         northbound: NorthboundStanding
-    ) -> Candidate {
+    ) throws -> Candidate {
         switch pane {
         case .northbound:
             switch northbound {
             case .identified:
-                northboundDraftCandidate()
+                try northboundDraftCandidate()
             case .importing:
-                northboundDraftCandidate(
+                try northboundDraftCandidate(
                     importStep: .running(phase: .measuringLoudness)
                 )
             }
-        case .lowTideHours: lowTideHoursCandidate()
-        case .fieldRecordings: fieldRecordingsCandidate()
+        case .lowTideHours: try lowTideHoursCandidate()
+        case .fieldRecordings: try fieldRecordingsCandidate()
         case .untitled07: untitledCandidate()
         case .copperSky:
-            notFoundCandidate(
+            try notFoundCandidate(
                 copperSky,
                 session: paneSession(
                     presentation: .findOnline,
@@ -99,7 +99,7 @@ extension PreviewData {
                 )
             )
         case .winterKitchen:
-            notFoundCandidate(
+            try notFoundCandidate(
                 winterKitchen,
                 session: paneSession(presentation: .findOnline)
             )
@@ -214,14 +214,14 @@ extension PreviewData {
     static func openBoardFolder(
         _ board: ImportBoard,
         in store: ImportStore
-    ) -> ImportSelection {
+    ) throws -> ImportSelection {
         switch board {
         case .found(_, nil):
             return ImportSelection()
         case .several:
             return boardSeveralSelection
         case .found(let northbound, let pane?):
-            let opened = openedCandidate(pane, northbound: northbound)
+            let opened = try openedCandidate(pane, northbound: northbound)
             store.selectedCandidates[opened.key] = opened
             return boardSelection(
                 .candidate(key: opened.key),
@@ -229,7 +229,7 @@ extension PreviewData {
                 offers: opened.live?.offers ?? []
             )
         case .imported:
-            let opened = northboundImportedCandidate()
+            let opened = try northboundImportedCandidate()
             store.selectedCandidates[opened.key] = opened
             return boardSelection(
                 .candidate(key: opened.key),
@@ -237,7 +237,7 @@ extension PreviewData {
                 offers: opened.live?.offers ?? []
             )
         case .skipped:
-            let opened = boardHarborWaltzDetail
+            let opened = try boardHarborWaltzDetail()
             let key = opened.candidate.candidateKey
             store.selectedInvalidCandidates[key] = opened
             return boardSelection(
@@ -249,7 +249,9 @@ extension PreviewData {
     }
 
     @MainActor
-    static func importBoardScene(_ board: ImportBoard) -> ImportBoardScene {
+    static func importBoardScene(_ board: ImportBoard) throws
+        -> ImportBoardScene
+    {
         let store = ImportStore()
         store.applySummary(
             importQueueSummary(hasWatchedFolders: true, hasGroups: true)
@@ -263,14 +265,14 @@ extension PreviewData {
         case .imported, .skipped:
             break
         }
-        let selection = openBoardFolder(board, in: store)
+        let selection = try openBoardFolder(board, in: store)
         return ImportBoardScene(
             fixture: ImportPreviewFixture(
                 store: store,
                 itemsByTab: [
-                    .pending: foundItems(northbound: board.northbound),
-                    .done: doneItems(),
-                    .skipped: skippedItems(),
+                    .pending: try foundItems(northbound: board.northbound),
+                    .done: try doneItems(),
+                    .skipped: try skippedItems(),
                 ],
                 tabCounts: BridgeTriageTabCounts(
                     pending: 10,

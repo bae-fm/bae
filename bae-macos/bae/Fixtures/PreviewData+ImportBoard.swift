@@ -150,26 +150,28 @@ extension PreviewData {
     }
 
     /// The folder's image file `name`, drawn as the artwork `art`.
-    static func boardImage(_ name: String, art: String) -> BridgeMappingImage? {
-        BoardArtwork.scannedFile(named: art)
-            .map { BridgeMappingImage(fileId: name, name: name, file: $0) }
+    static func boardImage(_ name: String, art: String) throws
+        -> BridgeMappingImage
+    {
+        BridgeMappingImage(
+            fileId: name,
+            name: name,
+            file: try BoardArtwork.scannedFile(named: art)
+        )
     }
 
-    /// Northbound's folder images: its front cover and its back.
-    static let northboundImages = [
-        boardImage("cover.jpg", art: "Northbound"),
-        boardImage("back.jpg", art: "Northbound back"),
-    ]
-    .compactMap { $0 }
+    static func northboundImages() throws -> [BridgeMappingImage] {
+        [
+            try boardImage("cover.jpg", art: "Northbound"),
+            try boardImage("back.jpg", art: "Northbound back"),
+        ]
+    }
 
-    static func boardCover(_ name: String) -> BridgeCoverChoice? {
-        BoardArtwork.scannedFile(named: name)
-            .map { file in
-                BridgeCoverChoice(
-                    selection: .releaseImage(fileId: "\(name).jpg"),
-                    image: .local(file: file)
-                )
-            }
+    static func boardCover(_ name: String) throws -> BridgeCoverChoice {
+        BridgeCoverChoice(
+            selection: .releaseImage(fileId: "\(name).jpg"),
+            image: .local(file: try BoardArtwork.scannedFile(named: name))
+        )
     }
 
     // MARK: - Artists
@@ -286,9 +288,9 @@ extension PreviewData {
 
     /// Northbound's four files, each the track it becomes, with the folder's
     /// two images and the files carried alongside.
-    static func northboundMapping() -> BridgeMappingTable {
+    static func northboundMapping() throws -> BridgeMappingTable {
         BridgeMappingTable(
-            images: northboundImages,
+            images: try northboundImages(),
             trackSides: boardTrackSides(
                 northboundTracks,
                 edit: northboundEdit()

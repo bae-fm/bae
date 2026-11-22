@@ -22,7 +22,7 @@ extension ShotScene {
                 typed: "tide",
                 narrowed: BridgeNarrowedCount(shown: 1, total: 14),
                 filtered: true,
-                items: [PreviewData.lookupItems()[0]]
+                items: { [try PreviewData.lookupItems()[0]] }
             )
         ),
         sidebarScene(
@@ -35,7 +35,7 @@ extension ShotScene {
                 typed: "harbor",
                 narrowed: BridgeNarrowedCount(shown: 0, total: 14),
                 filtered: true,
-                items: []
+                items: { [] }
             )
         ),
         sidebarScene(
@@ -48,7 +48,7 @@ extension ShotScene {
     /// The column as the app builds it: the container over a store and a
     /// slot that hold `state`.
     @MainActor
-    private static func column(_ state: ColumnState) -> some View {
+    private static func column(_ state: ColumnState) throws -> some View {
         let store = columnStore(state)
         let uiStore = UiStore()
         uiStore.setImportCandidateTab(state.tab)
@@ -58,7 +58,7 @@ extension ShotScene {
         )
         let fixture = ImportPreviewFixture(
             store: store,
-            itemsByTab: [state.tab: state.items],
+            itemsByTab: [state.tab: try state.items()],
             tabCounts: columnCounts
         )
         return MacImportSidebarContainer(
@@ -93,7 +93,7 @@ extension ShotScene {
             images: PreviewData.artImageStore()
         ) {
             importStores(
-                column(state)
+                try column(state)
                     .frame(width: width, height: 360, alignment: .top)
                     .background(Theme.surface)
             )

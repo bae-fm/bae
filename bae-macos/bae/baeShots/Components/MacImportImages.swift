@@ -27,8 +27,8 @@ extension ShotScene {
             images: PreviewData.artImageStore()
         ) {
             MacImportImages(
-                images: names.compactMap {
-                    PreviewData.boardImage(
+                images: try names.map {
+                    try PreviewData.boardImage(
                         "\($0).jpg",
                         art: "Low Tide Hours\(art[$0] ?? "")"
                     )

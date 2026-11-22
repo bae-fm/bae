@@ -562,7 +562,9 @@ extension ShotScene {
         var importing = false
         var scanning = false
         var filtered = false
-        var items: [BridgeImportListItem] = PreviewData.lookupItems()
+        var items: () throws -> [BridgeImportListItem] = {
+            try PreviewData.lookupItems()
+        }
     }
 
     static let columnCounts = BridgeTriageTabCounts(

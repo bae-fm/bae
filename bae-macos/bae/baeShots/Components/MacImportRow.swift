@@ -11,12 +11,12 @@ extension ShotScene {
             height: 260,
             images: PreviewData.artImageStore()
         ) {
-            importStores(importRows())
+            importStores(try importRows())
                 .frame(width: 420, alignment: .leading)
         },
         importRowScene("mac.component.import-row.badge-tone-danger") {
             importRow(
-                lowTideRow(
+                try lowTideRow(
                     live: PreviewData.triageLive(
                         [.skip, .revealFolder],
                         standing: .needsYou(reason: .matches(count: 3)),
@@ -29,9 +29,10 @@ extension ShotScene {
             )
         },
         importRowScene("mac.component.import-row.grouped") {
+            let row = try lowTideRow()
             MacImportRow(
-                row: lowTideRow(),
-                coverContent: lowTideRow().cover
+                row: row,
+                coverContent: row.cover
                     .map(
                         ImageContent.init(bridge:)
                     ),
@@ -39,12 +40,12 @@ extension ShotScene {
             )
         },
         importRowScene("mac.component.import-row.selected") {
-            importRow(lowTideRow())
+            importRow(try lowTideRow())
                 .background(Theme.accentSoft)
         },
         importRowScene("mac.component.import-row.identifying") {
             importRow(
-                lowTideRow(
+                try lowTideRow(
                     live: PreviewData.triageLive(
                         [.skip, .revealFolder],
                         identifying: .running,
@@ -55,7 +56,7 @@ extension ShotScene {
         },
         importRowScene("mac.component.import-row.import-queued") {
             importRow(
-                lowTideRow(
+                try lowTideRow(
                     live: PreviewData.triageLive(
                         [],
                         importStep: .preparing(step: .queued)
@@ -64,7 +65,7 @@ extension ShotScene {
             )
         },
         importRowScene("mac.component.import-row.uploading") {
-            importRow(uploadingRow())
+            importRow(try uploadingRow())
                 .environment(
                     uploadingOutbox(
                         PreviewData.boardImported(.lowTideHours).releaseId,
@@ -81,8 +82,8 @@ extension ShotScene {
         artist: String? = nil,
         record: String? = nil,
         live: BridgeCandidateLiveState
-    ) -> BridgeTriageRow {
-        PreviewData.boardRow(
+    ) throws -> BridgeTriageRow {
+        try PreviewData.boardRow(
             folder,
             summary: title.map {
                 BridgeTriageMetadataSummary(
@@ -99,8 +100,8 @@ extension ShotScene {
         live: BridgeCandidateLiveState = PreviewData.needsYou(
             .matches(count: 3)
         )
-    ) -> BridgeTriageRow {
-        listRow(
+    ) throws -> BridgeTriageRow {
+        try listRow(
             .lowTideHours,
             title: "Low Tide Hours",
             artist: "Mara Quill",
@@ -110,8 +111,8 @@ extension ShotScene {
     }
 
     /// Low Tide Hours after its import, while its files upload.
-    private static func uploadingRow() -> BridgeTriageRow {
-        PreviewData.boardRow(
+    private static func uploadingRow() throws -> BridgeTriageRow {
+        try PreviewData.boardRow(
             .lowTideHours,
             summary: BridgeTriageMetadataSummary(
                 albumTitle: "Low Tide Hours",
@@ -131,8 +132,8 @@ extension ShotScene {
         )
     }
 
-    private static func northboundRow() -> BridgeTriageRow {
-        listRow(
+    private static func northboundRow() throws -> BridgeTriageRow {
+        try listRow(
             .northbound,
             title: "Northbound",
             artist: "Mara Quill",
@@ -144,7 +145,7 @@ extension ShotScene {
     /// One row of the import list in the preview's 420pt column.
     private static func importRowScene(
         _ id: String,
-        @ViewBuilder row: @escaping @MainActor () -> some View
+        @ViewBuilder row: @escaping @MainActor () throws -> some View
     ) -> ShotScene {
         component(
             id,
@@ -153,7 +154,7 @@ extension ShotScene {
             images: PreviewData.artImageStore()
         ) {
             importStores(
-                row()
+                try row()
                     .environment(\.importPercents, rowPercents())
                     .frame(width: 420, alignment: .leading)
             )
@@ -175,36 +176,35 @@ extension ShotScene {
         )
     }
 
-    private static func importRows() -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            importRow(lowTideRow())
-            importRow(
-                listRow(
-                    .untitled07,
-                    live: PreviewData.needsYou(.nothingToLookUp)
+    private static func importRows() throws -> some View {
+        let rows = [
+            try lowTideRow(),
+            try listRow(
+                .untitled07,
+                live: PreviewData.needsYou(.nothingToLookUp)
+            ),
+            try listRow(
+                .northbound,
+                title: "Northbound",
+                artist: "Mara Quill",
+                record: "component-northbound",
+                live: PreviewData.northboundImportingLive
+            ),
+            try listRow(
+                .smallHours,
+                title: "Small Hours",
+                artist: "Tomas Brell",
+                live: PreviewData.triageLive(
+                    [.skip, .revealFolder],
+                    identifying: .queued,
+                    standing: .identifying
                 )
-            )
-            importRow(
-                listRow(
-                    .northbound,
-                    title: "Northbound",
-                    artist: "Mara Quill",
-                    record: "component-northbound",
-                    live: PreviewData.northboundImportingLive
-                )
-            )
-            importRow(
-                listRow(
-                    .smallHours,
-                    title: "Small Hours",
-                    artist: "Tomas Brell",
-                    live: PreviewData.triageLive(
-                        [.skip, .revealFolder],
-                        identifying: .queued,
-                        standing: .identifying
-                    )
-                )
-            )
+            ),
+        ]
+        return VStack(alignment: .leading, spacing: 0) {
+            ForEach(rows.indices, id: \.self) { index in
+                importRow(rows[index])
+            }
         }
         .environment(\.importPercents, rowPercents())
     }

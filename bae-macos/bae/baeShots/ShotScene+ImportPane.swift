@@ -49,7 +49,7 @@ extension ShotScene {
             id: "mac.import.folder.imported",
             size: CGSize(width: 1_400, height: 1_300)
         ) {
-            importPaneStage(
+            try importPaneStage(
                 .imported,
                 size: CGSize(width: 1_400, height: 1_300),
                 releaseEditor: PreviewData.releaseEditor(
@@ -89,7 +89,7 @@ extension ShotScene {
             id: "mac.import.identify.no-discogs-key",
             size: CGSize(width: 1_400, height: 900)
         ) {
-            importPaneStage(
+            try importPaneStage(
                 .found(northbound: .importing, opening: .winterKitchen),
                 size: CGSize(width: 1_400, height: 900),
                 discogsUsable: false
@@ -105,7 +105,7 @@ extension ShotScene {
         _ board: PreviewData.ImportBoard
     ) -> ShotScene {
         ShotScene(id: id, size: CGSize(width: width, height: height)) {
-            importPaneStage(
+            try importPaneStage(
                 board,
                 size: CGSize(width: width, height: height)
             )
@@ -120,12 +120,12 @@ extension ShotScene {
         size: CGSize,
         discogsUsable: Bool = true,
         releaseEditor: ReleaseEditor? = nil,
-        isDrawn: @escaping @MainActor (NSView) -> Bool = { _ in true }
+        isDrawn: @escaping @MainActor (NSView) throws -> Bool = { _ in true }
     ) -> ShotStage {
         let uiStore = UiStore()
         uiStore.activeSection = .importing
         uiStore.setImportCandidateTab(board.tab)
-        let scene = PreviewData.importBoardScene(board)
+        let scene = try PreviewData.importBoardScene(board)
         let images = PreviewData.artImageStore()
         return ShotStage(
             ShotScenes.libraryWindow(

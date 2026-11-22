@@ -2,7 +2,6 @@ import AppKit
 import BaeKit
 import CryptoKit
 import Foundation
-import Testing
 
 @testable import bae
 
@@ -52,17 +51,12 @@ final class BoardArtwork {
     }
 
     /// The folder scan's local image. A packaging failure fails the capture which asks for it.
-    static func scannedFile(named name: String) -> BridgeFileVersion? {
-        do {
-            let url =
-                try bundledURL(named: name)
-                ?? PreviewData.writeGradient(named: name)
-            return try PreviewData.artVersion(at: url)
-        }
-        catch {
-            Issue.record(error)
-            return nil
-        }
+    static func scannedFile(named name: String) throws -> BridgeFileVersion {
+        let url =
+            try bundledURL(named: name)
+            ?? PreviewData.writeGradient(named: name)
+        return try PreviewData.artVersion(at: url)
+
     }
 
     fileprivate static func gradient(named name: String) -> Data {

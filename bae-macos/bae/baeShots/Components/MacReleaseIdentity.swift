@@ -10,16 +10,18 @@ extension ShotScene {
                 lowTideEdit(),
                 artists: PreviewData.boardLibraryArtists("Mara Quill"),
                 album: libraryAlbum,
-                audio: true
-            ) { coverWell(true) }
+                audio: true,
+                cover: try coverWell(true)
+            )
         },
         identityScene("mac.component.release-identity.new-artist") {
             identity(
                 lowTideEdit(),
                 artists: newArtists,
                 album: .new,
-                audio: true
-            ) { coverWell(true) }
+                audio: true,
+                cover: try coverWell(true)
+            )
         },
         identityScene(
             "mac.component.release-identity.cover-off-while-a-save-reads"
@@ -28,16 +30,18 @@ extension ShotScene {
                 lowTideEdit(),
                 artists: PreviewData.boardLibraryArtists("Mara Quill"),
                 album: libraryAlbum,
-                audio: true
-            ) { coverWell(true, canEdit: false) }
+                audio: true,
+                cover: try coverWell(true, canEdit: false)
+            )
         },
         identityScene("mac.component.release-identity.no-cover") {
             identity(
                 lowTideEdit(),
                 artists: PreviewData.boardLibraryArtists("Mara Quill"),
                 album: nil,
-                audio: true
-            ) { coverWell(false) }
+                audio: true,
+                cover: try coverWell(false)
+            )
         },
         identityScene("mac.component.release-identity.long-title") {
             identity(
@@ -50,24 +54,27 @@ extension ShotScene {
                 ),
                 artists: PreviewData.boardLibraryArtists("Mara Quill"),
                 album: .new,
-                audio: true
-            ) { coverWell(true) }
+                audio: true,
+                cover: try coverWell(true)
+            )
         },
         identityScene("mac.component.release-identity.nothing-under-it") {
             identity(
                 lowTideEdit(),
                 artists: PreviewData.boardLibraryArtists("Mara Quill"),
                 album: nil,
-                audio: false
-            ) { coverWell(true) }
+                audio: false,
+                cover: try coverWell(true)
+            )
         },
         identityScene("mac.component.release-identity.empty") {
             identity(
                 blankEdit(),
                 artists: nil,
                 album: nil,
-                audio: false
-            ) { coverWell(false) }
+                audio: false,
+                cover: try coverWell(false)
+            )
         },
     ]
 
@@ -123,13 +130,14 @@ extension ShotScene {
         return ImportReleaseSummary(candidate: candidate, draft: draft)
     }
 
-    private static func coverWell(_ cover: Bool, canEdit: Bool = true)
+    private static func coverWell(_ cover: Bool, canEdit: Bool = true) throws
         -> some View
     {
         ReleaseCoverWell(
             coverContent: cover
-                ? BoardArtwork.scannedFile(named: "Low Tide Hours")
-                    .map(ImageContent.localFile)
+                ? .localFile(
+                    try BoardArtwork.scannedFile(named: "Low Tide Hours")
+                )
                 : nil,
             onEditCover: cover ? {} : nil,
             onDropImage: nil
@@ -142,7 +150,7 @@ extension ShotScene {
         artists: BridgeArtistField?,
         album: BridgeDraftAlbum?,
         audio: Bool,
-        @ViewBuilder cover: @escaping () -> Cover
+        cover: Cover
     ) -> some View {
         let sourceAudio = audio ? folderAudio() : nil
         return importStores(
@@ -152,7 +160,7 @@ extension ShotScene {
                 writer: ReleaseFieldWriter { _, _ in },
                 editingCommands: EditingCommitCommands(),
                 artistSearch: artistSearch(),
-                cover: cover,
+                cover: { cover },
                 audioFacts: {
                     if let sourceAudio {
                         SourceAudioLine(sourceAudio: sourceAudio)
@@ -175,7 +183,7 @@ extension ShotScene {
     private static func identityScene<Identity: View>(
         _ id: String,
         height: CGFloat = 160,
-        _ identity: @escaping @MainActor () -> Identity
+        _ identity: @escaping @MainActor () throws -> Identity
     ) -> ShotScene {
         component(
             id,
@@ -183,7 +191,7 @@ extension ShotScene {
             height: height,
             images: PreviewData.artImageStore()
         ) {
-            identity()
+            try identity()
         }
     }
 }

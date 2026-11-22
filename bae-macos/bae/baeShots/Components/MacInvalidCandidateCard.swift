@@ -13,7 +13,7 @@ extension ShotScene {
             height: 240,
             images: PreviewData.artImageStore()
         ) {
-            MacInvalidCandidateCard(invalid: skippedFolder(tagged: true))
+            MacInvalidCandidateCard(invalid: try skippedFolder(tagged: true))
                 .frame(width: 720, alignment: .leading)
         },
         component(
@@ -22,7 +22,7 @@ extension ShotScene {
             height: 240,
             images: PreviewData.artImageStore()
         ) {
-            MacInvalidCandidateCard(invalid: skippedFolder(tagged: false))
+            MacInvalidCandidateCard(invalid: try skippedFolder(tagged: false))
                 .frame(width: 720, alignment: .leading)
         },
     ]
@@ -32,7 +32,9 @@ extension ShotScene {
 
     /// A folder in `2024-rips` whose two audio files are damaged, called
     /// Low Tide Hours by Mara Quill when `tagged`, and nothing otherwise.
-    private static func skippedFolder(tagged: Bool) -> BridgeInvalidCandidate {
+    private static func skippedFolder(tagged: Bool) throws
+        -> BridgeInvalidCandidate
+    {
         let path = Data("/Music/Downloads/2024-rips/untitled 07".utf8)
         return BridgeInvalidCandidate(
             candidateKey: path,
@@ -47,8 +49,9 @@ extension ShotScene {
                     artist: .named("Mara Quill")
                 ) : nil,
             cover: tagged
-                ? BoardArtwork.scannedFile(named: "Low Tide Hours")
-                    .map { .local(file: $0) }
+                ? .local(
+                    file: try BoardArtwork.scannedFile(named: "Low Tide Hours")
+                )
                 : nil
         )
     }
