@@ -371,7 +371,7 @@
       h('div', { className: 'bae-m-bulklist' },
         grp('Import', [row('saveAs', 'Import', props.ready || 3, true, props.cloud ? h(MacImportDestination, { to: props.to }) : null), row('xcircle', 'Cancel import of selected', 0), row('grid', 'Combine as one release', 0, true), row('grid', 'Keep as separate releases', 0)]),
         grp('Metadata', [row('refresh', 'Identify selected', n), row('xcircle', 'Stop identifying selected', 0), row('refresh', 'Retry failed identification', 1), row('edit', 'Reset to file metadata', n), row('trash', 'Clear metadata', n)]),
-        grp(null, [row('xcircle', 'Skip selected', n), row('left', 'Restore to Pending', 0)]),
+        grp(null, [row('xcircle', 'Skip selected', n), row('left', 'Restore to pending', 0)]),
         grp(null, [row('folder', 'Reveal in Finder', n)]))),
       props.running ? h('div', { style: { width: 440, display: 'flex', gap: 'var(--space-group)', alignItems: 'flex-end' } }, h('div', { style: { flex: 1 } }, h(MacProgress, { label: props.running, value: 0.4 })), h(MacButton, null, 'Cancel')) : null);
   }
