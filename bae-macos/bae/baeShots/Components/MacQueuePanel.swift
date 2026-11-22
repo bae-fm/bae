@@ -200,6 +200,7 @@ extension ShotScene {
                 sharing: .household,
                 owner: owner("Ben"),
                 yours: false,
+                headerSharing: nil,
                 trackCount: BridgeCountLabel(
                     key: "core.library.track_count",
                     count: 1

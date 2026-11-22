@@ -234,8 +234,7 @@ internal fun AndroidPlaylistHeader(
                         listOfNotNull(
                             summary.owner.name,
                             context.coreString(summary.trackCount),
-                            // Someone else's playlist is seen only through the share: no word on who sees it.
-                            if (summary.yours) stringResource(summary.sharing.labelRes()) else null,
+                            summary.headerSharing?.let { stringResource(it.labelRes()) },
                         ),
                     ),
                 style = ThemeText.detail.style,

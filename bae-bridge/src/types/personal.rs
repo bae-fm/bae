@@ -232,6 +232,10 @@ pub struct BridgePlaylistSummary {
     pub owner: BridgePersonRef,
     /// Whether this device's person made it.
     pub yours: bool,
+    /// Who sees the playlist as its page header names it: the person's own
+    /// playlist says so, and one someone else made says nothing, since it is
+    /// shared to be seen at all.
+    pub header_sharing: Option<BridgeSharing>,
     pub track_count: BridgeCountLabel,
     /// The entries' total playing time as the words it reads in; `None` when
     /// they report no length.
@@ -256,6 +260,7 @@ impl BridgePlaylistSummary {
             sharing: BridgeSharing::from_core(sharing),
             owner: BridgePersonRef::from_core(owner),
             yours,
+            header_sharing: yours.then(|| BridgeSharing::from_core(sharing)),
             track_count: BridgeCountLabel::from_core(track_count),
             total_duration: bae_util::duration::DurationUnits::from_millis(total_duration_ms)
                 .map(BridgeDurationUnits::from_core),

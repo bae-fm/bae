@@ -202,6 +202,7 @@ object BridgeFixtures {
             sharing = sharing,
             owner = BridgePersonRef(person = "person-1", name = "Mara", initials = "M", avatarVersion = null),
             yours = true,
+            headerSharing = sharing,
             trackCount = BridgeCountLabel(key = "core.library.track_count", count = 12uL),
             totalDuration = null,
             cover = BridgePlaylistCover.Single(cover = null),

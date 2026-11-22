@@ -196,6 +196,7 @@ extension ShotScene {
             sharing: sharing,
             owner: owner("Ana"),
             yours: true,
+            headerSharing: sharing,
             trackCount: BridgeCountLabel(
                 key: "core.library.track_count",
                 count: tracks

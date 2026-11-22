@@ -60,13 +60,13 @@ struct MacPlaylistHeader: View {
             )
             .themeText(.detail)
             .lineLimit(1)
-            if summary.yours {
+            if let sharing = summary.headerSharing {
                 Image(
-                    systemName: summary.sharing == .household
+                    systemName: sharing == .household
                         ? "person.2.fill" : "lock.fill"
                 )
                 .themeIcon(.small)
-                .accessibilityLabel(Text(verbatim: summary.sharing.label))
+                .accessibilityLabel(Text(verbatim: sharing.label))
             }
         }
         .foregroundStyle(Theme.textTertiary)

@@ -17,6 +17,7 @@ struct AddToPlaylistMenuTests {
                 avatarVersion: nil
             ),
             yours: true,
+            headerSharing: .private,
             trackCount: BridgeCountLabel(
                 key: "core.library.track_count",
                 count: 1

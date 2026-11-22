@@ -164,6 +164,7 @@ extension ShotScene {
                 avatarVersion: nil
             ),
             yours: yours,
+            headerSharing: yours ? sharing : nil,
             trackCount: BridgeCountLabel(
                 key: "core.library.track_count",
                 count: 12
