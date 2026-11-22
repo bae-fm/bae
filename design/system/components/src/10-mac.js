@@ -163,9 +163,14 @@
   }
   // A row of a MacBox whose label takes a column labelWidth wide and whose field fills the rest.
   function MacFieldRow(props) {
+    var fieldId = React.useId();
+    var children = kids(props.children);
+    var first = children.length ? inner(children[0]) : null;
+    var namesField = props.label != null && first && first.type === MacTextField && !first.props.code && first.props.label == null;
+    if (namesField) children[0] = rewrap(children[0], React.cloneElement(first, { inputId: fieldId }));
     return h('div', { className: cx('bae-m-row', 'bae-m-fieldrow', props.alignText && 'bae-m-fieldrow-aligned') },
-      props.label == null ? null : h('span', { className: 'bae-m-fieldrow-label', style: { width: Number(props.labelWidth || 90) } }, props.label),
-      h('div', { className: 'bae-m-fieldrow-content' }, kids(props.children)));
+      props.label == null ? null : h(namesField ? 'label' : 'span', { htmlFor: namesField ? fieldId : null, className: 'bae-m-fieldrow-label', style: { width: Number(props.labelWidth || 90) } }, props.label),
+      h('div', { className: 'bae-m-fieldrow-content' }, children));
   }
 
   function MacButton(props) {
@@ -215,7 +220,7 @@
       className: cx('bae-m-input', 'bae-m-codetext', state === 'focused' && 'bae-m-input-focused', isError && 'bae-m-input-error') },
       props.value ? groupCode(props.value) : h('span', { className: 'bae-codetext-placeholder', 'aria-hidden': true }, codeHint)) : h('input', {
       className: cx('bae-m-input', state === 'focused' && 'bae-m-input-focused', isError && 'bae-m-input-error'),
-      type: props.secret ? 'password' : 'text',
+      id: props.inputId, type: props.secret ? 'password' : 'text',
       defaultValue: props.value || '',
       // A hidden label still names the field to VoiceOver; the placeholder, when given, is what shows.
       placeholder: props.placeholder || (hidden ? props.label : null),
