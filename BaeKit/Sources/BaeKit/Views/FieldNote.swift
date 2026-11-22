@@ -3,9 +3,9 @@
     import SwiftUI
 
     extension View {
-        /// Sets text as the note under a text field: halfway between the
-        /// design system's `text-secondary` and `text-tertiary`, so it doesn't
-        /// compete with the field's own text.
+        /// Sets text as the note under a text field: halfway between
+        /// secondary and tertiary text, so it doesn't compete with the
+        /// field's own text.
         public func fieldNote() -> some View {
             themeText(.detail)
                 .foregroundStyle(FieldNote.color)
@@ -15,7 +15,7 @@
     private enum FieldNote {
         static let color = Color(
             nsColor: NSColor(name: nil) { appearance in
-                let secondary = NSColor(Theme.textSecondary)
+                let secondary = NSColor(Theme.macTextSecondary)
                 var mixed = secondary
                 appearance.performAsCurrentDrawingAppearance {
                     guard
