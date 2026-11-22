@@ -39,6 +39,8 @@ struct MacAlbumPanel: View {
     let onRateAlbum: (BridgeStars?) -> Void
     /// Rate a track with these stars, or clear its rating with none.
     let onRateTrack: (String, BridgeStars?) -> Void
+    /// How the library shows the ratings of its albums and of its tracks.
+    var ratingSystems = BridgeRatingSystems(albums: .stars, tracks: .stars)
     var playlists = TrackPlaylistChoices.none
     /// How the person picks several tracks in the list, or `nil` when the
     /// list does not allow picking.
@@ -69,7 +71,8 @@ struct MacAlbumPanel: View {
                         currentReleaseId: currentReleaseId,
                         onSelectRelease: onSelectRelease,
                         onPlay: onPlay,
-                        onRate: onRateAlbum
+                        onRate: onRateAlbum,
+                        ratingSystem: ratingSystems.albums
                     ) {
                         albumMenuItems
                     }
@@ -84,6 +87,7 @@ struct MacAlbumPanel: View {
                         onAddToQueue: onAddToQueue,
                         onExportTrack: onExportTrack,
                         onRateTrack: onRateTrack,
+                        ratingSystem: ratingSystems.tracks,
                         playlists: playlists,
                         picking: picking
                     )
@@ -120,6 +124,9 @@ struct MacAlbumPanel: View {
     private var albumMenuItems: AlbumMenu {
         AlbumMenu(
             offersSetAsPrimary: detail.shownReleaseCanBecomePrimary,
+            ratingSystem: ratingSystems.albums,
+            rating: detail.rating,
+            onRate: onRateAlbum,
             onPlay: onPlay,
             onShuffle: onShuffle,
             onAddNext: onAddNextAlbum,

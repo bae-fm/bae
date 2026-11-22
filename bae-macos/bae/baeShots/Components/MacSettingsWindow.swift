@@ -96,5 +96,6 @@ extension ShotScene {
         .environment(fixture.membership)
         .environment(UiStore())
         .environment(fixture.libraryName)
+        .environment(fixture.ratingSystems)
     }
 }

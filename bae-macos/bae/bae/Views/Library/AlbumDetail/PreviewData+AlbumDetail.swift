@@ -117,6 +117,11 @@
                 .environment(ImportStore())
                 .environment(OutboxStore(uploadsPaused: false))
                 .environment(PreviewData.configStore())
+                .environment(
+                    RatingSystemsStore.staging(
+                        BridgeRatingSystems(albums: .stars, tracks: .stars)
+                    )
+                )
         }
     }
 #endif

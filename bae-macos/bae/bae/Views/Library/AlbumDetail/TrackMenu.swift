@@ -17,6 +17,9 @@ struct TrackMenu: MacMenuPart {
     let onExportTrack: (String) -> Void
     /// Rate the track with these stars, or clear its rating with none.
     let onRate: (BridgeStars?) -> Void
+    /// How the library shows the ratings of tracks: the menu offers Rate
+    /// under stars, Heart or Remove heart under heart, and neither under none.
+    var ratingSystem = BridgeRatingSystem.stars
     /// The playlists the menu can add the tracks to.
     let playlists: TrackPlaylistChoices
 
@@ -41,9 +44,26 @@ struct TrackMenu: MacMenuPart {
             MacMenuItem("Play next") { onAddNext(track.id) }
             MacMenuItem("Add to queue") { onAddToQueue(track.id) }
             MacMenuItem.divider
-            TrackRateMenu(stars: track.myStars, onRate: onRate)
+            if ratingSystem == .stars {
+                TrackRateMenu(stars: track.myStars, onRate: onRate)
+            }
+            else if ratingSystem == .heart {
+                heartItem
+            }
             playlistMenu
             MacMenuItem("Save as…") { onExportTrack(track.id) }
         }
+    }
+}
+
+extension TrackMenu {
+    /// Heart, or Remove heart on a hearted track.
+    private var heartItem: MacMenuItem {
+        let toggle = {
+            onRate(BridgeStars.afterHeartToggle(from: track.myStars))
+        }
+        return track.myStars?.isHeart == true
+            ? MacMenuItem("Remove heart", action: toggle)
+            : MacMenuItem("Heart", action: toggle)
     }
 }

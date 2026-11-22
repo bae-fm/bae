@@ -9,12 +9,13 @@ import SwiftUI
 /// The Library tab's shot stores over a library whose storage is
 /// `storage`, or none: its configuration, and what the tab reads off the
 /// main thread, the library's name and its people, each answered a step
-/// after the tab first draws. The people reach the library as `storage`'s
+/// after the tab first draws; its rating systems stay unread. The people reach the library as `storage`'s
 /// members do; a library with no storage has none.
 @MainActor
 struct LibrarySettingsTabPreviewFixture {
     let configStore: ConfigStore
     let libraryName = LibraryNameStore.stub(name: "Preview Library")
+    let ratingSystems = RatingSystemsStore.staging(nil)
     let membership: MembershipStore
 
     init(
@@ -69,6 +70,7 @@ func librarySettingsTabPreview(
     .environment(fixture.membership)
     .environment(UiStore())
     .environment(fixture.libraryName)
+    .environment(fixture.ratingSystems)
 }
 
 /// The Sync page over `fixture`'s library, its sync as `shown` says, with

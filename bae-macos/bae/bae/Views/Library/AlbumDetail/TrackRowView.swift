@@ -21,6 +21,8 @@ struct TrackRowView: View {
     let onExportTrack: (String) -> Void
     /// Rate the track with these stars, or clear its rating with none.
     let onRate: (BridgeStars?) -> Void
+    /// How the library shows the ratings of tracks.
+    var ratingSystem = BridgeRatingSystem.stars
     /// The playlists the track's menu can add it to.
     var playlists = TrackPlaylistChoices.none
     /// What the menu does with several picked tracks, or `nil` where the
@@ -49,6 +51,7 @@ struct TrackRowView: View {
             picked: picked,
             highlight: highlightOpacity,
             stars: track.myStars,
+            ratingSystem: ratingSystem,
             onPlay: onPlay,
             onTogglePlayPause: onTogglePlayPause
         )
@@ -124,6 +127,7 @@ struct TrackRowView: View {
             onAddToQueue: onAddToQueue,
             onExportTrack: onExportTrack,
             onRate: onRate,
+            ratingSystem: ratingSystem,
             playlists: playlists
         )
     }

@@ -508,6 +508,7 @@ extension ShotScene {
         .environment(fixture.membership)
         .environment(UiStore())
         .environment(LibraryNameStore.stub(name: "Home music"))
+        .environment(fixture.ratingSystems)
         #if BAE_OAUTH_PROVIDERS
             .environment(CloudSyncSetup())
         #endif

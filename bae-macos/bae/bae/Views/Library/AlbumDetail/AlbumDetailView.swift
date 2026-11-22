@@ -38,6 +38,8 @@ struct AlbumDetailView: View {
     var settingsNavigation
     @Environment(\.openSettingsWindow)
     var openSettings
+    @Environment(RatingSystemsStore.self)
+    private var ratingSystems
 
     @State
     private var transferError: DisplayError?
@@ -146,6 +148,7 @@ struct AlbumDetailView: View {
                     onRateTrack: { trackId, stars in
                         rate(.track(id: trackId), stars)
                     },
+                    ratingSystems: ratingSystems.shown,
                     playlists: trackPlaylistChoices,
                     picking: trackPicking
                 )
@@ -155,6 +158,8 @@ struct AlbumDetailView: View {
             }
         }
         .onAppear { showAlbum() }
+        // The page draws ratings by the library's systems while it shows.
+        .task { await ratingSystems.follow() }
         .onChange(of: albumRequest) { showAlbum() }
         // The picks are tracks of the release the page shows, so the page
         // clears them when it shows another release or closes.

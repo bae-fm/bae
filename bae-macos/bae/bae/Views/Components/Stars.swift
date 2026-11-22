@@ -2,14 +2,38 @@ import BaeKit
 import SwiftUI
 
 /// Five stars filled in the accent up to `value`, the rest drawn as outlines.
-/// With `onRate` each star is a button that rates with that many stars.
+/// With `onRate` each star is a button that rates with that many stars. With
+/// `showsNumber` it draws the read-only form instead: the number and one
+/// filled star ("4 ★"), and nothing while `value` is zero.
 struct Stars: View {
     /// How many stars are filled, zero to five.
     let value: Int
     let size: CGFloat
     var onRate: ((BridgeStars) -> Void)?
+    var showsNumber = false
 
     var body: some View {
+        if showsNumber {
+            number
+        }
+        else {
+            row
+        }
+    }
+
+    @ViewBuilder
+    private var number: some View {
+        if value > 0 {
+            HStack(spacing: ThemeSpace.line) {
+                Text(verbatim: String(value))
+                star(1)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(valueLabel)
+        }
+    }
+
+    private var row: some View {
         HStack(spacing: ThemeSpace.line) {
             ForEach(BridgeStars.allCases, id: \.self) { stars in
                 if let onRate {

@@ -5,7 +5,8 @@ import SwiftUI
 
 extension ShotScene {
     /// `MacAlbumHeader` at rest, over two releases, on another Mac's disk,
-    /// rated, with its menu open and with no year.
+    /// rated, rated under the Heart and None systems, with its menu open and
+    /// with no year.
     static let macAlbumHeaderScenes: [ShotScene] = [
         albumHeader("mac.component.album-header.resting", panelDetail()),
         albumHeader(
@@ -25,6 +26,16 @@ extension ShotScene {
             panelDetail(rating: ratedByYouAndAna)
         ),
         albumHeader(
+            "mac.component.album-header.heart-system",
+            panelDetail(rating: ratedByYouAndAna),
+            ratingSystem: .heart
+        ),
+        albumHeader(
+            "mac.component.album-header.none-system",
+            panelDetail(rating: ratedByYouAndAna),
+            ratingSystem: .hidden
+        ),
+        albumHeader(
             "mac.component.album-header.options-open",
             panelDetail(),
             height: 340,
@@ -40,7 +51,8 @@ extension ShotScene {
         _ id: String,
         _ detail: AlbumDetail,
         height: CGFloat = 250,
-        optionsOpen: Bool = false
+        optionsOpen: Bool = false,
+        ratingSystem: BridgeRatingSystem = .stars
     ) -> ShotScene {
         component(id, width: 540, height: height) {
             MacAlbumHeader(
@@ -48,7 +60,8 @@ extension ShotScene {
                 currentReleaseId: nil,
                 onSelectRelease: { _ in },
                 onPlay: {},
-                onRate: { _ in }
+                onRate: { _ in },
+                ratingSystem: ratingSystem
             ) {
                 MacMenuItem("Edit…") {}
                 MacMenuItem("Change cover…") {}

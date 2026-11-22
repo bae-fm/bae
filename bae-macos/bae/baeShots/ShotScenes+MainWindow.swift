@@ -31,6 +31,7 @@ extension ShotScenes {
         importPercents: LatestStream<UInt32>? = nil,
         projections: LibraryProjectionStore? = nil,
         history: HistoryStore? = nil,
+        ratingSystems: RatingSystemsStore? = nil,
         syncStatus: SyncStatusStore = PreviewData.syncStatus(
             hasCloudHome: true
         ),
@@ -90,6 +91,7 @@ extension ShotScenes {
             .environmentIfGiven(images)
             .environmentIfGiven(releaseEditor)
             .environmentIfGiven(outbox)
+            .environmentIfGiven(ratingSystems)
             .environment(\.importPercents, importPercents)
             .albumDetailPreviewEnvironment()
             .mainWindowPreviewEnvironment()

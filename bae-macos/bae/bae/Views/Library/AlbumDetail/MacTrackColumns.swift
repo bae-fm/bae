@@ -17,6 +17,8 @@ struct MacTrackColumns: View {
     /// Rate a track with these stars, or clear its rating with none; `nil` for
     /// a person who can't rate.
     let onRateTrack: (String, BridgeStars?) -> Void
+    /// How the library shows the ratings of tracks.
+    var ratingSystem = BridgeRatingSystem.stars
     var playlists = TrackPlaylistChoices.none
     var picking: TrackPicking?
 
@@ -103,6 +105,7 @@ struct MacTrackColumns: View {
                     onAddToQueue: onAddToQueue,
                     onExportTrack: onExportTrack,
                     onRate: { onRateTrack(track.id, $0) },
+                    ratingSystem: ratingSystem,
                     playlists: playlists,
                     picking: picking
                 )

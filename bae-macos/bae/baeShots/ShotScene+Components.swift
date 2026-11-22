@@ -196,6 +196,7 @@ extension ShotScene {
             macWorkDetailScenes,
             playlistPictureScenes,
             starsScenes,
+            heartScenes,
             statusChipScenes,
             statusGlyphScenes,
         ]

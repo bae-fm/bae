@@ -26,6 +26,9 @@ struct MacTrackRow: View {
     /// stays empty for a track they did not rate so every row's duration
     /// lines up.
     let stars: BridgeStars?
+    /// How the library shows the ratings of tracks: stars, one heart in the
+    /// slot for a track rated three stars or more, or no slot at all.
+    var ratingSystem = BridgeRatingSystem.stars
     let onPlay: () -> Void
     let onTogglePlayPause: () -> Void
 
@@ -34,12 +37,33 @@ struct MacTrackRow: View {
     static let leadingSlotMinWidth: CGFloat = 22
 
     var body: some View {
-        HStack(spacing: ThemeSpace.compact) {
+        if ratingSystem == .hidden {
             row
-            Stars(value: stars?.number ?? 0, size: 10)
-                .opacity(stars == nil ? 0 : 1)
-                .accessibilityHidden(stars == nil)
         }
+        else {
+            HStack(spacing: ThemeSpace.compact) {
+                row
+                ratingSlot
+            }
+        }
+    }
+
+    /// The slot after the row, which stays empty for a track with nothing to
+    /// show so every row's duration lines up.
+    @ViewBuilder
+    private var ratingSlot: some View {
+        let shown =
+            ratingSystem == .heart ? stars?.isHeart == true : stars != nil
+        Group {
+            if ratingSystem == .heart {
+                Heart(on: true, size: 10)
+            }
+            else {
+                Stars(value: stars?.number ?? 0, size: 10)
+            }
+        }
+        .opacity(shown ? 1 : 0)
+        .accessibilityHidden(!shown)
     }
 
     private var row: some View {

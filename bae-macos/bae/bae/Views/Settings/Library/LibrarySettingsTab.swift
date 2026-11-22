@@ -26,6 +26,8 @@ struct LibrarySettingsTab: View {
     private var membership
     @Environment(Sync.self)
     private var sync
+    @Environment(RatingSystemsStore.self)
+    private var ratingSystems
 
     @State
     private var showSyncSetup = false
@@ -46,7 +48,7 @@ struct LibrarySettingsTab: View {
             Form {
                 MacSection {
                     MacRow("Name") {
-                        if canRename {
+                        if canChangeLibrary {
                             MacButton("Rename…", action: onRenameLibrary)
                         }
                     }
@@ -71,6 +73,29 @@ struct LibrarySettingsTab: View {
                             }
                         }
                         .pressing(.opens { path.append(.people) })
+                    }
+                }
+
+                if let systems = ratingSystems.systems {
+                    MacSection {
+                        RatingSystemRow(
+                            title: "Albums",
+                            items: .albums,
+                            current: systems.albums,
+                            canChange: canChangeLibrary,
+                            store: ratingSystems
+                        )
+                        RatingSystemRow(
+                            title: "Tracks",
+                            items: .tracks,
+                            current: systems.tracks,
+                            canChange: canChangeLibrary,
+                            store: ratingSystems
+                        )
+                    } header: {
+                        Text("Ratings")
+                    } footer: {
+                        Text("Applies to everyone in this library")
                     }
                 }
             }
@@ -99,6 +124,7 @@ struct LibrarySettingsTab: View {
         // The name and the people are read while this pane shows, which
         // includes the pages it opens: the stack, not a page, owns that.
         .task { await libraryName.follow() }
+        .task { await ratingSystems.follow() }
         .onAppear {
             membership.show()
             membership.showAdminChanges(at: .library)
@@ -133,9 +159,9 @@ struct LibrarySettingsTab: View {
         syncStatus.snapshot?.setupRunning == true
     }
 
-    /// An admin renames a synced library; a library only on this Mac is its
-    /// person's to rename.
-    private var canRename: Bool {
+    /// An admin changes a synced library, its name and its rating systems; a
+    /// library only on this Mac is its person's to change.
+    private var canChangeLibrary: Bool {
         !configStore.syncs || membership.selfIsAdmin
     }
 
@@ -171,6 +197,55 @@ struct LibrarySettingsTab: View {
         let peopleText = String(localized: "\(Int(people.people)) people")
         let deviceCount = String(localized: "\(Int(people.devices)) devices")
         return FactList.joined([peopleText, deviceCount])
+    }
+}
+
+/// One row of the Ratings section: the rating system for albums or for
+/// tracks, as a pop-up for someone who can change it and as a plain value for
+/// someone who cannot. The pop-up shows the person's pick until the change is
+/// written.
+private struct RatingSystemRow: View {
+    let title: LocalizedStringKey
+    let items: BridgeRatedItems
+    /// The system the library shows now.
+    let current: BridgeRatingSystem
+    let canChange: Bool
+    let store: RatingSystemsStore
+
+    /// The system the person picked, until its write returns.
+    @State
+    private var picked: BridgeRatingSystem?
+
+    var body: some View {
+        if canChange {
+            MacRow(title) {
+                MacPopUpButton(
+                    label: Text(title),
+                    selection: Binding(
+                        get: { picked ?? current },
+                        set: { choose($0) }
+                    )
+                ) {
+                    for system in BridgeRatingSystem.allCases {
+                        MacPopUpOption(verbatim: system.title, value: system)
+                    }
+                }
+                .fixedSize()
+            }
+        }
+        else {
+            MacRow(title, value: current.title)
+        }
+    }
+
+    private func choose(_ system: BridgeRatingSystem) {
+        picked = system
+        let store = store
+        let items = items
+        Task {
+            await store.set(items, to: system)
+            picked = nil
+        }
     }
 }
 

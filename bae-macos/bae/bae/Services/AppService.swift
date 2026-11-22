@@ -46,6 +46,8 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
     private let settingsNavigation = SettingsNavigation()
     /// The library's name, read while a screen shows it.
     let libraryNameStore: LibraryNameStore
+    /// How the library shows ratings, read while a screen shows them.
+    private let ratingSystemsStore: RatingSystemsStore
     /// What this Mac keeps for the library, read while Settings → Storage
     /// shows it.
     private let deviceStorageStore: DeviceStorageStore
@@ -115,6 +117,10 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         self.uiStore = uiStore
         self.importStore = importStore
         libraryNameStore = LibraryNameStore(
+            handle: appHandle,
+            showError: { uiStore.showError($0) }
+        )
+        ratingSystemsStore = RatingSystemsStore(
             handle: appHandle,
             showError: { uiStore.showError($0) }
         )
@@ -234,6 +240,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             .environment(historyStore)
             .environment(settingsNavigation)
             .environment(libraryNameStore)
+            .environment(ratingSystemsStore)
             .environment(deviceStorageStore)
             .environment(previewAudio)
             .environment(releaseEditor)

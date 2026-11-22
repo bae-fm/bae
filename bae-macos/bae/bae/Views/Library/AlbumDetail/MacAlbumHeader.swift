@@ -3,7 +3,9 @@ import SwiftUI
 
 /// The open album's head: title, artist and year, the release picker when the
 /// album has several releases, the release's facts, why this Mac can't play
-/// it, then Play and ⋯ over the album's rating.
+/// it, then Play and ⋯ over the album's rating. Under Heart a filled heart
+/// follows the ⋯ when the person hearted the album; under None the album
+/// shows no rating.
 struct MacAlbumHeader: View {
     /// The album and its releases as its detail read returned them.
     let detail: AlbumDetail
@@ -15,6 +17,8 @@ struct MacAlbumHeader: View {
     let onPlay: () -> Void
     /// Rate the album with these stars, or clear its rating with none.
     let onRate: (BridgeStars?) -> Void
+    /// How the library shows the ratings of albums.
+    let ratingSystem: BridgeRatingSystem
     /// The items of the ⋯ menu.
     let menu: () -> [MacMenuEntry]
 
@@ -24,6 +28,7 @@ struct MacAlbumHeader: View {
         onSelectRelease: @escaping (String) -> Void,
         onPlay: @escaping () -> Void,
         onRate: @escaping (BridgeStars?) -> Void,
+        ratingSystem: BridgeRatingSystem = .stars,
         @MacMenuBuilder menu: @escaping () -> [MacMenuEntry]
     ) {
         self.detail = detail
@@ -31,6 +36,7 @@ struct MacAlbumHeader: View {
         self.onSelectRelease = onSelectRelease
         self.onPlay = onPlay
         self.onRate = onRate
+        self.ratingSystem = ratingSystem
         self.menu = menu
     }
 
@@ -83,10 +89,16 @@ struct MacAlbumHeader: View {
                     label: Text("Album options"),
                     items: menu
                 )
+                // Under Heart the person's heart follows the ⋯, read-only.
+                if ratingSystem == .heart, detail.rating.isHearted {
+                    Heart(on: true, size: 13)
+                }
             }
             .padding(.top, ThemeSpace.group)
-            MacAlbumRating(rating: detail.rating, onRate: onRate)
-                .padding(.top, ThemeSpace.related)
+            if ratingSystem == .stars {
+                MacAlbumRating(rating: detail.rating, onRate: onRate)
+                    .padding(.top, ThemeSpace.related)
+            }
         }
         // Over the rows below the head, which the facts' card lies across.
         .zIndex(1)

@@ -4,7 +4,7 @@ import SwiftUI
 @testable import bae
 
 extension ShotScene {
-    /// `MacTrackRow`, a track in an album's list.
+    /// `MacTrackRow`, a track in an album's list, under each rating system.
     static let macTrackRowScenes: [ShotScene] = [
         trackRow(
             "mac.component.track-row.resting",
@@ -90,6 +90,26 @@ extension ShotScene {
             hover: true,
             stars: .four
         ),
+        trackRow(
+            "mac.component.track-row.heart-system",
+            track: PreviewData.previewTrack(
+                title: "Low Tide Hours",
+                position: "4",
+                durationMs: 303_000
+            ),
+            stars: .five,
+            ratingSystem: .heart
+        ),
+        trackRow(
+            "mac.component.track-row.none-system",
+            track: PreviewData.previewTrack(
+                title: "Low Tide Hours",
+                position: "4",
+                durationMs: 303_000
+            ),
+            stars: .four,
+            ratingSystem: .hidden
+        ),
     ]
 
     private static func trackRow(
@@ -99,7 +119,8 @@ extension ShotScene {
         hover: Bool = false,
         current: Bool = false,
         picked: Bool = false,
-        stars: BridgeStars? = nil
+        stars: BridgeStars? = nil,
+        ratingSystem: BridgeRatingSystem = .stars
     ) -> ShotScene {
         component(id, height: 70) {
             MacTrackRow(
@@ -111,6 +132,7 @@ extension ShotScene {
                 hover: hover,
                 picked: picked,
                 stars: stars,
+                ratingSystem: ratingSystem,
                 onPlay: {},
                 onTogglePlayPause: {}
             )

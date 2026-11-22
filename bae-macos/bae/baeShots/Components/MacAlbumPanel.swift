@@ -6,7 +6,7 @@ import SwiftUI
 
 extension ShotScene {
     /// `MacAlbumPanel` for "Low Tide Hours", the first track playing: at
-    /// rest, with a CD and an LP, rated by the person and by Ana, on another
+    /// rest, with a CD and an LP, rated by the person and by Ana, rated under the Heart and None systems, on another
     /// Mac's disk, and with no cover.
     static let macAlbumPanelScenes: [ShotScene] = [
         albumPanel("mac.component.album-panel.resting", detail: panelDetail()),
@@ -17,6 +17,16 @@ extension ShotScene {
         albumPanel(
             "mac.component.album-panel.rated",
             detail: panelDetail(rating: ratedByYouAndAna)
+        ),
+        albumPanel(
+            "mac.component.album-panel.heart-system",
+            detail: panelDetail(rating: ratedByYouAndAna),
+            ratingSystems: BridgeRatingSystems(albums: .heart, tracks: .heart)
+        ),
+        albumPanel(
+            "mac.component.album-panel.none-system",
+            detail: panelDetail(rating: ratedByYouAndAna),
+            ratingSystems: BridgeRatingSystems(albums: .hidden, tracks: .hidden)
         ),
         albumPanel(
             "mac.component.album-panel.unplayable",
@@ -124,7 +134,11 @@ extension ShotScene {
 
     private static func albumPanel(
         _ id: String,
-        detail: AlbumDetail
+        detail: AlbumDetail,
+        ratingSystems: BridgeRatingSystems = BridgeRatingSystems(
+            albums: .stars,
+            tracks: .stars
+        )
     ) -> ShotScene {
         component(
             id,
@@ -158,7 +172,8 @@ extension ShotScene {
                 onExportTrack: { _ in },
                 onOpenWork: { _ in },
                 onRateAlbum: { _ in },
-                onRateTrack: { _, _ in }
+                onRateTrack: { _, _ in },
+                ratingSystems: ratingSystems
             )
             .albumDetailPreviewEnvironment()
             .environment(browsePanelImages)
