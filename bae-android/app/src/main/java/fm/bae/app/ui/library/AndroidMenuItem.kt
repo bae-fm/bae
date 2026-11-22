@@ -9,8 +9,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.text.font.FontWeight
 import fm.bae.app.R
+import fm.bae.app.ui.appearance.ThemeText
 
 /** One of a menu's choices, the chosen one in the accent color. */
 @Composable
@@ -26,7 +26,7 @@ internal fun AndroidMenuItem(
             Text(
                 text = label,
                 color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                fontWeight = if (selected) FontWeight.SemiBold else null,
+                style = if (selected) ThemeText.strong.style else ThemeText.androidLabel.style,
             )
         },
         onClick = onClick,

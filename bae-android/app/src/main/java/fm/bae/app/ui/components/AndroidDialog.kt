@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindowProvider
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.ui.appearance.ThemeText
 
 /**
  * A dialog's title with its [message] under it, 8 apart: the supporting text
@@ -32,12 +33,12 @@ fun DialogHead(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
         title?.let {
-            Text(text = it, style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurface)
+            Text(text = it, style = ThemeText.androidDialogTitle.style, color = MaterialTheme.colorScheme.onSurface)
         }
         message?.let {
             Text(
                 text = it,
-                style = MaterialTheme.typography.bodyMedium,
+                style = ThemeText.body.style,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }

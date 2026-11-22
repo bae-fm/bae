@@ -7,6 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.LocalTonalElevationEnabled
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -26,6 +27,7 @@ import fm.bae.app.ui.appearance.AppearancePreferences
 import fm.bae.app.ui.appearance.AppearanceStore
 import fm.bae.app.ui.appearance.LocalAppearanceStore
 import fm.bae.app.ui.appearance.SemanticColors
+import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.appearance.ToneSurfaces
 import fm.bae.app.ui.appearance.appearanceColorScheme
 import fm.bae.app.ui.appearance.colors
@@ -37,6 +39,18 @@ val LocalPrimaryFill = staticCompositionLocalOf<Color> { error("BaeTheme provide
 private val LocalSemanticColors = staticCompositionLocalOf<SemanticColors> { error("BaeTheme provides colours") }
 private val LocalToneSurfaces = staticCompositionLocalOf<ToneSurfaces> { error("BaeTheme provides surfaces") }
 private val LocalIsDark = staticCompositionLocalOf<Boolean> { error("BaeTheme provides the appearance") }
+
+/**
+ * The text styles Material's own components draw with, set to the design's: a button's or chip's label, a dialog's
+ * title and message, a snackbar's message and a field's text. Material's other styles stay as they are.
+ */
+private val baeTypography =
+    Typography(
+        labelLarge = ThemeText.androidLabel.style,
+        headlineSmall = ThemeText.androidDialogTitle.style,
+        bodyMedium = ThemeText.body.style,
+        bodyLarge = ThemeText.androidBodyLarge.style,
+    )
 
 /** The shared theme's roles for the chosen appearance. */
 object BaeTheme {
@@ -82,7 +96,7 @@ fun BaeTheme(
         LocalToneSurfaces provides preferences.tone.surfaces(isDark),
         LocalTonalElevationEnabled provides false,
     ) {
-        MaterialTheme(colorScheme = colorScheme, content = content)
+        MaterialTheme(colorScheme = colorScheme, typography = baeTypography, content = content)
     }
 }
 
