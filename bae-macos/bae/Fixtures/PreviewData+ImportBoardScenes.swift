@@ -60,33 +60,39 @@ extension PreviewData {
         let outbox: OutboxStore
     }
 
-    /// What `pane` opens, as the pane reads it, with Northbound as
-    /// `northbound` has it.
+    /// The Found list and its selected pane, if the board opens one.
     @MainActor
-    static func openedCandidate(
-        _ pane: FoundPane,
+    private static func foundBoard(
         northbound: NorthboundStanding,
-        images: FoundBoardImages
-    ) throws -> ImportPaneFixture {
+        pane: FoundPane?,
+        in store: ImportStore
+    ) throws -> ([BridgeImportListItem], ImportSelection) {
+        let images = try FoundBoardImages()
+        let items = foundItems(northbound: northbound, images: images)
+        guard let pane else {
+            return (items, ImportSelection())
+        }
+        let fixture: ImportPaneFixture
         switch pane {
         case .northbound:
             let gallery = try northboundImages(cover: images.northbound)
-            switch northbound {
-            case .identified:
-                return northboundDraftCandidate(images: gallery)
-            case .importing:
-                return northboundDraftCandidate(
-                    images: gallery,
-                    importStep: .running(phase: .measuringLoudness)
-                )
-            }
+            let step: BridgeImportStep? =
+                switch northbound {
+                case .identified: nil
+                case .importing: .running(phase: .measuringLoudness)
+                }
+            fixture = northboundDraftCandidate(
+                images: gallery,
+                importStep: step
+            )
         case .lowTideHours:
-            return lowTideHoursCandidate(cover: images.lookup.lowTideHours)
+            fixture = lowTideHoursCandidate(cover: images.lookup.lowTideHours)
         case .fieldRecordings:
-            return fieldRecordingsCandidate(cover: images.fieldRecordings)
-        case .untitled07: return untitledCandidate()
+            fixture = fieldRecordingsCandidate(cover: images.fieldRecordings)
+        case .untitled07:
+            fixture = untitledCandidate()
         case .copperSky:
-            return notFoundCandidate(
+            fixture = notFoundCandidate(
                 copperSky,
                 image: images.lookup.copperSky,
                 session: paneSession(
@@ -97,12 +103,13 @@ extension PreviewData {
                 )
             )
         case .winterKitchen:
-            return notFoundCandidate(
+            fixture = notFoundCandidate(
                 winterKitchen,
                 image: images.lookup.winterKitchen,
                 session: paneSession(presentation: .findOnline)
             )
         }
+        return (items, selectBoardCandidate(fixture, in: store))
     }
 
     /// What the folder `board` opens has in flight, by its key: what
@@ -236,19 +243,11 @@ extension PreviewData {
         case .found(let northbound, let pane):
             store.identificationProgress = (identified: 4, total: 10)
             store.importsInFlight = 2
-            let images = try FoundBoardImages()
-            items = foundItems(northbound: northbound, images: images)
-            if let pane {
-                let candidate = try openedCandidate(
-                    pane,
-                    northbound: northbound,
-                    images: images
-                )
-                selection = selectBoardCandidate(candidate, in: store)
-            }
-            else {
-                selection = ImportSelection()
-            }
+            (items, selection) = try foundBoard(
+                northbound: northbound,
+                pane: pane,
+                in: store
+            )
         case .several:
             store.identificationProgress = (identified: 4, total: 10)
             items = foundItems(
@@ -257,13 +256,7 @@ extension PreviewData {
             )
             selection = boardSeveralSelection
         case .imported:
-            let content = try ImportedBoardContent()
-            let gallery = try northboundImages(cover: content.northboundCover)
-            items = doneItems(releases: content.releases)
-            selection = selectBoardCandidate(
-                northboundImportedCandidate(images: gallery),
-                in: store
-            )
+            (items, selection) = try importedBoard(in: store)
         case .skipped:
             let artwork = try boardImage("folder.jpg", art: "Glass Harbor")
             (items, selection) = skippedBoard(artwork: artwork, in: store)
@@ -274,6 +267,58 @@ extension PreviewData {
             items: items,
             selection: selection
         )
+    }
+
+    @MainActor
+    private static func importedBoard(in store: ImportStore) throws
+        -> ([BridgeImportListItem], ImportSelection)
+    {
+        let cover = try northboundCover()
+        let gallery = try northboundImages(cover: cover)
+        let otherReleases: [(BoardFolder, BridgeTriageMetadataSummary)] = [
+            (
+                .driftwood,
+                .init(
+                    albumTitle: "Driftwood",
+                    albumArtists: .named("Mara Quill")
+                )
+            ),
+            (
+                .glassHarbor,
+                .init(
+                    albumTitle: "Glass Harbor",
+                    albumArtists: .named("Ines Varga Trio")
+                )
+            ),
+            (
+                .lateArrivals,
+                .init(
+                    albumTitle: "Late Arrivals",
+                    albumArtists: .named("The Slow Orchards")
+                )
+            ),
+        ]
+        let otherRows = try otherReleases.map { folder, summary in
+            let artwork = try BoardArtwork.scannedFile(
+                named: summary.albumTitle
+            )
+            return importedBoardItem(folder, summary: summary, cover: artwork)
+        }
+        let northbound = importedBoardItem(
+            .northbound,
+            summary: northboundSummary,
+            cover: cover.file,
+            upload: BridgeUploadProgress(
+                queued: 0,
+                uploading: 1,
+                activity: .uploading
+            )
+        )
+        let selection = selectBoardCandidate(
+            northboundImportedCandidate(images: gallery),
+            in: store
+        )
+        return ([northbound] + otherRows, selection)
     }
 
     @MainActor

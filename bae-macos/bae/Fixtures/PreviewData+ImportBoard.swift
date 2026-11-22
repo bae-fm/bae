@@ -194,70 +194,15 @@ extension PreviewData {
         }
     }
 
-    struct ImportedBoardRelease {
-        let folder: BoardFolder
-        let summary: BridgeTriageMetadataSummary
-        let cover: BridgeFileVersion
-        let upload: BridgeUploadProgress?
-    }
+    static let northboundTitle = "Northbound"
+    static let northboundArtist = "Mara Quill"
+    static let northboundSummary = BridgeTriageMetadataSummary(
+        albumTitle: northboundTitle,
+        albumArtists: .named(northboundArtist)
+    )
 
-    struct ImportedBoardContent {
-        let northboundCover: BridgeMappingImage
-        let releases: [ImportedBoardRelease]
-
-        init() throws {
-            northboundCover = try PreviewData.northboundCover()
-            releases = [
-                ImportedBoardRelease(
-                    folder: .northbound,
-                    summary: BridgeTriageMetadataSummary(
-                        albumTitle: "Northbound",
-                        albumArtists: .named("Mara Quill")
-                    ),
-                    cover: northboundCover.file,
-                    upload: BridgeUploadProgress(
-                        queued: 0,
-                        uploading: 1,
-                        activity: .uploading
-                    )
-                ),
-                try Self.release(
-                    .driftwood,
-                    title: "Driftwood",
-                    artist: "Mara Quill"
-                ),
-                try Self.release(
-                    .glassHarbor,
-                    title: "Glass Harbor",
-                    artist: "Ines Varga Trio"
-                ),
-                try Self.release(
-                    .lateArrivals,
-                    title: "Late Arrivals",
-                    artist: "The Slow Orchards"
-                ),
-            ]
-        }
-
-        private static func release(
-            _ folder: BoardFolder,
-            title: String,
-            artist: String
-        ) throws -> ImportedBoardRelease {
-            ImportedBoardRelease(
-                folder: folder,
-                summary: BridgeTriageMetadataSummary(
-                    albumTitle: title,
-                    albumArtists: .named(artist)
-                ),
-                cover: try BoardArtwork.scannedFile(named: title),
-                upload: nil
-            )
-        }
-    }
-
-    private static func northboundCover() throws -> BridgeMappingImage {
-        try boardImage("cover.jpg", art: "Northbound")
+    static func northboundCover() throws -> BridgeMappingImage {
+        try boardImage("cover.jpg", art: northboundTitle)
     }
 
     static func northboundImages(cover: BridgeMappingImage) throws
@@ -338,8 +283,8 @@ extension PreviewData {
     /// Northbound's draft: a CD from Harbor Records, pressed in the US.
     static func northboundEdit() -> BridgeRawReleaseEdit {
         boardEdit(
-            title: "Northbound",
-            artist: "Mara Quill",
+            title: northboundTitle,
+            artist: northboundArtist,
             year: "1974",
             pressing: BridgeRawPressingEdit(
                 year: "1974",

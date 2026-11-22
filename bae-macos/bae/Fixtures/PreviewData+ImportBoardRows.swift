@@ -212,10 +212,7 @@ extension PreviewData {
             }
         let northboundRow = boardRow(
             .northbound,
-            summary: BridgeTriageMetadataSummary(
-                albumTitle: "Northbound",
-                albumArtists: .named("Mara Quill")
-            ),
+            summary: northboundSummary,
             record: "board-northbound",
             cover: .local(file: images.northbound.file),
             live: live
@@ -276,26 +273,25 @@ extension PreviewData {
         )
     }
 
-    /// The Imported tab's rows as the boards list them.
-    static func doneItems(releases: [ImportedBoardRelease])
-        -> [BridgeImportListItem]
-    {
-        releases.map { release in
-            candidateItem(
-                boardRow(
-                    release.folder,
-                    summary: release.summary,
-                    record: "board-\(release.summary.albumTitle)",
-                    cover: .local(file: release.cover),
-                    placement: .done,
-                    live: triageLive([.revealFolder]),
-                    importStatus: .complete(
-                        release: boardImported(release.folder)
-                    ),
-                    upload: release.upload
-                )
+    /// An Imported row, whose cover and upload belong to its library release.
+    static func importedBoardItem(
+        _ folder: BoardFolder,
+        summary: BridgeTriageMetadataSummary,
+        cover: BridgeFileVersion,
+        upload: BridgeUploadProgress? = nil
+    ) -> BridgeImportListItem {
+        candidateItem(
+            boardRow(
+                folder,
+                summary: summary,
+                record: "board-\(summary.albumTitle)",
+                cover: .local(file: cover),
+                placement: .done,
+                live: triageLive([.revealFolder]),
+                importStatus: .complete(release: boardImported(folder)),
+                upload: upload
             )
-        }
+        )
     }
 
     // MARK: - Skipped

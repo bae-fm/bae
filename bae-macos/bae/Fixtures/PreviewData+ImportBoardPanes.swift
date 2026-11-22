@@ -47,7 +47,7 @@ extension PreviewData {
             live: importStep == nil
                 ? triageLive(boardDraftActions) : northboundImportingLive,
             importStatus: importStep.map { .importing(step: $0) },
-            albumArtists: boardLibraryArtists("Mara Quill")
+            albumArtists: boardLibraryArtists(northboundArtist)
         )
     }
 
