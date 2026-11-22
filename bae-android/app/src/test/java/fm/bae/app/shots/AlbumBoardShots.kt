@@ -2,6 +2,8 @@ package fm.bae.app.shots
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.res.stringResource
+import fm.bae.app.R
 import fm.bae.app.creditLineNamed
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
@@ -93,6 +95,16 @@ class AlbumBoardShots : BoardShot() {
 
     @Test
     fun androidAlbumPageOnAnotherDevice() = shot("android.album.page.on-another-device") { AlbumPage(onAnotherDevice, bar = northbound) }
+
+    @Test
+    fun androidAlbumOnAnotherDeviceSheet() =
+        shot("android.album.on-another-device-sheet") {
+            SheetScene(
+                title = stringResource(R.string.release_not_on_this_device),
+                behind = { AlbumPageContent(onAnotherDevice, northbound) { it.name } },
+                note = ON_ANOTHER_DEVICE_NOTE,
+            ) {}
+        }
 }
 
 /** A file of the release's folder, without audio or image content. */
@@ -119,6 +131,8 @@ internal fun boardAlbum(rating: BridgeAlbumRating = BridgeAlbumRating(mine = nul
     val release = PreviewData.release(albumId = album.id, trackGroups = listOf(PreviewData.trackGroup(tracks)))
     return PreviewData.albumDetail(album, listOf(release)).copy(rating = rating)
 }
+
+internal const val ON_ANOTHER_DEVICE_NOTE = "On Ana’s Mac"
 
 /** The album the boards draw as held by Ana's Mac only: ten tracks, none of which this device can play. */
 private val onAnotherDevice: BridgeAlbumDetail =
