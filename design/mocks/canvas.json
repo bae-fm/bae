@@ -4434,7 +4434,7 @@
    "x": 15500,
    "y": 21244
   },
-  "android.album.page.on-another-device.sheet.dc.html": {
+  "android.album.on-another-device-sheet.dc.html": {
    "h": 916,
    "page": "home",
    "title": "Album: not on this device, its sheet open",
@@ -6192,7 +6192,7 @@
   "android.album.page.pin-queued.dc.html",
   "android.album.page.pin-failed.dc.html",
   "android.album.page.on-another-device.dc.html",
-  "android.album.page.on-another-device.sheet.dc.html",
+  "android.album.on-another-device-sheet.dc.html",
   "android.album.page.every-storage-state.dc.html",
   "mac.library.albums.album-two-releases.dc.html",
   "mac.library.album-menu.dc.html",
