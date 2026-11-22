@@ -3,8 +3,10 @@
 /// How long a test waits on an event before failing instead of hanging.
 /// Every wait it bounds ends on the code's own event, so only code that never
 /// sends it reaches this. It is not a measure of speed, so it sits far above
-/// what any step takes on a loaded machine.
-pub const HANG_GUARD: std::time::Duration = std::time::Duration::from_secs(300);
+/// what any step takes on a loaded machine. It sits under the 300 seconds
+/// after which nextest ends a test (`.config/nextest.toml`), so a wait that
+/// fails here names itself in the run's output instead of being cut off.
+pub const HANG_GUARD: std::time::Duration = std::time::Duration::from_secs(240);
 
 /// What a test reads events off one at a time: a channel's receiving end,
 /// or an owner's handle over one.

@@ -438,7 +438,13 @@ async fn download_bytes_send_no_new_sync_activity() {
         assert!(polled.is_pending(), "{bytes_done} bytes sent an activity");
     }
     manager.cancel_download(&release_id).await.unwrap();
-    assert_eq!(next.await.unwrap().unwrap().pins, None);
+    let hang = bae_util::test_channels::HANG_GUARD;
+    let Ok(after_cancel) = tokio::time::timeout(hang, next).await else {
+        let mut fresh = views(test.library.manager()).subscribe_sync_activity();
+        let now = crate::followed::value_matching(&mut fresh, |_| true).await;
+        panic!("no activity after the cancel; a new subscription reads {now:?}");
+    };
+    assert_eq!(after_cancel.unwrap().unwrap().pins, None);
     pending.abort();
 }
 
