@@ -46,14 +46,11 @@ struct LibrarySettingsTab: View {
             Form {
                 MacSection {
                     MacRow("Name") {
-                        HStack {
-                            Text(libraryName.name ?? "")
-                                .foregroundStyle(Theme.macTextSecondary)
-                            if canRename {
-                                MacButton("Rename…", action: onRenameLibrary)
-                            }
+                        if canRename {
+                            MacButton("Rename…", action: onRenameLibrary)
                         }
                     }
+                    .value(libraryName.name)
                     MacRow("Library folder") {
                         MacButton("Show in Finder") {
                             SystemActions.revealInFinder(
