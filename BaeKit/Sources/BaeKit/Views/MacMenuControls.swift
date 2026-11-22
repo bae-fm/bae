@@ -188,7 +188,7 @@
                         .foregroundStyle(Theme.textPrimary)
                         .lineLimit(1)
                     Image(systemName: "chevron.up.chevron.down")
-                        .font(.system(size: 9, weight: .semibold))
+                        .themeIcon(.badge)
                         .foregroundStyle(Theme.textPrimary)
                         .frame(width: 22, height: 22)
                         .background(Theme.tile, in: Circle())

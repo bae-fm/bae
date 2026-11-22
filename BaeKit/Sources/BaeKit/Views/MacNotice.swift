@@ -340,7 +340,7 @@ extension MacNotice {
     private func dismissButton(_ onDismiss: @escaping () -> Void) -> some View {
         Button(action: onDismiss) {
             Image(systemName: "xmark")
-                .font(.system(size: 14))
+                .themeIcon(.medium)
                 .foregroundStyle(Theme.textTertiary)
                 .frame(width: ThemeSize.hitTarget, height: ThemeSize.hitTarget)
                 .contentShape(Rectangle())

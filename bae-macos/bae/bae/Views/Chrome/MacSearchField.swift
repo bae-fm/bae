@@ -62,9 +62,7 @@ struct MacSearchField: View {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(Theme.textTertiary)
                 .accessibilityHidden(true)
-                // The design draws the glyph at 14, between the icon roles.
-                .font(.system(size: 14, weight: ThemeIcon.medium.weight))
-                .frame(width: 14, height: 14)
+                .themeIcon(.medium)
         case .filter:
             Image(systemName: "magnifyingglass")
                 .themeIcon(.small)

@@ -50,8 +50,7 @@ struct MacMoreMenu: View {
 
     private var dots: some View {
         Image(systemName: "ellipsis")
-            // The design draws the dots at 15, a size above the icon roles.
-            .font(.system(size: 15, weight: ThemeIcon.medium.weight))
+            .themeIcon(.medium)
             .foregroundStyle(Theme.macTextSecondary)
             .frame(
                 width: ThemeSize.hitTarget,
@@ -65,7 +64,7 @@ struct MacMoreMenu: View {
     private var boxedDots: some View {
         BoxedIconFace(size: .control, isPressed: false) {
             Image(systemName: "ellipsis")
-                .font(.system(size: 15, weight: ThemeIcon.medium.weight))
+                .themeIcon(.medium)
         }
     }
 

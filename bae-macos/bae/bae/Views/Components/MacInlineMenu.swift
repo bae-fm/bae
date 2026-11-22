@@ -26,7 +26,7 @@ struct MacInlineMenu: View {
                 Text(verbatim: value)
                     .themeText(action ? .body : .cell)
                 Image(systemName: "chevron.down")
-                    .font(.system(size: action ? 9 : 7, weight: .semibold))
+                    .themeIcon(.badge)
             }
             .foregroundStyle(Theme.accent)
             .contentShape(Rectangle())

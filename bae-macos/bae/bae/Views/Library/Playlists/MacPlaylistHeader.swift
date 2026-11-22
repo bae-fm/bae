@@ -65,7 +65,7 @@ struct MacPlaylistHeader: View {
                     systemName: summary.sharing == .household
                         ? "person.2.fill" : "lock.fill"
                 )
-                .font(.system(size: 10))
+                .themeIcon(.small)
                 .accessibilityLabel(Text(verbatim: summary.sharing.label))
             }
         }

@@ -176,7 +176,7 @@
                 ZStack {
                     if checked {
                         Image(systemName: "checkmark")
-                            .font(.system(size: 10, weight: .bold))
+                            .themeIcon(.chip)
                     }
                 }
                 .frame(width: MacMenuMetrics.markWidth)
@@ -192,14 +192,14 @@
                     Spacer(minLength: ThemeSpace.edge)
                     if let accessory {
                         Image(systemName: accessory.symbol)
-                            .font(.system(size: 11))
+                            .themeIcon(.small)
                             .foregroundStyle(
                                 accessoryColor(accessory, highlighted)
                             )
                             .accessibilityHidden(true)
                     }
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 9, weight: .semibold))
+                        .themeIcon(.badge)
                         .accessibilityHidden(true)
                 }
             }

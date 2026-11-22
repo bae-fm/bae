@@ -137,7 +137,7 @@ struct MacCastRow: View {
     private var item: some View {
         MacItem(centered: true, wide: true) {
             Image(systemName: icon)
-                .font(.system(size: 15))
+                .themeIcon(.medium)
                 .foregroundStyle(
                     casting ? Theme.accent : Theme.macTextSecondary
                 )

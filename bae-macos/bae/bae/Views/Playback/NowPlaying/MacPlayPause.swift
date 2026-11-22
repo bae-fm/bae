@@ -12,7 +12,7 @@ struct MacPlayPause: View {
     var body: some View {
         PlayPauseControl(
             isPlaying: isPlaying,
-            glyphFont: .system(size: 20, weight: .medium),
+            glyphFont: ThemeIcon.large.font,
             targetSize: 48,
             onToggle: onToggle
         )

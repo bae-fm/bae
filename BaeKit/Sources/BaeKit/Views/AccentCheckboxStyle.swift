@@ -73,7 +73,7 @@
                     .overlay {
                         if isOn {
                             Image(systemName: "checkmark")
-                                .font(.system(size: 9, weight: .heavy))
+                                .themeIcon(.chip)
                                 .foregroundStyle(accent.colors.onFill)
                         }
                     }
