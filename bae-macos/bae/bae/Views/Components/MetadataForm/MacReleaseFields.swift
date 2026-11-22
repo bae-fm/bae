@@ -12,18 +12,17 @@ struct MacReleaseFields: View {
 
     static let labelWidth: CGFloat = 64
     static let labelGap = ThemeSpace.group
-    /// Between one row's text and the next, counting the fields' own inline
-    /// padding.
+    /// Between one row and the next.
     static let rowSpacing = ThemeSpace.compact
+    /// The least height of a row: the inline fields are 22 points tall.
+    static let rowHeight: CGFloat = 24
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
             MacFormHeading(title: String(localized: "Release"))
             Grid(
-                alignment: .leadingFirstTextBaseline,
-                horizontalSpacing: Self.labelGap
-                    - FieldChrome.inlineHorizontalPadding,
+                alignment: .topLeading,
+                horizontalSpacing: Self.labelGap,
                 verticalSpacing: Self.rowSpacing
-                    - 2 * FieldChrome.inlineVerticalPadding
             ) {
                 GridRow {
                     field(
@@ -39,6 +38,7 @@ struct MacReleaseFields: View {
                         offered: pressingOffers.media,
                         write: writer.setPressingFact
                     )
+                    .frame(minHeight: Self.rowHeight, alignment: .leading)
                 }
                 labelRows
                 GridRow {
@@ -48,6 +48,7 @@ struct MacReleaseFields: View {
                         write: writer.setPressingFact
                     )
                     .accessibilityLabel(String(localized: "Country"))
+                    .frame(minHeight: Self.rowHeight, alignment: .leading)
                 }
                 barcodeRows
                 GridRow {
@@ -57,6 +58,7 @@ struct MacReleaseFields: View {
                         write: writer.setPressingFact
                     )
                     .accessibilityLabel(String(localized: "Status"))
+                    .frame(minHeight: Self.rowHeight, alignment: .leading)
                 }
                 GridRow {
                     rowLabel(String(localized: "Packaging"))
@@ -65,6 +67,7 @@ struct MacReleaseFields: View {
                         write: writer.setPressingFact
                     )
                     .accessibilityLabel(String(localized: "Packaging"))
+                    .frame(minHeight: Self.rowHeight, alignment: .leading)
                 }
                 GridRow {
                     rowLabel(String(localized: "Details"))
@@ -73,6 +76,7 @@ struct MacReleaseFields: View {
                         offered: pressingOffers.discogsDetails,
                         write: writer.setPressingFact
                     )
+                    .frame(minHeight: Self.rowHeight, alignment: .leading)
                 }
             }
         }
@@ -148,6 +152,7 @@ struct MacReleaseFields: View {
             AddEntryLabel(words: String(localized: "Add label"))
         }
         .buttonStyle(.accentPlain)
+        .frame(minHeight: Self.rowHeight, alignment: .leading)
     }
 
     /// One row per barcode, each with its remove button and the heading on
@@ -207,6 +212,7 @@ struct MacReleaseFields: View {
             AddEntryLabel(words: String(localized: "Add barcode"))
         }
         .buttonStyle(.accentPlain)
+        .frame(minHeight: Self.rowHeight, alignment: .leading)
     }
 
     /// A field as wide as its value, or as wide as an empty field is, showing
@@ -228,6 +234,10 @@ struct MacReleaseFields: View {
             editingCommands: editingCommands,
             onCommit: onCommit
         )
+        // The field's own padding sits outside the column, so its text lines
+        // up with the plain values.
+        .padding(.leading, -FieldChrome.inlineHorizontalPadding)
+        .frame(minHeight: Self.rowHeight, alignment: .leading)
     }
 
     /// A row's label, right-aligned in its column.
