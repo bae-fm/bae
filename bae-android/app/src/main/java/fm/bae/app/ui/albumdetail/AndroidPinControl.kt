@@ -76,10 +76,7 @@ internal fun AndroidPinControl(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 PinQueuedText()
-                AndroidButton(
-                    kind = ButtonKind.OUTLINED,
-                    onClick = onCancel,
-                ) { Text(stringResource(R.string.cancel)) }
+                CancelPinButton(stringResource(R.string.cancel), onCancel)
             }
         }
 
@@ -91,10 +88,7 @@ internal fun AndroidPinControl(
                     modifier = Modifier.fillMaxWidth(),
                     stopDot = true,
                 )
-                AndroidButton(
-                    kind = ButtonKind.OUTLINED,
-                    onClick = onCancel,
-                ) { Text(stringResource(R.string.pin_cancel)) }
+                CancelPinButton(stringResource(R.string.pin_cancel), onCancel)
             }
         }
 
@@ -107,12 +101,18 @@ internal fun AndroidPinControl(
                     action = ErrorAction(stringResource(R.string.retry), onClick = onRetry),
                     look = NoticeLook.QUIET,
                 )
-                AndroidButton(kind = ButtonKind.OUTLINED, onClick = onCancel) {
-                    Text(stringResource(R.string.cancel))
-                }
+                CancelPinButton(stringResource(R.string.cancel), onCancel)
             }
         }
     }
+}
+
+@Composable
+private fun CancelPinButton(
+    label: String,
+    onCancel: () -> Unit,
+) {
+    AndroidButton(kind = ButtonKind.OUTLINED, onClick = onCancel) { Text(label) }
 }
 
 /**
