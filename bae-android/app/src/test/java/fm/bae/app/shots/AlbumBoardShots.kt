@@ -92,8 +92,7 @@ class AlbumBoardShots : BoardShot() {
         }
 
     @Test
-    fun androidAlbumPageOnAnotherDevice() =
-        shot("android.album.page.on-another-device") { AlbumPage(onAnotherDevice, bar = anotherDeviceBar) }
+    fun androidAlbumPageOnAnotherDevice() = shot("android.album.page.on-another-device") { AlbumPage(onAnotherDevice, bar = northbound) }
 }
 
 /** A file of the release's folder, without audio or image content. */
@@ -152,8 +151,8 @@ private val onAnotherDevice: BridgeAlbumDetail =
     }
 
 /** The track playing in the bar behind the album page, 1:28 into 4:51. */
-private val anotherDeviceBar =
-    PlayerStaging(elapsedSeconds = 88, held = listOf(BridgeTrackSpan(0.0, 0.3)), title = "Track Title", durationSeconds = 291)
+private val northbound =
+    PlayerStaging(elapsedSeconds = 88, held = listOf(BridgeTrackSpan(0.0, 0.3)), title = "Northbound", durationSeconds = 291)
 
 /** The album page as the boards draw it: its detail screen, with [bar]'s track playing in its bar. */
 @Composable
