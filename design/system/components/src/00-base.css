@@ -23,7 +23,7 @@
 .bae-tone-warning { --bae-tone: var(--warning); --bae-tone-tint: var(--warning-tint); --bae-tone-notice: var(--warning-notice); --bae-tone-icon: var(--warning-icon); }
 .bae-tone-danger { --bae-tone: var(--danger); --bae-tone-tint: var(--danger-tint); --bae-tone-notice: var(--danger-notice); --bae-tone-icon: var(--danger-icon); }
 .bae-tone-activity { --bae-tone: var(--activity); --bae-tone-tint: var(--activity-tint); }
-.bae-chip { display: inline-flex; align-items: center; gap: var(--space-inline); padding: var(--space-line) var(--space-compact); border-radius: var(--radius-chip); font: 600 10.5px var(--font-sans); white-space: nowrap; color: var(--bae-tone); background: var(--bae-tone-tint); }
+.bae-chip { display: inline-flex; align-items: center; gap: var(--space-inline); padding: var(--space-line) var(--space-compact); border-radius: var(--radius-chip); font: var(--type-chip-weight) var(--type-chip-size) var(--font-sans); white-space: nowrap; color: var(--bae-tone); background: var(--bae-tone-tint); }
 .bae-notice { padding: var(--space-group); border-radius: var(--radius-control); color: var(--text-primary); background: var(--bae-tone-notice, var(--bae-tone-tint)); }
 .bae-notice-with-icon { display: flex; align-items: flex-start; gap: var(--space-related); }
 /* The icon is 1.19 times the text, centred on the first line. */
@@ -44,7 +44,7 @@
 /* macOS draws secondary text in the system's own colour (mac-text-secondary); every Mac window, and a Mac board or preview outside one (bae-mac), takes it in place of text-secondary. */
 .bae-m-window, .bae-mac { --text-secondary: var(--mac-text-secondary); }
 .bae-notice:not(.bae-notice-quiet) { --text-secondary: color-mix(in srgb, var(--text-primary) 72%, transparent); }
-.bae-notice-title-strong { font-weight: 600; }
+.bae-notice-title-strong { font-weight: var(--type-strong-weight); }
 .bae-notice-subtitle { color: var(--text-secondary); }
 .bae-m-notice { position: relative; display: flex; flex-direction: column; gap: 4px; }
 .bae-m-notice-top { display: flex; align-items: flex-start; gap: var(--space-group); }

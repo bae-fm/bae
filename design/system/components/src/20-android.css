@@ -51,7 +51,7 @@
 .bae-a-code { display: flex; flex-direction: column; align-items: center; gap: var(--space-edge); text-align: center; }
 .bae-a-code-digits { font: 500 40px/48px var(--font-android); letter-spacing: 3px; color: var(--text-primary); }
 .bae-a-code-dialog, .bae-m-code-dialog { padding-top: var(--space-related); }
-.bae-a-code-dialog .bae-a-code-digits { font-size: 32px; line-height: 40px; letter-spacing: 2px; }
+.bae-a-code-dialog .bae-a-code-digits { letter-spacing: 2px; }
 /* Every button takes Material's 48dp touch target as its height; its 40dp shape (fill or outline) sits inside it, drawn by ::before. */
 /* A button draws its 40 px pill, as Material's buttons do; the 4 px above and below make the 48 px touch target. */
 .bae-a-btn { position: relative; isolation: isolate; height: 40px; margin-block: 4px; padding: 0 var(--space-section); border-radius: 20px; border: 0; background: none; font: 500 14px var(--font-android); cursor: pointer; white-space: nowrap; }
@@ -96,7 +96,7 @@
 .bae-a-input { width: 100%; box-sizing: border-box; min-height: 56px; padding: 16px var(--space-edge); border: 0; outline: none; background: none; color: var(--text-primary); font: 400 16px/24px var(--font-android); }
 .bae-a-input::placeholder { color: var(--text-secondary); }
 .bae-a-codetext { min-height: calc(3 * 24px + 28px); font: 400 15px/24px var(--font-mono); word-spacing: 4px; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
-.bae-m-codetext { height: auto; min-height: calc(3 * 20px + 16px); padding-top: 8px; padding-bottom: 8px; font: 400 13px/20px var(--font-mono); word-spacing: 4px; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
+.bae-m-codetext { height: auto; min-height: calc(3 * 20px + 16px); padding-top: 8px; padding-bottom: 8px; font: var(--type-mono-weight) var(--type-mono-size) var(--font-mono); word-spacing: 4px; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
 .bae-codetext-placeholder { font-family: var(--font-sans); word-spacing: normal; color: var(--text-secondary); }
 .bae-a-pin { display: flex; flex-direction: column; gap: var(--space-inline); font-family: var(--font-android); }
 .bae-a-pin-cells { display: flex; gap: 12px; }

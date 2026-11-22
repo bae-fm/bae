@@ -7,14 +7,14 @@
 .bae-notice-centered .bae-notice-body { flex: none; }
 .bae-notice-centered .bae-m-notice, .bae-notice-centered .bae-a-notice { align-items: center; gap: var(--space-group); }
 /* The centred title line carries the title's type, so the glyph in front of it scales with it (1.19 times, centred on the line). */
-.bae-m-notice-box.bae-notice-centered .bae-notice-centered-title { font: 400 15px/20px var(--font-sans); color: var(--text-secondary); }
+.bae-m-notice-box.bae-notice-centered .bae-notice-centered-title { font: var(--type-heading-weight) var(--type-heading-size) var(--font-sans); color: var(--text-secondary); }
 .bae-a-notice-box.bae-notice-centered .bae-notice-centered-title { font: 400 16px/24px var(--font-android); color: var(--text-secondary); }
 /* Under a subtitle the centred title is the line to read: primary text, the subtitle, glyph and buttons staying grey. A title alone stays grey. */
 .bae-notice-centered .bae-notice-title-strong { color: var(--text-primary); }
 .bae-notice-centered-row { display: flex; align-items: center; gap: var(--space-group); }
 .bae-notice-centered-title { display: flex; align-items: flex-start; gap: var(--space-compact); }
 .bae-notice-centered-sub { color: var(--text-secondary); }
-.bae-m-notice-box .bae-notice-centered-sub { font: 400 13px/18px var(--font-sans); }
+.bae-m-notice-box .bae-notice-centered-sub { font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
 .bae-a-notice-box .bae-notice-centered-sub { font: 400 14px/20px var(--font-android); }
 /* muted: a status glyph in the message's own grey, saying only that something went wrong (a failed view's centred notice). */
 .bae-status-glyph.bae-status-glyph-muted { color: var(--text-secondary); }

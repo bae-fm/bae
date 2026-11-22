@@ -1,6 +1,6 @@
 /* ---- previews ---- */
 
-.bae-preview { margin: 0; padding: var(--space-edge); background: var(--elevated); color: var(--text-primary); font: 400 13px var(--font-sans); display: flex; flex-direction: column; gap: var(--space-group); }
+.bae-preview { margin: 0; padding: var(--space-edge); background: var(--elevated); color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); display: flex; flex-direction: column; gap: var(--space-group); }
 .bae-preview-android { font-family: var(--font-android); background: var(--background); }
 .bae-preview-row { display: flex; align-items: center; gap: var(--space-edge); }
 .bae-preview-row-wide { align-items: flex-start; }
@@ -10,7 +10,7 @@
 .bae-preview-row-wide > .bae-preview-cell-fit { flex: none; }
 /* An Android wide row draws at the phone's width, 411dp, as the app's component shot takes it. */
 .bae-preview-android .bae-preview-row-wide > .bae-preview-cell { flex: none; width: 411px; }
-.bae-preview-name { width: 110px; flex: none; font: 400 11.5px/15px var(--font-sans); color: var(--text-secondary); }
+.bae-preview-name { width: 110px; flex: none; font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-secondary); }
 .bae-preview-cell { flex: 1; min-width: 0; display: flex; align-items: center; }
 .bae-preview-slot { padding: var(--space-group); border: 1px dashed var(--hairline-strong); border-radius: var(--radius-card); color: var(--text-secondary); }
 .bae-m-switch { position: relative; width: 32px; height: 18px; flex: none; border: 0; border-radius: 9px; padding: 0; cursor: pointer; background: var(--tile); }
@@ -24,11 +24,11 @@
 .bae-a-accents { display: flex; justify-content: space-between; }
 .bae-a-accents .bae-swatch { width: 36px; height: 36px; }
 .bae-a-accents .bae-swatch-on { box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--text-primary); }
-.bae-m-menu { display: flex; flex-direction: column; white-space: nowrap; padding: 6px; border-radius: 12px; background: var(--elevated); box-shadow: inset 0 0 0 1px var(--hairline-strong), 0 8px 24px var(--shadow); font: 400 13px var(--font-sans); color: var(--text-primary); }
+.bae-m-menu { display: flex; flex-direction: column; white-space: nowrap; padding: 6px; border-radius: 12px; background: var(--elevated); box-shadow: inset 0 0 0 1px var(--hairline-strong), 0 8px 24px var(--shadow); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); color: var(--text-primary); }
 .bae-m-menu-item { display: flex; align-items: center; gap: var(--space-compact); padding: 3px var(--space-related); border-radius: 6px; }
 .bae-m-menu-item-on { background: var(--accent-selection); color: var(--on-fill); }
 .bae-m-menu-item-off { color: var(--text-tertiary); }
-.bae-m-menu-more { text-align: center; font-size: 10px; line-height: 14px; color: var(--text-secondary); }
+.bae-m-menu-more { text-align: center; font-size: var(--type-fine-size); font-weight: var(--type-fine-weight); line-height: normal; color: var(--text-secondary); }
 .bae-m-menu-check { width: 11px; display: flex; }
 
 /* Scan code: what to do, the QR code, its buttons, then when it ends. */
@@ -37,8 +37,7 @@
 .bae-scan-qr { padding: 10px; border-radius: 8px; background: var(--text-primary); line-height: 0; }
 .bae-scan-qr svg { fill: var(--background); display: block; }
 .bae-scan-buttons { display: flex; justify-content: center; gap: var(--space-related); margin-top: calc(-1 * var(--space-inline)); }
-.bae-m-scan .bae-scan-text { font: 400 12px/16px var(--font-sans); color: var(--text-secondary); }
-.bae-m-scan .bae-scan-text { color: var(--text-primary); font-size: 13px; line-height: 18px; }
+.bae-m-scan .bae-scan-text { font: var(--type-body-weight) var(--type-body-size) var(--font-sans); color: var(--text-primary); }
 .bae-a-scan .bae-scan-text { font: 400 14px/20px var(--font-android); color: var(--text-secondary); }
 .bae-a-scan .bae-scan-text { color: var(--text-primary); }
 
@@ -57,7 +56,7 @@
 .bae-m-box .bae-m-notice-box:not(.bae-notice-quiet) { margin: 0 var(--space-group) var(--space-group); }
 .bae-m-nested .bae-m-notice-box:not(.bae-notice-quiet) { margin: 0 var(--space-group); }
 .bae-m-row .bae-m-notice-box:not(.bae-notice-quiet) { margin: 0; }
-.bae-m-nested p { margin: 0; font: 400 13px/18px var(--font-sans); text-wrap: pretty; }
+.bae-m-nested p { margin: 0; font: var(--type-body-weight) var(--type-body-size) var(--font-sans); text-wrap: pretty; }
 .bae-m-infotip { display: inline-flex; align-items: center; padding: 0; border: 0; background: none; color: inherit; cursor: pointer; }
 /* A nested row joins the switch row above it into one piece of the card: no gap, no corners between them, and set in from the card's edge. */
 .bae-a-row-nested { padding-top: 0; min-height: 0; padding-left: calc(var(--space-edge) + var(--space-section)); }
@@ -68,6 +67,6 @@
 .bae-spinner-spokes { animation-duration: 0.8s; animation-timing-function: steps(8); }
 @keyframes bae-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .bae-spinner { animation-duration: 2.4s; } }
-.bae-m-spinner { display: inline-flex; align-items: center; gap: var(--space-related); color: var(--text-secondary); font: 400 11.5px var(--font-sans); }
+.bae-m-spinner { display: inline-flex; align-items: center; gap: var(--space-related); color: var(--text-secondary); font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); }
 .bae-a-spinner { display: inline-flex; align-items: center; gap: 12px; color: var(--accent); font: 400 14px/20px var(--font-android); }
 .bae-a-spinner > span { color: var(--text-secondary); }

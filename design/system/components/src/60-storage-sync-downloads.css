@@ -2,8 +2,8 @@
 /* Shared helpers for the storage, album-action, import and error parts */
 .bae-num { font-variant-numeric: tabular-nums; }
 /* The design system's mono style, 12px (Codes and paths), on a 14px line: SF Mono's own line at 12pt, so a row holds it at the height it held the 11px text. */
-.bae-mono { font: 400 12px/14px var(--font-mono); }
-.bae-strong { font-weight: 600; }
+.bae-mono { font: var(--type-mono-weight) var(--type-mono-size) var(--font-mono); }
+.bae-strong { font-weight: var(--type-strong-weight); }
 .bae-ellipsis { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bae-activity { color: var(--activity); }
 .bae-pinning { color: var(--pinning); }
@@ -11,17 +11,17 @@
 .bae-m-iconbtn-on { color: var(--accent); }
 
 /* Storage Manager */
-.bae-m-storewin { --text-secondary: var(--mac-text-secondary); position: relative; display: flex; flex-direction: column; overflow: hidden; border-radius: 16px; background: var(--background); color: var(--text-primary); font: 400 13px var(--font-sans); box-shadow: inset 0 0 0 1px var(--hairline); }
+.bae-m-storewin { --text-secondary: var(--mac-text-secondary); position: relative; display: flex; flex-direction: column; overflow: hidden; border-radius: 16px; background: var(--background); color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); box-shadow: inset 0 0 0 1px var(--hairline); }
 .bae-m-storewin-bar { flex: none; height: 52px; display: flex; align-items: center; gap: 10px; padding: 0 14px 0 86px; border-bottom: 1px solid var(--hairline); }
-.bae-m-storewin-title { font: 600 13px var(--font-sans); }
+.bae-m-storewin-title { font: var(--type-strong-weight) var(--type-strong-size) var(--font-sans); }
 .bae-m-storewin-body { flex: 1; min-height: 0; display: flex; }
 .bae-m-storewin-list { flex: 1; min-width: 440px; display: flex; flex-direction: column; overflow: hidden; }
 .bae-m-storewin-table { flex: 1; min-height: 0; display: flex; flex-direction: column; position: relative; overflow-x: auto; }
 .bae-m-storewin-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
 .bae-m-storewin-inspector { width: 440px; flex: none; display: flex; flex-direction: column; border-left: 1px solid var(--hairline); background: var(--background); overflow: hidden; }
-.bae-m-table { flex: 1; min-height: 0; display: flex; flex-direction: column; position: relative; font: 400 13px var(--font-sans); padding: 0 10px; }
+.bae-m-table { flex: 1; min-height: 0; display: flex; flex-direction: column; position: relative; font: var(--type-body-weight) var(--type-body-size) var(--font-sans); padding: 0 10px; }
 .bae-m-table-head, .bae-m-table-row { display: grid; grid-template-columns: var(--bae-cols); align-items: center; }
-.bae-m-table-head { height: 28px; font: 600 11.5px var(--font-sans); color: var(--text-secondary); border-bottom: 1px solid var(--hairline); }
+.bae-m-table-head { height: 28px; font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-secondary); border-bottom: 1px solid var(--hairline); }
 .bae-m-table-th { padding: 0 6px; display: flex; align-items: center; gap: 4px; border: 0; border-left: 1px solid var(--hairline); background: none; font: inherit; color: inherit; text-align: left; cursor: default; }
 .bae-m-table-th:first-child { border-left: 0; }
 .bae-m-table-right { justify-content: flex-end; text-align: right; }
@@ -30,32 +30,32 @@
 .bae-m-table-alt { background: var(--hover); }
 .bae-m-table-row { height: 28px; border-radius: 5px; }
 /* A storage state that stands still (Local, Pinned, Cloud, Queued, Waiting, Error): a plain word in the row's text, with no chip; a problem's word in its tone's colour. Its type is the cell text role. */
-.bae-m-storeword { font: 400 11px var(--font-sans); color: var(--text-primary); text-align: start; white-space: nowrap; }
+.bae-m-storeword { font: var(--type-cell-weight) var(--type-cell-size) var(--font-sans); color: var(--text-primary); text-align: start; white-space: nowrap; }
 .bae-m-storeword-tone { color: var(--bae-tone); }
 .bae-m-table-selected { background: var(--accent-tint); }
 .bae-m-table-td { padding: 0 4px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; }
 .bae-m-storecell-num { margin-left: auto; }
 .bae-m-relcell { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.bae-m-progchip { position: relative; display: inline-flex; overflow: hidden; padding: 2px 6px; border-radius: var(--radius-chip); font: 600 10.5px var(--font-sans); color: var(--text-primary); }
+.bae-m-progchip { position: relative; display: inline-flex; overflow: hidden; padding: 2px 6px; border-radius: var(--radius-chip); font: var(--type-chip-weight) var(--type-chip-size) var(--font-sans); color: var(--text-primary); }
 .bae-m-progchip-up { background: var(--activity-tint); --bae-fill: color-mix(in srgb, var(--activity) 26%, transparent); }
 .bae-m-progchip-pin { background: color-mix(in srgb, var(--pinning) 14%, transparent); --bae-fill: color-mix(in srgb, var(--pinning) 26%, transparent); }
 .bae-m-progchip-fill { position: absolute; inset: 0 auto 0 0; background: var(--bae-fill); }
 .bae-m-progchip-label { position: relative; }
-.bae-m-storefoot { flex: none; display: flex; align-items: center; gap: 12px; padding: 8px 16px; border-top: 1px solid var(--hairline); font: 400 13px var(--font-sans); color: var(--text-secondary); }
+.bae-m-storefoot { flex: none; display: flex; align-items: center; gap: 12px; padding: 8px 16px; border-top: 1px solid var(--hairline); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); color: var(--text-secondary); }
 .bae-m-storefoot-q { display: inline-flex; align-items: center; gap: 6px; }
-.bae-m-tsum { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; font: 400 11.5px var(--font-sans); border-bottom: 1px solid var(--hairline); }
+.bae-m-tsum { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); border-bottom: 1px solid var(--hairline); }
 .bae-m-tsum-line { display: flex; align-items: center; gap: 8px; }
 .bae-m-readout { display: flex; flex-direction: column; gap: 10px; }
-.bae-m-readout-line { display: flex; justify-content: space-between; font: 400 11.5px var(--font-sans); color: var(--text-secondary); }
+.bae-m-readout-line { display: flex; justify-content: space-between; font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-secondary); }
 .bae-m-readout-bar .bae-progress-track { height: 4px; }
 .bae-m-readout-up .bae-progress-fill { background: var(--activity); }
 .bae-m-readout-pin .bae-progress-fill { background: var(--pinning); }
-.bae-m-filerow { padding: 8px 16px; font: 400 13px var(--font-sans); }
+.bae-m-filerow { padding: 8px 16px; font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
 .bae-m-filerow-selected { background: var(--accent-tint); }
 .bae-m-filedet { margin-top: auto; background: var(--elevated); padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 12px; border-top: 1px solid var(--hairline); }
-.bae-m-filedet-head { display: flex; justify-content: space-between; gap: 8px; font: 600 15px var(--font-sans); }
-.bae-m-filedet-grid { display: grid; grid-template-columns: 84px 1fr; gap: 6px 12px; font: 400 11.5px var(--font-sans); }
-.bae-m-filedet-grid-wide { grid-template-columns: 140px 1fr; gap: 4px 12px; font-size: 13px; }
+.bae-m-filedet-head { display: flex; justify-content: space-between; gap: 8px; font: var(--type-heading-weight) var(--type-heading-size) var(--font-sans); }
+.bae-m-filedet-grid { display: grid; grid-template-columns: 84px 1fr; gap: 6px 12px; font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); }
+.bae-m-filedet-grid-wide { grid-template-columns: 140px 1fr; gap: 4px 12px; font-size: var(--type-body-size); font-weight: var(--type-body-weight); line-height: normal; }
 .bae-errdis-copy { color: var(--text-secondary); }
 /* An error's Retry: the box's top-right corner, level with the line; the open Details run the full width under it. */
 
@@ -64,14 +64,14 @@
 .bae-m-popover-body { position: relative; max-height: 462px; overflow: hidden; }
 .bae-m-popover-arrow { position: absolute; top: -7px; right: 40px; width: 14px; height: 14px; background: var(--elevated); transform: rotate(45deg); }
 .bae-m-actlist { display: flex; flex-direction: column; }
-.bae-m-actrow { padding: 0 var(--space-group); font: 400 13px var(--font-sans); }
+.bae-m-actrow { padding: 0 var(--space-group); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
 .bae-m-actline { padding: 10px 0; }
 .bae-m-actxfer { display: flex; justify-content: space-between; align-items: center; gap: var(--space-related); }
 /* A transfer line carries words and a bar, so it gets a group's room above and below, more than a one-line row. */
 .bae-m-actline-xfer { display: flex; flex-direction: column; gap: var(--space-related); padding: var(--space-group) 0 calc(var(--space-group) + var(--space-inline)); }
 .bae-m-actxfer-end { display: flex; align-items: center; gap: var(--space-compact); }
 .bae-m-actfoot { display: flex; margin-top: var(--space-group); }
-.bae-m-actrow-sub { font: 400 11.5px var(--font-sans); color: var(--text-secondary); margin-top: 2px; }
+.bae-m-actrow-sub { font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-secondary); margin-top: 2px; }
 .bae-a-act { --bae-a-act-gutter: calc(14px * 1.19 + var(--space-related)); display: flex; flex-direction: column; gap: 8px; padding: 0 16px 16px; font: 400 14px/20px var(--font-android); }
 .bae-a-act-text { padding-left: var(--bae-a-act-gutter); }
 .bae-a-actproblems > .bae-divider { margin-left: var(--bae-a-act-gutter); }
@@ -112,19 +112,19 @@
 /* A multi-line field's chrome: 8pt above and below its line, 10pt at its sides, as the app's boxed multi-line field pads it. */
 .bae-m-tokenfield { min-height: 17px; padding: var(--space-related) 10px; border-radius: 7px; background: var(--field); box-shadow: inset 0 0 0 1px var(--field-edge); display: flex; row-gap: 6px; flex-wrap: wrap; align-items: center; }
 /* A value is macOS's own token (NSTokenField's): the system's blue, its words in the field's font, small corners, no ×. Typed text sits between the tokens as typed, its spaces kept: they are the spacing, so a token keeps only a hair of margin of its own. */
-.bae-m-token { margin: 0 2px; padding: 0 8px; border-radius: var(--radius-chip); background: var(--accent-tint); color: var(--accent); font: 400 13px/17px var(--font-sans); white-space: nowrap; }
+.bae-m-token { margin: 0 2px; padding: 0 8px; border-radius: var(--radius-chip); background: var(--accent-tint); color: var(--accent); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); white-space: nowrap; }
 .bae-m-tokenfield-error { box-shadow: inset 0 0 0 1px var(--danger), 0 0 0 3px color-mix(in srgb, var(--danger) 35%, transparent); }
-.bae-m-tokentext { white-space: pre; font: 400 13px var(--font-sans); color: var(--text-primary); }
+.bae-m-tokentext { white-space: pre; font: var(--type-body-weight) var(--type-body-size) var(--font-sans); color: var(--text-primary); }
 .bae-m-filename { padding: 10px var(--space-group); display: flex; flex-direction: column; gap: var(--space-related); }
-.bae-m-filename-label { font: 400 13px var(--font-sans); color: var(--text-primary); }
-.bae-m-filename-add { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font: 400 11.5px var(--font-sans); color: var(--text-secondary); }
-.bae-m-filename-preview { font: 400 11.5px var(--font-sans); color: var(--text-secondary); }
+.bae-m-filename-label { font: var(--type-body-weight) var(--type-body-size) var(--font-sans); color: var(--text-primary); }
+.bae-m-filename-add { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-secondary); }
+.bae-m-filename-preview { font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-secondary); }
 /* The dashed edge is drawn inside the value, as the app strokes an overlay, so it adds nothing to its width. */
 .bae-m-tokenadd { padding: 1px 6px; border-radius: var(--radius-chip); outline: 1px dashed var(--hairline-strong); outline-offset: -1px; color: var(--text-primary); }
 /* Settings → Storage's usage: the total, one bar in kinds, a legend. Each kind keeps one of the accents' selection steps (Pinned blue, Cache gold, Library orchid, From before the reset mint, anything else neutral), the same in both themes, checked for colour-blind separation and 3:1 on the surface in that order. A 2px gap parts the segments. */
 .bae-usage { display: flex; flex-direction: column; gap: var(--space-related); padding: var(--space-group); }
 .bae-usage-total { display: flex; align-items: baseline; gap: var(--space-inline); }
-.bae-usage-num { font-weight: 700; color: var(--text-primary); }
+.bae-usage-num { font-weight: var(--type-title-weight); color: var(--text-primary); }
 .bae-usage-of { color: var(--text-secondary); }
 .bae-usage-bar { display: flex; gap: 2px; height: 8px; }
 .bae-usage-seg { min-width: 4px; border-radius: 2px; }
@@ -137,11 +137,11 @@
 .bae-usage-seg-5 { background: var(--hairline-strong); }
 .bae-usage-legend { display: flex; flex-wrap: wrap; column-gap: var(--space-group); row-gap: var(--space-inline); color: var(--text-secondary); }
 .bae-usage-key { display: inline-flex; align-items: center; gap: var(--space-inline); white-space: nowrap; color: var(--text-secondary); }
-.bae-usage-key-m { font: 400 12px var(--font-sans); }
+.bae-usage-key-m { font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); }
 .bae-usage-key-a { font: 400 14px/20px var(--font-android); }
 .bae-usage-dot { width: 8px; height: 8px; border-radius: 4px; flex: none; }
 .bae-usage-size { color: var(--text-primary); font-variant-numeric: tabular-nums; }
-.bae-usage-m { font: 400 12px var(--font-sans); }
-.bae-usage-m .bae-usage-num { font-size: 22px; }
+.bae-usage-m { font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); }
+.bae-usage-m .bae-usage-num { font-size: var(--type-title-size); font-weight: var(--type-title-weight); line-height: normal; }
 .bae-usage-a { font: 400 14px/20px var(--font-android); padding: var(--space-edge) var(--space-edge) var(--space-group); }
 .bae-usage-a .bae-usage-num { font-size: 32px; line-height: 40px; font-weight: 400; }
