@@ -80,6 +80,7 @@ private fun Header(
     )
 }
 
+private val us = BridgeFactTerm.Worded(BridgeTermLabel.Localized("core.pressing.country.us"))
 private val cd = BridgeFactTerm.Worded(BridgeTermLabel.Verbatim("CD"))
 
 /** Low Tide Hours as the design system's previews pressed it: a 1992 CD on Harbor Records. */
@@ -89,8 +90,8 @@ internal val harborRelease: BridgeRelease =
             distinctYear = null,
             labels = listOf(BridgeLabelLine(names = listOf("Harbor Records"), catalogNumbers = listOf("HR-1042"))),
             facts = release.facts.copy(area = BridgeReleaseArea.Country("US"), media = listOf(BridgeMediaCount(BridgeMedium.CD, 1u))),
-            pressingSummary = listOf(BridgeFactTerm.Worded(BridgeTermLabel.Verbatim("US")), cd),
-            areaTerms = listOf(BridgeFactTerm.Worded(BridgeTermLabel.Verbatim("US"))),
+            pressingSummary = listOf(us, cd),
+            areaTerms = listOf(us),
             mediaTerms = listOf(cd),
             totalDuration = BridgeDurationUnits.MinutesOnly(52u),
         )

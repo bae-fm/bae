@@ -57,3 +57,19 @@ fn details_leave_out_the_ordinary_official_status() {
         BridgePressingFacts { status: Some(BridgeReleaseStatus::Official), ..japan_cd() };
     assert!(bridge_pressing_details(official).is_empty());
 }
+
+/// A country with a commonly used short form is worded through the catalog;
+/// every other country keeps its code for the app to name in full.
+#[test]
+fn a_country_with_a_short_form_is_worded_through_the_catalog() {
+    let area = |code: &str| BridgeReleaseArea::Country { code: code.to_string() };
+    assert_eq!(
+        bridge_area_term(area("US")),
+        BridgeFactTerm::Worded { label: localized("core.pressing.country.us") }
+    );
+    assert_eq!(
+        bridge_area_term(area("GB")),
+        BridgeFactTerm::Worded { label: localized("core.pressing.country.uk") }
+    );
+    assert_eq!(bridge_area_term(area("JP")), BridgeFactTerm::Country { code: "JP".to_string() });
+}

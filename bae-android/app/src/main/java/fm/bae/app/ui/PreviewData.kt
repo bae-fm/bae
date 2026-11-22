@@ -151,10 +151,10 @@ object PreviewData {
             // shot cannot call the bridge.
             pressingSummary =
                 listOf(
-                    BridgeFactTerm.Country("US"),
+                    BridgeFactTerm.Worded(BridgeTermLabel.Localized("core.pressing.country.us")),
                     BridgeFactTerm.Worded(BridgeTermLabel.Localized("core.pressing.medium.vinyl")),
                 ),
-            areaTerms = listOf(BridgeFactTerm.Country("US")),
+            areaTerms = listOf(BridgeFactTerm.Worded(BridgeTermLabel.Localized("core.pressing.country.us"))),
             mediaTerms = listOf(BridgeFactTerm.Worded(BridgeTermLabel.Localized("core.pressing.medium.vinyl"))),
             pressingDetails = emptyList(),
             storageState = BridgeReleaseStorageState.OnOneDevice,

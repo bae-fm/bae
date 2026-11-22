@@ -628,10 +628,16 @@ pub fn bridge_discogs_detail_label(detail: BridgeDiscogsDetail) -> BridgeTermLab
     }
 }
 
-/// Where a pressing was released, as one part of a line.
+/// Where a pressing was released, as one part of a line. A country with a short
+/// form its language commonly uses (US, UK) is worded through the catalog; any
+/// other country is named in full by the app from its code.
 pub(crate) fn bridge_area_term(area: BridgeReleaseArea) -> BridgeFactTerm {
     match area {
-        BridgeReleaseArea::Country { code } => BridgeFactTerm::Country { code },
+        BridgeReleaseArea::Country { code } => match code.as_str() {
+            "US" => BridgeFactTerm::Worded { label: localized("core.pressing.country.us") },
+            "GB" => BridgeFactTerm::Worded { label: localized("core.pressing.country.uk") },
+            _ => BridgeFactTerm::Country { code },
+        },
         BridgeReleaseArea::Region { region } => {
             BridgeFactTerm::Worded { label: localized(&bridge_region_key(region)) }
         }

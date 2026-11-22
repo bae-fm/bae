@@ -228,7 +228,9 @@ fn a_pressing_row_crosses_with_every_record_s_values() {
         row.areas,
         vec![
             BridgeTermsStatement {
-                terms: vec![BridgeFactTerm::Country { code: "US".to_string() }],
+                terms: vec![BridgeFactTerm::Worded {
+                    label: crate::types::pressing::localized("core.pressing.country.us")
+                }],
                 catalogs: vec![BridgeLookupCatalog::MusicBrainz],
             },
             BridgeTermsStatement {

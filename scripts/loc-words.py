@@ -81,10 +81,10 @@ HEADING_REFERENCES = {
     "queue_clear_playing_from",
 }
 
-# core's pressing regions are place names, and an instrument's name holds the
+# core's pressing regions and countries are place names, and an instrument's name holds the
 # proper names of its maker, builder or place ("Blaster Beam", "Wiener Horn"):
 # neither is checked for capitals.
-CORE_PLACE_NAMES = ("core.pressing.region.", "core.credit.instrument.")
+CORE_PLACE_NAMES = ("core.pressing.region.", "core.pressing.country.", "core.credit.instrument.")
 
 # Short words a title keeps lowercase inside it (Apple's style).
 TITLE_SMALL_WORDS = {
