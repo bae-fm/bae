@@ -19,8 +19,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -49,6 +47,7 @@ import fm.bae.app.displayError
 import fm.bae.app.labelsLineText
 import fm.bae.app.pressingLineText
 import fm.bae.app.text
+import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
@@ -464,7 +463,7 @@ private fun NotOnThisDevice(onShowWhere: () -> Unit) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         AndroidIconButton(
-            icon = Icons.Outlined.Info,
+            icon = SymbolIcons.Info,
             contentDescription = stringResource(R.string.release_show_where),
             onClick = onShowWhere,
             tone = IconTone.MUTED,
