@@ -129,9 +129,11 @@ pub(crate) fn read_shared(
     }
     pair_roles(kind, entries, problems)
         .into_iter()
-        .filter_map(|(role, pair)| {
-            let token = pair.apple?;
-            Some((role.to_string(), length(token, "length", &token.value, problems)))
+        .map(|(role, pair)| {
+            let token = pair.apple.unwrap_or_else(|| {
+                panic!("{kind} role `{role}`: read_shared pairs only Apple entries, so each role has one")
+            });
+            (role.to_string(), length(token, "length", &token.value, problems))
         })
         .collect()
 }
