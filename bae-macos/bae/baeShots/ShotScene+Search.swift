@@ -1,4 +1,3 @@
-import AppKit
 import BaeKit
 import Combine
 import SwiftUI
@@ -146,10 +145,10 @@ extension ShotScene {
             isReady: { (backing.session.albums.list?.positionCount ?? 0) > 0 },
             // The title bar focuses the field when it hears a request, which
             // it can hear only once it is in the window, so the request goes
-            // out until the field has the keyboard.
-            isDrawn: { host in
+            // out at each read of the tree.
+            isDrawn: { _ in
                 focus.requests.send()
-                return host.window?.firstResponder is NSText
+                return true
             }
         )
     }
