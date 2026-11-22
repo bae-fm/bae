@@ -161,10 +161,11 @@ extension BridgeArtistStanding {
 }
 
 extension BridgeArtistsStanding {
-    /// The badge naming how a whole field's artists stand to the library.
-    var label: String {
+    /// The badge naming how a whole field's artists stand to the library,
+    /// which is none when every artist is in the library.
+    var label: String? {
         switch self {
-        case .library: String(localized: "Library")
+        case .library: nil
         case .new: String(localized: "New")
         case .someNew(let count): String(localized: "\(Int(count)) new")
         case .choose(let choices):
@@ -187,11 +188,7 @@ struct ArtistAssignmentsSummary: Equatable {
     init?(field: BridgeArtistField?) {
         guard let field else { return nil }
         names = bridgeCreditLine(credits: field.credits.map(\.credited)).text
-        identityLabel =
-            switch field.standing {
-            case .library: nil
-            default: field.standing.label
-            }
+        identityLabel = field.standing.label
     }
 }
 

@@ -274,7 +274,10 @@ private struct CommittedTextEditor: NSViewRepresentable {
         if field.stringValue != text {
             field.stringValue = text
         }
-        (field.cell as? any InsetCell)?.insets = insets
+        guard let cell = field.cell as? any InsetCell else {
+            preconditionFailure("makeNSView installs an inset cell")
+        }
+        cell.insets = insets
         field.font = font
         field.textColor = textColor
         field.isEnabled = context.environment.isEnabled
