@@ -16,7 +16,7 @@ extension ShotScene {
         seekBar(
             "mac.component.seek-bar.holes",
             source: track(
-                at: 61_000,
+                at: 102_000,
                 held: [
                     BridgeTrackSpan(start: 0, end: 0.3),
                     BridgeTrackSpan(start: 0.55, end: 0.7),
