@@ -58,9 +58,9 @@ private struct NamedByLabelAndCount: ViewModifier {
         if named {
             content
                 .accessibilityLabel(
-                    Text(
-                        verbatim:
-                            "\(offer.action.label) \(offer.applicable.formatted())"
+                    String(
+                        localized:
+                            "Bulk action \(offer.action.label) \(offer.applicable.formatted())"
                     )
                 )
         }
