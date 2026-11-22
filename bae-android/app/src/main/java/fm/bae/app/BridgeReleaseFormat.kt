@@ -14,19 +14,23 @@ import uniffi.bae_bridge.bridgeAudioChannelsKey
  * each label with its catalog numbers, then its country.
  */
 fun BridgeRelease.editionLineText(context: Context): String =
-    listOf(
-        distinctYear?.let(context::yearText),
-        labelsLineText(context).ifEmpty { null },
-        factLine(context, areaTerms).ifEmpty { null },
-    ).filterNotNull().joinToString(context.factSeparator())
+    context.factsLine(
+        listOf(
+            distinctYear?.let(context::yearText),
+            labelsLineText(context),
+            factLine(context, areaTerms),
+        ),
+    )
 
 /** The copy line: the media and details, then the play time. */
 fun BridgeRelease.copyLineText(context: Context): String =
-    listOf(
-        factLine(context, mediaTerms).ifEmpty { null },
-        factLine(context, pressingDetails).ifEmpty { null },
-        context.durationUnitsText(totalDuration).ifEmpty { null },
-    ).filterNotNull().joinToString(context.factSeparator())
+    context.factsLine(
+        listOf(
+            factLine(context, mediaTerms),
+            factLine(context, pressingDetails),
+            context.durationUnitsText(totalDuration),
+        ),
+    )
 
 /** The audio line: the files' audio as bae read it, or an empty line when no file was read. */
 fun BridgeRelease.audioLineText(
