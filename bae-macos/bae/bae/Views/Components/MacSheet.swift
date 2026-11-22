@@ -68,8 +68,6 @@ struct MacSheet<Content: View, Footer: View>: View {
         ) {
             title
                 .themeText(.strong)
-                // The boards set a sheet's title at 13 points, bold.
-                .fontWeight(.bold)
                 .padding(.bottom, ThemeSpace.line)
             if let message {
                 SheetMessage(message)

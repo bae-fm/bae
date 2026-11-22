@@ -35,8 +35,8 @@ final class ProgressStripNSView: NSView {
         bar.setAccessibilityLabel(String(localized: "Playback position"))
         elapsedField = NSTextField(labelWithString: "")
         elapsedField.font = .monospacedDigitSystemFont(
-            ofSize: 10,
-            weight: .semibold
+            ofSize: ThemeText.fine.macOSSize,
+            weight: ThemeText.fine.nsWeight
         )
         elapsedField.textColor = NSColor(Theme.macTextSecondary)
         elapsedField.alignment = .right

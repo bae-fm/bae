@@ -15,7 +15,7 @@ struct MacMatchCode: View {
     var body: some View {
         VStack(spacing: ThemeSpace.edge) {
             Text(verbatim: code)
-                .font(.system(size: 34, weight: .semibold))
+                .themeText(.figure)
                 .tracking(3)
                 .foregroundStyle(Theme.textPrimary)
                 .textSelection(.enabled)

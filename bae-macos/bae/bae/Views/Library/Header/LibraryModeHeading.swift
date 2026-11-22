@@ -8,12 +8,10 @@ struct LibraryModeHeading: View {
     let collapseProgress: Double
 
     /// The chevron's size at full size and collapsed; its lift towards the cap
-    /// height and the descender space trimmed under the heading are each a
-    /// fraction of the heading's size.
+    /// height is a fraction of the heading's size.
     private static let chevronFull: CGFloat = 15
     private static let chevronCollapsed: CGFloat = 8
     private static let chevronLift: CGFloat = 0.23
-    private static let descenderTrim: CGFloat = 0.22
 
     @Environment(UiStore.self)
     private var uiStore
@@ -41,9 +39,6 @@ struct LibraryModeHeading: View {
                 .baselineOffset(size * Self.chevronLift)
                 .foregroundColor(Theme.macTextSecondary))
                 .contentTransition(.interpolate)
-                // Trims the unused descender space so the menu opens near the
-                // text.
-                .padding(.bottom, -size * Self.descenderTrim)
         }
         .fixedSize()
     }

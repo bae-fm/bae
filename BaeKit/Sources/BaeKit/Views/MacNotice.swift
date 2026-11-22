@@ -392,7 +392,6 @@ extension MacNotice {
                 }
                 Text(verbatim: centeredTitle)
                     .themeText(.heading)
-                    .fontWeight(.regular)
                     .foregroundStyle(titleColor)
                     .multilineTextAlignment(.center)
             }

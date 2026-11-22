@@ -8,7 +8,6 @@ struct MacFormHeading: View {
     var body: some View {
         Text(verbatim: title)
             .themeText(.detail)
-            .fontWeight(.semibold)
             .foregroundStyle(Theme.macTextSecondary)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.bottom, ThemeSpace.inline)

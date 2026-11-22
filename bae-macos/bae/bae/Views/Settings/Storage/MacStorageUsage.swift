@@ -14,8 +14,9 @@ struct MacStorageUsage: View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
             HStack(alignment: .firstTextBaseline, spacing: ThemeSpace.inline) {
                 Text(verbatim: usage.total.fileSizeText)
-                    .themeText(.title)
+                    .themeText(.figure)
                 Text("on this Mac")
+                    .themeText(.detail)
                     .foregroundStyle(Theme.macTextSecondary)
             }
             bar

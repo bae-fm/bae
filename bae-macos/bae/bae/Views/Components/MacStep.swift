@@ -30,17 +30,15 @@ struct MacStep<Content: View>: View {
             VStack(spacing: ThemeSpace.compact) {
                 BalancedText(
                     text: title,
-                    font: .systemFont(ofSize: 20, weight: .semibold),
+                    role: .title,
                     color: NSColor(Theme.textPrimary),
-                    lineHeight: 26,
                     maxWidth: Self.headWidth
                 )
                 if let text {
                     BalancedText(
                         text: text,
-                        font: .systemFont(ofSize: 13),
+                        role: .body,
                         color: NSColor(Theme.macTextSecondary),
-                        lineHeight: 18,
                         maxWidth: Self.headWidth
                     )
                 }
@@ -58,9 +56,8 @@ struct MacStep<Content: View>: View {
 /// break strategy to set.
 private struct BalancedText: NSViewRepresentable {
     let text: String
-    let font: NSFont
+    let role: ThemeText
     let color: NSColor
-    let lineHeight: CGFloat
     let maxWidth: CGFloat
 
     func makeNSView(context: Context) -> NSTextField {
@@ -77,12 +74,11 @@ private struct BalancedText: NSViewRepresentable {
         let style = NSMutableParagraphStyle()
         style.alignment = .center
         style.lineBreakStrategy = .pushOut
-        style.minimumLineHeight = lineHeight
-        style.maximumLineHeight = lineHeight
         field.attributedStringValue = NSAttributedString(
             string: text,
             attributes: [
-                .font: font,
+                .font: role.nsFont,
+                .kern: role.tracking,
                 .foregroundColor: color,
                 .paragraphStyle: style,
             ]
@@ -106,7 +102,7 @@ private struct BalancedText: NSViewRepresentable {
                 )
             )
             .height
-        return CGSize(width: width, height: ceil(height ?? lineHeight))
+        return CGSize(width: width, height: ceil(height ?? 0))
     }
 }
 

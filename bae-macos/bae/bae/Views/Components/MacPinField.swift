@@ -30,11 +30,6 @@ struct MacPinField: View {
 
     /// A box's size, as the design draws it.
     private static let cellSize = CGSize(width: 40, height: 48)
-    private static let digitFont = Font.system(
-        size: 22,
-        weight: .medium,
-        design: .monospaced
-    )
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.inline) {
@@ -55,7 +50,6 @@ struct MacPinField: View {
             if let error {
                 Text(verbatim: error)
                     .themeText(.detail)
-                    .lineSpacing(ThemeSpace.line / 2)
                     .foregroundStyle(Theme.danger)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
@@ -66,7 +60,8 @@ struct MacPinField: View {
 
     private func cell(_ index: Int) -> some View {
         Text(verbatim: digit(at: index))
-            .font(Self.digitFont)
+            .themeText(.figure)
+            .monospacedDigit()
             .foregroundStyle(Theme.textPrimary)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .modifier(

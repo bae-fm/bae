@@ -104,7 +104,6 @@
             ) {
                 words.title
                     .themeText(.strong)
-                    .fontWeight(.bold)
                     .fixedSize(horizontal: false, vertical: true)
                 if let warning = words.warning {
                     MacNotice(
@@ -118,7 +117,6 @@
                 if let message = words.message {
                     message
                         .themeText(.alertMessage)
-                        .lineSpacing(ThemeSpace.line / 2)
                         .foregroundStyle(Theme.macTextSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
