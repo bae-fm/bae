@@ -15,8 +15,8 @@ import fm.bae.app.ui.albumdetail.AlbumOptionsMenu
 import fm.bae.app.ui.albumdetail.AlbumPlaybackState
 import fm.bae.app.ui.albumdetail.AlbumRatingChoices
 import fm.bae.app.ui.albumdetail.PlayMenuActions
+import fm.bae.app.ui.albumdetail.albumRatingHeading
 import fm.bae.app.ui.albumdetail.unavailableReleaseHeading
-import fm.bae.app.ui.components.AndroidSheetHeading
 import fm.bae.app.ui.library.AndroidDetailScreen
 import org.junit.Test
 import uniffi.bae_bridge.BridgeAlbumDetail
@@ -76,7 +76,7 @@ class AlbumBoardShots : BoardShot() {
                     raters = listOf(BridgeRater.You, BridgeRater.Person("Ana", BridgeStars.FIVE)),
                 )
             SheetScene(
-                heading = AndroidSheetHeading(title = stringResource(R.string.rate)),
+                heading = albumRatingHeading(rating),
                 behind = { AlbumPage(boardAlbum(rating = rating)) },
             ) {
                 AlbumRatingChoices(rating = rating, onRate = {})
