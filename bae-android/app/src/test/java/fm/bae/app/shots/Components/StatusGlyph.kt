@@ -3,8 +3,8 @@ package fm.bae.app.shots
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.unit.dp
-import fm.bae.app.ui.components.NoticeRing
 import fm.bae.app.ui.components.StatusGlyph
+import fm.bae.app.ui.components.StatusGlyphSet
 import fm.bae.app.ui.components.StatusTone
 import org.junit.Test
 
@@ -27,7 +27,7 @@ class StatusGlyphShots : BoardShot() {
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 listOf(StatusTone.INFO, StatusTone.SUCCESS, StatusTone.WARNING, StatusTone.DANGER).forEach { tone ->
                     // The preview sets the ring 20 across; the icon's box is 1.2 times that.
-                    NoticeRing(tone, size = 24.dp)
+                    StatusGlyph(tone, size = 24.dp, set = StatusGlyphSet.RING)
                 }
             }
         }
@@ -47,7 +47,7 @@ class StatusGlyphShots : BoardShot() {
         component("android.component.status-glyph.muted") {
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 listOf(StatusTone.INFO, StatusTone.SUCCESS, StatusTone.WARNING, StatusTone.DANGER).forEach { tone ->
-                    NoticeRing(tone, size = 24.dp, muted = true)
+                    StatusGlyph(tone, size = 24.dp, muted = true, set = StatusGlyphSet.RING)
                 }
             }
         }

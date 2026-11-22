@@ -78,27 +78,27 @@ private val StatusTone.noticeFill: Color
 
 /** Whether a filled notice in this tone has its own fill, under `onNotice` text: the tones with a glyph. */
 private val StatusTone.hasNoticeFill: Boolean
-    get() = icon != null
+    get() = glyph(StatusGlyphSet.MATERIAL) != null
 
-/** The glyph a status in this tone draws: the outline of a circle with its mark. */
-private val StatusTone.icon: ImageVector?
-    get() =
-        when (this) {
-            StatusTone.INFO -> SymbolIcons.Info
-            StatusTone.SUCCESS -> SymbolIcons.CheckCircle
-            StatusTone.WARNING, StatusTone.DANGER -> SymbolIcons.Error
-            StatusTone.NEUTRAL, StatusTone.ACCENT, StatusTone.ACTIVITY -> null
-        }
+/** The drawings a status glyph comes in, as the design system's `set` prop names them. */
+enum class StatusGlyphSet {
+    /** The outline of a Material symbol: the circle with its mark. */
+    MATERIAL,
 
-/** The glyph a notice in this tone leads with: a ring with its mark, as the design system draws it. */
-private val StatusTone.ringIcon: ImageVector?
-    get() =
-        when (this) {
-            StatusTone.INFO -> StatusRingIcons.Info
-            StatusTone.SUCCESS -> StatusRingIcons.Success
-            StatusTone.WARNING, StatusTone.DANGER -> StatusRingIcons.Bang
-            StatusTone.NEUTRAL, StatusTone.ACCENT, StatusTone.ACTIVITY -> null
-        }
+    /** The ring with its solid mark that a notice leads with. */
+    RING,
+}
+
+/** The glyph a status in this tone draws in [set]; none for a tone without one. */
+private fun StatusTone.glyph(set: StatusGlyphSet): ImageVector? {
+    val ring = set == StatusGlyphSet.RING
+    return when (this) {
+        StatusTone.INFO -> if (ring) StatusRingIcons.Info else SymbolIcons.Info
+        StatusTone.SUCCESS -> if (ring) StatusRingIcons.Success else SymbolIcons.CheckCircle
+        StatusTone.WARNING, StatusTone.DANGER -> if (ring) StatusRingIcons.Bang else SymbolIcons.Error
+        StatusTone.NEUTRAL, StatusTone.ACCENT, StatusTone.ACTIVITY -> null
+    }
+}
 
 /** The glyph's colour: the tone's status icon colour; the rest have no glyph and use [color]. */
 private val StatusTone.iconColor: Color
@@ -113,8 +113,8 @@ private val StatusTone.iconColor: Color
         }
 
 /**
- * The tone's glyph in the tone's glyph colour, or the secondary text colour when [muted]; nothing for
- * a tone without one.
+ * The tone's glyph, drawn in [set], in the tone's glyph colour, or the secondary text colour when [muted];
+ * nothing for a tone without one.
  */
 @Composable
 fun StatusGlyph(
@@ -122,8 +122,9 @@ fun StatusGlyph(
     modifier: Modifier = Modifier,
     size: Dp = ThemeIcon.medium,
     muted: Boolean = false,
+    set: StatusGlyphSet = StatusGlyphSet.MATERIAL,
 ) {
-    tone.icon?.let { icon ->
+    tone.glyph(set)?.let { icon ->
         Icon(
             icon,
             contentDescription = null,
@@ -198,7 +199,7 @@ internal fun NoticeFrame(
                             Modifier.padding(ThemeSpace.group)
                         },
                     ),
-            lead = if (tone.icon != null) ({ NoticeGlyph(tone) }) else null,
+            lead = if (tone.glyph(StatusGlyphSet.RING) != null) ({ NoticeGlyph(tone) }) else null,
             content = content,
         )
     }
@@ -214,20 +215,12 @@ private val NoticeGlyphBox: Dp = NoticeGlyphSize * 1.2f
 @Composable
 private fun NoticeGlyph(tone: StatusTone) {
     Box(Modifier.size(NoticeGlyphSize), contentAlignment = Alignment.Center) {
-        NoticeRing(tone, size = NoticeGlyphBox, modifier = Modifier.requiredSize(NoticeGlyphBox))
-    }
-}
-
-/** The tone's ring with its mark in an icon box [size] across, tinted as the tone's glyph (or muted). */
-@Composable
-internal fun NoticeRing(
-    tone: StatusTone,
-    size: Dp,
-    modifier: Modifier = Modifier,
-    muted: Boolean = false,
-) {
-    tone.ringIcon?.let { icon ->
-        Icon(icon, contentDescription = null, tint = glyphTint(tone, muted), modifier = modifier.size(size))
+        StatusGlyph(
+            tone,
+            modifier = Modifier.requiredSize(NoticeGlyphBox),
+            size = NoticeGlyphBox,
+            set = StatusGlyphSet.RING,
+        )
     }
 }
 
