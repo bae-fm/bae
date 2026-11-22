@@ -71,7 +71,7 @@ private const val STAR_STROKE = 1.5f
 
 /** One star, drawn on the design system's grid. */
 @Composable
-private fun Star(
+internal fun Star(
     filled: Boolean,
     size: Dp,
     modifier: Modifier,

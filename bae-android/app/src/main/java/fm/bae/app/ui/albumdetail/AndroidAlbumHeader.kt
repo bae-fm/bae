@@ -10,9 +10,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -41,6 +38,7 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.Artwork
 import fm.bae.app.ui.components.IconTone
+import fm.bae.app.ui.components.Star
 import fm.bae.app.yearText
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeImageRef
@@ -141,11 +139,10 @@ private fun YearAndRating(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(text = rating.number.toString(), style = ThemeText.detail.style, color = color)
-                Icon(
-                    imageVector = Icons.Filled.Star,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(start = ThemeSpace.line).size(STAR_SIZE),
+                Star(
+                    filled = true,
+                    size = STAR_SIZE,
+                    modifier = Modifier.padding(start = ThemeSpace.line),
                 )
             }
         }

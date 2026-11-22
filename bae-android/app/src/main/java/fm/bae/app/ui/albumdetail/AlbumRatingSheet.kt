@@ -9,8 +9,6 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -26,6 +24,7 @@ import fm.bae.app.R
 import fm.bae.app.number
 import fm.bae.app.ratersText
 import fm.bae.app.starsAfterTapping
+import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
@@ -111,7 +110,7 @@ private fun RatingRow(
         Stars(value = stars.number, size = STAR_ROW_SIZE)
         if (checked) {
             Icon(
-                imageVector = Icons.Filled.Check,
+                imageVector = SymbolIcons.Check,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(ThemeIcon.medium),
