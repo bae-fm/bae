@@ -20,13 +20,11 @@ struct MacBulkActionRow: View {
                 Button(action: action) {
                     nameAndSymbol
                 }
-                .buttonStyle(.plain)
-                .accentFocus()
+                .buttonStyle(.accentPlain)
                 .modifier(
                     NamedByLabelAndCount(
                         offer: offer,
-                        name:
-                            "\(offer.action.label) \(importDestination.wrappedValue.title)"
+                        destination: importDestination.wrappedValue.title
                     )
                 )
                 MacImportDestination(destination: importDestination)
@@ -43,7 +41,7 @@ struct MacBulkActionRow: View {
             }
             .buttonStyle(MacBulkActionRowButtonStyle().accentFocus())
             .modifier(
-                NamedByLabelAndCount(offer: offer, name: offer.action.label)
+                NamedByLabelAndCount(offer: offer, destination: nil)
             )
         }
     }
