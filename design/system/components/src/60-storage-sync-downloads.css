@@ -45,6 +45,10 @@
 .bae-m-readout-line { display: flex; justify-content: space-between; font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-secondary); }
 .bae-m-readout-bar .bae-progress-track { height: 4px; }
 .bae-m-filerow { padding: var(--space-related) var(--space-edge); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
+.bae-m-filerow-name { display: flex; white-space: pre; }
+.bae-m-filerow-name > span { min-width: 0; overflow: hidden; }
+.bae-m-filerow-name > :first-child { text-overflow: ellipsis; }
+.bae-m-filerow-name > :last-child { display: flex; justify-content: flex-end; }
 .bae-m-filerow-selected { background: var(--accent-tint); }
 .bae-m-filedet { margin-top: auto; background: var(--elevated); padding: calc(var(--space-group) + var(--space-line)) var(--space-edge) var(--space-edge); display: flex; flex-direction: column; gap: var(--space-group); border-top: 1px solid var(--hairline); }
 .bae-m-filedet-head { display: flex; justify-content: space-between; gap: var(--space-related); font: var(--type-heading-weight) var(--type-heading-size) var(--font-sans); }

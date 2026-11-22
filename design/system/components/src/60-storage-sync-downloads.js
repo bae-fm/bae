@@ -186,6 +186,15 @@
       h('div', { className: 'bae-m-readout-line bae-num' }, h('span', null, props.bytes), h('span', null, props.rate)),
       h('div', { className: 'bae-m-readout-bar' }, h(ProgressBar, { value: Number(props.progress || 0.3), label: pin ? 'Pinning' : 'Uploading' })));
   }
+  var filenameGraphemes = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+  // Each half can shrink toward the middle without cutting a character at the split.
+  function fileRowName(name, color) {
+    var letters = Array.from(filenameGraphemes.segment(name), function (part) { return part.segment; });
+    var middle = Math.ceil(letters.length / 2);
+    return h('div', { className: cx('bae-m-filerow-name', color) },
+      h('span', null, letters.slice(0, middle).join('')),
+      h('span', null, letters.slice(middle).join('')));
+  }
   // One file in the inspector: a mark for queued to upload (`queued`), to pin (`pin-queued`) or to move to This Mac (`move-queued`), all dashed, sending, pinning or moving to This Mac (`moving`, a ring filling), or the file a move stopped on (`error`, in danger) or an upload waits for (`waiting`, in warning); its name and size. The mark is the only thing on the row that says where the file stands, so it is an image named by those words.
   function MacFileRow(props) {
     var s = props.state || 'rest';
@@ -198,7 +207,7 @@
       h(MacProgressRing, { value: props.progress ?? 0.4, label: label });
     return h('div', { className: cx('bae-m-filerow', props.selected && 'bae-m-filerow-selected') },
       h(MacItem, { lead: mark, trail: h('span', { className: 'bae-muted bae-num' }, props.size) },
-        h('div', { className: cx('bae-ellipsis', queued && 'bae-muted', (s === 'sending' || download) && 'bae-accent') }, props.name)));
+        fileRowName(props.name, cx(queued && 'bae-muted', (s === 'sending' || download) && 'bae-accent'))));
   }
   // Label and value pairs in two columns, the labels in secondary text: a file's facts, a release's fields, an album's credits. `facts` is a list of [label, value] pairs, or text with one "Label: value" a pair, separated by semicolons; a pair with no value is left out. `numeric` names the labels whose values are numbers, drawn in tabular figures (Size).
   function MacFactsGrid(props) {
