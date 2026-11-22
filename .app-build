@@ -66,9 +66,10 @@ limit android-tests 10m
 test mac ./bae-macos/test.sh --run-only {class}
 test mac:shots ./bae-macos/test.sh --bundle baeShots {class}
 test mac:ui ./bae-macos/test.sh --run-only --bundle baeUITests {class}
-# The UI tests launch the app and drive its windows, and baeTests hosts views
-# in windows that a shot display added or removed at the same time moves onto
-# a real display, so builds runs both only on a build host, where no one sits
+# The UI tests launch the app and drive its windows, baeTests hosts views in
+# windows that a shot display added or removed at the same time moves onto a
+# real display, and the baeShots classes add and remove that shot display
+# themselves, so builds runs all three only on a build host, where no one sits
 # at the screen, and holds the host's window lock while they run.
-opens-windows mac mac:ui
+opens-windows mac mac:ui mac:shots
 test android ./bae-android/test-class.sh {class}
