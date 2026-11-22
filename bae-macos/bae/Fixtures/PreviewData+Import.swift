@@ -5,6 +5,8 @@ import Foundation
 
 @testable import bae
 
+private final class BoardArtworkBundle {}
+
 /// Fixtures for the Import flow.
 extension PreviewData {
     /// The watched folder the import shots read from, as text.
@@ -69,11 +71,35 @@ extension PreviewData {
         )
     }
 
+    private static let namedBoardArtwork: [String: URL] = {
+        let bundle = Bundle(for: BoardArtworkBundle.self)
+        guard
+            let pictures = bundle.urls(
+                forResourcesWithExtension: "png",
+                subdirectory: "Board artwork"
+            ),
+            !pictures.isEmpty
+        else { preconditionFailure("The test bundle has no board artwork") }
+        return Dictionary(
+            uniqueKeysWithValues: pictures.map {
+                ($0.deletingPathExtension().lastPathComponent, $0)
+            }
+        )
+    }()
+
     /// PNG bytes for one stand-in cover, drawn as the design system's
     /// Artwork draws it: a 135-degree fade from `hsl(hue 42% 52%)` to
     /// `hsl(hue+48 46% 24%)`, with the hue the name folds to (`hueOf`:
     /// `x = (x * 31 + code) mod 360` over its UTF-16 code units).
     static func previewArtData(_ name: String) -> Data {
+        if let asset = namedBoardArtwork[name] {
+            do { return try Data(contentsOf: asset) }
+            catch {
+                preconditionFailure(
+                    "Reading board artwork at \(asset): \(error)"
+                )
+            }
+        }
         let side: CGFloat = 600
         let hue = name.utf16.reduce(0) { ($0 * 31 + Int($1)) % 360 }
         guard

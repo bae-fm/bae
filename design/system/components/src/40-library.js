@@ -2,15 +2,24 @@
 
   // A stand-in cover: each title gets its own two-color square, so boards read like a library.
   // `missing` is a cover the release doesn't have: a plain tile, no glyph.
+  var boardArtwork = /* board artwork */ {};
   function hueOf(s) { var x = 0; s = String(s || ''); for (var i = 0; i < s.length; i++) x = (x * 31 + s.charCodeAt(i)) % 360; return x; }
   // `size` and `radius` are pixels or a token's name (`size-row-artwork`, `radius-artwork`).
   function Artwork(props) {
     var size = props.size == null ? null : measure(props.size);
-    var hue = props.hue != null ? Number(props.hue) : hueOf(props.seed || props.title);
+    var name = props.seed || props.title;
     var style = { borderRadius: measure(props.radius != null ? props.radius : 'radius-cover') };
     if (size) { style.width = size; style.height = size; }
     if (props.round) style.borderRadius = '50%';
-    if (!props.missing) style.backgroundImage = 'linear-gradient(135deg, hsl(' + hue + ' 42% 52%), hsl(' + ((hue + 48) % 360) + ' 46% 24%))';
+    if (!props.missing) {
+      if (props.hue == null && Object.hasOwn(boardArtwork, name)) {
+        style.backgroundImage = 'url(' + boardArtwork[name] + ')';
+        style.backgroundSize = '100% 100%';
+      } else {
+        var hue = props.hue != null ? Number(props.hue) : hueOf(name);
+        style.backgroundImage = 'linear-gradient(135deg, hsl(' + hue + ' 42% 52%), hsl(' + ((hue + 48) % 360) + ' 46% 24%))';
+      }
+    }
     return h('div', { className: cx('bae-art', props.missing && 'bae-art-missing', props.shadow && 'bae-art-shadow-' + props.shadow, props.ring && 'bae-art-ring', props.dimmed && 'bae-art-dimmed', props.className), style: style, role: props.label ? 'img' : null, 'aria-label': props.label || null, 'aria-hidden': props.label ? null : true }, props.children);
   }
 

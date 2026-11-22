@@ -18,12 +18,18 @@ class PlaylistPictureShots : BoardShot() {
     @Test
     fun androidComponentPlaylistPictureFourReleases() =
         component("android.component.playlist-picture.four-releases") {
-            Picture(BridgePlaylistCover.Grid(listOf("r1", "r2", "r3", "r4").map(PreviewData::imageRef)))
+            Picture(
+                BridgePlaylistCover.Grid(
+                    listOf("Low Tide Hours", "Copper Sky", "Small Hours", "Paper Lanterns").map(PreviewData::imageRef),
+                ),
+            )
         }
 
     @Test
     fun androidComponentPlaylistPictureFewerThanFour() =
-        component("android.component.playlist-picture.fewer-than-four") { Picture(BridgePlaylistCover.Single(PreviewData.imageRef("r2"))) }
+        component("android.component.playlist-picture.fewer-than-four") {
+            Picture(BridgePlaylistCover.Single(PreviewData.imageRef("Copper Sky")))
+        }
 
     @Test
     fun androidComponentPlaylistPictureEmpty() =

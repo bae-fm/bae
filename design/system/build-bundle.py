@@ -27,6 +27,10 @@ if not sources:
     sys.exit(f"no sources in {components / 'src'}")
 body = "".join(path.read_text() for path in sources)
 logos = components.parent / "assets" / "Logos"
+artwork = components.parent / "assets" / "Board artwork"
+pictures = {p.stem: "data:image/png;base64," + base64.b64encode(p.read_bytes()).decode()
+            for p in sorted(artwork.glob("*.png"))}
+body = body.replace("/* board artwork */ {}", json.dumps(pictures))
 body = re.sub(r"@@([\w.-]+)@@", lambda m: base64.b64encode((logos / m.group(1)).read_bytes()).decode(), body)
 exports = body[body.rindex("window.Bae = Object.assign(window.Bae || {}, {"):]
 names = re.findall(r"(\w+): \1\b", exports)

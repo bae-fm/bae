@@ -35,7 +35,6 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
-import fm.bae.app.data.TestImages
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.AccentChoice
 import fm.bae.app.ui.appearance.AppearanceMode
@@ -358,17 +357,20 @@ internal fun OnTheBackdrop(content: @Composable () -> Unit) = Row(modifier = Mod
 internal fun Images(content: @Composable () -> Unit) =
     CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved(), content = content)
 
-/** [content] with an image store that draws a gradient for every cover, a different one for each image's id. */
+/** [content] with the artwork files that the boards draw, named by their image IDs. */
 @Composable
 internal fun Covers(content: @Composable () -> Unit) =
     CompositionLocalProvider(
         LocalImageStore provides
             ImageStore(
-                fetchLibraryImageBytes = { TestImages.gradientPng(COVER_PIXELS, title = it.id) },
+                fetchLibraryImageBytes = { ref ->
+                    val resource =
+                        requireNotNull(BoardShot::class.java.getResourceAsStream("/${ref.id}.png")) {
+                            "No board artwork for ${ref.id}"
+                        }
+                    resource.use { it.readBytes() }
+                },
                 dispatcher = Dispatchers.Unconfined,
             ),
         content = content,
     )
-
-/** The width of a test cover's picture, as wide as the largest cover a preview draws at two pixels a point. */
-private const val COVER_PIXELS = 240

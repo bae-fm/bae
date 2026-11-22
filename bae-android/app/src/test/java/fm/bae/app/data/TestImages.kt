@@ -1,7 +1,6 @@
 package fm.bae.app.data
 
 import android.graphics.Bitmap
-import androidx.core.graphics.ColorUtils
 import java.io.ByteArrayOutputStream
 import kotlin.random.Random
 
@@ -17,15 +16,6 @@ object TestImages {
         height: Int = width,
         seed: Int = 1,
     ): ByteArray = encode(noise(width, height, seed), Bitmap.CompressFormat.PNG)
-
-    /**
-     * A cover as the boards draw one: a diagonal fade from a light colour at the top left to a dark one at the
-     * bottom right, both from the hue of its [title].
-     */
-    fun gradientPng(
-        size: Int,
-        title: String,
-    ): ByteArray = encode(gradient(size, title), Bitmap.CompressFormat.PNG)
 
     fun jpeg(
         width: Int,
@@ -52,21 +42,6 @@ object TestImages {
         val random = Random(seed)
         val pixels = IntArray(width * height) { random.nextInt() or 0xFF000000.toInt() }
         return Bitmap.createBitmap(pixels, width, height, Bitmap.Config.ARGB_8888)
-    }
-
-    private fun gradient(
-        size: Int,
-        title: String,
-    ): Bitmap {
-        val hue = title.fold(0) { value, letter -> (31 * value + letter.code) % 360 }
-        val light = ColorUtils.HSLToColor(floatArrayOf(hue.toFloat(), 0.42f, 0.52f))
-        val dark = ColorUtils.HSLToColor(floatArrayOf((hue + 48f) % 360f, 0.46f, 0.24f))
-        val pixels =
-            IntArray(size * size) { index ->
-                val fade = ((index % size) + (index / size)) / (2f * (size - 1))
-                ColorUtils.blendARGB(light, dark, fade)
-            }
-        return Bitmap.createBitmap(pixels, size, size, Bitmap.Config.ARGB_8888)
     }
 
     private fun quadrants(

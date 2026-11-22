@@ -197,6 +197,9 @@ targets:
       - baeTests
       - baeTestSupport
       - Fixtures
+      - path: "../../design/system/assets/Board artwork"
+        type: folder
+        buildPhase: resources
       # Source files the tests read from the bundle (StringCatalog): Copy
       # Files keeps the catalog's JSON, which a resources phase would compile.
       - path: bae/Localizable.xcstrings
@@ -249,6 +252,9 @@ targets:
       - baeShots
       - baeTestSupport
       - Fixtures
+      - path: "../../design/system/assets/Board artwork"
+        type: folder
+        buildPhase: resources
     dependencies:
       - target: bae
     settings:

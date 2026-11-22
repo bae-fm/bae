@@ -19,7 +19,7 @@ class ArtworkShots : BoardShot() {
         component("android.component.artwork.cover") {
             Covers {
                 Artwork(
-                    cover = PreviewData.imageRef(),
+                    cover = PreviewData.imageRef("Low Tide Hours"),
                     cornerRadius = ThemeRadius.artwork,
                     iconPadding = ThemeSpace.group,
                     modifier = Modifier.size(120.dp),
@@ -41,7 +41,7 @@ class ArtworkShots : BoardShot() {
         component("android.component.artwork.round") {
             Covers {
                 Artwork(
-                    cover = PreviewData.imageRef(),
+                    cover = PreviewData.imageRef("Mara Quill"),
                     cornerRadius = 24.dp,
                     iconPadding = ThemeSpace.related,
                     modifier = Modifier.size(48.dp),
@@ -54,7 +54,7 @@ class ArtworkShots : BoardShot() {
         component("android.component.artwork.ring") {
             Covers {
                 Artwork(
-                    cover = PreviewData.imageRef(),
+                    cover = PreviewData.imageRef("Low Tide Hours"),
                     cornerRadius = ThemeRadius.artwork,
                     iconPadding = ThemeSpace.group,
                     modifier = Modifier.size(120.dp).border(2.dp, MaterialTheme.colorScheme.primary),
@@ -67,7 +67,7 @@ class ArtworkShots : BoardShot() {
         component("android.component.artwork.shadow-tile") {
             Covers {
                 Artwork(
-                    cover = PreviewData.imageRef(),
+                    cover = PreviewData.imageRef("Low Tide Hours"),
                     cornerRadius = ThemeRadius.artwork,
                     iconPadding = ThemeSpace.group,
                     modifier = Modifier.size(120.dp).shadow(6.dp),
@@ -80,7 +80,7 @@ class ArtworkShots : BoardShot() {
         component("android.component.artwork.shadow-bar") {
             Covers {
                 Artwork(
-                    cover = PreviewData.imageRef(),
+                    cover = PreviewData.imageRef("Low Tide Hours"),
                     cornerRadius = ThemeRadius.artwork,
                     iconPadding = ThemeSpace.group,
                     modifier = Modifier.size(120.dp).shadow(3.dp),
