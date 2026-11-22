@@ -12,38 +12,41 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.R
 import fm.bae.app.ui.components.AndroidCard
-import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidNote
 import fm.bae.app.ui.components.AndroidRadio
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidSection
-import fm.bae.app.ui.components.DialogAction
+import fm.bae.app.ui.components.AndroidSheet
+import fm.bae.app.ui.components.AndroidSheetHeading
+import fm.bae.app.ui.rememberScreenScope
+import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeRatedItems
 import uniffi.bae_bridge.BridgeRatingSystem
 import uniffi.bae_bridge.BridgeRatingSystems
 
 /**
  * The Ratings section of the Library page: how the library rates its albums and its tracks, each Stars, Heart or None,
- * for everyone in the library. An admin's rows open the choice, which [onChange] writes; a member's rows show the
- * system as a plain value and open nothing.
+ * for everyone in the library. It shows nothing until [systems] answers. An admin's rows open the choice, which
+ * [onChange] writes; a member's rows show the system as a plain value and open nothing.
  */
 @Composable
 internal fun RatingSystemsCard(
-    systems: BridgeRatingSystems,
+    systems: () -> BridgeRatingSystems?,
     canChange: Boolean,
-    onChange: (BridgeRatedItems, BridgeRatingSystem) -> Unit,
+    onChange: suspend (BridgeRatedItems, BridgeRatingSystem) -> Unit,
 ) {
+    val shown = systems() ?: return
     AndroidSection(stringResource(R.string.ratings_title))
     AndroidCard {
         RatingSystemRow(
             title = stringResource(R.string.search_section_albums),
-            selected = systems.albums,
+            selected = shown.albums,
             canChange = canChange,
             onChoose = { onChange(BridgeRatedItems.ALBUMS, it) },
         )
         RatingSystemRow(
             title = stringResource(R.string.search_section_tracks),
-            selected = systems.tracks,
+            selected = shown.tracks,
             canChange = canChange,
             onChoose = { onChange(BridgeRatedItems.TRACKS, it) },
         )
@@ -51,40 +54,48 @@ internal fun RatingSystemsCard(
     AndroidNote(stringResource(R.string.ratings_note))
 }
 
-/** A row naming the [selected] system. For an admin it opens a dialog of the three systems. */
+/**
+ * A row naming the [selected] system. For an admin it opens a sheet of the three systems, which closes when the person
+ * picks one. The row shows the person's pick until [onChoose] returns.
+ */
 @Composable
 private fun RatingSystemRow(
     title: String,
     selected: BridgeRatingSystem,
     canChange: Boolean,
-    onChoose: (BridgeRatingSystem) -> Unit,
+    onChoose: suspend (BridgeRatingSystem) -> Unit,
 ) {
     var open by remember { mutableStateOf(false) }
+    var picked by remember { mutableStateOf<BridgeRatingSystem?>(null) }
+    val scope = rememberScreenScope()
+    val shown = picked ?: selected
     AndroidRow(
         title = title,
-        subtitle = stringResource(selected.label),
-        onClick = if (canChange) ({ open = true }) else null,
+        subtitle = stringResource(shown.label),
+        onClick = if (canChange && picked == null) ({ open = true }) else null,
     )
     if (open) {
-        AndroidDialog(
-            onDismissRequest = { open = false },
-            title = title,
-            content = {
-                Column(modifier = Modifier.selectableGroup()) {
-                    BridgeRatingSystem.entries.forEach { choice ->
-                        AndroidRadio(
-                            label = stringResource(choice.label),
-                            checked = choice == selected,
-                            onClick = {
-                                open = false
-                                onChoose(choice)
-                            },
-                        )
-                    }
+        AndroidSheet(onDismiss = { open = false }, heading = AndroidSheetHeading(title = title)) {
+            Column(modifier = Modifier.selectableGroup()) {
+                BridgeRatingSystem.entries.forEach { choice ->
+                    AndroidRadio(
+                        label = stringResource(choice.label),
+                        checked = choice == shown,
+                        onClick = {
+                            open = false
+                            picked = choice
+                            scope.launch {
+                                try {
+                                    onChoose(choice)
+                                } finally {
+                                    picked = null
+                                }
+                            }
+                        },
+                    )
                 }
-            },
-            dismiss = DialogAction(stringResource(R.string.cancel), { open = false }),
-        )
+            }
+        }
     }
 }
 

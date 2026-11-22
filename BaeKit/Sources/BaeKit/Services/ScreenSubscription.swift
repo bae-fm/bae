@@ -154,6 +154,7 @@ extension OpenInviteSubscription: PulledSubscription {}
 extension PlaylistsSubscription: PulledSubscription {}
 extension PlaylistDetailSubscription: PulledSubscription {}
 extension LibraryNameSubscription: PulledSubscription {}
+extension RatingSystemsSubscription: PulledSubscription {}
 extension DeviceStorageSubscription: PulledSubscription {}
 extension SetupStatesSubscription: PulledSubscription {}
 extension StorageSetupFinishingSubscription: PulledSubscription {}

@@ -30,9 +30,6 @@ struct RatingSystemsStoreTests {
     func readWhileFollowed() async throws {
         let store = store()
         #expect(store.systems == nil)
-        #expect(
-            store.shown == BridgeRatingSystems(albums: .hidden, tracks: .hidden)
-        )
 
         let following = Task { await store.follow() }
         try await Wait.until { store.systems == heartForTracks }
@@ -42,18 +39,32 @@ struct RatingSystemsStoreTests {
         #expect(store.systems == nil)
     }
 
-    @Test("a change passes the items and the system on")
-    func changePassesThrough() async {
-        let calls = CallLog()
+    @Test("a choice passes the items and the system on, and shows until done")
+    func choicePassesThrough() async throws {
+        let calls = CallLog<String>()
         let store = store(setSystem: { items, system in
-            await calls.record("\(items) \(system)")
+            calls.record("\(items) \(system)")
         })
-        await store.set(.albums, to: .hidden)
-        #expect(await calls.entries == ["albums hidden"])
+        store.choose(.albums, .hidden)
+        #expect(store.pending[.albums] == .hidden)
+        try await Wait.until { store.pending[.albums] == nil }
+        #expect(calls.all == ["albums hidden"])
     }
 
-    @Test("a refused change is shown")
-    func refusedChangeIsShown() async {
+    @Test("a choice for items with a choice in progress is left out")
+    func choiceWaitsOutAnEarlierOne() async throws {
+        let calls = CallLog<String>()
+        let store = store(setSystem: { items, system in
+            calls.record("\(items) \(system)")
+        })
+        store.choose(.tracks, .stars)
+        store.choose(.tracks, .hidden)
+        try await Wait.until { store.pending[.tracks] == nil }
+        #expect(calls.all == ["tracks stars"])
+    }
+
+    @Test("a refused change is shown and the pick goes")
+    func refusedChangeIsShown() async throws {
         struct Refused: Error {}
         let log = ErrorLog()
         let store = store(
@@ -62,7 +73,8 @@ struct RatingSystemsStoreTests {
                 throw Refused()
             }
         )
-        await store.set(.tracks, to: .stars)
+        store.choose(.tracks, .stars)
+        try await Wait.until { store.pending[.tracks] == nil }
         #expect(log.errors.count == 1)
     }
 }
@@ -70,9 +82,4 @@ struct RatingSystemsStoreTests {
 @MainActor
 private final class ErrorLog {
     var errors: [any Error] = []
-}
-
-private actor CallLog {
-    private(set) var entries: [String] = []
-    func record(_ entry: String) { entries.append(entry) }
 }

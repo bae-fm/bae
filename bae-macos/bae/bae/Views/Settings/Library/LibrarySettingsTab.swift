@@ -76,28 +76,7 @@ struct LibrarySettingsTab: View {
                     }
                 }
 
-                if let systems = ratingSystems.systems {
-                    MacSection {
-                        RatingSystemRow(
-                            title: "Albums",
-                            items: .albums,
-                            current: systems.albums,
-                            canChange: canChangeLibrary,
-                            store: ratingSystems
-                        )
-                        RatingSystemRow(
-                            title: "Tracks",
-                            items: .tracks,
-                            current: systems.tracks,
-                            canChange: canChangeLibrary,
-                            store: ratingSystems
-                        )
-                    } header: {
-                        Text("Ratings")
-                    } footer: {
-                        Text("Applies to everyone in this library")
-                    }
-                }
+                RatingSystemsSection(canChange: canChangeLibrary)
             }
             .formStyle(.settings)
             // The pane's title over the first page; the pages inside it have
@@ -197,55 +176,6 @@ struct LibrarySettingsTab: View {
         let peopleText = String(localized: "\(Int(people.people)) people")
         let deviceCount = String(localized: "\(Int(people.devices)) devices")
         return FactList.joined([peopleText, deviceCount])
-    }
-}
-
-/// One row of the Ratings section: the rating system for albums or for
-/// tracks, as a pop-up for someone who can change it and as a plain value for
-/// someone who cannot. The pop-up shows the person's pick until the change is
-/// written.
-private struct RatingSystemRow: View {
-    let title: LocalizedStringKey
-    let items: BridgeRatedItems
-    /// The system the library shows now.
-    let current: BridgeRatingSystem
-    let canChange: Bool
-    let store: RatingSystemsStore
-
-    /// The system the person picked, until its write returns.
-    @State
-    private var picked: BridgeRatingSystem?
-
-    var body: some View {
-        if canChange {
-            MacRow(title) {
-                MacPopUpButton(
-                    label: Text(title),
-                    selection: Binding(
-                        get: { picked ?? current },
-                        set: { choose($0) }
-                    )
-                ) {
-                    for system in BridgeRatingSystem.allCases {
-                        MacPopUpOption(verbatim: system.title, value: system)
-                    }
-                }
-                .fixedSize()
-            }
-        }
-        else {
-            MacRow(title, value: current.title)
-        }
-    }
-
-    private func choose(_ system: BridgeRatingSystem) {
-        picked = system
-        let store = store
-        let items = items
-        Task {
-            await store.set(items, to: system)
-            picked = nil
-        }
     }
 }
 

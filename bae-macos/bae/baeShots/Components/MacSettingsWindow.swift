@@ -77,11 +77,13 @@ extension ShotScene {
     /// The Library pane as the window opens it: the tab over a library
     /// whose storage is Dropbox.
     @MainActor
-    private static func libraryPane() -> some View {
-        let fixture = LibrarySettingsTabPreviewFixture(
-            storage: PreviewData.previewDropboxStorage
-        )
-        return LibrarySettingsTab(
+    static func libraryPane(
+        _ fixture: LibrarySettingsTabPreviewFixture =
+            LibrarySettingsTabPreviewFixture(
+                storage: PreviewData.previewDropboxStorage
+            )
+    ) -> some View {
+        LibrarySettingsTab(
             onResetDevice: {},
             onRestoreFromCode: {},
             onCheckForUpdates: {},

@@ -69,7 +69,7 @@ internal fun LibrarySettingsScreen(
     val name = (model.name as? LibraryNameRead.Named)?.name
     AndroidSettingsLibrary(
         name = name,
-        canRename = members.selfIsAdmin,
+        canChange = members.selfIsAdmin,
         sync = syncRowSummary(line),
         peopleAndDevices = if (hasStorage) peopleAndDevices(members.people) else null,
         hasStorage = hasStorage,
@@ -78,10 +78,11 @@ internal fun LibrarySettingsScreen(
         onDismissChange = { change ->
             members.perform("dismiss an admin change") { session.appHandle.acknowledgeAdminChange(change.operation) }
         },
-        ratingSystems = session.ratingSystems.systems,
-        canChangeRatingSystems = members.selfIsAdmin,
+        ratingSystems = { (model.ratingSystems as? RatingSystemsRead.Loaded)?.systems },
         onChangeRatingSystem = { items, system ->
-            members.perform("set the rating system") { session.appHandle.setRatingSystem(items, system) }
+            session.messages.performAndWait("set the rating system") {
+                session.appHandle.setRatingSystem(items, system)
+            }
         },
         onBack = onBack,
         onRename = { renaming = true },
@@ -97,22 +98,22 @@ internal fun LibrarySettingsScreen(
 }
 
 /**
- * The Library page over what it shows: a [name] with an edit mark when [canRename]; null while the name is read, when
- * no row shows. The Ratings card shows [ratingSystems] once they are read, and opens its choices only when
- * [canChangeRatingSystems]. [aboveRows] holds the failures of the reads behind it.
+ * The Library page over what it shows: a [name] with an edit mark when [canChange], the one permission to rename the
+ * library and to change its rating systems; null while the name is read, when no row shows. The Ratings card shows
+ * [ratingSystems] once they are read, and opens its choices only when [canChange]. [aboveRows] holds the failures of
+ * the reads behind it.
  */
 @Composable
 internal fun AndroidSettingsLibrary(
     name: String?,
-    canRename: Boolean,
+    canChange: Boolean,
     sync: SyncRowSummary,
     peopleAndDevices: String?,
     hasStorage: Boolean,
     adminChanges: BridgeAdminChanges?,
     onDismissChange: (BridgeAdminChange) -> Unit,
-    ratingSystems: BridgeRatingSystems?,
-    canChangeRatingSystems: Boolean,
-    onChangeRatingSystem: (BridgeRatedItems, BridgeRatingSystem) -> Unit,
+    ratingSystems: () -> BridgeRatingSystems?,
+    onChangeRatingSystem: suspend (BridgeRatedItems, BridgeRatingSystem) -> Unit,
     onBack: () -> Unit,
     onRename: () -> Unit,
     onOpenSync: () -> Unit,
@@ -134,9 +135,9 @@ internal fun AndroidSettingsLibrary(
                     AndroidRow(
                         title = stringResource(R.string.library_name_row),
                         subtitle = name,
-                        onClick = if (canRename) onRename else null,
+                        onClick = if (canChange) onRename else null,
                         onClickLabel = stringResource(R.string.settings_rename_library),
-                        icon = if (canRename) RowIcon.EDIT else null,
+                        icon = if (canChange) RowIcon.EDIT else null,
                     )
                 }
                 AndroidRow(
@@ -153,22 +154,22 @@ internal fun AndroidSettingsLibrary(
                     )
                 }
             }
-            // How the library rates its albums and its tracks, once the read answers.
-            ratingSystems?.let {
-                RatingSystemsCard(it, canChange = canChangeRatingSystems, onChange = onChangeRatingSystem)
-            }
+            RatingSystemsCard(ratingSystems, canChange = canChange, onChange = onChangeRatingSystem)
             AdminChangesList(changes = adminChanges, onDismiss = onDismissChange)
         }
     }
 }
 
-/** Shows why the screen could not read the name or the people, each with Retry. */
+/** Shows why the screen could not read the name, the rating systems or the people, each with Retry. */
 @Composable
 private fun LibraryNameFailures(
     model: SettingsLibraryModel,
     members: MembersModel,
 ) {
     (model.name as? LibraryNameRead.Failed)?.let { ReadFailure(error = it.error, onRetry = model::watchName) }
+    (model.ratingSystems as? RatingSystemsRead.Failed)?.let {
+        ReadFailure(error = it.error, onRetry = model::watchRatingSystems)
+    }
     (members.people as? PeopleRead.Failed)?.let { ReadFailure(error = it.error, onRetry = members::retry) }
 }
 

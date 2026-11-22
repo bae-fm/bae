@@ -6,14 +6,18 @@ import os.log
 private let logger = Logger.bae("RatingSystemsStore")
 
 /// How the library shows the ratings of its albums and of its tracks, read
-/// while a screen shows it: the album page draws ratings by it, and Settings'
-/// Library tab shows it and lets an admin change it.
+/// while Settings' Library tab shows it, which lets an admin change it. The
+/// album page needs no read of it: core delivers each album and track with
+/// its rating already shown by the library's system.
 @MainActor
 @Observable
 final class RatingSystemsStore {
-    /// The systems, or nil before the first value and once no screen follows
-    /// them.
+    /// The systems, or nil before the first value and once the tab no longer
+    /// follows them.
     private(set) var systems: BridgeRatingSystems?
+    /// The system the person chose for albums or for tracks, until its write
+    /// returns.
+    private(set) var pending: [BridgeRatedItems: BridgeRatingSystem] = [:]
 
     @ObservationIgnored
     private let subscribe: @MainActor () -> PulledValues<BridgeRatingSystems>
@@ -23,9 +27,6 @@ final class RatingSystemsStore {
     /// Where a failed read or change is shown.
     @ObservationIgnored
     private let showError: @MainActor (any Error) -> Void
-    /// How many screens follow the systems now.
-    @ObservationIgnored
-    private var followers = 0
 
     convenience init(
         handle: AppHandle,
@@ -40,8 +41,8 @@ final class RatingSystemsStore {
         )
     }
 
-    /// `systems` is what the store holds before any screen follows it, which
-    /// a shot sets so that its first draw already shows them.
+    /// `systems` is what the store holds before the tab follows it, which a
+    /// shot sets so that its first draw already shows them.
     init(
         systems: BridgeRatingSystems? = nil,
         subscribe: @escaping @MainActor () -> PulledValues<BridgeRatingSystems>,
@@ -56,16 +57,9 @@ final class RatingSystemsStore {
         self.showError = showError
     }
 
-    /// What a screen draws: the systems, and none for either until the
-    /// first value arrives.
-    var shown: BridgeRatingSystems {
-        systems ?? BridgeRatingSystems(albums: .hidden, tracks: .hidden)
-    }
-
-    /// Follow the systems until the calling task is cancelled: a screen runs
-    /// it while it shows them.
+    /// Follow the systems until the calling task is cancelled: the one view
+    /// that shows them runs it.
     func follow() async {
-        followers += 1
         let pulls = ScreenSubscription(
             subscribe(),
             onValue: { [weak self] systems in self?.systems = systems },
@@ -76,26 +70,30 @@ final class RatingSystemsStore {
                 self?.showError(error)
             }
         )
-        // Held until the task is cancelled, which ends the stream's wait.
-        let (cancelled, holding) = AsyncStream.makeStream(of: Never.self)
-        for await _ in cancelled {}
-        holding.finish()
+        await Task.untilCancelled()
         pulls.stop()
-        followers -= 1
-        if followers == 0 { systems = nil }
+        systems = nil
     }
 
     /// Show the ratings of `items` with `system`, for everyone in the
     /// library. Only an admin can: the library refuses anyone else's change.
-    func set(_ items: BridgeRatedItems, to system: BridgeRatingSystem) async {
-        do {
-            try await write(items, system)
-        }
-        catch {
-            logger.error(
-                "rating system change failed: \(String(reflecting: error))"
-            )
-            showError(error)
+    /// A choice for `items` waits out an earlier one for the same items.
+    func choose(_ items: BridgeRatedItems, _ system: BridgeRatingSystem) {
+        guard pending[items] == nil else { return }
+        pending[items] = system
+        // The write belongs to the person's choice, not to the tab: the
+        // library saves it even when they leave Settings right away.
+        Task {
+            do {
+                try await write(items, system)
+            }
+            catch {
+                logger.error(
+                    "rating system change failed: \(String(reflecting: error))"
+                )
+                showError(error)
+            }
+            pending[items] = nil
         }
     }
 }
@@ -111,32 +109,12 @@ final class RatingSystemsStore {
         {
             RatingSystemsStore(
                 systems: systems,
-                subscribe: { PulledValues(UnansweredRatingSystems()) },
+                subscribe: {
+                    PulledValues(read: { try await Task.neverAnswers() })
+                },
                 setSystem: { _, _ in },
                 showError: { _ in }
             )
-        }
-    }
-
-    /// A read that waits until it is cancelled and never answers.
-    private final class UnansweredRatingSystems: PulledSubscription,
-        @unchecked Sendable
-    {
-        private let lock = NSLock()
-        private var waiter: CheckedContinuation<BridgeRatingSystems, any Error>?
-
-        func next() async throws -> BridgeRatingSystems {
-            try await withCheckedThrowingContinuation { continuation in
-                lock.withLock { waiter = continuation }
-            }
-        }
-
-        func cancel() async throws {
-            let waiter = lock.withLock {
-                defer { self.waiter = nil }
-                return self.waiter
-            }
-            waiter?.resume(throwing: BridgeError.Cancelled)
         }
     }
 #endif

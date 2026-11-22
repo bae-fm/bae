@@ -17,7 +17,7 @@ class SettingsLibraryShots : BoardShot() {
 
     /** The Library page as a member sees it: the name has no edit mark and the Ratings rows are plain values. */
     @Test
-    fun androidSettingsLibraryMember() = shot("android.settings.library.member") { ScreenScene { Library(canRename = false) } }
+    fun androidSettingsLibraryMember() = shot("android.settings.library.member") { ScreenScene { Library(canChange = false) } }
 
     /** The rename dialog, with the new name typed, over the Library page. */
     @Test
@@ -48,18 +48,17 @@ class SettingsLibraryShots : BoardShot() {
 @Composable
 private fun Library(
     name: String = "Home music",
-    canRename: Boolean = true,
+    canChange: Boolean = true,
     sync: SyncRowSummary = SyncRowSummary("Synced", StatusTone.SUCCESS),
 ) = AndroidSettingsLibrary(
     name = name,
-    canRename = canRename,
+    canChange = canChange,
     sync = sync,
     peopleAndDevices = "2 people · 3 devices",
     hasStorage = true,
     adminChanges = null,
     onDismissChange = {},
-    ratingSystems = BridgeRatingSystems(albums = BridgeRatingSystem.STARS, tracks = BridgeRatingSystem.HEART),
-    canChangeRatingSystems = canRename,
+    ratingSystems = { BridgeRatingSystems(albums = BridgeRatingSystem.STARS, tracks = BridgeRatingSystem.HEART) },
     onChangeRatingSystem = { _, _ -> },
     onBack = {},
     onRename = {},

@@ -9,19 +9,26 @@ import SwiftUI
 /// The Library tab's shot stores over a library whose storage is
 /// `storage`, or none: its configuration, and what the tab reads off the
 /// main thread, the library's name and its people, each answered a step
-/// after the tab first draws; its rating systems stay unread. The people reach the library as `storage`'s
-/// members do; a library with no storage has none.
+/// after the tab first draws, and its rating systems, which stay unread
+/// unless `ratingSystems` gives them. The people reach the library as
+/// `storage`'s members do; a library with no storage has none. The person is
+/// an admin unless `selfIsAdmin` says otherwise.
 @MainActor
 struct LibrarySettingsTabPreviewFixture {
     let configStore: ConfigStore
-    let libraryName = LibraryNameStore.stub(name: "Preview Library")
-    let ratingSystems = RatingSystemsStore.staging(nil)
+    let libraryName: LibraryNameStore
+    let ratingSystems: RatingSystemsStore
     let membership: MembershipStore
 
     init(
         storage: BridgeStorageLocation?,
-        storageAccess: BridgeMemberAccess? = nil
+        storageAccess: BridgeMemberAccess? = nil,
+        selfIsAdmin: Bool = true,
+        libraryName: String = "Preview Library",
+        ratingSystems: BridgeRatingSystems? = nil
     ) {
+        self.libraryName = LibraryNameStore.stub(name: libraryName)
+        self.ratingSystems = RatingSystemsStore.staging(ratingSystems)
         configStore =
             storage.map {
                 PreviewData.connectedConfigStore(
@@ -33,7 +40,7 @@ struct LibrarySettingsTabPreviewFixture {
         membership = MembershipStore.stub(
             people: storage.map { PreviewData.members(reaching: $0) }
                 ?? PreviewData.noPeople,
-            selfIsAdmin: true
+            selfIsAdmin: selfIsAdmin
         )
     }
 }
