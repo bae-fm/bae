@@ -1,9 +1,10 @@
 import Foundation
 
-/// `BridgeAlbum` already has an `id: String`, so it conforms to
-/// `Identifiable` with no new code, which `PaginatedList<BridgeAlbum>` needs.
 extension BridgeAlbum: Identifiable {}
 
-/// The library grid's list; each card draws the `BridgeAlbum` the grid's
-/// view delivered at its position.
-public typealias AlbumList = PaginatedList<BridgeAlbum>
+extension BridgeAlbumAppearance: Identifiable {
+    public var id: String { album.id }
+}
+
+/// The library grid's list, including the credits to show in each artist group.
+public typealias AlbumList = PaginatedList<BridgeAlbumAppearance>

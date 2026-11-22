@@ -7,11 +7,12 @@ extension ShotScene {
     /// `MacAlbumTile`, one shot for each row of its preview.
     static let macAlbumTileScenes: [ShotScene] = [
         albumTileScene("mac.component.album-tile.resting"),
+        albumTileScene("mac.component.album-tile.unplayable", unplayable: true),
+        albumTileScene("mac.component.album-tile.hover", hover: true),
         albumTileScene("mac.component.album-tile.open", open: true),
         albumTileScene("mac.component.album-tile.selected", selected: true),
         albumTileScene("mac.component.album-tile.no-cover", covered: false),
         albumTileScene("mac.component.album-tile.no-year", year: nil),
-        albumTileScene("mac.component.album-tile.hover"),
     ]
 
     /// The cover a scene's albums show: placeholder art named after the album.
@@ -24,12 +25,19 @@ extension ShotScene {
         open: Bool = false,
         selected: Bool = false,
         covered: Bool = true,
+        unplayable: Bool = false,
+        hover: Bool = false,
         year: Int32? = 1992
     ) -> ShotScene {
-        component(
+        // The preview puts the tile in the first of six grid columns.
+        let columns: CGFloat = 6
+        let width =
+            (wideColumn - 2 * ThemeSpace.edge - (columns - 1) * ThemeSpace.page)
+            / columns
+        return component(
             id,
-            width: 174,
-            height: 260,
+            width: wideColumn,
+            height: 184,
             images: coverStore()
         ) {
             albumTile(
@@ -39,6 +47,9 @@ extension ShotScene {
                 open: open,
                 selected: selected,
                 covered: covered,
+                unplayable: unplayable,
+                hover: hover,
+                width: width,
                 menu: AlbumCardMenu(
                     targetCount: 1,
                     onPlay: {},
@@ -47,6 +58,8 @@ extension ShotScene {
                     onDelete: {}
                 )
             )
+            .padding(.horizontal, ThemeSpace.edge)
+            .padding(.bottom, ThemeSpace.edge)
         }
     }
 
@@ -57,7 +70,9 @@ extension ShotScene {
         open: Bool = false,
         selected: Bool = false,
         covered: Bool = true,
-        size: CGFloat = 160,
+        unplayable: Bool = false,
+        hover: Bool = false,
+        width: CGFloat = 160,
         menu: AlbumCardMenu
     ) -> some View {
         MacAlbumTile(
@@ -67,7 +82,9 @@ extension ShotScene {
             cover: covered ? cover(title) : nil,
             isExpanded: open,
             isSelected: selected,
-            size: size,
+            isUnplayable: unplayable,
+            isHovered: hover,
+            width: width,
             menu: menu
         )
     }

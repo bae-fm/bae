@@ -456,8 +456,7 @@ extension MacAlbumGrid {
             )
         case .placeholder(let position, let sectionId):
             placed(
-                AlbumCardPlaceholder(size: metrics.cardWidth)
-                    .frame(width: metrics.cardWidth)
+                AlbumCardPlaceholder(width: metrics.cardWidth)
                     .task(
                         id: RowLoadID(epoch: list.loadEpoch, index: position)
                     ) {
@@ -532,27 +531,26 @@ extension MacAlbumGrid {
         sectionId: String?,
         width: CGFloat
     ) -> some View {
-        if let album = list.row(at: position) {
-            MacAlbumTile(
-                title: album.title,
-                artistNames: album.artistLine.text,
-                year: album.year,
-                cover: album.cover,
+        if let appearance = list.row(at: position) {
+            let album = appearance.album
+            MacAlbumTileContainer(
+                album: album,
+                artistNames: sectionId == nil
+                    ? album.artistLine.text : appearance.creditedWith?.text,
                 isExpanded: uiStore.selectedAlbumId == albumId
                     && (!groupByArtist || expandedSectionId == sectionId),
                 isSelected: selection.contains(albumId),
-                size: width,
+                isUnplayable: appearance.primaryReleaseUnplayable,
+                width: width,
                 menu: cardMenu(for: albumId),
             )
-            .frame(width: width)
             .draggable(dragPayload(for: albumId))
             .onTapGesture {
                 handleTap(on: albumId, sectionId: sectionId)
             }
         }
         else {
-            AlbumCardPlaceholder(size: width)
-                .frame(width: width)
+            AlbumCardPlaceholder(width: width)
         }
     }
 }

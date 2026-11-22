@@ -37,6 +37,7 @@ struct ShotScene {
         + peopleScenes + albumCoverScenes + playbackScenes
         + albumEditorScenes + pickedTracksScenes
         + albumRatingScenes + albumCreditsScenes + searchScenes
+        + [groupedAlbumsScene]
 }
 
 /// A scene's view, built with its fixture, and whether what the view shows

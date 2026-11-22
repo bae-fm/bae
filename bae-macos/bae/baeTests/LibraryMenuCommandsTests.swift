@@ -110,7 +110,14 @@ struct LibraryMenuCommandsTests {
         selfIsAdmin: Bool
     ) -> MainAppMenuTarget {
         let uiStore = UiStore()
-        let albums = (0..<3).map { makeBridgeAlbum(id: "album-\($0)") }
+        let rows = (0..<3)
+            .map {
+                BridgeAlbumAppearance(
+                    album: makeBridgeAlbum(id: "album-\($0)"),
+                    primaryReleaseUnplayable: false,
+                    creditedWith: nil
+                )
+            }
         return MainAppMenuTarget(
             playbackStore: PlaybackStore(),
             configStore: PreviewData.makeConfigStore(
@@ -120,7 +127,7 @@ struct LibraryMenuCommandsTests {
             libraryBrowseSession: LibraryBrowseSession(
                 library: Library(albumList: { _, _ in
                     .fixed(
-                        albums,
+                        rows,
                         answers: UnansweredCount(),
                         extra: .albumGrid(canShuffle: true, grouped: false)
                     )

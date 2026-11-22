@@ -7,8 +7,67 @@ import SwiftUI
 /// they draw over it: the albums the boards list, and "Low Tide Hours"
 /// playing 1:42 into 5:03.
 extension ShotScene {
+    static let groupedAlbumsScene = ShotScene(
+        id: "mac.library.albums.grouped",
+        size: CGSize(width: 1200, height: 760)
+    ) {
+        let rows = [
+            gridAlbum("Paper Lanterns", "The Slow Orchards", 1971),
+            gridAlbum("Salt and Cedar", "The Slow Orchards", 1976),
+            gridAlbum("Late Arrivals", "The Slow Orchards", 1974),
+            gridAlbum("Small Hours", "Tomas Brell", 1965),
+        ]
+        .map {
+            BridgeAlbumAppearance(
+                album: $0,
+                primaryReleaseUnplayable: false,
+                creditedWith: nil
+            )
+        }
+        let sections = [
+            BridgeLibraryBrowseSection(
+                id: "artist-slow-orchards",
+                title: "The Slow Orchards",
+                image: nil,
+                firstPosition: 0,
+                albumCount: 3
+            ),
+            BridgeLibraryBrowseSection(
+                id: "artist-tomas-brell",
+                title: "Tomas Brell",
+                image: nil,
+                firstPosition: 3,
+                albumCount: 1
+            ),
+        ]
+        let library = Library(albumList: { _, _ in
+            .fixed(
+                rows,
+                answers: UnansweredCount(),
+                sections: sections,
+                extra: .albumGrid(canShuffle: true, grouped: true)
+            )
+        })
+        let uiStore = UiStore()
+        let session = LibraryBrowseSession(library: library, uiStore: uiStore)
+        session.setGroupAlbumsByArtist(true)
+        let images = coverStore()
+        let window = ShotScenes.libraryWindow(
+            uiStore: uiStore,
+            backing: (library, session),
+            needsAttention: false,
+            playbackStore: boardPlayback(),
+            images: images,
+            size: CGSize(width: 1200, height: 760)
+        )
+        return ShotStage(window, images: images) {
+            session.albums.list?.delivered != nil
+                && session.albums.list?.sections == sections
+        }
+    }
+
     /// The albums the boards' grid lists, in their order.
-    nonisolated private static let boardAlbums: [BridgeAlbum] = [
+    nonisolated private static let boardAlbums: [BridgeAlbumAppearance] = [
         ("Low Tide Hours", "Mara Quill", 1992),
         ("Paper Lanterns", "The Slow Orchards", 1971),
         ("Glass Harbor", "Ines Varga Trio", 1959),
@@ -20,22 +79,26 @@ extension ShotScene {
     ]
     .enumerated()
     .map { index, album in
-        BridgeAlbum(
-            id: "board-\(index)",
-            title: album.0,
-            year: Int32(album.2),
-            isCompilation: false,
-            artistLine: .named(album.1),
-            releaseIds: ["rel-board-\(index)"],
-            primaryReleaseId: "rel-board-\(index)",
-            cover: nil
+        BridgeAlbumAppearance(
+            album: BridgeAlbum(
+                id: "board-\(index)",
+                title: album.0,
+                year: Int32(album.2),
+                isCompilation: false,
+                artistLine: .named(album.1),
+                releaseIds: ["rel-board-\(index)"],
+                primaryReleaseId: "rel-board-\(index)",
+                cover: nil
+            ),
+            primaryReleaseUnplayable: false,
+            creditedWith: nil
         )
     }
 
     /// Where core places `albumId`'s card in the flat grid of `albums`.
     nonisolated private static func boardAlbumPlace(
         _ albumId: String,
-        in albums: [BridgeAlbum]
+        in albums: [BridgeAlbumAppearance]
     ) -> BridgeAlbumPlace? {
         albums.firstIndex { $0.id == albumId }
             .map { BridgeAlbumPlace(position: UInt64($0), sectionId: nil) }
@@ -59,9 +122,7 @@ extension ShotScene {
     ) -> (library: Library, session: LibraryBrowseSession) {
         let albums = Array(boardAlbums.prefix(albumCount ?? boardAlbums.count))
         let library = Library(
-            albumList: { _, _ in
-                .fixed(albums, answers: UnansweredCount())
-            },
+            albumList: { _, _ in .fixed(albums, answers: UnansweredCount()) },
             albumPlaceReads: { _, albumId, _, _ in
                 .fixed(boardAlbumPlace(albumId, in: albums))
             },

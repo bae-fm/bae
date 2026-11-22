@@ -37,16 +37,23 @@ struct HostedAlbumGrid {
     ) async throws -> HostedAlbumGrid {
         let uiStore = UiStore()
         let albums = Self.albums
+        let rows = albums.map {
+            BridgeAlbumAppearance(
+                album: $0,
+                primaryReleaseUnplayable: false,
+                creditedWith: nil
+            )
+        }
         let answers = UnansweredCount()
         let list = AlbumList(
-            queries: .fixed(albums, answers: answers, sections: sections),
+            queries: .fixed(rows, answers: answers, sections: sections),
             onError: { error in
                 preconditionFailure("Hosted grid failed: \(error)")
             }
         )
         await list.loadInitial()
         if preloaded {
-            list.preloadRows(rows: albums, extra: .none)
+            list.preloadRows(rows: rows, extra: .none)
         }
         uiStore.selectAlbum(openAlbumId)
         let place = Self.place(in: albums, sections: sections)

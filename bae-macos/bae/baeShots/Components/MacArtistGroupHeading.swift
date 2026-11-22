@@ -33,7 +33,7 @@ extension ShotScene {
             title,
             artist,
             year,
-            size: 200,
+            width: 200,
             menu: AlbumCardMenu(
                 targetCount: 1,
                 onPlay: {},

@@ -10,7 +10,7 @@ public final class Library: Sendable, Observable {
     /// a live read of its own.
     public let albumList:
         @Sendable (_ sortCriteria: [BridgeSortCriterion], _ groupByArtist: Bool)
-            -> BridgeListQueries<BridgeAlbum>
+            -> BridgeListQueries<BridgeAlbumAppearance>
     /// Where an album's card is in the album list under one sort and
     /// grouping, read live: its card in the group of the artist `sectionId`
     /// when that group holds one, else its first card; nil when the list
@@ -142,7 +142,7 @@ public final class Library: Sendable, Observable {
     public init(
         albumList:
             @escaping @Sendable ([BridgeSortCriterion], Bool)
-            -> BridgeListQueries<BridgeAlbum> = { _, _ in
+            -> BridgeListQueries<BridgeAlbumAppearance> = { _, _ in
                 fatalError("Library album list is not installed")
             },
         albumPlaceReads:
@@ -501,12 +501,12 @@ extension Library {
             _ handle: any AppHandleProtocol
         )
             -> @Sendable ([BridgeSortCriterion], Bool) -> BridgeListQueries<
-                BridgeAlbum
+                BridgeAlbumAppearance
             >
         {
             let list:
                 @Sendable ([BridgeSortCriterion], Bool) -> BridgeListQueries<
-                    BridgeAlbum
+                    BridgeAlbumAppearance
                 > = {
                     sort,
                     groupByArtist in
@@ -526,29 +526,29 @@ extension Library {
                             )
                         }
                     }
-                    let rows: @Sendable (BridgeListRows) -> [BridgeAlbum] = Self
-                        .albumRows
-                    return BridgeListQueries<BridgeAlbum>(
+                    return BridgeListQueries<BridgeAlbumAppearance>(
                         handle: handle,
                         list: BridgeList.albumGrid(
                             sort: sort,
                             groupByArtist: groupByArtist
                         ),
                         sections: sections,
-                        rows: rows
+                        rows: Self.albumRows
                     )
                 }
             return list
         }
 
-        /// The albums of a delivery of the album grid's view.
-        private static func albumRows(_ rows: BridgeListRows) -> [BridgeAlbum] {
+        /// The album grid's rows, including the other credits of grouped albums.
+        private static func albumRows(
+            _ rows: BridgeListRows
+        ) -> [BridgeAlbumAppearance] {
             guard case .albums(let appearances) = rows else {
                 preconditionFailure(
                     "the album grid delivered rows of another list"
                 )
             }
-            return appearances.map(\.album)
+            return appearances
         }
 
         /// The composer list under each sort asked for, read through `handle`.

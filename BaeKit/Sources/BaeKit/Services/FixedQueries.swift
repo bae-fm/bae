@@ -372,11 +372,18 @@
         /// through the `ORDER BY` its window queries build; a shot holds a hand-written
         /// list with no database, so it presents the order its author wrote.
         public static func preview(albums: [BridgeAlbum]) -> AlbumList {
+            let rows = albums.map {
+                BridgeAlbumAppearance(
+                    album: $0,
+                    primaryReleaseUnplayable: false,
+                    creditedWith: nil
+                )
+            }
             let list = AlbumList(
-                queries: .fixed(albums, answers: UnansweredCount()),
+                queries: .fixed(rows, answers: UnansweredCount()),
                 onError: { _ in },
             )
-            list.preloadRows(rows: albums, extra: .none)
+            list.preloadRows(rows: rows, extra: .none)
             return list
         }
     }

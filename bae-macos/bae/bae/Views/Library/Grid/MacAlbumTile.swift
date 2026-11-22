@@ -5,45 +5,67 @@ import SwiftUI
 /// a state change never re-measures the row.
 struct MacAlbumTile: View {
     let title: String
-    let artistNames: String
+    let artistNames: String?
     let year: Int32?
     let cover: BridgeImageRef?
     /// The album's detail is open; shown as the accent ring on the art.
     let isExpanded: Bool
     /// The album is in the multi-selection; shown as a tint behind the card.
     let isSelected: Bool
-    let size: CGFloat
+    let isUnplayable: Bool
+    let isHovered: Bool
+    let width: CGFloat
     let menu: AlbumCardMenu
 
-    @State
-    private var isHovered = false
     /// Whether the ⋯ menu is open, which keeps the ⋯ shown after the pointer
     /// leaves the cover for the menu.
     @State
     private var menuOpen = false
 
-    /// How far the expanded ring sits outside the cover's edge.
-    private static let ringOutset: CGFloat = 4.5
+    private static let ringGap: CGFloat = 4.5
+    private static let ringWidth: CGFloat = 3
+    private static let unplayableOpacity: Double = 0.5
+
+    private var showsMenu: Bool { isHovered || menuOpen }
 
     var body: some View {
         AlbumCardStack(
             title: title,
             artistNames: artistNames,
-            year: year
-        ) {
-            albumArt
+            year: year,
+            textOpacity: isUnplayable ? Self.unplayableOpacity : 1,
+            width: width
+        ) { side in
+            Artwork(imageRef: cover, pointSize: side)
+                .frame(width: side, height: side)
+                .overlay {
+                    Rectangle()
+                        .fill(Theme.background)
+                        .opacity(isUnplayable ? 1 - Self.unplayableOpacity : 0)
+                        .allowsHitTesting(false)
+                }
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.cover))
-                .shadow(color: Theme.shadow, radius: 14, y: 9)
-                .overlay(
-                    RoundedRectangle(
-                        cornerRadius: ThemeRadius.cover + Self.ringOutset
-                    )
-                    .inset(by: -Self.ringOutset)
-                    .stroke(
-                        isExpanded ? Theme.accent : .clear,
-                        lineWidth: 3
-                    )
+                .shadow(
+                    color: isExpanded ? .clear : Theme.shadow,
+                    radius: 14,
+                    y: 9
                 )
+                .background {
+                    RoundedRectangle(
+                        cornerRadius: ThemeRadius.cover + Self.ringGap
+                    )
+                    .inset(by: -Self.ringGap)
+                    .fill(Theme.background)
+                    .opacity(isExpanded ? 1 : 0)
+                }
+                .overlay {
+                    let outset = Self.ringGap + Self.ringWidth / 2
+                    RoundedRectangle(cornerRadius: ThemeRadius.cover + outset)
+                        .inset(by: -outset)
+                        .stroke(Theme.accent, lineWidth: Self.ringWidth)
+                        .opacity(isExpanded ? 1 : 0)
+                        .allowsHitTesting(false)
+                }
                 .overlay(alignment: .topTrailing) {
                     MacMoreMenu(
                         look: .overlay,
@@ -72,10 +94,10 @@ struct MacAlbumTile: View {
                         }
                     }
                     .padding(ThemeSpace.compact)
-                    .opacity(isHovered || menuOpen ? 1 : 0)
-                    .allowsHitTesting(isHovered || menuOpen)
+                    .opacity(showsMenu ? 1 : 0)
+                    .allowsHitTesting(showsMenu)
+                    .accessibilityHidden(!showsMenu)
                 }
-                .onHover { isHovered = $0 }
         }
         .background(
             RoundedRectangle(cornerRadius: ThemeRadius.card)
@@ -86,21 +108,47 @@ struct MacAlbumTile: View {
             AlbumCardMenuItems(menu: menu)
         }
     }
+}
 
-    private var albumArt: some View {
-        Artwork(imageRef: cover, pointSize: size)
-            .frame(width: size, height: size)
+struct MacAlbumTileContainer: View {
+    let album: BridgeAlbum
+    let artistNames: String?
+    let isExpanded: Bool
+    let isSelected: Bool
+    let isUnplayable: Bool
+    let width: CGFloat
+    let menu: AlbumCardMenu
+
+    @State
+    private var isHovered = false
+
+    var body: some View {
+        MacAlbumTile(
+            title: album.title,
+            artistNames: artistNames,
+            year: album.year,
+            cover: album.cover,
+            isExpanded: isExpanded,
+            isSelected: isSelected,
+            isUnplayable: isUnplayable,
+            isHovered: isHovered,
+            width: width,
+            menu: menu
+        )
+        .contentShape(Rectangle())
+        .onHover { isHovered = $0 }
     }
 }
 
 /// A grid slot whose album has not loaded: a card's footprint with nothing
 /// drawn, laid out as a card so its row keeps its height when the album lands.
 struct AlbumCardPlaceholder: View {
-    let size: CGFloat
+    let width: CGFloat
 
     var body: some View {
-        AlbumCardStack(title: " ", artistNames: " ", year: nil) {
-            Color.clear.frame(width: size, height: size)
+        AlbumCardStack(title: " ", artistNames: " ", year: nil, width: width) {
+            side in
+            Color.clear.frame(width: side, height: side)
         }
         .hidden()
     }
@@ -109,29 +157,38 @@ struct AlbumCardPlaceholder: View {
 /// A card's layout: the art over the title, the artists and the year.
 private struct AlbumCardStack<Art: View>: View {
     let title: String
-    let artistNames: String
+    let artistNames: String?
     let year: Int32?
+    var textOpacity = 1.0
+    let width: CGFloat
     @ViewBuilder
-    let art: () -> Art
+    let art: (CGFloat) -> Art
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.line) {
-            art()
-                .padding(.bottom, ThemeSpace.related)
+            art(max(0, width - 2 * ThemeSpace.compact))
+                .padding(.bottom, ThemeSpace.compact)
             Text(title)
                 .themeText(.rowTitle)
+                .foregroundStyle(Theme.textPrimary)
                 .lineLimit(1)
-            Text(artistNames)
-                .themeText(.detail)
-                .foregroundStyle(Theme.macTextSecondary)
-                .lineLimit(1)
+                .opacity(textOpacity)
+            if let artistNames {
+                Text(artistNames)
+                    .themeText(.detail)
+                    .foregroundStyle(Theme.macTextSecondary)
+                    .lineLimit(1)
+                    .opacity(textOpacity)
+            }
             StableOptionalText(
                 text: year.map(String.init),
                 role: .detail,
                 foreground: .tertiary
             )
+            .opacity(textOpacity)
         }
         .padding(ThemeSpace.compact)
+        .frame(width: width, alignment: .leading)
     }
 }
 
@@ -154,7 +211,9 @@ private struct AlbumCardStack<Art: View>: View {
                 cover: nil,
                 isExpanded: false,
                 isSelected: false,
-                size: 200,
+                isUnplayable: false,
+                isHovered: false,
+                width: 200,
                 menu: menu,
             )
             MacAlbumTile(
@@ -164,7 +223,9 @@ private struct AlbumCardStack<Art: View>: View {
                 cover: nil,
                 isExpanded: false,
                 isSelected: true,
-                size: 200,
+                isUnplayable: false,
+                isHovered: false,
+                width: 200,
                 menu: menu,
             )
         }

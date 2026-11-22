@@ -71,6 +71,40 @@ async fn album_window_delivers_rows_count_and_cover_versions() {
     assert_eq!(updated.rows[0].0.album.cover_version.as_deref(), Some(cover.as_str()));
 }
 
+#[test]
+fn album_window_follows_the_primary_releases_audio_location() {
+    use bae_records::test_fixtures::storage_listing::{import_file, write_library, RELEASE_EARLY};
+    use bae_util::content_type::ContentType::Flac;
+
+    bae_store::test_devices::run_two_store_test(crate::TEST_SCHEMA, async |devices| {
+        let (a, b) = (devices.a(), devices.b());
+        let folder = bae_util::test_files::TestFolder::new();
+        write_library(&test_records(a)).await;
+        devices.converge("SELECT id FROM releases").await;
+
+        let mut remote = LibraryViews::new(b.clone()).subscribe_album_window(&[], false, top(10));
+        let initial = remote.next_inline().await.unwrap().result.unwrap();
+        assert!(initial.rows.iter().all(|(row, _)| !row.primary_release_unplayable));
+
+        import_file(a, &folder, RELEASE_EARLY, "track.flac", Flac).await;
+        devices.converge("SELECT id, release_id, file FROM release_files").await;
+        devices.converge("SELECT id, coordinates FROM coven_files").await;
+
+        let updated = tokio::time::timeout(HANG_GUARD, remote.next_inline())
+            .await
+            .expect("the grid follows audio location")
+            .unwrap()
+            .result
+            .unwrap();
+        let unavailable = updated.rows.iter().find(|(row, _)| row.primary_release_unplayable).unwrap();
+        assert_eq!(unavailable.0.album.primary_release_id, RELEASE_EARLY);
+
+        let mut local = LibraryViews::new(a.clone()).subscribe_album_window(&[], false, top(10));
+        let local = local.next_inline().await.unwrap().result.unwrap();
+        assert!(local.rows.iter().all(|(row, _)| !row.primary_release_unplayable));
+    });
+}
+
 /// A grid card shows its album's primary release's cover, so that is the one
 /// cover the browse reads: another release of the album gaining a cover is
 /// not a change to the grid.

@@ -10,10 +10,10 @@ import Testing
 private final class AlbumListProbe: @unchecked Sendable {
     private let lock = NSLock()
     private var shown: ClosedRange<Int>?
-    private let views = Feed<ListViewDelivery<BridgeAlbum>>()
+    private let views = Feed<ListViewDelivery<BridgeAlbumAppearance>>()
     private let counts = Feed<BridgeListCount>()
 
-    var queries: BridgeListQueries<BridgeAlbum> {
+    var queries: BridgeListQueries<BridgeAlbumAppearance> {
         BridgeListQueries(
             view: { [self] first, last in
                 lock.recording { shown = Int(first)...Int(last) }
@@ -36,7 +36,14 @@ private final class AlbumListProbe: @unchecked Sendable {
     /// with `total`.
     func emit(rows: [BridgeAlbum], total: UInt64) {
         guard lock.withLock({ shown }) != nil else { return }
-        views.emit(ListViewDelivery(start: 0, rows: rows))
+        let appearances = rows.map {
+            BridgeAlbumAppearance(
+                album: $0,
+                primaryReleaseUnplayable: false,
+                creditedWith: nil
+            )
+        }
+        views.emit(ListViewDelivery(start: 0, rows: appearances))
         counts.emit(BridgeListCount(rows: total, items: total, extra: .none))
     }
 
