@@ -5,9 +5,13 @@ import SwiftUI
 struct FactMenuLabel: View {
     let text: String?
 
+    /// The form's mark for a field with no value. A symbol, not a sentence,
+    /// so it is the same in every language.
+    static let emptyMark = "\u{2014}"
+
     /// The words the face shows: the value, or the form's dash.
     static func shown(_ text: String?) -> String {
-        text ?? "\u{2014}"
+        text ?? emptyMark
     }
 
     var body: some View {

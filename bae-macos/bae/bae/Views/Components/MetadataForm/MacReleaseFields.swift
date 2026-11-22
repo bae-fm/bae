@@ -206,7 +206,7 @@ struct MacReleaseFields: View {
         onCommit: @escaping @MainActor (String) async -> Void
     ) -> some View {
         MacInlineField(
-            placeholder: "\u{2014}",
+            placeholder: FactMenuLabel.emptyMark,
             value: text,
             name: name,
             monospaced: monospaced,
