@@ -270,10 +270,11 @@ extension CoverLightboxTests {
                 )
             ]
         )
+        let choice = BoardArtwork.catalogCoverChoice(image, source: .discogs)
         return CoverItem(
             gallery: BridgeGalleryCover(
                 key: .remote(url: image.url),
-                image: .remote(image: image),
+                image: choice.image,
                 label: .remote(
                     sourceName: "Discogs",
                     label: .gallery(
@@ -282,12 +283,7 @@ extension CoverLightboxTests {
                         types: [],
                         comment: name
                     ),
-                    selection: .remoteCover(
-                        selection: BridgeRemoteCoverSelection(
-                            image: image,
-                            source: .discogs
-                        )
-                    )
+                    selection: choice.selection
                 )
             )
         )
