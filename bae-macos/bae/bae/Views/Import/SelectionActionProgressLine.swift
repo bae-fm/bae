@@ -61,6 +61,7 @@ final class SelectionActionProgressNSView: NSView {
     /// moves without a count.
     private func show(_ progress: BridgeSelectionActionProgress?) {
         label.stringValue = action.label(count: Int(progress?.total ?? 0))
+        bar.setAccessibilityLabel(label.stringValue)
         bar.progress = progress == nil ? 0 : progress?.fraction
     }
 }
