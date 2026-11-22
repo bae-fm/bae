@@ -120,7 +120,7 @@ private fun IconTone.color(): Color =
         IconTone.DEFAULT -> LocalContentColor.current
         IconTone.MUTED -> MaterialTheme.colorScheme.onSurfaceVariant
         IconTone.ACCENT -> MaterialTheme.colorScheme.primary
-        IconTone.WARNING -> BaeTheme.colors.warningIcon
+        IconTone.WARNING -> StatusTone.WARNING.iconColor
         IconTone.ON_FILL -> BaeTheme.colors.onFill
     }
 

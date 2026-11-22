@@ -48,7 +48,9 @@ import fm.bae.app.ui.components.NoticeButtons
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.NoticeTextInset
 import fm.bae.app.ui.components.StatusGlyph
+import fm.bae.app.ui.components.StatusGlyphSet
 import fm.bae.app.ui.components.StatusTone
+import fm.bae.app.ui.components.glyph
 import fm.bae.fastvalues.LatestSource
 import uniffi.bae_bridge.BridgeActivityLine
 import uniffi.bae_bridge.BridgeSyncActivity
@@ -80,9 +82,11 @@ internal fun AndroidActivityButton(
     var details by remember { mutableStateOf<ErrorDetails?>(null) }
     if (moving || held || problems.needsAttention) {
         val label = LocalContext.current.coreString("core.activity.title")
-        if (problems.needsAttention && !moving && !held) {
+        val warning = StatusTone.WARNING.glyph(StatusGlyphSet.MATERIAL)
+        val onlyAttention = problems.needsAttention && !moving && !held
+        if (onlyAttention && warning != null) {
             AndroidIconButton(
-                icon = SymbolIcons.Error,
+                icon = warning,
                 contentDescription = label,
                 onClick = { listShown = true },
                 tone = IconTone.WARNING,

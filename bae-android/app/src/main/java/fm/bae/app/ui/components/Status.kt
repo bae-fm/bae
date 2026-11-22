@@ -90,7 +90,7 @@ enum class StatusGlyphSet {
 }
 
 /** The glyph a status in this tone draws in [set]; none for a tone without one. */
-private fun StatusTone.glyph(set: StatusGlyphSet): ImageVector? {
+internal fun StatusTone.glyph(set: StatusGlyphSet): ImageVector? {
     val ring = set == StatusGlyphSet.RING
     return when (this) {
         StatusTone.INFO -> if (ring) StatusRingIcons.Info else SymbolIcons.Info
@@ -101,7 +101,7 @@ private fun StatusTone.glyph(set: StatusGlyphSet): ImageVector? {
 }
 
 /** The glyph's colour: the tone's status icon colour; the rest have no glyph and use [color]. */
-private val StatusTone.iconColor: Color
+internal val StatusTone.iconColor: Color
     @Composable
     get() =
         when (this) {
