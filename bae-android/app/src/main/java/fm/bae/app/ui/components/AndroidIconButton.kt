@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeOpacity
 
 /** The colour of an [AndroidIconButton]'s glyph. */
@@ -70,7 +71,7 @@ internal fun AndroidIconButton(
                     imageVector = icon,
                     contentDescription = contentDescription,
                     tint = tint,
-                    modifier = Modifier.size(glyph ?: TONAL_GLYPH),
+                    modifier = Modifier.size(glyph ?: ThemeIcon.medium),
                 )
             }
         }
@@ -123,4 +124,3 @@ private val ICON_BUTTON_BOX = 48.dp
 internal val ICON_BUTTON_BAR_BOX = 40.dp
 
 private val TONAL_DISC = 32.dp
-private val TONAL_GLYPH = 18.dp

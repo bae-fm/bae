@@ -23,6 +23,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.ui.appearance.SymbolIcons
+import fm.bae.app.ui.appearance.ThemeIcon
 
 /**
  * How much of the screen's bottom the now-playing bars take, for the snackbar to float above. Each bar that is
@@ -60,7 +61,6 @@ fun Modifier.liftsSnackbar(): Modifier {
 
 /** The box the board gives the close glyph, and the glyph in it. */
 private val CLOSE_BOX = 32.dp
-private val CLOSE_GLYPH = 20.dp
 
 /** The snackbar host over the whole screen, at its bottom. */
 @Composable
@@ -104,7 +104,7 @@ private fun AndroidSnackbar(data: SnackbarData) {
                         contentDescription = stringResource(R.string.close),
                         onClick = data::dismiss,
                         modifier = Modifier.size(CLOSE_BOX),
-                        glyph = CLOSE_GLYPH,
+                        glyph = ThemeIcon.medium,
                     )
                 }
             } else {

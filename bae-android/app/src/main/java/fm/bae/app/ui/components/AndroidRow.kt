@@ -38,7 +38,7 @@ internal enum class RowIcon(
     val size: Dp,
 ) {
     CHEVRON(SymbolIcons.ChevronRight, ThemeIcon.large),
-    EDIT(SymbolIcons.Edit, EDIT_SIZE),
+    EDIT(SymbolIcons.Edit, ThemeIcon.medium),
 }
 
 /** A row's switch: whether it is [checked], and what a tap anywhere on the row does, [onChange]. */
@@ -234,7 +234,6 @@ private fun Subtitle(
 private val ONE_LINE_HEIGHT = 56.dp
 private val TWO_LINE_HEIGHT = 72.dp
 private val DOT = 8.dp
-private val EDIT_SIZE = 20.dp
 private val AVATAR_SIZE = 40.dp
 
 /** Material's alpha for a disabled control's content. */

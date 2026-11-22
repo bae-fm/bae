@@ -3,6 +3,8 @@ package fm.bae.app.ui.components
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -15,6 +17,8 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.traversalIndex
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.appearance.SymbolIcons
+import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeOpacity
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
@@ -63,6 +67,18 @@ internal fun AndroidSegmentedControl(
                     onClick = { onSelect(index) },
                     shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
                     colors = colors,
+                    icon = {
+                        SegmentedButtonDefaults.Icon(
+                            active = index == selected,
+                            activeContent = {
+                                Icon(
+                                    SymbolIcons.Check,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(ThemeIcon.medium),
+                                )
+                            },
+                        )
+                    },
                     // Material draws the chosen segment above the others, which lists it last in the semantics tree;
                     // the reading order is the segments' order on screen.
                     modifier = Modifier.semantics { traversalIndex = index.toFloat() },
