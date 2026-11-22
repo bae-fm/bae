@@ -185,7 +185,7 @@ public struct MacRow<Lead: View, Label: View, Content: View>: View {
 
     private func row(
         chevron: Bool,
-        labelAction: (() -> Void)? = nil
+        labelAction: (() -> Void)?
     ) -> some View {
         HStack(spacing: ThemeSpace.group) {
             lead
