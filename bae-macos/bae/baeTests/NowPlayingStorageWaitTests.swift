@@ -1,6 +1,5 @@
 import AppKit
 import BaeKit
-import Combine
 import SwiftUI
 import Testing
 
@@ -15,16 +14,10 @@ struct NowPlayingStorageWaitTests {
     @Test("a load waiting on storage turns the arc and keeps the seek bar")
     func waitTurnsTheArc() async throws {
         let held = [BridgeTrackSpan(start: 0, end: 0.08)]
-        let buffered = LatestStream.trackBuffered(
-            holding: ["track-1": BridgeTrackBuffered(ranges: held)]
-        )
         let size = NSSize(width: 1_100, height: 120)
         try await SnapshotTestSupport.withHostedWindow(
-            bar(
-                buffered: buffered.source(for: "track-1"),
-                waitsOnStorage: true
-            )
-            .frame(width: size.width, height: size.height),
+            bar(held: held, waitsOnStorage: true)
+                .frame(width: size.width, height: size.height),
             size: size
         ) { _, host in
             try await SnapshotTestSupport.settle(host)
@@ -45,11 +38,8 @@ struct NowPlayingStorageWaitTests {
     func noWaitNoArc() async throws {
         let size = NSSize(width: 1_100, height: 120)
         try await SnapshotTestSupport.withHostedWindow(
-            bar(
-                buffered: LatestStream.trackBuffered().source(for: "track-1"),
-                waitsOnStorage: false
-            )
-            .frame(width: size.width, height: size.height),
+            bar(held: [], waitsOnStorage: false)
+                .frame(width: size.width, height: size.height),
             size: size
         ) { _, host in
             try await SnapshotTestSupport.settle(host)
@@ -59,54 +49,22 @@ struct NowPlayingStorageWaitTests {
         }
     }
 
-    /// The bar for a track loading to play a quarter of the way in.
     private func bar(
-        buffered: LatestSource<BridgeTrackBuffered>,
+        held: [BridgeTrackSpan],
         waitsOnStorage: Bool
     ) -> some View {
-        MacNowPlayingBar(
-            trackTitle: "Track Title",
-            secondaryLine: "Artist Name",
-            cover: nil,
-            isPlaying: true,
-            position:
-                LatestStream.trackPositions(
-                    holding: [
-                        "track-1": BridgeTrackPosition(
-                            positionMs: 0,
-                            durationMs: 200_000,
-                            progress: 0,
-                            seeks: 0
-                        )
-                    ]
-                )
-                .source(for: "track-1"),
-            buffered: buffered,
-            waitsOnStorage: waitsOnStorage,
-            showRemainingTime: false,
+        NowPlayingBarFixture.make(
             settings: PlaybackSettings(
                 volume: 0.7,
                 isMuted: false,
                 repeatMode: .off
             ),
-            receiverWithoutVolume: nil,
-            shuffled: false,
-            showQueue: false,
-            onPlayPause: {},
-            onNext: {},
-            onPrevious: {},
-            onSeek: { _ in },
-            onToggleRemainingTime: {},
-            onVolumeDrag: { _ in },
-            onVolumeChange: { _ in },
-            onSetMuted: { _ in },
-            onSetShuffle: { _ in },
-            onSetQueuePresented: { _ in },
-            onSetRepeatMode: { _ in },
-            onDropToQueue: { _ in },
-            onNavigateToAlbum: {},
-            queueAddPublisher: Empty().eraseToAnyPublisher(),
-            castControl: AnyView(EmptyView())
+            track: NowPlayingBarFixture.Track(
+                positionMs: 0,
+                durationMs: 200_000,
+                held: held,
+                waitsOnStorage: waitsOnStorage
+            )
         )
         .environment(ImageStore.stub())
         .environment(PreviewData.queueStore(manualCount: 0, context: nil))

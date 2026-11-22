@@ -32,7 +32,7 @@ struct NowPlayingBarOrderTests {
         )
         let nodes = try await SnapshotTestSupport.withHostedWindow(
             VStack {
-                Text("Library")
+                MacSectionTabs(selection: .library, onSelect: { _ in })
                 bar.environment(PreviewData.artImageStore())
             }
             .frame(width: size.width, height: size.height),
@@ -55,7 +55,7 @@ struct NowPlayingBarOrderTests {
                     (role == nil || nodes[index].role == role?.rawValue)
                         && labels[index].localizedCaseInsensitiveContains(words)
                 },
-                "listed \(labels)"
+                "looking for \(words) in \(labels)"
             )
         }
         let library = try index("Library")

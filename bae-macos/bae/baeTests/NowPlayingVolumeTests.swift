@@ -69,10 +69,18 @@ struct NowPlayingVolumeTests {
 /// that can start playback or reach a receiver.
 @MainActor
 enum NowPlayingBarFixture {
+    struct Track {
+        var positionMs: Int64 = 102_000
+        var durationMs: UInt64 = 303_000
+        var held: [BridgeTrackSpan] = []
+        var waitsOnStorage = false
+    }
+
     static func make(
         settings: PlaybackSettings?,
         receiverWithoutVolume: String? = nil,
-        castControl: AnyView = AnyView(EmptyView())
+        castControl: AnyView = AnyView(EmptyView()),
+        track: Track = Track()
     ) -> MacNowPlayingBar {
         MacNowPlayingBar(
             trackTitle: "Track Title",
@@ -80,11 +88,17 @@ enum NowPlayingBarFixture {
             cover: nil,
             isPlaying: true,
             position: PreviewData.trackPosition(
-                positionMs: 102_000,
-                durationMs: 303_000
+                positionMs: track.positionMs,
+                durationMs: track.durationMs
             ),
-            buffered: LatestStream.trackBuffered().source(for: "preview-track"),
-            waitsOnStorage: false,
+            buffered:
+                LatestStream.trackBuffered(
+                    holding: [
+                        "preview-track": BridgeTrackBuffered(ranges: track.held)
+                    ]
+                )
+                .source(for: "preview-track"),
+            waitsOnStorage: track.waitsOnStorage,
             showRemainingTime: false,
             settings: settings,
             receiverWithoutVolume: receiverWithoutVolume,

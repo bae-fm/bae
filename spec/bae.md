@@ -5107,9 +5107,9 @@ failure names the record: bae never plays from wherever a failed seek left
 the reader. A track's load, or a load at a saved position, fetches first the
 window its decode reads first.
 
-The seek bar never leaves the player. On a Mac, VoiceOver reads the transport,
-then the seek bar, then Play on, Queue, Mute and Volume when those controls are
-present. Under the played part the seek bar draws, in a
+The seek bar never leaves the player. On a Mac, VoiceOver reads the window's
+content before the player. In the player it reads the transport, then the seek
+bar, then Play on, Queue, Mute and Volume when those controls are present. Under the played part the seek bar draws, in a
 lighter fill, the parts of the playing track whose bytes its file's buffer
 holds, range by range: each byte range the buffer holds, cut to the track's
 own bytes, is placed in the track by the track's first and last byte and its
