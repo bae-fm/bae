@@ -8,7 +8,7 @@ The release's fields under a Release heading, in a grid of labels and values, as
 - **Country** (`country`): the country's name as plain text, which opens the menu of countries. `countryOpen` (the countries it lists) draws that menu open under it, the dash for none first and the scroll arrow at its foot.
 - **Barcode** (`barcodes`, comma-separated): one row per barcode, a mono field, then ⊗; Add barcode under the last row.
 - **Status** (`status`) and **Packaging** (`packaging`): each its value as plain text, which opens its menu.
-- **Details** (`details`, comma-separated, such as Remastered, Limited Edition): what Discogs says about the pressing that no other field holds, each with ⊗, then a menu that adds another, showing a dash while there are none and + Add after.
+- **Details** (`details`, comma-separated, such as Remastered, Limited Edition): what Discogs says about the pressing that no other field holds, each with ⊗, then a menu that adds another: named Details and showing a dash while there are none, named Add detail and showing + Add after.
 
 An empty value shows the form's dash.
 
