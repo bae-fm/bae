@@ -1,6 +1,6 @@
 //! The apps' shared theme: `design/theme.toml` for the semantics and scales
 //! and `design/system/tokens.json` for the tones, the accents, the text
-//! styles and the icon roles, validated, and emitted as the typed Swift and Kotlin each platform
+//! styles and the icon and size roles, validated, and emitted as the typed Swift and Kotlin each platform
 //! compiles.
 
 pub mod android;
@@ -215,38 +215,6 @@ struct RawTheme {
     opacity: BTreeMap<String, f64>,
     radius: BTreeMap<String, f64>,
     space: BTreeMap<String, f64>,
-    size: BTreeMap<String, RawPlatformLengths>,
-}
-
-/// Lengths as written; a platform left out is reported rather than defaulted.
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct RawPlatformLengths {
-    macos: Option<f64>,
-    ios: Option<f64>,
-    android: Option<f64>,
-}
-
-impl RawPlatformLengths {
-    /// Every platform's length, or a problem naming each one missing.
-    fn check(&self, context: &str, problems: &mut Vec<String>) -> PlatformLengths {
-        let mut length = |platform: &str, value: Option<f64>| match value {
-            Some(value) if value >= 0.0 => value,
-            Some(value) => {
-                problems.push(format!("{context}: the {platform} length {value} is negative"));
-                0.0
-            }
-            None => {
-                problems.push(format!("{context} has no {platform} length"));
-                0.0
-            }
-        };
-        PlatformLengths {
-            macos: length("macos", self.macos),
-            ios: length("ios", self.ios),
-            android: length("android", self.android),
-        }
-    }
 }
 
 /// The standard tone and accent by name.
@@ -265,7 +233,7 @@ struct RawModes {
 }
 
 /// design/system/tokens.json, of which the tones, the accents, the text
-/// styles and the icon roles are read.
+/// styles and the icon and size roles are read.
 #[derive(Deserialize)]
 struct RawTokens {
     color: RawColorTokens,
@@ -274,6 +242,9 @@ struct RawTokens {
     icon: lengths::RawLengthFamily,
     #[serde(rename = "icon-android")]
     icon_android: lengths::RawLengthFamily,
+    size: lengths::RawLengthFamily,
+    #[serde(rename = "size-android")]
+    size_android: lengths::RawLengthFamily,
 }
 
 #[derive(Deserialize)]
@@ -353,12 +324,13 @@ fn appearances(
 }
 
 /// What tokens.json defines for the apps: the tones and the accents, each in
-/// its order, and the text and icon roles.
+/// its order, and the text, icon and size roles.
 struct TokenRoles {
     tones: Vec<Tone>,
     accents: Vec<Accent>,
     text: BTreeMap<String, TextRole>,
     icon: BTreeMap<String, IconRole>,
+    size: BTreeMap<String, PlatformLengths>,
 }
 
 fn read_tokens(tokens: &str, problems: &mut Vec<String>) -> TokenRoles {
@@ -371,6 +343,7 @@ fn read_tokens(tokens: &str, problems: &mut Vec<String>) -> TokenRoles {
                 accents: Vec::new(),
                 text: BTreeMap::new(),
                 icon: BTreeMap::new(),
+                size: BTreeMap::new(),
             };
         }
     };
@@ -382,6 +355,7 @@ fn read_tokens(tokens: &str, problems: &mut Vec<String>) -> TokenRoles {
         accents: read_accents(&names, &by_name, problems),
         text: read_text(&raw.text, problems),
         icon: lengths::read_icons(&raw.icon, &raw.icon_android, problems),
+        size: lengths::read_sizes(&raw.size, &raw.size_android, problems),
     }
 }
 
@@ -646,7 +620,7 @@ impl Theme {
             light: roles("semantics.light", &raw.semantics.light),
             dark: roles("semantics.dark", &raw.semantics.dark),
         };
-        let TokenRoles { tones, accents, text, icon } = read_tokens(tokens, &mut problems);
+        let TokenRoles { tones, accents, text, icon, size } = read_tokens(tokens, &mut problems);
 
         check_choices("tone", tones.iter().map(|tone| tone.name.as_str()), &mut problems);
         check_choices("accent", accents.iter().map(|accent| accent.name.as_str()), &mut problems);
@@ -704,15 +678,6 @@ impl Theme {
             }
         }
         check_role_names(raw.space.keys(), &mut problems);
-
-        check_role_names(raw.size.keys(), &mut problems);
-        let size = raw
-            .size
-            .iter()
-            .map(|(name, lengths)| {
-                (name.clone(), lengths.check(&format!("size {name}"), &mut problems))
-            })
-            .collect();
 
         if let (true, Some(tone), Some(accent)) =
             (problems.is_empty(), standard_tone, standard_accent)

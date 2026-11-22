@@ -1,6 +1,6 @@
 # The apps' colors and measures, read by every platform through code theme-gen
 # generates from this file and from design/system/tokens.json, which holds the
-# tones, the accents, the text styles and the icon roles (see
+# tones, the accents, the text styles and the icon and size roles (see
 # notes/appearance.md). The appearance settings offer the
 # tones and the accents in tokens.json's order.
 
@@ -181,34 +181,3 @@ fieldInset = 10
 edge = 16
 section = 24
 page = 32
-
-# Sizes that recur across screens: cover art in a list row and in the
-# now-playing bar, a text field's height, and the least an icon button takes to
-# press.
-[size.rowArtwork]
-macos = 44
-ios = 44
-android = 48
-
-[size.barArtwork]
-macos = 56
-ios = 44
-android = 48
-
-[size.field]
-macos = 32
-ios = 44
-android = 56
-
-[size.lead]
-# The leading column of a list row: the icon or status glyph before its text.
-# On macOS a notice's glyph column is as wide, so titles, a notice's words and
-# file names share one edge; Android's is Material's list-item icon.
-macos = 16
-ios = 24
-android = 24
-
-[size.hitTarget]
-macos = 28
-ios = 44
-android = 44

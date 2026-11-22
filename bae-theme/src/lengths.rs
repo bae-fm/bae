@@ -1,8 +1,9 @@
-//! The icon roles of design/system/tokens.json. Each role is a token in the
-//! Apple family `icon`, whose value is the macOS length and whose `ios` is
-//! iOS's, and a token in the Android family `icon-android`, whose value is
-//! Android's; each names the role in `role`. An Apple token with no `role` is
-//! a design-system measure no app draws as a role.
+//! The icon and size roles of design/system/tokens.json. Each role is a token
+//! in an Apple family (`icon`, `size`), whose value is the macOS length and
+//! whose `ios` is iOS's, and a token in its Android family (`icon-android`,
+//! `size-android`), whose value is Android's; each names the role in `role`.
+//! An Apple token with no `role` is a design-system measure no app draws as a
+//! role, such as a macOS control's height.
 
 use std::collections::BTreeMap;
 
@@ -113,6 +114,23 @@ pub(crate) fn read_icons(
                 problems.push(format!("icon role `{role}` names no weight in tokens.json"));
                 None
             }
+        })
+        .collect()
+}
+
+/// The size roles: each role's lengths.
+pub(crate) fn read_sizes(
+    apple: &RawLengthFamily,
+    android: &RawLengthFamily,
+    problems: &mut Vec<String>,
+) -> BTreeMap<String, PlatformLengths> {
+    read_roles("size", apple, android, problems)
+        .into_iter()
+        .map(|(role, read)| {
+            if read.weight.is_some() {
+                problems.push(format!("size role `{role}` names a weight, which only icons have"));
+            }
+            (role, read.lengths)
         })
         .collect()
 }
