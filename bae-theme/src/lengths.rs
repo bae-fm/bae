@@ -10,7 +10,9 @@ use std::collections::BTreeMap;
 
 use serde::Deserialize;
 
-use crate::{check_role_names, pixels, AppleIcon, IconRole, PlatformLengths, Weight};
+use crate::{
+    pair_roles, pixels, AppleIcon, IconRole, PlatformLengths, RoleEntry, RolePair, Weight,
+};
 
 /// A family of length tokens.
 #[derive(Deserialize)]
@@ -28,20 +30,14 @@ struct RawLengthToken {
     weight: Option<Weight>,
 }
 
-/// A role's Apple token and Android token, either of which may be missing.
-struct RoleTokens<'a> {
-    apple: Option<&'a RawLengthToken>,
-    android: Option<&'a RawLengthToken>,
-}
-
 /// The tokens of an Apple and an Android family of <kind> tokens, by role.
 fn read_roles<'a>(
     kind: &str,
     apple: &'a RawLengthFamily,
     android: &'a RawLengthFamily,
     problems: &mut Vec<String>,
-) -> BTreeMap<&'a str, RoleTokens<'a>> {
-    let mut roles: BTreeMap<&str, RoleTokens> = BTreeMap::new();
+) -> BTreeMap<&'a str, RolePair<&'a RawLengthToken>> {
+    let mut entries = Vec::new();
     for (family, is_android) in [(apple, false), (android, true)] {
         for token in &family.tokens {
             let Some(role) = token.role.as_deref() else {
@@ -56,22 +52,10 @@ fn read_roles<'a>(
                     token.name
                 ));
             }
-            let tokens = roles.entry(role).or_insert(RoleTokens { apple: None, android: None });
-            let (slot, platform) = if is_android {
-                (&mut tokens.android, "Android")
-            } else {
-                (&mut tokens.apple, "Apple")
-            };
-            if let Some(other) = slot.replace(token) {
-                problems.push(format!(
-                    "tokens.json `{}` and `{}` both give {kind} role `{role}` {platform}'s length",
-                    other.name, token.name
-                ));
-            }
+            entries.push(RoleEntry { role, name: &token.name, android: is_android, value: token });
         }
     }
-    check_role_names(roles.keys(), problems);
-    roles
+    pair_roles(kind, entries, problems)
 }
 
 /// A token's length, reported when it is negative.

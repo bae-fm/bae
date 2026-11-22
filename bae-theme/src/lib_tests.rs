@@ -333,7 +333,7 @@ fn a_roles_styles_share_weight_and_letter_spacing_and_one_style_gives_each_platf
     );
     assert_eq!(
         theme_with_text(&twice).unwrap_err(),
-        ["tokens.json text styles `copy` and `body` both give role `body` Apple's size"]
+        ["tokens.json `copy` and `body` both give text role `body` Apple's value"]
     );
 }
 

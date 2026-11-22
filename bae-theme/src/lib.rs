@@ -415,9 +415,8 @@ struct PlatformStyle<'a> {
 /// and monospacing, which its styles share, Apple's size from its style in an
 /// Apple family and Android's from its style in the `android` family.
 fn read_text(raw: &RawType, problems: &mut Vec<String>) -> BTreeMap<String, TextRole> {
-    let mut roles: BTreeMap<&str, (Option<PlatformStyle>, Option<PlatformStyle>)> = BTreeMap::new();
+    let mut entries: Vec<RoleEntry<PlatformStyle>> = Vec::new();
     for group in &raw.groups {
-        let android = group.family == ANDROID_FAMILY;
         for style in &group.styles {
             let name = style.name.as_str();
             let read = PlatformStyle {
@@ -435,22 +434,18 @@ fn read_text(raw: &RawType, problems: &mut Vec<String>) -> BTreeMap<String, Text
                     .map(|line| pixels(name, "line height", line, problems)),
                 ios: style.ios.as_ref(),
             };
-            let slots = roles.entry(style.role.as_str()).or_default();
-            let slot = if android { &mut slots.1 } else { &mut slots.0 };
-            if let Some(other) = slot.replace(read) {
-                problems.push(format!(
-                    "tokens.json text styles `{}` and `{name}` both give role `{}` {} size",
-                    other.name,
-                    style.role,
-                    if android { "Android's" } else { "Apple's" }
-                ));
-            }
+            entries.push(RoleEntry {
+                role: &style.role,
+                name,
+                android: group.family == ANDROID_FAMILY,
+                value: read,
+            });
         }
     }
-    check_role_names(roles.keys().copied(), problems);
-    roles
+    pair_roles("text", entries, problems)
         .into_iter()
-        .filter_map(|(role, (apple, android))| {
+        .filter_map(|(role, pair)| {
+            let (apple, android) = (pair.apple, pair.android);
             let shared = match (&apple, &android) {
                 (Some(apple), Some(android)) => {
                     if (apple.weight, apple.tracking, apple.monospaced)
@@ -743,6 +738,55 @@ fn standard_choice<'a>(
         problems.push(format!("the standard {kind} `{name}` is not a listed {kind}"));
     }
     position
+}
+
+/// A role's entry on Apple and its entry on Android, either of which may be
+/// missing.
+pub(crate) struct RolePair<T> {
+    apple: Option<T>,
+    android: Option<T>,
+}
+
+/// One entry tokens.json gives a <kind> role: the token or text style named
+/// <name> gives the role's value on Android when <android> is true, else on
+/// Apple.
+pub(crate) struct RoleEntry<'a, T> {
+    pub(crate) role: &'a str,
+    pub(crate) name: &'a str,
+    pub(crate) android: bool,
+    pub(crate) value: T,
+}
+
+/// Each role's Apple and Android entries. Two entries that give one role the
+/// same platform's value are reported, the first kept, and every role name is
+/// checked.
+pub(crate) fn pair_roles<'a, T>(
+    kind: &str,
+    entries: impl IntoIterator<Item = RoleEntry<'a, T>>,
+    problems: &mut Vec<String>,
+) -> BTreeMap<&'a str, RolePair<T>> {
+    let mut roles: BTreeMap<&str, RolePair<RoleEntry<T>>> = BTreeMap::new();
+    for entry in entries {
+        let pair = roles.entry(entry.role).or_insert(RolePair { apple: None, android: None });
+        let (slot, platform) =
+            if entry.android { (&mut pair.android, "Android") } else { (&mut pair.apple, "Apple") };
+        match slot {
+            Some(first) => problems.push(format!(
+                "tokens.json `{}` and `{}` both give {kind} role `{}` {platform}'s value",
+                first.name, entry.name, entry.role
+            )),
+            None => *slot = Some(entry),
+        }
+    }
+    let roles: BTreeMap<&str, RolePair<T>> = roles
+        .into_iter()
+        .map(|(role, pair)| {
+            let value = |entry: RoleEntry<'a, T>| entry.value;
+            (role, RolePair { apple: pair.apple.map(value), android: pair.android.map(value) })
+        })
+        .collect();
+    check_role_names(roles.keys(), problems);
+    roles
 }
 
 /// A role name becomes a property on both platforms.
