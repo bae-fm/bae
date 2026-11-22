@@ -33,7 +33,8 @@
 .bae-m-pline-detail { flex: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .bae-progress-activity .bae-progress-fill { background: var(--activity); }
 .bae-m-ifl { display: flex; align-items: center; gap: 8px; }
-.bae-m-ipane { flex: 1; min-width: 0; height: 100%; overflow: hidden; display: flex; flex-direction: column; gap: var(--space-group); padding: 24px 24px 32px; box-sizing: border-box; font: 400 13px var(--font-sans); }
+/* The pane scrolls, so it reaches the window's bottom edge and its content runs under that edge; a band of padding below a scrolling pane would cut its content off above the edge. */
+.bae-m-ipane { flex: 1; min-width: 0; height: 100%; overflow: hidden; display: flex; flex-direction: column; gap: var(--space-group); padding: 24px 24px 0; box-sizing: border-box; font: 400 13px var(--font-sans); }
 .bae-m-isplit { display: flex; height: 100%; }
 .bae-m-ipane-empty { flex: 1; display: flex; }
 .bae-m-reditor { display: flex; flex-direction: column; gap: var(--space-group); }
