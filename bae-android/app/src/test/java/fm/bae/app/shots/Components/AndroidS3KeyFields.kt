@@ -9,7 +9,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidS3KeyFields
+import fm.bae.app.ui.components.NoticeLook
 import org.junit.Test
 
 /** The component shots of `AndroidS3KeyFields`, one for each row of its preview. */
@@ -31,7 +33,7 @@ class AndroidS3KeyFieldsShots : BoardShot() {
     @Test
     fun androidComponentS3KeyFieldsRefused() =
         component("android.component.s3-key-fields.refused") {
-            KeyFields(KEY_ID, SECRET, note = "S3 refused this key.")
+            KeyFields(KEY_ID, SECRET, refused = true)
         }
 }
 
@@ -44,14 +46,14 @@ private fun KeyFields(
     id: String,
     secret: String,
     idModifier: Modifier = Modifier,
-    note: String? = null,
+    refused: Boolean = false,
 ) = Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.group)) {
     AndroidS3KeyFields(
         accessKeyId = id,
         secretAccessKey = secret,
         onAccessKeyIdChange = {},
         onSecretAccessKeyChange = {},
-        secretNote = note,
+        refused = refused,
         accessKeyIdModifier = idModifier,
     )
 }

@@ -264,7 +264,8 @@ internal fun s3KeyDialogParts(
                 AndroidProgress(title = stringResource(R.string.s3_key_checking))
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.group)) {
-                    (sheet as? S3KeyReplacement.Sheet.Fields)?.failure?.let { S3KeyFailureNotice(it) }
+                    val failure = (sheet as? S3KeyReplacement.Sheet.Fields)?.failure
+                    (failure as? S3KeyReplacement.Failure.Failed)?.let { S3KeyFailureNotice(it) }
                     // The field the person types in next takes the focus as the fields show: the ID while it is
                     // empty, else the secret. Typing doesn't move it.
                     val focusesId = remember { accessKeyId.isEmpty() }
@@ -273,6 +274,7 @@ internal fun s3KeyDialogParts(
                         secretAccessKey = secretAccessKey,
                         onAccessKeyIdChange = onAccessKeyIdChange,
                         onSecretAccessKeyChange = onSecretAccessKeyChange,
+                        refused = failure == S3KeyReplacement.Failure.Refused,
                         accessKeyIdModifier = if (focusesId) Modifier.focusOnShow() else Modifier,
                         secretAccessKeyModifier = if (focusesId) Modifier else Modifier.focusOnShow(),
                     )
@@ -293,22 +295,13 @@ internal fun s3KeyDialogParts(
     )
 }
 
-/** Why the last key changed nothing, above the fields. */
+/** Why the last key changed nothing, above the fields: the check could not finish. */
 @Composable
-private fun S3KeyFailureNotice(failure: S3KeyReplacement.Failure) {
-    val title = stringResource(R.string.s3_key_refused_title)
-    when (failure) {
-        S3KeyReplacement.Failure.Refused -> {
-            AndroidNotice(
-                title = title,
-                advice = stringResource(R.string.s3_key_refused),
-                error = null,
-                look = NoticeLook.QUIET,
-            )
-        }
-
-        is S3KeyReplacement.Failure.Failed -> {
-            AndroidNotice(title = title, advice = failure.error.line, error = failure.error, look = NoticeLook.QUIET)
-        }
-    }
+private fun S3KeyFailureNotice(failure: S3KeyReplacement.Failure.Failed) {
+    AndroidNotice(
+        title = stringResource(R.string.s3_key_refused_title),
+        advice = failure.error.line,
+        error = failure.error,
+        look = NoticeLook.QUIET,
+    )
 }

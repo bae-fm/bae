@@ -9,8 +9,8 @@ import fm.bae.app.R
 
 /**
  * An S3 access key, as a restore, a storage setup and an invite all ask for it. [secretNote] is the line
- * under the secret key's field; [accessKeyIdModifier] and [secretAccessKeyModifier] reach each field, such as to
- * focus it.
+ * under the secret key's field; [refused] puts the notice that S3 storage did not accept the key above the fields;
+ * [accessKeyIdModifier] and [secretAccessKeyModifier] reach each field, such as to focus it.
  */
 @Composable
 internal fun AndroidS3KeyFields(
@@ -19,9 +19,18 @@ internal fun AndroidS3KeyFields(
     onAccessKeyIdChange: (String) -> Unit,
     onSecretAccessKeyChange: (String) -> Unit,
     secretNote: String? = null,
+    refused: Boolean = false,
     accessKeyIdModifier: Modifier = Modifier,
     secretAccessKeyModifier: Modifier = Modifier,
 ) {
+    if (refused) {
+        AndroidNotice(
+            title = stringResource(R.string.s3_key_refused_title),
+            advice = stringResource(R.string.s3_key_refused),
+            error = null,
+            look = NoticeLook.QUIET,
+        )
+    }
     AndroidTextField(
         value = accessKeyId,
         onValueChange = onAccessKeyIdChange,
