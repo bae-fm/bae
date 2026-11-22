@@ -213,7 +213,7 @@ extension ShotScene {
 
     /// History's choice of whose plays, offering Ana and Ben, on the plays
     /// of the person with member id `person`, or everyone's for `nil`.
-    private static func historyMenu(person: String?) -> HistoryMenu {
+    static func historyMenu(person: String?) -> HistoryMenu {
         HistoryMenu(
             count: BridgeListCount(
                 rows: 0,

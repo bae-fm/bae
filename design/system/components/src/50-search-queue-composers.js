@@ -64,8 +64,8 @@
   }
   // `wide`: more room at the end, for a list whose rows end in a person (History).
   function MacQueueSection(props) {
-    // `hang`: under a pane whose rows hang their leading column, the heading starts at the rows' covers.
-    return h('div', { className: cx('bae-m-queue-section', props.wide && 'bae-m-queue-section-wide', props.hang && 'bae-m-queue-section-hang') },
+    // A queue lane's heading, in line with its rows' content, ends in `clear` and `shuffle`. `day`: a day of History, whose rows hang their times in the margin and span the pane: the heading starts at the rows' covers, ends at the pane's edge, and may end in `menu`.
+    return h('div', { className: cx('bae-m-queue-section', props.day && 'bae-m-queue-section-day') },
       h('span', { className: 'bae-m-queue-section-title' }, props.title),
       props.clear ? h('button', { type: 'button', className: 'bae-plainbtn bae-m-queue-clear', 'aria-label': props.clear }, 'Clear') : null,
       // `menu`: a choice that applies to the whole list (History's whose plays), at the heading's end, opening a menu of its choices.

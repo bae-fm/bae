@@ -308,7 +308,7 @@ export interface AndroidLibraryRowProps { title: string; subtitle?: string; trai
 export declare function AndroidLibraryRow(props: AndroidLibraryRowProps): React.ReactElement;
 export interface MacQueuePanelProps { tab?: 'Queue' | 'Playlists' | 'History'; back?: string; hang?: number; title?: string; artist?: string; album?: string; playing?: boolean; position?: number; elapsed?: string; empty?: boolean; whose?: string; children?: React.ReactNode }
 export declare function MacQueuePanel(props: MacQueuePanelProps): React.ReactElement;
-export interface MacQueueSectionProps { title: string; clear?: string; shuffle?: boolean; menu?: string; wide?: boolean; hang?: boolean }
+export interface MacQueueSectionProps { title: string; clear?: string; shuffle?: boolean; menu?: string; day?: boolean }
 export declare function MacQueueSection(props: MacQueueSectionProps): React.ReactElement;
 export declare function MacQueuePlaceholderRow(props: {}): React.ReactElement;
 export declare function AndroidQueuePlaceholderRow(): React.ReactElement;

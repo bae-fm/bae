@@ -4,7 +4,7 @@ import SwiftUI
 @testable import bae
 
 extension ShotScene {
-    /// `MacQueueSection`, a lane's heading.
+    /// `MacQueueSection`, a lane's heading or a day's.
     static let macQueueSectionScenes: [ShotScene] = [
         playingFrom("mac.component.queue-section.playing-from"),
         playingFrom(
@@ -16,9 +16,25 @@ extension ShotScene {
             "mac.component.queue-section.without-shuffle",
             shuffled: nil
         ),
-        playingFrom("mac.component.queue-section.hang"),
-        playingFrom("mac.component.queue-section.wide"),
+        day("mac.component.queue-section.day"),
+        day("mac.component.queue-section.day-with-menu", menu: true),
     ]
+
+    /// A day of History, with the whose-plays menu that ends the first day
+    /// when `menu` is true.
+    private static func day(_ id: String, menu: Bool = false) -> ShotScene {
+        component(id, height: 60) {
+            MacQueueSection(
+                title: "Playing from · Low Tide Hours",
+                kind: .day(
+                    menu: menu
+                        ? historyMenu(person: nil)
+                            .inlineMenu(action: false) { _ in } : nil
+                )
+            )
+            .frame(width: 380, alignment: .leading)
+        }
+    }
 
     private static func playingFrom(
         _ id: String,

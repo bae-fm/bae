@@ -4,6 +4,6 @@ A lane's heading: "Up next" (only when it has tracks), "Playing from · <album>"
 
 `clear` names the Clear button for VoiceOver.
 
-`hang`: in a pane whose rows hang their leading column (`MacQueuePanel`'s `hang`), the heading starts at the rows' covers.
+`day`: a day of History, in a pane whose rows hang their times in the margin (`MacQueuePanel`'s `hang`): the heading starts at the rows' covers and ends at the pane's edge, and only the first day takes `menu`. A lane takes `clear` and `shuffle`, and a day takes neither.
 
 **In the code:** macOS: `MacQueueSection` (`Views/Playback/Queue/MacQueueSection.swift`), the heading `QueueSection` draws over its rows.

@@ -14,13 +14,16 @@
       title: 'Playing from · Low Tide Hours', clear: 'Clear playing from', shuffle: false
     }, options));
   }
+  function day(options) {
+    return h(B.MacQueueSection, Object.assign({ title: 'Playing from · Low Tide Hours', day: true }, options));
+  }
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
     W('Playing from', lane({})),
     W('Playing from, shuffled', lane({ shuffle: true })),
     W('Without Clear', lane({ clear: null })),
     W('Without Shuffle', lane({ shuffle: null })),
-    W('Hang', lane({ hang: true })),
-    W('Wide', lane({ wide: true }))));
+    W('Day', day({})),
+    W('Day, with menu', day({ menu: 'Everyone' }))));
 </script>
 </body>
 </html>

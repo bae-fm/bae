@@ -16,7 +16,7 @@
     W('Empty', h('div', { style: { height: 600, display: 'flex' } }, h(B.MacQueuePanel, { empty: true }))),
     W('Playlists', h('div', { style: { height: 600, display: 'flex' } }, h(B.MacQueuePanel, { tab: 'Playlists' }, h(B.MacLibraryRow, { title: 'Late night', subtitle: 'Ana · 12 tracks', covers: 'Low Tide Hours,Copper Sky,Small Hours,Paper Lanterns' }), h(B.MacLibraryRow, { title: 'Sunday mornings', subtitle: 'Ben · 1 track', covers: 'Copper Sky' })))),
     W('Playlist open', h('div', { style: { height: 600, display: 'flex' } }, h(B.MacQueuePanel, { tab: 'Playlists', back: 'Playlists' }, slot('The open playlist’s page')))),
-    W('History', h('div', { style: { height: 600, display: 'flex' } }, h(B.MacQueuePanel, { tab: 'History', hang: 40 }, h(B.MacQueueSection, { title: 'Today', hang: true, wide: true, menu: 'Everyone' }), slot('The day’s plays')))), W('History empty', h('div', { style: { height: 600, display: 'flex' } }, h(B.MacQueuePanel, { tab: 'History', empty: true }))), W('History empty for a person', h('div', { style: { height: 600, display: 'flex' } }, h(B.MacQueuePanel, { tab: 'History', empty: true, whose: 'Ben' })))));
+    W('History', h('div', { style: { height: 600, display: 'flex' } }, h(B.MacQueuePanel, { tab: 'History', hang: 40 }, h(B.MacQueueSection, { title: 'Today', day: true, menu: 'Everyone' }), slot('The day’s plays')))), W('History empty', h('div', { style: { height: 600, display: 'flex' } }, h(B.MacQueuePanel, { tab: 'History', empty: true }))), W('History empty for a person', h('div', { style: { height: 600, display: 'flex' } }, h(B.MacQueuePanel, { tab: 'History', empty: true, whose: 'Ben' })))));
 </script>
 </body>
 </html>
