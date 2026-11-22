@@ -47,10 +47,6 @@ struct Logo: View {
 
     var body: some View {
         mark
-            // The sheep and the word are one picture, named by the word.
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(Text(verbatim: "bae"))
-            .accessibilityAddTraits(.isImage)
     }
 
     private var mark: some View {
@@ -67,9 +63,11 @@ struct Logo: View {
                         }
                     }
                     .overlay {
+                        // The word names the logo; the sheep is decoration.
                         Image("Sheep")
                             .resizable()
                             .scaledToFit()
+                            .accessibilityHidden(true)
                             .modifier(
                                 Bob(
                                     reduced: reduceMotion || !bob,
@@ -91,6 +89,8 @@ struct Logo: View {
                             rise: Proportion.wordRise * wordHeight
                         )
                     )
+                    .accessibilityLabel(Text(verbatim: "bae"))
+                    .accessibilityAddTraits(.isImage)
             }
         }
     }
