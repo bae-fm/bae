@@ -46,7 +46,7 @@ extension ShotScene {
     ]
 
     private static var nameField: some View {
-        BoxedField(placeholder: "Name", text: .constant("Home music"))
+        BoxedField(text: .constant("Home music"))
             .frame(width: 160)
     }
 }
