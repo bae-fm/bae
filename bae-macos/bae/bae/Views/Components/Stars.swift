@@ -54,6 +54,9 @@ struct Stars: View {
                     )
             }
             .frame(width: size, height: size)
+            // The star's whole frame, so a button around it is the frame's
+            // size and not the drawn outline's.
+            .contentShape(Rectangle())
     }
 }
 
