@@ -70,22 +70,23 @@ extension PreviewData {
     ) throws -> ImportPaneFixture {
         switch pane {
         case .northbound:
+            let gallery = try northboundImages(cover: images.northbound)
             switch northbound {
             case .identified:
-                try northboundDraftCandidate(cover: images.northbound)
+                return northboundDraftCandidate(images: gallery)
             case .importing:
-                try northboundDraftCandidate(
-                    cover: images.northbound,
+                return northboundDraftCandidate(
+                    images: gallery,
                     importStep: .running(phase: .measuringLoudness)
                 )
             }
         case .lowTideHours:
-            lowTideHoursCandidate(cover: images.lookup.lowTideHours)
+            return lowTideHoursCandidate(cover: images.lookup.lowTideHours)
         case .fieldRecordings:
-            fieldRecordingsCandidate(cover: images.fieldRecordings)
-        case .untitled07: untitledCandidate()
+            return fieldRecordingsCandidate(cover: images.fieldRecordings)
+        case .untitled07: return untitledCandidate()
         case .copperSky:
-            notFoundCandidate(
+            return notFoundCandidate(
                 copperSky,
                 image: images.lookup.copperSky,
                 session: paneSession(
@@ -96,7 +97,7 @@ extension PreviewData {
                 )
             )
         case .winterKitchen:
-            notFoundCandidate(
+            return notFoundCandidate(
                 winterKitchen,
                 image: images.lookup.winterKitchen,
                 session: paneSession(presentation: .findOnline)
@@ -256,10 +257,11 @@ extension PreviewData {
             )
             selection = boardSeveralSelection
         case .imported:
-            let images = try ImportedBoardImages()
-            items = doneItems(images: images)
+            let content = try ImportedBoardContent()
+            let gallery = try northboundImages(cover: content.northboundCover)
+            items = doneItems(releases: content.releases)
             selection = selectBoardCandidate(
-                try northboundImportedCandidate(cover: images.northbound),
+                northboundImportedCandidate(images: gallery),
                 in: store
             )
         case .skipped:

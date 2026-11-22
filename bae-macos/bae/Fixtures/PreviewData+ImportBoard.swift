@@ -160,10 +160,6 @@ extension PreviewData {
         let back: BridgeMappingImage
         var gallery: [BridgeMappingImage] { [cover, back] }
 
-        init(cover: BridgeMappingImage) throws {
-            self.cover = cover
-            back = try boardImage("back.jpg", art: "Northbound back")
-        }
     }
 
     struct LookupBoardImages {
@@ -198,22 +194,79 @@ extension PreviewData {
         }
     }
 
-    struct ImportedBoardImages {
-        let northbound: BridgeMappingImage
-        let driftwood: BridgeFileVersion
-        let glassHarbor: BridgeFileVersion
-        let lateArrivals: BridgeFileVersion
+    struct ImportedBoardRelease {
+        let folder: BoardFolder
+        let summary: BridgeTriageMetadataSummary
+        let cover: BridgeFileVersion
+        let upload: BridgeUploadProgress?
+    }
+
+    struct ImportedBoardContent {
+        let northboundCover: BridgeMappingImage
+        let releases: [ImportedBoardRelease]
 
         init() throws {
-            northbound = try northboundCover()
-            driftwood = try BoardArtwork.scannedFile(named: "Driftwood")
-            glassHarbor = try BoardArtwork.scannedFile(named: "Glass Harbor")
-            lateArrivals = try BoardArtwork.scannedFile(named: "Late Arrivals")
+            northboundCover = try PreviewData.northboundCover()
+            releases = [
+                ImportedBoardRelease(
+                    folder: .northbound,
+                    summary: BridgeTriageMetadataSummary(
+                        albumTitle: "Northbound",
+                        albumArtists: .named("Mara Quill")
+                    ),
+                    cover: northboundCover.file,
+                    upload: BridgeUploadProgress(
+                        queued: 0,
+                        uploading: 1,
+                        activity: .uploading
+                    )
+                ),
+                try Self.release(
+                    .driftwood,
+                    title: "Driftwood",
+                    artist: "Mara Quill"
+                ),
+                try Self.release(
+                    .glassHarbor,
+                    title: "Glass Harbor",
+                    artist: "Ines Varga Trio"
+                ),
+                try Self.release(
+                    .lateArrivals,
+                    title: "Late Arrivals",
+                    artist: "The Slow Orchards"
+                ),
+            ]
+        }
+
+        private static func release(
+            _ folder: BoardFolder,
+            title: String,
+            artist: String
+        ) throws -> ImportedBoardRelease {
+            ImportedBoardRelease(
+                folder: folder,
+                summary: BridgeTriageMetadataSummary(
+                    albumTitle: title,
+                    albumArtists: .named(artist)
+                ),
+                cover: try BoardArtwork.scannedFile(named: title),
+                upload: nil
+            )
         }
     }
 
     private static func northboundCover() throws -> BridgeMappingImage {
         try boardImage("cover.jpg", art: "Northbound")
+    }
+
+    static func northboundImages(cover: BridgeMappingImage) throws
+        -> NorthboundImages
+    {
+        NorthboundImages(
+            cover: cover,
+            back: try boardImage("back.jpg", art: "Northbound back")
+        )
     }
 
     static func boardCover(_ image: BridgeMappingImage) -> BridgeCoverChoice {

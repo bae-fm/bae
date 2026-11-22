@@ -277,62 +277,25 @@ extension PreviewData {
     }
 
     /// The Imported tab's rows as the boards list them.
-    static func doneItems(images: ImportedBoardImages) -> [BridgeImportListItem]
+    static func doneItems(releases: [ImportedBoardRelease])
+        -> [BridgeImportListItem]
     {
-        func done(
-            _ folder: BoardFolder,
-            _ title: String,
-            _ artist: String,
-            cover: BridgeFileVersion,
-            upload: BridgeUploadProgress? = nil
-        ) -> BridgeImportListItem {
+        releases.map { release in
             candidateItem(
                 boardRow(
-                    folder,
-                    summary: BridgeTriageMetadataSummary(
-                        albumTitle: title,
-                        albumArtists: .named(artist)
-                    ),
-                    record: "board-\(title)",
-                    cover: .local(file: cover),
+                    release.folder,
+                    summary: release.summary,
+                    record: "board-\(release.summary.albumTitle)",
+                    cover: .local(file: release.cover),
                     placement: .done,
                     live: triageLive([.revealFolder]),
-                    importStatus: .complete(release: boardImported(folder)),
-                    upload: upload
+                    importStatus: .complete(
+                        release: boardImported(release.folder)
+                    ),
+                    upload: release.upload
                 )
             )
         }
-        return [
-            done(
-                .northbound,
-                "Northbound",
-                "Mara Quill",
-                cover: images.northbound.file,
-                upload: BridgeUploadProgress(
-                    queued: 0,
-                    uploading: 1,
-                    activity: .uploading
-                )
-            ),
-            done(
-                .driftwood,
-                "Driftwood",
-                "Mara Quill",
-                cover: images.driftwood
-            ),
-            done(
-                .glassHarbor,
-                "Glass Harbor",
-                "Ines Varga Trio",
-                cover: images.glassHarbor
-            ),
-            done(
-                .lateArrivals,
-                "Late Arrivals",
-                "The Slow Orchards",
-                cover: images.lateArrivals
-            ),
-        ]
     }
 
     // MARK: - Skipped

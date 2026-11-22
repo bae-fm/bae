@@ -24,11 +24,10 @@ extension PreviewData {
     /// with `importStep`, that draft while its import runs at the step.
     @MainActor
     static func northboundDraftCandidate(
-        cover: BridgeMappingImage,
+        images: NorthboundImages,
         importStep: BridgeImportStep? = nil
-    ) throws -> ImportPaneFixture {
-        let images = try NorthboundImages(cover: cover)
-        return paneFixture(
+    ) -> ImportPaneFixture {
+        paneFixture(
             folder: northboundFolder(images: images),
             metadataProvenance: .externalRelease(
                 record: BridgeLookupRef(
@@ -56,9 +55,8 @@ extension PreviewData {
     /// images its scan read.
     @MainActor
     static func northboundImportedCandidate(
-        cover: BridgeMappingImage
-    ) throws -> ImportPaneFixture {
-        let images = try NorthboundImages(cover: cover)
+        images: NorthboundImages
+    ) -> ImportPaneFixture {
         let release = boardImported(.northbound)
         return ImportPaneFixture(
             detail: BridgeImportCandidateDetail(
