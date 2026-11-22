@@ -12,6 +12,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.unit.toSize
 import org.json.JSONObject
 import kotlin.math.roundToInt
 
@@ -144,8 +145,9 @@ internal object ElementList {
         val description = config.getOrNull(SemanticsProperties.ContentDescription)
         val kind = kind(config, role, editable != null, texts != null, description != null && node.children.isEmpty())
         // The box the node draws, not the 48 dp touch target Compose grows around a smaller one: a board draws the
-        // box, and TouchTargetTest checks the touch target.
-        val bounds = if (kind == "text") textBox(node, unmerged) else node.boundsInRoot
+        // box, and TouchTargetTest checks the touch target. It is the whole box, also where it reaches past the
+        // shot's frame, as a board's box does.
+        val bounds = if (kind == "text") textBox(node, unmerged) else node.wholeBox()
         val out =
             JSONObject()
                 .put("role", kind)
@@ -180,11 +182,17 @@ internal object ElementList {
         val words = node.config.getOrNull(SemanticsProperties.Text)?.joinToString(" ") { it.text }
         val parts = textsUnder(find(unmerged, node.id) ?: node)
         val holders = if (parts.joinToString(" ") { it.first } == words) parts.map { it.second } else listOf(node)
-        val boxes = holders.mapNotNull { text -> glyphBox(text.config, text.boundsInRoot)?.let { text.boundsInRoot to it } }
-        if (boxes.isEmpty()) return node.boundsInRoot
-        val box = if (holders.size > 1) boxes.map { it.first }.reduce { all, next -> all.expandedTo(next) } else node.boundsInRoot
+        val boxes = holders.mapNotNull { text -> glyphBox(text.config, text.wholeBox())?.let { text.wholeBox() to it } }
+        if (boxes.isEmpty()) return node.wholeBox()
+        val box = if (holders.size > 1) boxes.map { it.first }.reduce { all, next -> all.expandedTo(next) } else node.wholeBox()
         return Rect(box.left, boxes.minOf { it.second.first }, box.right, boxes.maxOf { it.second.second })
     }
+
+    /**
+     * The node's box from its position and size in the root. [SemanticsNode.boundsInRoot] clips the box to the root,
+     * which cuts an element that reaches past the shot's frame.
+     */
+    private fun SemanticsNode.wholeBox(): Rect = if (layoutInfo.isPlaced) Rect(positionInRoot, size.toSize()) else Rect.Zero
 
     private fun Rect.expandedTo(other: Rect) = Rect(minOf(left, other.left), top, maxOf(right, other.right), bottom)
 
