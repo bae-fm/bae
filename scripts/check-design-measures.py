@@ -48,6 +48,7 @@ ALLOWED = {
     (".bae-m-alert", "margin-top"): "the drawn macOS alert is the system's",
     (".bae-m-alert", "padding"): "the drawn macOS alert is the system's",
     (".bae-m-alert", "gap"): "the drawn macOS alert is the system's",
+    (".bae-a-notice-below", "margin"): "the row pulls its 48px text buttons in so their label line sits 10.5px under the words and ends half a pixel above the notice's bottom inset, half-pixel pulls no sum of spacing tokens gives",
     (".bae-a-key", "border-radius"): "the drawn Android keyboard is the system's",
     (".bae-a-keyboard-gesture::before", "border-radius"): "the drawn gesture bar is the system's",
 }

@@ -60,7 +60,7 @@
 .bae-a-notice-top { display: flex; align-items: flex-start; gap: var(--space-related); }
 .bae-a-notice-words { flex: 1; min-width: 0; }
 /* The text buttons' 48dp touch targets reach past the words' line; the margins keep their words where the line puts them. */
-.bae-a-notice-below { align-self: flex-start; display: flex; align-items: center; margin: calc(-1 * var(--space-compact)) 0 calc(-1 * var(--space-group)) calc(-1 * var(--space-group)); }
+.bae-a-notice-below { align-self: flex-start; display: flex; align-items: center; margin: -5.5px 0 -13.5px calc(-1 * var(--space-group)); }
 .bae-a-notice-buttons { flex: none; display: flex; align-items: center; margin: calc(-1 * (var(--space-group) + var(--space-line))) calc(-1 * var(--space-group)) calc(-1 * (var(--space-group) + var(--space-line))) 0; }
 .bae-a-notice-dismiss { flex: none; margin-left: var(--space-compact); }
 /* A toned notice has its own fill (in dark, the neutral one); its text and accent are on-notice and notice-accent, and its glyph keeps its tone. */
