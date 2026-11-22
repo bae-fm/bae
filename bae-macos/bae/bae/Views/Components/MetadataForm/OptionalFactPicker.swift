@@ -19,8 +19,7 @@ struct OptionalFactPicker<Value: Equatable>: View {
                 MacMenuItem("Not stated", checked: value == nil) {
                     choose(nil)
                 }
-                ForEach(0..<options.count, id: \.self) { index in
-                    let option = options[index]
+                for option in options {
                     MacMenuItem(
                         verbatim: text(option),
                         checked: value == option
