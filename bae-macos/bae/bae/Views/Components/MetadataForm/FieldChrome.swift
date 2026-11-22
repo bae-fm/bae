@@ -49,6 +49,8 @@ struct FieldChrome: ViewModifier {
                     .stroke(halo, lineWidth: Self.haloWidth)
                     .padding(-Self.haloWidth / 2)
                     .allowsHitTesting(false)
+                    // Drawing only, so it is not part of the field.
+                    .accessibilityHidden(true)
                 }
             }
             .onHover { hovering = $0 }
