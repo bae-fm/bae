@@ -22,7 +22,6 @@ enum OverWindow {
         ZStack(alignment: .top) {
             window
             dialog
-                .background(Color(nsColor: .windowBackgroundColor))
                 .clipShape(RoundedRectangle(cornerRadius: 20))
                 .shadow(color: .black.opacity(0.3), radius: 15, y: 5)
                 .padding(.top, hangs)

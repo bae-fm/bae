@@ -52,6 +52,7 @@ struct SavePresetEditor: View {
         .padding(.top, ThemeSpace.group)
         .padding(.bottom, ThemeSpace.edge)
         .frame(width: 480)
+        .macSheetSurface()
         .task(id: preset.name) {
             nameDraft = preset.name
         }

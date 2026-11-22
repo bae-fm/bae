@@ -78,5 +78,14 @@ struct MacSheet<Content: View, Footer: View>: View {
         .padding([.horizontal, .bottom], ThemeSpace.edge)
         .padding(.top, ThemeSpace.edge + ThemeSpace.line)
         .frame(width: width, alignment: .leading)
+        .macSheetSurface()
+    }
+}
+
+extension View {
+    /// Draws the sheet's surface in the content, with a clear native backdrop.
+    func macSheetSurface() -> some View {
+        background(Theme.surfaceElevated)
+            .presentationBackground(.clear)
     }
 }

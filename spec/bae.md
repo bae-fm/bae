@@ -6544,7 +6544,8 @@ control that opens one of them as a pop-up that opens a menu, and pressing it
 opens the menu. When a placeholder names a boxed text field on the Mac,
 VoiceOver focuses the whole box, including its padding. The Mac's popovers (the
 Play on picker, Activity, the ⓘ and ? tips) are drawn the same way, in the raised
-colour with a hairline edge and macOS's arrow. On the Mac a symbol
+colour with a hairline edge and macOS's arrow. Mac sheets use the raised colour
+for the window's tone and appearance. On the Mac a symbol
 that a control or the words beside it already name (the ⓘ, a close or remove
 cross, the folder, speaker or arrow beside a name) is hidden from VoiceOver; a
 symbol that says something nothing else says is read as that: the speaker on the
