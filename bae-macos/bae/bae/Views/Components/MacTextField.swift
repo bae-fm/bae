@@ -35,6 +35,10 @@ struct MacTextField<Field: View>: View {
                 field
                     .accessibilityLabel(Text(label))
                     .disabled(off)
+                    // The board dims the whole field by `off`, text and box
+                    // together, so the field's own native dim is not what
+                    // the person sees.
+                    .opacity(off ? ThemeOpacity.off : 1)
                     .alignmentGuide(.fieldLine) { $0[VerticalAlignment.center] }
                 if let error {
                     FieldNote(error, isError: true)
