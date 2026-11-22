@@ -33,7 +33,7 @@ struct MacMainWindowContainer: View {
     @Environment(CastStart.self)
     var castStart
     @State
-    private var searchText: String = ""
+    private var searchText: String
     /// The lightbox's image as it loads.
     @State
     private var lightboxLoad = LightboxImageLoad()
@@ -47,6 +47,11 @@ struct MacMainWindowContainer: View {
     /// which every layout below — each scrolled list row — combined again.
     @State
     private var searchFieldFrame: CGRect?
+
+    /// The window with `searchText` typed in the search field.
+    init(searchText: String = "") {
+        _searchText = State(initialValue: searchText)
+    }
 
     private var queueActions: QueueActions {
         QueueActions(library: library, queue: queue, uiStore: uiStore)
