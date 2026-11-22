@@ -38,7 +38,7 @@ struct MacReleaseFields: View {
                         offered: pressingOffers.media,
                         write: writer.setPressingFact
                     )
-                    .frame(minHeight: Self.rowHeight, alignment: .leading)
+                    .valueCell()
                 }
                 labelRows
                 GridRow {
@@ -48,7 +48,7 @@ struct MacReleaseFields: View {
                         write: writer.setPressingFact
                     )
                     .accessibilityLabel(String(localized: "Country"))
-                    .frame(minHeight: Self.rowHeight, alignment: .leading)
+                    .valueCell()
                 }
                 barcodeRows
                 GridRow {
@@ -58,7 +58,7 @@ struct MacReleaseFields: View {
                         write: writer.setPressingFact
                     )
                     .accessibilityLabel(String(localized: "Status"))
-                    .frame(minHeight: Self.rowHeight, alignment: .leading)
+                    .valueCell()
                 }
                 GridRow {
                     rowLabel(String(localized: "Packaging"))
@@ -67,7 +67,7 @@ struct MacReleaseFields: View {
                         write: writer.setPressingFact
                     )
                     .accessibilityLabel(String(localized: "Packaging"))
-                    .frame(minHeight: Self.rowHeight, alignment: .leading)
+                    .valueCell()
                 }
                 GridRow {
                     rowLabel(String(localized: "Details"))
@@ -76,7 +76,7 @@ struct MacReleaseFields: View {
                         offered: pressingOffers.discogsDetails,
                         write: writer.setPressingFact
                     )
-                    .frame(minHeight: Self.rowHeight, alignment: .leading)
+                    .valueCell()
                 }
             }
         }
@@ -143,7 +143,7 @@ struct MacReleaseFields: View {
             AddEntryLabel(words: String(localized: "Add label"))
         }
         .buttonStyle(.accentPlain)
-        .frame(minHeight: Self.rowHeight, alignment: .leading)
+        .valueCell()
     }
 
     /// One row per barcode, each with its remove button and the heading on
@@ -194,7 +194,7 @@ struct MacReleaseFields: View {
             AddEntryLabel(words: String(localized: "Add barcode"))
         }
         .buttonStyle(.accentPlain)
-        .frame(minHeight: Self.rowHeight, alignment: .leading)
+        .valueCell()
     }
 
     /// A field as wide as its value, or as wide as an empty field is, showing
@@ -216,7 +216,7 @@ struct MacReleaseFields: View {
             editingCommands: editingCommands,
             onCommit: onCommit
         )
-        .frame(minHeight: Self.rowHeight, alignment: .leading)
+        .valueCell()
     }
 
     /// A row's label, right-aligned in its column.
@@ -242,5 +242,13 @@ struct MacReleaseFields: View {
             name: label,
             monospaced: monospaced
         ) { await writer.setField(field, $0) }
+    }
+}
+
+extension View {
+    /// A release field's value, in a cell at least as tall as a row of the
+    /// grid, leading-aligned.
+    fileprivate func valueCell() -> some View {
+        frame(minHeight: MacReleaseFields.rowHeight, alignment: .leading)
     }
 }
