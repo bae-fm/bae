@@ -19,6 +19,11 @@ struct MainWindowChromeTests {
             size: Self.windowSize
         ) { window, host in
             host.layoutSubtreeIfNeeded()
+            // AppKit gives the window its content's limits on a later pass of
+            // the run loop, not in the layout.
+            try await SnapshotTestSupport.untilWindows {
+                window.contentMinSize != .zero
+            }
 
             let unbounded = CGFloat.greatestFiniteMagnitude
             #expect(window.contentMinSize == MainWindow.minSize)
