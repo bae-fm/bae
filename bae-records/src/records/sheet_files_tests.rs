@@ -432,7 +432,7 @@ async fn carried(db: &Store, edits: String) -> (bool, Vec<String>) {
                 "{} ({})",
                 sheet.name,
                 sheet
-                    .lines
+                    .unbound
                     .iter()
                     .map(|line| line.file_reference.as_str())
                     .collect::<Vec<_>>()
@@ -481,9 +481,9 @@ async fn a_sheet_with_no_tracks_takes_its_place_in_the_files_list() {
         .await
         .unwrap();
     let Some(DbCarriedFile::Sheet(sheet)) = files.carried.first() else { panic!("a sheet") };
-    assert_eq!(sheet.place.side, bae_types::mediums::MediumSide::first_of(1));
-    assert_eq!(sheet.lines.len(), 2);
-    assert!(sheet.lines[0].options.iter().any(|option| option.name == "first.flac"));
+    assert_eq!(sheet.place.as_ref().unwrap().side, bae_types::mediums::MediumSide::first_of(1));
+    assert_eq!(sheet.unbound.len(), 2);
+    assert!(sheet.unbound[0].options.iter().any(|option| option.name == "first.flac"));
 }
 
 /// A sheet one of whose lines plays no audio keeps the tracks of its other
@@ -510,4 +510,50 @@ async fn a_sheet_with_a_line_of_no_audio_lists_it_on_the_tracks_that_stay() {
     let [line] = sheet.unbound_lines.as_slice() else { panic!("one line plays none: {sheet:?}") };
     assert_eq!(line.file_reference, "first.flac");
     assert!(line.options.iter().any(|option| option.name == "first.flac"));
+}
+
+#[tokio::test]
+async fn an_ignored_sheet_keeps_its_binding_choices_and_replaces_only_lost_audio() {
+    let (db, _folder) = release(
+        1,
+        &[
+            carved("b1", 1, ("two", "first.flac"), "first", 0),
+            carved("b2", 1, ("two", "second.flac"), "second", 0),
+            carved("b3", 1, ("two", "shared.flac"), "shared", 0),
+            carved("x", 1, ("other", "shared.flac"), "shared", 200),
+        ],
+    )
+    .await;
+    let edits = SheetEdits {
+        ignored: ids(&["two"]),
+        picks: vec![SheetFilePick {
+            sheet_file_id: uuid("two"),
+            file_reference: "first.flac".to_string(),
+            audio_file_id: None,
+        }],
+        ..SheetEdits::default()
+    }
+    .json()
+    .unwrap();
+    let changes = changes(&db, edits.clone()).await;
+    assert_eq!(changes.dropped, ids(&["b1", "b2", "b3"]));
+    assert_eq!(added_ids(&changes), ids(&["first", "second"]));
+    let files = db
+        .read(move |sql| {
+            super::release_files_on(
+                &sql,
+                ":release",
+                ":edits",
+                rusqlite::named_params! { ":release": RELEASE_A, ":edits": edits },
+            )
+        })
+        .await
+        .unwrap();
+    let [DbCarriedFile::Sheet(sheet)] = files.carried.as_slice() else { panic!("one sheet") };
+    assert!(sheet.place.is_none());
+    assert_eq!(sheet.bound_count, 2);
+    let [second, shared] = sheet.bound.as_slice() else { panic!("two bound lines") };
+    assert_eq!((&second.file_id, &shared.file_id), (&uuid("second"), &uuid("shared")));
+    let [first] = sheet.unbound.as_slice() else { panic!("one unbound line") };
+    assert_eq!(first.file_reference, "first.flac");
 }

@@ -108,15 +108,15 @@ impl BridgeReleaseEditForm {
         Ok(self.changed(|form| *form = form.clone().with_track(track)))
     }
 
-    /// The form with the CUE sheet `sheet_file_id` on `side`, one of the
-    /// sheet's `side_choices`: a save moves the sheet's tracks there, and a
-    /// side the release lacks moves nothing.
-    pub fn with_sheet_side(
+    /// Put a CUE sheet on a side or disc, or ignore it. Saving an ignored
+    /// sheet deletes its tracks and adds a track for each audio file whose
+    /// tracks are all deleted.
+    pub fn with_sheet_place(
         &self,
         sheet_file_id: String,
-        side: crate::types::BridgeMediumSide,
+        place: crate::types::BridgeSheetPlace,
     ) -> std::sync::Arc<Self> {
-        self.changed(|form| *form = form.clone().with_sheet_side(sheet_file_id, side.into_core()))
+        self.changed(|form| *form = form.clone().with_sheet_place(sheet_file_id, place.into_core()))
     }
 
     /// The form with the `FILE` line `file_reference` of the CUE sheet

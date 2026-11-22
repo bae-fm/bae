@@ -67,16 +67,15 @@ pub(super) fn store_on(
     Ok(())
 }
 
-/// Store the sides the person picked for CUE sheets in a release editor,
-/// each a sheet's file id with the side, as the sheet's place decision: a
-/// sheet decided before takes the new side. The editor's save calls it
+/// Store release editor place choices by sheet file id, replacing any
+/// previous choice. The editor's save calls it
 /// through `store_release_edit_sheet_decisions_on`.
-pub(super) fn store_sheet_place_decisions_on(
+pub(super) fn store_sheet_place_decisions_on<'a>(
     sql: &CovenWrite<'_>,
-    places: &[(String, bae_types::mediums::MediumSide)],
+    places: impl IntoIterator<Item = (&'a str, SheetPlace)>,
 ) -> Result<(), DbError> {
-    for (sheet_file_id, side) in places {
-        let (kind, medium, side) = SheetPlace::On(*side).columns();
+    for (sheet_file_id, place) in places {
+        let (kind, medium, side) = place.columns();
         sql.execute(
             "INSERT INTO release_sheet_places (sheet_file_id, place, medium, side) \
              VALUES (?, ?, ?, ?) \

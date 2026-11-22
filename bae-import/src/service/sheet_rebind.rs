@@ -24,7 +24,7 @@ use crate::ImportError;
 
 /// The rows a save of `form` writes for the tracks of the CUE sheets whose
 /// lines the form binds to other audio files and for the tracks it adds, or
-/// `None` when the form binds no line to a file or to no audio.
+/// `None` when the form makes no audio binding or Ignored choice.
 ///
 /// The person's earlier decisions about the release's sheets apply, with the
 /// form's picks over them. A pick whose file can't back its line, because
@@ -63,19 +63,17 @@ pub async fn rebound_sheet_audio(
         .into_iter()
         .filter(|track| !dropped.contains(track.id.as_str()))
         .collect();
-    let analyses = if edits.picks.iter().all(|pick| pick.audio_file_id.is_none()) {
+    let rebound: Vec<_> = edits
+        .picks
+        .iter()
+        .filter(|pick| !edits.ignored.contains(&pick.sheet_file_id))
+        .filter_map(|pick| pick.audio_file_id.as_deref().map(|file| (pick, file)))
+        .collect();
+    let analyses = if rebound.is_empty() {
         Vec::new()
     } else {
-        analyze_rebound_sheets(
-            tables,
-            records,
-            budget,
-            diagnostics,
-            &files,
-            release_id,
-            &edits.picks,
-        )
-        .await?
+        analyze_rebound_sheets(tables, records, budget, diagnostics, &files, release_id, &rebound)
+            .await?
     };
 
     let mut file_ids: HashMap<PathBuf, String> = HashMap::new();
@@ -228,7 +226,7 @@ async fn analyze_rebound_sheets(
     diagnostics: &bae_diagnostics::Diagnostics,
     files: &[DbFile],
     release_id: &str,
-    rebinds: &[SheetFilePick],
+    rebinds: &[(&SheetFilePick, &str)],
 ) -> Result<Vec<Arc<crate::types::CueFlacAnalysis>>, ImportError> {
     let named = |file_id: &str| {
         files
@@ -241,8 +239,7 @@ async fn analyze_rebound_sheets(
     };
     let mut decisions = tables.load_release_sheet_decisions(release_id).await?;
     let mut sheets: Vec<String> = Vec::new();
-    for pick in rebinds {
-        let Some(audio_file_id) = &pick.audio_file_id else { continue };
+    for (pick, audio_file_id) in rebinds {
         let sheet = named(&pick.sheet_file_id)?;
         decisions.sheet_bindings.set_reference(
             sheet.clone(),

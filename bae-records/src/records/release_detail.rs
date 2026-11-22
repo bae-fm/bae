@@ -300,7 +300,7 @@ pub fn release_files_on(
                 "laid_segments",
                 "(SELECT * FROM carved_tracks \
                   WHERE track_id NOT IN (SELECT track_id FROM dropped_tracks))",
-                &super::sheet_files::sheet_without_tracks_json_sql("f.id", release),
+                &super::sheet_files::sheet_without_tracks_json_sql("f.id"),
             )
         ),
         params,

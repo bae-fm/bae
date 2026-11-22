@@ -109,7 +109,9 @@ impl FormParams {
             mediums: mediums_json(applied, "a release editor's applied mediums")?,
             places: places_json(applied, "a release editor's applied track places")?,
             moves: moves_json(
-                form.sheet_places.iter().map(|(sheet, side)| (sheet.as_str(), *side)),
+                form.sheet_places
+                    .iter()
+                    .filter_map(|(sheet, place)| place.side().map(|side| (sheet.as_str(), side))),
                 "a release editor's picked sheet sides",
             )?,
             edits: form.sheet_edits().json()?,

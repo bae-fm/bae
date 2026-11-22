@@ -317,8 +317,12 @@ async fn test_editor_moves_a_sheet_to_a_disc_that_holds_other_tracks() {
     let form = manager.open_release_edit(&release_id).await.unwrap();
     let drafts = manager.subscribe_release_edit_draft();
     let disc = bae_types::mediums::MediumSide::first_of;
-    let moved = form.clone().with_sheet_side(first.clone(), disc(2));
-    let put_back = moved.clone().with_sheet_side(first.clone(), disc(1));
+    let moved = form
+        .clone()
+        .with_sheet_place(first.clone(), bae_import::folder_scanner::SheetPlace::On(disc(2)));
+    let put_back = moved
+        .clone()
+        .with_sheet_place(first.clone(), bae_import::folder_scanner::SheetPlace::On(disc(1)));
     assert!(!put_back.changed(), "a sheet picked back onto its own disc is no change");
     drafts.set(Some(moved.clone())).expect("the draft takes the form");
     let draft = drafts.next().await.expect("read the draft").expect("the library holds it");

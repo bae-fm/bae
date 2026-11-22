@@ -518,10 +518,7 @@ pub fn release_edit_tracks_sql(release: &str, source: MediumsSource<'_>, edits: 
                carved.sheet_file_id, carved.file_reference AS sheet_file_reference, \
                sheet_file.original_filename AS sheet_name, p.sheet_medium, p.sheet_side, \
                p.sheet_kind, p.sheet_ordinal, \
-               (SELECT COUNT(DISTINCT lines.file_reference) FROM carved_tracks lines \
-                WHERE lines.sheet_file_id = carved.sheet_file_id \
-                  AND lines.track_id NOT IN (SELECT track_id FROM dropped_tracks)) \
-                   AS sheet_line_count, \
+               sheet_lines.bound_count AS sheet_line_count, \
                (SELECT json_group_array(json_object('file_reference', \
                                                     line.value ->> 'file_reference', \
                                                     'options', json(line.value ->> 'options'))) \

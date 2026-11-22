@@ -195,11 +195,9 @@ pub struct ReleaseEditForm {
     /// unlinked the release. `None` keeps the release's own.
     pub records: Option<Vec<bae_catalogs::records::ReleaseRecord>>,
     pub album_pick: AlbumPick,
-    /// The side or disc the person picked for each CUE sheet, by the
-    /// sheet's file id, that moves the sheet's tracks there. A catalog
-    /// applied after a pick lays the tracks out at its own places and clears
-    /// the picks.
-    pub sheet_places: std::collections::BTreeMap<String, bae_types::mediums::MediumSide>,
+    /// Each CUE sheet's picked side, disc or Ignored choice, by file id.
+    /// Applying a catalog clears the side and disc picks.
+    pub sheet_places: std::collections::BTreeMap<String, crate::folder_scanner::SheetPlace>,
     /// The audio file the person picked for each `FILE` line of a CUE
     /// sheet, by the sheet's file id and the line's text: a save binds the
     /// line to that file, reading it first. A catalog applied after a pick
@@ -242,13 +240,13 @@ impl ReleaseEditForm {
     /// The form with `applied`'s values in place of the form's and of the
     /// values applied before, linked to its records, and no side picked for
     /// any CUE sheet, since the catalog places the tracks; the album the
-    /// person picked stays picked.
-    pub fn applying(self, applied: AppliedCatalog) -> Self {
+    /// person picked and each Ignored choice stay picked.
+    pub fn applying(mut self, applied: AppliedCatalog) -> Self {
+        self.sheet_places.retain(|_, place| *place == crate::folder_scanner::SheetPlace::Ignored);
         Self {
             edit: applied.draft.release_edit(),
             applied: Some(applied.draft),
             records: Some(applied.records),
-            sheet_places: std::collections::BTreeMap::new(),
             ..self
         }
     }
@@ -265,25 +263,24 @@ impl ReleaseEditForm {
         Self { records: Some(Vec::new()), ..self }
     }
 
-    /// The form with the CUE sheet `sheet_file_id` picked onto `side`; a
-    /// side the release lacks moves nothing. A pick of the side the editor
-    /// opened the sheet on, with no catalog applied, is no pick.
-    pub fn with_sheet_side(
+    /// Put a CUE sheet on a side or disc, or ignore it. Picking its opened
+    /// side with no catalog applied clears the edit.
+    pub fn with_sheet_place(
         mut self,
         sheet_file_id: String,
-        side: bae_types::mediums::MediumSide,
+        place: crate::folder_scanner::SheetPlace,
     ) -> Self {
-        let opened = self.applied.is_none()
-            && self.opened.display.tracks.iter().any(|track| {
-                track
-                    .sheet
-                    .as_ref()
-                    .is_some_and(|sheet| sheet.file_id == sheet_file_id && sheet.place.side == side)
-            });
-        if opened {
+        let sheets = self.opened.display.tracks.iter().filter_map(|track| track.sheet.as_ref());
+        let mut matching = sheets.filter(|sheet| sheet.file_id == sheet_file_id).peekable();
+        if matching.peek().is_none() {
+            return self;
+        }
+        let restored =
+            self.applied.is_none() && matching.any(|sheet| Some(sheet.place.side) == place.side());
+        if restored {
             self.sheet_places.remove(&sheet_file_id);
         } else {
-            self.sheet_places.insert(sheet_file_id, side);
+            self.sheet_places.insert(sheet_file_id, place);
         }
         self
     }
@@ -344,6 +341,12 @@ impl ReleaseEditForm {
     pub fn sheet_edits(&self) -> bae_records::records::sheet_files::SheetEdits {
         bae_records::records::sheet_files::SheetEdits {
             picks: self.sheet_files.clone(),
+            ignored: self
+                .sheet_places
+                .iter()
+                .filter(|(_, place)| **place == crate::folder_scanner::SheetPlace::Ignored)
+                .map(|(file, _)| file.clone())
+                .collect(),
             titles: self.added_titles.clone(),
         }
     }

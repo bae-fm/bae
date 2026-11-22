@@ -1,7 +1,6 @@
-//! The release editor's no-audio choice for a CUE sheet's `FILE` line: the
-//! editor's draft shows what a save would delete and add before Save, and
-//! Save replaces the line's tracks with one track for each audio file that
-//! loses all its audio.
+//! The release editor's choices to ignore a CUE sheet or bind a `FILE`
+//! line to no audio. The draft shows the track changes before Save, and
+//! the save adds a track for each audio file that loses all its audio.
 
 use bae_catalogs::discogs::models::DiscogsRelease;
 use bae_records::source_audio::SourceAudioLayout;
@@ -104,6 +103,59 @@ fn files_of(draft: &bae_import::ReleaseEditDraft) -> (Vec<bae_import::SheetGroup
         }
     }
     (sheets, names)
+}
+
+#[tokio::test]
+async fn ignoring_a_cue_sheet_shows_the_replacement_and_saves_it() {
+    use bae_import::folder_scanner::SheetPlace;
+
+    let (library, imported) = imported_cue_image().await;
+    library
+        .people()
+        .set_rating(
+            bae_people::collections::RatingTarget::Track(imported.track_ids[1].clone()),
+            Some(bae_people::collections::Stars::Four),
+        )
+        .await
+        .unwrap();
+    let manager = library.manager();
+    let form = manager.open_release_edit(&imported.release_id).await.unwrap();
+    let drafts = manager.subscribe_release_edit_draft();
+    let opened = draft_where(&drafts, &form, |_| true).await;
+    let sheet = sheet_of(&opened);
+    let ignored = form.with_sheet_place(sheet.sheet_id.clone(), SheetPlace::Ignored);
+    let changed = draft_where(&drafts, &ignored, |draft| draft.changed).await;
+    assert_eq!(
+        table_rows(&changed),
+        [("Test Album".to_string(), "1".to_string(), bae_import::TrackAudition::Unsaved)]
+    );
+    assert!(changed.deletes_track_data);
+    let (sheets, files) = files_of(&changed);
+    let [caption] = sheets.as_slice() else { panic!("one sheet in Files: {sheets:?}") };
+    assert!(files.is_empty());
+    assert_eq!(caption.sheet_id, sheet.sheet_id);
+    assert!(caption.assigned.is_none());
+    assert_eq!(sheet_audio_file(caption), sheet_audio_file(&sheet));
+
+    let restored = ignored.clone().with_sheet_place(
+        sheet.sheet_id,
+        SheetPlace::On(sheet.assigned.expect("the sheet is on a side").side),
+    );
+    assert!(!restored.changed());
+    assert_eq!(draft_where(&drafts, &restored, |draft| !draft.changed).await, opened);
+
+    let saved = manager.save_release_edit(ignored, bae_library::GonePick::Refuse).await.unwrap();
+    assert!(!saved.changed());
+    let tracks = library.records().get_tracks_for_release(&imported.release_id).await.unwrap();
+    let [track] = tracks.as_slice() else { panic!("one track after Save: {tracks:?}") };
+    assert!(!imported.track_ids.contains(&track.id));
+    assert_eq!(track.title, "Test Album");
+    let audio = library.records().get_release_audio(&imported.release_id).await.unwrap();
+    let [segment] = audio.segments.as_slice() else { panic!("one audio segment: {audio:?}") };
+    assert_eq!((segment.start_sample, segment.end_sample), (0, None));
+    assert!(audio.carved.is_empty());
+    let reopened = draft_where(&drafts, &saved, |draft| table_rows(draft).len() == 1).await;
+    assert_eq!(files_of(&reopened), (vec![], vec!["Test Album.cue".to_string()]));
 }
 
 /// Binding the only line of a CUE sheet to no audio before Save shows one

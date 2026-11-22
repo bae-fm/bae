@@ -111,18 +111,21 @@ pub(crate) fn lay_out_tracks(
 /// The audio files a `FILE` line can play from, as the caption's Audio file
 /// pop-up offers them.
 #[cfg(desktop)]
-fn binding_options(
+fn reference_options(
+    file_reference: String,
+    bound: Option<crate::MappingContainer>,
     options: &[bae_records::DbSheetAudioOption],
-) -> Vec<crate::folder_scanner::SheetBindingOption> {
-    use crate::folder_scanner::{SheetBindingOffer, SheetBindingOption};
-    options
+) -> crate::folder_scanner::SheetReferenceOptions {
+    use crate::folder_scanner::{SheetBindingOffer, SheetBindingOption, SheetReferenceOptions};
+    let options = options
         .iter()
         .map(|option| SheetBindingOption {
             file_id: option.file_id.clone(),
             name: option.name.clone(),
             offer: SheetBindingOffer::of_probed(&option.content_type, option.fits),
         })
-        .collect()
+        .collect();
+    SheetReferenceOptions { file_reference, bound, options }
 }
 
 /// The `bound` and `bound_audio` a caption names for a sheet whose lines
@@ -189,11 +192,11 @@ fn sheet_captions(
             continue;
         }
         let played = row.context.source.clone();
-        let line = SheetReferenceOptions {
-            file_reference: sheet.file_reference.clone(),
-            bound: Some(played.clone()),
-            options: binding_options(&sheet.audio_options),
-        };
+        let line = reference_options(
+            sheet.file_reference.clone(),
+            Some(played.clone()),
+            &sheet.audio_options,
+        );
         lines.push((line, played));
     }
     sheets
@@ -223,31 +226,37 @@ fn unbound_references(
     (!lines.is_empty()).then(|| {
         lines
             .iter()
-            .map(|line| crate::folder_scanner::SheetReferenceOptions {
-                file_reference: line.file_reference.clone(),
-                bound: None,
-                options: binding_options(&line.options),
-            })
+            .map(|line| reference_options(line.file_reference.clone(), None, &line.options))
             .collect()
     })
 }
 
 /// The Files list's row of a CUE sheet none of whose tracks stay: the sheet's
-/// caption on the side its first track sat on, with every line playing no
-/// audio.
+/// caption with the form's bindings, on the original side if the form
+/// still places the sheet.
 #[cfg(desktop)]
 pub(crate) fn sheet_without_tracks_group(
     sheet: bae_records::records::sheet_files::DbSheetWithoutTracks,
     side_choices: &[bae_records::DbSheetSideChoice],
 ) -> crate::SheetGroup {
-    let (bound, bound_audio) = bound_lines(0, Vec::new(), &sheet.lines);
+    let lines = sheet
+        .bound
+        .into_iter()
+        .map(|line| {
+            let played = crate::MappingContainer { file_id: line.file_id, name: line.file_name };
+            let reference =
+                reference_options(line.file_reference, Some(played.clone()), &line.options);
+            (reference, played)
+        })
+        .collect();
+    let (bound, bound_audio) = bound_lines(sheet.bound_count, lines, &sheet.unbound);
     crate::SheetGroup {
         sheet_id: sheet.file_id,
         name: sheet.name,
         bound,
         bound_audio,
-        unbound_references: unbound_references(&sheet.lines),
-        assigned: Some(sheet.place),
+        unbound_references: unbound_references(&sheet.unbound),
+        assigned: sheet.place,
         side_choices: side_choices.to_vec(),
     }
 }

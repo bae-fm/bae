@@ -20,7 +20,7 @@ pub struct SheetFilePick {
 }
 
 /// What a release editor's form chose about the release's CUE sheets and the
-/// tracks a save adds: the audio files picked for `FILE` lines, and the
+/// tracks a save adds: the audio files picked for `FILE` lines, the ignored sheets, and the
 /// titles the person typed for the tracks a save adds, by the id of the
 /// audio file each plays whole. The statements of
 /// [`sheet_files_ctes`] and of the layout read it as one JSON object, and
@@ -28,6 +28,7 @@ pub struct SheetFilePick {
 #[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize)]
 pub struct SheetEdits {
     pub picks: Vec<SheetFilePick>,
+    pub ignored: Vec<String>,
     pub titles: std::collections::BTreeMap<String, String>,
 }
 
@@ -38,9 +39,9 @@ impl SheetEdits {
             .map_err(|error| DbError::encode("the edits of a release's CUE sheets", error))
     }
 
-    /// Whether the edits pick a file, or none, for a line.
+    /// Whether the edits leave every sheet's place and binding alone.
     pub fn is_empty(&self) -> bool {
-        self.picks.is_empty()
+        self.picks.is_empty() && self.ignored.is_empty()
     }
 }
 
@@ -53,13 +54,13 @@ pub const NO_SHEET_EDITS: &str = "'{}'";
 ///
 /// - `picked_lines` (`sheet_file_id`, `file_reference`, `audio_file_id`): the
 ///   edits' picks, a line that plays no audio with a NULL `audio_file_id`;
+/// - `ignored_sheets` (`sheet_file_id`): the sheets the edits ignore;
 /// - `line_files` (`sheet_file_id`, `file_reference`, `file_id`): each line
 ///   of the release's sheets with the file its tracks' bodies play from now;
 /// - `moved_lines` (`sheet_file_id`, `file_reference`, `from_file_id`,
 ///   `to_file_id`): the lines picked onto a file they do not play from now;
 /// - `dropped_tracks` (`track_id`, `sheet_file_id`, `position`): each track
-///   the save deletes, those under a line that plays no audio, with its place
-///   in the release;
+///   the save deletes, under an ignored sheet or a line that plays no audio;
 /// - `kept_segments` (the columns of `laid_segments`): each segment of the
 ///   tracks that stay, on the file it then reads;
 /// - `added_files` (`file_id`, `sheet_file_id`, `first_position`): each file
@@ -72,6 +73,8 @@ pub fn sheet_changes_ctes(release: &str, edits: &str) -> String {
              SELECT j.value ->> 'sheet_file_id', j.value ->> 'file_reference', \
                     j.value ->> 'audio_file_id' \
              FROM json_each(json_extract({edits}, '$.picks')) AS j), \
+         ignored_sheets (sheet_file_id) AS ( \
+             SELECT value FROM json_each(json_extract({edits}, '$.ignored'))), \
          line_files (sheet_file_id, file_reference, file_id) AS ( \
              SELECT DISTINCT c.sheet_file_id, c.file_reference, s.file_id \
              FROM carved_tracks c JOIN tracks t ON t.id = c.track_id \
@@ -83,13 +86,16 @@ pub fn sheet_changes_ctes(release: &str, edits: &str) -> String {
              FROM line_files line JOIN picked_lines pick \
                  ON pick.sheet_file_id = line.sheet_file_id \
                 AND pick.file_reference = line.file_reference \
-             WHERE pick.audio_file_id <> line.file_id), \
+             WHERE pick.audio_file_id <> line.file_id \
+               AND line.sheet_file_id NOT IN (SELECT sheet_file_id FROM ignored_sheets)), \
          dropped_tracks (track_id, sheet_file_id, position) AS ( \
              SELECT c.track_id, c.sheet_file_id, t.position \
              FROM carved_tracks c JOIN tracks t ON t.id = c.track_id \
-             JOIN picked_lines pick ON pick.sheet_file_id = c.sheet_file_id \
-                                   AND pick.file_reference = c.file_reference \
-             WHERE t.release_id = {release} AND pick.audio_file_id IS NULL), \
+             LEFT JOIN picked_lines pick ON pick.sheet_file_id = c.sheet_file_id \
+                                        AND pick.file_reference = c.file_reference \
+             WHERE t.release_id = {release} \
+               AND (c.sheet_file_id IN (SELECT sheet_file_id FROM ignored_sheets) \
+                    OR (pick.sheet_file_id IS NOT NULL AND pick.audio_file_id IS NULL))), \
          kept_segments (id, track_id, segment_index, role, file_id, start_sample, \
                         end_sample, sample_rate, moved) AS ( \
              SELECT s.id, af.track_id, s.segment_index, s.role, \
@@ -150,10 +156,11 @@ pub fn sheet_files_ctes(release: &str, edits: &str) -> String {
         "{changes}, \
          laid_lines (sheet_file_id, file_reference, file_id, stored_file_id) AS ( \
              SELECT line.sheet_file_id, line.file_reference, \
-                    COALESCE(moved.to_file_id, line.file_id), line.file_id \
-             FROM line_files line LEFT JOIN moved_lines moved \
-                 ON moved.sheet_file_id = line.sheet_file_id \
-                AND moved.file_reference = line.file_reference), \
+                    CASE WHEN pick.sheet_file_id IS NULL THEN line.file_id \
+                         ELSE pick.audio_file_id END, line.file_id \
+             FROM line_files line LEFT JOIN picked_lines pick \
+                 ON pick.sheet_file_id = line.sheet_file_id \
+                AND pick.file_reference = line.file_reference), \
          laid_segments (id, track_id, segment_index, role, file_id, start_sample, \
                         end_sample, sample_rate, moved, added) AS ( \
              SELECT *, 0 FROM kept_segments \
@@ -174,8 +181,8 @@ pub fn sheet_files_ctes(release: &str, edits: &str) -> String {
     )
 }
 
-/// The common table expressions `line_audio_options` (`sheet_file_id`,
-/// `file_reference`, `options`) and `sheet_line_options` (`sheet_file_id`,
+/// The common table expressions `line_audio_options` (each line's binding
+/// and file options) and `sheet_line_options` (`sheet_file_id`, `bound_count`,
 /// `lines`, each sheet's lines as a JSON array in the order the sheet's
 /// tracks reach them, with the line's text, its options and whether it plays
 /// no audio), which follow [`sheet_files_ctes`] in a `WITH`: the audio files each `FILE` line of the release's sheets can play
@@ -197,8 +204,9 @@ pub fn sheet_audio_options_ctes(release: &str) -> String {
              JOIN audio_format_segments s ON s.audio_format_id = af.id AND s.role = 'main' \
              WHERE t.release_id = {release} \
              GROUP BY c.sheet_file_id, c.file_reference), \
-         line_audio_options (sheet_file_id, file_reference, options) AS ( \
+         line_audio_options (sheet_file_id, file_reference, file_id, file_name, options) AS ( \
              SELECT line.sheet_file_id, line.file_reference, \
+                    line.file_id, MAX(CASE WHEN f.id = line.file_id THEN f.original_filename END), \
                     json_group_array(json_object( \
                         'file_id', f.id, 'name', f.original_filename, \
                         'content_type', f.source_audio_content_type, \
@@ -216,16 +224,12 @@ pub fn sheet_audio_options_ctes(release: &str) -> String {
              WHERE f.id = line.file_id OR f.id = line.stored_file_id \
                 OR (f.source_audio_layout IS NULL AND reads.source IS NOT NULL) \
              GROUP BY line.sheet_file_id, line.file_reference), \
-         sheet_line_options (sheet_file_id, lines) AS ( \
-             SELECT o.sheet_file_id, \
+         sheet_line_options (sheet_file_id, bound_count, lines) AS ( \
+             SELECT o.sheet_file_id, COUNT(o.file_id), \
                     json_group_array(json_object( \
                         'file_reference', o.file_reference, 'options', json(o.options), \
-                        'unbound', json(CASE WHEN EXISTS ( \
-                                SELECT 1 FROM picked_lines pick \
-                                WHERE pick.sheet_file_id = o.sheet_file_id \
-                                  AND pick.file_reference = o.file_reference \
-                                  AND pick.audio_file_id IS NULL) \
-                            THEN 'true' ELSE 'false' END)) \
+                        'file_id', o.file_id, 'file_name', o.file_name, \
+                        'unbound', json(CASE WHEN o.file_id IS NULL THEN 'true' ELSE 'false' END)) \
                         ORDER BY (SELECT MIN(t.position) FROM carved_tracks c \
                                   JOIN tracks t ON t.id = c.track_id \
                                   WHERE c.sheet_file_id = o.sheet_file_id \
@@ -329,16 +333,10 @@ impl Records {
     }
 }
 
-/// The JSON of the Files list's row for the CUE sheet `file` (an SQL
-/// expression naming a file of the release `release`) when no track of the
-/// sheet stays, else NULL, for a statement that follows
-/// [`sheet_files_ctes`], [`sheet_audio_options_ctes`] and the `place` rows of
-/// the release as the library holds it: the sheet's file id and name, how
-/// many `FILE` lines it has, the side its first track sat on, and each line,
-/// in the order the sheet's tracks reach them, with the audio files it can
-/// play from.
+/// The Files list's caption for a sheet whose tracks the edit deletes,
+/// with its bindings and the side it was on, if the form still places it.
 #[cfg(desktop)]
-pub fn sheet_without_tracks_json_sql(file: &str, release: &str) -> String {
+pub fn sheet_without_tracks_json_sql(file: &str) -> String {
     let sided = super::release::SIDED;
     let side = super::release_tracks::sheet_side_sql(sided, "place.side");
     let kind = super::release_tracks::sheet_side_kind_sql(sided);
@@ -349,23 +347,20 @@ pub fn sheet_without_tracks_json_sql(file: &str, release: &str) -> String {
     );
     format!(
         "(SELECT json_object( \
-                'file_id', {file}, 'name', sheet.original_filename, \
-                'medium', first.medium_position, 'side', first.side, \
-                'kind', first.kind, 'ordinal', first.ordinal, \
-                'lines', json((SELECT json_group_array(json_object( \
-                                     'file_reference', line.file_reference, \
-                                     'options', json(options.options)) \
-                                 ORDER BY (SELECT MIN(t.position) FROM carved_tracks c \
-                                           JOIN tracks t ON t.id = c.track_id \
-                                           WHERE c.sheet_file_id = line.sheet_file_id \
-                                             AND c.file_reference = line.file_reference \
-                                             AND t.release_id = {release})) \
-                          FROM laid_lines line \
-                          JOIN line_audio_options options \
-                               ON options.sheet_file_id = line.sheet_file_id \
-                              AND options.file_reference = line.file_reference \
-                          WHERE line.sheet_file_id = {file}))) \
+                'file_id', first.sheet_file_id, 'name', sheet.original_filename, \
+                'place', json(CASE WHEN ignored.sheet_file_id IS NULL THEN json_object( \
+                    'medium', first.medium_position, 'side', first.side, \
+                    'kind', first.kind, 'ordinal', first.ordinal) END), \
+                'bound_count', options.bound_count, \
+                'bound', json((SELECT json_group_array(json(line.value) ORDER BY line.key) \
+                               FROM json_each(options.lines) line \
+                               WHERE NOT (line.value ->> 'unbound'))), \
+                'unbound', json((SELECT json_group_array(json(line.value) ORDER BY line.key) \
+                                 FROM json_each(options.lines) line \
+                                 WHERE line.value ->> 'unbound'))) \
          FROM release_files sheet \
+         JOIN sheet_line_options options ON options.sheet_file_id = sheet.id \
+         LEFT JOIN ignored_sheets ignored ON ignored.sheet_file_id = sheet.id \
          JOIN (SELECT c.sheet_file_id, place.medium_position, {side} AS side, \
                       {kind} AS kind, {ordinal} AS ordinal, \
                       ROW_NUMBER() OVER (PARTITION BY c.sheet_file_id \
@@ -379,39 +374,61 @@ pub fn sheet_without_tracks_json_sql(file: &str, release: &str) -> String {
     )
 }
 
-/// A CUE sheet none of whose tracks stay, as the editor's Files list shows
-/// it: the sheet's file, the side its first track sat on, and each of its
-/// `FILE` lines with the audio files it can play from.
+/// The editor's Files caption for a sheet that carves no tracks in the draft.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DbSheetWithoutTracks {
     pub file_id: String,
     pub name: String,
-    pub place: DbSheetSideChoice,
-    pub lines: Vec<DbUnboundLine>,
+    /// The original side for a sheet with unbound lines, or none when ignored.
+    pub place: Option<DbSheetSideChoice>,
+    pub bound_count: u32,
+    pub bound: Vec<DbBoundLine>,
+    pub unbound: Vec<DbUnboundLine>,
 }
 
-/// A [`DbSheetWithoutTracks`] as [`sheet_without_tracks_json_sql`] returns it,
-/// with the columns of its side as [`DbSheetSideChoice::of_columns`] reads
-/// them.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+pub struct DbBoundLine {
+    pub file_reference: String,
+    pub file_id: String,
+    pub file_name: String,
+    pub options: Vec<DbSheetAudioOption>,
+}
+
+/// A [`DbSheetWithoutTracks`] with the columns of its side as
+/// [`DbSheetSideChoice::of_columns`] reads them.
 #[derive(Debug, Clone, serde::Deserialize)]
 pub(super) struct SheetWithoutTracksColumns {
     file_id: String,
     name: String,
+    place: Option<SheetSideColumns>,
+    bound_count: u32,
+    bound: Vec<DbBoundLine>,
+    unbound: Vec<DbUnboundLine>,
+}
+
+#[derive(Debug, Clone, serde::Deserialize)]
+struct SheetSideColumns {
     medium: u32,
     side: u32,
     kind: String,
     ordinal: u32,
-    lines: Vec<DbUnboundLine>,
 }
 
 impl SheetWithoutTracksColumns {
-    /// The sheet, or why its side's columns name no side.
     pub(super) fn decoded(self) -> Result<DbSheetWithoutTracks, String> {
+        let place = self
+            .place
+            .map(|side| {
+                DbSheetSideChoice::of_columns(side.medium, side.side, &side.kind, side.ordinal)
+            })
+            .transpose()?;
         Ok(DbSheetWithoutTracks {
-            place: DbSheetSideChoice::of_columns(self.medium, self.side, &self.kind, self.ordinal)?,
+            place,
             file_id: self.file_id,
             name: self.name,
-            lines: self.lines,
+            bound_count: self.bound_count,
+            bound: self.bound,
+            unbound: self.unbound,
         })
     }
 }

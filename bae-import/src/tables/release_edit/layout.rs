@@ -6,10 +6,11 @@
 
 use super::draft::FormParams;
 use super::*;
+use crate::folder_scanner::SheetPlace;
 use bae_records::records::layout::{honored_picks_on, laid_out_on, ReleaseLayout};
 
 /// The layout a save of `form` writes over the release's tracks, as `sql`
-/// finds the release; `None` where the form picks no side for a CUE sheet
+/// finds the release; `None` where the form picks no place for a CUE sheet
 /// and binds no line to no audio, since an applied catalog writes its own
 /// places with its rows.
 pub fn release_edit_layout_on(
@@ -24,9 +25,8 @@ pub fn release_edit_layout_on(
     Ok(Some(laid_out_on(sql, &params.layout())?))
 }
 
-/// Store the sides the person picked for CUE sheets that a save of `form`
-/// gives the sheets, each as the sheet's place decision, and the audio files
-/// they picked for the sheets' `FILE` lines, each as the line's binding.
+/// Store the sheet places and the bindings the form picked for its `FILE`
+/// lines.
 pub fn store_release_edit_sheet_decisions_on(
     sql: &CovenWrite<'_>,
     form: &ReleaseEditForm,
@@ -38,5 +38,10 @@ pub fn store_release_edit_sheet_decisions_on(
     }
     let params = FormParams::of(form)?;
     let honored = honored_picks_on(sql, &params.layout())?;
-    decisions::store_sheet_place_decisions_on(sql, &honored)
+    let places = honored.iter().map(|(sheet, side)| (sheet.as_str(), SheetPlace::On(*side))).chain(
+        form.sheet_places.iter().filter_map(|(sheet, place)| {
+            (*place == SheetPlace::Ignored).then_some((sheet.as_str(), *place))
+        }),
+    );
+    decisions::store_sheet_place_decisions_on(sql, places)
 }
