@@ -15,6 +15,7 @@ fn detail_in_years(release_year: Option<i32>, album_year: Option<i32>) -> Releas
             files: Vec::new(),
             images: Vec::new(),
             others: Vec::new(),
+            carried: Vec::new(),
             has_others: false,
             count: 0,
             image_count: 0,
