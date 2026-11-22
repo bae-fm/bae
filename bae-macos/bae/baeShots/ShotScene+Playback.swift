@@ -68,7 +68,8 @@ extension ShotScene {
             uiStore.setSidePanePresented(true)
             let backing = boardLibraryBacking(
                 uiStore: uiStore,
-                albumCount: 6
+                albumCount: 6,
+                covered: true
             )
             let playbackStore = boardPlayback(removedFromLibrary: true)
             let images = coverStore()
