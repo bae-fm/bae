@@ -178,6 +178,7 @@ impl SubsonicServerController {
     /// something else stands in its way, such as the switch going off.
     fn retry_taken_port(&self, inputs: &mut Inputs) {
         let controller = self.clone();
+        let plan = self.plan.clone();
         inputs.retry = Some(self.diagnostics.spawn_reported(
             &self.runtime,
             "try a taken Subsonic port again",
@@ -190,9 +191,15 @@ impl SubsonicServerController {
                     }
                 }
             },
-            // The panic hook reported it; the next change to a setting follows
-            // the port again.
-            |_| {},
+            // The panic hook reported it. Nothing tries the port again now, so
+            // Settings says why the server is not running instead of keeping
+            // "port taken".
+            move |bug| {
+                let detail = bug.to_string();
+                plan.send_modify(|plan| {
+                    plan.stage = Stage::Blocked(vec![NotRunning::Failed { detail }]);
+                });
+            },
         ));
     }
 

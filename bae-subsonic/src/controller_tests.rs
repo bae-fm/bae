@@ -250,8 +250,11 @@ async fn a_server_switched_off_stops_trying_a_taken_port() {
     controller
         .apply_config(SubsonicConfig { enabled: false, ..enabled_config(port, "listener") })
         .await;
+    assert!(
+        controller.inputs.lock().await.retry.is_none(),
+        "switching the server off ends the retry"
+    );
     drop(held);
-    tokio::time::sleep(RETRY_EVERY * 3).await;
     assert_eq!(status(&controller).await, SubsonicStatus::Off);
     assert!(port_is_free(port), "a server that is off must not take the port");
 }
