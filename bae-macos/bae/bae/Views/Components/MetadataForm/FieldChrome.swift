@@ -44,14 +44,11 @@ struct FieldChrome: ViewModifier {
             // edge. It sits behind the fill and is hidden from assistive
             // technology, so it takes no part in the field's layout or frame.
             .background {
-                if let halo {
-                    RoundedRectangle(
-                        cornerRadius: cornerRadius + Self.haloWidth
-                    )
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .inset(by: -Self.haloWidth)
                     .fill(halo)
-                    .padding(-Self.haloWidth)
+                    .allowsHitTesting(false)
                     .accessibilityHidden(true)
-                }
             }
             .onHover { hovering = $0 }
             .onChange(of: hovering && style == .inline) { _, wantsIBeam in
@@ -135,13 +132,13 @@ struct FieldChrome: ViewModifier {
 
     /// A boxed field's glow outside its edge: red at 35% while it holds
     /// something that cannot be kept, else the accent at 45% while focused.
-    private var halo: Color? {
+    private var halo: Color {
         switch style {
         case .boxed, .boxedMultiline:
             if invalid { return Theme.danger.opacity(0.35) }
-            return focused ? Theme.accent.opacity(0.45) : nil
+            return focused ? Theme.accent.opacity(0.45) : .clear
         case .inline:
-            return nil
+            return .clear
         }
     }
 }

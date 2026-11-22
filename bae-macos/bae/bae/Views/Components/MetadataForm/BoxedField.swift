@@ -34,7 +34,8 @@ struct BoxedField<Focus: Hashable>: View {
     private static var multilineMinHeight: CGFloat { 3 * 20 }
 
     var body: some View {
-        focusedField
+        let box =
+            focusedField
             .frame(
                 minHeight: multiline ? Self.multilineMinHeight : nil,
                 alignment: .topLeading
@@ -46,22 +47,16 @@ struct BoxedField<Focus: Hashable>: View {
                     invalid: invalid
                 )
             )
-            .modifier(FieldName(placeholder: placeholder))
-    }
-
-    /// Names the whole box to assistive technology, so the field's frame is
-    /// the box and not the text inside it.
-    private struct FieldName: ViewModifier {
-        let placeholder: LocalizedStringKey?
-
-        @ViewBuilder
-        func body(content: Content) -> some View {
-            if let placeholder {
-                content.accessibilityLabel(Text(placeholder))
-            }
-            else {
-                content
-            }
+        if let placeholder {
+            box
+                .contentShape(
+                    .accessibility,
+                    RoundedRectangle(cornerRadius: ThemeRadius.field)
+                )
+                .accessibilityLabel(Text(placeholder))
+        }
+        else {
+            box
         }
     }
 

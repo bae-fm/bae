@@ -30,7 +30,6 @@ struct MacTextField<Field: View>: View {
         GridRow(alignment: .fieldLine) {
             Text(label)
                 .opacity(off ? ThemeOpacity.off : 1)
-                .alignmentGuide(.fieldLine) { $0[VerticalAlignment.center] }
                 .gridColumnAlignment(.trailing)
             VStack(alignment: .leading, spacing: ThemeSpace.inline) {
                 field

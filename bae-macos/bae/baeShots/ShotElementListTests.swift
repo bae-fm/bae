@@ -72,8 +72,9 @@ struct ShotElementListTests {
         )
         #expect(field.native == "AXTextField")
         #expect(field.placeholder == "Restore code or invite", "\(json)")
-        #expect(abs(field.bounds.x - (left + 26)) <= 1, "\(json)")
-        #expect(abs(field.bounds.width - 348) <= 1, "\(json)")
+        // VoiceOver focuses the whole box between the sheet’s 16-point insets.
+        #expect(abs(field.bounds.x - (left + 16)) <= 1, "\(json)")
+        #expect(abs(field.bounds.width - (400 - 2 * 16)) <= 1, "\(json)")
 
         let cancel = try #require(
             list.elements.first { $0.role == "button" && $0.label == "Cancel" },

@@ -6535,7 +6535,8 @@ Those menus open over or under what opened them, or at the click for a context
 menu; the arrows, Return, Escape and typed letters move through them, a click
 outside closes them, and VoiceOver reads them as menus. VoiceOver reads each
 control that opens one of them as a pop-up that opens a menu, and pressing it
-opens the menu. The Mac's popovers (the
+opens the menu. When a placeholder names a boxed text field on the Mac,
+VoiceOver focuses the whole box, including its padding. The Mac's popovers (the
 Play on picker, Activity, the ⓘ and ? tips) are drawn the same way, in the raised
 colour with a hairline edge and macOS's arrow. On the Mac a symbol
 that a control or the words beside it already name (the ⓘ, a close or remove
