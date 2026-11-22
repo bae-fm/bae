@@ -39,15 +39,21 @@ extension ShotRenderer {
         )
     }
 
-    /// Wait for `window`, or an alert over it, to be the key window of the active app, asking for
-    /// that again whenever the app or the window loses it: the window server
-    /// draws a title bar and toolbar as inactive otherwise, which the app
-    /// never shows in use. Fails, naming the front app, when the window
-    /// never becomes key, as when another app keeps the focus.
+    /// Wait for `window`, or an alert over it, to be the key window, asking
+    /// for that again whenever it loses it: the window server draws a title
+    /// bar and toolbar as inactive otherwise, which the app never shows in
+    /// use. A scene that takes the focus also waits for the app to be active
+    /// and activates it again when it loses that. Any other scene's window
+    /// is a non-activating panel, key while another app holds the focus; it
+    /// cannot show an alert, whose panel only an active app makes key.
+    /// Fails, naming the front app, when the window never becomes key.
     static func becomeKey(
         _ window: NSWindow,
         scene: ShotScene
     ) async throws {
+        if !scene.takesFocus, !AlertWindows.shared.panels.isEmpty {
+            throw ShotError.alertWithoutFocus(scene.id)
+        }
         let changes = [
             NSWindow.didBecomeKeyNotification,
             NSWindow.didResignKeyNotification,
@@ -61,8 +67,13 @@ extension ShotRenderer {
                 // as active under it: the buttons of an alert whose panel is
                 // not key draw as inactive.
                 let keyed = AlertWindows.shared.panels.last ?? window
-                if NSApp.isActive, keyed.isKeyWindow { return true }
-                NSApp.activate(ignoringOtherApps: true)
+                if scene.takesFocus {
+                    if NSApp.isActive, keyed.isKeyWindow { return true }
+                    NSApp.activate(ignoringOtherApps: true)
+                }
+                else if keyed.isKeyWindow {
+                    return true
+                }
                 keyed.makeKeyAndOrderFront(nil)
                 return false
             }

@@ -44,21 +44,24 @@ extension ShotScene {
         ShotScene(
             id: "mac.welcome.delete-never-synced",
             size: WelcomeWindow.size,
-            frame: .window(title: "bae", titleBar: .hidden)
+            frame: .window(title: "bae", titleBar: .hidden),
+            takesFocus: true
         ) {
             removalAlertStage(PreviewData.odilesRecords)
         },
         ShotScene(
             id: "mac.welcome.remove",
             size: WelcomeWindow.size,
-            frame: .window(title: "bae", titleBar: .hidden)
+            frame: .window(title: "bae", titleBar: .hidden),
+            takesFocus: true
         ) {
             removalAlertStage(PreviewData.homeMusic)
         },
         ShotScene(
             id: "mac.welcome.remove.unsent-changes",
             size: WelcomeWindow.size,
-            frame: .window(title: "bae", titleBar: .hidden)
+            frame: .window(title: "bae", titleBar: .hidden),
+            takesFocus: true
         ) {
             removalAlertStage(
                 PreviewData.homeMusic,
@@ -89,7 +92,8 @@ extension ShotScene {
         ShotScene(
             id: "mac.welcome.remove.failed",
             size: WelcomeWindow.size,
-            frame: .window(title: "bae", titleBar: .hidden)
+            frame: .window(title: "bae", titleBar: .hidden),
+            takesFocus: true
         ) {
             overWelcomeStage { _, window in
                 OverWindow.alert(
@@ -110,7 +114,8 @@ extension ShotScene {
         ShotScene(
             id: "mac.welcome.saved-code.delete",
             size: WelcomeWindow.size,
-            frame: .window(title: "bae", titleBar: .hidden)
+            frame: .window(title: "bae", titleBar: .hidden),
+            takesFocus: true
         ) {
             overWelcomeStage(savedCodes: savedCodes) { _, window in
                 OverWindow.alert(

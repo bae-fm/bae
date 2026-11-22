@@ -105,7 +105,8 @@ extension ShotScene {
         ShotScene(
             id: "mac.playback.cast-pin.refused",
             size: CGSize(width: 1200, height: 760),
-            frame: .window(title: "bae", titleBar: .hidden)
+            frame: .window(title: "bae", titleBar: .hidden),
+            takesFocus: true
         ) {
             castAlert(
                 CastAlertContent.refused(
@@ -123,7 +124,8 @@ extension ShotScene {
         ShotScene(
             id: "mac.playback.cast-pin.pairing-lost",
             size: CGSize(width: 1200, height: 760),
-            frame: .window(title: "bae", titleBar: .hidden)
+            frame: .window(title: "bae", titleBar: .hidden),
+            takesFocus: true
         ) {
             castAlert(CastAlertContent.pairingLost(error: pairingLost) {})
         },
