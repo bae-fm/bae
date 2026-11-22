@@ -70,8 +70,7 @@ struct NowPlayingVolumeTests {
 @MainActor
 enum NowPlayingBarFixture {
     struct Track {
-        var positionMs: Int64 = 102_000
-        var durationMs: UInt64 = 303_000
+        let position: LatestSource<BridgeTrackPosition>
         var held: [BridgeTrackSpan] = []
         var waitsOnStorage = false
     }
@@ -80,24 +79,20 @@ enum NowPlayingBarFixture {
         settings: PlaybackSettings?,
         receiverWithoutVolume: String? = nil,
         castControl: AnyView = AnyView(EmptyView()),
-        track: Track = Track()
+        track: Track = Track(
+            position: PreviewData.trackPosition(
+                positionMs: 102_000,
+                durationMs: 303_000
+            )
+        )
     ) -> MacNowPlayingBar {
         MacNowPlayingBar(
             trackTitle: "Track Title",
             secondaryLine: "Artist Name",
             cover: nil,
             isPlaying: true,
-            position: PreviewData.trackPosition(
-                positionMs: track.positionMs,
-                durationMs: track.durationMs
-            ),
-            buffered:
-                LatestStream.trackBuffered(
-                    holding: [
-                        "preview-track": BridgeTrackBuffered(ranges: track.held)
-                    ]
-                )
-                .source(for: "preview-track"),
+            position: track.position,
+            buffered: PreviewData.trackBuffered(track.held),
             waitsOnStorage: track.waitsOnStorage,
             showRemainingTime: false,
             settings: settings,

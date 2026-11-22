@@ -60,8 +60,10 @@ struct NowPlayingStorageWaitTests {
                 repeatMode: .off
             ),
             track: NowPlayingBarFixture.Track(
-                positionMs: 0,
-                durationMs: 200_000,
+                position: PreviewData.trackPosition(
+                    positionMs: 0,
+                    durationMs: 200_000
+                ),
                 held: held,
                 waitsOnStorage: waitsOnStorage
             )

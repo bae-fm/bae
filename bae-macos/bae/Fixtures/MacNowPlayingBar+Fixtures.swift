@@ -56,14 +56,7 @@ struct NowPlayingBarPreview: View {
                     durationMs: 303_000
                 )
                 : nil,
-            buffered: hasPosition
-                ? LatestStream.trackBuffered(
-                    holding: [
-                        "preview-track": BridgeTrackBuffered(ranges: held)
-                    ]
-                )
-                .source(for: "preview-track")
-                : nil,
+            buffered: hasPosition ? PreviewData.trackBuffered(held) : nil,
             waitsOnStorage: waitsOnStorage,
             showRemainingTime: false,
             settings: PlaybackSettings(
