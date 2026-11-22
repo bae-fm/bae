@@ -32,19 +32,23 @@ extension ShotScene {
         )
     }
 
-    /// Where core places `albumId`'s card in the boards' flat grid.
+    /// Where core places `albumId`'s card in the flat grid of `albums`.
     nonisolated private static func boardAlbumPlace(
-        _ albumId: String
+        _ albumId: String,
+        in albums: [BridgeAlbum]
     ) -> BridgeAlbumPlace? {
-        boardAlbums.firstIndex { $0.id == albumId }
+        albums.firstIndex { $0.id == albumId }
             .map { BridgeAlbumPlace(position: UInt64($0), sectionId: nil) }
     }
 
-    /// A browse session over `boardAlbums`, with the first album open when
-    /// `openAlbum` is set; `detailAnswered` learns when its detail is answered.
+    /// A browse session over the first `albumCount` of `boardAlbums`, which
+    /// is as many cards as the scene's board draws, with the first album open
+    /// when `openAlbum` is set; `detailAnswered` learns when its detail is
+    /// answered.
     @MainActor
     static func boardLibraryBacking(
         uiStore: UiStore,
+        albumCount: Int? = nil,
         openAlbum: Bool = false,
         detailAnswered: AlbumDetailAnswered? = nil,
         detail: BridgeAlbumDetail = PreviewData.boardAlbumDetail(),
@@ -53,12 +57,13 @@ extension ShotScene {
         history: [BridgeHistoryPlay] = [],
         historyPeople: [(id: String, name: String)] = []
     ) -> (library: Library, session: LibraryBrowseSession) {
+        let albums = Array(boardAlbums.prefix(albumCount ?? boardAlbums.count))
         let library = Library(
             albumList: { _, _ in
-                .fixed(boardAlbums, answers: UnansweredCount())
+                .fixed(albums, answers: UnansweredCount())
             },
             albumPlaceReads: { _, albumId, _, _ in
-                .fixed(boardAlbumPlace(albumId))
+                .fixed(boardAlbumPlace(albumId, in: albums))
             },
             librarySearch: {
                 // A search the title bar opens for typed text; it answers

@@ -13,7 +13,10 @@ extension ShotScene {
         ) {
             let uiStore = UiStore()
             uiStore.setSidePanePresented(true)
-            let backing = boardLibraryBacking(uiStore: uiStore)
+            let backing = boardLibraryBacking(
+                uiStore: uiStore,
+                albumCount: 6
+            )
             let playbackStore = boardPlayback(removedFromLibrary: true)
             playbackStore.applyQueueSnapshot(
                 BridgeQueueSnapshot(

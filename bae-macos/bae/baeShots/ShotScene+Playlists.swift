@@ -154,6 +154,7 @@ extension ShotScene {
         }
         let backing = boardLibraryBacking(
             uiStore: uiStore,
+            albumCount: 6,
             playlists: boardPlaylistListing,
             playlistDetails: boardPlaylistDetails
         )

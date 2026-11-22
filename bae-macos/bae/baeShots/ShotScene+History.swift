@@ -43,6 +43,7 @@ extension ShotScene {
         uiStore.showHistory(of: person)
         let backing = boardLibraryBacking(
             uiStore: uiStore,
+            albumCount: 6,
             history: plays,
             historyPeople: [(anaMemberId, "Ana"), (benMemberId, "Ben")]
         )

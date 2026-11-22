@@ -13,7 +13,10 @@ extension ShotScene {
             size: CGSize(width: 1_200, height: 1_000)
         ) {
             let uiStore = UiStore()
-            let backing = boardLibraryBacking(uiStore: uiStore)
+            let backing = boardLibraryBacking(
+                uiStore: uiStore,
+                albumCount: 4
+            )
             return ShotStage(
                 ZStack(alignment: .topLeading) {
                     ShotScenes.libraryWindow(
