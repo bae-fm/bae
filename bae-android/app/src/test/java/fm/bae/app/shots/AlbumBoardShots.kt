@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.creditLineNamed
 import fm.bae.app.data.ImageStore
@@ -77,7 +78,7 @@ class AlbumBoardShots : BoardShot() {
 
     @Test
     fun androidAlbumCredits() =
-        shot("android.album.credits") {
+        tallShot("android.album.credits", TALL_BOARD) {
             val detail = boardAlbum()
             val release = detail.releases[0]
             val work = BridgeTrackWork("work-ebb", "Low Tide Suite: I. Ebb", "Ada Lindqvist")
@@ -107,7 +108,7 @@ class AlbumBoardShots : BoardShot() {
 
     @Test
     fun androidAlbumLinksAndFiles() =
-        shot("android.album.links-and-files") {
+        tallShot("android.album.links-and-files", TALL_BOARD) {
             val detail = boardAlbum()
             val records =
                 listOf(BridgeCatalog.MUSIC_BRAINZ, BridgeCatalog.DISCOGS, BridgeCatalog.WIKIDATA).map {
@@ -142,6 +143,9 @@ class AlbumBoardShots : BoardShot() {
             SheetScene(heading = unavailableReleaseHeading(message), behind = { UnavailableAlbumPage() }) {}
         }
 }
+
+/** The height of the boards whose screens hold the ten tracks and what follows them, in dp. */
+private val TALL_BOARD = 1160.dp
 
 /** A file of the release's folder, without audio or image content. */
 internal fun boardFile(

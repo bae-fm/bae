@@ -19,8 +19,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -80,7 +78,7 @@ internal fun ColumnScope.AlbumRatingChoices(
             Modifier
                 .fillMaxWidth()
                 .defaultMinSize(minHeight = ROW_HEIGHT)
-                .clickable(enabled = rated, role = Role.Button, onClick = { onRate(null) })
+                .clickable(enabled = rated, onClick = { onRate(null) })
                 .padding(horizontal = ThemeSpace.edge),
         contentAlignment = Alignment.CenterStart,
     ) {
@@ -99,18 +97,14 @@ private fun RatingRow(
     checked: Boolean,
     onClick: () -> Unit,
 ) {
-    val label = stringResource(R.string.stars_rate, stars.number)
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
                 .defaultMinSize(minHeight = ROW_HEIGHT)
-                .clickable(role = Role.Button, onClick = onClick)
+                .clickable(onClick = onClick)
                 .padding(horizontal = ThemeSpace.edge)
-                .semantics(mergeDescendants = true) {
-                    contentDescription = label
-                    selected = checked
-                },
+                .semantics(mergeDescendants = true) { selected = checked },
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {

@@ -46,11 +46,7 @@ class AndroidAlbumHeaderShots : BoardShot() {
             Header(
                 harborDetail.copy(
                     shownRelease =
-                        harborRelease.copy(
-                            distinctYear = 2001,
-                            labels = listOf(BridgeLabelLine(names = listOf("Harbor Records"), catalogNumbers = listOf("HRJ-2201"))),
-                            areaTerms = listOf(BridgeFactTerm.Country("JP")),
-                        ),
+                        harborRelease.copy(distinctYear = 2001),
                 ),
             )
         }

@@ -7,6 +7,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -73,6 +74,21 @@ abstract class BoardShot {
         compose.activityRule.scenario.recreate()
     }
 
+    /**
+     * Draws a screen as [board], whose frame is [height] dp tall instead of the phone's: a window as tall as the
+     * frame holds the page the board draws below the phone's fold.
+     */
+    protected fun tallShot(
+        board: String,
+        height: Dp,
+        content: @Composable () -> Unit,
+    ) {
+        assumeNotNull(System.getProperty("bae.shotsDir"))
+        assumeTrue("board '$board' is not selected", isSelected(board, System.getProperty("bae.shotsSelect")))
+        sizeWindowTo(DpSize(PHONE_WIDTH, height))
+        shot(board, content)
+    }
+
     /** Draws [content] as [board]. */
     protected fun shot(
         board: String,
@@ -115,6 +131,8 @@ internal fun ComposeContentTestRule.settle(content: @Composable () -> Unit) {
 }
 
 /** 411 by 914 dp at 420 dpi (2.625 pixels to the dp), dark. */
+private val PHONE_WIDTH = 412.dp
+
 internal const val PHONE_QUALIFIERS = "w411dp-h914dp-night-420dpi"
 private const val SETTLE_MILLIS = 100L
 private const val JSON_INDENT = 2
