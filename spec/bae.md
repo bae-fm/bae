@@ -5642,6 +5642,8 @@ connects to his laptop, lists the artists, opens an album and plays it.
   port or network change restarts the server at its new address, and a
   username or password change applies to the next sign-in.
   On but not running, it also shows outside Settings: a mark on the
+  While another program holds the port, bae tries it again every second, so
+  the server starts when that program lets go, with no change to a setting.
   Subsonic pane in Settings' sidebar, and a row under *Needs attention* in
   the Activity panel that opens this pane. Both read as a warning, or as
   danger when the server could not start for a reason of its own. The row's

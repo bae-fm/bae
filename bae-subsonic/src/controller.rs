@@ -15,7 +15,7 @@ use std::net::{Ipv4Addr, SocketAddr};
 use std::sync::Arc;
 
 use bae_app::AppServices;
-use bae_diagnostics::Diagnostics;
+use bae_diagnostics::{Diagnostics, ReportedTask};
 use bae_preferences::{SubsonicConfig, SubsonicCredential, SubsonicNetwork};
 use bae_util::server::{ServerController, ServerError, ServerStatus};
 use tokio::sync::{watch, Mutex};
@@ -33,6 +33,10 @@ type SubsonicPasswordProvider = dyn Fn() -> std::pin::Pin<
     > + Send
     + Sync;
 
+/// How long a server held off by a taken port waits before it tries the port
+/// again.
+const RETRY_EVERY: std::time::Duration = std::time::Duration::from_secs(1);
+
 /// The address and port a running server is bound to. A different one must
 /// restart the server.
 #[derive(Clone, PartialEq)]
@@ -46,6 +50,17 @@ struct Binding {
 struct Inputs {
     config: SubsonicConfig,
     password: Result<Option<String>, String>,
+    /// The task that tries a taken port again, while the server is switched on
+    /// and held off by a port another program holds.
+    retry: Option<ReportedTask>,
+}
+
+impl Inputs {
+    fn stop_retrying(&mut self) {
+        if let Some(retry) = self.retry.take() {
+            retry.abort();
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -62,6 +77,8 @@ pub struct SubsonicServerController {
     credential: Arc<watch::Sender<SubsonicCredential>>,
     /// Where a panic in the server, a request or a stream is reported.
     diagnostics: Diagnostics,
+    /// The runtime the task that tries a taken port again runs on.
+    runtime: tokio::runtime::Handle,
 }
 
 impl SubsonicServerController {
@@ -72,6 +89,7 @@ impl SubsonicServerController {
         password_provider: Arc<SubsonicPasswordProvider>,
         networks: Arc<NetworkLister>,
         diagnostics: Diagnostics,
+        runtime: tokio::runtime::Handle,
     ) -> Self {
         Self {
             services,
@@ -81,10 +99,12 @@ impl SubsonicServerController {
             inputs: Arc::new(Mutex::new(Inputs {
                 config: SubsonicConfig::disabled_default(),
                 password: Ok(None),
+                retry: None,
             })),
             plan: Arc::new(watch::Sender::new(Plan::off())),
             credential: Arc::new(watch::Sender::new(SubsonicCredential::empty())),
             diagnostics,
+            runtime,
         }
     }
 
@@ -94,13 +114,14 @@ impl SubsonicServerController {
         let mut inputs = self.inputs.lock().await;
         inputs.config = config;
         inputs.password = (self.password_provider)().await;
-        self.follow(&inputs).await;
+        self.follow(&mut inputs).await;
     }
 
     /// The person's settings couldn't be read, so what to serve is unknown:
     /// the server stops, and Settings says why instead of showing it off.
     pub async fn settings_unreadable(&self, detail: String) {
-        let _inputs = self.inputs.lock().await;
+        let mut inputs = self.inputs.lock().await;
+        inputs.stop_retrying();
         self.server.shutdown().await;
         self.plan
             .send_modify(|plan| plan.stage = Stage::Blocked(vec![NotRunning::Failed { detail }]));
@@ -111,14 +132,14 @@ impl SubsonicServerController {
     pub async fn password_changed(&self) {
         let mut inputs = self.inputs.lock().await;
         inputs.password = (self.password_provider)().await;
-        self.follow(&inputs).await;
+        self.follow(&mut inputs).await;
     }
 
     /// An address on this machine came, changed or went: read the networks
     /// again and move, stop or start the server as its network requires.
     pub async fn networks_changed(&self) {
-        let inputs = self.inputs.lock().await;
-        self.follow(&inputs).await;
+        let mut inputs = self.inputs.lock().await;
+        self.follow(&mut inputs).await;
     }
 
     /// The server as Settings shows it, now and as it changes.
@@ -135,13 +156,50 @@ impl SubsonicServerController {
     pub async fn shutdown(&self) {
         let mut inputs = self.inputs.lock().await;
         inputs.config = SubsonicConfig::disabled_default();
+        inputs.stop_retrying();
         self.server.shutdown().await;
         self.plan.send_replace(Plan::off());
     }
 
     /// Bring the server and what is told of it in line with `inputs` and the
-    /// networks as they are now.
-    async fn follow(&self, inputs: &Inputs) {
+    /// networks as they are now, and keep trying the port again while another
+    /// program holds it.
+    async fn follow(&self, inputs: &mut Inputs) {
+        if self.settle(inputs).await {
+            if inputs.retry.as_ref().is_none_or(ReportedTask::is_finished) {
+                self.retry_taken_port(inputs);
+            }
+        } else {
+            inputs.stop_retrying();
+        }
+    }
+
+    /// Try the port again every [`RETRY_EVERY`] until the server binds it or
+    /// something else stands in its way, such as the switch going off.
+    fn retry_taken_port(&self, inputs: &mut Inputs) {
+        let controller = self.clone();
+        inputs.retry = Some(self.diagnostics.spawn_reported(
+            &self.runtime,
+            "try a taken Subsonic port again",
+            async move {
+                loop {
+                    tokio::time::sleep(RETRY_EVERY).await;
+                    let inputs = controller.inputs.lock().await;
+                    if !controller.settle(&inputs).await {
+                        return;
+                    }
+                }
+            },
+            // The panic hook reported it; the next change to a setting follows
+            // the port again.
+            |_| {},
+        ));
+    }
+
+    /// Bring the server and what is told of it in line with `inputs` and the
+    /// networks as they are now. Returns whether the server is held off by a
+    /// port another program holds.
+    async fn settle(&self, inputs: &Inputs) -> bool {
         let config = &inputs.config;
         let (listed, listing_failure) = match (self.networks)() {
             Ok(listed) => (listed, None),
@@ -160,6 +218,7 @@ impl SubsonicServerController {
             changed
         });
 
+        let mut port_taken = false;
         let stage = if !config.enabled {
             self.server.shutdown().await;
             Stage::Off
@@ -167,7 +226,11 @@ impl SubsonicServerController {
             match self.serving(inputs, &listed, listing_failure) {
                 Ok(serving) => {
                     let binding = Binding { address: serving.bind_address(), port: serving.port };
-                    self.server.apply(binding, |binding| self.start(binding)).await;
+                    let status = self.server.apply(binding, |binding| self.start(binding)).await;
+                    port_taken = matches!(
+                        status,
+                        ServerStatus::Error { error: ServerError::PortInUse { .. } }
+                    );
                     Stage::Serving(serving)
                 }
                 Err(causes) => {
@@ -181,6 +244,7 @@ impl SubsonicServerController {
             networks: networks_to_choose(&config.network, &listed),
             password_saved: !password.is_empty(),
         });
+        port_taken
     }
 
     /// What to serve, or everything that stands in the way of serving.

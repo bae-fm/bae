@@ -21,6 +21,12 @@ fn free_port() -> u16 {
     std::net::TcpListener::bind("127.0.0.1:0").unwrap().local_addr().unwrap().port()
 }
 
+/// The runtime the test runs on, which the controller's retry task runs on too.
+#[expect(clippy::disallowed_methods, reason = "test code: it takes the runtime the test runs on")]
+fn test_runtime() -> tokio::runtime::Handle {
+    tokio::runtime::Handle::current()
+}
+
 fn password_provider(password: Option<&str>) -> Arc<SubsonicPasswordProvider> {
     let password = password.map(str::to_string);
     Arc::new(move || {
@@ -61,6 +67,7 @@ fn controller_on(
         password_provider(password),
         networks.lister(),
         Diagnostics::noop(),
+        test_runtime(),
     )
 }
 
@@ -210,11 +217,43 @@ async fn a_port_another_program_holds_is_why_it_does_not_run() {
     controller.apply_config(enabled_config(port, "listener")).await;
     assert_eq!(status(&controller).await, not_running(&[NotRunning::PortTaken]));
 
-    // Once the other program lets go, the next change starts the server.
+    // Once the other program lets go, the server starts with no change to a
+    // setting.
     drop(held);
-    controller.password_changed().await;
-    assert!(matches!(status(&controller).await, SubsonicStatus::Running { .. }));
+    wait_until_running(&controller).await;
     controller.shutdown().await;
+}
+
+/// Wait for the server to run, for as long as a start that tries the port
+/// again takes.
+async fn wait_until_running(controller: &SubsonicServerController) {
+    let mut watch = controller.watch();
+    tokio::time::timeout(std::time::Duration::from_secs(20), async {
+        while !matches!(
+            watch.next().await.map(|view| view.status),
+            Some(SubsonicStatus::Running { .. })
+        ) {}
+    })
+    .await
+    .expect("the server starts once its port is free");
+}
+
+#[tokio::test]
+async fn a_server_switched_off_stops_trying_a_taken_port() {
+    let (services, _temp) = test_manager().await;
+    let controller = controller(&services, Some("s3cret"));
+    let held = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = held.local_addr().unwrap().port();
+    controller.apply_config(enabled_config(port, "listener")).await;
+    assert_eq!(status(&controller).await, not_running(&[NotRunning::PortTaken]));
+
+    controller
+        .apply_config(SubsonicConfig { enabled: false, ..enabled_config(port, "listener") })
+        .await;
+    drop(held);
+    tokio::time::sleep(RETRY_EVERY * 3).await;
+    assert_eq!(status(&controller).await, SubsonicStatus::Off);
+    assert!(port_is_free(port), "a server that is off must not take the port");
 }
 
 #[tokio::test]
@@ -225,6 +264,7 @@ async fn a_keyring_that_cannot_be_read_is_a_failure_with_its_detail() {
         Arc::new(|| Box::pin(async { Err("keyring is locked".to_string()) })),
         FakeNetworks::default().lister(),
         Diagnostics::noop(),
+        test_runtime(),
     );
     controller.apply_config(enabled_config(free_port(), "listener")).await;
     assert_eq!(
@@ -243,6 +283,7 @@ async fn only_a_failure_of_its_own_is_danger() {
         Arc::new(|| Box::pin(async { Err("keyring is locked".to_string()) })),
         FakeNetworks::default().lister(),
         Diagnostics::noop(),
+        test_runtime(),
     );
     broken.apply_config(enabled_config(free_port(), "listener")).await;
     assert!(matches!(
@@ -266,6 +307,7 @@ async fn a_network_that_cannot_be_listed_is_a_failure_with_its_detail() {
         password_provider(Some("s3cret")),
         Arc::new(|| Err("the system refused".to_string())),
         Diagnostics::noop(),
+        test_runtime(),
     );
     controller.apply_config(config(free_port(), "listener", SubsonicNetwork::Every)).await;
     assert_eq!(
@@ -414,6 +456,7 @@ async fn a_changed_username_or_password_applies_to_the_next_sign_in_without_a_re
         }),
         FakeNetworks::default().lister(),
         Diagnostics::noop(),
+        test_runtime(),
     );
     let port = free_port();
     controller.apply_config(enabled_config(port, "listener")).await;
@@ -447,6 +490,7 @@ async fn a_saved_password_starts_a_server_that_was_waiting_for_it() {
         }),
         FakeNetworks::default().lister(),
         Diagnostics::noop(),
+        test_runtime(),
     );
     controller.apply_config(enabled_config(free_port(), "listener")).await;
     assert!(!controller.view().await.password_saved);

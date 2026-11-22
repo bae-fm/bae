@@ -62,6 +62,7 @@ impl DesktopServices {
             }),
             Arc::new(bae_subsonic::machine_addresses),
             diagnostics.clone(),
+            runtime.clone(),
         );
         // The servers' settings now, applied before this returns, then each
         // change to them as its write commits.
