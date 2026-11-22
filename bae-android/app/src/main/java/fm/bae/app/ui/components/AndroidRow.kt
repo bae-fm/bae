@@ -84,7 +84,7 @@ internal fun AndroidRow(
     trailing: (@Composable RowScope.() -> Unit)? = null,
 ) {
     val accent = MaterialTheme.colorScheme.primary
-    val row: @Composable (Modifier, (@Composable () -> Unit)?) -> Unit = { switchAction, indicator ->
+    val row: @Composable (SwitchControl?) -> Unit = { control ->
         Row(
             modifier =
                 modifier.cardRowSurface(
@@ -95,7 +95,7 @@ internal fun AndroidRow(
                     enabled = enabled,
                     onClick = onClick,
                     onClickLabel = onClickLabel,
-                    switchAction = switchAction,
+                    switchAction = control?.action ?: Modifier,
                 ),
             horizontalArrangement = Arrangement.spacedBy(ThemeSpace.edge),
             verticalAlignment = Alignment.CenterVertically,
@@ -117,7 +117,7 @@ internal fun AndroidRow(
             value?.let {
                 Text(text = it, style = ThemeText.body.style, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            indicator?.invoke()
+            control?.indicator?.invoke()
             trailing?.invoke(this)
             icon?.let {
                 Icon(
@@ -130,15 +130,13 @@ internal fun AndroidRow(
         }
     }
     if (switch == null) {
-        row(Modifier, null)
+        row(null)
     } else {
         AndroidSwitch(
             checked = switch.checked,
             onCheckedChange = switch.onChange,
-            enabled = enabled,
-        ) { action, indicator ->
-            row(action, indicator)
-        }
+            content = row,
+        )
     }
 }
 

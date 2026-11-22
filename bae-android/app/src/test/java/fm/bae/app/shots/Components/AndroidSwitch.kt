@@ -1,10 +1,13 @@
 package fm.bae.app.shots
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import fm.bae.app.ui.components.AndroidSwitch
 import org.junit.Test
 
@@ -21,5 +24,9 @@ class AndroidSwitchShots : BoardShot() {
 @Composable
 private fun RestoreOnLaunch(checked: Boolean) {
     var on by remember { mutableStateOf(checked) }
-    AndroidSwitch(checked = on, onCheckedChange = { on = it }, label = "Restore on launch")
+    AndroidSwitch(checked = on, onCheckedChange = { on = it }) { control ->
+        Box(control.action.semantics { contentDescription = "Restore on launch" }) {
+            control.indicator()
+        }
+    }
 }
