@@ -39,6 +39,8 @@
 .bae-m-iconbtn-overlay, .bae-m-iconbtn-overlay:hover { border-radius: 999px; background: var(--scrim); color: var(--on-fill); }
 .bae-m-iconbtn-on { color: var(--accent); background: var(--accent-tint); }
 .bae-m-iconbtn-faint { color: var(--text-tertiary); }
+/* The accent's focus ring, as on MacButton, on the glyph buttons and the plain-text controls of the library heading, its sort and the queue heading. */
+.bae-m-iconbtn:focus-visible, .bae-m-libhead-title:focus-visible, .bae-m-sortpill > button:focus-visible, .bae-m-sortadd:focus-visible, .bae-m-queue-clear:focus-visible { outline: none; border-radius: var(--radius-control); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent); }
 .bae-m-sync-warn { color: var(--warning-icon); }
 .bae-m-main-body { flex: 1; min-height: 0; overflow: hidden; display: flex; }
 .bae-m-main-content { flex: 1; min-width: 0; max-width: 1240px; margin: 0 auto; overflow: hidden; display: flex; flex-direction: column; }
