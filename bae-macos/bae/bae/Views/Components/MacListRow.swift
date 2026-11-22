@@ -21,7 +21,7 @@ struct MacListRow: View {
         case dragging
     }
 
-    let lead: String
+    var lead: String?
     var leadWidth: CGFloat = 56
     var hanging = false
     var coverSize: CGFloat = MacListRow.defaultCoverSize
@@ -35,9 +35,12 @@ struct MacListRow: View {
     var wide = false
     var hover = false
     var lift = Lift.resting
+    var onRemove: (() -> Void)?
 
     /// The space between the row's columns.
-    static let gap: CGFloat = 10
+    static let gap = ThemeSpace.related + ThemeSpace.line
+    static let horizontalInset = ThemeSpace.related
+    static let verticalInset = ThemeSpace.inline + ThemeSpace.hairline
     /// How far a hanging row's leading column reaches into the margin left of
     /// its list: its width and the gap after it.
     static func hang(leadWidth: CGFloat) -> CGFloat {
@@ -46,30 +49,38 @@ struct MacListRow: View {
 
     /// The cover's size unless a row asks for another.
     static let defaultCoverSize: CGFloat = 32
-    private static var durationWidth: CGFloat { 40 }
+    private static let durationWidth: CGFloat = 40
+    private static let removeWidth: CGFloat = 20
 
     var body: some View {
         HStack(spacing: Self.gap) {
-            Text(lead)
-                .themeText(.detail)
-                .monospacedDigit()
-                .foregroundStyle(Theme.macTextSecondary)
-                .lineLimit(1)
-                .frame(
-                    width: leadWidth,
-                    alignment: hanging ? .trailing : .leading
-                )
+            if let lead {
+                Text(lead)
+                    .themeText(.detail)
+                    .monospacedDigit()
+                    .foregroundStyle(Theme.macTextSecondary)
+                    .lineLimit(1)
+                    .frame(
+                        width: leadWidth,
+                        alignment: hanging ? .trailing : .leading
+                    )
+                    .accessibilitySortPriority(1)
+            }
+            else if hanging {
+                Color.clear.frame(width: leadWidth, height: 0)
+            }
             Artwork(imageRef: cover, pointSize: coverSize)
                 .frame(width: coverSize, height: coverSize)
                 .clipShape(
-                    // The design draws the default cover at 4, between the radius
-                    // tokens, and a given size at the artwork radius.
                     RoundedRectangle(
                         cornerRadius: coverSize == Self.defaultCoverSize
-                            ? 4 : ThemeRadius.artwork
+                            ? ThemeRadius.bar : ThemeRadius.artwork
                     )
                 )
-            VStack(alignment: .leading, spacing: hanging ? 3 : 0) {
+            VStack(
+                alignment: .leading,
+                spacing: hanging ? ThemeSpace.line + ThemeSpace.hairline : 0
+            ) {
                 Text(title)
                     .themeText(.rowTitle)
                     .lineLimit(1)
@@ -79,8 +90,11 @@ struct MacListRow: View {
                     .lineLimit(1)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .contain)
             if let who {
                 MacPersonTag(person: who)
+                    .accessibilityElement(children: .contain)
+                    .accessibilitySortPriority(-1)
             }
             if let duration {
                 Text(duration)
@@ -88,20 +102,41 @@ struct MacListRow: View {
                     .monospacedDigit()
                     .foregroundStyle(Theme.macTextSecondary)
                     .frame(width: Self.durationWidth, alignment: .trailing)
+                    // Move the duration to the trailing edge when the
+                    // remove button is hidden, without resizing the row.
+                    .offset(
+                        x: onRemove != nil && !hover
+                            ? Self.removeWidth + Self.gap : 0
+                    )
+                    .accessibilitySortPriority(-2)
+            }
+            if let onRemove {
+                MacIconButton(
+                    symbol: "xmark",
+                    label: "Remove from queue",
+                    iconSize: .small,
+                    hitSize: Self.removeWidth,
+                    action: onRemove
+                )
+                .opacity(hover ? 1 : 0)
+                .allowsHitTesting(hover)
+                .accessibilityHidden(!hover)
+                .accessibilitySortPriority(-3)
             }
         }
-        .padding(.trailing, wide ? ThemeSpace.edge : ThemeSpace.related)
+        .padding(.trailing, wide ? ThemeSpace.edge : Self.horizontalInset)
         .padding(
             .leading,
-            hanging ? 0 : ThemeSpace.related
+            hanging ? 0 : Self.horizontalInset
         )
-        .padding(.vertical, 5)
+        .padding(.vertical, Self.verticalInset)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: ThemeRadius.artwork)
                 .fill(fill)
         )
         .contentShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
+        .accessibilityElement(children: .contain)
         .opacity(lift == .lifted ? 0.45 : lift == .dragging ? 0.75 : 1)
         .shadow(
             color: lift == .dragging ? Theme.shadow : .clear,

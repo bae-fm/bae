@@ -15,7 +15,11 @@ extension ShotScene {
         listRow("mac.component.list-row.dragging", lift: .dragging),
         listRow("mac.component.list-row.cover", coverSize: 40),
         listRow("mac.component.list-row.hover", hover: true),
-        listRow("mac.component.list-row.hover-with-remove", hover: true),
+        listRow(
+            "mac.component.list-row.hover-with-remove",
+            hover: true,
+            removable: true
+        ),
         listRow(
             "mac.component.list-row.hanging",
             hanging: true,
@@ -32,7 +36,8 @@ extension ShotScene {
         hanging: Bool = false,
         coverSize: CGFloat = 32,
         padsMargin: Bool = false,
-        hover: Bool = false
+        hover: Bool = false,
+        removable: Bool = false
     ) -> ShotScene {
         component(id, height: 70, images: coverStore()) {
             MacListRow(
@@ -53,13 +58,13 @@ extension ShotScene {
                 duration: "4:32",
                 wide: wide,
                 hover: hover,
-                lift: lift
+                lift: lift,
+                onRemove: removable ? {} : nil
             )
             .padding(
                 .leading,
                 padsMargin ? MacListRow.hang(leadWidth: 56) : 0
             )
-            .frame(width: 380, alignment: .leading)
         }
     }
 }

@@ -9,13 +9,15 @@ struct MacIconButton: View {
     let label: LocalizedStringKey
     var help: LocalizedStringKey?
     var active = false
+    var iconSize: ThemeIcon = .large
+    var hitSize = ThemeSize.hitTarget
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             Image(systemName: symbol)
-                .themeIcon(.large)
-                .frame(width: ThemeSize.hitTarget, height: ThemeSize.hitTarget)
+                .themeIcon(iconSize)
+                .frame(width: hitSize, height: hitSize)
                 .contentShape(Rectangle())
         }
         .buttonStyle(IconHoverButtonStyle(isOn: active).accentFocus())

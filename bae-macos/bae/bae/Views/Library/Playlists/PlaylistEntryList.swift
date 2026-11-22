@@ -359,7 +359,7 @@ private struct PlaylistEntryRow: View {
 
     var body: some View {
         MacListRow(
-            lead: number.map { String($0) } ?? "",
+            lead: number.map { String($0) },
             leadWidth: MacPlaylistPage.numberWidth,
             hanging: true,
             coverSize: 40,
