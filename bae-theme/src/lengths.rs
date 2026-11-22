@@ -1,6 +1,8 @@
 //! The radius, spacing, icon and size roles of design/system/tokens.json. The
 //! radii and the spacing are one length every platform shares, a token in the
-//! `radius` or `spacing` family naming its role in `role`. An icon or size role is a token in
+//! `radius` or `spacing` family naming its role in `role`; one with no `role`,
+//! such as Android's Material shapes, is a measure only the design system
+//! draws. An icon or size role is a token in
 //! an Apple family (`icon`, `size`), whose value is the macOS length and whose
 //! `ios` is iOS's, and a token in its Android family (`icon-android`,
 //! `size-android`), whose value is Android's; each names the role in `role`.
@@ -115,8 +117,8 @@ pub(crate) fn read_shared(
 ) -> BTreeMap<String, f64> {
     let mut entries = Vec::new();
     for token in &family.tokens {
+        // A token with no role is a measure only the design system draws.
         let Some(role) = token.role.as_deref() else {
-            problems.push(format!("tokens.json `{}` names no role", token.name));
             continue;
         };
         if token.ios.is_some() || token.weight.is_some() {

@@ -11,13 +11,13 @@
   // One cover in the cover gallery: its image over its name, with no source line, since the section heading says where it comes from. `image` stands for the picture (the board draws it as artwork seeded by it, the name unless given); `selected` rings the one the preview shows.
   function MacCoverTile(props) {
     return h('div', { className: 'bae-m-ctile' },
-      h('div', { className: cx('bae-m-ctile-img', props.selected && 'bae-m-ctile-sel') }, h(Artwork, { title: props.image || props.name, size: 118, radius: 6 })),
+      h('div', { className: cx('bae-m-ctile-img', props.selected && 'bae-m-ctile-sel') }, h(Artwork, { title: props.image || props.name, size: 118, radius: 'radius-artwork' })),
       h('div', { className: 'bae-ellipsis bae-m-ctile-name' }, props.name));
   }
   // The cover gallery's preview: the picked image large (`image`, seeded as a tile's), its name, where it comes from (`source`), and its place among the images (`position` of `count`) between the previous and next arrows.
   function MacCoverPreview(props) {
     return h('div', { className: 'bae-m-cpreview' },
-      h(Artwork, { title: props.image || props.name, size: 300, radius: 6 }),
+      h(Artwork, { title: props.image || props.name, size: 300, radius: 'radius-artwork' }),
       h('div', { className: 'bae-strong', style: { fontSize: 15 } }, props.name),
       h('div', { className: 'bae-muted', style: { fontSize: 11.5 } }, props.source),
       h('div', { style: { display: 'flex', gap: 'calc(var(--space-related) + var(--space-line))', alignItems: 'center' } }, h(Sym, { name: 'left', size: 12 }), (props.position || 1) + ' of ' + props.count, h(Sym, { name: 'right', size: 12 })));
@@ -42,7 +42,7 @@
   // The lightbox's thumbnails of every image (`images`, each drawn as artwork seeded by it), the shown one (`selected`, the first unless given) ringed.
   function MacThumbnailStrip(props) {
     var images = list(props.images), sel = props.selected || images[0];
-    return h('div', { className: 'bae-m-lb-strip' }, images.map(function (t, i) { return h('span', { key: i, className: cx('bae-m-lb-thumb', t === sel && 'bae-m-lb-thumb-on') }, h(Artwork, { title: t, size: 56, radius: 6 })); }));
+    return h('div', { className: 'bae-m-lb-strip' }, images.map(function (t, i) { return h('span', { key: i, className: cx('bae-m-lb-thumb', t === sel && 'bae-m-lb-thumb-on') }, h(Artwork, { title: t, size: 56, radius: 'radius-artwork' })); }));
   }
   // The lightbox: the image on the backdrop, close, arrows, then at its foot the shown image's caption (`label`, and `source` under it) over the thumbnail strip (`images`, `selected`), which a lone image goes without.
   function MacLightbox(props) {

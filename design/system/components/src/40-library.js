@@ -3,14 +3,11 @@
   // A stand-in cover: each title gets its own two-color square, so boards read like a library.
   // `missing` is a cover the release doesn't have: a plain tile, no glyph.
   function hueOf(s) { var x = 0; s = String(s || ''); for (var i = 0; i < s.length; i++) x = (x * 31 + s.charCodeAt(i)) % 360; return x; }
-  // A cover's `size`: pixels, or the name of a size token (`size-row-artwork`).
-  function coverSize(size) {
-    return /^size-/.test(size) ? 'var(--' + size + ')' : Number(size);
-  }
+  // `size` and `radius` are pixels or a token's name (`size-row-artwork`, `radius-artwork`).
   function Artwork(props) {
-    var size = props.size == null ? null : coverSize(props.size);
+    var size = props.size == null ? null : measure(props.size);
     var hue = props.hue != null ? Number(props.hue) : hueOf(props.seed || props.title);
-    var style = { borderRadius: Number(props.radius != null ? props.radius : 10) };
+    var style = { borderRadius: measure(props.radius != null ? props.radius : 'radius-cover') };
     if (size) { style.width = size; style.height = size; }
     if (props.round) style.borderRadius = '50%';
     if (!props.missing) style.backgroundImage = 'linear-gradient(135deg, hsl(' + hue + ' 42% 52%), hsl(' + ((hue + 48) % 360) + ' 46% 24%))';
@@ -27,8 +24,8 @@
   // A playlist's picture: the covers of its first four different releases in a 2×2 square, as playlists show on both platforms; with fewer than four, its first entry's cover; empty, the missing tile. `covers` lists the releases' titles in the playlist's order, each once. One cover alone would make a playlist look like that album, and two playlists that start on one album alike.
   function PlaylistPicture(props) {
     var covers = String(props.covers || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean);
-    var size = coverSize(props.size || 48), radius = props.radius != null ? Number(props.radius) : 6;
-    if (covers.length < 4) return h(Artwork, { title: covers[0], size: props.size || 48, radius: radius, missing: !covers.length });
+    var size = measure(props.size || 48), radius = measure(props.radius != null ? props.radius : 'radius-artwork');
+    if (covers.length < 4) return h(Artwork, { title: covers[0], size: props.size || 48, radius: props.radius != null ? props.radius : 'radius-artwork', missing: !covers.length });
     // Four covers, each filling a quarter of the picture's two-by-two grid.
     return h('div', { className: 'bae-playlist-pic', style: { width: size, height: size, borderRadius: radius }, 'aria-hidden': true },
       covers.slice(0, 4).map(function (t, i) { return h(Artwork, { key: i, title: t, radius: 0 }); }));
@@ -141,7 +138,7 @@
     return h('div', { className: 'bae-m-npbar' },
       // The playing track: one button, its cover beside its title and artist, named as VoiceOver reads the merged track.
       h('div', { className: 'bae-m-np-left' }, none ? null : h('button', { type: 'button', className: 'bae-plainbtn bae-m-nptrack', 'aria-label': props.artist ? 'Now playing, ' + props.title + ' by ' + props.artist : props.title },
-        h(Artwork, { title: props.album || props.title, size: 'size-bar-artwork', radius: 6, shadow: 'bar', missing: props.noCover }),
+        h(Artwork, { title: props.album || props.title, size: 'size-bar-artwork', radius: 'radius-artwork', shadow: 'bar', missing: props.noCover }),
         h('div', { className: 'bae-m-np-text', 'aria-hidden': true }, h('div', { className: 'bae-m-np-title' }, props.title), h('div', { className: 'bae-m-np-sub' }, props.artist)))),
       h('div', { className: 'bae-m-np-center' },
         h(MacTransport, { playing: props.playing, waiting: props.waiting, shuffle: props.shuffle, repeat: props.repeat }),
@@ -209,7 +206,7 @@
   function MacAlbumTile(props) {
     return h('div', { className: cx('bae-m-tile', props.selected && 'bae-m-tile-selected', props.unplayable && 'bae-tile-unplayable') },
       h('div', { className: 'bae-m-tile-art' },
-        h(Artwork, { title: props.title, missing: props.noCover, radius: 10, shadow: 'tile', ring: props.open, dimmed: props.unplayable }),
+        h(Artwork, { title: props.title, missing: props.noCover, radius: 'radius-cover', shadow: 'tile', ring: props.open, dimmed: props.unplayable }),
         props.hover ? h('span', { className: 'bae-m-tile-menu' }, h(MacMoreMenu, { overlay: true, label: 'Album options' })) : null),
       h('div', { className: 'bae-m-tile-title' }, props.title),
       h('div', { className: 'bae-m-tile-artist' }, props.artist),
@@ -244,7 +241,7 @@
   // `options`: the page's ⋯ button at the right with these actions in its menu, as an album's options button; `optionsOpen` draws the menu open, `highlighted` the item under the pointer.
   function MacDetailHeader(props) {
     return h('div', { className: 'bae-m-dethead' },
-      h(Artwork, { title: props.name, size: 72, radius: 10, missing: props.noImage }),
+      h(Artwork, { title: props.name, size: 72, radius: 'radius-cover', missing: props.noImage }),
       h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { className: 'bae-m-dethead-name' }, props.name), h('div', { className: 'bae-m-dethead-count' }, props.count)),
       props.options ? h(MacMoreMenu, { label: props.optionsLabel || 'Options', items: props.options, open: props.optionsOpen, highlighted: props.highlighted }) : null);
   }
@@ -253,7 +250,7 @@
   function MacPlaylistHeader(props) {
     var shared = props.sharing ? h('span', { className: 'bae-m-plpage-sharing', role: 'img', 'aria-label': props.sharing, title: props.sharing }, h(Glyph, { set: 'mac', name: props.sharing === 'Everyone' ? 'people' : 'lock', size: 'small' })) : null;
     return h('div', { className: 'bae-m-plpage-head' },
-      h(PlaylistPicture, { covers: props.covers, size: 103, radius: 10 }),
+      h(PlaylistPicture, { covers: props.covers, size: 103, radius: 'radius-cover' }),
       h('div', { className: 'bae-m-plpage-text' },
         h('h1', { className: 'bae-m-plpage-name' }, props.name),
         h(MacPersonTag, { name: props.owner, strong: true }),
@@ -337,7 +334,7 @@
   function MacAlbumPanel(props) {
     return h('section', { className: 'bae-m-albumpanel' },
       h('span', { className: 'bae-m-albumpanel-close' }, h(MacCloseButton)),
-      h(Artwork, { title: props.title, size: 340, radius: 10, missing: props.noCover, className: 'bae-m-albumpanel-cover' }),
+      h(Artwork, { title: props.title, size: 340, radius: 'radius-cover', missing: props.noCover, className: 'bae-m-albumpanel-cover' }),
       h('div', { className: 'bae-m-albumpanel-body' },
         h(MacAlbumHeader, { title: props.title, artist: props.artist, year: props.year, releases: props.releases, release: props.release, edition: props.edition, copy: props.copy, unplayable: props.unplayable, unplayableHover: props.unplayableHover, options: props.options, optionsOpen: props.optionsOpen, highlighted: props.highlighted, rating: props.rating, ratingSystem: props.ratingSystem }),
         h('div', { className: 'bae-m-albumpanel-tracks bae-m-albumpanel-tracks-rated' }, props.children),
@@ -359,7 +356,7 @@
 
   // `unplayable`: dimmed as `MacAlbumTile` draws it.
   function MacArtistAlbumTile(props) {
-    return h('div', { className: cx('bae-m-atile', props.unplayable && 'bae-tile-unplayable') }, h(Artwork, { title: props.title, radius: 6, missing: props.noCover, dimmed: props.unplayable }),
+    return h('div', { className: cx('bae-m-atile', props.unplayable && 'bae-tile-unplayable') }, h(Artwork, { title: props.title, radius: 'radius-artwork', missing: props.noCover, dimmed: props.unplayable }),
       h('div', { className: 'bae-m-tile-title' }, props.title), h('div', { className: 'bae-m-atile-year' }, props.year || ' '));
   }
 
@@ -439,7 +436,7 @@
   // The playing track on Android: its cover beside its title and artist.
   function AndroidNowPlayingTrack(props) {
     // One button that opens the full player, named as TalkBack reads the merged track.
-    return h('button', { type: 'button', className: 'bae-a-np-info', 'aria-label': props.artist ? 'Now playing, ' + props.title + ' by ' + props.artist : props.title }, h(Artwork, { title: props.album || props.title, size: 'size-android-bar-artwork', radius: 6, missing: props.noCover }),
+    return h('button', { type: 'button', className: 'bae-a-np-info', 'aria-label': props.artist ? 'Now playing, ' + props.title + ' by ' + props.artist : props.title }, h(Artwork, { title: props.album || props.title, size: 'size-android-bar-artwork', radius: 'radius-artwork', missing: props.noCover }),
       h('div', { className: 'bae-a-np-text', 'aria-hidden': true }, h('div', { className: 'bae-a-np-title' }, props.title), h('div', { className: 'bae-a-np-sub' }, props.artist)));
   }
 
@@ -516,7 +513,7 @@
   // An album's tile: one button that opens the album, named by its title and line, as TalkBack reads the merged tile. `unplayable`: only another device holds the album's files, so its cover and words show dimmed; the tile still opens the album.
   function AndroidAlbumTile(props) {
     return h('button', { type: 'button', className: cx('bae-plainbtn', 'bae-a-tile', props.unplayable && 'bae-tile-unplayable') },
-      h(Artwork, { title: props.title, missing: props.noCover, radius: 10, dimmed: props.unplayable }),
+      h(Artwork, { title: props.title, missing: props.noCover, radius: 'radius-cover', dimmed: props.unplayable }),
       h('div', { className: 'bae-a-tile-title' }, props.title),
       h('div', { className: 'bae-a-tile-line' }, props.line));
   }
@@ -546,7 +543,7 @@
 
   function AndroidAlbumHeader(props) {
     var mark = albumMark(props.rating, props.ratingSystem, 12);
-    return h('div', { className: 'bae-a-albumhead' }, h(Artwork, { title: props.title, size: 150, radius: 10, missing: props.noCover }),
+    return h('div', { className: 'bae-a-albumhead' }, h(Artwork, { title: props.title, size: 150, radius: 'radius-cover', missing: props.noCover }),
       h('div', { className: 'bae-a-albumhead-text' }, h('div', { className: 'bae-a-albumhead-title' }, props.title), h('div', { className: 'bae-a-albumhead-artist' }, props.artist), props.year || mark ? h('div', { className: 'bae-a-albumhead-fact' }, props.year, props.year && mark ? ' · ' : null, mark) : null,
         props.edition ? h('div', { className: 'bae-a-albumhead-fact bae-a-albumhead-release bae-a-albumhead-gap' }, props.edition) : null, props.copy ? h('div', { className: 'bae-a-albumhead-fact bae-a-albumhead-release' }, props.copy) : null,
         // `unplayable`: only another device holds the files, so the words Not on this device stand where Play stood, and the info button opens a sheet that names the device.

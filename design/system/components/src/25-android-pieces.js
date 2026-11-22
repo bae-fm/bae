@@ -26,7 +26,7 @@
   // A playlist page's head: its picture (`covers`), its name over the owner, track count and sharing (`facts`), and Play under them. The playlist's options are the ⋮ of the screen's top bar.
   function AndroidPlaylistHeader(props) {
     return h('div', { className: 'bae-a-plhead' },
-      h('div', { className: 'bae-a-plhead-top' }, h(PlaylistPicture, { covers: props.covers, size: 96, radius: 10 }),
+      h('div', { className: 'bae-a-plhead-top' }, h(PlaylistPicture, { covers: props.covers, size: 96, radius: 'radius-cover' }),
         h('div', null, h('div', { className: 'bae-a-plhead-name' }, props.name), h('div', { className: 'bae-a-fine bae-muted' }, props.facts),
           h('div', { className: 'bae-a-plhead-actions' }, h(AndroidButton, null, 'Play')))));
   }

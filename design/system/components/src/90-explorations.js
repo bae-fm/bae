@@ -31,7 +31,7 @@
     var lw = props.hanging ? Number(props.leadWidth || 20) : null;
     return h('div', { style: lw != null ? { marginLeft: -(lw + 10) } : null, className: cx('bae-m-lrow', props.hover && 'bae-m-lrow-hover', props.wide && 'bae-m-lrow-wide', props.hanging && 'bae-m-lrow-hanging', props.lifted && 'bae-m-lrow-lifted', props.dragging && 'bae-m-lrow-dragging') },
       props.lead ? h('span', { className: 'bae-muted bae-num bae-m-lrow-lead', style: lw != null ? { width: lw } : null }, props.lead) : null,
-      h(Artwork, { title: props.album || props.title, size: props.cover ? Number(props.cover) : 32, radius: props.cover ? 6 : 4 }),
+      h(Artwork, { title: props.album || props.title, size: props.cover ? Number(props.cover) : 32, radius: props.cover ? 'radius-artwork' : 'radius-bar' }),
       h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { className: 'bae-ellipsis', style: { fontWeight: 500 } }, props.title), h('div', { className: 'bae-muted bae-ellipsis bae-m-lrow-sub', style: { fontSize: 11.5 } }, props.sub)),
       props.who ? h(MacPersonTag, { name: props.who }) : null,
       props.duration ? h('span', { className: 'bae-muted bae-num', style: { width: 40, textAlign: 'right', fontSize: 11.5 } }, props.duration) : null,
@@ -41,7 +41,7 @@
   // `menu`: the row ends in ⋮, the row's actions, labelled with `menu`'s text (More unless given).
   function AndroidListRow(props) {
     return h('div', { className: cx('bae-a-lrow', props.menu && 'bae-a-lrow-menu', props.dragging && 'bae-a-lrow-dragging') },
-      h(Artwork, { title: props.album || props.title, size: 'size-android-row-artwork', radius: 6 }),
+      h(Artwork, { title: props.album || props.title, size: 'size-android-row-artwork', radius: 'radius-artwork' }),
       h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { className: 'bae-a-librow-title' }, props.title), h('div', { className: 'bae-a-librow-sub' }, props.sub)),
       props.who ? h(Avatar, { name: props.who, size: 24 }) : null,
       props.trailing ? h('span', { className: 'bae-a-fine bae-muted' }, props.trailing) : null,

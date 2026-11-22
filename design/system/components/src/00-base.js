@@ -47,6 +47,11 @@
       h('path', { d: 'M1.5 1.5 5.5 6l-4 4.5' }));
   }
 
+  // A length a component takes as a prop: pixels, or the name of a token (`radius-artwork`, `size-row-artwork`).
+  function measure(v) {
+    return /^(size|radius|space)-/.test(v) ? 'var(--' + v + ')' : Number(v);
+  }
+
   // A glyph's size: an icon role of tokens.json, such as `medium`, or `androidTransport` for a role Android draws alone. macOS draws it at --icon-<role> and Android at --icon-android-<role>. A role the tokens lack throws, so no glyph falls back to a size of its own.
   var iconTokens = {};
   function iconSize(role, android) {

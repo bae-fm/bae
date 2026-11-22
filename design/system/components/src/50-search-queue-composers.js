@@ -12,11 +12,11 @@
   function MacLibraryRow(props) {
     var ml = (props.bleed && !props.credit ? -8 : 0) + (props.part ? 16 : 0);
     var style = { marginTop: props.top ? Number(props.top) : null, marginLeft: ml || null };
-    if (props.loading) return h('div', { className: 'bae-m-librow', style: style }, h(MacPlaceholderLine, { width: 44, height: 44, radius: 6, fixed: true }),
+    if (props.loading) return h('div', { className: 'bae-m-librow', style: style }, h(MacPlaceholderLine, { width: 44, height: 44, radius: 'radius-artwork', fixed: true }),
       h('div', { className: 'bae-m-librow-text' }, h(MacPlaceholderLine, { width: 140, height: 11 }), h(MacPlaceholderLine, { width: 80, height: 10 })));
     // `dropping`: tracks dragged over the row land in it when let go (a playlist in the side pane).
     return h('div', { className: cx('bae-m-librow', props.dropping && 'bae-m-librow-drop', props.credit && 'bae-m-librow-credit', props.bleed && !props.credit && 'bae-m-librow-bleed', props.hover && 'bae-m-librow-hover', props.selected && 'bae-m-librow-selected'), style: style },
-      props.credit ? null : props.covers != null ? h(PlaylistPicture, { covers: props.covers, size: 'size-row-artwork' }) : h(Artwork, { title: props.art || props.title, size: 'size-row-artwork', radius: 6, missing: props.missing }),
+      props.credit ? null : props.covers != null ? h(PlaylistPicture, { covers: props.covers, size: 'size-row-artwork' }) : h(Artwork, { title: props.art || props.title, size: 'size-row-artwork', radius: 'radius-artwork', missing: props.missing }),
       h('div', { className: 'bae-m-librow-text' }, h('div', { className: 'bae-m-librow-title' }, props.title), h('div', { className: 'bae-m-librow-sub' }, props.subtitle || ' ')),
       props.trailing ? h('span', { className: 'bae-m-librow-trail' }, props.trailing) : null);
   }
@@ -24,7 +24,7 @@
   // One row of a library list: Search's results, the artist and composer lists, the composer and work pages' rows.
   function AndroidLibraryRow(props) {
     return h('div', { className: cx('bae-a-librow', props.part && 'bae-a-librow-part', props.inset && 'bae-a-librow-inset') },
-      props.noArt ? null : props.covers != null ? h(PlaylistPicture, { covers: props.covers, size: 'size-android-row-artwork' }) : h(Artwork, { title: props.art || props.title, size: 'size-android-row-artwork', radius: 6, missing: props.missing }),
+      props.noArt ? null : props.covers != null ? h(PlaylistPicture, { covers: props.covers, size: 'size-android-row-artwork' }) : h(Artwork, { title: props.art || props.title, size: 'size-android-row-artwork', radius: 'radius-artwork', missing: props.missing }),
       h('div', { className: 'bae-a-librow-text' }, h('div', { className: 'bae-a-librow-title' }, props.title), props.subtitle ? h('div', { className: 'bae-a-librow-sub' }, props.subtitle) : null),
       props.trailing ? h('span', { className: 'bae-a-librow-trail' }, props.trailing) : null);
   }
@@ -46,7 +46,7 @@
       props.title ? h('div', { className: 'bae-m-queue-np' },
         // The playing track, the queue's own: its cover lined up with the text's top, Now playing over the title and artist, then the position strip.
         h('div', { className: 'bae-m-nptrack bae-m-nptrack-top' },
-          h(Artwork, { title: props.album || props.title, size: 'size-bar-artwork', radius: 6, shadow: 'bar', missing: props.noCover }),
+          h(Artwork, { title: props.album || props.title, size: 'size-bar-artwork', radius: 'radius-artwork', shadow: 'bar', missing: props.noCover }),
           h('div', { className: 'bae-m-np-text' },
             h('div', { className: 'bae-m-nptrack-eyebrow' }, 'Now playing'),
             h('div', { className: 'bae-m-np-title' }, props.title), h('div', { className: 'bae-m-np-sub' }, props.artist),
@@ -78,7 +78,7 @@
   }
   // A queued track still loading: the queue row's shape, a 40pt cover and two lines, in placeholder grey.
   function MacQueuePlaceholderRow() {
-    return h('div', { className: 'bae-m-lrow' }, h(MacPlaceholderLine, { width: 40, height: 40, radius: 6, fixed: true }),
+    return h('div', { className: 'bae-m-lrow' }, h(MacPlaceholderLine, { width: 40, height: 40, radius: 'radius-artwork', fixed: true }),
       h('div', { style: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 'calc(var(--space-inline) + var(--space-hairline))' } }, h(MacPlaceholderLine, { width: 140, height: 12 }), h(MacPlaceholderLine, { width: 90, height: 10 })));
   }
   function MacQueueInsertLine() { return h('div', { className: 'bae-m-queue-insert' }); }
@@ -128,7 +128,7 @@
       props.shuffle != null ? h(AndroidIconButton, { icon: 'shuffle', label: props.shuffle ? 'Turn off shuffle' : 'Shuffle', size: 'medium', tone: props.shuffle ? 'accent' : 'muted' }) : null);
   }
   function AndroidQueueRow(props) {
-    return h('div', { className: cx('bae-a-qrow', props.dragging && 'bae-a-qrow-drag') }, h(Artwork, { title: props.album || props.title, size: 'size-android-row-artwork', radius: 6 }),
+    return h('div', { className: cx('bae-a-qrow', props.dragging && 'bae-a-qrow-drag') }, h(Artwork, { title: props.album || props.title, size: 'size-android-row-artwork', radius: 'radius-artwork' }),
       h('div', { className: 'bae-a-qrow-text' }, h('div', { className: cx('bae-a-track-title', props.current && 'bae-accent') }, props.title), h('div', { className: 'bae-a-track-artist' }, props.artist), props.current ? null : h('div', { className: 'bae-a-track-artist' }, props.album)),
       props.current ? null : [h('span', { key: 'd', className: 'bae-a-track-time', style: { padding: '0 var(--space-related)' } }, props.duration), h(AndroidIconButton, { key: 'x', icon: 'close', label: 'Remove', tone: 'muted' }), h(Glyph, { key: 'h', name: 'drag', size: 'medium', className: 'bae-muted' })]);
   }
@@ -136,13 +136,13 @@
   function AndroidPlaceholderLine(props) { return placeholderLine(props); }
   // A queued track not loaded yet: the cover's tile and a bar for each of the row's three lines.
   function AndroidQueuePlaceholderRow() {
-    return h('div', { className: 'bae-a-qrow' }, h(AndroidPlaceholderLine, { width: 48, height: 48, radius: 6, fixed: true }),
+    return h('div', { className: 'bae-a-qrow' }, h(AndroidPlaceholderLine, { width: 48, height: 48, radius: 'radius-artwork', fixed: true }),
       h('div', { className: 'bae-a-qrow-text', style: { display: 'flex', flexDirection: 'column', gap: 'var(--space-compact)' } }, h(AndroidPlaceholderLine, { width: 160, height: 12 }), h(AndroidPlaceholderLine, { width: 100, height: 10 }), h(AndroidPlaceholderLine, { width: 120, height: 10 })));
   }
   function AndroidFullPlayer(props) {
     return h('div', { className: 'bae-a-fullplayer' },
       h(AndroidIconButton, { icon: 'down', label: 'Collapse' }),
-      h(Artwork, { title: props.album || props.title, radius: 10, missing: props.noCover }),
+      h(Artwork, { title: props.album || props.title, radius: 'radius-cover', missing: props.noCover }),
       h('div', { className: 'bae-a-fp-title' }, props.title), h('div', { className: 'bae-a-fp-artist' }, props.artist),
       h(AndroidSeekBar, { large: true, held: props.held, elapsed: props.elapsed, duration: props.duration }),
       h(AndroidTransport, { large: true, playing: props.playing, waiting: props.waiting }),

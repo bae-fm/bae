@@ -9,7 +9,7 @@
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, N('Line', h(B.AndroidPlaceholderLine, { width: 160, height: 12 })), N('Short line', h(B.AndroidPlaceholderLine, { width: 100, height: 10 })), N('Picture', h(B.AndroidPlaceholderLine, { width: 48, height: 48, radius: 6 }))));
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, N('Line', h(B.AndroidPlaceholderLine, { width: 160, height: 12 })), N('Short line', h(B.AndroidPlaceholderLine, { width: 100, height: 10 })), N('Picture', h(B.AndroidPlaceholderLine, { width: 48, height: 48, radius: 'radius-artwork' }))));
 </script>
 </body>
 </html>

@@ -114,7 +114,7 @@
     var line3 = props.error ? h('div', { className: 'bae-m-irow-sub bae-ellipsis' }, props.error) : null;
     return h('div', { className: cx('bae-m-irow', props.grouped && 'bae-m-irow-grouped', props.selected && 'bae-m-irow-selected') },
       props.grouped ? h('span', { className: 'bae-m-irow-rail' }) : null,
-      h(Artwork, { title: props.cover || props.title || props.folder, size: 'size-row-artwork', radius: 6, missing: props.noCover }),
+      h(Artwork, { title: props.cover || props.title || props.folder, size: 'size-row-artwork', radius: 'radius-artwork', missing: props.noCover }),
       h('div', { className: 'bae-m-irow-text' }, line1, line2, line3), h('span', { style: { flex: 'none', marginLeft: 'auto' } }, trail));
   }
   // Above the right pane: the tab chip, a button that goes to that tab; the folder glyph, a button that reveals the folder in Finder; the folder's name.
@@ -157,7 +157,7 @@
   // The release's cover (a plain tile when it has none) beside its identity: the album title and year as fields and the album artist; then what the card it sits in puts under them, its children: the folder's audio line and the album picker.
   function MacReleaseIdentity(props) {
     return h('div', { className: 'bae-m-idraft-head' },
-      props.cover ? h('button', { type: 'button', className: 'bae-plainbtn', 'aria-label': 'Change cover', disabled: !!props.coverOff }, h(Artwork, { title: props.cover, size: 132, radius: 6 })) : h(Artwork, { size: 132, radius: 6, missing: true }),
+      props.cover ? h('button', { type: 'button', className: 'bae-plainbtn', 'aria-label': 'Change cover', disabled: !!props.coverOff }, h(Artwork, { title: props.cover, size: 132, radius: 'radius-artwork' })) : h(Artwork, { size: 132, radius: 'radius-artwork', missing: true }),
       h('div', { className: 'bae-m-idraft-id' },
         h(MacInlineField, { label: 'Album title', value: props.title, placeholder: 'Album title', large: true }),
         h(MacAlbumArtistField, { artist: props.artist, chip: props.artistChip, secondary: true }),
@@ -235,13 +235,13 @@
     return h('div', { className: 'bae-m-card bae-m-idraft' },
       h(MacNotice, { tone: 'warning', title: props.reason }),
       h('div', { className: 'bae-m-idraft-head' },
-        h(Artwork, { title: props.cover, size: 132, radius: 6, missing: !props.cover }),
+        h(Artwork, { title: props.cover, size: 132, radius: 'radius-artwork', missing: !props.cover }),
         props.title ? h(MacImportReleaseSummary, { title: props.title, artist: props.artist }) : h('span', { className: 'bae-mono' }, props.folder)));
   }
   // The folder's images under the release: a ruled Images heading, then each image at 128pt, a button named by its file that opens the lightbox at it (`images`: "artwork title|file name", comma-separated).
   function MacImportImages(props) {
     return h('div', { className: 'bae-m-ifiles' }, h(MacFormHeading, null, 'Images'),
-      h('div', { className: 'bae-m-iimages' }, list(props.images).map(function (t) { var p = t.split('|'); return h('button', { key: t, type: 'button', className: 'bae-plainbtn bae-m-iimage', 'aria-label': p[1] }, h(Artwork, { title: p[0], size: 128, radius: 6 })); })));
+      h('div', { className: 'bae-m-iimages' }, list(props.images).map(function (t) { var p = t.split('|'); return h('button', { key: t, type: 'button', className: 'bae-plainbtn bae-m-iimage', 'aria-label': p[1] }, h(Artwork, { title: p[0], size: 128, radius: 'radius-artwork' })); })));
   }
   // One file of a release: its name in mono and its size at the right. `kind`: `opens` (the default), a document or a track sheet, a button named by its file that opens it; `audio`, a track that plays, with its Play button before the size; `other`, a file that opens nothing. `damaged`: why the file is damaged, marked in the warning colour; a damaged file opens nothing.
   function MacReleaseFileRow(props) {
@@ -319,7 +319,7 @@
   }
   // A found album: cover, title, artist · label, a button per catalog that has answered (`sources`) that opens the album on that catalog.
   function MacReleaseCard(props) {
-    return h('div', { className: 'bae-m-rcard-head' }, h(Artwork, { title: props.title, size: 44, radius: 6 }), h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { className: 'bae-strong', style: { fontSize: 15 } }, props.title), h('div', { className: 'bae-muted' }, props.artist + (props.label ? ' · ' + props.label : ''))), props.sources ? h(MacRecordLinks, { records: props.sources, buttons: true }) : null);
+    return h('div', { className: 'bae-m-rcard-head' }, h(Artwork, { title: props.title, size: 44, radius: 'radius-artwork' }), h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { className: 'bae-strong', style: { fontSize: 15 } }, props.title), h('div', { className: 'bae-muted' }, props.artist + (props.label ? ' · ' + props.label : ''))), props.sources ? h(MacRecordLinks, { records: props.sources, buttons: true }) : null);
   }
   // A found album with its pressings: the MacReleaseCard (`title`, `artist`, `label`, `sources`), then its pressings, the children, on a rule under it.
   function MacReleaseGroup(props) {

@@ -11,7 +11,7 @@
 .bae-a-plhead-actions { margin-top: var(--space-group); }
 .bae-a-pinsum { padding: var(--space-related) var(--space-edge); display: flex; flex-direction: column; gap: var(--space-related); font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); }
 .bae-a-relpick { display: flex; gap: var(--space-related); }
-.bae-a-relchip { display: inline-flex; align-items: center; gap: var(--space-related); height: 32px; padding: 0 var(--space-edge); border-radius: 8px; font: var(--type-android-label-weight) var(--type-android-label-size)/var(--type-android-label-line-height) var(--font-android); box-shadow: inset 0 0 0 1px var(--hairline-strong); }
+.bae-a-relchip { display: inline-flex; align-items: center; gap: var(--space-related); height: 32px; padding: 0 var(--space-edge); border-radius: var(--radius-android-small); font: var(--type-android-label-weight) var(--type-android-label-size)/var(--type-android-label-line-height) var(--font-android); box-shadow: inset 0 0 0 1px var(--hairline-strong); }
 .bae-a-relchip-on { background: var(--accent-tint); box-shadow: none; }
 .bae-a-gallery-caption { padding: var(--space-edge); text-align: center; background: var(--backdrop); color: var(--on-fill); font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); }
 .bae-a-gallery-caption-count { color: var(--on-fill-secondary); }

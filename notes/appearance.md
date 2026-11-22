@@ -72,7 +72,10 @@ Spacing is one shared scale named by meaning: hairline, line, inline, compact,
 related, fieldInset, group, edge, section and page, and corner radii are named
 the same way (bar, chip, artwork, control, field, card, cover and panel). Each
 is a token in tokens.json's `spacing` or `radius` family naming its role in
-`role`, one length every platform shares. Glyph sizes (badge, small, medium,
+`role`, one length every platform shares. Android's boards also round with
+Material 3's extra-small, small and extra-large shapes (`radius-android-*`),
+tokens with no `role` that the app takes from Material itself. A corner as
+round as its box is `999px`, fully round, whatever the box's size. Glyph sizes (badge, small, medium,
 large, hero and the rest) and a few recurring sizes (row and now-playing bar
 artwork, the least an icon button takes to press) are roles whose values each
 platform sets by its own convention. A role is a token in tokens.json's `icon`
