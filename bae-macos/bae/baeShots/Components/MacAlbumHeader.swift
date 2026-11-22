@@ -9,6 +9,10 @@ extension ShotScene {
     static let macAlbumHeaderScenes: [ShotScene] = [
         albumHeader("mac.component.album-header.resting", panelDetail()),
         albumHeader(
+            "mac.component.album-header.a-reissue",
+            panelDetail(reissueYear: 2001)
+        ),
+        albumHeader(
             "mac.component.album-header.two-releases",
             panelDetail(releases: ["CD", "LP"])
         ),

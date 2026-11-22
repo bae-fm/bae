@@ -96,10 +96,11 @@ extension ShotScene {
         rating: BridgeAlbumRating = BridgeAlbumRating(mine: nil, raters: []),
         playability: BridgeReleasePlayability = .playable,
         year: Int32? = 1992,
-        covered: Bool = true
+        covered: Bool = true,
+        reissueYear: Int32? = nil
     ) -> AlbumDetail {
         var detail = PreviewData.boardAlbumDetail()
-        let releases = names.enumerated()
+        var releases = names.enumerated()
             .map { index, name in
                 panelRelease(
                     id: "rel-\(index)",
@@ -109,6 +110,7 @@ extension ShotScene {
                     playability: playability
                 )
             }
+        releases[0].distinctYear = reissueYear
         detail.album.releaseIds = releases.map(\.id)
         detail.album.year = year
         detail.album.cover = covered ? cover("Low Tide Hours") : nil

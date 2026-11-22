@@ -22,6 +22,23 @@ extension ShotScene {
                 onCombine: {}
             )
             .frame(width: 380, height: 40)
-        }
+        },
+        component(
+            "mac.component.import-group-header.folded",
+            page: true,
+            height: 60
+        ) {
+            MacImportGroupHeader(
+                group: BridgeTriageGroup(
+                    key: PreviewData.releaseQueueGroupKey,
+                    name: "Mara Quill — Field Recordings (1979)",
+                    combinable: false
+                ),
+                expanded: false,
+                onSetExpanded: { _ in },
+                onCombine: {}
+            )
+            .frame(width: 380, height: 40)
+        },
     ]
 }

@@ -39,6 +39,15 @@ extension ShotScene {
             rows: [fileRow("rip.log", size: 4_000, role: .document)]
         ),
         releaseFilesScene(
+            "mac.component.release-files.ignored-sheet",
+            height: 120,
+            rows: [
+                .sheet(sheet: ignoredSheet),
+                fileRow("rip.log", size: 4_000, role: .document),
+            ],
+            sheetActions: inertMappingActions().sheetCaption
+        ),
+        releaseFilesScene(
             "mac.component.release-files.image-bae-cannot-show",
             height: 120,
             rows: [
@@ -47,6 +56,35 @@ extension ShotScene {
             ]
         ),
     ]
+
+    /// A CUE sheet the person set to Ignored, which carves no tracks.
+    private static var ignoredSheet: BridgeSheetGroup {
+        let container = BridgeMappingContainer(
+            fileId: "Northbound.flac",
+            name: "Northbound.flac"
+        )
+        let line = BridgeSheetReferenceOptions(
+            fileReference: container.name,
+            bound: container,
+            options: [
+                BridgeSheetBindingOption(
+                    fileId: container.fileId,
+                    name: container.name,
+                    offer: .offered
+                )
+            ]
+        )
+        return BridgeSheetGroup(
+            sheetId: "Northbound.cue",
+            name: "Northbound.cue",
+            bound: .describes(container: container),
+            boundAudio: .one(reference: line),
+            unboundReferences: nil,
+            assigned: nil,
+            sideChoices: BridgeSheetSideChoice.discs(1),
+            ignorable: true
+        )
+    }
 
     private static func fileRow(
         _ name: String,
@@ -69,7 +107,8 @@ extension ShotScene {
     private static func releaseFilesScene(
         _ id: String,
         height: CGFloat,
-        rows: [BridgeMappingFileRow]
+        rows: [BridgeMappingFileRow],
+        sheetActions: SheetCaptionActions? = nil
     ) -> ShotScene {
         component(
             id,
@@ -79,6 +118,7 @@ extension ShotScene {
             MacReleaseFiles(
                 rows: rows,
                 onOpenDocument: { _, _ in },
+                sheetActions: sheetActions,
                 playing: (nil, inertMappingActions().audition)
             )
             .frame(width: 520, alignment: .leading)
