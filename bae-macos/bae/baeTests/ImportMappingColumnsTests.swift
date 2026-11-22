@@ -73,14 +73,14 @@ struct ImportMappingColumnsTests {
         #expect(abs(columns.artist - columns.title) < 0.001)
     }
 
-    /// At the board's 820pt column the columns are 240, 200 and 200.
+    /// At the board's 820pt column the columns are 243, 202.5 and 202.5.
     @Test
     func theBoardsEightHundredTwentyPointTable() {
         let columns = ReleaseMetadataTrackColumns.resolved(tableWidth: 820)
 
-        #expect(abs(columns.source - 240) < 0.001)
-        #expect(abs(columns.title - 200) < 0.001)
-        #expect(abs(columns.artist - 200) < 0.001)
+        #expect(abs(columns.source - 243) < 0.001)
+        #expect(abs(columns.title - 202.5) < 0.001)
+        #expect(abs(columns.artist - 202.5) < 0.001)
     }
 
     /// A column that would fall under its floor keeps the floor, and the
