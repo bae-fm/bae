@@ -110,7 +110,8 @@ extension ShotScene {
             height: content == .unread ? 480 : 1100,
             images: PreviewData.artImageStore()
         ) {
-            let release = reboundCueRelease
+            let importDraft = isImport(actionRow)
+            let release = cueRelease(importDraft ? .importing : .rebound)
             let draft = release.draft
             let identified = content == .identified
             let scanned = content != .unread
@@ -147,7 +148,8 @@ extension ShotScene {
                         tracks: editorTracks(
                             draft: draft,
                             content: content,
-                            art: art
+                            art: art,
+                            importDraft: importDraft
                         ),
                         editingCommands: EditingCommitCommands(),
                         editable: editable,
@@ -163,19 +165,41 @@ extension ShotScene {
         }
     }
 
+    private static func isImport(_ row: ReleaseEditorActionRow) -> Bool {
+        return
+            switch row
+        {
+        case .importing: true
+        case .saving: false
+        }
+    }
+
     private static func editorTracks(
         draft: BridgeReleaseEditDraft,
         content: EditorContent,
-        art: BridgeMappingImage?
+        art: BridgeMappingImage?,
+        importDraft: Bool
     ) -> ReleaseEditorTracks {
-        ReleaseEditorTracks(
+        let mapping = inertMappingActions()
+        let actions = ReleaseTrackTableActions(
+            sheetCaption: mapping.sheetCaption,
+            audition: importDraft
+                ? mapping.audition
+                : TrackAuditionActions(
+                    preview: { _ in },
+                    stopPreview: {},
+                    playTrack: { _ in }
+                ),
+            editTrack: mapping.trackTable.editTrack
+        )
+        return ReleaseEditorTracks(
             images: art.map { [$0] },
             onOpenImages: { _ in },
             sides: content == .unread
                 ? nil : editorSides(draft.sides, blank: content == .blank),
             files: content == .unread ? nil : draft.files,
             previewingTarget: nil,
-            actions: inertMappingActions().trackTable
+            actions: actions
         )
     }
 

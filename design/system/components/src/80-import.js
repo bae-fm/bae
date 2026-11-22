@@ -138,7 +138,7 @@
       h('span', { className: 'bae-m-idraft-trail' },
       props.cloud && !save ? h(MacImportDestination, { to: props.to }) : null,
       // `reading`: the line a save or an import shows while it reads a file on this device before it writes (the audio file a CUE sheet is newly bound to), before the buttons, which are off until the read ends, as the Metadata menu is.
-      props.reading ? h('span', { key: 'r', className: 'bae-m-idraft-reading bae-muted' }, h(MacSpinner, { size: 14 }), props.reading) : null,
+      props.reading ? h('span', { key: 'r', className: 'bae-m-idraft-reading bae-muted' }, h(MacSpinner, { size: 14, label: props.reading }), props.reading) : null,
       save ? [props.changed ? h(MacButton, { key: 'c', off: !!props.reading }, 'Cancel') : null, h(MacButton, { key: 's', kind: 'primary', off: !!props.reading }, 'Save')] : props.blank ? null : h(MacButton, { kind: 'primary', off: !!props.reading }, props.retry ? 'Retry import' : 'Import')));
   }
   // An artist field, a button that opens the artist picker, drawn as its value until the pointer is over it, like MacInlineField: the artists (`artist`) and their chip (`chip`), New for an artist the import adds or a count, and none when every artist is in the library; `placeholder` in the tertiary colour while it names none (Album artist unless given). `inherited`: a track that takes the album's artists shows Album artist in the tertiary colour. `secondary` draws the artists in secondary text, as the album identity does; `column` fills its column, as a track row's does.
@@ -220,15 +220,18 @@
   // The release editor, one component in the import pane and in the album's Edit release sheet; its `actions` row is the only difference. `actions` `import`: where the import goes (`cloud`, `to`) and Import, or Retry import (`retry`), or neither while the folder has nothing to import (`blank`), with the folder's `check` in a warning notice under that row. `actions` `save`: Cancel once something changed (`changed`), and Save. `reading`: the file a save or an import reads before it writes, while the cover, Unlink, the Metadata menu and the album pop-up are off, since a click on any of them would cancel the save. Then, in both: the release's identity and fields; the records under a rule, with Unlink; the folder's or release's images (`images`); the track table, the children (side headings, CUE captions and track rows); the Files list (`files`).
   function MacReleaseEditor(props) {
     var tracks = kids(props.children);
+    function editable(children) {
+      return props.reading ? h('fieldset', { disabled: true, 'aria-disabled': true, style: { display: 'contents' } }, children) : children;
+    }
     return h('div', { className: 'bae-m-reditor' },
       h('div', { className: 'bae-m-card bae-m-idraft' },
-        h(MacIdentifyBar, { actions: props.actions, blank: props.blank, retry: props.retry, cloud: props.cloud, to: props.to, changed: props.changed, reading: props.reading }),
+        editable(h(MacIdentifyBar, { actions: props.actions, blank: props.blank, retry: props.retry, cloud: props.cloud, to: props.to, changed: props.changed, reading: props.reading })),
         props.check && props.actions !== 'save' ? h(MacNotice, { tone: 'warning', title: props.check }) : null,
-        releaseHeader(props),
+        editable(releaseHeader(props)),
         props.records ? h('div', { className: 'bae-m-idraft-records' }, h(MacRecordLinks, { records: props.records }), h('span', { style: { flex: 1 } }), h('button', { type: 'button', className: 'bae-plainbtn bae-accent', disabled: !!props.reading }, 'Unlink')) : null),
       props.images ? h(MacImportImages, { images: props.images }) : null,
-      tracks.length ? h(MacImportTable, null, tracks) : null,
-      props.files ? h(MacReleaseFiles, { files: props.files }) : null);
+      tracks.length ? editable(h(MacImportTable, null, tracks)) : null,
+      props.files ? editable(h(MacReleaseFiles, { files: props.files })) : null);
   }
   // A skipped folder's card, read-only: why bae can't import it (`reason`) in a warning notice where Import would be, then its cover and what its tags call the release (`title`, `artist`), or its `folder` name when they call it nothing.
   function MacInvalidCandidateCard(props) {

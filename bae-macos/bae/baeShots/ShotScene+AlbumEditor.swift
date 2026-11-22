@@ -19,12 +19,12 @@ extension ShotScene {
         albumEditorScene(
             id: "mac.album.edit.cue-image",
             stage: .editor,
-            release: editedCueRelease
+            release: cueRelease(.original)
         ),
         albumEditorScene(
             id: "mac.album.edit.reading-file",
             stage: .saving,
-            release: reboundCueRelease
+            release: cueRelease(.rebound)
         ),
     ]
 
@@ -68,37 +68,15 @@ extension ShotScene {
     /// The same release as one image a CUE sheet carves the four tracks
     /// from: one run under the sheet and the image's name, each row giving
     /// where its track starts in the image, and the third its listed length.
-    private static var editedCueRelease: PreviewReleaseEdit {
+    static func cueRelease(_ example: CueExample) -> PreviewReleaseEdit {
+        let bound = example == .original ? cueImage : cueRip
+        let other = example == .original ? cueRip : cueImage
+        let container = BridgeMappingContainer(
+            fileId: bound.id,
+            name: bound.name
+        )
         var release = editedRelease
-        let line = BridgeSheetReferenceOptions(
-            fileReference: cueImage.name,
-            bound: BridgeMappingContainer(
-                fileId: cueImage.id,
-                name: cueImage.name
-            ),
-            options: [cueImage, cueRip]
-                .map { file in
-                    BridgeSheetBindingOption(
-                        fileId: file.id,
-                        name: file.name,
-                        offer: .offered
-                    )
-                }
-        )
-        let sheet = BridgeSheetGroup(
-            sheetId: "Northbound.cue",
-            name: "Northbound.cue",
-            bound: .describes(
-                container: BridgeMappingContainer(
-                    fileId: cueImage.id,
-                    name: cueImage.name
-                )
-            ),
-            boundAudio: .one(reference: line),
-            unboundReferences: nil,
-            assigned: .disc(1),
-            sideChoices: BridgeSheetSideChoice.discs(1)
-        )
+        let sheet = cueSheet(bound: container)
         var startMs: UInt64 = 0
         let rows = PreviewData.northboundTracks.enumerated()
             .map { index, track in
@@ -109,7 +87,16 @@ extension ShotScene {
                     source: .sheetSlice(
                         start: BridgeDurationClock.length(ms: start)
                     ),
-                    audition: .libraryTrack,
+                    audition: example == .importing
+                        ? .preview(
+                            target: BridgePreviewTarget(
+                                path: PreviewData.fakePath(bound.name),
+                                name: bound.name,
+                                startSample: start * 44_100 / 1_000,
+                                endSample: startMs * 44_100 / 1_000
+                            )
+                        )
+                        : .libraryTrack,
                     position: "\(index + 1)",
                     lengthMs: track.durationMs,
                     listedMs: index == 2 ? 327_000 : nil
@@ -122,7 +109,7 @@ extension ShotScene {
             )
         ]
         release.draft.files = [
-            .file(file: carriedAudio(cueRip.name)),
+            .file(file: carriedAudio(other.name)),
             .file(
                 file: PreviewData.mappingFile(
                     PreviewData.previewFile(
@@ -134,38 +121,39 @@ extension ShotScene {
                 )
             ),
         ]
+        if example == .rebound {
+            release.draft.filesToRead = [bound.name]
+        }
         return release
     }
 
-    /// The CUE release with its sheet's FILE line moved onto the rip: the run
-    /// names the rip, the pop-up checks it, the Files list holds the image
-    /// in its place, and a save reads the rip first.
-    static var reboundCueRelease: PreviewReleaseEdit {
-        var release = editedCueRelease
-        release.draft.sides = release.draft.sides?
-            .map { side in
-                var side = side
-                side.runs = side.runs.map { run in
-                    guard case .sheet(var sheet, let rows) = run,
-                        case .one(var line) = sheet.boundAudio
-                    else {
-                        return run
-                    }
-                    let rip = BridgeMappingContainer(
-                        fileId: cueRip.id,
-                        name: cueRip.name
+    private static func cueSheet(bound container: BridgeMappingContainer)
+        -> BridgeSheetGroup
+    {
+        let line = BridgeSheetReferenceOptions(
+            fileReference: cueImage.name,
+            bound: container,
+            options: [cueImage, cueRip]
+                .map { file in
+                    BridgeSheetBindingOption(
+                        fileId: file.id,
+                        name: file.name,
+                        offer: .offered
                     )
-                    line.bound = rip
-                    sheet.boundAudio = .one(reference: line)
-                    sheet.bound = .describes(container: rip)
-                    return .sheet(sheet: sheet, rows: rows)
                 }
-                return side
-            }
-        release.draft.files?[0] = .file(file: carriedAudio(cueImage.name))
-        release.draft.filesToRead = [cueRip.name]
-        return release
+        )
+        return BridgeSheetGroup(
+            sheetId: "Northbound.cue",
+            name: "Northbound.cue",
+            bound: .describes(container: container),
+            boundAudio: .one(reference: line),
+            unboundReferences: nil,
+            assigned: .disc(1),
+            sideChoices: BridgeSheetSideChoice.discs(1)
+        )
     }
+
+    enum CueExample { case original, rebound, importing }
 
     /// The audio file `name` of the release, which no track plays from.
     private static func carriedAudio(_ name: String) -> BridgeMappingFile {
