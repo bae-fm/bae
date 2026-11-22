@@ -53,8 +53,8 @@ struct MacReleaseFields: View {
                 barcodeRows
                 GridRow {
                     rowLabel(String(localized: "Status"))
-                    ReleaseStatusPicker(
-                        status: values.pressing.facts.status,
+                    OptionalFactPicker.status(
+                        values.pressing.facts.status,
                         write: writer.setPressingFact
                     )
                     .accessibilityLabel(String(localized: "Status"))
@@ -62,8 +62,8 @@ struct MacReleaseFields: View {
                 }
                 GridRow {
                     rowLabel(String(localized: "Packaging"))
-                    PackagingPicker(
-                        packaging: values.pressing.facts.packaging,
+                    OptionalFactPicker.packaging(
+                        values.pressing.facts.packaging,
                         write: writer.setPressingFact
                     )
                     .accessibilityLabel(String(localized: "Packaging"))
