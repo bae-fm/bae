@@ -81,8 +81,7 @@ extension ShotScene {
             boundAudio: .one(reference: line),
             unboundReferences: nil,
             assigned: nil,
-            sideChoices: BridgeSheetSideChoice.discs(1),
-            ignorable: true
+            sideChoices: BridgeSheetSideChoice.discs(1)
         )
     }
 
