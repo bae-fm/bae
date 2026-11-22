@@ -553,4 +553,6 @@
     <string name="history_yesterday">Ontem</string>
     <string name="history_everyone">Todos</string>
     <string name="side_pause_turned_off">Você pode reativar isso em Configurações › Reprodução.</string>
+    <string name="release_not_on_this_device">Não está neste dispositivo</string>
+    <string name="release_show_where">Mostrar onde está</string>
 </resources>

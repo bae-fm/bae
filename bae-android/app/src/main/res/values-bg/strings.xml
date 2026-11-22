@@ -546,4 +546,6 @@
     <string name="history_yesterday">Вчера</string>
     <string name="history_everyone">Всички</string>
     <string name="side_pause_turned_off">Можете да го включите отново в Настройки › Възпроизвеждане.</string>
+    <string name="release_not_on_this_device">Не е на това устройство</string>
+    <string name="release_show_where">Покажи къде е</string>
 </resources>

@@ -105,8 +105,3 @@
   function AndroidRecordLinks(props) {
     return h('div', { className: 'bae-a-reclinks' }, list(props.records).map(function (r) { return h(StatusChip, { key: r }, r + ' ↗'); }));
   }
-
-  // The album page's line where the pin control would be when this phone can't play the release, in core's words: where the release is (On Ana’s Mac).
-  function AndroidUnplayableLine(props) {
-    return h('span', { className: 'bae-a-fineline' }, props.children);
-  }

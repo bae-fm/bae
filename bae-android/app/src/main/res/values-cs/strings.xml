@@ -564,4 +564,6 @@
     <string name="history_yesterday">Včera</string>
     <string name="history_everyone">Všichni</string>
     <string name="side_pause_turned_off">Znovu to můžete zapnout v Nastavení › Přehrávání.</string>
+    <string name="release_not_on_this_device">Není v tomto zařízení</string>
+    <string name="release_show_where">Zobrazit, kde je</string>
 </resources>

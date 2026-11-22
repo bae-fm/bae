@@ -537,4 +537,6 @@
     <string name="history_yesterday">昨天</string>
     <string name="history_everyone">所有人</string>
     <string name="side_pause_turned_off">你可以在「設定 › 播放」中重新開啟。</string>
+    <string name="release_not_on_this_device">不在此裝置上</string>
+    <string name="release_show_where">顯示位置</string>
 </resources>

@@ -555,4 +555,6 @@
     <string name="history_yesterday">Jučer</string>
     <string name="history_everyone">Svi</string>
     <string name="side_pause_turned_off">To možete ponovno uključiti u Postavke › Reprodukcija.</string>
+    <string name="release_not_on_this_device">Nije na ovom uređaju</string>
+    <string name="release_show_where">Prikaži gdje je</string>
 </resources>

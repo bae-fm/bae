@@ -40,41 +40,23 @@ import fm.bae.app.ui.downloads.DownloadProgress
 import fm.bae.app.ui.downloads.PinQueuedText
 import fm.bae.fastvalues.LatestSource
 import uniffi.bae_bridge.BridgeDownloadTransferProgress
-import uniffi.bae_bridge.BridgeMessage
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeReleaseDownloadStatus
 import uniffi.bae_bridge.BridgeReleaseStorageAction
-import uniffi.bae_bridge.bridgeReleasePlayabilityLine
 import uniffi.bae_bridge.bridgeTransferActionKey
 
 /**
  * The shown release's download control; nothing when core offers none for the
- * release. A release this device can't play says why instead, as core words
- * it: the device its audio is on ("On Ana’s Mac"), or its originals gone.
+ * release, as it offers none for one this device can't play.
  */
 @Composable
 internal fun AndroidDownloadControlContainer(
     session: OpenLibrary,
     release: BridgeRelease,
 ) {
-    val unplayable = bridgeReleasePlayabilityLine(release.playability)
-    if (unplayable != null) {
-        AndroidUnplayableLine(unplayable)
-        return
-    }
     // Core reads the release's place in the download queue into the release itself.
     val status = release.downloadStatus ?: return
     PlayableReleaseDownloadControl(session = session, release = release, status = status)
-}
-
-/** Why this device can't play the release, as core's [message] words it. */
-@Composable
-internal fun AndroidUnplayableLine(message: BridgeMessage) {
-    Text(
-        text = LocalContext.current.coreString(message),
-        style = ThemeText.detail.style,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
 }
 
 /** The control for a release this device can play, in the download [status] core read for it. */

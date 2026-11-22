@@ -5,8 +5,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -17,6 +19,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -37,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.DisplayError
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.coreString
 import fm.bae.app.creditLineText
 import fm.bae.app.data.LiveQueryState
 import fm.bae.app.data.answer
@@ -44,13 +49,17 @@ import fm.bae.app.displayError
 import fm.bae.app.labelsLineText
 import fm.bae.app.pressingLineText
 import fm.bae.app.text
+import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidContentUnavailable
+import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidPageActions
+import fm.bae.app.ui.components.AndroidSheet
 import fm.bae.app.ui.components.Artwork
+import fm.bae.app.ui.components.IconTone
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.PageDeletionShown
 import fm.bae.app.ui.components.QueueActions
@@ -73,8 +82,10 @@ import uniffi.bae_bridge.BridgeCatalog
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeRatingTarget
 import uniffi.bae_bridge.BridgeRelease
+import uniffi.bae_bridge.BridgeReleasePlayability
 import uniffi.bae_bridge.BridgeStars
 import uniffi.bae_bridge.bridgeCatalogName
+import uniffi.bae_bridge.bridgeReleasePlayabilityLine
 
 internal data class AlbumPlaybackState(
     val currentTrackId: String?,
@@ -300,6 +311,11 @@ internal fun AlbumDetailContent(
     val context = LocalContext.current
     val shown = detail.shownRelease
 
+    // A release only another device holds can't play here: its words and info button stand where Play would.
+    val unplayable = shown.playability is BridgeReleasePlayability.OnOtherDevice
+    var showWhere by remember { mutableStateOf(false) }
+    if (showWhere && unplayable) UnplayableSheet(shown.playability) { showWhere = false }
+
     var showGallery by remember { mutableStateOf(false) }
     if (showGallery && shown.galleryItemCount > 0u) {
         AndroidLightbox(
@@ -322,6 +338,7 @@ internal fun AlbumDetailContent(
                 cover = cover,
                 galleryItemCount = shown.galleryItemCount,
                 onShowGallery = { showGallery = true },
+                onShowWhere = { showWhere = true },
             )
         }
 
@@ -335,13 +352,18 @@ internal fun AlbumDetailContent(
             block { AndroidRecordLinks(shown.records, catalogName) }
         }
 
-        block { releaseDownloadControl(shown) }
-        block {
-            AndroidPageActions(
-                onPlay = callbacks.onPlayRelease,
-                onShuffle = callbacks.onShuffleRelease,
-                queue = QueueActions(callbacks.onPlayReleaseNext, callbacks.onAddReleaseToQueue),
-            )
+        // The page's transfer lines show what this device uploads of the release, even when it can't play it.
+        if (!unplayable || shown.upload?.progress != null) {
+            block { releaseDownloadControl(shown) }
+        }
+        if (!unplayable) {
+            block {
+                AndroidPageActions(
+                    onPlay = callbacks.onPlayRelease,
+                    onShuffle = callbacks.onShuffleRelease,
+                    queue = QueueActions(callbacks.onPlayReleaseNext, callbacks.onAddReleaseToQueue),
+                )
+            }
         }
         albumTrackGroups(shown, positionColumnWidth, playback, callbacks, context)
         albumCredits(shown)
@@ -357,11 +379,13 @@ internal fun AndroidAlbumHeader(
     cover: BridgeImageRef?,
     galleryItemCount: UInt,
     onShowGallery: () -> Unit,
+    onShowWhere: () -> Unit,
 ) {
     val album = detail.album
     val context = LocalContext.current
+    val unplayable = detail.shownRelease.playability is BridgeReleasePlayability.OnOtherDevice
 
-    Row(verticalAlignment = Alignment.Top) {
+    Row(modifier = Modifier.height(IntrinsicSize.Min), verticalAlignment = Alignment.Top) {
         Artwork(
             cover = cover,
             cornerRadius = ThemeRadius.cover,
@@ -373,7 +397,7 @@ internal fun AndroidAlbumHeader(
             contentDescription = album.title,
         )
         Spacer(modifier = Modifier.width(ThemeSpace.edge))
-        Column(modifier = Modifier.weight(1f)) {
+        Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
             Text(text = album.title, style = ThemeText.hero.style)
             Text(
                 text = LocalContext.current.creditLineText(album.artistLine),
@@ -405,7 +429,44 @@ internal fun AndroidAlbumHeader(
                     )
                 }
             }
+            if (unplayable) {
+                Spacer(modifier = Modifier.weight(1f))
+                NotOnThisDevice(onShowWhere)
+            }
         }
+    }
+}
+
+/** The sheet that names the device holding a release this device can't play, as core words [playability]. */
+@Composable
+private fun UnplayableSheet(
+    playability: BridgeReleasePlayability,
+    onDismiss: () -> Unit,
+) {
+    val line = bridgeReleasePlayabilityLine(playability) ?: return
+    AndroidSheet(
+        title = stringResource(R.string.release_not_on_this_device),
+        note = LocalContext.current.coreString(line),
+        onDismiss = onDismiss,
+    ) {}
+}
+
+/** The words for a release only another device holds, where Play would stand, and the button that says where it is. */
+@Composable
+private fun NotOnThisDevice(onShowWhere: () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = stringResource(R.string.release_not_on_this_device),
+            style = ThemeText.body.style,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        AndroidIconButton(
+            icon = Icons.Outlined.Info,
+            contentDescription = stringResource(R.string.release_show_where),
+            onClick = onShowWhere,
+            tone = IconTone.MUTED,
+            glyph = ThemeIcon.medium,
+        )
     }
 }
 

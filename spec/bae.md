@@ -2534,10 +2534,12 @@ device shows it, and bae has no setting that hides it. Its album and release
 views show the words *Not on this device* in place of *Play*, and name that
 device, "On Ana's Mac", in the help tag macOS shows when the pointer rests on
 the words, and in a sheet that Android's info button beside them opens. The
-library shows such an album dimmed, its cover and words faded, and opening it
-shows its page. bae names the
-device that alone holds the audio file with the lowest file id among the
-release's audio files that another device alone holds. The views show *Play*
+sheet is titled *Not on this device* and says that line. On Android the page
+shows no Play, Shuffle, Play next or Add to queue for such a release, and no
+pin control; its upload line, when this device uploads some of its files, stays.
+The library shows such an album dimmed, its cover and words faded, and opening
+it shows its page. bae names the device that alone holds the audio file with the
+lowest file id among the release's audio files that another device alone holds. The views show *Play*
 again once coven records the file in storage, and name the device's new state
 when a member removes the device. A device removed
 from the library, or whose person was, reads "On Ana's Mac, a removed device",

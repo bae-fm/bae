@@ -73,12 +73,13 @@ import java.time.Duration
 internal fun SheetScene(
     title: String?,
     behind: @Composable () -> Unit,
+    note: String? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     ScreenScene {
         Box(modifier = Modifier.fillMaxSize()) {
             behind()
-            SheetOverScrim(title, content = content)
+            SheetOverScrim(title, note, content = content)
         }
     }
 }
@@ -91,6 +92,7 @@ internal fun SheetScene(
 @Composable
 internal fun SheetOverScrim(
     title: String?,
+    note: String? = null,
     top: Dp? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -103,7 +105,7 @@ internal fun SheetOverScrim(
             shape = BottomSheetDefaults.ExpandedShape,
             color = BottomSheetDefaults.ContainerColor,
         ) {
-            SheetWithHandle(title, content)
+            SheetWithHandle(title, note, content)
         }
     }
 }
@@ -113,11 +115,12 @@ internal fun SheetOverScrim(
 @Composable
 private fun SheetWithHandle(
     title: String?,
+    note: String?,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         DragHandleBar()
-        Column(modifier = Modifier.fillMaxWidth()) { AndroidSheetBody(title, content) }
+        Column(modifier = Modifier.fillMaxWidth()) { AndroidSheetBody(title, note, content) }
     }
 }
 

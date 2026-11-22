@@ -544,4 +544,6 @@
     <string name="history_yesterday">Tegnap</string>
     <string name="history_everyone">Mindenki</string>
     <string name="side_pause_turned_off">Ezt újra bekapcsolhatod a Beállítások › Lejátszás részben.</string>
+    <string name="release_not_on_this_device">Nincs ezen az eszközön</string>
+    <string name="release_show_where">Mutasd meg, hol van</string>
 </resources>

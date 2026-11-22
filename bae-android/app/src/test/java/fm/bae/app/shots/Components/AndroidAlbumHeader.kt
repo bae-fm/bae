@@ -22,6 +22,7 @@ class AndroidAlbumHeaderShots : BoardShot() {
                     cover = PreviewData.imageRef(),
                     galleryItemCount = 0u,
                     onShowGallery = {},
+                    onShowWhere = {},
                 )
             }
         }
@@ -35,6 +36,7 @@ class AndroidAlbumHeaderShots : BoardShot() {
                     cover = PreviewData.imageRef(),
                     galleryItemCount = 0u,
                     onShowGallery = {},
+                    onShowWhere = {},
                 )
             }
         }

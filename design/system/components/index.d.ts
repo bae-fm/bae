@@ -267,7 +267,7 @@ export declare function AndroidTrackRow(props: AndroidTrackRowProps): React.Reac
 export declare function AndroidEyebrow(props: { children?: React.ReactNode }): React.ReactElement;
 export interface AndroidAlbumHeaderProps { /** Only another device holds the files: Not on this device in place of Play, with an info button that opens a sheet naming the device. */ unplayable?: string; title: string; artist?: string; year?: string; rating?: number | string; edition?: string; copy?: string; noCover?: boolean; children?: React.ReactNode; /** The library's rating system for albums: `heart` shows one heart at three stars or more in place of the rating, `none` shows no rating. */ ratingSystem?: 'stars' | 'heart' | 'none'; }
 export declare function AndroidAlbumHeader(props: AndroidAlbumHeaderProps): React.ReactElement;
-export interface AndroidPinControlProps { state?: 'available' | 'queued' | 'downloading' | 'failed' | 'downloaded' | 'elsewhere'; progress?: number; bytes?: string; where?: string }
+export interface AndroidPinControlProps { state?: 'available' | 'queued' | 'downloading' | 'failed' | 'downloaded'; progress?: number; bytes?: string }
 export declare function AndroidPinControl(props: AndroidPinControlProps): React.ReactElement;
 export declare function AndroidUploadLine(props: { phase?: string; missing?: string }): React.ReactElement;
 export interface MacAlbumPanelProps { title: string; artist?: string; year?: string; releases?: string; release?: string; edition?: string; copy?: string; /** The release's audio as bae read it, the panel's last line, after the tracks, credits and works. */ audio?: string; unplayable?: string; unplayableHover?: boolean; noCover?: boolean; options?: string; optionsOpen?: boolean; highlighted?: string; /** The album's stars, 0 while no one has rated it; leave it out to draw no rating. */ rating?: number | string; children?: React.ReactNode; /** The library's rating system for albums: `heart` shows one heart at three stars or more in place of the rating, `none` shows no rating. */ ratingSystem?: 'stars' | 'heart' | 'none'; }
@@ -597,8 +597,6 @@ export interface AndroidItemProps { lead?: React.ReactNode; trail?: React.ReactN
 export declare function AndroidItem(props: AndroidItemProps): React.ReactElement;
 export interface AndroidRecordLinksProps { records: string }
 export declare function AndroidRecordLinks(props: AndroidRecordLinksProps): React.ReactElement;
-export interface AndroidUnplayableLineProps { children?: React.ReactNode }
-export declare function AndroidUnplayableLine(props: AndroidUnplayableLineProps): React.ReactElement;
 /** Material's HorizontalDivider: a 1dp line across the screen or list. */
 export declare function AndroidDivider(): React.ReactElement;
 /** The album page's Files: the files no track plays from, under the Files eyebrow (files: "name|kind" entries separated by semicolons). */

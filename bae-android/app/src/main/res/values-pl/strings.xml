@@ -564,4 +564,6 @@
     <string name="history_yesterday">Wczoraj</string>
     <string name="history_everyone">Wszyscy</string>
     <string name="side_pause_turned_off">Możesz to ponownie włączyć w Ustawienia › Odtwarzanie.</string>
+    <string name="release_not_on_this_device">Nie ma na tym urządzeniu</string>
+    <string name="release_show_where">Pokaż, gdzie jest</string>
 </resources>

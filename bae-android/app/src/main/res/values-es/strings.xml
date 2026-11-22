@@ -553,4 +553,6 @@
     <string name="history_yesterday">Ayer</string>
     <string name="history_everyone">Todos</string>
     <string name="side_pause_turned_off">Puedes volver a activarlo en Ajustes › Reproducción.</string>
+    <string name="release_not_on_this_device">No está en este dispositivo</string>
+    <string name="release_show_where">Mostrar dónde está</string>
 </resources>

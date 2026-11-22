@@ -544,4 +544,6 @@
     <string name="history_yesterday">Eilen</string>
     <string name="history_everyone">Kaikki</string>
     <string name="side_pause_turned_off">Voit ottaa tämän takaisin käyttöön kohdassa Asetukset › Toisto.</string>
+    <string name="release_not_on_this_device">Ei tällä laitteella</string>
+    <string name="release_show_where">Näytä, missä se on</string>
 </resources>

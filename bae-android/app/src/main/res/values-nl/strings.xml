@@ -546,4 +546,6 @@
     <string name="history_yesterday">Gisteren</string>
     <string name="history_everyone">Iedereen</string>
     <string name="side_pause_turned_off">Je kunt dit weer aanzetten bij Instellingen › Afspelen.</string>
+    <string name="release_not_on_this_device">Niet op dit apparaat</string>
+    <string name="release_show_where">Toon waar het staat</string>
 </resources>

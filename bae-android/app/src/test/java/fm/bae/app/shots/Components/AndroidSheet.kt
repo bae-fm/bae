@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.junit.Test
@@ -12,13 +13,16 @@ import org.junit.Test
 class AndroidSheetShots : BoardShot() {
     /** The preview pins the sheet 60 from the top of its cell and holds a padded slot in it. */
     @Test
-    fun androidComponentSheetDefault() =
-        component("android.component.sheet.default") {
-            SheetOverScrim(null, top = 60.dp) {
-                Box(modifier = Modifier.padding(16.dp).padding(12.dp)) {
-                    Text("The sheet’s content", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
+    fun androidComponentSheetDefault() = component("android.component.sheet.default") { SheetOverScrim(null, top = 60.dp) { Slot() } }
+
+    @Test
+    fun androidComponentSheetNote() =
+        component("android.component.sheet.note") {
+            SheetOverScrim(
+                "Not on this device",
+                "Only Ana’s Mac holds this release, so this phone can play it once Ana moves it to the cloud.",
+                top = 60.dp,
+            ) { Slot() }
         }
 
     @Test
@@ -31,3 +35,9 @@ class AndroidSheetShots : BoardShot() {
             }
         }
 }
+
+@Composable
+private fun Slot() =
+    Box(modifier = Modifier.padding(16.dp).padding(12.dp)) {
+        Text("The sheet’s content", color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }

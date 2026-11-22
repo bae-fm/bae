@@ -551,13 +551,12 @@
         props.children ? h('div', { className: 'bae-a-albumhead-actions' }, props.children) : null));
   }
 
-  // The album page's pin control for one release, as AndroidDownloadControl draws it: Pin; Queued to pin, with Cancel; Pinning with its bar and bytes and Cancel pinning; Couldn’t pin with Details and Retry, and Cancel; Pinned with Unpin. On a release this phone can't play, one line saying where it is. Nothing says how many wait ahead or what holds the queue back.
+  // The album page's pin control for one release, as AndroidDownloadControl draws it: Pin; Queued to pin, with Cancel; Pinning with its bar and bytes and Cancel pinning; Couldn’t pin with Details and Retry, and Cancel; Pinned with Unpin. Nothing says how many wait ahead or what holds the queue back.
   function AndroidPinControl(props) {
     var s = props.state || 'available';
     function btn(icon, text) { return h(AndroidButton, { kind: 'outlined', icon: icon }, text); }
     var line = function (t) { return h('span', { className: 'bae-a-fineline' }, t); };
     var body =
-      s === 'elsewhere' ? line(props.where || 'On Ana’s Mac') :
       s === 'queued' ? h('div', { className: 'bae-a-dlrow' }, line('Queued to pin'), btn('close', 'Cancel')) :
       s === 'downloading' ? [h(AndroidProgress, { key: 'p', name: 'Pinning', value: Number(props.progress || 0.4) }), h('span', { key: 'b', className: 'bae-a-fine' }, 'Pinning · ' + (props.bytes || '120 MB of 300 MB')), h('div', { key: 'c' }, btn('close', 'Cancel pinning'))] :
       s === 'failed' ? [h(AndroidNotice, { key: 'e', quiet: true, tone: 'danger', title: 'Could not pin', secondary: 'Details', action: 'Retry' }), h('div', { key: 'r' }, btn('close', 'Cancel'))] :

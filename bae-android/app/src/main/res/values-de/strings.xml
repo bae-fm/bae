@@ -546,4 +546,6 @@
     <string name="history_yesterday">Gestern</string>
     <string name="history_everyone">Alle</string>
     <string name="side_pause_turned_off">Du kannst das unter Einstellungen › Wiedergabe wieder einschalten.</string>
+    <string name="release_not_on_this_device">Nicht auf diesem Gerät</string>
+    <string name="release_show_where">Anzeigen, wo es ist</string>
 </resources>

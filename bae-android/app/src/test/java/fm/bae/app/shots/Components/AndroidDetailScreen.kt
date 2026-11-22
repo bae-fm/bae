@@ -49,6 +49,7 @@ private fun Detail(actions: @Composable RowScope.() -> Unit) =
                     cover = PreviewData.imageRef(),
                     galleryItemCount = 0u,
                     onShowGallery = {},
+                    onShowWhere = {},
                 )
             }
         }

@@ -544,4 +544,6 @@
     <string name="history_yesterday">I går</string>
     <string name="history_everyone">Alla</string>
     <string name="side_pause_turned_off">Du kan slå på det igen under Inställningar › Uppspelning.</string>
+    <string name="release_not_on_this_device">Finns inte på den här enheten</string>
+    <string name="release_show_where">Visa var det finns</string>
 </resources>

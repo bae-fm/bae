@@ -5,11 +5,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.albumdetail.AndroidPinControl
-import fm.bae.app.ui.albumdetail.AndroidUnplayableLine
 import fm.bae.app.ui.appearance.ThemeSpace
 import org.junit.Test
-import uniffi.bae_bridge.BridgeMessage
-import uniffi.bae_bridge.BridgeMessageArg
 import uniffi.bae_bridge.BridgeReleaseDownloadStatus
 
 /** The component shots of `AndroidPinControl`, one for each row of its preview. */
@@ -37,12 +34,6 @@ class AndroidPinControlShots : BoardShot() {
     @Test
     fun androidComponentPinControlPinned() =
         component("android.component.pin-control.pinned") { Control(BridgeReleaseDownloadStatus.Downloaded) }
-
-    @Test
-    fun androidComponentPinControlElsewhere() =
-        component("android.component.pin-control.elsewhere") {
-            AndroidUnplayableLine(BridgeMessage("core.release.on_device", listOf(BridgeMessageArg("device", "Ana’s Mac"))))
-        }
 }
 
 @Composable

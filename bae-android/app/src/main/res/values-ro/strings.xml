@@ -553,4 +553,6 @@
     <string name="history_yesterday">Ieri</string>
     <string name="history_everyone">Toată lumea</string>
     <string name="side_pause_turned_off">Poți reactiva această opțiune în Setări › Redare.</string>
+    <string name="release_not_on_this_device">Nu este pe acest dispozitiv</string>
+    <string name="release_show_where">Arată unde se află</string>
 </resources>

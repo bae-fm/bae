@@ -19,15 +19,17 @@ import fm.bae.app.ui.appearance.ThemeText
 
 /**
  * A bottom sheet that holds [content] as tall as it is, up to near the top of the screen, under
- * the [title] that names it when it has one. Swiping it down or tapping outside it closes it, so
- * it has no Close button. The sheet insets its content by `ThemeSpace.related`, so rows that inset
- * themselves by `ThemeSpace.edge` put their text 24dp in, where the title sits too.
+ * the [title] that names it when it has one and the [note] under that. Swiping it down or tapping
+ * outside it closes it, so it has no Close button. The sheet insets its content by
+ * `ThemeSpace.related`, so rows that inset themselves by `ThemeSpace.edge` put their text 24dp in,
+ * where the title sits too.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun AndroidSheet(
     onDismiss: () -> Unit,
     title: String? = null,
+    note: String? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     ModalBottomSheet(
@@ -35,7 +37,7 @@ internal fun AndroidSheet(
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         scrimColor = BaeTheme.colors.scrim,
     ) {
-        AndroidSheetBody(title, content)
+        AndroidSheetBody(title, note, content)
     }
 }
 
@@ -46,6 +48,7 @@ internal fun AndroidSheet(
 @Composable
 internal fun AndroidSheetBody(
     title: String?,
+    note: String?,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -63,6 +66,19 @@ internal fun AndroidSheetBody(
                 style = ThemeText.androidBarTitle.style,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(start = ThemeSpace.edge, end = ThemeSpace.edge, bottom = ThemeSpace.group),
+            )
+        }
+        note?.let {
+            Text(
+                text = it,
+                style = ThemeText.body.style,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier =
+                    Modifier.padding(
+                        start = ThemeSpace.edge,
+                        end = ThemeSpace.edge,
+                        bottom = ThemeSpace.section,
+                    ),
             )
         }
         content()

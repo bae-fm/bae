@@ -4,4 +4,4 @@ A bottom sheet over its screen, for something secondary to the screen that asks 
 
 `note`: one sentence of secondary text under the title, such as who rated an album on the Rate sheet, or which device holds a release on the Not on this device sheet.
 
-**In the code:** Android: `AndroidSheet` (`ui/components/AndroidSheet.kt`), with `title` or without, over Material's `ModalBottomSheet`; the queue opens in one with no title. The full player (`AndroidFullPlayerContainer`) calls `ModalBottomSheet` directly: its chevron animates the sheet out with the sheet's own state before dismissing, which `AndroidSheet` keeps to itself. `AndroidSheet.kt` has no note yet.
+**In the code:** Android: `AndroidSheet` (`ui/components/AndroidSheet.kt`), with `title` or without, over Material's `ModalBottomSheet`; the queue opens in one with no title. The full player (`AndroidFullPlayerContainer`) calls `ModalBottomSheet` directly: its chevron animates the sheet out with the sheet's own state before dismissing, which `AndroidSheet` keeps to itself. `AndroidSheet` draws the note below the title when the caller supplies one.
