@@ -177,7 +177,7 @@ struct LibrarySettingsTab: View {
         guard let people = membership.people else { return nil }
         let peopleText = String(localized: "\(Int(people.people)) people")
         let deviceCount = String(localized: "\(Int(people.devices)) devices")
-        return "\(peopleText) · \(deviceCount)"
+        return FactList.joined([peopleText, deviceCount])
     }
 }
 

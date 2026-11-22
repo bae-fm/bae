@@ -472,11 +472,7 @@ extension PeopleAndDevicesPage {
 
     /// "Member · 1 device": a person's role and how many devices they have.
     private func roleAndDevices(_ member: BridgeMember) -> String {
-        String(
-            localized: "\(member.role.label) · \(deviceCount(member))",
-            comment:
-                "A person's role and device count, such as Member · 1 device"
-        )
+        FactList.joined([member.role.label, deviceCount(member)])
     }
 
     // MARK: - A person
