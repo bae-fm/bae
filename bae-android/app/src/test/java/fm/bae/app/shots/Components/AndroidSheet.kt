@@ -20,4 +20,14 @@ class AndroidSheetShots : BoardShot() {
                 }
             }
         }
+
+    @Test
+    fun androidComponentSheetTitle() =
+        component("android.component.sheet.title") {
+            SheetOverScrim("Not on this device", top = 60.dp) {
+                Box(modifier = Modifier.padding(16.dp).padding(12.dp)) {
+                    Text("The sheet’s content", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
 }
