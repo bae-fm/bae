@@ -83,7 +83,7 @@ extension ShotScene {
         record: String? = nil,
         live: BridgeCandidateLiveState
     ) throws -> BridgeTriageRow {
-        try PreviewData.boardRow(
+        PreviewData.boardRow(
             folder,
             summary: title.map {
                 BridgeTriageMetadataSummary(
@@ -92,6 +92,9 @@ extension ShotScene {
                 )
             },
             record: record,
+            cover: try title.map {
+                .local(file: try BoardArtwork.scannedFile(named: $0))
+            },
             live: live
         )
     }
@@ -112,13 +115,14 @@ extension ShotScene {
 
     /// Low Tide Hours after its import, while its files upload.
     private static func uploadingRow() throws -> BridgeTriageRow {
-        try PreviewData.boardRow(
+        PreviewData.boardRow(
             .lowTideHours,
             summary: BridgeTriageMetadataSummary(
                 albumTitle: "Low Tide Hours",
                 albumArtists: .named("Mara Quill")
             ),
             record: "component-low-tide-hours",
+            cover: .local(file: try PreviewData.lowTideHoursCover().file),
             placement: .done,
             live: PreviewData.triageLive([.revealFolder]),
             importStatus: .complete(

@@ -13,10 +13,7 @@ extension ShotScene {
             height: 420,
             images: PreviewData.artImageStore()
         ) {
-            try importWindow(
-                opening: PreviewData.lowTideHoursCandidate(),
-                items: try previewRows()
-            )
+            try importWindow(openingLowTideHours: true)
         },
         component(
             "mac.component.import-window.no-selection",
@@ -24,20 +21,16 @@ extension ShotScene {
             height: 420,
             images: PreviewData.artImageStore()
         ) {
-            try importWindow(
-                opening: nil,
-                items: try previewRows()
-            )
+            try importWindow(openingLowTideHours: false)
         },
     ]
 
-    /// The Import window with no work running
-    /// and the list holding `items`, at the preview's 1000 by 420 points.
+    /// The Import window with its two Found rows and no work running.
     @MainActor
     private static func importWindow(
-        opening candidate: Candidate?,
-        items: [BridgeImportListItem]
-    ) -> some View {
+        openingLowTideHours: Bool
+    ) throws -> some View {
+        let cover = try PreviewData.lowTideHoursCover()
         let uiStore = UiStore()
         uiStore.activeSection = .importing
         uiStore.setImportCandidateTab(.pending)
@@ -49,11 +42,20 @@ extension ShotScene {
             )
         )
         let selection =
-            candidate.map { PreviewData.selectBoardCandidate($0, in: store) }
-            ?? ImportSelection()
+            if openingLowTideHours {
+                PreviewData.selectBoardCandidate(
+                    PreviewData.lowTideHoursCandidate(cover: cover),
+                    in: store
+                )
+            }
+            else {
+                ImportSelection()
+            }
         let fixture = ImportPreviewFixture(
             store: store,
-            itemsByTab: [.pending: items],
+            itemsByTab: [
+                .pending: try previewRows(lowTideHoursCover: cover.file)
+            ],
             tabCounts: columnCounts
         )
         let slot = fixture.slot(uiStore: uiStore, selection: selection)
@@ -80,19 +82,22 @@ extension ShotScene {
 
     /// The preview's list: Low Tide Hours read from its release, which
     /// needs nothing from the person, and Copper Sky, not found.
-    private static func previewRows() throws -> [BridgeImportListItem] {
+    private static func previewRows(lowTideHoursCover: BridgeFileVersion) throws
+        -> [BridgeImportListItem]
+    {
         [
             PreviewData.candidateItem(
-                try PreviewData.boardRow(
+                PreviewData.boardRow(
                     .lowTideHours,
                     summary: BridgeTriageMetadataSummary(
                         albumTitle: "Low Tide Hours",
                         albumArtists: .named("Mara Quill")
                     ),
-                    record: "board-low-tide-hours"
+                    record: "board-low-tide-hours",
+                    cover: .local(file: lowTideHoursCover)
                 )
             ),
-            try PreviewData.lookupItems()[1],
+            PreviewData.candidateItem(try PreviewData.copperSkyBoardRow()),
         ]
     }
 }

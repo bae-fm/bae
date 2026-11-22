@@ -66,7 +66,8 @@ extension PreviewData {
     static func openedCandidate(
         _ pane: FoundPane,
         northbound: NorthboundStanding,
-        fieldRecordingsCover: BridgeCoverChoice
+        fieldRecordingsCover: BridgeCoverChoice,
+        lowTideHoursCover: BridgeMappingImage
     ) throws -> Candidate {
         switch pane {
         case .northbound:
@@ -78,7 +79,7 @@ extension PreviewData {
                     importStep: .running(phase: .measuringLoudness)
                 )
             }
-        case .lowTideHours: try lowTideHoursCandidate()
+        case .lowTideHours: lowTideHoursCandidate(cover: lowTideHoursCover)
         case .fieldRecordings:
             fieldRecordingsCandidate(cover: fieldRecordingsCover)
         case .untitled07: untitledCandidate()
@@ -231,15 +232,18 @@ extension PreviewData {
             store.identificationProgress = (identified: 4, total: 10)
             store.importsInFlight = 2
             let cover = try fieldRecordingsCatalogCover()
+            let lowTideCover = try lowTideHoursCover()
             items = try foundItems(
                 northbound: northbound,
-                fieldRecordingsCover: cover.image
+                fieldRecordingsCover: cover.image,
+                lowTideHoursCover: lowTideCover.file
             )
             if let pane {
                 let candidate = try openedCandidate(
                     pane,
                     northbound: northbound,
-                    fieldRecordingsCover: cover
+                    fieldRecordingsCover: cover,
+                    lowTideHoursCover: lowTideCover
                 )
                 selection = selectBoardCandidate(candidate, in: store)
             }
@@ -250,7 +254,8 @@ extension PreviewData {
             store.identificationProgress = (identified: 4, total: 10)
             items = try foundItems(
                 northbound: .importing,
-                fieldRecordingsCover: fieldRecordingsCatalogCover().image
+                fieldRecordingsCover: fieldRecordingsCatalogCover().image,
+                lowTideHoursCover: lowTideHoursCover().file
             )
             selection = boardSeveralSelection
         case .imported:
@@ -260,25 +265,30 @@ extension PreviewData {
                 in: store
             )
         case .skipped:
-            let image = try boardImage("folder.jpg", art: "Glass Harbor")
-            let candidate = boardHarborWaltz(cover: image.file)
-            let key = candidate.candidateKey
-            items = [boardEmptyFolder, candidate].map(invalidItem)
-            store.selectedInvalidCandidates[key] = boardHarborWaltzDetail(
-                candidate: candidate,
-                image: image
-            )
-            selection = boardSelection(
-                .invalidCandidate(key: key),
-                key: key,
-                offers: []
-            )
+            (items, selection) = try skippedBoard(in: store)
         }
         return makeImportBoardScene(
             board,
             store: store,
             items: items,
             selection: selection
+        )
+    }
+
+    @MainActor
+    private static func skippedBoard(in store: ImportStore) throws
+        -> ([BridgeImportListItem], ImportSelection)
+    {
+        let image = try boardImage("folder.jpg", art: "Glass Harbor")
+        let candidate = boardHarborWaltz(cover: image.file)
+        let key = candidate.candidateKey
+        store.selectedInvalidCandidates[key] = boardHarborWaltzDetail(
+            candidate: candidate,
+            image: image
+        )
+        return (
+            [boardEmptyFolder, candidate].map(invalidItem),
+            boardSelection(.invalidCandidate(key: key), key: key, offers: [])
         )
     }
 

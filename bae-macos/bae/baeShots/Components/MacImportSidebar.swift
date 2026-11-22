@@ -22,7 +22,13 @@ extension ShotScene {
                 typed: "tide",
                 narrowed: BridgeNarrowedCount(shown: 1, total: 14),
                 filtered: true,
-                items: { [try PreviewData.lookupItems()[0]] }
+                items: {
+                    let cover = try PreviewData.lowTideHoursCover()
+                    let row = PreviewData.lowTideHoursBoardRow(
+                        cover: cover.file
+                    )
+                    return [PreviewData.candidateItem(row)]
+                }
             )
         ),
         sidebarScene(

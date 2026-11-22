@@ -154,6 +154,10 @@ extension PreviewData {
         ),
     ]
 
+    static func lowTideHoursCover() throws -> BridgeMappingImage {
+        try boardImage("cover.jpg", art: "Low Tide Hours")
+    }
+
     /// Low Tide Hours' draft, read from MusicBrainz.
     static func lowTideHoursEdit() -> BridgeRawReleaseEdit {
         boardEdit(
@@ -209,10 +213,9 @@ extension PreviewData {
     /// Low Tide Hours' draft, a release the library already holds: its
     /// pick read from MusicBrainz and Discogs, its artist in the library.
     @MainActor
-    static func lowTideHoursCandidate() throws -> Candidate {
+    static func lowTideHoursCandidate(cover: BridgeMappingImage) -> Candidate {
         let tracks = lowTideHoursTracks
         let edit = lowTideHoursEdit()
-        let cover = try boardImage("cover.jpg", art: "Low Tide Hours")
         let records =
             boardRecords("board-low-tide-hours") + [
                 BridgeReleaseRecord(
