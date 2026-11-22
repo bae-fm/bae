@@ -161,7 +161,7 @@ private val onAnotherDevice: BridgeAlbumDetail =
                 tracks = tracks,
                 playability = BridgeReleasePlayability.OnOtherDevice(BridgeOtherDevice.Active("Ana’s Mac")),
             )
-        detail.copy(releases = listOf(release))
+        detail.copy(releases = listOf(release), shownRelease = release)
     }
 
 /** The track playing in the bar behind the album page, 1:28 into 4:51. */
