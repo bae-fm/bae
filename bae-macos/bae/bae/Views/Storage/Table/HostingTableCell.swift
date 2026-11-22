@@ -1,4 +1,5 @@
 import AppKit
+import BaeKit
 import SwiftUI
 
 /// An `NSTableCellView` that draws its content through a single reused
