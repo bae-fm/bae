@@ -81,16 +81,24 @@ struct MacBulkActionRow: View {
 /// with a comma.
 private struct NamedByLabelAndCount: ViewModifier {
     let offer: ImportCandidateActionOffer
-    let name: String
+    /// Where the Import row's import goes, said between its name and its
+    /// count.
+    let destination: String?
 
     func body(content: Content) -> some View {
         content
-            .accessibilityLabel(
-                String(
-                    localized:
-                        "Bulk action \(name) \(offer.applicable.formatted())"
-                )
+            .accessibilityLabel(name)
+    }
+
+    private var name: String {
+        let count = offer.applicable.formatted()
+        if let destination {
+            return String(
+                localized:
+                    "Bulk action \(offer.action.label) \(destination) \(count)"
             )
+        }
+        return String(localized: "Bulk action \(offer.action.label) \(count)")
     }
 }
 
