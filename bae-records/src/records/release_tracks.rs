@@ -510,8 +510,8 @@ pub(super) fn side_headings_on(
 
 impl Records {
     /// The heading of each side of the mediums numbered `numbered` of a
-    /// release no table holds, which holds `mediums` in order, as
-    /// [`side_headings_on`] gives them.
+    /// release no table holds, which holds `mediums` in order, named as the
+    /// library names the sides of its own releases.
     pub async fn side_headings(
         &self,
         mediums: Vec<bae_types::mediums::ReleaseMedium>,
