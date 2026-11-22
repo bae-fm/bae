@@ -12,4 +12,4 @@ The release's fields under a Release heading, in a grid of labels and values, as
 
 An empty value shows the form's dash.
 
-**In the code:** macOS: `MacReleaseFields` (`Views/Components/MetadataForm/MacReleaseFields.swift`), with `MediumCountRow` and `DiscogsDetailsEditor` (`Views/Components/MetadataForm/PressingFactPickers.swift`).
+**In the code:** macOS: `MacReleaseFields` (`Views/Components/MetadataForm/MacReleaseFields.swift`), with `MediaCountsEditor` (`Views/Components/MetadataForm/MediaCountsEditor.swift`) and `DiscogsDetailsEditor` (`Views/Components/MetadataForm/DiscogsDetailsEditor.swift`).
