@@ -17,8 +17,14 @@ final class HostingTableCell: NSTableCellView {
         view.translatesAutoresizingMaskIntoConstraints = false
         addSubview(view)
         NSLayoutConstraint.activate([
-            view.leadingAnchor.constraint(equalTo: leadingAnchor),
-            view.trailingAnchor.constraint(equalTo: trailingAnchor),
+            view.leadingAnchor.constraint(
+                equalTo: leadingAnchor,
+                constant: ThemeSpace.inline
+            ),
+            view.trailingAnchor.constraint(
+                equalTo: trailingAnchor,
+                constant: -ThemeSpace.inline
+            ),
             view.topAnchor.constraint(equalTo: topAnchor),
             view.bottomAnchor.constraint(equalTo: bottomAnchor),
         ])

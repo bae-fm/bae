@@ -82,6 +82,12 @@ struct MacTable: NSViewRepresentable {
         tableView.columnAutoresizingStyle =
             .firstColumnOnlyAutoresizingStyle
         tableView.rowHeight = 28
+        // Each cell holds its own side padding, so the columns touch and
+        // each column is as wide as its layout says.
+        tableView.intercellSpacing = NSSize(
+            width: 0,
+            height: tableView.intercellSpacing.height
+        )
         tableView.style = .inset
 
         for column in StorageTableColumn.allCases {
