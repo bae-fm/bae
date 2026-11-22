@@ -50,6 +50,8 @@ struct FieldChrome: ViewModifier {
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
             }
+            // Assistive technology sees the box and not the glow around it.
+            .contentShape(.accessibility, outline)
             .onHover { hovering = $0 }
             .onChange(of: hovering && style == .inline) { _, wantsIBeam in
                 // The I-beam covers the inline field's padding too.

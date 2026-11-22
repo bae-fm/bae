@@ -47,9 +47,7 @@ struct BoxedField<Focus: Hashable>: View {
             )
             .modifier(chrome)
         if let placeholder {
-            box
-                .contentShape(.accessibility, chrome.outline)
-                .accessibilityLabel(Text(placeholder))
+            box.accessibilityLabel(Text(placeholder))
         }
         else {
             box
