@@ -68,7 +68,7 @@ struct AlbumGridCellsTests {
         #expect(texts.contains("Solo Album"))
         #expect(texts.contains("Artist B"))
         #expect(!texts.contains("Artist A and Artist B"))
-        #expect(texts.filter { $0 == "Artist A" }.count == 1)
+        #expect(!texts.contains("Artist A"))
     }
 
     @Test("artist headings and albums start full rows with one open appearance")
