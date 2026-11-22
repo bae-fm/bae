@@ -206,17 +206,31 @@ extension PreviewData {
         return selection
     }
 
+    private enum ImportBoardError: LocalizedError {
+        case missingActions(String)
+
+        var errorDescription: String? {
+            switch self {
+            case .missingActions(let folder):
+                "The import fixture for \(folder) has no action state."
+            }
+        }
+    }
+
     /// Make a candidate's detail and selection available together.
     @MainActor
     static func selectBoardCandidate(
         _ candidate: Candidate,
         in store: ImportStore
-    ) -> ImportSelection {
+    ) throws -> ImportSelection {
+        guard let live = candidate.live else {
+            throw ImportBoardError.missingActions(candidate.displayName)
+        }
         store.selectedCandidates[candidate.key] = candidate
         return boardSelection(
             .candidate(key: candidate.key),
             key: candidate.key,
-            offers: candidate.live?.offers ?? []
+            offers: live.offers
         )
     }
 
@@ -242,7 +256,7 @@ extension PreviewData {
                     northbound: northbound,
                     images: images
                 )
-                selection = selectBoardCandidate(candidate, in: store)
+                selection = try selectBoardCandidate(candidate, in: store)
             }
             else {
                 selection = ImportSelection()
@@ -257,8 +271,8 @@ extension PreviewData {
         case .imported:
             let images = try ImportedBoardImages()
             items = doneItems(images: images)
-            selection = selectBoardCandidate(
-                try northboundImportedCandidate(cover: images.northbound),
+            selection = try selectBoardCandidate(
+                northboundImportedCandidate(cover: images.northbound),
                 in: store
             )
         case .skipped:
