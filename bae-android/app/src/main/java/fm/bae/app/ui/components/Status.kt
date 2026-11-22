@@ -103,7 +103,7 @@ internal fun StatusTone.glyph(set: StatusGlyphSet): ImageVector? {
     }
 }
 
-/** The glyph's colour: the tone's status icon colour; the rest have no glyph and use [color]. */
+/** Info uses [color]. Success, warning and danger use their status icon colours. */
 internal val StatusTone.iconColor: Color
     @Composable
     get() =
