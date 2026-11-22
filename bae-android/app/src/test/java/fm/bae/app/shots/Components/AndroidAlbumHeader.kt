@@ -93,8 +93,8 @@ internal val harborRelease: BridgeRelease =
             distinctYear = null,
             labels = listOf(BridgeLabelLine(names = listOf("Harbor Records"), catalogNumbers = listOf("HR-1042"))),
             facts = release.facts.copy(area = BridgeReleaseArea.Country("US"), media = listOf(BridgeMediaCount(BridgeMedium.CD, 1u))),
-            pressingSummary = listOf(BridgeFactTerm.Country("US"), cd),
-            areaTerms = listOf(BridgeFactTerm.Country("US")),
+            pressingSummary = listOf(BridgeFactTerm.Worded(BridgeTermLabel.Verbatim("US")), cd),
+            areaTerms = listOf(BridgeFactTerm.Worded(BridgeTermLabel.Verbatim("US"))),
             mediaTerms = listOf(cd),
             totalDuration = BridgeDurationUnits.MinutesOnly(52u),
         )
