@@ -5954,8 +5954,9 @@ opening its page and showing where it stands: Sync the state of the sync,
 with its dot in the state's color, People and devices "2 people · 3
 devices". A library with no storage has one row in place of those two,
 **Sync** saying "Not synced", with a chevron, *Set up a cloud home…* and a note that the library
-is only on this Mac. Removing the library is not in Settings; it is on the
-first screen's list (§6.4).
+is only on this Mac. VoiceOver reads the label and its note as one button, the
+status as text, and *Set up a cloud home…* as a separate button. Removing the
+library is not in Settings; it is on the first screen's list (§6.4).
 
 For an admin, a **Ratings** section follows, with an **Albums** and a
 **Tracks** pop-up, each *Stars*, *Heart* or *None*, and the note "Applies to

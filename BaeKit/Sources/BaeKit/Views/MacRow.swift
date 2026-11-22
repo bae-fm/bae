@@ -4,6 +4,8 @@ import SwiftUI
 public enum MacRowPress {
     /// The row opens something: a chevron ends it.
     case opens(() -> Void)
+    /// The label opens something, with the row's other controls beside it.
+    case opensFromLabel(() -> Void)
     /// The row is itself an action that removes something.
     case removes(() -> Void)
 }
@@ -98,6 +100,9 @@ public struct MacRow<Lead: View, Label: View, Content: View>: View {
             Button(action: action) { pressable(chevron: true) }
                 .buttonStyle(.accentPlain)
                 .placesItselfInRow()
+        case .opensFromLabel(let action)?:
+            row(chevron: true, labelAction: action)
+                .accessibilityElement(children: .contain)
         case .removes(let action)?:
             Button(role: .destructive, action: action) {
                 pressable(chevron: false).foregroundStyle(Theme.danger)
@@ -128,7 +133,10 @@ public struct MacRow<Lead: View, Label: View, Content: View>: View {
         }
     }
 
-    private func row(chevron: Bool) -> some View {
+    private func row(
+        chevron: Bool,
+        labelAction: (() -> Void)? = nil
+    ) -> some View {
         HStack(spacing: ThemeSpace.group) {
             lead
             LabeledContent {
@@ -145,34 +153,50 @@ public struct MacRow<Lead: View, Label: View, Content: View>: View {
                         Image(systemName: "chevron.forward")
                             .themeIcon(.small)
                             .foregroundStyle(Theme.macTextSecondary)
+                            .accessibilityHidden(true)
                     }
                 }
             } label: {
-                VStack(alignment: .leading, spacing: ThemeSpace.inline) {
-                    HStack(spacing: ThemeSpace.compact) {
-                        if isStrong {
-                            label.themeText(.strong)
-                        }
-                        else {
-                            label
-                        }
-                        if let chip {
-                            StatusChip(verbatim: chip)
-                        }
-                    }
-                    if let note {
-                        note
-                            .themeText(.detail)
-                            .foregroundStyle(
-                                noteTone.map { AnyShapeStyle($0.color) }
-                                    ?? AnyShapeStyle(Theme.macTextSecondary)
-                            )
-                    }
-                }
-                .accessibilitySortPriority(1)
+                rowLabel(action: labelAction)
+                    .accessibilitySortPriority(1)
             }
         }
         .contentShape(Rectangle())
+    }
+
+    @ViewBuilder
+    private func rowLabel(action: (() -> Void)?) -> some View {
+        if let action {
+            Button(action: action) { rowWords.contentShape(Rectangle()) }
+                .buttonStyle(.accentPlain)
+        }
+        else {
+            rowWords
+        }
+    }
+
+    private var rowWords: some View {
+        VStack(alignment: .leading, spacing: ThemeSpace.inline) {
+            HStack(spacing: ThemeSpace.compact) {
+                if isStrong {
+                    label.themeText(.strong)
+                }
+                else {
+                    label
+                }
+                if let chip {
+                    StatusChip(verbatim: chip)
+                }
+            }
+            if let note {
+                note
+                    .themeText(.detail)
+                    .foregroundStyle(
+                        noteTone.map { AnyShapeStyle($0.color) }
+                            ?? AnyShapeStyle(Theme.macTextSecondary)
+                    )
+            }
+        }
     }
 }
 

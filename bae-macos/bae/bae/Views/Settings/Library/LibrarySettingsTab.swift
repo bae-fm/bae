@@ -168,7 +168,7 @@ struct LibrarySettingsTab: View {
                 }
             }
             .note(Text("This library is only on this Mac."))
-            .pressing(.opens { path.append(.sync) })
+            .pressing(.opensFromLabel { path.append(.sync) })
         }
     }
 
