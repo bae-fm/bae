@@ -46,6 +46,7 @@ extension ShotScene {
     /// when `openAlbum` is set; `detailAnswered` learns when its detail is
     /// answered.
     @MainActor
+    // swiftlint:disable:next function_body_length
     static func boardLibraryBacking(
         uiStore: UiStore,
         albumCount: Int? = nil,
@@ -162,13 +163,13 @@ extension ShotScene {
     }
 
     /// "Low Tide Hours" by Mara Quill playing: 1:42 into 5:03, the slider at
-    /// 35 and 60 percent of the track here. With `removedFromLibrary`, the
+    /// 34 percent, and 60 percent of the track held. With `removedFromLibrary`, the
     /// library no longer holds the track. `progress` is where the slider sits,
     /// as the share of the track.
     @MainActor
     static func boardPlayback(
         removedFromLibrary: Bool = false,
-        progress: Double = 0.35
+        progress: Double = 102.0 / 303.0
     ) -> PlaybackStore {
         let store = PlaybackStore(
             trackPositions: .trackPositions(
