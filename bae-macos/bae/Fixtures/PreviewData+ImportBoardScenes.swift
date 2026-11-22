@@ -73,7 +73,8 @@ extension PreviewData {
     @MainActor
     static func openedCandidate(
         _ pane: FoundPane,
-        northbound: NorthboundStanding
+        northbound: NorthboundStanding,
+        fieldRecordingsCover: BridgeCoverChoice
     ) throws -> Candidate {
         switch pane {
         case .northbound:
@@ -86,7 +87,8 @@ extension PreviewData {
                 )
             }
         case .lowTideHours: try lowTideHoursCandidate()
-        case .fieldRecordings: try fieldRecordingsCandidate()
+        case .fieldRecordings:
+            fieldRecordingsCandidate(cover: fieldRecordingsCover)
         case .untitled07: untitledCandidate()
         case .copperSky:
             try notFoundCandidate(
@@ -214,7 +216,9 @@ extension PreviewData {
     static func openBoardFolder(
         _ board: ImportBoard,
         in store: ImportStore,
-        harborWaltz: BridgeInvalidCandidateDetail
+        fieldRecordingsCover: BridgeCoverChoice,
+        harborWaltz: BridgeInvalidCandidate,
+        harborWaltzImage: BridgeMappingImage
     ) throws -> ImportSelection {
         switch board {
         case .found(_, nil):
@@ -222,7 +226,11 @@ extension PreviewData {
         case .several:
             return boardSeveralSelection
         case .found(let northbound, let pane?):
-            let opened = try openedCandidate(pane, northbound: northbound)
+            let opened = try openedCandidate(
+                pane,
+                northbound: northbound,
+                fieldRecordingsCover: fieldRecordingsCover
+            )
             store.selectedCandidates[opened.key] = opened
             return boardSelection(
                 .candidate(key: opened.key),
@@ -238,8 +246,11 @@ extension PreviewData {
                 offers: opened.live?.offers ?? []
             )
         case .skipped:
-            let key = harborWaltz.candidate.candidateKey
-            store.selectedInvalidCandidates[key] = harborWaltz
+            let key = harborWaltz.candidateKey
+            store.selectedInvalidCandidates[key] = boardHarborWaltzDetail(
+                candidate: harborWaltz,
+                image: harborWaltzImage
+            )
             return boardSelection(
                 .invalidCandidate(key: key),
                 key: key,
@@ -265,19 +276,26 @@ extension PreviewData {
         case .imported, .skipped:
             break
         }
-        let harborWaltz = try boardHarborWaltzDetail()
+        let fieldRecordingsCover = try fieldRecordingsCatalogCover()
+        let harborWaltzImage = try boardImage("folder.jpg", art: "Glass Harbor")
+        let harborWaltz = boardHarborWaltz(cover: harborWaltzImage.file)
         let selection = try openBoardFolder(
             board,
             in: store,
-            harborWaltz: harborWaltz
+            fieldRecordingsCover: fieldRecordingsCover,
+            harborWaltz: harborWaltz,
+            harborWaltzImage: harborWaltzImage
         )
         return ImportBoardScene(
             fixture: ImportPreviewFixture(
                 store: store,
                 itemsByTab: [
-                    .pending: try foundItems(northbound: board.northbound),
+                    .pending: try foundItems(
+                        northbound: board.northbound,
+                        fieldRecordingsCover: fieldRecordingsCover.image
+                    ),
                     .done: try doneItems(),
-                    .skipped: [boardEmptyFolder, harborWaltz.candidate]
+                    .skipped: [boardEmptyFolder, harborWaltz]
                         .map(invalidItem),
                 ],
                 tabCounts: BridgeTriageTabCounts(

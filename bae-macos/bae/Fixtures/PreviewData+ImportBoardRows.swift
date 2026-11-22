@@ -20,27 +20,24 @@ extension PreviewData {
         _ folder: BoardFolder,
         summary: BridgeTriageMetadataSummary? = nil,
         record: String? = nil,
+        catalogCover: BridgeCoverImageSource? = nil,
         placement: BridgeTriagePlacement = .pending,
         live: BridgeCandidateLiveState = triageLive(boardDraftActions),
         importStatus: BridgeTriageImportStatus? = nil,
         upload: BridgeUploadProgress? = nil
     ) throws -> BridgeTriageRow {
-        let cover: BridgeCoverImageSource? =
-            switch folder {
-            case .fieldRecordings, .fieldRecordingsDisc2:
-                try fieldRecordingsCatalogCover().image
-            default:
-                try summary.map {
-                    .local(
-                        file: try BoardArtwork.scannedFile(named: $0.albumTitle)
-                    )
-                }
+        let image =
+            try catalogCover
+            ?? summary.map {
+                BridgeCoverImageSource.local(
+                    file: try BoardArtwork.scannedFile(named: $0.albumTitle)
+                )
             }
         return triageRow(
             for: boardCandidate(folder),
             placement: placement,
             metadataSummary: summary,
-            cover: cover,
+            cover: image,
             importStatus: importStatus,
             upload: upload,
             metadataProvenance: record.map {
@@ -91,13 +88,17 @@ extension PreviewData {
 
     /// The Found tab's rows as the boards list them.
     static func foundItems(
-        northbound: NorthboundStanding
+        northbound: NorthboundStanding,
+        fieldRecordingsCover: BridgeCoverImageSource
     ) throws -> [BridgeImportListItem] {
-        try groupItems() + lookupItems() + importItems(northbound: northbound)
+        try groupItems(cover: fieldRecordingsCover)
+            + lookupItems() + importItems(northbound: northbound)
     }
 
     /// Field Recordings' two discs, listed under their folder's header.
-    static func groupItems() throws -> [BridgeImportListItem] {
+    static func groupItems(cover: BridgeCoverImageSource) throws
+        -> [BridgeImportListItem]
+    {
         let header = groupHeader(
             key: fieldRecordingsGroupKey,
             name: "Mara Quill \u{2014} Field Recordings (1979)",
@@ -112,7 +113,8 @@ extension PreviewData {
                         albumTitle: "Field Recordings",
                         albumArtists: .named("Mara Quill")
                     ),
-                    record: "board-field-recordings"
+                    record: "board-field-recordings",
+                    catalogCover: cover
                 ),
                 header: header
             ),

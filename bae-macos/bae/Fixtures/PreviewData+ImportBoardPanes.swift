@@ -433,7 +433,8 @@ extension PreviewData {
     /// carving three tracks, the second waiting for the audio it names. The
     /// release lists no tracks.
     @MainActor
-    static func fieldRecordingsCandidate() throws -> Candidate {
+    static func fieldRecordingsCandidate(cover: BridgeCoverChoice) -> Candidate
+    {
         let sheetOne = fieldRecordingsSheet(
             1,
             bound: .describes(container: fieldRecordingsContainer)
@@ -479,7 +480,7 @@ extension PreviewData {
                 files: [],
                 untitledTrackCount: 0
             ),
-            cover: try fieldRecordingsCatalogCover(),
+            cover: cover,
             placement: .pending(
                 folderCheck: .sourceTracksUnknown,
                 records: boardRecords("board-field-recordings")
@@ -705,11 +706,12 @@ extension PreviewData {
 
     /// Harbor Waltz as its read answers it: its one image, then its other
     /// files, two of its audio files damaged.
-    static func boardHarborWaltzDetail() throws -> BridgeInvalidCandidateDetail
-    {
-        let image = try boardImage("folder.jpg", art: "Glass Harbor")
-        return BridgeInvalidCandidateDetail(
-            candidate: boardHarborWaltz(cover: image.file),
+    static func boardHarborWaltzDetail(
+        candidate: BridgeInvalidCandidate,
+        image: BridgeMappingImage
+    ) -> BridgeInvalidCandidateDetail {
+        BridgeInvalidCandidateDetail(
+            candidate: candidate,
             images: [image],
             files: [
                 mappingFile(
