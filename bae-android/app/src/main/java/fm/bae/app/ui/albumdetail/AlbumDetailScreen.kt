@@ -312,9 +312,12 @@ internal fun AlbumDetailContent(
     val shown = detail.shownRelease
 
     // A release only another device holds can't play here: its words and info button stand where Play would.
-    val unplayable = shown.playability is BridgeReleasePlayability.OnOtherDevice
+    val playability = shown.playability
+    val unplayable = playability is BridgeReleasePlayability.OnOtherDevice
     var showWhere by remember { mutableStateOf(false) }
-    if (showWhere && unplayable) UnplayableSheet(shown.playability) { showWhere = false }
+    if (showWhere && playability is BridgeReleasePlayability.OnOtherDevice) {
+        UnplayableSheet(playability) { showWhere = false }
+    }
 
     var showGallery by remember { mutableStateOf(false) }
     if (showGallery && shown.galleryItemCount > 0u) {
@@ -440,10 +443,10 @@ internal fun AndroidAlbumHeader(
 /** The sheet that names the device holding a release this device can't play, as core words [playability]. */
 @Composable
 private fun UnplayableSheet(
-    playability: BridgeReleasePlayability,
+    playability: BridgeReleasePlayability.OnOtherDevice,
     onDismiss: () -> Unit,
 ) {
-    val line = bridgeReleasePlayabilityLine(playability) ?: return
+    val line = checkNotNull(bridgeReleasePlayabilityLine(playability)) { "core words every release on another device" }
     AndroidSheet(
         title = stringResource(R.string.release_not_on_this_device),
         note = LocalContext.current.coreString(line),
