@@ -40,7 +40,7 @@
       var whose = props.whose || 'Everyone';
       return h('aside', { className: 'bae-m-queue' }, head, h(MacContentUnavailable, { title: whose === 'Everyone' ? 'No plays yet' : 'No plays from ' + whose }, wholeListChoice(whose, true)));
     }
-    if (tab !== 'Queue') return h('aside', { className: 'bae-m-queue' }, head, h('div', { className: 'bae-m-queue-body', style: props.hang ? { paddingLeft: 8 + Number(props.hang) + 10 } : null }, props.children));
+    if (tab !== 'Queue') return h('aside', { className: 'bae-m-queue' }, head, h('div', { className: 'bae-m-queue-body', style: props.hang ? { paddingLeft: 'calc(var(--space-related) + ' + Number(props.hang) + 'px + var(--space-related) + var(--space-line))' } : null }, props.children));
     return h('aside', { className: 'bae-m-queue' },
       head,
       props.title ? h('div', { className: 'bae-m-queue-np' },
@@ -79,7 +79,7 @@
   // A queued track still loading: the queue row's shape, a 40pt cover and two lines, in placeholder grey.
   function MacQueuePlaceholderRow() {
     return h('div', { className: 'bae-m-lrow' }, h(MacPlaceholderLine, { width: 40, height: 40, radius: 6, fixed: true }),
-      h('div', { style: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 5 } }, h(MacPlaceholderLine, { width: 140, height: 12 }), h(MacPlaceholderLine, { width: 90, height: 10 })));
+      h('div', { style: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 'calc(var(--space-inline) + var(--space-hairline))' } }, h(MacPlaceholderLine, { width: 140, height: 12 }), h(MacPlaceholderLine, { width: 90, height: 10 })));
   }
   function MacQueueInsertLine() { return h('div', { className: 'bae-m-queue-insert' }); }
 
@@ -130,14 +130,14 @@
   function AndroidQueueRow(props) {
     return h('div', { className: cx('bae-a-qrow', props.dragging && 'bae-a-qrow-drag') }, h(Artwork, { title: props.album || props.title, size: 'size-android-row-artwork', radius: 6 }),
       h('div', { className: 'bae-a-qrow-text' }, h('div', { className: cx('bae-a-track-title', props.current && 'bae-accent') }, props.title), h('div', { className: 'bae-a-track-artist' }, props.artist), props.current ? null : h('div', { className: 'bae-a-track-artist' }, props.album)),
-      props.current ? null : [h('span', { key: 'd', className: 'bae-a-track-time', style: { padding: '0 8px' } }, props.duration), h(AndroidIconButton, { key: 'x', icon: 'close', label: 'Remove', tone: 'muted' }), h(Glyph, { key: 'h', name: 'drag', size: 'medium', className: 'bae-muted' })]);
+      props.current ? null : [h('span', { key: 'd', className: 'bae-a-track-time', style: { padding: '0 var(--space-related)' } }, props.duration), h(AndroidIconButton, { key: 'x', icon: 'close', label: 'Remove', tone: 'muted' }), h(Glyph, { key: 'h', name: 'drag', size: 'medium', className: 'bae-muted' })]);
   }
   // A grey bar where text or a picture will be while it loads, as MacPlaceholderLine: `width` and `height` in dp, `radius` for a picture's corners (a bar's corners otherwise), `fixed` keeps its width in a row.
   function AndroidPlaceholderLine(props) { return placeholderLine(props); }
   // A queued track not loaded yet: the cover's tile and a bar for each of the row's three lines.
   function AndroidQueuePlaceholderRow() {
     return h('div', { className: 'bae-a-qrow' }, h(AndroidPlaceholderLine, { width: 48, height: 48, radius: 6, fixed: true }),
-      h('div', { className: 'bae-a-qrow-text', style: { display: 'flex', flexDirection: 'column', gap: 6 } }, h(AndroidPlaceholderLine, { width: 160, height: 12 }), h(AndroidPlaceholderLine, { width: 100, height: 10 }), h(AndroidPlaceholderLine, { width: 120, height: 10 })));
+      h('div', { className: 'bae-a-qrow-text', style: { display: 'flex', flexDirection: 'column', gap: 'var(--space-compact)' } }, h(AndroidPlaceholderLine, { width: 160, height: 12 }), h(AndroidPlaceholderLine, { width: 100, height: 10 }), h(AndroidPlaceholderLine, { width: 120, height: 10 })));
   }
   function AndroidFullPlayer(props) {
     return h('div', { className: 'bae-a-fullplayer' },

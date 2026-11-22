@@ -1,34 +1,34 @@
-.bae-a-credits-head { padding: 4px 0; }
-.bae-a-credit { display: flex; justify-content: space-between; gap: 16px; padding: 6px 0; font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); }
+.bae-a-credits-head { padding: var(--space-inline) 0; }
+.bae-a-credit { display: flex; justify-content: space-between; gap: var(--space-edge); padding: var(--space-compact) 0; font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); }
 .bae-a-credit-names { text-align: end; }
-.bae-a-albumaudio { padding: 8px 0; font: var(--type-android-detail-weight) var(--type-android-detail-size)/var(--type-android-detail-line-height) var(--font-android); color: var(--text-tertiary); }
-.bae-a-othernames { padding: 0 16px 8px; }
-.bae-a-othernames-head { padding: 0 0 4px; }
+.bae-a-albumaudio { padding: var(--space-related) 0; font: var(--type-android-detail-weight) var(--type-android-detail-size)/var(--type-android-detail-line-height) var(--font-android); color: var(--text-tertiary); }
+.bae-a-othernames { padding: 0 var(--space-edge) var(--space-related); }
+.bae-a-othernames-head { padding: 0 0 var(--space-inline); }
 .bae-a-othernames-list { font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); color: var(--text-secondary); }
-.bae-a-rating { display: flex; flex-direction: column; gap: 2px; }
-.bae-a-plhead-top { display: flex; gap: 16px; padding: 16px; align-items: center; }
+.bae-a-rating { display: flex; flex-direction: column; gap: var(--space-line); }
+.bae-a-plhead-top { display: flex; gap: var(--space-edge); padding: var(--space-edge); align-items: center; }
 .bae-a-plhead-name { font: var(--type-android-title-weight) var(--type-android-title-size)/var(--type-android-title-line-height) var(--font-android); }
 .bae-a-plhead-actions { margin-top: var(--space-group); }
-.bae-a-pinsum { padding: 8px 16px; display: flex; flex-direction: column; gap: 8px; font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); }
-.bae-a-relpick { display: flex; gap: 8px; }
-.bae-a-relchip { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 16px; border-radius: 8px; font: var(--type-android-label-weight) var(--type-android-label-size)/var(--type-android-label-line-height) var(--font-android); box-shadow: inset 0 0 0 1px var(--hairline-strong); }
+.bae-a-pinsum { padding: var(--space-related) var(--space-edge); display: flex; flex-direction: column; gap: var(--space-related); font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); }
+.bae-a-relpick { display: flex; gap: var(--space-related); }
+.bae-a-relchip { display: inline-flex; align-items: center; gap: var(--space-related); height: 32px; padding: 0 var(--space-edge); border-radius: 8px; font: var(--type-android-label-weight) var(--type-android-label-size)/var(--type-android-label-line-height) var(--font-android); box-shadow: inset 0 0 0 1px var(--hairline-strong); }
 .bae-a-relchip-on { background: var(--accent-tint); box-shadow: none; }
-.bae-a-gallery-caption { padding: 16px; text-align: center; background: var(--backdrop); color: var(--on-fill); font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); }
+.bae-a-gallery-caption { padding: var(--space-edge); text-align: center; background: var(--backdrop); color: var(--on-fill); font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); }
 .bae-a-gallery-caption-count { color: var(--on-fill-secondary); }
 .bae-a-lightbox { width: 412px; height: 916px; background: var(--backdrop); color: var(--on-fill); position: relative; display: flex; align-items: center; justify-content: center; font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); }
 .bae-a-lightbox-close { position: absolute; top: 4px; right: 4px; }
-.bae-a-lightbox-wait { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.bae-a-lightbox-wait { display: flex; flex-direction: column; align-items: center; gap: var(--space-group); }
 .bae-a-lightbox-secondary { color: var(--on-fill-secondary); }
 .bae-a-lightbox > .bae-a-gallery-caption, .bae-a-lightbox > .sc-host-x > .bae-a-gallery-caption { position: absolute; bottom: 0; left: 0; right: 0; }
-.bae-a-sidepause { display: flex; flex-direction: column; gap: 8px; }
+.bae-a-sidepause { display: flex; flex-direction: column; gap: var(--space-related); }
 .bae-a-sidepause-count { font: var(--type-android-strong-weight) var(--type-android-strong-size)/var(--type-android-strong-line-height) var(--font-android); color: var(--text-primary); }
 .bae-a-errline { font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); color: var(--danger); }
-.bae-a-item { display: flex; align-items: flex-start; gap: 12px; }
+.bae-a-item { display: flex; align-items: flex-start; gap: var(--space-group); }
 .bae-a-item-lead { flex: none; height: 20px; display: flex; align-items: center; justify-content: center; }
 .bae-a-item-body { flex: 1; min-width: 0; font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); }
-.bae-a-item-trail { flex: none; height: 20px; display: flex; align-items: center; gap: 4px; }
-.bae-a-reclinks { display: flex; flex-wrap: wrap; gap: 8px; }
-.bae-a-relfiles-head { padding: 4px 0; }
+.bae-a-item-trail { flex: none; height: 20px; display: flex; align-items: center; gap: var(--space-inline); }
+.bae-a-reclinks { display: flex; flex-wrap: wrap; gap: var(--space-related); }
+.bae-a-relfiles-head { padding: var(--space-inline) 0; }
 .bae-a-relfiles-row { display: flex; justify-content: space-between; gap: var(--space-group); padding: var(--space-related) 0; font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); }
 .bae-a-qrscan { position: relative; background: var(--backdrop); }
 .bae-a-qrscan-foot { position: absolute; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; padding: var(--space-page); }

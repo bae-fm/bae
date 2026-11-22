@@ -34,10 +34,10 @@
 .bae-notice-body { flex: 1; min-width: 0; }
 /* quiet: a notice drawn as a row, as in the Activity panel: no fill, the screen's text, the glyph in its tone. */
 .bae-notice.bae-notice-quiet { background: none; border-radius: 0; }
-.bae-m-notice-box.bae-notice-quiet { padding: 10px 0; }
+.bae-m-notice-box.bae-notice-quiet { padding: calc(var(--space-related) + var(--space-line)) 0; }
 /* The box takes the words' 14px, so the inline status glyph (1.19em) sizes from the words beside it. */
 .bae-a-notice-box { font-size: var(--type-android-body-size); font-weight: var(--type-android-body-weight); line-height: var(--type-android-body-line-height); }
-.bae-a-notice-box.bae-notice-quiet { padding: 10px 0; }
+.bae-a-notice-box.bae-notice-quiet { padding: calc(var(--space-related) + var(--space-line)) 0; }
 /* flush: a quiet notice placed by its container, which spaces it (a warning in an alert or dialog), so it adds no padding of its own. */
 .bae-notice.bae-notice-flush { padding: 0; }
 /* On a tint, greys and grey fills are the primary text made see-through, so they take the tint's colour. */
@@ -46,22 +46,22 @@
 .bae-notice:not(.bae-notice-quiet) { --text-secondary: color-mix(in srgb, var(--text-primary) 72%, transparent); }
 .bae-notice-title-strong { font-weight: var(--type-strong-weight); }
 .bae-notice-subtitle { color: var(--text-secondary); }
-.bae-m-notice { position: relative; display: flex; flex-direction: column; gap: 4px; }
+.bae-m-notice { position: relative; display: flex; flex-direction: column; gap: var(--space-inline); }
 .bae-m-notice-top { display: flex; align-items: flex-start; gap: var(--space-group); }
-.bae-m-notice-words { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.bae-m-notice-words { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-inline); }
 .bae-m-notice-below { align-self: flex-start; display: flex; align-items: center; gap: var(--space-related); margin-top: var(--space-related); }
 /* A quiet notice is a bare line on the page: its buttons stay close under it. A filled one has room around its words, so the buttons take a step more. */
 .bae-notice-quiet .bae-m-notice-below { margin-top: var(--space-inline); }
 /* Under the words, the first borderless button pulls out by its padding so its words line up with the text above. */
-.bae-m-notice-below > .bae-m-btn-borderless:first-child { margin-left: -12px; }
+.bae-m-notice-below > .bae-m-btn-borderless:first-child { margin-left: calc(-1 * var(--space-group)); }
 .bae-m-notice-buttons { flex: none; display: flex; align-items: center; gap: var(--space-related); margin: calc((1lh - var(--size-control)) / 2) 0; }
-.bae-m-notice-dismiss { flex: none; margin: -6px -8px -6px -8px; }
-.bae-a-notice { display: flex; flex-direction: column; gap: 2px; font-size: var(--type-android-body-size); font-weight: var(--type-android-body-weight); line-height: var(--type-android-body-line-height); }
+.bae-m-notice-dismiss { flex: none; margin: calc(-1 * var(--space-compact)) calc(-1 * var(--space-related)) calc(-1 * var(--space-compact)) calc(-1 * var(--space-related)); }
+.bae-a-notice { display: flex; flex-direction: column; gap: var(--space-line); font-size: var(--type-android-body-size); font-weight: var(--type-android-body-weight); line-height: var(--type-android-body-line-height); }
 .bae-a-notice-top { display: flex; align-items: flex-start; gap: var(--space-related); }
 .bae-a-notice-words { flex: 1; min-width: 0; }
 /* The text buttons' 48dp touch targets reach past the words' line; the margins keep their words where the line puts them. */
-.bae-a-notice-below { align-self: flex-start; display: flex; align-items: center; margin: -5.5px 0 -13.5px -12px; }
-.bae-a-notice-buttons { flex: none; display: flex; align-items: center; margin: -14px -12px -14px 0; }
-.bae-a-notice-dismiss { flex: none; margin-left: 6px; }
+.bae-a-notice-below { align-self: flex-start; display: flex; align-items: center; margin: calc(-1 * var(--space-compact)) 0 calc(-1 * var(--space-group)) calc(-1 * var(--space-group)); }
+.bae-a-notice-buttons { flex: none; display: flex; align-items: center; margin: calc(-1 * (var(--space-group) + var(--space-line))) calc(-1 * var(--space-group)) calc(-1 * (var(--space-group) + var(--space-line))) 0; }
+.bae-a-notice-dismiss { flex: none; margin-left: var(--space-compact); }
 /* A toned notice has its own fill (in dark, the neutral one); its text and accent are on-notice and notice-accent, and its glyph keeps its tone. */
 .bae-notice.bae-tone-info:not(.bae-notice-quiet), .bae-notice.bae-tone-success:not(.bae-notice-quiet), .bae-notice.bae-tone-warning:not(.bae-notice-quiet), .bae-notice.bae-tone-danger:not(.bae-notice-quiet) { color: var(--on-notice); --text-primary: var(--on-notice); --accent: var(--notice-accent); }

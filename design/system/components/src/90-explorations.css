@@ -1,20 +1,20 @@
-/* ==== part: explore ==== */.bae-stars { display: inline-flex; align-items: center; gap: 2px; }
+/* ==== part: explore ==== */.bae-stars { display: inline-flex; align-items: center; gap: var(--space-line); }
 .bae-stars-btn { display: flex; padding: 0; border: 0; background: none; cursor: pointer; }
 .bae-stars-number { vertical-align: -1px; color: var(--text-secondary); }
-.bae-m-lrow { display: flex; align-items: center; gap: 10px; padding: 5px 8px; border-radius: 6px; font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
+.bae-m-lrow { display: flex; align-items: center; gap: calc(var(--space-related) + var(--space-line)); padding: calc(var(--space-inline) + var(--space-hairline)) var(--space-related); border-radius: 6px; font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
 .bae-m-lrow-lead { width: 56px; flex: none; font-size: var(--type-detail-size); font-weight: var(--type-detail-weight); line-height: var(--type-detail-line-height); }
-.bae-m-lrow-wide { padding-right: 16px; }
+.bae-m-lrow-wide { padding-right: var(--space-edge); }
 .bae-m-lrow-hover { background: var(--hover); }
 .bae-m-lrow-hanging { padding-left: 0; }
 .bae-m-lrow-hanging .bae-m-lrow-lead { text-align: right; white-space: nowrap; }
-.bae-m-lrow-hanging .bae-m-lrow-sub { margin-top: 3px; }
+.bae-m-lrow-hanging .bae-m-lrow-sub { margin-top: calc(var(--space-line) + var(--space-hairline)); }
 .bae-m-lrow-lifted { opacity: .45; }
 .bae-m-lrow-dragging { opacity: .75; background: var(--elevated); box-shadow: 0 8px 24px var(--shadow); pointer-events: none; }
-.bae-a-lrow { display: flex; align-items: center; gap: 12px; padding: 8px 16px; font-family: var(--font-android); }
+.bae-a-lrow { display: flex; align-items: center; gap: var(--space-group); padding: var(--space-related) var(--space-edge); font-family: var(--font-android); }
 .bae-a-lrow-dragging { position: relative; z-index: 1; background: var(--elevated); box-shadow: 0 6px 18px var(--shadow); border-radius: 12px; }
 .bae-m-chips { display: inline-flex; align-items: center; gap: var(--space-inline); }
-.bae-m-dlrow { display: flex; flex-direction: column; gap: 6px; padding: 8px 16px; font: var(--type-body-weight) var(--type-body-size) var(--font-sans); border-bottom: 1px solid var(--hairline); }
-.bae-m-dlrow-text { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 8px; }
+.bae-m-dlrow { display: flex; flex-direction: column; gap: var(--space-compact); padding: var(--space-related) var(--space-edge); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); border-bottom: 1px solid var(--hairline); }
+.bae-m-dlrow-text { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: var(--space-related); }
 .bae-m-dlrow-detail { font-size: var(--type-cell-size); font-weight: var(--type-cell-weight); line-height: normal; white-space: nowrap; }
 .bae-m-dlrow-ago { font-size: var(--type-fine-size); font-weight: var(--type-fine-weight); line-height: normal; white-space: nowrap; }
 
@@ -29,14 +29,14 @@
 .bae-word-lift { color: var(--logo-word); filter: drop-shadow(1px 1px 0 rgba(255, 255, 255, 0.35)); }
 @media (prefers-reduced-motion: reduce) { .bae-sheep-bob, .bae-word-bob { animation: none; } }
 
-.bae-errdis-panel { position: relative; margin-top: 2px; padding: 8px 30px 8px 10px; border-radius: 8px; background: color-mix(in srgb, black 28%, transparent); }
+.bae-errdis-panel { position: relative; margin-top: var(--space-line); padding: var(--space-related) calc(var(--space-section) + var(--space-compact)) var(--space-related) calc(var(--space-related) + var(--space-line)); border-radius: 8px; background: color-mix(in srgb, black 28%, transparent); }
 [data-theme="light"] .bae-errdis-panel { background: color-mix(in srgb, black 7%, transparent); }
 .bae-errdis-chain { font: var(--type-mono-weight) var(--type-mono-size) var(--font-mono); color: var(--text-secondary); white-space: pre-wrap; overflow-wrap: anywhere; }
 .bae-errdis-panel .bae-errdis-copy { position: absolute; top: 8px; right: 8px; }
 /* On macOS Copy shows only under the pointer (or keyboard focus); on Android, with no pointer, it always shows. */
 .bae-errdis-panel-hover .bae-errdis-copy { opacity: 0; transition: opacity 0.12s; }
 .bae-errdis-panel-hover:hover .bae-errdis-copy, .bae-errdis-panel-hover:focus-within .bae-errdis-copy { opacity: 1; }
-.bae-errdis-panel-android { min-height: 40px; box-sizing: border-box; padding-right: 44px; }
+.bae-errdis-panel-android { min-height: 40px; box-sizing: border-box; padding-right: calc(var(--space-page) + var(--space-group)); }
 
 /* ImportSheep: the parts' pivots in the drawing's units, what starts hidden, and the still pose. The motion itself is in src/36-import-sheep.js. */
 .bae-isheep { display: block; }
@@ -65,9 +65,9 @@
 @media (prefers-reduced-motion: reduce) {
   .bae-isheep .bae-isheep-item-1-1 { opacity: 1; transform: translate(588px, 482px) rotate(10deg); }
 }
-.bae-m-persontag { display: flex; align-items: center; gap: 6px; color: var(--text-secondary); }
+.bae-m-persontag { display: flex; align-items: center; gap: var(--space-compact); color: var(--text-secondary); }
 .bae-m-persontag-name { font-size: var(--type-detail-size); font-weight: var(--type-detail-weight); line-height: var(--type-detail-line-height); }
 .bae-m-persontag-strong { font: var(--type-strong-weight) var(--type-strong-size) var(--font-sans); }
 /* menu: the ⋮ sits 16dp after the row's text, as the row's own end padding, and its touch box overhangs the row's end. */
-.bae-a-lrow-menu { padding-right: 4px; }
-.bae-a-lrow-more { display: flex; margin-left: 4px; }
+.bae-a-lrow-menu { padding-right: var(--space-inline); }
+.bae-a-lrow-more { display: flex; margin-left: var(--space-inline); }

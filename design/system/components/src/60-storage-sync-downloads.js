@@ -121,7 +121,7 @@
           h('span', { className: 'bae-m-table-td' }, h('span', { className: 'bae-muted bae-num' }, f[2])), h('span', { className: 'bae-m-table-td' }, h('span', { className: 'bae-m-tertiary' }, f[3]))));
     });
     return h(React.Fragment, null,
-      h('div', { style: { padding: '8px 16px 0' } }, h(MacEyebrow, null, 'Files')),
+      h('div', { style: { padding: 'var(--space-related) var(--space-edge) 0' } }, h(MacEyebrow, null, 'Files')),
       h('div', { style: { display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 } },
         h('div', { className: 'bae-m-table', style: { '--bae-cols': tableTemplate(cs) } }, tableHead(cs), h('div', { className: 'bae-m-table-body' }, rows))));
   }

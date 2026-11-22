@@ -4,7 +4,7 @@
 .bae-preview-android { font-family: var(--font-android); background: var(--background); }
 .bae-preview-row { display: flex; align-items: center; gap: var(--space-edge); }
 .bae-preview-row-wide { align-items: flex-start; }
-.bae-preview-row-wide > .bae-preview-name { padding-top: 7px; }
+.bae-preview-row-wide > .bae-preview-name { padding-top: calc(var(--space-compact) + var(--space-hairline)); }
 .bae-preview-row-wide > .bae-preview-cell > * { flex: 1; min-width: 0; }
 /* A row of a component drawn at a fixed width, such as a window, takes the component's width, past the page's edge, so the row's picture holds the whole component. */
 .bae-preview-row-wide > .bae-preview-cell-fit { flex: none; }
@@ -24,8 +24,8 @@
 .bae-a-accents { display: flex; justify-content: space-between; }
 .bae-a-accents .bae-swatch { width: 36px; height: 36px; }
 .bae-a-accents .bae-swatch-on { box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--text-primary); }
-.bae-m-menu { display: flex; flex-direction: column; white-space: nowrap; padding: 6px; border-radius: 12px; background: var(--elevated); box-shadow: inset 0 0 0 1px var(--hairline-strong), 0 8px 24px var(--shadow); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); color: var(--text-primary); }
-.bae-m-menu-item { display: flex; align-items: center; gap: var(--space-compact); padding: 3px var(--space-related); border-radius: 6px; }
+.bae-m-menu { display: flex; flex-direction: column; white-space: nowrap; padding: var(--space-compact); border-radius: 12px; background: var(--elevated); box-shadow: inset 0 0 0 1px var(--hairline-strong), 0 8px 24px var(--shadow); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); color: var(--text-primary); }
+.bae-m-menu-item { display: flex; align-items: center; gap: var(--space-compact); padding: calc(var(--space-line) + var(--space-hairline)) var(--space-related); border-radius: 6px; }
 .bae-m-menu-item-on { background: var(--accent-selection); color: var(--on-fill); }
 .bae-m-menu-item-off { color: var(--text-tertiary); }
 .bae-m-menu-more { text-align: center; font-size: var(--type-fine-size); font-weight: var(--type-fine-weight); line-height: normal; color: var(--text-secondary); }
@@ -34,7 +34,7 @@
 /* Scan code: what to do, the QR code, its buttons, then when it ends. */
 .bae-scan { display: flex; flex-direction: column; align-items: center; gap: var(--space-edge); padding: var(--space-related) 0; text-align: center; text-wrap: pretty; }
 .bae-scan-text { margin-bottom: var(--space-related); }
-.bae-scan-qr { padding: 10px; border-radius: 8px; background: var(--text-primary); line-height: 0; }
+.bae-scan-qr { padding: calc(var(--space-related) + var(--space-line)); border-radius: 8px; background: var(--text-primary); line-height: 0; }
 .bae-scan-qr svg { fill: var(--background); display: block; }
 .bae-scan-buttons { display: flex; justify-content: center; gap: var(--space-related); margin-top: calc(-1 * var(--space-inline)); }
 .bae-m-scan .bae-scan-text { font: var(--type-body-weight) var(--type-body-size) var(--font-sans); color: var(--text-primary); }
@@ -68,5 +68,5 @@
 @keyframes bae-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .bae-spinner { animation-duration: 2.4s; } }
 .bae-m-spinner { display: inline-flex; align-items: center; gap: var(--space-related); color: var(--text-secondary); font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); }
-.bae-a-spinner { display: inline-flex; align-items: center; gap: 12px; color: var(--accent); font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); }
+.bae-a-spinner { display: inline-flex; align-items: center; gap: var(--space-group); color: var(--accent); font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); }
 .bae-a-spinner > span { color: var(--text-secondary); }

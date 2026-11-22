@@ -20,19 +20,19 @@
       h(Artwork, { title: props.image || props.name, size: 300, radius: 6 }),
       h('div', { className: 'bae-strong', style: { fontSize: 15 } }, props.name),
       h('div', { className: 'bae-muted', style: { fontSize: 11.5 } }, props.source),
-      h('div', { style: { display: 'flex', gap: 10, alignItems: 'center' } }, h(Sym, { name: 'left', size: 12 }), (props.position || 1) + ' of ' + props.count, h(Sym, { name: 'right', size: 12 })));
+      h('div', { style: { display: 'flex', gap: 'calc(var(--space-related) + var(--space-line))', alignItems: 'center' } }, h(Sym, { name: 'left', size: 12 }), (props.position || 1) + ' of ' + props.count, h(Sym, { name: 'right', size: 12 })));
   }
   // The cover gallery: Source, sections of tiles, the preview with its count, Use this cover.
   function MacCoverGallery(props) {
     // `current`: the release's cover, named Cover (spec §3.4: a release's gallery names its cover Cover), drawn from the album's picture.
     var tiles = function (names, sel, current) { return h('div', { className: 'bae-m-cgrid' }, list(names).map(function (n, i) { return h(MacCoverTile, { key: i, name: n, image: current ? props.album || 'Low Tide Hours' : n, selected: n === sel }); })); };
-    var sec = function (icon, title, names, current) { var n = String(list(names).length); return h('div', { style: { display: 'flex', flexDirection: 'column', gap: 10 } }, h('div', { className: 'bae-strong', style: { fontSize: 15, display: 'flex', gap: 6, alignItems: 'center' } }, h(Sym, { name: icon, size: 15 }), title, h('span', { className: 'bae-muted', style: { fontWeight: 400 } }, n)), tiles(names, props.selected, current)); };
+    var sec = function (icon, title, names, current) { var n = String(list(names).length); return h('div', { style: { display: 'flex', flexDirection: 'column', gap: 'calc(var(--space-related) + var(--space-line))' } }, h('div', { className: 'bae-strong', style: { fontSize: 15, display: 'flex', gap: 'var(--space-compact)', alignItems: 'center' } }, h(Sym, { name: icon, size: 15 }), title, h('span', { className: 'bae-muted', style: { fontWeight: 400 } }, n)), tiles(names, props.selected, current)); };
     var unlinked = props.remote === 'unlinked';
     return h('div', { className: 'bae-m-cgal' },
       // With no linked release there is nothing to fetch, so no Refresh.
       h(MacModalHeader, { title: props.title || 'Change cover', large: true }, unlinked ? null : h(MacButton, null, 'Refresh'), h(MacButton, null, 'Done')),
       h('div', { className: 'bae-m-cgal-body' },
-        h('div', { className: 'bae-m-cgal-left' }, h('div', { style: { display: 'flex', gap: 8, alignItems: 'center' } }, 'Source', h(MacPopUpButton, { label: 'Source', value: 'All' })),
+        h('div', { className: 'bae-m-cgal-left' }, h('div', { style: { display: 'flex', gap: 'var(--space-related)', alignItems: 'center' } }, 'Source', h(MacPopUpButton, { label: 'Source', value: 'All' })),
           sec('photo', 'Current cover', 'Cover', true),
           unlinked ? h('div', null, h('div', { className: 'bae-strong', style: { fontSize: 15 } }, 'No linked release'), h('div', { className: 'bae-muted' }, 'Link a Discogs or MusicBrainz release to browse its artwork.'), h(MacButton, null, 'Find release…')) : sec('globe', 'Remote sources', props.remoteNames || 'Discogs · 1 · Front,Discogs · 2 · Back'),
           sec('folder', 'Release files', props.files || 'cover.jpg,back.jpg,disc.jpg')),
@@ -80,6 +80,6 @@
       missing,
       failed ? h(MacNotice, { tone: 'danger', title: failed, secondary: 'Details' }) : null,
       props.why ? h('div', { className: 'bae-muted', style: { fontSize: 11.5 } }, props.why) : null,
-      still ? null : h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } }, list(props.actions || 'Pin,Move to This Mac…,Export…,Save as…').map(function (a) { return h(MacButton, { key: a }, a); })));
+      still ? null : h('div', { style: { display: 'flex', gap: 'var(--space-related)', flexWrap: 'wrap' } }, list(props.actions || 'Pin,Move to This Mac…,Export…,Save as…').map(function (a) { return h(MacButton, { key: a }, a); })));
   }
 
