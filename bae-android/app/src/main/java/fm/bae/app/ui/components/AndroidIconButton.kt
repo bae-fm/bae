@@ -34,6 +34,9 @@ internal enum class IconTone {
     /** The accent, for a control that is on. */
     ACCENT,
 
+    /** The warning colour, for a control that needs attention. */
+    WARNING,
+
     /** The colour that reads over a picture or a dark stage. */
     ON_FILL,
 }
@@ -41,8 +44,8 @@ internal enum class IconTone {
 /**
  * An icon button: [icon] in [tone], at [glyph] when given, else the icon's own size. [box] gives the
  * button that side instead of the usual 48dp, as a bar or the full player draws it; Compose still
- * takes a press up to 48dp from its centre. [tonal] draws the glyph on a 32dp disc tinted with [tone],
- * for a control inside a line, with the usual 48dp touch area around it.
+ * takes a press up to 48dp from its centre. [tonal] draws the glyph in [tone] on a 32dp disc tinted with the
+ * accent, for a control inside a line, with the usual 48dp touch area around it.
  */
 @Composable
 internal fun AndroidIconButton(
@@ -64,7 +67,10 @@ internal fun AndroidIconButton(
         ) {
             val tint = tone.color()
             Box(
-                modifier = Modifier.size(TONAL_DISC).background(tint.copy(alpha = ThemeOpacity.tint), CircleShape),
+                modifier =
+                    Modifier
+                        .size(TONAL_DISC)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = ThemeOpacity.tint), CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
@@ -114,6 +120,7 @@ private fun IconTone.color(): Color =
         IconTone.DEFAULT -> LocalContentColor.current
         IconTone.MUTED -> MaterialTheme.colorScheme.onSurfaceVariant
         IconTone.ACCENT -> MaterialTheme.colorScheme.primary
+        IconTone.WARNING -> BaeTheme.colors.warning
         IconTone.ON_FILL -> BaeTheme.colors.onFill
     }
 

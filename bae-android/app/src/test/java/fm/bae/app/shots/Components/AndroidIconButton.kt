@@ -55,7 +55,7 @@ class AndroidIconButtonShots : BoardShot() {
 
     @Test
     fun androidComponentIconButtonToneWarning() =
-        component(
-            "android.component.icon-button.tone-warning",
-        ) { AndroidIconButton(SymbolIcons.ArrowBack, "Back", onClick = {}) }
+        component("android.component.icon-button.tone-warning") {
+            AndroidIconButton(SymbolIcons.ArrowBack, "Back", onClick = {}, tone = IconTone.WARNING)
+        }
 }
