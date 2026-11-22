@@ -27,14 +27,6 @@ extension PreviewData {
             case .skipped: .skipped
             }
         }
-
-        /// How Northbound stands in the Found tab.
-        var northbound: NorthboundStanding {
-            switch self {
-            case .found(let standing, _): standing
-            case .several, .imported, .skipped: .importing
-            }
-        }
     }
 
     /// The folder a Found board opens, as its pane shows it.
@@ -210,53 +202,18 @@ extension PreviewData {
         return selection
     }
 
-    /// Opens the folder `board` opens: its read in `store`, and the
-    /// selection of its row.
+    /// Make a candidate's detail and selection available together.
     @MainActor
-    static func openBoardFolder(
-        _ board: ImportBoard,
-        in store: ImportStore,
-        fieldRecordingsCover: BridgeCoverChoice,
-        harborWaltz: BridgeInvalidCandidate,
-        harborWaltzImage: BridgeMappingImage
-    ) throws -> ImportSelection {
-        switch board {
-        case .found(_, nil):
-            return ImportSelection()
-        case .several:
-            return boardSeveralSelection
-        case .found(let northbound, let pane?):
-            let opened = try openedCandidate(
-                pane,
-                northbound: northbound,
-                fieldRecordingsCover: fieldRecordingsCover
-            )
-            store.selectedCandidates[opened.key] = opened
-            return boardSelection(
-                .candidate(key: opened.key),
-                key: opened.key,
-                offers: opened.live?.offers ?? []
-            )
-        case .imported:
-            let opened = try northboundImportedCandidate()
-            store.selectedCandidates[opened.key] = opened
-            return boardSelection(
-                .candidate(key: opened.key),
-                key: opened.key,
-                offers: opened.live?.offers ?? []
-            )
-        case .skipped:
-            let key = harborWaltz.candidateKey
-            store.selectedInvalidCandidates[key] = boardHarborWaltzDetail(
-                candidate: harborWaltz,
-                image: harborWaltzImage
-            )
-            return boardSelection(
-                .invalidCandidate(key: key),
-                key: key,
-                offers: []
-            )
-        }
+    static func selectBoardCandidate(
+        _ candidate: Candidate,
+        in store: ImportStore
+    ) -> ImportSelection {
+        store.selectedCandidates[candidate.key] = candidate
+        return boardSelection(
+            .candidate(key: candidate.key),
+            key: candidate.key,
+            offers: candidate.live?.offers ?? []
+        )
     }
 
     @MainActor
@@ -267,37 +224,75 @@ extension PreviewData {
         store.applySummary(
             importQueueSummary(hasWatchedFolders: true, hasGroups: true)
         )
+        let items: [BridgeImportListItem]
+        let selection: ImportSelection
         switch board {
-        case .found:
+        case .found(let northbound, let pane):
             store.identificationProgress = (identified: 4, total: 10)
             store.importsInFlight = 2
+            let cover = try fieldRecordingsCatalogCover()
+            items = try foundItems(
+                northbound: northbound,
+                fieldRecordingsCover: cover.image
+            )
+            if let pane {
+                let candidate = try openedCandidate(
+                    pane,
+                    northbound: northbound,
+                    fieldRecordingsCover: cover
+                )
+                selection = selectBoardCandidate(candidate, in: store)
+            }
+            else {
+                selection = ImportSelection()
+            }
         case .several:
             store.identificationProgress = (identified: 4, total: 10)
-        case .imported, .skipped:
-            break
+            items = try foundItems(
+                northbound: .importing,
+                fieldRecordingsCover: fieldRecordingsCatalogCover().image
+            )
+            selection = boardSeveralSelection
+        case .imported:
+            items = try doneItems()
+            selection = selectBoardCandidate(
+                try northboundImportedCandidate(),
+                in: store
+            )
+        case .skipped:
+            let image = try boardImage("folder.jpg", art: "Glass Harbor")
+            let candidate = boardHarborWaltz(cover: image.file)
+            let key = candidate.candidateKey
+            items = [boardEmptyFolder, candidate].map(invalidItem)
+            store.selectedInvalidCandidates[key] = boardHarborWaltzDetail(
+                candidate: candidate,
+                image: image
+            )
+            selection = boardSelection(
+                .invalidCandidate(key: key),
+                key: key,
+                offers: []
+            )
         }
-        let fieldRecordingsCover = try fieldRecordingsCatalogCover()
-        let harborWaltzImage = try boardImage("folder.jpg", art: "Glass Harbor")
-        let harborWaltz = boardHarborWaltz(cover: harborWaltzImage.file)
-        let selection = try openBoardFolder(
+        return makeImportBoardScene(
             board,
-            in: store,
-            fieldRecordingsCover: fieldRecordingsCover,
-            harborWaltz: harborWaltz,
-            harborWaltzImage: harborWaltzImage
+            store: store,
+            items: items,
+            selection: selection
         )
-        return ImportBoardScene(
+    }
+
+    @MainActor
+    private static func makeImportBoardScene(
+        _ board: ImportBoard,
+        store: ImportStore,
+        items: [BridgeImportListItem],
+        selection: ImportSelection
+    ) -> ImportBoardScene {
+        ImportBoardScene(
             fixture: ImportPreviewFixture(
                 store: store,
-                itemsByTab: [
-                    .pending: try foundItems(
-                        northbound: board.northbound,
-                        fieldRecordingsCover: fieldRecordingsCover.image
-                    ),
-                    .done: try doneItems(),
-                    .skipped: [boardEmptyFolder, harborWaltz]
-                        .map(invalidItem),
-                ],
+                itemsByTab: [board.tab: items],
                 tabCounts: BridgeTriageTabCounts(
                     pending: 10,
                     done: 4,

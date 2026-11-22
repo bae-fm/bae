@@ -14,7 +14,7 @@ extension ShotScene {
             images: PreviewData.artImageStore()
         ) {
             try importWindow(
-                .found(northbound: .identified, opening: .lowTideHours),
+                opening: PreviewData.lowTideHoursCandidate(),
                 items: try previewRows()
             )
         },
@@ -25,37 +25,44 @@ extension ShotScene {
             images: PreviewData.artImageStore()
         ) {
             try importWindow(
-                .found(northbound: .identified, opening: nil),
+                opening: nil,
                 items: try previewRows()
             )
         },
     ]
 
-    /// The Import window's content as `board` draws it, with no work running
+    /// The Import window with no work running
     /// and the list holding `items`, at the preview's 1000 by 420 points.
     @MainActor
     private static func importWindow(
-        _ board: PreviewData.ImportBoard,
+        opening candidate: Candidate?,
         items: [BridgeImportListItem]
-    ) throws -> some View {
+    ) -> some View {
         let uiStore = UiStore()
         uiStore.activeSection = .importing
-        uiStore.setImportCandidateTab(board.tab)
-        let scene = try PreviewData.importBoardScene(board)
-        scene.fixture.store.identificationProgress = nil
-        scene.fixture.store.importsInFlight = 0
+        uiStore.setImportCandidateTab(.pending)
+        let store = ImportStore()
+        store.applySummary(
+            PreviewData.importQueueSummary(
+                hasWatchedFolders: true,
+                hasGroups: true
+            )
+        )
+        let selection =
+            candidate.map { PreviewData.selectBoardCandidate($0, in: store) }
+            ?? ImportSelection()
         let fixture = ImportPreviewFixture(
-            store: scene.fixture.store,
-            itemsByTab: [board.tab: items],
+            store: store,
+            itemsByTab: [.pending: items],
             tabCounts: columnCounts
         )
-        let slot = fixture.slot(uiStore: uiStore, selection: scene.selection)
+        let slot = fixture.slot(uiStore: uiStore, selection: selection)
         return MacImportWindow(endEditing: {})
             .environment(uiStore)
             .importSectionEnvironment(
                 store: fixture.store,
                 slot: slot,
-                runtimes: scene.runtimes
+                runtimes: [:]
             )
             .environment(SettingsNavigation())
             .environment(PreviewAudio.stub())
@@ -66,8 +73,7 @@ extension ShotScene {
             .environment(
                 PreviewData.configStore(storage: PreviewData.previewStorage)
             )
-            .environment(scene.outbox)
-            .environment(\.importPercents, scene.importPercents)
+            .environment(PreviewData.northboundUploads())
             .mainWindowPreviewEnvironment()
             .frame(width: 1_000, height: 420)
     }
