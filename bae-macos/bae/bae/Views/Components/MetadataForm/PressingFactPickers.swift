@@ -140,13 +140,14 @@ private struct MediumCountRow: View {
                     set: { setCount(UInt32($0)) }
                 )
             )
-            Button(action: remove) {
-                Image(systemName: "xmark.circle.fill")
-                    .foregroundStyle(Theme.textTertiary)
-            }
-            .buttonStyle(.accentPlain)
-            .help(String(localized: "Remove \(name)"))
-            .accessibilityLabel(String(localized: "Remove \(name)"))
+            MacIconButton(
+                symbol: "xmark.circle.fill",
+                label: "Remove \(name)",
+                faint: true,
+                iconSize: .medium,
+                hitSize: BoxedIconButtonStyle.Size.small.side,
+                action: remove
+            )
         }
         .themeText(.body)
         .fixedSize()
@@ -242,14 +243,15 @@ struct DiscogsDetailsEditor: View {
                     let name = bridgeDiscogsDetailLabel(detail: detail).text
                     Text(name)
                         .themeText(.body)
-                    Button {
+                    MacIconButton(
+                        symbol: "xmark.circle.fill",
+                        label: "Remove \(name)",
+                        faint: true,
+                        iconSize: .medium,
+                        hitSize: BoxedIconButtonStyle.Size.small.side
+                    ) {
                         commit(details.filter { $0 != detail })
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(Theme.textTertiary)
                     }
-                    .buttonStyle(.accentPlain)
-                    .accessibilityLabel(String(localized: "Remove \(name)"))
                 }
             }
             MacButton(

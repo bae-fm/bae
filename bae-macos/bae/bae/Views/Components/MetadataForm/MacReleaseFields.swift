@@ -119,21 +119,18 @@ struct MacReleaseFields: View {
                     let named =
                         row.label.name.isEmpty
                         ? row.label.catalogNumber : row.label.name
-                    Button {
+                    MacIconButton(
+                        symbol: "xmark.circle.fill",
+                        label: "Remove \(named)",
+                        faint: true,
+                        iconSize: .medium,
+                        hitSize: BoxedIconButtonStyle.Size.small.side
+                    ) {
                         var next = rows.map(\.label)
                         next.remove(at: index)
                         Task { await writer.setLabels(next) }
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(Theme.textTertiary)
                     }
-                    .buttonStyle(.accentPlain)
-                    .help(String(localized: "Remove \(named)"))
-                    .accessibilityLabel(
-                        String(localized: "Remove \(named)")
-                    )
                 }
-                .themeIcon(.small)
             }
             if row.place.addsRow {
                 GridRow {
@@ -180,21 +177,18 @@ struct MacReleaseFields: View {
                         next[index] = barcode
                         await writer.setBarcodes(next)
                     }
-                    Button {
+                    MacIconButton(
+                        symbol: "xmark.circle.fill",
+                        label: "Remove \(row.barcode)",
+                        faint: true,
+                        iconSize: .medium,
+                        hitSize: BoxedIconButtonStyle.Size.small.side
+                    ) {
                         var next = rows.map(\.barcode)
                         next.remove(at: index)
                         Task { await writer.setBarcodes(next) }
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(Theme.textTertiary)
                     }
-                    .buttonStyle(.accentPlain)
-                    .help(String(localized: "Remove \(row.barcode)"))
-                    .accessibilityLabel(
-                        String(localized: "Remove \(row.barcode)")
-                    )
                 }
-                .themeIcon(.small)
             }
             if row.place.addsRow {
                 GridRow {

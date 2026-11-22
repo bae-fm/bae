@@ -7,14 +7,17 @@ import SwiftUI
 /// leaves as it is.
 struct IconHoverButtonStyle: ButtonStyle {
     var isOn = false
+    /// Draws the glyph in tertiary text at rest.
+    var faint = false
 
     func makeBody(configuration: Configuration) -> some View {
-        Hovering(configuration: configuration, isOn: isOn)
+        Hovering(configuration: configuration, isOn: isOn, faint: faint)
     }
 
     private struct Hovering: View {
         let configuration: Configuration
         let isOn: Bool
+        let faint: Bool
         @Environment(\.isEnabled)
         private var isEnabled
         @State
@@ -26,7 +29,9 @@ struct IconHoverButtonStyle: ButtonStyle {
                     isOn
                         ? Theme.accent
                         : hovering && isEnabled
-                            ? Theme.textPrimary : Theme.macTextSecondary
+                            ? Theme.textPrimary
+                            : faint
+                                ? Theme.textTertiary : Theme.macTextSecondary
                 )
                 .background(
                     RoundedRectangle(cornerRadius: ThemeRadius.control)
