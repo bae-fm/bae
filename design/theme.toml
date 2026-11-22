@@ -1,7 +1,7 @@
 # The apps' colors and measures, read by every platform through code theme-gen
 # generates from this file and from design/system/tokens.json, which holds the
-# tones, the accents, the text styles and the icon and size roles (see
-# notes/appearance.md). The appearance settings offer the
+# tones, the accents, the text styles, the radii, the spacing and the icon and
+# size roles (see notes/appearance.md). The appearance settings offer the
 # tones and the accents in tokens.json's order.
 
 # The tone and accent a new installation shows until the person chooses: a tone
@@ -151,33 +151,3 @@ tint = 0.14
 tintStrong = 0.26
 # A control that is off, as the design draws it (tokens.json `opacity-off`).
 off = 0.4
-
-# Corner radii, in points on Apple and dp on Android. `artwork` is cover art in
-# rows and lists, `cover` a release's cover shown large; `bar` rounds skeleton
-# and progress bars; `field` rounds a text field.
-[radius]
-bar = 3
-chip = 5
-control = 7
-field = 8
-card = 10
-panel = 20
-artwork = 6
-cover = 10
-
-# Gaps and insets, the same on every platform (points on Apple, dp on
-# Android): `line` between the lines of one text block, `inline` between a
-# glyph and its text, `related` between related items, `group` between groups,
-# `fieldInset` from a text field's edge to its text, `edge` from a container's
-# edge to its content, `section` between sections and `page` around a page.
-[space]
-hairline = 1
-line = 2
-inline = 4
-compact = 6
-related = 8
-group = 12
-fieldInset = 10
-edge = 16
-section = 24
-page = 32

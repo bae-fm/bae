@@ -69,7 +69,10 @@ there. Apple views set a role with `.themeText(_:)`. A section label is one
 `MacEyebrow` on the Mac and one `AndroidEyebrow` on Android.
 
 Spacing is one shared scale named by meaning: hairline, line, inline, compact,
-related, group, edge, section and page. Glyph sizes (badge, small, medium,
+related, fieldInset, group, edge, section and page, and corner radii are named
+the same way (bar, chip, artwork, control, field, card, cover and panel). Each
+is a token in tokens.json's `spacing` or `radius` family naming its role in
+`role`, one length every platform shares. Glyph sizes (badge, small, medium,
 large, hero and the rest) and a few recurring sizes (row and now-playing bar
 artwork, the least an icon button takes to press) are roles whose values each
 platform sets by its own convention. A role is a token in tokens.json's `icon`

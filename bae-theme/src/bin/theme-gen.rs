@@ -3,7 +3,7 @@
 //!
 //! `--theme` defaults to `design/theme.toml` and `--tokens` to
 //! `design/system/tokens.json`, which holds the tones, the accents, the text
-//! styles and the icon and size roles, relative to the repo root the build scripts run from.
+//! styles, the radii, the spacing and the icon and size roles, relative to the repo root the build scripts run from.
 
 use std::fs;
 use std::path::{Path, PathBuf};

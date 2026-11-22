@@ -1,4 +1,6 @@
-//! The icon and size roles of design/system/tokens.json. A role is a token in
+//! The radius, spacing, icon and size roles of design/system/tokens.json. The
+//! radii and the spacing are one length every platform shares, a token in the
+//! `radius` or `spacing` family naming its role in `role`. An icon or size role is a token in
 //! an Apple family (`icon`, `size`), whose value is the macOS length and whose
 //! `ios` is iOS's, and a token in its Android family (`icon-android`,
 //! `size-android`), whose value is Android's; each names the role in `role`.
@@ -100,6 +102,36 @@ pub(crate) fn read_icons(
             let android =
                 tokens.android.map(|token| length(token, "length", &token.value, problems));
             (role.to_string(), IconRole { apple, android })
+        })
+        .collect()
+}
+
+/// The roles of a family of <kind> tokens every platform shares, such as the
+/// radii: each role's length.
+pub(crate) fn read_shared(
+    kind: &str,
+    family: &RawLengthFamily,
+    problems: &mut Vec<String>,
+) -> BTreeMap<String, f64> {
+    let mut entries = Vec::new();
+    for token in &family.tokens {
+        let Some(role) = token.role.as_deref() else {
+            problems.push(format!("tokens.json `{}` names no role", token.name));
+            continue;
+        };
+        if token.ios.is_some() || token.weight.is_some() {
+            problems.push(format!(
+                "tokens.json `{}` is every platform's and names an ios length or a weight",
+                token.name
+            ));
+        }
+        entries.push(RoleEntry { role, name: &token.name, android: false, value: token });
+    }
+    pair_roles(kind, entries, problems)
+        .into_iter()
+        .filter_map(|(role, pair)| {
+            let token = pair.apple?;
+            Some((role.to_string(), length(token, "length", &token.value, problems)))
         })
         .collect()
 }
