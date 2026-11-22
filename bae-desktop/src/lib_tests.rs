@@ -76,12 +76,25 @@ fn the_subsonic_switch_stays_on_while_the_server_cannot_run() {
         assert!(view.password_saved);
         assert!(services.preferences().await.unwrap().subsonic.enabled);
 
+        // The server retries on a changed setting, not when the port frees.
+        // Moving it to a free port and waiting for it to run there makes the
+        // change one the settings follower sees: two writes in a row can
+        // reach it as no change.
         drop(occupied);
-        desktop.set_subsonic_port(u32::from(port) + 1).await.unwrap();
-        desktop.set_subsonic_port(u32::from(port)).await.unwrap();
-        loop {
-            if matches!(next().await.status, SubsonicStatus::Running { .. }) {
-                break;
+        let free_port = {
+            let spare = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+            spare.local_addr().unwrap().port()
+        };
+        for port in [free_port, port] {
+            desktop.set_subsonic_port(u32::from(port)).await.unwrap();
+            let served = format!("http://localhost:{port}");
+            loop {
+                if matches!(
+                    next().await.status,
+                    SubsonicStatus::Running { addresses } if addresses[0].url == served
+                ) {
+                    break;
+                }
             }
         }
         desktop.shutdown().await;
