@@ -219,7 +219,7 @@
   var INVITE_EMAIL = { dropbox: 'Dropbox email', onedrive: 'Microsoft account email', icloud: 'Apple Account email' };
   var INVITE_ACCOUNT = { dropbox: 'Dropbox account', onedrive: 'Microsoft account', icloud: 'Apple Account' };
   var INVITE_MINE = 'They will use your key. To remove them later, you make a new key for yourself and enter it on each of your devices.';
-  var INVITE_THEIR_KEY = 'Their own key to the bucket, so they can join.';
+  var INVITE_THEIR_KEY = 'Their own key to the S3 storage, so they can join.';
   function inviteWhy(storage) { return 'The library is shared with this ' + INVITE_ACCOUNT[storage] + ' so they can join.'; }
 
   // The invite form's fields: the person's account email on Dropbox, OneDrive or iCloud, or on S3 the key they join with, then their role and how long the invite lasts. `storage`: 'dropbox', 'onedrive', 'icloud' or 's3' (the default); `keyOwner`: on S3, 'theirs' (their own key, in two fields) or 'mine' (they use yours).
