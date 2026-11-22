@@ -292,12 +292,12 @@ private fun AddDeviceBody(
             face is AddDeviceFace.Expired || face is AddDeviceFace.Forgotten -> {
                 Text(
                     text = stringResource(R.string.pair_ended_title),
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = ThemeText.androidBodyLarge.style,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
                     text = stringResource(R.string.add_device_ended_text),
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = ThemeText.body.style,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }

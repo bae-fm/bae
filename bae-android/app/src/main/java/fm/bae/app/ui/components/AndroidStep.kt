@@ -11,7 +11,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.style.TextAlign
 import fm.bae.app.ui.appearance.ThemeSpace
@@ -57,7 +56,7 @@ internal fun AndroidStep(
         ) {
             Text(
                 text = title,
-                style = ThemeText.title.style.copy(fontWeight = FontWeight.Medium, lineBreak = LineBreak.Heading),
+                style = ThemeText.androidBarTitle.style.copy(lineBreak = LineBreak.Heading),
                 textAlign = align,
             )
             text?.let {

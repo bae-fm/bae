@@ -15,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.ui.appearance.ThemeText
 
 /**
  * A bottom sheet that holds [content] as tall as it is, up to near the top of the screen, under
@@ -59,7 +60,7 @@ internal fun AndroidSheetBody(
         title?.let {
             Text(
                 text = it,
-                style = MaterialTheme.typography.titleLarge,
+                style = ThemeText.androidBarTitle.style,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(start = ThemeSpace.edge, end = ThemeSpace.edge, bottom = ThemeSpace.group),
             )

@@ -95,7 +95,7 @@ internal fun sidePauseParts(
                 if (!keepPausing) {
                     Text(
                         text = stringResource(R.string.side_pause_turned_off),
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = ThemeText.body.style,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
