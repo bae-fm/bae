@@ -273,8 +273,8 @@ extension PreviewData {
                     .skipped: skippedItems(),
                 ],
                 tabCounts: BridgeTriageTabCounts(
-                    pending: 14,
-                    done: 31,
+                    pending: 10,
+                    done: 4,
                     skipped: 2
                 )
             ),
