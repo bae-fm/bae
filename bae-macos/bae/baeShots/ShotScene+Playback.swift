@@ -73,10 +73,17 @@ extension ShotScene {
             let playbackStore = boardPlayback(removedFromLibrary: true)
             let images = coverStore()
             let manual = manualQueue
+            let upcoming = boardUpcoming
+            let queue = Queue(upcomingQueries: { _ in
+                .fixed(upcoming, answers: UnansweredCount())
+            })
             playbackStore.applyQueueSnapshot(
                 BridgeQueueSnapshot(
                     manual: manual,
-                    context: nil,
+                    context: BridgePlaybackContext(
+                        kind: .release,
+                        sourceTitle: "Low Tide Hours"
+                    ),
                     shuffled: false,
                     hasNext: true,
                     hasPrevious: false,
@@ -90,9 +97,14 @@ extension ShotScene {
                     backing: backing,
                     playbackStore: playbackStore,
                     images: images,
-                    size: CGSize(width: 1200, height: 760)
+                    size: CGSize(width: 1200, height: 760),
+                    window: AnyView(MacMainWindowContainer().environment(queue))
                 ),
-                images: images
+                images: images,
+                isReady: {
+                    backing.session.albums.list?.positionCount == 6
+                        && playbackStore.upcomingTotal == upcoming.count
+                }
             )
         },
     ]
