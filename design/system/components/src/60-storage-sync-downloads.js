@@ -193,8 +193,9 @@
     var letters = Array.from(filenameGraphemes.segment(line), function (part) { return part.segment; });
     var middle = Math.ceil(letters.length / 2);
     return h('div', { className: cx('bae-m-filerow-name', color) },
-      h('span', null, letters.slice(0, middle).join('')),
-      h('span', null, letters.slice(middle).join('')));
+      h('span', { className: 'bae-m-filerow-full-name' }, line),
+      h('span', { 'aria-hidden': true, className: 'bae-m-filerow-start' }, letters.slice(0, middle).join('')),
+      h('span', { 'aria-hidden': true, className: 'bae-m-filerow-end' }, letters.slice(middle).join('')));
   }
   // One file in the inspector: a mark for queued to upload (`queued`), to pin (`pin-queued`) or to move to This Mac (`move-queued`), all dashed, sending, pinning or moving to This Mac (`moving`, a ring filling), or the file a move stopped on (`error`, in danger) or an upload waits for (`waiting`, in warning); its name and size. The mark is the only thing on the row that says where the file stands, so it is an image named by those words.
   function MacFileRow(props) {
