@@ -2,11 +2,10 @@ import BaeKit
 import SwiftUI
 
 /// A release transfer's counts on one line, as core lists them, joined by
-/// dots: the files on the move in the transfer's colour, those waiting in
+/// dots: the files on the move in the accent, those waiting in
 /// the line's colour, those done dimmed.
 struct StorageTransferCounts: View {
     let counts: [BridgeTransferCount]
-    let kind: StorageTransferKind
 
     var body: some View {
         HStack(spacing: ThemeSpace.related) {

@@ -23,7 +23,7 @@ struct MacTransferSummary: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Self.lineGap) {
             HStack(spacing: ThemeSpace.related) {
-                StorageTransferCounts(counts: counts, kind: kind)
+                StorageTransferCounts(counts: counts)
                 Spacer()
                 MacButton("Cancel", action: onCancel)
                     .controlSize(.small)
