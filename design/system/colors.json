@@ -20,7 +20,7 @@
     },
     {
       "name": "Tones a person can choose",
-      "about": "Each of the six tones, in the same eight surfaces. The token of a cell is tone-‹tone›-‹surface›.",
+      "about": "Each of the six tones, in the same nine surfaces. The token of a cell is tone-‹tone›-‹surface›.",
       "table": {
         "columns": [
           { "label": "background", "sets": "background" },
@@ -30,7 +30,8 @@
           { "label": "field-hover", "sets": "field-hover" },
           { "label": "missing-art", "sets": "missing-art" },
           { "label": "well", "sets": "well" },
-          { "label": "tile", "sets": "tile", "dot": true }
+          { "label": "tile", "sets": "tile", "dot": true },
+          { "label": "control", "sets": "control" }
         ],
         "rows": [
           {
@@ -43,7 +44,8 @@
               "tone-neutral-field-hover",
               "tone-neutral-missing-art",
               "tone-neutral-well",
-              "tone-neutral-tile"
+              "tone-neutral-tile",
+              "tone-neutral-control"
             ]
           },
           {
@@ -56,7 +58,8 @@
               "tone-slate-field-hover",
               "tone-slate-missing-art",
               "tone-slate-well",
-              "tone-slate-tile"
+              "tone-slate-tile",
+              "tone-slate-control"
             ]
           },
           {
@@ -69,7 +72,8 @@
               "tone-plum-field-hover",
               "tone-plum-missing-art",
               "tone-plum-well",
-              "tone-plum-tile"
+              "tone-plum-tile",
+              "tone-plum-control"
             ]
           },
           {
@@ -82,7 +86,8 @@
               "tone-midnight-field-hover",
               "tone-midnight-missing-art",
               "tone-midnight-well",
-              "tone-midnight-tile"
+              "tone-midnight-tile",
+              "tone-midnight-control"
             ]
           },
           {
@@ -95,7 +100,8 @@
               "tone-forest-field-hover",
               "tone-forest-missing-art",
               "tone-forest-well",
-              "tone-forest-tile"
+              "tone-forest-tile",
+              "tone-forest-control"
             ]
           },
           {
@@ -108,14 +114,12 @@
               "tone-sand-field-hover",
               "tone-sand-missing-art",
               "tone-sand-well",
-              "tone-sand-tile"
+              "tone-sand-tile",
+              "tone-sand-control"
             ]
           }
         ],
-        "switch": {
-          "name": "Tone",
-          "derived": [{ "color": "control", "from": "tile", "themes": ["dark"] }]
-        }
+        "switch": { "name": "Tone" }
       }
     },
     {
