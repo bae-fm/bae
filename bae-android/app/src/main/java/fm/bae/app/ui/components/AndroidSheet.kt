@@ -63,26 +63,26 @@ internal fun AndroidSheetBody(
                 bottom = bottomInset + ThemeSpace.section,
             ),
     ) {
-        heading?.let {
+        heading?.let { header ->
             Text(
-                text = it.title,
+                text = header.title,
                 style = ThemeText.androidBarTitle.style,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(start = ThemeSpace.edge, end = ThemeSpace.edge, bottom = ThemeSpace.group),
             )
-        }
-        heading?.note?.let {
-            Text(
-                text = it,
-                style = ThemeText.body.style,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier =
-                    Modifier.padding(
-                        start = ThemeSpace.edge,
-                        end = ThemeSpace.edge,
-                        bottom = ThemeSpace.section,
-                    ),
-            )
+            header.note?.let {
+                Text(
+                    text = it,
+                    style = ThemeText.body.style,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier =
+                        Modifier.padding(
+                            start = ThemeSpace.edge,
+                            end = ThemeSpace.edge,
+                            bottom = ThemeSpace.section,
+                        ),
+                )
+            }
         }
         content()
     }
