@@ -191,7 +191,8 @@
   function MacLibraryHeading(props) {
     var collapsed = !!props.collapsed;
     return h('div', { className: cx('bae-m-libhead', collapsed && 'bae-m-libhead-collapsed') },
-      h('h1', { className: 'bae-m-libhead-title' }, props.view || 'Albums', h('span', { className: 'bae-m-libhead-chevron', 'aria-hidden': true }, h(Glyph, { set: 'mac', name: 'down', size: collapsed ? 'badge' : 'medium' }))),
+      // The view's name is a menu of the library's views.
+      h('button', { type: 'button', 'aria-haspopup': 'menu', className: 'bae-plainbtn bae-m-libhead-title' }, props.view || 'Albums', h('span', { className: 'bae-m-libhead-chevron', 'aria-hidden': true }, h(Glyph, { set: 'mac', name: 'down', size: collapsed ? 'badge' : 'medium' }))),
       h('div', { className: 'bae-m-libhead-trail' }, props.children));
   }
   SF.down = 'M2.3 6.15C1.54 6.28 0.96 7.02 1.01 7.81C1.04 8.27 1.18 8.53 1.66 9.03C2.06 9.44 2.91 10.3 3.62 11.02C3.93 11.35 5.43 12.88 6.95 14.44C10.43 18 10.47 18.04 10.69 18.17C10.97 18.33 11.18 18.39 11.54 18.39C11.99 18.38 12.3 18.27 12.64 17.98C12.73 17.9 14.33 16.27 16.19 14.36C18.05 12.45 19.8 10.67 20.06 10.4C21.88 8.55 21.86 8.57 21.98 8.23C22.05 8.03 22.07 7.57 22.02 7.35C21.88 6.81 21.5 6.39 20.97 6.2C20.81 6.15 20.75 6.14 20.5 6.14C19.94 6.14 19.66 6.29 19.02 6.94C18.8 7.17 18.41 7.57 18.16 7.82C17.92 8.08 17.52 8.49 17.27 8.74C17.03 8.98 15.65 10.41 14.19 11.91C12.74 13.4 11.54 14.62 11.54 14.62C11.53 14.62 4.09 7 3.85 6.74C3.4 6.26 2.87 6.06 2.3 6.15Z';
@@ -378,9 +379,10 @@
     var down = props.direction === 'down';
     var arrow = h('svg', { width: 11, height: 11, viewBox: '0 0 24 24', 'aria-hidden': true, fill: 'none', stroke: 'currentColor', strokeWidth: 2.4, strokeLinecap: 'round', strokeLinejoin: 'round' }, h('path', { d: down ? 'M12 4v16M5 13l7 7 7-7' : 'M12 20V4M5 11l7-7 7 7' }));
     return h('span', { className: 'bae-m-sortpill' },
-      h('span', { className: 'bae-m-sortpill-field' }, props.field, h(Glyph, { set: 'mac', name: 'down', size: 'badge', className: 'bae-muted' })),
-      h('span', { className: 'bae-muted', 'aria-label': down ? 'Descending' : 'Ascending' }, arrow),
-      props.removable ? h('span', { className: 'bae-muted', 'aria-label': 'Remove sort criterion' }, h(Glyph, { set: 'mac', name: 'close', size: 'badge' })) : null);
+      // The field is a menu of the fields; the arrow, named for what it does, flips the direction.
+      h('button', { type: 'button', 'aria-haspopup': 'menu', className: 'bae-plainbtn bae-m-sortpill-field' }, props.field, h(Glyph, { set: 'mac', name: 'down', size: 'badge', className: 'bae-muted' })),
+      h('button', { type: 'button', className: 'bae-plainbtn bae-muted', 'aria-label': down ? 'Sort ascending' : 'Sort descending' }, arrow),
+      props.removable ? h('button', { type: 'button', className: 'bae-plainbtn bae-muted', 'aria-label': 'Remove sort criterion' }, h(Glyph, { set: 'mac', name: 'close', size: 'badge' })) : null);
   }
 
   // The sort's criteria (`criteria`: "Field:down,Field:up"), each a `MacSortPill`; then + to add one, while a field of the list (`fields`, the albums' Title, Artist, Year and Date added unless given) is still unused.
@@ -388,7 +390,7 @@
     var items = String(props.criteria || 'Date added:down').split(',').map(function (c) { var p = c.trim().split(':'); return { field: p[0], dir: p[1] || 'up' }; });
     return h('div', { className: 'bae-m-sortrow' },
       items.map(function (it, i) { return h(MacSortPill, { key: i, field: it.field, direction: it.dir, removable: items.length > 1 }); }),
-      list(props.fields || 'Title, Artist, Year, Date added').every(function (f) { return items.some(function (it) { return it.field === f; }); }) ? null : h('span', { className: 'bae-m-sortadd', 'aria-label': 'Add sort criterion' }, h(Glyph, { set: 'mac', name: 'add', size: 'medium' })));
+      list(props.fields || 'Title, Artist, Year, Date added').every(function (f) { return items.some(function (it) { return it.field === f; }); }) ? null : h('button', { type: 'button', 'aria-haspopup': 'menu', className: 'bae-plainbtn bae-m-sortadd', 'aria-label': 'Add sort criterion' }, h(Glyph, { set: 'mac', name: 'add', size: 'medium' })));
   }
   SF.add = 'M11.54 2.99C11.07 3.1 10.65 3.49 10.47 3.96L10.41 4.11L10.41 7.55L10.4 11L6.82 11L3.24 11.01L3.02 11.09C1.62 11.59 1.69 13.43 3.12 13.87C3.25 13.91 3.57 13.91 6.83 13.92L10.4 13.93L10.4 17.3C10.4 20.57 10.4 20.67 10.45 20.86C10.52 21.13 10.61 21.28 10.84 21.52C11.22 21.9 11.71 22.05 12.24 21.94C12.8 21.82 13.27 21.35 13.39 20.81C13.42 20.66 13.43 20.11 13.43 17.28L13.43 13.93L17 13.92C20.97 13.91 20.64 13.93 21.02 13.73C21.23 13.63 21.5 13.38 21.61 13.19C22.08 12.38 21.71 11.41 20.8 11.09L20.59 11.01L17.01 11L13.43 11L13.42 7.57L13.41 4.14L13.36 3.97C13.11 3.24 12.3 2.8 11.54 2.99Z';
   // Who sees a playlist of the person's own: a lock for Only me, two people for Everyone.
