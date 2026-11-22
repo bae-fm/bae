@@ -126,7 +126,11 @@ public struct MacRow<Lead: View, Label: View, Content: View, Info: View>: View {
     }
 
     public var body: some View {
-        rowAppearance.opacity(isEnabled ? 1 : ThemeOpacity.off)
+        rowAppearance
+    }
+
+    private var textOpacity: Double {
+        isEnabled ? 1 : ThemeOpacity.off
     }
 
     @ViewBuilder
@@ -213,6 +217,7 @@ public struct MacRow<Lead: View, Label: View, Content: View, Info: View>: View {
                         // it, and the name beside it wraps instead.
                         Text(verbatim: value)
                             .foregroundStyle(secondaryColor)
+                            .opacity(textOpacity)
                             .fixedSize(horizontal: true, vertical: false)
                     }
                     content
@@ -220,6 +225,7 @@ public struct MacRow<Lead: View, Label: View, Content: View, Info: View>: View {
                         Image(systemName: "chevron.forward")
                             .themeIcon(.small)
                             .foregroundStyle(Theme.macTextSecondary)
+                            .opacity(textOpacity)
                             .accessibilityHidden(true)
                     }
                 }
@@ -245,12 +251,15 @@ public struct MacRow<Lead: View, Label: View, Content: View, Info: View>: View {
     private var rowWords: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.inline) {
             HStack(spacing: ThemeSpace.compact) {
-                if options.isStrong {
-                    label.themeText(.strong)
+                Group {
+                    if options.isStrong {
+                        label.themeText(.strong)
+                    }
+                    else {
+                        label
+                    }
                 }
-                else {
-                    label
-                }
+                .opacity(textOpacity)
                 if let chip = options.chip {
                     StatusChip(verbatim: chip)
                 }
@@ -263,6 +272,7 @@ public struct MacRow<Lead: View, Label: View, Content: View, Info: View>: View {
                         options.noteTone.map { AnyShapeStyle($0.color) }
                             ?? AnyShapeStyle(secondaryColor)
                     )
+                    .opacity(textOpacity)
             }
         }
     }
