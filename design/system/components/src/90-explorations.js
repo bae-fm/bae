@@ -32,9 +32,9 @@
     return h('div', { style: lw != null ? { marginLeft: -(lw + 10) } : null, className: cx('bae-m-lrow', props.hover && 'bae-m-lrow-hover', props.wide && 'bae-m-lrow-wide', props.hanging && 'bae-m-lrow-hanging', props.lifted && 'bae-m-lrow-lifted', props.dragging && 'bae-m-lrow-dragging') },
       props.lead ? h('span', { className: 'bae-muted bae-num bae-m-lrow-lead', style: lw != null ? { width: lw } : null }, props.lead) : null,
       h(Artwork, { title: props.album || props.title, size: props.cover ? Number(props.cover) : 32, radius: props.cover ? 'radius-artwork' : 'radius-bar' }),
-      h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { className: 'bae-ellipsis', style: { fontWeight: 500 } }, props.title), h('div', { className: 'bae-muted bae-ellipsis bae-m-lrow-sub', style: { fontSize: 11.5 } }, props.sub)),
+      h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { className: 'bae-ellipsis', style: { fontWeight: 'var(--type-row-title-weight)' } }, props.title), h('div', { className: 'bae-muted bae-ellipsis bae-m-lrow-sub', style: { fontSize: 'var(--type-detail-size)' } }, props.sub)),
       props.who ? h(MacPersonTag, { name: props.who }) : null,
-      props.duration ? h('span', { className: 'bae-muted bae-num', style: { width: 40, textAlign: 'right', fontSize: 11.5 } }, props.duration) : null,
+      props.duration ? h('span', { className: 'bae-muted bae-num', style: { width: 40, textAlign: 'right', fontSize: 'var(--type-detail-size)' } }, props.duration) : null,
       // `remove`: the label of a button that takes the row out of its list (the queue's Remove from queue), which shows at the row's end while the pointer is over the row (`hover`).
       props.remove && props.hover ? h(MacIconButton, { icon: 'close', size: 'small', small: true, label: props.remove }) : null);
   }

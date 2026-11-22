@@ -6,7 +6,7 @@
   }
   // A modal's header: title, a second line, its buttons on the right.
   function MacModalHeader(props) {
-    return h('div', { className: 'bae-m-modalhead' }, h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { className: props.large ? 'bae-m-modalhead-large' : 'bae-strong', style: props.large ? null : { fontSize: 15 } }, props.title), props.subtitle ? h('div', { className: 'bae-muted bae-ellipsis', style: { fontSize: 11.5 } }, props.subtitle) : null), props.children);
+    return h('div', { className: 'bae-m-modalhead' }, h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { className: props.large ? 'bae-m-modalhead-large' : 'bae-strong', style: props.large ? null : { fontSize: 'var(--type-heading-size)' } }, props.title), props.subtitle ? h('div', { className: 'bae-muted bae-ellipsis', style: { fontSize: 'var(--type-detail-size)' } }, props.subtitle) : null), props.children);
   }
   // One cover in the cover gallery: its image over its name, with no source line, since the section heading says where it comes from. `image` stands for the picture (the board draws it as artwork seeded by it, the name unless given); `selected` rings the one the preview shows.
   function MacCoverTile(props) {
@@ -18,15 +18,15 @@
   function MacCoverPreview(props) {
     return h('div', { className: 'bae-m-cpreview' },
       h(Artwork, { title: props.image || props.name, size: 300, radius: 'radius-artwork' }),
-      h('div', { className: 'bae-strong', style: { fontSize: 15 } }, props.name),
-      h('div', { className: 'bae-muted', style: { fontSize: 11.5 } }, props.source),
+      h('div', { className: 'bae-strong', style: { fontSize: 'var(--type-heading-size)' } }, props.name),
+      h('div', { className: 'bae-muted', style: { fontSize: 'var(--type-detail-size)' } }, props.source),
       h('div', { style: { display: 'flex', gap: 'calc(var(--space-related) + var(--space-line))', alignItems: 'center' } }, h(Sym, { name: 'left', size: 12 }), (props.position || 1) + ' of ' + props.count, h(Sym, { name: 'right', size: 12 })));
   }
   // The cover gallery: Source, sections of tiles, the preview with its count, Use this cover.
   function MacCoverGallery(props) {
     // `current`: the release's cover, named Cover (spec §3.4: a release's gallery names its cover Cover), drawn from the album's picture.
     var tiles = function (names, sel, current) { return h('div', { className: 'bae-m-cgrid' }, list(names).map(function (n, i) { return h(MacCoverTile, { key: i, name: n, image: current ? props.album || 'Low Tide Hours' : n, selected: n === sel }); })); };
-    var sec = function (icon, title, names, current) { var n = String(list(names).length); return h('div', { style: { display: 'flex', flexDirection: 'column', gap: 'calc(var(--space-related) + var(--space-line))' } }, h('div', { className: 'bae-strong', style: { fontSize: 15, display: 'flex', gap: 'var(--space-compact)', alignItems: 'center' } }, h(Sym, { name: icon, size: 15 }), title, h('span', { className: 'bae-muted', style: { fontWeight: 400 } }, n)), tiles(names, props.selected, current)); };
+    var sec = function (icon, title, names, current) { var n = String(list(names).length); return h('div', { style: { display: 'flex', flexDirection: 'column', gap: 'calc(var(--space-related) + var(--space-line))' } }, h('div', { className: 'bae-strong', style: { fontSize: 'var(--type-heading-size)', display: 'flex', gap: 'var(--space-compact)', alignItems: 'center' } }, h(Sym, { name: icon, size: 15 }), title, h('span', { className: 'bae-muted', style: { fontWeight: 'var(--type-body-weight)' } }, n)), tiles(names, props.selected, current)); };
     var unlinked = props.remote === 'unlinked';
     return h('div', { className: 'bae-m-cgal' },
       // With no linked release there is nothing to fetch, so no Refresh.
@@ -34,7 +34,7 @@
       h('div', { className: 'bae-m-cgal-body' },
         h('div', { className: 'bae-m-cgal-left' }, h('div', { style: { display: 'flex', gap: 'var(--space-related)', alignItems: 'center' } }, 'Source', h(MacPopUpButton, { label: 'Source', value: 'All' })),
           sec('photo', 'Current cover', 'Cover', true),
-          unlinked ? h('div', null, h('div', { className: 'bae-strong', style: { fontSize: 15 } }, 'No linked release'), h('div', { className: 'bae-muted' }, 'Link a Discogs or MusicBrainz release to browse its artwork.'), h(MacButton, null, 'Find release…')) : sec('globe', 'Remote sources', props.remoteNames || 'Discogs · 1 · Front,Discogs · 2 · Back'),
+          unlinked ? h('div', null, h('div', { className: 'bae-strong', style: { fontSize: 'var(--type-heading-size)' } }, 'No linked release'), h('div', { className: 'bae-muted' }, 'Link a Discogs or MusicBrainz release to browse its artwork.'), h(MacButton, null, 'Find release…')) : sec('globe', 'Remote sources', props.remoteNames || 'Discogs · 1 · Front,Discogs · 2 · Back'),
           sec('folder', 'Release files', props.files || 'cover.jpg,back.jpg,disc.jpg')),
         h('div', { className: 'bae-m-cgal-right' }, h(MacCoverPreview, { name: props.selected || 'Low Tide Hours', source: props.source || 'Release files', position: 1, count: 1 + (unlinked ? 0 : list(props.remoteNames || 'Discogs · 1 · Front,Discogs · 2 · Back').length) + list(props.files || 'cover.jpg,back.jpg,disc.jpg').length }))),
       h('div', { className: 'bae-m-cgal-foot' }, h(MacButton, { kind: 'primary' }, 'Use this cover')));
@@ -51,7 +51,7 @@
       h('div', { className: 'bae-m-lb-top' }, props.browse ? h('span', { className: 'bae-m-lb-pill' }, h(Sym, { name: 'grid', size: 12 }), 'Browse all images') : h('span'), h('span', { className: 'bae-m-lb-close' }, h(Sym, { name: 'close', size: 15 }))),
       h('div', { className: 'bae-m-lb-stage' }, images.length > 1 ? h('span', { className: 'bae-m-lb-arrow' }, h(Sym, { name: 'left', size: 22 })) : h('span'), props.state === 'failed' ? h(MacNotice, { layout: 'centered', quiet: true, stage: true, tone: 'danger', title: 'Could not load the image', action: 'Retry' }) : props.state === 'loading' ? h('div', { className: 'bae-m-lb-msg' }, h(MacSpinner, { size: 28 }), 'Loading the image…') : h(Artwork, { title: props.title || 'Low Tide Hours', size: 420, radius: 0 }), images.length > 1 ? h('span', { className: 'bae-m-lb-arrow' }, h(Sym, { name: 'right', size: 22 })) : h('span')),
       h('div', { className: 'bae-m-lb-foot' },
-        h('div', { className: 'bae-m-lb-cap' }, h('div', null, props.label || 'cover.jpg'), h('div', { style: { opacity: 0.7, fontSize: 11.5 } }, props.source || 'Release files')),
+        h('div', { className: 'bae-m-lb-cap' }, h('div', null, props.label || 'cover.jpg'), h('div', { style: { opacity: 0.7, fontSize: 'var(--type-detail-size)' } }, props.source || 'Release files')),
         images.length > 1 ? h(MacThumbnailStrip, { images: images.join(','), selected: props.selected }) : null));
   }
   // A release's storage at rest (`state`: local, pinned or cloud): Local, Pinned or In cloud.
@@ -79,7 +79,7 @@
       h('div', { className: 'bae-m-sband-line' }, restLabel, pill),
       missing,
       failed ? h(MacNotice, { tone: 'danger', title: failed, secondary: 'Details' }) : null,
-      props.why ? h('div', { className: 'bae-muted', style: { fontSize: 11.5 } }, props.why) : null,
+      props.why ? h('div', { className: 'bae-muted', style: { fontSize: 'var(--type-detail-size)' } }, props.why) : null,
       still ? null : h('div', { style: { display: 'flex', gap: 'var(--space-related)', flexWrap: 'wrap' } }, list(props.actions || 'Pin,Move to This Mac…,Export…,Save as…').map(function (a) { return h(MacButton, { key: a }, a); })));
   }
 
