@@ -54,14 +54,20 @@ struct MacNowPlayingBar: View {
 
     var body: some View {
         HStack(spacing: ThemeSpace.section) {
+            // The reading order is the board's: the track, the transport, the
+            // seek bar, then Queue, Mute and Volume. The seek bar is a
+            // native view, which SwiftUI places by where it sits, so each
+            // part says its own place in the order.
             trackInfo
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilitySortPriority(ReadingOrder.track)
 
             centerColumn
                 .frame(width: 460)
 
             trailingControls
                 .frame(maxWidth: .infinity, alignment: .trailing)
+                .accessibilitySortPriority(ReadingOrder.rightControls)
         }
         .padding(.vertical, ThemeSpace.group)
         .padding(.horizontal, ThemeSpace.section)
@@ -148,6 +154,7 @@ struct MacNowPlayingBar: View {
                 onSetShuffle: onSetShuffle,
                 onSetRepeatMode: onSetRepeatMode
             )
+            .accessibilitySortPriority(ReadingOrder.transport)
 
             progressBar
         }
@@ -166,7 +173,16 @@ struct MacNowPlayingBar: View {
         .frame(maxWidth: .infinity)
         .frame(height: 20)
         .accessibilityLabel("Playback position")
+        .accessibilitySortPriority(ReadingOrder.seekBar)
     }
+}
+
+/// How early each part of the bar is read: a higher number is read first.
+private enum ReadingOrder {
+    static let track = 4.0
+    static let transport = 3.0
+    static let seekBar = 2.0
+    static let rightControls = 1.0
 }
 
 // MARK: - Right: queue + volume
