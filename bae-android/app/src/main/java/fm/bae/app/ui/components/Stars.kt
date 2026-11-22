@@ -6,8 +6,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Matrix
 import androidx.compose.ui.graphics.Path
@@ -15,15 +17,20 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.PathParser
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import fm.bae.app.R
+import fm.bae.app.countText
 import fm.bae.app.number
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.ui.appearance.ThemeText
 import uniffi.bae_bridge.BridgeStars
 
 /**
@@ -64,6 +71,32 @@ fun Stars(
     }
 }
 
+/** The read-only rating as its number and one filled star. */
+@Composable
+fun Stars(
+    rating: BridgeStars,
+    size: Dp,
+    modifier: Modifier = Modifier,
+) {
+    val description = stringResource(R.string.stars_of_five, rating.number)
+    Row(
+        modifier =
+            modifier.clearAndSetSemantics {
+                contentDescription = description
+                role = Role.Image
+            },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(ThemeSpace.line),
+    ) {
+        Text(
+            text = LocalContext.current.countText(rating.number),
+            style = ThemeText.detail.style,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Star(filled = true, size = size, modifier = Modifier)
+    }
+}
+
 /** The design system's star as path data, on a 24 by 24 grid. */
 private const val STAR_PATH = "M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7L12 17.3 5.8 20.9l1.6-7L2 9.2l7.1-.6z"
 private const val STAR_GRID = 24f
@@ -71,7 +104,7 @@ private const val STAR_STROKE = 1.5f
 
 /** One star, drawn on the design system's grid. */
 @Composable
-internal fun Star(
+private fun Star(
     filled: Boolean,
     size: Dp,
     modifier: Modifier,

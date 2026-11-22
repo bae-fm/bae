@@ -16,19 +16,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import fm.bae.app.R
 import fm.bae.app.copyLineText
 import fm.bae.app.creditLineText
 import fm.bae.app.editionLineText
 import fm.bae.app.factSeparator
-import fm.bae.app.number
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.appearance.ThemeIcon
@@ -38,7 +31,7 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.Artwork
 import fm.bae.app.ui.components.IconTone
-import fm.bae.app.ui.components.Star
+import fm.bae.app.ui.components.Stars
 import fm.bae.app.yearText
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeImageRef
@@ -128,23 +121,7 @@ private fun YearAndRating(
             if (year != null) {
                 Text(text = LocalContext.current.factSeparator(), style = ThemeText.detail.style, color = color)
             }
-            val description = stringResource(R.string.stars_of_five, rating.number)
-            // The number and the star are one image to a screen reader, "4 of 5 stars".
-            Row(
-                modifier =
-                    Modifier.semantics {
-                        contentDescription = description
-                        role = Role.Image
-                    },
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(text = rating.number.toString(), style = ThemeText.detail.style, color = color)
-                Star(
-                    filled = true,
-                    size = STAR_SIZE,
-                    modifier = Modifier.padding(start = ThemeSpace.line),
-                )
-            }
+            Stars(rating = rating, size = STAR_SIZE)
         }
     }
 }
