@@ -523,6 +523,7 @@ extension PreviewData {
                     )
                 }
         )
+        let image = boardImage("\(found.album).jpg", art: found.album)
         return paneCandidate(
             folder: boardFolder(
                 found.folder,
@@ -534,12 +535,17 @@ extension PreviewData {
             metadataProvenance: .fileMetadata,
             edit: edit,
             mapping: BridgeMappingTable(
-                images: [boardImage("\(found.album).jpg")],
+                images: image.map { [$0] } ?? [],
                 trackSides: boardTrackSides(notFoundTracks, edit: edit),
                 files: [],
                 untitledTrackCount: 0
             ),
-            cover: boardCover(found.album),
+            cover: image.map {
+                BridgeCoverChoice(
+                    selection: .releaseImage(fileId: $0.fileId),
+                    image: .local(file: $0.file)
+                )
+            },
             session: session,
             live: needsYou(.notFound),
             albumArtists: boardLibraryArtists(found.artist)

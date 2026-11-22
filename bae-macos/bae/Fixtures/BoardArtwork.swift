@@ -56,7 +56,7 @@ final class BoardArtwork {
         do {
             let url =
                 try bundledURL(named: name)
-                ?? URL(fileURLWithPath: PreviewData.previewArtPath(name))
+                ?? PreviewData.writeGradient(named: name)
             return try PreviewData.artVersion(at: url)
         }
         catch {
@@ -115,6 +115,11 @@ final class BoardArtwork {
 extension PreviewData {
     /// A temporary PNG for a fixture that supplies its own image name.
     static func previewArtPath(_ name: String) -> String {
+        // swiftlint:disable:next force_try
+        return try! writeGradient(named: name).path
+    }
+
+    fileprivate static func writeGradient(named name: String) throws -> URL {
         let directory = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("bae-preview-art", isDirectory: true)
         let data = BoardArtwork.gradient(named: name)
@@ -129,16 +134,13 @@ extension PreviewData {
             )
             .appendingPathExtension("png")
         if !FileManager.default.fileExists(atPath: file.path) {
-            // Crash with the reason rather than draw failure placeholders.
-            // swiftlint:disable force_try
-            try! FileManager.default.createDirectory(
+            try FileManager.default.createDirectory(
                 at: directory,
                 withIntermediateDirectories: true
             )
-            try! data.write(to: file)
-            // swiftlint:enable force_try
+            try data.write(to: file, options: .atomic)
         }
-        return file.path
+        return file
     }
 
     /// `previewArtPath`'s file at the version on disk, as core's scan
