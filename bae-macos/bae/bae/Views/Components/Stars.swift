@@ -30,6 +30,7 @@ struct Stars: View {
         }
         .accessibilityElement(children: onRate == nil ? .ignore : .contain)
         .accessibilityLabel(onRate == nil ? valueLabel : "")
+        .accessibilityAddTraits(onRate == nil ? .isImage : [])
     }
 
     private var valueLabel: String {
