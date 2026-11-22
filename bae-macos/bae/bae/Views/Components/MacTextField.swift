@@ -27,14 +27,16 @@ struct MacTextField<Field: View>: View {
     }
 
     var body: some View {
-        GridRow(alignment: .firstTextBaseline) {
+        GridRow(alignment: .fieldLine) {
             Text(label)
                 .opacity(off ? ThemeOpacity.off : 1)
+                .alignmentGuide(.fieldLine) { $0[VerticalAlignment.center] }
                 .gridColumnAlignment(.trailing)
             VStack(alignment: .leading, spacing: ThemeSpace.inline) {
                 field
                     .accessibilityLabel(Text(label))
                     .disabled(off)
+                    .alignmentGuide(.fieldLine) { $0[VerticalAlignment.center] }
                 if let error {
                     FieldNote(error, isError: true)
                 }
@@ -45,4 +47,16 @@ struct MacTextField<Field: View>: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
+}
+
+extension VerticalAlignment {
+    private enum FieldLine: AlignmentID {
+        static func defaultValue(in context: ViewDimensions) -> CGFloat {
+            context[VerticalAlignment.center]
+        }
+    }
+
+    /// The middle of a field's own line, which its label sits on, whatever
+    /// the field's height and the note under it.
+    static let fieldLine = VerticalAlignment(FieldLine.self)
 }
