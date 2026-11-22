@@ -186,16 +186,18 @@
       h('div', { className: 'bae-m-readout-line bae-num' }, h('span', null, props.bytes), h('span', null, props.rate)),
       h('div', { className: cx('bae-m-readout-bar', pin ? 'bae-m-readout-pin' : 'bae-m-readout-up') }, h(ProgressBar, { value: Number(props.progress || 0.3), label: pin ? 'Pinning' : 'Uploading' })));
   }
-  // One file in the inspector: a mark for queued (dashed), sending or pinning (a ring filling), or the file a move stopped on (`error`, in danger) or an upload waits for (`waiting`, in warning); its name and size.
+  // One file in the inspector: a mark for queued to upload (`queued`) or to pin (`pin-queued`), both dashed, sending or pinning (a ring filling), or the file a move stopped on (`error`, in danger) or an upload waits for (`waiting`, in warning); its name and size. The mark is the only thing on the row that says where the file stands, so it is an image named by those words.
   function MacFileRow(props) {
     var s = props.state || 'rest';
-    var bang = function (tone) { return h('svg', { width: 16, height: 16, viewBox: '0 0 16 16', style: { color: 'var(--' + tone + ')' } }, h('circle', { cx: 8, cy: 8, r: 6.5, fill: 'none', stroke: 'currentColor', strokeWidth: 1.5 }), h('path', { d: 'M8 4.6v4.2M8 11.2v.1', stroke: 'currentColor', strokeWidth: 1.75, strokeLinecap: 'round' })); };
+    var label = { queued: 'Queued to upload', 'pin-queued': 'Queued to pin', sending: 'Uploading', pinning: 'Pinning', error: 'Could not move to the cloud', waiting: 'Waiting for a file' }[s];
+    var bang = function (tone) { return h('svg', { width: 16, height: 16, viewBox: '0 0 16 16', role: 'img', 'aria-label': label, style: { color: 'var(--' + tone + ')' } }, h('circle', { cx: 8, cy: 8, r: 6.5, fill: 'none', stroke: 'currentColor', strokeWidth: 1.5 }), h('path', { d: 'M8 4.6v4.2M8 11.2v.1', stroke: 'currentColor', strokeWidth: 1.75, strokeLinecap: 'round' })); };
+    var queued = s === 'queued' || s === 'pin-queued';
     var mark = s === 'rest' ? null : s === 'error' ? bang('danger') : s === 'waiting' ? bang('warning') :
-      s === 'queued' ? h('svg', { width: 16, height: 16, viewBox: '0 0 16 16', className: 'bae-muted' }, h('circle', { cx: 8, cy: 8, r: 6, fill: 'none', stroke: 'currentColor', strokeWidth: 1.75, strokeDasharray: '2 2' })) :
-      h(MacProgressRing, { tone: s === 'pinning' ? 'pinning' : 'activity', value: props.progress || 0.4 });
+      queued ? h('svg', { width: 16, height: 16, viewBox: '0 0 16 16', role: 'img', 'aria-label': label, className: 'bae-muted' }, h('circle', { cx: 8, cy: 8, r: 6, fill: 'none', stroke: 'currentColor', strokeWidth: 1.75, strokeDasharray: '2 2' })) :
+      h(MacProgressRing, { tone: s === 'pinning' ? 'pinning' : 'activity', value: props.progress || 0.4, label: label });
     return h('div', { className: cx('bae-m-filerow', props.selected && 'bae-m-filerow-selected') },
       h(MacItem, { lead: mark, trail: h('span', { className: 'bae-muted bae-num' }, props.size) },
-        h('div', { className: cx('bae-ellipsis', s === 'queued' && 'bae-muted', s === 'sending' && 'bae-activity', s === 'pinning' && 'bae-pinning') }, props.name)));
+        h('div', { className: cx('bae-ellipsis', queued && 'bae-muted', s === 'sending' && 'bae-activity', s === 'pinning' && 'bae-pinning') }, props.name)));
   }
   // Label and value pairs in two columns, the labels in secondary text: a file's facts, a release's fields, an album's credits. `facts` is a list of [label, value] pairs, or text with one "Label: value" a pair, separated by semicolons; a pair with no value is left out. `numeric` names the labels whose values are numbers, drawn in tabular figures (Size).
   function MacFactsGrid(props) {

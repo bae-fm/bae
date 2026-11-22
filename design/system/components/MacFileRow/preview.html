@@ -12,6 +12,7 @@
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
     W('At rest', h(B.MacFileRow, { name: 'cover.jpg', size: '1.2 MB' })),
     W('Queued', h(B.MacFileRow, { name: '02 The Long Way Home.flac', size: '38.9 MB', state: 'queued' })),
+    W('Queued to pin', h(B.MacFileRow, { name: '03 Second Floor.flac', size: '28.2 MB', state: 'pin-queued' })),
     W('Sending', h(B.MacFileRow, { name: '01 Harbor Lights.flac', size: '34.1 MB', state: 'sending', progress: 0.7 })),
     W('Pinning', h(B.MacFileRow, { name: '03 Second Floor.flac', size: '28.2 MB', state: 'pinning', progress: 0.4 })),
     W('Error', h(B.MacFileRow, { name: '01 Harbor Lights.flac', size: '34.1 MB', state: 'error' })),
