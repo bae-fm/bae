@@ -1,7 +1,7 @@
 # The apps' colors and measures, read by every platform through code theme-gen
 # generates from this file and from design/system/tokens.json, which holds the
-# tones, the accents, the text styles, the radii, the spacing and the icon and
-# size roles (see notes/appearance.md). The appearance settings offer the
+# tones, the accents, the text styles, the opacities, the radii, the spacing
+# and the icon and size roles (see notes/appearance.md). The appearance settings offer the
 # tones and the accents in tokens.json's order.
 
 # The tone and accent a new installation shows until the person chooses: a tone
@@ -142,12 +142,3 @@ shadow = "#80000000"
 backdrop = "#D9000000"
 onFill = "#FFFFFF"
 onFillSecondary = "#B3FFFFFF"
-
-# A color laid over a surface: `tint` behind that color's own text, as in a
-# status chip, a notice or a selection; `tintStrong` where it must read stronger,
-# as under the pointer.
-[opacity]
-tint = 0.14
-tintStrong = 0.26
-# A control that is off, as the design draws it (tokens.json `opacity-off`).
-off = 0.4

@@ -28,10 +28,12 @@ const BODY: &str = r#"[
   { "family": "android", "styles": [{ "name": "android-body", "role": "body", "fontSize": "14px", "fontWeight": 400, "lineHeight": "20px" }] }
 ]"#;
 
-/// The length families of a tokens.json: one radius, `chip`, one spacing,
+/// The length families of a tokens.json: one opacity, `tint`, and one with no
+/// role, one radius, `chip`, one spacing,
 /// `related`, an icon role on both platforms, `small`, one on Android alone,
 /// `androidTransport`, and one size role, `hitTarget`.
-const LENGTHS: &str = r#""radius": { "tokens": [{ "name": "radius-chip", "role": "chip", "value": "5px" }] },
+const LENGTHS: &str = r#""opacity": { "tokens": [{ "name": "opacity-tint", "role": "tint", "value": "0.14" }, { "name": "opacity-dimmed", "value": "0.5" }] },
+  "radius": { "tokens": [{ "name": "radius-chip", "role": "chip", "value": "5px" }] },
   "spacing": { "tokens": [{ "name": "space-related", "role": "related", "value": "8px" }] },
   "icon": { "tokens": [{ "name": "icon-small", "role": "small", "value": "11px", "ios": "13px", "weight": "semibold" }] },
   "icon-android": { "tokens": [{ "name": "icon-android-small", "role": "small", "value": "16px" }, { "name": "icon-android-transport", "role": "androidTransport", "value": "36px" }] },
@@ -134,7 +136,7 @@ fn theme_with(standard: &str, tones: &[String], semantics: &str) -> Result<Theme
         ["accent-blue", "accent-blue-fill", "on-accent-blue-fill", "accent-blue-selection"]
             .map(|name| token(name, "#000000", "#000000"));
     Theme::from_sources(
-        &format!("{standard}\n[opacity]\ntint = 0.14\n\n{semantics}"),
+        &format!("{standard}\n{semantics}"),
         &tokens_json(&[tones, &accent[..]].concat()),
     )
 }
@@ -376,7 +378,7 @@ fn theme_with_lengths(lengths: &str) -> Result<Theme, Vec<String>> {
             .map(|name| token(name, "#000000", "#000000"));
     let tokens = tokens_json(&[tone("neutral", &["background"]), accent.to_vec()].concat())
         .replace(LENGTHS, lengths);
-    Theme::from_sources(&format!("{STANDARD}\n[opacity]\n{SEMANTICS}"), &tokens)
+    Theme::from_sources(&format!("{STANDARD}\n{SEMANTICS}"), &tokens)
 }
 
 #[test]

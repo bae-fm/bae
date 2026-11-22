@@ -46,7 +46,10 @@ progress such as a transfer, an upload among them, and pinning for files
 downloading to stay on a device. Hover, pressed, hairline, scrim, shadow and the
 image viewer's backdrop are semantic too, as are onFill and onFillSecondary for
 text on fills, artwork and the backdrop. A colour laid behind its own text,
-such as a status chip's fill, uses it at the `tint` opacity.
+such as a status chip's fill, uses it at the `tint` opacity. The opacities
+(`tint`, `tintStrong`, `off`) are tokens in tokens.json's `opacity` family,
+each naming its role in `role`; one with no role, such as `opacity-dimmed`, is
+an opacity only the design system draws.
 
 Corner radii are roles too, the same on every platform: `artwork` for cover art
 in rows and lists, `cover` for a release's cover shown large, `chip`, `control`

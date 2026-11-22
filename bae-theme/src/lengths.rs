@@ -1,4 +1,6 @@
-//! The radius, spacing, icon and size roles of design/system/tokens.json. The
+//! The opacity, radius, spacing, icon and size roles of
+//! design/system/tokens.json. An opacity is a fraction every platform shares,
+//! a token in the `opacity` family naming its role in `role`. The
 //! radii and the spacing are one length every platform shares, a token in the
 //! `radius` or `spacing` family naming its role in `role`; one with no `role`,
 //! such as Android's Material shapes, is a measure only the design system
@@ -25,7 +27,7 @@ pub(crate) struct RawLengthFamily {
 }
 
 #[derive(Deserialize)]
-struct RawLengthToken {
+pub(crate) struct RawLengthToken {
     name: String,
     role: Option<String>,
     value: String,
@@ -107,10 +109,12 @@ pub(crate) fn read_icons(
 }
 
 /// The roles of a family of <kind> tokens every platform shares, such as the
-/// radii: each role's length.
+/// radii or the opacities: each role's value, which <value> reads from its
+/// token.
 pub(crate) fn read_shared(
     kind: &str,
     family: &RawLengthFamily,
+    value: fn(&RawLengthToken, &mut Vec<String>) -> f64,
     problems: &mut Vec<String>,
 ) -> BTreeMap<String, f64> {
     let mut entries = Vec::new();
@@ -133,9 +137,28 @@ pub(crate) fn read_shared(
             let token = pair.apple.unwrap_or_else(|| {
                 panic!("{kind} role `{role}`: read_shared pairs only Apple entries, so each role has one")
             });
-            (role.to_string(), length(token, "length", &token.value, problems))
+            (role.to_string(), value(token, problems))
         })
         .collect()
+}
+
+/// A shared token's length, as a radius or a spacing gives it.
+pub(crate) fn shared_length(token: &RawLengthToken, problems: &mut Vec<String>) -> f64 {
+    length(token, "length", &token.value, problems)
+}
+
+/// A shared token's opacity, a fraction between 0 and 1.
+pub(crate) fn opacity(token: &RawLengthToken, problems: &mut Vec<String>) -> f64 {
+    match token.value.parse::<f64>() {
+        Ok(value) if (0.0..=1.0).contains(&value) => value,
+        _ => {
+            problems.push(format!(
+                "tokens.json `{}`: `{}` is not an opacity between 0 and 1",
+                token.name, token.value
+            ));
+            0.0
+        }
+    }
 }
 
 /// The size roles: each role's lengths on every platform.
