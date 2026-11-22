@@ -144,6 +144,8 @@ COMPLETION_STAMP="$SWIFT_BINDINGS_DIR/.generation-complete"
 # generates: a change to either changes the bindings without changing the
 # libraries.
 UNIFFI_CONFIG="bae-bridge/uniffi.toml"
+CANCELLABLE_GROUPS="bae-bridge/swift-cancellable.toml"
+CANCELLABLE_TOOL="bae-bridge/swift-cancellable.py"
 INSTALL_BINDINGS="bae-bridge/install-swift-bindings.sh"
 XCFRAMEWORK_TOOL="bae-bridge/xcframework.py"
 EXPECTED_STAMP="$CARGO_PROFILE|$BAE_BRIDGE_FEATURES"
@@ -157,6 +159,8 @@ else
        [[ "$STATIC_LIB" -nt "$COMPLETION_STAMP" ]] ||
        [[ "$DYLIB" -nt "$COMPLETION_STAMP" ]] ||
        [[ "$UNIFFI_CONFIG" -nt "$COMPLETION_STAMP" ]] ||
+       [[ "$CANCELLABLE_GROUPS" -nt "$COMPLETION_STAMP" ]] ||
+       [[ "$CANCELLABLE_TOOL" -nt "$COMPLETION_STAMP" ]] ||
        [[ "$INSTALL_BINDINGS" -nt "$COMPLETION_STAMP" ]] ||
        [[ "$XCFRAMEWORK_TOOL" -nt "$COMPLETION_STAMP" ]] ||
        [[ ! -f "$SWIFT_BINDINGS_DIR/bae_bridge.swift" ]] ||
@@ -176,6 +180,8 @@ if [[ "$NEEDS_GENERATION" -eq 1 ]]; then
     trap 'rm -rf "$GENERATION_TMP" "$FEATURES_XCCONFIG_TMP"' EXIT
     GENERATED_BINDINGS="$GENERATION_TMP/swift-bindings"
     mkdir -p "$GENERATED_BINDINGS"
+    CANCELLABLE_CONFIG="$GENERATION_TMP/swift-cancellable.toml"
+    python3 "$CANCELLABLE_TOOL" desktop "$BAE_BRIDGE_FEATURES" "$CANCELLABLE_CONFIG"
 
     # Without --no-format the generator runs `swift format <file>`, which
     # prints the formatted file to stdout and leaves the file on disk as it
@@ -184,6 +190,7 @@ if [[ "$NEEDS_GENERATION" -eq 1 ]]; then
     "$BINDGEN" generate \
         --library "$DYLIB" \
         --language swift \
+        --config "$CANCELLABLE_CONFIG" \
         --out-dir "$GENERATED_BINDINGS/" \
         --no-format
 

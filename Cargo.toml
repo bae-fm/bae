@@ -251,7 +251,7 @@ notify = { git = "https://github.com/bae-fm/notify", rev = "673d0932ccdcfa394486
 
 # Fork carrying mozilla/uniffi-rs PR 3057, Swift `Task.cancel()` propagation:
 # cancellation flows through `withTaskCancellationHandler` into Rust drop, for
-# the callables listed under `async_cancellable` in bae-bridge/uniffi.toml. The
+# the callables listed in bae-bridge/swift-cancellable.toml. The
 # branch is mozilla/main plus the PR's commits, so bae builds against exactly
 # what upstream is reviewing. Drop these entries once the PR lands and a uniffi
 # release ships with it.

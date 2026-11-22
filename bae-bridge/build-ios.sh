@@ -123,6 +123,8 @@ rm -f "$COMPLETION_STAMP"
 # bae-library again.
 run_host_cargo build --target-dir "$IOS_TARGET_DIR" -p bae-uniffi-bindgen
 BINDGEN="$IOS_TARGET_DIR/debug/uniffi-bindgen"
+CANCELLABLE_CONFIG="$IOS_TARGET_DIR/swift-cancellable.toml"
+python3 bae-bridge/swift-cancellable.py mobile "$BAE_BRIDGE_FEATURES" "$CANCELLABLE_CONFIG"
 # Without --no-format the generator runs `swift format <file>`, which prints
 # the formatted file to stdout and leaves the file on disk as it was. The
 # generator discards that output, so formatting changes nothing and only costs
@@ -130,6 +132,7 @@ BINDGEN="$IOS_TARGET_DIR/debug/uniffi-bindgen"
 "$BINDGEN" generate \
     --library "$IOS_TARGET_DIR/aarch64-apple-ios/$CARGO_PROFILE/libbae_bridge.a" \
     --language swift \
+    --config "$CANCELLABLE_CONFIG" \
     --out-dir "$SWIFT_BINDINGS_DIR/" \
     --no-format
 
