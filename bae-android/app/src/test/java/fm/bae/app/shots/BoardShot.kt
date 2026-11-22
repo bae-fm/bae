@@ -75,23 +75,12 @@ abstract class BoardShot {
     }
 
     /**
-     * Draws a screen as [board], whose frame is [height] dp tall instead of the phone's: a window as tall as the
-     * frame holds the page the board draws below the phone's fold.
+     * Draws [content] as [board]. A board whose frame is [height] dp tall instead of the phone's gets a window
+     * as tall as the frame, which holds the page the board draws below the phone's fold.
      */
-    protected fun tallShot(
-        board: String,
-        height: Dp,
-        content: @Composable () -> Unit,
-    ) {
-        assumeNotNull(System.getProperty("bae.shotsDir"))
-        assumeTrue("board '$board' is not selected", isSelected(board, System.getProperty("bae.shotsSelect")))
-        sizeWindowTo(DpSize(PHONE_WIDTH, height))
-        shot(board, content)
-    }
-
-    /** Draws [content] as [board]. */
     protected fun shot(
         board: String,
+        height: Dp? = null,
         content: @Composable () -> Unit,
     ) {
         val spelled = board.split('.', '-').joinToString("") { it.replaceFirstChar(Char::uppercase) }
@@ -101,6 +90,7 @@ abstract class BoardShot {
         val directory = System.getProperty("bae.shotsDir")
         assumeNotNull(directory)
         assumeTrue("board '$board' is not selected", isSelected(board, System.getProperty("bae.shotsSelect")))
+        height?.let { sizeWindowTo(DpSize(PHONE_WIDTH, it)) }
         compose.settle(content)
         val root = compose.onRoot()
         root.captureRoboImage(File(directory, "$board@android.png").path)

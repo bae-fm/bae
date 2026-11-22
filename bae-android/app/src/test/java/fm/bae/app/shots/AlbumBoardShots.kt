@@ -78,7 +78,7 @@ class AlbumBoardShots : BoardShot() {
 
     @Test
     fun androidAlbumCredits() =
-        tallShot("android.album.credits", TALL_BOARD) {
+        shot("android.album.credits", TALL_BOARD) {
             val detail = boardAlbum()
             val release = detail.releases[0]
             val work = BridgeTrackWork("work-ebb", "Low Tide Suite: I. Ebb", "Ada Lindqvist")
@@ -108,7 +108,7 @@ class AlbumBoardShots : BoardShot() {
 
     @Test
     fun androidAlbumLinksAndFiles() =
-        tallShot("android.album.links-and-files", TALL_BOARD) {
+        shot("android.album.links-and-files", TALL_BOARD) {
             val detail = boardAlbum()
             val records =
                 listOf(BridgeCatalog.MUSIC_BRAINZ, BridgeCatalog.DISCOGS, BridgeCatalog.WIKIDATA).map {
