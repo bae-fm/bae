@@ -91,13 +91,13 @@ struct MacS3Form: View {
         under field: S3SetupFields.Field?,
         secret: Bool = false
     ) -> some View {
-        MacFieldRow(title, labelWidth: 120) {
+        let failed =
+            field.map { fields.fieldFailure?.field == $0 } ?? false
+        return MacFieldRow(title, labelWidth: 120) {
             VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                BoxedField(text: text, secret: secret)
+                BoxedField(text: text, secret: secret, invalid: failed)
                     .accessibilityLabel(Text(title))
-                if let field, let failure = fields.fieldFailure,
-                    failure.field == field
-                {
+                if failed, let failure = fields.fieldFailure {
                     Text(failure.error.line)
                         .themeText(.detail)
                         .foregroundStyle(Theme.danger)
