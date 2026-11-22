@@ -1,23 +1,35 @@
 package fm.bae.app.ui.components
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 
-/** The name and action of a switch that handles its own taps. */
-internal class SwitchAction(
-    val label: String,
-    val set: (Boolean) -> Unit,
-)
-
-/** A switch. When its setting row handles taps, this draws the indicator for that row. */
+/**
+ * One switch action and its Material indicator. A setting row puts the action on its whole surface and uses
+ * its visible title as the name. On its own, the switch takes a [label].
+ */
 @Composable
 internal fun AndroidSwitch(
     checked: Boolean,
-    action: SwitchAction? = null,
+    onCheckedChange: (Boolean) -> Unit,
+    enabled: Boolean = true,
+    label: String? = null,
+    layout: @Composable (Modifier, @Composable () -> Unit) -> Unit = { action, indicator ->
+        Box(action) { indicator() }
+    },
 ) {
-    val modifier = if (action == null) Modifier else Modifier.semantics { contentDescription = action.label }
-    Switch(checked = checked, onCheckedChange = action?.set, modifier = modifier)
+    val action =
+        Modifier.toggleable(
+            value = checked,
+            enabled = enabled,
+            role = Role.Switch,
+            onValueChange = onCheckedChange,
+        )
+    val named = if (label == null) action else action.semantics { contentDescription = label }
+    layout(named) { Switch(checked = checked, onCheckedChange = null) }
 }

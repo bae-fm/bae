@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -85,47 +84,60 @@ internal fun AndroidRow(
     trailing: (@Composable RowScope.() -> Unit)? = null,
 ) {
     val accent = MaterialTheme.colorScheme.primary
-    Row(
-        modifier =
-            modifier.cardRowSurface(
-                nested = nested,
-                followed = followed,
-                twoLines = subtitle != null || subtitleContent != null,
-                selected = selected,
-                enabled = enabled,
-                onClick = onClick,
-                onClickLabel = onClickLabel,
-                switch = switch,
-            ),
-        horizontalArrangement = Arrangement.spacedBy(ThemeSpace.edge),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        leadingIcon?.let {
-            Icon(
-                imageVector = it,
-                contentDescription = null,
-                tint = if (action) accent else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(ThemeIcon.large),
-            )
+    val row: @Composable (Modifier, (@Composable () -> Unit)?) -> Unit = { switchAction, indicator ->
+        Row(
+            modifier =
+                modifier.cardRowSurface(
+                    nested = nested,
+                    followed = followed,
+                    twoLines = subtitle != null || subtitleContent != null,
+                    selected = selected,
+                    enabled = enabled,
+                    onClick = onClick,
+                    onClickLabel = onClickLabel,
+                    switchAction = switchAction,
+                ),
+            horizontalArrangement = Arrangement.spacedBy(ThemeSpace.edge),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            leadingIcon?.let {
+                Icon(
+                    imageVector = it,
+                    contentDescription = null,
+                    tint = if (action) accent else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(ThemeIcon.large),
+                )
+            }
+            avatar?.let { Avatar(face = it, size = AVATAR_SIZE) }
+            Column(modifier = Modifier.weight(1f)) {
+                Title(title, tag, action = action, destructive = destructive)
+                subtitle?.let { Subtitle(it, tone) }
+                subtitleContent?.invoke()
+            }
+            value?.let {
+                Text(text = it, style = ThemeText.body.style, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            indicator?.invoke()
+            trailing?.invoke(this)
+            icon?.let {
+                Icon(
+                    imageVector = it.image,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(it.size),
+                )
+            }
         }
-        avatar?.let { Avatar(face = it, size = AVATAR_SIZE) }
-        Column(modifier = Modifier.weight(1f)) {
-            Title(title, tag, action = action, destructive = destructive)
-            subtitle?.let { Subtitle(it, tone) }
-            subtitleContent?.invoke()
-        }
-        value?.let {
-            Text(text = it, style = ThemeText.body.style, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        switch?.let { AndroidSwitch(checked = it.checked) }
-        trailing?.invoke(this)
-        icon?.let {
-            Icon(
-                imageVector = it.image,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(it.size),
-            )
+    }
+    if (switch == null) {
+        row(Modifier, null)
+    } else {
+        AndroidSwitch(
+            checked = switch.checked,
+            onCheckedChange = switch.onChange,
+            enabled = enabled,
+        ) { action, indicator ->
+            row(action, indicator)
         }
     }
 }
@@ -166,7 +178,7 @@ private fun Modifier.cardRowSurface(
     enabled: Boolean,
     onClick: (() -> Unit)?,
     onClickLabel: String?,
-    switch: RowSwitch?,
+    switchAction: Modifier,
 ): Modifier {
     val accent = MaterialTheme.colorScheme.primary
     val minHeight =
@@ -191,18 +203,8 @@ private fun Modifier.cardRowSurface(
             } else {
                 Modifier
             },
-        ).then(
-            if (switch != null) {
-                Modifier.toggleable(
-                    value = switch.checked,
-                    enabled = enabled,
-                    role = Role.Switch,
-                    onValueChange = switch.onChange,
-                )
-            } else {
-                Modifier
-            },
-        ).defaultMinSize(minHeight = minHeight)
+        ).then(switchAction)
+        .defaultMinSize(minHeight = minHeight)
         .padding(
             start = if (nested) ThemeSpace.edge + ThemeSpace.section else ThemeSpace.edge,
             top = if (nested) 0.dp else ThemeSpace.group,

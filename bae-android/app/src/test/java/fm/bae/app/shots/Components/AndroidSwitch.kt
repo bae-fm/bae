@@ -6,7 +6,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import fm.bae.app.ui.components.AndroidSwitch
-import fm.bae.app.ui.components.SwitchAction
 import org.junit.Test
 
 /** The component shots of `AndroidSwitch`, one for each row of its preview. */
@@ -22,5 +21,5 @@ class AndroidSwitchShots : BoardShot() {
 @Composable
 private fun RestoreOnLaunch(checked: Boolean) {
     var on by remember { mutableStateOf(checked) }
-    AndroidSwitch(checked = on, action = SwitchAction("Restore on launch") { on = it })
+    AndroidSwitch(checked = on, onCheckedChange = { on = it }, label = "Restore on launch")
 }
