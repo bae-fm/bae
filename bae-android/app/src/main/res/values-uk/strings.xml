@@ -566,4 +566,12 @@
     <string name="side_pause_turned_off">Ви можете ввімкнути це знову в Налаштування › Відтворення.</string>
     <string name="release_not_on_this_device">Немає на цьому пристрої</string>
     <string name="release_show_where">Показати, де він</string>
+    <string name="ratings_title">Оцінки</string>
+    <string name="rating_system_stars">Зірки</string>
+    <string name="rating_system_heart">Серце</string>
+    <string name="rating_system_none">Немає</string>
+    <string name="ratings_note">Діє для всіх у цій бібліотеці</string>
+    <string name="album_remove_heart">Прибрати серце</string>
+    <string name="album_hearted_by">%1$s поставив серце</string>
+    <string name="heart_on">З серцем</string>
 </resources>

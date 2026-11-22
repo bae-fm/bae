@@ -40,6 +40,35 @@ class AndroidAlbumHeaderShots : BoardShot() {
             Header(harborDetail) { AndroidButton(onClick = {}) { Text(stringResource(R.string.play)) } }
         }
 
+    /** Under the Heart system the year line ends in one filled heart: the album's person gave it four stars. */
+    @Test
+    fun androidComponentAlbumHeaderHeartSystem() =
+        component("android.component.album-header.heart-system") {
+            Images {
+                AndroidAlbumHeader(
+                    detail = harborDetail,
+                    cover = PreviewData.imageRef(),
+                    galleryItemCount = 0u,
+                    onShowGallery = {},
+                    hearted = true,
+                )
+            }
+        }
+
+    /** Under None the header shows no rating, so it draws as an unrated album. */
+    @Test
+    fun androidComponentAlbumHeaderNoneSystem() =
+        component("android.component.album-header.none-system") {
+            Images {
+                AndroidAlbumHeader(
+                    detail = harborDetail,
+                    cover = PreviewData.imageRef(),
+                    galleryItemCount = 0u,
+                    onShowGallery = {},
+                )
+            }
+        }
+
     @Test
     fun androidComponentAlbumHeaderAReissue() =
         component("android.component.album-header.a-reissue") {

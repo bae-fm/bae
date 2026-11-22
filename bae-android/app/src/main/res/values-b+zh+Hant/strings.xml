@@ -539,4 +539,12 @@
     <string name="side_pause_turned_off">你可以在「設定 › 播放」中重新開啟。</string>
     <string name="release_not_on_this_device">不在此裝置上</string>
     <string name="release_show_where">顯示位置</string>
+    <string name="ratings_title">評分</string>
+    <string name="rating_system_stars">星級</string>
+    <string name="rating_system_heart">愛心</string>
+    <string name="rating_system_none">無</string>
+    <string name="ratings_note">適用於此資料庫中的所有人</string>
+    <string name="album_remove_heart">移除愛心</string>
+    <string name="album_hearted_by">%1$s 標了愛心</string>
+    <string name="heart_on">已標愛心</string>
 </resources>

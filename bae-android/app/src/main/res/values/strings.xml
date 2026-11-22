@@ -609,4 +609,13 @@
     <string name="side_pause_turned_off">You can turn this back on in Settings › Playback.</string>
     <string name="release_not_on_this_device">Not on this device</string>
     <string name="release_show_where">Show where it is</string>
+    <!-- Rating systems: how the library shows ratings. %1$s = a person's name -->
+    <string name="ratings_title">Ratings</string>
+    <string name="rating_system_stars">Stars</string>
+    <string name="rating_system_heart">Heart</string>
+    <string name="rating_system_none">None</string>
+    <string name="ratings_note">Applies to everyone in this library</string>
+    <string name="album_remove_heart">Remove heart</string>
+    <string name="album_hearted_by">%1$s hearted it</string>
+    <string name="heart_on">Hearted</string>
 </resources>

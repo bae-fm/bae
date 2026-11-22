@@ -14,6 +14,7 @@ import fm.bae.app.data.Library
 import fm.bae.app.data.LibraryQueryStores
 import fm.bae.app.data.OpenLibraryStores
 import fm.bae.app.data.PersonStore
+import fm.bae.app.data.RatingSystemsStore
 import fm.bae.app.data.SessionMessages
 import fm.bae.app.data.SyncActivityStore
 import fm.bae.app.data.SyncStatusStore
@@ -88,6 +89,9 @@ class OpenLibrary internal constructor(
 
     /** This device's person, whose picture ends the library's top bar. */
     internal val person = PersonStore(appHandle, runtime.scope, runtime.bugs)
+
+    /** How the library shows the ratings of albums and of tracks, which the album page and Library settings draw. */
+    internal val ratingSystems = RatingSystemsStore(appHandle, runtime.scope, runtime.bugs)
     val playback: BaeCorePlayer get() = runtime.playback
 
     // Every image the app shows resolves through this store, and its cache entries
@@ -167,6 +171,7 @@ class OpenLibrary internal constructor(
         subscribeToValues(scope)
         appHandle.setLocalTimeZone(DeviceTimeZone())
         person.start()
+        ratingSystems.start()
         memoryRelease = MemoryRelease(appContext, scope, appHandle::releaseMemory).also(MemoryRelease::start)
         sortLanguage = SortLanguage(appContext, scope, appHandle::setSortLanguage).also(SortLanguage::start)
         observeNowPlayingForWidget(scope)
@@ -368,6 +373,7 @@ class OpenLibrary internal constructor(
         browserPages.cancel()
         libraryQueries.cancel()
         person.stop()
+        ratingSystems.stop()
         // Detach the audio-focus listener + becoming-noisy receiver: they call
         // appHandle.pause()/resume() on their own (system-driven, no user
         // action), so they must stop touching the handle before it's closed. The

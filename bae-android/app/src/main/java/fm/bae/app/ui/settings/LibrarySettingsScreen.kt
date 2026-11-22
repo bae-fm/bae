@@ -38,6 +38,9 @@ import fm.bae.app.ui.rememberScreenScope
 import uniffi.bae_bridge.BridgeAdminChange
 import uniffi.bae_bridge.BridgeAdminChangePlace
 import uniffi.bae_bridge.BridgeAdminChanges
+import uniffi.bae_bridge.BridgeRatedItems
+import uniffi.bae_bridge.BridgeRatingSystem
+import uniffi.bae_bridge.BridgeRatingSystems
 
 /**
  * The open library: its name, with Rename for an admin, and rows that show where its sync and its people and devices
@@ -75,6 +78,11 @@ internal fun LibrarySettingsScreen(
         onDismissChange = { change ->
             members.perform("dismiss an admin change") { session.appHandle.acknowledgeAdminChange(change.operation) }
         },
+        ratingSystems = session.ratingSystems.systems,
+        canChangeRatingSystems = members.selfIsAdmin,
+        onChangeRatingSystem = { items, system ->
+            members.perform("set the rating system") { session.appHandle.setRatingSystem(items, system) }
+        },
         onBack = onBack,
         onRename = { renaming = true },
         onOpenSync = { onPush(LibraryDestination.Sync) },
@@ -90,7 +98,8 @@ internal fun LibrarySettingsScreen(
 
 /**
  * The Library page over what it shows: a [name] with an edit mark when [canRename]; null while the name is read, when
- * no row shows. [aboveRows] holds the failures of the reads behind it.
+ * no row shows. The Ratings card shows [ratingSystems] once they are read, and opens its choices only when
+ * [canChangeRatingSystems]. [aboveRows] holds the failures of the reads behind it.
  */
 @Composable
 internal fun AndroidSettingsLibrary(
@@ -101,6 +110,9 @@ internal fun AndroidSettingsLibrary(
     hasStorage: Boolean,
     adminChanges: BridgeAdminChanges?,
     onDismissChange: (BridgeAdminChange) -> Unit,
+    ratingSystems: BridgeRatingSystems?,
+    canChangeRatingSystems: Boolean,
+    onChangeRatingSystem: (BridgeRatedItems, BridgeRatingSystem) -> Unit,
     onBack: () -> Unit,
     onRename: () -> Unit,
     onOpenSync: () -> Unit,
@@ -140,6 +152,10 @@ internal fun AndroidSettingsLibrary(
                         onClick = onOpenPeople,
                     )
                 }
+            }
+            // How the library rates its albums and its tracks, once the read answers.
+            ratingSystems?.let {
+                RatingSystemsCard(it, canChange = canChangeRatingSystems, onChange = onChangeRatingSystem)
             }
             AdminChangesList(changes = adminChanges, onDismiss = onDismissChange)
         }

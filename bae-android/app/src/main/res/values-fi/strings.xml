@@ -546,4 +546,12 @@
     <string name="side_pause_turned_off">Voit ottaa tämän takaisin käyttöön kohdassa Asetukset › Toisto.</string>
     <string name="release_not_on_this_device">Ei tällä laitteella</string>
     <string name="release_show_where">Näytä, missä se on</string>
+    <string name="ratings_title">Arvostelut</string>
+    <string name="rating_system_stars">Tähdet</string>
+    <string name="rating_system_heart">Sydän</string>
+    <string name="rating_system_none">Ei mitään</string>
+    <string name="ratings_note">Koskee kaikkia tämän kirjaston käyttäjiä</string>
+    <string name="album_remove_heart">Poista sydän</string>
+    <string name="album_hearted_by">%1$s antoi sille sydämen</string>
+    <string name="heart_on">Sydämellä merkitty</string>
 </resources>

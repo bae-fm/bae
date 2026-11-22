@@ -548,4 +548,12 @@
     <string name="side_pause_turned_off">Du kannst das unter Einstellungen › Wiedergabe wieder einschalten.</string>
     <string name="release_not_on_this_device">Nicht auf diesem Gerät</string>
     <string name="release_show_where">Anzeigen, wo es ist</string>
+    <string name="ratings_title">Bewertungen</string>
+    <string name="rating_system_stars">Sterne</string>
+    <string name="rating_system_heart">Herz</string>
+    <string name="rating_system_none">Keine</string>
+    <string name="ratings_note">Gilt für alle in dieser Mediathek</string>
+    <string name="album_remove_heart">Herz entfernen</string>
+    <string name="album_hearted_by">%1$s hat ein Herz vergeben</string>
+    <string name="heart_on">Mit Herz</string>
 </resources>

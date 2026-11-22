@@ -555,4 +555,12 @@
     <string name="side_pause_turned_off">Puedes volver a activarlo en Ajustes › Reproducción.</string>
     <string name="release_not_on_this_device">No está en este dispositivo</string>
     <string name="release_show_where">Mostrar dónde está</string>
+    <string name="ratings_title">Valoraciones</string>
+    <string name="rating_system_stars">Estrellas</string>
+    <string name="rating_system_heart">Corazón</string>
+    <string name="rating_system_none">Ninguno</string>
+    <string name="ratings_note">Se aplica a todos en esta biblioteca</string>
+    <string name="album_remove_heart">Quitar corazón</string>
+    <string name="album_hearted_by">%1$s le puso un corazón</string>
+    <string name="heart_on">Con corazón</string>
 </resources>

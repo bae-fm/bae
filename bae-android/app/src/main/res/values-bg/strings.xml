@@ -548,4 +548,12 @@
     <string name="side_pause_turned_off">Можете да го включите отново в Настройки › Възпроизвеждане.</string>
     <string name="release_not_on_this_device">Не е на това устройство</string>
     <string name="release_show_where">Покажи къде е</string>
+    <string name="ratings_title">Оценки</string>
+    <string name="rating_system_stars">Звезди</string>
+    <string name="rating_system_heart">Сърце</string>
+    <string name="rating_system_none">Няма</string>
+    <string name="ratings_note">Важи за всички в тази библиотека</string>
+    <string name="album_remove_heart">Махни сърцето</string>
+    <string name="album_hearted_by">%1$s го отбеляза със сърце</string>
+    <string name="heart_on">Със сърце</string>
 </resources>

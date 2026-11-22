@@ -566,4 +566,12 @@
     <string name="side_pause_turned_off">Znovu to můžete zapnout v Nastavení › Přehrávání.</string>
     <string name="release_not_on_this_device">Není v tomto zařízení</string>
     <string name="release_show_where">Zobrazit, kde je</string>
+    <string name="ratings_title">Hodnocení</string>
+    <string name="rating_system_stars">Hvězdičky</string>
+    <string name="rating_system_heart">Srdce</string>
+    <string name="rating_system_none">Žádné</string>
+    <string name="ratings_note">Platí pro všechny v této knihovně</string>
+    <string name="album_remove_heart">Odebrat srdce</string>
+    <string name="album_hearted_by">Srdce dal %1$s</string>
+    <string name="heart_on">Se srdcem</string>
 </resources>

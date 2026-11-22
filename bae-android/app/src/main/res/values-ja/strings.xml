@@ -539,4 +539,12 @@
     <string name="side_pause_turned_off">「設定 › 再生」でもう一度オンにできます。</string>
     <string name="release_not_on_this_device">このデバイスにはありません</string>
     <string name="release_show_where">場所を表示</string>
+    <string name="ratings_title">評価</string>
+    <string name="rating_system_stars">星</string>
+    <string name="rating_system_heart">ハート</string>
+    <string name="rating_system_none">なし</string>
+    <string name="ratings_note">このライブラリの全員に適用されます</string>
+    <string name="album_remove_heart">ハートを外す</string>
+    <string name="album_hearted_by">%1$sがハートを付けました</string>
+    <string name="heart_on">ハート済み</string>
 </resources>

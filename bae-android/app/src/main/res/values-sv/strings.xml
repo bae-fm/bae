@@ -546,4 +546,12 @@
     <string name="side_pause_turned_off">Du kan slå på det igen under Inställningar › Uppspelning.</string>
     <string name="release_not_on_this_device">Finns inte på den här enheten</string>
     <string name="release_show_where">Visa var det finns</string>
+    <string name="ratings_title">Betyg</string>
+    <string name="rating_system_stars">Stjärnor</string>
+    <string name="rating_system_heart">Hjärta</string>
+    <string name="rating_system_none">Inga</string>
+    <string name="ratings_note">Gäller alla i det här biblioteket</string>
+    <string name="album_remove_heart">Ta bort hjärta</string>
+    <string name="album_hearted_by">%1$s gav det ett hjärta</string>
+    <string name="heart_on">Med hjärta</string>
 </resources>

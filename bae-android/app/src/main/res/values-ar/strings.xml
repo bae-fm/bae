@@ -584,4 +584,12 @@
     <string name="side_pause_turned_off">يمكنك إعادة تشغيل هذا من الإعدادات › التشغيل.</string>
     <string name="release_not_on_this_device">ليس على هذا الجهاز</string>
     <string name="release_show_where">عرض مكانه</string>
+    <string name="ratings_title">التقييمات</string>
+    <string name="rating_system_stars">النجوم</string>
+    <string name="rating_system_heart">قلب</string>
+    <string name="rating_system_none">لا شيء</string>
+    <string name="ratings_note">ينطبق على كل من في هذه المكتبة</string>
+    <string name="album_remove_heart">إزالة القلب</string>
+    <string name="album_hearted_by">وضع %1$s قلبًا عليه</string>
+    <string name="heart_on">بقلب</string>
 </resources>

@@ -557,4 +557,12 @@
     <string name="side_pause_turned_off">To možete ponovno uključiti u Postavke › Reprodukcija.</string>
     <string name="release_not_on_this_device">Nije na ovom uređaju</string>
     <string name="release_show_where">Prikaži gdje je</string>
+    <string name="ratings_title">Ocjene</string>
+    <string name="rating_system_stars">Zvjezdice</string>
+    <string name="rating_system_heart">Srce</string>
+    <string name="rating_system_none">Nema</string>
+    <string name="ratings_note">Vrijedi za sve u ovoj biblioteci</string>
+    <string name="album_remove_heart">Ukloni srce</string>
+    <string name="album_hearted_by">%1$s je dodao srce</string>
+    <string name="heart_on">Sa srcem</string>
 </resources>

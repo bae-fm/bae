@@ -548,4 +548,12 @@
     <string name="side_pause_turned_off">Bunu Ayarlar › Oynatma bölümünden yeniden açabilirsin.</string>
     <string name="release_not_on_this_device">Bu cihazda değil</string>
     <string name="release_show_where">Nerede olduğunu göster</string>
+    <string name="ratings_title">Puanlar</string>
+    <string name="rating_system_stars">Yıldızlar</string>
+    <string name="rating_system_heart">Kalp</string>
+    <string name="rating_system_none">Yok</string>
+    <string name="ratings_note">Bu kütüphanedeki herkes için geçerlidir</string>
+    <string name="album_remove_heart">Kalbi kaldır</string>
+    <string name="album_hearted_by">%1$s kalp verdi</string>
+    <string name="heart_on">Kalpli</string>
 </resources>

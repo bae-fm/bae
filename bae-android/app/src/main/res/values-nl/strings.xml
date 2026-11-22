@@ -548,4 +548,12 @@
     <string name="side_pause_turned_off">Je kunt dit weer aanzetten bij Instellingen › Afspelen.</string>
     <string name="release_not_on_this_device">Niet op dit apparaat</string>
     <string name="release_show_where">Toon waar het staat</string>
+    <string name="ratings_title">Beoordelingen</string>
+    <string name="rating_system_stars">Sterren</string>
+    <string name="rating_system_heart">Hartje</string>
+    <string name="rating_system_none">Geen</string>
+    <string name="ratings_note">Geldt voor iedereen in deze bibliotheek</string>
+    <string name="album_remove_heart">Hartje verwijderen</string>
+    <string name="album_hearted_by">%1$s gaf het een hartje</string>
+    <string name="heart_on">Met hartje</string>
 </resources>

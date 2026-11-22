@@ -546,4 +546,12 @@
     <string name="side_pause_turned_off">Μπορείτε να το ενεργοποιήσετε ξανά στις Ρυθμίσεις › Αναπαραγωγή.</string>
     <string name="release_not_on_this_device">Δεν υπάρχει σε αυτή τη συσκευή</string>
     <string name="release_show_where">Εμφάνιση της θέσης</string>
+    <string name="ratings_title">Βαθμολογίες</string>
+    <string name="rating_system_stars">Αστέρια</string>
+    <string name="rating_system_heart">Καρδιά</string>
+    <string name="rating_system_none">Καμία</string>
+    <string name="ratings_note">Ισχύει για όλους στη βιβλιοθήκη αυτή</string>
+    <string name="album_remove_heart">Αφαίρεση καρδιάς</string>
+    <string name="album_hearted_by">Καρδιά από %1$s</string>
+    <string name="heart_on">Με καρδιά</string>
 </resources>

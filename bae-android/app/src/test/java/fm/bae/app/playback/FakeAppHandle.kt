@@ -54,6 +54,8 @@ import uniffi.bae_bridge.BridgePagedList
 import uniffi.bae_bridge.BridgePlayOutcome
 import uniffi.bae_bridge.BridgePreviewTarget
 import uniffi.bae_bridge.BridgeQueueLane
+import uniffi.bae_bridge.BridgeRatedItems
+import uniffi.bae_bridge.BridgeRatingSystem
 import uniffi.bae_bridge.BridgeRatingTarget
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeRepeatMode
@@ -96,6 +98,7 @@ import uniffi.bae_bridge.PersonSubscription
 import uniffi.bae_bridge.PlaybackTimelineSubscription
 import uniffi.bae_bridge.PlaybackValuesSubscription
 import uniffi.bae_bridge.QueueSubscription
+import uniffi.bae_bridge.RatingSystemsSubscription
 import uniffi.bae_bridge.ReleaseDetailSubscription
 import uniffi.bae_bridge.SaveChoiceSubscription
 import uniffi.bae_bridge.SavePresetSubscription
@@ -848,6 +851,15 @@ internal open class FakeAppHandle(
     }
 
     override fun subscribeLibraryName(): LibraryNameSubscription = unfaked("subscribeLibraryName")
+
+    override fun subscribeRatingSystems(): RatingSystemsSubscription = unfaked("subscribeRatingSystems")
+
+    override suspend fun setRatingSystem(
+        items: BridgeRatedItems,
+        system: BridgeRatingSystem,
+    ) {
+        unfaked("setRatingSystem")
+    }
 
     override suspend fun removeLibrary(closing: BridgeLibraryClosing?): BridgeLibraryRemoval = unfaked("removeLibrary")
 

@@ -566,4 +566,12 @@
     <string name="side_pause_turned_off">Możesz to ponownie włączyć w Ustawienia › Odtwarzanie.</string>
     <string name="release_not_on_this_device">Nie ma na tym urządzeniu</string>
     <string name="release_show_where">Pokaż, gdzie jest</string>
+    <string name="ratings_title">Oceny</string>
+    <string name="rating_system_stars">Gwiazdki</string>
+    <string name="rating_system_heart">Serce</string>
+    <string name="rating_system_none">Brak</string>
+    <string name="ratings_note">Dotyczy wszystkich w tej bibliotece</string>
+    <string name="album_remove_heart">Usuń serce</string>
+    <string name="album_hearted_by">Serce od %1$s</string>
+    <string name="heart_on">Z sercem</string>
 </resources>

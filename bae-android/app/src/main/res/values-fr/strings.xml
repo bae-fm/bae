@@ -555,4 +555,12 @@
     <string name="side_pause_turned_off">Vous pouvez le réactiver dans Réglages › Lecture.</string>
     <string name="release_not_on_this_device">Pas sur cet appareil</string>
     <string name="release_show_where">Afficher où il se trouve</string>
+    <string name="ratings_title">Notes</string>
+    <string name="rating_system_stars">Étoiles</string>
+    <string name="rating_system_heart">Cœur</string>
+    <string name="rating_system_none">Aucune</string>
+    <string name="ratings_note">S’applique à tous les membres de cette bibliothèque</string>
+    <string name="album_remove_heart">Retirer le cœur</string>
+    <string name="album_hearted_by">%1$s lui a mis un cœur</string>
+    <string name="heart_on">Avec un cœur</string>
 </resources>

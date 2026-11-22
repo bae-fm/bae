@@ -6,14 +6,16 @@ import fm.bae.app.ui.settings.AndroidSettingsLibrary
 import fm.bae.app.ui.settings.SyncRowSummary
 import fm.bae.app.ui.settings.renameLibraryParts
 import org.junit.Test
+import uniffi.bae_bridge.BridgeRatingSystem
+import uniffi.bae_bridge.BridgeRatingSystems
 
 /** The shots of the ready android.settings.library* boards. */
 class SettingsLibraryShots : BoardShot() {
-    /** The Library page as an admin sees it: the name has its edit mark. */
+    /** The Library page as an admin sees it: the name has its edit mark and the Ratings rows open their choices. */
     @Test
     fun androidSettingsLibrary() = shot("android.settings.library") { ScreenScene { Library() } }
 
-    /** The Library page as a member sees it: the name has no edit mark. */
+    /** The Library page as a member sees it: the name has no edit mark and the Ratings rows are plain values. */
     @Test
     fun androidSettingsLibraryMember() = shot("android.settings.library.member") { ScreenScene { Library(canRename = false) } }
 
@@ -56,6 +58,9 @@ private fun Library(
     hasStorage = true,
     adminChanges = null,
     onDismissChange = {},
+    ratingSystems = BridgeRatingSystems(albums = BridgeRatingSystem.STARS, tracks = BridgeRatingSystem.HEART),
+    canChangeRatingSystems = canRename,
+    onChangeRatingSystem = { _, _ -> },
     onBack = {},
     onRename = {},
     onOpenSync = {},

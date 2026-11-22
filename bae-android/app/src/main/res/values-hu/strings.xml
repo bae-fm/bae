@@ -546,4 +546,12 @@
     <string name="side_pause_turned_off">Ezt újra bekapcsolhatod a Beállítások › Lejátszás részben.</string>
     <string name="release_not_on_this_device">Nincs ezen az eszközön</string>
     <string name="release_show_where">Mutasd meg, hol van</string>
+    <string name="ratings_title">Értékelések</string>
+    <string name="rating_system_stars">Csillagok</string>
+    <string name="rating_system_heart">Szív</string>
+    <string name="rating_system_none">Nincs</string>
+    <string name="ratings_note">A könyvtár minden tagjára érvényes</string>
+    <string name="album_remove_heart">Szív eltávolítása</string>
+    <string name="album_hearted_by">%1$s szívet adott neki</string>
+    <string name="heart_on">Szívvel</string>
 </resources>

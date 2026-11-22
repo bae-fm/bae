@@ -546,4 +546,12 @@
     <string name="side_pause_turned_off">Du kan slå dette på igjen under Innstillinger › Avspilling.</string>
     <string name="release_not_on_this_device">Ikke på denne enheten</string>
     <string name="release_show_where">Vis hvor det er</string>
+    <string name="ratings_title">Vurderinger</string>
+    <string name="rating_system_stars">Stjerner</string>
+    <string name="rating_system_heart">Hjerte</string>
+    <string name="rating_system_none">Ingen</string>
+    <string name="ratings_note">Gjelder alle i dette biblioteket</string>
+    <string name="album_remove_heart">Fjern hjerte</string>
+    <string name="album_hearted_by">%1$s ga det et hjerte</string>
+    <string name="heart_on">Med hjerte</string>
 </resources>

@@ -548,4 +548,12 @@
     <string name="side_pause_turned_off">Pode voltar a ativar isto em Definições › Reprodução.</string>
     <string name="release_not_on_this_device">Não está neste dispositivo</string>
     <string name="release_show_where">Mostrar onde está</string>
+    <string name="ratings_title">Classificações</string>
+    <string name="rating_system_stars">Estrelas</string>
+    <string name="rating_system_heart">Coração</string>
+    <string name="rating_system_none">Nenhum</string>
+    <string name="ratings_note">Aplica-se a todos nesta biblioteca</string>
+    <string name="album_remove_heart">Remover coração</string>
+    <string name="album_hearted_by">%1$s deu um coração</string>
+    <string name="heart_on">Com coração</string>
 </resources>
