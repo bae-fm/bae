@@ -485,10 +485,10 @@ async fn inspector_until(
 }
 
 /// The Storage Manager inspector shows each of its release's files beside
-/// its upload while one waits, and the error a failed upload met while this
-/// process holds it.
+/// its upload while one waits, and the file whose original the upload found
+/// missing.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn the_inspector_shows_each_files_upload_and_its_error() {
+async fn the_inspector_shows_each_files_upload_and_its_missing_original() {
     let (manager, _storage, temp, release, file_id) = queued_upload_library("inspected").await;
     let inspector =
         bae_app::live_reads::subscribe_storage_inspector(manager.manager(), &views(&manager));
@@ -503,18 +503,14 @@ async fn the_inspector_shows_each_files_upload_and_its_error() {
         .iter()
         .any(|transfer| matches!(transfer, StorageInspectorTransfer::Upload { .. })));
 
-    // The upload can't read a source that moved, so it waits on the file
-    // with the error it met.
+    // The upload can't read an original that moved, so the move waits for
+    // that file, which the inspector names.
     temp.remove("inspected/a.flac");
     assert_eq!(manager.manager().drain_uploads_expecting_work().await.unwrap(), 0);
     inspector_until(&inspector, |value| {
         value.files.iter().any(|row| {
             row.file.id == file_id
-                && row
-                    .upload
-                    .as_ref()
-                    .and_then(|upload| upload.pending.as_ref())
-                    .is_some_and(|wait| wait.cause.is_some())
+                && row.problem == Some(bae_views::storage_inspector::FileProblem::OriginalMissing)
         })
     })
     .await;
