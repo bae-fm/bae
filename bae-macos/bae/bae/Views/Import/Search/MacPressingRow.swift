@@ -229,22 +229,13 @@ struct MacPressingRow: View {
     /// Every source listing this pressing, in core's order; picking the row
     /// takes all of them.
     private var sourceTags: some View {
-        HStack(spacing: ThemeSpace.inline) {
-            ForEach(Array(pressing.sources.enumerated()), id: \.element) {
-                at,
-                source in
-                if at > 0 {
-                    Text(verbatim: FactList.glyph)
-                        .themeText(.detail)
-                        .foregroundStyle(
-                            Theme.textTertiary
-                        )
-                }
-                Text(bridgeLookupCatalogName(catalog: source))
-                    .themeText(.detail)
-                    .foregroundStyle(Theme.textTertiary)
-            }
-        }
+        Text(
+            FactList.joined(
+                pressing.sources.map { bridgeLookupCatalogName(catalog: $0) }
+            )
+        )
+        .themeText(.detail)
+        .foregroundStyle(Theme.textTertiary)
     }
 
     /// The "In library" tag, hidden by opacity so the column keeps its width.
@@ -267,6 +258,7 @@ struct MacPressingRow: View {
                 isSelected ? Theme.accent : Theme.hairlineStrong
             )
             .frame(width: ThemeIcon.small.size)
+            .accessibilityHidden(true)
     }
 }
 
@@ -280,7 +272,7 @@ extension MacPressingRow {
             pressing.copyParts.contains(where: { !$0.isEmpty })
             || !details.isEmpty
         if hasCopy || !pressing.barcodes.isEmpty || agreements != nil {
-            HStack(spacing: ThemeSpace.related) {
+            HStack(spacing: ThemeSpace.related - ThemeSpace.line) {
                 if hasCopy {
                     Text(copyText)
                         .themeText(.detail)

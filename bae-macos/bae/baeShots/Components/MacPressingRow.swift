@@ -63,38 +63,11 @@ extension ShotScene {
         ),
     ]
 
-    /// The areas MusicBrainz and Discogs state for the differing CD: the area
-    /// alone, with no media, status or packaging.
-    private static func differingAreas(
-        cd: BridgePressingFacts,
-        europe: BridgePressingFacts
-    ) -> [BridgeTermsStatement] {
-        func area(_ facts: BridgePressingFacts) -> [BridgeFactTerm] {
-            bridgePressingSummary(
-                facts: BridgePressingFacts(
-                    area: facts.area,
-                    media: [],
-                    status: nil,
-                    packaging: nil,
-                    discogsDetails: []
-                )
-            )
-        }
-        return [
-            BridgeTermsStatement(terms: area(cd), catalogs: [.musicBrainz]),
-            BridgeTermsStatement(terms: area(europe), catalogs: [.discogs]),
-        ]
-    }
-
-    /// The same CD where MusicBrainz and Discogs state its year, country and
-    /// notes differently.
+    /// The same CD where MusicBrainz and Discogs state its year and notes
+    /// differently, and both state the one country.
     private static func differingPressing() -> BridgePressing {
         let cd = PreviewData.pressingFacts(
             country: "US",
-            media: PreviewData.media(.cd)
-        )
-        let europe = PreviewData.pressingFacts(
-            region: .europe,
             media: PreviewData.media(.cd)
         )
         return BridgePressing(
@@ -110,7 +83,7 @@ extension ShotScene {
                     .discogs,
                     releaseId: "hr-1042",
                     year: 1993,
-                    facts: europe,
+                    facts: cd,
                     barcode: "0 41234 56789 2"
                 ),
             ],
@@ -132,7 +105,12 @@ extension ShotScene {
             ],
             documentFailure: nil,
             pick: pick("hr-1042", .musicBrainz),
-            areas: differingAreas(cd: cd, europe: europe),
+            areas: [
+                BridgeTermsStatement(
+                    terms: [.country(code: "US")],
+                    catalogs: []
+                )
+            ],
             media: [
                 BridgeTermsStatement(
                     terms: bridgeMediaTerms(media: cd.media),
