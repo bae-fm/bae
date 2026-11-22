@@ -46,6 +46,23 @@ struct BoxedField<Focus: Hashable>: View {
                     invalid: invalid
                 )
             )
+            .modifier(FieldName(placeholder: placeholder))
+    }
+
+    /// Names the whole box to assistive technology, so the field's frame is
+    /// the box and not the text inside it.
+    private struct FieldName: ViewModifier {
+        let placeholder: LocalizedStringKey?
+
+        @ViewBuilder
+        func body(content: Content) -> some View {
+            if let placeholder {
+                content.accessibilityLabel(Text(placeholder))
+            }
+            else {
+                content
+            }
+        }
     }
 
     private var isFocused: Bool {
@@ -71,17 +88,10 @@ struct BoxedField<Focus: Hashable>: View {
 
     @ViewBuilder
     private var textField: some View {
-        let plain =
-            field
+        field
             .labelsHidden()
             .textFieldStyle(.plain)
             .themeText(font)
-        if let placeholder {
-            plain.accessibilityLabel(Text(placeholder))
-        }
-        else {
-            plain
-        }
     }
 
     @ViewBuilder
