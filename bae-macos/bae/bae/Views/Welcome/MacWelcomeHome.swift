@@ -262,7 +262,19 @@ struct MacWelcomeHome: View {
             }
             Spacer()
         }
-        .padding()
+        .padding(.horizontal)
+        .padding(.top, showsFirstRunActions ? 0 : topPadding)
+        .padding(
+            .bottom,
+            ThemeSpace.page
+                + (showsFirstRunActions ? ThemeSpace.inline : ThemeSpace.edge)
+        )
+    }
+
+    /// The boards pad the list's screen 24 + 4 points above and 32 + 16
+    /// below, so its content sits 10 points above the window's middle.
+    private var topPadding: CGFloat {
+        ThemeSpace.section + ThemeSpace.inline
     }
 }
 
