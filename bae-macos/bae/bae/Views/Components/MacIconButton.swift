@@ -24,6 +24,7 @@ struct MacIconButton: View {
             faint: true,
             iconSize: .medium,
             hitSize: BoxedIconButtonStyle.Size.small.side,
+            role: .destructive,
             action: action
         )
     }
