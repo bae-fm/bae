@@ -189,7 +189,8 @@
   var filenameGraphemes = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
   // Each half can shrink toward the middle without cutting a character at the split.
   function fileRowName(name, color) {
-    var letters = Array.from(filenameGraphemes.segment(name), function (part) { return part.segment; });
+    var line = name.replace(/\r\n|[\n\r\f\u0085\u2028\u2029]/g, ' ');
+    var letters = Array.from(filenameGraphemes.segment(line), function (part) { return part.segment; });
     var middle = Math.ceil(letters.length / 2);
     return h('div', { className: cx('bae-m-filerow-name', color) },
       h('span', null, letters.slice(0, middle).join('')),
