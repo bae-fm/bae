@@ -558,9 +558,7 @@ extension ShotScene {
         var scanning = false
         var filtered = false
         var items: () throws -> [BridgeImportListItem] = {
-            try PreviewData.lookupItems(
-                lowTideHoursCover: PreviewData.lowTideHoursCover().file
-            )
+            PreviewData.lookupItems(images: try PreviewData.LookupBoardImages())
         }
     }
 

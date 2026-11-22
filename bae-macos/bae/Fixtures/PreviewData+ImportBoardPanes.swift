@@ -24,9 +24,10 @@ extension PreviewData {
     /// with `importStep`, that draft while its import runs at the step.
     @MainActor
     static func northboundDraftCandidate(
+        cover: BridgeMappingImage,
         importStep: BridgeImportStep? = nil
     ) throws -> Candidate {
-        let images = try NorthboundImages()
+        let images = try NorthboundImages(cover: cover)
         return paneCandidate(
             folder: northboundFolder(images: images),
             metadataProvenance: .externalRelease(
@@ -54,8 +55,10 @@ extension PreviewData {
     /// Northbound after its import: the release this device made and the
     /// images its scan read.
     @MainActor
-    static func northboundImportedCandidate() throws -> Candidate {
-        let images = try NorthboundImages()
+    static func northboundImportedCandidate(
+        cover: BridgeMappingImage
+    ) throws -> Candidate {
+        let images = try NorthboundImages(cover: cover)
         let release = boardImported(.northbound)
         return Candidate(
             detail: BridgeImportCandidateDetail(
@@ -525,13 +528,20 @@ extension PreviewData {
         BoardTrack(file: "02 Side B.flac", title: "Side B", seconds: 1_342),
     ]
 
+    static func notFoundCover(_ found: NotFoundFolder) throws
+        -> BridgeMappingImage
+    {
+        try boardImage("\(found.album).jpg", art: found.album)
+    }
+
     /// `found`'s folder with the draft its files' tags give, on the pane as
     /// the person left it in `session`.
     @MainActor
     static func notFoundCandidate(
         _ found: NotFoundFolder,
+        image: BridgeMappingImage,
         session: CandidatePaneState
-    ) throws -> Candidate {
+    ) -> Candidate {
         let edit = boardEdit(
             title: found.album,
             artist: found.artist,
@@ -545,7 +555,6 @@ extension PreviewData {
                     )
                 }
         )
-        let image = try boardImage("\(found.album).jpg", art: found.album)
         return paneCandidate(
             folder: boardFolder(
                 found.folder,

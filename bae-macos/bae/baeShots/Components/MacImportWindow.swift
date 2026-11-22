@@ -85,7 +85,9 @@ extension ShotScene {
     private static func previewRows(lowTideHoursCover: BridgeFileVersion) throws
         -> [BridgeImportListItem]
     {
-        [
+        let folder = PreviewData.copperSky
+        let copperSkyCover = try PreviewData.notFoundCover(folder)
+        return [
             PreviewData.candidateItem(
                 PreviewData.boardRow(
                     .lowTideHours,
@@ -97,7 +99,9 @@ extension ShotScene {
                     cover: .local(file: lowTideHoursCover)
                 )
             ),
-            PreviewData.candidateItem(try PreviewData.copperSkyBoardRow()),
+            PreviewData.candidateItem(
+                PreviewData.notFoundBoardRow(folder, cover: copperSkyCover.file)
+            ),
         ]
     }
 }

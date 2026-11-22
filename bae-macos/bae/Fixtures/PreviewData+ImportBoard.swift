@@ -160,10 +160,60 @@ extension PreviewData {
         let back: BridgeMappingImage
         var gallery: [BridgeMappingImage] { [cover, back] }
 
-        init() throws {
-            cover = try boardImage("cover.jpg", art: "Northbound")
+        init(cover: BridgeMappingImage) throws {
+            self.cover = cover
             back = try boardImage("back.jpg", art: "Northbound back")
         }
+    }
+
+    struct LookupBoardImages {
+        let lowTideHours: BridgeMappingImage
+        let copperSky: BridgeMappingImage
+        let winterKitchen: BridgeMappingImage
+        let smallHours: BridgeFileVersion
+
+        init() throws {
+            lowTideHours = try lowTideHoursCover()
+            copperSky = try notFoundCover(PreviewData.copperSky)
+            winterKitchen = try notFoundCover(PreviewData.winterKitchen)
+            smallHours = try BoardArtwork.scannedFile(named: "Small Hours")
+        }
+    }
+
+    struct FoundBoardImages {
+        let fieldRecordings: BridgeCoverChoice
+        let lookup: LookupBoardImages
+        let northbound: BridgeMappingImage
+        let saltAndCedar: BridgeFileVersion
+        let paperLanterns: BridgeFileVersion
+
+        init() throws {
+            fieldRecordings = try fieldRecordingsCatalogCover()
+            lookup = try LookupBoardImages()
+            northbound = try northboundCover()
+            saltAndCedar = try BoardArtwork.scannedFile(named: "Salt and Cedar")
+            paperLanterns = try BoardArtwork.scannedFile(
+                named: "Paper Lanterns"
+            )
+        }
+    }
+
+    struct ImportedBoardImages {
+        let northbound: BridgeMappingImage
+        let driftwood: BridgeFileVersion
+        let glassHarbor: BridgeFileVersion
+        let lateArrivals: BridgeFileVersion
+
+        init() throws {
+            northbound = try northboundCover()
+            driftwood = try BoardArtwork.scannedFile(named: "Driftwood")
+            glassHarbor = try BoardArtwork.scannedFile(named: "Glass Harbor")
+            lateArrivals = try BoardArtwork.scannedFile(named: "Late Arrivals")
+        }
+    }
+
+    private static func northboundCover() throws -> BridgeMappingImage {
+        try boardImage("cover.jpg", art: "Northbound")
     }
 
     static func boardCover(_ image: BridgeMappingImage) -> BridgeCoverChoice {

@@ -82,12 +82,11 @@ extension PreviewData {
     /// The Found tab's rows as the boards list them.
     static func foundItems(
         northbound: NorthboundStanding,
-        fieldRecordingsCover: BridgeCoverImageSource,
-        lowTideHoursCover: BridgeFileVersion
-    ) throws -> [BridgeImportListItem] {
-        try groupItems(cover: fieldRecordingsCover)
-            + lookupItems(lowTideHoursCover: lowTideHoursCover)
-            + importItems(northbound: northbound)
+        images: FoundBoardImages
+    ) -> [BridgeImportListItem] {
+        groupItems(cover: images.fieldRecordings.image)
+            + lookupItems(images: images.lookup)
+            + importItems(northbound: northbound, images: images)
     }
 
     /// Field Recordings' two discs, listed under their folder's header.
@@ -130,12 +129,15 @@ extension PreviewData {
     }
 
     /// The rows the lookups left to the person or have not reached.
-    static func lookupItems(lowTideHoursCover: BridgeFileVersion) throws
-        -> [BridgeImportListItem]
+    static func lookupItems(images: LookupBoardImages) -> [BridgeImportListItem]
     {
         [
-            candidateItem(lowTideHoursBoardRow(cover: lowTideHoursCover)),
-            candidateItem(try copperSkyBoardRow()),
+            candidateItem(
+                lowTideHoursBoardRow(cover: images.lowTideHours.file)
+            ),
+            candidateItem(
+                notFoundBoardRow(copperSky, cover: images.copperSky.file)
+            ),
             candidateItem(
                 boardRow(
                     .untitled07,
@@ -150,9 +152,7 @@ extension PreviewData {
                         albumTitle: "Small Hours",
                         albumArtists: .named("Tomas Brell")
                     ),
-                    cover: .local(
-                        file: try BoardArtwork.scannedFile(named: "Small Hours")
-                    ),
+                    cover: .local(file: images.smallHours),
                     live: triageLive(
                         [.skip, .revealFolder],
                         identifying: .queued,
@@ -161,18 +161,9 @@ extension PreviewData {
                 )
             ),
             candidateItem(
-                boardRow(
-                    .winterKitchen,
-                    summary: BridgeTriageMetadataSummary(
-                        albumTitle: "Winter Kitchen",
-                        albumArtists: .named("Odile Fen")
-                    ),
-                    cover: .local(
-                        file: try BoardArtwork.scannedFile(
-                            named: "Winter Kitchen"
-                        )
-                    ),
-                    live: needsYou(.notFound)
+                notFoundBoardRow(
+                    winterKitchen,
+                    cover: images.winterKitchen.file
                 )
             ),
         ]
@@ -193,16 +184,17 @@ extension PreviewData {
         )
     }
 
-    static func copperSkyBoardRow() throws -> BridgeTriageRow {
+    static func notFoundBoardRow(
+        _ folder: NotFoundFolder,
+        cover: BridgeFileVersion
+    ) -> BridgeTriageRow {
         boardRow(
-            .copperSky,
+            folder.folder,
             summary: BridgeTriageMetadataSummary(
-                albumTitle: "Copper Sky",
-                albumArtists: .named("Odile Fen")
+                albumTitle: folder.album,
+                albumArtists: .named(folder.artist)
             ),
-            cover: .local(
-                file: try BoardArtwork.scannedFile(named: "Copper Sky")
-            ),
+            cover: .local(file: cover),
             live: needsYou(.notFound)
         )
     }
@@ -210,8 +202,9 @@ extension PreviewData {
     /// The rows importing, queued to import or failed, and Northbound as
     /// `northbound` has it.
     static func importItems(
-        northbound: NorthboundStanding
-    ) throws -> [BridgeImportListItem] {
+        northbound: NorthboundStanding,
+        images: FoundBoardImages
+    ) -> [BridgeImportListItem] {
         let live =
             switch northbound {
             case .importing: northboundImportingLive
@@ -224,9 +217,7 @@ extension PreviewData {
                 albumArtists: .named("Mara Quill")
             ),
             record: "board-northbound",
-            cover: .local(
-                file: try BoardArtwork.scannedFile(named: "Northbound")
-            ),
+            cover: .local(file: images.northbound.file),
             live: live
         )
         return [
@@ -239,30 +230,24 @@ extension PreviewData {
                         albumArtists: .named("The Slow Orchards")
                     ),
                     record: "board-salt-and-cedar",
-                    cover: .local(
-                        file: try BoardArtwork.scannedFile(
-                            named: "Salt and Cedar"
-                        )
-                    ),
+                    cover: .local(file: images.saltAndCedar),
                     live: triageLive([], importStep: .preparing(step: .queued))
                 )
             ),
-            candidateItem(try paperLanternsFailedRow()),
+            candidateItem(paperLanternsFailedRow(cover: images.paperLanterns)),
         ]
     }
 
-    private static func paperLanternsFailedRow() throws -> BridgeTriageRow {
+    private static func paperLanternsFailedRow(cover: BridgeFileVersion)
+        -> BridgeTriageRow
+    {
         boardRow(
             .paperLanterns,
             summary: BridgeTriageMetadataSummary(
                 albumTitle: "Paper Lanterns",
                 albumArtists: .named("The Slow Orchards")
             ),
-            cover: .local(
-                file: try BoardArtwork.scannedFile(
-                    named: "Paper Lanterns"
-                )
-            ),
+            cover: .local(file: cover),
             placement: .failed,
             live: triageLive(
                 [.resetToFileMetadata, .clearMetadata],
@@ -292,13 +277,15 @@ extension PreviewData {
     }
 
     /// The Imported tab's rows as the boards list them.
-    static func doneItems() throws -> [BridgeImportListItem] {
+    static func doneItems(images: ImportedBoardImages) -> [BridgeImportListItem]
+    {
         func done(
             _ folder: BoardFolder,
             _ title: String,
             _ artist: String,
+            cover: BridgeFileVersion,
             upload: BridgeUploadProgress? = nil
-        ) throws -> BridgeImportListItem {
+        ) -> BridgeImportListItem {
             candidateItem(
                 boardRow(
                     folder,
@@ -307,9 +294,7 @@ extension PreviewData {
                         albumArtists: .named(artist)
                     ),
                     record: "board-\(title)",
-                    cover: .local(
-                        file: try BoardArtwork.scannedFile(named: title)
-                    ),
+                    cover: .local(file: cover),
                     placement: .done,
                     live: triageLive([.revealFolder]),
                     importStatus: .complete(release: boardImported(folder)),
@@ -318,19 +303,35 @@ extension PreviewData {
             )
         }
         return [
-            try done(
+            done(
                 .northbound,
                 "Northbound",
                 "Mara Quill",
+                cover: images.northbound.file,
                 upload: BridgeUploadProgress(
                     queued: 0,
                     uploading: 1,
                     activity: .uploading
                 )
             ),
-            try done(.driftwood, "Driftwood", "Mara Quill"),
-            try done(.glassHarbor, "Glass Harbor", "Ines Varga Trio"),
-            try done(.lateArrivals, "Late Arrivals", "The Slow Orchards"),
+            done(
+                .driftwood,
+                "Driftwood",
+                "Mara Quill",
+                cover: images.driftwood
+            ),
+            done(
+                .glassHarbor,
+                "Glass Harbor",
+                "Ines Varga Trio",
+                cover: images.glassHarbor
+            ),
+            done(
+                .lateArrivals,
+                "Late Arrivals",
+                "The Slow Orchards",
+                cover: images.lateArrivals
+            ),
         ]
     }
 
