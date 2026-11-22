@@ -96,7 +96,8 @@ fn write_swift(out: &mut String, theme: &Theme) -> std::fmt::Result {
         "\n/// A text style: its font, letter spacing and the size, style,\n\
          /// weight and design AppKit and UIKit text draw it with.\npublic struct ThemeText: Sendable {\n    \
          public let font: Font\n    public let tracking: CGFloat\n    \
-         public let macOSSize: CGFloat\n    public let iOSStyle: Font.TextStyle\n    public let weight: Font.Weight\n    \
+         public let macOSSize: CGFloat\n    \
+         public let macOSLine: CGFloat?\n    public let iOSStyle: Font.TextStyle\n    public let weight: Font.Weight\n    \
          public let monospaced: Bool\n}\n\n\
          extension ThemeText {\n",
     );
@@ -107,13 +108,14 @@ fn write_swift(out: &mut String, theme: &Theme) -> std::fmt::Result {
             out,
             "    public static let {role} = ThemeText(\n        font: .theme(\n            macOS: {},\n            \
              iOS: .{},\n            weight: {},\n            design: {design}\n        ),\n        \
-             tracking: {},\n        macOSSize: {},\n        iOSStyle: .{},\n        weight: {},\n        \
+             tracking: {},\n        macOSSize: {},\n        macOSLine: {},\n        iOSStyle: .{},\n        weight: {},\n        \
              monospaced: {}\n    )",
             apple.macos,
             apple.ios,
             text.weight.swift(),
             text.tracking,
             apple.macos,
+            apple.macos_line.map_or("nil".to_string(), |line| line.to_string()),
             apple.ios,
             text.weight.swift(),
             text.monospaced

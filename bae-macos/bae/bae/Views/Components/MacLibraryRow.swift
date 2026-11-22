@@ -102,16 +102,14 @@ struct MacLibraryRow: View {
             VStack(alignment: .leading, spacing: ThemeSpace.line) {
                 StableOptionalText(
                     text: title,
-                    font: ThemeText.rowTitle.font,
+                    role: .rowTitle,
                     foreground: .primary,
-                    lineHeight: 17,
                     lineLimit: 1
                 )
                 StableOptionalText(
                     text: subtitle,
-                    font: ThemeText.detail.font,
+                    role: .detail,
                     foreground: .secondary,
-                    lineHeight: 14,
                     lineLimit: 1
                 )
             }

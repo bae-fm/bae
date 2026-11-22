@@ -168,6 +168,9 @@ pub struct AppleSize {
     pub macos: f64,
     /// A Dynamic Type style, so iOS text follows the person's text size.
     pub ios: String,
+    /// The macOS line height in points, for a role whose lines are not the
+    /// font's own height.
+    pub macos_line: Option<f64>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
@@ -490,7 +493,7 @@ fn read_text(raw: &RawType, problems: &mut Vec<String>) -> BTreeMap<String, Text
                                 style.name
                             ));
                         }
-                        Some(AppleSize { macos: style.size, ios: ios.clone() })
+                        Some(AppleSize { macos: style.size, ios: ios.clone(), macos_line: style.line })
                     }
                     None => {
                         problems.push(format!(

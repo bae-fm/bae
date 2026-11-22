@@ -77,7 +77,6 @@ struct FieldNote: View {
 
     var body: some View {
         line
-            .lineSpacing(ThemeSpace.line / 2)
             .padding(.leading, ThemeSpace.fieldInset)
             .fixedSize(horizontal: false, vertical: true)
     }

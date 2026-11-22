@@ -9,29 +9,30 @@ enum StableOptionalTextForeground {
 
 struct StableOptionalText: View {
     let text: String?
-    let font: Font
+    let role: ThemeText
     let foreground: StableOptionalTextForeground
-    let lineHeight: CGFloat
     let lineLimit: Int?
 
     init(
         text: String?,
-        font: Font,
+        role: ThemeText,
         foreground: StableOptionalTextForeground = .primary,
-        lineHeight: CGFloat,
         lineLimit: Int? = nil
     ) {
         self.text = text
-        self.font = font
+        self.role = role
         self.foreground = foreground
-        self.lineHeight = lineHeight
         self.lineLimit = lineLimit
     }
 
     var body: some View {
         ZStack(alignment: .leading) {
-            Color.clear
-                .frame(height: lineHeight)
+            // One line of the role's text, so the view keeps its height with
+            // no text.
+            Text(verbatim: " ")
+                .themeText(role)
+                .lineLimit(1)
+                .hidden()
                 .accessibilityHidden(true)
             styledText
                 .opacity(hasText ? 1 : 0)
@@ -54,7 +55,7 @@ struct StableOptionalText: View {
 
     private var baseText: some View {
         Text(displayText)
-            .font(font)
+            .themeText(role)
             .lineLimit(lineLimit)
     }
 

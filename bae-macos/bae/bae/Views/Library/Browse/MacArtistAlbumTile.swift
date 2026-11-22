@@ -20,9 +20,8 @@ struct MacArtistAlbumTile: View {
                     .lineLimit(1)
                 StableOptionalText(
                     text: album.year.map(String.init),
-                    font: ThemeText.detail.font,
+                    role: .detail,
                     foreground: .secondary,
-                    lineHeight: 12,
                     lineLimit: 1
                 )
             }

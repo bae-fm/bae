@@ -127,9 +127,8 @@ private struct AlbumCardStack<Art: View>: View {
                 .lineLimit(1)
             StableOptionalText(
                 text: year.map(String.init),
-                font: ThemeText.detail.font,
-                foreground: .tertiary,
-                lineHeight: 14
+                role: .detail,
+                foreground: .tertiary
             )
         }
         .padding(ThemeSpace.compact)

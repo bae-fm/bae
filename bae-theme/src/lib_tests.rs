@@ -458,6 +458,15 @@ fn a_text_role_with_an_android_line_height_carries_it_into_kotlin() {
     assert!(kotlin.contains("fontSize = 14.sp,\n                    lineHeight = 22.sp,\n"));
 }
 
+#[test]
+fn a_text_role_with_an_apple_line_height_carries_it_into_swift() {
+    let sized = BODY.replace(r#""ios": "body""#, r#""lineHeight": "15px", "ios": "body""#);
+    let with_line = apple::swift(&theme_with_text(&sized).unwrap());
+    assert!(with_line.contains("macOSSize: 13,\n        macOSLine: 15,\n"));
+    let without = apple::swift(&theme_with_text(BODY).unwrap());
+    assert!(without.contains("macOSSize: 13,\n        macOSLine: nil,\n"));
+}
+
 /// The Mac app's AccentColor asset is the standard accent's selection colour,
 /// which macOS draws system parts in while the person's system accent is
 /// Multicolor. The asset is a catalog file Xcode compiles, so theme-gen
