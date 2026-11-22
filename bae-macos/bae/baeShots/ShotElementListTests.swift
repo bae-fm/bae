@@ -29,6 +29,28 @@ struct ShotElementListTests {
         try #require(String(bytes: try list.json(), encoding: .utf8))
     }
 
+    @Test
+    func unsyncedLibraryRowListsTheStatusAndBothButtons() async throws {
+        let list = try await list("mac.settings.sync-setup.choose-cloud")
+
+        #expect(
+            list.elements.contains {
+                $0.role == "button"
+                    && $0.label == "Sync, This library is only on this Mac."
+            }
+        )
+        #expect(
+            list.elements.contains {
+                $0.role == "text" && $0.label == "Not synced"
+            }
+        )
+        #expect(
+            list.elements.contains {
+                $0.role == "button" && $0.label == "Set up a cloud home…"
+            }
+        )
+    }
+
     @Test(arguments: ["empty", "filled"])
     func listsSecureFieldsByWhetherTheyAreFilled(state: String) async throws {
         let list = try await list("mac.settings.sync.s3-replace-key-\(state)")
