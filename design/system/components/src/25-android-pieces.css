@@ -1,36 +1,36 @@
 .bae-a-credits-head { padding: 4px 0; }
-.bae-a-credit { display: flex; justify-content: space-between; gap: 16px; padding: 6px 0; font: 400 14px var(--font-android); }
+.bae-a-credit { display: flex; justify-content: space-between; gap: 16px; padding: 6px 0; font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); }
 .bae-a-credit-names { text-align: end; }
-.bae-a-albumaudio { padding: 8px 0; font: 400 12px/16px var(--font-android); color: var(--text-tertiary); }
+.bae-a-albumaudio { padding: 8px 0; font: var(--type-android-detail-weight) var(--type-android-detail-size)/var(--type-android-detail-line-height) var(--font-android); color: var(--text-tertiary); }
 .bae-a-othernames { padding: 0 16px 8px; }
 .bae-a-othernames-head { padding: 0 0 4px; }
-.bae-a-othernames-list { font: 400 14px var(--font-android); color: var(--text-secondary); }
+.bae-a-othernames-list { font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); color: var(--text-secondary); }
 .bae-a-rating { display: flex; flex-direction: column; gap: 2px; }
 .bae-a-plhead-top { display: flex; gap: 16px; padding: 16px; align-items: center; }
-.bae-a-plhead-name { font: 700 22px var(--font-android); }
+.bae-a-plhead-name { font: var(--type-android-title-weight) var(--type-android-title-size)/var(--type-android-title-line-height) var(--font-android); }
 .bae-a-plhead-actions { margin-top: var(--space-group); }
-.bae-a-pinsum { padding: 8px 16px; display: flex; flex-direction: column; gap: 8px; font: 400 14px var(--font-android); }
+.bae-a-pinsum { padding: 8px 16px; display: flex; flex-direction: column; gap: 8px; font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); }
 .bae-a-relpick { display: flex; gap: 8px; }
-.bae-a-relchip { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 16px; border-radius: 8px; font: 500 14px var(--font-android); box-shadow: inset 0 0 0 1px var(--hairline-strong); }
+.bae-a-relchip { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 16px; border-radius: 8px; font: var(--type-android-label-weight) var(--type-android-label-size)/var(--type-android-label-line-height) var(--font-android); box-shadow: inset 0 0 0 1px var(--hairline-strong); }
 .bae-a-relchip-on { background: var(--accent-tint); box-shadow: none; }
-.bae-a-gallery-caption { padding: 16px; text-align: center; background: var(--backdrop); color: var(--on-fill); font: 400 14px var(--font-android); }
+.bae-a-gallery-caption { padding: 16px; text-align: center; background: var(--backdrop); color: var(--on-fill); font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); }
 .bae-a-gallery-caption-count { color: var(--on-fill-secondary); }
-.bae-a-lightbox { width: 412px; height: 916px; background: var(--backdrop); color: var(--on-fill); position: relative; display: flex; align-items: center; justify-content: center; font: 400 14px var(--font-android); }
+.bae-a-lightbox { width: 412px; height: 916px; background: var(--backdrop); color: var(--on-fill); position: relative; display: flex; align-items: center; justify-content: center; font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); }
 .bae-a-lightbox-close { position: absolute; top: 4px; right: 4px; }
 .bae-a-lightbox-wait { display: flex; flex-direction: column; align-items: center; gap: 12px; }
 .bae-a-lightbox-secondary { color: var(--on-fill-secondary); }
 .bae-a-lightbox > .bae-a-gallery-caption, .bae-a-lightbox > .sc-host-x > .bae-a-gallery-caption { position: absolute; bottom: 0; left: 0; right: 0; }
 .bae-a-sidepause { display: flex; flex-direction: column; gap: 8px; }
-.bae-a-sidepause-count { font: 600 14px var(--font-android); color: var(--text-primary); }
-.bae-a-errline { font: 400 14px/20px var(--font-android); color: var(--danger); }
+.bae-a-sidepause-count { font: var(--type-android-strong-weight) var(--type-android-strong-size)/var(--type-android-strong-line-height) var(--font-android); color: var(--text-primary); }
+.bae-a-errline { font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); color: var(--danger); }
 .bae-a-item { display: flex; align-items: flex-start; gap: 12px; }
 .bae-a-item-lead { flex: none; height: 20px; display: flex; align-items: center; justify-content: center; }
-.bae-a-item-body { flex: 1; min-width: 0; font: 400 14px/20px var(--font-android); }
+.bae-a-item-body { flex: 1; min-width: 0; font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); }
 .bae-a-item-trail { flex: none; height: 20px; display: flex; align-items: center; gap: 4px; }
 .bae-a-reclinks { display: flex; flex-wrap: wrap; gap: 8px; }
 .bae-a-relfiles-head { padding: 4px 0; }
-.bae-a-relfiles-row { display: flex; justify-content: space-between; gap: var(--space-group); padding: var(--space-related) 0; font: 400 14px var(--font-android); }
+.bae-a-relfiles-row { display: flex; justify-content: space-between; gap: var(--space-group); padding: var(--space-related) 0; font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); }
 .bae-a-qrscan { position: relative; background: var(--backdrop); }
 .bae-a-qrscan-foot { position: absolute; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; padding: var(--space-page); }
-.bae-a-qrscan-words { padding: var(--space-related); border-radius: var(--radius-control); background: var(--scrim); color: var(--on-fill); font: 400 12px/16px var(--font-android); text-align: center; }
+.bae-a-qrscan-words { padding: var(--space-related); border-radius: var(--radius-control); background: var(--scrim); color: var(--on-fill); font: var(--type-android-detail-weight) var(--type-android-detail-size)/var(--type-android-detail-line-height) var(--font-android); text-align: center; }
 .bae-a-qrscan-cancel { padding-top: var(--space-edge); }

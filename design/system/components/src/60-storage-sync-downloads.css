@@ -72,13 +72,13 @@
 .bae-m-actxfer-end { display: flex; align-items: center; gap: var(--space-compact); }
 .bae-m-actfoot { display: flex; margin-top: var(--space-group); }
 .bae-m-actrow-sub { font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-secondary); margin-top: 2px; }
-.bae-a-act { --bae-a-act-gutter: calc(14px * 1.19 + var(--space-related)); display: flex; flex-direction: column; gap: 8px; padding: 0 16px 16px; font: 400 14px/20px var(--font-android); }
+.bae-a-act { --bae-a-act-gutter: calc(14px * 1.19 + var(--space-related)); display: flex; flex-direction: column; gap: 8px; padding: 0 16px 16px; font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); }
 .bae-a-act-text { padding-left: var(--bae-a-act-gutter); }
 .bae-a-actproblems > .bae-divider { margin-left: var(--bae-a-act-gutter); }
-.bae-a-act-title { font: 600 16px var(--font-android); }
+.bae-a-act-title { font: var(--type-android-heading-weight) var(--type-android-heading-size)/var(--type-android-heading-line-height) var(--font-android); }
 .bae-a-actproblems { display: flex; flex-direction: column; }
 .bae-a-act-block { display: flex; flex-direction: column; gap: 4px; }
-.bae-a-act-sub { font: 400 12px/16px var(--font-android); color: var(--text-secondary); }
+.bae-a-act-sub { font: var(--type-android-detail-weight) var(--type-android-detail-size)/var(--type-android-detail-line-height) var(--font-android); color: var(--text-secondary); }
 .bae-a-act-tap { border-radius: 4px; }
 .bae-a-actxfer { display: flex; flex-direction: column; gap: var(--space-related); padding-top: var(--space-related); padding-bottom: var(--space-related); }
 .bae-progress-track:has(> .bae-progress-moving) { overflow: hidden; }
@@ -87,14 +87,14 @@
 
 /* Downloads */
 .bae-a-dlbar { flex: none; display: flex; align-items: center; gap: 4px; height: 64px; box-sizing: border-box; padding: 0 4px; background: var(--background); }
-.bae-a-dlbar-title { flex: 1; font: 400 22px/28px var(--font-android); }
+.bae-a-dlbar-title { flex: 1; font: var(--type-android-bar-title-weight) var(--type-android-bar-title-size)/var(--type-android-bar-title-line-height) var(--font-android); }
 .bae-a-seg-field { display: flex; flex-direction: column; gap: var(--space-related); }
-.bae-a-seg-label { font: 400 14px/20px var(--font-android); color: var(--text-secondary); }
-.bae-a-seg-helper { font: 400 12px/16px var(--font-android); color: var(--text-secondary); }
+.bae-a-seg-label { font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); color: var(--text-secondary); }
+.bae-a-seg-helper { font: var(--type-android-detail-weight) var(--type-android-detail-size)/var(--type-android-detail-line-height) var(--font-android); color: var(--text-secondary); }
 /* Each segment takes Material's 48dp touch target; its 40dp outline and fill sit inside it. */
 /* Each segment draws its 40 px pill; the 4 px above and below make the 48 px touch target, as Material's segmented button does. */
 .bae-a-seg { display: flex; padding: 4px 0; }
-.bae-a-seg-btn { position: relative; isolation: isolate; flex: 1; height: 40px; display: flex; align-items: center; justify-content: center; gap: 6px; font: 500 14px var(--font-android); fill: currentColor; }
+.bae-a-seg-btn { position: relative; isolation: isolate; flex: 1; height: 40px; display: flex; align-items: center; justify-content: center; gap: 6px; font: var(--type-android-label-weight) var(--type-android-label-size)/var(--type-android-label-line-height) var(--font-android); fill: currentColor; }
 .bae-a-seg-btn::before { content: ''; position: absolute; z-index: -1; inset: 0; border: 1px solid var(--hairline-strong); border-left-width: 0; }
 .bae-a-seg-btn:first-child::before { border-left-width: 1px; border-radius: 20px 0 0 20px; }
 .bae-a-seg-btn:last-child::before { border-radius: 0 20px 20px 0; }
@@ -102,9 +102,9 @@
 .bae-a-dlrow2 { display: flex; flex-direction: column; gap: 4px; padding: 12px 16px; border-bottom: 1px solid var(--hairline); }
 .bae-a-dlrow2-head { display: flex; align-items: center; gap: var(--space-related); }
 .bae-a-dlrow2-head > .bae-a-librow-title { flex: 1; min-width: 0; }
-.bae-a-dlrow2-gone { font-weight: 400; color: var(--text-secondary); }
+.bae-a-dlrow2-gone { font-weight: var(--type-android-body-weight); color: var(--text-secondary); }
 .bae-a-pinrow-bar { padding: 4px 0 2px; }
-.bae-a-fine { font: 400 11px var(--font-android); }
+.bae-a-fine { font: var(--type-android-fine-weight) var(--type-android-fine-size) var(--font-android); }
 
 .bae-m-switch-off { opacity: 0.45; }
 
@@ -138,10 +138,10 @@
 .bae-usage-legend { display: flex; flex-wrap: wrap; column-gap: var(--space-group); row-gap: var(--space-inline); color: var(--text-secondary); }
 .bae-usage-key { display: inline-flex; align-items: center; gap: var(--space-inline); white-space: nowrap; color: var(--text-secondary); }
 .bae-usage-key-m { font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); }
-.bae-usage-key-a { font: 400 14px/20px var(--font-android); }
+.bae-usage-key-a { font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); }
 .bae-usage-dot { width: 8px; height: 8px; border-radius: 4px; flex: none; }
 .bae-usage-size { color: var(--text-primary); font-variant-numeric: tabular-nums; }
 .bae-usage-m { font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); }
 .bae-usage-m .bae-usage-num { font-size: var(--type-title-size); font-weight: var(--type-title-weight); line-height: normal; }
-.bae-usage-a { font: 400 14px/20px var(--font-android); padding: var(--space-edge) var(--space-edge) var(--space-group); }
-.bae-usage-a .bae-usage-num { font-size: 32px; line-height: 40px; font-weight: 400; }
+.bae-usage-a { font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); padding: var(--space-edge) var(--space-edge) var(--space-group); }
+.bae-usage-a .bae-usage-num { font-size: var(--type-android-display-size); font-weight: var(--type-android-display-weight); line-height: var(--type-android-display-line-height); }

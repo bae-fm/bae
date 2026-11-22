@@ -21,7 +21,7 @@
 .bae-a-welcome-home-empty { justify-content: flex-start; padding: 0 0 24px; }
 .bae-a-welcome-home-brand { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; }
 .bae-a-welcome-home-logo { display: flex; justify-content: center; }
-.bae-a-welcome-tagline { font-size: 16px; line-height: 24px; color: var(--text-secondary); }
+.bae-a-welcome-tagline { font-size: var(--type-android-body-large-size); font-weight: var(--type-android-body-large-weight); line-height: var(--type-android-body-large-line-height); color: var(--text-secondary); }
 .bae-a-welcome-tagline-centred { padding: 14px 32px 16px; text-align: center; }
 
 .bae-m-restore { width: 100%; display: flex; flex-direction: column; gap: 2px; font-size: var(--type-body-size); font-weight: var(--type-body-weight); line-height: normal; color: var(--text-primary); font-family: var(--font-sans); }
@@ -31,7 +31,7 @@
 .bae-m-restore-masked-head { overflow: hidden; text-overflow: ellipsis; }
 .bae-m-restore-masked-tail { flex: none; }
 .bae-a-restore { font-family: var(--font-android); }
-.bae-a-restore-code { padding: 16px; font: 15px/26px 'Roboto Mono', ui-monospace, Menlo, monospace; word-spacing: 4px; color: var(--text-secondary); overflow-wrap: anywhere; }
+.bae-a-restore-code { padding: 16px; font: var(--type-android-mono-weight) var(--type-android-mono-size)/var(--type-android-mono-line-height) var(--font-mono); word-spacing: 4px; color: var(--text-secondary); overflow-wrap: anywhere; }
 .bae-a-restore-actions { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 16px 0; }
 
 .bae-m-cloudhome { width: 100%; display: flex; flex-direction: column; gap: 8px; color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
@@ -50,7 +50,7 @@
 
 .bae-m-invitefields { width: 100%; display: flex; flex-direction: column; gap: 10px; color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
 .bae-a-invitefields { width: 100%; display: flex; flex-direction: column; gap: 24px; font-family: var(--font-android); }
-.bae-a-invitefields-mine { font-size: 14px; line-height: 20px; color: var(--text-secondary); }
+.bae-a-invitefields-mine { font-size: var(--type-android-body-size); font-weight: var(--type-android-body-weight); line-height: var(--type-android-body-line-height); color: var(--text-secondary); }
 .bae-a-invitefields-switch { margin-top: -8px; display: flex; flex-direction: column; }
 
 /* The status line, when its explanation follows it: the label and the status on one text baseline, close above the explanation. */
@@ -66,12 +66,12 @@
 .bae-a-syncstatus { font-family: var(--font-android); }
 .bae-a-syncstatus-line { display: flex; align-items: center; gap: var(--space-edge); padding: var(--space-group) var(--space-edge) 4px; box-sizing: border-box; color: var(--text-primary); }
 .bae-a-syncstatus-lines { flex: 1; min-width: 0; }
-.bae-a-syncstatus-title { font-size: 16px; line-height: 24px; display: flex; align-items: center; gap: var(--space-related); }
-.bae-a-syncstatus-value { font-size: 14px; line-height: 20px; color: var(--text-secondary); display: flex; align-items: baseline; gap: 6px; }
+.bae-a-syncstatus-title { font-size: var(--type-android-row-title-regular-size); font-weight: var(--type-android-row-title-regular-weight); line-height: var(--type-android-row-title-regular-line-height); display: flex; align-items: center; gap: var(--space-related); }
+.bae-a-syncstatus-value { font-size: var(--type-android-body-size); font-weight: var(--type-android-body-weight); line-height: var(--type-android-body-line-height); color: var(--text-secondary); display: flex; align-items: baseline; gap: 6px; }
 .bae-a-syncstatus-value[class*="bae-tone-"] { color: var(--bae-tone); }
-.bae-a-syncstatus-cause { padding: 2px 16px 10px; font: 400 14px/20px var(--font-android); color: var(--text-primary); }
+.bae-a-syncstatus-cause { padding: 2px 16px 10px; font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); color: var(--text-primary); }
 .bae-a-syncstatus-remedy { margin-top: 4px; }
 .bae-a-syncstatus-fix { padding: 2px 16px 14px; }
-.bae-a-syncstatus-when { padding: 0 16px 14px; font: 400 14px/20px var(--font-android); color: var(--text-secondary); }
+.bae-a-syncstatus-when { padding: 0 16px 14px; font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); color: var(--text-secondary); }
 
 .bae-m-savepanel-format { display: flex; gap: 4px; align-items: center; justify-content: center; padding: 8px; border-top: 1px solid var(--hairline); }

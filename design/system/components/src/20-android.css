@@ -1,8 +1,8 @@
 /* ---- Android ---- */
 
-.bae-a-screen { position: relative; overflow: hidden; display: flex; flex-direction: column; background: var(--background); color: var(--text-primary); font: 400 14px var(--font-android); }
+.bae-a-screen { position: relative; overflow: hidden; display: flex; flex-direction: column; background: var(--background); color: var(--text-primary); font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); }
 .bae-a-topbar { flex: none; display: flex; align-items: center; gap: var(--space-inline); height: 64px; box-sizing: border-box; padding: 0 var(--space-inline); background: var(--background); }
-.bae-a-topbar h1 { margin: 0; padding-left: 12px; font: 400 22px/28px var(--font-android); }
+.bae-a-topbar h1 { margin: 0; padding-left: 12px; font: var(--type-android-bar-title-weight) var(--type-android-bar-title-size)/var(--type-android-bar-title-line-height) var(--font-android); }
 .bae-a-topbar h1.bae-a-topbar-title-after-back { padding-left: 0; }
 .bae-a-topbar-more { margin-left: auto; }
 .bae-a-screen-above { flex: 1; min-height: 0; position: relative; display: flex; flex-direction: column; }
@@ -15,7 +15,7 @@
 .bae-a-keyboard-gesture::before { content: ""; width: 108px; height: 4px; border-radius: 2px; background: var(--text-secondary); }
 .bae-a-main { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 
-.bae-a-section { margin: 0; padding: var(--space-section) var(--space-page) var(--space-related); font: 500 14px/20px var(--font-android); color: var(--accent); }
+.bae-a-section { margin: 0; padding: var(--space-section) var(--space-page) var(--space-related); font: var(--type-android-section-weight) var(--type-android-section-size)/var(--type-android-section-line-height) var(--font-android); color: var(--accent); }
 .bae-a-card { margin: var(--space-related) var(--space-edge) 0; display: flex; flex-direction: column; gap: var(--space-line); flex: none; }
 /* A tile of a card (a row, or what the card wraps around anything else): 4dp corners, 20dp on the card's outer ones. */
 .bae-a-card-tile { background: var(--surface); border-radius: 4px; }
@@ -29,14 +29,14 @@
 .bae-a-row[role="button"] { cursor: pointer; }
 .bae-a-row-selected { background: var(--accent-tint); }
 .bae-a-row-lines { flex: 1; min-width: 0; }
-.bae-a-row-title { font-size: 16px; line-height: 24px; display: flex; align-items: center; gap: var(--space-related); }
-.bae-a-row-action { color: var(--accent); font-weight: 500; }
+.bae-a-row-title { font-size: var(--type-android-row-title-regular-size); font-weight: var(--type-android-row-title-regular-weight); line-height: var(--type-android-row-title-regular-line-height); display: flex; align-items: center; gap: var(--space-related); }
+.bae-a-row-action { color: var(--accent); font-size: var(--type-android-row-title-size); font-weight: var(--type-android-row-title-weight); line-height: var(--type-android-row-title-line-height); }
 .bae-a-row-destructive { color: var(--danger); }
 /* Supporting text wraps, as Material's list items let it run to more lines: a setting's explanation is read whole, never cut off. */
-.bae-a-row-subtitle { font-size: 14px; line-height: 20px; color: var(--text-secondary); display: flex; align-items: baseline; gap: 6px; }
+.bae-a-row-subtitle { font-size: var(--type-android-body-size); font-weight: var(--type-android-body-weight); line-height: var(--type-android-body-line-height); color: var(--text-secondary); display: flex; align-items: baseline; gap: 6px; }
 .bae-a-row-subtitle[class*="bae-tone-"] { color: var(--bae-tone); }
-.bae-a-row-value { flex: none; max-width: 60%; text-align: end; font-size: 14px; line-height: 20px; color: var(--text-secondary); }
-.bae-a-row-trail { display: flex; align-items: center; gap: var(--space-edge); font-size: 14px; color: var(--text-secondary); }
+.bae-a-row-value { flex: none; max-width: 60%; text-align: end; font-size: var(--type-android-body-size); font-weight: var(--type-android-body-weight); line-height: var(--type-android-body-line-height); color: var(--text-secondary); }
+.bae-a-row-trail { display: flex; align-items: center; gap: var(--space-edge); font-size: var(--type-android-body-size); font-weight: var(--type-android-body-weight); line-height: var(--type-android-body-line-height); color: var(--text-secondary); }
 .bae-a-row-icon { flex: none; fill: var(--text-secondary); }
 .bae-a-row-lead { flex: none; fill: var(--text-secondary); }
 .bae-a-row-lead-node { display: flex; }
@@ -44,20 +44,20 @@
 
 .bae-a-step { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: var(--space-section); padding: var(--space-section) var(--space-edge) var(--space-page); font-family: var(--font-android); }
 .bae-a-step-head { display: flex; flex-direction: column; gap: var(--space-related); text-align: center; }
-.bae-a-step-title { margin: 0; font: 500 22px/28px var(--font-android); color: var(--text-primary); text-wrap: balance; }
-.bae-a-step-text { margin: 0; font: 400 16px/24px var(--font-android); color: var(--text-secondary); text-wrap: pretty; }
+.bae-a-step-title { margin: 0; font: var(--type-android-bar-title-weight) var(--type-android-bar-title-size)/var(--type-android-bar-title-line-height) var(--font-android); color: var(--text-primary); text-wrap: balance; }
+.bae-a-step-text { margin: 0; font: var(--type-android-body-large-weight) var(--type-android-body-large-size)/var(--type-android-body-large-line-height) var(--font-android); color: var(--text-secondary); text-wrap: pretty; }
 .bae-a-step-top { justify-content: flex-start; }
 .bae-a-step-top .bae-a-step-head { text-align: start; }
 .bae-a-code { display: flex; flex-direction: column; align-items: center; gap: var(--space-edge); text-align: center; }
-.bae-a-code-digits { font: 500 40px/48px var(--font-android); letter-spacing: 3px; color: var(--text-primary); }
+.bae-a-code-digits { font: var(--type-android-display-weight) var(--type-android-display-size)/var(--type-android-display-line-height) var(--font-android); letter-spacing: 3px; color: var(--text-primary); }
 .bae-a-code-dialog, .bae-m-code-dialog { padding-top: var(--space-related); }
 .bae-a-code-dialog .bae-a-code-digits { letter-spacing: 2px; }
 /* Every button takes Material's 48dp touch target as its height; its 40dp shape (fill or outline) sits inside it, drawn by ::before. */
 /* A button draws its 40 px pill, as Material's buttons do; the 4 px above and below make the 48 px touch target. */
-.bae-a-btn { position: relative; isolation: isolate; height: 40px; margin-block: 4px; padding: 0 var(--space-section); border-radius: 20px; border: 0; background: none; font: 500 14px var(--font-android); cursor: pointer; white-space: nowrap; }
+.bae-a-btn { position: relative; isolation: isolate; height: 40px; margin-block: 4px; padding: 0 var(--space-section); border-radius: 20px; border: 0; background: none; font: var(--type-android-label-weight) var(--type-android-label-size)/var(--type-android-label-line-height) var(--font-android); cursor: pointer; white-space: nowrap; }
 .bae-a-btn::before { content: ''; position: absolute; z-index: -1; inset: 0; border-radius: inherit; }
 .bae-a-btn-icon { display: inline-flex; align-items: center; gap: 8px; fill: currentColor; }
-.bae-a-btn-large { height: 48px; margin-block: 0; border-radius: 24px; font-size: 15px; }
+.bae-a-btn-large { height: 48px; margin-block: 0; border-radius: 24px; font-size: var(--type-android-label-size); font-weight: var(--type-android-label-weight); line-height: var(--type-android-label-line-height); }
 .bae-a-btn-filled { color: var(--on-fill); }
 .bae-a-btn-filled::before { background: var(--accent-selection); }
 .bae-a-btn-filled.bae-a-btn-destructive { color: var(--background); }
@@ -92,15 +92,15 @@
 /* The field's top 8dp holds the label that sits on the box's top edge, as Material lays an outlined field out 64dp tall. */
 .bae-a-field { display: flex; flex-direction: column; gap: var(--space-inline); padding-top: 8px; text-align: start; font-family: var(--font-android); }
 .bae-a-field-box { position: relative; display: block; border-radius: 4px; box-shadow: inset 0 0 0 1px var(--text-secondary); }
-.bae-a-field-label { position: absolute; top: -9px; left: 12px; padding: 0 4px; background: var(--elevated); font-size: 12px; line-height: 16px; color: var(--text-secondary); }
-.bae-a-input { width: 100%; box-sizing: border-box; min-height: 56px; padding: 16px var(--space-edge); border: 0; outline: none; background: none; color: var(--text-primary); font: 400 16px/24px var(--font-android); }
+.bae-a-field-label { position: absolute; top: -9px; left: 12px; padding: 0 4px; background: var(--elevated); font-size: var(--type-android-detail-size); font-weight: var(--type-android-detail-weight); line-height: var(--type-android-detail-line-height); color: var(--text-secondary); }
+.bae-a-input { width: 100%; box-sizing: border-box; min-height: 56px; padding: 16px var(--space-edge); border: 0; outline: none; background: none; color: var(--text-primary); font: var(--type-android-body-large-weight) var(--type-android-body-large-size)/var(--type-android-body-large-line-height) var(--font-android); }
 .bae-a-input::placeholder { color: var(--text-secondary); }
-.bae-a-codetext { min-height: calc(3 * 24px + 28px); font: 400 15px/24px var(--font-mono); word-spacing: 4px; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
+.bae-a-codetext { min-height: calc(3 * 24px + 28px); font: var(--type-android-mono-weight) var(--type-android-mono-size)/var(--type-android-mono-line-height) var(--font-mono); word-spacing: 4px; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
 .bae-m-codetext { height: auto; min-height: calc(3 * 20px + 16px); padding-top: 8px; padding-bottom: 8px; font: var(--type-mono-weight) var(--type-mono-size) var(--font-mono); word-spacing: 4px; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
 .bae-codetext-placeholder { font-family: var(--font-sans); word-spacing: normal; color: var(--text-secondary); }
 .bae-a-pin { display: flex; flex-direction: column; gap: var(--space-inline); font-family: var(--font-android); }
 .bae-a-pin-cells { display: flex; gap: 12px; }
-.bae-a-pin-cell { box-sizing: border-box; width: 48px; height: 56px; display: flex; align-items: center; justify-content: center; border-radius: 4px; box-shadow: inset 0 0 0 1px var(--text-secondary); color: var(--text-primary); font: 400 24px/32px var(--font-android); font-variant-numeric: tabular-nums; }
+.bae-a-pin-cell { box-sizing: border-box; width: 48px; height: 56px; display: flex; align-items: center; justify-content: center; border-radius: 4px; box-shadow: inset 0 0 0 1px var(--text-secondary); color: var(--text-primary); font: var(--type-android-dialog-title-weight) var(--type-android-dialog-title-size)/var(--type-android-dialog-title-line-height) var(--font-android); font-variant-numeric: tabular-nums; }
 .bae-a-pin-cell-focused { box-shadow: inset 0 0 0 2px var(--accent); }
 .bae-a-pin-cell-error { box-shadow: inset 0 0 0 2px var(--danger); }
 .bae-a-pin .bae-a-pin-note { padding: 0; color: var(--danger); }
@@ -108,24 +108,24 @@
 .bae-a-field-focused .bae-a-field-label { color: var(--accent); }
 .bae-a-field-error .bae-a-field-box { box-shadow: inset 0 0 0 2px var(--danger); }
 .bae-a-field-error .bae-a-field-label, .bae-a-field-error .bae-a-field-line { color: var(--danger); }
-.bae-a-field-line { padding: 0 var(--space-edge); font-size: 12px; line-height: 16px; color: var(--text-secondary); }
+.bae-a-field-line { padding: 0 var(--space-edge); font-size: var(--type-android-detail-size); font-weight: var(--type-android-detail-weight); line-height: var(--type-android-detail-line-height); color: var(--text-secondary); }
 
-.bae-a-radio { display: flex; align-items: center; gap: var(--space-edge); min-height: 48px; font-size: 16px; color: var(--text-primary); cursor: pointer; }
+.bae-a-radio { display: flex; align-items: center; gap: var(--space-edge); min-height: 48px; font-size: var(--type-android-body-large-size); font-weight: var(--type-android-body-large-weight); line-height: var(--type-android-body-large-line-height); color: var(--text-primary); cursor: pointer; }
 .bae-a-radio-dot { position: relative; width: 20px; height: 20px; border-radius: 10px; box-sizing: border-box; flex: none; box-shadow: inset 0 0 0 2px var(--text-secondary); }
 .bae-a-radio-dot-on { box-shadow: inset 0 0 0 2px var(--accent); }
 .bae-a-radio-dot-on::after { content: ''; position: absolute; inset: 5px; border-radius: 5px; background: var(--accent); }
 
 .bae-a-scrim { position: absolute; inset: 0; background: var(--scrim); display: flex; align-items: center; justify-content: center; z-index: 10; }
-.bae-a-dialog { padding: var(--space-section); border-radius: 28px; background: var(--elevated); box-sizing: border-box; display: flex; flex-direction: column; gap: var(--space-edge); font: 400 14px/20px var(--font-android); color: var(--text-secondary); }
-.bae-a-dialog-title { margin: 0; font: 400 24px/32px var(--font-android); color: var(--text-primary); }
+.bae-a-dialog { padding: var(--space-section); border-radius: 28px; background: var(--elevated); box-sizing: border-box; display: flex; flex-direction: column; gap: var(--space-edge); font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); color: var(--text-secondary); }
+.bae-a-dialog-title { margin: 0; font: var(--type-android-dialog-title-weight) var(--type-android-dialog-title-size)/var(--type-android-dialog-title-line-height) var(--font-android); color: var(--text-primary); }
 .bae-a-dialog-head { display: flex; flex-direction: column; gap: var(--space-related); }
 .bae-a-dialog-message { margin: 0; text-wrap: pretty; }
 .bae-a-dialog-actions { margin-top: var(--space-related); display: flex; justify-content: flex-end; gap: var(--space-related); }
 
-.bae-a-note { padding: var(--space-related) var(--space-page) 0; font: 400 12px/16px var(--font-android); color: var(--text-secondary); }
+.bae-a-note { padding: var(--space-related) var(--space-page) 0; font: var(--type-android-detail-weight) var(--type-android-detail-size)/var(--type-android-detail-line-height) var(--font-android); color: var(--text-secondary); }
 .bae-a-divider { height: 1px; flex: none; background: var(--hairline); }
 .bae-a-cu { height: 100%; box-sizing: border-box; padding: 32px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-.bae-a-cu-title { font: 400 14px var(--font-android); color: var(--text-secondary); }
+.bae-a-cu-title { font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); color: var(--text-secondary); }
 .bae-a-cu-actions { display: flex; gap: 8px; margin-top: 12px; }
 
 .bae-msym { font-family: 'Material Symbols Rounded'; font-size: 24px; font-weight: 400; font-feature-settings: 'liga'; }
@@ -138,4 +138,4 @@
 .bae-progress-android .bae-progress-moving { box-shadow: 4px 0 0 var(--bae-gap-bg), -4px 0 0 var(--bae-gap-bg); }
 .bae-a-iconbtn-off { opacity: 0.38; }
 .bae-a-iconbtn.bae-a-iconbtn-onfill { color: var(--on-fill); }
-.bae-a-topbar-menu { margin-left: auto; display: inline-flex; align-items: center; gap: 2px; padding: 0 var(--space-related); min-height: 48px; border: 0; background: none; font: 500 14px/20px var(--font-android); color: var(--text-primary); fill: currentColor; cursor: pointer; }
+.bae-a-topbar-menu { margin-left: auto; display: inline-flex; align-items: center; gap: 2px; padding: 0 var(--space-related); min-height: 48px; border: 0; background: none; font: var(--type-android-label-weight) var(--type-android-label-size)/var(--type-android-label-line-height) var(--font-android); color: var(--text-primary); fill: currentColor; cursor: pointer; }

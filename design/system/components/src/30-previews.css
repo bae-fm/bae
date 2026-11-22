@@ -38,7 +38,7 @@
 .bae-scan-qr svg { fill: var(--background); display: block; }
 .bae-scan-buttons { display: flex; justify-content: center; gap: var(--space-related); margin-top: calc(-1 * var(--space-inline)); }
 .bae-m-scan .bae-scan-text { font: var(--type-body-weight) var(--type-body-size) var(--font-sans); color: var(--text-primary); }
-.bae-a-scan .bae-scan-text { font: 400 14px/20px var(--font-android); color: var(--text-secondary); }
+.bae-a-scan .bae-scan-text { font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); color: var(--text-secondary); }
 .bae-a-scan .bae-scan-text { color: var(--text-primary); }
 
 /* A nested row depends on the row above (a switch it only matters under): it joins that row with no gap and no divider, on the same left edge, and dims while the switch is off. */
@@ -68,5 +68,5 @@
 @keyframes bae-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .bae-spinner { animation-duration: 2.4s; } }
 .bae-m-spinner { display: inline-flex; align-items: center; gap: var(--space-related); color: var(--text-secondary); font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); }
-.bae-a-spinner { display: inline-flex; align-items: center; gap: 12px; color: var(--accent); font: 400 14px/20px var(--font-android); }
+.bae-a-spinner { display: inline-flex; align-items: center; gap: 12px; color: var(--accent); font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); }
 .bae-a-spinner > span { color: var(--text-secondary); }

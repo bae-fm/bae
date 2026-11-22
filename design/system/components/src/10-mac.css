@@ -156,7 +156,7 @@
 .bae-m-sheet-footer { margin-top: var(--space-inline); display: flex; gap: var(--space-related); justify-content: flex-end; }
 .bae-m-sheet-footer-lead { margin-right: auto; display: flex; gap: var(--space-related); }
 
-.bae-a-progress { display: flex; flex-direction: column; gap: var(--space-related); text-align: left; color: var(--text-primary); font: 400 14px/20px var(--font-android); }
+.bae-a-progress { display: flex; flex-direction: column; gap: var(--space-related); text-align: left; color: var(--text-primary); font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); }
 .bae-m-progress { display: flex; flex-direction: column; gap: var(--space-related); text-align: left; color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
 .bae-m-progress .bae-progress-track { height: 4px; }
 .bae-m-note { padding: 2px var(--space-group) 0; font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-secondary); }
