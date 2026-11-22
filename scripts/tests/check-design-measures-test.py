@@ -62,10 +62,11 @@ class DesignMeasuresTests(unittest.TestCase):
             ".c { gap: 0.5em; }\n"
             ".d { border-radius: 8px; }\n"
             ".e { border-bottom-right-radius: 4px; }\n"
+            ".f { margin-top: -4px; }\n"
         )
         self.assertEqual(found.returncode, 1)
         lines = [line.split(": ")[0] for line in found.stderr.splitlines()]
-        self.assertEqual(lines, [f"{SOURCE}:{n}" for n in range(1, 6)])
+        self.assertEqual(lines, [f"{SOURCE}:{n}" for n in range(1, 7)])
 
     def test_a_drawing_named_in_the_check_keeps_its_measure(self) -> None:
         found = self.run_check(

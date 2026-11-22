@@ -60,7 +60,7 @@ COMMENT = re.compile(r"/\*.*?\*/", re.S)
 RULE = re.compile(r"([^{}]*)\{([^{}]*)\}")
 DECLARATION = re.compile(r"(?:^|;)\s*([\w-]+)\s*:\s*([^;]*)")
 LITERAL = re.compile(r"\d|\b(?:bold|bolder|lighter)\b")
-LENGTH = re.compile(r"(?<![\w.-])(\d*\.?\d+)(?:px|em|rem)\b")
+LENGTH = re.compile(r"(?<![\w.])(\d*\.?\d+)(?:px|em|rem)\b")
 
 
 def without_variables(value: str) -> str:
