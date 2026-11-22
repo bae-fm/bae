@@ -25,16 +25,22 @@ extension PreviewData {
         importStatus: BridgeTriageImportStatus? = nil,
         upload: BridgeUploadProgress? = nil
     ) throws -> BridgeTriageRow {
-        triageRow(
-            for: boardCandidate(folder),
-            placement: placement,
-            metadataSummary: summary,
-            cover:
+        let cover: BridgeCoverImageSource? =
+            switch folder {
+            case .fieldRecordings, .fieldRecordingsDisc2:
+                try fieldRecordingsCatalogCover().image
+            default:
                 try summary.map {
                     .local(
                         file: try BoardArtwork.scannedFile(named: $0.albumTitle)
                     )
-                },
+                }
+            }
+        return triageRow(
+            for: boardCandidate(folder),
+            placement: placement,
+            metadataSummary: summary,
+            cover: cover,
             importStatus: importStatus,
             upload: upload,
             metadataProvenance: record.map {

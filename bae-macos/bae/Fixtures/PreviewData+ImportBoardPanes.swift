@@ -8,12 +8,14 @@ extension PreviewData {
     // MARK: - Northbound
 
     /// Northbound's folder: four files, two images and a rip log.
-    static func northboundFolder() -> BridgeFolderCandidate {
+    static func northboundFolder(images: NorthboundImages)
+        -> BridgeFolderCandidate
+    {
         boardFolder(
             .northbound,
             files: boardFolderFiles(
                 tracks: northboundTracks,
-                images: ["cover", "back"]
+                images: images.gallery
             )
         )
     }
@@ -24,9 +26,9 @@ extension PreviewData {
     static func northboundDraftCandidate(
         importStep: BridgeImportStep? = nil
     ) throws -> Candidate {
-        let mapping = try northboundMapping()
+        let images = try NorthboundImages()
         return paneCandidate(
-            folder: northboundFolder(),
+            folder: northboundFolder(images: images),
             metadataProvenance: .externalRelease(
                 record: BridgeLookupRef(
                     catalog: .musicBrainz,
@@ -36,8 +38,8 @@ extension PreviewData {
             releaseLink: boardLink("board-northbound"),
             edit: northboundEdit(),
             releaseLines: releaseLines(of: northboundEdit(), minutes: 18),
-            mapping: mapping,
-            cover: mapping.images.first.map(boardCover),
+            mapping: northboundMapping(images: images),
+            cover: boardCover(images.cover),
             placement: .pending(
                 folderCheck: nil,
                 records: boardRecords("board-northbound")
@@ -53,10 +55,11 @@ extension PreviewData {
     /// images its scan read.
     @MainActor
     static func northboundImportedCandidate() throws -> Candidate {
+        let images = try NorthboundImages()
         let release = boardImported(.northbound)
         return Candidate(
             detail: BridgeImportCandidateDetail(
-                candidate: northboundFolder(),
+                candidate: northboundFolder(images: images),
                 partCount: 0,
                 actionable: true,
                 placement: .done,
@@ -65,7 +68,7 @@ extension PreviewData {
                 signals: nil,
                 stage: .imported(
                     release: release,
-                    images: try northboundImages()
+                    images: images.gallery
                 )
             )
         )
@@ -222,7 +225,7 @@ extension PreviewData {
                 .lowTideHours,
                 files: boardFolderFiles(
                     tracks: tracks,
-                    images: ["Low Tide Hours"]
+                    images: [cover]
                 )
             ),
             metadataProvenance: .externalRelease(
@@ -416,12 +419,11 @@ extension PreviewData {
     }
 
     /// The catalog supplies the cover because the scanned folder has no image files.
-    private static func fieldRecordingsCatalogCover() throws
+    static func fieldRecordingsCatalogCover() throws
         -> BridgeCoverChoice
     {
         let cover = BridgeRemoteImageSet(
-            url: try BoardArtwork.scannedFile(named: "Field Recordings").url
-                .path,
+            url: try BoardArtwork.fileURL(named: "Field Recordings").path,
             downscaled: []
         )
         return BridgeCoverChoice(
@@ -553,7 +555,7 @@ extension PreviewData {
                 found.folder,
                 files: boardFolderFiles(
                     tracks: notFoundTracks,
-                    images: [found.album]
+                    images: [image]
                 )
             ),
             metadataProvenance: .fileMetadata,

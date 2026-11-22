@@ -52,11 +52,11 @@ final class BoardArtwork {
 
     /// The folder scan's local image. A packaging failure fails the capture which asks for it.
     static func scannedFile(named name: String) throws -> BridgeFileVersion {
-        let url =
-            try bundledURL(named: name)
-            ?? PreviewData.writeGradient(named: name)
-        return try PreviewData.artVersion(at: url)
+        try PreviewData.artVersion(at: fileURL(named: name))
+    }
 
+    static func fileURL(named name: String) throws -> URL {
+        try bundledURL(named: name) ?? PreviewData.writeGradient(named: name)
     }
 
     fileprivate static func gradient(named name: String) -> Data {

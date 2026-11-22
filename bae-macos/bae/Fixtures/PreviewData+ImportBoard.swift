@@ -116,14 +116,14 @@ extension PreviewData {
     /// log.
     static func boardFolderFiles(
         tracks: [BoardTrack],
-        images: [String],
+        images: [BridgeMappingImage],
         log: Bool = true
     ) -> BridgeCandidateFiles {
         let audio = tracks.map {
             previewFile(name: $0.file, size: 35_000_000, role: .audio)
         }
         let art = images.map {
-            previewFile(name: "\($0).jpg", size: 1_100_000, role: .artwork)
+            previewFile(name: $0.name, size: $0.file.size, role: .artwork)
         }
         let documents =
             log
@@ -155,11 +155,15 @@ extension PreviewData {
         )
     }
 
-    static func northboundImages() throws -> [BridgeMappingImage] {
-        [
-            try boardImage("cover.jpg", art: "Northbound"),
-            try boardImage("back.jpg", art: "Northbound back"),
-        ]
+    struct NorthboundImages {
+        let cover: BridgeMappingImage
+        let back: BridgeMappingImage
+        var gallery: [BridgeMappingImage] { [cover, back] }
+
+        init() throws {
+            cover = try boardImage("cover.jpg", art: "Northbound")
+            back = try boardImage("back.jpg", art: "Northbound back")
+        }
     }
 
     static func boardCover(_ image: BridgeMappingImage) -> BridgeCoverChoice {
@@ -283,9 +287,11 @@ extension PreviewData {
 
     /// Northbound's four files, each the track it becomes, with the folder's
     /// two images and the files carried alongside.
-    static func northboundMapping() throws -> BridgeMappingTable {
+    static func northboundMapping(images: NorthboundImages)
+        -> BridgeMappingTable
+    {
         BridgeMappingTable(
-            images: try northboundImages(),
+            images: images.gallery,
             trackSides: boardTrackSides(
                 northboundTracks,
                 edit: northboundEdit()
