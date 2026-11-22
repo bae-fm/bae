@@ -20,7 +20,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -131,7 +133,11 @@ private fun YearAndRating(
             val description = stringResource(R.string.stars_of_five, rating.number)
             // The number and the star are one image to a screen reader, "4 of 5 stars".
             Row(
-                modifier = Modifier.semantics { contentDescription = description },
+                modifier =
+                    Modifier.semantics {
+                        contentDescription = description
+                        role = Role.Image
+                    },
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(text = rating.number.toString(), style = ThemeText.detail.style, color = color)
