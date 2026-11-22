@@ -49,7 +49,7 @@
 .bae-a-step-top { justify-content: flex-start; }
 .bae-a-step-top .bae-a-step-head { text-align: start; }
 .bae-a-code { display: flex; flex-direction: column; align-items: center; gap: var(--space-edge); text-align: center; }
-.bae-a-code-digits { font: var(--type-android-display-weight) var(--type-android-display-size)/var(--type-android-display-line-height) var(--font-android); letter-spacing: 3px; color: var(--text-primary); }
+.bae-a-code-digits { font: var(--type-android-figure-weight) var(--type-android-figure-size)/var(--type-android-figure-line-height) var(--font-android); letter-spacing: 3px; color: var(--text-primary); }
 .bae-a-code-dialog, .bae-m-code-dialog { padding-top: var(--space-related); }
 .bae-a-code-dialog .bae-a-code-digits { letter-spacing: 2px; }
 /* Every button takes Material's 48dp touch target as its height; its 40dp shape (fill or outline) sits inside it, drawn by ::before. */
@@ -100,7 +100,7 @@
 .bae-codetext-placeholder { font-family: var(--font-sans); word-spacing: normal; color: var(--text-secondary); }
 .bae-a-pin { display: flex; flex-direction: column; gap: var(--space-inline); font-family: var(--font-android); }
 .bae-a-pin-cells { display: flex; gap: 12px; }
-.bae-a-pin-cell { box-sizing: border-box; width: 48px; height: 56px; display: flex; align-items: center; justify-content: center; border-radius: 4px; box-shadow: inset 0 0 0 1px var(--text-secondary); color: var(--text-primary); font: var(--type-android-dialog-title-weight) var(--type-android-dialog-title-size)/var(--type-android-dialog-title-line-height) var(--font-android); font-variant-numeric: tabular-nums; }
+.bae-a-pin-cell { box-sizing: border-box; width: 48px; height: 56px; display: flex; align-items: center; justify-content: center; border-radius: 4px; box-shadow: inset 0 0 0 1px var(--text-secondary); color: var(--text-primary); font: var(--type-android-figure-weight) var(--type-android-figure-size)/var(--type-android-figure-line-height) var(--font-android); font-variant-numeric: tabular-nums; }
 .bae-a-pin-cell-focused { box-shadow: inset 0 0 0 2px var(--accent); }
 .bae-a-pin-cell-error { box-shadow: inset 0 0 0 2px var(--danger); }
 .bae-a-pin .bae-a-pin-note { padding: 0; color: var(--danger); }

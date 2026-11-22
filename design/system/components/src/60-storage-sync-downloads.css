@@ -124,7 +124,7 @@
 /* Settings → Storage's usage: the total, one bar in kinds, a legend. Each kind keeps one of the accents' selection steps (Pinned blue, Cache gold, Library orchid, From before the reset mint, anything else neutral), the same in both themes, checked for colour-blind separation and 3:1 on the surface in that order. A 2px gap parts the segments. */
 .bae-usage { display: flex; flex-direction: column; gap: var(--space-related); padding: var(--space-group); }
 .bae-usage-total { display: flex; align-items: baseline; gap: var(--space-inline); }
-.bae-usage-num { font-weight: var(--type-title-weight); color: var(--text-primary); }
+.bae-usage-num { color: var(--text-primary); }
 .bae-usage-of { color: var(--text-secondary); }
 .bae-usage-bar { display: flex; gap: 2px; height: 8px; }
 .bae-usage-seg { min-width: 4px; border-radius: 2px; }
@@ -142,6 +142,6 @@
 .bae-usage-dot { width: 8px; height: 8px; border-radius: 4px; flex: none; }
 .bae-usage-size { color: var(--text-primary); font-variant-numeric: tabular-nums; }
 .bae-usage-m { font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); }
-.bae-usage-m .bae-usage-num { font-size: var(--type-title-size); font-weight: var(--type-title-weight); line-height: normal; }
+.bae-usage-m .bae-usage-num { font-size: var(--type-figure-size); font-weight: var(--type-figure-weight); line-height: normal; }
 .bae-usage-a { font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); padding: var(--space-edge) var(--space-edge) var(--space-group); }
-.bae-usage-a .bae-usage-num { font-size: var(--type-android-display-size); font-weight: var(--type-android-display-weight); line-height: var(--type-android-display-line-height); }
+.bae-usage-a .bae-usage-num { font-size: var(--type-android-figure-size); font-weight: var(--type-android-figure-weight); line-height: var(--type-android-figure-line-height); }
