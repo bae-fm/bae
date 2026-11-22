@@ -99,10 +99,12 @@ struct MacInviteFields: View {
             else {
                 FieldBox {
                     FieldBoxRow("Access key ID", labelWidth: labelWidth) {
-                        TextField("Access key ID", text: $accessKeyId)
-                            .labelsHidden()
-                            .boxedTextField()
-                            .focused($focused)
+                        BoxedField(
+                            text: $accessKeyId,
+                            focus: $focused,
+                            equals: true
+                        )
+                        .accessibilityLabel("Access key ID")
                     }
                     FieldBoxDivider()
                     FieldBoxRow(
@@ -110,9 +112,11 @@ struct MacInviteFields: View {
                         labelWidth: labelWidth,
                         note: "Their own key to the bucket, so they can join."
                     ) {
-                        SecureField("Secret access key", text: $secretAccessKey)
-                            .labelsHidden()
-                            .boxedTextField()
+                        BoxedField(
+                            text: $secretAccessKey,
+                            secret: true
+                        )
+                        .accessibilityLabel("Secret access key")
                     }
                 }
             }
@@ -172,11 +176,13 @@ struct MacInviteFields: View {
     ) -> some View {
         FieldBox {
             FieldBoxRow(label, labelWidth: labelWidth, note: why) {
-                TextField(label, text: $email)
-                    .labelsHidden()
-                    .boxedTextField()
-                    .textContentType(.emailAddress)
-                    .focused($focused)
+                BoxedField(
+                    text: $email,
+                    focus: $focused,
+                    equals: true
+                )
+                .accessibilityLabel(Text(label))
+                .textContentType(.emailAddress)
             }
         }
     }

@@ -144,8 +144,7 @@ private struct ArtistAssignmentsEditor: View {
                 }
             }
             HStack(spacing: ThemeSpace.related) {
-                TextField("Search", text: $query)
-                    .boxedTextField()
+                BoxedField(placeholder: "Search", text: $query)
                     .onSubmit(addTypedArtist)
                 MacButton("Add", action: addTypedArtist)
                     .disabled(trimmedQuery.isEmpty)

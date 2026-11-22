@@ -9,19 +9,15 @@ struct CodeField: View {
     var form: BootstrapCodeForm
 
     var body: some View {
-        TextField(
+        BoxedField(
+            placeholder: "Restore code or invite",
             text: Binding(
                 get: { form.codeInput },
                 set: { form.edit(code: $0) }
             ),
-            prompt: Text("Restore code or invite"),
-            axis: .vertical
-        ) {
-            EmptyView()
-        }
-        .labelsHidden()
-        .lineLimit(3...)
-        .themeText(.mono)
-        .boxedTextField(multiline: true, focusesOnAppear: true)
+            font: .mono,
+            multiline: true,
+            focusesOnAppear: true
+        )
     }
 }

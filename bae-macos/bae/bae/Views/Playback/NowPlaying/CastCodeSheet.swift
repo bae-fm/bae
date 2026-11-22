@@ -78,9 +78,10 @@ struct CastCodeSheet: View {
             FieldColumn {
                 MacTextField("Password") {
                     VStack(alignment: .leading, spacing: ThemeSpace.inline) {
-                        SecureField("Password", text: $code)
-                            .labelsHidden()
-                            .boxedTextField()
+                        BoxedField(
+                            text: $code,
+                            secret: true
+                        )
                         if let fieldLine {
                             Text(verbatim: fieldLine)
                                 .themeText(.detail)

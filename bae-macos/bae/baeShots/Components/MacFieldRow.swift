@@ -32,9 +32,7 @@ extension ShotScene {
         component("mac.component.field-row.no-label", height: 90) {
             ShotBox {
                 MacFieldRow("") {
-                    TextField("Name", text: .constant(""))
-                        .labelsHidden()
-                        .boxedTextField()
+                    BoxedField(placeholder: "Name", text: .constant(""))
                         .frame(width: 160)
                 }
             }
@@ -48,9 +46,7 @@ extension ShotScene {
     ]
 
     private static var nameField: some View {
-        TextField("", text: .constant("Home music"))
-            .labelsHidden()
-            .boxedTextField()
+        BoxedField(placeholder: "Name", text: .constant("Home music"))
             .frame(width: 160)
     }
 }

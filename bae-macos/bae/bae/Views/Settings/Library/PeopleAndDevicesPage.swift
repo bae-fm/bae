@@ -776,9 +776,7 @@ private struct RenameProfileSheet: View {
                         note: "Everyone in the library sees this name.",
                         off: task != nil
                     ) {
-                        TextField("Name", text: $name)
-                            .labelsHidden()
-                            .boxedTextField()
+                        BoxedField(text: $name)
                     }
                 }
                 if let error {

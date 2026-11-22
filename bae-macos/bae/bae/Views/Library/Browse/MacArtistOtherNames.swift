@@ -27,8 +27,7 @@ struct MacArtistOtherNames: View {
                 )
             }
             HStack(spacing: ThemeSpace.related) {
-                TextField("Another name", text: $newName)
-                    .boxedTextField()
+                BoxedField(placeholder: "Another name", text: $newName)
                     .onSubmit(add)
                 MacButton("Add", action: add)
                     .disabled(trimmedNewName.isEmpty)

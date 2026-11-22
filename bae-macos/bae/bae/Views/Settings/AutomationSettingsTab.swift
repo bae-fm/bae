@@ -106,9 +106,8 @@ struct AutomationSettingsContent: View {
                     )
                 }
                 MacFieldRow("Port") {
-                    TextField("Port", text: $portText)
-                        .labelsHidden()
-                        .boxedTextField()
+                    BoxedField(text: $portText)
+                        .accessibilityLabel("Port")
                         .frame(width: MacPortField.width)
                         .onChange(of: portText) { _, typed in
                             let digits = MacPortField.digitsOnly(typed)

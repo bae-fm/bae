@@ -14,9 +14,7 @@ struct PlaylistFields: View {
     var body: some View {
         FieldColumn {
             MacTextField("Name") {
-                TextField("Name", text: $name)
-                    .labelsHidden()
-                    .boxedTextField()
+                BoxedField(text: $name)
             }
             GridRow(alignment: .firstTextBaseline) {
                 Text("Who sees it")

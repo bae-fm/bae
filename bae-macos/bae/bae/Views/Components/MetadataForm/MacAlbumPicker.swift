@@ -102,8 +102,7 @@ struct MacAlbumPicker: View {
 
     private var picker: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
-            TextField("Search", text: $query)
-                .boxedTextField()
+            BoxedField(placeholder: "Search", text: $query)
             if let searchError {
                 MacNotice(error: searchError)
             }

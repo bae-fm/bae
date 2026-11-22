@@ -28,11 +28,7 @@ extension ShotScene {
         ) {
             FieldColumn {
                 GridRow {
-                    TextField("Name", text: .constant(""))
-                        .textFieldStyle(.plain)
-                        .themeText(.body)
-                        .modifier(FieldChrome(focused: false, style: .boxed))
-                        .accessibilityLabel("Name")
+                    BoxedField(placeholder: "Name", text: .constant(""))
                         .gridCellColumns(2)
                 }
             }
@@ -85,23 +81,11 @@ extension ShotScene {
                     error: error,
                     off: state == .off
                 ) {
-                    Group {
-                        if state == .secret {
-                            SecureField("", text: .constant(text))
-                        }
-                        else {
-                            TextField("", text: .constant(text))
-                        }
-                    }
-                    .labelsHidden()
-                    .textFieldStyle(.plain)
-                    .themeText(.body)
-                    .modifier(
-                        FieldChrome(
-                            focused: state == .focused,
-                            style: .boxed,
-                            invalid: state == .invalid
-                        )
+                    BoxedField(
+                        text: .constant(text),
+                        secret: state == .secret,
+                        invalid: state == .invalid,
+                        focusesOnAppear: state == .focused
                     )
                 }
                 if labelColumn {

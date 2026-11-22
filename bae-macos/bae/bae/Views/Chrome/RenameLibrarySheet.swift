@@ -25,15 +25,12 @@ struct RenameLibrarySheet: View {
                         "New name",
                         note: "Everyone in the library sees this name."
                     ) {
-                        TextField(
-                            "New name",
+                        BoxedField(
                             text: Binding(
                                 get: { state.newName },
                                 set: { state.newName = $0 }
                             )
                         )
-                        .labelsHidden()
-                        .boxedTextField()
                     }
                 }
                 if let error = state.error {

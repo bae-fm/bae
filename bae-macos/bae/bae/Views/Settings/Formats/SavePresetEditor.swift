@@ -103,24 +103,18 @@ struct SavePresetEditor: View {
                 "Name",
                 error: nameTaken ? "Another format has this name." : nil
             ) {
-                TextField("Name", text: $nameDraft)
-                    .labelsHidden()
-                    .textFieldStyle(.plain)
-                    .multilineTextAlignment(.leading)
-                    .focused($nameFocused)
-                    .modifier(
-                        FieldChrome(
-                            focused: nameFocused,
-                            style: .boxed,
-                            invalid: nameTaken
-                        )
-                    )
-                    .onSubmit(commitName)
-                    .onChange(of: nameFocused) { _, focused in
-                        if !focused {
-                            commitName()
-                        }
+                BoxedField(
+                    text: $nameDraft,
+                    focus: $nameFocused,
+                    equals: true,
+                    invalid: nameTaken
+                )
+                .onSubmit(commitName)
+                .onChange(of: nameFocused) { _, focused in
+                    if !focused {
+                        commitName()
                     }
+                }
             }
         }
         .settingsRowInset(ThemeSpace.compact)

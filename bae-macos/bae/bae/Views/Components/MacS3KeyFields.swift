@@ -36,16 +36,19 @@ struct MacS3KeyFields<Above: View>: View {
             above
             FieldColumn {
                 MacTextField("Access key ID") {
-                    TextField("Access key ID", text: $accessKey)
-                        .labelsHidden()
-                        .boxedTextField()
-                        .focused($focused, equals: .accessKey)
+                    BoxedField(
+                        text: $accessKey,
+                        focus: $focused,
+                        equals: .accessKey
+                    )
                 }
                 MacTextField("Secret access key") {
-                    SecureField("Secret access key", text: $secretKey)
-                        .labelsHidden()
-                        .boxedTextField()
-                        .focused($focused, equals: .secretKey)
+                    BoxedField(
+                        text: $secretKey,
+                        focus: $focused,
+                        equals: .secretKey,
+                        secret: true
+                    )
                 }
             }
         }
