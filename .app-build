@@ -8,7 +8,7 @@ shots-declared android bae-android/app/src/test/java/fm/bae/app/shots
 shots-preview .bae-preview-row .bae-preview-name .bae-preview-cell
 shots-preview-calls N W
 shots-unshot .bae-a-keyboard
-shots-design-only mac AppIcon Cover Sym
+shots-design-only mac AppIcon Cover Sym MacHelpTag
 shots-design-only android AppIcon Cover Sym AndroidKeyboard ImportSheep
 here macos
 results mac shots/mac
