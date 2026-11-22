@@ -44,6 +44,7 @@ import fm.bae.app.ui.appearance.SurfaceTone
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidDialogActions
 import fm.bae.app.ui.components.AndroidSheetBody
+import fm.bae.app.ui.components.AndroidSheetHeading
 import fm.bae.app.ui.components.DialogHead
 import fm.bae.app.ui.components.DialogParts
 import kotlinx.coroutines.Dispatchers
@@ -71,15 +72,14 @@ import java.time.Duration
  */
 @Composable
 internal fun SheetScene(
-    title: String?,
+    heading: AndroidSheetHeading?,
     behind: @Composable () -> Unit,
-    note: String? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     ScreenScene {
         Box(modifier = Modifier.fillMaxSize()) {
             behind()
-            SheetOverScrim(title, note, content = content)
+            SheetOverScrim(heading, content = content)
         }
     }
 }
@@ -91,8 +91,7 @@ internal fun SheetScene(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun SheetOverScrim(
-    title: String?,
-    note: String? = null,
+    heading: AndroidSheetHeading?,
     top: Dp? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -105,7 +104,7 @@ internal fun SheetOverScrim(
             shape = BottomSheetDefaults.ExpandedShape,
             color = BottomSheetDefaults.ContainerColor,
         ) {
-            SheetWithHandle(title, note, content)
+            SheetWithHandle(heading, content)
         }
     }
 }
@@ -114,13 +113,12 @@ internal fun SheetOverScrim(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SheetWithHandle(
-    title: String?,
-    note: String?,
+    heading: AndroidSheetHeading?,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         DragHandleBar()
-        Column(modifier = Modifier.fillMaxWidth()) { AndroidSheetBody(title, note, content) }
+        Column(modifier = Modifier.fillMaxWidth()) { AndroidSheetBody(heading, content) }
     }
 }
 

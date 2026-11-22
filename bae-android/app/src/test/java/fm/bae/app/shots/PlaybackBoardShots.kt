@@ -51,7 +51,7 @@ class PlaybackBoardShots : BoardShot() {
 private fun FullPlayerOverLibrary(
     staging: PlayerStaging,
     volumeRow: @Composable () -> Unit,
-) = SheetScene(title = null, behind = { PlayingLibraryScreen(nowPlayingBar = { Bar(staging) }) }) {
+) = SheetScene(heading = null, behind = { PlayingLibraryScreen(nowPlayingBar = { Bar(staging) }) }) {
     Covers {
         AndroidFullPlayer(
             track = staging.track,

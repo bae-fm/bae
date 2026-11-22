@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import fm.bae.app.data.CastStart
+import fm.bae.app.ui.components.AndroidSheetHeading
 import fm.bae.app.ui.playback.CastReceiverDetailsRows
 import fm.bae.app.ui.playback.CastReceiverMenuItems
 import fm.bae.app.ui.playback.CastReceiverRole
@@ -58,7 +59,7 @@ class SettingsPlayOnShots : BoardShot() {
     fun androidSettingsPlaybackReceiverDetails() =
         shot("android.settings.playback.receiver-details") {
             val playing = checkNotNull(receivers().casting)
-            SheetScene(playing.name, behind = { Playback(receivers()) }) {
+            SheetScene(AndroidSheetHeading(playing.name), behind = { Playback(receivers()) }) {
                 CastReceiverDetailsRows(playing)
             }
         }

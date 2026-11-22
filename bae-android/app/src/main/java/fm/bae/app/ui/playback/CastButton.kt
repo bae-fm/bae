@@ -23,6 +23,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidSheet
+import fm.bae.app.ui.components.AndroidSheetHeading
 import fm.bae.app.ui.components.ICON_BUTTON_BAR_BOX
 import fm.bae.app.ui.components.IconTone
 import fm.bae.app.ui.components.NoticeLook
@@ -95,7 +96,7 @@ private fun CastPickerSheet(
         if (session.castStart.didStart(asked)) onDismiss()
     }
 
-    AndroidSheet(title = stringResource(R.string.cast_picker_title), onDismiss = onDismiss) {
+    AndroidSheet(heading = AndroidSheetHeading(stringResource(R.string.cast_picker_title)), onDismiss = onDismiss) {
         PickerFailures(endedFailure = endedFailure, castFailure = castFailure)
         CastReceiverRows(
             place = CastReceiverPlace.PICKER,

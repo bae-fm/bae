@@ -7,6 +7,7 @@ import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.data.CastStart
+import fm.bae.app.ui.components.AndroidSheetHeading
 import fm.bae.app.ui.components.DialogParts
 import fm.bae.app.ui.playback.CastReceiverPlace
 import fm.bae.app.ui.playback.CastReceiverRows
@@ -140,7 +141,7 @@ class CastPinBoardShots : BoardShot() {
         connecting: CastStart.Connecting? = CastStart.Connecting(kitchen, ownerDeciding = false),
         failure: CastStart.Failure? = null,
     ) {
-        SheetScene(title = stringResource(R.string.cast_picker_title), behind = { PlayingLibraryScreen() }) {
+        SheetScene(heading = AndroidSheetHeading(stringResource(R.string.cast_picker_title)), behind = { PlayingLibraryScreen() }) {
             PickerFailures(endedFailure = null, castFailure = failure)
             CastReceiverRows(
                 place = CastReceiverPlace.PICKER,

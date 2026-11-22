@@ -15,6 +15,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidSheet
+import fm.bae.app.ui.components.AndroidSheetHeading
 import fm.bae.app.ui.components.AndroidSpinner
 import fm.bae.app.ui.components.SomethingWentWrongNotice
 import fm.bae.app.ui.components.StatusTone
@@ -36,7 +37,7 @@ internal fun LibraryDetailsSheet(
     details: LibraryDetails,
     onDismiss: () -> Unit,
 ) {
-    AndroidSheet(title = details.library.title(), onDismiss = onDismiss) {
+    AndroidSheet(heading = AndroidSheetHeading(details.library.title()), onDismiss = onDismiss) {
         val storage = (details.library.state as? BridgeLibraryState.Openable)?.storage
         if (storage == null) {
             val bugs = LocalBugReports.current

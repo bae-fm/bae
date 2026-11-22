@@ -39,7 +39,6 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.DisplayError
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
-import fm.bae.app.coreString
 import fm.bae.app.creditLineText
 import fm.bae.app.data.LiveQueryState
 import fm.bae.app.data.answer
@@ -56,7 +55,6 @@ import fm.bae.app.ui.components.AndroidContentUnavailable
 import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidPageActions
-import fm.bae.app.ui.components.AndroidSheet
 import fm.bae.app.ui.components.Artwork
 import fm.bae.app.ui.components.IconTone
 import fm.bae.app.ui.components.NoticeLook
@@ -79,13 +77,11 @@ import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeAlbumDetailRequest
 import uniffi.bae_bridge.BridgeCatalog
 import uniffi.bae_bridge.BridgeImageRef
-import uniffi.bae_bridge.BridgeMessage
 import uniffi.bae_bridge.BridgeRatingTarget
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeReleasePlayability
 import uniffi.bae_bridge.BridgeStars
 import uniffi.bae_bridge.bridgeCatalogName
-import uniffi.bae_bridge.bridgeReleasePlayabilityLine
 
 internal data class AlbumPlaybackState(
     val currentTrackId: String?,
@@ -438,20 +434,6 @@ internal fun AndroidAlbumHeader(
             }
         }
     }
-}
-
-/** The sheet that names the device holding a release this device can't play. */
-@Composable
-internal fun UnplayableSheet(
-    playability: BridgeReleasePlayability.OnOtherDevice,
-    onDismiss: () -> Unit,
-    deviceLine: (BridgeReleasePlayability.OnOtherDevice) -> BridgeMessage? = ::bridgeReleasePlayabilityLine,
-    present: @Composable (String, String, () -> Unit) -> Unit = { title, note, dismiss ->
-        AndroidSheet(title = title, note = note, onDismiss = dismiss) {}
-    },
-) {
-    val line = checkNotNull(deviceLine(playability)) { "core words every release on another device" }
-    present(stringResource(R.string.release_not_on_this_device), LocalContext.current.coreString(line), onDismiss)
 }
 
 /** The words for a release only another device holds, where Play would stand, and the button that says where it is. */

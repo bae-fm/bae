@@ -13,7 +13,7 @@ import fm.bae.app.ui.albumdetail.AlbumDetailCallbacks
 import fm.bae.app.ui.albumdetail.AlbumDetailContent
 import fm.bae.app.ui.albumdetail.AlbumOptionsMenu
 import fm.bae.app.ui.albumdetail.AlbumPlaybackState
-import fm.bae.app.ui.albumdetail.UnplayableSheet
+import fm.bae.app.ui.albumdetail.unavailableReleaseHeading
 import fm.bae.app.ui.library.AndroidDetailScreen
 import org.junit.Test
 import uniffi.bae_bridge.BridgeAlbumDetail
@@ -108,15 +108,8 @@ class AlbumBoardShots : BoardShot() {
     @Test
     fun androidAlbumOnAnotherDeviceSheet() =
         shot("android.album.on-another-device-sheet") {
-            UnplayableSheet(
-                playability = unavailablePlayability,
-                onDismiss = {},
-                deviceLine = {
-                    BridgeMessage("core.release.on_device", listOf(BridgeMessageArg("device", unavailableDevice.name)))
-                },
-            ) { title, note, _ ->
-                SheetScene(title = title, behind = { UnavailableAlbumPage() }, note = note) {}
-            }
+            val message = BridgeMessage("core.release.on_device", listOf(BridgeMessageArg("device", unavailableDevice.name)))
+            SheetScene(heading = unavailableReleaseHeading(message), behind = { UnavailableAlbumPage() }) {}
         }
 }
 

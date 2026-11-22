@@ -40,6 +40,7 @@ import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidSheet
+import fm.bae.app.ui.components.AndroidSheetHeading
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.Logo
 import uniffi.bae_bridge.codeAsEntered
@@ -272,7 +273,10 @@ private fun ListedWelcome(
         }
     }
     if (adding) {
-        AndroidSheet(title = stringResource(R.string.welcome_add_library), onDismiss = { adding = false }) {
+        AndroidSheet(
+            heading = AndroidSheetHeading(stringResource(R.string.welcome_add_library)),
+            onDismiss = { adding = false },
+        ) {
             AndroidWelcomeActions(
                 onScan = {
                     adding = false

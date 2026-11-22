@@ -13,6 +13,7 @@ import fm.bae.app.ScreenFailure
 import fm.bae.app.ui.InProgressScreen
 import fm.bae.app.ui.ResetOfferedScreen
 import fm.bae.app.ui.ResetUnfinishedScreen
+import fm.bae.app.ui.components.AndroidSheetHeading
 import fm.bae.app.ui.components.RemovalLoss
 import fm.bae.app.ui.components.removeLibraryParts
 import fm.bae.app.ui.onboarding.AndroidWelcomeActions
@@ -90,7 +91,7 @@ class WelcomeShots : BoardShot() {
     @Test
     fun androidWelcomeAddLibrary() =
         shot("android.welcome.add-library") {
-            SheetScene(stringResource(R.string.welcome_add_library), behind = { WelcomeLibrariesScene() }) {
+            SheetScene(AndroidSheetHeading(stringResource(R.string.welcome_add_library)), behind = { WelcomeLibrariesScene() }) {
                 AndroidWelcomeActions(onScan = {}, onEnter = {})
             }
         }
@@ -377,7 +378,7 @@ private fun loadingSteps(
 
 @Composable
 private fun LibraryDetailsScene(state: BridgeStandingState) {
-    SheetScene("Home music", behind = { WelcomeLibrariesScene() }) {
+    SheetScene(AndroidSheetHeading("Home music"), behind = { WelcomeLibrariesScene() }) {
         LibraryDetailsRows(
             storage = sceneDropbox,
             standing = StandingRead.Loaded(BridgeLibraryStanding(state, ShotClock.before(twoHoursAgo))),

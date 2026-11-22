@@ -24,6 +24,7 @@ import fm.bae.app.ui.components.AndroidLibraryRow
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidSheet
+import fm.bae.app.ui.components.AndroidSheetHeading
 import fm.bae.app.ui.components.AndroidSpinner
 import fm.bae.app.ui.components.retryAction
 
@@ -68,7 +69,7 @@ internal fun TrackPlaylistAddShown(
 ) {
     val trackId = add.trackId ?: return
     var creating by remember(trackId) { mutableStateOf(false) }
-    AndroidSheet(onDismiss = add::dismiss, title = stringResource(R.string.playlist_add_title)) {
+    AndroidSheet(onDismiss = add::dismiss, heading = AndroidSheetHeading(stringResource(R.string.playlist_add_title))) {
         Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
             AndroidRow(
                 title = stringResource(R.string.playlist_new_row),
