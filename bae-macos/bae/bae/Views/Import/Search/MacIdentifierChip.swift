@@ -95,10 +95,11 @@ struct MacIdentifierChip<Trailing: View>: View {
         .onHover { isHovered = $0 }
     }
 
+    /// A value is in the primary text colour whatever the chip's style, as
+    /// its board draws it: the style shows in the fill, the outline and the
+    /// strike, not in the value's colour.
     private var valueStyle: AnyShapeStyle {
-        style == .filled
-            ? AnyShapeStyle(Theme.macTextSecondary)
-            : AnyShapeStyle(Theme.textTertiary)
+        AnyShapeStyle(Theme.textPrimary)
     }
 
     private var fill: Color {
