@@ -75,7 +75,7 @@ extension ShotScene {
         ),
     ]
 
-    private static func saveRow(
+    static func saveRow(
         changed: Bool,
         reading: String? = nil
     ) -> ReleaseSaveRow {

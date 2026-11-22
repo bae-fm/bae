@@ -7,28 +7,44 @@ extension ShotScene {
     static let macIdentifyBarScenes: [ShotScene] = [
         identifyBarScene(
             "mac.component.identify-bar.import",
-            commit: commitControls()
+            row: .importing(commitControls())
         ),
         identifyBarScene(
             "mac.component.identify-bar.import-to-the-cloud",
             syncs: true,
-            commit: commitControls()
+            row: .importing(commitControls())
         ),
         identifyBarScene(
             "mac.component.identify-bar.retry",
-            commit: commitControls(
-                importStatus: .error(
-                    error: .Diagnostic(
-                        category: .import,
-                        detail: "decode verification failed for 1 track"
+            row: .importing(
+                commitControls(
+                    importStatus: .error(
+                        error: .Diagnostic(
+                            category: .import,
+                            detail: "decode verification failed for 1 track"
+                        )
                     )
                 )
             )
         ),
         identifyBarScene("mac.component.identify-bar.nothing-to-import"),
-        identifyBarScene("mac.component.identify-bar.save"),
-        identifyBarScene("mac.component.identify-bar.save-changed"),
-        identifyBarScene("mac.component.identify-bar.save-reading"),
+        identifyBarScene(
+            "mac.component.identify-bar.save",
+            row: .saving(saveRow(changed: false))
+        ),
+        identifyBarScene(
+            "mac.component.identify-bar.save-changed",
+            row: .saving(saveRow(changed: true))
+        ),
+        identifyBarScene(
+            "mac.component.identify-bar.save-reading",
+            row: .saving(
+                saveRow(
+                    changed: true,
+                    reading: "Reading Low Tide Hours (2019 rip).flac…"
+                )
+            )
+        ),
     ]
 
     static func commitControls(
@@ -50,7 +66,7 @@ extension ShotScene {
     private static func identifyBarScene(
         _ id: String,
         syncs: Bool = false,
-        commit: ImportCommitControls? = nil
+        row: ReleaseEditorActionRow = .importing(nil)
     ) -> ShotScene {
         component(
             id,
@@ -58,16 +74,31 @@ extension ShotScene {
             height: 50
         ) {
             importStores(
-                identifyBar(commit: commit)
+                identifyBar(row: row)
                     .frame(width: 640, alignment: .leading),
                 syncs: syncs
             )
         }
     }
 
-    /// The bar over an import's `commit` controls.
+    /// The bar with the same action row as the editor that contains it.
+    @ViewBuilder
     private static func identifyBar(
-        commit: ImportCommitControls?
+        row: ReleaseEditorActionRow
+    ) -> some View {
+        switch row {
+        case .importing(let commit):
+            bar {
+                if let commit { ImportCommitRow(commit: commit) }
+            }
+        case .saving(let save):
+            let controls = save.controls()
+            bar { controls }.disabled(controls.isBusy)
+        }
+    }
+
+    private static func bar<Content: View>(
+        @ViewBuilder trailing: @escaping () -> Content
     ) -> some View {
         MacIdentifyBar(
             spacing: ThemeSpace.related,
@@ -75,11 +106,7 @@ extension ShotScene {
             onAutomatic: {},
             onSearch: {},
             onMetadataCommand: { _ in },
-            trailing: {
-                if let commit {
-                    ImportCommitRow(commit: commit)
-                }
-            }
+            trailing: trailing
         )
     }
 }

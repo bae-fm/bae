@@ -134,11 +134,11 @@
   function MacIdentifyBar(props) {
     var save = props.actions === 'save';
     return h('div', { className: 'bae-m-idraft-actions' },
-      h('span', { className: 'bae-strong bae-muted' }, 'Identify'), h(MacButton, null, 'Automatic'), h(MacButton, null, 'Search'), h(MacButton, { menu: true, label: 'Metadata', off: !!props.reading }, '⋯'),
+      h('span', { className: 'bae-strong bae-muted' }, 'Identify'), h(MacButton, { off: !!props.reading }, 'Automatic'), h(MacButton, { off: !!props.reading }, 'Search'), h(MacButton, { menu: true, label: 'Metadata', off: !!props.reading }, '⋯'),
       h('span', { className: 'bae-m-idraft-trail' },
-      props.cloud && !save ? h(MacImportDestination, { to: props.to }) : null,
+      props.cloud && !save ? h(MacImportDestination, { to: props.to, off: !!props.reading }) : null,
       // `reading`: the line a save or an import shows while it reads a file on this device before it writes (the audio file a CUE sheet is newly bound to), before the buttons, which are off until the read ends, as the Metadata menu is.
-      props.reading ? h('span', { key: 'r', className: 'bae-m-idraft-reading bae-muted' }, h(MacSpinner, { size: 14, label: props.reading }), props.reading) : null,
+      props.reading ? h('span', { key: 'r', className: 'bae-m-idraft-reading bae-muted' }, h(MacSpinner, { size: 14, label: props.reading })) : null,
       save ? [props.changed ? h(MacButton, { key: 'c', off: !!props.reading }, 'Cancel') : null, h(MacButton, { key: 's', kind: 'primary', off: !!props.reading }, 'Save')] : props.blank ? null : h(MacButton, { kind: 'primary', off: !!props.reading }, props.retry ? 'Retry import' : 'Import')));
   }
   // An artist field, a button that opens the artist picker, drawn as its value until the pointer is over it, like MacInlineField: the artists (`artist`) and their chip (`chip`), New for an artist the import adds or a count, and none when every artist is in the library; `placeholder` in the tertiary colour while it names none (Album artist unless given). `inherited`: a track that takes the album's artists shows Album artist in the tertiary colour. `secondary` draws the artists in secondary text, as the album identity does; `column` fills its column, as a track row's does.
@@ -225,7 +225,7 @@
     }
     return h('div', { className: 'bae-m-reditor' },
       h('div', { className: 'bae-m-card bae-m-idraft' },
-        editable(h(MacIdentifyBar, { actions: props.actions, blank: props.blank, retry: props.retry, cloud: props.cloud, to: props.to, changed: props.changed, reading: props.reading })),
+        h(MacIdentifyBar, { actions: props.actions, blank: props.blank, retry: props.retry, cloud: props.cloud, to: props.to, changed: props.changed, reading: props.reading }),
         props.check && props.actions !== 'save' ? h(MacNotice, { tone: 'warning', title: props.check }) : null,
         editable(releaseHeader(props)),
         props.records ? h('div', { className: 'bae-m-idraft-records' }, h(MacRecordLinks, { records: props.records }), h('span', { style: { flex: 1 } }), h('button', { type: 'button', className: 'bae-plainbtn bae-accent', disabled: !!props.reading }, 'Unlink')) : null),
@@ -372,7 +372,7 @@
     return h('div', { className: 'bae-m-bulk' }, h('div', { className: 'bae-m-card', style: { width: 440, boxSizing: 'border-box', padding: 'var(--space-section)', display: 'flex', flexDirection: 'column', gap: 'var(--space-group)' } },
       h('div', { style: { font: 'var(--type-title-weight) var(--type-title-size) var(--font-sans)' } }, n + ' selected'), h('div', { className: 'bae-muted' }, 'Each action applies only to eligible selected folders.'),
       h('div', { className: 'bae-m-bulklist' },
-        grp('Import', [row('saveAs', 'Import', props.ready || 3, true, props.cloud ? h(MacImportDestination, { to: props.to }) : null), row('xcircle', 'Cancel import of selected', 0), row('grid', 'Combine as one release', 0, true), row('grid', 'Keep as separate releases', 0)]),
+        grp('Import', [row('saveAs', 'Import', props.ready || 3, true, props.cloud ? h(MacImportDestination, { to: props.to, off: !!props.reading }) : null), row('xcircle', 'Cancel import of selected', 0), row('grid', 'Combine as one release', 0, true), row('grid', 'Keep as separate releases', 0)]),
         grp('Metadata', [row('refresh', 'Identify selected', n), row('xcircle', 'Stop identifying selected', 0), row('refresh', 'Retry failed identification', 1), row('edit', 'Reset to file metadata', n), row('trash', 'Clear metadata', n)]),
         grp(null, [row('xcircle', 'Skip selected', n), row('left', 'Restore to pending', 0)]),
         grp(null, [row('folder', 'Reveal in Finder', n)]))),
