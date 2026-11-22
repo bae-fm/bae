@@ -17,8 +17,9 @@ struct MacTrackColumns: View {
     /// Rate a track with these stars, or clear its rating with none; `nil` for
     /// a person who can't rate.
     let onRateTrack: (String, BridgeStars?) -> Void
-    /// How the library shows the ratings of tracks.
-    var ratingSystem = BridgeRatingSystem.stars
+    /// Turn the person's heart on a track on or off, returning once the write
+    /// does.
+    let onSetTrackHearted: (String, Bool) async -> Void
     var playlists = TrackPlaylistChoices.none
     var picking: TrackPicking?
 
@@ -105,7 +106,7 @@ struct MacTrackColumns: View {
                     onAddToQueue: onAddToQueue,
                     onExportTrack: onExportTrack,
                     onRate: { onRateTrack(track.id, $0) },
-                    ratingSystem: ratingSystem,
+                    onSetHearted: { await onSetTrackHearted(track.id, $0) },
                     playlists: playlists,
                     picking: picking
                 )

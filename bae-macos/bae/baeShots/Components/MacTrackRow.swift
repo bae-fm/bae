@@ -78,7 +78,7 @@ extension ShotScene {
                 position: "4",
                 durationMs: 303_000
             ),
-            stars: .four
+            rating: .stars(mine: .four)
         ),
         trackRow(
             "mac.component.track-row.rated-and-hover",
@@ -88,7 +88,7 @@ extension ShotScene {
                 durationMs: 303_000
             ),
             hover: true,
-            stars: .four
+            rating: .stars(mine: .four)
         ),
         trackRow(
             "mac.component.track-row.heart-system",
@@ -97,8 +97,7 @@ extension ShotScene {
                 position: "4",
                 durationMs: 303_000
             ),
-            stars: .five,
-            ratingSystem: .heart
+            rating: .heart(hearted: true)
         ),
         trackRow(
             "mac.component.track-row.none-system",
@@ -107,8 +106,7 @@ extension ShotScene {
                 position: "4",
                 durationMs: 303_000
             ),
-            stars: .four,
-            ratingSystem: .hidden
+            rating: .hidden
         ),
     ]
 
@@ -119,8 +117,7 @@ extension ShotScene {
         hover: Bool = false,
         current: Bool = false,
         picked: Bool = false,
-        stars: BridgeStars? = nil,
-        ratingSystem: BridgeRatingSystem = .stars
+        rating: BridgeTrackRating = .stars(mine: nil)
     ) -> ShotScene {
         component(id, height: 70) {
             MacTrackRow(
@@ -131,8 +128,7 @@ extension ShotScene {
                 isPlaying: current,
                 hover: hover,
                 picked: picked,
-                stars: stars,
-                ratingSystem: ratingSystem,
+                rating: rating,
                 onPlay: {},
                 onTogglePlayPause: {}
             )

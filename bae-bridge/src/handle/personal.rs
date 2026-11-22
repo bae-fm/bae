@@ -7,6 +7,8 @@ forward! { async this => {
     fn set_avatar(bytes: Option<Vec<u8>>) -> () { Ok(this.services.set_avatar(bytes).await?) }
     fn avatar(person: String) -> Option<Vec<u8>> { Ok(this.services.avatar(crate::from_app::member(&person)?).await?) }
     fn set_rating(target: BridgeRatingTarget, stars: Option<BridgeStars>) -> () { Ok(this.services.set_rating(target.into_core(), stars.map(BridgeStars::into_core)).await?) }
+    /// Turn this person's heart on an album or a track on or off: a heart is five stars and no heart is no rating.
+    fn set_hearted(target: BridgeRatingTarget, hearted: bool) -> () { Ok(this.services.set_hearted(target.into_core(), hearted).await?) }
     /// Show the ratings of `items` with `system`, for everyone in the library. Only an admin can: coven refuses anyone else's change.
     fn set_rating_system(items: BridgeRatedItems, system: BridgeRatingSystem) -> () { Ok(this.services.set_rating_system(items.into_core(), system.into_core()).await?) }
     fn create_playlist(name: String, sharing: BridgeSharing, track_ids: Vec<String>) -> String { Ok(this.services.create_playlist(&name,sharing.into_core(),track_ids.into()).await?.to_string()) }

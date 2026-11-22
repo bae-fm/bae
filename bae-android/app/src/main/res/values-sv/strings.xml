@@ -551,6 +551,7 @@
     <string name="rating_system_heart">Hjärta</string>
     <string name="rating_system_none">Inga</string>
     <string name="ratings_note">Gäller alla i det här biblioteket</string>
+    <string name="album_add_heart">Lägg till hjärta</string>
     <string name="album_remove_heart">Ta bort hjärta</string>
     <string name="album_hearted_by">%1$s gav det ett hjärta</string>
     <string name="heart_on">Med hjärta</string>

@@ -560,6 +560,7 @@
     <string name="rating_system_heart">Inimă</string>
     <string name="rating_system_none">Niciuna</string>
     <string name="ratings_note">Se aplică tuturor din această bibliotecă</string>
+    <string name="album_add_heart">Adaugă inimă</string>
     <string name="album_remove_heart">Elimină inima</string>
     <string name="album_hearted_by">%1$s a pus o inimă</string>
     <string name="heart_on">Cu inimă</string>

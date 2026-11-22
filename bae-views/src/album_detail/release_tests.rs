@@ -31,7 +31,12 @@ fn detail_in_years(release_year: Option<i32>, album_year: Option<i32>) -> Releas
         cover_version: None,
         release_number: 1,
     };
-    let ctx = ReleaseResolveCtx { cover: None, is_compilation: false, album_year };
+    let ctx = ReleaseResolveCtx {
+        cover: None,
+        is_compilation: false,
+        album_year,
+        tracks_rating_system: bae_people::people::RatingSystem::Stars,
+    };
     let actions = crate::DbStorageActions {
         offered: crate::DbStorageActionFlags {
             upload: false,

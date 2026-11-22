@@ -903,9 +903,11 @@ async fn an_album_no_one_rated_shows_no_ratings() {
         crate::LibraryViews::new(db.clone()).find_album_detail(ALBUM_A).await.unwrap().unwrap();
 
     assert!(!detail.releases[0].has_other_files);
-    assert_eq!(detail.rating.mine, None);
-    assert!(detail.rating.raters.is_empty());
-    assert_eq!(detail.releases[0].tracks[0].my_stars, None);
+    assert_eq!(
+        detail.rating,
+        crate::album_detail::AlbumRating::Stars { mine: None, raters: vec![] }
+    );
+    assert_eq!(detail.releases[0].tracks[0].rating, crate::album_detail::TrackRating::Stars(None));
 }
 
 /// Searching with a limit keeps the first results in title order, tracks and

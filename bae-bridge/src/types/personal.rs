@@ -173,19 +173,32 @@ impl BridgePersonProfile {
     }
 }
 
-/// An album's ratings as its page shows them.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeAlbumRating {
-    /// The stars this person gave the album.
-    pub mine: Option<BridgeStars>,
-    /// Who rated the album: this person first, when they did, then each
-    /// other person who did, by name.
-    pub raters: Vec<BridgeRater>,
+/// An album's ratings as its page shows them under the library's rating
+/// system for albums.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeAlbumRating {
+    /// *None*: the page shows no rating.
+    Hidden,
+    /// *Stars*: the person's stars, and who rated the album.
+    Stars {
+        /// The stars this person gave the album.
+        mine: Option<BridgeStars>,
+        /// Who rated the album: this person first, when they did, then each
+        /// other person who did, by name.
+        raters: Vec<BridgeRater>,
+    },
+    /// *Heart*: whether this person hearted the album, and who did.
+    Heart {
+        hearted: bool,
+        /// Who has a heart on the album: this person first, when they do,
+        /// then each other person who does, by name.
+        hearters: Vec<BridgeHearter>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeRater {
-    /// This person; their stars are `BridgeAlbumRating.mine`.
+    /// This person; their stars are `BridgeAlbumRating::Stars.mine`.
     You,
     Person {
         name: String,
@@ -193,20 +206,62 @@ pub enum BridgeRater {
     },
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeHearter {
+    You,
+    Person { name: String },
+}
+
 impl BridgeAlbumRating {
     pub(crate) fn from_core(rating: bae_views::album_detail::AlbumRating) -> Self {
-        let bae_views::album_detail::AlbumRating { mine, raters } = rating;
-        Self {
-            mine: mine.map(BridgeStars::from_core),
-            raters: raters
-                .into_iter()
-                .map(|rater| match rater {
-                    bae_views::album_detail::Rater::You => BridgeRater::You,
-                    bae_views::album_detail::Rater::Person { name, stars } => {
-                        BridgeRater::Person { name, stars: BridgeStars::from_core(stars) }
-                    }
-                })
-                .collect(),
+        use bae_views::album_detail::{AlbumRating, Hearter, Rater};
+        match rating {
+            AlbumRating::Hidden => Self::Hidden,
+            AlbumRating::Stars { mine, raters } => Self::Stars {
+                mine: mine.map(BridgeStars::from_core),
+                raters: raters
+                    .into_iter()
+                    .map(|rater| match rater {
+                        Rater::You => BridgeRater::You,
+                        Rater::Person { name, stars } => {
+                            BridgeRater::Person { name, stars: BridgeStars::from_core(stars) }
+                        }
+                    })
+                    .collect(),
+            },
+            AlbumRating::Heart { hearted, hearters } => Self::Heart {
+                hearted,
+                hearters: hearters
+                    .into_iter()
+                    .map(|hearter| match hearter {
+                        Hearter::You => BridgeHearter::You,
+                        Hearter::Person { name } => BridgeHearter::Person { name },
+                    })
+                    .collect(),
+            },
+        }
+    }
+}
+
+/// A track's rating as its row shows it under the library's rating system
+/// for tracks.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeTrackRating {
+    /// *None*: the row shows no rating.
+    Hidden,
+    /// *Stars*: the stars this person gave the track.
+    Stars { mine: Option<BridgeStars> },
+    /// *Heart*: whether this person hearted the track.
+    Heart { hearted: bool },
+}
+
+impl BridgeTrackRating {
+    pub(crate) fn from_core(rating: bae_views::album_detail::TrackRating) -> Self {
+        use bae_views::album_detail::TrackRating;
+        match rating {
+            TrackRating::Hidden => Self::Hidden,
+            TrackRating::Stars(mine) => Self::Stars { mine: mine.map(BridgeStars::from_core) },
+            TrackRating::Heart(hearted) => Self::Heart { hearted },
         }
     }
 }

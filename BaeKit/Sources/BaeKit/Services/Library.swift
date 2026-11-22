@@ -138,6 +138,10 @@ public final class Library: Sendable, Observable {
     public let setRating:
         @Sendable (_ target: BridgeRatingTarget, _ stars: BridgeStars?)
             async throws -> Void
+    /// Turn this device's person's heart on an album or a track on or off.
+    public let setHearted:
+        @Sendable (_ target: BridgeRatingTarget, _ hearted: Bool)
+            async throws -> Void
 
     public init(
         albumList:
@@ -265,6 +269,9 @@ public final class Library: Sendable, Observable {
             },
         setRating:
             @escaping @Sendable (BridgeRatingTarget, BridgeStars?) async throws
+            -> Void = { _, _ in throw StubError.notImplemented },
+        setHearted:
+            @escaping @Sendable (BridgeRatingTarget, Bool) async throws
             -> Void = { _, _ in throw StubError.notImplemented }
     ) {
         self.albumList = albumList
@@ -298,6 +305,7 @@ public final class Library: Sendable, Observable {
         self.playlistWrites = playlistWrites
         self.trackIdsBetween = trackIdsBetween
         self.setRating = setRating
+        self.setHearted = setHearted
     }
 
     #if DEBUG
@@ -365,7 +373,12 @@ extension Library {
                 },
                 playlistWrites: .live(handle),
                 trackIdsBetween: Self.trackIdsBetween(handle),
-                setRating: { try await handle.setRating(target: $0, stars: $1) }
+                setRating: {
+                    try await handle.setRating(target: $0, stars: $1)
+                },
+                setHearted: {
+                    try await handle.setHearted(target: $0, hearted: $1)
+                }
             )
         }
 

@@ -105,6 +105,8 @@ pub struct DbAlbumDetail {
     pub primary_cover_version: Option<String>,
     /// The album's ratings, and whether this person can rate.
     pub ratings: bae_people::collections::AlbumRatings,
+    /// How the library shows the ratings of albums and of tracks.
+    pub rating_systems: bae_people::people::RatingSystems,
 }
 
 /// One row of the album grid: an album, listed once when the grid is flat and
@@ -306,6 +308,9 @@ pub struct ReleaseDetailContext {
     pub is_compilation: bool,
     /// The album's year, which the release's year is compared with.
     pub album_year: Option<i32>,
+    /// How the library shows the ratings of tracks, which each track row
+    /// draws its rating by.
+    pub tracks_rating_system: bae_people::people::RatingSystem,
 }
 
 /// Raw per-release slim aggregate for summary views (storage rows, release

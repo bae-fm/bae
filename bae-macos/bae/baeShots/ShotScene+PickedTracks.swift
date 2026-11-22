@@ -45,7 +45,9 @@ extension ShotScene {
                                 onAddNext: { _ in },
                                 onAddToQueue: { _ in },
                                 onExportTrack: { _ in },
+                                rating: .stars(mine: nil),
                                 onRate: { _ in },
+                                onSetHearted: { _ in },
                                 playlists: TrackPlaylistChoices(
                                     listing: BridgePlaylistListing(
                                         listed: [],

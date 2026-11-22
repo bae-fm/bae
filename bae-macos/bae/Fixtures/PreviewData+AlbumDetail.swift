@@ -66,7 +66,7 @@ extension PreviewData {
             displayArtist: displayArtist.map(BridgeCreditLine.named),
             positionText: position,
             works: [],
-            myStars: nil
+            rating: .stars(mine: nil)
         )
     }
 

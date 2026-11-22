@@ -16,19 +16,4 @@ extension BridgeStars: CaseIterable {
         case .five: 5
         }
     }
-
-    /// Whether a library whose system is Heart shows these stars as a
-    /// heart: three stars or more.
-    public var isHeart: Bool {
-        number >= 3
-    }
-
-    /// The stars a track's Heart or Remove heart item asks for, from the
-    /// stars the person gave it: five stars turn the heart on, and the
-    /// person's rating goes when it is already on.
-    public static func afterHeartToggle(from stars: BridgeStars?)
-        -> BridgeStars?
-    {
-        stars?.isHeart == true ? nil : .five
-    }
 }

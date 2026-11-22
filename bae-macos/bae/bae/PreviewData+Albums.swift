@@ -27,7 +27,7 @@
                         displayArtist: nil,
                         positionText: positionText(index),
                         works: [],
-                        myStars: nil,
+                        rating: .stars(mine: nil),
                     )
                 }
         }
@@ -254,10 +254,7 @@
                 shownReleaseIndex: 0,
                 shownReleaseCanBecomePrimary: false,
                 showsReleaseChoices: releases.count > 1,
-                rating: BridgeAlbumRating(
-                    mine: nil,
-                    raters: []
-                ),
+                rating: .stars(mine: nil, raters: []),
             )
         }
 

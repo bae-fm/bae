@@ -67,7 +67,7 @@ impl BridgeTrack {
             // UI renders `position_text` and the group headers, not this.
             position: _,
             works,
-            my_stars,
+            rating,
         } = t;
         BridgeTrack {
             id,
@@ -85,7 +85,7 @@ impl BridgeTrack {
                     composer_names: work.composer_names,
                 })
                 .collect(),
-            my_stars: my_stars.map(crate::types::BridgeStars::from_core),
+            rating: crate::types::BridgeTrackRating::from_core(rating),
         }
     }
 }

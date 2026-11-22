@@ -22,13 +22,11 @@ struct MacTrackRow: View {
     var picked = false
     /// How much of the accent the jump's flash fills the row with.
     var highlight: Double = 0
-    /// The stars the person gave the track, in the slot after the row, which
-    /// stays empty for a track they did not rate so every row's duration
-    /// lines up.
-    let stars: BridgeStars?
-    /// How the library shows the ratings of tracks: stars, one heart in the
-    /// slot for a track rated three stars or more, or no slot at all.
-    var ratingSystem = BridgeRatingSystem.stars
+    /// The person's rating of the track under the library's rating system,
+    /// in the slot after the row: stars, one heart for a hearted track, or
+    /// no slot at all. The slot stays empty for a track with nothing to show
+    /// so every row's duration lines up.
+    let rating: BridgeTrackRating
     let onPlay: () -> Void
     let onTogglePlayPause: () -> Void
 
@@ -37,33 +35,24 @@ struct MacTrackRow: View {
     static let leadingSlotMinWidth: CGFloat = 22
 
     var body: some View {
-        if ratingSystem == .hidden {
+        switch rating {
+        case .hidden:
             row
-        }
-        else {
+        case .stars(let mine):
             HStack(spacing: ThemeSpace.compact) {
                 row
-                ratingSlot
+                Stars(value: mine?.number ?? 0, size: 10)
+                    .opacity(mine == nil ? 0 : 1)
+                    .accessibilityHidden(mine == nil)
             }
-        }
-    }
-
-    /// The slot after the row, which stays empty for a track with nothing to
-    /// show so every row's duration lines up.
-    @ViewBuilder
-    private var ratingSlot: some View {
-        let shown =
-            ratingSystem == .heart ? stars?.isHeart == true : stars != nil
-        Group {
-            if ratingSystem == .heart {
+        case .heart(let hearted):
+            HStack(spacing: ThemeSpace.compact) {
+                row
                 Heart(on: true, size: 10)
-            }
-            else {
-                Stars(value: stars?.number ?? 0, size: 10)
+                    .opacity(hearted ? 1 : 0)
+                    .accessibilityHidden(!hearted)
             }
         }
-        .opacity(shown ? 1 : 0)
-        .accessibilityHidden(!shown)
     }
 
     private var row: some View {

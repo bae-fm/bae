@@ -551,6 +551,7 @@
     <string name="rating_system_heart">Hjerte</string>
     <string name="rating_system_none">Ingen</string>
     <string name="ratings_note">Gjelder alle i dette biblioteket</string>
+    <string name="album_add_heart">Legg til hjerte</string>
     <string name="album_remove_heart">Fjern hjerte</string>
     <string name="album_hearted_by">%1$s ga det et hjerte</string>
     <string name="heart_on">Med hjerte</string>

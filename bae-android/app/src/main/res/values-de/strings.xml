@@ -553,6 +553,7 @@
     <string name="rating_system_heart">Herz</string>
     <string name="rating_system_none">Keine</string>
     <string name="ratings_note">Gilt für alle in dieser Mediathek</string>
+    <string name="album_add_heart">Herz hinzufügen</string>
     <string name="album_remove_heart">Herz entfernen</string>
     <string name="album_hearted_by">%1$s hat ein Herz vergeben</string>
     <string name="heart_on">Mit Herz</string>

@@ -23,7 +23,8 @@ extension ShotScene {
                 onAddNext: { _ in },
                 onAddToQueue: { _ in },
                 onExportTrack: { _ in },
-                onRateTrack: { _, _ in }
+                onRateTrack: { _, _ in },
+                onSetTrackHearted: { _, _ in }
             )
             .frame(width: 580, alignment: .leading)
             .environment(UiStore())

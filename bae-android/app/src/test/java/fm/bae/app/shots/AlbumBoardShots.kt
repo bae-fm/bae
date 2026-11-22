@@ -1,22 +1,29 @@
 package fm.bae.app.shots
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.creditLineNamed
+import fm.bae.app.heartersText
 import fm.bae.app.playback.NowPlaying
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.albumdetail.AlbumDetailCallbacks
 import fm.bae.app.ui.albumdetail.AlbumDetailContent
 import fm.bae.app.ui.albumdetail.AlbumMenuActions
+import fm.bae.app.ui.albumdetail.AlbumMenuItems
 import fm.bae.app.ui.albumdetail.AlbumOptionsMenu
 import fm.bae.app.ui.albumdetail.AlbumPlaybackState
+import fm.bae.app.ui.albumdetail.AlbumRatingAction
 import fm.bae.app.ui.albumdetail.AlbumRatingChoices
+import fm.bae.app.ui.albumdetail.PinMenuItem
 import fm.bae.app.ui.albumdetail.PlayMenuActions
 import fm.bae.app.ui.albumdetail.albumRatingHeading
 import fm.bae.app.ui.albumdetail.unavailableReleaseHeading
+import fm.bae.app.ui.components.AndroidMenuItemStyle
 import fm.bae.app.ui.library.AndroidDetailScreen
 import org.junit.Test
 import uniffi.bae_bridge.BridgeAlbumDetail
@@ -28,6 +35,7 @@ import uniffi.bae_bridge.BridgeCreditRow
 import uniffi.bae_bridge.BridgeDurationClock
 import uniffi.bae_bridge.BridgeFile
 import uniffi.bae_bridge.BridgeFileKind
+import uniffi.bae_bridge.BridgeHearter
 import uniffi.bae_bridge.BridgeMessage
 import uniffi.bae_bridge.BridgeMessageArg
 import uniffi.bae_bridge.BridgeNowPlayingDisplay
@@ -52,12 +60,26 @@ class AlbumBoardShots : BoardShot() {
             AlbumPage(
                 boardAlbum(
                     rating =
-                        BridgeAlbumRating(
+                        BridgeAlbumRating.Stars(
                             mine = BridgeStars.FOUR,
                             raters = listOf(BridgeRater.You, BridgeRater.Person("Ana", BridgeStars.FIVE)),
                         ),
                 ),
             )
+        }
+
+    @Test
+    fun androidAlbumRatingHeart() =
+        shot("android.album.rating.heart") {
+            val rating = BridgeAlbumRating.Heart(hearted = true, hearters = listOf(BridgeHearter.You, BridgeHearter.Person("Ana")))
+            val heart = AlbumRatingAction.Heart(LocalContext.current.heartersText(rating), hearted = true, onChoose = {})
+            AlbumPageWithMenu(boardAlbum(rating, trackCount = 5), heart)
+        }
+
+    @Test
+    fun androidAlbumRatingNone() =
+        shot("android.album.rating.none") {
+            AlbumPageWithMenu(boardAlbum(BridgeAlbumRating.Hidden, trackCount = 5), rating = null)
         }
 
     @Test
@@ -70,7 +92,7 @@ class AlbumBoardShots : BoardShot() {
     fun androidAlbumRate() =
         shot("android.album.rate") {
             val rating =
-                BridgeAlbumRating(
+                BridgeAlbumRating.Stars(
                     mine = BridgeStars.FOUR,
                     raters = listOf(BridgeRater.You, BridgeRater.Person("Ana", BridgeStars.FIVE)),
                 )
@@ -174,7 +196,7 @@ internal fun boardFile(
  * with [rating] as its rating.
  */
 internal fun boardAlbum(
-    rating: BridgeAlbumRating = BridgeAlbumRating(mine = null, raters = emptyList()),
+    rating: BridgeAlbumRating = BridgeAlbumRating.Stars(mine = null, raters = emptyList()),
     trackCount: Int = 10,
 ): BridgeAlbumDetail {
     val tracks =
@@ -229,7 +251,7 @@ internal val playingNorthbound =
 private fun UnavailableAlbumPage() {
     AlbumPageContent(onAnotherDevice, playingNorthbound, catalogName = { it.name }) {
         AlbumOptionsMenu(
-            AlbumMenuActions(play = null, onRate = {}, pin = null, onSetPrimaryRelease = null, onDelete = {}),
+            AlbumMenuActions(play = null, rating = AlbumRatingAction.Rate {}, pin = null, onSetPrimaryRelease = null, onDelete = {}),
         )
     }
 }
@@ -264,11 +286,30 @@ internal val playingLowTideHours =
 private val boardMenu =
     AlbumMenuActions(
         play = PlayMenuActions(onShuffle = {}, onPlayNext = {}, onAddToQueue = {}),
-        onRate = {},
+        rating = AlbumRatingAction.Rate {},
         pin = null,
         onSetPrimaryRelease = null,
         onDelete = {},
     )
+
+@Composable
+private fun AlbumPageWithMenu(detail: BridgeAlbumDetail, rating: AlbumRatingAction?) {
+    val menu =
+        AlbumMenuActions(
+            play = boardMenu.play,
+            rating = rating,
+            pin = PinMenuItem(pinned = true, onClick = {}),
+            onSetPrimaryRelease = null,
+            onDelete = {},
+        )
+    ScreenScene {
+        Box {
+            val playback = AlbumPlaybackState(playingLowTideHours.track.trackId, isPlaying = true)
+            AlbumPageContent(detail, playingLowTideHours, { it.name }, playback) { AlbumOptionsMenu(menu) }
+            OpenMenu(top = 48.dp) { AndroidMenuItemStyle { AlbumMenuItems(menu, close = {}) } }
+        }
+    }
+}
 
 /** The album page as the boards draw it: its detail screen, with [bar]'s track playing in its bar. */
 @Composable

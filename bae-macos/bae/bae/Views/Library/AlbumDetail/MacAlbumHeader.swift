@@ -17,8 +17,9 @@ struct MacAlbumHeader: View {
     let onPlay: () -> Void
     /// Rate the album with these stars, or clear its rating with none.
     let onRate: (BridgeStars?) -> Void
-    /// How the library shows the ratings of albums.
-    let ratingSystem: BridgeRatingSystem
+    /// The album's rating under the library's rating system, which the
+    /// heart the person just chose can replace.
+    let rating: BridgeAlbumRating
     /// The items of the ⋯ menu.
     let menu: () -> [MacMenuEntry]
 
@@ -28,7 +29,7 @@ struct MacAlbumHeader: View {
         onSelectRelease: @escaping (String) -> Void,
         onPlay: @escaping () -> Void,
         onRate: @escaping (BridgeStars?) -> Void,
-        ratingSystem: BridgeRatingSystem = .stars,
+        rating: BridgeAlbumRating,
         @MacMenuBuilder menu: @escaping () -> [MacMenuEntry]
     ) {
         self.detail = detail
@@ -36,7 +37,7 @@ struct MacAlbumHeader: View {
         self.onSelectRelease = onSelectRelease
         self.onPlay = onPlay
         self.onRate = onRate
-        self.ratingSystem = ratingSystem
+        self.rating = rating
         self.menu = menu
     }
 
@@ -90,13 +91,13 @@ struct MacAlbumHeader: View {
                     items: menu
                 )
                 // Under Heart the person's heart follows the ⋯, read-only.
-                if ratingSystem == .heart, detail.rating.isHearted {
+                if case .heart(hearted: true, hearters: _) = rating {
                     Heart(on: true, size: 13)
                 }
             }
             .padding(.top, ThemeSpace.group)
-            if ratingSystem == .stars {
-                MacAlbumRating(rating: detail.rating, onRate: onRate)
+            if case .stars(let mine, let raters) = rating {
+                MacAlbumRating(mine: mine, raters: raters, onRate: onRate)
                     .padding(.top, ThemeSpace.related)
             }
         }

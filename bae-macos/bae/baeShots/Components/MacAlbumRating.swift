@@ -8,24 +8,28 @@ extension ShotScene {
     static let macAlbumRatingScenes: [ShotScene] = [
         albumRating(
             "mac.component.album-rating.not-rated",
-            BridgeAlbumRating(mine: nil, raters: [])
+            mine: nil,
+            raters: []
         ),
         albumRating(
             "mac.component.album-rating.rated",
-            BridgeAlbumRating(mine: .four, raters: [])
+            mine: .four,
+            raters: []
         ),
         albumRating(
             "mac.component.album-rating.others-rated",
-            ratedByYouAndAna
+            mine: .four,
+            raters: youAndAnaRaters
         ),
     ]
 
     private static func albumRating(
         _ id: String,
-        _ rating: BridgeAlbumRating
+        mine: BridgeStars?,
+        raters: [BridgeRater]
     ) -> ShotScene {
         component(id, width: 284, height: 50) {
-            MacAlbumRating(rating: rating, onRate: { _ in })
+            MacAlbumRating(mine: mine, raters: raters, onRate: { _ in })
         }
     }
 }

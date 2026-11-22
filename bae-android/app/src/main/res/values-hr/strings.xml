@@ -562,6 +562,7 @@
     <string name="rating_system_heart">Srce</string>
     <string name="rating_system_none">Nema</string>
     <string name="ratings_note">Vrijedi za sve u ovoj biblioteci</string>
+    <string name="album_add_heart">Dodaj srce</string>
     <string name="album_remove_heart">Ukloni srce</string>
     <string name="album_hearted_by">%1$s je dodao srce</string>
     <string name="heart_on">Sa srcem</string>

@@ -544,6 +544,7 @@
     <string name="rating_system_heart">愛心</string>
     <string name="rating_system_none">無</string>
     <string name="ratings_note">適用於此資料庫中的所有人</string>
+    <string name="album_add_heart">加入愛心</string>
     <string name="album_remove_heart">移除愛心</string>
     <string name="album_hearted_by">%1$s 標了愛心</string>
     <string name="heart_on">已標愛心</string>

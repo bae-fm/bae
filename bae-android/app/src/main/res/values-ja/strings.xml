@@ -544,6 +544,7 @@
     <string name="rating_system_heart">ハート</string>
     <string name="rating_system_none">なし</string>
     <string name="ratings_note">このライブラリの全員に適用されます</string>
+    <string name="album_add_heart">ハートを付ける</string>
     <string name="album_remove_heart">ハートを外す</string>
     <string name="album_hearted_by">%1$sがハートを付けました</string>
     <string name="heart_on">ハート済み</string>

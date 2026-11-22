@@ -16,6 +16,7 @@ impl AppServices {
     delegate_values!(subscribe_people => subscribe_people() -> bae_people::people::PeopleView);
     delegate_values!(subscribe_person => subscribe_person(member: coven::MemberId) -> Option<bae_people::people::Person>);
     delegate_async!(people, set_rating => set_rating(target: RatingTarget, stars: Option<Stars>) -> Result<(), CollectionError>);
+    delegate_async!(people, set_hearted => set_hearted(target: RatingTarget, hearted: bool) -> Result<(), CollectionError>);
     delegate_async!(people, set_rating_system => set_rating_system(items: bae_people::people::RatedItems, system: bae_people::people::RatingSystem) -> Result<(), bae_people::people::RatingSystemError>);
     /// How the library shows ratings, now and after each change.
     pub fn subscribe_rating_systems(

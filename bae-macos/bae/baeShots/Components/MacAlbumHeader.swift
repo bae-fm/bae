@@ -27,13 +27,11 @@ extension ShotScene {
         ),
         albumHeader(
             "mac.component.album-header.heart-system",
-            panelDetail(rating: ratedByYouAndAna),
-            ratingSystem: .heart
+            panelDetail(rating: heartedByYouAndAna)
         ),
         albumHeader(
             "mac.component.album-header.none-system",
-            panelDetail(rating: ratedByYouAndAna),
-            ratingSystem: .hidden
+            panelDetail(rating: .hidden)
         ),
         albumHeader(
             "mac.component.album-header.options-open",
@@ -51,8 +49,7 @@ extension ShotScene {
         _ id: String,
         _ detail: AlbumDetail,
         height: CGFloat = 250,
-        optionsOpen: Bool = false,
-        ratingSystem: BridgeRatingSystem = .stars
+        optionsOpen: Bool = false
     ) -> ShotScene {
         component(id, width: 540, height: height) {
             MacAlbumHeader(
@@ -61,7 +58,7 @@ extension ShotScene {
                 onSelectRelease: { _ in },
                 onPlay: {},
                 onRate: { _ in },
-                ratingSystem: ratingSystem
+                rating: detail.rating
             ) {
                 MacMenuItem("Edit…") {}
                 MacMenuItem("Change cover…") {}

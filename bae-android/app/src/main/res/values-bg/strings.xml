@@ -553,6 +553,7 @@
     <string name="rating_system_heart">Сърце</string>
     <string name="rating_system_none">Няма</string>
     <string name="ratings_note">Важи за всички в тази библиотека</string>
+    <string name="album_add_heart">Добави сърце</string>
     <string name="album_remove_heart">Махни сърцето</string>
     <string name="album_hearted_by">%1$s го отбеляза със сърце</string>
     <string name="heart_on">Със сърце</string>

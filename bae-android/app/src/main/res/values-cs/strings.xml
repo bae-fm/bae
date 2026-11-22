@@ -571,7 +571,8 @@
     <string name="rating_system_heart">Srdce</string>
     <string name="rating_system_none">Žádné</string>
     <string name="ratings_note">Platí pro všechny v této knihovně</string>
+    <string name="album_add_heart">Přidat srdce</string>
     <string name="album_remove_heart">Odebrat srdce</string>
-    <string name="album_hearted_by">Srdce dal %1$s</string>
+    <string name="album_hearted_by">Srdce od osoby %1$s</string>
     <string name="heart_on">Se srdcem</string>
 </resources>

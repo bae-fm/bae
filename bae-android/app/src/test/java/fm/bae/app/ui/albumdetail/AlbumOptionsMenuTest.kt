@@ -45,7 +45,7 @@ class AlbumOptionsMenuTest {
                 AlbumOptionsMenu(
                     AlbumMenuActions(
                         play = play,
-                        onRate = { ran.add("rate") },
+                        rating = AlbumRatingAction.Rate { ran.add("rate") },
                         pin = pin,
                         onSetPrimaryRelease = if (withSetPrimary) ({ ran.add("primary") }) else null,
                         onDelete = { ran.add("delete") },

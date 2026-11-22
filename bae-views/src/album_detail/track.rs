@@ -27,8 +27,31 @@ pub struct TrackDetail {
     pub position: TrackPosition,
     /// The works the track performs, in the order it performs them.
     pub works: Vec<TrackWork>,
-    /// The stars this person gave the track.
-    pub my_stars: Option<Stars>,
+    /// How the track's row shows this person's rating of it under the
+    /// library's rating system for tracks.
+    pub rating: TrackRating,
+}
+
+/// A track's rating as its row shows it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TrackRating {
+    /// *None*: the row shows no rating.
+    Hidden,
+    /// *Stars*: the stars this person gave the track.
+    Stars(Option<Stars>),
+    /// *Heart*: whether this person hearted the track.
+    Heart(bool),
+}
+
+impl TrackRating {
+    fn of(system: bae_people::people::RatingSystem, stars: Option<Stars>) -> Self {
+        use bae_people::people::{is_heart, RatingSystem};
+        match system {
+            RatingSystem::Hidden => Self::Hidden,
+            RatingSystem::Stars => Self::Stars(stars),
+            RatingSystem::Heart => Self::Heart(stars.is_some_and(is_heart)),
+        }
+    }
 }
 
 /// A work a track performs.
@@ -61,13 +84,17 @@ pub struct TrackGroup {
 impl TrackGroup {
     /// The group `raw` holds, whose tracks show an artist each when the
     /// album is a compilation.
-    pub(crate) fn from_raw(raw: bae_records::DbTrackGroup, is_compilation: bool) -> Self {
+    pub(crate) fn from_raw(
+        raw: bae_records::DbTrackGroup,
+        is_compilation: bool,
+        rating_system: bae_people::people::RatingSystem,
+    ) -> Self {
         TrackGroup {
             side: raw.side,
             tracks: raw
                 .tracks
                 .into_iter()
-                .map(|track| TrackDetail::from_raw(track, is_compilation))
+                .map(|track| TrackDetail::from_raw(track, is_compilation, rating_system))
                 .collect(),
             total_duration_ms: raw.total_duration_ms,
             shows_time: raw.shows_time,
@@ -81,7 +108,11 @@ impl TrackDetail {
     /// artist, because the album header names no single one; on a
     /// single-artist album the row would only repeat the header, so it shows
     /// none.
-    fn from_raw(raw: bae_records::DbTrackWithArtists, is_compilation: bool) -> Self {
+    fn from_raw(
+        raw: bae_records::DbTrackWithArtists,
+        is_compilation: bool,
+        rating_system: bae_people::people::RatingSystem,
+    ) -> Self {
         let artist_line = bae_records::credits::library_line(&raw.shown_artists);
         TrackDetail {
             display_artist: is_compilation.then(|| artist_line.clone()),
@@ -97,7 +128,7 @@ impl TrackDetail {
                     composer_names: work.composer_names,
                 })
                 .collect(),
-            my_stars: raw.my_stars,
+            rating: TrackRating::of(rating_system, raw.my_stars),
             id: raw.id,
             title: raw.title,
             duration_ms: raw.duration_ms,

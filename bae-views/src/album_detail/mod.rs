@@ -55,7 +55,7 @@ pub use playability::ReleasePlayability;
 pub use release::*;
 pub use search::*;
 pub use storage::*;
-pub use track::{TrackDetail, TrackGroup, TrackWork};
+pub use track::{TrackDetail, TrackGroup, TrackRating, TrackWork};
 
 /// What a release is called where a list of an album's releases names it.
 /// Each surface words it in the reader's language.

@@ -18,6 +18,9 @@ pub(crate) struct ReleaseResolveCtx {
     pub(crate) is_compilation: bool,
     /// The owning album's year, which [`ReleaseDetail::distinct_year`] is read against.
     pub(crate) album_year: Option<i32>,
+    /// How the library shows the ratings of tracks, which each track row draws
+    /// its rating by.
+    pub(crate) tracks_rating_system: bae_people::people::RatingSystem,
 }
 
 /// The slim projection a list view (Storage Manager, release pickers) renders one
@@ -190,7 +193,7 @@ impl ReleaseDetail {
         let track_groups: Vec<TrackGroup> = raw
             .track_groups
             .into_iter()
-            .map(|group| TrackGroup::from_raw(group, ctx.is_compilation))
+            .map(|group| TrackGroup::from_raw(group, ctx.is_compilation, ctx.tracks_rating_system))
             .collect();
         let tracks: Vec<TrackDetail> =
             track_groups.iter().flat_map(|group| group.tracks.iter().cloned()).collect();

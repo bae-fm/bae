@@ -551,6 +551,7 @@
     <string name="rating_system_heart">Sydän</string>
     <string name="rating_system_none">Ei mitään</string>
     <string name="ratings_note">Koskee kaikkia tämän kirjaston käyttäjiä</string>
+    <string name="album_add_heart">Lisää sydän</string>
     <string name="album_remove_heart">Poista sydän</string>
     <string name="album_hearted_by">%1$s antoi sille sydämen</string>
     <string name="heart_on">Sydämellä merkitty</string>

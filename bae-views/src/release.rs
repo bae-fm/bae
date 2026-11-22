@@ -72,11 +72,19 @@ pub fn resolve_release_detail_projection(
 
 /// The release's detail as its view shows it.
 fn resolve_release_detail(release_id: &str, context: ReleaseDetailContext) -> ReleaseDetail {
-    let ReleaseDetailContext { detail, download, actions, is_compilation, album_year } = context;
+    let ReleaseDetailContext {
+        detail,
+        download,
+        actions,
+        is_compilation,
+        album_year,
+        tracks_rating_system,
+    } = context;
     let ctx = ReleaseResolveCtx {
         cover: bae_records::cover_ref(release_id, detail.cover_version.clone()),
         is_compilation,
         album_year,
+        tracks_rating_system,
     };
     ReleaseDetail::from_raw(detail, download, actions, &ctx)
 }
@@ -92,6 +100,7 @@ pub(crate) fn find_release_detail_context_on(
     sql: &SqlReadContext<'_>,
     release_id: &str,
 ) -> Result<Option<ReleaseContextRows>, DbError> {
+    let tracks_rating_system = bae_people::people::rating_systems_on(sql)?.tracks;
     Ok(release_detail_rows_on(
         sql,
         release_id,
@@ -109,6 +118,7 @@ pub(crate) fn find_release_detail_context_on(
         detail: ReleaseDetailRows { rows, download, actions },
         is_compilation,
         album_year,
+        tracks_rating_system,
     }))
 }
 
@@ -126,6 +136,7 @@ pub(crate) struct ReleaseContextRows {
     detail: ReleaseDetailRows,
     is_compilation: bool,
     album_year: Option<i32>,
+    tracks_rating_system: bae_people::people::RatingSystem,
 }
 
 impl ReleaseContextRows {
@@ -137,6 +148,7 @@ impl ReleaseContextRows {
             actions,
             is_compilation: self.is_compilation,
             album_year: self.album_year,
+            tracks_rating_system: self.tracks_rating_system,
         }
     }
 }

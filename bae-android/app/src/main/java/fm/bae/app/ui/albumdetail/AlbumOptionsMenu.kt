@@ -14,6 +14,7 @@ import fm.bae.app.ui.components.AndroidDivider
 import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.AndroidMenu
 import fm.bae.app.ui.components.AndroidMenuAction
+import fm.bae.app.ui.components.AndroidMenuHeading
 import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.WIDE_DIALOG_WIDTH
 
@@ -30,6 +31,16 @@ internal class PlayMenuActions(
     val onAddToQueue: () -> Unit,
 )
 
+internal sealed interface AlbumRatingAction {
+    class Rate(val onClick: () -> Unit) : AlbumRatingAction
+
+    class Heart(
+        val hearters: String,
+        val hearted: Boolean,
+        val onChoose: (Boolean) -> Unit,
+    ) : AlbumRatingAction
+}
+
 /**
  * What the album's menu does. [play] is absent when the release cannot play on this device.
  * [pin] is `null` while the page's own control is the way to act on the
@@ -38,7 +49,7 @@ internal class PlayMenuActions(
  */
 internal class AlbumMenuActions(
     val play: PlayMenuActions?,
-    val onRate: () -> Unit,
+    val rating: AlbumRatingAction?,
     val pin: PinMenuItem?,
     val onSetPrimaryRelease: (() -> Unit)?,
     val onDelete: () -> Unit,
@@ -54,24 +65,41 @@ internal fun AlbumOptionsMenu(actions: AlbumMenuActions) {
     Box {
         AndroidIconButton(SymbolIcons.MoreVert, stringResource(R.string.album_options), onClick = { expanded = true })
         AndroidMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            val close = { expanded = false }
-            actions.play?.let { play ->
-                AndroidMenuAction(stringResource(R.string.shuffle), close, play.onShuffle)
-                AndroidMenuAction(stringResource(R.string.play_next), close, play.onPlayNext)
-                AndroidMenuAction(stringResource(R.string.add_to_queue), close, play.onAddToQueue)
-                AndroidDivider()
-            }
-            AndroidMenuAction(stringResource(R.string.rate), close, actions.onRate)
-            actions.pin?.let {
-                AndroidMenuAction(stringResource(if (it.pinned) R.string.unpin else R.string.pin), close, it.onClick)
-            }
-            actions.onSetPrimaryRelease?.let {
-                AndroidMenuAction(stringResource(R.string.set_primary_release), close, it)
-            }
-            AndroidDivider()
-            AndroidMenuAction(stringResource(R.string.delete_album), close, actions.onDelete)
+            AlbumMenuItems(actions, close = { expanded = false })
         }
     }
+}
+
+/** The menu contents, also drawn by the shots that show an open menu. */
+@Composable
+internal fun AlbumMenuItems(
+    actions: AlbumMenuActions,
+    close: () -> Unit,
+) {
+    actions.play?.let { play ->
+        AndroidMenuAction(stringResource(R.string.shuffle), close, play.onShuffle)
+        AndroidMenuAction(stringResource(R.string.play_next), close, play.onPlayNext)
+        AndroidMenuAction(stringResource(R.string.add_to_queue), close, play.onAddToQueue)
+    }
+    val hasMiddleGroup = actions.rating != null || actions.pin != null || actions.onSetPrimaryRelease != null
+    if (actions.play != null && hasMiddleGroup) AndroidDivider()
+    when (val rating = actions.rating) {
+        null -> Unit
+        is AlbumRatingAction.Rate -> AndroidMenuAction(stringResource(R.string.rate), close, rating.onClick)
+        is AlbumRatingAction.Heart -> {
+            if (rating.hearters.isNotEmpty()) AndroidMenuHeading(rating.hearters)
+            val label = if (rating.hearted) R.string.album_remove_heart else R.string.album_add_heart
+            AndroidMenuAction(stringResource(label), close) { rating.onChoose(!rating.hearted) }
+        }
+    }
+    actions.pin?.let {
+        AndroidMenuAction(stringResource(if (it.pinned) R.string.unpin else R.string.pin), close, it.onClick)
+    }
+    actions.onSetPrimaryRelease?.let {
+        AndroidMenuAction(stringResource(R.string.set_primary_release), close, it)
+    }
+    if (actions.play != null || hasMiddleGroup) AndroidDivider()
+    AndroidMenuAction(stringResource(R.string.delete_album), close, actions.onDelete)
 }
 
 /** Asks before an album is deleted: what goes with it, what stays, and that it can't be undone. */

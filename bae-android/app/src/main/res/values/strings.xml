@@ -615,6 +615,7 @@
     <string name="rating_system_heart">Heart</string>
     <string name="rating_system_none">None</string>
     <string name="ratings_note">Applies to everyone in this library</string>
+    <string name="album_add_heart">Add heart</string>
     <string name="album_remove_heart">Remove heart</string>
     <string name="album_hearted_by">%1$s hearted it</string>
     <string name="heart_on">Hearted</string>

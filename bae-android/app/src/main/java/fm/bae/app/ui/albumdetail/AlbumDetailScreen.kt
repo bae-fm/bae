@@ -62,6 +62,7 @@ import fm.bae.app.ui.runTrackQueueCommand
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeAlbumDetailRequest
+import uniffi.bae_bridge.BridgeAlbumRating
 import uniffi.bae_bridge.BridgeCatalog
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeRatingTarget
@@ -119,7 +120,9 @@ fun AlbumDetailScreen(
         }
     val adding = rememberTrackPlaylistAdd(session)
     val unpin = rememberReleaseUnpin(session)
-    var rating by remember(albumId) { mutableStateOf(false) }
+    val heart = rememberAlbumHeart(session, albumId)
+    val stars = detail?.rating as? BridgeAlbumRating.Stars
+    var rating by remember(albumId, stars != null) { mutableStateOf(false) }
     val request = BridgeAlbumDetailRequest(albumId = albumId, chosenReleaseId = selectedReleaseId)
     ActivateAlbumQuery(session, albumId, request)
 
@@ -140,14 +143,15 @@ fun AlbumDetailScreen(
                     callbacks = callbacks,
                     deletion = deletion,
                     unpin = unpin,
+                    heartChoice = heart,
                     onRate = { rating = true },
                 )
             }
         },
     ) {
         AlbumPageOverlays(session, deletion, unpin, adding)
-        if (rating && detail != null && callbacks != null) {
-            AlbumRatingSheet(rating = detail.rating, onRate = callbacks.onRateAlbum, onDismiss = { rating = false })
+        if (rating && stars != null && callbacks != null) {
+            AlbumRatingSheet(rating = stars, onRate = callbacks.onRateAlbum, onDismiss = { rating = false })
         }
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             val loaded = detail
@@ -157,7 +161,7 @@ fun AlbumDetailScreen(
                     onRetry = session.libraryQueries.album::retry,
                 )
             } else {
-                AlbumLoaded(session, loaded, callbacks, AlbumPlaybackState(nowPlaying?.trackId, isPlaying))
+                AlbumLoaded(session, loaded, callbacks, AlbumPlaybackState(nowPlaying?.trackId, isPlaying), heart)
             }
         }
     }
@@ -170,11 +174,13 @@ private fun AlbumLoaded(
     detail: BridgeAlbumDetail,
     callbacks: AlbumDetailCallbacks,
     playback: AlbumPlaybackState,
+    heart: AlbumHeartChoice,
 ) {
     AlbumDetailContent(
         detail = detail,
         cover = detail.shownRelease.cover,
         playback = playback,
+        heartShown = { heart.shown },
         callbacks = callbacks,
         releaseDownloadControl = { rel -> ReleaseTransferLines(session = session, release = rel) },
     )
@@ -343,6 +349,7 @@ internal fun AlbumDetailContent(
     releaseDownloadControl: @Composable (BridgeRelease) -> Unit,
     catalogName: (BridgeCatalog) -> String = ::bridgeCatalogName,
     audioChannelsKey: (Long) -> String? = ::bridgeAudioChannelsKey,
+    heartShown: () -> Boolean? = { null },
 ) {
     val context = LocalContext.current
     val shown = detail.shownRelease
@@ -378,6 +385,7 @@ internal fun AlbumDetailContent(
                 galleryItemCount = shown.galleryItemCount,
                 onShowGallery = { showGallery = true },
                 onShowWhere = { showWhere = true },
+                heartShown = heartShown(),
                 actions = {
                     AndroidButton(onClick = callbacks.onPlayRelease) { Text(stringResource(R.string.play)) }
                 },

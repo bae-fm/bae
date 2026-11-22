@@ -551,6 +551,7 @@
     <string name="rating_system_heart">Καρδιά</string>
     <string name="rating_system_none">Καμία</string>
     <string name="ratings_note">Ισχύει για όλους στη βιβλιοθήκη αυτή</string>
+    <string name="album_add_heart">Προσθήκη καρδιάς</string>
     <string name="album_remove_heart">Αφαίρεση καρδιάς</string>
     <string name="album_hearted_by">Καρδιά από %1$s</string>
     <string name="heart_on">Με καρδιά</string>

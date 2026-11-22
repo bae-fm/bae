@@ -20,13 +20,11 @@ extension ShotScene {
         ),
         albumPanel(
             "mac.component.album-panel.heart-system",
-            detail: panelDetail(rating: ratedByYouAndAna),
-            ratingSystems: BridgeRatingSystems(albums: .heart, tracks: .heart)
+            detail: panelDetail(rating: heartedByYouAndAna)
         ),
         albumPanel(
             "mac.component.album-panel.none-system",
-            detail: panelDetail(rating: ratedByYouAndAna),
-            ratingSystems: BridgeRatingSystems(albums: .hidden, tracks: .hidden)
+            detail: panelDetail(rating: .hidden)
         ),
         albumPanel(
             "mac.component.album-panel.unplayable",
@@ -103,13 +101,20 @@ extension ShotScene {
     static func panelDetail(
         releases names: [String] = ["CD"],
         shown: Int = 0,
-        rating: BridgeAlbumRating = BridgeAlbumRating(mine: nil, raters: []),
+        rating: BridgeAlbumRating = .stars(mine: nil, raters: []),
         playability: BridgeReleasePlayability = .playable,
         year: Int32? = 1992,
         covered: Bool = true,
         reissueYear: Int32? = nil
     ) -> AlbumDetail {
         var detail = PreviewData.boardAlbumDetail()
+        // The tracks follow the album's system: one system for both.
+        let tracksRating: BridgeTrackRating =
+            switch rating {
+            case .hidden: .hidden
+            case .stars: .stars(mine: nil)
+            case .heart: .heart(hearted: false)
+            }
         var releases = names.enumerated()
             .map { index, name in
                 panelRelease(
@@ -121,6 +126,17 @@ extension ShotScene {
                 )
             }
         releases[0].distinctYear = reissueYear
+        for index in releases.indices {
+            for track in releases[index].tracks.indices {
+                releases[index].tracks[track].rating = tracksRating
+            }
+            for group in releases[index].trackGroups.indices {
+                for track in releases[index].trackGroups[group].tracks.indices {
+                    releases[index].trackGroups[group].tracks[track].rating =
+                        tracksRating
+                }
+            }
+        }
         detail.album.releaseIds = releases.map(\.id)
         detail.album.year = year
         detail.album.cover = covered ? cover("Low Tide Hours") : nil
@@ -134,11 +150,7 @@ extension ShotScene {
 
     private static func albumPanel(
         _ id: String,
-        detail: AlbumDetail,
-        ratingSystems: BridgeRatingSystems = BridgeRatingSystems(
-            albums: .stars,
-            tracks: .stars
-        )
+        detail: AlbumDetail
     ) -> ShotScene {
         component(
             id,
@@ -173,17 +185,29 @@ extension ShotScene {
                 onOpenWork: { _ in },
                 onRateAlbum: { _ in },
                 onRateTrack: { _, _ in },
-                ratingSystems: ratingSystems
+                onSetAlbumHearted: { _ in },
+                onSetTrackHearted: { _, _ in }
             )
             .albumDetailPreviewEnvironment()
             .environment(browsePanelImages)
         }
     }
 
+    /// The person and Ana, who rated an album.
+    static let youAndAnaRaters: [BridgeRater] = [
+        .you, .person(name: "Ana", stars: .five),
+    ]
+
     /// Four stars from the person, and Ana's five.
-    static let ratedByYouAndAna = BridgeAlbumRating(
+    static let ratedByYouAndAna = BridgeAlbumRating.stars(
         mine: .four,
-        raters: [.you, .person(name: "Ana", stars: .five)]
+        raters: youAndAnaRaters
+    )
+
+    /// A heart from the person, and Ana's.
+    static let heartedByYouAndAna = BridgeAlbumRating.heart(
+        hearted: true,
+        hearters: [.you, .person(name: "Ana")]
     )
 
     /// A release whose audio is on Ana's Mac.

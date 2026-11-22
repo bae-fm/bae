@@ -6,7 +6,7 @@ import Foundation
 public struct AlbumDetail: Sendable {
     public let album: BridgeAlbum
     public let releases: [ReleaseDetail]
-    /// Who rated the album, and whether this person can.
+    /// How the page shows the album's ratings, and who gave them.
     public let rating: BridgeAlbumRating
     /// The release the page shows: the one its request chose while the album
     /// holds it, else the primary release.

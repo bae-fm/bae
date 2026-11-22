@@ -39,12 +39,20 @@ struct MacAlbumPanel: View {
     let onRateAlbum: (BridgeStars?) -> Void
     /// Rate a track with these stars, or clear its rating with none.
     let onRateTrack: (String, BridgeStars?) -> Void
-    /// How the library shows the ratings of its albums and of its tracks.
-    var ratingSystems = BridgeRatingSystems(albums: .stars, tracks: .stars)
+    /// Turn the person's heart on the album on or off, returning once the
+    /// write does.
+    let onSetAlbumHearted: (Bool) async -> Void
+    /// Turn the person's heart on a track on or off, returning once the write
+    /// does.
+    let onSetTrackHearted: (String, Bool) async -> Void
     var playlists = TrackPlaylistChoices.none
     /// How the person picks several tracks in the list, or `nil` when the
     /// list does not allow picking.
     var picking: TrackPicking?
+
+    /// The heart the person chose for the album, until its write returns.
+    @State
+    private var pendingHeart: Bool?
 
     /// The album cover's side.
     private static let coverSize: CGFloat = 340
@@ -72,7 +80,7 @@ struct MacAlbumPanel: View {
                         onSelectRelease: onSelectRelease,
                         onPlay: onPlay,
                         onRate: onRateAlbum,
-                        ratingSystem: ratingSystems.albums
+                        rating: shownRating
                     ) {
                         albumMenuItems
                     }
@@ -87,7 +95,7 @@ struct MacAlbumPanel: View {
                         onAddToQueue: onAddToQueue,
                         onExportTrack: onExportTrack,
                         onRateTrack: onRateTrack,
-                        ratingSystem: ratingSystems.tracks,
+                        onSetTrackHearted: onSetTrackHearted,
                         playlists: playlists,
                         picking: picking
                     )
@@ -124,9 +132,8 @@ struct MacAlbumPanel: View {
     private var albumMenuItems: AlbumMenu {
         AlbumMenu(
             offersSetAsPrimary: detail.shownReleaseCanBecomePrimary,
-            ratingSystem: ratingSystems.albums,
-            rating: detail.rating,
-            onRate: onRateAlbum,
+            rating: shownRating,
+            onSetHearted: setHearted,
             onPlay: onPlay,
             onShuffle: onShuffle,
             onAddNext: onAddNextAlbum,
@@ -139,6 +146,24 @@ struct MacAlbumPanel: View {
             onDeleteRelease: onDeleteRelease,
             onDeleteAlbum: onDeleteAlbum
         )
+    }
+
+    /// The album's rating, with the heart the person just chose in place of
+    /// the one the read holds until the write returns.
+    private var shownRating: BridgeAlbumRating {
+        guard let pendingHeart, case .heart(_, let hearters) = detail.rating
+        else { return detail.rating }
+        return .heart(hearted: pendingHeart, hearters: hearters)
+    }
+
+    /// Choose the heart, unless an earlier choice is still being written.
+    private func setHearted(_ hearted: Bool) {
+        guard pendingHeart == nil else { return }
+        pendingHeart = hearted
+        Task {
+            await onSetAlbumHearted(hearted)
+            pendingHeart = nil
+        }
     }
 
     private var albumArt: some View {

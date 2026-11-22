@@ -854,6 +854,13 @@ internal open class FakeAppHandle(
 
     override fun subscribeRatingSystems(): RatingSystemsSubscription = unfaked("subscribeRatingSystems")
 
+    override suspend fun setHearted(
+        target: BridgeRatingTarget,
+        hearted: Boolean,
+    ) {
+        unfaked("setHearted")
+    }
+
     override suspend fun setRatingSystem(
         items: BridgeRatedItems,
         system: BridgeRatingSystem,

@@ -560,6 +560,7 @@
     <string name="rating_system_heart">Cœur</string>
     <string name="rating_system_none">Aucune</string>
     <string name="ratings_note">S’applique à tous les membres de cette bibliothèque</string>
+    <string name="album_add_heart">Ajouter un cœur</string>
     <string name="album_remove_heart">Retirer le cœur</string>
     <string name="album_hearted_by">%1$s lui a mis un cœur</string>
     <string name="heart_on">Avec un cœur</string>

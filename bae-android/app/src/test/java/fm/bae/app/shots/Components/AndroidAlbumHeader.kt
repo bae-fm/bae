@@ -31,7 +31,7 @@ class AndroidAlbumHeaderShots : BoardShot() {
     @Test
     fun androidComponentAlbumHeaderRated() =
         component("android.component.album-header.rated") {
-            Header(harborDetail.copy(rating = BridgeAlbumRating(mine = BridgeStars.FOUR, raters = listOf(BridgeRater.You))))
+            Header(harborDetail.copy(rating = BridgeAlbumRating.Stars(mine = BridgeStars.FOUR, raters = listOf(BridgeRater.You))))
         }
 
     @Test
@@ -40,33 +40,16 @@ class AndroidAlbumHeaderShots : BoardShot() {
             Header(harborDetail) { AndroidButton(onClick = {}) { Text(stringResource(R.string.play)) } }
         }
 
-    /** Under the Heart system the year line ends in one filled heart: the album's person gave it four stars. */
     @Test
     fun androidComponentAlbumHeaderHeartSystem() =
         component("android.component.album-header.heart-system") {
-            Images {
-                AndroidAlbumHeader(
-                    detail = harborDetail,
-                    cover = PreviewData.imageRef(),
-                    galleryItemCount = 0u,
-                    onShowGallery = {},
-                    hearted = true,
-                )
-            }
+            Header(harborDetail.copy(rating = BridgeAlbumRating.Heart(hearted = true, hearters = emptyList())))
         }
 
-    /** Under None the header shows no rating, so it draws as an unrated album. */
     @Test
     fun androidComponentAlbumHeaderNoneSystem() =
         component("android.component.album-header.none-system") {
-            Images {
-                AndroidAlbumHeader(
-                    detail = harborDetail,
-                    cover = PreviewData.imageRef(),
-                    galleryItemCount = 0u,
-                    onShowGallery = {},
-                )
-            }
+            Header(harborDetail.copy(rating = BridgeAlbumRating.Hidden))
         }
 
     @Test

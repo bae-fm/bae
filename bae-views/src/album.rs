@@ -423,6 +423,7 @@ fn resolve_album_detail(raw: DbAlbumDetail) -> crate::album_detail::AlbumDetail 
             cover: bae_records::cover_ref(&detail.release.id, detail.cover_version.clone()),
             is_compilation: raw.album.is_compilation,
             album_year: raw.album.year,
+            tracks_rating_system: raw.rating_systems.tracks,
         };
         releases
             .push(crate::album_detail::ReleaseDetail::from_raw(detail, download, actions, &ctx));
@@ -442,7 +443,7 @@ fn resolve_album_detail(raw: DbAlbumDetail) -> crate::album_detail::AlbumDetail 
         shows_release_choices: raw.shows_release_choices,
         primary_release_id,
         cover,
-        rating: crate::album_detail::AlbumRating::from_raw(raw.ratings),
+        rating: crate::album_detail::AlbumRating::of(raw.rating_systems.albums, raw.ratings),
     }
 }
 
@@ -717,8 +718,10 @@ fn find_album_detail_on(
         |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
     )?;
     let ratings = bae_people::people::album_ratings_on(sql, album_id)?;
+    let rating_systems = bae_people::people::rating_systems_on(sql)?;
     Ok(Some(AlbumDetailRows {
         ratings,
+        rating_systems,
         album,
         artists,
         releases,
@@ -739,6 +742,7 @@ struct AlbumDetailRows {
     primary_release_id: String,
     primary_cover_version: Option<String>,
     ratings: bae_people::collections::AlbumRatings,
+    rating_systems: bae_people::people::RatingSystems,
 }
 
 impl AlbumDetailRows {
@@ -753,6 +757,7 @@ impl AlbumDetailRows {
             primary_release_id: self.primary_release_id,
             primary_cover_version: self.primary_cover_version,
             ratings: self.ratings,
+            rating_systems: self.rating_systems,
         }
     }
 }

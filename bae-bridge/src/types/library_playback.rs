@@ -594,8 +594,8 @@ pub struct BridgeTrack {
     pub position_text: String,
     /// The works the track performs, in the order it performs them.
     pub works: Vec<BridgeTrackWork>,
-    /// The stars this person gave the track.
-    pub my_stars: Option<crate::types::BridgeStars>,
+    /// How the track's row shows this person's rating of it.
+    pub rating: crate::types::BridgeTrackRating,
 }
 
 /// A work a track performs.

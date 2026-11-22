@@ -54,6 +54,7 @@ import uniffi.bae_bridge.BridgeSyncActivity
 import uniffi.bae_bridge.BridgeTermLabel
 import uniffi.bae_bridge.BridgeTrack
 import uniffi.bae_bridge.BridgeTrackGroup
+import uniffi.bae_bridge.BridgeTrackRating
 import uniffi.bae_bridge.BridgeTrackSide
 import uniffi.bae_bridge.BridgeTransferBatch
 import uniffi.bae_bridge.BridgeUploadQueueActivity
@@ -112,7 +113,7 @@ object PreviewData {
             displayArtist = null,
             positionText = number.toString(),
             works = emptyList(),
-            myStars = null,
+            rating = BridgeTrackRating.Stars(mine = null),
         )
 
     fun trackGroup(
@@ -194,7 +195,7 @@ object PreviewData {
             shownReleaseIndex = 0u,
             shownReleaseCanBecomePrimary = false,
             showsReleaseChoices = releases.size > 1,
-            rating = BridgeAlbumRating(mine = null, raters = emptyList()),
+            rating = BridgeAlbumRating.Stars(mine = null, raters = emptyList()),
         )
 
     fun workSummary(

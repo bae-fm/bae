@@ -17,7 +17,9 @@ pub use joining::private_circle_name;
 mod profiles;
 pub(crate) use profiles::name_this_person_goes_by;
 mod rating_systems;
-pub use rating_systems::{RatedItems, RatingSystem, RatingSystemError, RatingSystems};
+pub use rating_systems::{
+    is_heart, rating_systems_on, RatedItems, RatingSystem, RatingSystemError, RatingSystems,
+};
 
 /// The SQL functions the people's reads name: the key lists of names order by.
 const SQL_FUNCTIONS: &[&bae_store::SchemaFunction] = &[&bae_store::NAME_KEY];

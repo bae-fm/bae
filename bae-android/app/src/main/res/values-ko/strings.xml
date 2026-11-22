@@ -544,6 +544,7 @@
     <string name="rating_system_heart">하트</string>
     <string name="rating_system_none">없음</string>
     <string name="ratings_note">이 보관함의 모든 사람에게 적용됩니다</string>
+    <string name="album_add_heart">하트 추가</string>
     <string name="album_remove_heart">하트 제거</string>
     <string name="album_hearted_by">%1$s님이 하트를 눌렀습니다</string>
     <string name="heart_on">하트 누름</string>

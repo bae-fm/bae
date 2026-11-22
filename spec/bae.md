@@ -3195,13 +3195,13 @@ as selected, then *Clear rating*. A tap rates the album with that many stars.
 For a rated album, the page shows a read-only rating as its number and one
 star. An unrated album shows no rating.
 
-Under *Heart*, the album's menu offers *Heart* or *Remove heart* in place
+Under *Heart*, the album's menu offers *Add heart* or *Remove heart* in place
 of *Rate*, with no submenu or sheet. A disabled item before that command
 names who hearted the album, *You* first, then each other person by name,
 with no stars: "You · Ana hearted it". A hearted album shows a read-only
 heart. On macOS a track shows a heart in place of its stars when the
 person rated it three stars or more, and nothing otherwise. Its menu
-offers *Heart* or *Remove heart* in place of *Rate*.
+offers *Add heart* or *Remove heart* in place of *Rate*.
 
 Under *None*, the album and track menus omit *Rate*, and the pages show no
 album or track ratings.

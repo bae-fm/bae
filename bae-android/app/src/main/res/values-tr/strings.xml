@@ -553,6 +553,7 @@
     <string name="rating_system_heart">Kalp</string>
     <string name="rating_system_none">Yok</string>
     <string name="ratings_note">Bu kütüphanedeki herkes için geçerlidir</string>
+    <string name="album_add_heart">Kalp ekle</string>
     <string name="album_remove_heart">Kalbi kaldır</string>
     <string name="album_hearted_by">%1$s kalp verdi</string>
     <string name="heart_on">Kalpli</string>

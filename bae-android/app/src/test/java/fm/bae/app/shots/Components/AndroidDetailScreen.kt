@@ -12,6 +12,7 @@ import fm.bae.app.R
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.albumdetail.AlbumMenuActions
 import fm.bae.app.ui.albumdetail.AlbumOptionsMenu
+import fm.bae.app.ui.albumdetail.AlbumRatingAction
 import fm.bae.app.ui.albumdetail.AndroidAlbumHeader
 import fm.bae.app.ui.albumdetail.PinMenuItem
 import fm.bae.app.ui.albumdetail.PlayMenuActions
@@ -32,7 +33,7 @@ class AndroidDetailScreenShots : BoardShot() {
                 AlbumOptionsMenu(
                     AlbumMenuActions(
                         play = PlayMenuActions(onShuffle = {}, onPlayNext = {}, onAddToQueue = {}),
-                        onRate = {},
+                        rating = AlbumRatingAction.Rate {},
                         pin = PinMenuItem(pinned = true) {},
                         onSetPrimaryRelease = null,
                         onDelete = {},
@@ -63,6 +64,7 @@ private fun Detail(actions: @Composable RowScope.() -> Unit) =
                     galleryItemCount = 0u,
                     onShowGallery = {},
                     onShowWhere = {},
+                    hearted = false,
                 )
             }
         }

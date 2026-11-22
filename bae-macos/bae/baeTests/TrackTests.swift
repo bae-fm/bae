@@ -16,7 +16,7 @@ struct TrackTests {
                 displayArtist: nil,
                 positionText: "A",
                 works: [],
-                myStars: nil,
+                rating: .stars(mine: nil),
             )
         )
 
@@ -49,12 +49,12 @@ struct TrackTests {
                 displayArtist: nil,
                 positionText: "1",
                 works: works,
-                myStars: .four,
+                rating: .stars(mine: .four),
             )
         )
 
         #expect(track.works.map(\.workId) == ["work-1", "work-2"])
         #expect(track.works.map(\.composerNames) == ["Composer A", nil])
-        #expect(track.myStars == .four)
+        #expect(track.rating == .stars(mine: .four))
     }
 }

@@ -1,6 +1,6 @@
 use super::*;
 use bae_people::collections::{RatingTarget, Stars};
-use bae_views::album_detail::Rater;
+use bae_views::album_detail::{AlbumRating, Rater};
 
 /// The album's next detail that `wanted` accepts, failing when none comes.
 async fn detail_matching(
@@ -83,11 +83,19 @@ fn a_removed_person_s_rating_still_names_them() {
             .subscribe_album_detail(Some(bae_views::album_detail::AlbumDetailRequest::album(
                 album.clone(),
             )));
-        let both = detail_matching(&mut robins, |detail| detail.rating.raters.len() == 2).await;
-        assert_eq!(both.rating.mine, Some(Stars::Four));
+        let both = detail_matching(&mut robins, |detail| {
+            matches!(&detail.rating, AlbumRating::Stars { raters, .. } if raters.len() == 2)
+        })
+        .await;
         assert_eq!(
-            both.rating.raters,
-            vec![Rater::You, Rater::Person { name: "Rowan".to_string(), stars: Stars::Two }]
+            both.rating,
+            AlbumRating::Stars {
+                mine: Some(Stars::Four),
+                raters: vec![
+                    Rater::You,
+                    Rater::Person { name: "Rowan".to_string(), stars: Stars::Two }
+                ],
+            }
         );
 
         // An admin removes Rowan. His rating stays, under his name.
@@ -109,10 +117,15 @@ fn a_removed_person_s_rating_still_names_them() {
             .await
             .unwrap()
             .expect("the album is still there");
-        assert_eq!(after.rating.mine, Some(Stars::Four));
         assert_eq!(
-            after.rating.raters,
-            vec![Rater::You, Rater::Person { name: "Rowan".to_string(), stars: Stars::Two }]
+            after.rating,
+            AlbumRating::Stars {
+                mine: Some(Stars::Four),
+                raters: vec![
+                    Rater::You,
+                    Rater::Person { name: "Rowan".to_string(), stars: Stars::Two }
+                ],
+            }
         );
 
         // Rowan's device learns its person was removed. It keeps its copy:
@@ -125,10 +138,15 @@ fn a_removed_person_s_rating_still_names_them() {
             .await
             .unwrap()
             .expect("the album is still on the removed device");
-        assert_eq!(removed.rating.mine, Some(Stars::Two));
         assert_eq!(
-            removed.rating.raters,
-            vec![Rater::You, Rater::Person { name: "Robin".to_string(), stars: Stars::Four }]
+            removed.rating,
+            AlbumRating::Stars {
+                mine: Some(Stars::Two),
+                raters: vec![
+                    Rater::You,
+                    Rater::Person { name: "Robin".to_string(), stars: Stars::Four }
+                ],
+            }
         );
         rowan_library
             .people()
@@ -136,7 +154,7 @@ fn a_removed_person_s_rating_still_names_them() {
             .await
             .unwrap();
         let rerated = rowans_views.find_album_detail(&album).await.unwrap().unwrap();
-        assert_eq!(rerated.rating.mine, Some(Stars::Five));
+        assert!(matches!(rerated.rating, AlbumRating::Stars { mine: Some(Stars::Five), .. }));
         rowan_library.manager().close().await.unwrap();
         owner.manager().close().await.unwrap();
     });

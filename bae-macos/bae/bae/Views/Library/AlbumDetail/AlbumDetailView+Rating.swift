@@ -19,3 +19,16 @@ extension AlbumDetailView {
         }
     }
 }
+
+extension AlbumDetailView {
+    /// Turns the person's heart on the album or a track on or off, returning
+    /// once the write does. When the write fails, the app shows the error.
+    func setHearted(_ target: BridgeRatingTarget, _ hearted: Bool) async {
+        do {
+            try await library.setHearted(target, hearted)
+        }
+        catch {
+            uiStore.showError(error)
+        }
+    }
+}

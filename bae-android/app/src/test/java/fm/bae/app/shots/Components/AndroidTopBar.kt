@@ -2,6 +2,7 @@ package fm.bae.app.shots
 
 import fm.bae.app.ui.albumdetail.AlbumMenuActions
 import fm.bae.app.ui.albumdetail.AlbumOptionsMenu
+import fm.bae.app.ui.albumdetail.AlbumRatingAction
 import fm.bae.app.ui.albumdetail.PlayMenuActions
 import fm.bae.app.ui.components.AndroidTopBar
 import fm.bae.app.ui.library.WhoseMenu
@@ -40,7 +41,7 @@ class AndroidTopBarShots : BoardShot() {
                 AlbumOptionsMenu(
                     AlbumMenuActions(
                         play = PlayMenuActions(onShuffle = {}, onPlayNext = {}, onAddToQueue = {}),
-                        onRate = {},
+                        rating = AlbumRatingAction.Rate {},
                         pin = null,
                         onSetPrimaryRelease = null,
                         onDelete = {},

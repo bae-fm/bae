@@ -32,6 +32,8 @@ extension ShotScene {
                         {
                             AlbumMenu(
                                 offersSetAsPrimary: false,
+                                rating: .stars(mine: nil, raters: []),
+                                onSetHearted: { _ in },
                                 onPlay: {},
                                 onShuffle: {},
                                 onAddNext: {},

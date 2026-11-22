@@ -15,11 +15,14 @@ struct TrackMenu: MacMenuPart {
     let onAddNext: (String) -> Void
     let onAddToQueue: (String) -> Void
     let onExportTrack: (String) -> Void
+    /// The track's rating under the library's rating system, which the
+    /// row's pending heart can replace: the menu offers Rate under stars,
+    /// Add heart or Remove heart under heart, and neither under none.
+    let rating: BridgeTrackRating
     /// Rate the track with these stars, or clear its rating with none.
     let onRate: (BridgeStars?) -> Void
-    /// How the library shows the ratings of tracks: the menu offers Rate
-    /// under stars, Heart or Remove heart under heart, and neither under none.
-    var ratingSystem = BridgeRatingSystem.stars
+    /// Turn the person's heart on the track on or off.
+    let onSetHearted: (Bool) -> Void
     /// The playlists the menu can add the tracks to.
     let playlists: TrackPlaylistChoices
 
@@ -44,26 +47,14 @@ struct TrackMenu: MacMenuPart {
             MacMenuItem("Play next") { onAddNext(track.id) }
             MacMenuItem("Add to queue") { onAddToQueue(track.id) }
             MacMenuItem.divider
-            if ratingSystem == .stars {
-                TrackRateMenu(stars: track.myStars, onRate: onRate)
+            if case .stars(let mine) = rating {
+                TrackRateMenu(stars: mine, onRate: onRate)
             }
-            else if ratingSystem == .heart {
-                heartItem
+            else if case .heart(let hearted) = rating {
+                HeartMenuItem(hearted: hearted, onSetHearted: onSetHearted)
             }
             playlistMenu
             MacMenuItem("Save as…") { onExportTrack(track.id) }
         }
-    }
-}
-
-extension TrackMenu {
-    /// Heart, or Remove heart on a hearted track.
-    private var heartItem: MacMenuItem {
-        let toggle = {
-            onRate(BridgeStars.afterHeartToggle(from: track.myStars))
-        }
-        return track.myStars?.isHeart == true
-            ? MacMenuItem("Remove heart", action: toggle)
-            : MacMenuItem("Heart", action: toggle)
     }
 }

@@ -31,6 +31,16 @@ impl People {
         Ok(())
     }
 
+    /// Turn this person's heart on `target` on or off. A heart is five stars
+    /// and no heart is no rating, whatever stars the target held before.
+    pub async fn set_hearted(
+        &self,
+        target: RatingTarget,
+        hearted: bool,
+    ) -> Result<(), CollectionError> {
+        self.set_rating(target, hearted.then_some(Stars::Five)).await
+    }
+
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn ratings(&self) -> Result<Vec<Rating>, DbError> {
         self.inner.store.read(|sql| Ok(ratings(&sql)?)).await

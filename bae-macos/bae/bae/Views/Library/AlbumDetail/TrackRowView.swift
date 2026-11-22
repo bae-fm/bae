@@ -21,8 +21,9 @@ struct TrackRowView: View {
     let onExportTrack: (String) -> Void
     /// Rate the track with these stars, or clear its rating with none.
     let onRate: (BridgeStars?) -> Void
-    /// How the library shows the ratings of tracks.
-    var ratingSystem = BridgeRatingSystem.stars
+    /// Turn the person's heart on the track on or off, returning once the
+    /// write does.
+    let onSetHearted: (Bool) async -> Void
     /// The playlists the track's menu can add it to.
     var playlists = TrackPlaylistChoices.none
     /// What the menu does with several picked tracks, or `nil` where the
@@ -36,6 +37,9 @@ struct TrackRowView: View {
     private var hoverWorkItem: DispatchWorkItem?
     @State
     private var highlightOpacity: Double = 0
+    /// The heart the person chose for the track, until its write returns.
+    @State
+    private var pendingHeart: Bool?
 
     var body: some View {
         // The body reads the pick once, and the tap handler gets the value
@@ -50,8 +54,7 @@ struct TrackRowView: View {
             hover: isHovered,
             picked: picked,
             highlight: highlightOpacity,
-            stars: track.myStars,
-            ratingSystem: ratingSystem,
+            rating: shownRating,
             onPlay: onPlay,
             onTogglePlayPause: onTogglePlayPause
         )
@@ -92,6 +95,25 @@ struct TrackRowView: View {
         .draggable(track.id)
     }
 
+    /// The track's rating, with the heart the person just chose in place of
+    /// the one the read holds until the write returns.
+    private var shownRating: BridgeTrackRating {
+        guard let pendingHeart, case .heart = track.rating else {
+            return track.rating
+        }
+        return .heart(hearted: pendingHeart)
+    }
+
+    /// Choose the heart, unless an earlier choice is still being written.
+    private func setHearted(_ hearted: Bool) {
+        guard pendingHeart == nil else { return }
+        pendingHeart = hearted
+        Task {
+            await onSetHearted(hearted)
+            pendingHeart = nil
+        }
+    }
+
     private var isPicked: Bool {
         picking != nil && uiStore.pickedTracks.contains(track.id)
     }
@@ -126,8 +148,9 @@ struct TrackRowView: View {
             onAddNext: onAddNext,
             onAddToQueue: onAddToQueue,
             onExportTrack: onExportTrack,
+            rating: shownRating,
             onRate: onRate,
-            ratingSystem: ratingSystem,
+            onSetHearted: setHearted,
             playlists: playlists
         )
     }

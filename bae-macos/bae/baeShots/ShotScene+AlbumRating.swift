@@ -35,22 +35,22 @@ extension ShotScene {
         },
         ratingSystemScene(
             "mac.album.rating.heart",
-            systems: BridgeRatingSystems(albums: .heart, tracks: .heart),
-            menu: .album(highlighted: 4)
+            system: .heart,
+            menu: .album(highlighted: 7)
         ),
         ratingSystemScene(
             "mac.album.rating.none",
-            systems: BridgeRatingSystems(albums: .hidden, tracks: .hidden),
+            system: .hidden,
             menu: .album(highlighted: nil)
         ),
         ratingSystemScene(
             "mac.album.track-menu-heart",
-            systems: BridgeRatingSystems(albums: .heart, tracks: .heart),
-            menu: .track(highlighted: 3)
+            system: .heart,
+            menu: .track(highlighted: 4)
         ),
         ratingSystemScene(
             "mac.album.track-menu-none",
-            systems: BridgeRatingSystems(albums: .hidden, tracks: .hidden),
+            system: .hidden,
             menu: .track(highlighted: nil)
         ),
     ]
@@ -62,21 +62,24 @@ extension ShotScene {
         case track(highlighted: Int?)
     }
 
-    /// The album page with the library's rating systems `systems`, rated as
-    /// the Heart boards draw it, with `menu` open.
+    /// The album page under the rating system `system` for its albums and its
+    /// tracks, rated as the Heart boards draw it, with `menu` open.
     private static func ratingSystemScene(
         _ id: String,
-        systems: BridgeRatingSystems,
+        system: BridgeRatingSystem,
         menu: OpenMenu
     ) -> ShotScene {
         let size = CGSize(width: 1_200, height: 1_020)
         return ShotScene(id: id, size: size) {
             let uiStore = UiStore()
             let detail = ratedBoardAlbum(
-                albumRating: BridgeAlbumRating(
-                    mine: .five,
-                    raters: [.you, .person(name: "Ana", stars: .five)]
-                ),
+                albumRating: system == .heart
+                    ? .heart(
+                        hearted: true,
+                        hearters: [.you, .person(name: "Ana")]
+                    ) : .hidden,
+                trackRating: system == .heart
+                    ? .heart(hearted: false) : .hidden,
                 trackStars: [0: .five, 1: .two, 3: .four, 6: .three]
             )
             let backing = boardLibraryBacking(
@@ -91,10 +94,9 @@ extension ShotScene {
                         uiStore: uiStore,
                         backing: backing,
                         playbackStore: boardPlayback(),
-                        ratingSystems: .staging(systems),
                         size: size
                     )
-                    openMenu(menu, album: rated, systems: systems)
+                    openMenu(menu, album: rated)
                 }
             ) {
                 (backing.session.albums.list?.positionCount ?? 0) > 0
@@ -105,8 +107,7 @@ extension ShotScene {
     @ViewBuilder
     private static func openMenu(
         _ menu: OpenMenu,
-        album: AlbumDetail,
-        systems: BridgeRatingSystems
+        album: AlbumDetail
     ) -> some View {
         switch menu {
         case .album(let highlighted):
@@ -114,8 +115,8 @@ extension ShotScene {
                 {
                     AlbumMenu(
                         offersSetAsPrimary: false,
-                        ratingSystem: systems.albums,
                         rating: album.rating,
+                        onSetHearted: { _ in },
                         onPlay: {},
                         onShuffle: {},
                         onAddNext: {},
@@ -144,9 +145,10 @@ extension ShotScene {
                         onAddNext: { _ in },
                         onAddToQueue: { _ in },
                         onExportTrack: { _ in },
+                        rating: album.shownRelease.tracks[0].rating,
                         onRate: { _ in },
-                        ratingSystem: systems.tracks,
-                        playlists: .none
+                        onSetHearted: { _ in },
+                        playlists: playlistChoices
                     )
                 },
                 highlighted: highlighted
@@ -156,20 +158,39 @@ extension ShotScene {
         }
     }
 
-    /// The board's album as the person and Ana rated it, with the stars the
-    /// person gave tracks 1, 4 and 7.
+    /// The playlists a track menu offers to add its track to: none made yet,
+    /// so the menu ends in New playlist….
+    private static let playlistChoices = TrackPlaylistChoices(
+        listing: BridgePlaylistListing(
+            listed: [],
+            addTargets: [],
+            total: 0,
+            addTargetCount: 0,
+            canCreate: true
+        ),
+        onAdd: { _, _ in },
+        onNewPlaylist: { _ in }
+    )
+
+    /// The board's album as the person and Ana rated it, its tracks rated as
+    /// `trackRating` says by default and with the stars the person gave tracks
+    /// 1, 4 and 7 where `trackStars` gives them.
     private static func ratedBoardAlbum(
-        albumRating: BridgeAlbumRating = BridgeAlbumRating(
+        albumRating: BridgeAlbumRating = .stars(
             mine: .four,
             raters: [.you, .person(name: "Ana", stars: .five)]
         ),
+        trackRating: BridgeTrackRating = .stars(mine: nil),
         trackStars stars: [Int: BridgeStars] = [0: .five, 3: .four, 6: .three]
     ) -> BridgeAlbumDetail {
         var detail = PreviewData.boardAlbumDetail()
         detail.rating = albumRating
         var release = detail.releases[0]
+        for index in release.tracks.indices {
+            release.tracks[index].rating = trackRating
+        }
         for (index, value) in stars {
-            release.tracks[index].myStars = value
+            release.tracks[index].rating = rated(trackRating, value)
         }
         release.trackGroups = release.trackGroups.map { group in
             var group = group
@@ -180,5 +201,17 @@ extension ShotScene {
         }
         detail.releases = [release]
         return detail
+    }
+
+    /// `base`, the track's rating when unrated, as it shows `stars`.
+    private static func rated(
+        _ base: BridgeTrackRating,
+        _ stars: BridgeStars
+    ) -> BridgeTrackRating {
+        switch base {
+        case .hidden: .hidden
+        case .stars: .stars(mine: stars)
+        case .heart: .heart(hearted: stars.number >= 3)
+        }
     }
 }

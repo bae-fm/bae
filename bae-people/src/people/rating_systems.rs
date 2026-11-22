@@ -4,6 +4,7 @@
 //! every device (an admin-only table).
 
 use super::*;
+use crate::collections::Stars;
 
 /// How the library shows the ratings of albums, or of tracks. Each person's
 /// rating stays one to five stars, or none, under every system.
@@ -104,6 +105,18 @@ pub(crate) fn write_first_rating_systems(sql: &coven::MemberWrite<'_>) -> rusqli
 /// The library's one `rating_systems` row.
 const RATING_SYSTEMS_SQL: &str = "SELECT albums, tracks FROM rating_systems WHERE id = 'library'";
 
+/// How the library shows ratings, read inside a screen's own read, so the
+/// screen's rows and the system that draws them come from one query.
+pub fn rating_systems_on(sql: &SqlReadContext<'_>) -> rusqlite::Result<RatingSystems> {
+    sql.query_row(RATING_SYSTEMS_SQL, [], rating_systems_row)
+}
+
+/// Whether *Heart* shows a rating of `stars` as a heart: three stars or
+/// more.
+pub fn is_heart(stars: Stars) -> bool {
+    stars as i64 >= Stars::Three as i64
+}
+
 fn rating_systems_row(row: &Row<'_>) -> rusqlite::Result<RatingSystems> {
     Ok(RatingSystems {
         albums: bae_store::read::parsed_column(row, "albums")?,
@@ -115,9 +128,7 @@ impl People {
     /// How the library shows ratings, live: the first value at once, then
     /// one after each change, this device's or an admin's on another device.
     pub fn subscribe_rating_systems(&self) -> coven::LiveQuery<RatingSystems, DbError> {
-        self.inner
-            .store
-            .subscribe(|sql| Ok(sql.query_row(RATING_SYSTEMS_SQL, [], rating_systems_row)?))
+        self.inner.store.subscribe(|sql| Ok(rating_systems_on(&sql)?))
     }
 
     /// Show the ratings of `items` with `system`, for everyone in the

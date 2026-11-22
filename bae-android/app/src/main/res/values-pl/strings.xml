@@ -571,6 +571,7 @@
     <string name="rating_system_heart">Serce</string>
     <string name="rating_system_none">Brak</string>
     <string name="ratings_note">Dotyczy wszystkich w tej bibliotece</string>
+    <string name="album_add_heart">Dodaj serce</string>
     <string name="album_remove_heart">Usuń serce</string>
     <string name="album_hearted_by">Serce od %1$s</string>
     <string name="heart_on">Z sercem</string>

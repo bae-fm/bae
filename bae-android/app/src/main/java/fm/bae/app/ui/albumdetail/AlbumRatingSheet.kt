@@ -23,7 +23,7 @@ private val STAR_ROW_SIZE = 18.dp
 /** The sheet that rates the album: tapping a row rates it with that many stars and closes the sheet. */
 @Composable
 internal fun AlbumRatingSheet(
-    rating: BridgeAlbumRating,
+    rating: BridgeAlbumRating.Stars,
     onRate: (BridgeStars?) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -37,7 +37,7 @@ internal fun AlbumRatingSheet(
 
 /** The rating sheet's title, with who rated the album as its note. */
 @Composable
-internal fun albumRatingHeading(rating: BridgeAlbumRating): AndroidSheetHeading =
+internal fun albumRatingHeading(rating: BridgeAlbumRating.Stars): AndroidSheetHeading =
     AndroidSheetHeading(title = stringResource(R.string.rate), note = LocalContext.current.ratersText(rating))
 
 /**
@@ -46,7 +46,7 @@ internal fun albumRatingHeading(rating: BridgeAlbumRating): AndroidSheetHeading 
  */
 @Composable
 internal fun ColumnScope.AlbumRatingChoices(
-    rating: BridgeAlbumRating,
+    rating: BridgeAlbumRating.Stars,
     onRate: (BridgeStars?) -> Unit,
 ) {
     AndroidMenuItemStyle {

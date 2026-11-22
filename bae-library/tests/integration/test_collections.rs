@@ -668,6 +668,7 @@ async fn playlists_list_by_name_in_the_devices_language() {
 /// track.
 #[tokio::test]
 async fn rating_delivers_a_new_album_detail() {
+    use bae_views::album_detail::{AlbumRating, Rater, TrackRating};
     let directory = bae_util::test_files::TestFolder::new();
     let (library, _storage) = storage_library(
         directory.path(),
@@ -691,19 +692,91 @@ async fn rating_delivers_a_new_album_detail() {
         Some(bae_views::album_detail::AlbumDetailRequest::album(album.clone())),
     );
     let first = next_detail(&mut values).await;
-    assert_eq!(first.rating.mine, None);
+    assert_eq!(first.rating, AlbumRating::Stars { mine: None, raters: vec![] });
 
     people.set_rating(RatingTarget::Album(album.clone()), Some(Stars::Four)).await.unwrap();
-    let rated = next_detail_matching(&mut values, |detail| detail.rating.mine.is_some()).await;
-    assert_eq!(rated.rating.mine, Some(Stars::Four));
-    assert_eq!(rated.rating.raters, vec![bae_views::album_detail::Rater::You]);
+    let rated = next_detail_matching(&mut values, |detail| {
+        detail.rating != AlbumRating::Stars { mine: None, raters: vec![] }
+    })
+    .await;
+    assert_eq!(
+        rated.rating,
+        AlbumRating::Stars { mine: Some(Stars::Four), raters: vec![Rater::You] }
+    );
 
     people.set_rating(RatingTarget::Track(track.clone()), Some(Stars::Two)).await.unwrap();
     let tracked = next_detail_matching(&mut values, |detail| {
-        detail.releases[0].tracks.iter().any(|track| track.my_stars.is_some())
+        detail.releases[0].tracks.iter().any(|track| track.rating != TrackRating::Stars(None))
     })
     .await;
-    assert_eq!(tracked.releases[0].tracks[0].my_stars, Some(Stars::Two));
+    assert_eq!(tracked.releases[0].tracks[0].rating, TrackRating::Stars(Some(Stars::Two)));
+    drop(values);
+    library.manager().close().await.unwrap();
+}
+
+/// Each rating system draws the album's and its tracks' ratings its own way
+/// from the same stored stars: a heart is five stars and no heart is no
+/// rating, and *None* shows none.
+#[tokio::test]
+async fn the_rating_systems_shape_the_album_detail_s_ratings() {
+    use bae_people::people::{RatedItems, RatingSystem};
+    use bae_views::album_detail::{AlbumRating, Hearter, Rater, TrackRating};
+    let directory = bae_util::test_files::TestFolder::new();
+    let (library, _storage) = storage_library(
+        directory.path(),
+        bae_catalogs::fake_catalogs::FakeCatalogs::offline().providers(),
+        bae_util::http::Http::for_test(),
+    )
+    .await;
+    let people = bae_people::People::new(library.store().clone(), coven::FileBudget::for_test());
+    let release = test_uuid("heart-release");
+    let track = test_uuid("heart-track");
+    let album = test_uuid("heart-album");
+    bae_records::test_fixtures::album_with_tracks(
+        library.records(),
+        (&album, "Hearted"),
+        &release,
+        &[(&track, "Only")],
+    )
+    .await;
+    let mut values = bae_views::LibraryViews::new(library.store().clone()).subscribe_album_detail(
+        Some(bae_views::album_detail::AlbumDetailRequest::album(album.clone())),
+    );
+    next_detail(&mut values).await;
+
+    people.set_rating_system(RatedItems::Albums, RatingSystem::Heart).await.unwrap();
+    people.set_rating_system(RatedItems::Tracks, RatingSystem::Heart).await.unwrap();
+    let unhearted = next_detail_matching(&mut values, |detail| {
+        detail.rating == AlbumRating::Heart { hearted: false, hearters: vec![] }
+            && detail.releases[0].tracks[0].rating == TrackRating::Heart(false)
+    })
+    .await;
+    assert_eq!(unhearted.releases.len(), 1);
+
+    people.set_hearted(RatingTarget::Album(album.clone()), true).await.unwrap();
+    people.set_hearted(RatingTarget::Track(track.clone()), true).await.unwrap();
+    next_detail_matching(&mut values, |detail| {
+        detail.rating == AlbumRating::Heart { hearted: true, hearters: vec![Hearter::You] }
+            && detail.releases[0].tracks[0].rating == TrackRating::Heart(true)
+    })
+    .await;
+
+    // The heart is five stars under *Stars*.
+    people.set_rating_system(RatedItems::Albums, RatingSystem::Stars).await.unwrap();
+    next_detail_matching(&mut values, |detail| {
+        detail.rating == AlbumRating::Stars { mine: Some(Stars::Five), raters: vec![Rater::You] }
+    })
+    .await;
+
+    // Taking the heart off clears the rating.
+    people.set_hearted(RatingTarget::Album(album.clone()), false).await.unwrap();
+    next_detail_matching(&mut values, |detail| {
+        detail.rating == AlbumRating::Stars { mine: None, raters: vec![] }
+    })
+    .await;
+
+    people.set_rating_system(RatedItems::Albums, RatingSystem::Hidden).await.unwrap();
+    next_detail_matching(&mut values, |detail| detail.rating == AlbumRating::Hidden).await;
     drop(values);
     library.manager().close().await.unwrap();
 }

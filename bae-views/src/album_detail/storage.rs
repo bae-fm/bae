@@ -142,6 +142,8 @@ impl StorageRow {
             // the per-track compilation flag is never read on this path.
             is_compilation: false,
             album_year: raw.album.year,
+            // Nor is a track's rating.
+            tracks_rating_system: bae_people::people::RatingSystem::Hidden,
         };
         StorageRow {
             cancel_only: raw.release.actions.offered.cancel_only,

@@ -589,6 +589,7 @@
     <string name="rating_system_heart">قلب</string>
     <string name="rating_system_none">لا شيء</string>
     <string name="ratings_note">ينطبق على كل من في هذه المكتبة</string>
+    <string name="album_add_heart">إضافة قلب</string>
     <string name="album_remove_heart">إزالة القلب</string>
     <string name="album_hearted_by">وضع %1$s قلبًا عليه</string>
     <string name="heart_on">بقلب</string>

@@ -33,13 +33,14 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.Artwork
+import fm.bae.app.ui.components.Heart
 import fm.bae.app.ui.components.IconTone
 import fm.bae.app.ui.components.Stars
 import fm.bae.app.yearText
 import uniffi.bae_bridge.BridgeAlbumDetail
+import uniffi.bae_bridge.BridgeAlbumRating
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeReleasePlayability
-import uniffi.bae_bridge.BridgeStars
 
 private val COVER_SIZE = 150.dp
 private val STAR_SIZE = 12.dp
@@ -56,6 +57,7 @@ internal fun AndroidAlbumHeader(
     galleryItemCount: UInt,
     onShowGallery: () -> Unit,
     onShowWhere: () -> Unit,
+    heartShown: Boolean? = null,
     actions: @Composable () -> Unit = {},
 ) {
     val album = detail.album
@@ -78,7 +80,7 @@ internal fun AndroidAlbumHeader(
                 style = ThemeText.body.style,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            YearAndRating(year = album.year?.let(context::yearText), rating = detail.rating.mine)
+            YearAndRating(album.year?.let(context::yearText), detail.rating, heartShown)
             val release = detail.shownRelease
             release.editionLineText(context).takeIf { it.isNotEmpty() }?.let {
                 Spacer(modifier = Modifier.height(ThemeSpace.line))
@@ -109,22 +111,24 @@ private fun ReleaseLine(text: String) {
     )
 }
 
-/** The album's [year], then the rating the person gave it, as its number and one star, when it has one. */
+/** The year, followed by the person's rating as the library's system shows it. */
 @Composable
 private fun YearAndRating(
     year: String?,
-    rating: BridgeStars?,
+    rating: BridgeAlbumRating,
+    heartShown: Boolean?,
 ) {
-    if (year == null && rating == null) return
+    val stars = (rating as? BridgeAlbumRating.Stars)?.mine
+    val hearted = (rating as? BridgeAlbumRating.Heart)?.let { heartShown ?: it.hearted } == true
+    if (year == null && stars == null && !hearted) return
     val color = MaterialTheme.colorScheme.onSurfaceVariant
     Row(verticalAlignment = Alignment.CenterVertically) {
         year?.let { Text(text = it, style = ThemeText.detail.style, color = color) }
-        if (rating != null) {
-            if (year != null) {
-                Text(text = LocalContext.current.factSeparator(), style = ThemeText.detail.style, color = color)
-            }
-            Stars(rating = rating, size = STAR_SIZE)
+        if (year != null && (stars != null || hearted)) {
+            Text(text = LocalContext.current.factSeparator(), style = ThemeText.detail.style, color = color)
         }
+        stars?.let { Stars(rating = it, size = STAR_SIZE) }
+        if (hearted) Heart(on = true, size = STAR_SIZE)
     }
 }
 

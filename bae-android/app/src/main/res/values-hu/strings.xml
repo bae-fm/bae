@@ -551,6 +551,7 @@
     <string name="rating_system_heart">Szív</string>
     <string name="rating_system_none">Nincs</string>
     <string name="ratings_note">A könyvtár minden tagjára érvényes</string>
+    <string name="album_add_heart">Szív hozzáadása</string>
     <string name="album_remove_heart">Szív eltávolítása</string>
     <string name="album_hearted_by">%1$s szívet adott neki</string>
     <string name="heart_on">Szívvel</string>

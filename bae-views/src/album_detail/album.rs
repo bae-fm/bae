@@ -57,24 +57,37 @@ pub struct AlbumDetail {
     /// row. The version moves when the bytes do, so subscribers receive a changed
     /// field and the UI re-renders.
     pub cover: Option<ImageRef>,
-    /// Who rated the album, and whether this person can.
+    /// How the page shows the album's ratings, and who gave them.
     pub rating: AlbumRating,
 }
 
-/// An album's ratings as its page shows them.
+/// An album's ratings as its page shows them under the library's rating
+/// system for albums, which the album's own read supplies.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct AlbumRating {
-    /// The stars this person gave the album.
-    pub mine: Option<Stars>,
-    /// Who rated the album: this person first, when they did, then each other
-    /// person who did, by name then id.
-    pub raters: Vec<Rater>,
+pub enum AlbumRating {
+    /// *None*: the page shows no rating.
+    Hidden,
+    /// *Stars*: the person's stars, and who rated the album.
+    Stars {
+        /// The stars this person gave the album.
+        mine: Option<Stars>,
+        /// Who rated the album: this person first, when they did, then each
+        /// other person who did, by name then id.
+        raters: Vec<Rater>,
+    },
+    /// *Heart*: whether this person hearted the album, and who did.
+    Heart {
+        hearted: bool,
+        /// Who has a heart on the album: this person first, when they do,
+        /// then each other person who does, by name then id.
+        hearters: Vec<Hearter>,
+    },
 }
 
 /// One person who rated an album, as the album's rating line names them.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Rater {
-    /// This person; their stars are [`AlbumRating::mine`].
+    /// This person; their stars are [`AlbumRating::Stars::mine`].
     You,
     Person {
         name: String,
@@ -82,19 +95,50 @@ pub enum Rater {
     },
 }
 
+/// One person who has a heart on an album, as the album's heart line names
+/// them.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Hearter {
+    You,
+    Person { name: String },
+}
+
 impl AlbumRating {
-    pub(crate) fn from_raw(raw: bae_people::collections::AlbumRatings) -> Self {
-        let raters = raw
-            .mine
-            .map(|_| Rater::You)
-            .into_iter()
-            .chain(
-                raw.others
+    pub(crate) fn of(
+        system: bae_people::people::RatingSystem,
+        raw: bae_people::collections::AlbumRatings,
+    ) -> Self {
+        use bae_people::people::{is_heart, RatingSystem};
+        match system {
+            RatingSystem::Hidden => Self::Hidden,
+            RatingSystem::Stars => {
+                let raters = raw
+                    .mine
+                    .map(|_| Rater::You)
                     .into_iter()
-                    .map(|other| Rater::Person { name: other.name, stars: other.stars }),
-            )
-            .collect();
-        Self { mine: raw.mine, raters }
+                    .chain(
+                        raw.others
+                            .into_iter()
+                            .map(|other| Rater::Person { name: other.name, stars: other.stars }),
+                    )
+                    .collect();
+                Self::Stars { mine: raw.mine, raters }
+            }
+            RatingSystem::Heart => {
+                let hearted = raw.mine.is_some_and(is_heart);
+                let hearters = hearted
+                    .then_some(Hearter::You)
+                    .into_iter()
+                    .chain(
+                        raw.others
+                            .into_iter()
+                            .filter(|other| is_heart(other.stars))
+                            .map(|other| Hearter::Person { name: other.name }),
+                    )
+                    .collect();
+                Self::Heart { hearted, hearters }
+            }
+        }
     }
 }
 
