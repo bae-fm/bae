@@ -127,16 +127,7 @@ struct SidePauseCountdownTests {
 
     @Test("the countdown settings strings ship in every locale")
     func countdownStringsHaveEveryLocalization() throws {
-        let catalogURL = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .appending(path: "bae/Localizable.xcstrings")
-        let catalog = try #require(
-            try JSONSerialization.jsonObject(
-                with: Data(contentsOf: catalogURL)
-            ) as? [String: Any]
-        )
-        let strings = try #require(catalog["strings"] as? [String: Any])
+        let strings = try StringCatalog.strings()
 
         func locales(_ key: String) throws -> Set<String> {
             let entry = try #require(strings[key] as? [String: Any])

@@ -8,10 +8,7 @@ import Testing
 struct DirectionNeutralSymbolsTests {
     @Test("no view names a left or right chevron")
     func noFixedDirectionChevrons() throws {
-        let views = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .appending(path: "bae/Views")
+        let views = try StringCatalog.viewSources()
         let files = try #require(
             FileManager.default.enumerator(
                 at: views,
@@ -30,15 +27,7 @@ struct DirectionNeutralSymbolsTests {
 
     @Test("the arrow message points left in Arabic and Hebrew")
     func arrowMessageTurnsForRightToLeft() throws {
-        let url = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .appending(path: "bae/Localizable.xcstrings")
-        let catalog = try #require(
-            try JSONSerialization.jsonObject(with: Data(contentsOf: url))
-                as? [String: Any]
-        )
-        let strings = try #require(catalog["strings"] as? [String: Any])
+        let strings = try StringCatalog.strings()
         let entry = try #require(strings["%@ → %@"] as? [String: Any])
         let localizations = try #require(
             entry["localizations"] as? [String: [String: [String: String]]]

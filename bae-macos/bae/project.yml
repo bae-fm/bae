@@ -197,6 +197,17 @@ targets:
       - baeTests
       - baeTestSupport
       - Fixtures
+      # Source files the tests read from the bundle (StringCatalog): Copy
+      # Files keeps the catalog's JSON, which a resources phase would compile.
+      - path: bae/Localizable.xcstrings
+        buildPhase:
+          copyFiles:
+            destination: resources
+      - path: bae/Views
+        type: folder
+        buildPhase:
+          copyFiles:
+            destination: resources
     dependencies:
       - target: bae
     settings:

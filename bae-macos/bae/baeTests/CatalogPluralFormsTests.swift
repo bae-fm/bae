@@ -46,15 +46,7 @@ struct CatalogPluralFormsTests {
     ]
 
     private static func strings() throws -> [String: Any] {
-        let url = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .appending(path: "bae/Localizable.xcstrings")
-        let catalog = try #require(
-            try JSONSerialization.jsonObject(with: Data(contentsOf: url))
-                as? [String: Any]
-        )
-        return try #require(catalog["strings"] as? [String: Any])
+        try StringCatalog.strings()
     }
 
     private static func forms(

@@ -108,15 +108,7 @@ struct LocaleNumberFormatTests {
 
     @Test("the bit rate unit is translated where the language has its own")
     func bitrateUnitsAreTranslated() throws {
-        let url = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .appending(path: "bae/Localizable.xcstrings")
-        let catalog = try #require(
-            try JSONSerialization.jsonObject(with: Data(contentsOf: url))
-                as? [String: Any]
-        )
-        let strings = try #require(catalog["strings"] as? [String: Any])
+        let strings = try StringCatalog.strings()
         let entry = try #require(strings["%lld kbps"] as? [String: Any])
         let localizations = try #require(
             entry["localizations"] as? [String: [String: [String: String]]]
