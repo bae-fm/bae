@@ -62,6 +62,7 @@ import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeStorageSetup
 import uniffi.bae_bridge.BridgeSyncCause
 import uniffi.bae_bridge.BridgeSyncFix
+import java.time.Instant
 
 private val logger = BaeLogger("bae.SyncScreen")
 
