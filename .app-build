@@ -9,7 +9,7 @@ shots-preview .bae-preview-row .bae-preview-name .bae-preview-cell
 shots-preview-calls N W
 shots-unshot .bae-a-keyboard
 shots-design-only mac AppIcon Cover Sym MacHelpTag
-shots-design-only android AppIcon Cover Sym AndroidKeyboard ImportSheep
+shots-design-only android AppIcon Cover Sym AndroidKeyboard ImportSheep AndroidIconButton.tone-warning
 here macos
 results mac shots/mac
 results android shots/android bae-android/app/build/test-results
