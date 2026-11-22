@@ -32,8 +32,8 @@ struct MacSyncStatus: View {
 
     @Environment(SyncStatusStore.self)
     private var status
-    @Environment(\.clockNow)
-    private var clockNow
+    @Environment(\.currentMoment)
+    private var now
 
     var body: some View {
         if status.unreadable {
@@ -78,7 +78,7 @@ struct MacSyncStatus: View {
                     )
                 }
             }
-            if let lastSynced = shown.lastSyncedLine(now: clockNow ?? Date()) {
+            if let lastSynced = shown.lastSyncedLine(now: now) {
                 MacRow("Last synced", value: lastSynced)
             }
         }

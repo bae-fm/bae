@@ -16,8 +16,8 @@ struct WelcomeLibraryDetails: View {
     /// library with storage has one.
     @State
     private var status: SectionLoad<BridgeLibraryStanding> = .loading
-    @Environment(\.clockNow)
-    private var clockNow
+    @Environment(\.currentMoment)
+    private var now
 
     private var storage: BridgeStorageLocation? {
         if case .openable(let storage) = library.state { return storage }
@@ -57,7 +57,7 @@ struct WelcomeLibraryDetails: View {
                 if let lastSynced = status.lastSynced {
                     MacRow(
                         "Last synced",
-                        value: lastSynced.agoLine(now: clockNow ?? Date())
+                        value: lastSynced.agoLine(now: now)
                     )
                 }
             }

@@ -16,8 +16,8 @@ struct QueueRow<Content: View, Below: View>: View {
     /// row that shows no time.
     let createdAt: Int64?
     var cancel: CancelAction?
-    @Environment(\.clockNow)
-    private var clockNow
+    @Environment(\.currentMoment)
+    private var now
     @ViewBuilder
     let content: () -> Content
     /// What sits under the row at its edge, such as a failure's notice, whose
@@ -39,7 +39,11 @@ struct QueueRow<Content: View, Below: View>: View {
             } trail: {
                 if let createdAt {
                     Text(
-                        queuedRelativeLabel(createdAt, now: clockNow ?? Date())
+                        Date(
+                            timeIntervalSince1970: TimeInterval(createdAt)
+                                / 1000
+                        )
+                        .agoLine(now: now, style: .abbreviated)
                     )
                     .themeText(.fine)
                     .fixedSize()
@@ -60,13 +64,4 @@ struct QueueRow<Content: View, Below: View>: View {
         .padding(.horizontal)
         .padding(.vertical, ThemeSpace.related)
     }
-}
-
-/// Relative "queued" label (e.g. "2m ago") at `now`, from an enqueue time in
-/// Unix epoch milliseconds.
-func queuedRelativeLabel(_ epochMs: Int64, now: Date) -> String {
-    let date = Date(timeIntervalSince1970: TimeInterval(epochMs) / 1000)
-    let formatter = RelativeDateTimeFormatter()
-    formatter.unitsStyle = .abbreviated
-    return formatter.localizedString(for: date, relativeTo: now)
 }

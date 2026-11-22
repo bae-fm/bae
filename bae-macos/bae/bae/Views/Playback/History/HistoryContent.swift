@@ -142,14 +142,17 @@ private struct HistoryPlays: View {
 
     @State
     private var fit = ListScreenFit()
-    @Environment(\.clockNow)
-    private var clockNow
+    @Environment(\.currentMoment)
+    private var currentMoment
 
     var body: some View {
+        // Read once, so every day heading words Today and Yesterday against
+        // the same moment.
+        let now = currentMoment
         ScrollView {
             LazyVStack(alignment: .leading, spacing: ThemeSpace.hairline) {
                 ForEach(0..<list.positionCount, id: \.self) { index in
-                    row(at: index)
+                    row(at: index, now: now)
                         .task(
                             id: RowLoadID(epoch: list.loadEpoch, index: index)
                         ) {
@@ -173,14 +176,14 @@ private struct HistoryPlays: View {
     }
 
     @ViewBuilder
-    private func row(at index: Int) -> some View {
+    private func row(at index: Int, now: Date) -> some View {
         if let play = list.row(at: index) {
             VStack(alignment: .leading, spacing: 0) {
                 if play.opensDay {
                     MacQueueSection(
                         title: HistoryWords.day(
                             play.playedOn,
-                            now: clockNow ?? Date()
+                            now: now
                         ),
                         kind: .day(menu: index == 0 ? menu : nil)
                     )

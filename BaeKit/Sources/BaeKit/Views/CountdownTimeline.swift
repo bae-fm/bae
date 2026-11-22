@@ -36,6 +36,12 @@ extension EnvironmentValues {
     /// words whenever the shot is taken.
     @Entry
     public var clockNow: Date?
+
+    /// The moment a view words a time against: `clockNow` when a shot sets
+    /// it, else the clock.
+    public var currentMoment: Date {
+        clockNow ?? Date()
+    }
 }
 
 extension BridgeCountdown {

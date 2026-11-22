@@ -30,10 +30,14 @@ extension BridgeSyncShown {
 }
 
 extension Date {
-    /// How long before `now` this moment was, as "2 hours ago".
-    public func agoLine(now: Date) -> String {
+    /// How long before `now` this moment was, as "2 hours ago" in the full
+    /// style and "2 hr. ago" in the abbreviated one.
+    public func agoLine(
+        now: Date,
+        style: RelativeDateTimeFormatter.UnitsStyle = .full
+    ) -> String {
         let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .full
+        formatter.unitsStyle = style
         return formatter.localizedString(for: self, relativeTo: now)
     }
 }
