@@ -336,15 +336,4 @@ extension PreviewData {
         )
 
     }
-
-    /// The Skipped tab's rows as the board lists them.
-    static func skippedItems() throws -> [BridgeImportListItem] {
-        [
-            boardEmptyFolder,
-            boardHarborWaltz(
-                cover: try BoardArtwork.scannedFile(named: "Glass Harbor")
-            ),
-        ]
-        .map(invalidItem)
-    }
 }

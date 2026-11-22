@@ -426,15 +426,7 @@ extension PreviewData {
             url: try BoardArtwork.fileURL(named: "Field Recordings").path,
             downscaled: []
         )
-        return BridgeCoverChoice(
-            selection: .remoteCover(
-                selection: BridgeRemoteCoverSelection(
-                    image: cover,
-                    source: .musicBrainz
-                )
-            ),
-            image: .remote(image: cover)
-        )
+        return musicBrainzCoverChoice(cover)
     }
 
     /// Field Recordings: two CD sheets, the first bound to its audio and

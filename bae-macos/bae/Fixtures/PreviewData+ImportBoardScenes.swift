@@ -213,7 +213,8 @@ extension PreviewData {
     @MainActor
     static func openBoardFolder(
         _ board: ImportBoard,
-        in store: ImportStore
+        in store: ImportStore,
+        harborWaltz: BridgeInvalidCandidateDetail
     ) throws -> ImportSelection {
         switch board {
         case .found(_, nil):
@@ -237,9 +238,8 @@ extension PreviewData {
                 offers: opened.live?.offers ?? []
             )
         case .skipped:
-            let opened = try boardHarborWaltzDetail()
-            let key = opened.candidate.candidateKey
-            store.selectedInvalidCandidates[key] = opened
+            let key = harborWaltz.candidate.candidateKey
+            store.selectedInvalidCandidates[key] = harborWaltz
             return boardSelection(
                 .invalidCandidate(key: key),
                 key: key,
@@ -265,14 +265,20 @@ extension PreviewData {
         case .imported, .skipped:
             break
         }
-        let selection = try openBoardFolder(board, in: store)
+        let harborWaltz = try boardHarborWaltzDetail()
+        let selection = try openBoardFolder(
+            board,
+            in: store,
+            harborWaltz: harborWaltz
+        )
         return ImportBoardScene(
             fixture: ImportPreviewFixture(
                 store: store,
                 itemsByTab: [
                     .pending: try foundItems(northbound: board.northbound),
                     .done: try doneItems(),
-                    .skipped: try skippedItems(),
+                    .skipped: [boardEmptyFolder, harborWaltz.candidate]
+                        .map(invalidItem),
                 ],
                 tabCounts: BridgeTriageTabCounts(
                     pending: 10,
