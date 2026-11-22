@@ -12,6 +12,8 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
 import fm.bae.app.BaeRobolectricTestRunner
+import fm.bae.app.BugReports
+import fm.bae.app.LocalBugReports
 import fm.bae.app.ui.LocalNowMs
 import org.json.JSONObject
 import org.junit.Assume.assumeNotNull
@@ -116,7 +118,13 @@ internal fun isSelected(
  */
 internal fun ComposeContentTestRule.settle(content: @Composable () -> Unit) {
     mainClock.autoAdvance = false
-    setContent { CompositionLocalProvider(LocalNowMs provides ShotClock::nowMs, content = content) }
+    setContent {
+        CompositionLocalProvider(
+            LocalNowMs provides ShotClock::nowMs,
+            LocalBugReports provides BugReports(),
+            content = content,
+        )
+    }
     mainClock.advanceTimeBy(SETTLE_MILLIS)
 }
 
