@@ -69,7 +69,8 @@ component CSS draws each text style from the same tokens, through the
 `--type-<style>-line-height` variables tokens.css gives, and
 `scripts/check-design-measures.py` refuses a literal size, weight or line
 height there, and a literal padding, margin, gap or corner radius, which
-take the spacing and radius tokens. Apple views set a role with `.themeText(_:)`. A section label is one
+take the spacing and radius tokens. The check reads the inline styles and
+`radius` props of the component JavaScript the same way. Apple views set a role with `.themeText(_:)`. A section label is one
 `MacEyebrow` on the Mac and one `AndroidEyebrow` on Android.
 
 Spacing is one shared scale named by meaning: hairline, line, inline, compact,

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Run the design measures check on component CSS that takes its type, spacing
-and radii from tokens, and on CSS that writes them as literals."""
+"""Run the design measures check on component CSS and JavaScript that take
+their type, spacing and radii from tokens, and on CSS and JavaScript that write
+them as literals."""
 
 from __future__ import annotations
 
@@ -13,6 +14,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 CHECK = ROOT / "scripts" / "check-design-measures.py"
 SOURCE = "design/system/components/src/10-a.css"
+SCRIPT = "design/system/components/src/10-a.js"
 
 
 class DesignMeasuresTests(unittest.TestCase):
@@ -73,6 +75,31 @@ class DesignMeasuresTests(unittest.TestCase):
             ".bae-a-key-mod { font-size: 13px; }\n.bae-m-titlebar { padding: 0 var(--space-edge) 0 80px; }\n"
         )
         self.assertEqual((found.returncode, found.stderr), (0, ""))
+
+    def test_script_measures_from_tokens_or_other_measures_pass(self) -> None:
+        found = self.run_check(
+            "// fontSize: 11 in a comment is no measure\n"
+            "h('span', { style: { fontSize: 'var(--type-detail-size)', fontWeight: \"var(--type-chip-weight)\" } });\n"
+            "h('div', { style: { padding: '0 var(--space-related)', gap: 0, marginTop: 'calc(-1 * var(--space-line))' } });\n"
+            "h(Artwork, { radius: 'radius-artwork', size: 56 });\n"
+            "h('div', { style: { fontSize: s * 0.4, paddingLeft: 'calc(var(--space-related) + ' + hang + 'px)', borderRadius: 999 } });\n",
+            path=SCRIPT,
+        )
+        self.assertEqual((found.returncode, found.stderr), (0, ""))
+
+    def test_each_literal_script_measure_fails_at_its_line(self) -> None:
+        found = self.run_check(
+            "h('span', { style: { fontSize: 11.5 } });\n"
+            "h('span', { style: { font: '700 22px var(--font-sans)' } });\n"
+            "h('div', { style: { padding: '8px 12px' } });\n"
+            "h('div', { style: { marginLeft: -4 } });\n"
+            "h(Artwork, { radius: 6 });\n"
+            "h('div', { style: { borderTopLeftRadius: '4px' } });\n",
+            path=SCRIPT,
+        )
+        self.assertEqual(found.returncode, 1)
+        lines = [line.split(": ")[0] for line in found.stderr.splitlines()]
+        self.assertEqual(lines, [f"{SCRIPT}:{n}" for n in range(1, 7)])
 
     def test_files_outside_the_component_sources_are_not_read(self) -> None:
         found = self.run_check(".a { font-size: 11px; }\n", path="design/mocks/a.css")
