@@ -15,7 +15,6 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -118,7 +117,7 @@ internal fun AndroidRow(
         value?.let {
             Text(text = it, style = ThemeText.body.style, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        switch?.let { Switch(checked = it.checked, onCheckedChange = null, enabled = enabled) }
+        switch?.let { AndroidSwitch(checked = it.checked, enabled = enabled) }
         trailing?.invoke(this)
         icon?.let {
             Icon(
@@ -130,6 +129,12 @@ internal fun AndroidRow(
         }
     }
 }
+
+/** The tap action that the switch shares with its setting row. */
+internal fun Modifier.rowSwitch(
+    switch: RowSwitch,
+    enabled: Boolean,
+): Modifier = toggleable(value = switch.checked, enabled = enabled, role = Role.Switch, onValueChange = switch.onChange)
 
 /** The title, regular (an action's is medium), with its [tag] as a chip after it. */
 @Composable
@@ -194,12 +199,7 @@ private fun Modifier.cardRowSurface(
             },
         ).then(
             if (switch != null) {
-                Modifier.toggleable(
-                    value = switch.checked,
-                    enabled = enabled,
-                    role = Role.Switch,
-                    onValueChange = switch.onChange,
-                )
+                Modifier.rowSwitch(switch, enabled)
             } else {
                 Modifier
             },
