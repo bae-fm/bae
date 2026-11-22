@@ -12,61 +12,85 @@ struct MacBulkActionRow: View {
     private var isConstructive: Bool { offer.isConstructive }
 
     var body: some View {
-        Button(action: action) {
+        if let importDestination {
+            // The row's button imports and the destination menu beside it
+            // picks where, as two controls: a menu inside a button would
+            // make the whole row read as a pop-up.
             HStack(spacing: ImportBulkActionRowMetrics.spacing) {
-                Image(systemName: offer.action.symbol)
-                    .themeIcon(ImportBulkActionRowMetrics.icon)
-                    .foregroundStyle(
-                        isConstructive ? Theme.accent : Theme.macTextSecondary
-                    )
-                    .frame(width: ImportBulkActionRowMetrics.iconWidth)
-                Text(verbatim: offer.action.label)
-                    .themeText(isConstructive ? .strong : .body)
-                    .foregroundStyle(
-                        isConstructive
-                            ? Theme.textPrimary : Theme.macTextSecondary
-                    )
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                if let importDestination {
-                    MacImportDestination(destination: importDestination)
+                Button(action: action) {
+                    nameAndSymbol
                 }
-                StatusChip(
-                    Text(verbatim: offer.applicable.formatted())
-                        .monospacedDigit(),
-                    tone: isConstructive ? .accent : .neutral
+                .buttonStyle(.plain)
+                .accentFocus()
+                .modifier(
+                    NamedByLabelAndCount(
+                        offer: offer,
+                        name:
+                            "\(offer.action.label) \(importDestination.wrappedValue.title)"
+                    )
                 )
+                MacImportDestination(destination: importDestination)
+                count
             }
+            .modifier(BulkRowSurface(isPressed: false))
         }
-        .buttonStyle(MacBulkActionRowButtonStyle().accentFocus())
-        .modifier(
-            NamedByLabelAndCount(
-                offer: offer,
-                named: importDestination == nil
+        else {
+            Button(action: action) {
+                HStack(spacing: ImportBulkActionRowMetrics.spacing) {
+                    nameAndSymbol
+                    count
+                }
+            }
+            .buttonStyle(MacBulkActionRowButtonStyle().accentFocus())
+            .modifier(
+                NamedByLabelAndCount(offer: offer, name: offer.action.label)
             )
+        }
+    }
+
+    /// The action's symbol and its name, the part that takes the row's width.
+    private var nameAndSymbol: some View {
+        HStack(spacing: ImportBulkActionRowMetrics.spacing) {
+            Image(systemName: offer.action.symbol)
+                .themeIcon(ImportBulkActionRowMetrics.icon)
+                .foregroundStyle(
+                    isConstructive ? Theme.accent : Theme.macTextSecondary
+                )
+                .frame(width: ImportBulkActionRowMetrics.iconWidth)
+            Text(verbatim: offer.action.label)
+                .themeText(isConstructive ? .strong : .body)
+                .foregroundStyle(
+                    isConstructive
+                        ? Theme.textPrimary : Theme.macTextSecondary
+                )
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private var count: some View {
+        StatusChip(
+            Text(verbatim: offer.applicable.formatted())
+                .monospacedDigit(),
+            tone: isConstructive ? .accent : .neutral
         )
     }
 }
 
-/// Names a row for VoiceOver by its action and its count in one phrase, as
-/// the board's button reads, where SwiftUI would join the two with a comma.
-/// The Import row holds a menu of its own, so it keeps its parts apart.
+/// Names a row's button for VoiceOver by its action name and its count in
+/// one phrase, as the board's button reads, where SwiftUI would join the two
+/// with a comma.
 private struct NamedByLabelAndCount: ViewModifier {
     let offer: ImportCandidateActionOffer
-    let named: Bool
+    let name: String
 
     func body(content: Content) -> some View {
-        if named {
-            content
-                .accessibilityLabel(
-                    String(
-                        localized:
-                            "Bulk action \(offer.action.label) \(offer.applicable.formatted())"
-                    )
+        content
+            .accessibilityLabel(
+                String(
+                    localized:
+                        "Bulk action \(name) \(offer.applicable.formatted())"
                 )
-        }
-        else {
-            content
-        }
+            )
     }
 }
 
@@ -78,28 +102,39 @@ struct MacBulkActionRowButtonStyle: ButtonStyle {
 
     private struct Row: View {
         let configuration: Configuration
-        @Environment(\.isEnabled)
-        private var isEnabled
-        @State
-        private var isHovered = false
 
         var body: some View {
             configuration.label
-                .padding(.vertical, ImportBulkActionRowMetrics.vertical)
-                .padding(.horizontal, ImportBulkActionRowMetrics.horizontal)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(fill)
-                .contentShape(Rectangle())
-                .opacity(isEnabled ? 1 : 0.4)
-                .onHover { isHovered = $0 }
+                .modifier(BulkRowSurface(isPressed: configuration.isPressed))
         }
+    }
+}
 
-        private var fill: Color {
-            guard isEnabled else { return .clear }
-            if configuration.isPressed {
-                return Theme.pressed
-            }
-            return isHovered ? Theme.hover : .clear
+/// A bulk row's padding and its hover and press fill, with the row dimmed
+/// while its action is off.
+private struct BulkRowSurface: ViewModifier {
+    let isPressed: Bool
+    @Environment(\.isEnabled)
+    private var isEnabled
+    @State
+    private var isHovered = false
+
+    func body(content: Content) -> some View {
+        content
+            .padding(.vertical, ImportBulkActionRowMetrics.vertical)
+            .padding(.horizontal, ImportBulkActionRowMetrics.horizontal)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(fill)
+            .contentShape(Rectangle())
+            .opacity(isEnabled ? 1 : 0.4)
+            .onHover { isHovered = $0 }
+    }
+
+    private var fill: Color {
+        guard isEnabled else { return .clear }
+        if isPressed {
+            return Theme.pressed
         }
+        return isHovered ? Theme.hover : .clear
     }
 }

@@ -11,7 +11,7 @@ struct MacImportDestination: View {
     var body: some View {
         MacPopUpButton("Import to", selection: $destination) {
             for choice in BridgeImportDestination.choices {
-                MacPopUpOption(choice.title, value: choice)
+                MacPopUpOption(choice.titleResource, value: choice)
             }
         }
         .fixedSize()
@@ -24,7 +24,12 @@ extension BridgeImportDestination {
         [.thisDevice, .cloud]
     }
 
-    fileprivate var title: LocalizedStringResource {
+    /// The choice's name as the pop-up shows it, for the row's spoken name.
+    var title: String {
+        String(localized: titleResource)
+    }
+
+    fileprivate var titleResource: LocalizedStringResource {
         switch self {
         case .thisDevice: "This Mac"
         case .cloud: "Cloud"
