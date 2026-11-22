@@ -171,7 +171,9 @@ async fn a_row_whose_pick_is_being_read_is_identified() {
     let dir = fixture.disc_id_candidate("Album");
     let key = crate::CandidateKey::folder(&dir);
     fixture.route_disc_id_match(&dir, "mb-row", "rg-row", 2);
-    fixture.provider.hold("/release/mb-row?");
+    // The settle drafts the pick from the run's own read; its fetch of the
+    // cover is the read the row waits on.
+    fixture.provider.hold("/release-group/rg-row/front");
     fixture.scan(1).await;
     let list = list_subscription(&fixture, page_window(50)).await;
     let initial = next_page(&fixture, &list).await;
