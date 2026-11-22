@@ -40,19 +40,9 @@ struct FieldChrome: ViewModifier {
                 RoundedRectangle(cornerRadius: cornerRadius)
                     .strokeBorder(ring, lineWidth: ringWidth)
             }
-            .overlay {
-                if let halo {
-                    // Outside the edge, as the boards draw it.
-                    RoundedRectangle(
-                        cornerRadius: cornerRadius + Self.haloWidth / 2
-                    )
-                    .stroke(halo, lineWidth: Self.haloWidth)
-                    .padding(-Self.haloWidth / 2)
-                    .allowsHitTesting(false)
-                    // Drawing only, so it is not part of the field.
-                    .accessibilityHidden(true)
-                }
-            }
+            // A shadow, so the glow takes no part in the field's layout or
+            // accessibility frame.
+            .shadow(color: halo ?? .clear, radius: Self.haloWidth, x: 0, y: 0)
             .onHover { hovering = $0 }
             .onChange(of: hovering && style == .inline) { _, wantsIBeam in
                 // The I-beam covers the inline field's padding too.
