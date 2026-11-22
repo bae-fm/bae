@@ -60,14 +60,18 @@ struct MacS3Form: View {
             },
             fields: {
                 MacSection("Location") {
-                    TextField("Endpoint", text: $fields.endpoint)
-                        .textContentType(.URL)
+                    field("Endpoint", text: $fields.endpoint, under: nil)
                     field("Region", text: $fields.region, under: .region)
                     field("Bucket", text: $fields.bucket, under: .bucket)
                 }
                 MacSection("Key") {
-                    TextField("Access key ID", text: $fields.accessKey)
-                    SecureField("Secret access key", text: $fields.secretKey)
+                    field("Access key ID", text: $fields.accessKey, under: nil)
+                    field(
+                        "Secret access key",
+                        text: $fields.secretKey,
+                        under: nil,
+                        secret: true
+                    )
                 }
             }
         )
@@ -78,23 +82,25 @@ struct MacS3Form: View {
         #endif
     }
 
-    /// A text field whose row also holds the reason a failed setup gives for
-    /// `field`, under the text.
+    /// A boxed field in a row whose label takes a 120-point column, and under
+    /// the field the reason a failed setup gives for `field`, when it names
+    /// this one. `secret` hides what is typed.
     private func field(
         _ title: LocalizedStringKey,
         text: Binding<String>,
-        under field: S3SetupFields.Field
+        under field: S3SetupFields.Field?,
+        secret: Bool = false
     ) -> some View {
-        MacRow(title) {
-            VStack(alignment: .trailing, spacing: ThemeSpace.line) {
-                TextField(title, text: text)
-                    .labelsHidden()
-                    .multilineTextAlignment(.trailing)
-                if let failure = fields.fieldFailure, failure.field == field {
+        MacFieldRow(title, labelWidth: 120) {
+            VStack(alignment: .leading, spacing: ThemeSpace.line) {
+                BoxedField(text: text, secret: secret)
+                    .accessibilityLabel(Text(title))
+                if let field, let failure = fields.fieldFailure,
+                    failure.field == field
+                {
                     Text(failure.error.line)
                         .themeText(.detail)
                         .foregroundStyle(Theme.danger)
-                        .multilineTextAlignment(.trailing)
                 }
             }
         }
