@@ -30,7 +30,7 @@ struct MacFileRow: View {
         // its names on the edge the transfer rows above keep.
         .padding(.horizontal, ThemeSpace.edge)
         .help(help)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("file:\(row.file.id)")
     }
 

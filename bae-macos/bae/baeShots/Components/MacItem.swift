@@ -36,7 +36,7 @@ extension ShotScene {
             } content: {
                 Text("Download failed")
             } trail: {
-                Text("2m ago").themeText(.fine)
+                Text("2m ago")
             }
             .frame(width: 380, alignment: .leading)
         },
@@ -84,7 +84,7 @@ extension ShotScene {
             } content: {
                 Text("Download failed")
             } trail: {
-                Text("2m ago").themeText(.fine)
+                Text("2m ago")
             }
             .frame(width: 380, alignment: .leading)
         },
@@ -99,7 +99,7 @@ extension ShotScene {
         } content: {
             Text("Download failed")
         } trail: {
-            Text("2m ago").themeText(.fine)
+            Text("2m ago")
         }
         .frame(width: 380, alignment: .leading)
     }
