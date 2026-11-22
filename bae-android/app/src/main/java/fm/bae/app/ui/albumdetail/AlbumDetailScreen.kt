@@ -79,6 +79,7 @@ import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeAlbumDetailRequest
 import uniffi.bae_bridge.BridgeCatalog
 import uniffi.bae_bridge.BridgeImageRef
+import uniffi.bae_bridge.BridgeMessage
 import uniffi.bae_bridge.BridgeRatingTarget
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeReleasePlayability
@@ -315,7 +316,7 @@ internal fun AlbumDetailContent(
     val unplayable = playability is BridgeReleasePlayability.OnOtherDevice
     var showWhere by remember { mutableStateOf(false) }
     if (showWhere && playability is BridgeReleasePlayability.OnOtherDevice) {
-        UnplayableSheet(playability) { showWhere = false }
+        UnplayableSheet(playability, onDismiss = { showWhere = false })
     }
 
     var showGallery by remember { mutableStateOf(false) }
@@ -439,18 +440,18 @@ internal fun AndroidAlbumHeader(
     }
 }
 
-/** The sheet that names the device holding a release this device can't play, as core words [playability]. */
+/** The sheet that names the device holding a release this device can't play. */
 @Composable
-private fun UnplayableSheet(
+internal fun UnplayableSheet(
     playability: BridgeReleasePlayability.OnOtherDevice,
     onDismiss: () -> Unit,
+    deviceLine: (BridgeReleasePlayability.OnOtherDevice) -> BridgeMessage? = ::bridgeReleasePlayabilityLine,
+    present: @Composable (String, String, () -> Unit) -> Unit = { title, note, dismiss ->
+        AndroidSheet(title = title, note = note, onDismiss = dismiss) {}
+    },
 ) {
-    val line = checkNotNull(bridgeReleasePlayabilityLine(playability)) { "core words every release on another device" }
-    AndroidSheet(
-        title = stringResource(R.string.release_not_on_this_device),
-        note = LocalContext.current.coreString(line),
-        onDismiss = onDismiss,
-    ) {}
+    val line = checkNotNull(deviceLine(playability)) { "core words every release on another device" }
+    present(stringResource(R.string.release_not_on_this_device), LocalContext.current.coreString(line), onDismiss)
 }
 
 /** The words for a release only another device holds, where Play would stand, and the button that says where it is. */

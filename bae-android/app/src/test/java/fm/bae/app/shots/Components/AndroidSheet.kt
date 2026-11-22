@@ -20,7 +20,7 @@ class AndroidSheetShots : BoardShot() {
         component("android.component.sheet.note") {
             SheetOverScrim(
                 "Not on this device",
-                ON_ANOTHER_DEVICE_NOTE,
+                "On Ana’s Mac",
                 top = 60.dp,
             ) { Slot() }
         }

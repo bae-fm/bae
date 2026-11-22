@@ -9,6 +9,7 @@ android.album.delete.failed
 android.album.gallery
 android.album.gallery.loading
 android.album.menu
+android.album.on-another-device-sheet
 android.album.page
 android.album.page.on-another-device
 android.album.page.pin-failed

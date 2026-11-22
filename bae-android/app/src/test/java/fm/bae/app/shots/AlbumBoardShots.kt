@@ -1,5 +1,6 @@
 package fm.bae.app.shots
 
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.res.stringResource
@@ -10,7 +11,9 @@ import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.albumdetail.AlbumDetailCallbacks
 import fm.bae.app.ui.albumdetail.AlbumDetailContent
+import fm.bae.app.ui.albumdetail.AlbumOptionsMenu
 import fm.bae.app.ui.albumdetail.AlbumPlaybackState
+import fm.bae.app.ui.albumdetail.UnplayableSheet
 import fm.bae.app.ui.library.AndroidDetailScreen
 import org.junit.Test
 import uniffi.bae_bridge.BridgeAlbumDetail
@@ -19,8 +22,11 @@ import uniffi.bae_bridge.BridgeCatalog
 import uniffi.bae_bridge.BridgeCreditRole
 import uniffi.bae_bridge.BridgeCreditRow
 import uniffi.bae_bridge.BridgeDurationClock
+import uniffi.bae_bridge.BridgeDurationUnits
 import uniffi.bae_bridge.BridgeFile
 import uniffi.bae_bridge.BridgeFileKind
+import uniffi.bae_bridge.BridgeMessage
+import uniffi.bae_bridge.BridgeMessageArg
 import uniffi.bae_bridge.BridgeOtherDevice
 import uniffi.bae_bridge.BridgeRater
 import uniffi.bae_bridge.BridgeReleasePlayability
@@ -94,16 +100,23 @@ class AlbumBoardShots : BoardShot() {
         }
 
     @Test
-    fun androidAlbumPageOnAnotherDevice() = shot("android.album.page.on-another-device") { AlbumPage(onAnotherDevice, bar = northbound) }
+    fun androidAlbumPageOnAnotherDevice() =
+        shot("android.album.page.on-another-device") {
+            ScreenScene { UnavailableAlbumPage() }
+        }
 
     @Test
     fun androidAlbumOnAnotherDeviceSheet() =
         shot("android.album.on-another-device-sheet") {
-            SheetScene(
-                title = stringResource(R.string.release_not_on_this_device),
-                behind = { AlbumPageContent(onAnotherDevice, northbound) { it.name } },
-                note = ON_ANOTHER_DEVICE_NOTE,
-            ) {}
+            UnplayableSheet(
+                playability = unavailablePlayability,
+                onDismiss = {},
+                deviceLine = {
+                    BridgeMessage("core.release.on_device", listOf(BridgeMessageArg("device", unavailableDevice.name)))
+                },
+            ) { title, note, _ ->
+                SheetScene(title = title, behind = { UnavailableAlbumPage() }, note = note) {}
+            }
         }
 }
 
@@ -132,11 +145,12 @@ internal fun boardAlbum(rating: BridgeAlbumRating = BridgeAlbumRating(mine = nul
     return PreviewData.albumDetail(album, listOf(release)).copy(rating = rating)
 }
 
-internal const val ON_ANOTHER_DEVICE_NOTE = "On Ana’s Mac"
+private val unavailableDevice = BridgeOtherDevice.Active("Ana’s Mac")
+private val unavailablePlayability = BridgeReleasePlayability.OnOtherDevice(unavailableDevice)
 
 /** The album the boards draw as held by Ana's Mac only: ten tracks, none of which this device can play. */
 private val onAnotherDevice: BridgeAlbumDetail =
-    boardAlbum().let { detail ->
+    harborDetail.let { detail ->
         val tracks =
             listOf(
                 "Harbor Lights" to 272,
@@ -159,7 +173,8 @@ private val onAnotherDevice: BridgeAlbumDetail =
             detail.releases[0].copy(
                 trackGroups = listOf(PreviewData.trackGroup(tracks)),
                 tracks = tracks,
-                playability = BridgeReleasePlayability.OnOtherDevice(BridgeOtherDevice.Active("Ana’s Mac")),
+                playability = unavailablePlayability,
+                totalDuration = BridgeDurationUnits.MinutesOnly(52UL),
             )
         detail.copy(releases = listOf(release), shownRelease = release)
     }
@@ -167,6 +182,13 @@ private val onAnotherDevice: BridgeAlbumDetail =
 /** The track playing in the bar behind the album page, 1:28 into 4:51. */
 private val northbound =
     PlayerStaging(elapsedSeconds = 88, held = listOf(BridgeTrackSpan(0.0, 0.3)), title = "Northbound", durationSeconds = 291)
+
+@Composable
+private fun UnavailableAlbumPage() {
+    AlbumPageContent(onAnotherDevice, northbound, catalogName = { it.name }) {
+        AlbumOptionsMenu(onSetPrimaryRelease = null, onDelete = {})
+    }
+}
 
 /** The album page as the boards draw it: its detail screen, with [bar]'s track playing in its bar. */
 @Composable
@@ -183,9 +205,15 @@ private fun AlbumPageContent(
     detail: BridgeAlbumDetail,
     bar: PlayerStaging,
     catalogName: (BridgeCatalog) -> String,
+    actions: @Composable RowScope.() -> Unit = {},
 ) {
     CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
-        AndroidDetailScreen(onBack = {}, backLabel = "Library", nowPlayingBar = { Bar(bar) }) {
+        AndroidDetailScreen(
+            onBack = {},
+            backLabel = stringResource(R.string.back_to_library),
+            nowPlayingBar = { Bar(bar) },
+            actions = actions,
+        ) {
             AlbumDetailContent(
                 detail = detail,
                 cover = null,
