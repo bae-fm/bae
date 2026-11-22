@@ -2204,6 +2204,9 @@ where nothing read the files, no album picker while a Found folder's draft is
 blank, no records line without records, no images, no table without tracks
 and no Files list without files.
 
+In the Mac editor, each medium, label, barcode and Discogs detail has a Remove
+button.
+
 **The audio line.** The release's audio line lists the codec, sample rate,
 bit depth (the bitrate for a lossy codec) and channels, in the order a track's audio format
 lists them (§2.2), as in `FLAC · 44.1 kHz · 16-bit · Stereo`. The line gives no
