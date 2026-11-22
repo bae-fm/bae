@@ -202,14 +202,14 @@
     return h('div', { className: 'bae-m-grid', style: { gridTemplateColumns: 'repeat(' + n + ', minmax(0, 1fr))' } }, props.children);
   }
 
-  // `unplayable`: only another device holds the album's files, so its cover and words show dimmed; the tile still opens the album.
+  // `unplayable`: only another device holds the album's files, so its cover and words show dimmed; the tile still opens the album. With no `artist`, the tile has no credit line, as under an artist's group when that artist is the album's only credit.
   function MacAlbumTile(props) {
     return h('div', { className: cx('bae-m-tile', props.selected && 'bae-m-tile-selected', props.unplayable && 'bae-tile-unplayable') },
       h('div', { className: 'bae-m-tile-art' },
         h(Artwork, { title: props.title, missing: props.noCover, radius: 'radius-cover', shadow: 'tile', ring: props.open, dimmed: props.unplayable }),
         props.hover ? h('span', { className: 'bae-m-tile-menu' }, h(MacMoreMenu, { overlay: true, label: 'Album options' })) : null),
       h('div', { className: 'bae-m-tile-title' }, props.title),
-      h('div', { className: 'bae-m-tile-artist' }, props.artist),
+      props.artist ? h('div', { className: 'bae-m-tile-artist' }, props.artist) : null,
       h('div', { className: 'bae-m-tile-year' }, props.year || ' '));
   }
 

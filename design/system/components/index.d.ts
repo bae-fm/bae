@@ -235,7 +235,7 @@ export interface MacLibraryHeadingProps { view?: 'Albums' | 'Artists' | 'Compose
 export declare function MacLibraryHeading(props: MacLibraryHeadingProps): React.ReactElement;
 export interface MacAlbumGridProps { columns?: number; children?: React.ReactNode }
 export declare function MacAlbumGrid(props: MacAlbumGridProps): React.ReactElement;
-export interface MacAlbumTileProps { /** Only another device holds the album's files: its cover and words show dimmed, and the tile still opens it. */ unplayable?: boolean; title: string; artist?: string; year?: string; noCover?: boolean; hover?: boolean; open?: boolean; selected?: boolean }
+export interface MacAlbumTileProps { /** Only another device holds the album's files: its cover and words show dimmed, and the tile still opens it. */ unplayable?: boolean; title: string; /** The credit line; with none, the tile draws no credit line. */ artist?: string; year?: string; noCover?: boolean; hover?: boolean; open?: boolean; selected?: boolean }
 export declare function MacAlbumTile(props: MacAlbumTileProps): React.ReactElement;
 export interface MacTrackRowProps { position?: string; title: string; artist?: string; duration?: string; current?: boolean; playing?: boolean; hover?: boolean; /** Among the tracks picked together. */ picked?: boolean; /** The stars you gave the track, 1 to 5; the row keeps their slot after it, empty without them. */ rating?: number | string; /** The library's system for tracks: `heart` puts a heart in the slot at three stars or more, `none` draws no slot. */ ratingSystem?: 'stars' | 'heart' | 'none'; }
 export declare function MacTrackRow(props: MacTrackRowProps): React.ReactElement;

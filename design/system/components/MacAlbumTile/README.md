@@ -1,6 +1,6 @@
 # MacAlbumTile
 
-Cover, title, artists, year (the year line holds its height when empty). `hover` shows the options button on the cover; `open` rings the cover while its detail is open below the row; `selected` for a multiple selection.
+Cover, title, artists, year (the year line holds its height when empty). With no `artist`, the tile draws no artists line, and the year sits under the title: under an artist's group, a tile whose only credit is that artist has no artists line. `hover` shows the options button on the cover; `open` rings the cover while its detail is open below the row; `selected` for a multiple selection.
 
 The options button is a `MacMoreMenu` with `overlay`, labelled Album options.
 
