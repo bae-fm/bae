@@ -30,6 +30,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidDivider
 import fm.bae.app.ui.components.AndroidSheet
+import fm.bae.app.ui.components.AndroidSheetHeading
 import fm.bae.app.ui.components.Stars
 import uniffi.bae_bridge.BridgeAlbumRating
 import uniffi.bae_bridge.BridgeStars
@@ -44,7 +45,7 @@ internal fun AlbumRatingSheet(
     onRate: (BridgeStars?) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AndroidSheet(onDismiss = onDismiss, title = stringResource(R.string.rate)) {
+    AndroidSheet(onDismiss = onDismiss, heading = AndroidSheetHeading(title = stringResource(R.string.rate))) {
         AlbumRatingChoices(rating, onRate = {
             onRate(it)
             onDismiss()
