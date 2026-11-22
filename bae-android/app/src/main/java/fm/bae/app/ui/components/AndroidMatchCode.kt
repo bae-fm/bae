@@ -10,17 +10,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.ui.appearance.ThemeText
 
-private val screenDigits =
-    TextStyle(fontSize = 40.sp, lineHeight = 48.sp, fontWeight = FontWeight.Medium, letterSpacing = 3.sp)
-private val dialogDigits =
-    TextStyle(fontSize = 32.sp, lineHeight = 40.sp, fontWeight = FontWeight.Medium, letterSpacing = 2.sp)
+private val screenDigits = ThemeText.androidFigure.style.copy(letterSpacing = 3.sp)
+private val dialogDigits = ThemeText.androidFigure.style.copy(letterSpacing = 2.sp)
 private val WAITING_SPINNER = 16.dp
 
 /**

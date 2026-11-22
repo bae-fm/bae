@@ -24,11 +24,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeOpacity
@@ -40,8 +37,7 @@ private val CELL_HEIGHT = 56.dp
 private val CELL_CORNER = RoundedCornerShape(4.dp)
 private val EDGE = 1.dp
 private val RING = 2.dp
-private val cellDigit =
-    TextStyle(fontSize = 24.sp, lineHeight = 32.sp, fontWeight = FontWeight.Normal, fontFeatureSettings = "tnum")
+private val cellDigit = ThemeText.androidFigure.style.copy(fontFeatureSettings = "tnum")
 
 /**
  * A PIN the person reads off a receiver's screen and types on the number pad: one outlined box per digit, each

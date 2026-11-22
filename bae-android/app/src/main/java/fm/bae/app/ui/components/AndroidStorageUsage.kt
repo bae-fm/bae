@@ -100,7 +100,7 @@ internal fun AndroidStorageUsage(
         Row(horizontalArrangement = Arrangement.spacedBy(ThemeSpace.inline)) {
             Text(
                 text = total,
-                style = MaterialTheme.typography.headlineLarge,
+                style = ThemeText.androidFigure.style,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.alignByBaseline(),
             )
