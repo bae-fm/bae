@@ -34,6 +34,12 @@ impl CandidateEditField {
 pub enum PressingFactEdit {
     Area(Option<bae_types::pressing::ReleaseArea>),
     Media(Vec<bae_types::pressing::MediaCount>),
+    /// How many of one carrier the pressing holds: a count of zero removes
+    /// the carrier, and a carrier the pressing lacks is added at the end.
+    MediumCount {
+        medium: bae_types::pressing::Medium,
+        count: u32,
+    },
     Status(Option<bae_types::pressing::ReleaseStatus>),
     Packaging(Option<bae_types::pressing::Packaging>),
     DiscogsDetails(Vec<bae_types::pressing::DiscogsDetail>),
@@ -85,6 +91,18 @@ impl PressingFactEdit {
                         .map(|counted| (counted.medium, counted.count)),
                 )
             }
+            Self::MediumCount { medium, count } => {
+                match facts.media.iter().position(|counted| counted.medium == medium) {
+                    Some(at) if count == 0 => {
+                        facts.media.remove(at);
+                    }
+                    Some(at) => facts.media[at].count = count,
+                    None if count > 0 => {
+                        facts.media.push(bae_types::pressing::MediaCount { medium, count })
+                    }
+                    None => {}
+                }
+            }
             Self::Status(status) => facts.status = status,
             Self::Packaging(packaging) => facts.packaging = packaging,
             Self::DiscogsDetails(details) => {
@@ -99,3 +117,7 @@ impl PressingFactEdit {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "candidate_edit_field_tests.rs"]
+mod tests;

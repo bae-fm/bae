@@ -515,11 +515,27 @@ mirror_enum! {
 /// the vocabulary's values. Mirrors `bae_import::PressingFactEdit`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgePressingFactEdit {
-    Area { area: Option<BridgeReleaseArea> },
-    Media { media: Vec<BridgeMediaCount> },
-    Status { status: Option<BridgeReleaseStatus> },
-    Packaging { packaging: Option<BridgePackaging> },
-    DiscogsDetails { discogs_details: Vec<BridgeDiscogsDetail> },
+    Area {
+        area: Option<BridgeReleaseArea>,
+    },
+    Media {
+        media: Vec<BridgeMediaCount>,
+    },
+    /// How many of one carrier the pressing holds: zero removes it, and a
+    /// carrier the pressing lacks is added.
+    MediumCount {
+        medium: BridgeMedium,
+        count: u32,
+    },
+    Status {
+        status: Option<BridgeReleaseStatus>,
+    },
+    Packaging {
+        packaging: Option<BridgePackaging>,
+    },
+    DiscogsDetails {
+        discogs_details: Vec<BridgeDiscogsDetail>,
+    },
 }
 
 #[cfg(desktop)]
@@ -531,6 +547,9 @@ impl BridgePressingFactEdit {
             Self::Media { media } => PressingFactEdit::Media(
                 media.into_iter().map(BridgeMediaCount::into_core).collect(),
             ),
+            Self::MediumCount { medium, count } => {
+                PressingFactEdit::MediumCount { medium: medium.into_core(), count }
+            }
             Self::Status { status } => {
                 PressingFactEdit::Status(status.map(BridgeReleaseStatus::into_core))
             }
