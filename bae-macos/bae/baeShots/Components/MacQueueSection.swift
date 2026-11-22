@@ -12,13 +12,17 @@ extension ShotScene {
             shuffled: true
         ),
         playingFrom("mac.component.queue-section.without-clear", clear: false),
+        playingFrom(
+            "mac.component.queue-section.without-shuffle",
+            shuffled: nil
+        ),
         playingFrom("mac.component.queue-section.hang"),
         playingFrom("mac.component.queue-section.wide"),
     ]
 
     private static func playingFrom(
         _ id: String,
-        shuffled: Bool = false,
+        shuffled: Bool? = false,
         clear: Bool = true
     ) -> ShotScene {
         component(id, height: 60) {
@@ -31,7 +35,9 @@ extension ShotScene {
                                 label: "Clear playing from",
                                 action: {}
                             ) : nil,
-                        shuffle: MacQueueSection.Shuffle(on: shuffled) { _ in }
+                        shuffle: shuffled.map {
+                            MacQueueSection.Shuffle(on: $0) { _ in }
+                        }
                     )
                 )
             )
