@@ -146,8 +146,8 @@ fn write_kotlin(out: &mut String, theme: &Theme) -> std::fmt::Result {
         writeln!(out, "    val {role} = {value}.dp")?;
     }
     out.push_str("}\n\n/** Glyph sizes. */\nobject ThemeIcon {\n");
-    for (role, icon) in &theme.icon {
-        writeln!(out, "    val {role} = {}.dp", icon.sizes.android)?;
+    for (role, size) in theme.icon.iter().filter_map(|(role, icon)| Some((role, icon.android?))) {
+        writeln!(out, "    val {role} = {size}.dp")?;
     }
     out.push_str("}\n\n/** Sizes that recur across screens. */\nobject ThemeSize {\n");
     for (role, lengths) in &theme.size {

@@ -28,10 +28,11 @@ const BODY: &str = r#"[
   { "family": "android", "styles": [{ "name": "android-body", "role": "body", "fontSize": "14px", "fontWeight": 400, "lineHeight": "20px" }] }
 ]"#;
 
-/// The icon and size families of a tokens.json with one icon role, `small`,
-/// and one size role, `hitTarget`.
+/// The icon and size families of a tokens.json with an icon role on both
+/// platforms, `small`, one on Android alone, `androidTransport`, and one size
+/// role, `hitTarget`.
 const LENGTHS: &str = r#""icon": { "tokens": [{ "name": "icon-small", "role": "small", "value": "11px", "ios": "13px", "weight": "semibold" }] },
-  "icon-android": { "tokens": [{ "name": "icon-android-small", "role": "small", "value": "16px" }] },
+  "icon-android": { "tokens": [{ "name": "icon-android-small", "role": "small", "value": "16px" }, { "name": "icon-android-transport", "role": "androidTransport", "value": "36px" }] },
   "size": { "tokens": [{ "name": "size-hit-target", "role": "hitTarget", "value": "28px", "ios": "44px" }, { "name": "size-control", "value": "24px" }] },
   "size-android": { "tokens": [{ "name": "size-android-hit-target", "role": "hitTarget", "value": "44px" }] }"#;
 
@@ -381,25 +382,23 @@ fn theme_with_lengths(lengths: &str) -> Result<Theme, Vec<String>> {
 fn an_icon_and_a_size_take_apples_and_androids_lengths_from_their_tokens() {
     let theme = theme_with_lengths(LENGTHS).unwrap();
     let small = &theme.icon["small"];
-    assert_eq!(small.weight, Weight::Semibold);
-    assert_eq!((small.sizes.macos, small.sizes.ios, small.sizes.android), (11.0, 13.0, 16.0));
+    let apple = small.apple.as_ref().unwrap();
+    assert_eq!((apple.macos, apple.ios, apple.weight), (11.0, 13.0, Weight::Semibold));
+    assert_eq!(small.android, Some(16.0));
+    let transport = &theme.icon["androidTransport"];
+    assert!(transport.apple.is_none());
+    assert_eq!(transport.android, Some(36.0));
     let hit = &theme.size["hitTarget"];
     assert_eq!((hit.macos, hit.ios, hit.android), (28.0, 44.0, 44.0));
     assert_eq!(theme.size.len(), 1, "a token with no role is no app role");
 }
 
 #[test]
-fn a_role_needs_a_token_on_each_platform_and_an_icon_its_weight() {
-    let no_android = LENGTHS
-        .replace(r#"{ "name": "icon-android-small", "role": "small", "value": "16px" }"#, "");
-    assert_eq!(
-        theme_with_lengths(&no_android).unwrap_err(),
-        ["icon role `small` has no Android token in tokens.json"]
-    );
+fn a_size_needs_a_token_on_each_platform_and_an_apple_icon_its_weight() {
     let no_weight = LENGTHS.replace(r#", "weight": "semibold""#, "");
     assert_eq!(
         theme_with_lengths(&no_weight).unwrap_err(),
-        ["icon role `small` names no weight in tokens.json"]
+        ["tokens.json `icon-small` names no weight"]
     );
     let no_ios = LENGTHS.replace(r#", "ios": "44px""#, "");
     assert_eq!(
@@ -426,8 +425,14 @@ fn both_platforms_carry_every_space_icon_and_size() {
         assert!(kotlin.contains(&format!("    val {role} = {value}.dp\n")));
     }
     for (role, icon) in &theme.icon {
-        assert!(swift.contains(&format!("    public static let {role} = ThemeIcon(\n")));
-        assert!(kotlin.contains(&format!("    val {role} = {}.dp\n", icon.sizes.android)));
+        assert_eq!(
+            swift.contains(&format!("    public static let {role} = ThemeIcon(\n")),
+            icon.apple.is_some()
+        );
+        match icon.android {
+            Some(size) => assert!(kotlin.contains(&format!("    val {role} = {size}.dp\n"))),
+            None => assert!(!kotlin.contains(&format!("    val {role} = "))),
+        }
     }
     for (role, lengths) in &theme.size {
         assert!(swift.contains(&format!("    public static let {role}: CGFloat = .platform(\n")));

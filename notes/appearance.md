@@ -76,8 +76,10 @@ platform sets by its own convention. A role is a token in tokens.json's `icon`
 or `size` family, whose value is the macOS length, whose `ios` is iOS's and,
 for a glyph, whose `weight` is the one SF Symbols draw it at, and a token in
 `icon-android` or `size-android` with Android's length, each naming the role in
-its `role`. A token with no `role`, such as `size-control`, is a measure only
-the design system draws.
+its `role`. A glyph role one platform draws alone has only that platform's
+token, such as Android's full player transport glyphs (`androidTransport`,
+`androidTransportPlay`). A token with no `role`, such as `size-control`, is a
+measure only the design system draws.
 
 The shared components are defined once per platform: `StatusTone` (neutral,
 accent, info, success, warning, danger, activity), a `StatusChip` for short

@@ -132,13 +132,15 @@ fn write_swift(out: &mut String, theme: &Theme) -> std::fmt::Result {
          public var font: Font {\n        .system(size: size, weight: weight)\n    }\n}\n\n\
          extension ThemeIcon {\n",
     );
-    for (role, icon) in &theme.icon {
+    for (role, icon) in
+        theme.icon.iter().filter_map(|(role, icon)| Some((role, icon.apple.as_ref()?)))
+    {
         writeln!(
             out,
             "    public static let {role} = ThemeIcon(\n        size: .platform(macOS: {}, iOS: {}),\n        \
              weight: {}\n    )",
-            icon.sizes.macos,
-            icon.sizes.ios,
+            icon.macos,
+            icon.ios,
             icon.weight.swift()
         )?;
     }

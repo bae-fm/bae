@@ -122,11 +122,23 @@ pub struct PlatformLengths {
     pub android: f64,
 }
 
-/// A glyph size, and on Apple the weight SF Symbols draw it at.
+/// A glyph size on each platform that draws the role. Apple's code takes
+/// macOS and iOS together; a platform whose code reads a role it lacks fails
+/// to compile.
 #[derive(Debug)]
 pub struct IconRole {
+    pub apple: Option<AppleIcon>,
+    /// dp.
+    pub android: Option<f64>,
+}
+
+/// What macOS and iOS draw a glyph at, in points, and the weight SF Symbols
+/// draw it at.
+#[derive(Debug)]
+pub struct AppleIcon {
+    pub macos: f64,
+    pub ios: f64,
     pub weight: Weight,
-    pub sizes: PlatformLengths,
 }
 
 /// A text role: weight, tracking and monospacing shared by every
