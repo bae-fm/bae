@@ -60,7 +60,12 @@ style of tokens.json per platform that draws it, each naming the role in its
 sp, and a style in another family gives the macOS size in points, with `ios`
 naming the Dynamic Type style iOS follows so text follows the person's text
 size. A role's styles share their weight and letter spacing, and a style in the
-`mono` family draws in the platform's monospaced face. Apple views set a role with `.themeText(_:)`. A section label is one
+`mono` family draws in the platform's monospaced face. The design system's
+component CSS draws each text style from the same tokens, through the
+`--type-<style>-size`, `--type-<style>-weight` and
+`--type-<style>-line-height` variables tokens.css gives, and
+`scripts/check-design-type.py` refuses a literal size, weight or line height
+there. Apple views set a role with `.themeText(_:)`. A section label is one
 `MacEyebrow` on the Mac and one `AndroidEyebrow` on Android.
 
 Spacing is one shared scale named by meaning: hairline, line, inline, compact,
