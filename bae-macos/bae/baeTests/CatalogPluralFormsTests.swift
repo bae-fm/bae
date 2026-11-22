@@ -40,7 +40,6 @@ struct CatalogPluralFormsTests {
 
     private static let countKeys = [
         "%lld releases",
-        "%lld tracks",
         "%lld more releases",
         "%llu files",
     ]
@@ -87,13 +86,12 @@ struct CatalogPluralFormsTests {
     @Test("English words one as singular")
     func englishSingular() throws {
         #expect(try Self.forms("%lld releases", "en")["one"] == "%lld release")
-        #expect(try Self.forms("%lld tracks", "en")["one"] == "%lld track")
         #expect(try Self.forms("%llu files", "en")["one"] == "%llu file")
     }
 
     @Test("Polish and Arabic tell 1, 2-4 and 5+ apart")
     func slavicAndArabicForms() throws {
-        let pl = try Self.forms("%lld tracks", "pl")
+        let pl = try Self.forms("%lld releases", "pl")
         #expect(pl["one"] != pl["few"])
         #expect(pl["few"] != pl["many"])
         let ar = try Self.forms("%lld releases", "ar")

@@ -27,8 +27,11 @@ public enum PressingText {
     }
 
     /// A country's name in the current locale, from its ISO 3166-1 code.
-    public static func countryName(_ code: String) -> String {
-        Locale.current.localizedString(forRegionCode: code) ?? code
+    public static func countryName(
+        _ code: String,
+        locale: Locale = .current
+    ) -> String {
+        locale.localizedString(forRegionCode: code) ?? code
     }
 
     /// The short form of a country's name that the locale's language commonly
@@ -40,8 +43,7 @@ public enum PressingText {
     ) -> String {
         let language = locale.language.languageCode?.identifier
         let short = language.flatMap { shortCountryNames[$0]?[code] }
-        return short
-            ?? locale.localizedString(forRegionCode: code) ?? code
+        return short ?? countryName(code, locale: locale)
     }
 
     /// The short forms of the countries that record labels print most, by

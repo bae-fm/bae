@@ -36,6 +36,7 @@ struct Stars: View {
     private func number(_ rating: BridgeStars) -> some View {
         HStack(spacing: ThemeSpace.line) {
             Text(verbatim: rating.number.formatted())
+                .themeText(.body)
                 .foregroundStyle(Theme.textSecondary)
             star(filled: true)
         }
