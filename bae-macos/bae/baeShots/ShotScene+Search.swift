@@ -1,3 +1,4 @@
+import AppKit
 import BaeKit
 import Combine
 import SwiftUI
@@ -11,13 +12,15 @@ extension ShotScene {
     static let searchScenes: [ShotScene] = [
         ShotScene(
             id: "mac.search.results",
-            size: CGSize(width: 1200, height: 760)
+            size: CGSize(width: 1200, height: 760),
+            keyWindow: true
         ) {
             searchWindow(query: "low tide", results: lowTideResults)
         },
         ShotScene(
             id: "mac.search.results.none",
-            size: CGSize(width: 1200, height: 760)
+            size: CGSize(width: 1200, height: 760),
+            keyWindow: true
         ) {
             searchWindow(query: "zzz", results: noResults)
         },
@@ -145,10 +148,10 @@ extension ShotScene {
             isReady: { (backing.session.albums.list?.positionCount ?? 0) > 0 },
             // The title bar focuses the field when it hears a request, which
             // it can hear only once it is in the window, so the request goes
-            // out at each read of the tree.
-            isDrawn: { _ in
+            // out at each read of the tree, until the field has the keyboard.
+            isDrawn: { host in
                 focus.requests.send()
-                return true
+                return focus.fieldHasKeyboard(in: host)
             }
         )
     }
@@ -159,4 +162,24 @@ extension ShotScene {
 @MainActor
 private final class SearchFocus {
     let requests = PassthroughSubject<Void, Never>()
+
+    /// Whether a field of `host` is first responder in its window. When none
+    /// is, the first editable field, the search field, is made first
+    /// responder: SwiftUI does not move AppKit's focus in a window of an app
+    /// that is not active, and takes the focus from AppKit once it moves.
+    func fieldHasKeyboard(in host: NSView) -> Bool {
+        guard let window = host.window else { return false }
+        let fields = Self.textFields(in: host).filter(\.isEditable)
+        if !(window.firstResponder is NSText), let field = fields.first {
+            window.makeFirstResponder(field)
+        }
+        return window.firstResponder is NSText
+    }
+
+    private static func textFields(in view: NSView) -> [NSTextField] {
+        view.subviews.flatMap { subview in
+            (subview as? NSTextField).map { [$0] } ?? []
+                + textFields(in: subview)
+        }
+    }
 }

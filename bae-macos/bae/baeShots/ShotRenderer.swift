@@ -162,12 +162,7 @@ enum ShotRenderer {
                 rootView: rootView.environment(\.controlActiveState, .key)
             )
             host.frame = bounds
-            let window = ShotWindow(
-                contentRect: NSRect(origin: offscreenOrigin, size: size),
-                styleMask: [.borderless],
-                backing: .buffered,
-                defer: false
-            )
+            let window = contentWindow(for: scene, size: size)
             // Ordering a window in plays its zoom-in on a thread of its own,
             // paced by the display it is on; past every display there is
             // none, and the animation would never end.
@@ -218,6 +213,33 @@ enum ShotRenderer {
             }
             return (window, frame)
         }
+    }
+
+    /// The borderless window that holds a scene's view alone, past the edge
+    /// of every display: a panel that does not activate the app when the
+    /// scene needs its window key.
+    private static func contentWindow(
+        for scene: ShotScene,
+        size: CGSize
+    ) -> NSWindow {
+        let contentRect = NSRect(origin: offscreenOrigin, size: size)
+        guard scene.keyWindow else {
+            return ShotWindow(
+                contentRect: contentRect,
+                styleMask: [.borderless],
+                backing: .buffered,
+                defer: false
+            )
+        }
+        let panel = ShotPanel(
+            contentRect: contentRect,
+            styleMask: [.borderless, .nonactivatingPanel],
+            backing: .buffered,
+            defer: false
+        )
+        // A panel hides when its app is not active, which this app never is.
+        panel.hidesOnDeactivate = false
+        return panel
     }
 
     /// The empty window of a scene shown in its window: a panel that does
@@ -423,8 +445,8 @@ private final class ShotWindow: NSWindow {
     ) -> NSRect { frameRect }
 }
 
-/// The window of a scene shown in its window. A panel that does not
-/// activate the app is key, and draws its title bar and toolbar as active,
+/// The window of a scene shown in its window, or of a scene that needs its
+/// view in a key window. A panel that does not activate the app is key, and draws its title bar and toolbar as active,
 /// while another app holds the focus: a window of an app that is not active
 /// is never key.
 private final class ShotPanel: NSPanel {
