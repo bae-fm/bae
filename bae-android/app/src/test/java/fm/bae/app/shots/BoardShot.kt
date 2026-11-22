@@ -3,6 +3,7 @@ package fm.bae.app.shots
 import android.app.Application
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onRoot
@@ -10,6 +11,7 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
 import fm.bae.app.BaeRobolectricTestRunner
+import fm.bae.app.ui.LocalNowMs
 import org.json.JSONObject
 import org.junit.Assume.assumeNotNull
 import org.junit.Assume.assumeTrue
@@ -108,7 +110,7 @@ internal fun isSelected(
  */
 internal fun ComposeContentTestRule.settle(content: @Composable () -> Unit) {
     mainClock.autoAdvance = false
-    setContent(content)
+    setContent { CompositionLocalProvider(LocalNowMs provides ShotClock::nowMs, content = content) }
     mainClock.advanceTimeBy(SETTLE_MILLIS)
 }
 

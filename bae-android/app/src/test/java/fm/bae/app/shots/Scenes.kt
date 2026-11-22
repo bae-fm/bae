@@ -61,7 +61,6 @@ import uniffi.bae_bridge.BridgeSyncShown
 import uniffi.bae_bridge.BridgeSyncStatusWord
 import uniffi.bae_bridge.BridgeSyncTone
 import java.time.Duration
-import java.time.Instant
 
 // What the shots share: the surfaces a screen, a sheet and a dialog are drawn on, and the data
 // they are staged with.
@@ -300,7 +299,7 @@ internal fun syncShown(
     tone = tone,
     cause = cause,
     fix = fix,
-    lastSynced = lastSyncedAgo?.let { Instant.now().minus(it) },
+    lastSynced = lastSyncedAgo?.let { ShotClock.before(it) },
 )
 
 internal val sceneDropbox =

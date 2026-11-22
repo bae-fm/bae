@@ -18,6 +18,7 @@ import androidx.compose.ui.semantics.semantics
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.playback.NowPlaying
+import fm.bae.app.ui.LocalNowMs
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidCheckbox
@@ -38,7 +39,7 @@ fun AndroidSidePause(
     onTurnOffPauseBetweenSides: () -> Unit,
     onPlay: () -> Unit,
     onClose: () -> Unit,
-    nowMs: () -> Long = System::currentTimeMillis,
+    nowMs: () -> Long = LocalNowMs.current,
 ) {
     val context = LocalContext.current
     var dismissedPromptId by remember { mutableStateOf<String?>(null) }

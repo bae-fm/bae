@@ -52,7 +52,6 @@ import uniffi.bae_bridge.BridgeOpenStep
 import uniffi.bae_bridge.BridgeStandingState
 import uniffi.bae_bridge.BridgeSyncStatusWord
 import uniffi.bae_bridge.BridgeSyncTone
-import java.time.Instant
 
 /** The shots of the ready android.welcome.* boards. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -381,7 +380,7 @@ private fun LibraryDetailsScene(state: BridgeStandingState) {
     SheetScene("Home music", behind = { WelcomeLibrariesScene() }) {
         LibraryDetailsRows(
             storage = sceneDropbox,
-            standing = StandingRead.Loaded(BridgeLibraryStanding(state, Instant.now().minusSeconds(TWO_HOURS_SECONDS))),
+            standing = StandingRead.Loaded(BridgeLibraryStanding(state, ShotClock.before(twoHoursAgo))),
         )
     }
 }

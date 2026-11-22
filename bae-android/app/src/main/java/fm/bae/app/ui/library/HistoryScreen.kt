@@ -37,6 +37,7 @@ import fm.bae.app.R
 import fm.bae.app.creditLineText
 import fm.bae.app.data.HistoryOf
 import fm.bae.app.data.HistoryPageStore
+import fm.bae.app.ui.LocalNowMs
 import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
@@ -49,6 +50,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import uniffi.bae_bridge.BridgeHistoryPlay
 import uniffi.bae_bridge.BridgeHistoryShown
 import uniffi.bae_bridge.BridgeListCountExtra
+import java.time.Instant
 import java.time.LocalDate
 import java.util.TimeZone
 
@@ -66,8 +68,9 @@ internal fun HistoryScreen(
     val page = rememberHistoryPage(session, HistoryOf(person))
     var menuOpen by remember { mutableStateOf(false) }
     // Read once here, so every row agrees on today and on the zone the times show in.
-    val today = remember { LocalDate.now() }
+    val nowMs = LocalNowMs.current
     val zone = remember { TimeZone.getDefault() }
+    val today = remember { LocalDate.ofInstant(Instant.ofEpochMilli(nowMs()), zone.toZoneId()) }
     AndroidScreen(
         title = stringResource(R.string.history),
         onBack = onBack,

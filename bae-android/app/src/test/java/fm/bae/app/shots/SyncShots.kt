@@ -20,7 +20,6 @@ import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeSyncCause
 import uniffi.bae_bridge.BridgeSyncStatusWord
 import uniffi.bae_bridge.BridgeSyncTone
-import java.time.Instant
 
 /** The shots of the android.settings.sync.* boards. */
 class SyncShots : BoardShot() {
@@ -62,7 +61,7 @@ class SyncShots : BoardShot() {
 
 /**
  * Dropbox asked bae to wait 42 more seconds: the cause core gives for coven's cooling-down wait on a Dropbox library.
- * Each shot reads the moment from now, so the wait has 42 seconds left whenever the shot draws.
+ * The wait ends 42 seconds after the shots' clock, so every shot draws 42 seconds left.
  */
 private fun dropboxAskedToWait() =
     BridgeSyncCause.Message(
@@ -70,7 +69,7 @@ private fun dropboxAskedToWait() =
         countdown =
             BridgeCountdown(
                 key = "core.sync.cause.provider_wait.countdown",
-                until = Instant.now().plusSeconds(WAIT_SECONDS_LEFT),
+                until = ShotClock.moment(WAIT_SECONDS_LEFT),
             ),
     )
 

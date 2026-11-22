@@ -36,6 +36,7 @@ import fm.bae.app.coreString
 import fm.bae.app.data.SyncLine
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.DeviceResetDialog
+import fm.bae.app.ui.LocalNowMs
 import fm.bae.app.ui.SessionActions
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
@@ -374,7 +375,7 @@ private fun SyncDialogs(
 internal fun AndroidSyncStatus(
     line: SyncLine,
     onFix: (BridgeSyncFix) -> Unit,
-    nowMs: () -> Long = System::currentTimeMillis,
+    nowMs: () -> Long = LocalNowMs.current,
 ) {
     val context = LocalContext.current
     when (line) {
@@ -423,17 +424,24 @@ internal fun AndroidSyncStatus(
                         }
                     }
                 }
-                shown.lastSynced?.let { moment ->
-                    Text(
-                        text = stringResource(R.string.sync_last_synced, syncLastSyncedText(moment)),
-                        style = ThemeText.body.style,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.joinsTileAbove().padding(LAST_SYNCED_PADDING),
-                    )
-                }
+                shown.lastSynced?.let { moment -> SyncLastSyncedLine(moment, nowMs) }
             }
         }
     }
+}
+
+/** When sync last finished, in words against [nowMs]. */
+@Composable
+private fun SyncLastSyncedLine(
+    moment: Instant,
+    nowMs: () -> Long,
+) {
+    Text(
+        text = stringResource(R.string.sync_last_synced, syncLastSyncedText(moment, Instant.ofEpochMilli(nowMs()))),
+        style = ThemeText.body.style,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.joinsTileAbove().padding(LAST_SYNCED_PADDING),
+    )
 }
 
 /** The line under a cause that counts down to core's moment, redrawn each whole second and read out as it changes. */

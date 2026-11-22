@@ -10,6 +10,7 @@ import fm.bae.app.LocalBugReports
 import fm.bae.app.R
 import fm.bae.app.data.LibraryWithoutStorage
 import fm.bae.app.title
+import fm.bae.app.ui.LocalNowMs
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidRow
@@ -59,6 +60,7 @@ internal fun LibraryDetailsRows(
     standing: StandingRead,
 ) {
     val context = LocalContext.current
+    val nowMs = LocalNowMs.current
     when (standing) {
         StandingRead.Loading -> {
             AndroidSpinner(modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.group))
@@ -90,7 +92,7 @@ internal fun LibraryDetailsRows(
             loaded.lastSynced?.let { moment ->
                 AndroidRow(
                     title = stringResource(R.string.library_last_synced),
-                    subtitle = syncLastSyncedText(moment).toString(),
+                    subtitle = syncLastSyncedText(moment, Instant.ofEpochMilli(nowMs())).toString(),
                 )
             }
         }

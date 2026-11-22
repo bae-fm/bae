@@ -53,7 +53,7 @@ internal fun syncCauseText(
 /** When sync last finished, as "2 hours ago". */
 internal fun syncLastSyncedText(
     moment: java.time.Instant,
-    now: java.time.Instant = java.time.Instant.now(),
+    now: java.time.Instant,
 ): CharSequence {
     val then = moment.toEpochMilli()
     return DateUtils.getRelativeTimeSpanString(then, now.toEpochMilli(), DateUtils.MINUTE_IN_MILLIS)
