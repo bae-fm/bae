@@ -36,7 +36,11 @@ struct NowPlayingVolumeTests {
     @Test("a receiver without volume gets the line in place of the controls")
     func lineInPlaceOfMute() {
         #expect(
-            bar(receiverWithoutVolume: "Den", settings: settings).volumeControls
+            NowPlayingBarFixture.make(
+                settings: settings,
+                receiverWithoutVolume: "Den"
+            )
+            .volumeControls
                 == .setOnReceiver("Den")
         )
     }
@@ -44,11 +48,11 @@ struct NowPlayingVolumeTests {
     @Test("other playback keeps the mute button and the slider")
     func muteAndSliderKept() {
         #expect(
-            bar(receiverWithoutVolume: nil, settings: settings).volumeControls
+            NowPlayingBarFixture.make(settings: settings).volumeControls
                 == .controls(settings)
         )
         #expect(
-            bar(receiverWithoutVolume: nil, settings: nil).volumeControls
+            NowPlayingBarFixture.make(settings: nil).volumeControls
                 == .waitingForCore
         )
     }
@@ -59,17 +63,27 @@ struct NowPlayingVolumeTests {
         repeatMode: .off
     )
 
-    private func bar(
-        receiverWithoutVolume: String?,
-        settings: PlaybackSettings?
+}
+
+/// A playing track in the real bar, with local fixture streams and no commands
+/// that can start playback or reach a receiver.
+@MainActor
+enum NowPlayingBarFixture {
+    static func make(
+        settings: PlaybackSettings?,
+        receiverWithoutVolume: String? = nil,
+        castControl: AnyView = AnyView(EmptyView())
     ) -> MacNowPlayingBar {
         MacNowPlayingBar(
             trackTitle: "Track Title",
             secondaryLine: "Artist Name",
             cover: nil,
             isPlaying: true,
-            position: nil,
-            buffered: nil,
+            position: PreviewData.trackPosition(
+                positionMs: 102_000,
+                durationMs: 303_000
+            ),
+            buffered: LatestStream.trackBuffered().source(for: "preview-track"),
             waitsOnStorage: false,
             showRemainingTime: false,
             settings: settings,
@@ -90,7 +104,7 @@ struct NowPlayingVolumeTests {
             onDropToQueue: { _ in },
             onNavigateToAlbum: {},
             queueAddPublisher: Empty().eraseToAnyPublisher(),
-            castControl: AnyView(EmptyView())
+            castControl: castControl
         )
     }
 }

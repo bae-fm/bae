@@ -77,6 +77,7 @@ struct MacNowPlayingBar: View {
         .overlay(alignment: .top) {
             MacHairline()
         }
+        .accessibilityElement(children: .contain)
     }
 
     // MARK: - Left: track info
