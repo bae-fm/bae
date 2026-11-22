@@ -117,7 +117,7 @@ internal fun AndroidRow(
         value?.let {
             Text(text = it, style = ThemeText.body.style, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        switch?.let { AndroidSwitch(checked = it.checked, enabled = enabled) }
+        switch?.let { AndroidSwitch(checked = it.checked) }
         trailing?.invoke(this)
         icon?.let {
             Icon(
@@ -129,12 +129,6 @@ internal fun AndroidRow(
         }
     }
 }
-
-/** The tap action that the switch shares with its setting row. */
-internal fun Modifier.rowSwitch(
-    switch: RowSwitch,
-    enabled: Boolean,
-): Modifier = toggleable(value = switch.checked, enabled = enabled, role = Role.Switch, onValueChange = switch.onChange)
 
 /** The title, regular (an action's is medium), with its [tag] as a chip after it. */
 @Composable
@@ -199,7 +193,12 @@ private fun Modifier.cardRowSurface(
             },
         ).then(
             if (switch != null) {
-                Modifier.rowSwitch(switch, enabled)
+                Modifier.toggleable(
+                    value = switch.checked,
+                    enabled = enabled,
+                    role = Role.Switch,
+                    onValueChange = switch.onChange,
+                )
             } else {
                 Modifier
             },
