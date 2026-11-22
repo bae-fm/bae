@@ -76,16 +76,20 @@ extension PreviewData {
     static func previewArtData(_ name: String) -> Data {
         let side: CGFloat = 600
         let hue = name.utf16.reduce(0) { ($0 * 31 + Int($1)) % 360 }
-        let gradient = NSGradient(
-            starting: hsl(hue, saturation: 0.42, lightness: 0.52),
-            ending: hsl(hue + 48, saturation: 0.46, lightness: 0.24)
-        )
+        guard
+            let gradient = NSGradient(
+                starting: hsl(hue, saturation: 0.42, lightness: 0.52),
+                ending: hsl(hue + 48, saturation: 0.46, lightness: 0.24)
+            )
+        else {
+            preconditionFailure("a cover gradient has two colours")
+        }
         let image = NSImage(
             size: NSSize(width: side, height: side),
             flipped: false
         ) { rect in
             // From the top left corner to the bottom right one.
-            gradient?.draw(in: rect, angle: -45)
+            gradient.draw(in: rect, angle: -45)
             return true
         }
         guard
