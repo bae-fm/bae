@@ -293,22 +293,18 @@ extension PreviewData {
         name: "Field Recordings CD1.flac"
     )
 
-    /// One entry of a sheet: its title, the seconds its slice of the audio
-    /// runs, and the seconds the release lists for it.
+    /// One entry of a sheet: its title and the seconds its slice of the
+    /// audio runs. The release lists no tracks, so no entry has a listed
+    /// length.
     struct CueEntry {
         let title: String
         let seconds: UInt64
-        let listedSeconds: UInt64
     }
 
     static let fieldRecordingsEntries = [
-        CueEntry(title: "Slow Morning", seconds: 622, listedSeconds: 622),
-        CueEntry(
-            title: "Weather Report Card",
-            seconds: 276,
-            listedSeconds: 284
-        ),
-        CueEntry(title: "Night Ferry", seconds: 276, listedSeconds: 276),
+        CueEntry(title: "Slow Morning", seconds: 622),
+        CueEntry(title: "Weather Report Card", seconds: 276),
+        CueEntry(title: "Night Ferry", seconds: 276),
     ]
 
     /// A CUE sheet of Field Recordings' folder, on disc `number`, asking for
@@ -375,9 +371,7 @@ extension PreviewData {
                         )
                     ),
                     position: "\(index + 1)",
-                    lengthMs: entry.seconds * 1_000,
-                    listedMs: entry.seconds == entry.listedSeconds
-                        ? nil : entry.listedSeconds * 1_000
+                    lengthMs: entry.seconds * 1_000
                 )
             }
     }
