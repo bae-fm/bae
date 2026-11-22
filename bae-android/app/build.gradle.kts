@@ -162,7 +162,7 @@ android {
     }
 
     sourceSets {
-        getByName("test").resources.srcDir(rootDir.parentFile.resolve("design/system/assets/Board artwork"))
+        getByName("test").resources.srcDir(rootDir.parentFile.resolve("design/system/assets/Artwork"))
         // The theme build-android.sh generates from design/theme.toml.
         getByName("main") {
             java.srcDir("generated/theme/kotlin")

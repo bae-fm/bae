@@ -76,7 +76,7 @@ extension PreviewData {
         guard
             let pictures = bundle.urls(
                 forResourcesWithExtension: "png",
-                subdirectory: "Board artwork"
+                subdirectory: "Artwork"
             ),
             !pictures.isEmpty
         else { preconditionFailure("The test bundle has no board artwork") }
