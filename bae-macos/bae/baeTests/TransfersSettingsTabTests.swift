@@ -60,16 +60,15 @@ struct TransfersSettingsTabTests {
         try await SnapshotTestSupport.withHostedWindow(
             tab(recorder: recorder),
             size: Self.size
-        ) { _, host in
+        ) { window, host in
             try await SnapshotTestSupport.settle(host)
 
             // Uploads first, downloads second, in the order the tab lists them.
-            let switches = SnapshotTestSupport.descendants(of: host)
-                .compactMap { $0 as? NSSwitch }
+            let switches = try HostedSwitches.all(in: window)
             try #require(switches.count == 2)
-            switches[0].performClick(nil)
+            try HostedSwitches.press(switches[0], in: window)
             try await Wait.until { !recorder.uploadPauses.isEmpty }
-            switches[1].performClick(nil)
+            try HostedSwitches.press(switches[1], in: window)
             try await Wait.until { !recorder.downloadPauses.isEmpty }
 
             #expect(recorder.uploadPauses == [true])

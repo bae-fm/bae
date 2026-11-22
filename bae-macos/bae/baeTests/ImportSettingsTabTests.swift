@@ -21,7 +21,7 @@ struct ImportSettingsTabTests {
         try await SnapshotTestSupport.withHostedWindow(
             tab(recorder: recorder),
             size: Self.size
-        ) { _, host in
+        ) { window, host in
             try await SnapshotTestSupport.settle(host)
 
             // The two settings, plus the sources core reports — which are
@@ -29,7 +29,8 @@ struct ImportSettingsTabTests {
             let config = PreviewData.configStore().config
             #expect(config.lookupCatalogs.count == 2)
             #expect(
-                switches(in: host).count == 2 + config.lookupCatalogs.count
+                try switches(in: window).count
+                    == 2 + config.lookupCatalogs.count
             )
         }
     }
@@ -40,16 +41,16 @@ struct ImportSettingsTabTests {
         try await SnapshotTestSupport.withHostedWindow(
             tab(recorder: recorder),
             size: Self.size
-        ) { _, host in
+        ) { window, host in
             try await SnapshotTestSupport.settle(host)
 
             // Every switch starts on but importing when identified, so clicking
             // each one writes the other value for the setting it names and
-            // says nothing about any other. Discogs holds a key here, so it
-            // asks before writing: its own test.
-            let discogs = discogsSwitch(in: host)
-            for control in switches(in: host) where control !== discogs {
-                HostedInput.press(control)
+            // says nothing about any other. Discogs, the switch above the
+            // last, holds a key here, so it asks before writing: its own test.
+            let all = try switches(in: window)
+            for control in all.dropLast(2) + all.suffix(1) {
+                try HostedSwitches.press(control, in: window)
                 try await SnapshotTestSupport.settle(host)
             }
 
@@ -78,14 +79,14 @@ struct ImportSettingsTabTests {
                 )
             ),
             size: Self.size
-        ) { _, host in
+        ) { window, host in
             try await SnapshotTestSupport.settle(host)
 
             // Importing when identified is the pane's last switch, in the box
             // under the one holding identification and the sources.
-            let importSwitch = try #require(switches(in: host).last)
-            #expect(importSwitch.isEnabled)
-            HostedInput.press(importSwitch)
+            let importSwitch = try #require(try switches(in: window).last)
+            #expect(importSwitch.enabled)
+            try HostedSwitches.press(importSwitch, in: window)
             try await SnapshotTestSupport.settle(host)
 
             #expect(recorder.importWhenIdentifiedWrites == [true])
@@ -106,11 +107,11 @@ struct ImportSettingsTabTests {
                 )
             ),
             size: Self.size
-        ) { _, host in
+        ) { window, host in
             try await SnapshotTestSupport.settle(host)
 
             #expect(keyField(in: host)?.isEnabled == true)
-            #expect(discogsSwitch(in: host)?.isEnabled == true)
+            #expect(try discogsSwitch(in: window).enabled)
         }
     }
 
@@ -126,11 +127,11 @@ struct ImportSettingsTabTests {
                 )
             ),
             size: Self.size
-        ) { _, host in
+        ) { window, host in
             try await SnapshotTestSupport.settle(host)
 
             #expect(keyField(in: host)?.isEnabled == false)
-            #expect(discogsSwitch(in: host)?.isEnabled == true)
+            #expect(try discogsSwitch(in: window).enabled)
         }
     }
 
@@ -146,9 +147,12 @@ struct ImportSettingsTabTests {
                 )
             ),
             size: Self.size
-        ) { _, host in
+        ) { window, host in
             try await SnapshotTestSupport.settle(host)
-            HostedInput.press(try #require(discogsSwitch(in: host)))
+            try HostedSwitches.press(
+                try discogsSwitch(in: window),
+                in: window
+            )
             try await SnapshotTestSupport.settle(host)
 
             #expect(recorder.sourceWrites.map(\.source) == [.discogs])
@@ -164,9 +168,12 @@ struct ImportSettingsTabTests {
         try await SnapshotTestSupport.withHostedWindow(
             tab(recorder: recorder),
             size: Self.size
-        ) { _, host in
+        ) { window, host in
             try await SnapshotTestSupport.settle(host)
-            HostedInput.press(try #require(discogsSwitch(in: host)))
+            try HostedSwitches.press(
+                try discogsSwitch(in: window),
+                in: window
+            )
             try await SnapshotTestSupport.settle(host)
 
             #expect(recorder.sourceWrites.isEmpty)
@@ -178,11 +185,11 @@ struct ImportSettingsTabTests {
         try await SnapshotTestSupport.withHostedWindow(
             tab(recorder: ImportSettingRecorder()),
             size: Self.size
-        ) { _, host in
+        ) { window, host in
             try await SnapshotTestSupport.settle(host)
 
             #expect(keyField(in: host) == nil)
-            #expect(discogsSwitch(in: host)?.isEnabled == true)
+            #expect(try discogsSwitch(in: window).enabled)
         }
     }
 
@@ -264,15 +271,19 @@ struct ImportSettingsTabTests {
             .environment(UiStore())
     }
 
-    private func switches(in host: NSView) -> [NSSwitch] {
-        SnapshotTestSupport.descendants(of: host).compactMap { $0 as? NSSwitch }
+    private func switches(
+        in window: NSWindow
+    ) throws -> [AccessibilityTree.Node] {
+        try HostedSwitches.all(in: window)
     }
 
     /// Core lists the sources in its own order and Discogs is the last of
     /// them, so the switch just above the one importing when identified is the
     /// one the key unlocks.
-    private func discogsSwitch(in host: NSView) -> NSSwitch? {
-        switches(in: host).dropLast().last
+    private func discogsSwitch(
+        in window: NSWindow
+    ) throws -> AccessibilityTree.Node {
+        try #require(try switches(in: window).dropLast().last)
     }
 
     private func keyField(in host: NSView) -> NSTextField? {
