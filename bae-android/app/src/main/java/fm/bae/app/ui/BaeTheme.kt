@@ -41,13 +41,12 @@ private val LocalToneSurfaces = staticCompositionLocalOf<ToneSurfaces> { error("
 private val LocalIsDark = staticCompositionLocalOf<Boolean> { error("BaeTheme provides the appearance") }
 
 /**
- * The text styles Material's own components draw with, set to the design's: a button's or chip's label, a dialog's
- * title and message, a snackbar's message and a field's text. Material's other styles stay as they are.
+ * The text styles Material's own components draw with, set to the design's: a button's or chip's label, a snackbar's
+ * message and a field's text. Material's other styles stay as they are.
  */
 private val baeTypography =
     Typography(
         labelLarge = ThemeText.androidLabel.style,
-        headlineSmall = ThemeText.androidDialogTitle.style,
         bodyMedium = ThemeText.body.style,
         bodyLarge = ThemeText.androidBodyLarge.style,
     )
