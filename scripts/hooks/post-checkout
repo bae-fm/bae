@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # post-checkout: fires after `git checkout` and `git worktree add`.
 # On new-worktree creation, run per-worktree setup: build output links, the
-# CLAUDE.md and .claude/rules symlinks, the git merge drivers, xcconfigs, Android
+# project instruction symlinks, the git merge drivers, xcconfigs, Android
 # local.properties and the macOS app's resolved SwiftPM versions. It builds nothing: a side worktree
 # builds host Rust only, and app builds stay warm in the app checkouts (one per
 # lane) and main
@@ -29,29 +29,10 @@ cd "$worktree_root"
 # worktree of the repo, so this is idempotent.
 ./scripts/hooks/setup-merge-drivers.sh
 
-# Project CLAUDE.md (gitignored). Convention: agent-instructions repo
-# at ~/dev/agent-instructions/projects/bae.md.
-ln -sf "$HOME/dev/agent-instructions/projects/bae.md" CLAUDE.md
-
-# Project rules (.claude/ is gitignored): Claude Code reads path-scoped rules
-# from .claude/rules/, and agent-instructions' install.sh links them into the
-# checkouts that exist when it runs. Link every rule into a new worktree too,
-# and drop links to rules since removed from projects/bae-rules. The rules sit
-# in one folder per review group; the hook links each rule without its folder.
-# A build host that runs no agents (another Mac that runs cargo builds for this
-# one) has no agent-instructions checkout, and its worktrees get no rules.
-rules_src="$HOME/dev/agent-instructions/projects/bae-rules"
-if [ -d "$rules_src" ]; then
-    mkdir -p .claude/rules
-    for link in .claude/rules/*.md; do
-        if [ -L "$link" ] && [ ! -e "$link" ]; then
-            case "$(readlink "$link")" in "$rules_src"/*) rm "$link" ;; esac
-        fi
-    done
-    find "$rules_src" -name '*.md' -type f | while IFS= read -r rule; do
-        ln -sf "$rule" ".claude/rules/$(basename "$rule")"
-    done
-fi
+# Both instruction files point to the project's gitignored local instructions.
+project_instructions="$HOME/dev/agent-instructions/projects/bae.md"
+ln -sf "$project_instructions" AGENTS.md
+ln -sf "$project_instructions" CLAUDE.md
 
 main_checkout="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
 
