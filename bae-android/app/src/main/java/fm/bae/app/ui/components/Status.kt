@@ -244,28 +244,25 @@ internal fun AndroidItem(
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
-        lead?.let { FirstLine(alignment = Alignment.TopCenter, content = it) }
+        lead?.let { FirstLine(content = it) }
         Column(modifier = Modifier.weight(1f), content = content)
         trail?.let { FirstLine(content = it) }
     }
 }
 
 /**
- * A box one body line tall, its [content] placed in it by [alignment]; the content may overhang the box. The
- * lead of an [AndroidItem] sits in one at the top of the first line of its text, the trail centred on it.
+ * A box one body line tall, its [content] centred in it; the content may overhang the box. The lead and
+ * trail of an [AndroidItem] sit in one, on the first line of its text.
  */
 @Composable
-internal fun FirstLine(
-    alignment: Alignment = Alignment.Center,
-    content: @Composable BoxScope.() -> Unit,
-) {
+internal fun FirstLine(content: @Composable BoxScope.() -> Unit) {
     val measurer = rememberTextMeasurer()
     val style = ThemeText.body.style
     val lineHeight =
         with(LocalDensity.current) {
             remember(measurer, style) { measurer.measure("A", style).size.height }.toDp()
         }
-    Box(Modifier.height(lineHeight), contentAlignment = alignment) {
+    Box(Modifier.height(lineHeight), contentAlignment = Alignment.Center) {
         Box(Modifier.wrapContentHeight(unbounded = true), content = content)
     }
 }
