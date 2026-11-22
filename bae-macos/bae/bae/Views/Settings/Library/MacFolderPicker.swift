@@ -58,7 +58,7 @@
     /// The folder list Dropbox and OneDrive setup share: the line over it,
     /// where the person is when folders open into others, the folders to
     /// choose from, the name field for a new one, and the folder setup found
-    /// holding other files. Its sections go in a form; New folder… and Look
+    /// holding other files. New folder… and Look
     /// again are the sheet's, in its footer.
     struct MacFolderPicker: View {
         let browser: StorageFolderBrowser
@@ -67,7 +67,7 @@
             @Bindable
             var browser = browser
             let words = browser.provider.words
-            MacSection {
+            VStack(alignment: .leading, spacing: ThemeSpace.compact) {
                 Text(words.heading)
                     .themeText(.body)
                     .foregroundStyle(Theme.macTextSecondary)
@@ -92,40 +92,40 @@
                         }
                     }
                 }
-            }
-            MacSection {
-                if let listing = browser.listing {
-                    ForEach(listing.folders, id: \.location) { folder in
-                        row(folder)
+                MacBox {
+                    if let listing = browser.listing {
+                        ForEach(listing.folders, id: \.location) { folder in
+                            row(folder)
+                        }
+                        if listing.folders.isEmpty, !browser.isNaming {
+                            Text(words.empty)
+                                .foregroundStyle(Theme.macTextSecondary)
+                                .frame(maxWidth: .infinity)
+                        }
                     }
-                }
-                if browser.isNaming {
-                    HStack {
-                        TextField("Folder name", text: $browser.newFolderName)
+                    if browser.isNaming {
+                        HStack {
+                            TextField(
+                                "Folder name",
+                                text: $browser.newFolderName
+                            )
                             .labelsHidden()
                             .textFieldStyle(.plain)
                             .onSubmit { browser.createFolder() }
                             .onExitCommand { browser.stopNaming() }
-                        MacButton("Create") { browser.createFolder() }
-                            .disabled(!browser.canCreateFolder)
+                            MacButton("Create") { browser.createFolder() }
+                                .disabled(!browser.canCreateFolder)
+                        }
                     }
                 }
-            }
-            .empty(
-                browser.listing?.folders.isEmpty == true && !browser.isNaming
-                    ? words.empty : nil
-            )
-            if browser.takenName != nil {
-                MacSection {
+                if browser.takenName != nil {
                     MacNotice(
                         title: String(localized: words.nameTaken),
                         advice: nil,
                         error: nil
                     )
                 }
-            }
-            if browser.notEmpty != nil {
-                MacSection {
+                if browser.notEmpty != nil {
                     MacNotice(
                         title: String(
                             localized:

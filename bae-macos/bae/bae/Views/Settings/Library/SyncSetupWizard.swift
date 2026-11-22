@@ -414,11 +414,7 @@ struct SetupStep<Fields: View, Leading: View>: View {
                         .padding(.horizontal, ThemeSpace.section)
                         .padding(.top, ThemeSpace.section)
                 }
-                Form {
-                    fields
-                }
-                .formStyle(.grouped)
-                .fitsItsContent()
+                fields
             }
             MacSheetFooter(
                 lead: { if !run.isRunning { leading } },
@@ -536,11 +532,11 @@ struct SetupStep<Fields: View, Leading: View>: View {
 private let sheetHang: CGFloat = 36
 
 extension View {
-    /// Draws a grouped form at the height of its rows, so the sheet around
+    /// Draws a scrollable view at the height of its rows, so the sheet around
     /// it is as tall as its step needs and its buttons sit right under the
     /// rows they act on. When the rows are taller than the room the sheet
     /// has, the form scrolls and the buttons stay under it.
-    fileprivate func fitsItsContent() -> some View {
+    func fitsItsContent() -> some View {
         ViewThatFits(in: .vertical) {
             scrollDisabled(true).fixedSize(horizontal: false, vertical: true)
             self

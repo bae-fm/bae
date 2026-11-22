@@ -107,20 +107,21 @@
                     }
                 },
                 fields: {
-                    MacFolderPicker(browser: browser)
-                    if let work = browser.working {
-                        MacSection {
-                            FolderBrowserWorkLine(
-                                work: work,
-                                provider: browser.provider
-                            )
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: ThemeSpace.group) {
+                            MacFolderPicker(browser: browser)
+                            if let work = browser.working {
+                                FolderBrowserWorkLine(
+                                    work: work,
+                                    provider: browser.provider
+                                )
+                            }
+                            if let error = browser.error {
+                                MacNotice(error: error)
+                            }
                         }
                     }
-                    if let error = browser.error {
-                        MacSection {
-                            MacNotice(error: error)
-                        }
-                    }
+                    .fitsItsContent()
                 }
             )
         }

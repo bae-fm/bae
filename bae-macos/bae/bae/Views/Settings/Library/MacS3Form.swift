@@ -59,20 +59,28 @@ struct MacS3Form: View {
                     }
             },
             fields: {
-                MacSection("Location") {
-                    field("Endpoint", text: $fields.endpoint, under: nil)
-                    field("Region", text: $fields.region, under: .region)
-                    field("Bucket", text: $fields.bucket, under: .bucket)
+                Form {
+                    MacSection("Location") {
+                        field("Endpoint", text: $fields.endpoint, under: nil)
+                        field("Region", text: $fields.region, under: .region)
+                        field("Bucket", text: $fields.bucket, under: .bucket)
+                    }
+                    MacSection("Key") {
+                        field(
+                            "Access key ID",
+                            text: $fields.accessKey,
+                            under: nil
+                        )
+                        field(
+                            "Secret access key",
+                            text: $fields.secretKey,
+                            under: nil,
+                            secret: true
+                        )
+                    }
                 }
-                MacSection("Key") {
-                    field("Access key ID", text: $fields.accessKey, under: nil)
-                    field(
-                        "Secret access key",
-                        text: $fields.secretKey,
-                        under: nil,
-                        secret: true
-                    )
-                }
+                .formStyle(.grouped)
+                .fitsItsContent()
             }
         )
         #if DEBUG
