@@ -8,7 +8,9 @@ import uniffi.bae_bridge.BridgeFactTerm
 import uniffi.bae_bridge.BridgeLabelLine
 import uniffi.bae_bridge.BridgeMediaCount
 import uniffi.bae_bridge.BridgeMedium
+import uniffi.bae_bridge.BridgeOtherDevice
 import uniffi.bae_bridge.BridgeRelease
+import uniffi.bae_bridge.BridgeReleasePlayability
 import uniffi.bae_bridge.BridgeTermLabel
 
 /** The component shots of `AndroidAlbumHeader`, one for each row of its preview. */
@@ -33,6 +35,26 @@ class AndroidAlbumHeaderShots : BoardShot() {
             Images {
                 AndroidAlbumHeader(
                     detail = harborDetail.copy(shownRelease = harborRelease.copy(distinctYear = 2001)),
+                    cover = PreviewData.imageRef(),
+                    galleryItemCount = 0u,
+                    onShowGallery = {},
+                    onShowWhere = {},
+                )
+            }
+        }
+
+    @Test
+    fun androidComponentAlbumHeaderNotOnThisDevice() =
+        component("android.component.album-header.not-on-this-device") {
+            Images {
+                AndroidAlbumHeader(
+                    detail =
+                        harborDetail.copy(
+                            shownRelease =
+                                harborRelease.copy(
+                                    playability = BridgeReleasePlayability.OnOtherDevice(BridgeOtherDevice.Active("Ana’s Mac")),
+                                ),
+                        ),
                     cover = PreviewData.imageRef(),
                     galleryItemCount = 0u,
                     onShowGallery = {},

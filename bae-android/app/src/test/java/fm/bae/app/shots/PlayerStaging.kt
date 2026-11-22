@@ -19,7 +19,7 @@ import uniffi.bae_bridge.BridgeTrackPosition
 import uniffi.bae_bridge.BridgeTrackSpan
 
 private const val TRACK_ID = "shot-track"
-private const val DURATION_MS = 303_000L
+private const val DEFAULT_DURATION_SECONDS = 303L
 private const val MILLIS_PER_SECOND = 1_000L
 private const val SECONDS_PER_MINUTE = 60L
 
@@ -27,7 +27,7 @@ private const val SECONDS_PER_MINUTE = 60L
  * A playing track as a player draws it: the seconds its clock says, which parts of it are here, whether its
  * load waits on storage. The line sits at the clock's share of the track, as the design system's seek bar
  * draws it from its elapsed time and its duration. With [removedFromLibrary], the library no longer holds the track, and with [noCover] it has no cover. The
- * track is called [title].
+ * track is called [title] and lasts [durationSeconds].
  */
 internal class PlayerStaging(
     elapsedSeconds: Long,
@@ -36,12 +36,15 @@ internal class PlayerStaging(
     removedFromLibrary: Boolean = false,
     noCover: Boolean = false,
     title: String = "Low Tide Hours",
+    durationSeconds: Long = DEFAULT_DURATION_SECONDS,
 ) {
+    private val durationMs = durationSeconds * MILLIS_PER_SECOND
+
     private val position =
         BridgeTrackPosition(
             positionMs = elapsedSeconds * MILLIS_PER_SECOND,
-            durationMs = DURATION_MS.toULong(),
-            progress = (elapsedSeconds * MILLIS_PER_SECOND).toDouble() / DURATION_MS,
+            durationMs = durationMs.toULong(),
+            progress = (elapsedSeconds * MILLIS_PER_SECOND).toDouble() / durationMs,
             seeks = 0uL,
         )
     val positions = LatestStream.trackPositions(mapOf(TRACK_ID to position)).source(TRACK_ID)
@@ -81,7 +84,7 @@ internal class PlayerStaging(
                 SeekBarState(
                     progress = shown?.progress ?: 0.0,
                     leading = clockText(clock(shown?.positionMs ?: 0L), locale),
-                    trailing = clockText(clock(DURATION_MS), locale),
+                    trailing = clockText(clock(durationMs), locale),
                     seekable = true,
                 )
             },
