@@ -252,20 +252,6 @@ extension PreviewData {
         ),
     ]
 
-    static func musicBrainzCoverChoice(_ image: BridgeRemoteImageSet)
-        -> BridgeCoverChoice
-    {
-        BridgeCoverChoice(
-            selection: .remoteCover(
-                selection: BridgeRemoteCoverSelection(
-                    image: image,
-                    source: .musicBrainz
-                )
-            ),
-            image: .remote(image: image)
-        )
-    }
-
     private static func remoteCover(
         url: String,
         downscaledUrl: String,
@@ -278,7 +264,10 @@ extension PreviewData {
             ]
         )
         return BridgeRemoteCover(
-            coverChoice: musicBrainzCoverChoice(image),
+            coverChoice: BoardArtwork.catalogCoverChoice(
+                image,
+                source: .musicBrainz
+            ),
             sourceName: "Cover Art Archive",
             label: label
         )

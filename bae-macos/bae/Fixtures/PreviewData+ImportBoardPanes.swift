@@ -426,7 +426,7 @@ extension PreviewData {
             url: try BoardArtwork.fileURL(named: "Field Recordings").path,
             downscaled: []
         )
-        return musicBrainzCoverChoice(cover)
+        return BoardArtwork.catalogCoverChoice(cover, source: .musicBrainz)
     }
 
     /// Field Recordings: two CD sheets, the first bound to its audio and
