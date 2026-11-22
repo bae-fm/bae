@@ -20,12 +20,11 @@ extension PreviewData {
         )
     }
 
-    /// Northbound as identified: the release's draft over four files, or,
-    /// with `importStep`, that draft while its import runs at the step.
+    /// Northbound's draft over four files, with the same import state as its row.
     @MainActor
     static func northboundDraftCandidate(
         images: NorthboundImages,
-        importStep: BridgeImportStep? = nil
+        live: BridgeCandidateLiveState
     ) -> ImportPaneFixture {
         paneFixture(
             folder: northboundFolder(images: images),
@@ -44,9 +43,8 @@ extension PreviewData {
                 folderCheck: nil,
                 records: boardRecords("board-northbound")
             ),
-            live: importStep == nil
-                ? triageLive(boardDraftActions) : northboundImportingLive,
-            importStatus: importStep.map { .importing(step: $0) },
+            live: live,
+            importStatus: live.import.map { .importing(step: $0) },
             albumArtists: boardLibraryArtists(northboundArtist)
         )
     }

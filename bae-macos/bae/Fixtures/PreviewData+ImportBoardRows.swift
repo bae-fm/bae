@@ -72,6 +72,14 @@ extension PreviewData {
     enum NorthboundStanding {
         case importing
         case identified
+
+        var live: BridgeCandidateLiveState {
+            switch self {
+            case .importing: PreviewData.northboundImportingLive
+            case .identified:
+                PreviewData.triageLive(PreviewData.boardDraftActions)
+            }
+        }
     }
 
     static let fieldRecordingsGroupKey = BridgeFolderReleaseDecisionKey(
@@ -81,12 +89,12 @@ extension PreviewData {
 
     /// The Found tab's rows as the boards list them.
     static func foundItems(
-        northbound: NorthboundStanding,
+        northboundLive: BridgeCandidateLiveState,
         images: FoundBoardImages
     ) -> [BridgeImportListItem] {
         groupItems(cover: images.fieldRecordings.image)
             + lookupItems(images: images.lookup)
-            + importItems(northbound: northbound, images: images)
+            + importItems(northboundLive: northboundLive, images: images)
     }
 
     /// Field Recordings' two discs, listed under their folder's header.
@@ -199,23 +207,17 @@ extension PreviewData {
         )
     }
 
-    /// The rows importing, queued to import or failed, and Northbound as
-    /// `northbound` has it.
+    /// Northbound and the other rows whose imports are queued or failed.
     static func importItems(
-        northbound: NorthboundStanding,
+        northboundLive: BridgeCandidateLiveState,
         images: FoundBoardImages
     ) -> [BridgeImportListItem] {
-        let live =
-            switch northbound {
-            case .importing: northboundImportingLive
-            case .identified: triageLive(boardDraftActions)
-            }
         let northboundRow = boardRow(
             .northbound,
             summary: northboundSummary,
             record: "board-northbound",
             cover: .local(file: images.northbound.file),
-            live: live
+            live: northboundLive
         )
         return [
             candidateItem(northboundRow),

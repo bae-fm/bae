@@ -68,7 +68,8 @@ extension PreviewData {
         in store: ImportStore
     ) throws -> ([BridgeImportListItem], ImportSelection) {
         let images = try FoundBoardImages()
-        let items = foundItems(northbound: northbound, images: images)
+        let northboundLive = northbound.live
+        let items = foundItems(northboundLive: northboundLive, images: images)
         guard let pane else {
             return (items, ImportSelection())
         }
@@ -76,14 +77,9 @@ extension PreviewData {
         switch pane {
         case .northbound:
             let gallery = try northboundImages(cover: images.northbound)
-            let step: BridgeImportStep? =
-                switch northbound {
-                case .identified: nil
-                case .importing: .running(phase: .measuringLoudness)
-                }
             fixture = northboundDraftCandidate(
                 images: gallery,
-                importStep: step
+                live: northboundLive
             )
         case .lowTideHours:
             fixture = lowTideHoursCandidate(cover: images.lookup.lowTideHours)
@@ -251,7 +247,7 @@ extension PreviewData {
         case .several:
             store.identificationProgress = (identified: 4, total: 10)
             items = foundItems(
-                northbound: .importing,
+                northboundLive: northboundImportingLive,
                 images: try FoundBoardImages()
             )
             selection = boardSeveralSelection
