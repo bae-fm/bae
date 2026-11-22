@@ -6,7 +6,7 @@ import SwiftUI
 public enum Theme {
     public static let background = ThemeSurface(role: \.background)
     public static let surface = ThemeSurface(role: \.surface)
-    public static let placeholder = ThemeSurface(role: \.placeholder)
+    public static let missingArt = ThemeSurface(role: \.missingArt)
     public static let surfaceElevated = ThemeSurface(role: \.elevated)
     public static let field = ThemeSurface(role: \.field)
     public static let fieldHover = ThemeSurface(role: \.fieldHover)

@@ -10,7 +10,7 @@ struct MacPlaceholderLine: View {
 
     var body: some View {
         RoundedRectangle(cornerRadius: radius)
-            .fill(Theme.placeholder)
+            .fill(Theme.missingArt)
             .frame(width: width, height: height)
     }
 }

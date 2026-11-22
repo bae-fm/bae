@@ -78,7 +78,7 @@ class NowPlayingWidget : GlanceAppWidget() {
         val preferences = readAppearancePreferences(appearanceFile(context))
         provideContent {
             GlanceTheme(colors = widgetColors(preferences)) {
-                NowPlayingWidgetContent(content, cover, placeholder = placeholderColor(preferences))
+                NowPlayingWidgetContent(content, cover, placeholder = missingArtColor(preferences))
             }
         }
     }
@@ -231,11 +231,11 @@ private fun widgetColors(preferences: AppearancePreferences) =
         dark = appearanceColorScheme(preferences, dark = preferences.mode != AppearanceMode.LIGHT),
     )
 
-/** The chosen tone's placeholder surface, behind a missing cover. */
-private fun placeholderColor(preferences: AppearancePreferences): ColorProvider =
+/** The chosen tone's missing-art surface, behind a missing cover. */
+private fun missingArtColor(preferences: AppearancePreferences): ColorProvider =
     DayNightColorProvider(
-        day = preferences.tone.surfaces(dark = preferences.mode == AppearanceMode.DARK).placeholder,
-        night = preferences.tone.surfaces(dark = preferences.mode != AppearanceMode.LIGHT).placeholder,
+        day = preferences.tone.surfaces(dark = preferences.mode == AppearanceMode.DARK).missingArt,
+        night = preferences.tone.surfaces(dark = preferences.mode != AppearanceMode.LIGHT).missingArt,
     )
 
 /** A role as a Glance text style, its weight rounded down to Glance's normal, medium or bold. */

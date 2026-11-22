@@ -127,7 +127,7 @@ private fun RowArt(
             contentDescription = description,
         )
     } else if (missing) {
-        Box(tile.clip(RoundedCornerShape(ThemeRadius.artwork)).background(BaeTheme.surfaces.placeholder))
+        Box(tile.clip(RoundedCornerShape(ThemeRadius.artwork)).background(BaeTheme.surfaces.missingArt))
     } else {
         Artwork(
             cover = art,

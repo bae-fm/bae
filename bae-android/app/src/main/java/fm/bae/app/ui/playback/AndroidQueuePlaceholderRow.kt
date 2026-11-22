@@ -25,7 +25,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 /** A skeleton for a row whose item hasn't loaded yet. */
 @Composable
 internal fun AndroidQueuePlaceholderRow() {
-    val placeholderColor = BaeTheme.surfaces.placeholder
+    val missingArt = BaeTheme.surfaces.missingArt
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.group, vertical = ThemeSpace.related),
         verticalAlignment = Alignment.CenterVertically,
@@ -35,7 +35,7 @@ internal fun AndroidQueuePlaceholderRow() {
                 Modifier
                     .size(ThemeSize.rowArtwork)
                     .clip(RoundedCornerShape(ThemeRadius.artwork))
-                    .background(placeholderColor),
+                    .background(missingArt),
         )
         Spacer(modifier = Modifier.width(ThemeSpace.group))
         Column(modifier = Modifier.weight(1f)) {
@@ -59,6 +59,6 @@ internal fun AndroidPlaceholderLine(
             Modifier
                 .size(width = width, height = height)
                 .clip(RoundedCornerShape(ThemeRadius.bar))
-                .background(BaeTheme.surfaces.placeholder),
+                .background(BaeTheme.surfaces.missingArt),
     )
 }

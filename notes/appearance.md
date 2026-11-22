@@ -22,9 +22,10 @@ installation rather than a library, so switching libraries preserves the
 selection.
 
 Surface roles describe their use: background is the window or screen; surface
-and elevated hold content; field and fieldHover hold inputs; placeholder holds
-missing artwork; well and tile distinguish recessed controls from raised
-controls. Accent text, glyphs, and slider fills use the mode-specific accent.
+and elevated hold content; field and fieldHover hold inputs; missingArt
+fills what stands in for content, the plain tile where artwork is missing and
+the bars of a list that is still loading; well and tile distinguish recessed
+controls from raised controls. Accent text, glyphs, and slider fills use the mode-specific accent.
 An accent is four tokens in tokens.json: `accent-<name>` (text and glyphs, per
 appearance), `accent-<name>-fill` with `on-accent-<name>-fill` (its swatch in
 the picker and the check drawn on it) and `accent-<name>-selection`. The

@@ -1,6 +1,6 @@
 # MacPlaceholderLine
 
-A grey bar where a line of text or a picture will be while it loads: the loading rows of a library list, the queue and the Storage Manager's table.
+A bar in `missing-art` where a line of text or a picture will be while it loads: the loading rows of a library list, the queue and the Storage Manager's table.
 
 | Prop | |
 | --- | --- |

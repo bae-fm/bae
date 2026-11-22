@@ -164,7 +164,7 @@ struct ImagePlaceholderView: View {
     var body: some View {
         switch reason {
         case .empty:
-            Rectangle().fill(Theme.placeholder)
+            Rectangle().fill(Theme.missingArt)
         case .failed:
             Button(action: retry) {
                 Theme.accentSoft

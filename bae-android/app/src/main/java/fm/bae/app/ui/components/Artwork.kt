@@ -195,7 +195,7 @@ private fun CoverTile(
     content: @Composable () -> Unit = {},
 ) {
     Surface(
-        color = BaeTheme.surfaces.placeholder,
+        color = BaeTheme.surfaces.missingArt,
         modifier = modifier.fillMaxSize(),
         content = content,
     )
