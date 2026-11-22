@@ -70,9 +70,6 @@ extension ShotScene {
                 .foregroundStyle(
                     secondary ? Theme.macTextSecondary : Theme.textPrimary
                 )
-                // The column holds the field's words at its edge, so the
-                // field reaches out by its padding, as its callers lay it out.
-                .padding(.leading, -FieldChrome.inlineHorizontalPadding)
                 .frame(width: column ? 240 : 284, alignment: .leading)
             )
         }

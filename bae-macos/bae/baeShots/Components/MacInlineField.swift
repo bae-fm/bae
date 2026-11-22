@@ -96,9 +96,6 @@ extension ShotScene {
                 editingCommands: EditingCommitCommands(),
                 onCommit: { _ in }
             )
-            // The column holds the field's words at its edge, so the field
-            // reaches out by its padding, as its callers lay it out.
-            .padding(.leading, -FieldChrome.inlineHorizontalPadding)
             .frame(width: 260, alignment: .leading)
         }
     }

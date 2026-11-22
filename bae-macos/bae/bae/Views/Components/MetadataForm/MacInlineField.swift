@@ -25,13 +25,16 @@ struct MacInlineField: View {
     static let emptyWidth: CGFloat = 96
 
     var body: some View {
-        if fitsValue {
-            field
-                .fixedSize(horizontal: true, vertical: false)
+        Group {
+            if fitsValue {
+                field
+                    .fixedSize(horizontal: true, vertical: false)
+            }
+            else {
+                field
+            }
         }
-        else {
-            field
-        }
+        .padding(.leading, -FieldChrome.inlineHorizontalPadding)
     }
 
     private var field: some View {

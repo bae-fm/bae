@@ -61,11 +61,8 @@ struct MacReleaseIdentity<Cover: View, AudioFacts: View, AlbumRow: View>: View {
                 onCommit: { await writer.setField(.albumYear, $0) }
             )
             audioFacts()
-                .padding(.horizontal, FieldChrome.inlineHorizontalPadding)
             albumRow()
-                .padding(.horizontal, FieldChrome.inlineHorizontalPadding)
         }
-        .padding(.leading, -FieldChrome.inlineHorizontalPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

@@ -216,9 +216,6 @@ struct MacReleaseFields: View {
             editingCommands: editingCommands,
             onCommit: onCommit
         )
-        // The field's own padding sits outside the column, so its text lines
-        // up with the plain values.
-        .padding(.leading, -FieldChrome.inlineHorizontalPadding)
         .frame(minHeight: Self.rowHeight, alignment: .leading)
     }
 

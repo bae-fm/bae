@@ -57,6 +57,7 @@ struct MacAlbumArtistField: View {
             .frame(width: 320)
             .padding(ThemeSpace.group)
         }
+        .padding(.leading, -FieldChrome.inlineHorizontalPadding)
     }
 
     /// What assistive technology calls the field: the words it shows, its
