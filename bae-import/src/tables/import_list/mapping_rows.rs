@@ -372,26 +372,10 @@ struct SheetJson {
     name: String,
     bound: BoundJson,
     place: String,
-    assigned: Option<SideChoiceJson>,
+    assigned: Option<bae_records::DbSheetSideColumns>,
     bound_audio: BoundAudioJson,
     unbound_references: Option<Vec<ReferenceJson>>,
-    side_choices: Vec<SideChoiceJson>,
-}
-
-/// One side or disc a sheet can go on, as `sheet_side_choices_sql` names it.
-#[derive(serde::Deserialize)]
-struct SideChoiceJson {
-    medium: u32,
-    side: u32,
-    kind: String,
-    ordinal: u32,
-}
-
-impl SideChoiceJson {
-    fn read(self) -> Result<bae_records::DbSheetSideChoice, ImportError> {
-        bae_records::DbSheetSideChoice::of_columns(self.medium, self.side, &self.kind, self.ordinal)
-            .map_err(|detail| ImportError::Internal { detail })
-    }
+    side_choices: Vec<bae_records::DbSheetSideColumns>,
 }
 
 /// What a track sheet is bound to, tagged by the binding the statement
@@ -619,7 +603,7 @@ fn sheet_group(sheet: SheetJson) -> Result<SheetGroup, ImportError> {
         BoundJson::RefusedCodec { codec } => SheetBound::RefusedCodec { codec },
     };
     let assigned = match (sheet.place.as_str(), sheet.assigned) {
-        ("side", Some(choice)) => Some(choice.read()?),
+        ("side", Some(choice)) => Some(choice.decoded().map_err(internal)?),
         ("ignored", None) => None,
         (place, assigned) => {
             return Err(internal(format!(
@@ -629,8 +613,11 @@ fn sheet_group(sheet: SheetJson) -> Result<SheetGroup, ImportError> {
             )))
         }
     };
-    let side_choices =
-        sheet.side_choices.into_iter().map(SideChoiceJson::read).collect::<Result<_, _>>()?;
+    let side_choices = sheet
+        .side_choices
+        .into_iter()
+        .map(|choice| choice.decoded().map_err(internal))
+        .collect::<Result<_, _>>()?;
     let bound_audio = match sheet.bound_audio {
         BoundAudioJson::None => SheetBoundAudio::None,
         BoundAudioJson::One { reference } => SheetBoundAudio::One(reference_options(reference)?),

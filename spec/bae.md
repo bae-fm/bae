@@ -2408,10 +2408,10 @@ applied one first) and the album those name. None of them is written yet, and
 the cover stays the release's own. Saving writes the whole form in one
 transaction: the edited fields, and where the person applied values, every one
 of them too, each track's listed length among them, so nothing a previous
-source credited survives; the records the form holds; the sides the person
-picked for CUE sheets (each move of a sheet's tracks, with the sheet's side as
-its place decision); and the audio files they picked for sheets' `FILE` lines,
-each as the line's binding. For such a sheet, the save writes each track's
+source credited survives. Save writes the form's records and the place the
+person picked for each CUE sheet, including *Ignored*. For each sheet the
+person leaves on a side or disc, Save writes the picks for its `FILE` lines as
+their bindings. For such a sheet, the save writes each track's
 format, segments, length, loudness and scrub points from the files the sheet's
 lines then play from, as the import reads them (§3.7), and keeps no row of the
 file a line played from before. The save also measures the album's loudness
@@ -6275,7 +6275,7 @@ Beside them, keyed by the release an import made:
 | Table | One row per |
 |---|---|
 | `local_release_origin` | release this device imported, keyed by the release: the hash of the folder's files it read (§2.7), unique, so one hash is one release here. Importing writes it in the release's own transaction; deleting the release deletes it |
-| `release_sheet_places` | the side or disc the person said a release's CUE sheet is on, or that the release ignores it, keyed by the sheet's `release_files` row; only a sheet the person decided has a row. Importing writes its rows, a save in the release's editor (§3.8) rewrites the row of a sheet whose side it changes, and identifying the release again reads them, as for `release_sheet_bindings`; deleting the sheet deletes it. The table syncs (Appendix B) |
+| `release_sheet_places` | the side or disc the person said a release's CUE sheet is on, or that the release ignores it, keyed by the sheet's `release_files` row; only a sheet the person decided has a row. Importing writes its rows. When a person changes a sheet's side or sets it to *Ignored*, Save in the release's editor (§3.8) writes that choice. Identifying the release again reads these rows and `release_sheet_bindings`. Deleting the sheet deletes its row. The table syncs (Appendix B) |
 | `release_sheet_bindings` | the audio the person bound a `FILE` line of a release's CUE sheet to in the import pane or the release's editor, or cleared (no audio), keyed by the sheet's `release_files` row and the `FILE` line's text; only a line the person decided has a row. Importing writes the rows in the release's own transaction, from the candidate's stored decisions (naming each file by its path in the release); a save in the release's editor (§3.8) rewrites the row of a `FILE` line it binds to another audio file, in the save's own transaction; identifying the release again reads them. Deleting either file deletes the row. The table syncs (Appendix B) |
 
 ### A.6 Identification

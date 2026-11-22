@@ -182,8 +182,8 @@ final class ReleaseEditor: Observable {
                 setAlbum: { pick in
                     _ = try await form.change { $0.withAlbum(pick: pick) }
                 },
-                setSheetSide: { sheet, side in
-                    try await form.setSheetPlace(sheet, place: .on(side: side))
+                setSheetPlace: { sheet, place in
+                    try await form.setSheetPlace(sheet, place: place)
                 },
                 setSheetFile: { sheetFileId, fileReference, audioFileId in
                     _ = try await form.change {
@@ -279,7 +279,9 @@ final class HeldReleaseEditForm {
     }
 
     func setSheetPlace(_ sheet: String, place: BridgeSheetPlace) throws {
-        _ = try change { $0.withSheetPlace(sheetFileId: sheet, place: place) }
+        _ = try change {
+            try $0.withSheetPlace(sheetFileId: sheet, place: place)
+        }
     }
 
     /// Hold the form with the catalog release `link` picks applied, each

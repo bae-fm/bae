@@ -137,23 +137,22 @@ fn reference_options(
 fn bound_lines(
     line_count: u32,
     mut lines: Vec<(crate::folder_scanner::SheetReferenceOptions, crate::MappingContainer)>,
-    unbound: &[bae_records::records::sheet_files::DbUnboundLine],
+    unbound: Option<&[bae_records::records::sheet_files::DbUnboundLine]>,
 ) -> (crate::SheetBound, crate::SheetBoundAudio) {
     let audio = match line_count {
         0 => crate::SheetBoundAudio::None,
-        1 if unbound.is_empty() => {
+        1 if unbound.is_none() => {
             let (line, played) = lines.pop().expect("one line");
             return (crate::SheetBound::Describes(played), crate::SheetBoundAudio::One(line));
         }
         1 => crate::SheetBoundAudio::One(lines.pop().expect("one line").0),
         _ => crate::SheetBoundAudio::Several(lines.iter().map(|(line, _)| line.clone()).collect()),
     };
-    let bound = if unbound.is_empty() {
-        crate::SheetBound::DescribesFiles { audio_file_count: line_count }
-    } else {
-        crate::SheetBound::Unresolved {
+    let bound = match unbound {
+        Some(unbound) => crate::SheetBound::Unresolved {
             requested: unbound.iter().map(|line| line.file_reference.clone()).collect(),
-        }
+        },
+        None => crate::SheetBound::DescribesFiles { audio_file_count: line_count },
     };
     (bound, audio)
 }
@@ -202,13 +201,14 @@ fn sheet_captions(
     sheets
         .into_iter()
         .map(|(sheet, lines)| {
-            let (bound, bound_audio) = bound_lines(sheet.line_count, lines, &sheet.unbound_lines);
+            let (bound, bound_audio) =
+                bound_lines(sheet.line_count, lines, sheet.unbound_lines.as_deref());
             crate::SheetGroup {
                 sheet_id: sheet.file_id.clone(),
                 name: sheet.name.clone(),
                 bound,
                 bound_audio,
-                unbound_references: unbound_references(&sheet.unbound_lines),
+                unbound_references: unbound_references(sheet.unbound_lines.as_deref()),
                 assigned: Some(sheet.place.clone()),
                 side_choices: side_choices.to_vec(),
             }
@@ -221,9 +221,9 @@ fn sheet_captions(
 /// line plays audio.
 #[cfg(desktop)]
 fn unbound_references(
-    lines: &[bae_records::records::sheet_files::DbUnboundLine],
+    lines: Option<&[bae_records::records::sheet_files::DbUnboundLine]>,
 ) -> Option<Vec<crate::folder_scanner::SheetReferenceOptions>> {
-    (!lines.is_empty()).then(|| {
+    lines.map(|lines| {
         lines
             .iter()
             .map(|line| reference_options(line.file_reference.clone(), None, &line.options))
@@ -244,18 +244,21 @@ pub(crate) fn sheet_without_tracks_group(
         .into_iter()
         .map(|line| {
             let played = crate::MappingContainer { file_id: line.file_id, name: line.file_name };
-            let reference =
-                reference_options(line.file_reference, Some(played.clone()), &line.options);
+            let reference = reference_options(
+                line.line.file_reference,
+                Some(played.clone()),
+                &line.line.options,
+            );
             (reference, played)
         })
         .collect();
-    let (bound, bound_audio) = bound_lines(sheet.bound_count, lines, &sheet.unbound);
+    let (bound, bound_audio) = bound_lines(sheet.bound_count, lines, sheet.unbound.as_deref());
     crate::SheetGroup {
         sheet_id: sheet.file_id,
         name: sheet.name,
         bound,
         bound_audio,
-        unbound_references: unbound_references(&sheet.unbound),
+        unbound_references: unbound_references(sheet.unbound.as_deref()),
         assigned: sheet.place,
         side_choices: side_choices.to_vec(),
     }

@@ -96,7 +96,7 @@ pub struct DbReleaseEditSheet {
     pub line_count: u32,
     /// The sheet's `FILE` lines that play no audio once the form's edits are
     /// written, in the order the sheet's tracks reach them.
-    pub unbound_lines: Vec<crate::records::sheet_files::DbUnboundLine>,
+    pub unbound_lines: Option<Vec<crate::records::sheet_files::DbUnboundLine>>,
     pub file_reference: String,
     pub audio_options: Vec<DbSheetAudioOption>,
 }
@@ -124,6 +124,15 @@ pub struct DbSheetAudioOption {
 pub struct DbSheetSideChoice {
     pub side: bae_types::mediums::MediumSide,
     pub heading: bae_types::mediums::TrackSide,
+}
+
+/// The SQL columns of a CUE sheet's side or disc choice.
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct DbSheetSideColumns {
+    pub(crate) medium: u32,
+    pub(crate) side: u32,
+    pub(crate) kind: String,
+    pub(crate) ordinal: u32,
 }
 
 /// A track's main segment as the release editor reads it: the file it names,

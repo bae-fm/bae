@@ -77,7 +77,7 @@ struct ReleaseEditorWaitTests {
             clear: { values },
             unlink: {},
             setAlbum: { _ in },
-            setSheetSide: { _, _ in },
+            setSheetPlace: { _, _ in },
             setSheetFile: { _, _, _ in },
             cancel: { values },
             save: { try await Task.neverAnswers() }

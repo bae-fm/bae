@@ -207,6 +207,12 @@ impl DbSheetSideChoice {
     }
 }
 
+impl crate::DbSheetSideColumns {
+    pub fn decoded(self) -> Result<DbSheetSideChoice, String> {
+        DbSheetSideChoice::of_columns(self.medium, self.side, &self.kind, self.ordinal)
+    }
+}
+
 /// The rows of [`sheet_side_choices_sql`] over `mediums`, bound to `params`.
 pub fn sheet_side_choices_on(
     sql: &impl coven::SqlRead,

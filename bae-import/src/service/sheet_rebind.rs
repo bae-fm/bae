@@ -12,7 +12,9 @@ use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use bae_records::records::sheet_files::{DbReleaseAudio, NewTrack, ReboundAudio, SheetFilePick};
+use bae_records::records::sheet_files::{
+    DbReleaseAudio, NewTrack, ReboundAudio, SheetEdits, SheetFilePick,
+};
 use bae_records::{DbAudioSegmentRole, DbFile};
 
 use crate::extraction::release::{library_file, scanned_audio};
@@ -63,10 +65,9 @@ pub async fn rebound_sheet_audio(
         .into_iter()
         .filter(|track| !dropped.contains(track.id.as_str()))
         .collect();
-    let rebound: Vec<_> = edits
-        .picks
+    let rebound: Vec<_> = changes
+        .bindings
         .iter()
-        .filter(|pick| !edits.ignored.contains(&pick.sheet_file_id))
         .filter_map(|pick| pick.audio_file_id.as_deref().map(|file| (pick, file)))
         .collect();
     let analyses = if rebound.is_empty() {
@@ -194,7 +195,8 @@ pub async fn rebound_sheet_audio(
     let new_segments: HashSet<String> =
         built.audio_segments.iter().map(|segment| segment.id.clone()).collect();
     Ok(Some(ReboundAudio {
-        edits,
+        edits: SheetEdits { picks: changes.bindings, ..edits },
+        dropped: changes.dropped,
         track_lengths: to_build[..moved_count]
             .iter()
             .map(|track| (track.db_track.id.clone(), track.db_track.duration_ms))

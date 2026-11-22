@@ -202,9 +202,13 @@ const LAYOUT: &str = "base_mediums (position, carrier, sides) AS ( \
 /// [`MediumsSource::Draft`] takes for `mediums`: one row per medium with the
 /// columns of `release_mediums` it reads.
 pub fn laid_mediums_source() -> String {
+    mediums_source("laid_mediums")
+}
+
+fn mediums_source(mediums: &str) -> String {
     format!(
         "(WITH {} SELECT position AS id, :release AS release_id, position, \
-                 carrier AS medium, sides AS side_count FROM laid_mediums)",
+                 carrier AS medium, sides AS side_count FROM {mediums})",
         layout_ctes()
     )
 }
@@ -244,6 +248,15 @@ pub fn laid_sheet_side_choices_on(
     layout: &LayoutParams<'_>,
 ) -> Result<Vec<DbSheetSideChoice>, DbError> {
     super::sheet_side_choices_on(sql, &laid_mediums_source(), layout.named().as_slice())
+}
+
+/// The sides a sheet can be restored to while editing, including a medium
+/// that would become empty if the editor saved the form.
+pub fn base_sheet_side_choices_on(
+    sql: &impl coven::SqlRead,
+    layout: &LayoutParams<'_>,
+) -> Result<Vec<DbSheetSideChoice>, DbError> {
+    super::sheet_side_choices_on(sql, &mediums_source("base_mediums"), layout.named().as_slice())
 }
 
 /// The layout the statements of [`layout_ctes`] give, as one value.

@@ -148,38 +148,14 @@ struct ReleaseEditorView: View {
         )
     }
 
-    /// The table's actions on the session's form: a side or disc picked for
-    /// a sheet, or an audio file, or none, for one of its lines. The caption
-    /// offers binding no audio, which deletes the tracks under the line, and
-    /// not *Ignored*.
+    /// The table's actions on the session's form, including the place and
+    /// audio file picks of each CUE sheet.
     private var tableActions: ReleaseTrackTableActions {
-        let session = session
-        let uiStore = uiStore
-        return ReleaseTrackTableActions(
+        ReleaseTrackTableActions(
             sheetCaption: SheetCaptionActions(
                 open: openDocument,
                 place: { sheetId, place in
-                    switch place {
-                    case .on(let side):
-                        session.pickSheetSide(sheetId, side: side)
-                    case .ignored:
-                        // The caption does not offer Ignored here.
-                        let detail =
-                            "the editor's place pop-up picked Ignored for sheet \(sheetId)"
-                        baeAppLogger.error("\(detail)")
-                        CoreBugReporter()
-                            .report(
-                                operation: "pick a CUE sheet's place",
-                                detail: detail
-                            )
-                        uiStore.showError(
-                            DisplayError(
-                                line: localizedCoreString(
-                                    "core.error.category.internal"
-                                )
-                            )
-                        )
-                    }
+                    session.pickSheetPlace(sheetId, place: place)
                 },
                 bind: { sheetId, fileReference, audioFileId in
                     session.pickSheetFile(
@@ -187,8 +163,7 @@ struct ReleaseEditorView: View {
                         fileReference: fileReference,
                         audioFileId: audioFileId
                     )
-                },
-                offersIgnored: false
+                }
             ),
             audition: TrackAuditionActions(
                 preview: { _ in },

@@ -146,8 +146,7 @@ struct ReleaseEditorTests {
                         sheetCaption: SheetCaptionActions(
                             open: { _, _ in },
                             place: { _, _ in },
-                            bind: { _, _, _ in },
-                            offersIgnored: false
+                            bind: { _, _, _ in }
                         ),
                         audition: TrackAuditionActions(
                             preview: { _ in },
@@ -293,7 +292,7 @@ extension ReleaseEditorTests {
         )
         try await Wait.until { session.draft != nil }
 
-        session.pickSheetSide("disc.cue", side: .firstOf(2))
+        session.pickSheetPlace("disc.cue", place: .on(side: .firstOf(2)))
         try await Wait.until { !session.isBusy }
         try await Wait.until {
             guard
@@ -302,6 +301,27 @@ extension ReleaseEditorTests {
             else { return false }
             return sheet.assigned == .disc(2)
         }
+    }
+}
+
+extension ReleaseEditorTests {
+    @MainActor
+    @Test("the Ignored choice reaches the form and shows its draft")
+    func ignoringASheetShowsInTheDraft() async throws {
+        let release = twoTrackRelease(shared: true)
+        let session = PreviewData.releaseEditSession(
+            releaseId: "release-test",
+            release: release
+        )
+        try await Wait.until { session.draft != nil }
+
+        session.pickSheetPlace("disc.cue", place: .ignored)
+        try await Wait.until {
+            guard case .sheet(let sheet)? = session.draft?.files?.first
+            else { return false }
+            return sheet.sheetId == "disc.cue" && sheet.assigned == nil
+        }
+        #expect(session.draft?.deletesTrackData == true)
     }
 }
 
@@ -398,7 +418,7 @@ extension ReleaseEditorTests {
                     clear: preview.clear,
                     unlink: preview.unlink,
                     setAlbum: preview.setAlbum,
-                    setSheetSide: preview.setSheetSide,
+                    setSheetPlace: preview.setSheetPlace,
                     setSheetFile: preview.setSheetFile,
                     cancel: preview.cancel,
                     save: preview.save

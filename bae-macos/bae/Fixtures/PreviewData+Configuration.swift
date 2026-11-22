@@ -355,33 +355,6 @@ actor PreviewReleaseLibrary {
         }
     }
 
-    /// Move the CUE sheet `sheetFileId` of `session`'s draft to `picked`, one
-    /// of the sheet's choices, as core lays it out.
-    nonisolated func putSheet(
-        _ sheetFileId: String,
-        onSide picked: BridgeMediumSide,
-        in session: PreviewReleaseEditSession
-    ) async {
-        _ = await session.change { release in
-            release.draft.sides = release.draft.sides?
-                .map { side in
-                    var side = side
-                    side.runs = side.runs.map { run in
-                        guard
-                            case .sheet(var sheet, let rows) = run,
-                            sheet.sheetId == sheetFileId,
-                            let choice = sheet.sideChoices.first(where: {
-                                $0.side == picked
-                            })
-                        else { return run }
-                        sheet.assigned = choice
-                        return .sheet(sheet: sheet, rows: rows)
-                    }
-                    return side
-                }
-        }
-    }
-
     /// `release` with its metadata cleared, as core's clear leaves a form.
     private static func clear(_ release: inout PreviewReleaseEdit) {
         release.values.albumTitle = ""
@@ -447,8 +420,8 @@ actor PreviewReleaseLibrary {
             setAlbum: { pick in
                 await self.putAlbum(pick, in: session)
             },
-            setSheetSide: { sheetFileId, side in
-                await self.putSheet(sheetFileId, onSide: side, in: session)
+            setSheetPlace: { sheetFileId, place in
+                await self.putSheet(sheetFileId, at: place, in: session)
             },
             setSheetFile: { sheetFileId, fileReference, audioFileId in
                 await self.putSheet(
@@ -468,6 +441,47 @@ actor PreviewReleaseLibrary {
 }
 
 extension PreviewReleaseLibrary {
+    /// Update the CUE sheet fixture for the place command.
+    nonisolated func putSheet(
+        _ sheetFileId: String,
+        at place: BridgeSheetPlace,
+        in session: PreviewReleaseEditSession
+    ) async {
+        switch place {
+        case .on(let side):
+            await putSheet(sheetFileId, onSide: side, in: session)
+        case .ignored:
+            _ = await session.change {
+                Self.ignoreSheet(sheetFileId, in: &$0)
+            }
+        }
+    }
+
+    private nonisolated func putSheet(
+        _ sheetFileId: String,
+        onSide picked: BridgeMediumSide,
+        in session: PreviewReleaseEditSession
+    ) async {
+        _ = await session.change { release in
+            release.draft.sides = release.draft.sides?
+                .map { side in
+                    var side = side
+                    side.runs = side.runs.map { run in
+                        guard
+                            case .sheet(var sheet, let rows) = run,
+                            sheet.sheetId == sheetFileId,
+                            let choice = sheet.sideChoices.first(where: {
+                                $0.side == picked
+                            })
+                        else { return run }
+                        sheet.assigned = choice
+                        return .sheet(sheet: sheet, rows: rows)
+                    }
+                    return side
+                }
+        }
+    }
+
     /// Bind the FILE line of the CUE sheet `sheetFileId` in `session`'s draft
     /// to the audio file `audioFileId`, one of the line's options: the run
     /// names it, the pop-up checks it, and a save reads it first.
@@ -513,33 +527,57 @@ extension PreviewReleaseLibrary {
         }
     }
 
-    /// `release` with the FILE line `fileReference` of the CUE sheet
-    /// `sheetFileId` bound to no audio, as core lays the draft out when the
-    /// sheet's only line plays none: the sheet's tracks give way to one track
-    /// that plays the sheet's audio file, and the sheet takes its place in the
-    /// Files list on the side it was on.
+    /// The CUE fixture with no audio on its one FILE line.
     static func withoutAudio(
         _ sheetFileId: String,
         _ fileReference: String,
         in release: inout PreviewReleaseEdit
     ) {
+        replaceTracks(of: sheetFileId, in: &release) { sheet in
+            guard
+                case .one(var line) = sheet.boundAudio,
+                line.fileReference == fileReference
+            else { return false }
+            line.bound = nil
+            sheet.bound = .unresolved(requested: [fileReference])
+            sheet.boundAudio = .none
+            sheet.unboundReferences = [line]
+            return true
+        }
+    }
+
+    /// The CUE fixture with the sheet ignored.
+    static func ignoreSheet(
+        _ sheetFileId: String,
+        in release: inout PreviewReleaseEdit
+    ) {
+        replaceTracks(of: sheetFileId, in: &release) { sheet in
+            sheet.assigned = nil
+            return true
+        }
+    }
+
+    private static func replaceTracks(
+        of sheetFileId: String,
+        in release: inout PreviewReleaseEdit,
+        caption: (inout BridgeSheetGroup) -> Bool
+    ) {
         guard
-            let sides = release.draft.sides,
-            let side = sides.first,
+            let side = release.draft.sides?.first,
             case .sheet(var sheet, _)? = side.runs.first(where: {
                 if case .sheet(let sheet, _) = $0 {
                     return sheet.sheetId == sheetFileId
                 }
                 return false
             }),
-            case .one(var line) = sheet.boundAudio,
-            line.fileReference == fileReference,
-            case .describes(let played) = sheet.bound
+            case .describes(let played) = sheet.bound,
+            caption(&sheet)
         else { return }
         let length = PreviewData.northboundTracks.reduce(0) {
             $0 + $1.durationMs
         }
         var track = release.values.tracks[0]
+        track.id = played.fileId
         track.title = (played.name as NSString).deletingPathExtension
         release.draft.sides = [
             BridgeTrackTableSide(
@@ -557,10 +595,6 @@ extension PreviewReleaseLibrary {
                 ]
             )
         ]
-        line.bound = nil
-        sheet.bound = .unresolved(requested: [fileReference])
-        sheet.boundAudio = .none
-        sheet.unboundReferences = [line]
         release.draft.files =
             [.sheet(sheet: sheet)] + (release.draft.files ?? [])
         release.draft.deletesTrackData = true

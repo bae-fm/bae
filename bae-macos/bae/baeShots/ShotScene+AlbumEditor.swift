@@ -26,6 +26,11 @@ extension ShotScene {
             stage: .saving,
             release: cueRelease(.rebound)
         ),
+        albumEditorScene(
+            id: "mac.album.edit.drop-tracks",
+            stage: .dropTracksAlert,
+            release: ignoredCueRelease
+        ),
     ]
 
     private enum AlbumEditorStage {
@@ -34,6 +39,7 @@ extension ShotScene {
         case albumMenu
         /// The editor's Save runs and never finishes.
         case saving
+        case dropTracksAlert
     }
 
     /// The image the edited release's sheet carves, and the rip of it the
@@ -155,6 +161,14 @@ extension ShotScene {
 
     enum CueExample { case original, rebound, importing }
 
+    private static var ignoredCueRelease: PreviewReleaseEdit {
+        var release = cueRelease(.rebound)
+        release.draft.files?.removeFirst()
+        release.draft.filesToRead = nil
+        PreviewReleaseLibrary.ignoreSheet("Northbound.cue", in: &release)
+        return release
+    }
+
     /// The audio file `name` of the release, which no track plays from.
     private static func carriedAudio(_ name: String) -> BridgeMappingFile {
         PreviewData.mappingFile(
@@ -190,16 +204,27 @@ extension ShotScene {
             if stage == .coverSheet {
                 presentCoverSheet(on: uiStore, images: images)
             }
+            let window = ZStack(alignment: .topLeading) {
+                ShotScenes.libraryWindow(
+                    uiStore: uiStore,
+                    backing: backing,
+                    playbackStore: boardPlayback(),
+                    size: size
+                )
+                if stage == .albumMenu {
+                    albumMenu
+                }
+            }
             return ShotStage(
-                ZStack(alignment: .topLeading) {
-                    ShotScenes.libraryWindow(
-                        uiStore: uiStore,
-                        backing: backing,
-                        playbackStore: boardPlayback(),
-                        size: size
-                    )
-                    if stage == .albumMenu {
-                        albumMenu
+                Group {
+                    if stage == .dropTracksAlert {
+                        OverWindow.alert(
+                            DropTracksConfirmation.alert {},
+                            over: window
+                        )
+                    }
+                    else {
+                        window
                     }
                 },
                 images: images

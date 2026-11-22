@@ -123,7 +123,8 @@ async fn ignoring_a_cue_sheet_shows_the_replacement_and_saves_it() {
     let drafts = manager.subscribe_release_edit_draft();
     let opened = draft_where(&drafts, &form, |_| true).await;
     let sheet = sheet_of(&opened);
-    let ignored = form.with_sheet_place(sheet.sheet_id.clone(), SheetPlace::Ignored);
+    assert!(form.clone().with_sheet_place("missing".to_string(), SheetPlace::Ignored).is_err());
+    let ignored = form.with_sheet_place(sheet.sheet_id.clone(), SheetPlace::Ignored).unwrap();
     let changed = draft_where(&drafts, &ignored, |draft| draft.changed).await;
     assert_eq!(
         table_rows(&changed),
@@ -137,10 +138,13 @@ async fn ignoring_a_cue_sheet_shows_the_replacement_and_saves_it() {
     assert!(caption.assigned.is_none());
     assert_eq!(sheet_audio_file(caption), sheet_audio_file(&sheet));
 
-    let restored = ignored.clone().with_sheet_place(
-        sheet.sheet_id,
-        SheetPlace::On(sheet.assigned.expect("the sheet is on a side").side),
-    );
+    let restored = ignored
+        .clone()
+        .with_sheet_place(
+            sheet.sheet_id,
+            SheetPlace::On(sheet.assigned.expect("the sheet is on a side").side),
+        )
+        .unwrap();
     assert!(!restored.changed());
     assert_eq!(draft_where(&drafts, &restored, |draft| !draft.changed).await, opened);
 

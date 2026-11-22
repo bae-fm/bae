@@ -2,16 +2,14 @@ import BaeKit
 import SwiftUI
 
 /// The place pop-up of a CUE sheet's caption: which of the release's sides
-/// and discs the sheet's tracks are on, each named by its heading, and,
-/// where core offers it, that the sheet is ignored.
+/// and discs the sheet's tracks are on, each named by its heading, or
+/// Ignored.
 struct SheetPlaceMenu: View {
     /// The sides and discs the pop-up offers, in order.
     let choices: [BridgeSheetSideChoice]
     /// The side or disc the sheet is on, with its heading; `nil` where the
     /// sheet is ignored.
     let assigned: BridgeSheetSideChoice?
-    /// Whether the pop-up offers *Ignored* after the sides and discs.
-    let offersIgnored: Bool
     let onAssign: (BridgeSheetPlace) -> Void
 
     @State
@@ -27,15 +25,11 @@ struct SheetPlaceMenu: View {
                         checked: assigned?.side == choice.side
                     ) { onAssign(.on(side: choice.side)) }
                 }
-                if offersIgnored {
-                    MacMenuItem.divider
-                    MacMenuItem(
-                        verbatim: localizedCoreString(
-                            "ui.import.sheet.ignored"
-                        ),
-                        checked: assigned == nil
-                    ) { onAssign(.ignored) }
-                }
+                MacMenuItem.divider
+                MacMenuItem(
+                    verbatim: localizedCoreString("ui.import.sheet.ignored"),
+                    checked: assigned == nil
+                ) { onAssign(.ignored) }
             }
         ) {
             HStack(spacing: ThemeSpace.inline) {

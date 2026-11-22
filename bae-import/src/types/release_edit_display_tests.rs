@@ -21,7 +21,7 @@ fn context(side: TrackSide, id: &str, file: &str, sheet: Option<&str>) -> Releas
                 heading: TrackSide::Disc { disc: 1 },
             },
             line_count: 1,
-            unbound_lines: Vec::new(),
+            unbound_lines: None,
             file_reference: format!("{file}.flac"),
             audio_options: Vec::new(),
         }),
@@ -398,7 +398,7 @@ fn a_track_keeps_its_listed_length_and_its_sheet() {
             heading: TrackSide::Disc { disc: 2 },
         },
         line_count: 1,
-        unbound_lines: Vec::new(),
+        unbound_lines: None,
         file_reference: "disc.flac".to_string(),
         audio_options: Vec::new(),
     };

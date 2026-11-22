@@ -115,8 +115,13 @@ impl BridgeReleaseEditForm {
         &self,
         sheet_file_id: String,
         place: crate::types::BridgeSheetPlace,
-    ) -> std::sync::Arc<Self> {
-        self.changed(|form| *form = form.clone().with_sheet_place(sheet_file_id, place.into_core()))
+    ) -> Result<std::sync::Arc<Self>, BridgeError> {
+        let form = self
+            .inner
+            .clone()
+            .with_sheet_place(sheet_file_id, place.into_core())
+            .map_err(bae_library::LibraryError::from)?;
+        Ok(Self::of(form))
     }
 
     /// The form with the `FILE` line `file_reference` of the CUE sheet

@@ -434,6 +434,7 @@ async fn carried(db: &Store, edits: String) -> (bool, Vec<String>) {
                 sheet
                     .unbound
                     .iter()
+                    .flatten()
                     .map(|line| line.file_reference.as_str())
                     .collect::<Vec<_>>()
                     .join(", ")
@@ -482,8 +483,11 @@ async fn a_sheet_with_no_tracks_takes_its_place_in_the_files_list() {
         .unwrap();
     let Some(DbCarriedFile::Sheet(sheet)) = files.carried.first() else { panic!("a sheet") };
     assert_eq!(sheet.place.as_ref().unwrap().side, bae_types::mediums::MediumSide::first_of(1));
-    assert_eq!(sheet.unbound.len(), 2);
-    assert!(sheet.unbound[0].options.iter().any(|option| option.name == "first.flac"));
+    assert_eq!(sheet.unbound.as_ref().unwrap().len(), 2);
+    assert!(sheet.unbound.as_ref().unwrap()[0]
+        .options
+        .iter()
+        .any(|option| option.name == "first.flac"));
 }
 
 /// A sheet one of whose lines plays no audio keeps the tracks of its other
@@ -507,7 +511,9 @@ async fn a_sheet_with_a_line_of_no_audio_lists_it_on_the_tracks_that_stay() {
     assert_eq!(added.file.file_id, uuid("first"));
     let sheet = stays.sheet.as_ref().expect("the sheet carves the track");
     assert_eq!(sheet.line_count, 1);
-    let [line] = sheet.unbound_lines.as_slice() else { panic!("one line plays none: {sheet:?}") };
+    let [line] = sheet.unbound_lines.as_deref().unwrap() else {
+        panic!("one line plays none: {sheet:?}")
+    };
     assert_eq!(line.file_reference, "first.flac");
     assert!(line.options.iter().any(|option| option.name == "first.flac"));
 }
@@ -537,6 +543,7 @@ async fn an_ignored_sheet_keeps_its_binding_choices_and_replaces_only_lost_audio
     .unwrap();
     let changes = changes(&db, edits.clone()).await;
     assert_eq!(changes.dropped, ids(&["b1", "b2", "b3"]));
+    assert!(changes.bindings.is_empty());
     assert_eq!(added_ids(&changes), ids(&["first", "second"]));
     let files = db
         .read(move |sql| {
@@ -554,6 +561,40 @@ async fn an_ignored_sheet_keeps_its_binding_choices_and_replaces_only_lost_audio
     assert_eq!(sheet.bound_count, 2);
     let [second, shared] = sheet.bound.as_slice() else { panic!("two bound lines") };
     assert_eq!((&second.file_id, &shared.file_id), (&uuid("second"), &uuid("shared")));
-    let [first] = sheet.unbound.as_slice() else { panic!("one unbound line") };
+    let [first] = sheet.unbound.as_deref().unwrap() else { panic!("one unbound line") };
     assert_eq!(first.file_reference, "first.flac");
+}
+
+#[tokio::test]
+async fn an_ignored_sheet_can_go_back_on_its_empty_disc() {
+    let (db, _folder) = release(
+        2,
+        &[
+            carved("stays", 1, ("one", "shared.flac"), "shared", 0),
+            carved("drops", 2, ("two", "shared.flac"), "shared", 100),
+        ],
+    )
+    .await;
+    let edits = SheetEdits { ignored: ids(&["two"]), ..SheetEdits::default() }.json().unwrap();
+    let (draft, choices) = db
+        .read(move |sql| {
+            let layout = LayoutParams {
+                release_id: Some(RELEASE_A),
+                applied: false,
+                mediums: "[]",
+                places: "[]",
+                carving: "[]",
+                moves: "[]",
+                edits: &edits,
+            };
+            Ok((
+                laid_out_on(&sql, &layout)?,
+                super::layout::base_sheet_side_choices_on(&sql, &layout)?,
+            ))
+        })
+        .await
+        .unwrap();
+    assert_eq!(draft.mediums.len(), 1);
+    assert_eq!(draft.tracks[0].track_id, uuid("stays"));
+    assert_eq!(choices[1].side, bae_types::mediums::MediumSide::first_of(2));
 }

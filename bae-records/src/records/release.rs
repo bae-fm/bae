@@ -519,13 +519,9 @@ pub fn release_edit_tracks_sql(release: &str, source: MediumsSource<'_>, edits: 
                sheet_file.original_filename AS sheet_name, p.sheet_medium, p.sheet_side, \
                p.sheet_kind, p.sheet_ordinal, \
                sheet_lines.bound_count AS sheet_line_count, \
-               (SELECT json_group_array(json_object('file_reference', \
-                                                    line.value ->> 'file_reference', \
-                                                    'options', json(line.value ->> 'options'))) \
-                FROM json_each(sheet_lines.lines) AS line \
-                WHERE line.value ->> 'unbound') AS sheet_unbound_lines, \
-               (SELECT line.value ->> 'options' FROM json_each(sheet_lines.lines) AS line \
-                WHERE line.value ->> 'file_reference' = carved.file_reference) \
+               sheet_lines.unbound AS sheet_unbound_lines, \
+               (SELECT line.value -> 'line' ->> 'options' FROM json_each(sheet_lines.bound) AS line \
+                WHERE line.value -> 'line' ->> 'file_reference' = carved.file_reference) \
                    AS sheet_audio_options, \
                COALESCE(main.added, 0) AS is_added, \
                (SELECT j.value FROM json_each(json_extract({edits}, '$.titles')) AS j \
@@ -652,16 +648,18 @@ pub fn release_edit_track_of_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Db
                 },
                 line_count: count_column(row, "sheet_line_count")?,
                 file_reference: row.get("sheet_file_reference")?,
-                unbound_lines: {
-                    let lines: String = row.get("sheet_unbound_lines")?;
-                    serde_json::from_str(&lines).map_err(|error| {
-                        bae_store::read::column_conversion_error(
-                            row,
-                            "sheet_unbound_lines",
-                            format!("{error}: {lines}"),
-                        )
-                    })?
-                },
+                unbound_lines: row
+                    .get::<_, Option<String>>("sheet_unbound_lines")?
+                    .map(|lines| {
+                        serde_json::from_str(&lines).map_err(|error| {
+                            bae_store::read::column_conversion_error(
+                                row,
+                                "sheet_unbound_lines",
+                                format!("{error}: {lines}"),
+                            )
+                        })
+                    })
+                    .transpose()?,
                 audio_options: {
                     let options: String = row.get("sheet_audio_options")?;
                     serde_json::from_str(&options).map_err(|error| {

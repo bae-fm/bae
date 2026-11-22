@@ -158,6 +158,8 @@ pub enum AlbumPick {
 pub struct ReleaseEditSeed {
     pub edit: RawReleaseEdit,
     pub display: crate::ReleaseEditDisplayContext,
+    /// The sheet places a person can restore before saving.
+    pub sheet_places: std::collections::BTreeMap<String, bae_types::mediums::MediumSide>,
     pub album: DraftAlbum,
 }
 
@@ -269,20 +271,18 @@ impl ReleaseEditForm {
         mut self,
         sheet_file_id: String,
         place: crate::folder_scanner::SheetPlace,
-    ) -> Self {
-        let sheets = self.opened.display.tracks.iter().filter_map(|track| track.sheet.as_ref());
-        let mut matching = sheets.filter(|sheet| sheet.file_id == sheet_file_id).peekable();
-        if matching.peek().is_none() {
-            return self;
-        }
-        let restored =
-            self.applied.is_none() && matching.any(|sheet| Some(sheet.place.side) == place.side());
-        if restored {
+    ) -> Result<Self, crate::ImportError> {
+        let opened = self.opened.sheet_places.get(&sheet_file_id).ok_or_else(|| {
+            crate::ImportError::Internal {
+                detail: format!("the release form has no place for CUE sheet {sheet_file_id}"),
+            }
+        })?;
+        if self.applied.is_none() && place.side() == Some(*opened) {
             self.sheet_places.remove(&sheet_file_id);
         } else {
             self.sheet_places.insert(sheet_file_id, place);
         }
-        self
+        Ok(self)
     }
 
     /// The form with the `FILE` line `file_reference` of the CUE sheet
@@ -336,17 +336,18 @@ impl ReleaseEditForm {
         self
     }
 
+    pub(crate) fn ignored_sheet_ids(&self) -> impl Iterator<Item = &str> {
+        self.sheet_places.iter().filter_map(|(file, place)| {
+            (*place == crate::folder_scanner::SheetPlace::Ignored).then_some(file.as_str())
+        })
+    }
+
     /// What the form chose about the release's CUE sheets and the tracks a
     /// save adds, as the statements that lay the release out bind it.
     pub fn sheet_edits(&self) -> bae_records::records::sheet_files::SheetEdits {
         bae_records::records::sheet_files::SheetEdits {
             picks: self.sheet_files.clone(),
-            ignored: self
-                .sheet_places
-                .iter()
-                .filter(|(_, place)| **place == crate::folder_scanner::SheetPlace::Ignored)
-                .map(|(file, _)| file.clone())
-                .collect(),
+            ignored: self.ignored_sheet_ids().map(str::to_string).collect(),
             titles: self.added_titles.clone(),
         }
     }

@@ -39,9 +39,8 @@ struct ReleaseEditFormCommands: Sendable {
     /// Record what the person picked for the album a save files the release
     /// under.
     let setAlbum: @Sendable (BridgeAlbumPick) async throws -> Void
-    /// Record the side or disc the person picked for a CUE sheet, by the
-    /// sheet's file id: a save moves the sheet's tracks there.
-    let setSheetSide: @Sendable (String, BridgeMediumSide) async throws -> Void
+    /// Record the side, disc or Ignored choice for a CUE sheet.
+    let setSheetPlace: @Sendable (String, BridgeSheetPlace) async throws -> Void
     /// Record the audio file the person picked for a CUE sheet's FILE line:
     /// the sheet's file id, the line's text and the audio file's id. A save
     /// reads the file and binds the line to it.
@@ -101,7 +100,7 @@ final class ReleaseMetadataEditSession {
         case saving
         case cancelling
         case pickingAlbum
-        case pickingSheetSide
+        case pickingSheetPlace
         case pickingSheetFile
         case readingFileTags
         case clearing
@@ -272,11 +271,10 @@ final class ReleaseMetadataEditSession {
         }
     }
 
-    /// Record the side or disc the person picked for the CUE sheet
-    /// `sheetFileId`.
-    func pickSheetSide(_ sheetFileId: String, side: BridgeMediumSide) {
-        run(.pickingSheetSide, committingEdits: false) {
-            try await $0.setSheetSide(sheetFileId, side)
+    /// Record the place the person picked for a CUE sheet.
+    func pickSheetPlace(_ sheetFileId: String, place: BridgeSheetPlace) {
+        run(.pickingSheetPlace, committingEdits: false) {
+            try await $0.setSheetPlace(sheetFileId, place)
         }
     }
 
