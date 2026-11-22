@@ -91,9 +91,7 @@ struct MacQueueSection: View {
 
     private func clearButton(_ clear: Clear) -> some View {
         Button(action: clear.action) {
-            Text("Clear")
-                .themeText(.eyebrow)
-                .foregroundStyle(Theme.accent)
+            MacEyebrow("Clear")
         }
         .buttonStyle(.accentPlain)
         .help(clear.label)
