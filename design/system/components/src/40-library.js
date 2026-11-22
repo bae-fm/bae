@@ -50,9 +50,8 @@
   };
   function Glyph(props) {
     if (props.set !== 'mac') return h(MSymbol, { name: props.name, size: props.size, className: cx('bae-glyph', props.className), fill: 'currentColor' });
-    var set = SF;
-    var s = Number(props.size || 24);
-    return h('svg', { width: s, height: s, viewBox: '0 0 24 24', 'aria-hidden': true, className: cx('bae-glyph', props.className), fill: 'currentColor', style: { overflow: 'visible' } }, h('path', { d: set[props.name] || set.ellipsis || '', fillRule: 'evenodd' }));
+    var set = SF, box = iconBox(props.size);
+    return h('svg', { viewBox: '0 0 24 24', 'aria-hidden': true, className: cx('bae-glyph', props.className), fill: 'currentColor', style: { width: box.width, height: box.height, overflow: 'visible' } }, h('path', { d: set[props.name] || set.ellipsis || '', fillRule: 'evenodd' }));
   }
 
   // `large` is Android's full player's bar: a tall track with a tall thumb, and no held parts.
@@ -84,12 +83,12 @@
 
   function MacIconButton(props) {
     return h('button', { type: 'button', disabled: props.off ? true : null, className: cx('bae-m-iconbtn', props.active && 'bae-m-iconbtn-on', props.faint && 'bae-m-iconbtn-faint', props.small && 'bae-m-iconbtn-small', props.boxed && 'bae-m-iconbtn-boxed', props.overlay && 'bae-m-iconbtn-overlay', props.off && 'bae-off'), 'aria-label': props.label || props.icon, 'aria-haspopup': props.menu ? 'menu' : null, 'aria-expanded': props.menu ? !!props.active : null, title: props.help || props.label },
-      h(Glyph, { set: 'mac', name: props.icon, size: props.size || 17 }));
+      h(Glyph, { set: 'mac', name: props.icon, size: props.size || 'large' }));
   }
 
   // A row's ⋯ button with the row's actions in its menu: a row offers its actions here, not as a button of each. `open` draws the menu under it, `items` its entries ("-" for a line between groups), `highlighted` the one under the pointer; `off` dims it while none of its actions can run. `boxed` fills it as a push button, for a page's header; `overlay` makes it a round button on a dark fill, for a place on a cover.
   function MacMoreMenu(props) {
-    var btn = h(MacIconButton, { icon: 'ellipsis', size: 15, label: props.label || 'More', active: props.open, menu: true, off: props.off, boxed: props.boxed, overlay: props.overlay });
+    var btn = h(MacIconButton, { icon: 'ellipsis', size: 'medium', label: props.label || 'More', active: props.open, menu: true, off: props.off, boxed: props.boxed, overlay: props.overlay });
     if (!props.open) return btn;
     return h('span', { className: 'bae-m-moremenu' }, btn, h('div', { className: 'bae-m-moremenu-pop' }, h(MacMenu, null, list(props.items).map(function (t, i) {
       return t === '-' ? h(MacMenuItem, { key: i, divider: true }) : h(MacMenuItem, { key: i, highlighted: t === props.highlighted }, t);
@@ -108,7 +107,7 @@
     // A button named by what it does, as the app's: the arc around it while the track waits on storage is drawing only, with no words of its own.
     return h('button', { type: 'button', className: 'bae-m-playpause', 'aria-label': props.playing ? 'Pause' : 'Play' },
       props.waiting ? h('svg', { className: 'bae-waitarc', width: 48, height: 48, viewBox: '0 0 48 48', 'aria-hidden': true }, h('path', { d: 'M24 1.25A22.75 22.75 0 0 1 46.75 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2.5, strokeLinecap: 'round' })) : null,
-      h(Glyph, { set: 'mac', name: props.playing ? 'pause' : 'play', size: 20 }));
+      h(Glyph, { set: 'mac', name: props.playing ? 'pause' : 'play', size: 'large' }));
   }
 
   // Shuffle, previous, play and pause, next, repeat; `shuffle` and `repeat` light theirs while on, `waiting` draws the arc around play while the track waits on storage.
@@ -156,7 +155,7 @@
   // The title bar's Activity button, by what the sync queue does (`state`): moving spins, attention shows the warning mark, and paused (a queue held, Paused or Waiting for network, with nothing moving) shows a pause symbol so the hold can be seen. With nothing moving or held there is no button.
   function MacActivityButton(props) {
     if (props.state === 'moving') return h('span', { className: 'bae-m-iconbtn', title: 'Activity' }, h(MacSpinner, { size: 14 }));
-    if (props.state === 'attention') return h('span', { className: 'bae-m-iconbtn bae-m-sync-warn', title: 'Activity' }, h(Glyph, { set: 'mac', name: 'warning', size: 17 }));
+    if (props.state === 'attention') return h('span', { className: 'bae-m-iconbtn bae-m-sync-warn', title: 'Activity' }, h(Glyph, { set: 'mac', name: 'warning', size: 'large' }));
     if (props.state === 'paused') return h(MacIconButton, { icon: 'pause', label: 'Activity' });
     return null;
   }
@@ -187,7 +186,7 @@
   function MacLibraryHeading(props) {
     var collapsed = !!props.collapsed;
     return h('div', { className: cx('bae-m-libhead', collapsed && 'bae-m-libhead-collapsed') },
-      h('h1', { className: 'bae-m-libhead-title' }, props.view || 'Albums', h('span', { className: 'bae-m-libhead-chevron', 'aria-hidden': true }, h(Glyph, { set: 'mac', name: 'down', size: collapsed ? 8 : 15 }))),
+      h('h1', { className: 'bae-m-libhead-title' }, props.view || 'Albums', h('span', { className: 'bae-m-libhead-chevron', 'aria-hidden': true }, h(Glyph, { set: 'mac', name: 'down', size: collapsed ? 'badge' : 'medium' }))),
       h('div', { className: 'bae-m-libhead-trail' }, props.children));
   }
   SF.down = 'M2.3 6.15C1.54 6.28 0.96 7.02 1.01 7.81C1.04 8.27 1.18 8.53 1.66 9.03C2.06 9.44 2.91 10.3 3.62 11.02C3.93 11.35 5.43 12.88 6.95 14.44C10.43 18 10.47 18.04 10.69 18.17C10.97 18.33 11.18 18.39 11.54 18.39C11.99 18.38 12.3 18.27 12.64 17.98C12.73 17.9 14.33 16.27 16.19 14.36C18.05 12.45 19.8 10.67 20.06 10.4C21.88 8.55 21.86 8.57 21.98 8.23C22.05 8.03 22.07 7.57 22.02 7.35C21.88 6.81 21.5 6.39 20.97 6.2C20.81 6.15 20.75 6.14 20.5 6.14C19.94 6.14 19.66 6.29 19.02 6.94C18.8 7.17 18.41 7.57 18.16 7.82C17.92 8.08 17.52 8.49 17.27 8.74C17.03 8.98 15.65 10.41 14.19 11.91C12.74 13.4 11.54 14.62 11.54 14.62C11.53 14.62 4.09 7 3.85 6.74C3.4 6.26 2.87 6.06 2.3 6.15Z';
@@ -212,8 +211,8 @@
   // A track row's lead: the track's number; under the pointer (`hover`) Play, or Pause on the current track while it plays; on the current track otherwise the speaker.
   function MacTrackLead(props) {
     return h('span', { className: 'bae-m-track-lead' },
-      props.hover ? h(Glyph, { set: 'mac', name: props.current && props.playing ? 'pause' : 'play', size: 13 })
-        : props.current ? h(Glyph, { set: 'mac', name: 'speaker', size: 11, className: 'bae-accent' })
+      props.hover ? h(Glyph, { set: 'mac', name: props.current && props.playing ? 'pause' : 'play', size: 'medium' })
+        : props.current ? h(Glyph, { set: 'mac', name: 'speaker', size: 'small', className: 'bae-accent' })
         : h('span', { className: 'bae-m-track-pos' }, props.position));
   }
 
@@ -243,7 +242,7 @@
 
   // A playlist page's head, laid out as the album page's: the picture beside a column of the name (up to two lines), the owner on a line of their own, the facts line (count and length), then Play and the ⋯ under the text, at its start. The ⋯ menu offers Shuffle to everyone, then the owner's `options`; `optionsOpen` draws it open, `highlighted` the item under the pointer. The picture is as tall as the text column. `sharing`: on the person's own playlist, who sees it, as a lock (Only me) or people (Everyone) glyph at the facts line's end; a playlist someone else shared shows nothing about sharing.
   function MacPlaylistHeader(props) {
-    var shared = props.sharing ? h('span', { className: 'bae-m-plpage-sharing', role: 'img', 'aria-label': props.sharing, title: props.sharing }, h(Glyph, { set: 'mac', name: props.sharing === 'Everyone' ? 'people' : 'lock', size: 12 })) : null;
+    var shared = props.sharing ? h('span', { className: 'bae-m-plpage-sharing', role: 'img', 'aria-label': props.sharing, title: props.sharing }, h(Glyph, { set: 'mac', name: props.sharing === 'Everyone' ? 'people' : 'lock', size: 'small' })) : null;
     return h('div', { className: 'bae-m-plpage-head' },
       h(PlaylistPicture, { covers: props.covers, size: 103, radius: 10 }),
       h('div', { className: 'bae-m-plpage-text' },
@@ -270,7 +269,7 @@
 
   // The close control of a docked pane and of an open album: an × in a round, quiet fill.
   function MacCloseButton(props) {
-    return h('button', { type: 'button', className: 'bae-m-close', 'aria-label': props.label || 'Close', title: props.label || 'Close' }, h(Glyph, { set: 'mac', name: 'close', size: 13 }));
+    return h('button', { type: 'button', className: 'bae-m-close', 'aria-label': props.label || 'Close', title: props.label || 'Close' }, h(Glyph, { set: 'mac', name: 'close', size: 'medium' }));
   }
 
   // The choice of an album's release, one segment for each of `releases` (comma-separated), `selected` the one showing; an album of one release has no choice to draw.
@@ -365,9 +364,9 @@
     var down = props.direction === 'down';
     var arrow = h('svg', { width: 11, height: 11, viewBox: '0 0 24 24', 'aria-hidden': true, fill: 'none', stroke: 'currentColor', strokeWidth: 2.4, strokeLinecap: 'round', strokeLinejoin: 'round' }, h('path', { d: down ? 'M12 4v16M5 13l7 7 7-7' : 'M12 20V4M5 11l7-7 7 7' }));
     return h('span', { className: 'bae-m-sortpill' },
-      h('span', { className: 'bae-m-sortpill-field' }, props.field, h(Glyph, { set: 'mac', name: 'down', size: 9, className: 'bae-muted' })),
+      h('span', { className: 'bae-m-sortpill-field' }, props.field, h(Glyph, { set: 'mac', name: 'down', size: 'badge', className: 'bae-muted' })),
       h('span', { className: 'bae-muted', 'aria-label': down ? 'Descending' : 'Ascending' }, arrow),
-      props.removable ? h('span', { className: 'bae-muted', 'aria-label': 'Remove sort criterion' }, h(Glyph, { set: 'mac', name: 'close', size: 8 })) : null);
+      props.removable ? h('span', { className: 'bae-muted', 'aria-label': 'Remove sort criterion' }, h(Glyph, { set: 'mac', name: 'close', size: 'badge' })) : null);
   }
 
   // The sort's criteria (`criteria`: "Field:down,Field:up"), each a `MacSortPill`; then + to add one, while a field of the list (`fields`, the albums' Title, Artist, Year and Date added unless given) is still unused.
@@ -375,7 +374,7 @@
     var items = String(props.criteria || 'Date added:down').split(',').map(function (c) { var p = c.trim().split(':'); return { field: p[0], dir: p[1] || 'up' }; });
     return h('div', { className: 'bae-m-sortrow' },
       items.map(function (it, i) { return h(MacSortPill, { key: i, field: it.field, direction: it.dir, removable: items.length > 1 }); }),
-      list(props.fields || 'Title, Artist, Year, Date added').every(function (f) { return items.some(function (it) { return it.field === f; }); }) ? null : h('span', { className: 'bae-m-sortadd', 'aria-label': 'Add sort criterion' }, h(Glyph, { set: 'mac', name: 'add', size: 13 })));
+      list(props.fields || 'Title, Artist, Year, Date added').every(function (f) { return items.some(function (it) { return it.field === f; }); }) ? null : h('span', { className: 'bae-m-sortadd', 'aria-label': 'Add sort criterion' }, h(Glyph, { set: 'mac', name: 'add', size: 'medium' })));
   }
   SF.add = 'M11.54 2.99C11.07 3.1 10.65 3.49 10.47 3.96L10.41 4.11L10.41 7.55L10.4 11L6.82 11L3.24 11.01L3.02 11.09C1.62 11.59 1.69 13.43 3.12 13.87C3.25 13.91 3.57 13.91 6.83 13.92L10.4 13.93L10.4 17.3C10.4 20.57 10.4 20.67 10.45 20.86C10.52 21.13 10.61 21.28 10.84 21.52C11.22 21.9 11.71 22.05 12.24 21.94C12.8 21.82 13.27 21.35 13.39 20.81C13.42 20.66 13.43 20.11 13.43 17.28L13.43 13.93L17 13.92C20.97 13.91 20.64 13.93 21.02 13.73C21.23 13.63 21.5 13.38 21.61 13.19C22.08 12.38 21.71 11.41 20.8 11.09L20.59 11.01L17.01 11L13.43 11L13.42 7.57L13.41 4.14L13.36 3.97C13.11 3.24 12.3 2.8 11.54 2.99Z';
   // Who sees a playlist of the person's own: a lock for Only me, two people for Everyone.
@@ -385,7 +384,7 @@
   SF.removefill = 'M11.01 0.93C7.34 1.1 3.98 3.02 1.94 6.1C-0.02 9.05 -0.5 12.73 0.62 16.1C1.77 19.51 4.49 22.23 7.9 23.38C10.48 24.24 13.27 24.16 15.81 23.16C16.27 22.98 17.22 22.51 17.63 22.24C19.35 21.16 20.72 19.73 21.69 17.97C22.98 15.64 23.4 12.87 22.89 10.22C21.8 4.63 16.71 0.65 11.01 0.93ZM7.75 7.57C8.04 7.63 8.02 7.61 9.82 9.41C10.77 10.35 11.55 11.12 11.57 11.12C11.59 11.12 12.38 10.35 13.32 9.41C14.69 8.05 15.06 7.69 15.16 7.65C15.64 7.44 16.18 7.63 16.4 8.1C16.45 8.22 16.46 8.27 16.46 8.49C16.46 8.89 16.57 8.77 14.61 10.74L12.9 12.46L14.62 14.19C16.59 16.16 16.46 16.01 16.46 16.44C16.46 16.74 16.4 16.91 16.2 17.11C16.01 17.3 15.84 17.36 15.55 17.36C15.13 17.36 15.28 17.48 13.31 15.51L11.57 13.79L9.86 15.5C7.89 17.46 8.01 17.36 7.59 17.36C7.39 17.36 7.34 17.35 7.22 17.3C6.73 17.06 6.52 16.48 6.77 15.99C6.81 15.9 7.25 15.45 8.54 14.17L10.25 12.46L8.53 10.74C7.21 9.42 6.8 8.98 6.75 8.9C6.5 8.35 6.8 7.71 7.38 7.59C7.58 7.54 7.59 7.54 7.75 7.57Z';
 
   function MacCheckbox(props) {
-    return h('label', { className: 'bae-m-checkbox', role: 'checkbox', 'aria-checked': !!props.on }, h('span', { className: cx('bae-m-checkbox-box', props.on && 'bae-m-checkbox-on') }, props.on ? h(CheckGlyph) : null), props.label);
+    return h('label', { className: 'bae-m-checkbox', role: 'checkbox', 'aria-checked': !!props.on }, h('span', { className: cx('bae-m-checkbox-box', props.on && 'bae-m-checkbox-on') }, props.on ? h(CheckGlyph, { size: 'chip' }) : null), props.label);
   }
 
   // Names an artist above their albums when the grid is grouped by artist.
@@ -406,16 +405,17 @@
     if (props.heading) return h('div', { className: 'bae-a-menu-heading' }, props.children);
     return h('div', { className: cx('bae-a-menu-item', props.selected && 'bae-a-menu-item-on', props.pressed && 'bae-a-menu-item-pressed'), role: 'menuitem' },
       h('span', null, props.children),
-      props.check != null ? h('span', { className: 'bae-a-menu-check', style: { opacity: props.check ? 1 : 0 } }, h(Material, { name: 'check', size: 24 })) : null);
+      props.check != null ? h('span', { className: 'bae-a-menu-check', style: { opacity: props.check ? 1 : 0 } }, h(Material, { name: 'check', size: 'large' })) : null);
   }
   MATERIAL.check = 'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z';
 
   // ---- Android library ----
 
   function AndroidPlayPause(props) {
-    var icon = Number(props.size || 24), box = icon + 16;
+    // The button is the glyph and 8dp around it, which the waiting arc rings.
+    var icon = props.size || 'large', box = 'calc(' + iconSize(icon, true) + ' + 16px)';
     return h('button', { type: 'button', className: 'bae-a-playpause', style: { width: box, height: box }, 'aria-label': props.playing || props.waiting ? 'Pause' : 'Play' },
-      props.waiting ? h('svg', { className: 'bae-waitarc', width: box, height: box, viewBox: '0 0 48 48', 'aria-hidden': true }, h('path', { d: 'M24 1.25A22.75 22.75 0 0 1 46.75 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2.5, strokeLinecap: 'round' })) : null,
+      props.waiting ? h('svg', { className: 'bae-waitarc', style: { width: box, height: box }, viewBox: '0 0 48 48', 'aria-hidden': true }, h('path', { d: 'M24 1.25A22.75 22.75 0 0 1 46.75 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2.5, strokeLinecap: 'round' })) : null,
       h(Glyph, { name: props.playing || props.waiting ? 'pause' : 'play', size: icon }));
   }
 
@@ -430,9 +430,9 @@
   function AndroidTransport(props) {
     var large = !!props.large;
     return h('div', { className: cx('bae-a-transport', large && 'bae-a-transport-large') },
-      h(AndroidIconButton, { box: large ? 56 : 40, size: large ? 36 : null, icon: 'previous', label: 'Previous' }),
-      h(AndroidPlayPause, { playing: props.playing, waiting: props.waiting, size: large ? 48 : null }),
-      h(AndroidIconButton, { box: large ? 56 : 40, size: large ? 36 : null, icon: 'next', label: 'Next' }));
+      h(AndroidIconButton, { box: large ? 56 : 40, size: large ? 'androidTransport' : null, icon: 'previous', label: 'Previous' }),
+      h(AndroidPlayPause, { playing: props.playing, waiting: props.waiting, size: large ? 'androidTransportPlay' : null }),
+      h(AndroidIconButton, { box: large ? 56 : 40, size: large ? 'androidTransport' : null, icon: 'next', label: 'Next' }));
   }
 
   function AndroidNowPlayingBar(props) {
@@ -450,7 +450,7 @@
   // The library header while searching: back, and the search field with what was typed (`search`) and its clear button, or the prompt.
   function AndroidSearchBar(props) {
     return h('header', { className: 'bae-a-searchbar' }, h(AndroidIconButton, { icon: 'back', label: 'Back' }),
-      h('div', { className: 'bae-a-searchfield' }, h('span', { className: props.search ? null : 'bae-a-search-prompt' }, props.search || 'Search albums, tracks, composers, and works'), props.search ? h(Glyph, { name: 'close', size: 20 }) : null));
+      h('div', { className: 'bae-a-searchfield' }, h('span', { className: props.search ? null : 'bae-a-search-prompt' }, props.search || 'Search albums, tracks, composers, and works'), props.search ? h(Glyph, { name: 'close', size: 'medium' }) : null));
   }
 
   // The Activity button, by what the sync queue does (`state`): moving spins, attention shows the warning mark, and paused (a queue held with nothing moving) shows a pause symbol so the hold can be seen. With nothing moving or held there is no button.
@@ -466,7 +466,7 @@
     var collapsed = !!props.collapsed;
     if (props.searching) return h(AndroidSearchBar, { search: props.search });
     return h('header', { className: cx('bae-a-libheader', collapsed && 'bae-a-libheader-collapsed') },
-      h('button', { type: 'button', 'aria-haspopup': 'menu', className: 'bae-a-libhead-title' }, h('span', null, props.view || 'Albums'), h(Glyph, { name: 'down', size: collapsed ? 16 : 20, className: 'bae-a-libhead-chevron' })),
+      h('button', { type: 'button', 'aria-haspopup': 'menu', className: 'bae-a-libhead-title' }, h('span', null, props.view || 'Albums'), h(Glyph, { name: 'down', size: collapsed ? 'small' : 'medium', className: 'bae-a-libhead-chevron' })),
       h(AndroidIconButton, { icon: 'search', label: 'Search' }),
       h(AndroidActivityButton, { state: props.sync }),
       h(AndroidIconButton, { icon: 'more', label: 'More options' }),
@@ -512,7 +512,7 @@
 
   // A track row's lead on Android: the track's number, or on the current track Play, or the playing mark while it plays.
   function AndroidTrackLead(props) {
-    return h('span', { className: 'bae-a-track-lead' }, props.current ? h(Glyph, { name: props.playing ? 'nowplaying' : 'play', size: 24, className: 'bae-accent' }) : h('span', { className: 'bae-a-track-pos' }, props.position));
+    return h('span', { className: 'bae-a-track-lead' }, props.current ? h(Glyph, { name: props.playing ? 'nowplaying' : 'play', size: 'large', className: 'bae-accent' }) : h('span', { className: 'bae-a-track-pos' }, props.position));
   }
 
   // `work`: the work the track records, with its composer, on a line under the row.
@@ -532,7 +532,7 @@
       h('div', { className: 'bae-a-albumhead-text' }, h('div', { className: 'bae-a-albumhead-title' }, props.title), h('div', { className: 'bae-a-albumhead-artist' }, props.artist), props.year || props.rating ? h('div', { className: 'bae-a-albumhead-fact' }, props.year, props.year && props.rating ? ' · ' : null, props.rating ? h(Stars, { value: props.rating, size: 12, number: true }) : null) : null,
         props.edition ? h('div', { className: 'bae-a-albumhead-fact bae-a-albumhead-release bae-a-albumhead-gap' }, props.edition) : null, props.copy ? h('div', { className: 'bae-a-albumhead-fact bae-a-albumhead-release' }, props.copy) : null,
         // `unplayable`: only another device holds the files, so the words Not on this device stand where Play stood, and the info button opens a sheet that names the device.
-        props.unplayable ? h('div', { className: 'bae-a-albumhead-actions' }, h('span', { className: 'bae-a-albumhead-unplayable' }, 'Not on this device'), h(AndroidIconButton, { icon: 'info', label: 'Show where it is', size: 20, tone: 'muted' })) : null,
+        props.unplayable ? h('div', { className: 'bae-a-albumhead-actions' }, h('span', { className: 'bae-a-albumhead-unplayable' }, 'Not on this device'), h(AndroidIconButton, { icon: 'info', label: 'Show where it is', size: 'medium', tone: 'muted' })) : null,
         props.children ? h('div', { className: 'bae-a-albumhead-actions' }, props.children) : null));
   }
 
@@ -546,7 +546,7 @@
       s === 'queued' ? h('div', { className: 'bae-a-dlrow' }, line('Queued to pin'), btn('close', 'Cancel')) :
       s === 'downloading' ? [h(AndroidProgress, { key: 'p', name: 'Pinning', value: Number(props.progress || 0.4) }), h('span', { key: 'b', className: 'bae-a-fine' }, 'Pinning · ' + (props.bytes || '120 MB of 300 MB')), h('div', { key: 'c' }, btn('close', 'Cancel pinning'))] :
       s === 'failed' ? [h(AndroidNotice, { key: 'e', quiet: true, tone: 'danger', title: 'Could not pin', secondary: 'Details', action: 'Retry' }), h('div', { key: 'r' }, btn('close', 'Cancel'))] :
-      s === 'downloaded' ? h('div', { className: 'bae-a-dlrow' }, h(Glyph, { name: 'pin', size: 16, className: 'bae-muted' }), line('Pinned'), btn('unpin', 'Unpin')) :
+      s === 'downloaded' ? h('div', { className: 'bae-a-dlrow' }, h(Glyph, { name: 'pin', size: 'small', className: 'bae-muted' }), line('Pinned'), btn('unpin', 'Unpin')) :
       btn('pin', 'Pin');
     return h('div', { className: 'bae-a-dl' }, body);
   }

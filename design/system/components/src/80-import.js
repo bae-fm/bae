@@ -5,7 +5,7 @@
   function MacSearchField(props) {
     var kind = props.kind || 'search', label = props.label || 'Search';
     return h('span', { className: cx('bae-m-sfield', 'bae-m-sfield-' + kind, props.focused && 'bae-m-sfield-focused', props.off && 'bae-off') },
-      h(Glyph, { set: 'mac', name: 'search', size: kind === 'search' ? 14 : 12, className: kind === 'inline' ? 'bae-m-tertiary' : null }),
+      h(Glyph, { set: 'mac', name: 'search', size: kind === 'search' ? 'medium' : 'small', className: kind === 'inline' ? 'bae-m-tertiary' : null }),
       h('input', { type: 'text', className: 'bae-m-bareinput', defaultValue: props.value || '', placeholder: label, 'aria-label': label, spellCheck: false, disabled: props.off ? true : null }));
   }
   // A file's transfer ring in the Storage Manager's inspector, filling clockwise from the top: `value` from 0 to 1. `tone`: `activity` (the default), a file moving to or from storage, or `pinning`, a file bae is pinning, over a hairline. `label` names the ring for VoiceOver; without one, the row around it names it.
@@ -37,7 +37,7 @@
       props.identifying ? ind('Identifying', null, identifyingRing(props.identifying)) : null,
       props.importing ? ind('Importing…', 'bae-muted', h(Sym, { name: 'saveAs', size: 14 })) : null,
       props.scanning ? ind('Scanning folders', null, h(MacSpinner, { size: 12 })) : null,
-      ind('Sorting, filtering and watched folders', 'bae-muted', [h(Glyph, { key: 'g', set: 'mac', name: 'ellipsis', size: 15 }), props.filtered ? h('span', { key: 'd', className: 'bae-m-isb-dot' }) : null], { 'aria-haspopup': 'menu' }));
+      ind('Sorting, filtering and watched folders', 'bae-muted', [h(Glyph, { key: 'g', set: 'mac', name: 'ellipsis', size: 'medium' }), props.filtered ? h('span', { key: 'd', className: 'bae-m-isb-dot' }) : null], { 'aria-haspopup': 'menu' }));
   }
   // The left column: the tabs, the filter row, then the rows, or `empty`, the line an empty list shows.
   function MacImportSidebar(props) {
@@ -91,7 +91,7 @@
   }
   // A group of folders, a button that folds the group: chevron and the folder's name.
   function MacImportGroupHeader(props) {
-    return h('button', { type: 'button', className: 'bae-plainbtn bae-m-igh', 'aria-expanded': !props.closed }, h(Glyph, { set: 'mac', name: 'down', size: 9, className: 'bae-m-tertiary', style: props.closed ? { transform: 'rotate(-90deg)' } : null }), h('span', { className: 'bae-ellipsis' }, props.name));
+    return h('button', { type: 'button', className: 'bae-plainbtn bae-m-igh', 'aria-expanded': !props.closed }, h(Glyph, { set: 'mac', name: 'down', size: 'badge', className: 'bae-m-tertiary', style: props.closed ? { transform: 'rotate(-90deg)' } : null }), h('span', { className: 'bae-ellipsis' }, props.name));
   }
   // A line of progress in the surrounding font: the phase, a bar filling the rest of the line, and an optional count. No `value` is a wait of no known length; `activity` fills the bar in the activity colour, for files moving to or from storage.
   function MacProgressLine(props) {
@@ -168,15 +168,15 @@
   function audioLine(audio) { return audio ? h('div', { key: 'audio', className: 'bae-m-tertiary bae-m-idraft-audio' }, audio) : null; }
   // What Discogs says about the pressing that no other field holds: each detail with its remove button, then the menu that adds one more, showing — while there are none and + Add after.
   // ⊗, which removes one entry of a list, named for the entry (`what`), as xmark.circle.fill in the editor.
-  function removeEntry(what) { return h(MacIconButton, { icon: 'removefill', size: 14, small: true, faint: true, label: 'Remove ' + what }); }
+  function removeEntry(what) { return h(MacIconButton, { icon: 'removefill', size: 'medium', small: true, faint: true, label: 'Remove ' + what }); }
   // + and the words, in the accent: the one control every list of the Release grid adds an entry with. `menu`: it opens a menu of what can be added, and says Add.
   function addEntry(label, menu) {
-    return h('button', { type: 'button', 'aria-haspopup': menu ? 'menu' : null, 'aria-label': label, title: label, className: 'bae-plainbtn bae-accent bae-m-idraft-add' }, h(Glyph, { set: 'mac', name: 'add', size: 11 }), menu ? 'Add' : label);
+    return h('button', { type: 'button', 'aria-haspopup': menu ? 'menu' : null, 'aria-label': label, title: label, className: 'bae-plainbtn bae-accent bae-m-idraft-add' }, h(Glyph, { set: 'mac', name: 'add', size: 'small' }), menu ? 'Add' : label);
   }
   function discogsDetails(details) {
     return h('span', { className: 'bae-m-idraft-details' },
       details.map(function (d) { return h('span', { key: d, className: 'bae-m-idraft-detail' }, d, removeEntry(d)); }),
-      h('button', { type: 'button', className: cx('bae-plainbtn', 'bae-m-idraft-detail', !details.length && 'bae-m-tertiary'), 'aria-haspopup': 'menu', 'aria-label': 'Details' }, details.length ? [h(Glyph, { key: 'p', set: 'mac', name: 'add', size: 11 }), 'Add'] : '—'));
+      h('button', { type: 'button', className: cx('bae-plainbtn', 'bae-m-idraft-detail', !details.length && 'bae-m-tertiary'), 'aria-haspopup': 'menu', 'aria-label': 'Details' }, details.length ? [h(Glyph, { key: 'p', set: 'mac', name: 'add', size: 'small' }), 'Add'] : '—'));
   }
   // The release's fields under a Release heading: Year, Media, Label with its catalog number, Country, Barcode, Status, Packaging and Details, the typed ones as fields and the chosen ones as pop-ups, each showing — while empty.
   function MacReleaseFields(props) {
@@ -248,7 +248,7 @@
     var kind = props.kind || 'opens', opens = kind === 'opens' && !props.damaged;
     return h(opens ? 'button' : 'div', { type: opens ? 'button' : null, className: cx(opens && 'bae-plainbtn', 'bae-m-ifile'), 'aria-label': opens ? props.name : null },
       h('span', { className: 'bae-mono bae-ellipsis' }, props.name),
-      props.damaged ? h('span', { className: 'bae-m-ifile-damaged' }, h(StatusGlyph, { tone: 'warning', set: 'mac', size: 12 }), props.damaged) : null,
+      props.damaged ? h('span', { className: 'bae-m-ifile-damaged' }, h(StatusGlyph, { tone: 'warning', set: 'mac', size: 'small' }), props.damaged) : null,
       kind === 'audio' ? h('button', { type: 'button', className: 'bae-plainbtn bae-muted bae-m-ifile-play', 'aria-label': 'Play' }, h(Sym, { name: 'play', size: 10 })) : null,
       h('span', { className: 'bae-m-tertiary bae-m-ifile-size' }, props.size || ''));
   }
@@ -278,7 +278,7 @@
   // A CUE sheet's caption: the pop-up of which side or disc the sheet is on (Side A on a record or cassette, Disc 1 elsewhere), CUE, the sheet's name (a button that opens it in the viewer), → and the pop-up of the audio its FILE line is bound to.
   function MacImportSheetCaption(props) {
     return h('div', { className: 'bae-m-icue' },
-      h('button', { type: 'button', role: 'combobox', 'aria-label': 'Side or disc', 'aria-expanded': false, className: 'bae-plainbtn bae-m-icue-disc' }, h('span', { className: 'bae-strong' }, props.disc), h(Glyph, { set: 'mac', name: 'down', size: 8 })),
+      h('button', { type: 'button', role: 'combobox', 'aria-label': 'Side or disc', 'aria-expanded': false, className: 'bae-plainbtn bae-m-icue-disc' }, h('span', { className: 'bae-strong' }, props.disc), h(Glyph, { set: 'mac', name: 'down', size: 'badge' })),
       h(StatusChip, { tone: 'accent' }, 'CUE'),
       h('button', { type: 'button', className: 'bae-plainbtn bae-mono' }, props.sheet),
       h('span', { className: 'bae-m-tertiary', 'aria-hidden': true }, '→'),
@@ -287,13 +287,13 @@
   // Find online: Back (a button) and Identify, the Discogs bar, then Automatic and Search, each heading a button that opens its section, one open at a time.
   function MacFindOnline(props) {
     var open = props.open || 'Automatic';
-    var head = function (t, status) { return h('button', { type: 'button', 'aria-expanded': open === t, className: cx('bae-plainbtn', 'bae-m-fo-sec', open !== t && props.dimmed === t && 'bae-m-fo-dim') }, h(Glyph, { set: 'mac', name: 'down', size: 9, className: 'bae-m-tertiary', style: open === t ? null : { transform: 'rotate(-90deg)' } }), h('span', { className: 'bae-m-eyebrowtxt' }, t), status); };
+    var head = function (t, status) { return h('button', { type: 'button', 'aria-expanded': open === t, className: cx('bae-plainbtn', 'bae-m-fo-sec', open !== t && props.dimmed === t && 'bae-m-fo-dim') }, h(Glyph, { set: 'mac', name: 'down', size: 'badge', className: 'bae-m-tertiary', style: open === t ? null : { transform: 'rotate(-90deg)' } }), h('span', { className: 'bae-m-eyebrowtxt' }, t), status); };
     var k = kids(props.children);
     return h('div', { className: 'bae-m-card bae-m-fo' },
       h('div', { className: 'bae-m-fo-head' }, h('button', { type: 'button', className: 'bae-plainbtn bae-accent bae-m-fo-back' }, h(Sym, { name: 'left', size: 12 }), 'Back'), h('span', { className: 'bae-strong', style: { position: 'absolute', left: 0, right: 0, textAlign: 'center', pointerEvents: 'none' } }, 'Identify')),
       h('div', { className: 'bae-divider' }),
       props.discogsBar ? h('div', { style: { padding: 12 } }, h(MacNotice, { tone: 'info' }, h('div', { style: { display: 'flex', gap: 10 } }, h('div', { style: { flex: 1 } }, h('div', { className: 'bae-strong' }, 'Add Discogs to find more pressings'), h('div', { className: 'bae-muted' }, 'Many regional releases, reissues and vinyl pressings are only on Discogs. Tokens are free: create one in your Discogs account settings.')), h(MacButton, { kind: 'primary', size: 'small' }, 'Open Settings'), h('button', { type: 'button', className: 'bae-plainbtn bae-m-fo-close', 'aria-label': 'Close' }, h(Sym, { name: 'close', size: 11 }))))) : null,
-      head('Automatic', props.autoStatus === 'working' ? h(MacSpinner, { size: 11 }) : props.autoStatus === 'failed' ? h(StatusGlyph, { tone: 'warning', set: 'mac', size: 10 }) : null),
+      head('Automatic', props.autoStatus === 'working' ? h(MacSpinner, { size: 11 }) : props.autoStatus === 'failed' ? h(StatusGlyph, { tone: 'warning', set: 'mac', size: 'chip' }) : null),
       open === 'Automatic' ? h('div', { className: 'bae-m-fo-body' }, k) : null,
       h('div', { className: 'bae-divider' }),
       head('Search', null),

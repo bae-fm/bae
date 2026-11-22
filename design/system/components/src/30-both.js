@@ -71,15 +71,15 @@
   // The ring, the mark solid inside it.
   var STATUS_RING = STATUS_CIRCLE + 'M12 3.6a8.4 8.4 0 1 1 0 16.8 8.4 8.4 0 1 1 0-16.8z';
   var STATUS_MATERIAL = { info: 'info', success: 'check_circle', warning: 'error', danger: 'error' };
-  // A tone's glyph in the tone's colour; set="mac" for macOS. `inline` sizes it at 1.19 times the text beside it instead of `size`; `muted` draws it in secondary text. Neutral, accent and activity have none.
+  // A tone's glyph in the tone's colour; set="mac" for macOS. `size` is an icon role; `inline` (macOS) sizes it at 1.19 times the text beside it instead; `muted` draws it in secondary text. Neutral, accent and activity have none.
   function StatusGlyph(props) {
-    var tone = props.tone, size = Number(props.size || 15);
+    var tone = props.tone;
     if (!STATUS_MATERIAL[tone]) return null;
     var cls = cx('bae-status-glyph', 'bae-tone-' + tone, props.muted && 'bae-status-glyph-muted', props.inline && 'bae-status-glyph-inline', props.className);
     return props.set === 'mac'
-      ? h('svg', { className: cls, width: size, height: size, viewBox: '2 2 20 20', 'aria-hidden': true, fill: 'currentColor' },
+      ? h('svg', { className: cls, style: props.inline ? null : iconBox(props.size), viewBox: '2 2 20 20', 'aria-hidden': true, fill: 'currentColor' },
           h('path', { d: STATUS_RING, fillRule: 'evenodd' }), h('path', { d: STATUS_MARK[tone] }))
-      : h(MSymbol, { name: STATUS_MATERIAL[tone], size: size, filled: false, className: cls, fill: 'currentColor' });
+      : h(MSymbol, { name: STATUS_MATERIAL[tone], size: props.size, filled: false, className: cls, fill: 'currentColor' });
   }
   // The tinted box MacNotice and AndroidNotice draw in: its text the size of the screen it sits in (13 on a Mac, 14 on Android); `icon` (on unless false) leads with the tone's glyph at 1.19 times that, at the top left, level with the first line. Neutral has none. One glyph drawing serves both apps: the SF Symbol and Material's filled circle look alike.
   // `look.quiet` draws it with no fill, the screen's text; `look.centered` centres everything in the space it's given (a view that failed whole), its glyph drawn by the caller in the title line (noticeGlyph); `look.stage` is for the lightbox's dark stage; `look.platform` is the app's own class (bae-m-notice-box or bae-a-notice-box).

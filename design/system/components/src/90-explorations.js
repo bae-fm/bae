@@ -29,7 +29,7 @@
       props.who ? h(MacPersonTag, { name: props.who }) : null,
       props.duration ? h('span', { className: 'bae-muted bae-num', style: { width: 40, textAlign: 'right', fontSize: 11.5 } }, props.duration) : null,
       // `remove`: the label of a button that takes the row out of its list (the queue's Remove from queue), which shows at the row's end while the pointer is over the row (`hover`).
-      props.remove && props.hover ? h(MacIconButton, { icon: 'close', size: 11, small: true, label: props.remove }) : null);
+      props.remove && props.hover ? h(MacIconButton, { icon: 'close', size: 'small', small: true, label: props.remove }) : null);
   }
   // `menu`: the row ends in ⋮, the row's actions, labelled with `menu`'s text (More unless given).
   function AndroidListRow(props) {

@@ -51,7 +51,7 @@
             h('div', { className: 'bae-m-nptrack-eyebrow' }, 'Now playing'),
             h('div', { className: 'bae-m-np-title' }, props.title), h('div', { className: 'bae-m-np-sub' }, props.artist),
             h('div', { className: 'bae-m-queue-strip' }, h('div', { className: 'bae-m-queue-strip-bar' }, h('div', { style: { width: (Number(props.position || 0) * 100) + '%' } })), h('span', null, props.elapsed || '')))),
-        h('span', { className: 'bae-m-queue-np-play' }, h(Glyph, { set: 'mac', name: props.playing ? 'pause' : 'play', size: 13 }))) : null,
+        h('span', { className: 'bae-m-queue-np-play' }, h(Glyph, { set: 'mac', name: props.playing ? 'pause' : 'play', size: 'medium' }))) : null,
       props.empty ? h(MacContentUnavailable, { title: 'Queue is empty', description: 'Drag tracks here or play an album' })
         : h('div', { className: 'bae-m-queue-body' }, props.children));
   }
@@ -70,11 +70,11 @@
       props.clear ? h('span', { className: 'bae-m-queue-clear' }, 'Clear') : null,
       // `menu`: a choice that applies to the whole list (History's whose plays), at the heading's end, opening a menu of its choices.
       props.menu ? wholeListChoice(props.menu) : null,
-      props.shuffle != null ? h('span', { className: cx('bae-m-queue-shuffle', props.shuffle && 'bae-m-queue-shuffle-on'), 'aria-label': props.shuffle ? 'Turn off shuffle' : 'Shuffle' }, h(Glyph, { set: 'mac', name: 'shuffle', size: 11 })) : null);
+      props.shuffle != null ? h('span', { className: cx('bae-m-queue-shuffle', props.shuffle && 'bae-m-queue-shuffle-on'), 'aria-label': props.shuffle ? 'Turn off shuffle' : 'Shuffle' }, h(Glyph, { set: 'mac', name: 'shuffle', size: 'small' })) : null);
   }
   // A choice that applies to a whole list (History's whose plays), shown as its current value in the accent with a ⌄, opening a menu of the choices. `big`: under an empty list's line, in body text, rather than a heading's small text.
   function wholeListChoice(value, big) {
-    return h('button', { type: 'button', 'aria-haspopup': 'menu', className: cx('bae-m-queue-menu', big && 'bae-m-queue-menu-action') }, value, h(Glyph, { set: 'mac', name: 'down', size: big ? 11 : 9 }));
+    return h('button', { type: 'button', 'aria-haspopup': 'menu', className: cx('bae-m-queue-menu', big && 'bae-m-queue-menu-action') }, value, h(Glyph, { set: 'mac', name: 'down', size: big ? 'small' : 'badge' }));
   }
   // A queued track still loading: the queue row's shape, a 40pt cover and two lines, in placeholder grey.
   function MacQueuePlaceholderRow() {
@@ -104,7 +104,7 @@
     var tap = !props.active && !props.menu;
     var spinner = props.waiting ? h(MacSpinner, { key: 's', size: 14 }) : null;
     var control = props.menu ? h(MacMoreMenu, { key: 'm' }) : props.active ? h(MacButton, { key: 'd', kind: 'borderless', size: 'small' }, 'Disconnect') : null;
-    return h('div', Object.assign({ className: 'bae-m-castrow' }, tap ? { role: 'button', 'aria-label': props.name + ', ' + (props.waiting || CAST_KIND[props.kind || 'cast']) } : null), h(MacItem, { wide: true, centerLead: true, centerTrail: true, lead: h(Glyph, { set: 'mac', name: glyph, size: 15, className: props.active ? 'bae-accent' : 'bae-muted' }), trail: [spinner, control] },
+    return h('div', Object.assign({ className: 'bae-m-castrow' }, tap ? { role: 'button', 'aria-label': props.name + ', ' + (props.waiting || CAST_KIND[props.kind || 'cast']) } : null), h(MacItem, { wide: true, centerLead: true, centerTrail: true, lead: h(Glyph, { set: 'mac', name: glyph, size: 'medium', className: props.active ? 'bae-accent' : 'bae-muted' }), trail: [spinner, control] },
       h('span', { className: 'bae-m-castpop-text' }, h('span', { className: 'bae-m-castpop-name' }, props.name), props.waiting ? h('span', { className: 'bae-m-castpop-kind bae-m-castpop-waiting' }, props.waiting) : h('span', { className: props.active ? 'bae-m-castpop-state' : 'bae-m-castpop-kind' }, props.active ? 'Playing' : CAST_KIND[props.kind || 'cast']))));
   }
   // The Play on button's popover: the header Play on, then the receivers (`devices`, "Name:kind" entries, `casting` the one playing), or No receivers found when there are none. While bae connects to one (`connecting`, the receiver's name), that receiver's row says Connecting…, or Accept on <the receiver>… once the receiver holds the connection for its owner (`ownerDeciding`).
@@ -125,12 +125,12 @@
   function AndroidQueueSection(props) {
     return h('div', { className: 'bae-a-queuelabel' }, h('span', { className: 'bae-a-eyebrow', style: { paddingTop: 0, flex: 1 } }, props.title),
       props.clear ? h(AndroidButton, { kind: 'text' }, 'Clear') : null,
-      props.shuffle != null ? h(AndroidIconButton, { icon: 'shuffle', label: props.shuffle ? 'Turn off shuffle' : 'Shuffle', size: 20, tone: props.shuffle ? 'accent' : 'muted' }) : null);
+      props.shuffle != null ? h(AndroidIconButton, { icon: 'shuffle', label: props.shuffle ? 'Turn off shuffle' : 'Shuffle', size: 'medium', tone: props.shuffle ? 'accent' : 'muted' }) : null);
   }
   function AndroidQueueRow(props) {
     return h('div', { className: cx('bae-a-qrow', props.dragging && 'bae-a-qrow-drag') }, h(Artwork, { title: props.album || props.title, size: 48, radius: 6 }),
       h('div', { className: 'bae-a-qrow-text' }, h('div', { className: cx('bae-a-track-title', props.current && 'bae-accent') }, props.title), h('div', { className: 'bae-a-track-artist' }, props.artist), props.current ? null : h('div', { className: 'bae-a-track-artist' }, props.album)),
-      props.current ? null : [h('span', { key: 'd', className: 'bae-a-track-time', style: { padding: '0 8px' } }, props.duration), h(AndroidIconButton, { key: 'x', icon: 'close', label: 'Remove', tone: 'muted' }), h(Glyph, { key: 'h', name: 'drag', size: 20, className: 'bae-muted' })]);
+      props.current ? null : [h('span', { key: 'd', className: 'bae-a-track-time', style: { padding: '0 8px' } }, props.duration), h(AndroidIconButton, { key: 'x', icon: 'close', label: 'Remove', tone: 'muted' }), h(Glyph, { key: 'h', name: 'drag', size: 'medium', className: 'bae-muted' })]);
   }
   // A grey bar where text or a picture will be while it loads, as MacPlaceholderLine: `width` and `height` in dp, `radius` for a picture's corners (a bar's corners otherwise), `fixed` keeps its width in a row.
   function AndroidPlaceholderLine(props) { return placeholderLine(props); }
@@ -162,13 +162,13 @@
     // A receiver, in the picker and in the Playback settings alike: under its name its kind, or Playing for the one playing, which ends in Disconnect. Tapping any other plays on it. No separate "Playing on" row, and no check: the row says it. `menu` (the Playback settings) ends every row in ⋮ in place of Disconnect: Details… and, on the one playing, Disconnect; `menuOpen` draws that menu open under it.
     // `waiting` on a receiver: the words of a wait on it (Connecting…, or Accept on <the receiver>) in place of its kind, with a spinner at the row's end, before the ⋮ in the Playback settings.
     var icon = { cast: 'cast', airplay: 'speakerbox', upnp: 'tv' }[props.kind || 'cast'];
-    return h('div', { className: 'bae-a-castrow' }, h(Glyph, { name: icon, size: 24, className: props.active ? 'bae-accent' : 'bae-muted' }),
+    return h('div', { className: 'bae-a-castrow' }, h(Glyph, { name: icon, size: 'large', className: props.active ? 'bae-accent' : 'bae-muted' }),
       h('span', { className: 'bae-a-castrow-text' }, h('span', { className: 'bae-a-castrow-name' }, props.name), props.waiting ? h('span', { className: 'bae-a-castrow-kind' }, props.waiting) : h('span', { className: props.active ? 'bae-a-castrow-state' : 'bae-a-castrow-kind' }, props.active ? 'Playing' : CAST_KIND[props.kind || 'cast'])),
       props.waiting ? h(AndroidSpinner, { size: 20 }) : null,
       props.menu ? h(AndroidMoreMenu, { open: props.menuOpen, items: props.active ? 'Details…,Disconnect' : 'Details…' }) : props.active ? h(AndroidButton, { kind: 'text' }, 'Disconnect') : null);
   }
   function AndroidCheckbox(props) {
-    return h('div', { className: 'bae-a-checkrow', role: 'checkbox', 'aria-checked': !!props.on }, h('span', { className: cx('bae-a-checkbox', props.on && 'bae-a-checkbox-on') }, props.on ? h(Glyph, { name: 'check', size: 16 }) : null), h('span', null, props.label));
+    return h('div', { className: 'bae-a-checkrow', role: 'checkbox', 'aria-checked': !!props.on }, h('span', { className: cx('bae-a-checkbox', props.on && 'bae-a-checkbox-on') }, props.on ? h(Glyph, { name: 'check', size: 'small' }) : null), h('span', null, props.label));
   }
 
 

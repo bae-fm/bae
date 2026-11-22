@@ -6,7 +6,8 @@ Every text style a component draws comes from a type token of
 design/system/tokens.json, through the variables tokens.css gives each style
 (`--type-<style>-size`, `--type-<style>-weight` and
 `--type-<style>-line-height`), so a component's style cannot drift from its
-token. A `font`, `font-size`, `font-weight` or `line-height` declaration may
+token. A glyph drawn in a symbol font takes its size from an icon token
+(`--icon-<role>`, `--icon-android-<role>`) the same way. A `font`, `font-size`, `font-weight` or `line-height` declaration may
 hold variables, `inherit` and `normal`, and nothing else that sets a size,
 weight or line height: no number and no weight word.
 
@@ -30,8 +31,6 @@ SOURCES = "design/system/components/src/"
 ALLOWED = {
     (".bae-a-key", "font"): "the drawn Android keyboard is the system's, not bae's text",
     (".bae-a-key-mod", "font-size"): "the drawn Android keyboard is the system's, not bae's text",
-    (".bae-msym", "font-size"): "a Material Symbols glyph fills its SVG's 24-unit view box",
-    (".bae-msym", "font-weight"): "Material Symbols draws its glyphs at weight 400",
     (".bae-scan-qr", "line-height"): "the QR code's box holds a drawing and no line of text",
 }
 

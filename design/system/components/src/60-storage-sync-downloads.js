@@ -58,7 +58,7 @@
       h(MacSegmentedControl, { options: 'All, Local, Cloud', selected: props.filter || 'All', off: props.disabled }),
       h('span', { style: { flex: 1 } }),
       h(MacSearchField, { kind: 'filter', label: 'Filter', value: props.search, off: props.disabled }),
-      h(MacIconButton, { icon: 'sidebar', size: 15, label: 'Inspector', active: props.inspector, off: props.disabled }));
+      h(MacIconButton, { icon: 'sidebar', size: 'medium', label: 'Inspector', active: props.inspector, off: props.disabled }));
   }
   // The Storage Manager's window, its own frame as in the app: the toolbar, then the release list and, while `inspector` is on, the inspector. The list is the MacTable with the MacStorageFooter under it (or, with no library open, the first child alone); the other children are the inspector's. `empty`: the filter matches nothing, and the window says No matches over the table.
   function MacStorageWindow(props) {
@@ -80,7 +80,7 @@
   // Entries: one row a ";"-separated entry, one cell a "|"-separated field.
   function entries(s) { return String(s || '').split(';').map(function (x) { return x.trim(); }).filter(Boolean).map(function (r) { return r.split('|').map(function (x) { return x.trim(); }); }); }
   function tableHead(cs) {
-    return h('div', { className: 'bae-m-table-head' }, cs.map(function (c, i) { return h(c.plain ? 'span' : 'button', { key: i, type: c.plain ? null : 'button', className: cx('bae-m-table-th', c.right && 'bae-m-table-right') }, c.title, c.sort ? h(Glyph, { set: 'mac', name: 'down', size: 8, className: 'bae-muted' }) : null); }));
+    return h('div', { className: 'bae-m-table-head' }, cs.map(function (c, i) { return h(c.plain ? 'span' : 'button', { key: i, type: c.plain ? null : 'button', className: cx('bae-m-table-th', c.right && 'bae-m-table-right') }, c.title, c.sort ? h(Glyph, { set: 'mac', name: 'down', size: 'badge', className: 'bae-muted' }) : null); }));
   }
   function tableTemplate(cs) { return cs.map(function (c, i) { return i === 0 ? 'minmax(' + c.w + 'px, 1fr)' : c.w + 'px'; }).join(' '); }
   // The Storage Manager's release table, AppKit's NSTableView: the header (`columns`), then one row a release, every other row on the hover fill, the `selected` rows (their numbers, from 1, separated by commas) in the accent's tint. `rows` holds the releases, one entry a row with a field a column in the columns' order: the release's title, its artist, media, storage (a MacStorageChip state, and its progress for a state that moves: "uploading 0.62"), files, size and date added. The Release column draws MacReleaseCell and every other column MacStorageCell. `loading`: that many rows still on their way after the given ones, each a placeholder bar in its Release column.
@@ -223,7 +223,7 @@
     // Centred, the notice is quiet words: its button's label is secondary text, so nothing in it is brighter than the message; Details is in the accent, as in every notice, apart from the grey title.
     var primary = props.action ? h(MacButton, { key: 'p', muted: centered, tinted: !props.quiet }, props.action) : null;
     var secondary = props.secondary ? h(MacButton, { key: 's', kind: 'borderless' }, props.secondary) : null;
-    var dismiss = props.dismiss ? h('span', { key: 'x', className: 'bae-m-notice-dismiss' }, h(MacIconButton, { icon: 'close', size: 14, faint: true, label: 'Dismiss' })) : null;
+    var dismiss = props.dismiss ? h('span', { key: 'x', className: 'bae-m-notice-dismiss' }, h(MacIconButton, { icon: 'close', size: 'medium', faint: true, label: 'Dismiss' })) : null;
     // `leave`: the label of the button that leaves a screen the notice fills (Cancel), first in the row, where it is the screen's only way back.
     var leave = centered && props.leave ? h(MacButton, { key: 'l', muted: true }, props.leave) : null;
     if (centered) {
@@ -253,7 +253,7 @@
   function MacTransferLine(props) {
     return h('div', { className: 'bae-m-actline bae-m-actline-xfer' },
       h('div', { className: 'bae-m-actxfer' }, h('span', null, props.label), h('span', { className: 'bae-m-actxfer-end' }, props.count ? h('span', { className: 'bae-muted bae-num' }, props.count) : null,
-        props.pausable ? h(MacIconButton, { icon: props.paused ? 'play' : 'pause', size: 13, small: true, boxed: true, label: props.paused ? 'Resume' : 'Pause' }) : null)),
+        props.pausable ? h(MacIconButton, { icon: props.paused ? 'play' : 'pause', size: 'medium', small: true, boxed: true, label: props.paused ? 'Resume' : 'Pause' }) : null)),
       h(MacProgress, { name: props.label, value: props.progress }));
   }
   // The toolbar's Activity panel (BaeKit's SyncActivityList, grown to hold every problem): Needs attention lists what bae needs the person for, as notices, each with an × that dismisses it from the panel (the problem itself stays on the screen where the person fixes it): the caller's own (children), Could not read sync status (`error`, its title), and sync's own failure (`attention`, the error's title: signed out, a record it can't send) with Open sync settings. Nothing in the panel retries in place. Then Transfers, each a line of words, how far it has got and a bar: Syncing changes (no count, its bar moves), Uploading (`uploads`), Pinning (`pins`), Moving to This Mac (`movingToThisDevice`), each counted in releases done of the batch ("1 of 3 releases"), its bar filled by the bytes done; what holds the uploads or the download queue (`uploadsWait`, `downloadsWait`: Paused, Waiting for network; for uploads also Waiting for Wi-Fi, Retrying at a time) stands in place of the count. When nothing needs attention and nothing transfers, the panel says Everything is up to date.
@@ -289,7 +289,7 @@
   // ---- Android: sync activity and Downloads ----
   // MacErrorDetails on Android: the panel with a copy icon button at its corner, in a dialog.
   function AndroidErrorDetails(props) {
-    return h('div', { className: 'bae-errdis-panel bae-errdis-panel-android' }, h('div', { className: 'bae-errdis-chain' }, props.details), h('span', { className: 'bae-errdis-copy' }, h(AndroidIconButton, { icon: 'copy', label: 'Copy details', size: 16, box: 40, tone: 'muted' })));
+    return h('div', { className: 'bae-errdis-panel bae-errdis-panel-android' }, h('div', { className: 'bae-errdis-chain' }, props.details), h('span', { className: 'bae-errdis-copy' }, h(AndroidIconButton, { icon: 'copy', label: 'Copy details', size: 'small', box: 40, tone: 'muted' })));
   }
   // Android's notice: MacNotice's parts from Android's own, both buttons text buttons; centred, the primary is an outlined button. Details opens an AndroidDialog holding `AndroidErrorDetails`.
   function AndroidNotice(props) {
@@ -319,7 +319,7 @@
   function AndroidTransferLine(props) {
     return h('div', { className: cx('bae-a-actxfer', props.opens && 'bae-a-act-tap') },
       h('div', { className: 'bae-a-actxfer-line' }, h('span', null, props.label), h('span', { className: 'bae-a-actxfer-end' }, props.count ? h('span', { className: 'bae-muted' }, props.count) : null,
-        props.pausable ? h(AndroidIconButton, { icon: props.paused ? 'play' : 'pause', size: 18, tonal: true, label: props.paused ? 'Resume' : 'Pause' }) : null)),
+        props.pausable ? h(AndroidIconButton, { icon: props.paused ? 'play' : 'pause', size: 'medium', tonal: true, label: props.paused ? 'Resume' : 'Pause' }) : null)),
       h(AndroidProgress, { name: props.label, value: props.progress }));
   }
   // The Activity sheet (SyncActivity.kt's, grown to hold every problem): the title, Needs Attention with the caller's notices (children), bae couldn't read sync's status (no button), and sync's own with Open Sync Settings; nothing retries in place; then the transfers (the downloads line opens Downloads), or up to date.
@@ -348,7 +348,7 @@
   }
   function AndroidSegmentedControl(props) {
     var o = list(props.options);
-    var seg = h('div', { className: 'bae-a-seg', role: 'radiogroup', 'aria-label': props.label || null }, o.map(function (x) { var on = x === String(props.selected); return h('span', { key: x, role: 'radio', 'aria-checked': on, className: cx('bae-a-seg-btn', on && 'bae-a-seg-on') }, on ? h(Glyph, { name: 'check', size: 18 }) : null, x); }));
+    var seg = h('div', { className: 'bae-a-seg', role: 'radiogroup', 'aria-label': props.label || null }, o.map(function (x) { var on = x === String(props.selected); return h('span', { key: x, role: 'radio', 'aria-checked': on, className: cx('bae-a-seg-btn', on && 'bae-a-seg-on') }, on ? h(Glyph, { name: 'check', size: 'medium' }) : null, x); }));
     // `label`: what the choice is, in the secondary text over the buttons, as a form names it. `helper`: what the chosen option means, in smaller secondary text under them.
     if (!props.label && !props.helper) return seg;
     return h('div', { className: 'bae-a-seg-field' },

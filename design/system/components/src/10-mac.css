@@ -72,7 +72,6 @@
 .bae-m-row-notelist { margin: 2px 0 0; padding-left: 16px; }
 /* The copy button keeps its place while hidden, so the text never moves when it shows. */
 .bae-m-copytext-btn { width: 16px; height: 16px; padding: 0; border: 0; border-radius: 4px; background: none; color: var(--text-secondary); display: inline-flex; align-items: center; justify-content: center; opacity: 0; cursor: pointer; }
-.bae-m-copytext-btn svg { width: 12px; height: 12px; }
 .bae-m-copytext:hover .bae-m-copytext-btn, .bae-m-copytext:focus-within .bae-m-copytext-btn, .bae-m-copytext-hover .bae-m-copytext-btn { opacity: 1; }
 .bae-m-copytext-btn:hover { color: var(--text-primary); }
 .bae-m-row-value { color: var(--text-secondary); white-space: nowrap; display: flex; align-items: center; gap: 6px; }

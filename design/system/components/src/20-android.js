@@ -15,7 +15,7 @@
     return h('header', { className: 'bae-a-topbar' },
       props.back ? h(AndroidIconButton, { icon: 'back', label: props.backLabel || 'Back' }) : null,
       props.title ? h('h1', { className: props.back ? 'bae-a-topbar-title-after-back' : null }, props.title) : null,
-      props.menu ? h('button', { type: 'button', 'aria-haspopup': 'menu', className: 'bae-a-topbar-menu' }, props.menu, h(Glyph, { name: 'down', size: 20 })) : null,
+      props.menu ? h('button', { type: 'button', 'aria-haspopup': 'menu', className: 'bae-a-topbar-menu' }, props.menu, h(Glyph, { name: 'down', size: 'medium' })) : null,
       props.more ? h('span', { className: 'bae-a-topbar-more' }, h(AndroidIconButton, { icon: 'more', label: props.more })) : null);
   }
 
@@ -85,7 +85,7 @@
       // `value`: the label's value at the row's far end, as MacRow's: “Joined · March 2026” in a member's details.
       props.value ? h('span', { className: 'bae-a-row-value' }, props.value) : null,
       trail.length ? h('span', { className: 'bae-a-row-trail' }, trail) : null,
-      props.icon ? h(Material, { name: props.icon, size: props.icon === 'edit' ? 20 : 24, className: 'bae-a-row-icon' }) : null);
+      props.icon ? h(Material, { name: props.icon, size: props.icon === 'edit' ? 'medium' : 'large', className: 'bae-a-row-icon' }) : null);
   }
 
   function AndroidButton(props) {
@@ -93,19 +93,19 @@
     return h('button', { type: 'button', disabled: !!props.off, onClick: props.onClick,
       className: cx('bae-a-btn', 'bae-a-btn-' + kind, props.icon && 'bae-a-btn-icon', props.large && 'bae-a-btn-large', props.destructive && 'bae-a-btn-destructive', props.neutral && 'bae-a-btn-neutral', props.alignTo && 'bae-a-btn-align-' + props.alignTo) },
       // `icon`: a glyph before the words, as the album page's Pin and Unpin.
-      props.icon ? h(Glyph, { name: props.icon, size: 20 }) : null,
+      props.icon ? h(Glyph, { name: props.icon, size: 'medium' }) : null,
       props.children != null ? props.children : props.label);
   }
 
   // `tonal` is the small disc on the accent tint; `tone` colours the glyph (muted: secondary text, accent, warning, onfill: the text on the gallery's backdrop); `box` is the touch box's side in px when it isn't Material's 48. `className` is only for the caller's layout.
   function AndroidIconButton(props) {
     return h('button', { type: 'button', className: cx('bae-a-iconbtn', props.tonal && 'bae-a-iconbtn-tonal', props.tone && 'bae-a-iconbtn-' + props.tone, props.box && 'bae-a-iconbtn-box-' + props.box, props.off && 'bae-a-iconbtn-off', props.className), 'aria-label': props.label || props.icon, 'aria-haspopup': props.menu ? 'menu' : null, disabled: props.off ? true : null },
-      h(Glyph, { name: props.icon || 'more', size: props.size || 24 }));
+      h(Glyph, { name: props.icon || 'more', size: props.size || 'large' }));
   }
 
   // An icon level with a line of text: it takes the line's room (20dp), and its 48dp touch area overhangs the row's padding. A notice's ×, a download's Cancel.
   function AndroidInlineIconButton(props) {
-    return h('span', { className: 'bae-a-inlineicon' }, h(AndroidIconButton, { icon: props.icon || 'close', size: 20, label: props.label, tone: props.tone || 'muted', box: 40 }));
+    return h('span', { className: 'bae-a-inlineicon' }, h(AndroidIconButton, { icon: props.icon || 'close', size: 'medium', label: props.label, tone: props.tone || 'muted', box: 40 }));
   }
 
   function AndroidSwitch(props) {

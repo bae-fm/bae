@@ -47,7 +47,7 @@ class DesignTypeTests(unittest.TestCase):
         self.assertEqual(lines, [f"{SOURCE}:2", f"{SOURCE}:3", f"{SOURCE}:4", f"{SOURCE}:6"])
 
     def test_a_drawing_named_in_the_check_keeps_its_measure(self) -> None:
-        found = self.run_check(".bae-msym { font-size: 24px; font-weight: 400; }\n")
+        found = self.run_check(".bae-a-key-mod { font-size: 13px; }\n")
         self.assertEqual((found.returncode, found.stderr), (0, ""))
 
     def test_files_outside_the_component_sources_are_not_read(self) -> None:

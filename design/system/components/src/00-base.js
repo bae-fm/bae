@@ -47,14 +47,28 @@
       h('path', { d: 'M1.5 1.5 5.5 6l-4 4.5' }));
   }
 
-  // Glyphs: the few the components draw. Stroke icons for macOS, Material paths for Android.
-  function CopyGlyph() {
-    return h('svg', { width: 14, height: 14, viewBox: '0 0 24 24', 'aria-hidden': true, fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' },
+  // A glyph's size: an icon role of tokens.json, such as `medium`, or `androidTransport` for a role Android draws alone. macOS draws it at --icon-<role> and Android at --icon-android-<role>. A role the tokens lack throws, so no glyph falls back to a size of its own.
+  var iconTokens = {};
+  function iconSize(role, android) {
+    var kebab = String(role).replace(/[A-Z]/g, function (c) { return '-' + c.toLowerCase(); });
+    var name = android ? '--icon-android-' + kebab.replace(/^android-/, '') : '--icon-' + kebab;
+    if (!(name in iconTokens) && typeof document !== 'undefined') iconTokens[name] = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    if (iconTokens[name] === '') throw new Error('tokens.json has no icon role `' + role + '` for ' + (android ? 'Android' : 'macOS'));
+    return 'var(' + name + ')';
+  }
+  function iconBox(role, android) {
+    var size = iconSize(role, android);
+    return { width: size, height: size };
+  }
+
+  // Glyphs: the few the components draw. Stroke icons for macOS, Material paths for Android. `size` is an icon role.
+  function CopyGlyph(props) {
+    return h('svg', { style: iconBox(props.size), viewBox: '0 0 24 24', 'aria-hidden': true, fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' },
       h('rect', { x: 9, y: 9, width: 11, height: 11, rx: 2 }),
       h('path', { d: 'M5 15V5a2 2 0 0 1 2-2h8' }));
   }
-  function CheckGlyph() {
-    return h('svg', { width: 14, height: 14, viewBox: '0 0 24 24', 'aria-hidden': true, fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' },
+  function CheckGlyph(props) {
+    return h('svg', { style: iconBox(props.size), viewBox: '0 0 24 24', 'aria-hidden': true, fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' },
       h('path', { d: 'M5 12l5 5L20 7' }));
   }
   var MATERIAL = {
@@ -76,11 +90,12 @@
   var SYMBOL_FILLED = { play: 1, pause: 1, previous: 1, next: 1 };
   // SVG text alone doesn't make WebKit fetch a web font, so ask for the icon font once up front.
   if (typeof document !== 'undefined' && document.fonts && document.fonts.load) document.fonts.load("24px 'Material Symbols Rounded'", 'more_vert');
+  // `size` is an icon role: the svg and the font are both its Android size, so the glyph fills the svg.
   function MSymbol(props) {
-    var s = Number(props.size || 24);
-    return h('svg', { width: s, height: s, viewBox: '0 0 24 24', 'aria-hidden': true, className: props.className, fill: props.fill },
-      h('text', { x: 0, y: 12, dominantBaseline: 'central', className: 'bae-msym', style: (props.filled != null ? props.filled : SYMBOL_FILLED[props.name]) ? { fontVariationSettings: "'FILL' 1" } : null }, SYMBOL[props.name] || props.name));
+    var s = iconSize(props.size, true), filled = props.filled != null ? props.filled : SYMBOL_FILLED[props.name];
+    return h('svg', { style: { width: s, height: s }, 'aria-hidden': true, className: props.className, fill: props.fill },
+      h('text', { x: 0, y: '50%', dominantBaseline: 'central', className: 'bae-msym', style: filled ? { fontSize: s, fontVariationSettings: "'FILL' 1" } : { fontSize: s } }, SYMBOL[props.name] || props.name));
   }
   function Material(props) {
-    return h(MSymbol, { name: props.name, size: props.size || 24, className: props.className });
+    return h(MSymbol, { name: props.name, size: props.size || 'large', className: props.className });
   }

@@ -100,7 +100,7 @@
 
   // An ⓘ after a row's name, for what the name can't say in a word: what Discogs is, say. Clicking it opens a popover with `text` (a board draws the open popover with MacPopover, since a box crops what spills out of it).
   function MacInfoTip(props) {
-    return h('button', { type: 'button', className: 'bae-m-infotip', 'aria-label': props.label || 'More info' }, h(StatusGlyph, { tone: 'info', set: 'mac', muted: true, size: 13 }));
+    return h('button', { type: 'button', className: 'bae-m-infotip', 'aria-label': props.label || 'More info' }, h(StatusGlyph, { tone: 'info', set: 'mac', muted: true, size: 'medium' }));
   }
 
   // A port number: a field five digits wide that takes digits only, its label hidden (the row says Port). `state`: normal, focused, error, off. What's wrong with it goes on the row's second line, not under the field.
@@ -128,7 +128,7 @@
     return h('span', { className: cx('bae-m-copytext', props.hover && 'bae-m-copytext-hover') },
       h('span', { className: 'bae-m-copytext-text' }, props.children != null ? props.children : props.text),
       props.after ? h('span', null, props.after) : null,
-      h('button', { type: 'button', className: 'bae-m-copytext-btn', 'aria-label': props.label || 'Copy' }, h(CopyGlyph)));
+      h('button', { type: 'button', className: 'bae-m-copytext-btn', 'aria-label': props.label || 'Copy' }, h(CopyGlyph, { size: 'small' })));
   }
 
   function MacRow(props) {
@@ -181,7 +181,7 @@
     if (kind === 'icon') {
       var icon = props.icon || 'copy';
       rest['aria-label'] = props.label || icon;
-      return h('button', rest, icon === 'check' ? h(CheckGlyph) : h(CopyGlyph));
+      return h('button', rest, icon === 'check' ? h(CheckGlyph, { size: 'medium' }) : h(CopyGlyph, { size: 'medium' }));
     }
     // `label` beside words names a button whose words don't say what it does, such as the ⋯ that opens the Metadata menu.
     if (props.children != null && props.label != null) rest['aria-label'] = props.label;
@@ -276,8 +276,8 @@
   // macOS reads it as one stepper with that label, its arrows part of the control as a scroll bar's buttons are, so the arrows stay out of the reading order.
   function MacStepper(props) {
     return h('span', { className: 'bae-m-stepper', role: 'spinbutton', 'aria-label': props.label },
-      h('button', { type: 'button', className: 'bae-plainbtn', 'aria-hidden': true, tabIndex: -1 }, h(Glyph, { set: 'mac', name: 'down', size: 11, className: 'bae-m-stepper-up' })),
-      h('button', { type: 'button', className: 'bae-plainbtn', 'aria-hidden': true, tabIndex: -1 }, h(Glyph, { set: 'mac', name: 'down', size: 11 })));
+      h('button', { type: 'button', className: 'bae-plainbtn', 'aria-hidden': true, tabIndex: -1 }, h(Glyph, { set: 'mac', name: 'down', size: 'small', className: 'bae-m-stepper-up' })),
+      h('button', { type: 'button', className: 'bae-plainbtn', 'aria-hidden': true, tabIndex: -1 }, h(Glyph, { set: 'mac', name: 'down', size: 'small' })));
   }
 
   // DisclosureGroup in a grouped form: its own box, the chevron leading inside the label row and turning down when open; the rows it shows are indented to the label.

@@ -79,7 +79,10 @@ for a glyph, whose `weight` is the one SF Symbols draw it at, and a token in
 its `role`. A glyph role one platform draws alone has only that platform's
 token, such as Android's full player transport glyphs (`androidTransport`,
 `androidTransportPlay`). A token with no `role`, such as `size-control`, is a
-measure only the design system draws.
+measure only the design system draws. The design system's glyph components take
+an icon role as their `size` and draw it at `--icon-<role>` on macOS and
+`--icon-android-<role>` on Android; a role the tokens lack stops the component
+drawing.
 
 The shared components are defined once per platform: `StatusTone` (neutral,
 accent, info, success, warning, danger, activity), a `StatusChip` for short
