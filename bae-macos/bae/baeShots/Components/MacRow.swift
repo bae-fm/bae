@@ -69,6 +69,7 @@ extension ShotScene {
         component("mac.component.row.selected", width: 580, height: 70) {
             ShotBox {
                 MacRow("Sync") {}
+                    .selected(true)
             }
         },
         component("mac.component.row.button", width: 580, height: 70) {

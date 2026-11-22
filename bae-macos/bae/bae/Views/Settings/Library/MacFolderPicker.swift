@@ -63,9 +63,6 @@
     struct MacFolderPicker: View {
         let browser: StorageFolderBrowser
 
-        @Environment(\.accentChoice)
-        private var accent
-
         var body: some View {
             @Bindable
             var browser = browser
@@ -145,23 +142,21 @@
         /// others its chevron opens it.
         private func row(_ folder: BridgeStorageFolder) -> some View {
             let chosen = browser.selected == folder
-            return HStack {
-                Text(folder.name)
-                Spacer()
+            return MacRow {
                 if browser.nests {
                     Button {
                         browser.open(folder)
                     } label: {
                         Image(systemName: "chevron.forward")
+                            .themeIcon(.small)
                     }
                     .buttonStyle(.accentBorderless)
                     .disabled(browser.isWorking)
                 }
+            } label: {
+                Text(verbatim: folder.name)
             }
-            .foregroundStyle(chosen ? Theme.onFill : Theme.textPrimary)
-            .padding(ThemeSpace.fieldInset)
-            .background(chosen ? accent.buttonColor : Color.clear)
-            .padding(-ThemeSpace.fieldInset)
+            .selected(chosen)
             .contentShape(Rectangle())
             .onTapGesture { browser.select(folder) }
             .accessibilityAddTraits(chosen ? .isSelected : [])

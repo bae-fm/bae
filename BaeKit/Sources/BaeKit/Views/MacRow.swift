@@ -27,7 +27,10 @@ public struct MacRow<Lead: View, Label: View, Content: View>: View {
     private var chip: String?
     private var isStrong = false
     private var press: Press?
+    private var selection: Bool?
 
+    @Environment(\.accentChoice)
+    private var accent
     @Environment(\.macRowPlacement)
     private var placement
     @Environment(\.isEnabled)
@@ -54,6 +57,7 @@ public struct MacRow<Lead: View, Label: View, Content: View>: View {
         row.chip = chip
         row.isStrong = isStrong
         row.press = press
+        row.selection = selection
         return row
     }
 
@@ -96,23 +100,42 @@ public struct MacRow<Lead: View, Label: View, Content: View>: View {
         return copy
     }
 
+    /// Draws a choice row, filling it when selected.
+    public func selected(_ selected: Bool) -> MacRow {
+        var copy = self
+        copy.selection = selected
+        return copy
+    }
+
     public var body: some View {
-        rowControl.opacity(isEnabled ? 1 : ThemeOpacity.off)
+        rowAppearance.opacity(isEnabled ? 1 : ThemeOpacity.off)
+    }
+
+    @ViewBuilder
+    private var rowAppearance: some View {
+        if let selection {
+            rowControl
+                .foregroundStyle(selection ? Theme.onFill : Theme.textPrimary)
+                .background(selection ? accent.buttonColor : Color.clear)
+        }
+        else {
+            rowControl
+        }
     }
 
     @ViewBuilder
     private var rowControl: some View {
         switch press {
         case .opens(let action)?:
-            Button(action: action) { pressable(chevron: true) }
+            Button(action: action) { rowWithPlacement(chevron: true) }
                 .buttonStyle(.accentPlain)
                 .placesItselfInRow()
         case .opensFromLabel(let action)?:
-            row(chevron: true, labelAction: action)
+            displayRow(chevron: true, labelAction: action)
                 .accessibilityElement(children: .contain)
         case .removes(let action)?:
             Button(role: .destructive, action: action) {
-                pressable(chevron: false).foregroundStyle(Theme.danger)
+                rowWithPlacement(chevron: false).foregroundStyle(Theme.danger)
             }
             .buttonStyle(.accentPlain)
             .placesItselfInRow()
@@ -121,23 +144,43 @@ public struct MacRow<Lead: View, Label: View, Content: View>: View {
             // controls at its end: VoiceOver orders a window's elements by
             // where they are, and a control centred on two lines sits
             // between them.
-            row(chevron: false)
+            displayRow(chevron: false)
                 .accessibilityElement(children: .contain)
         }
     }
 
-    /// The row inside its button: the button takes the whole row, its
-    /// box's space round the content included, so the row presses from its
-    /// edges.
+    /// A button and a selection fill both reach the row's edges.
     @ViewBuilder
-    private func pressable(chevron: Bool) -> some View {
+    private func rowWithPlacement(
+        chevron: Bool,
+        labelAction: (() -> Void)? = nil
+    ) -> some View {
+        let content = row(chevron: chevron, labelAction: labelAction)
         if let placement {
-            row(chevron: chevron).placedInRow(placement)
+            content.placedInRow(placement)
                 .contentShape(Rectangle())
         }
         else {
-            row(chevron: chevron)
+            content
         }
+    }
+
+    @ViewBuilder
+    private func displayRow(
+        chevron: Bool,
+        labelAction: (() -> Void)? = nil
+    ) -> some View {
+        if selection != nil {
+            rowWithPlacement(chevron: chevron, labelAction: labelAction)
+                .placesItselfInRow()
+        }
+        else {
+            row(chevron: chevron, labelAction: labelAction)
+        }
+    }
+
+    private var secondaryColor: Color {
+        selection == true ? Theme.onFillSecondary : Theme.macTextSecondary
     }
 
     private func row(
@@ -152,7 +195,7 @@ public struct MacRow<Lead: View, Label: View, Content: View>: View {
                         // A value stays on one line, as the boards keep
                         // it, and the name beside it wraps instead.
                         Text(verbatim: value)
-                            .foregroundStyle(Theme.macTextSecondary)
+                            .foregroundStyle(secondaryColor)
                             .fixedSize(horizontal: true, vertical: false)
                     }
                     content
@@ -200,7 +243,7 @@ public struct MacRow<Lead: View, Label: View, Content: View>: View {
                     .themeText(.detail)
                     .foregroundStyle(
                         noteTone.map { AnyShapeStyle($0.color) }
-                            ?? AnyShapeStyle(Theme.macTextSecondary)
+                            ?? AnyShapeStyle(secondaryColor)
                     )
             }
         }
