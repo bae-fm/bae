@@ -40,7 +40,13 @@ struct MediaCountsEditor: View {
     /// Sends the one medium's new count, with zero removing it, for core to
     /// apply to the media it holds.
     private func commit(_ medium: BridgeMedium, count: UInt32) {
-        Task { await write(.mediumCount(medium: medium, count: count)) }
+        Task {
+            await write(
+                .mediumCount(
+                    mediaCount: BridgeMediaCount(medium: medium, count: count)
+                )
+            )
+        }
     }
 }
 

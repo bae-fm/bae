@@ -13,7 +13,7 @@ fn facts(media: &[(Medium, u32)]) -> PressingFacts {
 #[test]
 fn a_medium_count_of_zero_removes_that_medium() {
     let mut held = facts(&[(Medium::Cd, 2), (Medium::Dvd, 1)]);
-    PressingFactEdit::MediumCount { medium: Medium::Cd, count: 0 }.apply(&mut held);
+    PressingFactEdit::MediumCount(MediaCount { medium: Medium::Cd, count: 0 }).apply(&mut held);
     assert_eq!(held, facts(&[(Medium::Dvd, 1)]));
 }
 
@@ -21,7 +21,7 @@ fn a_medium_count_of_zero_removes_that_medium() {
 #[test]
 fn a_medium_count_changes_only_that_medium() {
     let mut held = facts(&[(Medium::Cd, 1), (Medium::Dvd, 1)]);
-    PressingFactEdit::MediumCount { medium: Medium::Dvd, count: 3 }.apply(&mut held);
+    PressingFactEdit::MediumCount(MediaCount { medium: Medium::Dvd, count: 3 }).apply(&mut held);
     assert_eq!(held, facts(&[(Medium::Cd, 1), (Medium::Dvd, 3)]));
 }
 
@@ -30,8 +30,8 @@ fn a_medium_count_changes_only_that_medium() {
 #[test]
 fn a_medium_count_adds_a_missing_medium() {
     let mut held = facts(&[(Medium::Cd, 1)]);
-    PressingFactEdit::MediumCount { medium: Medium::Dvd, count: 1 }.apply(&mut held);
+    PressingFactEdit::MediumCount(MediaCount { medium: Medium::Dvd, count: 1 }).apply(&mut held);
     assert_eq!(held, facts(&[(Medium::Cd, 1), (Medium::Dvd, 1)]));
-    PressingFactEdit::MediumCount { medium: Medium::Vinyl, count: 0 }.apply(&mut held);
+    PressingFactEdit::MediumCount(MediaCount { medium: Medium::Vinyl, count: 0 }).apply(&mut held);
     assert_eq!(held, facts(&[(Medium::Cd, 1), (Medium::Dvd, 1)]));
 }
