@@ -379,9 +379,9 @@
     var down = props.direction === 'down';
     var arrow = h('svg', { width: 11, height: 11, viewBox: '0 0 24 24', 'aria-hidden': true, fill: 'none', stroke: 'currentColor', strokeWidth: 2.4, strokeLinecap: 'round', strokeLinejoin: 'round' }, h('path', { d: down ? 'M12 4v16M5 13l7 7 7-7' : 'M12 20V4M5 11l7-7 7 7' }));
     return h('span', { className: 'bae-m-sortpill' },
-      // The field is a menu of the fields; the arrow, named for what it does, flips the direction.
+      // The field is a menu of the fields; the arrow, named for the direction, flips it.
       h('button', { type: 'button', 'aria-haspopup': 'menu', className: 'bae-plainbtn bae-m-sortpill-field' }, props.field, h(Glyph, { set: 'mac', name: 'down', size: 'badge', className: 'bae-muted' })),
-      h('button', { type: 'button', className: 'bae-plainbtn bae-muted', 'aria-label': down ? 'Sort ascending' : 'Sort descending' }, arrow),
+      h('button', { type: 'button', className: 'bae-plainbtn bae-muted', 'aria-label': down ? 'Descending' : 'Ascending' }, arrow),
       props.removable ? h('button', { type: 'button', className: 'bae-plainbtn bae-muted', 'aria-label': 'Remove sort criterion' }, h(Glyph, { set: 'mac', name: 'close', size: 'badge' })) : null);
   }
 
