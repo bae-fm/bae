@@ -39,7 +39,6 @@ fun AndroidSidePause(
     onTurnOffPauseBetweenSides: () -> Unit,
     onPlay: () -> Unit,
     onClose: () -> Unit,
-    nowMs: () -> Long = LocalNowMs.current,
 ) {
     val context = LocalContext.current
     var dismissedPromptId by remember { mutableStateOf<String?>(null) }
@@ -58,7 +57,6 @@ fun AndroidSidePause(
                 sidePauseParts(
                     title = wording.title(context),
                     countdown = prompt.countdown,
-                    nowMs = nowMs,
                     keepPausingLabel = context.coreString(wording.keepPausingKey),
                     keepPausing = keepPausing,
                     onKeepPausingChange = { keepPausing = it },
@@ -78,7 +76,6 @@ fun AndroidSidePause(
 internal fun sidePauseParts(
     title: String,
     countdown: BridgeCountdown?,
-    nowMs: () -> Long,
     keepPausingLabel: String,
     keepPausing: Boolean,
     onKeepPausingChange: (Boolean) -> Unit,
@@ -92,7 +89,7 @@ internal fun sidePauseParts(
         message = context.coreString("core.playback.pause.message"),
         content = {
             Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
-                countdown?.let { SidePauseCountdownLine(countdown = it, nowMs = nowMs) }
+                countdown?.let { SidePauseCountdownLine(it) }
                 AndroidCheckbox(label = keepPausingLabel, checked = keepPausing, onCheckedChange = onKeepPausingChange)
                 // Clearing the box turns the setting off, which also ends these prompts.
                 if (!keepPausing) {
@@ -111,12 +108,9 @@ internal fun sidePauseParts(
 
 /** The countdown line, redrawn each whole second until core's deadline and read out as it changes. */
 @Composable
-private fun SidePauseCountdownLine(
-    countdown: BridgeCountdown,
-    nowMs: () -> Long,
-) {
+private fun SidePauseCountdownLine(countdown: BridgeCountdown) {
     Text(
-        text = rememberCountdownLine(countdown, nowMs),
+        text = rememberCountdownLine(countdown, LocalNowMs.current),
         style = ThemeText.strong.style,
         color = MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },

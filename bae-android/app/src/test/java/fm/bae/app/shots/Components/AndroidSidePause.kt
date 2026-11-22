@@ -7,7 +7,6 @@ import fm.bae.app.playback.SidePausePrompt
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.playback.sidePauseParts
 import org.junit.Test
-import java.time.Instant
 
 /** The component shots of `AndroidSidePause`, one for each row of its preview. */
 class AndroidSidePauseShots : BoardShot() {
@@ -15,7 +14,7 @@ class AndroidSidePauseShots : BoardShot() {
     fun androidComponentSidePauseCountingDown() =
         component(
             "android.component.side-pause.counting-down",
-        ) { SidePause(PreviewData.sidePausePrompt(Instant.ofEpochSecond(12))) }
+        ) { SidePause(PreviewData.sidePausePrompt(ShotClock.moment(12))) }
 
     @Test
     fun androidComponentSidePausePaused() = component("android.component.side-pause.paused") { SidePause(side()) }
@@ -26,7 +25,7 @@ class AndroidSidePauseShots : BoardShot() {
 
     @Test
     fun androidComponentSidePauseDisc() =
-        component("android.component.side-pause.disc") { SidePause(PreviewData.discPausePrompt(Instant.ofEpochSecond(12))) }
+        component("android.component.side-pause.disc") { SidePause(PreviewData.discPausePrompt(ShotClock.moment(12))) }
 }
 
 private fun side() = PreviewData.sidePausePrompt()
@@ -42,7 +41,6 @@ private fun SidePause(
         sidePauseParts(
             title = wording.title(context),
             countdown = wording.prompt.countdown,
-            nowMs = { 0L },
             keepPausingLabel = context.coreString(wording.keepPausingKey),
             keepPausing = keepPausing,
             onKeepPausingChange = {},

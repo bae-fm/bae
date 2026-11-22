@@ -25,6 +25,7 @@ import fm.bae.app.data.SyncLine
 import fm.bae.app.data.SyncStatusStore
 import fm.bae.app.openTestLibrary
 import fm.bae.app.playback.FakeAppHandle
+import fm.bae.app.ui.LocalNowMs
 import fm.bae.app.ui.SessionActions
 import fm.bae.app.ui.TestTheme
 import org.junit.Assert.assertEquals
@@ -209,7 +210,9 @@ class SyncScreenTest {
             )
         compose.setContent {
             TestTheme {
-                AndroidSyncStatus(line = SyncLine.Read(waiting), onFix = {}, nowMs = { resumesAtMs - 41_500L })
+                CompositionLocalProvider(LocalNowMs provides { resumesAtMs - 41_500L }) {
+                    AndroidSyncStatus(line = SyncLine.Read(waiting), onFix = {})
+                }
             }
         }
 

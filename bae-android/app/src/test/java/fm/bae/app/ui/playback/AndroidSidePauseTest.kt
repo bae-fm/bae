@@ -1,6 +1,7 @@
 package fm.bae.app.ui.playback
 
 import android.app.Application
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -10,6 +11,7 @@ import fm.bae.app.R
 import fm.bae.app.playback.NowPlaying
 import fm.bae.app.playback.SidePausePrompt
 import fm.bae.app.playback.libraryDisplay
+import fm.bae.app.ui.LocalNowMs
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.TestTheme
 import org.junit.Assert.assertEquals
@@ -48,18 +50,19 @@ class AndroidSidePauseTest {
         compose.mainClock.autoAdvance = false
         compose.setContent {
             TestTheme {
-                AndroidSidePause(
-                    track =
-                        NowPlaying(
-                            trackId = "trk-1",
-                            display = libraryDisplay(),
-                            sidePausePrompt = prompt,
-                        ),
-                    onTurnOffPauseBetweenSides = { answers.turnedOff++ },
-                    onPlay = { answers.played++ },
-                    onClose = { answers.closed++ },
-                    nowMs = nowMs,
-                )
+                CompositionLocalProvider(LocalNowMs provides nowMs) {
+                    AndroidSidePause(
+                        track =
+                            NowPlaying(
+                                trackId = "trk-1",
+                                display = libraryDisplay(),
+                                sidePausePrompt = prompt,
+                            ),
+                        onTurnOffPauseBetweenSides = { answers.turnedOff++ },
+                        onPlay = { answers.played++ },
+                        onClose = { answers.closed++ },
+                    )
+                }
             }
         }
         compose.mainClock.advanceTimeByFrame()

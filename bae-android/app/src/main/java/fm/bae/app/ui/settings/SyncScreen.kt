@@ -376,7 +376,6 @@ private fun SyncDialogs(
 internal fun AndroidSyncStatus(
     line: SyncLine,
     onFix: (BridgeSyncFix) -> Unit,
-    nowMs: () -> Long = LocalNowMs.current,
 ) {
     val context = LocalContext.current
     when (line) {
@@ -411,7 +410,7 @@ internal fun AndroidSyncStatus(
                     ) {
                         Text(text = syncCauseText(context, cause), style = ThemeText.body.style)
                         (cause as? BridgeSyncCause.Message)?.countdown?.let { countdown ->
-                            SyncCountdownLine(countdown, nowMs)
+                            SyncCountdownLine(countdown)
                         }
                     }
                 }
@@ -425,18 +424,16 @@ internal fun AndroidSyncStatus(
                         }
                     }
                 }
-                shown.lastSynced?.let { moment -> SyncLastSyncedLine(moment, nowMs) }
+                shown.lastSynced?.let { moment -> SyncLastSyncedLine(moment) }
             }
         }
     }
 }
 
-/** When sync last finished, in words against [nowMs]. */
+/** When sync last finished, in words against the clock. */
 @Composable
-private fun SyncLastSyncedLine(
-    moment: Instant,
-    nowMs: () -> Long,
-) {
+private fun SyncLastSyncedLine(moment: Instant) {
+    val nowMs = LocalNowMs.current
     Text(
         text = stringResource(R.string.sync_last_synced, syncLastSyncedText(moment, Instant.ofEpochMilli(nowMs()))),
         style = ThemeText.body.style,
@@ -447,12 +444,9 @@ private fun SyncLastSyncedLine(
 
 /** The line under a cause that counts down to core's moment, redrawn each whole second and read out as it changes. */
 @Composable
-private fun SyncCountdownLine(
-    countdown: BridgeCountdown,
-    nowMs: () -> Long,
-) {
+private fun SyncCountdownLine(countdown: BridgeCountdown) {
     Text(
-        text = rememberCountdownLine(countdown, nowMs),
+        text = rememberCountdownLine(countdown, LocalNowMs.current),
         style = ThemeText.body.style,
         modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
     )
