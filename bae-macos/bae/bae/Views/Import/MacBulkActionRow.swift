@@ -38,6 +38,35 @@ struct MacBulkActionRow: View {
             }
         }
         .buttonStyle(MacBulkActionRowButtonStyle().accentFocus())
+        .modifier(
+            NamedByLabelAndCount(
+                offer: offer,
+                named: importDestination == nil
+            )
+        )
+    }
+}
+
+/// Names a row for VoiceOver by its action and its count in one phrase, as
+/// the board's button reads, where SwiftUI would join the two with a comma.
+/// The Import row holds a menu of its own, so it keeps its parts apart.
+private struct NamedByLabelAndCount: ViewModifier {
+    let offer: ImportCandidateActionOffer
+    let named: Bool
+
+    func body(content: Content) -> some View {
+        if named {
+            content
+                .accessibilityLabel(
+                    Text(
+                        verbatim:
+                            "\(offer.action.label) \(offer.applicable.formatted())"
+                    )
+                )
+        }
+        else {
+            content
+        }
     }
 }
 
