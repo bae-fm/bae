@@ -158,10 +158,12 @@ extension ShotScene {
 
     /// "Low Tide Hours" by Mara Quill playing: 1:42 into 5:03, the slider at
     /// 35 and 60 percent of the track here. With `removedFromLibrary`, the
-    /// library no longer holds the track.
+    /// library no longer holds the track. `progress` is where the slider sits,
+    /// as the share of the track.
     @MainActor
     static func boardPlayback(
-        removedFromLibrary: Bool = false
+        removedFromLibrary: Bool = false,
+        progress: Double = 0.35
     ) -> PlaybackStore {
         let store = PlaybackStore(
             trackPositions: .trackPositions(
@@ -169,7 +171,7 @@ extension ShotScene {
                     "board-track": BridgeTrackPosition(
                         positionMs: 102_000,
                         durationMs: 303_000,
-                        progress: 0.35,
+                        progress: progress,
                         seeks: 0
                     )
                 ]

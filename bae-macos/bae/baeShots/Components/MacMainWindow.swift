@@ -95,7 +95,8 @@ extension ShotScene {
                 backing: backing,
                 needsAttention: false,
                 syncActivity: SyncActivityStore(),
-                playbackStore: playing ? boardPlayback() : PlaybackStore(),
+                playbackStore: playing
+                    ? boardPlayback(progress: 102.0 / 303.0) : PlaybackStore(),
                 size: CGSize(width: 1100, height: 520),
                 window: AnyView(
                     MacMainWindow(showSidePane: false) {

@@ -31,10 +31,9 @@ struct MacAvatarButton: View {
                         height: ThemeSize.hitTarget
                     )
                     .contentShape(Rectangle())
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("Your menu")
             }
             .help("Your menu")
+            .accessibilityLabel("Your menu")
             .sheet(item: $sheet) { shown in
                 sheetContent(shown)
             }
@@ -45,10 +44,10 @@ struct MacAvatarButton: View {
     @ViewBuilder
     private var picture: some View {
         if let profile = membership.selfProfile {
-            Avatar(profile: profile, size: 22)
+            Avatar(profile: profile, size: 22, isDecorative: false)
         }
         else {
-            Avatar(initials: "", size: 22)
+            Avatar(initials: "", size: 22, isDecorative: false)
         }
     }
 

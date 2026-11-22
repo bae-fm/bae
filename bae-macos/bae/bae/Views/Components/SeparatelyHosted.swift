@@ -18,7 +18,7 @@ struct SeparatelyHosted<Content: View>: NSViewRepresentable {
 
     func makeNSView(context _: Context) -> NSHostingView<AnyView> {
         let view = NSHostingView(rootView: shown)
-        view.sizingOptions = []
+        view.sizingOptions = [.intrinsicContentSize]
         view.safeAreaRegions = []
         return view
     }
