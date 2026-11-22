@@ -25,7 +25,10 @@ struct ReleaseAreaPicker: View {
         MacButton(
             kind: .plain,
             menu: {
-                MacMenuItem("Not stated", checked: area == nil) { choose(nil) }
+                MacMenuItem(
+                    verbatim: FactMenuLabel.shown(nil),
+                    checked: area == nil
+                ) { choose(nil) }
                 MacMenuSection("Countries") {
                     for country in Self.countries {
                         MacMenuItem(
