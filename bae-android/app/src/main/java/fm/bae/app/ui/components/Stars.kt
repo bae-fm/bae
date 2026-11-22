@@ -76,12 +76,11 @@ fun Stars(
 fun Stars(
     rating: BridgeStars,
     size: Dp,
-    modifier: Modifier = Modifier,
 ) {
     val description = stringResource(R.string.stars_of_five, rating.number)
     Row(
         modifier =
-            modifier.clearAndSetSemantics {
+            Modifier.clearAndSetSemantics {
                 contentDescription = description
                 role = Role.Image
             },
