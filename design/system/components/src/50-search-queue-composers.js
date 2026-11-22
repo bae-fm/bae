@@ -67,10 +67,10 @@
     // `hang`: under a pane whose rows hang their leading column, the heading starts at the rows' covers.
     return h('div', { className: cx('bae-m-queue-section', props.wide && 'bae-m-queue-section-wide', props.hang && 'bae-m-queue-section-hang') },
       h('span', { className: 'bae-m-queue-section-title' }, props.title),
-      props.clear ? h('span', { className: 'bae-m-queue-clear' }, 'Clear') : null,
+      props.clear ? h('button', { type: 'button', className: 'bae-plainbtn bae-m-queue-clear', 'aria-label': props.clear }, 'Clear') : null,
       // `menu`: a choice that applies to the whole list (History's whose plays), at the heading's end, opening a menu of its choices.
       props.menu ? wholeListChoice(props.menu) : null,
-      props.shuffle != null ? h('span', { className: cx('bae-m-queue-shuffle', props.shuffle && 'bae-m-queue-shuffle-on'), 'aria-label': props.shuffle ? 'Turn off shuffle' : 'Shuffle' }, h(Glyph, { set: 'mac', name: 'shuffle', size: 'small' })) : null);
+      props.shuffle != null ? h('button', { type: 'button', className: cx('bae-plainbtn', 'bae-m-queue-shuffle', props.shuffle && 'bae-m-queue-shuffle-on'), 'aria-label': props.shuffle ? 'Turn off shuffle' : 'Shuffle' }, h(Glyph, { set: 'mac', name: 'shuffle', size: 'small' })) : null);
   }
   // A choice that applies to a whole list (History's whose plays), shown as its current value in the accent with a ⌄, opening a menu of the choices. `big`: under an empty list's line, in body text, rather than a heading's small text.
   function wholeListChoice(value, big) {

@@ -9,7 +9,7 @@
   function N(n, c) { return h('div', { className: 'bae-preview-row' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function W(n, c) { return h('div', { className: 'bae-preview-row bae-preview-row-wide' }, h('div', { className: 'bae-preview-name', 'aria-hidden': true }, n), h('div', { className: 'bae-preview-cell' }, c)); }
   function slot(t) { return h('div', { className: 'bae-preview-slot' }, t || 'Content'); }
-  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Up next', h(B.MacQueueSection, { title: 'Up next', clear: true })), W('Playing from, shuffled', h(B.MacQueueSection, { title: 'Playing from · Low Tide Hours', clear: true, shuffle: true })), W('Without Clear', h(B.MacQueueSection, { title: 'Up next' })), W('Hang', h(B.MacQueueSection, { title: 'Up next', clear: true, hang: true })), W('Wide', h(B.MacQueueSection, { title: 'Up next', clear: true, wide: true }))));
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, W('Up next', h(B.MacQueueSection, { title: 'Up next', clear: 'Clear up next' })), W('Playing from, shuffled', h(B.MacQueueSection, { title: 'Playing from · Low Tide Hours', clear: 'Clear playing from', shuffle: true })), W('Without Clear', h(B.MacQueueSection, { title: 'Up next' })), W('Hang', h(B.MacQueueSection, { title: 'Up next', clear: 'Clear up next', hang: true })), W('Wide', h(B.MacQueueSection, { title: 'Up next', clear: 'Clear up next', wide: true }))));
 </script>
 </body>
 </html>
