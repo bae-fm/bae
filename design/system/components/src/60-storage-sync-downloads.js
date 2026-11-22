@@ -195,7 +195,7 @@
     var download = s === 'pinning' || s === 'moving';
     var mark = s === 'rest' ? null : s === 'error' ? bang('danger') : s === 'waiting' ? bang('warning') :
       queued ? h('svg', { width: 16, height: 16, viewBox: '0 0 16 16', role: 'img', 'aria-label': label, className: 'bae-muted' }, h('circle', { cx: 8, cy: 8, r: 6, fill: 'none', stroke: 'currentColor', strokeWidth: 1.75, strokeDasharray: '2 2' })) :
-      h(MacProgressRing, { value: props.progress || 0.4, label: label });
+      h(MacProgressRing, { value: props.progress ?? 0.4, label: label });
     return h('div', { className: cx('bae-m-filerow', props.selected && 'bae-m-filerow-selected') },
       h(MacItem, { lead: mark, trail: h('span', { className: 'bae-muted bae-num' }, props.size) },
         h('div', { className: cx('bae-ellipsis', queued && 'bae-muted', (s === 'sending' || download) && 'bae-accent') }, props.name)));
