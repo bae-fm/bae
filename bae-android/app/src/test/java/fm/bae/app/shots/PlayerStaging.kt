@@ -27,7 +27,7 @@ private const val SECONDS_PER_MINUTE = 60L
 
 internal fun northboundTrack(
     title: String = "Low Tide Hours",
-    cover: BridgeImageRef? = PreviewData.imageRef("Northbound"),
+    cover: BridgeImageRef? = PreviewData.imageRef("Low Tide Hours"),
 ) = NowPlaying(
     trackId = TRACK_ID,
     display =

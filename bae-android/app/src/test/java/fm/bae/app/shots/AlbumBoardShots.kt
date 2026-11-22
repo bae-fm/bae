@@ -2,13 +2,10 @@ package fm.bae.app.shots
 
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.creditLineNamed
-import fm.bae.app.data.ImageStore
-import fm.bae.app.data.LocalImageStore
 import fm.bae.app.playback.NowPlaying
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.albumdetail.AlbumDetailCallbacks
@@ -64,7 +61,10 @@ class AlbumBoardShots : BoardShot() {
         }
 
     @Test
-    fun androidAlbumPage() = shot("android.album.page") { AlbumPage(boardAlbum()) }
+    fun androidAlbumPage() =
+        shot("android.album.page") {
+            AlbumPage(boardAlbum(), playback = AlbumPlaybackState(playingLowTideHours.track.trackId, isPlaying = true))
+        }
 
     @Test
     fun androidAlbumRate() =
@@ -174,27 +174,23 @@ internal fun boardAlbum(
     rating: BridgeAlbumRating = BridgeAlbumRating(mine = null, raters = emptyList()),
     trackCount: Int = 10,
 ): BridgeAlbumDetail {
-    val titles =
-        listOf(
-            "Harbor Lights",
-            "The Long Way Home",
-            "Second Floor",
-            "Low Tide Hours",
-            "Tin Roof",
-            "Margins",
-            "Weather Report Card",
-            "Old Dog",
-            "Night Ferry",
-            "Slow Morning",
-        ).take(trackCount)
     val tracks =
-        titles.mapIndexed { index, title ->
-            val track = PreviewData.track("trk-${index + 1}", title, index + 1)
-            if (title == "Low Tide Hours") {
-                track.copy(durationMs = 303_000uL, durationClock = BridgeDurationClock(false, null, 5u, 3u))
-            } else {
-                track
-            }
+        listOf(
+            "Harbor Lights" to 272,
+            "The Long Way Home" to 312,
+            "Second Floor" to 225,
+            "Low Tide Hours" to 303,
+            "Tin Roof" to 341,
+            "Margins" to 295,
+            "Weather Report Card" to 276,
+            "Old Dog" to 177,
+            "Night Ferry" to 276,
+            "Slow Morning" to 622,
+        ).take(trackCount).mapIndexed { index, (title, seconds) ->
+            PreviewData.track("trk-${index + 1}", title, index + 1).copy(
+                durationMs = seconds.toULong() * 1_000uL,
+                durationClock = BridgeDurationClock(false, null, (seconds / 60).toUInt(), (seconds % 60).toUInt()),
+            )
         }
     val album = PreviewData.album(title = "Low Tide Hours", year = 1992, artistNames = "Mara Quill")
     val release =
@@ -251,7 +247,7 @@ private val northbound =
     PlayerStaging(
         elapsedSeconds = 88,
         held = listOf(BridgeTrackSpan(0.0, 0.3)),
-        track = northboundTrack(title = "Northbound"),
+        track = northboundTrack(title = "Northbound", cover = PreviewData.imageRef("Northbound")),
         durationSeconds = 291,
     )
 
@@ -304,10 +300,10 @@ private val boardMenu =
 @Composable
 internal fun AlbumPage(
     detail: BridgeAlbumDetail,
-    bar: PlayerStaging = playingLowTideHours,
+    playback: AlbumPlaybackState = AlbumPlaybackState(currentTrackId = null, isPlaying = false),
     catalogName: (BridgeCatalog) -> String = { it.name },
 ) {
-    ScreenScene { AlbumPageContent(detail, bar, catalogName) { AlbumOptionsMenu(boardMenu) } }
+    ScreenScene { AlbumPageContent(detail, playingLowTideHours, catalogName, playback) { AlbumOptionsMenu(boardMenu) } }
 }
 
 @Composable
@@ -315,9 +311,10 @@ private fun AlbumPageContent(
     detail: BridgeAlbumDetail,
     bar: PlayerStaging,
     catalogName: (BridgeCatalog) -> String,
-    actions: @Composable RowScope.() -> Unit = {},
+    playback: AlbumPlaybackState = AlbumPlaybackState(currentTrackId = null, isPlaying = false),
+    actions: @Composable RowScope.() -> Unit,
 ) {
-    CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
+    Covers {
         AndroidDetailScreen(
             onBack = {},
             backLabel = stringResource(R.string.back_to_library),
@@ -326,8 +323,8 @@ private fun AlbumPageContent(
         ) {
             AlbumDetailContent(
                 detail = detail,
-                cover = null,
-                playback = AlbumPlaybackState(currentTrackId = bar.track.trackId, isPlaying = true),
+                cover = detail.shownRelease.cover,
+                playback = playback,
                 callbacks =
                     AlbumDetailCallbacks(
                         onSelectRelease = {},
