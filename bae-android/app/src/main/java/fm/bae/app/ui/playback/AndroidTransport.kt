@@ -33,7 +33,7 @@ internal fun AndroidTransport(
     onNext: () -> Unit,
     full: Boolean = false,
 ) {
-    val skipGlyph = if (full) FULL_SKIP_GLYPH else null
+    val skipGlyph = if (full) ThemeIcon.androidTransport else null
     val skipBox = if (full) FULL_SKIP_BOX else ICON_BUTTON_BAR_BOX
     Row(
         modifier = if (full) Modifier.fillMaxWidth() else Modifier,
@@ -50,7 +50,7 @@ internal fun AndroidTransport(
         if (full) Spacer(modifier = Modifier.width(ThemeSpace.section))
         AndroidPlayPause(
             isPlaying = isPlaying,
-            iconSize = if (full) FULL_PLAY_GLYPH else ThemeIcon.large,
+            iconSize = if (full) ThemeIcon.androidTransportPlay else ThemeIcon.large,
             waitsOnStorage = waitsOnStorage,
             onToggle = onPlayPause,
         )
@@ -65,6 +65,4 @@ internal fun AndroidTransport(
     }
 }
 
-private val FULL_SKIP_GLYPH = 36.dp
 private val FULL_SKIP_BOX = 56.dp
-private val FULL_PLAY_GLYPH = 48.dp
