@@ -100,7 +100,7 @@ extension ShotScene {
         _ title: String,
         artist: String,
         album: String,
-        seconds: UInt8
+        seconds: UInt32
     ) -> BridgeTrackSearchResult {
         BridgeTrackSearchResult(
             id:
@@ -109,8 +109,8 @@ extension ShotScene {
             durationClock: BridgeDurationClock(
                 negative: false,
                 hours: nil,
-                minutes: UInt8(seconds / 60),
-                seconds: UInt8(seconds % 60)
+                minutes: seconds / 60,
+                seconds: seconds % 60
             ),
             releaseId: "release-\(album)",
             albumId: "album-\(album)",
