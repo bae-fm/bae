@@ -43,6 +43,7 @@ import fm.bae.app.ui.components.AndroidSpinner
 import fm.bae.app.ui.components.ErrorAction
 import fm.bae.app.ui.components.ErrorDetails
 import fm.bae.app.ui.components.ErrorDetailsDialog
+import fm.bae.app.ui.components.IconTone
 import fm.bae.app.ui.components.NoticeButtons
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.NoticeTextInset
@@ -79,11 +80,21 @@ internal fun AndroidActivityButton(
     var details by remember { mutableStateOf<ErrorDetails?>(null) }
     if (moving || held || problems.needsAttention) {
         val label = LocalContext.current.coreString("core.activity.title")
-        AndroidIconButton(
-            onClick = { listShown = true },
-            modifier = Modifier.semantics { contentDescription = label },
-        ) {
-            ActivityGlyph(moving = moving, held = held, needsAttention = problems.needsAttention)
+        if (problems.needsAttention && !moving && !held) {
+            AndroidIconButton(
+                icon = SymbolIcons.Error,
+                contentDescription = label,
+                onClick = { listShown = true },
+                tone = IconTone.WARNING,
+                glyph = ThemeIcon.large,
+            )
+        } else {
+            AndroidIconButton(
+                onClick = { listShown = true },
+                modifier = Modifier.semantics { contentDescription = label },
+            ) {
+                ActivityGlyph(moving = moving, held = held, needsAttention = problems.needsAttention)
+            }
         }
     }
     if (listShown) {

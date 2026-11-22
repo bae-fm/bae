@@ -34,6 +34,9 @@ internal enum class IconTone {
     /** The accent, for a control that is on. */
     ACCENT,
 
+    /** The warning icon colour, for a control that shows a problem waits. */
+    WARNING,
+
     /** The colour that reads over a picture or a dark stage. */
     ON_FILL,
 }
@@ -117,6 +120,7 @@ private fun IconTone.color(): Color =
         IconTone.DEFAULT -> LocalContentColor.current
         IconTone.MUTED -> MaterialTheme.colorScheme.onSurfaceVariant
         IconTone.ACCENT -> MaterialTheme.colorScheme.primary
+        IconTone.WARNING -> BaeTheme.colors.warningIcon
         IconTone.ON_FILL -> BaeTheme.colors.onFill
     }
 
