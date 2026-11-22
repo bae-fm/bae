@@ -53,12 +53,17 @@ extension ShotScene {
             ) { store.storage != nil }
         },
     ]
+    /// The view of a Storage Manager board's window, which the board draws
+    /// 1,100 by 660 points with its 52-point title bar and toolbar inside;
+    /// the shot's window adds that title bar to the view's size.
+    static let storageManagerSize = CGSize(width: 1_100, height: 608)
+
     /// The Storage Manager window (`mac.storage.window*`) with no library
     /// open: its toolbar controls each off, over the message.
     static let storageManagerScenes: [ShotScene] = [
         ShotScene(
             id: "mac.storage.window.no-library",
-            size: CGSize(width: 1_100, height: 660),
+            size: storageManagerSize,
             frame: .window(title: "Storage Manager")
         ) {
             ShotStage(StorageManagerNoLibrary())

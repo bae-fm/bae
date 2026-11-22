@@ -65,37 +65,16 @@ extension ShotScene {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .background(Theme.surfaceElevated)
+            let streams = BoardTransferStreams(
+                pinning: "rel-row-1",
+                exporting: "rel-row-2"
+            )
             return ShotStage(
                 fixture.environment(
                     of: footer,
-                    downloads: DownloadStore(
-                        releaseProgress: .downloads(
-                            holding: [
-                                "rel-row-1": BridgeDownloadTransferProgress(
-                                    bytesDone: 140_000_000,
-                                    bytesTotal: 367_000_000,
-                                    fraction: 140.0 / 367.0,
-                                    throughputBps: 3_100_000
-                                )
-                            ]
-                        )
-                    ),
-                    outputs: OutputStore(
-                        percents: .exportPercents(holding: ["rel-row-2": 18])
-                    ),
-                    outbox: OutboxStore(
-                        uploadsPaused: false,
-                        filesBeingSent: .uploadTotal(
-                            holding: BridgeUploadTransfer(
-                                bar: BridgeUploadBar(
-                                    bytesDone: 22_400_000,
-                                    bytesTotal: 57_100_000,
-                                    fraction: 22.4 / 57.1
-                                ),
-                                throughputBps: 6_400_000
-                            )
-                        )
-                    )
+                    downloads: streams.downloads,
+                    outputs: streams.outputs,
+                    outbox: streams.outbox
                 )
             ) {
                 fixture.storageManagerStore.list?.count != nil

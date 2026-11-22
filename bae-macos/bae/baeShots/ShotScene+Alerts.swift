@@ -342,7 +342,7 @@ extension ShotScene {
     private static func unpinSeveral() -> ShotScene {
         ShotScene(
             id: "mac.storage.unpin-several",
-            size: CGSize(width: 1_100, height: 660),
+            size: storageManagerSize,
             frame: .window(title: "Storage Manager")
         ) {
             let pinned: Set<String> = ["rel-row-3", "rel-row-10", "rel-row-12"]
@@ -354,6 +354,8 @@ extension ShotScene {
             let fixture = StorageManagerPreviewFixture(
                 rows: boardStorageRows,
                 inspectorPresented: true,
+                downloads: [],
+                outputs: [],
                 uploads: [],
                 selections: [
                     pinned: BridgeStorageSelection(
@@ -363,17 +365,25 @@ extension ShotScene {
                         selectionActions: [],
                         cancelOnly: false
                     )
-                ]
+                ],
+                queues: boardStorageQueues(pinning: "rel-row-6")
             )
+            let streams = BoardTransferStreams(pinning: "rel-row-6")
             let manager =
                 fixture.environment(
                     of: MacStorageWindow(
                         initialSelection: pinned,
                         initialInspectorPresented: fixture
                             .initialInspectorPresented
-                    )
+                    ),
+                    downloads: streams.downloads,
+                    outputs: streams.outputs,
+                    outbox: streams.outbox
                 )
-                .frame(width: 1_100, height: 660)
+                .frame(
+                    width: storageManagerSize.width,
+                    height: storageManagerSize.height
+                )
             return ShotStage(
                 OverWindow.alert(
                     UnpinConfirmation.alert(

@@ -150,6 +150,16 @@ extension ShotScene {
             )
         }
 
+    /// The queues the board's footer shows: the files being uploaded and the
+    /// release `pinning` being pinned, with no export.
+    static func boardStorageQueues(pinning: String) -> BridgeStorageQueues {
+        BridgeStorageQueues(
+            uploads: BridgeUploadQueueRun(wait: nil),
+            downloads: BridgeReleaseQueueRun(wait: nil, active: pinning),
+            outputs: nil
+        )
+    }
+
     /// A row of the Storage Manager's table: `row` as release `releaseId` of
     /// album `albumId`, with `upload` where its files are being sent.
     static func storageRow(
@@ -194,6 +204,49 @@ extension ShotScene {
             status: row.status,
             cancelOnly: transitioning,
             dateAdded: added
+        )
+    }
+}
+
+/// The streams the board's Storage Manager footer reads: the release
+/// `pinning` pins at 3.1 MB/s, the files being uploaded go at 6.4 MB/s, and
+/// the release `exporting`, when there is one, is 18 percent written.
+@MainActor
+struct BoardTransferStreams {
+    let downloads: DownloadStore
+    let outputs: OutputStore
+    let outbox: OutboxStore
+
+    init(pinning: String, exporting: String? = nil) {
+        downloads = DownloadStore(
+            releaseProgress: .downloads(
+                holding: [
+                    pinning: BridgeDownloadTransferProgress(
+                        bytesDone: 140_000_000,
+                        bytesTotal: 367_000_000,
+                        fraction: 140.0 / 367.0,
+                        throughputBps: 3_100_000
+                    )
+                ]
+            )
+        )
+        outputs = OutputStore(
+            percents: .exportPercents(
+                holding: exporting.map { [$0: 18] } ?? [:]
+            )
+        )
+        outbox = OutboxStore(
+            uploadsPaused: false,
+            filesBeingSent: .uploadTotal(
+                holding: BridgeUploadTransfer(
+                    bar: BridgeUploadBar(
+                        bytesDone: 22_400_000,
+                        bytesTotal: 57_100_000,
+                        fraction: 22.4 / 57.1
+                    ),
+                    throughputBps: 6_400_000
+                )
+            )
         )
     }
 }
