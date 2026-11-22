@@ -16,10 +16,10 @@ import uniffi.bae_bridge.BridgeLabelLine
 import uniffi.bae_bridge.BridgeMediaCount
 import uniffi.bae_bridge.BridgeMedium
 import uniffi.bae_bridge.BridgeOtherDevice
-import uniffi.bae_bridge.BridgeReleasePlayability
 import uniffi.bae_bridge.BridgeRater
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeReleaseArea
+import uniffi.bae_bridge.BridgeReleasePlayability
 import uniffi.bae_bridge.BridgeStars
 import uniffi.bae_bridge.BridgeTermLabel
 
@@ -50,6 +50,7 @@ class AndroidAlbumHeaderShots : BoardShot() {
                 ),
             )
         }
+
     @Test
     fun androidComponentAlbumHeaderNotOnThisDevice() =
         component("android.component.album-header.not-on-this-device") {
@@ -62,7 +63,6 @@ class AndroidAlbumHeaderShots : BoardShot() {
                 ),
             )
         }
-
 }
 
 @Composable

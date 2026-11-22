@@ -13,9 +13,9 @@ import fm.bae.app.ui.albumdetail.AlbumDetailContent
 import fm.bae.app.ui.albumdetail.AlbumMenuActions
 import fm.bae.app.ui.albumdetail.AlbumOptionsMenu
 import fm.bae.app.ui.albumdetail.AlbumPlaybackState
-import fm.bae.app.ui.albumdetail.unavailableReleaseHeading
 import fm.bae.app.ui.albumdetail.AlbumRatingChoices
 import fm.bae.app.ui.albumdetail.PlayMenuActions
+import fm.bae.app.ui.albumdetail.unavailableReleaseHeading
 import fm.bae.app.ui.library.AndroidDetailScreen
 import org.junit.Test
 import uniffi.bae_bridge.BridgeAlbumDetail

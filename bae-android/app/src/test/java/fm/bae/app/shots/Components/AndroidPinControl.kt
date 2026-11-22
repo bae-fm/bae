@@ -26,7 +26,6 @@ class AndroidPinControlShots : BoardShot() {
         component("android.component.pin-control.failed") {
             Control(BridgeReleaseDownloadStatus.Failed("Network unreachable"))
         }
-
 }
 
 @Composable
