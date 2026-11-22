@@ -341,7 +341,10 @@ extension ShotScene {
     /// The library album the records name.
     static let libraryAlbum = BridgeDraftAlbum.named(
         albumId: "album-low-tide-hours",
-        line: .titleAlone(title: "Low Tide Hours")
+        line: .titleAndArtists(
+            title: "Low Tide Hours",
+            artistLine: .named("Mara Quill")
+        )
     )
 
     static let inertAlbumActions = DraftAlbumActions(

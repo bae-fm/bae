@@ -11,6 +11,11 @@ extension ShotScene {
             libraryAlbum
         ),
         albumPickerScene(
+            "mac.component.album-picker.off-while-a-save-reads",
+            libraryAlbum,
+            canEdit: false
+        ),
+        albumPickerScene(
             "mac.component.album-picker.open-on-a-library-album",
             libraryAlbum,
             open: true
@@ -22,10 +27,19 @@ extension ShotScene {
         ),
         albumPickerScene(
             "mac.component.album-picker.open-on-a-picked-album",
-            libraryAlbum,
+            pickedAlbum,
             open: true
         ),
     ]
+
+    /// A library album the person picked over the release's own.
+    private static let pickedAlbum = BridgeDraftAlbum.picked(
+        albumId: "album-small-hours",
+        line: .titleAndArtists(
+            title: "Small Hours",
+            artistLine: .named("Tomas Brell")
+        )
+    )
 
     /// The pop-up of `albumOptions` drawn open in place, its first line on
     /// the pop-up's line: `x` and `y` are where the pop-up's top left is,
@@ -51,7 +65,8 @@ extension ShotScene {
     private static func albumPickerScene(
         _ id: String,
         _ album: BridgeDraftAlbum,
-        open: Bool = false
+        open: Bool = false,
+        canEdit: Bool = true
     ) -> ShotScene {
         component(
             id,
@@ -61,7 +76,7 @@ extension ShotScene {
             ZStack(alignment: .topLeading) {
                 MacAlbumPicker(
                     album: album,
-                    canEdit: true,
+                    canEdit: canEdit,
                     actions: inertAlbumActions
                 )
                 .frame(width: 380, alignment: .leading)
