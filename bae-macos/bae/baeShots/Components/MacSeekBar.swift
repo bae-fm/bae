@@ -32,16 +32,9 @@ extension ShotScene {
         .track(
             PreviewData.trackPosition(
                 positionMs: positionMs,
-                durationMs: 303_000,
-                progress: Double(positionMs) / 303_000
+                durationMs: 303_000
             ),
-            buffered:
-                LatestStream.trackBuffered(
-                    holding: [
-                        "preview-track": BridgeTrackBuffered(ranges: held)
-                    ]
-                )
-                .source(for: "preview-track")
+            buffered: PreviewData.trackBuffered(held)
         )
     }
 
