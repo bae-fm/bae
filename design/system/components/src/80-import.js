@@ -114,7 +114,7 @@
     var line3 = props.error ? h('div', { className: 'bae-m-irow-sub bae-ellipsis' }, props.error) : null;
     return h('div', { className: cx('bae-m-irow', props.grouped && 'bae-m-irow-grouped', props.selected && 'bae-m-irow-selected') },
       props.grouped ? h('span', { className: 'bae-m-irow-rail' }) : null,
-      h(Artwork, { title: props.cover || props.title || props.folder, size: 44, radius: 6, missing: props.noCover }),
+      h(Artwork, { title: props.cover || props.title || props.folder, size: 'size-row-artwork', radius: 6, missing: props.noCover }),
       h('div', { className: 'bae-m-irow-text' }, line1, line2, line3), h('span', { style: { flex: 'none', marginLeft: 'auto' } }, trail));
   }
   // Above the right pane: the tab chip, a button that goes to that tab; the folder glyph, a button that reveals the folder in Finder; the folder's name.

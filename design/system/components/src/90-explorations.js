@@ -34,7 +34,7 @@
   // `menu`: the row ends in ⋮, the row's actions, labelled with `menu`'s text (More unless given).
   function AndroidListRow(props) {
     return h('div', { className: cx('bae-a-lrow', props.menu && 'bae-a-lrow-menu', props.dragging && 'bae-a-lrow-dragging') },
-      h(Artwork, { title: props.album || props.title, size: 48, radius: 6 }),
+      h(Artwork, { title: props.album || props.title, size: 'size-android-row-artwork', radius: 6 }),
       h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { className: 'bae-a-librow-title' }, props.title), h('div', { className: 'bae-a-librow-sub' }, props.sub)),
       props.who ? h(Avatar, { name: props.who, size: 24 }) : null,
       props.trailing ? h('span', { className: 'bae-a-fine bae-muted' }, props.trailing) : null,

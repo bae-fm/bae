@@ -3,8 +3,12 @@
   // A stand-in cover: each title gets its own two-color square, so boards read like a library.
   // `missing` is a cover the release doesn't have: a plain tile, no glyph.
   function hueOf(s) { var x = 0; s = String(s || ''); for (var i = 0; i < s.length; i++) x = (x * 31 + s.charCodeAt(i)) % 360; return x; }
+  // A cover's `size`: pixels, or the name of a size token (`size-row-artwork`).
+  function coverSize(size) {
+    return /^size-/.test(size) ? 'var(--' + size + ')' : Number(size);
+  }
   function Artwork(props) {
-    var size = props.size != null ? Number(props.size) : null;
+    var size = props.size == null ? null : coverSize(props.size);
     var hue = props.hue != null ? Number(props.hue) : hueOf(props.seed || props.title);
     var style = { borderRadius: Number(props.radius != null ? props.radius : 10) };
     if (size) { style.width = size; style.height = size; }
@@ -23,10 +27,11 @@
   // A playlist's picture: the covers of its first four different releases in a 2×2 square, as playlists show on both platforms; with fewer than four, its first entry's cover; empty, the missing tile. `covers` lists the releases' titles in the playlist's order, each once. One cover alone would make a playlist look like that album, and two playlists that start on one album alike.
   function PlaylistPicture(props) {
     var covers = String(props.covers || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean);
-    var size = Number(props.size || 48), radius = props.radius != null ? Number(props.radius) : 6;
-    if (covers.length < 4) return h(Artwork, { title: covers[0], size: size, radius: radius, missing: !covers.length });
+    var size = coverSize(props.size || 48), radius = props.radius != null ? Number(props.radius) : 6;
+    if (covers.length < 4) return h(Artwork, { title: covers[0], size: props.size || 48, radius: radius, missing: !covers.length });
+    // Four covers, each filling a quarter of the picture's two-by-two grid.
     return h('div', { className: 'bae-playlist-pic', style: { width: size, height: size, borderRadius: radius }, 'aria-hidden': true },
-      covers.slice(0, 4).map(function (t, i) { return h(Artwork, { key: i, title: t, size: size / 2, radius: 0 }); }));
+      covers.slice(0, 4).map(function (t, i) { return h(Artwork, { key: i, title: t, radius: 0 }); }));
   }
 
   // The Mac app's symbols, each the outline of the SF Symbol the app draws, in its weight, at the 24 point size the Glyph's 24 by 24 box stands for, centred on the symbol's own box. A Glyph of size s is the symbol at s points, and it may reach past its box, as the symbol does past its frame.
@@ -133,7 +138,7 @@
     return h('div', { className: 'bae-m-npbar' },
       // The playing track: one button, its cover beside its title and artist, named as VoiceOver reads the merged track.
       h('div', { className: 'bae-m-np-left' }, none ? null : h('button', { type: 'button', className: 'bae-plainbtn bae-m-nptrack', 'aria-label': props.artist ? 'Now playing, ' + props.title + ' by ' + props.artist : props.title },
-        h(Artwork, { title: props.album || props.title, size: 56, radius: 6, shadow: 'bar', missing: props.noCover }),
+        h(Artwork, { title: props.album || props.title, size: 'size-bar-artwork', radius: 6, shadow: 'bar', missing: props.noCover }),
         h('div', { className: 'bae-m-np-text', 'aria-hidden': true }, h('div', { className: 'bae-m-np-title' }, props.title), h('div', { className: 'bae-m-np-sub' }, props.artist)))),
       h('div', { className: 'bae-m-np-center' },
         h(MacTransport, { playing: props.playing, waiting: props.waiting, shuffle: props.shuffle, repeat: props.repeat }),
@@ -422,7 +427,7 @@
   // The playing track on Android: its cover beside its title and artist.
   function AndroidNowPlayingTrack(props) {
     // One button that opens the full player, named as TalkBack reads the merged track.
-    return h('button', { type: 'button', className: 'bae-a-np-info', 'aria-label': props.artist ? 'Now playing, ' + props.title + ' by ' + props.artist : props.title }, h(Artwork, { title: props.album || props.title, size: 48, radius: 6, missing: props.noCover }),
+    return h('button', { type: 'button', className: 'bae-a-np-info', 'aria-label': props.artist ? 'Now playing, ' + props.title + ' by ' + props.artist : props.title }, h(Artwork, { title: props.album || props.title, size: 'size-android-bar-artwork', radius: 6, missing: props.noCover }),
       h('div', { className: 'bae-a-np-text', 'aria-hidden': true }, h('div', { className: 'bae-a-np-title' }, props.title), h('div', { className: 'bae-a-np-sub' }, props.artist)));
   }
 
