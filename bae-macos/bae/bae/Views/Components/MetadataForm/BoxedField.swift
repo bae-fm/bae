@@ -34,25 +34,21 @@ struct BoxedField<Focus: Hashable>: View {
     private static var multilineMinHeight: CGFloat { 3 * 20 }
 
     var body: some View {
+        let chrome = FieldChrome(
+            focused: isFocused,
+            style: multiline ? .boxedMultiline : .boxed,
+            invalid: invalid
+        )
         let box =
             focusedField
             .frame(
                 minHeight: multiline ? Self.multilineMinHeight : nil,
                 alignment: .topLeading
             )
-            .modifier(
-                FieldChrome(
-                    focused: isFocused,
-                    style: multiline ? .boxedMultiline : .boxed,
-                    invalid: invalid
-                )
-            )
+            .modifier(chrome)
         if let placeholder {
             box
-                .contentShape(
-                    .accessibility,
-                    RoundedRectangle(cornerRadius: ThemeRadius.field)
-                )
+                .contentShape(.accessibility, chrome.outline)
                 .accessibilityLabel(Text(placeholder))
         }
         else {

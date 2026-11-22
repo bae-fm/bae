@@ -35,16 +35,16 @@ struct FieldChrome: ViewModifier {
             .frame(minHeight: style == .boxed ? ThemeSize.field : nil)
             // Round the fill, not a clip: a clip cuts the text off when AppKit
             // remounts the field with a too-short height.
-            .background(fill, in: RoundedRectangle(cornerRadius: cornerRadius))
+            .background(fill, in: outline)
             .overlay {
-                RoundedRectangle(cornerRadius: cornerRadius)
+                outline
                     .strokeBorder(ring, lineWidth: ringWidth)
             }
             // The glow is a solid ring the boards draw outside the field's
             // edge. It sits behind the fill and is hidden from assistive
             // technology, so it takes no part in the field's layout or frame.
             .background {
-                RoundedRectangle(cornerRadius: cornerRadius)
+                outline
                     .inset(by: -Self.haloWidth)
                     .fill(halo)
                     .allowsHitTesting(false)
@@ -87,6 +87,10 @@ struct FieldChrome: ViewModifier {
     private var horizontalPadding: CGFloat { Self.padding(of: style).width }
 
     private var verticalPadding: CGFloat { Self.padding(of: style).height }
+
+    var outline: RoundedRectangle {
+        RoundedRectangle(cornerRadius: cornerRadius)
+    }
 
     private var cornerRadius: CGFloat {
         switch style {
