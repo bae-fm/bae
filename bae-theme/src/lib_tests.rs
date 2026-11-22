@@ -409,10 +409,7 @@ fn a_size_needs_a_token_on_each_platform_and_an_apple_icon_its_weight() {
     let no_role = LENGTHS.replace(r#""role": "hitTarget", "value": "44px""#, r#""value": "44px""#);
     assert_eq!(
         theme_with_lengths(&no_role).unwrap_err(),
-        [
-            "tokens.json `size-android-hit-target` names no role",
-            "size role `hitTarget` has no Android token in tokens.json",
-        ]
+        ["size role `hitTarget` has no Android token in tokens.json"]
     );
 }
 

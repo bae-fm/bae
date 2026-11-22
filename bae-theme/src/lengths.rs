@@ -7,8 +7,8 @@
 //! `ios` is iOS's, and a token in its Android family (`icon-android`,
 //! `size-android`), whose value is Android's; each names the role in `role`.
 //! An icon role may be one platform's alone, as a text role may; a size role
-//! has both. An Apple token with no `role` is a design-system measure no app
-//! draws as a role, such as a macOS control's height.
+//! has both. A token with no `role` is a design-system measure no app draws as
+//! a role, such as a macOS control's height.
 
 use std::collections::BTreeMap;
 
@@ -44,10 +44,8 @@ fn read_roles<'a>(
     let mut entries = Vec::new();
     for (family, is_android) in [(apple, false), (android, true)] {
         for token in &family.tokens {
+            // A token with no role is a measure only the design system draws.
             let Some(role) = token.role.as_deref() else {
-                if is_android {
-                    problems.push(format!("tokens.json `{}` names no role", token.name));
-                }
                 continue;
             };
             if is_android && (token.ios.is_some() || token.weight.is_some()) {

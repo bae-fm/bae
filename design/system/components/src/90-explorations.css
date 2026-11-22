@@ -36,7 +36,7 @@
 /* On macOS Copy shows only under the pointer (or keyboard focus); on Android, with no pointer, it always shows. */
 .bae-errdis-panel-hover .bae-errdis-copy { opacity: 0; transition: opacity 0.12s; }
 .bae-errdis-panel-hover:hover .bae-errdis-copy, .bae-errdis-panel-hover:focus-within .bae-errdis-copy { opacity: 1; }
-.bae-errdis-panel-android { min-height: 40px; box-sizing: border-box; padding-right: calc(var(--space-page) + var(--space-group)); }
+.bae-errdis-panel-android { min-height: var(--size-android-bar-button); box-sizing: border-box; padding-right: calc(var(--size-android-bar-button) + var(--space-inline)); }
 
 /* ImportSheep: the parts' pivots in the drawing's units, what starts hidden, and the still pose. The motion itself is in src/36-import-sheep.js. */
 .bae-isheep { display: block; }

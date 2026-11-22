@@ -42,7 +42,7 @@
   // The lightbox's thumbnails of every image (`images`, each drawn as artwork seeded by it), the shown one (`selected`, the first unless given) ringed.
   function MacThumbnailStrip(props) {
     var images = list(props.images), sel = props.selected || images[0];
-    return h('div', { className: 'bae-m-lb-strip' }, images.map(function (t, i) { return h('span', { key: i, className: cx('bae-m-lb-thumb', t === sel && 'bae-m-lb-thumb-on') }, h(Artwork, { title: t, size: 56, radius: 'radius-artwork' })); }));
+    return h('div', { className: 'bae-m-lb-strip' }, images.map(function (t, i) { return h('span', { key: i, className: cx('bae-m-lb-thumb', t === sel && 'bae-m-lb-thumb-on') }, h(Artwork, { title: t, size: 'size-thumbnail', radius: 'radius-artwork' })); }));
   }
   // The lightbox: the image on the backdrop, close, arrows, then at its foot the shown image's caption (`label`, and `source` under it) over the thumbnail strip (`images`, `selected`), which a lone image goes without.
   function MacLightbox(props) {

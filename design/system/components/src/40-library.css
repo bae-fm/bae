@@ -118,7 +118,7 @@
 .bae-a-iconbtn-muted { color: var(--text-secondary); }
 .bae-a-iconbtn-accent { color: var(--accent); }
 .bae-a-iconbtn-warning { color: var(--warning-icon); }
-.bae-a-iconbtn-box-40 { width: 40px; height: 40px; }
+.bae-a-iconbtn-box-40 { width: var(--size-android-bar-button); height: var(--size-android-bar-button); }
 .bae-a-iconbtn-box-56 { width: 56px; height: 56px; }
 .bae-a-searchbar { flex: none; display: flex; align-items: center; gap: var(--space-inline); padding: var(--space-related); background: var(--surface); }
 .bae-a-searchfield { flex: 1; min-width: 0; height: var(--size-android-field); box-sizing: border-box; display: flex; align-items: center; gap: var(--space-related); padding: 0 var(--space-edge); border-radius: 999px; background: var(--elevated); font-size: var(--type-android-body-large-size); font-weight: var(--type-android-body-large-weight); line-height: var(--type-android-body-large-line-height); fill: var(--text-secondary); }
@@ -153,12 +153,12 @@
 .bae-a-artisthead-name { font: var(--type-android-heading-weight) var(--type-android-heading-size)/var(--type-android-heading-line-height) var(--font-android); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bae-a-artisthead-count { font: var(--type-android-detail-weight) var(--type-android-detail-size)/var(--type-android-detail-line-height) var(--font-android); color: var(--text-secondary); }
 .bae-a-track { display: flex; align-items: center; padding: var(--space-related) 0; }
-.bae-a-track-lead { width: 40px; flex: none; display: flex; }
+.bae-a-track-lead { width: var(--size-android-track-position); flex: none; display: flex; }
 .bae-a-track-pos { font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); color: var(--text-secondary); }
 .bae-a-track-text { flex: 1; min-width: 0; }
 .bae-a-track-title { font: var(--type-android-row-title-weight) var(--type-android-row-title-size)/var(--type-android-row-title-line-height) var(--font-android); white-space: nowrap; overflow: hidden; }
 .bae-a-track-artist { font: var(--type-android-detail-weight) var(--type-android-detail-size)/var(--type-android-detail-line-height) var(--font-android); color: var(--text-secondary); white-space: nowrap; overflow: hidden; }
-.bae-a-track-work { padding: 0 0 var(--space-compact) calc(var(--space-page) + var(--space-related)); font: var(--type-android-fine-weight) var(--type-android-fine-size) var(--font-android); color: var(--text-secondary); }
+.bae-a-track-work { padding: 0 0 var(--space-compact) var(--size-android-track-position); font: var(--type-android-fine-weight) var(--type-android-fine-size) var(--font-android); color: var(--text-secondary); }
 .bae-a-track-time { font: var(--type-android-detail-weight) var(--type-android-detail-size)/var(--type-android-detail-line-height) var(--font-android); color: var(--text-secondary); padding-left: var(--space-related); }
 .bae-a-eyebrow { padding-top: var(--space-related); font: var(--type-android-eyebrow-weight) var(--type-android-eyebrow-size)/var(--type-android-eyebrow-line-height) var(--font-android); color: var(--text-secondary); }
 .bae-a-albumhead { display: flex; align-items: flex-start; gap: var(--space-edge); }

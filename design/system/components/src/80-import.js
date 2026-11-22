@@ -319,7 +319,7 @@
   }
   // A found album: cover, title, artist · label, a button per catalog that has answered (`sources`) that opens the album on that catalog.
   function MacReleaseCard(props) {
-    return h('div', { className: 'bae-m-rcard-head' }, h(Artwork, { title: props.title, size: 44, radius: 'radius-artwork' }), h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { className: 'bae-strong', style: { fontSize: 15 } }, props.title), h('div', { className: 'bae-muted' }, props.artist + (props.label ? ' · ' + props.label : ''))), props.sources ? h(MacRecordLinks, { records: props.sources, buttons: true }) : null);
+    return h('div', { className: 'bae-m-rcard-head' }, h(Artwork, { title: props.title, size: 'size-row-artwork', radius: 'radius-artwork' }), h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { className: 'bae-strong', style: { fontSize: 15 } }, props.title), h('div', { className: 'bae-muted' }, props.artist + (props.label ? ' · ' + props.label : ''))), props.sources ? h(MacRecordLinks, { records: props.sources, buttons: true }) : null);
   }
   // A found album with its pressings: the MacReleaseCard (`title`, `artist`, `label`, `sources`), then its pressings, the children, on a rule under it.
   function MacReleaseGroup(props) {

@@ -520,7 +520,7 @@
 
   function AndroidArtistGroupHeading(props) {
     if (props.pinned) return h('div', { className: 'bae-a-artisthead-pinned' }, h(Artwork, { title: props.name, size: 32, round: true, missing: props.noImage }), h('div', { className: 'bae-a-artisthead-name' }, props.name));
-    return h('div', { className: 'bae-a-artisthead' }, h(Artwork, { title: props.name, size: 48, round: true, missing: props.noImage }),
+    return h('div', { className: 'bae-a-artisthead' }, h(Artwork, { title: props.name, size: 'size-android-row-artwork', round: true, missing: props.noImage }),
       h('div', null, h('div', { className: 'bae-a-artisthead-name' }, props.name), h('div', { className: 'bae-a-artisthead-count' }, props.count)));
   }
 
