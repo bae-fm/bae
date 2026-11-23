@@ -34,6 +34,7 @@ import fm.bae.app.ui.components.AndroidMenu
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidScreen
 import fm.bae.app.ui.components.RowSwitch
+import fm.bae.app.ui.components.joinsTileAbove
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.BridgeCastReceiver
@@ -189,7 +190,8 @@ internal fun SidePauseCountdownPicker(
 ) {
     val context = LocalContext.current
     var expanded by remember { mutableStateOf(false) }
-    Box {
+    // The card sees this box, not the row in it, so the box is what joins the switch row's tile.
+    Box(modifier = Modifier.joinsTileAbove()) {
         AndroidRow(
             title = stringResource(R.string.settings_resume_automatically),
             subtitle = context.sidePauseCountdownLabel(selected),
