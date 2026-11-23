@@ -111,6 +111,7 @@
 .bae-a-field-focused .bae-a-field-label { color: var(--accent); }
 .bae-a-field-error .bae-a-field-box { box-shadow: inset 0 0 0 2px var(--danger); }
 .bae-a-field-error .bae-a-field-label, .bae-a-field-error .bae-a-field-line { color: var(--danger); }
+.bae-a-field-resting .bae-a-field-label { top: var(--space-edge); left: var(--space-edge); padding: 0; background: none; pointer-events: none; font: var(--type-android-body-large-weight) var(--type-android-body-large-size)/var(--type-android-body-large-line-height) var(--font-android); }
 .bae-a-field-line { padding: 0 var(--space-edge); font-size: var(--type-android-detail-size); font-weight: var(--type-android-detail-weight); line-height: var(--type-android-detail-line-height); color: var(--text-secondary); }
 
 .bae-a-radio { display: flex; align-items: center; gap: var(--space-edge); min-height: 48px; font-size: var(--type-android-body-large-size); font-weight: var(--type-android-body-large-weight); line-height: var(--type-android-body-large-line-height); color: var(--text-primary); cursor: pointer; }

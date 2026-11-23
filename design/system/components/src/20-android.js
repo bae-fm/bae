@@ -125,17 +125,20 @@
       h('span', { className: 'bae-a-switch-thumb' }));
   }
 
+  // As Material's outlined field, an empty field without focus rests its label inside it, in the size of the text it takes, and shows no placeholder; a focused or filled field raises its label onto the outline.
   function AndroidTextField(props) {
     var state = props.state || 'normal';
     var isError = state === 'error';
     var line = isError ? props.error : props.helper;
-    return h('div', { className: cx('bae-a-field', state === 'focused' && 'bae-a-field-focused', isError && 'bae-a-field-error') },
+    var resting = !props.value && state !== 'focused';
+    var placeholder = resting ? null : props.placeholder;
+    return h('div', { className: cx('bae-a-field', state === 'focused' && 'bae-a-field-focused', isError && 'bae-a-field-error', resting && 'bae-a-field-resting') },
       h('label', { className: 'bae-a-field-box' },
         h('span', { className: 'bae-a-field-label' }, props.label),
         props.code
-          ? h('div', { role: 'textbox', 'aria-multiline': true, 'aria-label': props.label, 'aria-placeholder': props.placeholder || null, className: 'bae-a-input bae-a-codetext' },
-              props.value ? groupCode(props.value) : h('span', { className: 'bae-codetext-placeholder', 'aria-hidden': true }, props.placeholder))
-          : h('input', { className: 'bae-a-input', type: props.secret ? 'password' : 'text', defaultValue: props.value || '', placeholder: props.placeholder, 'aria-label': props.label, spellCheck: false })),
+          ? h('div', { role: 'textbox', 'aria-multiline': true, 'aria-label': props.label, 'aria-placeholder': placeholder || null, className: 'bae-a-input bae-a-codetext' },
+              props.value ? groupCode(props.value) : placeholder ? h('span', { className: 'bae-codetext-placeholder', 'aria-hidden': true }, placeholder) : null)
+          : h('input', { className: 'bae-a-input', type: props.secret ? 'password' : 'text', defaultValue: props.value || '', placeholder: placeholder, 'aria-label': props.label, spellCheck: false })),
       line ? h('div', { className: 'bae-a-field-line' }, line) : null);
   }
 
