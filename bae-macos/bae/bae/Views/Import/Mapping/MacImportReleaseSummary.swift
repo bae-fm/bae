@@ -89,13 +89,18 @@ struct MacImportReleaseSummary<TitleAccessory: View>: View {
 
     let summary: ImportReleaseSummary
     let style: Style
+    /// Whether the artist line shows: a row whose own line says what is
+    /// running for it shows that line in the artist's place.
+    var showsArtist = true
     @ViewBuilder
     let titleAccessory: () -> TitleAccessory
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.line) {
             titleLine
-            artistLine
+            if showsArtist {
+                artistLine
+            }
             if style.showsFacts {
                 factLine(summary.editionLine)
                     .padding(.top, style.factsTopPadding)

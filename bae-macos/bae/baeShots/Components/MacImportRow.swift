@@ -29,7 +29,7 @@ extension ShotScene {
             )
         },
         importRowScene("mac.component.import-row.grouped") {
-            let row = try lowTideRow()
+            let row = try lowTideRow(live: PreviewData.triageLive([]))
             MacImportRow(
                 row: row,
                 coverContent: row.cover
@@ -40,7 +40,7 @@ extension ShotScene {
             )
         },
         importRowScene("mac.component.import-row.selected") {
-            importRow(try lowTideRow())
+            importRow(try lowTideRow(live: PreviewData.triageLive([])))
                 .background(Theme.accentSoft)
         },
         importRowScene("mac.component.import-row.identifying") {

@@ -91,7 +91,11 @@ struct MacImportRow: View {
     @ViewBuilder
     private var releaseSummary: some View {
         if let summary = ImportReleaseSummary(row: row) {
-            MacImportReleaseSummary(summary: summary, style: .sidebar) {
+            MacImportReleaseSummary(
+                summary: summary,
+                style: .sidebar,
+                showsArtist: !stateLineReplacesArtist
+            ) {
                 RecordArrow(readFromRecord: row.reading.readFromRecord)
             }
         }
@@ -101,6 +105,19 @@ struct MacImportRow: View {
     private var folderLine: some View {
         ImportFolderNameLine(folderName: row.folderName) {
             RecordArrow(readFromRecord: row.reading.readFromRecord)
+        }
+    }
+
+    /// Whether the line under the title is the import's or the upload's step
+    /// instead of the artist.
+    private var stateLineReplacesArtist: Bool {
+        switch live.import {
+        case .preparing(step: .queued)?:
+            false
+        case _?:
+            true
+        case nil:
+            row.importedRelease != nil && row.upload != nil
         }
     }
 
