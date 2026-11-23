@@ -91,9 +91,9 @@ public struct MacButton<Label: View>: View {
     /// A button as wide as the space it is given, its words centred, instead
     /// of as wide as its words: the welcome window's three choices share one
     /// column.
-    public func fillsWidth(_ fills: Bool = true) -> MacButton {
+    public func fillsWidth() -> MacButton {
         var copy = self
-        copy.fillsWidth = fills
+        copy.fillsWidth = true
         return copy
     }
 
