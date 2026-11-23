@@ -9,6 +9,9 @@ import Testing
 /// A table width with room for every column beyond its floor.
 private let wideTableWidth: CGFloat = 840
 
+/// The board centers the 10-point audition glyph at the leading edge.
+private let auditionClickX: CGFloat = 5
+
 @Suite("Import mapping Tracks layout")
 struct ImportMappingTracksLayoutTests {
     @MainActor
@@ -27,7 +30,6 @@ struct ImportMappingTracksLayoutTests {
         try await SnapshotTestSupport.withHostedWindow(
             MacImportTrackRow(
                 row: pairedMapping,
-
                 columns: columns,
                 previewingTarget: nil,
                 editingCommands: EditingCommitCommands(),
@@ -49,18 +51,19 @@ struct ImportMappingTracksLayoutTests {
                 field.alignmentRect(forFrame: field.bounds),
                 to: host
             )
+            let cell = try #require(field.cell as? any InsetCell)
             let leading =
                 columns.source
                 + ReleaseMetadataTrackColumns.track + 2
                 * ImportMappingColumns.spacing
-            #expect(abs(frame.minX - leading) < 1)
-            #expect(abs(frame.width - columns.title) < 1)
+            #expect(abs(frame.minX + cell.insets.width - leading) < 1)
+            #expect(abs(frame.maxX - (leading + columns.title)) < 1)
         }
     }
 
     @MainActor
     @Test(
-        "playable source leads the row with the standard playback target",
+        "the Play button works at the leading edge of the source",
         arguments: [
             ReleaseMetadataTrackColumns.minimumTableWidth,
             wideTableWidth,
@@ -76,7 +79,6 @@ struct ImportMappingTracksLayoutTests {
         try await SnapshotTestSupport.withHostedWindow(
             MacImportTrackRow(
                 row: pairedMapping,
-
                 columns: columns,
                 previewingTarget: nil,
                 editingCommands: EditingCommitCommands(),
@@ -89,12 +91,9 @@ struct ImportMappingTracksLayoutTests {
         ) { window, host in
             try await SnapshotTestSupport.settle(host)
 
-            // The point is inside the leading Source cell and the outer edge of
-            // the 24-point audition target. A smaller target or a Source cell
-            // placed later in the row both leave this click unanswered.
             try HostedInput.click(
                 at: NSPoint(
-                    x: 22,
+                    x: auditionClickX,
                     y: size.height / 2
                 ),
                 in: window
@@ -171,7 +170,6 @@ struct ImportMappingTracksLayoutTests {
         try await SnapshotTestSupport.withHostedWindow(
             MacImportTrackRow(
                 row: mapping,
-
                 columns: columns,
                 previewingTarget: nil,
                 editingCommands: EditingCommitCommands(),
@@ -437,7 +435,6 @@ extension ImportMappingTracksLayoutTests {
         return try await SnapshotTestSupport.withHostedWindow(
             MacImportTrackRow(
                 row: pairedMapping,
-
                 columns: columns,
                 previewingTarget: previewingTarget,
                 editingCommands: EditingCommitCommands(),
@@ -451,7 +448,7 @@ extension ImportMappingTracksLayoutTests {
             try await SnapshotTestSupport.settle(host)
             try HostedInput.click(
                 at: NSPoint(
-                    x: 22,
+                    x: auditionClickX,
                     y: size.height / 2
                 ),
                 in: window
