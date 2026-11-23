@@ -216,15 +216,7 @@ struct ReleaseFactsLine: View {
                             localizedCoreString("core.identity.identified")
                         )
                 }
-                .padding(.horizontal, ThemeSpace.compact)
-                .padding(.vertical, ThemeSpace.line)
-                .background(
-                    RoundedRectangle(cornerRadius: ThemeRadius.chip)
-                        .fill(isHovering ? Theme.hover : Color.clear)
-                )
-                // The fill bleeds outward without moving the text.
-                .padding(.horizontal, -ThemeSpace.compact)
-                .padding(.vertical, -ThemeSpace.line)
+                .hoverPlate(isHovering, cornerRadius: ThemeRadius.chip)
             }
             .buttonStyle(.accentPlain)
             .background { OverlayTrigger(anchor: trigger) }
