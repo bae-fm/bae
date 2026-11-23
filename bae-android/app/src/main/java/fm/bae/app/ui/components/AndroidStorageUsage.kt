@@ -138,11 +138,13 @@ internal fun AndroidUsageKey(segment: StorageUsageSegment) {
         )
         Text(
             text = segment.size,
-            style = ThemeText.body.style,
+            style = usageSizeStyle,
             color = MaterialTheme.colorScheme.onSurface,
         )
     }
 }
+
+private val usageSizeStyle = ThemeText.body.style.copy(fontFeatureSettings = "tnum")
 
 /**
  * The bar, one rounded piece per kind in proportion to its share; a thin kind still shows, at least
