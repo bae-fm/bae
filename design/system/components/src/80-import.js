@@ -101,21 +101,22 @@
       h(ProgressBar, { value: isNaN(value) ? null : value, className: 'bae-m-pline-bar', label: props.label }),
       props.detail ? h('span', { className: 'bae-m-pline-detail' }, props.detail) : null);
   }
-  // One candidate: cover, title over artist (or the folder's name), the state line, the trailing badge or wait mark. `error` is a skipped folder's reason, under the title and artist or the folder's name.
+  // One candidate: cover, title over artist (or the folder's name), then while it imports or uploads the step or the upload with its bar, the trailing badge or wait mark. `error` is a skipped folder's reason, under the title and artist or the folder's name.
   function MacImportRow(props) {
     var trail = props.badge ? h(StatusChip, { tone: props.badgeTone || 'warning' }, props.badge)
       : props.state === 'identifyQueued' || props.state === 'importQueued' ? h('span', { className: 'bae-muted', role: 'img', 'aria-label': props.state === 'importQueued' ? 'Queued to import' : 'Queued to identify', title: props.state === 'importQueued' ? 'Queued to import' : 'Queued to identify' }, h(Sym, { name: 'clock', size: 12 }))
       : props.state === 'identifying' ? h(MacSpinner, { size: 12 }) : null;
     var line1 = props.folder ? h('div', { className: 'bae-m-irow-folder' }, h(Sym, { name: 'folder', size: 13, className: 'bae-muted' }), h('span', { className: 'bae-mono bae-ellipsis' }, props.folder))
       : h('div', { className: 'bae-m-irow-t' }, h('span', { className: cx('bae-ellipsis', !props.title && 'bae-muted') }, props.title || 'Album title'), h('span', props.record ? { className: 'bae-linkout', role: 'img', 'aria-label': 'Identified' } : { className: 'bae-linkout', style: { opacity: 0 }, 'aria-hidden': true }, h(Sym, { name: 'external', size: 13, className: 'bae-muted' })));
-    var line2 = props.state === 'importing' ? h('div', { className: 'bae-m-irow-step' }, h(MacProgressLine, { label: props.step || 'Reading files…', value: props.progress == null ? 0.4 : props.progress }))
+    var line2 = props.folder ? null : h('div', { className: 'bae-m-irow-sub bae-ellipsis' }, props.artist);
+    var step = props.state === 'importing' ? h('div', { className: 'bae-m-irow-step' }, h(MacProgressLine, { label: props.step || 'Reading files…', value: props.progress == null ? 0.4 : props.progress }))
       : props.state === 'uploading' ? h('div', { className: 'bae-m-irow-step' }, h(MacProgressLine, { label: 'Uploading', value: props.progress == null ? 0.4 : props.progress }))
-      : props.folder ? null : h('div', { className: 'bae-m-irow-sub bae-ellipsis' }, props.artist);
+      : null;
     var line3 = props.error ? h('div', { className: 'bae-m-irow-sub bae-ellipsis' }, props.error) : null;
     return h('div', { className: cx('bae-m-irow', props.grouped && 'bae-m-irow-grouped', props.selected && 'bae-m-irow-selected') },
       props.grouped ? h('span', { className: 'bae-m-irow-rail' }) : null,
       h(Artwork, { title: props.cover || props.title || props.folder, size: 'size-row-artwork', radius: 'radius-artwork', missing: props.noCover }),
-      h('div', { className: 'bae-m-irow-text' }, line1, line2, line3), h('span', { style: { flex: 'none', marginLeft: 'auto' } }, trail));
+      h('div', { className: 'bae-m-irow-text' }, line1, line2, step, line3), h('span', { style: { flex: 'none', marginLeft: 'auto' } }, trail));
   }
   // Above the right pane: the tab chip, a button that goes to that tab; the folder glyph, a button that reveals the folder in Finder; the folder's name.
   function MacImportFolderLine(props) {
