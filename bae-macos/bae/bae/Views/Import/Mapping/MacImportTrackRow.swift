@@ -5,6 +5,7 @@ import SwiftUI
 /// place, and its title and artists, which edit in place.
 struct MacImportTrackRow: View {
     let row: BridgeTrackTableRow
+    let hasAlbumArtists: Bool
     /// The widths the table resolved for this pane, so the row's cells land
     /// under the header's.
     let columns: ReleaseMetadataTrackColumns
@@ -21,6 +22,7 @@ struct MacImportTrackRow: View {
             ReleaseMetadataTrackRow(
                 track: row.track,
                 artists: row.artists,
+                hasAlbumArtists: hasAlbumArtists,
                 length: row.length,
                 listedLength: row.listedLength,
                 columns: columns,

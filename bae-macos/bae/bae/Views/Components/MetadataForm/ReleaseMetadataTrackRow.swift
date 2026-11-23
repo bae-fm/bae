@@ -8,6 +8,7 @@ struct ReleaseMetadataTrackRow: View {
     /// The track's own artists, each with its badge, as core's read found
     /// them; `nil` while the track takes its album's artists or names none.
     let artists: BridgeArtistField?
+    let hasAlbumArtists: Bool
     /// The length the track's audio measures, and the length its source lists
     /// when core found the two more than three seconds apart.
     let length: BridgeDurationClock
@@ -55,7 +56,7 @@ struct ReleaseMetadataTrackRow: View {
             field: artists,
             placeholder: localizedCoreString("ui.import.mapping.column.artist"),
             width: .column,
-            inheritsAlbumArtists: inheritsAlbumArtists,
+            inheritsAlbumArtists: inheritsAlbumArtists && hasAlbumArtists,
             onUseAlbumArtists: {
                 updateArtists(.albumArtists)
             },

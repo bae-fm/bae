@@ -128,6 +128,7 @@ extension ShotScene {
                             runs: [.track(row: track)]
                         )
                     ],
+                    hasAlbumArtists: true,
                     previewingTarget: playing
                         ? track.audition.previewTarget : nil,
                     actions: inertMappingActions().trackTable,

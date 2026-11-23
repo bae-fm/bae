@@ -27,6 +27,7 @@ extension ShotScene {
         importStores(
             MacImportTable(
                 sides: sides,
+                hasAlbumArtists: true,
                 previewingTarget: nil,
                 actions: inertMappingActions().trackTable,
                 editingCommands: EditingCommitCommands()

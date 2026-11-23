@@ -2291,7 +2291,10 @@ sheet's caption each CUE sheet's tracks on it, however few (a sheet the
 release splits across sides names itself again on the next side). A row shows
 the track's place, which the table never edits, its title and artists, which
 edit in place as every artist field does (§2.3), and the length its audio
-measures. Where the release's source lists a length more than three seconds
+measures. On macOS, the track's artist field shows *Artist* when it has no
+artists to show. A track that takes its album's artists shows *Album artist*
+when the album names at least one artist.
+Where the release's source lists a length more than three seconds
 apart, the row follows the measured length with the listed length and flags
 that they differ. In a library release's editor, the listed length
 is the one the library stores for the track, or the one the catalog applied in
