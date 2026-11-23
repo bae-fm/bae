@@ -78,8 +78,8 @@
         private static func noticeFillPixels(
             _ browser: StorageFolderBrowser
         ) async throws -> Int {
-            let view = Form { MacFolderPicker(browser: browser) }
-                .formStyle(.grouped)
+            let listing = try #require(browser.listing)
+            let view = MacFolderPicker(browser: browser, listing: listing)
                 .appearance(mode: .light, accent: .standard, tone: .standard)
             return try await SnapshotTestSupport.withHostedWindow(
                 view,
