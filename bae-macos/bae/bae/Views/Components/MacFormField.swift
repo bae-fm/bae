@@ -26,7 +26,8 @@ struct MacFormField<Control: View>: View {
                 .accessibilityLabel(Text(label))
             if let note {
                 note
-                    .fieldNote()
+                    .themeText(.detail)
+                    .foregroundStyle(Theme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
