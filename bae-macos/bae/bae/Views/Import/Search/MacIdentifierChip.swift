@@ -30,6 +30,10 @@ struct MacIdentifierChip<Trailing: View>: View {
     /// Where each of `values` is a button, what it does: the value written
     /// in the list, separated and wrapping as the values of a chip are.
     var onValue: ((String) -> Void)?
+    /// Where pressing the chip does something, what it does. The chip's label,
+    /// value and answers stay separate elements for accessibility, as the
+    /// board draws them.
+    var onPress: (() -> Void)?
     @ViewBuilder
     let trailing: Trailing
 
@@ -37,6 +41,16 @@ struct MacIdentifierChip<Trailing: View>: View {
     private var isHovered = false
 
     var body: some View {
+        if let onPress {
+            Button(action: onPress) { content }
+                .buttonStyle(.accentPlain)
+        }
+        else {
+            content
+        }
+    }
+
+    private var content: some View {
         HStack(spacing: ThemeSpace.compact) {
             IdentifierLabel(text: label)
             if !values.isEmpty, let onValue {
@@ -93,6 +107,7 @@ struct MacIdentifierChip<Trailing: View>: View {
         }
         .contentShape(RoundedRectangle(cornerRadius: ThemeRadius.chip))
         .onHover { isHovered = $0 }
+        .accessibilityElement(children: .contain)
     }
 
     /// A value is in the primary text colour whatever the chip's style, as

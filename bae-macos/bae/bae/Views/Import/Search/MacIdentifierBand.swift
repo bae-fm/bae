@@ -85,24 +85,20 @@ struct MacIdentifierBand: View {
         discId: String,
         lookup: BridgeLookupState?
     ) -> some View {
-        Button {
-            onToggleLookup(.discId)
-        } label: {
-            MacIdentifierChip(
-                label: label,
-                value: discId,
-                style: lookup == nil ? .outlined : .filled
-            ) {
-                if let lookup {
-                    ProviderCapsule(
-                        source: .musicBrainz,
-                        lookup: lookup,
-                        onRetry: onRetryFailed
-                    )
-                }
+        MacIdentifierChip(
+            label: label,
+            value: discId,
+            style: lookup == nil ? .outlined : .filled,
+            onPress: { onToggleLookup(.discId) }
+        ) {
+            if let lookup {
+                ProviderCapsule(
+                    source: .musicBrainz,
+                    lookup: lookup,
+                    onRetry: onRetryFailed
+                )
             }
         }
-        .buttonStyle(.accentPlain)
         .help(
             lookup == nil
                 ? "Ask about this Disc ID again"
@@ -125,21 +121,17 @@ struct MacIdentifierBand: View {
                 .help("No barcode on the artwork")
         case .rows(let rows):
             ForEach(rows, id: \.value) { row in
-                Button {
-                    onToggleLookup(.barcode(row.value))
-                } label: {
-                    MacIdentifierChip(
-                        label: label,
-                        value: row.value,
-                        style: row.excluded ? .outlined : .filled
-                    ) {
-                        // A left-out code has no answers to show.
-                        if !row.excluded {
-                            capsules(row.cells)
-                        }
+                MacIdentifierChip(
+                    label: label,
+                    value: row.value,
+                    style: row.excluded ? .outlined : .filled,
+                    onPress: { onToggleLookup(.barcode(row.value)) }
+                ) {
+                    // A left-out code has no answers to show.
+                    if !row.excluded {
+                        capsules(row.cells)
                     }
                 }
-                .buttonStyle(.accentPlain)
                 .help(
                     row.excluded
                         ? "Ask about this barcode again"
@@ -164,21 +156,17 @@ struct MacIdentifierBand: View {
                 .help("None found")
         case .numbers(let rows, _):
             ForEach(rows, id: \.value) { row in
-                Button {
-                    onToggleCatalogAgreement(row.value)
-                } label: {
-                    MacIdentifierChip(
-                        label: label,
-                        value: row.value,
-                        style: row.excluded ? .struck : .filled
-                    ) {
-                        // A struck-out number is asked of nobody.
-                        if !row.excluded {
-                            capsules(row.cells)
-                        }
+                MacIdentifierChip(
+                    label: label,
+                    value: row.value,
+                    style: row.excluded ? .struck : .filled,
+                    onPress: { onToggleCatalogAgreement(row.value) }
+                ) {
+                    // A struck-out number is asked of nobody.
+                    if !row.excluded {
+                        capsules(row.cells)
                     }
                 }
-                .buttonStyle(.accentPlain)
                 .help(
                     row.excluded
                         ? "Put this catalog number back in the run"
