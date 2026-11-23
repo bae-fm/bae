@@ -358,4 +358,4 @@ private val DOT = 8.dp
 private val AVATAR_SIZE = 40.dp
 
 /** Material's alpha for a disabled control's content. */
-private const val DISABLED_ALPHA = 0.38f
+internal const val DISABLED_ALPHA = 0.38f

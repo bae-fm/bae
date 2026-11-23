@@ -111,7 +111,6 @@ internal fun AndroidMenuEntry(
 
 private val MENU_ITEM_MIN_HEIGHT = 48.dp
 private val MENU_ITEM_EDGE = 12.dp
-private const val DISABLED_ALPHA = 0.38f
 
 /** A group's name over its items, in the secondary colour; a screen reader announces it as a heading. */
 @Composable
