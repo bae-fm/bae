@@ -49,6 +49,9 @@ struct MacAlbumPanel: View {
     /// How the person picks several tracks in the list, or `nil` when the
     /// list does not allow picking.
     var picking: TrackPicking?
+    /// Draw the help tag of Not on this device, which a shot cannot get from
+    /// the system.
+    var showsUnplayableHelp = false
 
     /// The heart the person chose for the album, until its write returns.
     @State
@@ -79,7 +82,8 @@ struct MacAlbumPanel: View {
                         currentReleaseId: currentReleaseId,
                         onSelectRelease: onSelectRelease,
                         onPlay: onPlay,
-                        rating: shownRating
+                        rating: shownRating,
+                        showsUnplayableHelp: showsUnplayableHelp
                     ) {
                         albumMenuItems
                     }

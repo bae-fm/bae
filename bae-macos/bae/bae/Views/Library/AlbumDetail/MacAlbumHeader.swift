@@ -3,7 +3,9 @@ import SwiftUI
 
 /// The open album's head: title, artist and year, the release picker when the
 /// album has several releases, the release's facts, why this Mac can't play
-/// it, then Play and ⋯ with the person's rating after it: under Stars the
+/// it, then Play and ⋯ with the person's rating after it: when only another
+/// device holds the release's files, the words Not on this device stand where
+/// Play stood, and their help tag names the device. Under Stars the
 /// number and one star, under Heart a filled heart when the person hearted
 /// the album, and under None nothing.
 struct MacAlbumHeader: View {
@@ -20,6 +22,9 @@ struct MacAlbumHeader: View {
     let rating: BridgeAlbumRating
     /// The items of the ⋯ menu.
     let menu: () -> [MacMenuEntry]
+    /// Draw the help tag of Not on this device, which a shot cannot get from
+    /// the system.
+    let showsUnplayableHelp: Bool
 
     init(
         detail: AlbumDetail,
@@ -27,6 +32,7 @@ struct MacAlbumHeader: View {
         onSelectRelease: @escaping (String) -> Void,
         onPlay: @escaping () -> Void,
         rating: BridgeAlbumRating,
+        showsUnplayableHelp: Bool = false,
         @MacMenuBuilder menu: @escaping () -> [MacMenuEntry]
     ) {
         self.detail = detail
@@ -34,6 +40,7 @@ struct MacAlbumHeader: View {
         self.onSelectRelease = onSelectRelease
         self.onPlay = onPlay
         self.rating = rating
+        self.showsUnplayableHelp = showsUnplayableHelp
         self.menu = menu
     }
 
@@ -72,15 +79,8 @@ struct MacAlbumHeader: View {
                 records: selectedRelease.records,
                 hasRecords: selectedRelease.hasRecords
             )
-            // Why this Mac can't play the release: the device its audio is
-            // on, or its originals missing here.
-            if let unplayable = selectedRelease.unplayableLine {
-                Text(unplayable)
-                    .themeText(.detail)
-                    .foregroundStyle(Theme.textSecondary)
-            }
             HStack(spacing: ThemeSpace.related) {
-                MacButton("Play", kind: .primary, action: onPlay)
+                playOrWhy
                 MacMoreMenu(
                     look: .boxed,
                     label: Text("Album options"),
@@ -92,6 +92,23 @@ struct MacAlbumHeader: View {
         }
         // Over the rows below the head, which the facts' card lies across.
         .zIndex(1)
+    }
+
+    /// Play, or when this Mac can't play the release, the words Not on this
+    /// device with a help tag that names the device its audio is on.
+    @ViewBuilder
+    private var playOrWhy: some View {
+        if let unplayable = selectedRelease.unplayableLine {
+            MacHelpTag(text: unplayable, showing: showsUnplayableHelp) {
+                Text("Not on this device")
+                    .themeText(.body)
+                    .foregroundStyle(Theme.textSecondary)
+                    .frame(minHeight: 28)
+            }
+        }
+        else {
+            MacButton("Play", kind: .primary, action: onPlay)
+        }
     }
 
     /// The person's own rating after the ⋯, read-only.

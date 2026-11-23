@@ -34,6 +34,7 @@ extension ShotScene {
             macArtistGroupHeadingScenes,
             macArtistOtherNamesScenes,
             macBackButtonScenes,
+            macHelpTagScenes,
             macBoxScenes,
             macBrowseSplitScenes,
             macBulkActionRowScenes,

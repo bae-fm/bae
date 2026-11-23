@@ -4,7 +4,8 @@ import SwiftUI
 @testable import bae
 
 extension ShotScene {
-    /// `MacAlbumHeader` at rest, over two releases, on another Mac's disk,
+    /// `MacAlbumHeader` at rest, over two releases, on another Mac's disk with and
+    /// without its help tag,
     /// rated, rated under the Heart and None systems, with its menu open and
     /// with no year.
     static let macAlbumHeaderScenes: [ShotScene] = [
@@ -20,6 +21,12 @@ extension ShotScene {
         albumHeader(
             "mac.component.album-header.unplayable",
             panelDetail(playability: onAnasMac)
+        ),
+        albumHeader(
+            "mac.component.album-header.unplayable-hovered",
+            panelDetail(playability: onAnasMac),
+            height: 278,
+            showsUnplayableHelp: true
         ),
         albumHeader(
             "mac.component.album-header.rated",
@@ -49,7 +56,8 @@ extension ShotScene {
         _ id: String,
         _ detail: AlbumDetail,
         height: CGFloat = 250,
-        optionsOpen: Bool = false
+        optionsOpen: Bool = false,
+        showsUnplayableHelp: Bool = false
     ) -> ShotScene {
         component(id, width: 540, height: height) {
             MacAlbumHeader(
@@ -57,7 +65,8 @@ extension ShotScene {
                 currentReleaseId: nil,
                 onSelectRelease: { _ in },
                 onPlay: {},
-                rating: detail.rating
+                rating: detail.rating,
+                showsUnplayableHelp: showsUnplayableHelp
             ) {
                 MacMenuItem("Edit…") {}
                 MacMenuItem("Change cover…") {}

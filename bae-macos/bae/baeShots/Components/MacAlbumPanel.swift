@@ -31,6 +31,12 @@ extension ShotScene {
             detail: panelDetail(playability: onAnasMac)
         ),
         albumPanel(
+            "mac.component.album-panel.unplayable-hovered",
+            detail: panelDetail(playability: onAnasMac),
+            height: 508,
+            showsUnplayableHelp: true
+        ),
+        albumPanel(
             "mac.component.album-panel.no-cover",
             detail: panelDetail(covered: false)
         ),
@@ -151,12 +157,14 @@ extension ShotScene {
 
     private static func albumPanel(
         _ id: String,
-        detail: AlbumDetail
+        detail: AlbumDetail,
+        height: CGFloat = 480,
+        showsUnplayableHelp: Bool = false
     ) -> ShotScene {
         component(
             id,
             width: 804,
-            height: 480,
+            height: height,
             images: browsePanelImages
         ) {
             MacAlbumPanel(
@@ -187,7 +195,8 @@ extension ShotScene {
                 onRateAlbum: { _ in },
                 onRateTrack: { _, _ in },
                 onSetAlbumHearted: { _ in },
-                onSetTrackHearted: { _, _ in }
+                onSetTrackHearted: { _, _ in },
+                showsUnplayableHelp: showsUnplayableHelp
             )
             .albumDetailPreviewEnvironment()
             .environment(browsePanelImages)
