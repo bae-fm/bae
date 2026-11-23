@@ -202,6 +202,8 @@
                 galleryItems: [],
                 galleryItemCount: 0,
                 playability: .playable,
+                offersPlayback: true,
+                showsTransferLines: false,
                 moveToThisDevice: nil,
                 downloadStatus: nil,
                 // Every catalog on the first album's first pressing, so the

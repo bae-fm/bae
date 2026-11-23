@@ -123,6 +123,8 @@ extension PreviewData {
             galleryItems: [],
             galleryItemCount: 0,
             playability: playability,
+            offersPlayback: playability == .playable,
+            showsTransferLines: false,
             moveToThisDevice: nil,
             downloadStatus: nil,
             // Every catalog, so the expansion's facts-line popover shows

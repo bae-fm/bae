@@ -19,7 +19,7 @@ import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeAlbumRating
 import uniffi.bae_bridge.BridgeRatingTarget
-import uniffi.bae_bridge.BridgeReleasePlayability
+import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeReleaseStorageAction
 
 /**
@@ -67,6 +67,21 @@ internal fun rememberAlbumHeart(
     return remember(session, albumId, scope) { AlbumHeartChoice(session, albumId, scope) }
 }
 
+/** The menu's playback actions for [release], which core offers only for a release this device can play. */
+internal fun playMenuActions(
+    release: BridgeRelease,
+    callbacks: AlbumDetailCallbacks,
+): PlayMenuActions? =
+    if (release.offersPlayback) {
+        PlayMenuActions(
+            onShuffle = callbacks.onShuffleRelease,
+            onPlayNext = callbacks.onPlayReleaseNext,
+            onAddToQueue = callbacks.onAddReleaseToQueue,
+        )
+    } else {
+        null
+    }
+
 /** The album's menu at the end of the page's bar, for the release in view. */
 @Composable
 internal fun AlbumBarActions(
@@ -80,7 +95,6 @@ internal fun AlbumBarActions(
     onRate: () -> Unit,
 ) {
     val shown = detail.shownRelease
-    val canPlayHere = shown.playability !is BridgeReleasePlayability.OnOtherDevice
     val asksBeforeUnpinning =
         session.configStore.config
             .collectAsState()
@@ -116,16 +130,7 @@ internal fun AlbumBarActions(
         }
     AlbumOptionsMenu(
         AlbumMenuActions(
-            play =
-                if (canPlayHere) {
-                    PlayMenuActions(
-                        onShuffle = callbacks.onShuffleRelease,
-                        onPlayNext = callbacks.onPlayReleaseNext,
-                        onAddToQueue = callbacks.onAddReleaseToQueue,
-                    )
-                } else {
-                    null
-                },
+            play = playMenuActions(shown, callbacks),
             rating = { RatingAction(shownRating(), onSetHearted, onRate) },
             pin = pin,
             onSetPrimaryRelease = setPrimary,

@@ -128,6 +128,8 @@ object BridgeFixtures {
             galleryItems = galleryItems,
             galleryItemCount = galleryItems.size.toUInt(),
             playability = BridgeReleasePlayability.Playable,
+            offersPlayback = true,
+            showsTransferLines = false,
             moveToThisDevice = null,
             downloadStatus = null,
             records = emptyList(),

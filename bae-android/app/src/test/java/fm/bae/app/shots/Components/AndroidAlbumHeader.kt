@@ -72,6 +72,7 @@ class AndroidAlbumHeaderShots : BoardShot() {
                     shownRelease =
                         harborRelease.copy(
                             playability = BridgeReleasePlayability.OnOtherDevice(BridgeOtherDevice.Active("Ana’s Mac")),
+                            offersPlayback = false,
                         ),
                 ),
             )

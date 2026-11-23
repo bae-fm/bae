@@ -246,7 +246,11 @@ private val unavailableDevice = BridgeOtherDevice.Active("Ana’s Mac")
 /** The album the boards draw as held by Ana's Mac only: ten tracks, none of which this device can play. */
 private val onAnotherDevice: BridgeAlbumDetail =
     boardAlbum().let { detail ->
-        val release = detail.shownRelease.copy(playability = BridgeReleasePlayability.OnOtherDevice(unavailableDevice))
+        val release =
+            detail.shownRelease.copy(
+                playability = BridgeReleasePlayability.OnOtherDevice(unavailableDevice),
+                offersPlayback = false,
+            )
         detail.copy(releases = listOf(release), shownRelease = release)
     }
 

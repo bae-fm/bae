@@ -26,7 +26,7 @@ internal fun ReleaseTransferLines(
     release: BridgeRelease,
 ) {
     Column {
-        AndroidUploadLineContainer(release.upload?.progress, release.upload?.missing)
+        release.upload?.let { AndroidUploadLineContainer(it.progress, it.missing) }
         AndroidDownloadControlContainer(session = session, release = release)
     }
 }
@@ -35,14 +35,12 @@ internal fun ReleaseTransferLines(
  * What of the release waits in this device's upload queue: the phase core
  * words ("Queued to upload") and, while none of its files is being sent, a
  * quiet warning naming the file whose missing original its move waits for.
- * Nothing when no file of it is queued.
  */
 @Composable
 internal fun AndroidUploadLineContainer(
-    progress: BridgeUploadProgress?,
+    progress: BridgeUploadProgress,
     missing: String?,
 ) {
-    if (progress == null) return
     AndroidUploadLine(LocalContext.current.coreString(bridgeUploadActivityKey(progress.activity)), missing)
 }
 

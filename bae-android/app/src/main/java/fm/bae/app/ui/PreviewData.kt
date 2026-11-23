@@ -181,6 +181,8 @@ object PreviewData {
             galleryItems = emptyList(),
             galleryItemCount = 0u,
             playability = BridgeReleasePlayability.Playable,
+            offersPlayback = true,
+            showsTransferLines = false,
             moveToThisDevice = null,
             downloadStatus = null,
             records = emptyList(),

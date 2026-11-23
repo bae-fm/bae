@@ -812,6 +812,8 @@ extension PreviewData {
             galleryItems: [],
             galleryItemCount: 0,
             playability: .playable,
+            offersPlayback: true,
+            showsTransferLines: false,
             moveToThisDevice: nil,
             downloadStatus: nil,
             records: [],

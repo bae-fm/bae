@@ -135,6 +135,8 @@ impl BridgeRelease {
             gallery_items,
             gallery_item_count,
             playability,
+            offers_playback,
+            shows_transfer_lines,
             download_status,
             move_to_this_device,
             records,
@@ -191,6 +193,8 @@ impl BridgeRelease {
             gallery_items: gallery_items.into_iter().map(BridgeGalleryItem::from_core).collect(),
             gallery_item_count,
             playability: crate::types::BridgeReleasePlayability::from_core(playability),
+            offers_playback,
+            shows_transfer_lines,
             move_to_this_device: move_to_this_device
                 .map(crate::types::BridgeMoveToThisDeviceStatus::from_core),
             download_status: download_status

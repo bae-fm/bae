@@ -20,6 +20,11 @@ pub enum ReleasePlayability {
 }
 
 impl ReleasePlayability {
+    /// Whether this device can play the release.
+    pub(crate) fn plays_here(&self) -> bool {
+        matches!(self, Self::Playable)
+    }
+
     /// Returns `OnOtherDevice` when `elsewhere` names a device and `Playable`
     /// when it is `None`.
     pub(crate) fn of(elsewhere: Option<OtherDevice>) -> Self {

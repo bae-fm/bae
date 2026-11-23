@@ -155,6 +155,13 @@ pub struct ReleaseDetail {
     pub gallery_item_count: u32,
     /// Whether this device can play the release now, and why not.
     pub playability: ReleasePlayability,
+    /// Whether the release's page offers Play, Shuffle, Play next and Add to
+    /// queue: exactly when this device can play it.
+    pub offers_playback: bool,
+    /// Whether the release's page shows a transfer row: while any of its files
+    /// are in this device's upload queue, even when this device can't play it,
+    /// and while its pin waits, runs or has failed.
+    pub shows_transfer_lines: bool,
     /// The download control's state for the release, from its entry in the
     /// download queue as it was read; `None` when there is no control to show.
     pub download_status: Option<ReleaseDownloadStatus>,
@@ -265,7 +272,18 @@ impl ReleaseDetail {
             download.as_ref(),
         );
         let move_to_this_device = release_move_to_this_device_status(download.as_ref());
+        let shows_transfer_lines = summary.upload.is_some()
+            || matches!(
+                download_status,
+                Some(
+                    ReleaseDownloadStatus::Queued
+                        | ReleaseDownloadStatus::Downloading
+                        | ReleaseDownloadStatus::Failed { .. }
+                )
+            );
         ReleaseDetail {
+            offers_playback: playability.plays_here(),
+            shows_transfer_lines,
             download_status,
             move_to_this_device,
             summary,

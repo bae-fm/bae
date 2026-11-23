@@ -486,6 +486,13 @@ pub struct BridgeRelease {
     pub gallery_item_count: u32,
     /// Whether this device can play the release now, and why not.
     pub playability: BridgeReleasePlayability,
+    /// Whether the release's page offers Play, Shuffle, Play next and Add to
+    /// queue: exactly when this device can play it.
+    pub offers_playback: bool,
+    /// Whether the release's page shows a transfer row: its files upload from
+    /// this device, even when it can't play them, or its pin waits, runs or
+    /// has failed.
+    pub shows_transfer_lines: bool,
     /// Where the release stands in being moved to this device, which core decides from
     /// its entry in the download queue; `None` when it is not being made
     /// local.

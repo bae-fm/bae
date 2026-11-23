@@ -313,7 +313,6 @@ internal fun AlbumDetailPage(
 
     // A release only another device holds can't play here: its words and info button stand where Play would.
     val playability = shown.playability
-    val unplayable = playability is BridgeReleasePlayability.OnOtherDevice
     var showWhere by remember { mutableStateOf(false) }
     if (showWhere && playability is BridgeReleasePlayability.OnOtherDevice) {
         UnplayableSheet(playability, onDismiss = { showWhere = false })
@@ -355,8 +354,7 @@ internal fun AlbumDetailPage(
             block { AndroidRecordLinks(shown.records, catalogName) }
         }
 
-        // The page's transfer lines show what this device uploads of the release, even when it can't play it.
-        if (!unplayable || shown.upload?.progress != null) {
+        if (shown.showsTransferLines) {
             block { releaseDownloadControl(shown) }
         }
         albumTrackGroups(shown, positionColumnWidth, playback, callbacks, context)
