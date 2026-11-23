@@ -2,6 +2,7 @@ package fm.bae.app.ui.components
 
 import android.app.Application
 import fm.bae.app.BaeRobolectricTestRunner
+import fm.bae.app.shots.INVITE_CODE_WITHOUT_KEY
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -38,6 +39,11 @@ class QRCodeSizeTest {
         val bitmap = encodeQRCode(DenseCodes.restoreCodeWithKey(Random(1)))!!
         assertTrue(qrSide(bitmap).value >= bitmap.width * 360f / 105f - 0.01f)
         assertTrue(qrSide(bitmap).value >= 220f)
+    }
+
+    @Test
+    fun theInviteCodeTheShotsStageIsDrawnAtTheBoardsSize() {
+        assertEquals(127f, side(INVITE_CODE_WITHOUT_KEY), 0.5f)
     }
 
     @Test

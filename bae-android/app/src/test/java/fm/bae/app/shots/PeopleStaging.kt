@@ -185,8 +185,13 @@ private fun person(
     )
 }
 
+/**
+ * An invite code with no S3 key, as long as one is: 69 characters, a version 3 QR code, which the boards draw at 127 dp.
+ */
+internal const val INVITE_CODE_WITHOUT_KEY = "CVI1-ABCDEFGHIJKLMNOPQRSTUVWXYZ234567ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
+
 /** Dan's code, for which his request hasn't arrived. */
-internal val waitingCode = BridgeInviteShown.Code("0000 0000", BridgeInviteProgress.Waiting)
+internal val waitingCode = BridgeInviteShown.Code(INVITE_CODE_WITHOUT_KEY, BridgeInviteProgress.Waiting)
 
 /** The change that makes Ben an admin, in [state]. */
 internal fun makeBenAdmin(state: BridgeAdminChangeState) =

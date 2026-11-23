@@ -12,5 +12,5 @@ class AndroidScanCodeShots : BoardShot() {
         }
 }
 
-/** A short invite code, which the boards draw: one with no S3 key. */
-private const val INVITE_CODE = "0000 0000"
+/** The invite code the boards draw: one with no S3 key. */
+private const val INVITE_CODE = INVITE_CODE_WITHOUT_KEY
