@@ -205,6 +205,46 @@ fn the_live_release_names_the_device_its_audio_is_on_until_it_moves_to_the_cloud
     });
 }
 
+#[test]
+fn the_album_grid_follows_its_primary_releases_playability() {
+    crate::test_libraries::run_two_device_test(async |devices| {
+        let originals = TestFolder::new();
+        let release =
+            release_on_the_first_device(devices, &originals, originals.path(), "Album").await;
+        let window = || bae_store::ListWindow::top(1);
+        let original = bae_views::LibraryViews::new(devices.a().store().clone());
+        let other = bae_views::LibraryViews::new(devices.b().store().clone());
+        let local = original
+            .subscribe_album_window(&[], false, window())
+            .next_inline()
+            .await
+            .unwrap()
+            .result
+            .unwrap();
+        let mut live = other.subscribe_album_window(&[], false, window());
+        let remote = live.next_inline().await.unwrap().result.unwrap();
+        assert_eq!(remote.rows[0].0.album.primary_release_id, release.id);
+        assert!(!local.rows[0].0.primary_release_unplayable);
+        assert!(remote.rows[0].0.primary_release_unplayable);
+
+        devices.a().manager().upload_release(&release.id).await.unwrap();
+        devices
+            .converge(
+                "SELECT f.id, f.file, c.coordinates FROM release_files AS f \
+                 JOIN coven_files AS c ON c.id = f.file",
+            )
+            .await;
+        let uploaded =
+            tokio::time::timeout(bae_util::test_channels::HANG_GUARD, live.next_inline())
+                .await
+                .expect("the grid follows the file moving to the cloud")
+                .unwrap()
+                .result
+                .unwrap();
+        assert!(!uploaded.rows[0].0.primary_release_unplayable);
+    });
+}
+
 /// Pin keeps stored files on this device, so neither device offers it for a
 /// release whose audio is on one device only, and both offer it once that
 /// audio is in the cloud. Until then each device offers Upload, which coven

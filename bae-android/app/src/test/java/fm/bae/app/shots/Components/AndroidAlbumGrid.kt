@@ -46,7 +46,11 @@ internal val boardAlbums =
         "Small Hours" to "Tomas Brell",
     ).mapIndexed { index, (title, artist) ->
         val id = "a${index + 1}"
-        BridgeAlbumAppearance(PreviewData.album(id = id, title = title, artistNames = artist, cover = PreviewData.imageRef(title)), null)
+        BridgeAlbumAppearance(
+            album = PreviewData.album(id = id, title = title, artistNames = artist, cover = PreviewData.imageRef(title)),
+            primaryReleaseUnplayable = false,
+            creditedWith = null,
+        )
     }
 
 /** The two albums the album grid's preview holds: the first two of the boards' albums. */

@@ -145,6 +145,7 @@ private fun LazyGridScope.albumItems(
                 title = row.album.title,
                 line = if (grouped) groupedCardLine(row) else LocalContext.current.creditLineText(row.album.artistLine),
                 cover = row.album.cover,
+                unplayable = row.primaryReleaseUnplayable,
                 onClick = { onSelectAlbum(row.album.id) },
             )
         } else {
@@ -174,12 +175,14 @@ private fun AlbumGridCardPreview() {
             val row =
                 BridgeAlbumAppearance(
                     album = PreviewData.album(),
+                    primaryReleaseUnplayable = false,
                     creditedWith = creditLineNamed("Another Artist"),
                 )
             AndroidAlbumTile(
                 title = row.album.title,
                 line = groupedCardLine(row),
                 cover = row.album.cover,
+                unplayable = row.primaryReleaseUnplayable,
                 onClick = {},
             )
         }

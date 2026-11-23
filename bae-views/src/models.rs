@@ -112,6 +112,7 @@ pub struct DbAlbumDetail {
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbAlbumAppearance {
     pub album: DbAlbumSummary,
+    pub primary_release_unplayable: bool,
     /// Grouped by artist: the album's credits other than the artist whose
     /// group lists it, printed as a line; `None` when that artist is its only
     /// credit, or when the grid is flat.

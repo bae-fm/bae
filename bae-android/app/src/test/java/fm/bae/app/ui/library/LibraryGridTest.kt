@@ -31,14 +31,27 @@ class LibraryGridTest {
 
     private val rows =
         listOf(
-            BridgeAlbumAppearance(PreviewData.album(id = "alb-0", title = "Solo Album", year = 1971), creditedWith = null),
-            BridgeAlbumAppearance(PreviewData.album(id = "alb-1", title = "Shared Album", year = 1974), creditLineNamed("Other Artist")),
-            BridgeAlbumAppearance(PreviewData.album(id = "alb-2", title = "Undated Album", year = null), creditLineNamed("Other Artist")),
+            BridgeAlbumAppearance(
+                album = PreviewData.album(id = "alb-0", title = "Solo Album", year = 1971),
+                primaryReleaseUnplayable = true,
+                creditedWith = null,
+            ),
+            BridgeAlbumAppearance(
+                album = PreviewData.album(id = "alb-1", title = "Shared Album", year = 1974),
+                primaryReleaseUnplayable = false,
+                creditedWith = creditLineNamed("Other Artist"),
+            ),
+            BridgeAlbumAppearance(
+                album = PreviewData.album(id = "alb-2", title = "Undated Album", year = null),
+                primaryReleaseUnplayable = false,
+                creditedWith = creditLineNamed("Other Artist"),
+            ),
         )
 
     private fun showGrid(
         layout: AlbumGridLayout,
         onSelectArtist: (String) -> Unit = {},
+        onSelectAlbum: (String) -> Unit = {},
     ) {
         compose.setContent {
             TestTheme {
@@ -48,7 +61,7 @@ class LibraryGridTest {
                         layout = layout,
                         rowAt = rows::getOrNull,
                         gridState = LazyGridState(),
-                        onSelectAlbum = {},
+                        onSelectAlbum = onSelectAlbum,
                         onSelectArtist = onSelectArtist,
                     )
                 }
@@ -78,5 +91,14 @@ class LibraryGridTest {
 
         compose.onAllNodesWithText("Artist Name").assertCountEquals(rows.size)
         compose.onNodeWithText("1974 · with Other Artist").assertDoesNotExist()
+    }
+
+    @Test
+    fun anUnplayableAlbumStillOpensItsPage() {
+        var opened: String? = null
+        showGrid(AlbumGridLayout.Flat, onSelectAlbum = { opened = it })
+
+        compose.onNodeWithText("Solo Album").performClick()
+        assertEquals("alb-0", opened)
     }
 }

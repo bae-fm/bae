@@ -313,6 +313,8 @@ pub struct BridgeAlbum {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeAlbumAppearance {
     pub album: BridgeAlbum,
+    /// Another device alone holds at least one audio file of the primary release.
+    pub primary_release_unplayable: bool,
     /// Grouped by artist: the album's credits other than the artist whose
     /// group lists it, printed as a line; `None` when that artist is its only
     /// credit, or when the grid is flat.

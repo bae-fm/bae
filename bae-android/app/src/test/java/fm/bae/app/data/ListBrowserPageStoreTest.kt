@@ -197,7 +197,15 @@ class ListBrowserPageStoreTest {
         old.deliver(
             BridgeListView(
                 0uL,
-                BridgeListRows.Albums(listOf(BridgeAlbumAppearance(BridgeFixtures.album(id = "stale"), null))),
+                BridgeListRows.Albums(
+                    listOf(
+                        BridgeAlbumAppearance(
+                            album = BridgeFixtures.album(id = "stale"),
+                            primaryReleaseUnplayable = false,
+                            creditedWith = null,
+                        ),
+                    ),
+                ),
             ),
         )
         fixture.idle()

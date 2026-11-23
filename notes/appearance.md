@@ -50,9 +50,9 @@ with the accent's tint. Hover, pressed, hairline, scrim, shadow and the
 image viewer's backdrop are semantic too, as are onFill and onFillSecondary for
 text on fills, artwork and the backdrop. A colour laid behind its own text,
 such as a status chip's fill, uses it at the `tint` opacity. The opacities
-(`tint`, `tintStrong`, `off`) are tokens in tokens.json's `opacity` family,
-each naming its role in `role`; one with no role, such as `opacity-dimmed`, is
-an opacity only the design system draws.
+(`tint`, `tintStrong`, `off`, `dimmed`) come from tokens.json's `opacity`
+family. Each token names its role in `role`. The apps draw opacity tokens
+that name a role.
 
 Corner radii are roles too, the same on every platform: `artwork` for cover art
 in rows and lists, `cover` for a release's cover shown large, `chip`, `control`

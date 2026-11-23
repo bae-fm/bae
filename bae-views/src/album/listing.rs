@@ -87,6 +87,12 @@ pub(crate) fn album_window_statement(
     order: &ListOrder,
     seek: &Seek,
 ) -> String {
+    let select = format!(
+        "{}, (SELECT storage.audio_elsewhere_device IS NOT NULL FROM release_storage storage \
+               WHERE storage.release_id = {}) AS primary_release_unplayable",
+        album_summary_select(),
+        bae_records::records::query::album_primary_release_sql(),
+    );
     if !seek.by_offset() {
         let listing = if group_by_artist {
             "CROSS JOIN album_listing listing ON listing.album_id = link.album_id"
@@ -99,7 +105,6 @@ pub(crate) fn album_window_statement(
              JOIN albums a ON a.id = listing.album_id \
              WHERE {condition} \
              ORDER BY {ordering} {limit}",
-            select = album_summary_select(),
             beside = album_credits_beside_sql(group_by_artist),
             keys = order.key_columns(),
             tables = album_order_tables(group_by_artist),
@@ -128,7 +133,6 @@ pub(crate) fn album_window_statement(
          {picked_ids} \
          JOIN albums a ON a.id = picked.picked_album_id \
          ORDER BY {ordering}",
-        select = album_summary_select(),
         beside = album_credits_beside_sql(group_by_artist),
         tables = album_order_tables(group_by_artist),
         keys = order.key_columns(),
@@ -154,6 +158,7 @@ pub(crate) fn album_rows_on(
                 AlbumAppearanceRow {
                     row: AlbumSummaryRow::read(row)?,
                     credited_with: optional_credit_line_column(row, "credited_with")?,
+                    primary_release_unplayable: row.get("primary_release_unplayable")?,
                 },
                 order.key_of(row)?,
             ))
@@ -168,11 +173,16 @@ pub(crate) fn album_rows_on(
 pub(crate) struct AlbumAppearanceRow {
     pub(crate) row: AlbumSummaryRow,
     credited_with: Option<bae_types::credits::CreditLine>,
+    primary_release_unplayable: bool,
 }
 
 impl AlbumAppearanceRow {
     pub(super) fn process(self) -> Result<DbAlbumAppearance, DbError> {
-        Ok(DbAlbumAppearance { album: self.row.process()?, credited_with: self.credited_with })
+        Ok(DbAlbumAppearance {
+            album: self.row.process()?,
+            credited_with: self.credited_with,
+            primary_release_unplayable: self.primary_release_unplayable,
+        })
     }
 }
 

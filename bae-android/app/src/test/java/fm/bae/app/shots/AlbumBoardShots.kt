@@ -26,7 +26,6 @@ import uniffi.bae_bridge.BridgeCatalog
 import uniffi.bae_bridge.BridgeCreditRole
 import uniffi.bae_bridge.BridgeCreditRow
 import uniffi.bae_bridge.BridgeDurationClock
-import uniffi.bae_bridge.BridgeDurationUnits
 import uniffi.bae_bridge.BridgeFile
 import uniffi.bae_bridge.BridgeFileKind
 import uniffi.bae_bridge.BridgeMessage
@@ -209,55 +208,26 @@ internal fun boardAlbum(
 }
 
 private val unavailableDevice = BridgeOtherDevice.Active("Ana’s Mac")
-private val unavailablePlayability = BridgeReleasePlayability.OnOtherDevice(unavailableDevice)
 
 /** The album the boards draw as held by Ana's Mac only: ten tracks, none of which this device can play. */
 private val onAnotherDevice: BridgeAlbumDetail =
-    harborDetail.let { detail ->
-        val tracks =
-            listOf(
-                "Harbor Lights" to 272,
-                "The Long Way Home" to 312,
-                "Second Floor" to 225,
-                "Low Tide Hours" to 303,
-                "Tin Roof" to 341,
-                "Margins" to 295,
-                "Weather Report Card" to 276,
-                "Old Dog" to 177,
-                "Night Ferry" to 276,
-                "Slow Morning" to 622,
-            ).mapIndexed { index, (title, seconds) ->
-                PreviewData.track("trk-${index + 1}", title, index + 1).copy(
-                    durationMs = seconds.toULong() * 1_000UL,
-                    durationClock = BridgeDurationClock(false, null, (seconds / 60).toUInt(), (seconds % 60).toUInt()),
-                )
-            }
-        val release =
-            detail.releases[0].copy(
-                trackGroups = listOf(PreviewData.trackGroup(tracks)),
-                tracks = tracks,
-                playability = unavailablePlayability,
-                totalDuration = BridgeDurationUnits.MinutesOnly(52UL),
-            )
-        detail.copy(
-            releases = listOf(release),
-            shownRelease = release,
-            rating = BridgeAlbumRating(mine = null, raters = emptyList()),
-        )
+    boardAlbum().let { detail ->
+        val release = detail.shownRelease.copy(playability = BridgeReleasePlayability.OnOtherDevice(unavailableDevice))
+        detail.copy(releases = listOf(release), shownRelease = release)
     }
 
 /** The track playing in the bar behind the album page, 1:28 into 4:51. */
-private val northbound =
+internal val playingNorthbound =
     PlayerStaging(
         elapsedSeconds = 88,
         held = listOf(BridgeTrackSpan(0.0, 0.3)),
-        track = northboundTrack(title = "Northbound", cover = PreviewData.imageRef("Northbound")),
+        track = northboundTrack(title = "Northbound"),
         durationSeconds = 291,
     )
 
 @Composable
 private fun UnavailableAlbumPage() {
-    AlbumPageContent(onAnotherDevice, northbound, catalogName = { it.name }) {
+    AlbumPageContent(onAnotherDevice, playingNorthbound, catalogName = { it.name }) {
         AlbumOptionsMenu(
             AlbumMenuActions(play = null, onRate = {}, pin = null, onSetPrimaryRelease = null, onDelete = {}),
         )

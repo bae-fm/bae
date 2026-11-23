@@ -10,24 +10,33 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import fm.bae.app.ui.appearance.ThemeOpacity
 import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.Artwork
 import uniffi.bae_bridge.BridgeImageRef
 
-/** An album's tile: its [cover], [title] and a [line] under it, opening the album. */
+/** An album's tile opens its page and dims its cover and words when [unplayable]. */
 @Composable
 internal fun AndroidAlbumTile(
     title: String,
     line: String,
     cover: BridgeImageRef?,
+    unplayable: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier.clickable(onClick = onClick)) {
+    Column(
+        modifier =
+            modifier
+                .clickable(role = Role.Button, onClick = onClick)
+                .alpha(if (unplayable) ThemeOpacity.dimmed else 1f),
+    ) {
         Artwork(
             cover = cover,
             cornerRadius = ThemeRadius.cover,
