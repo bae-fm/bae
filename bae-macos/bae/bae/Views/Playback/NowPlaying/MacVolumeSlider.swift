@@ -155,13 +155,13 @@ private struct VolumeSliderTrack: View {
             Slider(
                 value: Binding(
                     get: {
-                        SliderAccessibilityScale.percent(for: Double(clamped))
+                        AccessibilityPercentage.percent(for: Double(clamped))
                     },
                     set: {
-                        set(Float(SliderAccessibilityScale.fraction(for: $0)))
+                        set(Float(AccessibilityPercentage.fraction(for: $0)))
                     }
                 ),
-                in: SliderAccessibilityScale.percentRange,
+                in: AccessibilityPercentage.range,
                 step: 5
             ) {
                 Text("Volume")

@@ -120,7 +120,7 @@ class ProgressTrackNSView: NSView {
 
     /// The percent done; none while the length is unknown.
     override func accessibilityValue() -> Any? {
-        progress.map { Int(($0 * 100).rounded()) }
+        progress.map { Int(AccessibilityPercentage.percent(for: $0)) }
     }
 
     override var intrinsicContentSize: NSSize {
