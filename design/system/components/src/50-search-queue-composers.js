@@ -12,10 +12,12 @@
   function MacLibraryRow(props) {
     var ml = (props.bleed && !props.credit ? -8 : 0) + (props.part ? 16 : 0);
     var style = { marginTop: props.top ? Number(props.top) : null, marginLeft: ml || null };
-    if (props.loading) return h('div', { className: 'bae-m-librow', style: style }, h(MacPlaceholderLine, { width: 44, height: 44, radius: 'radius-artwork', fixed: true }),
+    // A row that opens something is one button, named as macOS names it: its title, second line and trailing words joined with commas; the row before it arrives is that button, off. A credit opens nothing, so its words stay plain text.
+    if (props.loading) return h('div', { className: 'bae-m-librow', style: style, role: 'button', 'aria-disabled': true }, h(MacPlaceholderLine, { width: 44, height: 44, radius: 'radius-artwork', fixed: true }),
       h('div', { className: 'bae-m-librow-text' }, h(MacPlaceholderLine, { width: 140, height: 11 }), h(MacPlaceholderLine, { width: 80, height: 10 })));
     // `dropping`: tracks dragged over the row land in it when let go (a playlist in the side pane).
-    return h('div', { className: cx('bae-m-librow', props.dropping && 'bae-m-librow-drop', props.credit && 'bae-m-librow-credit', props.bleed && !props.credit && 'bae-m-librow-bleed', props.hover && 'bae-m-librow-hover', props.selected && 'bae-m-librow-selected'), style: style },
+    var button = props.credit ? null : { role: 'button', 'aria-label': [props.title, props.subtitle, props.trailing].filter(Boolean).join(', ') };
+    return h('div', Object.assign({ className: cx('bae-m-librow', props.dropping && 'bae-m-librow-drop', props.credit && 'bae-m-librow-credit', props.bleed && !props.credit && 'bae-m-librow-bleed', props.hover && 'bae-m-librow-hover', props.selected && 'bae-m-librow-selected'), style: style }, button),
       props.credit ? null : props.covers != null ? h(PlaylistPicture, { covers: props.covers, size: 'size-row-artwork' }) : h(Artwork, { title: props.art || props.title, size: 'size-row-artwork', radius: 'radius-artwork', missing: props.missing }),
       h('div', { className: 'bae-m-librow-text' }, h('div', { className: 'bae-m-librow-title' }, props.title), h('div', { className: 'bae-m-librow-sub' }, props.subtitle || ' ')),
       props.trailing ? h('span', { className: 'bae-m-librow-trail' }, props.trailing) : null);
