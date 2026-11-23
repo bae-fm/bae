@@ -65,18 +65,16 @@ public struct ReleaseDetail: Identifiable, Sendable {
     public init(bridge: BridgeRelease) {
         summary = ReleaseSummary(from: bridge)
         displayName = bridge.name.text
-        // The play time ends the copy line, in the words core chose for it
-        // ("39 min" / "1 hr, 18 min"); absent when no track reports a length.
-        editionLine = FactList.joined([
-            bridge.distinctYear.map { PressingText.year($0) },
-            Self.labelsText(bridge.labels),
-            bridge.facts.area?.editionText,
-        ])
-        copyLine = FactList.joined([
-            PressingText.line(bridge.mediaTerms),
-            PressingText.line(bridge.pressingDetails),
-            bridge.totalDuration?.text,
-        ])
+        editionLine = PressingText.editionLine(
+            year: bridge.distinctYear.map { PressingText.year($0) },
+            labels: bridge.labels,
+            area: bridge.areaTerms
+        )
+        copyLine = PressingText.copyLine(
+            media: bridge.mediaTerms,
+            details: bridge.pressingDetails,
+            length: bridge.totalDuration
+        )
         sourceAudio = bridge.sourceAudio
         totalDuration = bridge.totalDuration
         downloadStatus = bridge.downloadStatus
@@ -95,19 +93,5 @@ public struct ReleaseDetail: Identifiable, Sendable {
                 playability: bridge.playability
             )?
             .localizedLine
-    }
-
-    /// Each line core grouped: its names, then the catalog numbers they
-    /// share, the lines one after another.
-    static func labelsText(_ lines: [BridgeLabelLine]) -> String {
-        let within = localizedCoreString("core.label.list_separator")
-        return FactList.joined(
-            lines.map { line in
-                FactList.joined([
-                    line.names.joined(separator: within),
-                    line.catalogNumbers.joined(separator: within),
-                ])
-            }
-        )
     }
 }

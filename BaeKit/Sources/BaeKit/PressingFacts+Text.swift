@@ -27,34 +27,49 @@ public enum PressingText {
     }
 
     /// A country's name in the current locale, from its ISO 3166-1 code.
-    public static func countryName(
-        _ code: String,
-        locale: Locale = .current
-    ) -> String {
-        locale.localizedString(forRegionCode: code) ?? code
+    public static func countryName(_ code: String) -> String {
+        Locale.current.localizedString(forRegionCode: code) ?? code
     }
 
-    /// The short form of a country's name that the locale's language commonly
-    /// uses ("US", "UK", "EE. UU." in Spanish), and its full name where the
-    /// language has none.
-    public static func shortCountryName(
-        _ code: String,
-        locale: Locale = .current
+    /// The edition line: what is printed on the release. Its year when the
+    /// line names one, each label with its catalog numbers, then where it was
+    /// released, as in "2001 · Harbor Records · HR-1042 · US".
+    public static func editionLine(
+        year: String?,
+        labels: [BridgeLabelLine],
+        area: [BridgeFactTerm]
     ) -> String {
-        let language = locale.language.languageCode?.identifier
-        let short = language.flatMap { shortCountryNames[$0]?[code] }
-        return short ?? countryName(code, locale: locale)
+        FactList.joined([
+            year,
+            labelsText(labels),
+            line(area),
+        ])
     }
 
-    /// The short forms of the countries that record labels print most, by
-    /// language and ISO 3166-1 code.
-    private static let shortCountryNames: [String: [String: String]] = [
-        "en": ["US": "US", "GB": "UK"],
-        "es": ["US": "EE. UU."],
-        "pt": ["US": "EUA"],
-        "de": ["US": "USA"],
-        "it": ["US": "USA"],
-    ]
+    /// The copy line: what the person has. The media and details, then the
+    /// play time in the words core chose for it, as in "2×LP · Remastered ·
+    /// 52 min".
+    public static func copyLine(
+        media: [BridgeFactTerm],
+        details: [BridgeFactTerm],
+        length: BridgeDurationUnits?
+    ) -> String {
+        FactList.joined([line(media), line(details), length?.text])
+    }
+
+    /// Each line core grouped: its names, then the catalog numbers they
+    /// share, the lines one after another.
+    static func labelsText(_ lines: [BridgeLabelLine]) -> String {
+        let within = localizedCoreString("core.label.list_separator")
+        return FactList.joined(
+            lines.map { line in
+                FactList.joined([
+                    line.names.joined(separator: within),
+                    line.catalogNumbers.joined(separator: within),
+                ])
+            }
+        )
+    }
 }
 
 extension BridgeTermLabel {
@@ -73,7 +88,7 @@ extension BridgeFactTerm {
     public var text: String {
         switch self {
         case .country(let code):
-            PressingText.shortCountryName(code)
+            PressingText.countryName(code)
         case .worded(let label):
             label.text
         case .counted(let count, let label):
@@ -94,16 +109,6 @@ extension BridgeReleaseArea {
             PressingText.countryName(code)
         case .region(let region):
             localizedCoreString(bridgeRegionKey(region: region))
-        }
-    }
-
-    /// The area as an edition line ends with it: a country in its short form.
-    public var editionText: String {
-        switch self {
-        case .country(let code):
-            PressingText.shortCountryName(code)
-        case .region:
-            text
         }
     }
 }

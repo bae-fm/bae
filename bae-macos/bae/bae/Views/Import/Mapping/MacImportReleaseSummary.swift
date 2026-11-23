@@ -40,7 +40,7 @@ struct ImportReleaseSummary {
                         ])
                     }
                 ),
-                pressing.facts.area?.editionText,
+                PressingText.line(bridgeAreaTerms(facts: pressing.facts)),
             ])
             copyLine = FactList.joined([
                 PressingText.media(pressing.facts.media),

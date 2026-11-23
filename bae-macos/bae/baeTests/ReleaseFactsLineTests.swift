@@ -24,17 +24,18 @@ struct ReleaseFactsLineTests {
         let release = try Self.release("a-21")
         let separator = localizedCoreString("core.audio.list_separator")
         let within = localizedCoreString("core.label.list_separator")
+        let country = localizedCoreString("core.pressing.country.us")
 
         #expect(
             release.editionLine
                 == [
                     "Label A\(within)Label B", "AB 100", "Label C", "CL 719",
-                    PressingText.shortCountryName("US"),
+                    country,
                 ]
                 .joined(separator: separator)
         )
         #expect(!release.copyLine.contains("Label"))
-        #expect(!release.copyLine.contains(PressingText.shortCountryName("US")))
+        #expect(!release.copyLine.contains(country))
     }
 
     @Test("the edition line starts with the year only when core hands one over")
@@ -56,26 +57,6 @@ struct ReleaseFactsLineTests {
 
         #expect(release.copyLine.hasPrefix("CD"))
         #expect(release.copyLine.hasSuffix("45 min"))
-    }
-
-    @Test("a country shows in the short form its language uses")
-    func countriesShowInTheShortForm() {
-        let english = Locale(identifier: "en_US")
-        let spanish = Locale(identifier: "es_ES")
-        let japanese = Locale(identifier: "ja_JP")
-
-        #expect(PressingText.shortCountryName("US", locale: english) == "US")
-        #expect(PressingText.shortCountryName("GB", locale: english) == "UK")
-        #expect(
-            PressingText.shortCountryName("US", locale: spanish) == "EE. UU."
-        )
-        #expect(
-            PressingText.shortCountryName("US", locale: japanese)
-                == japanese.localizedString(forRegionCode: "US")
-        )
-        #expect(
-            PressingText.shortCountryName("DE", locale: english) == "Germany"
-        )
     }
 
     @Test("the facts draw as two lines, each on one line of its own")
