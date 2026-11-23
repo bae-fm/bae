@@ -19,7 +19,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
@@ -37,7 +36,6 @@ import fm.bae.app.ui.appearance.AccentChoice
 import fm.bae.app.ui.appearance.AppearanceMode
 import fm.bae.app.ui.appearance.LocalAppearanceStore
 import fm.bae.app.ui.appearance.SurfaceTone
-import fm.bae.app.ui.appearance.ThemeSize
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.colors
 import fm.bae.app.ui.components.AndroidCard
@@ -125,19 +123,12 @@ internal fun AndroidAccentPicker(
             Box(
                 modifier =
                     Modifier
-                        .size(width = SWATCH_SIZE, height = ThemeSize.hitTarget)
+                        .size(SWATCH_SIZE)
+                        .drawBehind { if (selected) drawSelectionRing(gap, ring) }
+                        .background(accent.colors.fill, CircleShape)
                         .selectable(selected, role = Role.RadioButton) { onSelect(accent) }
                         .semantics { contentDescription = label },
-                contentAlignment = Alignment.Center,
-            ) {
-                Box(
-                    modifier =
-                        Modifier
-                            .size(SWATCH_SIZE)
-                            .drawBehind { if (selected) drawSelectionRing(gap, ring) }
-                            .background(accent.colors.fill, CircleShape),
-                )
-            }
+            )
         }
     }
 }
