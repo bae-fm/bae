@@ -129,7 +129,6 @@ internal fun PickerFailures(
         )
     }
     castFailure?.let { failure ->
-        val modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related)
         val receiver = failure.refusedBy
         if (receiver != null) {
             AndroidNotice(
@@ -137,11 +136,17 @@ internal fun PickerFailures(
                 advice = failure.error.line,
                 // Details only for a fault core names beyond the line, which the notice shows already.
                 error = failure.error.takeIf { it.detail != null },
-                modifier = modifier,
+                modifier =
+                    Modifier
+                        .padding(horizontal = ThemeSpace.edge)
+                        .padding(bottom = ThemeSpace.related),
                 look = NoticeLook.QUIET,
             )
         } else {
-            AndroidNotice(error = failure.error, modifier = modifier)
+            AndroidNotice(
+                error = failure.error,
+                modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
+            )
         }
     }
 }
