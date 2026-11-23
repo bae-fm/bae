@@ -17,7 +17,7 @@ struct CreateNameView: View {
 
     var body: some View {
         MacStep(String(localized: "Start a new library")) {
-            VStack(spacing: ThemeSpace.group) {
+            VStack(spacing: ThemeSpace.section) {
                 FieldColumn {
                     MacTextField("Your name") {
                         BoxedField(
