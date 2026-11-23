@@ -437,10 +437,7 @@ extension MacAlbumGrid {
             MacArtistGroupHeading(
                 name: section.title,
                 picture: section.image,
-                countLabel: BridgeCountLabel(
-                    key: "core.library.album_count",
-                    count: section.albumCount
-                )
+                countLabel: section.countLine
             )
             .frame(width: metrics.rowWidth, alignment: .leading)
             .frame(width: metrics.cardWidth, alignment: .leading)

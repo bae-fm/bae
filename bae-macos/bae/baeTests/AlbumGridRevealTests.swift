@@ -167,24 +167,21 @@ struct AlbumGridRevealTests {
             requestedSections.withLock { $0.append(sectionId) }
         }
         let sections = [
-            BridgeLibraryBrowseSection(
-                id: "artist-a",
+            .fixture(
+                "artist-a",
                 title: "Artist A",
-                image: nil,
                 firstPosition: 0,
                 albumCount: 203
             ),
-            BridgeLibraryBrowseSection(
-                id: "artist-b",
+            .fixture(
+                "artist-b",
                 title: "Artist B",
-                image: nil,
                 firstPosition: 203,
                 albumCount: 202
             ),
-            BridgeLibraryBrowseSection(
-                id: "artist-c",
+            .fixture(
+                "artist-c",
                 title: "Artist C",
-                image: nil,
                 firstPosition: 405,
                 albumCount: 195
             ),

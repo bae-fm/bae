@@ -11,6 +11,9 @@ pub struct BridgeLibraryBrowseSection {
     pub first_position: u64,
     /// How many albums the artist has: all of them, never a page of them.
     pub album_count: u64,
+    /// The line under the artist's name in the group's heading: how many
+    /// albums the artist has.
+    pub count_line: crate::types::BridgeCountLabel,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
@@ -22,12 +25,14 @@ pub enum BridgeLiveQueryCause {
 
 impl BridgeLibraryBrowseSection {
     pub(crate) fn from_core(section: bae_views::LibraryBrowseSection) -> Self {
+        let count_line = crate::types::BridgeCountLabel::from_core(section.count_line());
         Self {
             id: section.id,
             title: section.title,
             image: section.image.map(crate::types::BridgeImageRef::from_core),
             first_position: section.first_position,
             album_count: section.album_count,
+            count_line,
         }
     }
 }

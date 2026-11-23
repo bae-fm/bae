@@ -15,10 +15,9 @@ struct AlbumGridCellsTests {
         let read = try library.albumList([], true).view(0, 1).values
         let delivery = try await read.next()
         try await read.cancel()
-        let section = BridgeLibraryBrowseSection(
-            id: "artist-a",
+        let section = BridgeLibraryBrowseSection.fixture(
+            "artist-a",
             title: "Artist A",
-            image: nil,
             firstPosition: 0,
             albumCount: 2
         )
@@ -94,17 +93,15 @@ struct AlbumGridCellsTests {
     @Test("artist headings and albums start full rows with one open appearance")
     func groupedLayoutRows() throws {
         let sections = [
-            BridgeLibraryBrowseSection(
-                id: "artist-a",
+            .fixture(
+                "artist-a",
                 title: "Artist A",
-                image: nil,
                 firstPosition: 0,
                 albumCount: 3
             ),
-            BridgeLibraryBrowseSection(
-                id: "artist-b",
+            .fixture(
+                "artist-b",
                 title: "Artist B",
-                image: nil,
                 firstPosition: 3,
                 albumCount: 2
             ),

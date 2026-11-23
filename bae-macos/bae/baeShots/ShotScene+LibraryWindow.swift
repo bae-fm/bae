@@ -31,14 +31,22 @@ extension ShotScene {
                 title: "The Slow Orchards",
                 image: cover("The Slow Orchards"),
                 firstPosition: 0,
-                albumCount: 3
+                albumCount: 3,
+                countLine: BridgeCountLabel(
+                    key: "core.library.album_count",
+                    count: 3
+                )
             ),
             BridgeLibraryBrowseSection(
                 id: "artist-tomas-brell",
                 title: "Tomas Brell",
                 image: cover("Tomas Brell"),
                 firstPosition: 3,
-                albumCount: 1
+                albumCount: 1,
+                countLine: BridgeCountLabel(
+                    key: "core.library.album_count",
+                    count: 1
+                )
             ),
         ]
         let library = Library(

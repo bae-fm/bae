@@ -3,6 +3,7 @@ package fm.bae.app.shots
 import androidx.compose.ui.unit.dp
 import fm.bae.app.ui.library.AndroidArtistGroupHeading
 import org.junit.Test
+import uniffi.bae_bridge.BridgeCountLabel
 import uniffi.bae_bridge.BridgeLibraryBrowseSection
 
 /** The component shots of `AndroidArtistGroupHeading`, one for each row of its preview. */
@@ -20,4 +21,5 @@ class AndroidArtistGroupHeadingShots : BoardShot() {
         }
 }
 
-private val section = BridgeLibraryBrowseSection("artist-1", "Mara Quill", null, 0uL, 12uL)
+private val section =
+    BridgeLibraryBrowseSection("artist-1", "Mara Quill", null, 0uL, 12uL, BridgeCountLabel("core.library.album_count", 12uL))
