@@ -54,6 +54,7 @@ internal class AndroidProgressBarView(
         FrameFollowing<Double>(this) { share ->
             if (share == null) clearProgress() else showFraction(share.toFloat())
         }
+    private var shownInWindow = false
     private var progress: Progress? = null
         set(value) {
             (field as? Progress.Moving)?.stop()
@@ -164,15 +165,19 @@ internal class AndroidProgressBarView(
         if (progress is Progress.Moving) return
         val moving = Progress.Moving(::invalidate)
         progress = moving
-        if (isAttachedToWindow) observeCrossing(moving)
+        if (shownInWindow) observeCrossing(moving)
     }
 
-    override fun onAttachedToWindow() {
-        super.onAttachedToWindow()
-        (progress as? Progress.Moving)?.let(::observeCrossing)
+    override fun onVisibilityAggregated(isVisible: Boolean) {
+        super.onVisibilityAggregated(isVisible)
+        if (shownInWindow == isVisible) return
+        shownInWindow = isVisible
+        val moving = progress as? Progress.Moving ?: return
+        if (isVisible) observeCrossing(moving) else moving.stop()
     }
 
     override fun onDetachedFromWindow() {
+        shownInWindow = false
         (progress as? Progress.Moving)?.stop()
         super.onDetachedFromWindow()
     }

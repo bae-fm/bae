@@ -5,12 +5,14 @@ import android.app.Application
 import android.os.Looper
 import android.os.SystemClock
 import android.provider.Settings
+import android.view.View
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.compose.ui.graphics.Color
 import androidx.core.view.drawToBitmap
 import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.setTestAnimatorScale
 import fm.bae.fastvalues.LatestStream
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -38,6 +40,22 @@ class AndroidProgressBarViewTest {
         val info = AccessibilityNodeInfo()
         bar.onInitializeAccessibilityNodeInfo(info)
         assertNull(info.rangeInfo)
+    }
+
+    @Test
+    @Config(sdk = [32], application = Application::class)
+    fun aHiddenBarSchedulesNoAnimationFrames() {
+        Robolectric.buildActivity(Activity::class.java).setup().use { activity ->
+            val bar = AndroidProgressBarView(activity.get()).apply { visibility = View.GONE }
+            activity.get().setContentView(bar)
+            val main = shadowOf(Looper.getMainLooper())
+            attach(bar, main)
+            setTestAnimatorScale(1f)
+            while (ShadowChoreographer.getNextVsyncTimeNanos() != 0L) drawNextFrame(main)
+
+            bar.showMoving()
+            assertEquals(0L, ShadowChoreographer.getNextVsyncTimeNanos())
+        }
     }
 
     @Test
