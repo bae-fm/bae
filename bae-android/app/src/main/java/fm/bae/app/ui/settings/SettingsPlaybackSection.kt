@@ -55,7 +55,7 @@ internal fun SettingsPlaybackSection(
     var restoreOnLaunch by remember { mutableStateOf(RestorePlaybackPref.load(context)) }
     val status by session.castStore.status.collectAsState()
     val receivers by session.castStore.receivers.collectAsState()
-    val connecting by session.castStart.connecting.collectAsState()
+    val attemptState by session.castStart.attemptState.collectAsState()
     var pendingDisconnect by remember { mutableStateOf<String?>(null) }
 
     fun setPlayOnOtherDevices(enabled: Boolean) {
@@ -83,7 +83,7 @@ internal fun SettingsPlaybackSection(
         restoreOnLaunch = restoreOnLaunch,
         playOnEnabled = config.castEnabled,
         receivers = { receivers },
-        connecting = { connecting },
+        connecting = { attemptState as? CastStart.Connecting },
         transcodeFormat = config.castTranscodeFormat,
         onBack = onBack,
         onPauseBetweenSides = { enabled ->

@@ -49,7 +49,7 @@ class CastPinBoardShots : BoardShot() {
     @Test
     fun androidPlaybackCastPicker() =
         shot("android.playback.cast-picker") {
-            Picker(receivers = playingReceivers, connecting = null)
+            Picker(receivers = playingReceivers, attemptState = null)
         }
 
     /** Kitchen has held bae's request for five seconds while its owner decides, with Living Room playing. */
@@ -58,7 +58,7 @@ class CastPinBoardShots : BoardShot() {
         shot("android.playback.cast-picker.owner-deciding") {
             Picker(
                 receivers = playingReceivers,
-                connecting = CastStart.Connecting(kitchen, ownerDeciding = true),
+                attemptState = CastStart.Connecting(kitchen, ownerDeciding = true),
             )
         }
 
@@ -115,8 +115,7 @@ class CastPinBoardShots : BoardShot() {
     fun androidPlaybackCastPinRefused() =
         shot("android.playback.cast-pin.refused") {
             Picker(
-                connecting = null,
-                failure =
+                attemptState =
                     CastStart.Failure(
                         DisplayError(
                             LocalContext.current.coreString(
@@ -130,14 +129,12 @@ class CastPinBoardShots : BoardShot() {
         }
 
     /**
-     * The cast picker over the library listing [receivers], as the boards draw it: connecting to Kitchen
-     * ([connecting]) while a dialog asks for its code, or with [failure] above its receivers once the cast failed.
+     * The cast picker over the library listing [receivers], with the current [attemptState].
      */
     @Composable
     private fun Picker(
         receivers: BridgeCastReceiverList = this.receivers,
-        connecting: CastStart.Connecting? = CastStart.Connecting(kitchen, ownerDeciding = false),
-        failure: CastStart.Failure? = null,
+        attemptState: CastStart.AttemptState? = CastStart.Connecting(kitchen, ownerDeciding = false),
     ) {
         SheetScene(
             heading = castPickerHeading(),
@@ -151,9 +148,8 @@ class CastPinBoardShots : BoardShot() {
         ) {
             CastPickerContent(
                 receivers = receivers,
-                connecting = connecting,
+                attemptState = attemptState,
                 endedFailure = null,
-                castFailure = failure,
                 onCast = {},
                 onDisconnect = {},
             )

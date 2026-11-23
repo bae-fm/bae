@@ -89,8 +89,7 @@ private fun CastPickerSheet(
     onDismiss: () -> Unit,
 ) {
     val receivers by session.castStore.receivers.collectAsState()
-    val connecting by session.castStart.connecting.collectAsState()
-    val castFailure by session.castStart.failure.collectAsState()
+    val attemptState by session.castStart.attemptState.collectAsState()
     val started by session.castStart.started.collectAsState()
     // The start this sheet began: a sheet opened later has none, so it stays open for an earlier one.
     var asked by remember { mutableStateOf<CastStart.Attempt?>(null) }
@@ -101,9 +100,8 @@ private fun CastPickerSheet(
     AndroidSheet(heading = castPickerHeading(), onDismiss = onDismiss) {
         CastPickerContent(
             receivers = receivers,
-            connecting = connecting,
+            attemptState = attemptState,
             endedFailure = endedFailure,
-            castFailure = castFailure,
             onCast = { receiver -> asked = session.castStart.cast(receiver) },
             onDisconnect = {
                 session.cast.stopCasting()
@@ -120,17 +118,16 @@ internal fun castPickerHeading(): AndroidSheetHeading = AndroidSheetHeading(stri
 @Composable
 internal fun CastPickerContent(
     receivers: BridgeCastReceiverList,
-    connecting: CastStart.Connecting?,
+    attemptState: CastStart.AttemptState?,
     endedFailure: DisplayError?,
-    castFailure: CastStart.Failure?,
     onCast: (BridgeCastReceiver) -> Unit,
     onDisconnect: () -> Unit,
 ) {
-    PickerFailures(endedFailure = endedFailure, castFailure = castFailure)
+    PickerFailures(endedFailure = endedFailure, castFailure = attemptState as? CastStart.Failure)
     CastReceiverRows(
         place = CastReceiverPlace.PICKER,
         receivers = receivers,
-        connecting = connecting,
+        connecting = attemptState as? CastStart.Connecting,
         onCast = onCast,
         onDisconnect = onDisconnect,
         looking = stringResource(R.string.cast_looking_for_devices),

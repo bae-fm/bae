@@ -26,11 +26,11 @@ private val logger = BaeLogger("bae.CastStart")
  * was given, so a place opened later never closes for a start it did not ask for.
  *
  * A start that fails says why where the person is: in the picker, which is a sheet that hides a snackbar,
- * while it is open ([failure]); otherwise through [tell]. [failureOf] words a failure and names the
+ * while it is open ([attemptState]); otherwise through [tell]. [failureOf] words a failure and names the
  * receiver that refused it, and is null for one core gives no line, such as a start called off by
  * stopping casting, turning it off, or another cast.
  *
- * An AirPlay 2 receiver that holds the cast while its owner decides whether to accept bae marks [connecting]
+ * An AirPlay 2 receiver that holds the cast while its owner decides whether to accept bae marks [attemptState]
  * as [Connecting.ownerDeciding], which the places that list the receiver say on its row.
  *
  * An AirPlay receiver that wants a PIN or a password asks the person through [codeSheet], which the app
@@ -44,15 +44,10 @@ class CastStart(
     private val pickerOpen: () -> Boolean,
     private val tell: (DisplayError) -> Unit,
 ) {
-    private val _connecting = MutableStateFlow<Connecting?>(null)
+    private val _attemptState = MutableStateFlow<AttemptState?>(null)
 
-    /** The cast connecting, while one is. */
-    val connecting: StateFlow<Connecting?> = _connecting.asStateFlow()
-
-    private val _failure = MutableStateFlow<Failure?>(null)
-
-    /** Why the last start failed while the picker was open, until the next start or the picker closes. */
-    val failure: StateFlow<Failure?> = _failure.asStateFlow()
+    /** The current connection or the failure the picker shows until it closes or a new attempt starts. */
+    val attemptState: StateFlow<AttemptState?> = _attemptState.asStateFlow()
 
     private val _started = MutableStateFlow<Attempt?>(null)
 
@@ -74,6 +69,8 @@ class CastStart(
     private var attempts = 0
     private var job: Job? = null
 
+    sealed interface AttemptState
+
     /**
      * A cast while it connects: its receiver, and whether the receiver holds it while its owner decides whether to
      * accept bae, which core says once the receiver has held bae's request for five seconds, and again once it
@@ -82,7 +79,7 @@ class CastStart(
     data class Connecting(
         val receiver: BridgeCastReceiver,
         val ownerDeciding: Boolean,
-    )
+    ) : AttemptState
 
     /**
      * Why a start failed, and the receiver that refused it when core says a receiver refused: the picker
@@ -91,7 +88,7 @@ class CastStart(
     data class Failure(
         val error: DisplayError,
         val refusedBy: String?,
-    )
+    ) : AttemptState
 
     /**
      * What the open dialog asks: the receiver, core's request, and whether the person's code is out, so the
@@ -159,8 +156,7 @@ class CastStart(
         closeCodeSheet()
         val number = ++attempts
         val attempt = Attempt(number)
-        _failure.value = null
-        _connecting.value = Connecting(receiver, ownerDeciding = false)
+        _attemptState.value = Connecting(receiver, ownerDeciding = false)
         // Core holds the prompt for the whole cast, so the prompt holds only the sending end of the channel this
         // start reads its requests from. A request the start never shows gets nothing back.
         val asks = Channel<CodeAsk>(Channel.UNLIMITED) { (it as? CodeAsk.Ask)?.answer?.complete("") }
@@ -169,13 +165,16 @@ class CastStart(
             scope.launch {
                 try {
                     castTo(receiver.id, CodePrompt(asks))
-                    _connecting.value = null
+                    _attemptState.value = null
                     _started.value = attempt
                 } catch (e: BridgeException) {
                     logger.error("Failed to cast to ${receiver.id}", e)
-                    _connecting.value = null
-                    failureOf(e)?.let { shown ->
-                        if (pickerOpen()) _failure.value = shown else tell(shown.error)
+                    val failure = failureOf(e)
+                    if (failure != null && pickerOpen()) {
+                        _attemptState.value = failure
+                    } else {
+                        _attemptState.value = null
+                        failure?.let { tell(it.error) }
                     }
                 } finally {
                     // However the cast ended, its dialog closes with it.
@@ -199,7 +198,7 @@ class CastStart(
         if (codeState == null) return
         job?.cancel()
         job = null
-        _connecting.value = null
+        _attemptState.value = null
         closeCodeSheet()
     }
 
@@ -223,7 +222,9 @@ class CastStart(
             is CodeAsk.OwnerDeciding -> {
                 // A cast another start replaced tells nothing more.
                 if (attempt == attempts) {
-                    _connecting.value = _connecting.value?.copy(ownerDeciding = ask.deciding)
+                    (_attemptState.value as? Connecting)?.let {
+                        _attemptState.value = it.copy(ownerDeciding = ask.deciding)
+                    }
                 }
             }
 
@@ -243,7 +244,7 @@ class CastStart(
 
     /** The picker closed: what it showed of a failure goes with it. */
     fun clearFailure() {
-        _failure.value = null
+        if (_attemptState.value is Failure) _attemptState.value = null
     }
 }
 

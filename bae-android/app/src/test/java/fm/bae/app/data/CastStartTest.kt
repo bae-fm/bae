@@ -64,14 +64,9 @@ class CastStartTest {
 
         start.cast(kitchen)
 
-        assertNull(start.connecting.value)
-        assertEquals(
-            "Couldn't reach it",
-            start.failure.value
-                ?.error
-                ?.line,
-        )
-        assertNull(start.failure.value?.refusedBy)
+        val failure = start.attemptState.value as CastStart.Failure
+        assertEquals("Couldn't reach it", failure.error.line)
+        assertNull(failure.refusedBy)
         assertEquals(emptyList<DisplayError>(), told)
         assertNull(start.started.value)
     }
@@ -82,8 +77,7 @@ class CastStartTest {
 
         start.cast(kitchen)
 
-        assertNull(start.connecting.value)
-        assertNull(start.failure.value)
+        assertNull(start.attemptState.value)
         assertEquals(listOf("Couldn't reach it"), told.map { it.line })
     }
 
@@ -94,7 +88,7 @@ class CastStartTest {
 
         start.clearFailure()
 
-        assertNull(start.failure.value)
+        assertNull(start.attemptState.value)
     }
 
     @Test
@@ -116,9 +110,9 @@ class CastStartTest {
         val kitchenAsked = start.cast(kitchen)
         assertEquals(
             "Kitchen",
-            start.connecting.value
-                ?.receiver
-                ?.name,
+            (start.attemptState.value as CastStart.Connecting)
+                .receiver
+                .name,
         )
         val denAsked = start.cast(den)
         waiting.complete(Unit)
@@ -126,7 +120,7 @@ class CastStartTest {
         assertEquals(listOf("den"), reached)
         assertTrue(start.didStart(denAsked))
         assertFalse(start.didStart(kitchenAsked))
-        assertNull(start.connecting.value)
+        assertNull(start.attemptState.value)
     }
 
     @Test
@@ -171,12 +165,12 @@ class CastStartTest {
             )
 
         start.cast(kitchen)
-        assertEquals(CastStart.Connecting(kitchen, ownerDeciding = true), start.connecting.value)
+        assertEquals(CastStart.Connecting(kitchen, ownerDeciding = true), start.attemptState.value)
         answered.complete(Unit)
-        assertEquals(CastStart.Connecting(kitchen, ownerDeciding = false), start.connecting.value)
+        assertEquals(CastStart.Connecting(kitchen, ownerDeciding = false), start.attemptState.value)
         connected.complete(Unit)
 
-        assertNull(start.connecting.value)
+        assertNull(start.attemptState.value)
     }
 
     private val pinRequest =
@@ -217,7 +211,7 @@ class CastStartTest {
 
         finish.complete(Unit)
         assertNull(start.codeSheet.value)
-        assertNull(start.connecting.value)
+        assertNull(start.attemptState.value)
     }
 
     @Test
@@ -238,7 +232,7 @@ class CastStartTest {
         start.cancelCode()
 
         assertNull(start.codeSheet.value)
-        assertNull(start.connecting.value)
+        assertNull(start.attemptState.value)
         assertFalse(start.didStart(asked))
     }
 
@@ -257,6 +251,6 @@ class CastStartTest {
 
         start.cast(kitchen)
 
-        assertEquals("Kitchen", start.failure.value?.refusedBy)
+        assertEquals("Kitchen", (start.attemptState.value as CastStart.Failure).refusedBy)
     }
 }
