@@ -55,9 +55,11 @@ extension ShotScene {
             let detail = boardAlbum(ratedUnder: system)
             let backing = boardLibraryBacking(
                 uiStore: uiStore,
+                albumCount: 4,
                 openAlbum: true,
                 detail: detail
             )
+            let images = coverStore()
             let rated = AlbumDetail(bridge: detail)
             return ShotStage(
                 ZStack(alignment: .topLeading) {
@@ -65,10 +67,12 @@ extension ShotScene {
                         uiStore: uiStore,
                         backing: backing,
                         playbackStore: boardPlayback(),
+                        images: images,
                         size: size
                     )
                     openMenu(menu, album: rated)
-                }
+                },
+                images: images
             ) {
                 (backing.session.albums.list?.positionCount ?? 0) > 0
             }

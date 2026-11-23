@@ -16,16 +16,20 @@ extension ShotScene {
             let uiStore = UiStore()
             let backing = boardLibraryBacking(
                 uiStore: uiStore,
+                albumCount: 4,
                 openAlbum: true,
                 detail: creditedBoardAlbum()
             )
+            let images = coverStore()
             return ShotStage(
                 ShotScenes.libraryWindow(
                     uiStore: uiStore,
                     backing: backing,
                     playbackStore: boardPlayback(),
+                    images: images,
                     size: size
-                )
+                ),
+                images: images
             ) {
                 (backing.session.albums.list?.positionCount ?? 0) > 0
             }

@@ -20,10 +20,17 @@ extension ShotScene {
     /// is the one the album page presents: `CoverSheetView` in its
     /// `CoverGalleryFrame`, raised over the window as a modal.
     private static func albumCoverScene(id: String, linked: Bool) -> ShotScene {
-        ShotScene(id: id, size: CGSize(width: 1_200, height: 1_000)) {
+        ShotScene(
+            id: id,
+            size: CGSize(width: 1_200, height: 1_000)
+        ) {
             let size = CGSize(width: 1_200, height: 1_000)
             let uiStore = UiStore()
-            let backing = boardLibraryBacking(uiStore: uiStore, openAlbum: true)
+            let backing = boardLibraryBacking(
+                uiStore: uiStore,
+                albumCount: 4,
+                openAlbum: true
+            )
             let gallery =
                 linked
                 ? boardCoverGallery()
@@ -49,6 +56,7 @@ extension ShotScene {
                     uiStore: uiStore,
                     backing: backing,
                     playbackStore: boardPlayback(),
+                    images: images,
                     size: size
                 ),
                 images: images

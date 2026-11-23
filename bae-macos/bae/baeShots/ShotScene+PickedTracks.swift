@@ -14,7 +14,12 @@ extension ShotScene {
         ) {
             let size = CGSize(width: 1_200, height: 1_000)
             let uiStore = UiStore()
-            let backing = boardLibraryBacking(uiStore: uiStore, openAlbum: true)
+            let backing = boardLibraryBacking(
+                uiStore: uiStore,
+                albumCount: 4,
+                openAlbum: true
+            )
+            let images = coverStore()
             let tracks = PreviewData.boardAlbumDetail().releases[0].tracks
                 .map(Track.init(from:))
             for index in [1, 3, 4] {
@@ -26,6 +31,7 @@ extension ShotScene {
                         uiStore: uiStore,
                         backing: backing,
                         playbackStore: boardPlayback(),
+                        images: images,
                         size: size
                     )
                     MacMenuInPlace(
@@ -65,7 +71,8 @@ extension ShotScene {
                     )
                     .padding(.leading, 520)
                     .padding(.top, 600)
-                }
+                },
+                images: images
             ) {
                 (backing.session.albums.list?.positionCount ?? 0) > 0
             }

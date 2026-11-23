@@ -318,8 +318,10 @@ extension ShotScene {
         let uiStore = UiStore()
         let backing = boardLibraryBacking(
             uiStore: uiStore,
+            albumCount: openAlbum ? 4 : nil,
             openAlbum: openAlbum
         )
+        let images = coverStore()
         return ShotStage(
             OverWindow.alert(
                 alert,
@@ -327,9 +329,11 @@ extension ShotScene {
                     uiStore: uiStore,
                     backing: backing,
                     playbackStore: boardPlayback(),
+                    images: images,
                     size: CGSize(width: 1_200, height: height)
                 )
-            )
+            ),
+            images: images
         ) {
             (backing.session.albums.list?.positionCount ?? 0) > 0
         }
