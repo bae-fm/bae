@@ -36,6 +36,7 @@ struct MacReleaseIdentity<Cover: View, AudioFacts: View, AlbumRow: View>: View {
                 placeholder: String(localized: "Album title"),
                 value: values.albumTitle,
                 name: String(localized: "Album title"),
+                fitsValue: true,
                 font: ThemeText.title.nsFont,
                 editingCommands: editingCommands,
                 onCommit: { await writer.setField(.albumTitle, $0) }
@@ -55,6 +56,7 @@ struct MacReleaseIdentity<Cover: View, AudioFacts: View, AlbumRow: View>: View {
                 placeholder: String(localized: "Album year"),
                 value: values.albumYear,
                 name: String(localized: "Album year"),
+                fitsValue: true,
                 font: ThemeText.body.nsFont,
                 textColor: NSColor(Theme.textTertiary),
                 editingCommands: editingCommands,
