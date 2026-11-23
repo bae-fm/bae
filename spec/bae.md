@@ -3069,8 +3069,8 @@ total and breakdown, Cache offers *Clear cache* and *Keep up to*.
 Pinned offers *Ask before unpinning* (Appendix C). While this device
 holds a copy from before a reset, *From before the reset* offers
 *Delete…* for *Old library* on a Mac or *Delete this data* on Android.
-The app updates the page as measurements change. If a measurement fails,
-the page shows the error in place of the measurements.
+The apps update the page as measurements change. On Android, a measurement
+failure replaces the page's contents with the error.
 
 **Edge cases.**
 
