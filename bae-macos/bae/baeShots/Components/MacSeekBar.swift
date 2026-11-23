@@ -41,7 +41,7 @@ extension ShotScene {
     private static func seekBar(_ id: String, source: SeekBarSource?)
         -> ShotScene
     {
-        component(id, height: 60) {
+        component(id, width: 840, height: 60) {
             MacSeekBar(
                 source: source,
                 showRemainingTime: false,
@@ -49,7 +49,7 @@ extension ShotScene {
                 onSeek: { _ in },
                 onToggleRemainingTime: nil
             )
-            .frame(width: 380, height: 20)
+            .frame(width: 840, height: 20)
         }
     }
 }

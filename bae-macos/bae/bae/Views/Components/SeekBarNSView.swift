@@ -173,10 +173,14 @@ final class SeekBarNSView: NSView {
             stack.leadingAnchor.constraint(equalTo: leadingAnchor),
             stack.trailingAnchor.constraint(equalTo: trailingAnchor),
             stack.centerYAnchor.constraint(equalTo: centerYAnchor),
-            elapsedField.widthAnchor.constraint(
-                equalToConstant: showsRemainingTimeToggle ? 48 : 40
-            ),
+            elapsedField.widthAnchor.constraint(equalToConstant: 48),
             durationField.widthAnchor.constraint(equalToConstant: 40),
+            elapsedField.heightAnchor.constraint(
+                equalToConstant: ThemeText.fine.macOSSize
+            ),
+            durationField.heightAnchor.constraint(
+                equalToConstant: ThemeText.fine.macOSSize
+            ),
         ])
     }
 

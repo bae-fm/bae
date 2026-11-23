@@ -69,6 +69,16 @@ class SeekSlider: NSSlider {
         onSeekComplete?(doubleValue)
     }
 
+    /// The slider's frame is taller than the track so a click near the track
+    /// seeks; its accessibility frame is the track the board draws.
+    override func accessibilityFrame() -> NSRect {
+        guard let cell = cell as? SlimSeekSliderCell, let window else {
+            return super.accessibilityFrame()
+        }
+        let track = cell.trackRect(in: bounds, flipped: isFlipped)
+        return window.convertToScreen(convert(track, to: nil))
+    }
+
     /// Screen readers read the position as a whole percent, 0 to 100, as a
     /// player's seek slider says it.
     override func accessibilityValue() -> Any? {
@@ -109,10 +119,20 @@ class SeekSlider: NSSlider {
 final class SlimSeekSliderCell: NSSliderCell {
     private let trackHeight: CGFloat = 5
 
-    override func drawBar(inside rect: NSRect, flipped _: Bool) {
-        var bar = rect
-        bar.origin.y = rect.midY - trackHeight / 2
-        bar.size.height = trackHeight
+    /// The drawn track, centred in `rect`.
+    func trackRect(in rect: NSRect, flipped: Bool) -> NSRect {
+        var bar = barRect(flipped: flipped)
+        bar = NSRect(
+            x: bar.minX,
+            y: rect.midY - trackHeight / 2,
+            width: bar.width,
+            height: trackHeight
+        )
+        return bar
+    }
+
+    override func drawBar(inside rect: NSRect, flipped: Bool) {
+        let bar = trackRect(in: rect, flipped: flipped)
 
         guard let slider = controlView as? SeekSlider else {
             preconditionFailure("SlimSeekSliderCell belongs to SeekSlider")
