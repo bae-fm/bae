@@ -5,9 +5,7 @@ import SwiftUI
 
 extension ShotScene {
     #if BAE_OAUTH_PROVIDERS
-        /// `MacFolderPicker` in the setup sheet that holds it, with the New
-        /// folder… and Look again buttons and Cancel and Set up in its
-        /// footer.
+        /// `MacFolderPicker` as its preview draws it, above the setup footer.
         static let macFolderPickerScenes: [ShotScene] = [
             folderPicker(
                 "mac.component.folder-picker.naming",
@@ -97,25 +95,22 @@ extension ShotScene {
                 let named = { (name: String?) in
                     listing.folders.first { $0.name == name }
                 }
-                OAuthFolderSetup(
+                let folders = StorageFolderBrowser.Listing(
+                    path: listing.path,
+                    folders: listing.folders
+                )
+                MacFolderPicker(
                     browser: StorageFolderBrowser(
                         staged: listing.provider,
-                        listing: StorageFolderBrowser.Listing(
-                            path: listing.path,
-                            folders: listing.folders
-                        ),
+                        listing: folders,
                         nests: listing.provider == .oneDrive,
                         selected: named(selected),
                         isNaming: isNaming,
                         newFolderName: newFolderName,
                         notEmpty: named(notEmpty)
                     ),
-                    leave: {},
-                    onConnected: { _ in }
+                    listing: folders
                 )
-                .environment(Sync.stub())
-                .environment(StorageSetupRun())
-                .environment(CloudSyncSetup())
             }
         }
     #else
