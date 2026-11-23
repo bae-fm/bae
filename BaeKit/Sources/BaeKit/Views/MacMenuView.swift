@@ -121,6 +121,22 @@
         }
 
         @ViewBuilder
+        private func accessoryGlyph(
+            _ accessory: MacMenuAccessory,
+            _ highlighted: Bool
+        ) -> some View {
+            switch accessory.glyph {
+            case .symbol(let name):
+                Image(systemName: name)
+                    .themeIcon(.small)
+                    .foregroundStyle(accessoryColor(accessory, highlighted))
+                    .accessibilityHidden(true)
+            case .spinner:
+                MacSpinner()
+            }
+        }
+
+        @ViewBuilder
         private func line(_ index: Int) -> some View {
             switch level.entries[index] {
             case .divider:
@@ -191,12 +207,7 @@
                 if submenu {
                     Spacer(minLength: ThemeSpace.edge)
                     if let accessory {
-                        Image(systemName: accessory.symbol)
-                            .themeIcon(.small)
-                            .foregroundStyle(
-                                accessoryColor(accessory, highlighted)
-                            )
-                            .accessibilityHidden(true)
+                        accessoryGlyph(accessory, highlighted)
                     }
                     Image(systemName: "chevron.right")
                         .themeIcon(.badge)

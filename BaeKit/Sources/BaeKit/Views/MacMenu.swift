@@ -34,13 +34,31 @@
             case regular, secondary, danger
         }
 
-        public let symbol: String
+        /// What the accessory draws: an SF Symbol, or the system spinner for
+        /// a wait of no known length.
+        enum Glyph {
+            case symbol(String)
+            case spinner
+        }
+
+        let glyph: Glyph
         public let tone: Tone
         public let help: String?
 
         public init(symbol: String, tone: Tone = .regular, help: String? = nil)
         {
-            self.symbol = symbol
+            self.init(glyph: .symbol(symbol), tone: tone, help: help)
+        }
+
+        /// A spinner, for a line whose items are still being read.
+        public static func spinner(tone: Tone = .regular, help: String? = nil)
+            -> MacMenuAccessory
+        {
+            MacMenuAccessory(glyph: .spinner, tone: tone, help: help)
+        }
+
+        private init(glyph: Glyph, tone: Tone, help: String?) {
+            self.glyph = glyph
             self.tone = tone
             self.help = help
         }

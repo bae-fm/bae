@@ -204,8 +204,7 @@ final class CandidateListMenuController {
         let accessory: MacMenuAccessory?
         switch folder.status {
         case .scanning(let onNetwork):
-            accessory = MacMenuAccessory(
-                symbol: "progress.indicator",
+            accessory = .spinner(
                 tone: .secondary,
                 help: onNetwork ? Self.networkLine() : nil
             )

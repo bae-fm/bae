@@ -77,10 +77,7 @@ extension ShotScene {
             MacMenuInPlace {
                 MacMenuSubmenu(
                     verbatim: "Music",
-                    accessory: MacMenuAccessory(
-                        symbol: "progress.indicator",
-                        tone: .secondary
-                    )
+                    accessory: .spinner(tone: .secondary)
                 ) {}
             }
         },
