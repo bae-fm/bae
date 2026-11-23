@@ -1,13 +1,12 @@
 package fm.bae.app.ui.playback
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -56,6 +55,8 @@ internal fun AndroidQueueRow(
                     end = ThemeSpace.inline,
                     bottom = ThemeSpace.related,
                 ),
+        // The board puts a group's space between every piece of the row.
+        horizontalArrangement = Arrangement.spacedBy(ThemeSpace.group),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Artwork(
@@ -64,7 +65,6 @@ internal fun AndroidQueueRow(
             iconPadding = ThemeSpace.group,
             modifier = Modifier.size(ThemeSize.rowArtwork),
         )
-        Spacer(modifier = Modifier.width(ThemeSpace.group))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
@@ -81,8 +81,7 @@ internal fun AndroidQueueRow(
                     text = duration,
                     style = ThemeText.detail.style,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    // The board puts two groups' space and an inline space between the duration and the Remove button.
-                    modifier = Modifier.padding(end = ThemeSpace.group * 2 + ThemeSpace.inline),
+                    modifier = Modifier.padding(horizontal = ThemeSpace.related),
                 )
             }
             AndroidIconButton(
@@ -91,7 +90,6 @@ internal fun AndroidQueueRow(
                 onClick = onRemove,
                 tone = IconTone.MUTED,
             )
-            Spacer(modifier = Modifier.width(ThemeSpace.group))
             Icon(
                 imageVector = SymbolIcons.DragHandle,
                 contentDescription = stringResource(R.string.queue_drag_to_reorder),
