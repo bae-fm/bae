@@ -109,7 +109,18 @@ fn a_removed_person_s_rating_still_names_them() {
             AlbumRating::Heart { hearted: true, hearters: Some(vec![Hearter::You]) }
         );
 
+        // Rowan's device must receive both changes while it can still sync.
+        detail_matching(&mut rowans, |detail| matches!(detail.rating, AlbumRating::Heart { .. }))
+            .await;
         owner.people().set_rating_system(RatedItems::Albums, RatingSystem::Stars).await.unwrap();
+        let rowans_stars = AlbumRating::Stars {
+            mine: Some(Stars::Two),
+            raters: vec![
+                Rater::You,
+                Rater::Person { name: "Robin".to_string(), stars: Stars::Four },
+            ],
+        };
+        detail_matching(&mut rowans, |detail| detail.rating == rowans_stars).await;
 
         // An admin removes Rowan. His rating stays, under his name.
         let mut changes = owner
@@ -151,16 +162,7 @@ fn a_removed_person_s_rating_still_names_them() {
             .await
             .unwrap()
             .expect("the album is still on the removed device");
-        assert_eq!(
-            removed.rating,
-            AlbumRating::Stars {
-                mine: Some(Stars::Two),
-                raters: vec![
-                    Rater::You,
-                    Rater::Person { name: "Robin".to_string(), stars: Stars::Four }
-                ],
-            }
-        );
+        assert_eq!(removed.rating, rowans_stars);
         rowan_library
             .people()
             .set_rating(RatingTarget::Album(album.clone()), Some(Stars::Five))
