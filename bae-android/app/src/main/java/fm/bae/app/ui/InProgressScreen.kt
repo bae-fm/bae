@@ -16,8 +16,8 @@ import fm.bae.app.coreString
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidProgress
 import fm.bae.app.ui.components.AndroidSpinner
+import fm.bae.app.ui.components.STEP_LINE_MAX_WIDTH
 import fm.bae.app.ui.onboarding.ResettingScreen
-import fm.bae.app.ui.onboarding.STEP_LINE_MAX_WIDTH
 import fm.bae.fastvalues.LatestSource
 import uniffi.bae_bridge.BridgeClosingProgress
 import uniffi.bae_bridge.BridgeOpenProgress

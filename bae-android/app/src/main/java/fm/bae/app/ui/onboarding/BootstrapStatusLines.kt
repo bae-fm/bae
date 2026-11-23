@@ -19,13 +19,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidProgress
 import fm.bae.app.ui.components.AndroidSpinner
+import fm.bae.app.ui.components.STEP_LINE_MAX_WIDTH
 import fm.bae.fastvalues.LatestSource
 import uniffi.bae_bridge.BridgeBootstrapStatus
 import uniffi.bae_bridge.BridgeBootstrapStep
@@ -145,6 +145,3 @@ internal fun ResettingScreen(
         }
     }
 }
-
-/** The maximum width of a progress step shown on a page of its own. */
-internal val STEP_LINE_MAX_WIDTH = 340.dp

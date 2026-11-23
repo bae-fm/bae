@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import fm.bae.app.coreString
 import fm.bae.app.ui.appearance.ThemeOpacity
@@ -33,6 +34,9 @@ import fm.bae.app.ui.sync.ShareBarView
 import fm.bae.fastvalues.FrameFollowing
 import fm.bae.fastvalues.LatestSource
 import uniffi.bae_bridge.BridgeOpenProgress
+
+/** The maximum width of a standalone progress step on a page. */
+internal val STEP_LINE_MAX_WIDTH = 340.dp
 
 /**
  * What shows while a long call runs: [idle] until the call runs a step, then

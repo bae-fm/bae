@@ -41,6 +41,7 @@ import fm.bae.app.ui.components.AndroidQRScanner
 import fm.bae.app.ui.components.AndroidSpinner
 import fm.bae.app.ui.components.ButtonKind
 import fm.bae.app.ui.components.Logo
+import fm.bae.app.ui.components.STEP_LINE_MAX_WIDTH
 import fm.bae.app.ui.rememberScreenScope
 import uniffi.bae_bridge.BridgeBootstrapResult
 import uniffi.bae_bridge.BridgeBootstrapStatus
