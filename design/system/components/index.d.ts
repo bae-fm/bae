@@ -515,7 +515,6 @@ export interface MacTitleBarProps { section?: 'Library' | 'Import'; search?: str
 export declare function MacTitleBar(props: MacTitleBarProps): React.ReactElement;
 export declare function MacTrackLead(props: { position?: string; hover?: boolean; current?: boolean; playing?: boolean }): React.ReactElement;
 export declare function MacReleasePicker(props: { releases?: string; selected?: string }): React.ReactElement | null;
-export declare function MacAlbumRating(props: { value?: number | string; who?: string }): React.ReactElement;
 /** A help tag: the short words macOS shows under a control the pointer rests on. */
 export interface MacHelpTagProps { text?: string; children?: React.ReactNode }
 export declare function MacHelpTag(props: MacHelpTagProps): React.ReactElement;

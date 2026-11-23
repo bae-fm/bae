@@ -18,13 +18,6 @@ struct AlbumRatingTextTests {
         #expect(raters.text.isEmpty)
     }
 
-    @Test("tapping a star the person already gave clears the rating")
-    func tappingTheGivenStarClears() {
-        #expect(BridgeStars.two.afterTapping(from: .four) == .two)
-        #expect(BridgeStars.four.afterTapping(from: .four) == nil)
-        #expect(BridgeStars.four.afterTapping(from: nil) == .four)
-    }
-
     @Test("the heart line names this person first, then each other by name")
     func heartersLine() {
         let hearters: [BridgeHearter] = [.you, .person(name: "Ana")]

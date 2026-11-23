@@ -500,11 +500,10 @@
       },
       {
         "name": "The header's controls",
-        "about": "What sits in and under an album's header: the release picker, the rating, the play buttons, the catalogs' links, and what this phone does with the release's files.",
+        "about": "What sits in and under an album's header: the release picker, the play buttons, the catalogs' links, and what this phone does with the release's files.",
         "components": [
           "MacReleasePicker",
           "AndroidReleasePicker",
-          "MacAlbumRating",
           "AndroidRecordLinks",
           "AndroidPinControl",
           "AndroidUploadLine"

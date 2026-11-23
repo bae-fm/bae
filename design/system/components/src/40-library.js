@@ -296,11 +296,6 @@
     return h(MacSegmentedControl, { options: releases.join(','), selected: props.selected || releases[0] });
   }
 
-  // An album's stars (`value`, 0 for none yet) and, beside them, `who`: a line of who else rated it.
-  function MacAlbumRating(props) {
-    return h('div', { className: 'bae-m-albumrating' }, h(Stars, { value: props.value, size: 16, rate: true }), props.who ? h('span', { className: 'bae-m-albumrating-who' }, props.who) : null);
-  }
-
   // The open album's head: the title, the artist, the year, each on its own line, the release picker (`releases`, `release`), the edition line (`edition`) and the copy line (`copy`), the line saying why this Mac can't play it (`unplayable`), Play and the album's ⋯ (`options`, `optionsOpen`, `highlighted`, a boxed MacMoreMenu). After the ⋯ comes the person's own rating, read-only (`rating`, "4 ★"): nothing while they have not rated the album. The rest of the album's actions, the rating included, are items of the ⋯ menu.
   // The album's read-only rating after its ⋯ or year: "4 ★" under Stars, one filled heart under Heart at three stars or more, nothing under None or while the person has not rated it (or not hearted it).
   function albumMark(rating, system, size, className) {

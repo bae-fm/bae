@@ -181,8 +181,6 @@
 .bae-m-albumpanel-cover { box-shadow: 0 12px 20px var(--shadow); }
 .bae-m-albumpanel-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-inline); }
 .bae-m-albumhead { min-width: 0; display: flex; flex-direction: column; gap: var(--space-inline); }
-.bae-m-albumrating { display: flex; align-items: center; gap: var(--space-group); }
-.bae-m-albumrating-who { font-size: var(--type-detail-size); font-weight: var(--type-detail-weight); line-height: var(--type-detail-line-height); color: var(--text-secondary); }
 .bae-m-albumpanel-title { margin: 0; font: var(--type-hero-weight) var(--type-hero-size) var(--font-sans); letter-spacing: -0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bae-m-albumpanel-sub { display: flex; gap: var(--space-related); font: var(--type-heading-weight) var(--type-heading-size) var(--font-sans); white-space: nowrap; }
 .bae-m-albumpanel-releases { padding: var(--space-inline) 0 var(--space-line); }

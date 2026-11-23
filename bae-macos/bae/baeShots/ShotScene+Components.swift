@@ -25,7 +25,6 @@ extension ShotScene {
             macAlbumHeaderScenes,
             macAlbumPanelScenes,
             macAlbumPickerScenes,
-            macAlbumRatingScenes,
             macAlbumTileScenes,
             macAlbumWorksScenes,
             macAlertScenes,
