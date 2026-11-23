@@ -46,6 +46,5 @@ struct MacHelpTag<Content: View>: View {
             }
             .shadow(color: Theme.shadow, radius: 6, y: 4)
             .allowsHitTesting(false)
-            .accessibilityHidden(true)
     }
 }
