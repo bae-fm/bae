@@ -182,7 +182,7 @@
   // The S3 storage form for a new library: where the data goes and the key that reaches it, then Cancel and Set up. `error`: 'none', or what S3 storage refused: 'key' and 'denied' show above the form, 'region' under the region, and 'bucket' and 'occupied' under the bucket.
   function MacS3Form(props) {
     var error = props.error || 'none';
-    var top = { key: 'This key wasn’t accepted. Check the access key ID and secret access key.', denied: 'This key cannot use this S3 storage. Give it read and write access, or use another key.' }[error] || '';
+    var top = { key: 'This key was not accepted. Check the access key ID and secret access key.', denied: 'This key cannot use this S3 storage. Give it read and write access, or use another key.' }[error] || '';
     var bucketError = { bucket: 'The cloud home was not found.', occupied: 'Use empty S3 storage or a folder that only this library uses.' }[error] || '';
     var regionError = error === 'region' ? 'The region or endpoint does not match this S3 storage.' : '';
     var field = function (label, value, err, secret) {
