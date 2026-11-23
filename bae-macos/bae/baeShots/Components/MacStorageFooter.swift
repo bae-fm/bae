@@ -38,7 +38,8 @@ extension ShotScene {
         ),
     ]
 
-    /// `MacStorageFooter` over the board's twelve releases, 4.4 GB, with the
+    /// `MacStorageFooter` over the board's twelve releases, whose sizes sum to
+    /// 4.8 GB, with the
     /// transfer queues `queues` names and the streams their rates read:
     /// uploads at 6.4 MB/s, pins at 3.1 MB/s and exports 18 percent written.
     private static func storageFooter(
@@ -59,7 +60,9 @@ extension ShotScene {
                 list in
                 MacStorageFooter(
                     list: list,
-                    totalSize: 4_400_000_000,
+                    totalSize: boardStorageRows.reduce(UInt64(0)) {
+                        $0 + $1.release.totalSize
+                    },
                     queues: store.queues
                 )
             }
