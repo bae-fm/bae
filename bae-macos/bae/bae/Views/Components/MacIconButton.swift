@@ -7,6 +7,8 @@ struct MacIconButton: View {
         case hover(active: Bool, faint: Bool, hitSize: CGFloat)
         case boxed(small: Bool)
         case borderless
+        /// Opens bae's menu of `items` under the button instead of acting.
+        case menu(items: () -> [MacMenuEntry])
     }
 
     let symbol: String
@@ -70,11 +72,30 @@ struct MacIconButton: View {
     }
 
     var body: some View {
+        if case .menu(let items) = look {
+            MacButton(kind: .plain, menu: items) {
+                glyph
+                    .foregroundStyle(Theme.macTextSecondary)
+            }
+            .help(help ?? label)
+            .accessibilityLabel(label)
+        }
+        else {
+            actionButton
+        }
+    }
+
+    private var glyph: some View {
+        Image(systemName: symbol)
+            .themeIcon(iconSize)
+            .frame(width: hitSize, height: hitSize)
+            .contentShape(Rectangle())
+    }
+
+    @ViewBuilder
+    private var actionButton: some View {
         let button = Button(role: role, action: action) {
-            Image(systemName: symbol)
-                .themeIcon(iconSize)
-                .frame(width: hitSize, height: hitSize)
-                .contentShape(Rectangle())
+            glyph
         }
         Group {
             switch look {
@@ -92,6 +113,8 @@ struct MacIconButton: View {
                 button
                     .foregroundStyle(Theme.macTextSecondary)
                     .buttonStyle(.accentBorderless)
+            case .menu:
+                EmptyView()
             }
         }
         .help(help ?? label)
@@ -99,11 +122,10 @@ struct MacIconButton: View {
     }
 
     private var hitSize: CGFloat? {
-        if case .hover(_, _, let hitSize) = look {
-            hitSize
-        }
-        else {
-            nil
+        switch look {
+        case .hover(_, _, let hitSize): hitSize
+        case .menu: ThemeSize.hitTarget
+        case .boxed, .borderless: nil
         }
     }
 }

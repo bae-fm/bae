@@ -41,20 +41,12 @@ extension ShotScene {
                 .disabled(true)
         },
         component("mac.component.icon-button.menu", height: 60) {
-            MacButton(
-                kind: .plain,
-                menu: { MacMenuItem("Shuffle") {} }
-            ) {
-                Image(systemName: "shuffle")
-                    .themeIcon(.large)
-                    .foregroundStyle(Theme.macTextSecondary)
-                    .frame(
-                        width: ThemeSize.hitTarget,
-                        height: ThemeSize.hitTarget
-                    )
-                    .contentShape(Rectangle())
-            }
-            .accessibilityLabel("Shuffle")
+            MacIconButton(
+                symbol: "shuffle",
+                label: "Shuffle",
+                iconSize: .large,
+                look: .menu(items: { [.item(MacMenuItem("Shuffle") {})] })
+            )
         },
     ]
 }
