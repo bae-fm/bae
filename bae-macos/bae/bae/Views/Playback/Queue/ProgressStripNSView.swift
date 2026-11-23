@@ -33,11 +33,12 @@ final class ProgressStripNSView: NSView {
     init(accent: NSColor) {
         bar = ProgressTrackNSView(progress: 0, accent: accent)
         bar.setAccessibilityLabel(String(localized: "Playback position"))
-        elapsedField = NSTextField(labelWithString: "")
-        elapsedField.font = .monospacedDigitSystemFont(
+        let font = NSFont.monospacedDigitSystemFont(
             ofSize: ThemeText.fine.macOSSize,
             weight: ThemeText.fine.nsWeight
         )
+        elapsedField = NSTextField(labelWithString: "")
+        elapsedField.font = font
         elapsedField.textColor = NSColor(Theme.textSecondary)
         elapsedField.alignment = .right
         elapsedField.translatesAutoresizingMaskIntoConstraints = false
@@ -63,7 +64,7 @@ final class ProgressStripNSView: NSView {
             // The text's own height, as the design draws the label, not the
             // taller box an AppKit label takes.
             elapsedField.heightAnchor.constraint(
-                equalToConstant: Self.labelHeight(of: elapsedField.font)
+                equalToConstant: (font.ascender - font.descender).rounded()
             ),
         ])
     }
@@ -71,12 +72,6 @@ final class ProgressStripNSView: NSView {
     @available(*, unavailable)
     required init?(coder _: NSCoder) {
         fatalError()
-    }
-
-    /// The height of one line of `font`, from its top to its bottom.
-    private static func labelHeight(of font: NSFont?) -> CGFloat {
-        guard let font else { return 0 }
-        return (font.ascender - font.descender).rounded()
     }
 
     // MARK: - Position updates
