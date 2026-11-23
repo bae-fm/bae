@@ -81,12 +81,7 @@
             at node: AccessibilityTree.Node,
             in window: NSWindow
         ) throws {
-            let point = window.convertPoint(
-                toScreen: NSPoint(
-                    x: node.x + node.width / 2,
-                    y: window.frame.height - node.y - node.height / 2
-                )
-            )
+            let point = window.convertPoint(toScreen: node.center(in: window))
             let element = try #require(
                 window.accessibilityHitTest(point) as? NSAccessibilityProtocol
             )

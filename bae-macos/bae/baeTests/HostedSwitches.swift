@@ -23,13 +23,8 @@ enum HostedSwitches {
         _ control: AccessibilityTree.Node,
         in window: NSWindow
     ) throws {
-        // The tree measures from the window's top-left, and the window's
-        // own coordinates from its bottom-left.
         try HostedInput.click(
-            at: NSPoint(
-                x: control.x + control.width / 2,
-                y: window.frame.height - control.y - control.height / 2
-            ),
+            at: control.center(in: window),
             in: window
         )
     }

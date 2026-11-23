@@ -485,6 +485,12 @@ extension AccessibilityTree {
 }
 
 extension AccessibilityTree.Node {
+    /// The centre of the element's frame in the window's coordinates.
+    @MainActor
+    func center(in window: NSWindow) -> NSPoint {
+        NSPoint(x: x + width / 2, y: window.frame.height - y - height / 2)
+    }
+
     /// This node moved `dx`, `dy` points, held by the node at `parent`.
     fileprivate func placed(dx: Double, dy: Double, parent: Int?) -> Self {
         Self(
