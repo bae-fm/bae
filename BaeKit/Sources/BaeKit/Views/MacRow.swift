@@ -235,12 +235,14 @@ public struct MacRow<Lead: View, Label: View, Content: View, Info: View>: View {
             LabeledContent {
                 HStack(spacing: ThemeSpace.group) {
                     if let value = options.value, !value.isEmpty {
-                        // A value stays on one line and gives up room to
-                        // the controls beside it.
+                        // A value stays whole on one line, as the board's
+                        // does: the name and note beside it give up room
+                        // and wrap.
                         Text(verbatim: value)
                             .foregroundStyle(secondaryColor)
                             .opacity(textOpacity)
                             .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
                     }
                     content.layoutPriority(1)
                     if chevron {
