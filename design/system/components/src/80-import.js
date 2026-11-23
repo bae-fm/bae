@@ -217,9 +217,9 @@
         props.album ? h(MacAlbumPicker, { key: 'album', album: props.album, inLibrary: props.albumInLibrary, picked: props.albumPicked, open: props.albumOpen, off: !!props.reading }) : null),
       h(MacReleaseFields, { key: 'fields', year: props.pressingYear, media: props.media, labels: props.labels, country: props.country, countryOpen: props.countryOpen, barcodes: props.barcodes, status: props.status, packaging: props.packaging, details: props.details })];
   }
-  // The release editor, one component in the import pane and in the album's Edit release sheet; its `actions` row is the only difference. `actions` `import`: where the import goes (`cloud`, `to`) and Import, or Retry import (`retry`), or neither while the folder has nothing to import (`blank`), with the folder's `check` in a warning notice under that row. `actions` `save`: Cancel once something changed (`changed`), and Save. `reading`: the file a save or an import reads before it writes, while the cover, Unlink, the Metadata menu and the album pop-up are off, since a click on any of them would cancel the save. Then, in both: the release's identity and fields; the records under a rule, with Unlink; the folder's or release's images (`images`); the track table, the children (side headings, CUE captions and track rows); the Files list (`files`).
+  // The release editor, one component in the import pane and in the album's Edit release sheet; its `actions` row is the only difference. `actions` `import`: where the import goes (`cloud`, `to`) and Import, or Retry import (`retry`), or neither while the folder has nothing to import (`blank`), with the folder's `check` and the audio a picked release leaves out (`leftOut`) in warning notices under that row. `actions` `save`: Cancel once something changed (`changed`), and Save. `reading`: the file a save or an import reads before it writes, while the cover, Unlink, the Metadata menu and the album pop-up are off, since a click on any of them would cancel the save. Then, in both: the release's identity and fields; the records under a rule, with Unlink; the folder's or release's images (`images`); the track table, the children (side headings, CUE captions and track rows); the Files list (`files`).
   function MacReleaseEditor(props) {
-    var tracks = kids(props.children);
+    var tracks = kids(props.children), leftOut = list(props.leftOut);
     function editable(children) {
       return props.reading ? h('fieldset', { disabled: true, 'aria-disabled': true, style: { display: 'contents' } }, children) : children;
     }
@@ -227,6 +227,8 @@
       h('div', { className: 'bae-m-card bae-m-idraft' },
         h(MacIdentifyBar, { actions: props.actions, blank: props.blank, retry: props.retry, cloud: props.cloud, to: props.to, changed: props.changed, reading: props.reading }),
         props.check && props.actions !== 'save' ? h(MacNotice, { tone: 'warning', title: props.check }) : null,
+        // `leftOut`: the folder's audio files that no track of the picked release matches, comma-separated, which the import leaves out; a warning notice names each one under its count.
+        leftOut.length > 0 && props.actions !== 'save' ? h(MacNotice, { tone: 'warning', title: 'bae leaves out ' + leftOut.length + (leftOut.length === 1 ? ' audio file that matches' : ' audio files that match') + ' no track on the release' }, leftOut.map(function (f) { return h('div', { key: f, className: 'bae-mono bae-ellipsis' }, f); })) : null,
         editable(releaseHeader(props)),
         props.records ? h('div', { className: 'bae-m-idraft-records' }, h(MacRecordLinks, { records: props.records }), h('span', { style: { flex: 1 } }), h('button', { type: 'button', className: 'bae-plainbtn bae-accent', disabled: !!props.reading }, 'Unlink')) : null),
       props.images ? h(MacImportImages, { images: props.images }) : null,

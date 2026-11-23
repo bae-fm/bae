@@ -4505,6 +4505,14 @@
    "w": 412,
    "x": 8664,
    "y": 240
+  },
+  "mac.import.folder.audio-left-out.dc.html": {
+   "h": 1260,
+   "page": "import",
+   "title": "macOS: a picked release leaves audio out",
+   "w": 1400,
+   "x": 2976,
+   "y": 4700
   }
  },
  "createdOnFiles": {
@@ -6493,6 +6501,7 @@
   "mac.album.edit.country.dc.html",
   "mac.import.identify.records-differ.dc.html",
   "mac.import.list.folder-not-watched.dc.html",
+  "mac.import.folder.audio-left-out.dc.html",
   "mac.playback.casting.no-volume.dc.html",
   "android.playback.full-player.no-volume.dc.html",
   "mac.welcome.libraries.damaged-join.dc.html",
