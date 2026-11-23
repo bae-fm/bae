@@ -16,17 +16,25 @@ struct MacScanCode: View {
             Text(instruction)
                 .themeText(.body)
                 .multilineTextAlignment(.center)
+                .padding(.bottom, ThemeSpace.related)
             QRCode(text: qr)
                 .accessibilityLabel("QR code")
             HStack(spacing: ThemeSpace.related) {
                 MacButton("Copy code") {
                     SystemActions.copyToPasteboard(code)
                 }
+                // A share link is not a MacButton, so it takes the look of
+                // one.
                 ShareLink(item: code) {
                     Text("Share…")
                 }
+                .macButtonStyle(.secondary)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
             }
+            .padding(.top, -ThemeSpace.inline)
         }
+        .padding(.vertical, ThemeSpace.related)
         .frame(maxWidth: .infinity)
     }
 }

@@ -213,7 +213,7 @@ private struct MacButtonSize: ViewModifier {
 extension View {
     /// This button drawn as `kind` says.
     @ViewBuilder
-    func macButtonStyle(_ kind: MacButtonKind, tinted: Bool = false)
+    public func macButtonStyle(_ kind: MacButtonKind, tinted: Bool = false)
         -> some View
     {
         switch kind {
