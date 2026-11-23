@@ -41,6 +41,7 @@ public struct SidePauseCountdownPicker: View {
                     }
                 }
             }
+            .nested()
             .disabled(!Self.isEnabled(for: configStore.config))
         #else
             Picker("Resume automatically", selection: binding) {

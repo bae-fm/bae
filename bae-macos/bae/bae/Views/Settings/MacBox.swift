@@ -24,11 +24,6 @@ enum RowMetrics {
 }
 
 extension ContainerValues {
-    /// Whether the row belongs to the row above it, as Resume automatically
-    /// belongs to the switch above it: set by `MacNested`.
-    @Entry
-    var joinsRowAbove = false
-
     /// The space over and under a row's content; a row holding a field is
     /// as tall as its field, so it takes less than a row of text.
     @Entry
@@ -136,8 +131,7 @@ struct MacBoxRows: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
-                // The first row has none above it to join.
-                let joins = index > 0 && row.containerValues.joinsRowAbove
+                let joins = row.containerValues.joinsRowAbove
                 if index > 0, !joins {
                     MacHairline()
                         .padding(.horizontal, RowMetrics.inset)

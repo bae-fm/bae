@@ -125,17 +125,16 @@ extension ShotScene {
                         isOn: .constant(!off)
                     )
                 }
-                MacNested {
-                    MacRow("Resume automatically") {
-                        MacPopUpButton(
-                            "Resume automatically",
-                            selection: .constant(0)
-                        ) {
-                            MacPopUpOption(verbatim: "Never", value: 0)
-                        }
-                        .fixedSize()
+                MacRow("Resume automatically") {
+                    MacPopUpButton(
+                        "Resume automatically",
+                        selection: .constant(0)
+                    ) {
+                        MacPopUpOption(verbatim: "Never", value: 0)
                     }
+                    .fixedSize()
                 }
+                .nested()
                 .disabled(off)
             }
         }

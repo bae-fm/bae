@@ -18,15 +18,16 @@ extension EnvironmentValues {
     @Entry
     public var macRowPlacement: MacRowPlacement?
 
-    /// Whether this row belongs to the one above it.
-    @Entry
-    public var macRowIsNested = false
 }
 
 // Container values came with macOS 15, which the Mac app requires; BaeKit
 // also builds for iOS 17, which has no box of rows to read them.
 @available(macOS 15, iOS 18, *)
 extension ContainerValues {
+    /// Whether the row belongs to the one above it.
+    @Entry
+    public var joinsRowAbove = false
+
     /// Whether the row applies its box's placement itself, inside its own
     /// frame, rather than the box putting the space around it: a row that is
     /// a button presses from its edges, as a System Settings row does.
@@ -35,6 +36,17 @@ extension ContainerValues {
 }
 
 extension View {
+    /// Joins this row to the one above it in a settings box.
+    @ViewBuilder
+    func joiningRowAbove() -> some View {
+        if #available(macOS 15, iOS 18, *) {
+            containerValue(\.joinsRowAbove, true)
+        }
+        else {
+            self
+        }
+    }
+
     /// This row's content laid out in `placement`: as wide as the box, with
     /// the placement's space round it, at least its least height.
     public func placedInRow(_ placement: MacRowPlacement) -> some View {

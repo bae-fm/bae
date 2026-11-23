@@ -20,6 +20,7 @@ private struct MacRowOptions {
     var note: MacRowNote?
     var chip: String?
     var isStrong = false
+    var isNested = false
     var press: MacRowPress?
     var selection: Bool?
 }
@@ -40,8 +41,6 @@ public struct MacRow<Lead: View, Label: View, Content: View, Info: View>: View {
 
     @Environment(\.macRowPlacement)
     private var placement
-    @Environment(\.macRowIsNested)
-    private var isNested
     @Environment(\.isEnabled)
     private var isEnabled
 
@@ -130,13 +129,27 @@ public struct MacRow<Lead: View, Label: View, Content: View, Info: View>: View {
         return copy
     }
 
+    /// Joins this row to the setting above it and dims it as a whole when off.
+    public func nested() -> MacRow {
+        var copy = self
+        copy.options.isNested = true
+        return copy
+    }
+
+    @ViewBuilder
     public var body: some View {
-        rowAppearance
+        if options.isNested {
+            rowAppearance
+                .opacity(isEnabled ? 1 : 0.45)
+                .joiningRowAbove()
+        }
+        else {
+            rowAppearance
+        }
     }
 
     private var textOpacity: Double {
-        if isEnabled { return 1 }
-        return isNested ? 0.45 : ThemeOpacity.off
+        isEnabled || options.isNested ? 1 : ThemeOpacity.off
     }
 
     @ViewBuilder
@@ -176,7 +189,11 @@ public struct MacRow<Lead: View, Label: View, Content: View, Info: View>: View {
         labelAction: (() -> Void)? = nil
     ) -> some View {
         let content = row(chevron: chevron, labelAction: labelAction)
-        if let placement {
+        if var placement {
+            if options.isNested {
+                placement.insets.top = 0
+                placement.minHeight = 0
+            }
             content.placedInRow(placement)
                 .contentShape(Rectangle())
         }
