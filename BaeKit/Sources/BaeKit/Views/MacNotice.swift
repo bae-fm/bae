@@ -140,7 +140,6 @@ public struct MacNotice: View {
         look: NoticeLook = .filled,
         action: ErrorAction? = nil,
         secondary: ErrorAction? = nil,
-        leave: ErrorAction? = nil,
         buttons: NoticeButtons = .inline,
         detailsOpening: NoticeDetailsOpening = .button,
         onDismiss: (() -> Void)? = nil
@@ -150,10 +149,30 @@ public struct MacNotice: View {
         self.look = look
         self.action = action
         self.secondary = secondary
-        self.leave = leave
+        self.leave = nil
         self.buttons = buttons
         self.detailsOpening = detailsOpening
         self.onDismiss = onDismiss
+    }
+
+    /// A centred notice that fills a screen, titled in the caller's words,
+    /// whose only way back is `leave`: it comes first in the row, before
+    /// Details, as the board of a failed reset draws it.
+    public init(
+        title: String,
+        error: DisplayError?,
+        action: ErrorAction?,
+        leave: ErrorAction
+    ) {
+        self.heading = .titled(title, advice: nil, error: error)
+        self.tone = .danger
+        self.look = .centered
+        self.action = action
+        self.secondary = nil
+        self.leave = leave
+        self.buttons = .inline
+        self.detailsOpening = .button
+        self.onDismiss = nil
     }
 
     public var body: some View {

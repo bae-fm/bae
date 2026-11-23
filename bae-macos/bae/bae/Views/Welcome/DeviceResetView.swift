@@ -57,9 +57,7 @@ struct DeviceResetView: View {
         if let error {
             MacNotice(
                 title: error.step.title,
-                advice: nil,
                 error: error.error,
-                look: .centered,
                 action: error.error.offersRetry
                     ? ErrorAction("Retry", perform: onReset) : nil,
                 leave: cancel
