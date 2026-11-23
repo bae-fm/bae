@@ -46,7 +46,6 @@ extension ShotScene {
     /// when `openAlbum` is set; `detailAnswered` learns when its detail is
     /// answered.
     @MainActor
-    // swiftlint:disable:next function_body_length
     static func boardLibraryBacking(
         uiStore: UiStore,
         albumCount: Int? = nil,
@@ -78,17 +77,7 @@ extension ShotScene {
                 )
             },
             albumDetail: {
-                .fixed(answers: UnansweredCount()) { request in
-                    guard request.albumId == detail.album.id else {
-                        return nil
-                    }
-                    if let detailAnswered {
-                        Task { @MainActor in detailAnswered.answered = true }
-                    }
-                    return detail.showing(
-                        chosenReleaseId: request.chosenReleaseId
-                    )
-                }
+                boardAlbumDetailRead(detail, answered: detailAnswered)
             },
             releaseDetail: {
                 .fixed(answers: UnansweredCount()) { id in
@@ -121,6 +110,21 @@ extension ShotScene {
             uiStore.selectAlbum(detail.album.id)
         }
         return (library, session)
+    }
+
+    nonisolated private static func boardAlbumDetailRead(
+        _ detail: BridgeAlbumDetail,
+        answered: AlbumDetailAnswered?
+    ) -> KeyedDetailQuery<BridgeAlbumDetail, BridgeAlbumDetailRequest> {
+        .fixed(answers: UnansweredCount()) { request in
+            guard request.albumId == detail.album.id else {
+                return nil
+            }
+            if let answered {
+                Task { @MainActor in answered.answered = true }
+            }
+            return detail.showing(chosenReleaseId: request.chosenReleaseId)
+        }
     }
 
     /// History's menu of whose plays as core counts it under `person`:
