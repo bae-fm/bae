@@ -53,14 +53,16 @@ struct ImportSheep: View {
         case still
 
         init(still: Bool, reduceMotion: Bool, fixedNow: Date?) {
-            if still || reduceMotion {
+            if still {
                 self = .still
             }
             else if fixedNow != nil {
+                // The fixed clock holds the moving pose at the board's first
+                // frame regardless of the capture Mac's Reduce Motion setting.
                 self = .firstFrame
             }
             else {
-                self = .playing
+                self = reduceMotion ? .still : .playing
             }
         }
 
@@ -70,7 +72,6 @@ struct ImportSheep: View {
             if self == .still {
                 return ImportSheepPainter(moment: SheepSequence.still, time: 0)
             }
-            // The board with animation stopped shows the loop's first frame.
             let playing = SheepSequence.moment(at: isPaused ? 0 : elapsed)
             return ImportSheepPainter(
                 moment: playing.moment,

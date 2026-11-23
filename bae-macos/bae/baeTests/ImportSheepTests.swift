@@ -40,11 +40,14 @@ struct ImportSheepTests {
         #expect(abs(time - 1) < 1e-9)
     }
 
-    @Test("A fixed clock holds the sheep at the start of its loop")
-    func fixedClock() {
+    @Test(
+        "A fixed clock holds the sheep at the start of its loop on any Mac",
+        arguments: [false, true]
+    )
+    func fixedClock(reduceMotion: Bool) {
         let motion = ImportSheep.Motion(
             still: false,
-            reduceMotion: false,
+            reduceMotion: reduceMotion,
             fixedNow: Date(timeIntervalSinceReferenceDate: 0)
         )
         #expect(motion.isPaused)
@@ -55,13 +58,20 @@ struct ImportSheepTests {
                 frame.moment.pose(of: .release(0), at: frame.time).opacity == 0
             )
         }
-        let liveMotion = ImportSheep.Motion(
+    }
+
+    @Test(
+        "The live sheep follows the Mac's Reduce Motion setting",
+        arguments: [false, true]
+    )
+    func liveMotion(reduceMotion: Bool) {
+        let motion = ImportSheep.Motion(
             still: false,
-            reduceMotion: false,
+            reduceMotion: reduceMotion,
             fixedNow: nil
         )
-        #expect(!liveMotion.isPaused)
-        #expect(liveMotion.painter(elapsed: 2).time == 2)
+        #expect(motion.isPaused == reduceMotion)
+        #expect(motion.painter(elapsed: 2).time == (reduceMotion ? 0 : 2))
     }
 
     @Test("The sheep shows a cover beside it in the still pose")
