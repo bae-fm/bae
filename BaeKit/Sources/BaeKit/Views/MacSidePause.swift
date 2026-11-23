@@ -92,13 +92,7 @@ private struct SidePausePromptCard: View {
         }
         .padding(ThemeSpace.section)
         .frame(width: Self.width, alignment: .leading)
-        .background(Theme.surfaceElevated)
-        .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.panel))
-        .overlay {
-            RoundedRectangle(cornerRadius: ThemeRadius.panel)
-                .stroke(Theme.hairline, lineWidth: 1)
-        }
-        .shadow(color: Theme.shadow, radius: 20, y: 10)
+        .sheetFace()
         .focusable()
         .focusEffectDisabled()
         .focused($focused)

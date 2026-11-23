@@ -692,9 +692,7 @@
     extension MacAlert {
         /// The alert's face: elevated, 20 points rounded, with a shadow.
         public func elevatedFace() -> some View {
-            background(Theme.surfaceElevated)
-                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.panel))
-                .shadow(color: Theme.shadow, radius: 15, y: 5)
+            sheetFace()
         }
     }
 

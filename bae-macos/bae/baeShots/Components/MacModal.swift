@@ -12,7 +12,6 @@ extension ShotScene {
                     MacButton("Done") {}
                 }
                 .frame(width: 360, height: 200, alignment: .top)
-                .background(Theme.background)
             }
             .frame(height: 260)
         }

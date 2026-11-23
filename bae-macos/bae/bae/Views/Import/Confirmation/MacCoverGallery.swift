@@ -140,7 +140,6 @@ struct MacCoverGallery: View {
             .padding(.vertical, ThemeSpace.edge)
             .padding(.horizontal, ThemeSpace.section)
         }
-        .background(Theme.background)
     }
 
     var body: some View {
@@ -211,13 +210,6 @@ struct MacCoverGallery: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            // The lightbox lays its own backdrop over the window; only
-            // the empty state needs the page behind it.
-            .background {
-                if content.focus == nil {
-                    Rectangle().fill(Theme.background)
-                }
-            }
         }
     }
 

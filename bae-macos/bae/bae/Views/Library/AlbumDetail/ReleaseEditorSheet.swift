@@ -13,6 +13,8 @@ struct ReleaseEditorSheet: View {
     private var session: ReleaseMetadataEditSession
     @Environment(Playback.self)
     private var playback
+    @Environment(\.modalHost)
+    private var modalHost
 
     init(
         releaseId: String,
@@ -49,26 +51,21 @@ struct ReleaseEditorSheet: View {
     }
 
     var body: some View {
-        GeometryReader { geometry in
-            let size = Self.modalSize(in: geometry.size)
-            VStack(spacing: 0) {
-                header
-                Divider()
-                ScrollView {
-                    ReleaseEditorView(
-                        session: session,
-                        displayName: displayName,
-                        onPlayTrack: playTrack,
-                        onSaved: onSaved
-                    )
-                    .padding(ThemeSpace.section)
-                }
+        let size = Self.modalSize(in: modalHost)
+        VStack(spacing: 0) {
+            header
+            Divider()
+            ScrollView {
+                ReleaseEditorView(
+                    session: session,
+                    displayName: displayName,
+                    onPlayTrack: playTrack,
+                    onSaved: onSaved
+                )
+                .padding(ThemeSpace.section)
             }
-            .frame(width: size.width, height: size.height)
-            .background(Theme.background)
-            .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.card))
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .frame(width: size.width, height: size.height)
         // When someone deletes the release while its editor is open, the
         // sheet closes.
         .onChange(of: session.releaseGone) { _, gone in
