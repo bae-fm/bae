@@ -4,8 +4,7 @@ import Testing
 
 @testable import bae
 
-/// A window the app opens is let go once the person closes it, so its views
-/// and what they started end with it.
+/// A hosted window's frame and lifetime across opens.
 @MainActor
 @Suite("Hosting window")
 struct HostingWindowControllerTests {
@@ -33,6 +32,59 @@ struct HostingWindowControllerTests {
 
         #expect(owner.controller == nil)
         try await Wait.until { released == nil }
+    }
+
+    @Test(
+        "a content-sized window centers on first open and restores after a move"
+    )
+    func restoresMovedWindow() throws {
+        let firstScreen = try #require(NSScreen.screens.first)
+        let movedScreen = try #require(NSScreen.screens.last)
+        let name = "HostingWindowControllerTests.\(UUID())"
+        defer { NSWindow.removeFrame(usingName: name) }
+
+        func makeController() -> HostingWindowController {
+            HostingWindowController(
+                content: Color.clear.frame(width: 500, height: 320),
+                contentSize: nil,
+                sizing: [.minSize, .maxSize],
+                bridging: [],
+                frameAutosave: .init(name: name, firstScreen: firstScreen),
+                configureWindow: { $0.animationBehavior = .none },
+                onClose: {}
+            )
+        }
+
+        let moved = try autoreleasepool {
+            let controller = makeController()
+            let window = try #require(controller.window)
+            defer { window.close() }
+            controller.showWindow(nil)
+
+            #expect(
+                window.contentView?.frame.size
+                    == CGSize(width: 500, height: 320)
+            )
+            let room = firstScreen.visibleFrame
+            #expect(room.contains(window.frame))
+            #expect(abs(window.frame.midX - room.midX) <= 1)
+            #expect(abs(window.frame.midY - room.midY) <= 1)
+
+            window.setFrameOrigin(
+                CGPoint(
+                    x: movedScreen.visibleFrame.minX + 40,
+                    y: movedScreen.visibleFrame.minY + 60
+                )
+            )
+            return window.frame
+        }
+
+        let reopened = makeController()
+        let window = try #require(reopened.window)
+        defer { window.close() }
+        reopened.showWindow(nil)
+        #expect(window.frame == moved)
+        #expect(window.screen == movedScreen)
     }
 }
 

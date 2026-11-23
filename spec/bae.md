@@ -5938,6 +5938,10 @@ This device's settings for the library are the `preferences` row. Each change
 edits the stored row in one write, and every screen follows it with no
 restart. Appendix C lists the settings.
 
+On a Mac, Settings and Storage Manager each reopen where the person left
+them. On first open, bae centers each window within the usable area of the
+display that shows its main window.
+
 On a Mac, Library settings first shows **Name**, with the library's name
 and *Rename…* for an admin or for anyone when the library isn't synced,
 then **Library folder**, with *Show in Finder*. With storage, **Sync** and

@@ -36,17 +36,20 @@ extension AppDelegate {
                 // The window has no toolbar: its panes sit in the content's
                 // own sidebar.
                 bridging: [],
+                frameAutosave: .init(
+                    name: "Settings",
+                    firstScreen: mainWindow?.window?.screen
+                ),
+                configureWindow: { window in
+                    // The title bar shows only the window buttons, over the
+                    // sidebar. The title is for the Window menu and VoiceOver.
+                    window.styleMask.insert(.fullSizeContentView)
+                    window.titlebarAppearsTransparent = true
+                    window.titleVisibility = .hidden
+                    window.title = String(localized: "Settings")
+                },
                 onClose: { [weak self] in self?.settingsWindow = nil }
             )
-        if let window = controller.window {
-            // The content reaches under the title bar, which shows only the
-            // window buttons, over the sidebar. The title is for the Window
-            // menu and VoiceOver.
-            window.styleMask.insert(.fullSizeContentView)
-            window.titlebarAppearsTransparent = true
-            window.titleVisibility = .hidden
-            window.title = String(localized: "Settings")
-        }
         settingsWindow = controller
         controller.showWindow(nil)
     }
@@ -62,9 +65,15 @@ extension AppDelegate {
                 contentSize: CGSize(width: 1100, height: 660),
                 sizing: .minSize,
                 bridging: .toolbars,
+                frameAutosave: .init(
+                    name: "Storage Manager",
+                    firstScreen: mainWindow?.window?.screen
+                ),
+                configureWindow: {
+                    $0.title = String(localized: "Storage manager")
+                },
                 onClose: { [weak self] in self?.storageManagerWindow = nil }
             )
-        controller.window?.title = String(localized: "Storage manager")
         storageManagerWindow = controller
         controller.showWindow(nil)
     }
