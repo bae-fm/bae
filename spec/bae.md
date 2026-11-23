@@ -1594,7 +1594,9 @@ writes, the shared album and a library re-identify all agree on which of a
 release's mediums the folder holds. The mediums
 it reads are a set whose tracks, laid out against the folder's audio — a
 Discogs index or heading read as one track or as its sub-tracks — number
-exactly as many as the folder's; a medium listing no tracks is in none.
+exactly as many as the folder's; a medium listing no tracks is in none. For a
+release of more than 20 mediums, bae tries only runs of consecutive mediums,
+since every set of them would be too many to lay out.
 Between such sets, in order:
 
 1. the folder's Disc IDs: the set more of whose mediums MusicBrainz registers
