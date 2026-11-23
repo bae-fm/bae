@@ -16,16 +16,9 @@ public enum Theme {
     public static let accentSoft = accent.opacity(ThemeOpacity.tint)
     public static let accentStrong = accent.opacity(ThemeOpacity.tintStrong)
 
-    #if os(macOS)
-        /// The design system's `mac-text-secondary`: the system's secondary
-        /// label colour, which follows Increase Contrast and translucent
-        /// backgrounds.
-        public static let macTextSecondary = Color(
-            nsColor: .secondaryLabelColor
-        )
-    #else
-        public static let macTextSecondary = textSecondary
-    #endif
+    /// Secondary text on every platform: the design system's
+    /// `text-secondary`.
+    public static let macTextSecondary = textSecondary
 }
 
 extension View {
