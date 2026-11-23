@@ -5936,6 +5936,8 @@ The person can copy all the causes at once.
 Mac alerts and Android dialogs show the causes. On a Mac the app's alerts
 and confirmations block pointer, keyboard and VoiceOver access to the
 frontmost window or its open sheet until the person dismisses the alert.
+A Mac alert dims the whole window behind it, title bar included, as a
+Mac sheet does.
 The first button is the default. Return presses it and Escape presses
 Cancel. A category whose line
 names the whole fault, with the counts, discs or folder it carries, shows the

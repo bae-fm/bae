@@ -62,8 +62,11 @@
   }
   // The Storage Manager's window, its own frame as in the app: the toolbar, then the release list and, while `inspector` is on, the inspector. The list is the MacTable with the MacStorageFooter under it (or, with no library open, the first child alone); the other children are the inspector's. `empty`: the filter matches nothing, and the window says No matches over the table.
   function MacStorageWindow(props) {
-    var k = kids(props.children);
     var isType = function (c, t) { var p = inner(c); return p && p.type === t; };
+    // A sheet or an alert over the window is drawn last, as the window's own child, so its scrim covers the whole window.
+    var isModal = function (c) { var p = inner(c); return p && (p.type === MacAlert || p.type === MacModal || p.type === MacSidePause || (p.type === MacSheet && !!p.props.overlay)); };
+    var all = kids(props.children);
+    var k = all.filter(function (c) { return !isModal(c); });
     var table = k.filter(function (c) { return isType(c, MacTable); });
     var list = table.length
       ? [h('div', { key: 't', className: 'bae-m-storewin-table' }, table, props.empty ? h('div', { className: 'bae-m-storewin-empty' }, h(MacContentUnavailable, { title: 'No matches' })) : null)].concat(k.filter(function (c) { return isType(c, MacStorageFooter); }))
@@ -73,7 +76,8 @@
       h(MacStorageToolbar, { filter: props.filter, search: props.search, inspector: props.inspector, disabled: props.disabled }),
       h('div', { className: 'bae-m-storewin-body' },
         h('div', { className: 'bae-m-storewin-list' }, list),
-        props.inspector ? h('div', { className: 'bae-m-storewin-inspector' }, rest) : null));
+        props.inspector ? h('div', { className: 'bae-m-storewin-inspector' }, rest) : null),
+      all.filter(isModal));
   }
   // A table's columns: "Title:width[:right][:up|:down]", the first taking the room the others leave; `up` or `down` marks the column the table sorts by.
   function cols(s) { return list(s).map(function (c) { var p = c.split(':'); return { title: p[0], w: Number(p[1] || 100), right: p.indexOf('right') > 1, sort: p.indexOf('up') > 1 ? 'up' : p.indexOf('down') > 1 ? 'down' : null }; }); }

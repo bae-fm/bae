@@ -17,7 +17,7 @@ body{margin:0;background:var(--background)}
 </style>
 </helmet>
 <div style="position:relative;height:600px;width:690px"><x-import component-from-global-scope="Bae.MacWelcomeWindow">
-  <x-import component-from-global-scope="Bae.MacWelcomeHome" empty="{{yes}}"></x-import></x-import><x-import component-from-global-scope="Bae.MacSheet" title="Scan a code" overlay="{{yes}}" width="400"><x-import component-from-global-scope="Bae.MacQRScanner" state="starting"></x-import><x-import component-from-global-scope="Bae.MacSheetFooter"><x-import component-from-global-scope="Bae.MacButton">Cancel</x-import></x-import></x-import></div>
+  <x-import component-from-global-scope="Bae.MacWelcomeHome" empty="{{yes}}"></x-import><x-import component-from-global-scope="Bae.MacSheet" title="Scan a code" overlay="{{yes}}" width="400"><x-import component-from-global-scope="Bae.MacQRScanner" state="starting"></x-import><x-import component-from-global-scope="Bae.MacSheetFooter"><x-import component-from-global-scope="Bae.MacButton">Cancel</x-import></x-import></x-import></x-import></div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":900,"height":600}}'>
 class Component extends DCLogic {

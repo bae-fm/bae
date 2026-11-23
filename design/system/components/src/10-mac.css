@@ -142,7 +142,7 @@
 .bae-m-disclosure > .bae-m-row:not(.bae-m-disclosure-toggle) { padding-left: calc(var(--space-group) + var(--size-lead) + var(--space-related)); }
 .bae-m-disclosure > .bae-divider:not(:nth-child(2)) { margin-left: calc(var(--space-group) + var(--size-lead) + var(--space-related)); }
 
-.bae-m-scrim { position: absolute; inset: 0; background: none; display: flex; justify-content: center; align-items: flex-start; z-index: 10; }
+.bae-m-scrim { position: absolute; inset: 0; background: var(--scrim); display: flex; justify-content: center; align-items: flex-start; z-index: 10; }
 .bae-m-step { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-section); padding: calc(var(--space-page) + var(--space-section)) var(--space-page) var(--space-page); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); color: var(--text-primary); }
 .bae-m-step-head { display: flex; flex-direction: column; align-items: center; gap: var(--space-compact); max-width: 440px; text-align: center; }
 .bae-m-step-title { margin: 0; font: var(--type-title-weight) var(--type-title-size) var(--font-sans); color: var(--text-primary); text-wrap: balance; }
