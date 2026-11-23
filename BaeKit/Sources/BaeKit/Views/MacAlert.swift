@@ -153,11 +153,7 @@
         @ViewBuilder
         private var buttonRow: some View {
             if buttons.count > 2 {
-                VStack(spacing: ThemeSpace.related) {
-                    ForEach(buttons.indices, id: \.self) { index in
-                        button(at: index)
-                    }
-                }
+                stackedButtons
             }
             else {
                 // Side by side while the widest label fits half the row, as
@@ -179,11 +175,16 @@
                         }
                     }
                     .accessibilityElement(children: .contain)
-                    VStack(spacing: ThemeSpace.related) {
-                        ForEach(buttons.indices, id: \.self) { index in
-                            button(at: index)
-                        }
-                    }
+                    stackedButtons
+                }
+            }
+        }
+
+        /// The buttons one above another, the default on top.
+        private var stackedButtons: some View {
+            VStack(spacing: ThemeSpace.related) {
+                ForEach(buttons.indices, id: \.self) { index in
+                    button(at: index)
                 }
             }
         }
