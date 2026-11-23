@@ -1,7 +1,8 @@
 /* ---- macOS ---- */
 
-/* macOS rounds a window's corners at 17pt and lights its top edge with a 1pt line; its other edges draw no ring. */
-.bae-m-window { position: relative; display: flex; overflow: hidden; border-radius: 17px; background: var(--background); color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); box-shadow: inset 0 1px 0 var(--hairline-strong); }
+/* macOS 26 rounds a window's corners in a continuous curve, which the shots measure as a superellipse of exponent 3 (superellipse(1.585)) 23.5pt across; it lights the top edge with a 1pt line, and its other edges draw no ring. */
+.bae-m-window, .bae-m-mainwin, .bae-m-storewin { border-radius: var(--radius-window); corner-shape: superellipse(1.585); }
+.bae-m-window { position: relative; display: flex; overflow: hidden; background: var(--background); color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); box-shadow: inset 0 1px 0 var(--hairline-strong); }
 .bae-m-window-column { flex-direction: column; }
 .bae-m-window-front { box-shadow: inset 0 1px 0 var(--hairline-strong), 0 20px 60px var(--shadow); }
 /* The one face of every Mac sheet: what opens over a window for a task or a decision (MacSheet, MacModal, MacAlert, MacSidePause). The raised colour, the panel's corners and a shadow, with no edge. */
