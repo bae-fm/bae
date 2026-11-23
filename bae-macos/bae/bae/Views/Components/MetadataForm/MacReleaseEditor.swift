@@ -246,7 +246,6 @@ private struct ReleaseEditorCardView: View {
             // The catalogs that describe the release end the card, under
             // their own divider, beside the way to unlink them.
             if let records = card.records {
-                MacHairline()
                 recordsLine(records)
             }
         }
@@ -303,7 +302,7 @@ private struct ReleaseEditorCardView: View {
     }
 
     private func recordsLine(_ records: [BridgeReleaseRecord]) -> some View {
-        HStack(alignment: .firstTextBaseline) {
+        HStack(spacing: ThemeSpace.related + ThemeSpace.line) {
             MacRecordLinks(records: records)
             if card.pressingUnknown {
                 Text("Pressing unknown")
@@ -312,12 +311,19 @@ private struct ReleaseEditorCardView: View {
                     .fixedSize()
             }
             Spacer(minLength: ThemeSpace.group)
-            MacButton("Unlink", kind: .borderless, action: commands.unlink)
-                .help(
-                    "Stop linking the release to these catalog records. The metadata stays as it is."
-                )
-                .disabled(!editable)
+            Button(action: commands.unlink) {
+                Text("Unlink")
+                    .themeText(.body)
+                    .foregroundStyle(Theme.accent)
+            }
+            .buttonStyle(.accentPlain)
+            .help(
+                "Stop linking the release to these catalog records. The metadata stays as it is."
+            )
+            .disabled(!editable)
         }
+        .padding(.top, ThemeSpace.related + ThemeSpace.hairline)
+        .overlay(alignment: .top) { MacHairline() }
     }
 }
 

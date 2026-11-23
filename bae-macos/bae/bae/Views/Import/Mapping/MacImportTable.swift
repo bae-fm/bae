@@ -104,7 +104,6 @@ struct MacImportTable: View {
                     alignment: .leading
                 )
         }
-        .padding(.top, ThemeSpace.inline)
         .padding(.bottom, ThemeSpace.compact)
     }
 
@@ -136,11 +135,11 @@ struct TrackAuditionActions {
 }
 
 extension View {
-    /// What every row of the mapping table, and of a skipped folder's file
-    /// list, sits in: one leading edge, one height, and a hairline over it.
+    /// A mapping row's content sits below its hairline.
     func mappingRowChrome(background: Color = .clear) -> some View {
         padding(.vertical, ThemeSpace.compact)
             .frame(minHeight: 40)
+            .padding(.top, ThemeSpace.hairline)
             .background(background)
             .overlay(alignment: .top) {
                 MacHairline()

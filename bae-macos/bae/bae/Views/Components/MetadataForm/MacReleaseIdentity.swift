@@ -31,7 +31,7 @@ struct MacReleaseIdentity<Cover: View, AudioFacts: View, AlbumRow: View>: View {
     }
 
     private var identity: some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.inline) {
+        VStack(alignment: .leading, spacing: 0) {
             MacInlineField(
                 placeholder: String(localized: "Album title"),
                 value: values.albumTitle,
@@ -64,6 +64,7 @@ struct MacReleaseIdentity<Cover: View, AudioFacts: View, AlbumRow: View>: View {
             )
             audioFacts()
             albumRow()
+                .padding(.top, ThemeSpace.compact)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
