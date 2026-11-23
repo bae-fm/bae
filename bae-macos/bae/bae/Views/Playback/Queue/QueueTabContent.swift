@@ -250,9 +250,8 @@ struct QueueTabContent: View {
             .allowsHitTesting(false)
 
             nowPlayingText(nowPlaying)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .allowsHitTesting(false)
-
-            Spacer(minLength: 0)
 
             PlayPauseControl(
                 isPlaying: isPlaying,

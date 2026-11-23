@@ -176,27 +176,17 @@ struct QueueSection: View {
             }
 
             // The manual lane's append drop zone and cross-lane append target;
-            // a thin spacer on the context lane.
-            Color.clear
-                .frame(
-                    height: acceptsExternalDrops
-                        ? ThemeSpace.edge : ThemeSpace.related
-                )
-                .onGeometryChange(for: CGRect.self) { proxy in
-                    proxy.frame(in: .named("queuePane"))
-                } action: { frame in
-                    coordinator.setAppendFrame(laneId, frame: frame)
-                }
-                .onDrop(
-                    of: [UTType.plainText],
-                    delegate: QueueDropDelegate(
-                        targetIndex: count,
-                        acceptsExternalDrops: acceptsExternalDrops,
-                        dropInsertIndex: $dropInsertIndex,
-                        onInsertTracks: onInsertTracks,
-                        onDropFailed: onDropFailed,
-                    )
-                )
+            // a thin spacer on the context lane. The manual lane's zone lies
+            // over the gap above the next lane's heading and takes no room of
+            // its own, as the board draws the lanes.
+            if acceptsExternalDrops {
+                Color.clear
+                    .frame(height: 0)
+                    .overlay(alignment: .top) { appendZone }
+            }
+            else {
+                appendZone
+            }
         }
         // Drop the hover when a drag starts, since `.onHover` won't fire again
         // until it ends.
@@ -210,6 +200,30 @@ struct QueueSection: View {
 
 /// `QueueSection`'s drag resolution, header, and row builders.
 extension QueueSection {
+    private var appendZoneHeight: CGFloat {
+        acceptsExternalDrops ? ThemeSpace.edge : ThemeSpace.related
+    }
+
+    private var appendZone: some View {
+        Color.clear
+            .frame(height: appendZoneHeight)
+            .onGeometryChange(for: CGRect.self) { proxy in
+                proxy.frame(in: .named("queuePane"))
+            } action: { frame in
+                coordinator.setAppendFrame(laneId, frame: frame)
+            }
+            .onDrop(
+                of: [UTType.plainText],
+                delegate: QueueDropDelegate(
+                    targetIndex: count,
+                    acceptsExternalDrops: acceptsExternalDrops,
+                    dropInsertIndex: $dropInsertIndex,
+                    onInsertTracks: onInsertTracks,
+                    onDropFailed: onDropFailed,
+                )
+            )
+    }
+
     /// The gap the lane draws its drop line over, `nil` hiding it: the manual
     /// lane's from an external drop or a cross-lane drag, either lane's from a
     /// row of its own held over a gap.
