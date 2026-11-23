@@ -17,8 +17,8 @@ extension ShotScene {
             VStack(alignment: .leading, spacing: ThemeSpace.page) {
                 MacArtistGroupHeading(name: "Mara Quill")
                 HStack(alignment: .top, spacing: ThemeSpace.page) {
-                    browseTile("Low Tide Hours", "Mara Quill", 1992)
-                    browseTile("Northbound", "Mara Quill", 1974)
+                    browseTile("Low Tide Hours", 1992)
+                    browseTile("Northbound", 1974)
                 }
             }
         }
@@ -26,12 +26,11 @@ extension ShotScene {
 
     private static func browseTile(
         _ title: String,
-        _ artist: String,
         _ year: Int32?
     ) -> some View {
         albumTile(
             title,
-            artist,
+            nil,
             year,
             width: 200,
             menu: AlbumCardMenu(

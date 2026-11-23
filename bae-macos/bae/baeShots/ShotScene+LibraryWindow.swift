@@ -9,7 +9,8 @@ import SwiftUI
 extension ShotScene {
     static let groupedAlbumsScene = ShotScene(
         id: "mac.library.albums.grouped",
-        size: CGSize(width: 1200, height: 760)
+        size: CGSize(width: 1200, height: 760),
+        frame: .window(title: "bae", titleBar: .hidden)
     ) {
         let rows = [
             gridAlbum("Paper Lanterns", "The Slow Orchards", 1971),
@@ -59,7 +60,7 @@ extension ShotScene {
             uiStore: uiStore,
             backing: (library, session),
             needsAttention: false,
-            playbackStore: boardPlayback(),
+            playbackStore: boardPlayback(covered: true),
             images: images,
             size: CGSize(width: 1200, height: 760)
         )

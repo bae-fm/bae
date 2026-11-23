@@ -13,6 +13,7 @@ extension ShotScene {
         albumTileScene("mac.component.album-tile.selected", selected: true),
         albumTileScene("mac.component.album-tile.no-cover", covered: false),
         albumTileScene("mac.component.album-tile.no-year", year: nil),
+        albumTileScene("mac.component.album-tile.no-artists", artist: nil),
     ]
 
     /// The cover a scene's albums show: placeholder art named after the album.
@@ -27,7 +28,8 @@ extension ShotScene {
         covered: Bool = true,
         unplayable: Bool = false,
         hover: Bool = false,
-        year: Int32? = 1992
+        year: Int32? = 1992,
+        artist: String? = "Mara Quill"
     ) -> ShotScene {
         // The preview puts the tile in the first of six grid columns.
         let columns: CGFloat = 6
@@ -42,7 +44,7 @@ extension ShotScene {
         ) {
             albumTile(
                 "Low Tide Hours",
-                "Mara Quill",
+                artist,
                 year,
                 open: open,
                 selected: selected,
@@ -65,7 +67,7 @@ extension ShotScene {
 
     static func albumTile(
         _ title: String,
-        _ artist: String,
+        _ artist: String?,
         _ year: Int32?,
         open: Bool = false,
         selected: Bool = false,

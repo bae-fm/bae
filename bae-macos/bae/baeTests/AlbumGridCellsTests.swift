@@ -9,6 +9,12 @@ struct AlbumGridCellsTests {
     @MainActor
     @Test("a grouped card names only the artists outside its group")
     func groupedCardCredits() async throws {
+        let library = Library(
+            handle: AlbumCreditsHandle(rows: groupedCreditRows)
+        )
+        let read = try library.albumList([], true).view(0, 1).values
+        let delivery = try await read.next()
+        try await read.cancel()
         let section = BridgeLibraryBrowseSection(
             id: "artist-a",
             title: "Artist A",
@@ -19,7 +25,7 @@ struct AlbumGridCellsTests {
         let hosted = try await HostedAlbumGrid.host(
             preloaded: true,
             sections: [section],
-            rows: groupedCreditRows
+            rows: delivery.rows
         ) { list in
             MacAlbumGrid(
                 list: list,
@@ -374,4 +380,49 @@ extension AlbumGridCellsTests {
                 == second.firstIndex(of: .detail(albumId: "a5"))
         )
     }
+}
+
+/// Answers the real library list adapter with the album rows core sends.
+private final class AlbumCreditsHandle: AppHandle, @unchecked Sendable {
+    private let rows: [BridgeAlbumAppearance]
+
+    init(rows: [BridgeAlbumAppearance]) {
+        self.rows = rows
+        super.init(noHandle: AppHandle.NoHandle())
+    }
+
+    required init(unsafeFromHandle handle: UInt64) {
+        preconditionFailure("The album credits fixture needs rows")
+    }
+
+    override func subscribeListView(
+        list: BridgeList,
+        first: UInt64,
+        last: UInt64
+    ) throws -> ListViewSubscription {
+        AlbumCreditsSubscription(rows: rows)
+    }
+}
+
+private final class AlbumCreditsSubscription: ListViewSubscription,
+    @unchecked Sendable
+{
+    private let deliveries: FixedSubscription<BridgeListView>
+
+    init(rows: [BridgeAlbumAppearance]) {
+        deliveries = FixedSubscription(
+            value: BridgeListView(start: 0, rows: .albums(rows: rows))
+        )
+        super.init(noHandle: ListViewSubscription.NoHandle())
+    }
+
+    required init(unsafeFromHandle handle: UInt64) {
+        preconditionFailure("The album credits fixture needs rows")
+    }
+
+    override func next() async throws -> BridgeListView {
+        try await deliveries.next()
+    }
+
+    override func cancel() async throws { try await deliveries.cancel() }
 }
