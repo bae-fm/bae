@@ -170,7 +170,8 @@ private fun Modifier.bobbing(
         this
     } else {
         graphicsLayer {
-            val time = seconds() - delay
+            // A part [delay] behind waits at rest until its time comes.
+            val time = maxOf(seconds() - delay, 0.0)
             translationY = (-rise.toPx() * (1 - cos(phase(time, Motion.RISE_SECONDS))) / 2).toFloat()
             rotationZ = (-Motion.TILT_DEGREES * cos(phase(time, Motion.TILT_SECONDS))).toFloat()
         }
