@@ -239,6 +239,10 @@ struct QueueTabContent: View {
 
     /// The now-playing card: cover, title, artist, and a progress strip on an
     /// elevated surface.
+    ///
+    /// VoiceOver reads the words, then Play or Pause, then the strip. Left to
+    /// sort by frame, it reads Pause between the title and the artist, since
+    /// the button's top sits above the artist's line.
     private func nowPlayingCard(_ nowPlaying: QueueNowPlaying) -> some View {
         HStack(alignment: .top, spacing: ThemeSpace.group) {
             Artwork(
@@ -248,6 +252,7 @@ struct QueueTabContent: View {
                 shadow: .bar
             )
             .allowsHitTesting(false)
+            .accessibilitySortPriority(NowPlayingReadingOrder.cover)
 
             nowPlayingText(nowPlaying)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -264,7 +269,9 @@ struct QueueTabContent: View {
                 Theme.hover,
                 in: RoundedRectangle(cornerRadius: ThemeRadius.control)
             )
+            .accessibilitySortPriority(NowPlayingReadingOrder.playPause)
         }
+        .accessibilityElement(children: .contain)
         .padding(ThemeSpace.group)
         .background {
             Button {
@@ -295,20 +302,34 @@ struct QueueTabContent: View {
             Text("Now playing")
                 .themeText(.eyebrow)
                 .foregroundStyle(Theme.accent)
+                .accessibilitySortPriority(NowPlayingReadingOrder.eyebrow)
             if let title = nowPlaying.title {
                 Text(title)
                     .themeText(.rowTitle)
                     .lineLimit(1)
+                    .accessibilitySortPriority(NowPlayingReadingOrder.title)
             }
             if let artist = nowPlaying.artist {
                 Text(artist)
                     .themeText(.detail)
                     .foregroundStyle(Theme.textSecondary)
                     .lineLimit(1)
+                    .accessibilitySortPriority(NowPlayingReadingOrder.artist)
             }
             ProgressStripRepresentable(position: nowPlaying.position)
                 .frame(height: 10)
                 .padding(.top, ThemeSpace.compact)
         }
     }
+}
+
+/// The now-playing card's VoiceOver order, highest first: the cover and the
+/// words, then Play or Pause; the position strip keeps the default and comes
+/// last.
+private enum NowPlayingReadingOrder {
+    static let cover: Double = 5
+    static let eyebrow: Double = 4
+    static let title: Double = 3
+    static let artist: Double = 2
+    static let playPause: Double = 1
 }
