@@ -96,7 +96,8 @@ fn album_window_follows_the_primary_releases_audio_location() {
             .unwrap()
             .result
             .unwrap();
-        let unavailable = updated.rows.iter().find(|(row, _)| row.primary_release_unplayable).unwrap();
+        let unavailable =
+            updated.rows.iter().find(|(row, _)| row.primary_release_unplayable).unwrap();
         assert_eq!(unavailable.0.album.primary_release_id, RELEASE_EARLY);
 
         let mut local = LibraryViews::new(a.clone()).subscribe_album_window(&[], false, top(10));
