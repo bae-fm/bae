@@ -12,21 +12,21 @@ extension ShotScene {
         ShotScene(
             id: "mac.component.storage-window.release-list",
             size: storageWindowSize,
-            frame: .window(title: "Storage Manager")
+            frame: .window(title: "Storage Manager", titleBar: .themed)
         ) {
             storageWindow()
         },
         ShotScene(
             id: "mac.component.storage-window.inspector-open",
             size: storageWindowSize,
-            frame: .window(title: "Storage Manager")
+            frame: .window(title: "Storage Manager", titleBar: .themed)
         ) {
             storageWindow(selected: "rel-shot-2", inspector: true)
         },
         ShotScene(
             id: "mac.component.storage-window.filtered",
             size: storageWindowSize,
-            frame: .window(title: "Storage Manager")
+            frame: .window(title: "Storage Manager", titleBar: .themed)
         ) {
             storageWindow(
                 rows: threeReleases(),
@@ -37,14 +37,14 @@ extension ShotScene {
         ShotScene(
             id: "mac.component.storage-window.no-matches",
             size: storageWindowSize,
-            frame: .window(title: "Storage Manager")
+            frame: .window(title: "Storage Manager", titleBar: .themed)
         ) {
             storageWindow(rows: [], search: "zzz")
         },
         ShotScene(
             id: "mac.component.storage-window.no-library",
             size: storageWindowSize,
-            frame: .window(title: "Storage Manager")
+            frame: .window(title: "Storage Manager", titleBar: .themed)
         ) {
             ShotStage(StorageManagerNoLibrary())
         },

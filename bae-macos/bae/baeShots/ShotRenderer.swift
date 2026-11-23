@@ -47,7 +47,8 @@ enum ShotRenderer {
         // A view that opens or moves after the window shows, such as an album
         // grid's detail opening on its place's first answer, lands at once,
         // so the capture never holds a frame partway through.
-        let rootView = stage.view.appAppearance()
+        let rootView = scene.frame.applyTitleBar(to: stage.view)
+            .appAppearance()
             .defaultAppStorage(defaults)
             .transaction {
                 $0.animation = nil
@@ -174,7 +175,7 @@ enum ShotRenderer {
             // A window with a hidden title bar has no toolbar either: its
             // content holds what a toolbar would.
             hosting.sceneBridgingOptions =
-                titleBar == .shown ? .toolbars : []
+                titleBar == .hidden ? [] : .toolbars
             // The window's size is the scene's, whatever the content asks for.
             hosting.sizingOptions = []
             // Made on the shot display, so AppKit sizes it against that

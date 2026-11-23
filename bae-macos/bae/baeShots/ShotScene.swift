@@ -105,11 +105,20 @@ enum ShotFrame {
     case component
     case window(title: String, titleBar: TitleBar = .shown)
 
-    /// How a window draws its title bar: as a titled window does, or, as
-    /// the Settings window does, transparent and without its title, the
-    /// content reaching under it and the window's buttons sitting over it.
+    @MainActor
+    func applyTitleBar(to rootView: AnyView) -> AnyView {
+        if case .window(_, .themed) = self {
+            return AnyView(rootView.themedWindowTitleBar())
+        }
+        return rootView
+    }
+
     enum TitleBar {
+        /// The native title bar and its system background.
         case shown
+        /// The native title bar over the app's window background.
+        case themed
+        /// The content reaches under the window buttons, as in Settings.
         case hidden
     }
 }

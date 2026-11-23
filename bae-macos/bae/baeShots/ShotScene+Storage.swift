@@ -64,7 +64,7 @@ extension ShotScene {
         ShotScene(
             id: "mac.storage.window.no-library",
             size: storageManagerSize,
-            frame: .window(title: "Storage Manager")
+            frame: .window(title: "Storage Manager", titleBar: .themed)
         ) {
             ShotStage(StorageManagerNoLibrary())
         }

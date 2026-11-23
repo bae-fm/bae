@@ -9,28 +9,28 @@ extension ShotScene {
         ShotScene(
             id: "mac.component.storage-toolbar.default",
             size: storageToolbarSize,
-            frame: .window(title: "Storage Manager")
+            frame: .window(title: "Storage Manager", titleBar: .themed)
         ) {
             storageToolbar()
         },
         ShotScene(
             id: "mac.component.storage-toolbar.inspector-on",
             size: storageToolbarSize,
-            frame: .window(title: "Storage Manager")
+            frame: .window(title: "Storage Manager", titleBar: .themed)
         ) {
             storageToolbar(inspector: true)
         },
         ShotScene(
             id: "mac.component.storage-toolbar.filtered",
             size: storageToolbarSize,
-            frame: .window(title: "Storage Manager")
+            frame: .window(title: "Storage Manager", titleBar: .themed)
         ) {
             storageToolbar(filter: .remote, search: "harbor")
         },
         ShotScene(
             id: "mac.component.storage-toolbar.no-library",
             size: storageToolbarSize,
-            frame: .window(title: "Storage Manager")
+            frame: .window(title: "Storage Manager", titleBar: .themed)
         ) {
             storageToolbar(off: true)
         },

@@ -371,7 +371,7 @@ extension ShotScene {
         ShotScene(
             id: "mac.storage.unpin-several",
             size: storageManagerSize,
-            frame: .window(title: "Storage Manager")
+            frame: .window(title: "Storage Manager", titleBar: .themed)
         ) {
             let pinned: Set<String> = ["rel-row-3", "rel-row-10", "rel-row-12"]
             // Core's answer for the three: core returns no storage actions

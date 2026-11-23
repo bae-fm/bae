@@ -57,6 +57,7 @@ extension AppDelegate {
             storageManagerWindow
             ?? HostingWindowController(
                 content: StorageManagerWindowRoot(appDelegate: self)
+                    .themedWindowTitleBar()
                     .appAppearance(),
                 contentSize: CGSize(width: 1100, height: 660),
                 sizing: .minSize,
