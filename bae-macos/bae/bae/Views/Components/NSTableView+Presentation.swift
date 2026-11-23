@@ -12,4 +12,12 @@ extension NSTableView {
         scrollView.autohidesScrollers = true
         return scrollView
     }
+
+    /// Show the sort on its header without replacing an unchanged descriptor.
+    func showSortIndicator(key: String, ascending: Bool) {
+        let descriptor = NSSortDescriptor(key: key, ascending: ascending)
+        if sortDescriptors.first != descriptor {
+            sortDescriptors = [descriptor]
+        }
+    }
 }

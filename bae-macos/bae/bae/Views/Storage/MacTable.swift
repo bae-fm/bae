@@ -402,13 +402,10 @@ extension MacTable.Coordinator {
             )
             return
         }
-        let descriptor = NSSortDescriptor(
+        tableView.showSortIndicator(
             key: column.rawValue,
             ascending: sort.direction == .ascending
         )
-        if tableView.sortDescriptors.first != descriptor {
-            tableView.sortDescriptors = [descriptor]
-        }
     }
 
     @objc

@@ -37,7 +37,7 @@ struct MacReleaseFileTable: NSViewRepresentable {
         table.allowsColumnReordering = false
         table.dataSource = context.coordinator
         table.delegate = context.coordinator
-        for column in Column.allCases {
+        for column in Column.inDisplayOrder {
             table.addTableColumn(column.makeTableColumn())
         }
         return table.themedScrollView()
@@ -51,51 +51,50 @@ struct MacReleaseFileTable: NSViewRepresentable {
         )
     }
 
-    private enum Column: String, CaseIterable {
-        case name, audio, size, kind
+    private enum Column: Sendable {
+        case sortable(BridgeReleaseFileColumn)
+        case audio
 
-        private var identifier: NSUserInterfaceItemIdentifier {
-            NSUserInterfaceItemIdentifier(rawValue)
+        static let inDisplayOrder: [Self] = [
+            .sortable(.name), .audio, .sortable(.size), .sortable(.kind),
+        ]
+
+        static let byKey = Dictionary(
+            uniqueKeysWithValues: inDisplayOrder.map { ($0.key, $0) }
+        )
+
+        var key: String {
+            switch self {
+            case .sortable(.name): "name"
+            case .audio: "audio"
+            case .sortable(.size): "size"
+            case .sortable(.kind): "kind"
+            }
         }
 
         private var title: String {
             switch self {
-            case .name: String(localized: "Name")
+            case .sortable(.name): String(localized: "Name")
             case .audio: localizedCoreString("core.audio.label")
-            case .size: String(localized: "Size")
-            case .kind: String(localized: "Kind")
-            }
-        }
-
-        var sortColumn: BridgeReleaseFileColumn? {
-            switch self {
-            case .name: .name
-            case .audio: nil
-            case .size: .size
-            case .kind: .kind
-            }
-        }
-
-        init(sortColumn: BridgeReleaseFileColumn) {
-            switch sortColumn {
-            case .name: self = .name
-            case .size: self = .size
-            case .kind: self = .kind
+            case .sortable(.size): String(localized: "Size")
+            case .sortable(.kind): String(localized: "Kind")
             }
         }
 
         var width: CGFloat {
             switch self {
-            case .name: 200
+            case .sortable(.name): 200
             case .audio: 120
-            case .size: 80
-            case .kind: 130
+            case .sortable(.size): 80
+            case .sortable(.kind): 130
             }
         }
 
         @MainActor
         func makeTableColumn() -> NSTableColumn {
-            let column = NSTableColumn(identifier: identifier)
+            let column = NSTableColumn(
+                identifier: NSUserInterfaceItemIdentifier(key)
+            )
             column.headerCell.attributedStringValue = NSAttributedString(
                 string: title,
                 attributes: [
@@ -106,9 +105,9 @@ struct MacReleaseFileTable: NSViewRepresentable {
             column.isEditable = false
             column.minWidth = width
             column.width = width
-            if sortColumn != nil {
+            if case .sortable = self {
                 column.sortDescriptorPrototype = NSSortDescriptor(
-                    key: rawValue,
+                    key: key,
                     ascending: true
                 )
             }
@@ -119,7 +118,7 @@ struct MacReleaseFileTable: NSViewRepresentable {
         @ViewBuilder
         func cell(for file: BridgeFile) -> some View {
             switch self {
-            case .name:
+            case .sortable(.name):
                 Text(file.originalFilename)
                     .cutLine(.fileName)
                     .foregroundStyle(Theme.textPrimary)
@@ -129,11 +128,11 @@ struct MacReleaseFileTable: NSViewRepresentable {
                         .foregroundStyle(Theme.macTextSecondary)
                         .lineLimit(1)
                 }
-            case .size:
+            case .sortable(.size):
                 Text(file.fileSizeText)
                     .monospacedDigit()
                     .foregroundStyle(Theme.macTextSecondary)
-            case .kind:
+            case .sortable(.kind):
                 Text(file.contentType)
                     .foregroundStyle(Theme.textTertiary)
                     .lineLimit(1)
@@ -165,13 +164,10 @@ struct MacReleaseFileTable: NSViewRepresentable {
         ) {
             self.order = order
             let shown = order.wrappedValue
-            let descriptor = NSSortDescriptor(
-                key: Column(sortColumn: shown.column).rawValue,
+            table.showSortIndicator(
+                key: Column.sortable(shown.column).key,
                 ascending: !shown.descending
             )
-            if table.sortDescriptors.first != descriptor {
-                table.sortDescriptors = [descriptor]
-            }
             if files != self.files || appearance != self.appearance {
                 self.files = files
                 self.appearance = appearance
@@ -200,10 +196,12 @@ struct MacReleaseFileTable: NSViewRepresentable {
             row: Int
         ) -> NSView? {
             guard let identifier = tableColumn?.identifier,
-                let column = Column(rawValue: identifier.rawValue)
+                let column = Column.byKey[identifier.rawValue]
             else {
-                logger.error(
-                    "Unknown release file column: \(tableColumn?.identifier.rawValue ?? "nil")"
+                let key = tableColumn?.identifier.rawValue ?? "none"
+                reportBug(
+                    operation: "Draw a release file cell",
+                    detail: "Unknown release file column \(key)"
                 )
                 return nil
             }
@@ -226,9 +224,13 @@ struct MacReleaseFileTable: NSViewRepresentable {
         ) {
             guard let sort = table.sortDescriptors.first,
                 let key = sort.key,
-                let column = Column(rawValue: key)?.sortColumn
+                case .sortable(let column)? = Column.byKey[key]
             else {
-                logger.error("Unknown release file table sort")
+                let key = table.sortDescriptors.first?.key ?? "none"
+                reportBug(
+                    operation: "Sort release files",
+                    detail: "Unknown release file sort column \(key)"
+                )
                 return
             }
             let selected = BridgeReleaseFileOrder(
@@ -238,6 +240,11 @@ struct MacReleaseFileTable: NSViewRepresentable {
             if order.wrappedValue != selected {
                 order.wrappedValue = selected
             }
+        }
+
+        private func reportBug(operation: String, detail: String) {
+            logger.error("\(operation) failed: \(detail)")
+            CoreBugReporter().report(operation: operation, detail: detail)
         }
     }
 }
