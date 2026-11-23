@@ -51,8 +51,7 @@ val StatusTone.color: Color
     get() =
         when (this) {
             StatusTone.NEUTRAL -> MaterialTheme.colorScheme.onSurfaceVariant
-            StatusTone.ACCENT -> MaterialTheme.colorScheme.primary
-            StatusTone.INFO -> MaterialTheme.colorScheme.primary
+            StatusTone.ACCENT, StatusTone.INFO -> MaterialTheme.colorScheme.primary
             StatusTone.SUCCESS -> BaeTheme.colors.success
             StatusTone.WARNING -> BaeTheme.colors.warning
             StatusTone.DANGER -> BaeTheme.colors.danger
