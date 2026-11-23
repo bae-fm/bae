@@ -30,6 +30,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import fm.bae.app.DisplayError
 import fm.bae.app.OpenLibrary
@@ -444,6 +445,7 @@ internal fun AndroidReleasePicker(
                     style = ThemeText.androidLabel.style,
                     color = colors.onSurface,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }
