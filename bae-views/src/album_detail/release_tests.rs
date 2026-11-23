@@ -31,12 +31,7 @@ fn detail_in_years(release_year: Option<i32>, album_year: Option<i32>) -> Releas
         cover_version: None,
         release_number: 1,
     };
-    let ctx = ReleaseResolveCtx {
-        cover: None,
-        is_compilation: false,
-        album_year,
-        tracks_rating_system: bae_people::people::RatingSystem::Stars,
-    };
+    let ctx = ReleaseResolveCtx { cover: None, is_compilation: false, album_year };
     let actions = crate::DbStorageActions {
         offered: crate::DbStorageActionFlags {
             upload: false,
@@ -47,7 +42,7 @@ fn detail_in_years(release_year: Option<i32>, album_year: Option<i32>) -> Releas
         },
         transitioning: false,
     };
-    ReleaseDetail::from_raw(raw, None, actions, &ctx)
+    ReleaseDetail::from_raw(raw, None, actions, &ctx, bae_people::people::RatingSystem::Stars)
 }
 
 /// A line about the pressing names its year only when it differs from the

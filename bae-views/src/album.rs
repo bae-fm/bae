@@ -423,10 +423,14 @@ fn resolve_album_detail(raw: DbAlbumDetail) -> crate::album_detail::AlbumDetail 
             cover: bae_records::cover_ref(&detail.release.id, detail.cover_version.clone()),
             is_compilation: raw.album.is_compilation,
             album_year: raw.album.year,
-            tracks_rating_system: raw.rating_systems.tracks,
         };
-        releases
-            .push(crate::album_detail::ReleaseDetail::from_raw(detail, download, actions, &ctx));
+        releases.push(crate::album_detail::ReleaseDetail::from_raw(
+            detail,
+            download,
+            actions,
+            &ctx,
+            raw.rating_systems.tracks,
+        ));
     }
 
     // One read returned the releases and the shown release's place among

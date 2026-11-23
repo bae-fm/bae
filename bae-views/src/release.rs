@@ -84,9 +84,8 @@ fn resolve_release_detail(release_id: &str, context: ReleaseDetailContext) -> Re
         cover: bae_records::cover_ref(release_id, detail.cover_version.clone()),
         is_compilation,
         album_year,
-        tracks_rating_system,
     };
-    ReleaseDetail::from_raw(detail, download, actions, &ctx)
+    ReleaseDetail::from_raw(detail, download, actions, &ctx, tracks_rating_system)
 }
 
 #[derive(Debug, Clone, PartialEq)]

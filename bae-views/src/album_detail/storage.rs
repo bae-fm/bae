@@ -136,18 +136,9 @@ impl StorageRow {
     /// release row carries its own art and the album its primary release's.
     pub(crate) fn from_raw(raw: DbStorageRow) -> StorageRow {
         let cover = cover_ref(&raw.release.id, raw.release_cover_version);
-        let ctx = ReleaseResolveCtx {
-            cover,
-            // A storage row projects a `ReleaseSummary`, which has no tracks, so
-            // the per-track compilation flag is never read on this path.
-            is_compilation: false,
-            album_year: raw.album.year,
-            // Nor is a track's rating.
-            tracks_rating_system: bae_people::people::RatingSystem::Hidden,
-        };
         StorageRow {
             cancel_only: raw.release.actions.offered.cancel_only,
-            release: ReleaseSummary::from_raw(raw.release, &ctx),
+            release: ReleaseSummary::from_raw(raw.release, cover),
             album: AlbumSummary::from_raw(raw.album),
             status: raw.status,
             date_added: raw.date_added,

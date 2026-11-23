@@ -5,11 +5,8 @@ use super::*;
 use crate::DbReleaseSummary;
 use bae_records::DbReleaseDetail;
 
-/// The per-release inputs the library's views read beside the release's rows and
-/// threads into the release projections: the release's own cover reference
-/// and whether the album is a compilation and its year, which the track
-/// projections compare against.
-/// Bundled so the constructors take one context rather than a pile of parameters.
+/// What release detail reads beside the release's rows: its cover and its
+/// album's year and compilation flag.
 #[derive(Debug, Clone)]
 pub(crate) struct ReleaseResolveCtx {
     pub(crate) cover: Option<ImageRef>,
@@ -18,9 +15,6 @@ pub(crate) struct ReleaseResolveCtx {
     pub(crate) is_compilation: bool,
     /// The owning album's year, which [`ReleaseDetail::distinct_year`] is read against.
     pub(crate) album_year: Option<i32>,
-    /// How the library shows the ratings of tracks, which each track row draws
-    /// its rating by.
-    pub(crate) tracks_rating_system: bae_people::people::RatingSystem,
 }
 
 /// The slim projection a list view (Storage Manager, release pickers) renders one
@@ -63,7 +57,7 @@ pub struct ReleaseSummary {
 impl ReleaseSummary {
     /// Builds a release summary from its raw row. [`ReleaseDetail::from_raw`]
     /// calls it too.
-    pub(crate) fn from_raw(raw: DbReleaseSummary, ctx: &ReleaseResolveCtx) -> ReleaseSummary {
+    pub(crate) fn from_raw(raw: DbReleaseSummary, cover: Option<ImageRef>) -> ReleaseSummary {
         let storage_state = storage_state(raw.remote, raw.pinned);
         let upload = raw.upload.map(ReleaseUpload::from_raw);
         ReleaseSummary {
@@ -76,7 +70,7 @@ impl ReleaseSummary {
             transitioning: raw.actions.transitioning,
             file_count: raw.file_count,
             total_size: raw.total_size,
-            cover: ctx.cover.clone(),
+            cover,
         }
     }
 }
@@ -186,6 +180,7 @@ impl ReleaseDetail {
         download: Option<bae_transfers::DownloadEntry>,
         actions: crate::DbStorageActions,
         ctx: &ReleaseResolveCtx,
+        tracks_rating_system: bae_people::people::RatingSystem,
     ) -> ReleaseDetail {
         let release = raw.release;
 
@@ -193,7 +188,7 @@ impl ReleaseDetail {
         let track_groups: Vec<TrackGroup> = raw
             .track_groups
             .into_iter()
-            .map(|group| TrackGroup::from_raw(group, ctx.is_compilation, ctx.tracks_rating_system))
+            .map(|group| TrackGroup::from_raw(group, ctx.is_compilation, tracks_rating_system))
             .collect();
         let tracks: Vec<TrackDetail> =
             track_groups.iter().flat_map(|group| group.tracks.iter().cloned()).collect();
@@ -261,7 +256,7 @@ impl ReleaseDetail {
                 total_size,
                 actions,
             },
-            ctx,
+            ctx.cover.clone(),
         );
 
         let download_status = release_download_status(
