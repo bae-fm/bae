@@ -1,7 +1,6 @@
 package fm.bae.app.shots
 
 import android.app.Application
-import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -122,11 +121,7 @@ internal fun isSelected(
  */
 internal fun ComposeContentTestRule.settle(content: @Composable () -> Unit) {
     mainClock.autoAdvance = false
-    Settings.Global.putFloat(
-        RuntimeEnvironment.getApplication().contentResolver,
-        Settings.Global.ANIMATOR_DURATION_SCALE,
-        0f,
-    )
+    ShotAnimations.disable()
     setContent {
         CompositionLocalProvider(
             LocalNowMs provides ShotClock::nowMs,

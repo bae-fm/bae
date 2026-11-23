@@ -2,9 +2,14 @@ package fm.bae.app.ui.components
 
 import android.animation.ValueAnimator
 import android.content.Context
+import android.database.ContentObserver
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
+import android.os.Build
+import android.os.Handler
+import android.os.Looper
+import android.provider.Settings
 import android.util.TypedValue
 import android.view.View
 import android.view.accessibility.AccessibilityNodeInfo
@@ -14,7 +19,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.graphics.withClip
 import fm.bae.app.ui.appearance.ThemeOpacity
-import fm.bae.app.ui.appearance.systemAnimationsEnabled
 import fm.bae.fastvalues.FrameFollowing
 import fm.bae.fastvalues.LatestSource
 
@@ -68,19 +72,22 @@ internal class AndroidProgressBarView(
             val fraction: Float,
         ) : Progress
 
-        data object Moving : Progress
+        class Moving : Progress {
+            var phase = MOVING_REST_PHASE
+            var stopObservingScale: (() -> Unit)? = null
+        }
     }
 
-    /** How far the piece has crossed, 0 when it is just off the track's start and 1 just off its end. */
-    private var phase = MOVING_REST_PHASE
     private val crossing =
         ValueAnimator.ofFloat(MOVING_REST_PHASE, MOVING_REST_PHASE + 1f).apply {
             duration = MOVING_MILLIS
             repeatCount = ValueAnimator.INFINITE
             interpolator = LinearInterpolator()
             addUpdateListener {
-                phase = (it.animatedValue as Float) % 1f
-                invalidate()
+                (progress as? Progress.Moving)?.let { moving ->
+                    moving.phase = (it.animatedValue as Float) % 1f
+                    invalidate()
+                }
             }
         }
 
@@ -120,39 +127,71 @@ internal class AndroidProgressBarView(
     /** Shows [share] of the track filled. */
     fun showFraction(share: Float) {
         if ((progress as? Progress.Counted)?.fraction == share) return
-        crossing.cancel()
+        stopCrossing()
         progress = Progress.Counted(share)
     }
 
     /** Hides the bar while the byte measurement it needs is absent. */
     fun clearProgress() {
-        crossing.cancel()
+        stopCrossing()
         progress = null
     }
 
     /** Shows a piece crossing the track, while a step counts nothing. */
     fun showMoving() {
-        progress = Progress.Moving
-        if (isAttachedToWindow) startCrossing()
+        if (progress is Progress.Moving) return
+        val moving = Progress.Moving()
+        progress = moving
+        if (isAttachedToWindow) observeCrossing(moving)
     }
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        if (progress == Progress.Moving) startCrossing()
+        (progress as? Progress.Moving)?.let(::observeCrossing)
     }
 
     override fun onDetachedFromWindow() {
-        crossing.cancel()
+        stopCrossing()
         super.onDetachedFromWindow()
     }
 
-    private fun startCrossing() {
-        if (systemAnimationsEnabled(context) && ValueAnimator.areAnimatorsEnabled()) {
+    private fun observeCrossing(moving: Progress.Moving) {
+        moving.stopObservingScale = observeAnimatorScale { updateCrossing(moving) }
+        updateCrossing(moving)
+    }
+
+    private fun stopCrossing() {
+        val moving = progress as? Progress.Moving ?: return
+        moving.stopObservingScale?.invoke()
+        moving.stopObservingScale = null
+        crossing.cancel()
+    }
+
+    private fun updateCrossing(moving: Progress.Moving) {
+        if (progress !== moving || !isAttachedToWindow) return
+        if (ValueAnimator.areAnimatorsEnabled()) {
             if (!crossing.isStarted) crossing.start()
         } else {
             crossing.cancel()
-            phase = MOVING_REST_PHASE
+            moving.phase = MOVING_REST_PHASE
+            invalidate()
         }
+    }
+
+    private fun observeAnimatorScale(onScaleChange: () -> Unit): () -> Unit {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val listener = ValueAnimator.DurationScaleChangeListener { onScaleChange() }
+            ValueAnimator.registerDurationScaleChangeListener(listener)
+            return { ValueAnimator.unregisterDurationScaleChangeListener(listener) }
+        }
+        val resolver = context.contentResolver
+        val observer =
+            object : ContentObserver(Handler(Looper.getMainLooper())) {
+                override fun onChange(selfChange: Boolean) = onScaleChange()
+            }
+        val scaleUri = Settings.Global.getUriFor(Settings.Global.ANIMATOR_DURATION_SCALE)
+        resolver.registerContentObserver(scaleUri, false, observer)
+        return { resolver.unregisterContentObserver(observer) }
     }
 
     override fun onMeasure(
@@ -173,9 +212,9 @@ internal class AndroidProgressBarView(
         val height = barHeight()
         val gap = dp(GAP_DP)
         val radius = height / 2f
-        if (shown == Progress.Moving) {
+        if (shown is Progress.Moving) {
             val piece = width * MOVING_SHARE
-            val start = -piece + (width + piece) * phase
+            val start = -piece + (width + piece) * shown.phase
             val leftEnd = minOf(start - gap, width.toFloat())
             if (leftEnd > 0f) {
                 canvas.drawRoundRect(bounds.apply { set(0f, 0f, leftEnd, height) }, radius, radius, track)
