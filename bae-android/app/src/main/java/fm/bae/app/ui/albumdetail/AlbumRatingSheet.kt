@@ -1,7 +1,9 @@
 package fm.bae.app.ui.albumdetail
 
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -9,6 +11,7 @@ import fm.bae.app.R
 import fm.bae.app.number
 import fm.bae.app.ratersText
 import fm.bae.app.starsAfterTapping
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidDivider
 import fm.bae.app.ui.components.AndroidMenuItemStyle
 import fm.bae.app.ui.components.AndroidSheet
@@ -62,7 +65,7 @@ internal fun ColumnScope.AlbumRatingChoices(
                 content = { Stars(value = stars.number, size = STAR_ROW_SIZE) },
             )
         }
-        AndroidDivider()
+        AndroidDivider(modifier = Modifier.padding(vertical = ThemeSpace.related))
         AndroidMenuItem(
             label = stringResource(R.string.clear_rating),
             selected = false,
