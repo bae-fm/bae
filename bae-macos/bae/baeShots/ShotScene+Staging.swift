@@ -56,9 +56,8 @@ enum OverWindow {
         trailing: CGFloat,
         over window: some View
     ) -> some View {
-        placed(
+        placedFromTop(
             content,
-            edge: .top,
             distance: top,
             trailing: trailing,
             over: window
@@ -66,61 +65,94 @@ enum OverWindow {
     }
 
     /// A popover that opens upward from a control at the window's bottom,
-    /// its bottom edge `bottom` points above the window's bottom and its
-    /// right edge `trailing` points in from the window's right, as the
-    /// boards place it.
+    /// drawn as the app draws one (`MacPopoverInPlace`): its body's bottom
+    /// edge `bottom` points above the window's bottom, its right edge
+    /// `trailing` points in from the window's right, and its arrow, which
+    /// points down at the control, `arrowFromTrailing` points in from the
+    /// body's right edge, as the boards place it.
     @MainActor
     static func popover(
         _ content: some View,
         bottom: CGFloat,
         trailing: CGFloat,
+        arrowFromTrailing: CGFloat,
         over window: some View
     ) -> some View {
-        placed(
-            content,
-            edge: .bottom,
-            distance: bottom,
-            trailing: trailing,
-            over: window
-        )
+        ZStack(alignment: .bottomTrailing) {
+            window
+            UpwardPopover(
+                content: content,
+                arrowFromTrailing: arrowFromTrailing
+            )
+            // The face holds its arrow under the body and a room for its
+            // shadow around it.
+            .padding(.bottom, bottom - popoverArrowLength - popoverShadowRoom)
+            .padding(.trailing, trailing - popoverShadowRoom)
+            // The app's popover is a window of its own, which the boards
+            // read where it sits, before the player bar under it.
+            .accessibilitySortPriority(0)
+        }
     }
 
     /// `content` drawn as a popover over `window`, `distance` points from
-    /// the window's `edge` and `trailing` points in from its right. One
-    /// hung from the top has the arrow on its top edge; the boards draw one
-    /// that opens upward with none.
+    /// the window's top and `trailing` points in from its right, with the
+    /// arrow on its top edge.
     @MainActor
-    private static func placed(
+    private static func placedFromTop(
         _ content: some View,
-        edge: VerticalEdge,
         distance: CGFloat,
         trailing: CGFloat,
         over window: some View
     ) -> some View {
-        ZStack(alignment: edge == .top ? .topTrailing : .bottomTrailing) {
+        ZStack(alignment: .topTrailing) {
             window
             content
                 .fixedSize(horizontal: false, vertical: true)
                 .background(Color(nsColor: .windowBackgroundColor))
                 .clipShape(RoundedRectangle(cornerRadius: 10))
                 .overlay(alignment: .topTrailing) {
-                    if edge == .top {
-                        Rectangle()
-                            .fill(Color(nsColor: .windowBackgroundColor))
-                            .frame(width: 14, height: 14)
-                            .rotationEffect(.degrees(45))
-                            .offset(x: -40, y: -7)
-                            .accessibilityHidden(true)
-                    }
+                    Rectangle()
+                        .fill(Color(nsColor: .windowBackgroundColor))
+                        .frame(width: 14, height: 14)
+                        .rotationEffect(.degrees(45))
+                        .offset(x: -40, y: -7)
+                        .accessibilityHidden(true)
                 }
                 .shadow(color: .black.opacity(0.3), radius: 15, y: 5)
-                .padding(edge == .top ? .top : .bottom, distance)
+                .padding(.top, distance)
                 .padding(.trailing, trailing)
                 // The app's popover is a window of its own. The boards read
                 // one hung from the top after the window it opens from, not
-                // among the rows it covers, and one opening upward where it
-                // sits, before the player bar under it.
-                .accessibilitySortPriority(edge == .top ? -1 : 0)
+                // among the rows it covers.
+                .accessibilitySortPriority(-1)
+        }
+    }
+}
+
+/// The length of a popover's arrow and the room around its face for the
+/// shadow, which BaeKit's `MacPopoverFace` draws.
+private let popoverArrowLength: CGFloat = 7
+private let popoverShadowRoom: CGFloat = 40
+
+/// `content` in the popover face the app draws, its arrow on the bottom edge
+/// `arrowFromTrailing` points in from the right edge.
+private struct UpwardPopover<Content: View>: View {
+    let content: Content
+    let arrowFromTrailing: CGFloat
+
+    @State
+    private var width: CGFloat = 0
+
+    var body: some View {
+        MacPopoverInPlace(
+            arrowSide: .bottom,
+            arrowOffset: width - arrowFromTrailing
+        ) {
+            content
+                .fixedSize(horizontal: false, vertical: true)
+                .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) {
+                    width = $0
+                }
         }
     }
 }

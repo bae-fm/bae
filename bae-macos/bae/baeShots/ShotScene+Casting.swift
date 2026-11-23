@@ -27,8 +27,9 @@ extension ShotScene {
                             onDisconnect: {}
                         )
                         .environment(start),
-                        bottom: 88,
-                        trailing: 112,
+                        bottom: 75,
+                        trailing: 95,
+                        arrowFromTrailing: 132,
                         over: window
                     )
                 )
