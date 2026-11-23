@@ -13,7 +13,7 @@ struct MacIconButton: View {
     enum Press {
         case action(role: ButtonRole?, () -> Void)
         /// Opens bae's menu of the entries under the button.
-        case menu(() -> [MacMenuEntry])
+        case menu(() -> [MacMenuEntry], isOpen: Binding<Bool>?)
     }
 
     let symbol: String
@@ -87,6 +87,7 @@ struct MacIconButton: View {
         label: LocalizedStringKey,
         help: LocalizedStringKey? = nil,
         iconSize: ThemeIcon = .large,
+        isOpen: Binding<Bool>? = nil,
         @MacMenuBuilder items: @escaping () -> [MacMenuEntry]
     ) -> Self {
         Self(
@@ -99,7 +100,7 @@ struct MacIconButton: View {
                 faint: false,
                 hitSize: ThemeSize.hitTarget
             ),
-            press: .menu(items)
+            press: .menu(items, isOpen: isOpen)
         )
     }
 
@@ -119,8 +120,8 @@ struct MacIconButton: View {
         switch press {
         case .action(let role, let action):
             actionButton(role: role, action: action)
-        case .menu(let items):
-            MacButton(kind: .plain, menu: items) {
+        case .menu(let items, let isOpen):
+            MacButton(kind: .plain, isOpen: isOpen, menu: items) {
                 glyph.foregroundStyle(Theme.macTextSecondary)
             }
             .help(help ?? label)

@@ -36,27 +36,29 @@ struct MacMoreMenu: View {
     }
 
     var body: some View {
-        MacButton(kind: .plain, isOpen: isOpen, menu: items) {
+        Group {
             switch look {
-            case .plain: dots
-            case .boxed: boxedDots
-            case .overlay: overlayDots
+            case .plain:
+                MacIconButton.menu(
+                    symbol: "ellipsis",
+                    label: "More",
+                    iconSize: .medium,
+                    isOpen: isOpen,
+                    items: items
+                )
+            case .boxed:
+                MacButton(kind: .plain, isOpen: isOpen, menu: items) {
+                    boxedDots
+                }
+            case .overlay:
+                MacButton(kind: .plain, isOpen: isOpen, menu: items) {
+                    overlayDots
+                }
             }
         }
         .fixedSize()
         .onHover { isHovered = $0 }
         .accessibilityLabel(label)
-    }
-
-    private var dots: some View {
-        Image(systemName: "ellipsis")
-            .themeIcon(.medium)
-            .foregroundStyle(Theme.macTextSecondary)
-            .frame(
-                width: ThemeSize.hitTarget,
-                height: ThemeSize.hitTarget
-            )
-            .contentShape(Rectangle())
     }
 
     /// The dots on the push button's boxed face, as the design draws a boxed
