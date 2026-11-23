@@ -1,11 +1,17 @@
 package fm.bae.app.shots
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import fm.bae.app.DisplayError
+import fm.bae.app.R
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.library.AlbumGridLayout
 import fm.bae.app.ui.library.AndroidAlbumGrid
 import fm.bae.app.ui.library.AndroidLibraryScreen
@@ -16,79 +22,92 @@ import uniffi.bae_bridge.BridgeAlbumAppearance
 /** The component shots of `AndroidLibraryScreen`, one for each row of its preview. */
 class AndroidLibraryScreenShots : BoardShot() {
     @Test
-    fun androidComponentLibraryScreenTop() = shot("android.component.library-screen.top") { ScreenScene { PlayingLibraryScreen() } }
+    fun androidComponentLibraryScreenTop() = component("android.component.library-screen.top") { LibraryScreenPreview() }
 
-    /** The grid scrolled past its first rows, which folds the header into its slim bar. */
+    /** The grid scrolled past its first row, which folds the header into its slim bar. */
     @Test
     fun androidComponentLibraryScreenScrolled() =
-        shot("android.component.library-screen.scrolled") {
-            ScreenScene {
-                val state = remember { LibraryBrowserState() }
-                LaunchedEffect(Unit) { state.gridState.scrollToItem(SCROLLED_TO) }
-                PlayingLibraryScreen(state = state, albums = manyAlbums)
-            }
+        component("android.component.library-screen.scrolled") {
+            val state = remember { LibraryBrowserState().apply { gridState.requestScrollToItem(1) } }
+            LibraryScreenPreview(state = state)
         }
 
     /** Search open with words typed: the search bar takes the header's place. */
     @Test
     fun androidComponentLibraryScreenSearching() =
-        shot("android.component.library-screen.searching") {
-            ScreenScene {
-                PlayingLibraryScreen(
-                    state =
-                        remember {
-                            LibraryBrowserState().apply {
-                                searchOpen = true
-                                searchQuery = "harbor"
-                            }
-                        },
-                )
-            }
+        component("android.component.library-screen.searching") {
+            val state =
+                remember {
+                    LibraryBrowserState().apply {
+                        searchOpen = true
+                        searchQuery = "harbor"
+                    }
+                }
+            LibraryScreenPreview(state = state)
         }
 
     /** Nothing has played on this phone, so the screen has no now playing bar. */
     @Test
     fun androidComponentLibraryScreenNothingPlayed() =
-        shot("android.component.library-screen.nothing-played") { ScreenScene { PlayingLibraryScreen(nowPlayingBar = {}) } }
+        component("android.component.library-screen.nothing-played") { LibraryScreenPreview(nowPlayingBar = {}) }
 
     @Test
     fun androidComponentLibraryScreenBarError() =
-        shot("android.component.library-screen.bar-error") {
-            ScreenScene {
-                PlayingLibraryScreen(
-                    nowPlayingBar = { Bar(playing, failure = DisplayError("Could not read what is playing.")) },
-                )
-            }
+        component("android.component.library-screen.bar-error") {
+            LibraryScreenPreview(nowPlayingBar = { Bar(playing, failure = DisplayError("Could not read what is playing.")) })
         }
 
     @Test
     fun androidComponentLibraryScreenSyncMoving() =
-        shot("android.component.library-screen.sync-moving") {
-            ScreenScene { PlayingLibraryScreen(syncActivity = { ActivityButton(PreviewData.syncActivity(needsAttention = false)) }) }
+        component("android.component.library-screen.sync-moving") {
+            LibraryScreenPreview(syncActivity = { ActivityButton(PreviewData.syncActivity(needsAttention = false)) })
         }
 
     @Test
     fun androidComponentLibraryScreenSyncAttention() =
-        shot("android.component.library-screen.sync-attention") {
-            ScreenScene {
-                PlayingLibraryScreen(syncActivity = {
-                    ActivityButton(idleActivity.copy(failure = PreviewData.syncActivity(needsAttention = true).failure))
-                })
-            }
+        component("android.component.library-screen.sync-attention") {
+            LibraryScreenPreview(syncActivity = {
+                ActivityButton(idleActivity.copy(failure = PreviewData.syncActivity(needsAttention = true).failure))
+            })
         }
 
     @Test
     fun androidComponentLibraryScreenSyncPaused() =
-        shot("android.component.library-screen.sync-paused") {
-            ScreenScene { PlayingLibraryScreen(syncActivity = { ActivityButton(idleActivity.copy(held = true)) }) }
+        component("android.component.library-screen.sync-paused") {
+            LibraryScreenPreview(syncActivity = { ActivityButton(idleActivity.copy(held = true)) })
         }
 
     @Test
     fun androidComponentLibraryScreenTrackNoCover() =
-        shot("android.component.library-screen.track-no-cover") { ScreenScene { PlayingLibraryScreen() } }
+        component("android.component.library-screen.track-no-cover") { LibraryScreenPreview(nowPlayingBar = { Bar(withoutCover) }) }
 
     @Test
-    fun androidComponentLibraryScreenWaiting() = shot("android.component.library-screen.waiting") { ScreenScene { PlayingLibraryScreen() } }
+    fun androidComponentLibraryScreenWaiting() =
+        component("android.component.library-screen.waiting") { LibraryScreenPreview(nowPlayingBar = { Bar(playingWaitingOnStorage) }) }
+}
+
+/** The library shell with the preview's label in its content slot. */
+@Composable
+private fun LibraryScreenPreview(
+    state: LibraryBrowserState = remember { LibraryBrowserState() },
+    nowPlayingBar: @Composable () -> Unit = { Bar(playing) },
+    syncActivity: @Composable () -> Unit = {},
+) {
+    AndroidLibraryScreen(
+        state = state,
+        onShuffleLibrary = {},
+        person = { BoardLibraryPerson(state) },
+        syncActivity = syncActivity,
+        nowPlayingBar = nowPlayingBar,
+    ) { modifier ->
+        Box(modifier) {
+            Text(
+                text = if (state.searchOpen) "Results" else stringResource(R.string.library_mode_albums),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(ThemeSpace.group),
+            )
+        }
+    }
 }
 
 /**
@@ -100,14 +119,13 @@ internal fun PlayingLibraryScreen(
     state: LibraryBrowserState = remember { LibraryBrowserState() },
     albums: List<BridgeAlbumAppearance> = boardAlbums,
     nowPlayingBar: @Composable () -> Unit = { Bar(playing) },
-    syncActivity: @Composable () -> Unit = {},
 ) {
     Covers {
         AndroidLibraryScreen(
             state = state,
             onShuffleLibrary = {},
             person = { BoardLibraryPerson(state) },
-            syncActivity = syncActivity,
+            syncActivity = {},
             nowPlayingBar = nowPlayingBar,
         ) { modifier ->
             Box(modifier) {
@@ -123,11 +141,3 @@ internal fun PlayingLibraryScreen(
         }
     }
 }
-
-/** Enough albums to fill the grid past one screen, so it can scroll. */
-private val manyAlbums = List(MANY_ALBUMS) { index -> previewAlbums[index % previewAlbums.size] }
-
-private const val MANY_ALBUMS = 24
-
-/** The item the scrolled shot puts at the top: past the first rows, so the header has folded. */
-private const val SCROLLED_TO = 6
