@@ -69,7 +69,9 @@ struct MacTrackRow: View {
             VStack(alignment: .leading, spacing: ThemeSpace.line) {
                 Text(track.title)
                     .themeText(.rowTitle)
-                    .foregroundStyle(isCurrent ? Theme.accent : .primary)
+                    .foregroundStyle(
+                        isCurrent ? Theme.accent : Theme.textPrimary
+                    )
                     .lineLimit(1)
                 if let artist {
                     Text(artist)
