@@ -123,10 +123,10 @@ extension ShotScene {
         },
         ShotScene(
             id: "mac.welcome.opening.finding-libraries",
-            size: WelcomeWindow.size
+            size: loadingSize
         ) {
             ShotStage(
-                MacWelcomeWindow {
+                MacWelcomeWindow(size: loadingSize) {
                     MacWelcomeOpening<BridgeOpenProgress>(
                         title: AppScreen.LoadingWork.findingLibraries.title,
                         leading: nil,
@@ -136,9 +136,9 @@ extension ShotScene {
                 }
             )
         },
-        ShotScene(id: "mac.welcome.opening.steps", size: WelcomeWindow.size) {
+        ShotScene(id: "mac.welcome.opening.steps", size: loadingSize) {
             ShotStage(
-                MacWelcomeWindow {
+                MacWelcomeWindow(size: loadingSize) {
                     MacWelcomeOpening<BridgeOpenProgress>(
                         title: AppScreen.LoadingWork.opening.title,
                         leading: nil,
@@ -169,8 +169,7 @@ extension ShotScene {
             // from opening the library, as when Settings offers it.
             ShotStage(ShotScenes.deviceReset(error: nil))
         },
-        ShotScene(id: "mac.welcome.opening.resetting", size: WelcomeWindow.size)
-        {
+        ShotScene(id: "mac.welcome.opening.resetting", size: loadingSize) {
             let progress = BridgeLoadProgress(
                 step: .streamingLibrary,
                 key: "core.library.load_step.streaming_library",
@@ -179,7 +178,7 @@ extension ShotScene {
                 fraction: 0.5
             )
             return ShotStage(
-                MacWelcomeWindow {
+                MacWelcomeWindow(size: loadingSize) {
                     MacWelcomeOpening<BridgeOpenProgress>(
                         title: AppScreen.LoadingWork.resetting.title,
                         leading: nil,
