@@ -137,7 +137,7 @@ class UiStore: @unchecked Sendable {
     /// The open modals, the first presented at the bottom. The window draws
     /// each modal over the one before it, which stays open beneath: the
     /// release editor's Change cover opens over the editor.
-    private(set) var modalStack: [() -> AnyView] = []
+    private(set) var modalStack: [(CGSize) -> AnyView] = []
     /// The document open in the viewer. It has a layer of its own, over the
     /// modal: a document opened from the release editor's modal leaves the
     /// editor open beneath it.
@@ -335,7 +335,15 @@ class UiStore: @unchecked Sendable {
 
     /// Open a modal over the ones already open.
     func presentModal(@ViewBuilder content: @escaping () -> some View) {
-        modalStack.append { AnyView(content()) }
+        modalStack.append { _ in AnyView(content()) }
+    }
+
+    /// Open a modal over the ones already open, for a sheet that sizes itself
+    /// to the window: `content` gets the window's size.
+    func presentSizedModal(
+        @ViewBuilder content: @escaping (CGSize) -> some View
+    ) {
+        modalStack.append { AnyView(content($0)) }
     }
 
     func presentDocument(name: String, text: String) {

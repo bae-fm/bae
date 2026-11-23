@@ -294,8 +294,8 @@ extension AlbumDetailView {
         // One for as long as the sheet is up: the modal's view is built
         // again with each update of the window.
         let lightboxLoad = LightboxImageLoad()
-        uiStore.presentModal {
-            CoverGalleryFrame {
+        uiStore.presentSizedModal { host in
+            CoverGalleryFrame(host: host) {
                 CoverSheetView(
                     owner: .release(releaseId: selectedReleaseId),
                     lightboxLoad: lightboxLoad,
@@ -330,10 +330,11 @@ extension AlbumDetailView {
         Task {
             do {
                 let opened = try await releaseEditor.openReleaseEdit(releaseId)
-                uiStore.presentModal {
+                uiStore.presentSizedModal { host in
                     ReleaseEditorSheet(
                         releaseId: releaseId,
                         displayName: displayName,
+                        host: host,
                         opened: opened,
                         commands: releaseEditor.editCommands(
                             searchAlbums: importer.searchAlbums

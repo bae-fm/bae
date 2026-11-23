@@ -127,9 +127,10 @@ struct MacMainWindowContainer: View {
             ForEach(Array(uiStore.modalStack.enumerated()), id: \.offset) {
                 _,
                 builder in
-                MacModal(onDismiss: { uiStore.dismissModal() }) {
-                    builder()
-                }
+                MacModal(
+                    onDismiss: { uiStore.dismissModal() },
+                    sizedContent: builder
+                )
             }
 
             // Document viewer, over the modal it may have been opened from

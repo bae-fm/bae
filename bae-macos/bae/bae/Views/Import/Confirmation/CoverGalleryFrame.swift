@@ -6,14 +6,10 @@ struct CoverGalleryFrame<Content: View>: View {
     /// The space left around the browser, both sides together.
     private let margins = 2 * ThemeSpace.section
 
-    @Environment(\.modalHost)
-    private var modalHost: CGSize?
+    /// The size of the window the modal opens over.
+    let host: CGSize
     @ViewBuilder
     let content: () -> Content
-
-    private var host: CGSize {
-        modalHostSize(modalHost, for: "CoverGalleryFrame")
-    }
 
     var body: some View {
         content()

@@ -228,8 +228,8 @@ extension MacImportWindow {
         // because SwiftUI builds the modal's view again each time the window
         // updates.
         let lightboxLoad = LightboxImageLoad()
-        uiStore.presentModal {
-            CoverGalleryFrame {
+        uiStore.presentSizedModal { host in
+            CoverGalleryFrame(host: host) {
                 CoverSheetView(
                     owner: .candidate(candidateKey: key),
                     selectedCover: candidate.cover?.selection,

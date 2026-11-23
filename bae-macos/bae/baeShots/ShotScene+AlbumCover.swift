@@ -30,8 +30,8 @@ extension ShotScene {
                 : boardCoverGallery(remotes: [], linked: false)
             let images = coverGalleryImages(of: "Low Tide Hours")
             let lightboxLoad = LightboxImageLoad()
-            uiStore.presentModal {
-                CoverGalleryFrame {
+            uiStore.presentSizedModal { host in
+                CoverGalleryFrame(host: host) {
                     CoverSheetView(
                         owner: .release(releaseId: "rel-board-0"),
                         lightboxLoad: lightboxLoad,

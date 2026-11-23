@@ -238,10 +238,11 @@ extension ShotScene {
         images: ImageStore,
         session: ReleaseMetadataEditSession
     ) {
-        uiStore.presentModal {
+        uiStore.presentSizedModal { host in
             ReleaseEditorSheet(
                 session: session,
                 displayName: "Northbound · CD · Harbor Records HR-0412 · 1974",
+                host: host,
                 onSaved: { _ in },
                 onClose: {}
             )
@@ -263,8 +264,8 @@ extension ShotScene {
                 releaseId: editedReleaseId
             )
         )
-        uiStore.presentModal {
-            CoverGalleryFrame {
+        uiStore.presentSizedModal { host in
+            CoverGalleryFrame(host: host) {
                 MacCoverGallery(
                     content: content,
                     remoteItems: .linked(content.remote?.items ?? []),

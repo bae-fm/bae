@@ -205,8 +205,8 @@ struct ReleaseEditorView: View {
         let uiStore = uiStore
         let session = session
         let lightboxLoad = coverLightboxLoad
-        uiStore.presentModal {
-            CoverGalleryFrame {
+        uiStore.presentSizedModal { host in
+            CoverGalleryFrame(host: host) {
                 CoverSheetView(
                     owner: .release(releaseId: session.releaseId),
                     lightboxLoad: lightboxLoad,

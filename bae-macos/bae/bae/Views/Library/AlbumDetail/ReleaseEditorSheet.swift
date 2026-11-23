@@ -5,6 +5,8 @@ import SwiftUI
 /// detail's Edit… item.
 struct ReleaseEditorSheet: View {
     let displayName: String
+    /// The size of the window the modal opens over.
+    let host: CGSize
     let onClose: @MainActor @Sendable () -> Void
     /// The save landed; receives the album the release is on after it.
     let onSaved: @MainActor @Sendable (String) -> Void
@@ -13,12 +15,11 @@ struct ReleaseEditorSheet: View {
     private var session: ReleaseMetadataEditSession
     @Environment(Playback.self)
     private var playback
-    @Environment(\.modalHost)
-    private var modalHost: CGSize?
 
     init(
         releaseId: String,
         displayName: String,
+        host: CGSize,
         opened: OpenedReleaseEdit,
         commands: ReleaseEditCommands,
         onSaved: @escaping @MainActor @Sendable (String) -> Void,
@@ -31,6 +32,7 @@ struct ReleaseEditorSheet: View {
                 commands: commands
             ),
             displayName: displayName,
+            host: host,
             onSaved: onSaved,
             onClose: onClose
         )
@@ -41,17 +43,15 @@ struct ReleaseEditorSheet: View {
     init(
         session: ReleaseMetadataEditSession,
         displayName: String,
+        host: CGSize,
         onSaved: @escaping @MainActor @Sendable (String) -> Void,
         onClose: @escaping @MainActor @Sendable () -> Void
     ) {
         self.displayName = displayName
+        self.host = host
         self.onClose = onClose
         self.onSaved = onSaved
         _session = State(initialValue: session)
-    }
-
-    private var host: CGSize {
-        modalHostSize(modalHost, for: "ReleaseEditorSheet")
     }
 
     var body: some View {
