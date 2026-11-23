@@ -2538,8 +2538,8 @@ sheet is titled *Not on this device* and says that line. On Android the page
 shows no Play, Shuffle, Play next or Add to queue for such a release, and no
 pin control; its upload line, when this device uploads some of its files, stays.
 The library dims an album's cover and words when this device cannot play its
-primary release. The tile still opens the album's page. On Android, TalkBack
-also says *Not on this device* for a dimmed tile. bae names the device
+primary release. The tile still opens the album's page. VoiceOver on a Mac
+and TalkBack on Android say *Not on this device* for a dimmed tile. bae names the device
 that alone holds the audio file with the lowest file id among the release's
 audio files that another device alone holds. The views show *Play*
 again once coven records the file in storage, and name the device's new state
