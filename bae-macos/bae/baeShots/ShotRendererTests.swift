@@ -72,8 +72,7 @@ struct ShotRendererTests {
     {
         let otherID: CGDirectDisplayID
         do {
-            let serial = UInt32(ProcessInfo.processInfo.processIdentifier)
-            let other = try await ShotDisplay.add(serial: serial | (1 << 31))
+            let other = try await ShotDisplay.add()
             otherID = other.id
             let scene = ShotScene(
                 id: "a scene on the display that closes",

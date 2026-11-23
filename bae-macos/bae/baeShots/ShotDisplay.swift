@@ -58,21 +58,19 @@ final class ShotDisplay {
         if let added {
             return try await added.value
         }
-        let serial = UInt32(ProcessInfo.processInfo.processIdentifier)
-        let task = Task { try await add(serial: serial) }
+        let task = Task { try await add() }
         added = task
         return try await task.value
     }
 
     /// Add the display, once AppKit lists it at its size and scale.
-    static func add(serial: UInt32) async throws -> ShotDisplay {
+    static func add() async throws -> ShotDisplay {
         let width = Int(size.width)
         let height = Int(size.height)
         let display = try virtualDisplay(
             pixelsWide: width * scale,
             pixelsHigh: height * scale,
-            mode: (width, height),
-            serial: serial
+            mode: (width, height)
         )
         guard
             let id = display.value(forKey: "displayID") as? CGDirectDisplayID,
@@ -145,34 +143,35 @@ final class ShotDisplay {
     private static func virtualDisplay(
         pixelsWide: Int,
         pixelsHigh: Int,
-        mode: (width: Int, height: Int),
-        serial: UInt32
+        mode: (width: Int, height: Int)
     ) throws -> NSObject {
         let displayClass = try privateClass("CGVirtualDisplay")
         typealias InitWithDescriptor =
             @convention(c) (AnyObject, Selector, AnyObject) -> Unmanaged<
                 NSObject
             >?
-        guard
-            let display = try call(
-                "initWithDescriptor:",
-                of: displayClass,
-                as: InitWithDescriptor.self
-            )(
-                try allocate(displayClass),
-                NSSelectorFromString("initWithDescriptor:"),
-                try descriptor(
-                    pixelsWide: pixelsWide,
-                    pixelsHigh: pixelsHigh,
-                    serial: serial
-                )
-            )?
-            .takeRetainedValue()
-        else {
-            throw ShotError.noShotDisplay(
-                "CoreGraphics made no display from its descriptor"
-            )
-        }
+        let initialize = try call(
+            "initWithDescriptor:",
+            of: displayClass,
+            as: InitWithDescriptor.self
+        )
+        // CoreGraphics makes no display from a descriptor whose identity a
+        // display it holds has.
+        let display = try ShotDisplaySerial.claim(
+            { serial in
+                initialize(
+                    try allocate(displayClass),
+                    NSSelectorFromString("initWithDescriptor:"),
+                    try descriptor(
+                        pixelsWide: pixelsWide,
+                        pixelsHigh: pixelsHigh,
+                        serial: serial
+                    )
+                )?
+                .takeRetainedValue()
+            },
+            heldDisplays: ShotDisplaySerial.describeHeldDisplays
+        )
         typealias ApplySettings =
             @convention(c) (AnyObject, Selector, AnyObject) -> Bool
         let applied = try call(
@@ -209,9 +208,8 @@ final class ShotDisplay {
         )
         descriptor.setValue(0xBAE, forKey: "vendorID")
         descriptor.setValue(0xBAE, forKey: "productID")
-        // CoreGraphics refuses a display whose vendor, product and serial
-        // match a display WindowServer still holds, such as one a crashed
-        // test process left behind. Use a distinct serial for each display.
+        // The serial is one of `ShotDisplaySerial.serials`, so macOS keeps at
+        // most that many display profiles for the shot display.
         descriptor.setValue(serial, forKey: "serialNum")
         return descriptor
     }
