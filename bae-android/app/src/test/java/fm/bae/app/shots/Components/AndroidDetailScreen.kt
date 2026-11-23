@@ -64,7 +64,6 @@ private fun Detail(actions: @Composable RowScope.() -> Unit) =
                     galleryItemCount = 0u,
                     onShowGallery = {},
                     onShowWhere = {},
-                    hearted = false,
                 )
             }
         }
