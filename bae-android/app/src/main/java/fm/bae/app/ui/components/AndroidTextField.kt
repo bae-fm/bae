@@ -57,10 +57,9 @@ internal fun AndroidTextField(
     keyboardActions: KeyboardActions = KeyboardActions.Default,
 ) {
     val code = kind == TextFieldKind.CODE
-    // Material's field is as tall as its outline plus the 8 dp its label rises above it, and it merges its supporting
-    // text into its own element. The board's field is the outline, with the helper a text of its own under it, so the
-    // field reports that box, draws the label's overhang in the 8 dp above it, and the helper sits under it.
-    Column(modifier = Modifier.padding(top = LABEL_OVERHANG)) {
+    // Material's field is as tall as its outline plus the 8 dp its label rises above it, and the board's field box is
+    // those same two together. The helper is a text of its own under it, so TalkBack gets it through the field.
+    Column {
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
@@ -71,7 +70,6 @@ internal fun AndroidTextField(
             enabled = enabled,
             modifier =
                 (if (code) modifier.fillMaxWidth().heightIn(min = CODE_FIELD_MIN_HEIGHT) else modifier.fillMaxWidth())
-                    .closerToAbove(LABEL_OVERHANG)
                     .semantics { helperSemantics(helper, error) },
             textStyle = if (code) ThemeText.mono.style else LocalTextStyle.current,
             visualTransformation =
@@ -121,9 +119,9 @@ private fun SemanticsPropertyReceiver.helperSemantics(
     if (error) error(helper) else stateDescription = helper
 }
 
-/** How far Material's floating label rises above the field's outline. */
-private val LABEL_OVERHANG = 8.dp
-
-/** A code field is tall at least as three 24dp lines and the design's 28dp of padding, and grows to six lines. */
-private val CODE_FIELD_MIN_HEIGHT = 98.dp
+/**
+ * A code field is tall at least as three 24dp lines, the design's 28dp of padding and the 8dp its label rises above
+ * the outline, and grows to six lines.
+ */
+private val CODE_FIELD_MIN_HEIGHT = 108.dp
 private const val CODE_FIELD_MAX_LINES = 6
