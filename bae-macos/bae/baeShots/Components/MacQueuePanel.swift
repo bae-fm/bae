@@ -7,7 +7,8 @@ extension ShotScene {
     /// `MacQueuePanel`, one shot for each row of its preview.
     static let macQueuePanelScenes: [ShotScene] = [
         // `MacQueuePanel`, docked at the window's right: with a track playing,
-        // paused, with a track that has no cover, and with an empty queue.
+        // paused, with a track that has no cover or no album, and with an
+        // empty queue.
         queuePanel(
             "mac.component.queue-panel.playing",
             QueuePlaying(isPlaying: true, covered: true)
@@ -19,6 +20,12 @@ extension ShotScene {
         queuePanel(
             "mac.component.queue-panel.no-cover",
             QueuePlaying(isPlaying: true, covered: false)
+        ),
+        // A track the library no longer holds: no cover, and no album for
+        // Go to now playing to open.
+        queuePanel(
+            "mac.component.queue-panel.no-album",
+            QueuePlaying(isPlaying: true, covered: false, goes: false)
         ),
         queuePanel("mac.component.queue-panel.empty", nil),
         sidePanel(
@@ -96,8 +103,10 @@ extension ShotScene {
         let manual: [BridgeQueueEntry]
         let isPlaying: Bool
         let covered: Bool
+        /// Whether Go to now playing has an album to open.
+        let goes: Bool
 
-        init(isPlaying: Bool, covered: Bool) {
+        init(isPlaying: Bool, covered: Bool, goes: Bool = true) {
             upcoming = [
                 ShotScene.queueEntry(
                     "Tin Roof",
@@ -114,6 +123,7 @@ extension ShotScene {
             ]
             self.isPlaying = isPlaying
             self.covered = covered
+            self.goes = goes
         }
     }
 
@@ -159,7 +169,7 @@ extension ShotScene {
                     nowPlaying: queue.map(queueNowPlaying),
                     onShowUpcoming: {},
                     isPlaying: isPlaying,
-                    onGoToNowPlaying: {},
+                    onGoToNowPlaying: queue?.goes == false ? nil : {},
                     onPlayPause: {},
                     onClearUpNext: {},
                     onClearPlayingFrom: {},

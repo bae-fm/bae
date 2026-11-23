@@ -47,15 +47,15 @@
       head,
       props.title ? h('div', { className: 'bae-m-queue-np' },
         // The playing track, the queue's own: its cover lined up with the text's top, Now playing over the title and artist, then the position strip.
-        h('div', { className: 'bae-m-nptrack bae-m-nptrack-top' },
-          h(Artwork, { title: props.album || props.title, size: 'size-bar-artwork', radius: 'radius-artwork', shadow: 'bar', missing: props.noCover }),
-          h('div', { className: 'bae-m-np-text' },
-            h('div', { className: 'bae-m-nptrack-eyebrow' }, 'Now playing'),
-            h('div', { className: 'bae-m-np-title' }, props.title), h('div', { className: 'bae-m-np-sub' }, props.artist),
-            h('div', { className: 'bae-m-queue-strip' }, h('div', { className: 'bae-m-queue-strip-bar', role: 'progressbar', 'aria-label': 'Playback position', 'aria-valuenow': Math.round(Number(props.position || 0) * 100) }, h('div', { style: { width: (Number(props.position || 0) * 100) + '%' } })), h('span', null, props.elapsed || '')))),
+        // VoiceOver reads the card as the app lays it out: the words, then Play or Pause at the top right, then the position strip under the words.
+        h(Artwork, { title: props.album || props.title, size: 'size-bar-artwork', radius: 'radius-artwork', shadow: 'bar', missing: props.noCover }),
+        h('div', { className: 'bae-m-np-text' },
+          h('div', { className: 'bae-m-nptrack-eyebrow' }, 'Now playing'),
+          h('div', { className: 'bae-m-np-title' }, props.title), h('div', { className: 'bae-m-np-sub' }, props.artist)),
         h('button', { type: 'button', className: 'bae-plainbtn bae-m-queue-np-play', 'aria-label': props.playing ? 'Pause' : 'Play' }, h(Glyph, { set: 'mac', name: props.playing ? 'pause' : 'play', size: 'medium' })),
-        // A click anywhere else on the card goes to what is playing: a button under the card's content, as wide and tall as the card.
-        h('button', { type: 'button', className: 'bae-plainbtn bae-m-queue-np-go', 'aria-label': 'Go to now playing' })) : null,
+        h('div', { className: 'bae-m-queue-strip' }, h('div', { className: 'bae-m-queue-strip-bar', role: 'progressbar', 'aria-label': 'Playback position', 'aria-valuenow': Math.round(Number(props.position || 0) * 100) }, h('div', { style: { width: (Number(props.position || 0) * 100) + '%' } })), h('span', null, props.elapsed || '')),
+        // A click anywhere else on the card goes to what is playing: a button under the card's content, as wide and tall as the card. `goOff` turns it off while the track has no album to go to, as when the library no longer holds it.
+        h('button', { type: 'button', className: 'bae-plainbtn bae-m-queue-np-go', 'aria-label': 'Go to now playing', disabled: !!props.goOff })) : null,
       props.empty ? h(MacContentUnavailable, { title: 'Queue is empty', description: 'Drag tracks here or play an album' })
         : h('div', { className: 'bae-m-queue-body' }, props.children));
   }

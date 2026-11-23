@@ -309,7 +309,7 @@ export declare function AndroidSearchSection(props: { title: string }): React.Re
 /** One row of a library list: Search's results, the artist and composer lists, the composer and work pages' rows. */
 export interface AndroidLibraryRowProps { title: string; subtitle?: string; trailing?: string; art?: string; noArt?: boolean; missing?: boolean; part?: boolean; inset?: boolean }
 export declare function AndroidLibraryRow(props: AndroidLibraryRowProps): React.ReactElement;
-export interface MacQueuePanelProps { tab?: 'Queue' | 'Playlists' | 'History'; back?: string; hang?: number; title?: string; artist?: string; album?: string; playing?: boolean; position?: number; elapsed?: string; empty?: boolean; whose?: string; children?: React.ReactNode }
+export interface MacQueuePanelProps { tab?: 'Queue' | 'Playlists' | 'History'; back?: string; hang?: number; title?: string; artist?: string; album?: string; playing?: boolean; position?: number; elapsed?: string; /** Turns Go to now playing off while the track has no album to go to. */ goOff?: boolean; empty?: boolean; whose?: string; children?: React.ReactNode }
 export declare function MacQueuePanel(props: MacQueuePanelProps): React.ReactElement;
 export interface MacQueueSectionProps { title: string; clear?: string; shuffle?: boolean; menu?: string; day?: boolean }
 export declare function MacQueueSection(props: MacQueueSectionProps): React.ReactElement;
