@@ -19,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -111,9 +112,7 @@ fun AlbumDetailScreen(
     val heart = rememberAlbumHeart(session, albumId)
     // The album query is one shared slot that still holds the previous album
     // right after navigation, so ignore any value for another album.
-    val detail = query.answer?.takeIf { it.album.id == albumId }?.let(heart::shownDetail)
-    val nowPlaying by session.playback.nowPlaying.collectAsState()
-    val isPlaying by session.playback.isPlaying.collectAsState()
+    val detail = query.answer?.takeIf { it.album.id == albumId }
     var selectedReleaseId by remember(albumId, initialReleaseId) { mutableStateOf(initialReleaseId) }
     val deletion =
         rememberPageDeletion<BridgeAlbum>(session, "delete album $albumId", rememberScreenScope(), onBack) {
@@ -123,26 +122,30 @@ fun AlbumDetailScreen(
     val unpin = rememberReleaseUnpin(session)
     val stars = detail?.rating as? BridgeAlbumRating.Stars
     var rating by remember(albumId, stars != null) { mutableStateOf(false) }
-    val request = BridgeAlbumDetailRequest(albumId = albumId, chosenReleaseId = selectedReleaseId)
-    ActivateAlbumQuery(session, albumId, request)
+    ActivateAlbumQuery(session, albumId, selectedReleaseId)
 
     val loadError = (query as? LiveQueryState.Failed)?.error?.let(LocalContext.current::displayError)
-    val callbacks =
+    val loaded =
         detail?.let {
-            buildAlbumDetailCallbacks(session, it.shownRelease, adding, onOpenWork) { selectedReleaseId = it }
+            LoadedAlbum(
+                it,
+                buildAlbumDetailCallbacks(session, it.shownRelease, adding, onOpenWork) { selectedReleaseId = it },
+                heart.rememberShownRating(it.rating),
+            )
         }
     AndroidDetailScreen(
         onBack = onBack,
         backLabel = backLabel,
         nowPlayingBar = { AndroidNowPlayingBarContainer(session = session) },
         actions = {
-            if (detail != null && callbacks != null) {
+            if (loaded != null) {
                 AlbumBarActions(
                     session = session,
-                    detail = detail,
-                    callbacks = callbacks,
+                    detail = loaded.detail,
+                    callbacks = loaded.callbacks,
                     deletion = deletion,
                     unpin = unpin,
+                    shownRating = { loaded.shownRating.value },
                     onSetHearted = heart::choose,
                     onRate = { rating = true },
                 )
@@ -150,37 +153,43 @@ fun AlbumDetailScreen(
         },
     ) {
         AlbumPageOverlays(session, deletion, unpin, adding)
-        if (rating && stars != null && callbacks != null) {
-            AlbumRatingSheet(rating = stars, onRate = callbacks.onRateAlbum, onDismiss = { rating = false })
+        if (rating && stars != null && loaded != null) {
+            AlbumRatingSheet(rating = stars, onRate = loaded.callbacks.onRateAlbum, onDismiss = { rating = false })
         }
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-            val loaded = detail
-            if (loaded == null || callbacks == null) {
+            if (loaded == null) {
                 AlbumDetailPlaceholderBox(
                     placeholder = albumDetailPlaceholder(query, loadError),
                     onRetry = session.libraryQueries.album::retry,
                 )
             } else {
-                AlbumLoaded(session, loaded, callbacks, AlbumPlaybackState(nowPlaying?.trackId, isPlaying))
+                AlbumLoaded(session, loaded)
             }
         }
     }
 }
 
-/** The album page's content for the loaded [detail]. */
+private class LoadedAlbum(
+    val detail: BridgeAlbumDetail,
+    val callbacks: AlbumDetailCallbacks,
+    val shownRating: State<BridgeAlbumRating>,
+)
+
+/** The album page's content for the [loaded] album. */
 @Composable
 private fun AlbumLoaded(
     session: OpenLibrary,
-    detail: BridgeAlbumDetail,
-    callbacks: AlbumDetailCallbacks,
-    playback: AlbumPlaybackState,
+    loaded: LoadedAlbum,
 ) {
+    val nowPlaying by session.playback.nowPlaying.collectAsState()
+    val isPlaying by session.playback.isPlaying.collectAsState()
     AlbumDetailContent(
-        detail = detail,
-        cover = detail.shownRelease.cover,
-        playback = playback,
-        callbacks = callbacks,
+        detail = loaded.detail,
+        cover = loaded.detail.shownRelease.cover,
+        playback = AlbumPlaybackState(nowPlaying?.trackId, isPlaying),
+        callbacks = loaded.callbacks,
         releaseDownloadControl = { rel -> ReleaseTransferLines(session = session, release = rel) },
+        shownRating = { loaded.shownRating.value },
     )
 }
 
@@ -192,8 +201,9 @@ private fun AlbumLoaded(
 private fun ActivateAlbumQuery(
     session: OpenLibrary,
     albumId: String,
-    request: BridgeAlbumDetailRequest,
+    selectedReleaseId: String?,
 ) {
+    val request = BridgeAlbumDetailRequest(albumId = albumId, chosenReleaseId = selectedReleaseId)
     LaunchedEffect(request, session) { session.libraryQueries.album.activate(request) }
     DisposableEffect(albumId, session) {
         onDispose { session.libraryQueries.album.deactivate(request) }
@@ -347,6 +357,7 @@ internal fun AlbumDetailContent(
     releaseDownloadControl: @Composable (BridgeRelease) -> Unit,
     catalogName: (BridgeCatalog) -> String = ::bridgeCatalogName,
     audioChannelsKey: (Long) -> String? = ::bridgeAudioChannelsKey,
+    shownRating: () -> BridgeAlbumRating = { detail.rating },
 ) {
     val context = LocalContext.current
     val shown = detail.shownRelease
@@ -382,6 +393,7 @@ internal fun AlbumDetailContent(
                 galleryItemCount = shown.galleryItemCount,
                 onShowGallery = { showGallery = true },
                 onShowWhere = { showWhere = true },
+                shownRating = shownRating,
                 actions = {
                     AndroidButton(onClick = callbacks.onPlayRelease) { Text(stringResource(R.string.play)) }
                 },

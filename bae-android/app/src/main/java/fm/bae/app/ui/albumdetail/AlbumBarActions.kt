@@ -1,7 +1,9 @@
 package fm.bae.app.ui.albumdetail
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -31,15 +33,15 @@ internal class AlbumHeartChoice(
 ) {
     private var pending by mutableStateOf<Boolean?>(null)
 
-    fun shownDetail(detail: BridgeAlbumDetail): BridgeAlbumDetail {
-        val choice = pending
-        val rating = detail.rating
-        return if (choice != null && rating is BridgeAlbumRating.Heart) {
-            detail.copy(rating = rating.copy(hearted = choice))
-        } else {
-            detail
+    /** The rating line and the menu observe the same displayed rating. */
+    @Composable
+    fun rememberShownRating(saved: BridgeAlbumRating): State<BridgeAlbumRating> =
+        remember(this, saved) {
+            derivedStateOf {
+                val choice = pending
+                if (choice != null && saved is BridgeAlbumRating.Heart) saved.copy(hearted = choice) else saved
+            }
         }
-    }
 
     fun choose(hearted: Boolean) {
         if (pending != null) return
@@ -73,6 +75,7 @@ internal fun AlbumBarActions(
     callbacks: AlbumDetailCallbacks,
     deletion: PageDeletion<BridgeAlbum>,
     unpin: ReleaseUnpin,
+    shownRating: () -> BridgeAlbumRating,
     onSetHearted: (Boolean) -> Unit,
     onRate: () -> Unit,
 ) {
@@ -123,7 +126,7 @@ internal fun AlbumBarActions(
                 } else {
                     null
                 },
-            rating = RatingAction(detail.rating, onSetHearted, onRate),
+            rating = { RatingAction(shownRating(), onSetHearted, onRate) },
             pin = pin,
             onSetPrimaryRelease = setPrimary,
             onDelete = { deletion.ask(detail.album) },

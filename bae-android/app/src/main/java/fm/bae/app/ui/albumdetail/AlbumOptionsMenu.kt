@@ -51,7 +51,7 @@ internal sealed interface AlbumRatingAction {
  */
 internal class AlbumMenuActions(
     val play: PlayMenuActions?,
-    val rating: AlbumRatingAction?,
+    val rating: @Composable () -> AlbumRatingAction?,
     val pin: PinMenuItem?,
     val onSetPrimaryRelease: (() -> Unit)?,
     val onDelete: () -> Unit,
@@ -84,9 +84,10 @@ internal fun AlbumMenuItems(
         AndroidMenuAction(stringResource(R.string.play_next), close, play.onPlayNext)
         AndroidMenuAction(stringResource(R.string.add_to_queue), close, play.onAddToQueue)
     }
-    val hasMiddleGroup = actions.rating != null || actions.pin != null || actions.onSetPrimaryRelease != null
+    val rating = actions.rating()
+    val hasMiddleGroup = rating != null || actions.pin != null || actions.onSetPrimaryRelease != null
     if (actions.play != null && hasMiddleGroup) AndroidDivider()
-    RatingMenuItems(actions.rating, close)
+    RatingMenuItems(rating, close)
     actions.pin?.let {
         AndroidMenuAction(stringResource(if (it.pinned) R.string.unpin else R.string.pin), close, it.onClick)
     }

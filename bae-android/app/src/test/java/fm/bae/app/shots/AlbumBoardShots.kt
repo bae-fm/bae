@@ -261,7 +261,13 @@ internal val playingNorthbound =
 private fun UnavailableAlbumPage() {
     AlbumPageContent(onAnotherDevice, playingNorthbound, catalogName = { it.name }) {
         AlbumOptionsMenu(
-            AlbumMenuActions(play = null, rating = AlbumRatingAction.Rate {}, pin = null, onSetPrimaryRelease = null, onDelete = {}),
+            AlbumMenuActions(
+                play = null,
+                rating = { AlbumRatingAction.Rate {} },
+                pin = null,
+                onSetPrimaryRelease = null,
+                onDelete = {},
+            ),
         )
     }
 }
@@ -296,7 +302,7 @@ internal val playingLowTideHours =
 private val boardMenu =
     AlbumMenuActions(
         play = PlayMenuActions(onShuffle = {}, onPlayNext = {}, onAddToQueue = {}),
-        rating = AlbumRatingAction.Rate {},
+        rating = { AlbumRatingAction.Rate {} },
         pin = null,
         onSetPrimaryRelease = null,
         onDelete = {},
@@ -310,7 +316,7 @@ private fun AlbumPageWithMenu(
     val menu =
         AlbumMenuActions(
             play = boardMenu.play,
-            rating = rating,
+            rating = { rating },
             pin = PinMenuItem(pinned = true, onClick = {}),
             onSetPrimaryRelease = null,
             onDelete = {},

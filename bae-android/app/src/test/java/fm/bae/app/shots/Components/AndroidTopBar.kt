@@ -41,7 +41,7 @@ class AndroidTopBarShots : BoardShot() {
                 AlbumOptionsMenu(
                     AlbumMenuActions(
                         play = PlayMenuActions(onShuffle = {}, onPlayNext = {}, onAddToQueue = {}),
-                        rating = AlbumRatingAction.Rate {},
+                        rating = { AlbumRatingAction.Rate {} },
                         pin = null,
                         onSetPrimaryRelease = null,
                         onDelete = {},

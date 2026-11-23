@@ -57,6 +57,7 @@ internal fun AndroidAlbumHeader(
     galleryItemCount: UInt,
     onShowGallery: () -> Unit,
     onShowWhere: () -> Unit,
+    shownRating: () -> BridgeAlbumRating = { detail.rating },
     actions: @Composable () -> Unit = {},
 ) {
     val album = detail.album
@@ -79,7 +80,7 @@ internal fun AndroidAlbumHeader(
                 style = ThemeText.body.style,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            YearAndRating(album.year?.let(context::yearText), detail.rating)
+            YearAndRating(album.year?.let(context::yearText), shownRating)
             val release = detail.shownRelease
             release.editionLineText(context).takeIf { it.isNotEmpty() }?.let {
                 Spacer(modifier = Modifier.height(ThemeSpace.line))
@@ -114,10 +115,10 @@ private fun ReleaseLine(text: String) {
 @Composable
 private fun YearAndRating(
     year: String?,
-    rating: BridgeAlbumRating,
+    shownRating: () -> BridgeAlbumRating,
 ) {
     val mark: (@Composable () -> Unit)? =
-        when (rating) {
+        when (val rating = shownRating()) {
             BridgeAlbumRating.Hidden -> {
                 null
             }

@@ -33,7 +33,7 @@ class AndroidDetailScreenShots : BoardShot() {
                 AlbumOptionsMenu(
                     AlbumMenuActions(
                         play = PlayMenuActions(onShuffle = {}, onPlayNext = {}, onAddToQueue = {}),
-                        rating = AlbumRatingAction.Rate {},
+                        rating = { AlbumRatingAction.Rate {} },
                         pin = PinMenuItem(pinned = true) {},
                         onSetPrimaryRelease = null,
                         onDelete = {},
