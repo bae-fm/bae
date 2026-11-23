@@ -185,7 +185,7 @@ private fun AlbumLoaded(
 ) {
     val nowPlaying by session.playback.nowPlaying.collectAsState()
     val isPlaying by session.playback.isPlaying.collectAsState()
-    AlbumDetailContent(
+    AndroidAlbumDetailContent(
         detail = loaded.detail,
         cover = loaded.detail.shownRelease.cover,
         playback = AlbumPlaybackState(nowPlaying?.trackId, isPlaying),
@@ -300,7 +300,7 @@ private fun buildAlbumDetailCallbacks(
 }
 
 @Composable
-internal fun AlbumDetailContent(
+internal fun AndroidAlbumDetailContent(
     detail: BridgeAlbumDetail,
     cover: BridgeImageRef?,
     playback: AlbumPlaybackState,

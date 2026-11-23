@@ -14,13 +14,13 @@ import fm.bae.app.heartersText
 import fm.bae.app.playback.NowPlaying
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.albumdetail.AlbumDetailCallbacks
-import fm.bae.app.ui.albumdetail.AlbumDetailContent
 import fm.bae.app.ui.albumdetail.AlbumMenuActions
 import fm.bae.app.ui.albumdetail.AlbumMenuItems
 import fm.bae.app.ui.albumdetail.AlbumOptionsMenu
 import fm.bae.app.ui.albumdetail.AlbumPlaybackState
 import fm.bae.app.ui.albumdetail.AlbumRatingAction
 import fm.bae.app.ui.albumdetail.AlbumRatingChoices
+import fm.bae.app.ui.albumdetail.AndroidAlbumDetailContent
 import fm.bae.app.ui.albumdetail.PinMenuItem
 import fm.bae.app.ui.albumdetail.PlayMenuActions
 import fm.bae.app.ui.albumdetail.albumRatingHeading
@@ -358,24 +358,11 @@ private fun AlbumPageContent(
             actions = actions,
         ) {
             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                AlbumDetailContent(
+                AndroidAlbumDetailContent(
                     detail = detail,
                     cover = detail.shownRelease.cover,
                     playback = playback,
-                    callbacks =
-                        AlbumDetailCallbacks(
-                            onSelectRelease = {},
-                            onTogglePlayPause = {},
-                            onPlayTrack = {},
-                            onPlayRelease = {},
-                            onShuffleRelease = {},
-                            onPlayReleaseNext = {},
-                            onAddReleaseToQueue = {},
-                            onPlayTrackNext = {},
-                            onAddTrackToQueue = {},
-                            onRateAlbum = {},
-                            onSelectWork = {},
-                        ),
+                    callbacks = noAlbumCallbacks,
                     releaseDownloadControl = {},
                     shownRating = { detail.rating },
                     catalogName = catalogName,
@@ -385,3 +372,19 @@ private fun AlbumPageContent(
         }
     }
 }
+
+/** The album page's commands as a shot draws them: each does nothing. */
+internal val noAlbumCallbacks =
+    AlbumDetailCallbacks(
+        onSelectRelease = {},
+        onTogglePlayPause = {},
+        onPlayTrack = {},
+        onPlayRelease = {},
+        onShuffleRelease = {},
+        onPlayReleaseNext = {},
+        onAddReleaseToQueue = {},
+        onPlayTrackNext = {},
+        onAddTrackToQueue = {},
+        onRateAlbum = {},
+        onSelectWork = {},
+    )
