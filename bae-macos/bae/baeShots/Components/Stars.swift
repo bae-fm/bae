@@ -13,7 +13,7 @@ extension ShotScene {
             Stars(value: 0, size: 16)
         },
         component("mac.component.stars.number-and-one-star", height: 40) {
-            Stars(value: 4, size: 16, showsNumber: true)
+            Stars(rating: .four, size: 16)
         },
     ]
 }

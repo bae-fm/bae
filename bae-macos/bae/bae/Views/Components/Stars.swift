@@ -1,46 +1,60 @@
 import BaeKit
 import SwiftUI
 
-/// Five stars filled in the accent up to `value`, the rest drawn as outlines.
-/// With `onRate` each star is a button that rates with that many stars. With
-/// `showsNumber` it draws the read-only form instead: the number and one
-/// filled star ("4 ★"), and nothing while `value` is zero.
+/// A row of five stars or a read-only rating as its number and one filled star.
 struct Stars: View {
-    /// How many stars are filled, zero to five.
-    let value: Int
-    let size: CGFloat
-    var onRate: ((BridgeStars) -> Void)?
-    var showsNumber = false
+    private enum Form {
+        case row(value: Int, onRate: ((BridgeStars) -> Void)?)
+        case number(BridgeStars)
+    }
+
+    private let form: Form
+    private let size: CGFloat
+
+    /// A row with `value` filled stars. When `onRate` is present, each star
+    /// rates with that many stars.
+    init(value: Int, size: CGFloat, onRate: ((BridgeStars) -> Void)? = nil) {
+        self.form = .row(value: value, onRate: onRate)
+        self.size = size
+    }
+
+    /// A read-only rating such as “4 ★”.
+    init(rating: BridgeStars, size: CGFloat) {
+        self.form = .number(rating)
+        self.size = size
+    }
 
     var body: some View {
-        if showsNumber {
-            number
-        }
-        else {
-            row
-        }
-    }
-
-    @ViewBuilder
-    private var number: some View {
-        if value > 0 {
-            HStack(spacing: ThemeSpace.line) {
-                Text(verbatim: String(value))
-                star(1)
-            }
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(valueLabel)
+        switch form {
+        case .row(let value, let onRate):
+            row(value: value, onRate: onRate)
+        case .number(let rating):
+            number(rating)
         }
     }
 
-    private var row: some View {
+    private func number(_ rating: BridgeStars) -> some View {
+        HStack(spacing: ThemeSpace.line) {
+            Text(verbatim: rating.number.formatted())
+                .foregroundStyle(Theme.macTextSecondary)
+            star(filled: true)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(valueLabel(rating.number))
+        .accessibilityAddTraits(.isImage)
+    }
+
+    private func row(
+        value: Int,
+        onRate: ((BridgeStars) -> Void)?
+    ) -> some View {
         HStack(spacing: ThemeSpace.line) {
             ForEach(BridgeStars.allCases, id: \.self) { stars in
                 if let onRate {
                     Button {
                         onRate(stars)
                     } label: {
-                        star(stars.number)
+                        star(filled: stars.number <= value)
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(
@@ -48,24 +62,23 @@ struct Stars: View {
                     )
                 }
                 else {
-                    star(stars.number)
+                    star(filled: stars.number <= value)
                 }
             }
         }
         .accessibilityElement(children: onRate == nil ? .ignore : .contain)
-        .accessibilityLabel(onRate == nil ? valueLabel : "")
+        .accessibilityLabel(onRate == nil ? valueLabel(value) : "")
         .accessibilityAddTraits(onRate == nil ? .isImage : [])
     }
 
-    private var valueLabel: String {
+    private func valueLabel(_ value: Int) -> String {
         value == 0
             ? String(localized: "Not rated")
             : String(localized: "\(value) of 5 stars")
     }
 
-    private func star(_ index: Int) -> some View {
-        let filled = index <= value
-        return StarShape()
+    private func star(filled: Bool) -> some View {
+        StarShape()
             .fill(filled ? Theme.accent : Color.clear)
             .overlay {
                 StarShape()
@@ -78,8 +91,7 @@ struct Stars: View {
                     )
             }
             .frame(width: size, height: size)
-            // The star's whole frame, so a button around it is the frame's
-            // size and not the drawn outline's.
+            // The star's whole frame is clickable.
             .contentShape(Rectangle())
     }
 }
