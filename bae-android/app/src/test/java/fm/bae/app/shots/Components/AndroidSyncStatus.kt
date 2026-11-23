@@ -2,6 +2,7 @@ package fm.bae.app.shots
 
 import androidx.compose.runtime.Composable
 import fm.bae.app.data.SyncLine
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.settings.AndroidSyncStatus
 import org.junit.Test
 import uniffi.bae_bridge.BridgeSyncCause
@@ -53,17 +54,19 @@ private fun SignedOutOfS3(
     cause: BridgeSyncCause? = null,
     fix: BridgeSyncFix? = null,
     lastSynced: Boolean = false,
-) = AndroidSyncStatus(
-    line =
-        SyncLine.Read(
-            syncShown(
-                BridgeSyncStatusWord.SIGNED_OUT_OF_S3,
-                "core.sync.status.signed_out_s3",
-                tone,
-                cause = cause,
-                fix = fix,
-                lastSyncedAgo = if (lastSynced) threeDaysAgo else null,
+) = InsideScreenEdges(top = ThemeSpace.related) {
+    AndroidSyncStatus(
+        line =
+            SyncLine.Read(
+                syncShown(
+                    BridgeSyncStatusWord.SIGNED_OUT_OF_S3,
+                    "core.sync.status.signed_out_s3",
+                    tone,
+                    cause = cause,
+                    fix = fix,
+                    lastSyncedAgo = if (lastSynced) threeDaysAgo else null,
+                ),
             ),
-        ),
-    onFix = {},
-)
+        onFix = {},
+    )
+}

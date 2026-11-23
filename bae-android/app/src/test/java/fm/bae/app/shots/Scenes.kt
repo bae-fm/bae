@@ -167,10 +167,13 @@ internal fun HuggingContent(content: @Composable () -> Unit) {
     Box(modifier = Modifier.width(IntrinsicSize.Max)) { content() }
 }
 
-/** [content] inside the 16dp of side padding a screen gives its sections and cards. */
+/** [content] inside a screen's side padding, with [top] above it. */
 @Composable
-internal fun InsideScreenEdges(content: @Composable () -> Unit) {
-    Box(modifier = Modifier.padding(horizontal = ThemeSpace.edge)) { content() }
+internal fun InsideScreenEdges(
+    top: Dp = 0.dp,
+    content: @Composable () -> Unit,
+) {
+    Box(modifier = Modifier.padding(start = ThemeSpace.edge, top = top, end = ThemeSpace.edge)) { content() }
 }
 
 /** The page inset around an Android component preview that has no named rows. */

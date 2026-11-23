@@ -1,6 +1,7 @@
 package fm.bae.app.shots
 
 import androidx.compose.runtime.Composable
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.settings.AndroidRestoreCode
 import fm.bae.app.ui.settings.RestoreCodeState
 import org.junit.Test
@@ -26,4 +27,6 @@ class AndroidRestoreCodeShots : BoardShot() {
 private fun RestoreCode(
     state: RestoreCodeState,
     s3: Boolean,
-) = InsideScreenEdges { AndroidRestoreCode(needsS3Key = s3, state = state, onShow = {}, onHide = {}, onPrint = {}) }
+) = InsideScreenEdges(top = ThemeSpace.related) {
+    AndroidRestoreCode(needsS3Key = s3, state = state, onShow = {}, onHide = {}, onPrint = {})
+}
