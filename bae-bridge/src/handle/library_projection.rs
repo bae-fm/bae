@@ -159,10 +159,6 @@ impl BridgeRelease {
         // The summary's media are the facts' media, which the release carries
         // whole.
         let facts = crate::types::BridgePressingFacts::from_core(facts);
-        #[expect(
-            clippy::read_kept_state,
-            reason = "label lines read the constant list of the words that end a label's trade name, which a OnceLock builds once; no read changes it, and it holds no rows"
-        )]
         let labels: Vec<_> = bae_types::pressing::label_lines(&labels)
             .into_iter()
             .map(crate::types::BridgeLabelLine::from_core)

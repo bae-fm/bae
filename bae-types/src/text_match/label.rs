@@ -16,8 +16,6 @@
 //! listing a row's or a release's labels each once all ask it, directly or
 //! through [`same_label_name`].
 
-use std::sync::OnceLock;
-
 /// One label's name, read into what the comparisons ask of it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LabelName {
@@ -108,7 +106,7 @@ pub fn label_name_key(name: &str) -> String {
 
 /// `words` without the trade words they end on.
 fn without_trade_words(mut words: Vec<String>) -> Vec<String> {
-    while let Some(tail) = tails().iter().find(|tail| words.ends_with(tail)) {
+    while let Some(tail) = trailing_trade_word(&words) {
         words.truncate(words.len() - tail.len());
     }
     words
@@ -120,7 +118,7 @@ fn written_initials(name: &str) -> Option<String> {
     let mut written = super::written_words(name);
     loop {
         let lowered: Vec<String> = written.iter().map(|word| word.to_lowercase()).collect();
-        let Some(tail) = tails().iter().find(|tail| lowered.ends_with(tail)) else {
+        let Some(tail) = trailing_trade_word(&lowered) else {
             break;
         };
         written.truncate(written.len() - tail.len());
@@ -132,34 +130,30 @@ fn written_initials(name: &str) -> Option<String> {
     initials.then(|| word.to_lowercase())
 }
 
-/// Each trade word as the words it is written with, compared the way the
-/// candidate's text is read — case, spacing and punctuation dropped, so
-/// "Record Co." and "record co" are one entry. An entry that is written with
-/// no words at all would end every name, and is left out. Built once.
-fn tails() -> &'static [Vec<String>] {
-    static TAILS: OnceLock<Vec<Vec<String>>> = OnceLock::new();
-    TAILS.get_or_init(|| {
-        TRADE_WORDS
-            .iter()
-            .map(|entry| super::words(entry))
-            .filter(|tail| !tail.is_empty())
-            .collect()
+/// The trade word `words` end on, when they end on one.
+fn trailing_trade_word(words: &[String]) -> Option<&'static [&'static str]> {
+    TRADE_WORDS.iter().copied().find(|trade| {
+        words.len() >= trade.len()
+            && words.iter().rev().zip(trade.iter().rev()).all(|(word, trade)| word == trade)
     })
 }
 
-/// The words a label's name trails that name no label of their own.
-static TRADE_WORDS: &[&str] = &[
-    "Records",
-    "Recordings",
-    "Record Co.",
-    "Music",
-    "Entertainment",
-    "Productions",
-    "Label",
-    "Ltd",
-    "Inc",
-    "LLC",
-    "GmbH",
+/// The words a label's name trails that name no label of their own, each as
+/// the words it is written with, compared the way the candidate's text is
+/// read: case, spacing and punctuation dropped, so "Record Co." is
+/// `["record", "co"]`.
+const TRADE_WORDS: &[&[&str]] = &[
+    &["records"],
+    &["recordings"],
+    &["record", "co"],
+    &["music"],
+    &["entertainment"],
+    &["productions"],
+    &["label"],
+    &["ltd"],
+    &["inc"],
+    &["llc"],
+    &["gmbh"],
 ];
 
 #[cfg(test)]

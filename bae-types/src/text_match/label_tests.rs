@@ -1,14 +1,14 @@
 use super::*;
 
-/// Every entry is written with words: one that is not would be dropped
-/// from the table, and the trade word it means to name would stay on
-/// every label's name.
+/// Every entry is written with words, in the form the candidate's text is
+/// read in: an entry with no words would end every name, and one written
+/// otherwise would end none.
 #[test]
-fn every_trade_word_is_written_with_words() {
+fn every_trade_word_is_written_as_its_words() {
     for entry in TRADE_WORDS {
-        assert!(!crate::text_match::words(entry).is_empty(), "{entry} is written with no words");
+        assert!(!entry.is_empty(), "a trade word is written with no words");
+        assert_eq!(crate::text_match::words(&entry.join(" ")), *entry);
     }
-    assert_eq!(tails().len(), TRADE_WORDS.len());
 }
 
 fn stated(name: &str) -> Option<String> {
