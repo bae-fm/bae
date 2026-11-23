@@ -244,15 +244,17 @@ struct MacPressingRow: View {
     /// The "In library" tag, hidden by opacity so the column keeps its width.
     private var libraryMarker: some View {
         HStack(spacing: ThemeSpace.inline) {
+            // The check only marks the words, so VoiceOver reads the words
+            // alone; a hidden parent would override this.
             Image(systemName: "checkmark.circle")
                 .foregroundStyle(Theme.success)
                 .accessibilityHidden(true)
             Text("In library")
+                .accessibilityHidden(!isInLibrary)
         }
         .themeText(.detail)
         .foregroundStyle(Theme.textTertiary)
         .opacity(isInLibrary ? 1 : 0)
-        .accessibilityHidden(!isInLibrary)
     }
 
     private var chevron: some View {
