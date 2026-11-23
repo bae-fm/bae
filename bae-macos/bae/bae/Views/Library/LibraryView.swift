@@ -20,7 +20,7 @@ struct LibraryView: View {
     private var releaseEditor
     /// The header's collapse, fed by the panes' `reportsHeaderScroll`.
     @State
-    private var headerCollapse = HeaderCollapse()
+    private var headerCollapse: HeaderCollapse
     /// The album a grid card's menu asked to delete, while its confirmation
     /// shows.
     @State
@@ -28,6 +28,13 @@ struct LibraryView: View {
     /// The read Retry started on the failed albums view.
     @State
     private var retryRead = CancellableTaskSlot()
+
+    /// The library with its header `headerProgress` collapsed.
+    init(headerProgress: Double = 0) {
+        _headerCollapse = State(
+            initialValue: HeaderCollapse(progress: headerProgress)
+        )
+    }
 
     var body: some View {
         VStack(spacing: 0) {

@@ -20,7 +20,13 @@ import Observation
 @MainActor
 final class HeaderCollapse {
     /// 0 = fully expanded, 1 = fully compact.
-    private(set) var progress: Double = 0
+    private(set) var progress: Double
+
+    /// A header that starts `progress` collapsed, which a shot of a scrolled
+    /// page draws.
+    init(progress: Double = 0) {
+        self.progress = progress
+    }
 
     /// Scroll distance over which the header scrubs between its end states
     /// at the top of the content.

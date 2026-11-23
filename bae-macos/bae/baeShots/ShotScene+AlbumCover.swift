@@ -57,7 +57,8 @@ extension ShotScene {
                     backing: backing,
                     playbackStore: boardPlayback(),
                     images: images,
-                    size: size
+                    size: size,
+                    headerProgress: 1
                 ),
                 images: images
             ) {
