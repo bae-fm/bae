@@ -60,9 +60,12 @@
 /* An error's Retry: the box's top-right corner, level with the line; the open Details run the full width under it. */
 
 /* Sync activity */
+/* The one face of every Mac popover: the raised colour, a card's corners, a hairline edge and a shadow, with the arrow on the side that faces what opened it. */
 .bae-m-popover { position: absolute; z-index: 9; background: var(--elevated); border-radius: var(--radius-card); box-shadow: 0 10px 30px var(--shadow), 0 0 0 1px var(--hairline); padding: var(--space-inline) calc(var(--space-group) + var(--space-line)) calc(var(--space-group) + var(--space-line)); }
+.bae-m-popover-flush { padding: 0; }
 .bae-m-popover-body { position: relative; max-height: 462px; overflow: hidden; }
 .bae-m-popover-arrow { position: absolute; top: -7px; right: 40px; width: 14px; height: 14px; background: var(--elevated); transform: rotate(45deg); }
+.bae-m-popover-arrow-below { top: auto; bottom: -7px; }
 .bae-m-actlist { display: flex; flex-direction: column; }
 .bae-m-actrow { padding: 0 var(--space-group); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
 .bae-m-actline { padding: calc(var(--space-related) + var(--space-line)) 0; }

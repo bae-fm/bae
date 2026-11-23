@@ -252,11 +252,11 @@
 .bae-m-queue-menu { display: inline-flex; align-items: center; gap: var(--space-inline); padding: 0; border: 0; background: none; font: var(--type-cell-weight) var(--type-cell-size) var(--font-sans); color: var(--accent); fill: currentColor; cursor: pointer; }
 .bae-m-queue-menu.bae-m-queue-menu-action { font-size: var(--type-body-size); font-weight: var(--type-body-weight); line-height: normal; }
 .bae-m-queue-insert { position: relative; z-index: 1; flex: none; height: 2px; margin: calc(-1 * var(--space-hairline)) var(--space-related); background: var(--accent); }
-.bae-m-sidepause { width: 500px; box-sizing: border-box; display: flex; flex-direction: column; gap: var(--space-group); padding: var(--space-section); border-radius: var(--radius-panel); background: var(--elevated); box-shadow: inset 0 0 0 1px var(--hairline), 0 10px 20px var(--shadow); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
+.bae-m-sidepause { width: 500px; box-sizing: border-box; display: flex; flex-direction: column; gap: var(--space-group); padding: var(--space-section); }
 .bae-m-sidepause-title { font: var(--type-heading-weight) var(--type-heading-size) var(--font-sans); }
 .bae-m-sidepause-count { font: var(--type-strong-weight) var(--type-strong-size) var(--font-sans); font-variant-numeric: tabular-nums; }
 .bae-m-sidepause-buttons { display: flex; justify-content: flex-end; gap: var(--space-related); padding-top: var(--space-related); }
-.bae-m-castpop { z-index: 7; width: 260px; color: var(--text-primary); box-sizing: border-box; display: flex; flex-direction: column; gap: var(--space-compact); padding: var(--space-compact) var(--space-inline) var(--space-group); overflow: hidden; border-radius: var(--radius-control); background: var(--tile); box-shadow: 0 8px 24px var(--shadow); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
+.bae-m-castpop { color: var(--text-primary); display: flex; flex-direction: column; gap: var(--space-compact); padding: var(--space-compact) var(--space-inline) var(--space-group); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
 .bae-m-castpop-head { padding: var(--space-group) var(--space-group) 0; }
 .bae-m-castpop-none { padding: var(--space-compact) var(--space-group); color: var(--text-secondary); }
 /* A receiver row: a box row's inset around MacItem, which spans it, so Disconnect sits at the right edge. */

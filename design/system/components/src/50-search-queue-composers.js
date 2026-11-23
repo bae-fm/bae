@@ -85,7 +85,7 @@
 
   function MacSidePause(props) {
     var disc = props.kind === 'disc';
-    return h('div', { className: 'bae-m-scrim' }, h('div', { className: 'bae-m-sidepause', role: 'dialog' },
+    return h('div', { className: 'bae-m-scrim' }, h('div', { className: 'bae-m-face-sheet bae-m-sidepause', role: 'dialog' },
       h('div', { className: 'bae-m-sidepause-title' }, (disc ? 'Disc ' : 'Side ') + (props.label || (disc ? '1' : 'A')) + ' ended'),
       h('div', { className: 'bae-muted' }, 'Playback is paused. Press Play to continue.'),
       props.countdown ? h('div', { className: 'bae-m-sidepause-count' }, 'The next ' + (disc ? 'disc' : 'side') + ' starts in ' + props.countdown + ' seconds.') : null,
@@ -111,11 +111,13 @@
   function MacCastPopover(props) {
     var devices = String(props.devices || '').split(',').filter(Boolean).map(function (d) { var p = d.trim().split(':'); return { name: p[0], kind: p[1] || 'cast' }; });
     var waiting = props.ownerDeciding ? 'Accept on ' + props.connecting + '…' : 'Connecting…';
-    return h('div', { className: 'bae-m-castpop', style: { position: 'absolute', right: Number(props.right != null ? props.right : 120), bottom: Number(props.bottom != null ? props.bottom : 92) } },
-      // The popover's header, Play on, on the rows' inset.
-      h('div', { className: 'bae-m-castpop-head' }, h(MacEyebrow, null, 'Play on')),
-      devices.length ? devices.map(function (d, i) { return h(MacCastRow, { key: i, name: d.name, kind: d.kind, active: d.name === props.casting, waiting: d.name === props.connecting ? waiting : null }); })
-        : h('div', { className: 'bae-m-castpop-none' }, 'No receivers found'));
+    // A MacPopover above the Play on button, its arrow at the middle of its lower edge pointing down at the button; the content pads itself.
+    return h(MacPopover, { width: 260, right: props.right != null ? props.right : 120, bottom: props.bottom != null ? props.bottom : 92, arrow: 130, flush: true },
+      h('div', { className: 'bae-m-castpop' },
+        // The popover's header, Play on, on the rows' inset.
+        h('div', { className: 'bae-m-castpop-head' }, h(MacEyebrow, null, 'Play on')),
+        devices.length ? devices.map(function (d, i) { return h(MacCastRow, { key: i, name: d.name, kind: d.kind, active: d.name === props.casting, waiting: d.name === props.connecting ? waiting : null }); })
+          : h('div', { className: 'bae-m-castpop-none' }, 'No receivers found')));
   }
 
   // ---- Queue and playback (Android) ----

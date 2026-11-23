@@ -259,9 +259,11 @@
     return NoticeBox(tone, false, glyph ? h(MacItem, { lead: glyph }, body) : body, { platform: 'bae-m-notice-box', quiet: props.quiet, flush: props.flush, centered: false, stage: props.stage });
   }
 
-  // A popover hanging from a title-bar button, its arrow pointing up at it.
+  // A popover hanging off the control that opened it. Placed with `top`, it hangs below the control, its arrow on its upper edge pointing up; placed with `bottom`, it opens above, its arrow on its lower edge pointing down. `arrow`: the arrow's middle from the right edge (40). `flush`: no padding, for content that pads itself.
   function MacPopover(props) {
-    return h('div', { className: 'bae-m-popover', style: { width: Number(props.width || 360), top: props.top != null ? Number(props.top) : null, right: props.right != null ? Number(props.right) : null } }, h('span', { className: 'bae-m-popover-arrow' }), h('div', { className: 'bae-m-popover-body' }, props.children));
+    var above = props.bottom != null;
+    return h('div', { className: cx('bae-m-popover', props.flush && 'bae-m-popover-flush'), style: { width: Number(props.width || 360), top: props.top != null ? Number(props.top) : null, bottom: above ? Number(props.bottom) : null, right: props.right != null ? Number(props.right) : null } },
+      h('span', { className: cx('bae-m-popover-arrow', above && 'bae-m-popover-arrow-below'), style: props.arrow != null ? { right: Number(props.arrow) - 7 } : null }), h('div', { className: 'bae-m-popover-body' }, props.children));
   }
   // A transfer in the Activity panel: what it does (`label`), how far it has got (`count`: done of total, or what holds the queue), then a bar filled to `progress` (none: a moving bar, as syncing draws, which counts nothing). `pausable` ends the line in Pause, or Resume while `paused`; pinning and moving to This Mac are one queue, so both lines' buttons act on it together.
   function MacTransferLine(props) {

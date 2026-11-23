@@ -35,7 +35,7 @@
   // A macOS alert: title and message left-aligned, as macOS 26 draws them, then two buttons side by side with the default on the right (list it first); three or more stack. `details` (an error's causes, one a line) adds the inset panel with Copy under the message.
   function MacAlert(props) {
     return h('div', { className: 'bae-m-scrim' },
-      h('div', { role: 'alertdialog', 'aria-label': props.title, className: 'bae-m-alert' },
+      h('div', { role: 'alertdialog', 'aria-label': props.title, className: 'bae-m-face-sheet bae-m-alert' },
         h('div', { className: 'bae-m-alert-title' }, props.title),
         // `warning`: what the choice costs, as a quiet notice between the title and the message ("Unsent changes will be lost").
         props.warning ? h(MacNotice, { quiet: true, flush: true, tone: 'warning', title: props.warning }) : null,
@@ -297,7 +297,7 @@
   }
 
   function MacSheet(props) {
-    var panel = h('div', { role: 'dialog', 'aria-label': props.title, className: 'bae-m-sheet', style: { width: Number(props.width || 460) } },
+    var panel = h('div', { role: 'dialog', 'aria-label': props.title, className: 'bae-m-face-sheet bae-m-sheet', style: { width: Number(props.width || 460) } },
       props.title ? h('div', { className: 'bae-m-sheet-title' }, props.title) : null,
       // `message`: the sheet's line under its title, in secondary text, as an alert's message sits under its title.
       h('div', { className: 'bae-m-sheet-body' }, props.message ? h('div', { className: 'bae-m-sheet-message' }, props.message) : null, props.children));

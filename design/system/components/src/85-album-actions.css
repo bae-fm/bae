@@ -1,4 +1,4 @@
-/* ==== part: album ==== */.bae-m-modal { margin-top: calc(var(--space-page) + var(--space-inline)); background: var(--background); border-radius: var(--radius-card); box-shadow: 0 10px 40px var(--shadow); overflow: hidden; display: flex; flex-direction: column; font: var(--type-body-weight) var(--type-body-size) var(--font-sans); color: var(--text-primary); max-height: calc(100% - 40px); }
+/* ==== part: album ==== */.bae-m-modal { margin-top: calc(var(--space-page) + var(--space-inline)); overflow: hidden; display: flex; flex-direction: column; max-height: calc(100% - 40px); }
 .bae-m-modalhead { display: flex; align-items: center; gap: var(--space-related); padding: calc(var(--space-group) + var(--space-line)) var(--space-edge); border-bottom: 1px solid var(--hairline); }
 .bae-m-modalhead-large { font: var(--type-title-weight) var(--type-title-size) var(--font-sans); }
 .bae-m-cgal { display: flex; flex-direction: column; height: 100%; }
