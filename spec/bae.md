@@ -4318,7 +4318,8 @@ contributes its full size, an upload contributes its stored files and the
 shares of its files on the way, and a pin or move-to-this-device contributes
 the share downloaded. bae updates progress as transfers move and counts a
 finished file or release as done once it records the file or release as
-stored. A release removed from the library contributes no bytes. Progress
+stored. Android shows a counted bar in Activity or Pinning while it has a
+byte measurement. A release removed from the library contributes no bytes. Progress
 updates while files transfer, before the count changes. A batch is everything the queue has held
 since it was last empty, so a count only grows, and it starts over once the
 queue empties. Pinning and Moving to This Mac share the download queue but each

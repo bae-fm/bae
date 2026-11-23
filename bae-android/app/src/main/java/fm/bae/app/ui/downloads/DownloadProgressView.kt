@@ -104,7 +104,7 @@ internal class DownloadProgressView(
     fun stopFollowing() = following.stop()
 
     private fun show(progress: BridgeDownloadTransferProgress?) {
-        bar.showFraction((progress?.fraction ?: 0.0).toFloat())
+        if (progress == null) bar.clearProgress() else bar.showFraction(progress.fraction.toFloat())
         val text =
             progress
                 ?.let {

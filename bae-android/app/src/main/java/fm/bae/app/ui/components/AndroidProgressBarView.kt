@@ -50,11 +50,25 @@ internal class AndroidProgressBarView(
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
     private val track = Paint(Paint.ANTI_ALIAS_FLAG)
     private val bounds = RectF()
-    private val following = FrameFollowing<Double>(this) { share -> showFraction((share ?: 0.0).toFloat()) }
-    private var fraction = 0f
+    private val following =
+        FrameFollowing<Double>(this) { share ->
+            if (share == null) clearProgress() else showFraction(share.toFloat())
+        }
+    private var progress: Progress? = null
+        set(value) {
+            field = value
+            importantForAccessibility =
+                if (value == null) IMPORTANT_FOR_ACCESSIBILITY_NO else IMPORTANT_FOR_ACCESSIBILITY_YES
+            invalidate()
+        }
 
-    /** Whether a piece crosses the track, for a step that counts nothing. */
-    private var moving = false
+    private sealed interface Progress {
+        data class Counted(
+            val fraction: Float,
+        ) : Progress
+
+        data object Moving : Progress
+    }
 
     /** How far the piece has crossed, 0 when it is just off the track's start and 1 just off its end. */
     private var phase = MOVING_REST_PHASE
@@ -70,20 +84,20 @@ internal class AndroidProgressBarView(
         }
 
     init {
-        importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_YES
+        importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
     }
 
     /** Reports the bar to a screen reader as a progress bar of a percent. */
     override fun onInitializeAccessibilityNodeInfo(info: AccessibilityNodeInfo) {
         super.onInitializeAccessibilityNodeInfo(info)
         info.className = ProgressBar::class.java.name
-        if (!moving) {
+        (progress as? Progress.Counted)?.let { counted ->
             info.rangeInfo =
                 AccessibilityNodeInfo.RangeInfo.obtain(
                     AccessibilityNodeInfo.RangeInfo.RANGE_TYPE_PERCENT,
                     0f,
                     PERCENT,
-                    fraction * PERCENT,
+                    counted.fraction * PERCENT,
                 )
         }
     }
@@ -104,23 +118,26 @@ internal class AndroidProgressBarView(
 
     /** Shows [share] of the track filled. */
     fun showFraction(share: Float) {
-        if (!moving && fraction == share) return
+        if ((progress as? Progress.Counted)?.fraction == share) return
         crossing.cancel()
-        moving = false
-        fraction = share
-        invalidate()
+        progress = Progress.Counted(share)
+    }
+
+    /** Hides the bar while the byte measurement it needs is absent. */
+    fun clearProgress() {
+        crossing.cancel()
+        progress = null
     }
 
     /** Shows a piece crossing the track, while a step counts nothing. */
     fun showMoving() {
-        moving = true
+        progress = Progress.Moving
         if (!crossing.isStarted) crossing.start()
-        invalidate()
     }
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        if (moving && !crossing.isStarted) crossing.start()
+        if (progress == Progress.Moving && !crossing.isStarted) crossing.start()
     }
 
     override fun onDetachedFromWindow() {
@@ -142,10 +159,11 @@ internal class AndroidProgressBarView(
     }
 
     override fun onDraw(canvas: Canvas) {
+        val shown = progress ?: return
         val height = barHeight()
         val gap = dp(GAP_DP)
         val radius = height / 2f
-        if (moving) {
+        if (shown == Progress.Moving) {
             val piece = width * MOVING_SHARE
             val start = -piece + (width + piece) * phase
             val leftEnd = minOf(start - gap, width.toFloat())
@@ -163,6 +181,7 @@ internal class AndroidProgressBarView(
             canvas.drawCircle(width - radius, radius, radius, fill)
             return
         }
+        val fraction = (shown as Progress.Counted).fraction
         val filledEnd = width * fraction
         if (fraction > 0f) {
             canvas.drawRoundRect(bounds.apply { set(0f, 0f, filledEnd, height) }, radius, radius, fill)
