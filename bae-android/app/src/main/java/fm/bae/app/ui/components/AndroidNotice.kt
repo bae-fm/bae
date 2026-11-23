@@ -140,11 +140,6 @@ fun AndroidNotice(
     )
 }
 
-/** On a notice's fill, secondary text is its text made see-through. */
-private val onNoticeSecondary: Color
-    @Composable
-    get() = LocalContentColor.current.copy(alpha = ON_NOTICE_SECONDARY_ALPHA)
-
 private const val ON_NOTICE_SECONDARY_ALPHA = 0.72f
 
 @Composable
@@ -264,6 +259,12 @@ private fun FramedNotice(
 ) {
     val hasButtons = hasDetails || action != null
     NoticeFrame(tone = tone, modifier = modifier, look = look) {
+        val secondary =
+            if (look == NoticeLook.QUIET) {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            } else {
+                LocalContentColor.current.copy(alpha = ON_NOTICE_SECONDARY_ALPHA)
+            }
         // The top row holds the words, the × and the buttons that fit on that line; the column puts any buttons
         // below the words after the ×.
         Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.line)) {
@@ -290,12 +291,12 @@ private fun FramedNotice(
                         Text(
                             text = it,
                             style = ThemeText.body.style,
-                            color = onNoticeSecondary,
+                            color = secondary,
                             modifier = Modifier.padding(top = ThemeSpace.line),
                         )
                     }
                 }
-                onDismiss?.let { DismissButton(it, quiet = look == NoticeLook.QUIET) }
+                onDismiss?.let { DismissButton(it, tint = secondary) }
             }
             if (hasButtons && buttons == NoticeButtons.BELOW) {
                 // The buttons' own 12dp padding overhangs: a label starts on the words' edge.
@@ -335,20 +336,19 @@ private fun NoticeButtonRow(
 }
 
 /**
- * The × at a notice's right, [ThemeSpace.compact] further from the words than the row's gap. A quiet
- * notice has no fill, so it is in the secondary text colour; on a fill, in the text made see-through.
+ * The × at a notice's right, [ThemeSpace.compact] further from the words than the row's gap.
  */
 @Composable
 private fun DismissButton(
     onDismiss: () -> Unit,
-    quiet: Boolean,
+    tint: Color,
 ) {
     Box(modifier = Modifier.padding(start = ThemeSpace.compact)) {
         AndroidInlineIconButton(
             SymbolIcons.Close,
             stringResource(R.string.dismiss),
             onDismiss,
-            tint = if (quiet) MaterialTheme.colorScheme.onSurfaceVariant else onNoticeSecondary,
+            tint = tint,
         )
     }
 }

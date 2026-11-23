@@ -1,16 +1,20 @@
 package fm.bae.app.ui.albumdetail
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -22,9 +26,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.dp
 import fm.bae.app.DisplayError
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
@@ -33,15 +39,16 @@ import fm.bae.app.data.LiveQueryState
 import fm.bae.app.data.answer
 import fm.bae.app.displayError
 import fm.bae.app.text
+import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.appearance.ThemeOpacity
 import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidContentUnavailable
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.PageDeletion
 import fm.bae.app.ui.components.PageDeletionShown
-import fm.bae.app.ui.components.StatusChip
-import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.components.rememberPageDeletion
 import fm.bae.app.ui.components.retryAction
 import fm.bae.app.ui.library.AndroidDetailScreen
@@ -404,26 +411,43 @@ private fun LazyListScope.block(content: @Composable () -> Unit) {
     item { Box(modifier = Modifier.padding(bottom = ThemeSpace.related)) { content() } }
 }
 
-/** The album's releases as chips, the shown one in the accent; a tap shows that release. */
+/** The album's releases as chips, the shown one on the accent's tint; a tap shows that release. */
 @Composable
 internal fun AndroidReleasePicker(
     detail: BridgeAlbumDetail,
     onSelect: (String) -> Unit,
 ) {
     val context = LocalContext.current
+    val colors = MaterialTheme.colorScheme
+    val shape = MaterialTheme.shapes.small
     Row(horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
         detail.releases.forEachIndexed { index, rel ->
             val chosen = index == detail.shownReleaseIndex.toInt()
-            StatusChip(
-                text = rel.name.text(context),
-                tone = if (chosen) StatusTone.ACCENT else StatusTone.NEUTRAL,
+            val face =
+                if (chosen) {
+                    Modifier.background(colors.primary.copy(alpha = ThemeOpacity.tint))
+                } else {
+                    Modifier.border(1.dp, BaeTheme.colors.hairlineStrong, shape)
+                }
+            Box(
                 modifier =
-                    Modifier.selectable(
-                        selected = chosen,
-                        onClick = { onSelect(rel.id) },
-                        role = Role.RadioButton,
-                    ),
-            )
+                    Modifier
+                        .heightIn(min = RELEASE_CHIP_HEIGHT)
+                        .clip(shape)
+                        .then(face)
+                        .selectable(selected = chosen, onClick = { onSelect(rel.id) }, role = Role.RadioButton)
+                        .padding(horizontal = ThemeSpace.edge),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = rel.name.text(context),
+                    style = ThemeText.androidLabel.style,
+                    color = colors.onSurface,
+                    maxLines = 1,
+                )
+            }
         }
     }
 }
+
+private val RELEASE_CHIP_HEIGHT = 32.dp

@@ -165,8 +165,8 @@ internal fun AndroidTrackLead(
 }
 
 /**
- * Shows a work the track performs under the track's row, lined up with the title: the work's title in the
- * accent colour, then its composers. A tap opens the work.
+ * Shows a work the track performs under the track's row, lined up with the title: the work's title and composers in
+ * secondary text. A tap opens the work.
  */
 @Composable
 private fun TrackWorkLine(
@@ -178,7 +178,7 @@ private fun TrackWorkLine(
     Text(
         text = text,
         style = ThemeText.fine.style,
-        color = MaterialTheme.colorScheme.primary,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier =
             Modifier
                 .clickable { onSelectWork(work.workId) }
