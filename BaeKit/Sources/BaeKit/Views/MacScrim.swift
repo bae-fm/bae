@@ -34,26 +34,23 @@ public struct MacScrim: View {
 
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
-            guard window != nil, observers.isEmpty else { return }
-            // The sheet is attached to its window after its content is in
-            // the sheet's window: a window starting or ending a sheet says
-            // so, and each time the sheet may be attached or gone.
-            for name in [
-                NSWindow.willBeginSheetNotification,
-                NSWindow.didEndSheetNotification,
-                NSWindow.didBecomeKeyNotification,
-            ] {
+            guard let sheet = window, observers.isEmpty else { return }
+            // The sheet's window is attached to the window it hangs from
+            // after its content is in it. Its first update after that, and
+            // each update while it shows, finds the window it hangs from; the
+            // window that ends the sheet says so.
+            let center = NotificationCenter.default
+            for (name, object) in [
+                (NSWindow.didUpdateNotification, sheet),
+                (NSWindow.didEndSheetNotification, nil),
+            ] as [(Notification.Name, NSWindow?)] {
                 observers.append(
-                    NotificationCenter.default.addObserver(
+                    center.addObserver(
                         forName: name,
-                        object: nil,
+                        object: object,
                         queue: .main
                     ) { [weak self] _ in
                         MainActor.assumeIsolated { self?.sync() }
-                        // The sheet is attached once the notice is handled.
-                        DispatchQueue.main.async { [weak self] in
-                            MainActor.assumeIsolated { self?.sync() }
-                        }
                     }
                 )
             }

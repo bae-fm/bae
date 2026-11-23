@@ -8,8 +8,8 @@ import Testing
 /// A sheet or an alert dims the whole window behind it, title bar included:
 /// one scrim window across it for as long as it shows.
 @MainActor
-@Suite("Window scrim")
-struct WindowScrimTests {
+@Suite("Scrim window")
+struct ScrimWindowTests {
     /// The scrim windows over `window`.
     private func scrims(over window: NSWindow) -> [NSWindow] {
         autoreleasepool {
