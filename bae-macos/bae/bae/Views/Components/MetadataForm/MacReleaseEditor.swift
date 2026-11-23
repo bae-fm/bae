@@ -311,12 +311,11 @@ private struct ReleaseEditorCardView: View {
                     .fixedSize()
             }
             Spacer(minLength: ThemeSpace.group)
-            Button(action: commands.unlink) {
+            MacButton(kind: .plain, action: commands.unlink) {
                 Text("Unlink")
                     .themeText(.body)
-                    .foregroundStyle(Theme.accent)
             }
-            .buttonStyle(.accentPlain)
+            .accent()
             .help(
                 "Stop linking the release to these catalog records. The metadata stays as it is."
             )
