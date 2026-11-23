@@ -135,13 +135,14 @@
 
         /// A folder row: tapping chooses it, and where folders open into
         /// others its chevron opens it.
+        @ViewBuilder
         private func row(_ folder: BridgeStorageFolder) -> some View {
             let chosen = browser.selected == folder
-            return MacRow {
+            let choose = { browser.select(folder) }
+            let open = { browser.open(folder) }
+            let row = MacRow {
                 if browser.nests {
-                    Button {
-                        browser.open(folder)
-                    } label: {
+                    Button(action: open) {
                         Image(systemName: "chevron.forward")
                             .themeIcon(.small)
                     }
@@ -153,13 +154,27 @@
             }
             .pressing(
                 browser.nests
-                    ? .label(showsChevron: false) { browser.select(folder) }
+                    ? .label(showsChevron: false, action: choose)
                     : nil
             )
             .selected(chosen)
             .contentShape(Rectangle())
-            .onTapGesture { browser.select(folder) }
-            .accessibilityAddTraits(chosen ? .isSelected : [])
+            .onTapGesture(perform: choose)
+
+            if browser.nests {
+                row.accessibilityRepresentation {
+                    Button(action: choose) { Text(verbatim: folder.name) }
+                        .accessibilityAddTraits(chosen ? .isSelected : [])
+                        .accessibilityActions {
+                            if !browser.isWorking {
+                                Button("Open folder", action: open)
+                            }
+                        }
+                }
+            }
+            else {
+                row.accessibilityAddTraits(chosen ? .isSelected : [])
+            }
         }
     }
 #endif
