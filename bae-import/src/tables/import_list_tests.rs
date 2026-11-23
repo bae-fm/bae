@@ -508,7 +508,7 @@ pub(crate) fn shown_folder(
 pub(crate) fn row_at<'a>(
     projection: &'a ImportListRead,
     display_path: &str,
-) -> (&'a crate::TriageRow, &'a crate::CandidateLiveState) {
+) -> (&'a crate::TriageRow, &'a crate::triage::TriageListLiveState) {
     projection
         .windows
         .iter()

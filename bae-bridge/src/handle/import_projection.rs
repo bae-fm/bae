@@ -238,7 +238,7 @@ impl crate::types::BridgeTriageRow {
     /// Not a copy: the row crosses with `live`, what the list joined to it.
     pub(crate) fn from_core(
         row: bae_import::TriageRow,
-        live: bae_import::CandidateLiveState,
+        live: bae_import::triage::TriageListLiveState,
     ) -> Self {
         let bae_import::TriageRow {
             candidate_key,
@@ -249,7 +249,6 @@ impl crate::types::BridgeTriageRow {
             metadata_summary,
             cover,
             import_status,
-            state_line,
             metadata_provenance,
             // The row's reading names the linked release's records.
             release_link: _,
@@ -261,11 +260,10 @@ impl crate::types::BridgeTriageRow {
             watched_folder_path: coven::path_bytes(&watched_folder_path),
             actionable,
             placement: crate::types::BridgeTriagePlacement::from_core(placement),
-            live: crate::types::BridgeCandidateLiveState::from_core(live),
+            live: crate::types::BridgeTriageListLiveState::from_core(live),
             metadata_summary: metadata_summary.map(crate::types::BridgeAlbumLine::from_core),
             cover: cover.map(crate::types::BridgeCoverImageSource::from_core),
             import_status: import_status.map(crate::types::BridgeTriageImportStatus::from_core),
-            state_line: state_line.map(crate::types::BridgeTriageStateLine::from_core),
             metadata_provenance: metadata_provenance
                 .map(crate::types::BridgeMetadataProvenance::from_core),
             reading: crate::types::BridgeTriageReading::from_core(reading),
@@ -313,25 +311,6 @@ mirror_enum! {
     variants: { Pending, Failed, Done, Skipped },
 }
 
-impl crate::types::BridgePendingStanding {
-    fn from_core(standing: bae_import::PendingStanding) -> Self {
-        use bae_import::PendingStanding as Core;
-        match standing {
-            Core::NotLookedUp => Self::NotLookedUp,
-            Core::Identifying => Self::Identifying,
-            Core::NeedsYou { reason } => {
-                Self::NeedsYou { reason: crate::types::BridgeNeedsYouReason::from_core(reason) }
-            }
-            Core::Identified => Self::Identified,
-            Core::Unmatched => Self::Unmatched,
-            Core::LookupError => Self::LookupError,
-            Core::Error { .. } => Self::Error,
-            Core::Importing => Self::Importing,
-            Core::ImportError => Self::ImportError,
-        }
-    }
-}
-
 mirror_enum! {
     crate::types::BridgeNeedsYouReason = bae_import::NeedsYouReason,
     from_core: pub(crate) fn,
@@ -345,21 +324,38 @@ mirror_enum! {
 
 impl crate::types::BridgeCandidateLiveState {
     pub(crate) fn from_core(live: bae_import::CandidateLiveState) -> Self {
-        let identifying = live.identifying().map(crate::types::BridgeIdentifyingStep::from_core);
         let offers = live.offers();
         let bae_import::CandidateLiveState { facts, actions: _, standing } = live;
-        // What identification is doing reaches the UI as what the row and
-        // the pane show of it, and as the offers its own menu shows.
         let bae_import::TriageRuntimeFacts { identification: _, import } = facts;
+        let needs_you = match standing {
+            Some(bae_import::PendingStanding::NeedsYou { reason }) => {
+                Some(crate::types::BridgeNeedsYouReason::from_core(reason))
+            }
+            _ => None,
+        };
         Self {
-            identifying,
             import: import.map(crate::types::BridgeImportStep::from_core),
             offers: offers.into_iter().map(crate::types::BridgeSelectionOffer::from_core).collect(),
-            badge: standing
+            needs_you,
+        }
+    }
+}
+
+impl crate::types::BridgeTriageListLiveState {
+    fn from_core(live: bae_import::triage::TriageListLiveState) -> Self {
+        Self {
+            identifying: live.identifying().map(crate::types::BridgeIdentifyingStep::from_core),
+            offers: live
+                .offers()
+                .into_iter()
+                .map(crate::types::BridgeSelectionOffer::from_core)
+                .collect(),
+            badge: live
+                .standing
                 .as_ref()
                 .and_then(bae_import::PendingStanding::badge)
                 .map(crate::types::BridgeRowBadge::from_core),
-            standing: standing.map(crate::types::BridgePendingStanding::from_core),
+            status: live.status.map(crate::types::BridgeTriageRowStatus::from_core),
         }
     }
 }
@@ -419,6 +415,15 @@ impl crate::types::BridgeFolderCheck {
 }
 
 // ── The paged list ─────────────────────────────────────────────────────────
+
+mirror_enum! {
+    crate::types::BridgeTriageRowStatus = bae_import::triage::TriageRowStatus,
+    from_core: fn,
+    variants: {
+        QueuedToImport,
+        Line { line: (crate::types::BridgeTriageStateLine) },
+    },
+}
 
 mirror_enum! {
     crate::types::BridgeTriageStateLine = bae_import::triage::TriageStateLine,

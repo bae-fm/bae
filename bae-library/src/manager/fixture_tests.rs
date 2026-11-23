@@ -307,12 +307,9 @@ async fn fixture_candidates_carry_what_their_states_name() {
         ),
         "the row reads as linked to its release"
     );
-    assert!(
-        matches!(
-            &row("Identified Folder").metadata_summary,
-            Some(bae_import::AlbumLine::TitleAlone { title }
-                | bae_import::AlbumLine::TitleAndArtists { title, .. }) if title == "Identified Folder"
-        ),
+    assert_eq!(
+        row("Identified Folder").metadata_summary.as_ref().and_then(bae_import::AlbumLine::title),
+        Some("Identified Folder"),
         "the row shows the draft read from the release"
     );
     assert_eq!(

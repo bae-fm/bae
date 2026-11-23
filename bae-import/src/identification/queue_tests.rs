@@ -738,7 +738,7 @@ async fn a_batch_identify_shows_a_row_waiting_for_a_slot_queued_then_running() {
     let keys: Vec<crate::CandidateKey> =
         dirs.iter().map(|dir| crate::CandidateKey::folder(dir)).collect();
     for key in &keys {
-        assert_eq!(page_live(&initial)[key].facts.identification, None);
+        assert_eq!(page_live(&initial)[key].identification, None);
     }
 
     for key in &keys {
@@ -747,7 +747,7 @@ async fn a_batch_identify_shows_a_row_waiting_for_a_slot_queued_then_running() {
     fixture.provider.wait_for_request("query=barcode", MAX_IN_FLIGHT).await;
 
     let status = |snapshot: &crate::list::ImportListRead, key: &crate::CandidateKey| {
-        page_live(snapshot)[key].facts.identification.clone()
+        page_live(snapshot)[key].identification.clone()
     };
     let running = Some(crate::IdentificationStatus::Running);
     let queued = Some(crate::IdentificationStatus::Queued);

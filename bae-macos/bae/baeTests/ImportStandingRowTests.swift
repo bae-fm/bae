@@ -20,7 +20,7 @@ struct ImportStandingRowTests {
         let idle = try await drawn(row: row)
         let queued = try await drawn(
             row: row,
-            step: .preparing(step: .queued)
+            status: .queuedToImport
         )
 
         #expect(queued.bars == 0)
@@ -39,8 +39,7 @@ struct ImportStandingRowTests {
         let idle = try await drawn(row: row)
         let running = try await drawn(
             row: row,
-            step: step,
-            stateLine: .importing(step: step)
+            status: .line(line: .importing(step: step))
         )
 
         #expect(running.bars == 1)
@@ -51,12 +50,11 @@ struct ImportStandingRowTests {
     func queuedDoneRow() async throws {
         let row = PreviewData.triageRowDoneFromTags
         let idle = try await drawn(row: row)
-        let queued = try await drawn(row: row, step: .preparing(step: .queued))
+        let queued = try await drawn(row: row, status: .queuedToImport)
         let runningStep = BridgeImportStep.running(phase: .readingFiles)
         let running = try await drawn(
             row: row,
-            step: runningStep,
-            stateLine: .importing(step: runningStep)
+            status: .line(line: .importing(step: runningStep))
         )
 
         #expect(queued.bars == 0)
@@ -89,12 +87,10 @@ struct ImportStandingRowTests {
 
     private func drawn(
         row: BridgeTriageRow,
-        step: BridgeImportStep? = nil,
-        stateLine: BridgeTriageStateLine? = nil
+        status: BridgeTriageRowStatus? = nil
     ) async throws -> Drawn {
         var row = row
-        row.live.import = step
-        row.stateLine = stateLine
+        row.live.status = status
         return try await drawn(
             MacImportRow(
                 row: row,

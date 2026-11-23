@@ -114,6 +114,9 @@ pub enum DraftAlbum {
 /// line when the album credits anyone.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum AlbumLine {
+    Untitled {
+        artist_line: Option<bae_types::credits::CreditLine>,
+    },
     /// The album credits no one, so its title names it alone.
     TitleAlone {
         title: String,
@@ -128,10 +131,18 @@ impl AlbumLine {
     /// The line of an album titled `title` whose credits print as
     /// `artist_line`.
     pub fn of(title: String, artist_line: bae_types::credits::CreditLine) -> Self {
-        if artist_line.is_empty() {
-            Self::TitleAlone { title }
-        } else {
-            Self::TitleAndArtists { title, artist_line }
+        let artist_line = (!artist_line.is_empty()).then_some(artist_line);
+        match (title.is_empty(), artist_line) {
+            (true, artist_line) => Self::Untitled { artist_line },
+            (false, None) => Self::TitleAlone { title },
+            (false, Some(artist_line)) => Self::TitleAndArtists { title, artist_line },
+        }
+    }
+
+    pub fn title(&self) -> Option<&str> {
+        match self {
+            Self::Untitled { .. } => None,
+            Self::TitleAlone { title } | Self::TitleAndArtists { title, .. } => Some(title),
         }
     }
 }

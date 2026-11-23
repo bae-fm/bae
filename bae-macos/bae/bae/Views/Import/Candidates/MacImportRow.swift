@@ -44,7 +44,7 @@ struct MacImportRow: View {
     }
 
     /// What is running for the candidate, and the state the row is in with it.
-    private var live: BridgeCandidateLiveState { row.live }
+    private var live: BridgeTriageListLiveState { row.live }
 
     var body: some View {
         rowContent
@@ -107,7 +107,7 @@ struct MacImportRow: View {
 
     @ViewBuilder
     private var stateLine: some View {
-        switch row.stateLine {
+        switch live.status?.line {
         case .importing(let step):
             // A running import's bar moves by the second, so only this leaf
             // reads its percent.
@@ -173,8 +173,8 @@ extension MacImportRow {
             else if let step = live.identifying {
                 identifyingTrailing(step)
             }
-            else if let step = live.import {
-                importTrailing(step)
+            else if case .queuedToImport = live.status {
+                QueuedImportIcon()
             }
         }
         .fixedSize()
@@ -194,19 +194,6 @@ extension MacImportRow {
         case .running:
             MacSpinner()
                 .help(String(localized: "Identifying\u{2026}"))
-        }
-    }
-
-    /// A queued import's clock; a running one's progress is its state line.
-    @ViewBuilder
-    private func importTrailing(
-        _ step: BridgeImportStep
-    ) -> some View {
-        switch step {
-        case .preparing(step: .queued):
-            QueuedImportIcon()
-        case .preparing, .running:
-            EmptyView()
         }
     }
 

@@ -89,17 +89,10 @@ extension ImportListPinnedHeaderTests {
                 watchedFolderPath: Data("/library".utf8),
                 actionable: true,
                 placement: .pending,
-                live: BridgeCandidateLiveState(
-                    identifying: nil,
-                    import: nil,
-                    actions: [],
-                    standing: .notLookedUp,
-                    badge: nil
-                ),
+                live: PreviewData.triageLive([]),
                 metadataSummary: nil,
                 cover: nil,
                 importStatus: nil,
-                stateLine: nil,
                 metadataProvenance: nil,
                 reading: .unidentified
             ),

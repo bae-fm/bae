@@ -183,7 +183,7 @@ async fn a_row_whose_pick_is_being_read_is_identified() {
     let reading = tokio::time::timeout(HANG_GUARD, async {
         loop {
             let snapshot = next_page(&fixture, &list).await;
-            if page_live(&snapshot)[&key].facts.identification
+            if page_live(&snapshot)[&key].identification
                 == Some(crate::IdentificationStatus::ReadingPick { import_asked: false })
             {
                 return snapshot;

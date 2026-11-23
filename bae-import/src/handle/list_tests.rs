@@ -713,7 +713,7 @@ async fn a_claimed_import_reaches_its_row_on_the_page() {
     let list = list_subscription(&fixture, page_window(50)).await;
     let initial = next_page(&fixture, &list).await;
     let idle = page_live(&initial).remove(&key).expect("the scanned candidate has a row");
-    assert!(!idle.facts.importing());
+    assert!(idle.import_step().is_none());
     assert!(!idle.actions.is_empty(), "an idle row offers its commands");
     assert_eq!(counted(&initial.pending_filter_entries, crate::PendingFilter::All), Some(1));
     assert_eq!(counted(&initial.pending_filter_entries, crate::PendingFilter::InProgress), Some(0));
@@ -721,7 +721,10 @@ async fn a_claimed_import_reaches_its_row_on_the_page() {
     fixture.import.claim_candidate_for_import(&key, "import-1").await;
     let claimed = next_page(&fixture, &list).await;
     let queued = &page_live(&claimed)[&key];
-    assert_eq!(queued.facts.import, Some(crate::ImportStep::Preparing(crate::PrepareStep::Queued)));
+    assert_eq!(
+        queued.import_step(),
+        Some(crate::ImportStep::Preparing(crate::PrepareStep::Queued))
+    );
     assert_eq!(
         queued.actions,
         vec![crate::CandidateAction::CancelImport, crate::CandidateAction::RevealFolder],
@@ -747,7 +750,7 @@ async fn a_claimed_import_reaches_its_row_on_the_page() {
     fixture.import.emit_event_for_test(reported(&key, preparing("import-1")));
     let taken_up = &page_live(&next_page(&fixture, &list).await)[&key];
     assert_eq!(
-        taken_up.facts.import,
+        taken_up.import_step(),
         Some(crate::ImportStep::Preparing(crate::PrepareStep::ValidatingSourceFiles)),
         "the worker's first report takes the import off the queue"
     );
@@ -765,7 +768,7 @@ async fn a_claimed_import_reaches_its_row_on_the_page() {
         .await;
     let measuring = &page_live(&next_page(&fixture, &list).await)[&key];
     assert_eq!(
-        measuring.facts.import,
+        measuring.import_step(),
         Some(crate::ImportStep::Running(crate::ImportPhase::MeasuringLoudness))
     );
     fixture.import.emit_event_for_test(reported(
@@ -786,7 +789,7 @@ async fn a_claimed_import_reaches_its_row_on_the_page() {
     let writing = next_page(&fixture, &list).await;
     let writing_live = &page_live(&writing)[&key];
     assert_eq!(
-        writing_live.facts.import,
+        writing_live.import_step(),
         Some(crate::ImportStep::Running(crate::ImportPhase::Finalizing)),
         "the progress tick before it delivered a page of its own"
     );
@@ -851,12 +854,12 @@ async fn a_row_off_the_page_reaches_its_row_once_the_window_holds_it() {
     fixture.import.claim_candidate_for_import(&on_key, "import-on").await;
     let claimed = loop {
         let value = window.next_inline().await.expect("the query stays open").result.unwrap();
-        if page_live_of(&value).get(&on_key).is_some_and(|live| live.facts.importing()) {
+        if page_live_of(&value).get(&on_key).is_some_and(|live| live.import_step().is_some()) {
             break value;
         }
     };
     assert_eq!(
-        page_live_of(&claimed)[&on_key].facts.import,
+        page_live_of(&claimed)[&on_key].import_step(),
         Some(crate::ImportStep::Preparing(crate::PrepareStep::Queued))
     );
 
@@ -868,7 +871,7 @@ async fn a_row_off_the_page_reaches_its_row_once_the_window_holds_it() {
         }
     };
     assert_eq!(
-        page_live_of(&widened)[&off_key].facts.import,
+        page_live_of(&widened)[&off_key].import_step(),
         Some(crate::ImportStep::Preparing(crate::PrepareStep::Queued)),
         "the row the window now holds carries where it stands"
     );
@@ -885,14 +888,14 @@ async fn a_row_off_the_page_reaches_its_row_once_the_window_holds_it() {
     let live = loop {
         let value = window.next_inline().await.expect("the query stays open").result.unwrap();
         let live = page_live_of(&value);
-        if live[&off_key].facts.import
+        if live[&off_key].import_step()
             == Some(crate::ImportStep::Preparing(crate::PrepareStep::ValidatingSourceFiles))
         {
             break live;
         }
     };
     assert_eq!(
-        live[&on_key].facts.import,
+        live[&on_key].import_step(),
         Some(crate::ImportStep::Preparing(crate::PrepareStep::Queued))
     );
 }
@@ -900,7 +903,7 @@ async fn a_row_off_the_page_reaches_its_row_once_the_window_holds_it() {
 /// What is running for each candidate a window holds, by key.
 fn page_live_of(
     window: &ImportWindow,
-) -> std::collections::BTreeMap<crate::CandidateKey, crate::CandidateLiveState> {
+) -> std::collections::BTreeMap<crate::CandidateKey, crate::triage::TriageListLiveState> {
     window
         .rows
         .iter()

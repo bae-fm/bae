@@ -167,7 +167,7 @@ struct ImportPreviewDataTests {
             }
         )
         #expect(
-            live.contains { $0.identifying == .running }
+            rows.contains { $0.live.identifying == .running }
         )
         #expect(
             entries.filter {

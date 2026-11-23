@@ -78,7 +78,7 @@ extension PreviewData {
             let gallery = try northboundImages(cover: images.northbound)
             fixture = northboundDraftCandidate(
                 images: gallery,
-                live: northbound.live
+                live: northbound.live.paneFixtureState
             )
         case .lowTideHours:
             fixture = lowTideHoursCandidate(cover: images.lookup.lowTideHours)
@@ -270,35 +270,31 @@ extension PreviewData {
     {
         let cover = try northboundCover()
         let gallery = try northboundImages(cover: cover)
-        let otherReleases: [(BoardFolder, BridgeAlbumLine)] = [
-            (
-                .driftwood,
-                .titleAndArtists(
-                    title: "Driftwood",
-                    artistLine: .named("Mara Quill")
-                )
-            ),
-            (
+        func imported(_ folder: BoardFolder, title: String, artist: String)
+            throws -> BridgeImportListItem
+        {
+            importedBoardItem(
+                folder,
+                summary: .titleAndArtists(
+                    title: title,
+                    artistLine: .named(artist)
+                ),
+                cover: try BoardArtwork.scannedFile(named: title)
+            )
+        }
+        let otherRows = [
+            try imported(.driftwood, title: "Driftwood", artist: "Mara Quill"),
+            try imported(
                 .glassHarbor,
-                .titleAndArtists(
-                    title: "Glass Harbor",
-                    artistLine: .named("Ines Varga Trio")
-                )
+                title: "Glass Harbor",
+                artist: "Ines Varga Trio"
             ),
-            (
+            try imported(
                 .lateArrivals,
-                .titleAndArtists(
-                    title: "Late Arrivals",
-                    artistLine: .named("The Slow Orchards")
-                )
+                title: "Late Arrivals",
+                artist: "The Slow Orchards"
             ),
         ]
-        let otherRows = try otherReleases.map { folder, summary in
-            let artwork = try BoardArtwork.scannedFile(
-                named: summary.title
-            )
-            return importedBoardItem(folder, summary: summary, cover: artwork)
-        }
         let northbound = importedBoardItem(
             .northbound,
             summary: northboundSummary,

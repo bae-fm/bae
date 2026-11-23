@@ -51,17 +51,10 @@ func identifiedRow(
         watchedFolderPath: Data("/w".utf8),
         actionable: true,
         placement: .pending,
-        live: BridgeCandidateLiveState(
-            identifying: nil,
-            import: nil,
-            actions: [],
-            standing: .notLookedUp,
-            badge: nil
-        ),
+        live: PreviewData.triageLive([]),
         metadataSummary: metadataSummary,
         cover: cover,
         importStatus: nil,
-        stateLine: nil,
         metadataProvenance: .externalRelease(
             record: BridgeLookupRef(catalog: .musicBrainz, key: "rel-\(path)")
         ),
@@ -95,14 +88,12 @@ private func detail(
         actionable: true,
         placement: .pending(folderCheck: nil, records: nil),
         live: BridgeCandidateLiveState(
-            identifying: nil,
             import: nil,
             actions: [
                 .import, .identify, .resetToFileMetadata, .clearMetadata,
                 .skip,
             ],
-            standing: .notLookedUp,
-            badge: nil
+            needsYou: nil
         ),
         importStatus: nil,
         signals: nil,

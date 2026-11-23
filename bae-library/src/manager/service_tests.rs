@@ -6,7 +6,7 @@
 use super::*;
 use crate::manager::tests::*;
 use crate::test_libraries::TestLibrary;
-use bae_import::triage::TriageStateLine;
+use bae_import::triage::{TriageRowStatus, TriageStateLine};
 use bae_store::live_query::LiveQueryError;
 use bae_util::test_files::TestFolder;
 use coven::MemoryStorage;
@@ -208,9 +208,13 @@ fn done_uploads(window: &bae_import::ImportWindow) -> Vec<(String, Option<Triage
         .rows
         .iter()
         .filter_map(|(item, _key)| match item {
-            bae_import::ImportListItem::Candidate { row, .. } => {
-                Some((row.folder_name.clone(), row.state_line.clone()))
-            }
+            bae_import::ImportListItem::Candidate { row, live, .. } => Some((
+                row.folder_name.clone(),
+                match &live.status {
+                    Some(TriageRowStatus::Line { line }) => Some(line.clone()),
+                    _ => None,
+                },
+            )),
             _ => None,
         })
         .collect()

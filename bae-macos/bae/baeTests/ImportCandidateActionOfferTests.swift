@@ -14,11 +14,9 @@ struct ImportCandidateActionOfferTests {
     func aRowsMenuOffersWhatCoreOffers() {
         let key = Data([1, 2, 3])
         let live = BridgeCandidateLiveState(
-            identifying: nil,
             import: nil,
             actions: [.revealFolder, .skip, .identify],
-            standing: nil,
-            badge: nil
+            needsYou: nil
         )
         let offers = live.offers.map {
             ImportCandidateActionOffer($0, rowKey: key)

@@ -19,7 +19,6 @@ extension ShotScene {
                 try lowTideRow(
                     live: PreviewData.triageLive(
                         [.skip, .revealFolder],
-                        standing: .needsYou(reason: .matches(count: 3)),
                         badge: BridgeRowBadge(
                             says: .needsYou(reason: .matches(count: 3)),
                             tone: .failure
@@ -48,8 +47,7 @@ extension ShotScene {
                 try lowTideRow(
                     live: PreviewData.triageLive(
                         [.skip, .revealFolder],
-                        identifying: .running,
-                        standing: .identifying
+                        identifying: .running
                     )
                 )
             )
@@ -59,7 +57,7 @@ extension ShotScene {
                 try lowTideRow(
                     live: PreviewData.triageLive(
                         [],
-                        importStep: .preparing(step: .queued)
+                        status: .queuedToImport
                     )
                 )
             )
@@ -81,8 +79,7 @@ extension ShotScene {
         title: String? = nil,
         artist: String? = nil,
         record: String? = nil,
-        live: BridgeCandidateLiveState,
-        stateLine: BridgeTriageStateLine? = nil
+        live: BridgeTriageListLiveState
     ) throws -> BridgeTriageRow {
         PreviewData.boardRow(
             folder,
@@ -99,13 +96,12 @@ extension ShotScene {
             cover: try title.map {
                 .local(file: try BoardArtwork.scannedFile(named: $0))
             },
-            live: live,
-            stateLine: stateLine
+            live: live
         )
     }
 
     private static func lowTideRow(
-        live: BridgeCandidateLiveState = PreviewData.needsYou(
+        live: BridgeTriageListLiveState = PreviewData.needsYou(
             .matches(count: 3)
         )
     ) throws -> BridgeTriageRow {
@@ -129,12 +125,17 @@ extension ShotScene {
             record: "component-low-tide-hours",
             cover: .local(file: try PreviewData.lowTideHoursCover().file),
             placement: .done,
-            live: PreviewData.triageLive([.revealFolder]),
+            live: PreviewData.triageLive(
+                [.revealFolder],
+                status: .line(
+                    line: .uploading(
+                        releaseId: PreviewData.boardImported(.lowTideHours)
+                            .releaseId
+                    )
+                )
+            ),
             importStatus: .complete(
                 release: PreviewData.boardImported(.lowTideHours)
-            ),
-            stateLine: .uploading(
-                releaseId: PreviewData.boardImported(.lowTideHours).releaseId
             )
         )
     }
@@ -146,8 +147,7 @@ extension ShotScene {
             title: "Northbound",
             artist: "Mara Quill",
             record: "component-northbound",
-            live: standing.live,
-            stateLine: standing.stateLine
+            live: standing.live
         )
     }
 
@@ -199,8 +199,7 @@ extension ShotScene {
                 artist: "Tomas Brell",
                 live: PreviewData.triageLive(
                     [.skip, .revealFolder],
-                    identifying: .queued,
-                    standing: .identifying
+                    identifying: .queued
                 )
             ),
         ]

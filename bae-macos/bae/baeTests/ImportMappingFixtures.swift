@@ -381,7 +381,6 @@ extension MappingFixtures {
             actionable: true,
             placement: .pending(folderCheck: nil, records: records),
             live: BridgeCandidateLiveState(
-                identifying: nil,
                 import: nil,
                 actions: (metadataProvenance == nil && edit.albumTitle.isEmpty
                     ? [] : [.import])
@@ -389,8 +388,7 @@ extension MappingFixtures {
                         .identify, .resetToFileMetadata, .clearMetadata,
                         .skip, .revealFolder,
                     ],
-                standing: .notLookedUp,
-                badge: nil
+                needsYou: nil
             ),
             importStatus: nil,
             signals: nil,

@@ -10,7 +10,7 @@ pub enum TriageTab {
 }
 
 /// Which tab a row belongs to, and whether its last import failed, read from
-/// the tables alone; what is running for it is its [`CandidateLiveState`].
+/// the tables alone; what is running for it is its [`TriageListLiveState`].
 ///
 /// The list's placement decides it (`import_list_entry`, in the schema), in
 /// one order: **Done first**, a folder whose files this device imported, in
@@ -56,6 +56,12 @@ pub enum IdentificationStatus {
     ReadingPick { import_asked: bool },
     /// The result could not be committed; `failure` says why.
     FinalizationFailed { failure: crate::SaveFailure },
+}
+
+impl IdentificationStatus {
+    pub(crate) fn in_progress(&self) -> bool {
+        matches!(self, Self::Queued | Self::Running | Self::Finalizing | Self::ReadingPick { .. })
+    }
 }
 
 /// What a row's text column says about its release: nothing yet, a draft, a
@@ -117,7 +123,6 @@ pub struct TriageRow {
     pub cover: Option<crate::CoverImageSource>,
     /// How the candidate's last import ended.
     pub import_status: Option<TriageImportStatus>,
-    pub state_line: Option<TriageStateLine>,
     /// Where the candidate's draft was read from, once a source was applied;
     /// none for a release this device imported, which reads the library.
     pub metadata_provenance: Option<crate::MetadataProvenance>,
@@ -137,32 +142,40 @@ pub enum TriageStateLine {
     Error { failure: bae_catalogs::InternalFailure },
 }
 
-impl TriageStateLine {
+/// The status a candidate row adds to its title and credits.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TriageRowStatus {
+    QueuedToImport,
+    Line { line: TriageStateLine },
+}
+
+impl TriageRowStatus {
     pub(crate) fn of(
         import_status: Option<&TriageImportStatus>,
         upload: Option<&bae_records::UploadProgress>,
-        live: &CandidateLiveState,
+        import: Option<crate::ImportStep>,
+        standing: Option<&PendingStanding>,
     ) -> Option<Self> {
-        match live.facts.import {
-            // The row shows a wait mark in its trailing column.
-            Some(crate::ImportStep::Preparing(crate::PrepareStep::Queued)) => return None,
-            Some(step) => return Some(Self::Importing { step }),
+        match import {
+            Some(crate::ImportStep::Preparing(crate::PrepareStep::Queued)) => {
+                return Some(Self::QueuedToImport);
+            }
+            Some(step) => return Some(Self::Line { line: TriageStateLine::Importing { step } }),
             None => {}
         }
-        if let Some(TriageImportStatus::Complete { release }) = import_status {
-            return upload.map(|upload| match upload.activity() {
+        let line = if let Some(TriageImportStatus::Complete { release }) = import_status {
+            match upload?.activity() {
                 bae_records::UploadActivity::Uploading => {
-                    Self::Uploading { release_id: release.release_id.clone() }
+                    TriageStateLine::Uploading { release_id: release.release_id.clone() }
                 }
-                bae_records::UploadActivity::Queued => Self::QueuedToUpload,
-            });
-        }
-        match &live.standing {
-            Some(PendingStanding::Error { failure }) => {
-                Some(Self::Error { failure: failure.clone() })
+                bae_records::UploadActivity::Queued => TriageStateLine::QueuedToUpload,
             }
-            _ => None,
-        }
+        } else if let Some(PendingStanding::Error { failure }) = standing {
+            TriageStateLine::Error { failure: failure.clone() }
+        } else {
+            return None;
+        };
+        Some(Self::Line { line })
     }
 }
 

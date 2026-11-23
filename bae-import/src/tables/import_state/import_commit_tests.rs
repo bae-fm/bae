@@ -454,7 +454,7 @@ async fn an_import_reads_as_importing_until_its_release_is_written() {
 
     let list = list_subscription(&fixture, page_window(50)).await;
     let initial = next_page(&fixture, &list).await;
-    assert!(!page_rows(&initial)[&key].1.facts.importing());
+    assert!(page_rows(&initial)[&key].1.import_step().is_none());
     let tables = crate::tables::ImportTables::new(fixture.db.clone());
     assert_eq!(tables.load_tab_counts().await.unwrap().done, 0);
     // The pane reads where the candidate stands and whether this device
@@ -483,7 +483,7 @@ async fn an_import_reads_as_importing_until_its_release_is_written() {
     let started =
         fixture.import.read_list_for_test(list.request().clone(), Vec::new()).await.unwrap();
     assert!(
-        page_rows(&started)[&key].1.facts.importing(),
+        page_rows(&started)[&key].1.import_step().is_some(),
         "the row reads as importing once the import starts"
     );
     tokio::time::timeout(HANG_GUARD, writes.reached())
@@ -491,7 +491,7 @@ async fn an_import_reads_as_importing_until_its_release_is_written() {
         .expect("the import reaches the write of its release");
     let held = next_page(&fixture, &list).await;
     assert!(
-        page_rows(&held)[&key].1.facts.importing(),
+        page_rows(&held)[&key].1.import_step().is_some(),
         "the list reads the row as importing while its release is not written"
     );
     assert_eq!(tables.load_tab_counts().await.unwrap().done, 0);
@@ -501,7 +501,7 @@ async fn an_import_reads_as_importing_until_its_release_is_written() {
         let snapshot = next_page(&fixture, &list).await;
         match page_rows(&snapshot).remove(&key) {
             Some((_, live)) => assert!(
-                live.facts.importing(),
+                live.import_step().is_some(),
                 "a delivery shows the row on Found with its import ended: {live:?}"
             ),
             None => {

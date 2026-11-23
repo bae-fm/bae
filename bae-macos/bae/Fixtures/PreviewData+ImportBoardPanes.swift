@@ -62,7 +62,7 @@ extension PreviewData {
                 partCount: 0,
                 actionable: true,
                 placement: .done,
-                live: triageLive([.revealFolder]),
+                live: BridgeCandidateLiveState(actions: [.revealFolder]),
                 importStatus: .complete(release: release),
                 signals: nil,
                 stage: .imported(
@@ -252,7 +252,7 @@ extension PreviewData {
             ),
             cover: boardCover(cover),
             placement: .pending(folderCheck: nil, records: records),
-            live: needsYou(.matches(count: 3)),
+            live: needsYou(.matches(count: 3)).paneFixtureState,
             libraryStatus: lowTideHoursInLibrary,
             album: .named(
                 albumId: "board-0",
@@ -299,7 +299,7 @@ extension PreviewData {
                 files: [],
                 untitledTrackCount: UInt32(untitledTracks.count)
             ),
-            live: needsYou(.nothingToLookUp)
+            live: needsYou(.nothingToLookUp).paneFixtureState
         )
     }
 
@@ -498,7 +498,7 @@ extension PreviewData {
                 folderCheck: .sourceTracksUnknown,
                 records: boardRecords("board-field-recordings")
             ),
-            live: triageLive(boardDraftActions),
+            live: BridgeCandidateLiveState(actions: boardDraftActions),
             albumArtists: boardLibraryArtists("Mara Quill")
         )
     }
@@ -584,7 +584,7 @@ extension PreviewData {
             ),
             cover: boardCover(image),
             session: session,
-            live: needsYou(.notFound),
+            live: needsYou(.notFound).paneFixtureState,
             albumArtists: boardLibraryArtists(found.artist)
         )
     }

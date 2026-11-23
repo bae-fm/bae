@@ -104,26 +104,48 @@ impl CandidateLiveState {
     /// What the row's own menu offers: each command the row offers, for that
     /// one row, each able to run.
     pub fn offers(&self) -> Vec<super::SelectionOffer> {
-        self.actions
-            .iter()
-            .map(|&action| super::SelectionOffer { action, count: 1, enabled: true })
-            .collect()
+        row_offers(&self.actions)
+    }
+}
+
+/// What can run for a list row and what the row offers while it runs.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TriageListLiveState {
+    pub identification: Option<IdentificationStatus>,
+    pub actions: Vec<CandidateAction>,
+    pub standing: Option<PendingStanding>,
+    pub status: Option<super::TriageRowStatus>,
+}
+
+impl TriageListLiveState {
+    pub fn offers(&self) -> Vec<super::SelectionOffer> {
+        row_offers(&self.actions)
     }
 
-    /// The lookup at work the row shows: the work its state counts, so only a
-    /// row Identifying shows one. A run reading the release it picked
-    /// unattended leaves its row Identified, which shows none.
+    /// Only rows counted as Identifying show lookup work.
     pub fn identifying(&self) -> Option<IdentifyingStep> {
-        if self.standing != Some(PendingStanding::Identifying) {
-            return None;
-        }
-        // A row Identifying waits only while its lookup is queued.
-        Some(if self.facts.identification == Some(IdentificationStatus::Queued) {
-            IdentifyingStep::Queued
-        } else {
-            IdentifyingStep::Running
-        })
+        IdentifyingStep::of(self.standing.as_ref(), self.identification.as_ref())
     }
+
+    #[cfg(test)]
+    pub(crate) fn import_step(&self) -> Option<crate::ImportStep> {
+        match self.status {
+            Some(super::TriageRowStatus::QueuedToImport) => {
+                Some(crate::ImportStep::Preparing(crate::PrepareStep::Queued))
+            }
+            Some(super::TriageRowStatus::Line {
+                line: super::TriageStateLine::Importing { step },
+            }) => Some(step),
+            _ => None,
+        }
+    }
+}
+
+fn row_offers(actions: &[CandidateAction]) -> Vec<super::SelectionOffer> {
+    actions
+        .iter()
+        .map(|&action| super::SelectionOffer { action, count: 1, enabled: true })
+        .collect()
 }
 
 /// How far the lookup of a row whose state is Identifying has got, which the
@@ -134,4 +156,20 @@ pub enum IdentifyingStep {
     Queued,
     /// Its run is going, or writing an answer that picks no release.
     Running,
+}
+
+impl IdentifyingStep {
+    fn of(
+        standing: Option<&PendingStanding>,
+        identification: Option<&IdentificationStatus>,
+    ) -> Option<Self> {
+        if standing != Some(&PendingStanding::Identifying) {
+            return None;
+        }
+        Some(if identification == Some(&IdentificationStatus::Queued) {
+            Self::Queued
+        } else {
+            Self::Running
+        })
+    }
 }

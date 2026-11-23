@@ -22,9 +22,8 @@ extension PreviewData {
         record: String? = nil,
         cover: BridgeCoverImageSource?,
         placement: BridgeTriagePlacement = .pending,
-        live: BridgeCandidateLiveState = triageLive(boardDraftActions),
-        importStatus: BridgeTriageImportStatus? = nil,
-        stateLine: BridgeTriageStateLine? = nil
+        live: BridgeTriageListLiveState = triageLive(boardDraftActions),
+        importStatus: BridgeTriageImportStatus? = nil
     ) -> BridgeTriageRow {
         triageRow(
             for: boardCandidate(folder),
@@ -32,7 +31,6 @@ extension PreviewData {
             metadataSummary: summary,
             cover: cover,
             importStatus: importStatus,
-            stateLine: stateLine,
             metadataProvenance: record.map {
                 .externalRelease(
                     record: BridgeLookupRef(catalog: .musicBrainz, key: $0)
@@ -47,13 +45,12 @@ extension PreviewData {
     /// A row the lookups left to the person, for `reason`.
     static func needsYou(
         _ reason: BridgeNeedsYouReason
-    ) -> BridgeCandidateLiveState {
+    ) -> BridgeTriageListLiveState {
         triageLive(
             [
                 .identify, .resetToFileMetadata, .clearMetadata, .skip,
                 .revealFolder,
             ],
-            standing: .needsYou(reason: reason),
             badge: BridgeRowBadge(
                 says: .needsYou(reason: reason),
                 tone: .attention
@@ -71,19 +68,15 @@ extension PreviewData {
             phase: .measuringLoudness
         )
 
-        var live: BridgeCandidateLiveState {
+        var live: BridgeTriageListLiveState {
             switch self {
             case .importing:
-                PreviewData.triageLive([], importStep: Self.importingStep)
+                PreviewData.triageLive(
+                    [],
+                    status: .line(line: .importing(step: Self.importingStep))
+                )
             case .identified:
                 PreviewData.triageLive(PreviewData.boardDraftActions)
-            }
-        }
-
-        var stateLine: BridgeTriageStateLine? {
-            switch self {
-            case .importing: .importing(step: Self.importingStep)
-            case .identified: nil
             }
         }
     }
@@ -132,8 +125,7 @@ extension PreviewData {
                     cover: nil,
                     live: triageLive(
                         [.skip, .revealFolder],
-                        identifying: .running,
-                        standing: .identifying
+                        identifying: .running
                     )
                 ),
                 header: header,
@@ -169,8 +161,7 @@ extension PreviewData {
                     cover: .local(file: images.smallHours),
                     live: triageLive(
                         [.skip, .revealFolder],
-                        identifying: .queued,
-                        standing: .identifying
+                        identifying: .queued
                     )
                 )
             ),
@@ -223,8 +214,7 @@ extension PreviewData {
             summary: northboundSummary,
             record: "board-northbound",
             cover: .local(file: images.northbound.file),
-            live: northbound.live,
-            stateLine: northbound.stateLine
+            live: northbound.live
         )
         return [
             candidateItem(northboundRow),
@@ -237,7 +227,7 @@ extension PreviewData {
                     ),
                     record: "board-salt-and-cedar",
                     cover: .local(file: images.saltAndCedar),
-                    live: triageLive([], importStep: .preparing(step: .queued))
+                    live: triageLive([], status: .queuedToImport)
                 )
             ),
             candidateItem(paperLanternsFailedRow(cover: images.paperLanterns)),
@@ -257,7 +247,6 @@ extension PreviewData {
             placement: .failed,
             live: triageLive(
                 [.resetToFileMetadata, .clearMetadata],
-                standing: .importError,
                 badge: BridgeRowBadge(
                     says: .importError,
                     tone: .failure
@@ -293,12 +282,14 @@ extension PreviewData {
             boardRow(
                 folder,
                 summary: summary,
-                record: "board-\(summary.title)",
+                record: "board-\(summary.title ?? folder.name)",
                 cover: .local(file: cover),
                 placement: .done,
-                live: triageLive([.revealFolder]),
-                importStatus: .complete(release: boardImported(folder)),
-                stateLine: stateLine
+                live: triageLive(
+                    [.revealFolder],
+                    status: stateLine.map { .line(line: $0) }
+                ),
+                importStatus: .complete(release: boardImported(folder))
             )
         )
     }

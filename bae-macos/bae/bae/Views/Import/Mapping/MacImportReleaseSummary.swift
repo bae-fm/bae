@@ -50,9 +50,14 @@ struct ImportReleaseSummary {
     /// none.
     init?(row: BridgeTriageRow) {
         guard let summary = row.metadataSummary else { return nil }
-        let albumTitle = summary.title
-        titleIsPlaceholder = albumTitle.isEmpty
-        title = albumTitle.isEmpty ? Self.placeholderTitle : albumTitle
+        if let albumTitle = summary.title {
+            titleIsPlaceholder = false
+            title = albumTitle
+        }
+        else {
+            titleIsPlaceholder = true
+            title = Self.placeholderTitle
+        }
         artist = summary.artistLine?.text
         editionLine = ""
         copyLine = ""
@@ -73,21 +78,6 @@ struct ImportReleaseSummary {
     /// The title shown in place of a release's empty album title.
     private static var placeholderTitle: String {
         String(localized: "Album title")
-    }
-}
-
-extension BridgeAlbumLine {
-    var title: String {
-        switch self {
-        case .titleAlone(let title), .titleAndArtists(let title, _): title
-        }
-    }
-
-    var artistLine: BridgeCreditLine? {
-        switch self {
-        case .titleAlone: nil
-        case .titleAndArtists(_, let artistLine): artistLine
-        }
     }
 }
 

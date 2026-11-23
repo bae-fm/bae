@@ -159,6 +159,7 @@ extension BridgeDraftAlbum {
         case .new, .pickedNew: String(localized: "New album")
         case .named(_, let line), .picked(_, let line):
             switch line {
+            case .untitled(let artistLine): artistLine?.text ?? ""
             case .titleAlone(let title): title
             case .titleAndArtists(let title, let artistLine):
                 FactList.joined([title, artistLine.text])

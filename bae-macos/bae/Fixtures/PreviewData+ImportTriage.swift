@@ -15,10 +15,9 @@ extension PreviewData {
         metadataSummary: BridgeAlbumLine? = nil,
         cover: BridgeCoverImageSource? = nil,
         importStatus: BridgeTriageImportStatus? = nil,
-        stateLine: BridgeTriageStateLine? = nil,
         metadataProvenance: BridgeMetadataProvenance? = nil,
         reading: BridgeTriageReading = .unidentified,
-        live: BridgeCandidateLiveState = triageLive([])
+        live: BridgeTriageListLiveState = triageLive([])
     ) -> BridgeTriageRow {
         BridgeTriageRow(
             candidateKey: candidate.key,
@@ -30,7 +29,6 @@ extension PreviewData {
             metadataSummary: metadataSummary,
             cover: cover,
             importStatus: importStatus,
-            stateLine: stateLine,
             metadataProvenance: metadataProvenance,
             reading: reading
         )
@@ -276,7 +274,6 @@ extension PreviewData {
         metadataSummary: nil,
         live: triageLive(
             identifiedDraftCommands,
-            standing: .needsYou(reason: .notFound),
             badge: BridgeRowBadge(
                 says: .needsYou(reason: .notFound),
                 tone: .attention
@@ -290,8 +287,7 @@ extension PreviewData {
         metadataSummary: nil,
         live: triageLive(
             [.skip],
-            identifying: .running,
-            standing: .identifying
+            identifying: .running
         )
     )
 
@@ -304,10 +300,11 @@ extension PreviewData {
         for: importTabImportingCandidate,
         placement: .pending,
         metadataSummary: nil,
-        stateLine: .importing(step: .running(phase: .measuringLoudness)),
         live: triageLive(
             [],
-            importStep: .running(phase: .measuringLoudness)
+            status: .line(
+                line: .importing(step: .running(phase: .measuringLoudness))
+            )
         )
     )
 
@@ -377,7 +374,6 @@ extension PreviewData {
         ),
         live: triageLive(
             [.resetToFileMetadata, .clearMetadata],
-            standing: .importError,
             badge: BridgeRowBadge(says: .importError, tone: .failure)
         )
     )
@@ -483,16 +479,14 @@ extension PreviewData {
     static func triageLive(
         _ actions: [BridgeCandidateAction],
         identifying: BridgeIdentifyingStep? = nil,
-        importStep: BridgeImportStep? = nil,
-        standing: BridgePendingStanding? = nil,
-        badge: BridgeRowBadge? = nil
-    ) -> BridgeCandidateLiveState {
-        BridgeCandidateLiveState(
+        badge: BridgeRowBadge? = nil,
+        status: BridgeTriageRowStatus? = nil
+    ) -> BridgeTriageListLiveState {
+        BridgeTriageListLiveState(
             identifying: identifying,
-            import: importStep,
-            actions: actions,
-            standing: standing,
-            badge: badge
+            offers: rowOffers(actions),
+            badge: badge,
+            status: status
         )
     }
 
@@ -561,7 +555,7 @@ extension PreviewData {
         for var candidate in importTabCandidates {
             candidate.placement = rows[candidate.key]
                 .map(panePlacement(of:))
-            candidate.live = rows[candidate.key]?.live
+            candidate.live = rows[candidate.key]?.live.paneFixtureState
             store.selectedCandidates[candidate.key] = candidate
         }
         store.identificationProgress = (identified: 112, total: 130)
@@ -581,25 +575,46 @@ extension PreviewData {
     }
 }
 
+private func rowOffers(_ actions: [BridgeCandidateAction])
+    -> [BridgeSelectionOffer]
+{
+    actions.map { BridgeSelectionOffer(action: $0, count: 1, enabled: true) }
+}
+
+extension BridgeTriageListLiveState {
+    var paneFixtureState: BridgeCandidateLiveState {
+        let step: BridgeImportStep? =
+            switch status {
+            case .queuedToImport: .preparing(step: .queued)
+            case .line(.importing(let step)): step
+            default: nil
+            }
+        let reason: BridgeNeedsYouReason? =
+            switch badge?.says {
+            case .needsYou(let reason): reason
+            default: nil
+            }
+        return BridgeCandidateLiveState(
+            import: step,
+            offers: offers,
+            needsYou: reason
+        )
+    }
+}
+
 extension BridgeCandidateLiveState {
     /// A fixture row's live state whose row offers each of `actions` for
     /// itself, as core offers a row's own commands: for that one row, each
     /// enabled.
     init(
-        identifying: BridgeIdentifyingStep?,
-        import: BridgeImportStep?,
+        import: BridgeImportStep? = nil,
         actions: [BridgeCandidateAction],
-        standing: BridgePendingStanding?,
-        badge: BridgeRowBadge?
+        needsYou: BridgeNeedsYouReason? = nil
     ) {
         self.init(
-            identifying: identifying,
             import: `import`,
-            offers: actions.map {
-                BridgeSelectionOffer(action: $0, count: 1, enabled: true)
-            },
-            standing: standing,
-            badge: badge
+            offers: rowOffers(actions),
+            needsYou: needsYou
         )
     }
 }

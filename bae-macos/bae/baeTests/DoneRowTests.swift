@@ -57,7 +57,7 @@ struct DoneRowTests {
     func rowsWithStatusReserveRoom(state: BridgeTriageStateLine) {
         var row = PreviewData.triageRowDoneImported
         let heightWithoutStatus = ImportCandidateTableLayout.height(for: row)
-        row.stateLine = state
+        row.live.status = .line(line: state)
         #expect(
             ImportCandidateTableLayout.height(for: row) > heightWithoutStatus
         )

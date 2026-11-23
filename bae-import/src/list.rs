@@ -16,10 +16,10 @@
 //! What is running for a candidate right now — a run queued or in flight, an
 //! import that owns it — is in the standings table the candidate runtime
 //! writes, and the placement's Found state already counts it: each row carries
-//! it as its [`CandidateLiveState`], and the selection's offers read it.
+//! it as its [`TriageListLiveState`], and the selection's offers read it.
 
 use super::folder_scanner::FolderReleaseDecisionKey;
-use super::triage::{CandidateLiveState, InvalidRow, TriageGroup, TriageRow};
+use super::triage::{InvalidRow, TriageGroup, TriageListLiveState, TriageRow};
 use bae_store::WindowRead;
 
 mod path_order;
@@ -163,7 +163,7 @@ pub enum ImportListItem {
         row: TriageRow,
         /// What is running for the candidate, as the read found it, and the
         /// commands and state the row has with it.
-        live: CandidateLiveState,
+        live: TriageListLiveState,
         /// The group it is listed under, for a member of a group. The
         /// list's query reads the group's header with the row, so a surface
         /// has the row's header as soon as it has the row, whichever window

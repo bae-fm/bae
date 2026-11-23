@@ -470,7 +470,7 @@ async fn a_run_reads_as_identifying_until_its_verdict_is_stored() {
     let list = list_subscription(&fixture, page_window(50)).await;
     let initial = next_page(&fixture, &list).await;
     let (_, at_rest) = &page_rows(&initial)[&key];
-    assert_eq!(at_rest.facts.identification, None);
+    assert_eq!(at_rest.identification, None);
     assert_eq!(at_rest.standing, Some(crate::PendingStanding::NotLookedUp));
 
     fixture.identification().rerun_identify(key.clone());
@@ -478,7 +478,7 @@ async fn a_run_reads_as_identifying_until_its_verdict_is_stored() {
     let answered = loop {
         let snapshot = next_page(&fixture, &list).await;
         let (_, live) = page_rows(&snapshot).remove(&key).expect("the row stays on Found");
-        if live.facts.identifying() {
+        if live.identification.as_ref().is_some_and(crate::IdentificationStatus::in_progress) {
             assert!(
                 live.actions.contains(&crate::CandidateAction::CancelIdentification)
                     && !live.actions.contains(&crate::CandidateAction::RetryIdentification),
@@ -499,6 +499,6 @@ async fn a_run_reads_as_identifying_until_its_verdict_is_stored() {
         break live;
     };
     assert!(identifying > 0, "the run read as identifying");
-    assert_eq!(answered.facts.identification, None);
+    assert_eq!(answered.identification, None);
     assert_eq!(answered.standing, Some(crate::PendingStanding::Identified));
 }

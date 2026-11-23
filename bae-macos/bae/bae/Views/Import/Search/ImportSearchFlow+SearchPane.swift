@@ -299,7 +299,7 @@ extension ImportSearchFlow {
             // has no row at all — it is the only answer.
             signals: input.runtime?.inFlight?.signals.map(Signals.init(bridge:))
                 ?? candidate.settledSignals,
-            needsYou: candidate.live?.standing?.needsYou,
+            needsYou: candidate.live?.needsYou,
         )
     }
 }

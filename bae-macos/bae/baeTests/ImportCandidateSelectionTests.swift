@@ -66,12 +66,9 @@ struct ImportCandidateSelectionTests {
     func rowDrawsItsRowsLiveState() async throws {
         let idle = PreviewData.triageRowUnidentified
         var running = idle
-        running.live = BridgeCandidateLiveState(
-            identifying: .running,
-            import: nil,
-            actions: [.cancelIdentification, .skip, .revealFolder],
-            standing: .identifying,
-            badge: nil
+        running.live = PreviewData.triageLive(
+            [.cancelIdentification, .skip, .revealFolder],
+            identifying: .running
         )
         func spinners(_ row: BridgeTriageRow) async throws -> Int {
             let size = NSSize(width: 400, height: 80)

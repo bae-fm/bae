@@ -624,6 +624,9 @@ pub enum BridgeDraftAlbum {
 /// line when the album credits anyone. Mirrors `bae_import::AlbumLine`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeAlbumLine {
+    Untitled {
+        artist_line: Option<BridgeCreditLine>,
+    },
     /// The album credits no one, so its title names it alone.
     TitleAlone {
         title: String,
@@ -639,6 +642,7 @@ mirror_enum! {
     BridgeAlbumLine = bae_import::AlbumLine,
     from_core: pub(crate) fn,
     variants: {
+        Untitled { artist_line: (opt BridgeCreditLine) },
         TitleAlone { title },
         TitleAndArtists { title, artist_line: (BridgeCreditLine) },
     },

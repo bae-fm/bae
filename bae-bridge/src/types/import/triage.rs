@@ -361,20 +361,6 @@ pub enum BridgeCandidateAction {
     RevealFolder,
 }
 
-/// Where one Found row stands and why a row that needs the person does.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, uniffi::Enum)]
-pub enum BridgePendingStanding {
-    NotLookedUp,
-    Identifying,
-    NeedsYou { reason: BridgeNeedsYouReason },
-    Identified,
-    Unmatched,
-    LookupError,
-    Error,
-    Importing,
-    ImportError,
-}
-
 /// Why the lookup left a folder's answer to the person, with the numbers a
 /// UI formats for its locale.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, uniffi::Enum)]
@@ -493,22 +479,15 @@ mirror_struct! {
     fields: { action: (BridgeCandidateAction), count, enabled },
 }
 
-/// What is running for one candidate right now, and the commands its row
-/// offers and the state it is in with it.
+/// What the candidate pane offers while the candidate is idle or importing.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeCandidateLiveState {
-    /// The lookup at work the row shows: only a row Identifying shows one.
-    pub identifying: Option<BridgeIdentifyingStep>,
     /// The step of the import that owns the candidate; `None` when none does.
     pub import: Option<BridgeImportStep>,
     /// The commands the row's own menu offers. The menu never offers
     /// Combine.
     pub offers: Vec<BridgeSelectionOffer>,
-    /// Where the row stands among Found's states; `None` off Found.
-    pub standing: Option<BridgePendingStanding>,
-    /// The one badge the row wears in that state; `None` unless it waits on
-    /// the person.
-    pub badge: Option<BridgeRowBadge>,
+    pub needs_you: Option<BridgeNeedsYouReason>,
 }
 
 /// How far the lookup of a row Identifying has got.
@@ -691,14 +670,29 @@ pub struct BridgeTriageRow {
     /// What is running for the candidate right now, and the commands the row
     /// offers and the state it is in with it. The list delivers the row again
     /// when it changes.
-    pub live: BridgeCandidateLiveState,
+    pub live: BridgeTriageListLiveState,
     pub metadata_summary: Option<BridgeAlbumLine>,
     /// The cover the row draws, even when its draft is otherwise blank.
     pub cover: Option<BridgeCoverImageSource>,
     pub import_status: Option<BridgeTriageImportStatus>,
-    pub state_line: Option<BridgeTriageStateLine>,
     pub metadata_provenance: Option<BridgeMetadataProvenance>,
     pub reading: BridgeTriageReading,
+}
+
+/// What can run for a list row and what the row offers while it runs.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeTriageListLiveState {
+    pub identifying: Option<BridgeIdentifyingStep>,
+    pub offers: Vec<BridgeSelectionOffer>,
+    pub badge: Option<BridgeRowBadge>,
+    pub status: Option<BridgeTriageRowStatus>,
+}
+
+/// The status a candidate row adds to its title and credits.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeTriageRowStatus {
+    QueuedToImport,
+    Line { line: BridgeTriageStateLine },
 }
 
 /// The line below a candidate row's title and credits.

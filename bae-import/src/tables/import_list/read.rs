@@ -35,7 +35,7 @@ impl ImportTables {
             .subscribe_reconfigurable(initial, move |window, sql| {
                 window::read_window(&sql, &request, window)
             })
-            .process(window::WindowRows::process)
+            .process(window::process_window)
     }
 
     /// How many items the list `request` shows holds and how many its
@@ -94,7 +94,7 @@ impl ImportTables {
     ) -> Result<ImportWindow, DbError> {
         self.store
             .read(move |sql| window::read_window(&sql, &request, &window))
-            .process(window::WindowRows::process)
+            .process(window::process_window)
             .await
     }
 
@@ -143,7 +143,7 @@ impl ImportTables {
             })
             .process(|(rows, count, summary, entries, selection)| {
                 Ok(crate::list::ImportListRead::of(
-                    rows.process()?,
+                    window::process_window(rows)?,
                     count,
                     summary,
                     entries,

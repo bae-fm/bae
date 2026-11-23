@@ -28,7 +28,9 @@ mod model;
 mod selection;
 mod standing;
 
-pub use actions::{CandidateAction, CandidateActionBasis, CandidateLiveState, IdentifyingStep};
+pub use actions::{
+    CandidateAction, CandidateActionBasis, CandidateLiveState, IdentifyingStep, TriageListLiveState,
+};
 pub use model::*;
 pub use selection::SelectionOffer;
 pub use standing::{BadgeTone, NeedsYouReason, PendingBadge, PendingStanding, PendingState};
@@ -102,15 +104,7 @@ impl TriageRuntimeFacts {
     /// written, its picked release read first — something is still to come
     /// from it. A write that failed is over.
     pub fn identifying(&self) -> bool {
-        matches!(
-            self.identification,
-            Some(
-                IdentificationStatus::Queued
-                    | IdentificationStatus::Running
-                    | IdentificationStatus::Finalizing
-                    | IdentificationStatus::ReadingPick { .. }
-            )
-        )
+        self.identification.as_ref().is_some_and(IdentificationStatus::in_progress)
     }
 }
 

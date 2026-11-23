@@ -400,7 +400,6 @@ extension PreviewData {
                 placement: placement,
                 live: live
                     ?? BridgeCandidateLiveState(
-                        identifying: nil,
                         import: nil,
                         actions: (metadataProvenance == nil
                             && edit.albumTitle.isEmpty ? [] : [.import])
@@ -408,8 +407,7 @@ extension PreviewData {
                                 .identify, .resetToFileMetadata,
                                 .clearMetadata, .skip, .revealFolder,
                             ],
-                        standing: .notLookedUp,
-                        badge: nil
+                        needsYou: nil
                     ),
                 importStatus: importStatus,
                 signals: nil,

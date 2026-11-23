@@ -311,8 +311,8 @@ extension ImportCandidateTablePlaceTests {
             // The second header is on top: found by position, not by
             // dividing the offset by one height.
             Self.scroll(table, toRow: 20)
-            try await Wait.untilLaidOut(table) {
-                slot.place?.position == 20 && coordinator.item(at: 20) != nil
+            try await Wait.until {
+                slot.place?.position == 20 && slot.list?.row(at: 20) != nil
             }
             #expect(Self.topRow(of: table) == 20)
             #expect(coordinator.pinnedHeader()?.header == Self.header(20))
@@ -328,8 +328,8 @@ extension ImportCandidateTablePlaceTests {
                 to: NSPoint(x: 0, y: table.rect(ofRow: 19).minY + 20)
             )
             table.enclosingScrollView?.reflectScrolledClipView(clipView)
-            try await Wait.untilLaidOut(table) {
-                coordinator.item(at: 19) != nil
+            try await Wait.until {
+                slot.list?.row(at: 19) != nil
             }
             #expect(Self.topRow(of: table) == 19)
             let pinned = try #require(coordinator.pinnedHeader())
@@ -537,17 +537,10 @@ extension ImportCandidateTablePlaceTests {
                 watchedFolderPath: Data("/library".utf8),
                 actionable: true,
                 placement: .skipped,
-                live: BridgeCandidateLiveState(
-                    identifying: nil,
-                    import: nil,
-                    actions: [],
-                    standing: .notLookedUp,
-                    badge: nil
-                ),
+                live: PreviewData.triageLive([]),
                 metadataSummary: nil,
                 cover: nil,
                 importStatus: nil,
-                stateLine: nil,
                 metadataProvenance: nil,
                 reading: .unidentified
             ),

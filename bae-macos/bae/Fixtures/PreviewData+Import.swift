@@ -149,20 +149,15 @@ extension PreviewData {
             watchedFolderPath: Data(releaseQueueRoot.utf8),
             actionable: true,
             placement: .pending,
-            live: BridgeCandidateLiveState(
-                identifying: nil,
-                import: nil,
-                actions: [
+            live: PreviewData.triageLive(
+                [
                     .import, .identify, .resetToFileMetadata,
                     .clearMetadata, .skip,
-                ] + (separable ? [.separate] : []) + [.revealFolder],
-                standing: .notLookedUp,
-                badge: nil
+                ] + (separable ? [.separate] : []) + [.revealFolder]
             ),
             metadataSummary: nil,
             cover: nil,
             importStatus: nil,
-            stateLine: nil,
             metadataProvenance: nil,
             reading: .unidentified
         )

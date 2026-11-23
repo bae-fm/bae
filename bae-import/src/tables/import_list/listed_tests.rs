@@ -17,7 +17,7 @@ use bae_identify::TerminalVerdict;
 use bae_store::test_fixtures::fixed_now;
 
 /// Whether the row, with what is running for it, offers to import.
-fn offers_import(live: &crate::CandidateLiveState) -> bool {
+fn offers_import(live: &crate::triage::TriageListLiveState) -> bool {
     live.actions.contains(&CandidateAction::Import)
 }
 
@@ -448,7 +448,7 @@ async fn a_pane_shows_a_pick_being_read_only_while_it_is_read() {
         ("Asked", true),
         ("Idle", false),
     ] {
-        let identification = &row_at(&read, display_path).1.facts.identification;
+        let identification = &row_at(&read, display_path).1.identification;
         assert_eq!(
             matches!(identification, Some(crate::IdentificationStatus::ReadingPick { .. })),
             reading,

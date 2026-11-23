@@ -55,12 +55,3 @@ extension BridgeNeedsYouReason {
         }
     }
 }
-
-extension BridgePendingStanding {
-    /// Why the lookup left the folder's answer to the person, for a row it
-    /// did.
-    var needsYou: BridgeNeedsYouReason? {
-        guard case .needsYou(let reason) = self else { return nil }
-        return reason
-    }
-}

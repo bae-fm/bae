@@ -815,7 +815,7 @@ pub(crate) fn counted(snapshot: &crate::list::ImportListRead, filter: crate::Pen
 /// What is running for each candidate row a snapshot's page holds, by key.
 pub(crate) fn page_live(
     snapshot: &crate::list::ImportListRead,
-) -> BTreeMap<crate::CandidateKey, crate::CandidateLiveState> {
+) -> BTreeMap<crate::CandidateKey, crate::triage::TriageListLiveState> {
     snapshot
         .windows
         .iter()
@@ -845,7 +845,7 @@ pub(crate) fn reported(key: &crate::CandidateKey, progress: crate::ImportProgres
 /// Each candidate row a snapshot's page holds, with its live state, by key.
 pub(crate) fn page_rows(
     snapshot: &crate::list::ImportListRead,
-) -> BTreeMap<crate::CandidateKey, (crate::TriageRow, crate::CandidateLiveState)> {
+) -> BTreeMap<crate::CandidateKey, (crate::TriageRow, crate::triage::TriageListLiveState)> {
     snapshot
         .windows
         .iter()
@@ -913,7 +913,7 @@ pub(crate) fn multi_match_verdict(release_ids: &[&str], group_id: &str) -> Termi
 pub(crate) async fn queue_item(
     fixture: &Fixture,
     key: &crate::CandidateKey,
-) -> (crate::TriageRow, crate::CandidateLiveState) {
+) -> (crate::TriageRow, crate::triage::TriageListLiveState) {
     for tab in [crate::TriageTab::Pending, crate::TriageTab::Skipped] {
         let view = crate::ImportListView { tab, ..crate::ImportListView::default() };
         let projection = fixture.import.wait_for_list(view, |_| true).await;
