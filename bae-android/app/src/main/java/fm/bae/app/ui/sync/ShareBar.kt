@@ -11,13 +11,10 @@ import android.view.accessibility.AccessibilityNodeInfo
 import android.view.animation.LinearInterpolator
 import android.widget.ProgressBar
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.graphics.withClip
 import fm.bae.app.ui.appearance.ThemeOpacity
@@ -35,7 +32,8 @@ private const val GAP_DP = 4f
 
 /**
  * A bar that moves with no share to show, as the line for syncing has none: the accent over a
- * track of the accent's tint. Screen readers name it [description], the line's words.
+ * track of the accent's tint, drawn as [ShareBarView] draws a step that counts nothing. Screen
+ * readers name it [description], the line's words.
  */
 @Composable
 internal fun MovingBar(
@@ -43,10 +41,14 @@ internal fun MovingBar(
     modifier: Modifier = Modifier,
 ) {
     val accent = MaterialTheme.colorScheme.primary
-    LinearProgressIndicator(
-        modifier = modifier.fillMaxWidth().semantics { contentDescription = description },
-        color = accent,
-        trackColor = accent.copy(alpha = ThemeOpacity.tintStrong),
+    val track = accent.copy(alpha = ThemeOpacity.tintStrong)
+    AndroidView(
+        modifier = modifier.fillMaxWidth(),
+        factory = { context -> ShareBarView(context).apply { showMoving() } },
+        update = { view ->
+            view.contentDescription = description
+            view.applyColors(accent = accent.toArgb(), track = track.toArgb())
+        },
     )
 }
 
@@ -84,11 +86,14 @@ internal fun ShareBar(
 /** How long the moving bar's piece takes to cross the track. */
 private const val MOVING_MILLIS = 1500L
 
-/** How far across the track the moving piece rests before the bar first moves. */
-private const val MOVING_REST_PHASE = 0.3f
-
 /** The moving bar's piece, as a share of the track's width. */
-private const val MOVING_SHARE = 0.4f
+private const val MOVING_SHARE = 0.3f
+
+/** Where the piece's start rests, as a share of the track's width, before the bar first moves and in a still frame. */
+private const val MOVING_REST_START = 0.38f
+
+/** [MOVING_REST_START] as the phase that puts the piece's start there: the piece spans [MOVING_SHARE] of the track. */
+private const val MOVING_REST_PHASE = (MOVING_REST_START + MOVING_SHARE) / (1f + MOVING_SHARE)
 
 /**
  * Material 3's linear progress bar: 4 dp tall with rounded ends, the filled part, a gap, the rest of
@@ -108,15 +113,15 @@ internal class ShareBarView(
     /** Whether a piece crosses the track, for a step that counts nothing. */
     private var moving = false
 
-    /** Where the moving piece is; before it first moves it sits part way, so a still frame shows it. */
+    /** How far the piece has crossed, 0 when it is just off the track's start and 1 just off its end. */
     private var phase = MOVING_REST_PHASE
     private val crossing =
-        ValueAnimator.ofFloat(0f, 1f).apply {
+        ValueAnimator.ofFloat(MOVING_REST_PHASE, MOVING_REST_PHASE + 1f).apply {
             duration = MOVING_MILLIS
             repeatCount = ValueAnimator.INFINITE
             interpolator = LinearInterpolator()
             addUpdateListener {
-                phase = it.animatedValue as Float
+                phase = (it.animatedValue as Float) % 1f
                 invalidate()
             }
         }
@@ -198,12 +203,21 @@ internal class ShareBarView(
         val gap = dp(GAP_DP)
         val radius = height / 2f
         if (moving) {
-            canvas.drawRoundRect(bounds.apply { set(0f, 0f, width.toFloat(), height) }, radius, radius, track)
             val piece = width * MOVING_SHARE
             val start = -piece + (width + piece) * phase
+            val leftEnd = minOf(start - gap, width.toFloat())
+            if (leftEnd > 0f) {
+                canvas.drawRoundRect(bounds.apply { set(0f, 0f, leftEnd, height) }, radius, radius, track)
+            }
+            val rightStart = maxOf(start + piece + gap, 0f)
+            if (rightStart < width) {
+                val rest = bounds.apply { set(rightStart, 0f, width.toFloat(), height) }
+                canvas.drawRoundRect(rest, radius, radius, track)
+            }
             canvas.withClip(0f, 0f, width.toFloat(), height) {
                 drawRoundRect(bounds.apply { set(start, 0f, start + piece, height) }, radius, radius, fill)
             }
+            canvas.drawCircle(width - radius, radius, radius, fill)
             return
         }
         val filledEnd = width * fraction
