@@ -29,7 +29,10 @@ struct MacSortPill<Criterion: SortCriterionRepresentable>: View {
                 .foregroundStyle(Theme.macTextSecondary)
             }
             .buttonStyle(.accentPlain)
-            .accessibilityLabel(directionAction)
+            .accessibilityLabel(
+                criterion.direction == .ascending
+                    ? Text("Ascending") : Text("Descending")
+            )
             .help(directionAction)
             if canRemove {
                 Button(action: onRemove) {
