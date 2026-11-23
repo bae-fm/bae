@@ -651,17 +651,7 @@ pub fn bridge_area_terms(facts: BridgePressingFacts) -> Vec<BridgeFactTerm> {
     facts.area.map(bridge_area_term).into_iter().collect()
 }
 
-/// A pressing's first line: where it was released, then what it is made of —
-/// "Japan · 2×CD".
-#[uniffi::export]
-pub fn bridge_pressing_summary(facts: BridgePressingFacts) -> Vec<BridgeFactTerm> {
-    let media = bridge_media_terms(facts.media.clone());
-    let mut terms = bridge_area_terms(facts);
-    terms.extend(media);
-    terms
-}
-
-/// A pressing's second line: how official it is where that is anything but
+/// A pressing's details: how official it is where that is anything but
 /// the ordinary official release, what it is sold in, and the details
 /// Discogs states — "Promotion · Reissue".
 #[uniffi::export]

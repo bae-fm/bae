@@ -162,11 +162,6 @@ object PreviewData {
                 ),
             // What core words from the facts above, written out because a
             // shot cannot call the bridge.
-            pressingSummary =
-                listOf(
-                    BridgeFactTerm.Worded(BridgeTermLabel.Localized("core.pressing.country.us")),
-                    BridgeFactTerm.Worded(BridgeTermLabel.Localized("core.pressing.medium.vinyl")),
-                ),
             areaTerms = listOf(BridgeFactTerm.Worded(BridgeTermLabel.Localized("core.pressing.country.us"))),
             mediaTerms = listOf(BridgeFactTerm.Worded(BridgeTermLabel.Localized("core.pressing.medium.vinyl"))),
             pressingDetails = emptyList(),

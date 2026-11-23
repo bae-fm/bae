@@ -48,15 +48,7 @@ extension BridgePressing {
     ) {
         let lead = releases.first
         let facts = lead?.facts ?? PreviewData.pressingFacts()
-        let area = bridgePressingSummary(
-            facts: BridgePressingFacts(
-                area: facts.area,
-                media: [],
-                status: nil,
-                packaging: nil,
-                discogsDetails: []
-            )
-        )
+        let area = bridgeAreaTerms(facts: facts)
         let media = bridgeMediaTerms(media: facts.media)
         self.init(
             releases: releases,

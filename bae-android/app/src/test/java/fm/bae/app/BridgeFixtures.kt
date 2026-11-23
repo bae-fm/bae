@@ -109,7 +109,6 @@ object BridgeFixtures {
                     packaging = null,
                     discogsDetails = emptyList(),
                 ),
-            pressingSummary = emptyList(),
             areaTerms = emptyList(),
             mediaTerms = emptyList(),
             pressingDetails = emptyList(),

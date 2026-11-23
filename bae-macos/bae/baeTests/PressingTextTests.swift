@@ -10,9 +10,12 @@ struct PressingTextTests {
         localizedCoreString("core.audio.list_separator")
     }
 
-    /// A pressing's lines, as core words them onto its record.
+    /// Where a pressing was released and what it is made of, as core words
+    /// them onto its record.
     private func summary(_ facts: BridgePressingFacts) -> String {
-        PressingText.line(bridgePressingSummary(facts: facts))
+        PressingText.line(
+            bridgeAreaTerms(facts: facts) + bridgeMediaTerms(media: facts.media)
+        )
     }
 
     private func details(_ facts: BridgePressingFacts) -> String {

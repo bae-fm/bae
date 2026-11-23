@@ -435,19 +435,17 @@ pub struct BridgeRelease {
     /// What the pressing is: where it was released, its media, status,
     /// packaging and Discogs details.
     pub facts: BridgePressingFacts,
-    /// The facts' summary line — where, and on what — as
-    /// [`crate::types::bridge_pressing_summary`] words it. Carried rather than
-    /// asked for, so a surface draws the release with no call into the
-    /// bridge, as Android's preview renderer has to.
-    pub pressing_summary: Vec<crate::types::BridgeFactTerm>,
     /// The facts' area alone, worded: where the release was released, which
-    /// the edition line ends with, and empty when it states none.
+    /// the edition line ends with, and empty when it states none. Carried
+    /// rather than asked for, as are the media and the details, so a surface
+    /// draws the release with no call into the bridge, as Android's preview
+    /// renderer has to.
     pub area_terms: Vec<crate::types::BridgeFactTerm>,
     /// The facts' media alone, worded, as the release's summary carries
     /// them.
     pub media_terms: Vec<crate::types::BridgeFactTerm>,
     /// The facts' details line, as [`crate::types::bridge_pressing_details`]
-    /// words it. Carried for the same reason.
+    /// words it.
     pub pressing_details: Vec<crate::types::BridgeFactTerm>,
     /// Where its files are, and whether this device keeps them offline.
     pub storage_state: BridgeReleaseStorageState,

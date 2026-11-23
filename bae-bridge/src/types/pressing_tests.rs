@@ -10,27 +10,36 @@ fn japan_cd() -> BridgePressingFacts {
     }
 }
 
-/// Both catalogs' rows read the same shape: the place, then the media.
+/// Where a pressing was released is one part: a country by its code, a
+/// region through the catalog, and nothing when the facts state none.
 #[test]
-fn a_summary_is_the_place_then_the_media() {
+fn the_area_is_one_part_a_country_or_a_region() {
     assert_eq!(
-        bridge_pressing_summary(japan_cd()),
-        vec![
-            BridgeFactTerm::Country { code: "JP".to_string() },
-            BridgeFactTerm::Worded { label: verbatim("CD") },
-        ]
+        bridge_area_terms(japan_cd()),
+        vec![BridgeFactTerm::Country { code: "JP".to_string() }]
     );
-    let two_vinyl_in_europe = BridgePressingFacts {
+    let europe = BridgePressingFacts {
         area: Some(BridgeReleaseArea::Region { region: BridgeRegion::UkAndEurope }),
-        media: vec![BridgeMediaCount { medium: BridgeMedium::Vinyl, count: 2 }],
         ..japan_cd()
     };
     assert_eq!(
-        bridge_pressing_summary(two_vinyl_in_europe),
-        vec![
-            BridgeFactTerm::Worded { label: localized("core.pressing.region.uk_and_europe") },
-            BridgeFactTerm::Counted { count: 2, label: localized("core.pressing.medium.vinyl") },
-        ]
+        bridge_area_terms(europe),
+        vec![BridgeFactTerm::Worded { label: localized("core.pressing.region.uk_and_europe") }]
+    );
+    assert_eq!(bridge_area_terms(BridgePressingFacts { area: None, ..japan_cd() }), Vec::new());
+}
+
+/// More than one of a medium carries its count.
+#[test]
+fn media_carry_their_count() {
+    let two_vinyl = vec![BridgeMediaCount { medium: BridgeMedium::Vinyl, count: 2 }];
+    assert_eq!(
+        bridge_media_terms(two_vinyl),
+        vec![BridgeFactTerm::Counted { count: 2, label: localized("core.pressing.medium.vinyl") }]
+    );
+    assert_eq!(
+        bridge_media_terms(japan_cd().media),
+        vec![BridgeFactTerm::Worded { label: verbatim("CD") }]
     );
 }
 
