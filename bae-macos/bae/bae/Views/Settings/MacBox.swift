@@ -178,12 +178,13 @@ struct MacBoxRows: View {
 }
 
 /// A label at the left and its value or control at the right, in the rows of
-/// a settings box.
+/// a settings box. The label takes the room the value and control leave, as
+/// the board's does, so a label that is a button spans it.
 private struct SettingsLabeledContentStyle: LabeledContentStyle {
     func makeBody(configuration: Configuration) -> some View {
         HStack(spacing: RowMetrics.inset) {
             configuration.label
-            Spacer(minLength: RowMetrics.inset)
+                .frame(maxWidth: .infinity, alignment: .leading)
             configuration.content
         }
     }
