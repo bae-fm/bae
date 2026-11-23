@@ -12,27 +12,20 @@ struct PlaylistFields: View {
     private static let choices: [BridgeSharing] = [.private, .household]
 
     var body: some View {
-        FieldColumn {
-            MacTextField("Name") {
+        VStack(alignment: .leading, spacing: ThemeSpace.related) {
+            MacFormField("Name") {
                 BoxedField(text: $name)
             }
-            GridRow(alignment: .firstTextBaseline) {
-                Text("Who sees it")
-                    .gridColumnAlignment(.trailing)
-                VStack(alignment: .leading, spacing: ThemeSpace.inline) {
-                    MacSegmentedControl(
-                        selectedIndex: Binding(
-                            get: { Self.choices.firstIndex(of: sharing) ?? 0 },
-                            set: { sharing = Self.choices[$0] }
-                        ),
-                        segments: Self.choices.map {
-                            .init(label: $0.label, systemImage: nil)
-                        }
-                    )
-                    Text(sharing.note)
-                        .fieldNote()
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+            MacFormField("Who sees it", note: Text(sharing.note)) {
+                MacSegmentedControl(
+                    selectedIndex: Binding(
+                        get: { Self.choices.firstIndex(of: sharing) ?? 0 },
+                        set: { sharing = Self.choices[$0] }
+                    ),
+                    segments: Self.choices.map {
+                        .init(label: $0.label, systemImage: nil)
+                    }
+                )
             }
         }
     }

@@ -10,20 +10,14 @@ extension ShotScene {
         formField("mac.component.form-field.default", note: nil),
         formField(
             "mac.component.form-field.note",
-            note: "Only you see this playlist."
+            note: Text("Only you see this playlist.")
         ),
     ]
 
-    private static func formField(_ id: String, note: LocalizedStringKey?)
-        -> ShotScene
-    {
+    private static func formField(_ id: String, note: Text?) -> ShotScene {
         component(id, height: 110) {
-            VStack(alignment: .leading, spacing: ThemeSpace.inline) {
-                Text("Who sees it")
+            MacFormField("Who sees it", note: note) {
                 MacPlaceholderLine(width: 388, height: 24)
-                if let note {
-                    FieldNote(note)
-                }
             }
             .frame(width: 388, alignment: .leading)
         }
