@@ -59,10 +59,11 @@ internal object ElementList {
             // A node with no visible part (below the screen's edge, past a scrolling area's edge or under the
             // drawn keyboard) is not listed, as the board reader leaves out such a node of a board. Its children
             // are visited: they hang from the nearest listed node above.
-            val here = if (hidden(node, frame)) parent else Listed(element(node, density, unmerged), parent)
-            if (here !== parent) {
+            val label = fieldLabel(node, unmerged)
+            val here = if (hidden(node, frame)) parent else Listed(element(node, density, unmerged, label != null), parent)
+            if (here != null && here !== parent) {
                 // A board draws a field's label as a text of its own before the field; Compose's field holds it inside.
-                fieldLabel(node, here!!.json, unmerged)
+                label
                     ?.takeUnless { hidden(it, frame) }
                     ?.let { listed.add(Listed(element(it, density, unmerged), parent)) }
                 listed.add(here)
@@ -167,6 +168,7 @@ internal object ElementList {
         node: SemanticsNode,
         density: Float,
         unmerged: SemanticsNode,
+        hasOutlineLabel: Boolean = false,
     ): JSONObject {
         val config = node.config
         val role = config.getOrNull(SemanticsProperties.Role)
@@ -183,11 +185,11 @@ internal object ElementList {
         // box, and TouchTargetTest checks the touch target. It is the whole box, also where it reaches past the
         // shot's frame, as a board's box does.
         val bounds =
-            when (kind) {
-                "text" -> textBox(drawn)
+            when {
+                kind == "text" -> textBox(drawn)
 
-                // Material's field node reaches 8 dp above its outline, where the label rises; the board's field box is the outline.
-                "field" -> node.wholeBox().let { Rect(it.left, it.top + FIELD_LABEL_RISE_DP * density, it.right, it.bottom) }
+                // Material's outlined field includes the 8dp in which its visible label floats.
+                hasOutlineLabel -> node.wholeBox().let { Rect(it.left, it.top + FIELD_LABEL_RISE_DP * density, it.right, it.bottom) }
 
                 else -> node.wholeBox()
             }
@@ -217,16 +219,16 @@ internal object ElementList {
     }
 
     /**
-     * The node of the text that names [field], when the unmerged tree holds one under it: Material's label, which is
-     * inside the field's node. Null for a field with no label text.
+     * The visible text that names an editable field, from inside its node in the unmerged tree.
+     * A PIN field sets a description with no visible label.
      */
     private fun fieldLabel(
         node: SemanticsNode,
-        field: JSONObject,
         unmerged: SemanticsNode,
     ): SemanticsNode? {
-        if (field.getString("role") != "field") return null
-        val words = field.optString("label").takeIf { it.isNotEmpty() && !field.isNull("label") } ?: return null
+        val config = node.config
+        if (!config.contains(SemanticsProperties.EditableText)) return null
+        val words = config.getOrNull(SemanticsProperties.Text)?.joinToString(" ") { it.text } ?: return null
         val inside = find(unmerged, node.id) ?: return null
         return inside.children
             .flatMap(::textsUnder)
