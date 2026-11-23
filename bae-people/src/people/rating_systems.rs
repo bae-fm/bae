@@ -20,7 +20,7 @@ pub enum RatingSystem {
 }
 
 impl RatingSystem {
-    fn as_str(self) -> &'static str {
+    pub(super) fn as_str(self) -> &'static str {
         match self {
             Self::Stars => "stars",
             Self::Heart => "heart",
@@ -111,13 +111,15 @@ pub fn rating_systems_on(sql: &SqlReadContext<'_>) -> rusqlite::Result<RatingSys
     sql.query_row(RATING_SYSTEMS_SQL, [], rating_systems_row)
 }
 
+pub(super) const MIN_HEART_STARS: Stars = Stars::Three;
+
 /// Whether *Heart* shows a rating of `stars` as a heart: three stars or
 /// more.
 pub fn is_heart(stars: Stars) -> bool {
-    stars as i64 >= Stars::Three as i64
+    stars as i64 >= MIN_HEART_STARS as i64
 }
 
-fn rating_systems_row(row: &Row<'_>) -> rusqlite::Result<RatingSystems> {
+pub(super) fn rating_systems_row(row: &Row<'_>) -> rusqlite::Result<RatingSystems> {
     Ok(RatingSystems {
         albums: bae_store::read::parsed_column(row, "albums")?,
         tracks: bae_store::read::parsed_column(row, "tracks")?,

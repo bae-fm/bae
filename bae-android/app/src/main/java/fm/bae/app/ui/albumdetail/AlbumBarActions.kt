@@ -102,18 +102,6 @@ internal fun AlbumBarActions(
                 null
             }
         }
-    val context = LocalContext.current
-    val ratingAction =
-        when (val rating = detail.rating) {
-            BridgeAlbumRating.Hidden -> null
-            is BridgeAlbumRating.Stars -> AlbumRatingAction.Rate(onRate)
-            is BridgeAlbumRating.Heart ->
-                AlbumRatingAction.Heart(
-                    hearters = context.heartersText(rating),
-                    hearted = heartChoice.shown ?: rating.hearted,
-                    onChoose = heartChoice::choose,
-                )
-        }
     AlbumOptionsMenu(
         AlbumMenuActions(
             play =
@@ -126,10 +114,34 @@ internal fun AlbumBarActions(
                 } else {
                     null
                 },
-            rating = ratingAction,
+            rating = RatingAction(detail.rating, heartChoice, onRate),
             pin = pin,
             onSetPrimaryRelease = setPrimary,
             onDelete = { deletion.ask(detail.album) },
         ),
     )
 }
+
+@Composable
+private fun RatingAction(
+    rating: BridgeAlbumRating,
+    heartChoice: AlbumHeartChoice,
+    onRate: () -> Unit,
+): AlbumRatingAction? =
+    when (rating) {
+        BridgeAlbumRating.Hidden -> {
+            null
+        }
+
+        is BridgeAlbumRating.Stars -> {
+            AlbumRatingAction.Rate(onRate)
+        }
+
+        is BridgeAlbumRating.Heart -> {
+            AlbumRatingAction.Heart(
+                hearters = LocalContext.current.let { context -> rating.hearters?.let(context::heartersText) },
+                hearted = heartChoice.shown ?: rating.hearted,
+                onChoose = heartChoice::choose,
+            )
+        }
+    }

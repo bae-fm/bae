@@ -1,3 +1,4 @@
+use super::rating_systems::{rating_systems_row, MIN_HEART_STARS};
 use super::*;
 #[cfg(any(test, feature = "test-utils"))]
 use crate::collections::Rating;
@@ -315,20 +316,31 @@ fn own_member_sql() -> String {
     )
 }
 
-/// What the album `?1`'s page reads of its ratings, in one row: this device's
-/// person's own stars, and every other person's, by name then id, as a JSON
-/// array; `ratings_album` finds the album's ratings. A person with no
-/// registration yet is none of the ratings' people.
+/// The rating systems and the album `?1`'s ratings that its system shows.
+/// SQLite finds the album's ratings through `ratings_album`, and names
+/// other raters by name then id.
 pub(super) fn album_ratings_sql() -> String {
     format!(
-        "WITH album(id) AS (SELECT ?1) \
-         SELECT (SELECT r.stars FROM ratings AS r \
-                 WHERE r.album_id = album.id AND r.person_id = own.member) AS mine, \
-                (SELECT json_group_array(json_object('name', p.name, 'stars', r.stars) \
-                        ORDER BY p.name, p.id) \
-                 FROM ratings AS r JOIN people AS p ON p.id = r.person_id \
-                 WHERE r.album_id = album.id AND r.person_id IS NOT own.member) AS others \
-         FROM album LEFT JOIN ({own}) AS own ON 1",
+        "WITH album AS ( \
+             SELECT ?1 AS id, albums, tracks, \
+                    CASE albums WHEN '{stars}' THEN 1 WHEN '{heart}' THEN {minimum_heart} END AS minimum \
+             FROM rating_systems WHERE id = 'library' \
+         ), shown AS MATERIALIZED ( \
+             SELECT album.albums, album.tracks, \
+                    (SELECT r.stars FROM ratings AS r \
+                     WHERE r.album_id = album.id AND r.person_id = own.member \
+                       AND r.stars >= album.minimum) AS mine, \
+                    (SELECT json_group_array(json_object('name', p.name, 'stars', r.stars) \
+                            ORDER BY p.name, p.id) \
+                     FROM ratings AS r JOIN people AS p ON p.id = r.person_id \
+                     WHERE r.album_id = album.id AND r.person_id IS NOT own.member \
+                       AND r.stars >= album.minimum) AS others \
+             FROM album LEFT JOIN ({own}) AS own ON 1 \
+         ) \
+         SELECT *, mine IS NOT NULL OR json_array_length(others) > 0 AS has_raters FROM shown",
+        stars = RatingSystem::Stars.as_str(),
+        heart = RatingSystem::Heart.as_str(),
+        minimum_heart = MIN_HEART_STARS as i64,
         own = own_member_sql(),
     )
 }
@@ -344,22 +356,23 @@ pub fn own_track_stars_sql(track_alias: &str) -> String {
     )
 }
 
-/// What the album `album_id`'s page reads of its ratings, for the person
-/// using this device.
+/// The library's rating systems and what the album's page shows of its ratings.
 pub fn album_ratings_on(
     sql: &SqlReadContext<'_>,
     album_id: &str,
-) -> rusqlite::Result<AlbumRatings> {
+) -> rusqlite::Result<(RatingSystems, AlbumRatings)> {
     sql.query_row(&album_ratings_sql(), [album_id], |row| {
         let stars_of = |value: i64| crate::collections::stars_from_sql(value);
         let others: Vec<StoredRating> = bae_store::read::json_column(row, "others")?;
-        Ok(AlbumRatings {
+        let ratings = AlbumRatings {
             mine: row.get::<_, Option<i64>>("mine")?.map(stars_of).transpose()?,
             others: others
                 .into_iter()
                 .map(|other| Ok(OtherRating { name: other.name, stars: stars_of(other.stars)? }))
                 .collect::<rusqlite::Result<_>>()?,
-        })
+            has_raters: row.get("has_raters")?,
+        };
+        Ok((rating_systems_row(row)?, ratings))
     })
 }
 

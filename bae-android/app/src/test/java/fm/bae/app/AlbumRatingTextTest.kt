@@ -46,12 +46,8 @@ class AlbumRatingTextTest {
 
     @Test
     fun theHeartLineNamesThisPersonFirstThenEachOtherByName() {
-        val rating =
-            BridgeAlbumRating.Heart(
-                hearted = true,
-                hearters = listOf(BridgeHearter.You, BridgeHearter.Person("Ana")),
-            )
+        val hearters = listOf(BridgeHearter.You, BridgeHearter.Person("Ana"))
 
-        assertEquals("You · Ana hearted it", context.heartersText(rating))
+        assertEquals("You · Ana hearted it", context.heartersText(hearters))
     }
 }

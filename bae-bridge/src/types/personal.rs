@@ -191,8 +191,9 @@ pub enum BridgeAlbumRating {
     Heart {
         hearted: bool,
         /// Who has a heart on the album: this person first, when they do,
-        /// then each other person who does, by name.
-        hearters: Vec<BridgeHearter>,
+        /// then each other person who does, by name. None when nobody has
+        /// a heart on the album.
+        hearters: Option<Vec<BridgeHearter>>,
     },
 }
 
@@ -231,13 +232,15 @@ impl BridgeAlbumRating {
             },
             AlbumRating::Heart { hearted, hearters } => Self::Heart {
                 hearted,
-                hearters: hearters
-                    .into_iter()
-                    .map(|hearter| match hearter {
-                        Hearter::You => BridgeHearter::You,
-                        Hearter::Person { name } => BridgeHearter::Person { name },
-                    })
-                    .collect(),
+                hearters: hearters.map(|hearters| {
+                    hearters
+                        .into_iter()
+                        .map(|hearter| match hearter {
+                            Hearter::You => BridgeHearter::You,
+                            Hearter::Person { name } => BridgeHearter::Person { name },
+                        })
+                        .collect()
+                }),
             },
         }
     }

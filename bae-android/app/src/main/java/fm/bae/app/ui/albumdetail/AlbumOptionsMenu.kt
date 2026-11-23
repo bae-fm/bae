@@ -32,10 +32,12 @@ internal class PlayMenuActions(
 )
 
 internal sealed interface AlbumRatingAction {
-    class Rate(val onClick: () -> Unit) : AlbumRatingAction
+    class Rate(
+        val onClick: () -> Unit,
+    ) : AlbumRatingAction
 
     class Heart(
-        val hearters: String,
+        val hearters: String?,
         val hearted: Boolean,
         val onChoose: (Boolean) -> Unit,
     ) : AlbumRatingAction
@@ -83,15 +85,7 @@ internal fun AlbumMenuItems(
     }
     val hasMiddleGroup = actions.rating != null || actions.pin != null || actions.onSetPrimaryRelease != null
     if (actions.play != null && hasMiddleGroup) AndroidDivider()
-    when (val rating = actions.rating) {
-        null -> Unit
-        is AlbumRatingAction.Rate -> AndroidMenuAction(stringResource(R.string.rate), close, rating.onClick)
-        is AlbumRatingAction.Heart -> {
-            if (rating.hearters.isNotEmpty()) AndroidMenuHeading(rating.hearters)
-            val label = if (rating.hearted) R.string.album_remove_heart else R.string.album_add_heart
-            AndroidMenuAction(stringResource(label), close) { rating.onChoose(!rating.hearted) }
-        }
-    }
+    RatingMenuItems(actions.rating, close)
     actions.pin?.let {
         AndroidMenuAction(stringResource(if (it.pinned) R.string.unpin else R.string.pin), close, it.onClick)
     }
@@ -100,6 +94,28 @@ internal fun AlbumMenuItems(
     }
     if (actions.play != null || hasMiddleGroup) AndroidDivider()
     AndroidMenuAction(stringResource(R.string.delete_album), close, actions.onDelete)
+}
+
+@Composable
+private fun RatingMenuItems(
+    rating: AlbumRatingAction?,
+    close: () -> Unit,
+) {
+    when (rating) {
+        null -> {
+            Unit
+        }
+
+        is AlbumRatingAction.Rate -> {
+            AndroidMenuAction(stringResource(R.string.rate), close, rating.onClick)
+        }
+
+        is AlbumRatingAction.Heart -> {
+            rating.hearters?.let { AndroidMenuHeading(it) }
+            val label = if (rating.hearted) R.string.album_remove_heart else R.string.album_add_heart
+            AndroidMenuAction(stringResource(label), close) { rating.onChoose(!rating.hearted) }
+        }
+    }
 }
 
 /** Asks before an album is deleted: what goes with it, what stays, and that it can't be undone. */

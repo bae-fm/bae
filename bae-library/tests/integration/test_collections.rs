@@ -747,7 +747,7 @@ async fn the_rating_systems_shape_the_album_detail_s_ratings() {
     people.set_rating_system(RatedItems::Albums, RatingSystem::Heart).await.unwrap();
     people.set_rating_system(RatedItems::Tracks, RatingSystem::Heart).await.unwrap();
     let unhearted = next_detail_matching(&mut values, |detail| {
-        detail.rating == AlbumRating::Heart { hearted: false, hearters: vec![] }
+        detail.rating == AlbumRating::Heart { hearted: false, hearters: None }
             && detail.releases[0].tracks[0].rating == TrackRating::Heart(false)
     })
     .await;
@@ -756,7 +756,7 @@ async fn the_rating_systems_shape_the_album_detail_s_ratings() {
     people.set_hearted(RatingTarget::Album(album.clone()), true).await.unwrap();
     people.set_hearted(RatingTarget::Track(track.clone()), true).await.unwrap();
     next_detail_matching(&mut values, |detail| {
-        detail.rating == AlbumRating::Heart { hearted: true, hearters: vec![Hearter::You] }
+        detail.rating == AlbumRating::Heart { hearted: true, hearters: Some(vec![Hearter::You]) }
             && detail.releases[0].tracks[0].rating == TrackRating::Heart(true)
     })
     .await;

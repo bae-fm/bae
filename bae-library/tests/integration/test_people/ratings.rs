@@ -1,6 +1,7 @@
 use super::*;
 use bae_people::collections::{RatingTarget, Stars};
-use bae_views::album_detail::{AlbumRating, Rater};
+use bae_people::people::{RatedItems, RatingSystem};
+use bae_views::album_detail::{AlbumRating, Hearter, Rater};
 
 /// The album's next detail that `wanted` accepts, failing when none comes.
 async fn detail_matching(
@@ -97,6 +98,18 @@ fn a_removed_person_s_rating_still_names_them() {
                 ],
             }
         );
+
+        owner.people().set_rating_system(RatedItems::Albums, RatingSystem::Heart).await.unwrap();
+        let hearts = detail_matching(&mut robins, |detail| {
+            matches!(detail.rating, AlbumRating::Heart { .. })
+        })
+        .await;
+        assert_eq!(
+            hearts.rating,
+            AlbumRating::Heart { hearted: true, hearters: Some(vec![Hearter::You]) }
+        );
+
+        owner.people().set_rating_system(RatedItems::Albums, RatingSystem::Stars).await.unwrap();
 
         // An admin removes Rowan. His rating stays, under his name.
         let mut changes = owner

@@ -79,8 +79,9 @@ pub enum AlbumRating {
     Heart {
         hearted: bool,
         /// Who has a heart on the album: this person first, when they do,
-        /// then each other person who does, by name then id.
-        hearters: Vec<Hearter>,
+        /// then each other person who does, by name then id. None when
+        /// nobody has a heart on the album.
+        hearters: Option<Vec<Hearter>>,
     },
 }
 
@@ -108,7 +109,7 @@ impl AlbumRating {
         system: bae_people::people::RatingSystem,
         raw: bae_people::collections::AlbumRatings,
     ) -> Self {
-        use bae_people::people::{is_heart, RatingSystem};
+        use bae_people::people::RatingSystem;
         match system {
             RatingSystem::Hidden => Self::Hidden,
             RatingSystem::Stars => {
@@ -125,17 +126,18 @@ impl AlbumRating {
                 Self::Stars { mine: raw.mine, raters }
             }
             RatingSystem::Heart => {
-                let hearted = raw.mine.is_some_and(is_heart);
-                let hearters = hearted
-                    .then_some(Hearter::You)
-                    .into_iter()
-                    .chain(
-                        raw.others
-                            .into_iter()
-                            .filter(|other| is_heart(other.stars))
-                            .map(|other| Hearter::Person { name: other.name }),
-                    )
-                    .collect();
+                let hearted = raw.mine.is_some();
+                let hearters = raw.has_raters.then(|| {
+                    hearted
+                        .then_some(Hearter::You)
+                        .into_iter()
+                        .chain(
+                            raw.others
+                                .into_iter()
+                                .map(|other| Hearter::Person { name: other.name }),
+                        )
+                        .collect()
+                });
                 Self::Heart { hearted, hearters }
             }
         }

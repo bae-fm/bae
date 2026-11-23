@@ -12,6 +12,7 @@ import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeAlbumRating
 import uniffi.bae_bridge.BridgeDurationUnits
 import uniffi.bae_bridge.BridgeFactTerm
+import uniffi.bae_bridge.BridgeHearter
 import uniffi.bae_bridge.BridgeLabelLine
 import uniffi.bae_bridge.BridgeMediaCount
 import uniffi.bae_bridge.BridgeMedium
@@ -43,7 +44,7 @@ class AndroidAlbumHeaderShots : BoardShot() {
     @Test
     fun androidComponentAlbumHeaderHeartSystem() =
         component("android.component.album-header.heart-system") {
-            Header(harborDetail.copy(rating = BridgeAlbumRating.Heart(hearted = true, hearters = emptyList())))
+            Header(harborDetail.copy(rating = BridgeAlbumRating.Heart(hearted = true, hearters = listOf(BridgeHearter.You))))
         }
 
     @Test

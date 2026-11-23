@@ -6,8 +6,6 @@ import uniffi.bae_bridge.BridgeHearter
 import uniffi.bae_bridge.BridgeRater
 import uniffi.bae_bridge.BridgeStars
 
-// This file writes who rated an album in the person's language, as `BridgeAlbumRating+Text` does on macOS.
-
 /**
  * Who rated the album: "You" for this person, then "Ana rated it 5" for each other, in the order core
  * read them, joined by the fact separator.
@@ -30,8 +28,8 @@ fun BridgeAlbumRating.Stars.starsAfterTapping(tapped: BridgeStars): BridgeStars?
  * Who has a heart on the album: "You" for this person, then "Ana hearted it" for each other, in the order core read
  * them, joined by the fact separator.
  */
-fun Context.heartersText(rating: BridgeAlbumRating.Heart): String =
-    rating.hearters.joinToString(factSeparator()) { hearter ->
+fun Context.heartersText(hearters: List<BridgeHearter>): String =
+    hearters.joinToString(factSeparator()) { hearter ->
         when (hearter) {
             BridgeHearter.You -> getString(R.string.members_you)
             is BridgeHearter.Person -> getString(R.string.album_hearted_by, hearter.name)

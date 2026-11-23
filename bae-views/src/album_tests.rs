@@ -908,6 +908,17 @@ async fn an_album_no_one_rated_shows_no_ratings() {
         crate::album_detail::AlbumRating::Stars { mine: None, raters: vec![] }
     );
     assert_eq!(detail.releases[0].tracks[0].rating, crate::album_detail::TrackRating::Stars(None));
+
+    use bae_people::people::{RatedItems, RatingSystem};
+    bae_people::People::new(db.clone(), coven::FileBudget::for_test())
+        .set_rating_system(RatedItems::Albums, RatingSystem::Heart)
+        .await
+        .unwrap();
+    let detail = crate::LibraryViews::new(db).find_album_detail(ALBUM_A).await.unwrap().unwrap();
+    assert_eq!(
+        detail.rating,
+        crate::album_detail::AlbumRating::Heart { hearted: false, hearters: None }
+    );
 }
 
 /// Searching with a limit keeps the first results in title order, tracks and

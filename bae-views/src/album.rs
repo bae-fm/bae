@@ -721,8 +721,7 @@ fn find_album_detail_on(
         params![album_id, chosen_release_id],
         |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
     )?;
-    let ratings = bae_people::people::album_ratings_on(sql, album_id)?;
-    let rating_systems = bae_people::people::rating_systems_on(sql)?;
+    let (rating_systems, ratings) = bae_people::people::album_ratings_on(sql, album_id)?;
     Ok(Some(AlbumDetailRows {
         ratings,
         rating_systems,

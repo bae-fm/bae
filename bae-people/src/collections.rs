@@ -45,12 +45,13 @@ pub struct Rating {
     pub stars: Stars,
 }
 
-/// What the album's page reads of its ratings: the stars this person gave it,
-/// and the stars each other person gave it, by name then id.
+/// What the album's page shows of its ratings in the library's system: this
+/// person's stars and each other's, in name and id order.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AlbumRatings {
     pub mine: Option<Stars>,
     pub others: Vec<OtherRating>,
+    pub has_raters: bool,
 }
 
 /// One other person's stars for an album, under the name their profile

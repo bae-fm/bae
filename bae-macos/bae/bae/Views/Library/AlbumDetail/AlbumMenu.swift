@@ -36,7 +36,7 @@ struct AlbumMenu: MacMenuPart {
         MacMenuItem("Add to queue", action: onAddToQueue)
         MacMenuItem.divider
         if case .heart(let hearted, let hearters) = rating {
-            if !hearters.isEmpty {
+            if let hearters {
                 MacMenuItem(verbatim: hearters.text, disabled: true) {}
             }
             HeartMenuItem(hearted: hearted, onSetHearted: onSetHearted)

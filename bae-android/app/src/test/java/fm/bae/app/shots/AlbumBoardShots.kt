@@ -23,6 +23,7 @@ import fm.bae.app.ui.albumdetail.PinMenuItem
 import fm.bae.app.ui.albumdetail.PlayMenuActions
 import fm.bae.app.ui.albumdetail.albumRatingHeading
 import fm.bae.app.ui.albumdetail.unavailableReleaseHeading
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidMenuItemStyle
 import fm.bae.app.ui.library.AndroidDetailScreen
 import org.junit.Test
@@ -71,8 +72,9 @@ class AlbumBoardShots : BoardShot() {
     @Test
     fun androidAlbumRatingHeart() =
         shot("android.album.rating.heart") {
-            val rating = BridgeAlbumRating.Heart(hearted = true, hearters = listOf(BridgeHearter.You, BridgeHearter.Person("Ana")))
-            val heart = AlbumRatingAction.Heart(LocalContext.current.heartersText(rating), hearted = true, onChoose = {})
+            val hearters = listOf(BridgeHearter.You, BridgeHearter.Person("Ana"))
+            val rating = BridgeAlbumRating.Heart(hearted = true, hearters = hearters)
+            val heart = AlbumRatingAction.Heart(LocalContext.current.heartersText(hearters), hearted = true, onChoose = {})
             AlbumPageWithMenu(boardAlbum(rating, trackCount = 5), heart)
         }
 
@@ -174,6 +176,8 @@ class AlbumBoardShots : BoardShot() {
 
 /** The height of the boards whose screens hold the ten tracks and what follows them, in dp. */
 private val TALL_BOARD = 1160.dp
+
+private val ALBUM_MENU_TOP = 48.dp
 
 /** A file of the release's folder, without audio or image content. */
 internal fun boardFile(
@@ -293,7 +297,10 @@ private val boardMenu =
     )
 
 @Composable
-private fun AlbumPageWithMenu(detail: BridgeAlbumDetail, rating: AlbumRatingAction?) {
+private fun AlbumPageWithMenu(
+    detail: BridgeAlbumDetail,
+    rating: AlbumRatingAction?,
+) {
     val menu =
         AlbumMenuActions(
             play = boardMenu.play,
@@ -306,7 +313,7 @@ private fun AlbumPageWithMenu(detail: BridgeAlbumDetail, rating: AlbumRatingActi
         Box {
             val playback = AlbumPlaybackState(playingLowTideHours.track.trackId, isPlaying = true)
             AlbumPageContent(detail, playingLowTideHours, { it.name }, playback) { AlbumOptionsMenu(menu) }
-            OpenMenu(top = 48.dp) { AndroidMenuItemStyle { AlbumMenuItems(menu, close = {}) } }
+            OpenMenu(top = ALBUM_MENU_TOP, end = ThemeSpace.related) { AndroidMenuItemStyle { AlbumMenuItems(menu, close = {}) } }
         }
     }
 }
