@@ -49,18 +49,7 @@ class PersonMenuBoardShots : BoardShot() {
         Box(modifier = Modifier.fillMaxSize()) {
             PlayingLibraryScreen(
                 state = state,
-                person = {
-                    PersonButton(
-                        state = state,
-                        face = AvatarFace(initials = "A", picture = null),
-                        isAdmin = true,
-                        onAddDevice = {},
-                        onInvite = {},
-                        onPlaylists = {},
-                        onHistory = {},
-                        onSettings = {},
-                    )
-                },
+                person = { BoardLibraryPerson(state) },
             )
             OpenMenu(top = MENU_TOP, end = end) { menu() }
         }
@@ -175,6 +164,21 @@ class PersonMenuBoardShots : BoardShot() {
                 }
             }
         }
+}
+
+/** The signed-in person's menu button in the library boards. */
+@Composable
+internal fun BoardLibraryPerson(state: LibraryBrowserState) {
+    PersonButton(
+        state = state,
+        face = AvatarFace(initials = "A", picture = null),
+        isAdmin = true,
+        onAddDevice = {},
+        onInvite = {},
+        onPlaylists = {},
+        onHistory = {},
+        onSettings = {},
+    )
 }
 
 private val MENU_TOP = 52.dp
