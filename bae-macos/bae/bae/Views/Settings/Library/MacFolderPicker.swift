@@ -93,14 +93,9 @@
                         }
                     }
                 }
-                MacBox {
+                MacBox(empty: words.empty) {
                     ForEach(listing.folders, id: \.location) { folder in
                         row(folder)
-                    }
-                    if listing.folders.isEmpty, !browser.isNaming {
-                        Text(words.empty)
-                            .foregroundStyle(Theme.macTextSecondary)
-                            .frame(maxWidth: .infinity)
                     }
                     if browser.isNaming {
                         HStack {

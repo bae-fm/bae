@@ -71,12 +71,28 @@ extension View {
 /// Rows on the surface with a line between each and the next, as a settings
 /// form draws a section's, for a box that is not part of a form: a popover's.
 struct MacBox<Content: View>: View {
-    @ViewBuilder
-    let content: Content
+    private let empty: LocalizedStringResource?
+    private let content: Content
+
+    init(
+        empty: LocalizedStringResource? = nil,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.empty = empty
+        self.content = content()
+    }
 
     var body: some View {
         Group(subviews: content) { rows in
-            MacBoxRows(rows: rows)
+            if let empty, rows.isEmpty {
+                Text(empty)
+                    .foregroundStyle(Theme.macTextSecondary)
+                    .frame(maxWidth: .infinity, minHeight: 108)
+                    .card()
+            }
+            else {
+                MacBoxRows(rows: rows)
+            }
         }
         .settingsRowControls()
     }
