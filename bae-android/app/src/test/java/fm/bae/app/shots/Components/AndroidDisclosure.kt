@@ -9,15 +9,17 @@ class AndroidDisclosureShots : BoardShot() {
     @Test
     fun androidComponentDisclosureClosed() =
         component("android.component.disclosure.closed") {
-            AndroidDisclosure(label = "Removed devices (2)", open = false, onToggle = {}) {}
+            HuggingContent { AndroidDisclosure(label = "Removed devices (2)", open = false, onToggle = {}) {} }
         }
 
     @Test
     fun androidComponentDisclosureOpen() =
         component("android.component.disclosure.open") {
-            AndroidDisclosure(label = "Removed devices (2)", open = true, onToggle = {}) {
-                AndroidRow(title = "Odile’s phone", subtitle = "Removed")
-                AndroidRow(title = "Kitchen tablet", subtitle = "Replaced")
+            HuggingContent {
+                AndroidDisclosure(label = "Removed devices (2)", open = true, onToggle = {}) {
+                    AndroidRow(title = "Odile’s phone", subtitle = "Removed")
+                    AndroidRow(title = "Kitchen tablet", subtitle = "Replaced")
+                }
             }
         }
 }

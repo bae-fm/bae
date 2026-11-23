@@ -7,9 +7,13 @@ import org.junit.Test
 class AndroidCheckboxShots : BoardShot() {
     @Test
     fun androidComponentCheckboxOn() =
-        component("android.component.checkbox.on") { AndroidCheckbox("Pause between sides", checked = true, onCheckedChange = {}) }
+        component("android.component.checkbox.on") {
+            HuggingContent { AndroidCheckbox("Pause between sides", checked = true, onCheckedChange = {}) }
+        }
 
     @Test
     fun androidComponentCheckboxOff() =
-        component("android.component.checkbox.off") { AndroidCheckbox("Pause between sides", checked = false, onCheckedChange = {}) }
+        component("android.component.checkbox.off") {
+            HuggingContent { AndroidCheckbox("Pause between sides", checked = false, onCheckedChange = {}) }
+        }
 }

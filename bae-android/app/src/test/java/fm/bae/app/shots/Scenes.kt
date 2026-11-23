@@ -158,6 +158,15 @@ internal fun ComponentScene(
     }
 }
 
+/**
+ * [content] as wide as it is, as a preview cell that hugs its content draws a component that fills its parent's
+ * width on a screen: a row that stretches across a dialog is as wide as its words in the board's preview.
+ */
+@Composable
+internal fun HuggingContent(content: @Composable () -> Unit) {
+    Box(modifier = Modifier.width(IntrinsicSize.Max)) { content() }
+}
+
 /** A screen of its own, on the screen's background, in the look [appearance] gives (the boards' by default). */
 @Composable
 internal fun ScreenScene(

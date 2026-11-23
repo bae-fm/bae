@@ -7,9 +7,9 @@ import org.junit.Test
 class AndroidRadioShots : BoardShot() {
     @Test
     fun androidComponentRadioChecked() =
-        component("android.component.radio.checked") { AndroidRadio("Only me", checked = true, onClick = {}) }
+        component("android.component.radio.checked") { HuggingContent { AndroidRadio("Only me", checked = true, onClick = {}) } }
 
     @Test
     fun androidComponentRadioUnchecked() =
-        component("android.component.radio.unchecked") { AndroidRadio("Only me", checked = false, onClick = {}) }
+        component("android.component.radio.unchecked") { HuggingContent { AndroidRadio("Only me", checked = false, onClick = {}) } }
 }
