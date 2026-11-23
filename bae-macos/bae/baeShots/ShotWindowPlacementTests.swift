@@ -1,6 +1,7 @@
 import AppKit
 import BaeKit
 import SwiftUI
+import Synchronization
 import Testing
 
 @testable import bae
@@ -79,6 +80,60 @@ struct ShotWindowPlacementTests {
         }
     }
 
+    @Test("reopening reports that the last close could not save the display")
+    func reportsAnUnidentifiedDisplayOnReopen() throws {
+        let screen = try #require(NSScreen.screens.first)
+        let name = "ShotWindowPlacementTests.\(UUID())"
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer {
+            NSWindow.removeFrame(usingName: name)
+            defaults.removePersistentDomain(forName: name)
+        }
+        let reports = Mutex(0)
+        var alerts: [BridgeError] = []
+        let identifier = UUID()
+        var identifiesDisplay = true
+        let autosave = WindowFrameAutosave(
+            name: name,
+            defaults: defaults,
+            bugReporter: PlacementBugReporter { _, _ in
+                reports.withLock { $0 += 1 }
+            },
+            showError: { alerts.append($0) },
+            identifyDisplay: { _ in identifiesDisplay ? identifier : nil }
+        )
+        let placement = WindowFrameAutosave.Opening(
+            autosave: autosave,
+            preferredScreen: screen,
+            screens: [screen]
+        )
+        let size = CGSize(width: 500, height: 320)
+        try autoreleasepool {
+            let first = Self.controller(size: size, placement: placement)
+            let window = try #require(first.window)
+            first.showWindow(nil)
+            window.setFrameOrigin(
+                CGPoint(
+                    x: screen.visibleFrame.minX + 70,
+                    y: screen.visibleFrame.minY + 90
+                )
+            )
+            identifiesDisplay = false
+            window.close()
+        }
+        let recorded = reports.withLock { $0 }
+        #expect(recorded > 0)
+        #expect(alerts.isEmpty)
+
+        identifiesDisplay = true
+        let reopened = Self.controller(size: size, placement: placement)
+        let window = try #require(reopened.window)
+        defer { window.close() }
+        reopened.showWindow(nil)
+        #expect(alerts.count == 1)
+        #expect(reports.withLock { $0 } == recorded)
+    }
+
     private static func controller(
         size: CGSize,
         placement: WindowFrameAutosave.Opening
@@ -126,9 +181,17 @@ struct ShotWindowPlacementTests {
 }
 
 private final class PlacementBugReporter: BridgeBugReporter {
+    private let handler: @Sendable (String, String) -> Void
+
+    init(
+        _ handler: @escaping @Sendable (String, String) -> Void = {
+            Issue.record("Unexpected placement failure during \($0): \($1)")
+        }
+    ) {
+        self.handler = handler
+    }
+
     func report(operation: String, detail: String) {
-        Issue.record(
-            "Unexpected placement failure during \(operation): \(detail)"
-        )
+        handler(operation, detail)
     }
 }
