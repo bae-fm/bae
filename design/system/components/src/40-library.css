@@ -227,6 +227,7 @@
 .bae-a-menu-divider { height: 1px; margin: var(--space-related) 0; background: var(--hairline); }
 .bae-m-menu-sep { height: 1px; margin: calc(var(--space-inline) + var(--space-hairline)) calc(var(--space-compact) + var(--space-hairline)); background: var(--hairline); }
 .bae-m-searchcard { box-sizing: border-box; max-height: 455px; overflow: hidden; padding: var(--space-related); display: flex; flex-direction: column; gap: var(--space-hairline); border-radius: var(--radius-card); background: var(--elevated); box-shadow: inset 0 0 0 1px var(--hairline), 0 6px 12px var(--shadow); }
+.bae-m-searchcard-empty { padding: 0; }
 .bae-m-searchsection { padding: var(--space-group) var(--space-related) var(--space-related); font: var(--type-eyebrow-weight) var(--type-eyebrow-size)/var(--type-eyebrow-line-height) var(--font-sans); color: var(--text-secondary); }
 .bae-a-searchsection { padding: var(--space-related) var(--space-edge); font: var(--type-android-heading-weight) var(--type-android-heading-size)/var(--type-android-heading-line-height) var(--font-android); color: var(--text-secondary); }
 .bae-a-librow { display: flex; align-items: center; gap: var(--space-group); padding: var(--space-related) var(--space-edge); }

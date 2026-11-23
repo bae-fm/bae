@@ -2,7 +2,8 @@
   // Search's results, in a card hanging under the field: the children, or with `empty` (the search found nothing) No matches.
   function MacSearchCard(props) {
     var style = { position: 'absolute', top: Number(props.top != null ? props.top : 60), right: Number(props.right != null ? props.right : 56), width: 440, zIndex: 6 };
-    return h('div', { className: 'bae-m-searchcard', style: style }, props.empty ? h(MacContentUnavailable, { title: 'No matches' }) : props.children);
+    // No matches fills the card's 240pt alone, with none of the list's inset around it.
+    return h('div', { className: cx('bae-m-searchcard', props.empty && 'bae-m-searchcard-empty'), style: style }, props.empty ? h(MacContentUnavailable, { title: 'No matches' }) : props.children);
   }
   function MacSearchSection(props) { return h('div', { className: 'bae-m-searchsection' }, props.title); }
   // One row of a library list on the Mac: Search's results, the artist and composer lists, the composer and work pages' rows.
