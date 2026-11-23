@@ -50,6 +50,27 @@ private struct TrafficLightPositioner: NSViewRepresentable {
             fatalError("init(coder:) is not supported")
         }
 
+        /// Puts the buttons back where AppKit has them when the view leaves
+        /// the window, so the next view that offsets them starts from
+        /// AppKit's place, as the welcome window gives way to the library's.
+        override func viewWillMove(toWindow newWindow: NSWindow?) {
+            super.viewWillMove(toWindow: newWindow)
+            guard newWindow == nil, let window else {
+                return
+            }
+            for (buttonType, origin) in placed {
+                guard let button = window.standardWindowButton(buttonType),
+                    button.frame.origin == origin
+                else {
+                    continue
+                }
+                button.setFrameOrigin(
+                    CGPoint(x: origin.x - xOffset, y: origin.y + yOffset)
+                )
+            }
+            placed = [:]
+        }
+
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
             noticeWatch = nil

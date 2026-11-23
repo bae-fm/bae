@@ -94,6 +94,30 @@ struct TrafficLightOffsetTests {
         #expect(try Self.buttonOrigins(in: offset) == expected)
     }
 
+    @Test("the buttons return to their usual place when the view leaves")
+    func buttonsReturnWhenTheViewLeaves() async throws {
+        let usual = Self.window(hosting: Color.clear)
+        let offset = Self.window(
+            hosting: Color.clear.modifier(
+                TrafficLightOffset(xOffset: Self.xOffset, yOffset: Self.yOffset)
+            )
+        )
+        defer {
+            usual.close()
+            offset.close()
+        }
+        try await Wait.untilLaidOut(try #require(offset.contentView)) {
+            try Self.buttonOrigins(in: offset)
+                == Self.movedOrigins(Self.buttonOrigins(in: usual))
+        }
+
+        offset.contentView = NSHostingView(rootView: Color.clear)
+        let expected = try Self.buttonOrigins(in: usual)
+        try await Wait.untilLaidOut(try #require(offset.contentView)) {
+            try Self.buttonOrigins(in: offset) == expected
+        }
+    }
+
     private static let xOffset: CGFloat = 6
     private static let yOffset: CGFloat = 7
 

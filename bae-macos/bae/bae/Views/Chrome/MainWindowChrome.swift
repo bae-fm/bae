@@ -111,5 +111,8 @@ struct MacWelcomeWindow<Content: View>: View {
                 height: size.height
             )
             .windowBackground()
+            // The boards draw the lights 5 pt right and 5 pt down from
+            // AppKit's place.
+            .modifier(TrafficLightOffset(xOffset: 5, yOffset: 5))
     }
 }
