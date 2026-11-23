@@ -15,6 +15,9 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.sp
 import fm.bae.app.DisplayError
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
@@ -111,18 +114,24 @@ private fun LibraryScreenPreview(
         nowPlayingBar = nowPlayingBar,
     ) { modifier ->
         Box(modifier) {
-            PreviewSlot(if (state.searchOpen) "Results" else stringResource(R.string.library_mode_albums))
+            PreviewSlot(
+                label = if (state.searchOpen) "Results" else stringResource(R.string.library_mode_albums),
+                style = ThemeText.body.style,
+            )
         }
     }
 }
 
-/** The preview's label inside its dashed border. */
+/** The preview's label inside its dashed border, in the preview page's type unless a screen supplies its own. */
 @Composable
-internal fun PreviewSlot(label: String) {
+internal fun PreviewSlot(
+    label: String,
+    style: TextStyle = previewPageBody,
+) {
     val outline = BaeTheme.colors.hairlineStrong
     Text(
         text = label,
-        style = ThemeText.body.style,
+        style = style,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier =
             Modifier
@@ -144,6 +153,9 @@ internal fun PreviewSlot(label: String) {
                 }.padding(ThemeSpace.group + ThemeSpace.hairline),
     )
 }
+
+/** The canvas's body type, with the Android face but without the screen's line height. */
+private val previewPageBody = ThemeText.body.style.copy(fontSize = 13.sp, lineHeight = TextUnit.Unspecified)
 
 /**
  * The library screen on Albums, showing [albums], with [nowPlayingBar] at its foot (a track playing, unless a shot says

@@ -12,6 +12,7 @@ import fm.bae.app.ui.albumdetail.AlbumOptionsMenu
 import fm.bae.app.ui.albumdetail.AlbumRatingAction
 import fm.bae.app.ui.albumdetail.PinMenuItem
 import fm.bae.app.ui.albumdetail.PlayMenuActions
+import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.library.AndroidDetailScreen
 import org.junit.Test
 
@@ -48,6 +49,6 @@ private fun Detail(actions: @Composable RowScope.() -> Unit) =
             modifier = Modifier.height(520.dp),
             actions = actions,
         ) {
-            PreviewSlot("The page")
+            PreviewSlot("The page", style = ThemeText.body.style)
         }
     }
