@@ -25,8 +25,6 @@ struct MacAlbumTile: View {
     @State
     private var menuOpen = false
 
-    private static let ringGap: CGFloat = 4.5
-    private static let ringWidth: CGFloat = 3
     private var showsMenu: Bool { isHovered || menuOpen || voiceOverEnabled }
 
     var body: some View {
@@ -37,65 +35,46 @@ struct MacAlbumTile: View {
             isUnplayable: isUnplayable,
             width: width
         ) { side in
-            Artwork(imageRef: cover, pointSize: side, dimmed: isUnplayable)
-                .frame(width: side, height: side)
-                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.cover))
-                .shadow(
-                    color: isExpanded ? .clear : Theme.shadow,
-                    radius: 14,
-                    y: 9
-                )
-                .background {
-                    RoundedRectangle(
-                        cornerRadius: ThemeRadius.cover + Self.ringGap
+            Artwork(
+                imageRef: cover,
+                pointSize: side,
+                appearance: .albumTile(open: isExpanded, dimmed: isUnplayable)
+            )
+            .overlay(alignment: .topTrailing) {
+                MacMoreMenu(
+                    look: .overlay,
+                    label: Text("Album options"),
+                    isOpen: $menuOpen
+                ) {
+                    MacMenuItem(
+                        verbatim: menu.playLabel,
+                        action: menu.onPlay
                     )
-                    .inset(by: -Self.ringGap)
-                    .fill(Theme.background)
-                    .opacity(isExpanded ? 1 : 0)
-                }
-                .overlay {
-                    let outset = Self.ringGap + Self.ringWidth / 2
-                    RoundedRectangle(cornerRadius: ThemeRadius.cover + outset)
-                        .inset(by: -outset)
-                        .stroke(Theme.accent, lineWidth: Self.ringWidth)
-                        .opacity(isExpanded ? 1 : 0)
-                        .allowsHitTesting(false)
-                }
-                .overlay(alignment: .topTrailing) {
-                    MacMoreMenu(
-                        look: .overlay,
-                        label: Text("Album options"),
-                        isOpen: $menuOpen
-                    ) {
-                        MacMenuItem(
-                            verbatim: menu.playLabel,
-                            action: menu.onPlay
-                        )
+                    MacMenuItem.divider
+                    MacMenuItem(
+                        verbatim: menu.addToQueueLabel,
+                        action: menu.onAddToQueue
+                    )
+                    MacMenuItem(
+                        verbatim: menu.addNextLabel,
+                        action: menu.onAddNext
+                    )
+                    if let onDelete = menu.onDelete {
                         MacMenuItem.divider
                         MacMenuItem(
-                            verbatim: menu.addToQueueLabel,
-                            action: menu.onAddToQueue
+                            verbatim: menu.deleteLabel,
+                            action: onDelete
                         )
-                        MacMenuItem(
-                            verbatim: menu.addNextLabel,
-                            action: menu.onAddNext
-                        )
-                        if let onDelete = menu.onDelete {
-                            MacMenuItem.divider
-                            MacMenuItem(
-                                verbatim: menu.deleteLabel,
-                                action: onDelete
-                            )
-                        }
                     }
-                    .padding(ThemeSpace.compact)
-                    .opacity(showsMenu ? 1 : 0)
-                    .allowsHitTesting(showsMenu)
-                    .accessibilityHidden(!showsMenu)
                 }
+                .padding(ThemeSpace.compact)
+                .opacity(showsMenu ? 1 : 0)
+                .allowsHitTesting(showsMenu)
+                .accessibilityHidden(!showsMenu)
+            }
         }
         .background(
-            RoundedRectangle(cornerRadius: ThemeRadius.card)
+            RoundedRectangle(cornerRadius: ThemeRadius.card, style: .circular)
                 .fill(Theme.accentSoft)
                 .opacity(isSelected ? 1 : 0)
         )

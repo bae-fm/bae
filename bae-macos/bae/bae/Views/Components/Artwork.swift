@@ -6,10 +6,15 @@ import SwiftUI
 private let logger = Logger.bae("Artwork")
 
 struct Artwork: View {
+    enum Appearance {
+        case plain
+        case albumTile(open: Bool, dimmed: Bool)
+    }
+
     let content: ImageContent?
     var contentMode: ContentMode = .fill
     let pointSize: CGFloat
-    let dimmed: Bool
+    let appearance: Appearance
 
     @Environment(ImageStore.self)
     private var imageStore
@@ -28,12 +33,12 @@ struct Artwork: View {
         content: ImageContent?,
         contentMode: ContentMode = .fill,
         pointSize: CGFloat,
-        dimmed: Bool = false
+        appearance: Appearance = .plain
     ) {
         self.content = content
         self.contentMode = contentMode
         self.pointSize = pointSize
-        self.dimmed = dimmed
+        self.appearance = appearance
         _lastLoad = State(
             initialValue: SlotLoad(content: content, state: .pending(.empty))
         )
@@ -44,18 +49,58 @@ struct Artwork: View {
     }
 
     var body: some View {
-        contentView
-            .overlay {
-                if dimmed {
-                    Rectangle()
-                        .fill(Theme.background)
-                        .opacity(1 - ThemeOpacity.dimmed)
-                        .allowsHitTesting(false)
-                }
-            }
+        artwork
             .contentShape(Rectangle())
             .task(id: LoadRequest(content: content, attempt: attempt)) {
                 await load()
+            }
+    }
+
+    @ViewBuilder
+    private var artwork: some View {
+        switch appearance {
+        case .plain:
+            contentView
+        case .albumTile(let open, let dimmed):
+            albumTile(open: open, dimmed: dimmed)
+        }
+    }
+
+    /// The cover, shadow and open ring that the album grid draws together.
+    private func albumTile(open: Bool, dimmed: Bool) -> some View {
+        let radius = ThemeRadius.cover
+        let ringGap: CGFloat = 4.5
+        let ringWidth: CGFloat = 3
+        let outset = ringGap + ringWidth / 2
+        return
+            contentView
+            .frame(width: pointSize, height: pointSize)
+            .overlay {
+                Rectangle()
+                    .fill(Theme.background)
+                    .opacity(dimmed ? 1 - ThemeOpacity.dimmed : 0)
+                    .allowsHitTesting(false)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: radius, style: .circular))
+            .shadow(color: open ? .clear : Theme.shadow, radius: 14, y: 9)
+            .background {
+                RoundedRectangle(
+                    cornerRadius: radius + ringGap,
+                    style: .circular
+                )
+                .inset(by: -ringGap)
+                .fill(Theme.background)
+                .opacity(open ? 1 : 0)
+            }
+            .overlay {
+                RoundedRectangle(
+                    cornerRadius: radius + outset,
+                    style: .circular
+                )
+                .inset(by: -outset)
+                .stroke(Theme.accent, lineWidth: ringWidth)
+                .opacity(open ? 1 : 0)
+                .allowsHitTesting(false)
             }
     }
 
@@ -213,13 +258,13 @@ extension Artwork {
         imageRef: BridgeImageRef?,
         contentMode: ContentMode = .fill,
         pointSize: CGFloat,
-        dimmed: Bool = false
+        appearance: Appearance = .plain
     ) {
         self.init(
             content: imageRef.map { .libraryImage($0) },
             contentMode: contentMode,
             pointSize: pointSize,
-            dimmed: dimmed
+            appearance: appearance
         )
     }
 }
