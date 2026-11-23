@@ -74,8 +74,9 @@
 
     /// bae's alert: no app icon, an elevated face, the title in bold, the
     /// message small and secondary, and bae's buttons below. Two buttons sit
-    /// side by side at equal width with the default on the right; three or
-    /// more stack with the default on top. Each button runs its action, then
+    /// side by side at equal width with the default on the right, unless a
+    /// label is wider than half the row; then, as with three or more, they
+    /// stack with the default on top. Each button runs its action, then
     /// `finish`.
     public struct MacAlert: View {
         public static let width: CGFloat = 260
@@ -159,27 +160,43 @@
                 }
             }
             else {
-                // The default button sits on the right, and VoiceOver reads
-                // the buttons in the order they were listed, the default
-                // first, as it reads a system alert's.
-                HStack(spacing: ThemeSpace.related) {
-                    ForEach(buttons.indices.reversed(), id: \.self) { index in
-                        button(at: index)
-                            .accessibilitySortPriority(
-                                Double(buttons.count - index)
-                            )
+                // Side by side while the widest label fits half the row, as
+                // macOS lays out an alert's two buttons; otherwise stacked,
+                // the default on top, so no label is cut short.
+                ViewThatFits(in: .horizontal) {
+                    // The default button sits on the right, and VoiceOver
+                    // reads the buttons in the order they were listed, the
+                    // default first, as it reads a system alert's. Each
+                    // button is as wide as the widest label wants, so the
+                    // row fits only when both halves hold their words.
+                    HStack(spacing: ThemeSpace.related) {
+                        ForEach(buttons.indices.reversed(), id: \.self) {
+                            index in
+                            button(at: index, sizedBy: buttons.map(\.title))
+                                .accessibilitySortPriority(
+                                    Double(buttons.count - index)
+                                )
+                        }
+                    }
+                    .accessibilityElement(children: .contain)
+                    VStack(spacing: ThemeSpace.related) {
+                        ForEach(buttons.indices, id: \.self) { index in
+                            button(at: index)
+                        }
                     }
                 }
-                .accessibilityElement(children: .contain)
             }
         }
 
-        private func button(at index: Int) -> some View {
+        private func button(at index: Int, sizedBy titles: [Text] = [])
+            -> some View
+        {
             let button = buttons[index]
             let isDefault = index == 0
             return MacAlertButtonView(
                 button: button,
                 isDefault: isDefault,
+                sizingTitles: titles,
                 run: { choose(button) }
             )
         }
@@ -222,11 +239,19 @@
     private struct MacAlertButtonView: View {
         let button: MacAlertButton
         let isDefault: Bool
+        /// Labels the button takes the width of, hidden, so that buttons
+        /// side by side all want the widest one's width.
+        let sizingTitles: [Text]
         let run: () -> Void
 
         var body: some View {
-            let label = button.title
-                .frame(maxWidth: .infinity)
+            let label = ZStack {
+                ForEach(sizingTitles.indices, id: \.self) { index in
+                    sizingTitles[index].hidden()
+                }
+                button.title
+            }
+            .frame(maxWidth: .infinity)
             Group {
                 if isDefault && button.role == .regular {
                     Button(action: run) { label }

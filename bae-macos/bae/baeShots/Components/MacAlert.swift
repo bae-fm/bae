@@ -9,7 +9,7 @@ extension ShotScene {
         component(
             "mac.component.alert.default",
             width: 600,
-            height: 764
+            height: 1016
         ) {
             VStack(spacing: ThemeSpace.group) {
                 alertOver(
@@ -59,6 +59,24 @@ extension ShotScene {
                     [
                         MacAlertButton(Text(verbatim: "Unpin")),
                         MacAlertButton(Text(verbatim: "Cancel"), role: .cancel),
+                    ]
+                )
+                // A label wider than half the row stacks the two buttons.
+                alertOver(
+                    height: 240,
+                    MacAlertWords(
+                        Text(verbatim: "bae will remove the device"),
+                        message: Text(
+                            verbatim:
+                                "Dropbox: Remove bae’s access in the provider’s account settings."
+                        )
+                    ),
+                    [
+                        MacAlertButton(Text(verbatim: "I cut off this device")),
+                        MacAlertButton(
+                            Text(verbatim: "Not yet"),
+                            role: .cancel
+                        ),
                     ]
                 )
             }

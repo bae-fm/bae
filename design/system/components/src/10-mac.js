@@ -32,8 +32,16 @@
     return h('div', { className: 'bae-m-step-actions' }, props.children);
   }
 
-  // A macOS alert: title and message left-aligned, as macOS 26 draws them, then two buttons side by side with the default on the right (list it first); three or more stack. `details` (an error's causes, one a line) adds the inset panel with Copy under the message.
+  // A macOS alert: title and message left-aligned, as macOS 26 draws them, then two buttons side by side with the default on the right (list it first); three or more stack, and so do two when a label is wider than its half of the row. `details` (an error's causes, one a line) adds the inset panel with Copy under the message.
   function MacAlert(props) {
+    var row = React.useRef(null), stackState = React.useState(false);
+    // Measured once laid out: a side-by-side button whose words overflow it stacks the pair.
+    React.useLayoutEffect(function () {
+      var el = row.current;
+      if (!el || stackState[0]) return;
+      var over = Array.prototype.some.call(el.querySelectorAll('button'), function (b) { return b.scrollWidth > b.clientWidth + 0.5; });
+      if (over) stackState[1](true);
+    });
     return h('div', { className: 'bae-m-scrim' },
       h('div', { role: 'alertdialog', 'aria-label': props.title, className: 'bae-m-face-sheet bae-m-alert' },
         h('div', { className: 'bae-m-alert-title' }, props.title),
@@ -43,7 +51,7 @@
         props.details ? h(MacErrorDetails, { details: props.details }) : null,
         // `suppress`: the checkbox that stops the alert asking again ("Don't show this again"), under the message, as NSAlert's suppression button sits.
         props.suppress ? h(MacCheckbox, { label: props.suppress, on: props.suppressOn }) : null,
-        h('div', { className: 'bae-m-alert-buttons' }, props.children)));
+        h('div', { ref: row, className: cx('bae-m-alert-buttons', stackState[0] && 'bae-m-alert-buttons-stacked') }, props.children)));
   }
 
   // The round back button before a page's heading, named for where it goes back to (`to`): a Settings page under another, a playlist open in the side pane.

@@ -12,7 +12,7 @@
 .bae-m-alert-message { font-size: var(--type-alert-message-size); font-weight: var(--type-alert-message-weight); line-height: var(--type-alert-message-line-height); color: var(--text-secondary); white-space: pre-line; }
 .bae-m-alert-buttons { display: flex; flex-direction: row-reverse; gap: var(--space-related); margin-top: var(--space-compact); }
 .bae-m-alert-buttons > :not(.sc-host-x), .bae-m-alert-buttons > .sc-host-x > * { flex: 1; min-width: 0; }
-.bae-m-alert-buttons:has(> :nth-child(3)) { flex-direction: column; }
+.bae-m-alert-buttons:has(> :nth-child(3)), .bae-m-alert-buttons-stacked { flex-direction: column; }
 .bae-m-sidebar { width: 190px; flex: none; margin: var(--space-related) 0 var(--space-related) var(--space-related); border-radius: var(--radius-card); background: var(--surface); box-shadow: 0 1px 4px var(--shadow); padding: var(--space-page) var(--space-related) var(--space-related); box-sizing: border-box; display: flex; flex-direction: column; gap: var(--space-line); position: relative; }
 /* The system's lights: 14pt each, 9pt apart. */
 .bae-m-lights { position: absolute; top: 14px; left: 14px; display: flex; gap: calc(var(--space-related) + var(--space-hairline)); }
