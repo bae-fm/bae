@@ -100,25 +100,13 @@ struct MacQueueSection: View {
 
     /// The context's shuffle toggle; the current track keeps playing.
     private func shuffleToggle(_ shuffle: Shuffle) -> some View {
-        let shuffled = shuffle.on
-        return Button {
-            shuffle.set(!shuffled)
-        } label: {
-            Image(systemName: "shuffle")
-                .themeIcon(.small)
-                .foregroundStyle(
-                    shuffled ? Theme.accent : Theme.macTextSecondary
-                )
-                // The same slot as the rows' remove button, so they line up.
-                .frame(width: ThemeSize.hitTarget, height: ThemeSize.hitTarget)
-                .background(
-                    RoundedRectangle(cornerRadius: ThemeRadius.control)
-                        .fill(shuffled ? Theme.accentSoft : .clear)
-                )
-                .contentShape(Rectangle())
+        MacIconButton(
+            symbol: "shuffle",
+            label: shuffle.on ? "Turn off shuffle" : "Shuffle",
+            active: shuffle.on,
+            iconSize: .small
+        ) {
+            shuffle.set(!shuffle.on)
         }
-        .buttonStyle(PressableIconButtonStyle().accentFocus())
-        .help(shuffled ? "Turn off shuffle" : "Shuffle")
-        .accessibilityLabel(shuffled ? "Turn off shuffle" : "Shuffle")
     }
 }
