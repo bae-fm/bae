@@ -61,6 +61,9 @@ struct MacPressingRow: View {
                     copyLine
                     noteLine
                 }
+                // The lines read in order before the row's trailing marks,
+                // which sit higher than the copy and note lines.
+                .accessibilityElement(children: .contain)
                 .allowsHitTesting(false)
                 Spacer(minLength: ThemeSpace.related)
                 libraryMarker
@@ -243,6 +246,7 @@ struct MacPressingRow: View {
         HStack(spacing: ThemeSpace.inline) {
             Image(systemName: "checkmark.circle")
                 .foregroundStyle(Theme.success)
+                .accessibilityHidden(true)
             Text("In library")
         }
         .themeText(.detail)

@@ -107,7 +107,7 @@ extension ShotScene {
             pick: pick("hr-1042", .musicBrainz),
             areas: [
                 BridgeTermsStatement(
-                    terms: [.country(code: "US")],
+                    terms: bridgeAreaTerms(facts: cd),
                     catalogs: []
                 )
             ],
