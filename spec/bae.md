@@ -6422,7 +6422,7 @@ Replay gain has no control in the apps.
 | `side_pause_countdown_seconds` | none | when such a pause ends on its own: 5, 15, 30, 45 or 60 seconds, or none to wait for Play |
 | `max_concurrent_uploads`, `max_concurrent_downloads` | 3 | files moved at once, 1 to 8; adding this device, joining, and a restore or reset of this device's copy read the library from storage at the default, since the row is in the store being read; the library opens at the row's limits |
 | `show_remaining_time` | off | the seek bar counts down |
-| `library_full_width` | off | the library width preference |
+| `library_full_width` | off | the Mac's Full-Width Library command lets the library page use the full available window width |
 | `ask_before_unpinning` | on | Unpin asks first; the dialog's Don't show this again turns it off, Settings → Storage turns it back on |
 | `import_destination` | cloud | where an import goes: this device or the cloud. The import editor and bulk import both offer this choice. Settings offers it as Import to and disables it while automatic import is off. With no cloud storage, imports stay on this device and the app hides the choice. |
 | `identify_automatically` | on | identifying found releases on their own |
