@@ -1,6 +1,5 @@
 package fm.bae.app.ui.components
 
-import android.provider.Settings
 import androidx.compose.animation.core.withInfiniteAnimationFrameMillis
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
@@ -33,6 +32,7 @@ import androidx.compose.ui.unit.times
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.SemanticColors
+import fm.bae.app.ui.appearance.systemAnimationsEnabled
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sqrt
@@ -142,8 +142,7 @@ internal fun Logo(
  */
 @Composable
 private fun rememberBobSeconds(bob: Boolean): (() -> Double)? {
-    val resolver = LocalContext.current.contentResolver
-    val moves = bob && Settings.Global.getFloat(resolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) != 0f
+    val moves = bob && systemAnimationsEnabled(LocalContext.current)
     var millis by remember { mutableLongStateOf(0L) }
     LaunchedEffect(moves) {
         if (!moves) return@LaunchedEffect

@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.graphics.withClip
 import fm.bae.app.ui.appearance.ThemeOpacity
+import fm.bae.app.ui.appearance.systemAnimationsEnabled
 import fm.bae.fastvalues.FrameFollowing
 import fm.bae.fastvalues.LatestSource
 
@@ -132,17 +133,26 @@ internal class AndroidProgressBarView(
     /** Shows a piece crossing the track, while a step counts nothing. */
     fun showMoving() {
         progress = Progress.Moving
-        if (!crossing.isStarted) crossing.start()
+        if (isAttachedToWindow) startCrossing()
     }
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        if (progress == Progress.Moving && !crossing.isStarted) crossing.start()
+        if (progress == Progress.Moving) startCrossing()
     }
 
     override fun onDetachedFromWindow() {
         crossing.cancel()
         super.onDetachedFromWindow()
+    }
+
+    private fun startCrossing() {
+        if (systemAnimationsEnabled(context) && ValueAnimator.areAnimatorsEnabled()) {
+            if (!crossing.isStarted) crossing.start()
+        } else {
+            crossing.cancel()
+            phase = MOVING_REST_PHASE
+        }
     }
 
     override fun onMeasure(
