@@ -529,8 +529,8 @@ pub fn release_edit_tracks_sql(release: &str, source: MediumsSource<'_>, edits: 
                p.sheet_kind, p.sheet_ordinal, {side_choices} AS sheet_side_choices, \
                sheet_lines.bound_count AS sheet_line_count, \
                sheet_lines.unbound AS sheet_unbound_lines, \
-               (SELECT line.value -> 'line' ->> 'options' FROM json_each(sheet_lines.bound) AS line \
-                WHERE line.value -> 'line' ->> 'file_reference' = carved.file_reference) \
+               (SELECT line.value ->> 'options' FROM json_each(sheet_lines.bound) AS line \
+                WHERE line.value ->> 'file_reference' = carved.file_reference) \
                    AS sheet_audio_options, \
                COALESCE(main.added, 0) AS is_added, \
                (SELECT j.value FROM json_each(json_extract({edits}, '$.titles')) AS j \

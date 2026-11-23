@@ -97,7 +97,7 @@ pub struct DbReleaseEditSheet {
     pub line_count: u32,
     /// The sheet's `FILE` lines that play no audio once the form's edits are
     /// written, in the order the sheet's tracks reach them.
-    pub unbound_lines: Option<Vec<crate::records::sheet_files::DbUnboundLine>>,
+    pub unbound_lines: Option<Vec<crate::records::sheet_files::DbSheetLine>>,
     pub file_reference: String,
     pub audio_options: Vec<DbSheetAudioOption>,
 }

@@ -465,20 +465,31 @@ impl ReleaseEditDraftRows {
             cover: bae_records::cover_ref(&release_id, cover_version),
             source_audio: files.source_audio.clone(),
             sides: has_tracks.then(|| crate::types::lay_out_tracks(rows)),
-            files: files.has_others.then(|| {
-                files
-                    .carried
-                    .into_iter()
-                    .map(|carried| match carried {
-                        bae_records::DbCarriedFile::File(file) => {
-                            crate::MappingFileRow::File(crate::types::carried_file(&file))
-                        }
-                        bae_records::DbCarriedFile::Sheet(sheet) => crate::MappingFileRow::Sheet(
-                            crate::types::sheet_without_tracks_group(sheet),
-                        ),
-                    })
-                    .collect()
-            }),
+            files: files
+                .has_others
+                .then(|| {
+                    files
+                        .carried
+                        .into_iter()
+                        .map(|carried| match carried {
+                            bae_records::DbCarriedFile::File(file) => {
+                                Ok(crate::MappingFileRow::File(crate::types::carried_file(&file)))
+                            }
+                            bae_records::DbCarriedFile::Sheet(sheet) => {
+                                let sheet_id = sheet.file_id.clone();
+                                crate::types::sheet_without_tracks_group(sheet)
+                                    .map(crate::MappingFileRow::Sheet)
+                                    .map_err(|reason| {
+                                        DbError::unreadable(
+                                            format!("CUE sheet {sheet_id} in release {release_id}'s files"),
+                                            reason,
+                                        )
+                                    })
+                            }
+                        })
+                        .collect::<Result<Vec<_>, DbError>>()
+                })
+                .transpose()?,
             album,
             records: has_records.then_some(records),
             pressing_offers: form.edit.pressing.offers(),

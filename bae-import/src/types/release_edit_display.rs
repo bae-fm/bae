@@ -133,7 +133,7 @@ fn reference_options(
 fn bound_lines(
     line_count: u32,
     mut lines: Vec<(crate::folder_scanner::SheetReferenceOptions, crate::MappingContainer)>,
-    unbound: Option<&[bae_records::records::sheet_files::DbUnboundLine]>,
+    unbound: Option<&[bae_records::records::sheet_files::DbSheetLine]>,
 ) -> (crate::SheetBound, crate::SheetBoundAudio) {
     let audio = match line_count {
         0 => crate::SheetBoundAudio::None,
@@ -214,7 +214,7 @@ fn sheet_captions(rows: &[ReleaseEditTrackRow]) -> Vec<crate::SheetGroup> {
 /// line plays audio.
 #[cfg(desktop)]
 fn unbound_references(
-    lines: Option<&[bae_records::records::sheet_files::DbUnboundLine]>,
+    lines: Option<&[bae_records::records::sheet_files::DbSheetLine]>,
 ) -> Option<Vec<crate::folder_scanner::SheetReferenceOptions>> {
     lines.map(|lines| {
         lines
@@ -230,23 +230,25 @@ fn unbound_references(
 #[cfg(desktop)]
 pub(crate) fn sheet_without_tracks_group(
     sheet: bae_records::records::sheet_files::DbSheetWithoutTracks,
-) -> crate::SheetGroup {
+) -> Result<crate::SheetGroup, String> {
     let lines = sheet
         .bound
         .into_iter()
         .map(|line| {
-            let played =
-                crate::MappingContainer { file_id: line.played.file_id, name: line.played.name };
-            let reference = reference_options(
-                line.line.file_reference,
-                Some(played.clone()),
-                &line.line.options,
-            );
-            (reference, played)
+            let option = line.options.iter().find(|option| option.bound).ok_or_else(|| {
+                format!("bound line {} has no bound audio file", line.file_reference)
+            })?;
+            let played = crate::MappingContainer {
+                file_id: option.file_id.clone(),
+                name: option.name.clone(),
+            };
+            let reference =
+                reference_options(line.file_reference, Some(played.clone()), &line.options);
+            Ok((reference, played))
         })
-        .collect();
+        .collect::<Result<_, String>>()?;
     let (bound, bound_audio) = bound_lines(sheet.bound_count, lines, sheet.unbound.as_deref());
-    crate::SheetGroup {
+    Ok(crate::SheetGroup {
         sheet_id: sheet.file_id,
         name: sheet.name,
         bound,
@@ -254,7 +256,7 @@ pub(crate) fn sheet_without_tracks_group(
         unbound_references: unbound_references(sheet.unbound.as_deref()),
         assigned: sheet.place,
         side_choices: sheet.side_choices,
-    }
+    })
 }
 
 /// What the library holds about a release beside its form: the summary of

@@ -184,7 +184,8 @@ pub fn sheet_files_ctes(release: &str, edits: &str) -> String {
 }
 
 /// The caption's bound count and bound and unbound lines, with each
-/// line's options. A sheet with no unbound lines has a NULL unbound list.
+/// line's options, of which a bound line's flags the file it plays from. A
+/// sheet with no unbound lines has a NULL unbound list.
 /// The query reads the stored tracks so a line keeps its options even when
 /// the draft drops the tracks it carves.
 pub fn sheet_audio_options_ctes(release: &str) -> String {
@@ -198,9 +199,8 @@ pub fn sheet_audio_options_ctes(release: &str) -> String {
              JOIN audio_format_segments s ON s.audio_format_id = af.id AND s.role = 'main' \
              WHERE t.release_id = {release} \
              GROUP BY c.sheet_file_id, c.file_reference), \
-         line_audio_options (sheet_file_id, file_reference, file_id, played, options, position) AS ( \
-             SELECT line.sheet_file_id, line.file_reference, \
-                    line.file_id, MAX(CASE WHEN f.id = line.file_id THEN {option} END), \
+         line_audio_options (sheet_file_id, file_reference, file_id, options, position) AS ( \
+             SELECT line.sheet_file_id, line.file_reference, line.file_id, \
                     json_group_array({option} \
                         ORDER BY f.original_filename COLLATE natural_order, f.id), ends.position \
              FROM laid_lines line \
@@ -213,9 +213,8 @@ pub fn sheet_audio_options_ctes(release: &str) -> String {
              GROUP BY line.sheet_file_id, line.file_reference), \
          sheet_line_options (sheet_file_id, bound_count, bound, unbound) AS ( \
              SELECT o.sheet_file_id, COUNT(o.file_id), \
-                    json_group_array(json_object( \
-                        'line', {line}, 'played', json(o.played)) \
-                        ORDER BY o.position) FILTER (WHERE o.file_id IS NOT NULL), \
+                    json_group_array({line} ORDER BY o.position) \
+                        FILTER (WHERE o.file_id IS NOT NULL), \
                     CASE WHEN COUNT(*) > COUNT(o.file_id) THEN \
                         json_group_array({line} ORDER BY o.position) \
                         FILTER (WHERE o.file_id IS NULL) END \
@@ -394,14 +393,9 @@ pub struct DbSheetWithoutTracks {
     pub place: Option<DbSheetSideChoice>,
     pub side_choices: Vec<DbSheetSideChoice>,
     pub bound_count: u32,
-    pub bound: Vec<DbBoundLine>,
-    pub unbound: Option<Vec<DbUnboundLine>>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
-pub struct DbBoundLine {
-    pub line: DbUnboundLine,
-    pub played: DbSheetAudioOption,
+    /// The lines that play audio; each line's `bound` option is the file.
+    pub bound: Vec<DbSheetLine>,
+    pub unbound: Option<Vec<DbSheetLine>>,
 }
 
 /// A [`DbSheetWithoutTracks`] with the columns of its side as
@@ -413,8 +407,8 @@ pub(super) struct SheetWithoutTracksColumns {
     place: Option<crate::DbSheetSideColumns>,
     side_choices: Vec<crate::DbSheetSideColumns>,
     bound_count: u32,
-    bound: Vec<DbBoundLine>,
-    unbound: Option<Vec<DbUnboundLine>>,
+    bound: Vec<DbSheetLine>,
+    unbound: Option<Vec<DbSheetLine>>,
 }
 
 impl SheetWithoutTracksColumns {
@@ -432,9 +426,9 @@ impl SheetWithoutTracksColumns {
     }
 }
 
-/// The available audio files for one `FILE` line.
+/// A `FILE` line of a CUE sheet with the audio files it can play from.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct DbUnboundLine {
+pub struct DbSheetLine {
     pub file_reference: String,
     pub options: Vec<DbSheetAudioOption>,
 }

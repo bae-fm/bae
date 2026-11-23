@@ -551,10 +551,14 @@ async fn an_ignored_sheet_keeps_its_binding_choices_and_replaces_only_lost_audio
     assert!(sheet.place.is_none());
     assert_eq!(sheet.bound_count, 2);
     let [second, shared] = sheet.bound.as_slice() else { panic!("two bound lines") };
-    assert_eq!(
-        (&second.played.file_id, &shared.played.file_id),
-        (&uuid("second"), &uuid("shared"))
-    );
+    let bound_file = |line: &DbSheetLine| {
+        let [option] = line.options.iter().filter(|option| option.bound).collect::<Vec<_>>()[..]
+        else {
+            panic!("one bound option: {line:?}")
+        };
+        option.file_id.clone()
+    };
+    assert_eq!((bound_file(second), bound_file(shared)), (uuid("second"), uuid("shared")));
     let [first] = sheet.unbound.as_deref().unwrap() else { panic!("one unbound line") };
     assert_eq!(first.file_reference, "first.flac");
 }
