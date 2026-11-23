@@ -8,13 +8,13 @@ extension ShotScene {
     static let macFieldRowScenes: [ShotScene] = [
         component("mac.component.field-row.field", height: 90) {
             ShotBox {
-                MacFieldRow("Name") { nameField }
+                MacFieldRow("Name") { nameField() }
             }
         },
         component("mac.component.field-row.control-after", height: 90) {
             ShotBox {
                 MacFieldRow("Name") {
-                    nameField
+                    nameField()
                     MacButton("Set up", kind: .fieldAction) {}
                 }
             }
@@ -23,7 +23,7 @@ extension ShotScene {
             ShotBox {
                 MacFieldRow("Name") {
                     VStack(alignment: .leading, spacing: ThemeSpace.inline) {
-                        nameField
+                        nameField()
                         FieldNote("People in this library see this name.")
                     }
                 }
@@ -40,13 +40,13 @@ extension ShotScene {
         component("mac.component.field-row.text-aligned", height: 130) {
             ShotBox {
                 MacRow("Home music") {}
-                MacFieldRow(aligningText: { nameField })
+                MacFieldRow(aligningText: { nameField(width: nil) })
             }
         },
     ]
 
-    private static var nameField: some View {
+    private static func nameField(width: CGFloat? = 160) -> some View {
         BoxedField(text: .constant("Home music"))
-            .frame(width: 160)
+            .frame(width: width)
     }
 }
