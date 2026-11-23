@@ -146,5 +146,5 @@ internal fun ResettingScreen(
     }
 }
 
-/** How wide a restore's, join's or reset's step line is. */
+/** The maximum width of a progress step shown on a page of its own. */
 internal val STEP_LINE_MAX_WIDTH = 340.dp

@@ -345,25 +345,23 @@ internal fun OnboardingProgress(
     }
     val title = runningTitle(step.from)
     OnboardingContainer {
-        RunningLines(step) {
-            if (title != null) {
-                Text(text = title, style = ThemeText.heading.style, textAlign = TextAlign.Center)
-                Spacer(modifier = Modifier.height(ThemeSpace.related))
-            }
+        RunningLines(step, title = title)
+        onCancel?.let {
+            Spacer(modifier = Modifier.height(ThemeSpace.section + ThemeSpace.edge))
+            CancelButton(it)
         }
-        onCancel?.let { CancelButton(it) }
     }
 }
 
 /**
  * The line a restore or join shows while it runs: a counted step with its bar
- * (or the open's own step), else a spinner over what it waits on. [between]
- * draws what goes under the spinner and over the status lines.
+ * (or the open's own step), else a spinner over what it waits on. [title]
+ * sits under the spinner and over the status lines.
  */
 @Composable
 internal fun RunningLines(
     step: OnboardingStep.Running,
-    between: @Composable () -> Unit = {},
+    title: String? = null,
 ) {
     // While the restore's open runs a step, its line stands in for the
     // spinner and the status, which it has moved past.
@@ -377,8 +375,12 @@ internal fun RunningLines(
     ) {
         if (!counting) AndroidSpinner()
     }
-    Spacer(modifier = Modifier.height(ThemeSpace.section))
-    between()
+    val openingLineShows = stepping || !counting
+    if (openingLineShows && (!stepping || title != null)) Spacer(modifier = Modifier.height(ThemeSpace.section))
+    title?.let {
+        Text(text = it, style = ThemeText.heading.style, textAlign = TextAlign.Center)
+        Spacer(modifier = Modifier.height(ThemeSpace.related))
+    }
     if (!stepping) {
         BootstrapStepLine(
             steps = step.steps,
@@ -392,7 +394,6 @@ internal fun RunningLines(
 
 @Composable
 internal fun CancelButton(onCancel: () -> Unit) {
-    Spacer(modifier = Modifier.height(ThemeSpace.section))
     AndroidButton(kind = ButtonKind.TONAL, onClick = onCancel) { Text(stringResource(R.string.cancel)) }
 }
 

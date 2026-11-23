@@ -10,7 +10,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import fm.bae.app.AppScreen
 import fm.bae.app.R
 import fm.bae.app.coreString
@@ -18,6 +17,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidProgress
 import fm.bae.app.ui.components.AndroidSpinner
 import fm.bae.app.ui.onboarding.ResettingScreen
+import fm.bae.app.ui.onboarding.STEP_LINE_MAX_WIDTH
 import fm.bae.fastvalues.LatestSource
 import uniffi.bae_bridge.BridgeClosingProgress
 import uniffi.bae_bridge.BridgeOpenProgress
@@ -71,15 +71,12 @@ private fun LoadingScreen(
     Box(modifier = Modifier.fillMaxSize().padding(ThemeSpace.page), contentAlignment = Alignment.Center) {
         AndroidProgress(
             steps = steps,
-            modifier = Modifier.widthIn(max = OPEN_PROGRESS_MAX_WIDTH),
+            modifier = Modifier.widthIn(max = STEP_LINE_MAX_WIDTH),
         ) {
             AndroidSpinner(text = stringResource(title))
         }
     }
 }
-
-/** How wide an open's line is where it stands alone, on the loading screen. */
-private val OPEN_PROGRESS_MAX_WIDTH = 360.dp
 
 /**
  * The open library closing or being removed: the step it runs over a bar
@@ -97,7 +94,7 @@ internal fun ClosingScreen(
             steps = steps,
             title = { context.coreString(it.key) },
             fraction = { null },
-            modifier = Modifier.widthIn(max = OPEN_PROGRESS_MAX_WIDTH),
+            modifier = Modifier.widthIn(max = STEP_LINE_MAX_WIDTH),
         ) {
             AndroidSpinner(text = stringResource(title))
         }
@@ -121,7 +118,7 @@ internal fun SetupStepScreen(
             steps = steps,
             title = { context.coreString(it.key) },
             fraction = { it.fraction },
-            modifier = Modifier.widthIn(max = OPEN_PROGRESS_MAX_WIDTH),
+            modifier = Modifier.widthIn(max = STEP_LINE_MAX_WIDTH),
         ) {
             AndroidSpinner(text = stringResource(title))
         }

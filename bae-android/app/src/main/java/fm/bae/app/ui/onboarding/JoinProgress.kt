@@ -1,10 +1,13 @@
 package fm.bae.app.ui.onboarding
 
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.R
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidMatchCode
 import fm.bae.app.ui.components.AndroidScreen
 import fm.bae.app.ui.components.AndroidStep
@@ -43,7 +46,10 @@ internal fun JoinProgress(
         } else {
             AndroidStep(title = invite.libraryName, modifier = Modifier.weight(1f)) {
                 RunningLines(step)
-                onCancel?.let { CancelButton(it) }
+                onCancel?.let {
+                    Spacer(modifier = Modifier.height(ThemeSpace.section))
+                    CancelButton(it)
+                }
             }
         }
     }
