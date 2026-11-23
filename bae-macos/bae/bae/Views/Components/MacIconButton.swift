@@ -7,8 +7,13 @@ struct MacIconButton: View {
         case hover(active: Bool, faint: Bool, hitSize: CGFloat)
         case boxed(small: Bool)
         case borderless
-        /// Opens bae's menu of `items` under the button instead of acting.
-        case menu(items: () -> [MacMenuEntry])
+    }
+
+    /// What pressing the button does.
+    enum Press {
+        case action(role: ButtonRole?, () -> Void)
+        /// Opens bae's menu of the entries under the button.
+        case menu(() -> [MacMenuEntry])
     }
 
     let symbol: String
@@ -16,8 +21,7 @@ struct MacIconButton: View {
     let help: LocalizedStringKey?
     let iconSize: ThemeIcon
     let look: Look
-    let role: ButtonRole?
-    let action: () -> Void
+    let press: Press
 
     init(
         symbol: String,
@@ -55,8 +59,28 @@ struct MacIconButton: View {
         self.help = help
         self.iconSize = iconSize
         self.look = look
-        self.role = role
-        self.action = action
+        self.press = .action(role: role, action)
+    }
+
+    /// A button that opens a menu: the glyph in secondary text, as the
+    /// resting icon button draws it.
+    init(
+        symbol: String,
+        label: LocalizedStringKey,
+        help: LocalizedStringKey? = nil,
+        iconSize: ThemeIcon = .large,
+        @MacMenuBuilder menu: @escaping () -> [MacMenuEntry]
+    ) {
+        self.symbol = symbol
+        self.label = label
+        self.help = help
+        self.iconSize = iconSize
+        self.look = .hover(
+            active: false,
+            faint: false,
+            hitSize: ThemeSize.hitTarget
+        )
+        self.press = .menu(menu)
     }
 
     static func remove(_ name: String, action: @escaping () -> Void) -> Self {
@@ -72,16 +96,15 @@ struct MacIconButton: View {
     }
 
     var body: some View {
-        if case .menu(let items) = look {
+        switch press {
+        case .action(let role, let action):
+            actionButton(role: role, action: action)
+        case .menu(let items):
             MacButton(kind: .plain, menu: items) {
-                glyph
-                    .foregroundStyle(Theme.macTextSecondary)
+                glyph.foregroundStyle(Theme.macTextSecondary)
             }
             .help(help ?? label)
             .accessibilityLabel(label)
-        }
-        else {
-            actionButton
         }
     }
 
@@ -92,12 +115,14 @@ struct MacIconButton: View {
             .contentShape(Rectangle())
     }
 
-    @ViewBuilder
-    private var actionButton: some View {
+    private func actionButton(
+        role: ButtonRole?,
+        action: @escaping () -> Void
+    ) -> some View {
         let button = Button(role: role, action: action) {
             glyph
         }
-        Group {
+        return Group {
             switch look {
             case .hover(let active, let faint, _):
                 button.buttonStyle(
@@ -113,8 +138,6 @@ struct MacIconButton: View {
                 button
                     .foregroundStyle(Theme.macTextSecondary)
                     .buttonStyle(.accentBorderless)
-            case .menu:
-                EmptyView()
             }
         }
         .help(help ?? label)
@@ -122,10 +145,11 @@ struct MacIconButton: View {
     }
 
     private var hitSize: CGFloat? {
-        switch look {
-        case .hover(_, _, let hitSize): hitSize
-        case .menu: ThemeSize.hitTarget
-        case .boxed, .borderless: nil
+        if case .hover(_, _, let hitSize) = look {
+            hitSize
+        }
+        else {
+            nil
         }
     }
 }
