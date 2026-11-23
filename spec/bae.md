@@ -1716,6 +1716,9 @@ it out of the run, or asks about it again once left out. Each catalog number
 in the run is a button that strikes it out, or puts a struck one back.
 On the Mac, VoiceOver reads each of these buttons by its parts: the identifier's
 name, its value and each catalog's name and answer.
+The title search shows the artist and title it searches by as a button.
+Pressing it opens a field for each, and leaving a changed field searches
+again by the new words.
 
 A pressing's row lists every record's value where its records state a fact
 differently: the year, a catalog number, a barcode, the country, the format.
