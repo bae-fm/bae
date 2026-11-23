@@ -1,6 +1,6 @@
 # MacTitleBar
 
-The main window's title bar: the section tabs (`MacSectionTabs`) in the middle, then the search field, the Activity button (`MacActivityButton`) and the avatar (`MacAvatarButton`) at the end. The window's traffic lights sit at its start.
+The main window's title bar: the section tabs (`MacSectionTabs`) centred on the window, then the search field, the Activity button (`MacActivityButton`) and the avatar (`MacAvatarButton`) at the end. The window's traffic lights sit at its start.
 
 | Prop | What it does |
 |---|---|
