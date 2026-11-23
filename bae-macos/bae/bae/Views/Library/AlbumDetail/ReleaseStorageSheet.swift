@@ -104,6 +104,7 @@ struct ReleaseStorageSheet: View {
             Divider()
             filesSection
         }
+        .errorAlert("Error", error: $tableError)
         .onAppear { showRelease() }
         .onDisappear { releaseReader?.close() }
         .unpinConfirmation(pending: $pendingUnpin) { _, answer in
@@ -163,7 +164,7 @@ struct ReleaseStorageSheet: View {
             .padding(.top, ThemeSpace.related)
             .padding(.bottom, ThemeSpace.inline)
 
-            if let error = tableError ?? error {
+            if let error {
                 MacNotice(
                     error: error,
                     look: .centered,
