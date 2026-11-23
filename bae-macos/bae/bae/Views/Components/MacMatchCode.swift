@@ -18,12 +18,7 @@ struct MacMatchCode: View {
                 .themeText(.figure)
                 .tracking(3)
                 .foregroundStyle(Theme.textPrimary)
-                .textSelection(.enabled)
-                // A selectable text draws a second text of the same words
-                // inside its own; the code is one text to VoiceOver.
-                .accessibilityRepresentation {
-                    Text(verbatim: code)
-                }
+                .selectableCode(code)
             if let waiting {
                 MacSpinner(Text(verbatim: waiting))
             }

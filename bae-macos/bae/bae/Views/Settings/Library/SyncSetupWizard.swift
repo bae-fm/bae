@@ -283,18 +283,24 @@ private struct RestoreCodeStep: View {
     @Environment(ConfigStore.self)
     private var configStore
 
+    /// Where setup stored the library: setup ends here only once it has.
+    private var location: BridgeStorageLocation {
+        guard let storage = configStore.storage else {
+            preconditionFailure("setup shows the restore code once it stored")
+        }
+        return storage
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             Form {
                 MacRestoreCode(
                     reveal: reveal,
-                    onPrint: configStore.storage.map { location in
-                        { code in
-                            RestoreCodePrinting.print(
-                                code: code,
-                                location: location.accountLine
-                            )
-                        }
+                    onPrint: { code in
+                        RestoreCodePrinting.print(
+                            code: code,
+                            location: location.accountLine
+                        )
                     }
                 )
             }

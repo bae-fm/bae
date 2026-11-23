@@ -68,13 +68,7 @@ public struct MacRestoreCode: View {
             if shown {
                 Text(share.code)
                     .themeText(.mono)
-                    .textSelection(.enabled)
-                    // A selectable text draws a second text of the same
-                    // words inside its own; the code is one text to
-                    // VoiceOver.
-                    .accessibilityRepresentation {
-                        Text(share.code)
-                    }
+                    .selectableCode(share.code)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             else {

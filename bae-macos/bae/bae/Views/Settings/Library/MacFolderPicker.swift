@@ -85,7 +85,7 @@
                                 browser.openParent()
                             }
                             .neutral()
-                            .disabled(browser.isWorking || browser.isNaming)
+                            .disabled(browser.isNaming)
                         }
                     }
                 }
@@ -155,7 +155,6 @@
                             .themeIcon(.small)
                     }
                     .buttonStyle(.accentBorderless)
-                    .disabled(browser.isWorking)
                 }
             } label: {
                 Text(verbatim: folder.name)
@@ -174,9 +173,7 @@
                     Button(action: choose) { Text(verbatim: folder.name) }
                         .accessibilityAddTraits(chosen ? .isSelected : [])
                         .accessibilityActions {
-                            if !browser.isWorking {
-                                Button("Open folder", action: open)
-                            }
+                            Button("Open folder", action: open)
                         }
                 }
             }
