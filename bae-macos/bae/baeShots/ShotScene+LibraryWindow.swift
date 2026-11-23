@@ -59,7 +59,7 @@ extension ShotScene {
         let window = ShotScenes.libraryWindow(
             uiStore: uiStore,
             backing: (library, session),
-            playbackStore: boardPlayback(covered: true),
+            playbackStore: boardPlayback(),
             images: images,
             size: CGSize(width: 1200, height: 760)
         )
@@ -70,7 +70,7 @@ extension ShotScene {
     }
 
     /// The albums the boards' grid lists, in their order.
-    private static func boardAlbums(covered: Bool) -> [BridgeAlbumAppearance] {
+    private static func boardAlbums() -> [BridgeAlbumAppearance] {
         [
             ("Low Tide Hours", "Mara Quill", 1992),
             ("Paper Lanterns", "The Slow Orchards", 1971),
@@ -92,7 +92,7 @@ extension ShotScene {
                     artistLine: .named(album.1),
                     releaseIds: ["rel-board-\(index)"],
                     primaryReleaseId: "rel-board-\(index)",
-                    cover: covered ? cover(album.0) : nil
+                    cover: cover(album.0)
                 ),
                 primaryReleaseUnplayable: false,
                 displayArtistLine: .named(album.1)
@@ -118,7 +118,6 @@ extension ShotScene {
     static func boardLibraryBacking(
         uiStore: UiStore,
         albumCount: Int? = nil,
-        covered: Bool = false,
         openAlbum: Bool = false,
         detailAnswered: AlbumDetailAnswered? = nil,
         detail: BridgeAlbumDetail = PreviewData.boardAlbumDetail(),
@@ -127,7 +126,7 @@ extension ShotScene {
         history: [BridgeHistoryPlay] = [],
         historyPeople: [(id: String, name: String)] = []
     ) -> (library: Library, session: LibraryBrowseSession) {
-        let allAlbums = boardAlbums(covered: covered)
+        let allAlbums = boardAlbums()
         let albums = Array(allAlbums.prefix(albumCount ?? allAlbums.count))
         let library = Library(
             albumList: { _, _ in .fixed(albums, answers: UnansweredCount()) },
@@ -244,7 +243,6 @@ extension ShotScene {
     static func boardPlayback(
         removedFromLibrary: Bool = false,
         progress: Double = 102.0 / 303.0,
-        covered: Bool = false,
         waitsOnStorage: Bool = false
     ) -> PlaybackStore {
         let store = PlaybackStore(
@@ -287,8 +285,7 @@ extension ShotScene {
                         albumId: "board-0",
                         releaseId: "rel-board-0",
                         albumTitle: "Low Tide Hours",
-                        coverImage: covered
-                            ? cover("Low Tide Hours") : nil
+                        coverImage: cover("Low Tide Hours")
                     )
                 )
         )

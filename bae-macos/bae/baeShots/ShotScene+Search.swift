@@ -36,7 +36,7 @@ extension ShotScene {
                     title: "Low Tide Hours",
                     year: 1992,
                     artistLine: .named("Mara Quill"),
-                    cover: nil
+                    cover: cover("Low Tide Hours")
                 )
             ],
             artists: [
@@ -47,7 +47,11 @@ extension ShotScene {
                         key: "core.library.album_count",
                         count: 3
                     ),
-                    image: nil
+                    image: BridgeImageRef(
+                        id: "Mara Quill",
+                        version: "1",
+                        imageType: .artist
+                    )
                 )
             ],
             tracks: [
@@ -172,6 +176,14 @@ private final class SearchFocus {
         let fields = Self.textFields(in: host).filter(\.isEditable)
         if !(window.firstResponder is NSText), let field = fields.first {
             window.makeFirstResponder(field)
+            // Focusing selects the typed text; a person who just typed has
+            // the caret after it, as the boards draw.
+            if let editor = field.currentEditor() {
+                editor.selectedRange = NSRange(
+                    location: editor.string.utf16.count,
+                    length: 0
+                )
+            }
         }
         return window.firstResponder is NSText
     }
