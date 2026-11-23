@@ -72,67 +72,6 @@ struct ShotElementListTests {
         #expect(accessKey.native == NSAccessibility.Role.textField.rawValue)
     }
 
-    @Test
-    func listsTheSheetsWordsFieldAndButtons() async throws {
-        let list = try await list("mac.welcome.add-code.entering")
-        let json = try json(list)
-
-        #expect(list.board == "mac.welcome.add-code.entering", "\(json)")
-        #expect(list.platform == "macos")
-        #expect(list.size.width == 690)
-        #expect(list.size.height == 600)
-        // The sheet hangs 36 points below the window's top, centred.
-        let left = (list.size.width - 400) / 2
-        #expect(list.scale == 2)
-
-        let title = try #require(
-            list.elements.first {
-                $0.role == "text" && $0.label == "Enter code"
-            },
-            "\(json)"
-        )
-        #expect(title.text?.size == 13, "\(json)")
-        #expect(title.text?.weight == 600, "\(json)")
-        #expect(title.text?.color.hasPrefix("#F5F5F6") == true, "\(json)")
-        #expect(abs(title.bounds.x - (left + 16)) <= 1, "\(json)")
-        // The title sits 18 down from the sheet's top, as the board's
-        // `.bae-m-sheet-title` pads it (16 for the sheet's edge and 2 more).
-        #expect(abs(title.bounds.y - (36 + 18)) <= 1, "\(json)")
-
-        let message = try #require(
-            list.elements.first {
-                $0.role == "text"
-                    && $0.label
-                        == "Enter your restore code, or an invite to a library."
-            },
-            "\(json)"
-        )
-        #expect(message.text?.weight == 400, "\(json)")
-
-        let field = try #require(
-            list.elements.first { $0.role == "field" },
-            "\(json)"
-        )
-        #expect(field.native == "AXTextField")
-        #expect(field.placeholder == "Restore code or invite", "\(json)")
-        // VoiceOver focuses the whole box between the sheet’s 16-point insets.
-        #expect(abs(field.bounds.x - (left + 16)) <= 1, "\(json)")
-        #expect(abs(field.bounds.width - (400 - 2 * 16)) <= 1, "\(json)")
-
-        let cancel = try #require(
-            list.elements.first { $0.role == "button" && $0.label == "Cancel" },
-            "\(json)"
-        )
-        #expect(cancel.enabled)
-        let next = try #require(
-            list.elements.first {
-                $0.role == "button" && $0.label == "Continue"
-            },
-            "\(json)"
-        )
-        #expect(!next.enabled, "nothing is typed yet: \(json)")
-    }
-
     /// An alert is drawn from AppKit's views; its title, message and
     /// buttons are listed where the image draws them.
     @Test
@@ -299,5 +238,77 @@ struct ShotElementListTests {
             !list.elements.contains { $0.role == "button" && $0.label == nil },
             "\(json)"
         )
+    }
+}
+
+extension ShotElementListTests {
+    @Test
+    func listsTheSheetsWordsFieldAndButtons() async throws {
+        let list = try await list("mac.welcome.add-code.entering")
+        let json = try json(list)
+
+        #expect(list.board == "mac.welcome.add-code.entering", "\(json)")
+        #expect(list.platform == "macos")
+        #expect(list.size.width == 690)
+        #expect(list.size.height == 600)
+        #expect(list.scale == 2)
+
+        let sheet = try #require(
+            list.elements.first {
+                $0.native == NSAccessibility.Role.sheet.rawValue
+            },
+            "\(json)"
+        )
+        #expect(sheet.bounds.width == 400, "\(json)")
+        let left = (list.size.width - sheet.bounds.width) / 2
+        #expect(abs(sheet.bounds.x - left) <= 1, "\(json)")
+
+        let title = try #require(
+            list.elements.first {
+                $0.role == "text" && $0.label == "Enter code"
+            },
+            "\(json)"
+        )
+        #expect(title.text?.size == 13, "\(json)")
+        #expect(title.text?.weight == 600, "\(json)")
+        #expect(title.text?.color.hasPrefix("#F5F5F6") == true, "\(json)")
+        #expect(abs(title.bounds.x - (sheet.bounds.x + 16)) <= 1, "\(json)")
+        #expect(abs(title.bounds.y - (sheet.bounds.y + 18)) <= 1, "\(json)")
+
+        let message = try #require(
+            list.elements.first {
+                $0.role == "text"
+                    && $0.label
+                        == "Enter your restore code, or an invite to a library."
+            },
+            "\(json)"
+        )
+        #expect(message.text?.weight == 400, "\(json)")
+
+        let field = try #require(
+            list.elements.first { $0.role == "field" },
+            "\(json)"
+        )
+        #expect(field.native == "AXTextField")
+        #expect(field.placeholder == "Restore code or invite", "\(json)")
+        // VoiceOver focuses the whole box between the sheet’s 16-point insets.
+        #expect(abs(field.bounds.x - (sheet.bounds.x + 16)) <= 1, "\(json)")
+        #expect(
+            abs(field.bounds.width - (sheet.bounds.width - 2 * 16)) <= 1,
+            "\(json)"
+        )
+
+        let cancel = try #require(
+            list.elements.first { $0.role == "button" && $0.label == "Cancel" },
+            "\(json)"
+        )
+        #expect(cancel.enabled)
+        let next = try #require(
+            list.elements.first {
+                $0.role == "button" && $0.label == "Continue"
+            },
+            "\(json)"
+        )
+        #expect(!next.enabled, "nothing is typed yet: \(json)")
     }
 }

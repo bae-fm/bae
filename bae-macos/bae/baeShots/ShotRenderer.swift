@@ -69,6 +69,9 @@ enum ShotRenderer {
         // window, shown or not, and an alert left up is listed and captured
         // with every scene after it.
         defer {
+            if let sheet = window.attachedSheet {
+                window.endSheet(sheet)
+            }
             window.contentViewController = nil
             window.contentView = nil
             window.close()
@@ -118,14 +121,15 @@ enum ShotRenderer {
             // orders the window in, so the renderer waits for them before it
             // makes the top one key.
             let alerts = try await alertPanels()
+            let sheets = window.attachedSheet.map { [$0] } ?? []
             try await becomeKey(window, scene: scene)
             try await shownOnScreen(
-                [window] + AlertWindows.shared.panels,
+                [window] + sheets + AlertWindows.shared.panels,
                 scene: scene
             )
             pixels = try await windowPNG(
                 CGWindowID(window.windowNumber),
-                alerts: alerts,
+                overlays: sheets.map { CGWindowID($0.windowNumber) } + alerts,
                 on: display.id,
                 sceneId: scene.id
             )

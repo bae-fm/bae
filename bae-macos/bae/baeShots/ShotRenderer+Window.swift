@@ -48,7 +48,7 @@ extension ShotRenderer {
         )
     }
 
-    /// Wait for `window`, or an alert over it, to be the key window, asking
+    /// Wait for the window or its top sheet or alert to be key, asking
     /// for that again whenever it loses it: the window server draws a title
     /// bar and toolbar as inactive otherwise, which the app never shows in
     /// use. The window and the alert panels over it are non-activating
@@ -70,7 +70,9 @@ extension ShotRenderer {
                 // An alert over the window holds the key, and the window draws
                 // as active under it: the buttons of an alert whose panel is
                 // not key draw as inactive.
-                let keyed = AlertWindows.shared.panels.last ?? window
+                let keyed =
+                    AlertWindows.shared.panels.last ?? window.attachedSheet
+                    ?? window
                 if keyed.isKeyWindow { return true }
                 keyed.makeKeyAndOrderFront(nil)
                 return false
@@ -127,11 +129,11 @@ extension ShotRenderer {
         }
     }
 
-    /// The window and its alerts as the window server composes them on the
+    /// The window and its overlays as the window server composes them on the
     /// screen, as PNG bytes: a window's toolbar draws its controls on glass,
-    /// which a view's own drawing leaves out, and an alert is a window of its
-    /// own, so the capture takes what the screen shows over the window's
-    /// frame. The window server must already show every one of the windows
+    /// and sheets and alerts are windows of their own. The capture takes what
+    /// the screen shows over the parent window's frame.
+    /// The window server must already show every one of the windows
     /// on the screen, so it lists each with its frame. A process may capture
     /// its own windows without the screen recording permission.
     /// ScreenCaptureKit's results aren't `Sendable`, so the capture runs and
@@ -139,18 +141,18 @@ extension ShotRenderer {
     @concurrent
     nonisolated static func windowPNG(
         _ windowID: CGWindowID,
-        alerts: [CGWindowID],
+        overlays: [CGWindowID],
         on displayID: CGDirectDisplayID,
         sceneId: String
     ) async throws -> Data {
         let content = try await SCShareableContent.currentProcess
-        let held = ([windowID] + alerts)
+        let held = ([windowID] + overlays)
             .compactMap { id in
                 content.windows.first { $0.windowID == id }
             }
         guard
             let parent = held.first(where: { $0.windowID == windowID }),
-            held.count == alerts.count + 1
+            held.count == overlays.count + 1
         else {
             throw ShotError.windowNotShared(sceneId)
         }

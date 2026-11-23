@@ -378,67 +378,41 @@ extension ShotScene {
             size: WelcomeWindow.size,
             frame: .window(title: "bae", titleBar: .hidden)
         ) {
-            overWelcomeStage(libraries: []) { _, window in
-                OverWindow.sheet(
-                    EnterCodeSheet(form: enterCodeForm(), onCancel: {})
-                        .frame(width: 400)
-                        .fixedSize(horizontal: false, vertical: true),
-                    over: window
-                )
-            }
+            welcomeSheetStage(
+                EnterCodeSheet(form: enterCodeForm(), onCancel: {})
+            )
         },
         ShotScene(
             id: "mac.welcome.add-code.scanning",
             size: WelcomeWindow.size,
             frame: .window(title: "bae", titleBar: .hidden)
         ) {
-            overWelcomeStage(libraries: []) { _, window in
-                OverWindow.sheet(
-                    CodeScannerSheet(
-                        onScan: { _ in },
-                        onDismiss: {},
-                        showing: .requesting
-                    )
-                    .frame(width: 400)
-                    .fixedSize(horizontal: false, vertical: true),
-                    over: window
+            welcomeSheetStage(
+                CodeScannerSheet(
+                    onScan: { _ in },
+                    onDismiss: {},
+                    showing: .requesting
                 )
-            }
+            )
         },
         ShotScene(
             id: "mac.welcome.add-code.half-typed",
             size: WelcomeWindow.size,
             frame: .window(title: "bae", titleBar: .hidden)
         ) {
-            overWelcomeStage(libraries: []) { _, window in
-                let form = enterCodeForm()
-                form.edit(code: String(PreviewData.restoreCode.prefix(25)))
-                return OverWindow.sheet(
-                    EnterCodeSheet(form: form, onCancel: {})
-                        .frame(width: 400)
-                        .fixedSize(horizontal: false, vertical: true),
-                    over: window
-                )
-            }
+            let form = enterCodeForm()
+            form.edit(code: String(PreviewData.restoreCode.prefix(25)))
+            return welcomeSheetStage(EnterCodeSheet(form: form, onCancel: {}))
         },
         ShotScene(
             id: "mac.welcome.add-code.s3-key-needed",
             size: WelcomeWindow.size,
             frame: .window(title: "bae", titleBar: .hidden)
         ) {
-            overWelcomeStage(libraries: []) { _, window in
-                let form = enterCodeForm(
-                    reading: .restore(metadata: s3Metadata)
-                )
-                form.acceptCode(PreviewData.restoreCode)
-                form.accessKey = "AKIA4EXAMPLE"
-                return OverWindow.sheet(
-                    RestoreS3KeySheet(form: form)
-                        .frame(width: 440)
-                        .fixedSize(horizontal: false, vertical: true),
-                    over: window
-                )
-            }
+            let form = enterCodeForm(reading: .restore(metadata: s3Metadata))
+            form.acceptCode(PreviewData.restoreCode)
+            form.accessKey = "AKIA4EXAMPLE"
+            return welcomeSheetStage(RestoreS3KeySheet(form: form))
         },
         ShotScene(
             id: "mac.welcome.add-code.adding",
@@ -500,17 +474,32 @@ extension ShotScene {
         ) { reads.answered == reads.reads }
     }
 
-    /// The welcome window over `libraries`, with the dialog `laid` over it.
+    /// A native sheet over the first-run welcome window. The sheet draws
+    /// its own scrim over the window, including the window buttons.
+    private static func welcomeSheetStage(_ sheet: some View) -> ShotStage {
+        let welcome = welcomeStage(libraries: [])
+        return ShotStage(
+            welcome.view.sheet(isPresented: .constant(true)) { sheet },
+            isReady: welcome.isReady,
+            isDrawn: { host in
+                guard let window = host.window, window.attachedSheet != nil
+                else { return false }
+                return window.childWindows?.contains { $0 is ScrimWindow }
+                    == true
+            }
+        )
+    }
+
+    /// The library list with the dialog `laid` over it.
     /// `extraReads` counts the reads the dialog makes itself.
     private static func overWelcomeStage<Dialog: View>(
         size: CGSize = WelcomeWindow.size,
-        libraries: [BridgeLibrary] = PreviewData.boardLibraries,
         savedCodes: [BridgeSavedRestoreEntry] = [],
         extraReads: Int = 0,
         laid dialog: @escaping @MainActor (CountedReads, AnyView) -> Dialog
     ) -> ShotStage {
         let reads = CountedReads(
-            libraries: libraries,
+            libraries: PreviewData.boardLibraries,
             savedCodes: savedCodes
         )
         // `ShotScenes.welcome` at `size`: a board may draw the window
