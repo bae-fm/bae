@@ -2158,7 +2158,7 @@
    "h": 600,
    "page": "welcome",
    "title": "macOS: Library locked",
-   "w": 900,
+   "w": 690,
    "x": 1960,
    "y": 7240
   },
@@ -2454,7 +2454,7 @@
    "h": 600,
    "page": "welcome",
    "title": "macOS: reset failed",
-   "w": 900,
+   "w": 690,
    "x": 2940,
    "y": 12192
   },
@@ -2462,7 +2462,7 @@
    "h": 600,
    "page": "welcome",
    "title": "macOS: Reset offered",
-   "w": 900,
+   "w": 690,
    "x": 0,
    "y": 12192
   },
@@ -2470,7 +2470,7 @@
    "h": 600,
    "page": "welcome",
    "title": "macOS: finish resetting",
-   "w": 900,
+   "w": 690,
    "x": 3920,
    "y": 12192
   },
@@ -3230,7 +3230,7 @@
    "h": 600,
    "page": "welcome",
    "title": "macOS: Reset from cloud: confirm",
-   "w": 900,
+   "w": 690,
    "x": 980,
    "y": 12192
   },
