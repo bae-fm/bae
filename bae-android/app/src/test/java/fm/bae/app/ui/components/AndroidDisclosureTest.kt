@@ -24,6 +24,8 @@ class AndroidDisclosureTest {
 
     @Test
     fun theWholeRowIsTheButtonNotJustItsWords() {
+        // The test reads layout: the clock stops and advances by the same amount on every run.
+        compose.mainClock.autoAdvance = false
         compose.setContent {
             TestTheme {
                 AndroidDisclosure(label = "Removed devices (2)", open = false, onToggle = {}) {
@@ -31,8 +33,11 @@ class AndroidDisclosureTest {
                 }
             }
         }
+        compose.mainClock.advanceTimeBy(CLOCK_STEP_MS)
         val bounds = compose.onRoot().getUnclippedBoundsInRoot()
         val width = bounds.right - bounds.left
         compose.onNodeWithText("Removed devices (2)").assertWidthIsEqualTo(width)
     }
 }
+
+private const val CLOCK_STEP_MS = 1_000L
