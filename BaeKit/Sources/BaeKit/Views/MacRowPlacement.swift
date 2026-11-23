@@ -17,6 +17,10 @@ extension EnvironmentValues {
     /// (`placesItselfInRow`); nil outside a box.
     @Entry
     public var macRowPlacement: MacRowPlacement?
+
+    /// Whether this row belongs to the one above it.
+    @Entry
+    public var macRowIsNested = false
 }
 
 // Container values came with macOS 15, which the Mac app requires; BaeKit

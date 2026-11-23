@@ -40,6 +40,8 @@ public struct MacRow<Lead: View, Label: View, Content: View, Info: View>: View {
 
     @Environment(\.macRowPlacement)
     private var placement
+    @Environment(\.macRowIsNested)
+    private var isNested
     @Environment(\.isEnabled)
     private var isEnabled
 
@@ -133,7 +135,8 @@ public struct MacRow<Lead: View, Label: View, Content: View, Info: View>: View {
     }
 
     private var textOpacity: Double {
-        isEnabled ? 1 : ThemeOpacity.off
+        if isEnabled { return 1 }
+        return isNested ? 0.45 : ThemeOpacity.off
     }
 
     @ViewBuilder

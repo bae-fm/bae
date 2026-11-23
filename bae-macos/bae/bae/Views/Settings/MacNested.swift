@@ -1,3 +1,4 @@
+import BaeKit
 import SwiftUI
 
 /// What belongs to the row above it in a settings box: no line between them
@@ -8,6 +9,8 @@ struct MacNested<Content: View>: View {
     let content: Content
 
     var body: some View {
-        content.containerValue(\.joinsRowAbove, true)
+        content
+            .environment(\.macRowIsNested, true)
+            .containerValue(\.joinsRowAbove, true)
     }
 }
