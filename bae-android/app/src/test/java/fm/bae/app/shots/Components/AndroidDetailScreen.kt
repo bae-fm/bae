@@ -59,8 +59,9 @@ private fun Detail(
         nowPlayingBar = { Bar(playing) },
         modifier = Modifier.height(520.dp),
         actions = actions,
+        flush = flush,
     ) {
-        Box(Modifier.then(if (padded) Modifier.padding(ThemeSpace.edge) else Modifier).weight(1f)) {
+        Box(Modifier.weight(1f)) {
             AndroidAlbumHeader(
                 detail = plainDetail,
                 cover = PreviewData.imageRef(),
