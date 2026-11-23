@@ -287,6 +287,7 @@ extension ShotScene {
                 ShotScenes.libraryWindow(
                     uiStore: uiStore,
                     backing: backing,
+                    playbackStore: idlePlayback(),
                     size: CGSize(width: 1200, height: 760)
                 )
             ) {

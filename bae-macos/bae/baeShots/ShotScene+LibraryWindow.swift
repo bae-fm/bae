@@ -251,6 +251,21 @@ extension ShotScene {
     /// as the share of the track. With `waitsOnStorage`, the track is loading
     /// and waits on a download, so the bar draws the waiting arc.
     @MainActor
+    /// The id of "Low Tide Hours" in `PreviewData.boardAlbumDetail`'s track
+    /// list, so the open album marks it as the track that plays.
+    nonisolated static let boardTrackId = "t-d1-4"
+
+    /// The bar with nothing playing, at the volume the boards' bar draws.
+    static func idlePlayback() -> PlaybackStore {
+        let store = PlaybackStore()
+        store.settings = PlaybackSettings(
+            volume: 0.7,
+            isMuted: false,
+            repeatMode: .off
+        )
+        return store
+    }
+
     static func boardPlayback(
         removedFromLibrary: Bool = false,
         progress: Double = 102.0 / 303.0,
@@ -259,7 +274,7 @@ extension ShotScene {
         let store = PlaybackStore(
             trackPositions: .trackPositions(
                 holding: [
-                    "board-track": BridgeTrackPosition(
+                    boardTrackId: BridgeTrackPosition(
                         positionMs: 102_000,
                         durationMs: 303_000,
                         progress: progress,
@@ -269,7 +284,7 @@ extension ShotScene {
             ),
             trackBuffered: .trackBuffered(
                 holding: [
-                    "board-track": BridgeTrackBuffered(
+                    boardTrackId: BridgeTrackBuffered(
                         ranges: [BridgeTrackSpan(start: 0, end: 0.6)]
                     )
                 ]
@@ -284,7 +299,7 @@ extension ShotScene {
         )
         let track = BridgeNowPlayingTrack(
             track: BridgePlayingTrack(
-                trackId: "board-track",
+                trackId: boardTrackId,
                 durationMs: 303_000
             ),
             display: removedFromLibrary
