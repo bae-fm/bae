@@ -16,6 +16,9 @@ class AndroidTextFieldShots : BoardShot() {
     fun androidComponentTextFieldResting() = component("android.component.text-field.resting") { NameField(value = "Home music") }
 
     @Test
+    fun androidComponentTextFieldEmpty() = component("android.component.text-field.empty") { NameField(value = "") }
+
+    @Test
     fun androidComponentTextFieldFocused() =
         component("android.component.text-field.focused") {
             val focus = remember { FocusRequester() }
