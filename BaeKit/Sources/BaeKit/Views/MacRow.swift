@@ -10,10 +10,14 @@ public enum MacRowPress {
     case removes(() -> Void)
 }
 
+private struct MacRowNote {
+    let text: Text
+    let tone: StatusTone?
+}
+
 private struct MacRowOptions {
     var value: String?
-    var note: Text?
-    var noteTone: StatusTone?
+    var note: MacRowNote?
     var chip: String?
     var isStrong = false
     var press: MacRowPress?
@@ -91,8 +95,7 @@ public struct MacRow<Lead: View, Label: View, Content: View, Info: View>: View {
     /// when it says something in that tone, such as why an invite failed.
     public func note(_ text: Text?, tone: StatusTone? = nil) -> MacRow {
         var copy = self
-        copy.options.note = text
-        copy.options.noteTone = tone
+        copy.options.note = text.map { MacRowNote(text: $0, tone: tone) }
         return copy
     }
 
@@ -266,10 +269,10 @@ public struct MacRow<Lead: View, Label: View, Content: View, Info: View>: View {
                 info
             }
             if let note = options.note {
-                note
+                note.text
                     .themeText(.detail)
                     .foregroundStyle(
-                        options.noteTone.map { AnyShapeStyle($0.color) }
+                        note.tone.map { AnyShapeStyle($0.color) }
                             ?? AnyShapeStyle(secondaryColor)
                     )
                     .opacity(textOpacity)
