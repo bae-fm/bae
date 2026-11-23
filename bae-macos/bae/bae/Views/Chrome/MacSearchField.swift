@@ -57,8 +57,9 @@ struct MacSearchField: View {
     }
 
     /// The magnifier, drawn in the box of its kind's icon role: a search
-    /// field's is `medium` and a primary colour, a filter's and an inline
-    /// field's are `small`.
+    /// field's is `medium`, a filter's and an inline
+    /// field's are `small`. The title bar's and an inline field's are
+    /// tertiary and a filter's is secondary.
     @ViewBuilder
     private var glyph: some View {
         let icon: ThemeIcon = kind == .search ? .medium : .small
@@ -73,7 +74,7 @@ struct MacSearchField: View {
 
     private var glyphColor: Color {
         switch kind {
-        case .search: Theme.textPrimary
+        case .search: Theme.textTertiary
         case .filter: Theme.macTextSecondary
         case .inline: Theme.textTertiary
         }
