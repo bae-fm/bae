@@ -35,8 +35,8 @@
 .bae-a-restore-actions { display: flex; flex-wrap: wrap; gap: var(--space-related); padding: var(--space-group) var(--space-edge) 0; }
 
 .bae-m-cloudhome { width: 100%; display: flex; flex-direction: column; gap: var(--space-related); color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
-.bae-a-cloudhome { width: 100%; display: flex; flex-direction: column; gap: var(--space-related); font-family: var(--font-android); }
-.bae-a-cloudhome-notice { padding: 0 var(--space-edge); }
+.bae-a-cloudhome { width: 100%; display: flex; flex-direction: column; font-family: var(--font-android); }
+.bae-a-cloudhome-notice { padding: var(--space-related) var(--space-edge) 0; }
 
 .bae-m-s3key { width: 100%; display: flex; flex-direction: column; gap: calc(var(--space-related) + var(--space-line)); color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
 .bae-a-s3key { width: 100%; display: flex; flex-direction: column; gap: var(--space-group); font-family: var(--font-android); }
