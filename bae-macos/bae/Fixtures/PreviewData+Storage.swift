@@ -463,8 +463,7 @@ extension PreviewData {
         uploads: [PreviewReleaseUpload] = defaultUploads,
         selections: [Set<String>: BridgeStorageSelection] = [:],
         unloaded: Bool = false,
-        queues: BridgeStorageQueues? = nil,
-        inspectorOverrides: [String: BridgeStorageInspector] = [:]
+        queues: BridgeStorageQueues? = nil
     ) -> Library {
         let rows = storageRows(rows, uploading: uploads)
         let details = Dictionary(
@@ -478,7 +477,6 @@ extension PreviewData {
             outputs: outputs,
             uploads: uploads
         )
-        .merging(inspectorOverrides) { _, staged in staged }
         let queues =
             queues
             ?? storageQueues(

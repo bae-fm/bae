@@ -31,8 +31,7 @@ struct StorageManagerPreviewFixture {
         answers: UnansweredCount = UnansweredCount(),
         selections: [Set<String>: BridgeStorageSelection] = [:],
         unloaded: Bool = false,
-        queues: BridgeStorageQueues? = nil,
-        inspectorOverrides: [String: BridgeStorageInspector] = [:]
+        queues: BridgeStorageQueues? = nil
     ) {
         let library = PreviewData.storageLibrary(
             answers: answers,
@@ -42,8 +41,7 @@ struct StorageManagerPreviewFixture {
             uploads: uploads,
             selections: selections,
             unloaded: unloaded,
-            queues: queues,
-            inspectorOverrides: inspectorOverrides
+            queues: queues
         )
         let uiStore = UiStore()
         self.library = library
