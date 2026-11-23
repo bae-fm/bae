@@ -1,45 +1,87 @@
   // ---- Both ----
 
-  // A stand-in QR code: the three finder squares and a fixed scatter of
-  // modules. The apps draw the real code (QRCode in BaeKit, QRCodeImage on
-  // Android).
-  var QR_N = 25;
-  var QR_FILL = (function () {
-    var seed = 7, out = [];
-    for (var i = 0; i < QR_N * QR_N; i++) { seed = (seed * 1103515245 + 12345) & 0x7fffffff; out.push(seed % 100 < 46); }
-    return out;
-  })();
-  function qrModule(x, y) {
-    function finder(fx, fy) {
-      var dx = x - fx, dy = y - fy;
-      if (dx < 0 || dy < 0 || dx > 6 || dy > 6) return null;
-      return dx === 0 || dy === 0 || dx === 6 || dy === 6 || (dx >= 2 && dx <= 4 && dy >= 2 && dy <= 4);
-    }
-    var f = finder(0, 0); if (f === null) f = finder(QR_N - 7, 0); if (f === null) f = finder(0, QR_N - 7);
-    if (f !== null) return f;
-    if ((x === 7 && (y < 8 || y > QR_N - 9)) || (y === 7 && (x < 8 || x > QR_N - 9)) || (x === QR_N - 8 && y < 8) || (y === QR_N - 8 && x < 8)) return false;
-    return QR_FILL[y * QR_N + x];
-  }
-  // The Mac draws each module 360/105 pt, the side a phone's camera was measured to need, inside the standard's quiet zone of four modules, and reads the whole square, quiet zone and all, as the QR code.
-  var MAC_QR_MODULE = 360 / 105, QR_QUIET = 4;
+  // The QR code each app's own component shot draws, a row of modules per string (1 a dark module), without its quiet zone, so a phone's camera reads the board's code as it reads the app's. Both are at the low error-correction level the apps encode at.
+  // The Mac's: the pairing code bae-pairing-4F7K-2M9Q, as Core Image encodes it (QRCode.swift), version 2.
+  var MAC_QR = [
+    '1111111000100101101111111',
+    '1000001001000101001000001',
+    '1011101010010010001011101',
+    '1011101001001101101011101',
+    '1011101001001101101011101',
+    '1000001000111000001000001',
+    '1111111010101010101111111',
+    '0000000010010000100000000',
+    '1110111110001101111000100',
+    '1010000001011111111000011',
+    '1111111010111010010111111',
+    '1111010011101101111111000',
+    '1011001000110010011000001',
+    '0010100100110001111000111',
+    '1010101111100100011001111',
+    '0111010010010001001100011',
+    '1000001110101001111111001',
+    '0000000010011100100011011',
+    '1111111011011011101010111',
+    '1000001011001111100010001',
+    '1011101010010010111110000',
+    '1011101000110010110011010',
+    '1011101010100101100111101',
+    '1000001010010000010000010',
+    '1111111011001001101000011'
+  ];
+  // Android's: an invite code with no S3 key, CVI1- and 64 letters and digits, as ZXing encodes it (QRCodeImage), version 3.
+  var ANDROID_QR = [
+    '11111110001011110110001111111',
+    '10000010101001111011001000001',
+    '10111010000011101110101011101',
+    '10111010111011110110101011101',
+    '10111010010000011000001011101',
+    '10000010110111110010101000001',
+    '11111110101010101010101111111',
+    '00000000011101010101100000000',
+    '11111011110110101001110101010',
+    '01100100101011101111001111110',
+    '01011011101010110101111011101',
+    '00101100100010111011110101101',
+    '10001011111101001000100100000',
+    '00101000100110100001110001100',
+    '10001110000011101010000111100',
+    '01111000101101111001001111111',
+    '10011011110111011000110101000',
+    '10111001110000100111000000101',
+    '10111010111101001101101110111',
+    '10010000000010011101101101001',
+    '10111110000001101000111111010',
+    '00000000110110100101100011011',
+    '11111110111111110111101011111',
+    '10000010001011111010100011011',
+    '10111010111111000000111111010',
+    '10111010101011101001001101011',
+    '10111010111111110101111010110',
+    '10000010111000101001000011011',
+    '11111110111000011001111100110'
+  ];
+  // Each module is 360/105 pt, the side a phone's camera was measured to need, inside the standard's quiet zone of four modules, and the whole square, quiet zone and all, is the QR code.
+  var QR_MODULE = 360 / 105, QR_QUIET = 4;
   function QrPicture(props) {
-    var cells = [];
-    for (var y = 0; y < QR_N; y++) for (var x = 0; x < QR_N; x++) if (qrModule(x, y)) cells.push(h('rect', { key: x + '-' + y, x: x, y: y, width: 1.02, height: 1.02 }));
+    var rows = props.rows, n = rows.length, cells = [];
+    for (var y = 0; y < n; y++) for (var x = 0; x < n; x++) if (rows[y].charAt(x) === '1') cells.push(h('rect', { key: x + '-' + y, x: x, y: y, width: 1.02, height: 1.02 }));
     if (props.module) {
       var m = props.module;
       return h('div', { className: 'bae-scan-qr bae-scan-qr-modules', role: 'img', 'aria-label': 'QR code', style: { padding: QR_QUIET * m } },
-        h('svg', { width: QR_N * m, height: QR_N * m, viewBox: '0 0 ' + QR_N + ' ' + QR_N, 'aria-hidden': true, shapeRendering: 'crispEdges' }, cells));
+        h('svg', { width: n * m, height: n * m, viewBox: '0 0 ' + n + ' ' + n, 'aria-hidden': true, shapeRendering: 'crispEdges' }, cells));
     }
     var size = Number(props.size || 200);
     return h('div', { className: 'bae-scan-qr' },
-      h('svg', { width: size, height: size, viewBox: '0 0 ' + QR_N + ' ' + QR_N, role: 'img', 'aria-label': 'QR code', shapeRendering: 'crispEdges' }, cells));
+      h('svg', { width: size, height: size, viewBox: '0 0 ' + n + ' ' + n, role: 'img', 'aria-label': 'QR code', shapeRendering: 'crispEdges' }, cells));
   }
   // Without `size`, a code is as wide as its modules need, as the apps draw it. On Android, `size` is the side of the whole code, quiet zone included, as QRCodeImage draws it; on the Mac, it sets the picture's side on a printed page.
   function ScanCode(prefix) {
     return function (props) {
-      var qr = props.size == null ? { module: MAC_QR_MODULE }
-        : prefix === 'bae-a' ? { module: Number(props.size) / (QR_N + 2 * QR_QUIET) }
-        : { size: props.size };
+      var rows = prefix === 'bae-a' ? ANDROID_QR : MAC_QR;
+      var qr = props.size == null ? { rows: rows, module: QR_MODULE }
+        : prefix === 'bae-a' ? { rows: rows, module: Number(props.size) / (rows.length + 2 * QR_QUIET) }
+        : { rows: rows, size: props.size };
       return h('div', { className: 'bae-scan ' + prefix + '-scan' },
         props.instruction ? h('div', { className: 'bae-scan-text' }, props.instruction) : null,
         h(QrPicture, qr),
