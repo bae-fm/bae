@@ -27,7 +27,7 @@ public struct MacButton<Label: View>: View {
     private var tone = Tone.inherited
     private var isTinted = false
     private var controlSize: ControlSize?
-    private var fillsWidth = false
+    private var isFilling = false
 
     /// What a press does.
     private enum Press {
@@ -93,7 +93,7 @@ public struct MacButton<Label: View>: View {
     /// column.
     public func fillsWidth() -> MacButton {
         var copy = self
-        copy.fillsWidth = true
+        copy.isFilling = true
         return copy
     }
 
@@ -117,7 +117,7 @@ public struct MacButton<Label: View>: View {
         switch kind {
         case .primary, .secondary, .fieldAction, .borderless:
             drawn.lineLimit(1)
-                .fixedSize(horizontal: !fillsWidth, vertical: false)
+                .fixedSize(horizontal: !isFilling, vertical: false)
         case .plain, .icon:
             drawn
         }
