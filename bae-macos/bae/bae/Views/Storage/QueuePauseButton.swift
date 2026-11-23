@@ -10,8 +10,7 @@ enum StorageQueueKind {
 }
 
 /// The button that pauses a transfer queue whole, or resumes it while it is
-/// paused, surfacing a failure in the window it sits in. The caller sets its
-/// look with a button style.
+/// paused, surfacing a failure in the window it sits in.
 struct QueuePauseButton: View {
     let queue: StorageQueueKind
     let paused: Bool
@@ -20,6 +19,7 @@ struct QueuePauseButton: View {
     /// Whether the line the button ends already names its queue, so the
     /// button is only Pause or Resume.
     var queueNamed = false
+    var boxed = false
     @Environment(Sync.self)
     private var sync
     @Environment(Downloads.self)
@@ -30,25 +30,36 @@ struct QueuePauseButton: View {
     private var uiStore
 
     var body: some View {
-        Button(action: setPaused) {
-            Image(systemName: paused ? "play.fill" : "pause.fill")
-                .themeIcon(glyph)
+        let symbol = paused ? "play.fill" : "pause.fill"
+        if boxed {
+            MacIconButton(
+                symbol: symbol,
+                label: pauseLabel,
+                iconSize: glyph,
+                boxed: .small,
+                action: setPaused
+            )
         }
-        .accessibilityLabel(pauseLabel)
-        .help(pauseLabel)
+        else {
+            Button(action: setPaused) {
+                Image(systemName: symbol).themeIcon(glyph)
+            }
+            .accessibilityLabel(pauseLabel)
+            .help(pauseLabel)
+        }
     }
 
-    private var pauseLabel: Text {
+    private var pauseLabel: LocalizedStringKey {
         if queueNamed {
-            return paused ? Text("Resume") : Text("Pause")
+            return paused ? "Resume" : "Pause"
         }
         return switch (queue, paused) {
-        case (.uploads, false): Text("Pause uploads")
-        case (.uploads, true): Text("Resume uploads")
-        case (.downloads, false): Text("Pause downloads")
-        case (.downloads, true): Text("Resume downloads")
-        case (.outputs, false): Text("Pause exports")
-        case (.outputs, true): Text("Resume exports")
+        case (.uploads, false): "Pause uploads"
+        case (.uploads, true): "Resume uploads"
+        case (.downloads, false): "Pause downloads"
+        case (.downloads, true): "Resume downloads"
+        case (.outputs, false): "Pause exports"
+        case (.outputs, true): "Resume exports"
         }
     }
 

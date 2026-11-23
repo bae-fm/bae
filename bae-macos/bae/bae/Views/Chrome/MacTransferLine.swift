@@ -38,10 +38,8 @@ struct MacTransferLine: View {
                             queue: queue.kind,
                             paused: queue.paused,
                             glyph: .medium,
-                            queueNamed: true
-                        )
-                        .buttonStyle(
-                            BoxedIconButtonStyle(size: .small).accentFocus()
+                            queueNamed: true,
+                            boxed: true
                         )
                     }
                 }
