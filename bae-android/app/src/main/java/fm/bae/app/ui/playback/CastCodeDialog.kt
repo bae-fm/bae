@@ -2,6 +2,7 @@ package fm.bae.app.ui.playback
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -103,7 +104,11 @@ internal fun castCodeDialogParts(
         title = stringResource(R.string.cast_pair_with, receiver),
         message = message,
         content = {
-            Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
+            // The board sets the field 8 below the message, and Pairing… 32 below the field.
+            Column(
+                modifier = Modifier.padding(top = ThemeSpace.related),
+                verticalArrangement = Arrangement.spacedBy(ThemeSpace.page),
+            ) {
                 // The field takes the keyboard as the dialog opens.
                 val focus = if (!pairing) Modifier.focusOnShow() else Modifier
                 if (digits != null) {
