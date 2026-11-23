@@ -4,17 +4,16 @@ import SwiftUI
 /// A row of five stars or a read-only rating as its number and one filled star.
 struct Stars: View {
     private enum Form {
-        case row(value: Int, onRate: ((BridgeStars) -> Void)?)
+        case row(Int)
         case number(BridgeStars)
     }
 
     private let form: Form
     private let size: CGFloat
 
-    /// A row with `value` filled stars. When `onRate` is present, each star
-    /// rates with that many stars.
-    init(value: Int, size: CGFloat, onRate: ((BridgeStars) -> Void)? = nil) {
-        self.form = .row(value: value, onRate: onRate)
+    /// A row with `value` filled stars.
+    init(value: Int, size: CGFloat) {
+        self.form = .row(value)
         self.size = size
     }
 
@@ -26,8 +25,8 @@ struct Stars: View {
 
     var body: some View {
         switch form {
-        case .row(let value, let onRate):
-            row(value: value, onRate: onRate)
+        case .row(let value):
+            row(value: value)
         case .number(let rating):
             number(rating)
         }
@@ -45,31 +44,15 @@ struct Stars: View {
         .accessibilityAddTraits(.isImage)
     }
 
-    private func row(
-        value: Int,
-        onRate: ((BridgeStars) -> Void)?
-    ) -> some View {
+    private func row(value: Int) -> some View {
         HStack(spacing: ThemeSpace.line) {
             ForEach(BridgeStars.allCases, id: \.self) { stars in
-                if let onRate {
-                    Button {
-                        onRate(stars)
-                    } label: {
-                        star(filled: stars.number <= value)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(
-                        String(localized: "Rate \(stars.number) of 5 stars")
-                    )
-                }
-                else {
-                    star(filled: stars.number <= value)
-                }
+                star(filled: stars.number <= value)
             }
         }
-        .accessibilityElement(children: onRate == nil ? .ignore : .contain)
-        .accessibilityLabel(onRate == nil ? valueLabel(value) : "")
-        .accessibilityAddTraits(onRate == nil ? .isImage : [])
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(valueLabel(value))
+        .accessibilityAddTraits(.isImage)
     }
 
     private func valueLabel(_ value: Int) -> String {
@@ -92,8 +75,6 @@ struct Stars: View {
                     )
             }
             .frame(width: size, height: size)
-            // A star button takes clicks over this whole frame.
-            .contentShape(Rectangle())
     }
 }
 
