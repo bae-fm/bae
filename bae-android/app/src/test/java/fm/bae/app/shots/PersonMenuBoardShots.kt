@@ -47,10 +47,7 @@ class PersonMenuBoardShots : BoardShot() {
     ) {
         val state = remember { LibraryBrowserState() }
         Box(modifier = Modifier.fillMaxSize()) {
-            PlayingLibraryScreen(
-                state = state,
-                person = { BoardLibraryPerson(state) },
-            )
+            PlayingLibraryScreen(state = state)
             OpenMenu(top = MENU_TOP, end = end) { menu() }
         }
     }

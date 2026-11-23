@@ -93,12 +93,11 @@ class AndroidLibraryScreenShots : BoardShot() {
 
 /**
  * The library screen on Albums, showing [albums], with [nowPlayingBar] at its foot (a track playing, unless a shot says
- * otherwise), as the boards draw it behind what opens over it, with [person] at the end of its header.
+ * otherwise), as the boards draw it behind what opens over it, with the person's menu at the end of its header.
  */
 @Composable
 internal fun PlayingLibraryScreen(
     state: LibraryBrowserState = remember { LibraryBrowserState() },
-    person: @Composable () -> Unit = {},
     albums: List<BridgeAlbumAppearance> = boardAlbums,
     nowPlayingBar: @Composable () -> Unit = { Bar(playing) },
     syncActivity: @Composable () -> Unit = {},
@@ -107,7 +106,7 @@ internal fun PlayingLibraryScreen(
         AndroidLibraryScreen(
             state = state,
             onShuffleLibrary = {},
-            person = person,
+            person = { BoardLibraryPerson(state) },
             syncActivity = syncActivity,
             nowPlayingBar = nowPlayingBar,
         ) { modifier ->
