@@ -72,10 +72,14 @@ struct SortCriteriaRowTests {
     @Test(
         "the pill names its field and current direction",
         .serialized,
-        arguments: [BridgeSortDirection.ascending, .descending]
+        arguments: [
+            (BridgeSortDirection.ascending, "Ascending"),
+            (.descending, "Descending"),
+        ]
     )
     func thePillNamesItsFieldAndDirection(
-        direction: BridgeSortDirection
+        direction: BridgeSortDirection,
+        label: String
     ) async throws {
         let size = NSSize(width: 240, height: 44)
         try await SnapshotTestSupport.withHostedWindow(
@@ -103,7 +107,6 @@ struct SortCriteriaRowTests {
                 of: window,
                 subject: "the sort pill"
             )
-            let label = direction == .ascending ? "Ascending" : "Descending"
             #expect(
                 tree.nodes.contains {
                     $0.role == kAXButtonRole
