@@ -272,7 +272,13 @@ public struct MacRow<Lead: View, Label: View, Content: View, Info: View>: View {
         }
     }
 
+    /// The name and note take the room the value and controls leave, as the
+    /// board's label does, so their frame (a label button's, say) fills it.
     private var rowWords: some View {
+        rowWordLines.frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var rowWordLines: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.inline) {
             HStack(spacing: ThemeSpace.compact) {
                 Group {
