@@ -29,7 +29,7 @@ struct ShotScene {
         welcomeScenes + componentScenes + syncSettingsScenes
         + syncSetupScenes
         + storageSettingsScenes + storageManagerScenes + saveAsSettingsScenes
-        + alertScenes
+        + alertScenes + [importSettingsScene]
         + importListScenes
         + importPaneScenes
         + adminChangeScenes + menuScenes + playlistScenes + historyScenes
