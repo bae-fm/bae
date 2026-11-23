@@ -44,6 +44,7 @@ struct MacSortCriteria<Criterion: SortCriterionRepresentable>: View {
                 !usedFields.contains($0)
             }
             if !unused.isEmpty {
+                let label: LocalizedStringKey = "Add sort criterion"
                 MacButton(
                     kind: .plain,
                     menu: {
@@ -74,7 +75,8 @@ struct MacSortCriteria<Criterion: SortCriterionRepresentable>: View {
                         )
                 }
                 .fixedSize()
-                .help("Add sort criterion")
+                .help(label)
+                .accessibilityLabel(label)
             }
         }
     }
