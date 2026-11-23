@@ -66,14 +66,9 @@ struct BoxedIconFace<Label: View>: View {
             .frame(width: size.side, height: size.side)
             .background(
                 RoundedRectangle(cornerRadius: size.cornerRadius)
-                    // The push button's fill: the tile in dark, white in
-                    // light, where a ring and a drop stand it off a pale
-                    // sheet.
-                    .fill(
-                        dark
-                            ? AnyShapeStyle(Theme.tile)
-                            : AnyShapeStyle(Color.white)
-                    )
+                    // The push button's fill; in light a ring and a drop stand
+                    // it off a pale sheet.
+                    .fill(Theme.control)
                     .shadow(
                         color: dark ? .clear : Color.black.opacity(0.12),
                         radius: 0.5,

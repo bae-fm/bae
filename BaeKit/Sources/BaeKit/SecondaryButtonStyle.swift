@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// The design's secondary button: the control fill (the tone's tile in dark,
-/// white in light with a thin edge, as macOS draws its push buttons) under
+/// The design's secondary button: the control fill (with a thin edge in
+/// light, as macOS draws its push buttons) under
 /// the primary text colour, as high as the control size says. Hover and
 /// pressed lay the design's overlays over the fill.
 public struct SecondaryButtonStyle: ButtonStyle {
@@ -93,7 +93,7 @@ public struct SecondaryButtonStyle: ButtonStyle {
 
         private var fill: AnyShapeStyle {
             if tinted { return AnyShapeStyle(Theme.textPrimary.opacity(0.12)) }
-            return dark ? AnyShapeStyle(Theme.tile) : AnyShapeStyle(Color.white)
+            return AnyShapeStyle(Theme.control)
         }
     }
 }

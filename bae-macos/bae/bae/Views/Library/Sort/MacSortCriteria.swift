@@ -68,7 +68,7 @@ struct MacSortCriteria<Criterion: SortCriterionRepresentable>: View {
                             height: ThemeSize.hitTarget
                         )
                         .background(
-                            Theme.missingArt,
+                            Theme.control,
                             in: RoundedRectangle(
                                 cornerRadius: ThemeRadius.control
                             )

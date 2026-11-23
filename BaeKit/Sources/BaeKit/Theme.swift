@@ -12,6 +12,7 @@ public enum Theme {
     public static let fieldHover = ThemeSurface(role: \.fieldHover)
     public static let well = ThemeSurface(role: \.well)
     public static let tile = ThemeSurface(role: \.tile)
+    public static let control = ThemeSurface(role: \.control)
     public static let accent = Color.accentColor
     public static let accentSoft = accent.opacity(ThemeOpacity.tint)
     public static let accentStrong = accent.opacity(ThemeOpacity.tintStrong)

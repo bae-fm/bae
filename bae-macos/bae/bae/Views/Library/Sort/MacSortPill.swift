@@ -48,7 +48,7 @@ struct MacSortPill<Criterion: SortCriterionRepresentable>: View {
         .padding(.horizontal, ThemeSpace.group)
         .padding(.vertical, ThemeSpace.compact)
         .background(
-            Theme.missingArt,
+            Theme.control,
             in: RoundedRectangle(cornerRadius: ThemeRadius.control)
         )
     }
