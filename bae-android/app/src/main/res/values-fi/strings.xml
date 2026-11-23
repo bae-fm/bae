@@ -322,7 +322,6 @@
     <string name="continue_action">Jatka</string>
     <string name="onboarding_code_invalid">Tämä ei ole palautuskoodi eikä kutsu.</string>
     <string name="onboarding_restore_title">Palauta kirjastosi</string>
-    <string name="onboarding_s3_key_explanation">Tämä kirjasto on S3-yhteensopivassa säilössä. Syötä sen käyttöön käyttämäsi käyttöavain.</string>
     <string name="s3_key_title">S3-avain</string>
     <string name="onboarding_s3_key_prompt">Syötä S3-tallennustilasi tunnistetiedot.</string>
     <string name="s3_access_key_id">Käyttöavaimen tunnus</string>
@@ -487,7 +486,7 @@
     <string name="onboarding_invite_ended_ask">Pyydä uusi kutsu henkilöltä %1$s.</string>
     <string name="onboarding_ok">OK</string>
     <string name="add_device_instructions">Skannaa tai syötä koodi uudella laitteella.</string>
-    <string name="invite_s3_theirs_note">Heidän oma avaimensa säilöön, jotta he voivat liittyä.</string>
+    <string name="invite_s3_theirs_note">Heidän oma avaimensa S3-tallennustilaan, jotta he voivat liittyä.</string>
     <string name="invite_s3_use_my_key">Käytä sen sijaan omaa avaintani</string>
     <string name="invite_s3_mine">He käyttävät sinun avaintasi. Jos haluat poistaa heidät myöhemmin, luot itsellesi uuden avaimen ja syötät sen jokaisella laitteellasi.</string>
     <string name="invite_s3_use_their_key">Käytä sen sijaan heidän omaa avaintaan</string>

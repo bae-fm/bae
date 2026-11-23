@@ -131,9 +131,9 @@ extension S3SetupFields.KeyRejection {
         case .cannotUseBucket:
             String(
                 localized:
-                    "This key cannot use the bucket. Give it read and write access, or use another key.",
+                    "This key cannot use this S3 storage. Give it read and write access, or use another key.",
                 comment:
-                    "S3 setup, at the top of the form: the key is valid but isn't allowed to use the bucket."
+                    "S3 setup, at the top of the form: S3 storage refused a valid key."
             )
         }
     }

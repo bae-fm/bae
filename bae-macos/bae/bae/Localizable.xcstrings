@@ -7379,176 +7379,176 @@
         }
       }
     },
-    "This key cannot use the bucket. Give it read and write access, or use another key." : {
-      "comment" : "S3 setup, at the top of the form: the key is valid but isn't allowed to use the bucket.",
+    "This key cannot use this S3 storage. Give it read and write access, or use another key." : {
+      "comment" : "S3 setup, at the top of the form: S3 storage refused a valid key.",
       "extractionState" : "manual",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "لا يستطيع هذا المفتاح استخدام الحاوية. امنحه صلاحية القراءة والكتابة، أو استخدم مفتاحًا آخر."
+            "value" : "لا يستطيع هذا المفتاح استخدام تخزين S3 هذا. امنحه صلاحية القراءة والكتابة، أو استخدم مفتاحًا آخر."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Този ключ не може да използва кофата. Дайте му достъп за четене и запис или използвайте друг ключ."
+            "value" : "Този ключ не може да използва това хранилище S3. Дайте му достъп за четене и запис или използвайте друг ключ."
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tento klíč nemůže používat bucket. Dejte mu oprávnění ke čtení a zápisu, nebo použijte jiný klíč."
+            "value" : "Tento klíč nemůže používat toto úložiště S3. Dejte mu oprávnění ke čtení a zápisu, nebo použijte jiný klíč."
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nøglen kan ikke bruge bucket’en. Giv den læse- og skriveadgang, eller brug en anden nøgle."
+            "value" : "Nøglen kan ikke bruge dette S3-lager. Giv den læse- og skriveadgang, eller brug en anden nøgle."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dieser Schlüssel kann den Bucket nicht verwenden. Gib ihm Lese- und Schreibzugriff oder verwende einen anderen Schlüssel."
+            "value" : "Dieser Schlüssel kann diesen S3-Speicher nicht verwenden. Gib ihm Lese- und Schreibzugriff oder verwende einen anderen Schlüssel."
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Αυτό το κλειδί δεν μπορεί να χρησιμοποιήσει τον κάδο. Δώστε του πρόσβαση ανάγνωσης και εγγραφής ή χρησιμοποιήστε άλλο κλειδί."
+            "value" : "Αυτό το κλειδί δεν μπορεί να χρησιμοποιήσει αυτόν τον αποθηκευτικό χώρο S3. Δώστε του πρόσβαση ανάγνωσης και εγγραφής ή χρησιμοποιήστε άλλο κλειδί."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "This key cannot use the bucket. Give it read and write access, or use another key."
+            "value" : "This key cannot use this S3 storage. Give it read and write access, or use another key."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esta clave no puede usar el bucket. Dale acceso de lectura y escritura, o usa otra clave."
+            "value" : "Esta clave no puede usar este almacenamiento S3. Dale acceso de lectura y escritura, o usa otra clave."
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Avain ei voi käyttää säilöä. Anna sille luku- ja kirjoitusoikeus tai käytä toista avainta."
+            "value" : "Avain ei voi käyttää tätä S3-tallennustilaa. Anna sille luku- ja kirjoitusoikeus tai käytä toista avainta."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cette clé ne peut pas utiliser le bucket. Donnez-lui un accès en lecture et en écriture, ou utilisez une autre clé."
+            "value" : "Cette clé ne peut pas utiliser ce stockage S3. Donnez-lui un accès en lecture et en écriture, ou utilisez une autre clé."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "המפתח הזה לא יכול להשתמש בדלי. תן לו הרשאת קריאה וכתיבה, או השתמש במפתח אחר."
+            "value" : "המפתח הזה לא יכול להשתמש באחסון S3 הזה. תן לו הרשאת קריאה וכתיבה, או השתמש במפתח אחר."
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ovaj ključ ne može koristiti spremnik. Dajte mu pristup za čitanje i pisanje ili upotrijebite drugi ključ."
+            "value" : "Ovaj ključ ne može koristiti ovu S3 pohranu. Dajte mu pristup za čitanje i pisanje ili upotrijebite drugi ključ."
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ez a kulcs nem használhatja a tárolót. Adj neki olvasási és írási jogot, vagy használj másik kulcsot."
+            "value" : "Ez a kulcs nem használhatja ezt az S3-tárhelyet. Adj neki olvasási és írási jogot, vagy használj másik kulcsot."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Questa chiave non può usare il bucket. Dalle accesso in lettura e scrittura, oppure usa un’altra chiave."
+            "value" : "Questa chiave non può usare questo spazio di archiviazione S3. Dalle accesso in lettura e scrittura, oppure usa un’altra chiave."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "このキーではバケットを使用できません。読み取りと書き込みの権限を付与するか、別のキーを使用してください。"
+            "value" : "このキーではこの S3 ストレージを使用できません。読み取りと書き込みの権限を付与するか、別のキーを使用してください。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "이 키로는 버킷을 사용할 수 없습니다. 읽기 및 쓰기 권한을 부여하거나 다른 키를 사용하세요."
+            "value" : "이 키로는 이 S3 스토리지를 사용할 수 없습니다. 읽기 및 쓰기 권한을 부여하거나 다른 키를 사용하세요."
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nøkkelen kan ikke bruke bøtten. Gi den lese- og skrivetilgang, eller bruk en annen nøkkel."
+            "value" : "Nøkkelen kan ikke bruke denne S3-lagringen. Gi den lese- og skrivetilgang, eller bruk en annen nøkkel."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Deze sleutel kan de bucket niet gebruiken. Geef de sleutel lees- en schrijftoegang of gebruik een andere sleutel."
+            "value" : "Deze sleutel kan deze S3-opslag niet gebruiken. Geef de sleutel lees- en schrijftoegang of gebruik een andere sleutel."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ten klucz nie może używać zasobnika. Nadaj mu dostęp do odczytu i zapisu lub użyj innego klucza."
+            "value" : "Ten klucz nie może używać tego magazynu S3. Nadaj mu dostęp do odczytu i zapisu lub użyj innego klucza."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esta chave não pode usar o bucket. Dê a ela acesso de leitura e gravação ou use outra chave."
+            "value" : "Esta chave não pode usar este armazenamento S3. Dê a ela acesso de leitura e gravação ou use outra chave."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esta chave não pode usar o contentor. Dê-lhe acesso de leitura e escrita ou use outra chave."
+            "value" : "Esta chave não pode usar este armazenamento S3. Dê-lhe acesso de leitura e escrita ou use outra chave."
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Această cheie nu poate folosi containerul. Acordă-i acces de citire și scriere sau folosește altă cheie."
+            "value" : "Această cheie nu poate folosi această stocare S3. Acordă-i acces de citire și scriere sau folosește altă cheie."
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tento kľúč nemôže používať kontajner. Udeľte mu oprávnenie na čítanie a zápis alebo použite iný kľúč."
+            "value" : "Tento kľúč nemôže používať toto úložisko S3. Udeľte mu oprávnenie na čítanie a zápis alebo použite iný kľúč."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nyckeln kan inte använda bucketen. Ge den läs- och skrivåtkomst, eller använd en annan nyckel."
+            "value" : "Nyckeln kan inte använda den här S3-lagringen. Ge den läs- och skrivåtkomst, eller använd en annan nyckel."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu anahtar bucket’ı kullanamıyor. Ona okuma ve yazma erişimi ver veya başka bir anahtar kullan."
+            "value" : "Bu anahtar bu S3 depolama alanını kullanamıyor. Anahtara okuma ve yazma erişimi ver veya başka bir anahtar kullan."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Цей ключ не може використовувати бакет. Надайте йому доступ на читання й запис або скористайтеся іншим ключем."
+            "value" : "Цей ключ не може використовувати це сховище S3. Надайте йому доступ на читання й запис або скористайтеся іншим ключем."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "此密钥无法使用该存储桶。请授予它读取和写入权限，或使用其他密钥。"
+            "value" : "此密钥无法使用此 S3 存储。请授予它读取和写入权限，或使用其他密钥。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "此金鑰無法使用該儲存桶。請授予它讀取和寫入權限，或使用其他金鑰。"
+            "value" : "此金鑰無法使用這個 S3 儲存空間。請授予它讀取和寫入權限，或使用其他金鑰。"
           }
         }
       }
@@ -162535,175 +162535,175 @@
         }
       }
     },
-    "Their own key to the bucket, so they can join." : {
+    "Their own key to the S3 storage, so they can join." : {
       "comment" : "Invite form on S3: under the secret key of a key made for the invited person",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "مفتاحهم الخاص للوصول إلى الحاوية، ليتمكنوا من الانضمام."
+            "value" : "مفتاحهم الخاص للوصول إلى تخزين S3، ليتمكنوا من الانضمام."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Собственият им ключ за bucket-а, за да могат да се присъединят."
+            "value" : "Собственият им ключ за хранилището S3, за да могат да се присъединят."
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Jejich vlastní klíč k bucketu, aby se mohli připojit."
+            "value" : "Jejich vlastní klíč k úložišti S3, aby se mohli připojit."
           }
         },
         "da" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Deres egen nøgle til bucketen, så de kan være med."
+            "value" : "Deres egen nøgle til S3-lageret, så de kan være med."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Der eigene Schlüssel der Person für den Bucket, damit sie beitreten kann."
+            "value" : "Der eigene Schlüssel der Person für den S3-Speicher, damit sie beitreten kann."
           }
         },
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Το δικό τους κλειδί για το bucket, ώστε να συμμετάσχουν."
+            "value" : "Το δικό τους κλειδί για τον αποθηκευτικό χώρο S3, ώστε να συμμετάσχουν."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Their own key to the bucket, so they can join."
+            "value" : "Their own key to the S3 storage, so they can join."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Su propia clave del bucket, para que puedan unirse."
+            "value" : "Su propia clave del almacenamiento S3, para que puedan unirse."
           }
         },
         "fi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Heidän oma avaimensa säilöön, jotta he voivat liittyä."
+            "value" : "Heidän oma avaimensa S3-tallennustilaan, jotta he voivat liittyä."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Leur propre clé pour le bucket, pour qu’ils puissent la rejoindre."
+            "value" : "Leur propre clé pour le stockage S3, pour qu’ils puissent rejoindre la bibliothèque."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "המפתח שלהם לדלי, כדי שיוכלו להצטרף."
+            "value" : "המפתח שלהם לאחסון S3, כדי שיוכלו להצטרף."
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Njihov vlastiti ključ za bucket kako bi se mogli pridružiti."
+            "value" : "Njihov vlastiti ključ za S3 pohranu kako bi se mogli pridružiti."
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Saját kulcsuk a tárolóhoz, hogy csatlakozni tudjanak."
+            "value" : "Saját kulcsuk az S3-tárhelyhez, hogy csatlakozni tudjanak."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La loro chiave per il bucket, così potranno unirsi."
+            "value" : "La loro chiave per lo spazio di archiviazione S3, così potranno unirsi."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "その人自身のバケット用キーです。これで参加できます。"
+            "value" : "その人自身の S3 ストレージ用キーです。これで参加できます。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "참여할 수 있도록 상대방 본인의 버킷 키입니다."
+            "value" : "참여할 수 있도록 상대방 본인의 S3 스토리지 키를 입력하세요."
           }
         },
         "nb" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Deres egen nøkkel til bøtten, så de kan bli med."
+            "value" : "Deres egen nøkkel til S3-lagringen, så de kan bli med."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hun eigen sleutel voor de bucket, zodat ze kunnen meedoen."
+            "value" : "Hun eigen sleutel voor de S3-opslag, zodat ze kunnen meedoen."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ich własny klucz do zasobnika, aby mogli dołączyć."
+            "value" : "Ich własny klucz do magazynu S3, aby mogli dołączyć."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A chave deles para o bucket, para que possam participar."
+            "value" : "A própria chave deles para o armazenamento S3, para que possam participar."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A chave deles para o bucket, para que possam aderir."
+            "value" : "A própria chave deles para o armazenamento S3, para que possam aderir."
           }
         },
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cheia lor proprie pentru bucket, ca să se poată alătura."
+            "value" : "Cheia lor proprie pentru stocarea S3, ca să se poată alătura."
           }
         },
         "sk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ich vlastný kľúč k bucketu, aby sa mohli pripojiť."
+            "value" : "Ich vlastný kľúč k úložisku S3, aby sa mohli pripojiť."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Deras egen nyckel till bucketen, så att de kan gå med."
+            "value" : "Deras egen nyckel till S3-lagringen, så att de kan gå med."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Katılabilmeleri için kendi kova anahtarları."
+            "value" : "Katılabilmeleri için kendi S3 depolama anahtarları."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Їхній власний ключ до бакета, щоб вони могли приєднатися."
+            "value" : "Їхній власний ключ до сховища S3, щоб вони могли приєднатися."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "对方自己的存储桶密钥，以便加入。"
+            "value" : "输入对方自己的 S3 存储密钥，以便对方加入。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "對方自己的儲存貯體金鑰，以便加入。"
+            "value" : "輸入對方自己的 S3 儲存空間金鑰，對方就能加入。"
           }
         }
       }

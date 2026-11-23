@@ -322,7 +322,6 @@
     <string name="continue_action">Fortsett</string>
     <string name="onboarding_code_invalid">Dette er verken en gjenopprettingskode eller en invitasjon.</string>
     <string name="onboarding_restore_title">Gjenopprett biblioteket ditt</string>
-    <string name="onboarding_s3_key_explanation">Dette biblioteket ligger i en S3-kompatibel bøtte. Skriv inn tilgangsnøkkelen du bruker for den.</string>
     <string name="s3_key_title">S3-nøkkel</string>
     <string name="onboarding_s3_key_prompt">Skriv inn legitimasjonen for S3-lagringen din.</string>
     <string name="s3_access_key_id">Tilgangsnøkkel-ID</string>
@@ -487,7 +486,7 @@
     <string name="onboarding_invite_ended_ask">Be %1$s om en ny.</string>
     <string name="onboarding_ok">OK</string>
     <string name="add_device_instructions">Skann eller skriv inn koden på den nye enheten.</string>
-    <string name="invite_s3_theirs_note">Deres egen nøkkel til bøtten, så de kan bli med.</string>
+    <string name="invite_s3_theirs_note">Deres egen nøkkel til S3-lagringen, så de kan bli med.</string>
     <string name="invite_s3_use_my_key">Bruk nøkkelen min i stedet</string>
     <string name="invite_s3_mine">De bruker nøkkelen din. For å fjerne dem senere lager du en ny nøkkel til deg selv og skriver den inn på hver av enhetene dine.</string>
     <string name="invite_s3_use_their_key">Bruk deres egen nøkkel i stedet</string>

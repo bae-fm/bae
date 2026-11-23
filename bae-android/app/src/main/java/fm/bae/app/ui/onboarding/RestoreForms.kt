@@ -180,7 +180,7 @@ private fun RestoreAction(
     var secretAccessKey by remember { mutableStateOf("") }
     if (needsKey) {
         Text(
-            text = stringResource(R.string.onboarding_s3_key_explanation),
+            text = stringResource(R.string.onboarding_s3_key_prompt),
             style = ThemeText.detail.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

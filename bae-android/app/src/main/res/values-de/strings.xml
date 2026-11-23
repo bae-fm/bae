@@ -324,7 +324,6 @@
     <string name="continue_action">Weiter</string>
     <string name="onboarding_code_invalid">Das ist weder ein Wiederherstellungscode noch eine Einladung.</string>
     <string name="onboarding_restore_title">Deine Bibliothek wiederherstellen</string>
-    <string name="onboarding_s3_key_explanation">Diese Bibliothek liegt in einem S3-kompatiblen Bucket. Gib den Zugriffsschlüssel ein, den du dafür verwendest.</string>
     <string name="s3_key_title">S3-Schlüssel</string>
     <string name="onboarding_s3_key_prompt">Gib die Zugangsdaten für deinen S3-Speicher ein.</string>
     <string name="s3_access_key_id">Zugriffsschlüssel-ID</string>
@@ -489,7 +488,7 @@
     <string name="onboarding_invite_ended_ask">Bitte %1$s um eine neue.</string>
     <string name="onboarding_ok">OK</string>
     <string name="add_device_instructions">Scanne den Code oder gib ihn auf dem neuen Gerät ein.</string>
-    <string name="invite_s3_theirs_note">Der eigene Schlüssel der Person für den Bucket, damit sie beitreten kann.</string>
+    <string name="invite_s3_theirs_note">Der eigene Schlüssel der Person für den S3-Speicher, damit sie beitreten kann.</string>
     <string name="invite_s3_use_my_key">Stattdessen meinen Schlüssel verwenden</string>
     <string name="invite_s3_mine">Die Person verwendet deinen Schlüssel. Um sie später zu entfernen, erstellst du einen neuen Schlüssel für dich und gibst ihn auf jedem deiner Geräte ein.</string>
     <string name="invite_s3_use_their_key">Stattdessen den eigenen Schlüssel der Person verwenden</string>

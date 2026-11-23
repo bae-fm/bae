@@ -330,7 +330,6 @@
     <string name="continue_action">Continuar</string>
     <string name="onboarding_code_invalid">Isto não é um código de restauração nem um convite.</string>
     <string name="onboarding_restore_title">Restaurar sua biblioteca</string>
-    <string name="onboarding_s3_key_explanation">Esta biblioteca fica em um bucket compatível com S3. Digite a chave de acesso que você usa para ele.</string>
     <string name="s3_key_title">Chave do S3</string>
     <string name="onboarding_s3_key_prompt">Digite as credenciais do seu armazenamento S3.</string>
     <string name="s3_access_key_id">ID da chave de acesso</string>
@@ -496,7 +495,7 @@
     <string name="onboarding_invite_ended_ask">Peça um novo a %1$s.</string>
     <string name="onboarding_ok">OK</string>
     <string name="add_device_instructions">Escaneie ou digite o código no novo dispositivo.</string>
-    <string name="invite_s3_theirs_note">A chave deles para o bucket, para que possam participar.</string>
+    <string name="invite_s3_theirs_note">A própria chave deles para o armazenamento S3, para que possam participar.</string>
     <string name="invite_s3_use_my_key">Usar minha chave</string>
     <string name="invite_s3_mine">Eles vão usar a sua chave. Para removê-los depois, você cria uma nova chave para si e a digita em cada um dos seus dispositivos.</string>
     <string name="invite_s3_use_their_key">Usar a chave deles</string>

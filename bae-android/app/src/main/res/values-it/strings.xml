@@ -330,7 +330,6 @@
     <string name="continue_action">Continua</string>
     <string name="onboarding_code_invalid">Questo non è un codice di ripristino né un invito.</string>
     <string name="onboarding_restore_title">Ripristina la tua libreria</string>
-    <string name="onboarding_s3_key_explanation">Questa libreria è archiviata in un bucket compatibile con S3. Inserisci la chiave di accesso che usi per esso.</string>
     <string name="s3_key_title">Chiave S3</string>
     <string name="onboarding_s3_key_prompt">Inserisci le credenziali per la tua archiviazione S3.</string>
     <string name="s3_access_key_id">ID chiave di accesso</string>
@@ -496,7 +495,7 @@
     <string name="onboarding_invite_ended_ask">Chiedine uno nuovo a %1$s.</string>
     <string name="onboarding_ok">OK</string>
     <string name="add_device_instructions">Inquadra o inserisci il codice sul nuovo dispositivo.</string>
-    <string name="invite_s3_theirs_note">La loro chiave per il bucket, così potranno unirsi.</string>
+    <string name="invite_s3_theirs_note">La loro chiave per lo spazio di archiviazione S3, così potranno unirsi.</string>
     <string name="invite_s3_use_my_key">Usa invece la mia chiave</string>
     <string name="invite_s3_mine">Useranno la tua chiave. Per rimuoverli in seguito, crei una nuova chiave per te e la inserisci su ciascuno dei tuoi dispositivi.</string>
     <string name="invite_s3_use_their_key">Usa invece la loro chiave</string>

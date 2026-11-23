@@ -322,7 +322,6 @@
     <string name="continue_action">Fortsätt</string>
     <string name="onboarding_code_invalid">Det här är varken en återställningskod eller en inbjudan.</string>
     <string name="onboarding_restore_title">Återställ ditt bibliotek</string>
-    <string name="onboarding_s3_key_explanation">Det här biblioteket ligger i en S3-kompatibel bucket. Ange åtkomstnyckeln du använder för den.</string>
     <string name="s3_key_title">S3-nyckel</string>
     <string name="onboarding_s3_key_prompt">Ange inloggningsuppgifterna för din S3-lagring.</string>
     <string name="s3_access_key_id">Åtkomstnyckel-ID</string>
@@ -487,7 +486,7 @@
     <string name="onboarding_invite_ended_ask">Be %1$s om en ny.</string>
     <string name="onboarding_ok">OK</string>
     <string name="add_device_instructions">Skanna eller ange koden på den nya enheten.</string>
-    <string name="invite_s3_theirs_note">Deras egen nyckel till bucketen, så att de kan gå med.</string>
+    <string name="invite_s3_theirs_note">Deras egen nyckel till S3-lagringen, så att de kan gå med.</string>
     <string name="invite_s3_use_my_key">Använd min nyckel i stället</string>
     <string name="invite_s3_mine">De använder din nyckel. För att ta bort dem senare skapar du en ny nyckel åt dig själv och anger den på var och en av dina enheter.</string>
     <string name="invite_s3_use_their_key">Använd deras egen nyckel i stället</string>

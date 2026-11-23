@@ -317,7 +317,6 @@
     <string name="continue_action">继续</string>
     <string name="onboarding_code_invalid">这不是恢复码，也不是邀请。</string>
     <string name="onboarding_restore_title">恢复你的库</string>
-    <string name="onboarding_s3_key_explanation">此库存储在兼容 S3 的存储桶中。请输入你用于该存储桶的访问密钥。</string>
     <string name="s3_key_title">S3 密钥</string>
     <string name="onboarding_s3_key_prompt">请输入你的 S3 存储的凭据。</string>
     <string name="s3_access_key_id">访问密钥 ID</string>
@@ -480,7 +479,7 @@
     <string name="onboarding_invite_ended_ask">请向%1$s索取新的邀请。</string>
     <string name="onboarding_ok">好</string>
     <string name="add_device_instructions">在新设备上扫描或输入此代码。</string>
-    <string name="invite_s3_theirs_note">对方自己的存储桶密钥，以便加入。</string>
+    <string name="invite_s3_theirs_note">输入对方自己的 S3 存储密钥，以便对方加入。</string>
     <string name="invite_s3_use_my_key">改用我的密钥</string>
     <string name="invite_s3_mine">对方将使用你的密钥。之后若要移除对方，你需要为自己生成新密钥，并在你的每台设备上输入。</string>
     <string name="invite_s3_use_their_key">改用对方自己的密钥</string>

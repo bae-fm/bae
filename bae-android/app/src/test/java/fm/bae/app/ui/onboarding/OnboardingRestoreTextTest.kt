@@ -70,6 +70,15 @@ class OnboardingRestoreTextTest {
     }
 
     @Test
+    fun aSavedRestoreAsksForCredentialsForS3Storage() {
+        val info = s3Code(hasS3Credentials = false)
+        val saved = SavedRestoreCode(FakeSavedRestoreCode(info), info)
+        compose.setContent { TestTheme { SavedRestoreForm(OnboardingStep.RestoreSaved(saved), null, {}, {}) } }
+
+        compose.onNodeWithText("Enter your credentials for your S3 storage.").assertIsDisplayed()
+    }
+
+    @Test
     fun addingThisDeviceHasNoHeadingUnderTheBar() {
         // The spinner animates forever; a frozen clock lets the content settle.
         compose.mainClock.autoAdvance = false

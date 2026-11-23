@@ -338,7 +338,6 @@
     <string name="continue_action">Dalej</string>
     <string name="onboarding_code_invalid">To nie jest kod przywracania ani zaproszenie.</string>
     <string name="onboarding_restore_title">Przywróć swoją bibliotekę</string>
-    <string name="onboarding_s3_key_explanation">Ta biblioteka jest przechowywana w zasobniku zgodnym z S3. Wpisz klucz dostępu, którego do niego używasz.</string>
     <string name="s3_key_title">Klucz S3</string>
     <string name="onboarding_s3_key_prompt">Wpisz dane uwierzytelniające do swojego magazynu S3.</string>
     <string name="s3_access_key_id">Identyfikator klucza dostępu</string>
@@ -507,7 +506,7 @@
     <string name="onboarding_invite_ended_ask">Poproś osobę %1$s o nowe.</string>
     <string name="onboarding_ok">OK</string>
     <string name="add_device_instructions">Zeskanuj lub wpisz kod na nowym urządzeniu.</string>
-    <string name="invite_s3_theirs_note">Ich własny klucz do zasobnika, aby mogli dołączyć.</string>
+    <string name="invite_s3_theirs_note">Ich własny klucz do magazynu S3, aby mogli dołączyć.</string>
     <string name="invite_s3_use_my_key">Użyj zamiast tego mojego klucza</string>
     <string name="invite_s3_mine">Będą używać Twojego klucza. Aby ich później usunąć, tworzysz nowy klucz dla siebie i wpisujesz go na każdym ze swoich urządzeń.</string>
     <string name="invite_s3_use_their_key">Użyj zamiast tego ich własnego klucza</string>

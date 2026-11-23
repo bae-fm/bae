@@ -322,7 +322,6 @@
     <string name="continue_action">Συνέχεια</string>
     <string name="onboarding_code_invalid">Αυτό δεν είναι κωδικός επαναφοράς ούτε πρόσκληση.</string>
     <string name="onboarding_restore_title">Επαναφορά της βιβλιοθήκης σας</string>
-    <string name="onboarding_s3_key_explanation">Αυτή η βιβλιοθήκη είναι αποθηκευμένη σε bucket συμβατό με S3. Εισαγάγετε το κλειδί πρόσβασης που χρησιμοποιείτε για αυτό.</string>
     <string name="s3_key_title">Κλειδί S3</string>
     <string name="onboarding_s3_key_prompt">Εισαγάγετε τα διαπιστευτήρια για τον αποθηκευτικό σας χώρο S3.</string>
     <string name="s3_access_key_id">Αναγνωριστικό κλειδιού πρόσβασης</string>
@@ -487,7 +486,7 @@
     <string name="onboarding_invite_ended_ask">Ζητήστε μια νέα από %1$s.</string>
     <string name="onboarding_ok">OK</string>
     <string name="add_device_instructions">Σαρώστε ή εισαγάγετε τον κωδικό στη νέα συσκευή.</string>
-    <string name="invite_s3_theirs_note">Το δικό τους κλειδί για το bucket, ώστε να συμμετάσχουν.</string>
+    <string name="invite_s3_theirs_note">Το δικό τους κλειδί για τον αποθηκευτικό χώρο S3, ώστε να συμμετάσχουν.</string>
     <string name="invite_s3_use_my_key">Χρήση του δικού μου κλειδιού</string>
     <string name="invite_s3_mine">Θα χρησιμοποιήσουν το κλειδί σας. Για να τους αφαιρέσετε αργότερα, δημιουργείτε ένα νέο κλειδί για τον εαυτό σας και το εισάγετε σε κάθε συσκευή σας.</string>
     <string name="invite_s3_use_their_key">Χρήση του δικού τους κλειδιού</string>

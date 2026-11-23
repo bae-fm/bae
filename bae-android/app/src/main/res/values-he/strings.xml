@@ -331,7 +331,6 @@
     <string name="continue_action">המשך</string>
     <string name="onboarding_code_invalid">זה לא קוד שחזור וגם לא הזמנה.</string>
     <string name="onboarding_restore_title">שחזור הספרייה שלך</string>
-    <string name="onboarding_s3_key_explanation">הספרייה הזו מאוחסנת בדלי תואם S3. הזן את מפתח הגישה שבו אתה משתמש עבורו.</string>
     <string name="s3_key_title">מפתח S3</string>
     <string name="onboarding_s3_key_prompt">הזן את פרטי הגישה לאחסון S3 שלך.</string>
     <string name="s3_access_key_id">מזהה מפתח גישה</string>
@@ -498,7 +497,7 @@
     <string name="onboarding_invite_ended_ask">בקש מ-%1$s הזמנה חדשה.</string>
     <string name="onboarding_ok">אישור</string>
     <string name="add_device_instructions">סרוק או הזן את הקוד במכשיר החדש.</string>
-    <string name="invite_s3_theirs_note">המפתח שלהם לדלי, כדי שיוכלו להצטרף.</string>
+    <string name="invite_s3_theirs_note">המפתח שלהם לאחסון S3, כדי שיוכלו להצטרף.</string>
     <string name="invite_s3_use_my_key">השתמש במפתח שלי במקום</string>
     <string name="invite_s3_mine">הם ישתמשו במפתח שלך. כדי להסיר אותם בהמשך, תיצור מפתח חדש לעצמך ותזין אותו בכל אחד מהמכשירים שלך.</string>
     <string name="invite_s3_use_their_key">השתמש במפתח שלהם במקום</string>

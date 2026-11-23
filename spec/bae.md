@@ -3699,7 +3699,8 @@ or 30 days; it starts on Member and 7 days. Her laptop records the
 invite in one write, offline too, and shows it at once, marked as sharing
 access: sync then checks it again and shares the store's folder with his
 account, and the invite's code shows once it has. On S3 the form asks for an
-access key Ana made for Dan, or **Use my key instead**: Dan then uses the key
+access key Ana made for Dan. The note under the secret key says Dan uses his
+own key to the S3 storage to join. With **Use my key instead**, Dan uses the key
 this device connects with, and the form says that to remove him later Ana makes a new
 key for herself and enters it on each of her devices; **Use their own key
 instead** goes back. A library on iCloud or OneDrive asks for his Apple Account

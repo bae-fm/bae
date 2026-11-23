@@ -110,7 +110,8 @@ struct MacInviteFields: View {
                     FieldBoxRow(
                         "Secret access key",
                         labelWidth: labelWidth,
-                        note: "Their own key to the bucket, so they can join."
+                        note:
+                            "Their own key to the S3 storage, so they can join."
                     ) {
                         BoxedField(
                             text: $secretAccessKey,
