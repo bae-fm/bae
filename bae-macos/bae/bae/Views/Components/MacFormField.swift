@@ -22,6 +22,8 @@ struct MacFormField<Control: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.inline) {
             Text(label)
+                .themeText(.body)
+                .foregroundStyle(Theme.textPrimary)
             control
                 .accessibilityLabel(Text(label))
             if let note {
