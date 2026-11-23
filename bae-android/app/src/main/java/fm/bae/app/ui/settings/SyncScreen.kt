@@ -287,8 +287,13 @@ internal fun AndroidSettingsSync(
             contentPadding = PaddingValues(ThemeSpace.edge),
             verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
         ) {
-            item { AndroidSyncStatus(line = line, onFix = onFix) }
-            item { Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related), content = notices) }
+            // One item: an item of its own that the notices left empty would still add a gap.
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
+                    AndroidSyncStatus(line = line, onFix = onFix)
+                    notices()
+                }
+            }
             location?.let { place ->
                 item {
                     StorageSection(
