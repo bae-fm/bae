@@ -241,7 +241,7 @@ fn release_files_json_sql(
         unplayed = super::files::unplayed_files_cte(
             &format!(
                 "(SELECT id AS file_id, {image} AS showable_image \
-                  FROM {table} AS listed \
+                  FROM release_files AS listed \
                   WHERE release_id = {release})"
             ),
             &format!(
@@ -275,27 +275,24 @@ fn release_files_json_sql(
     )
 }
 
-/// The files of the release `release` (an SQL expression over `params`
-/// naming its id), as its detail reads them, each audio file laid out as
-/// the edits `edits` lay it (see [`super::sheet_files::sheet_files_ctes`]).
+/// The release editor's Files rows and their CUE placement choices.
 #[cfg(desktop)]
 pub fn release_files_on(
     sql: &impl coven::SqlRead,
-    release: &str,
-    edits: &str,
-    params: impl rusqlite::Params,
+    layout: &super::layout::LayoutParams<'_>,
 ) -> Result<DbReleaseFiles, DbError> {
+    let choices = super::sheet_side_choices_sql(&super::layout::base_mediums_source());
     Ok(sql.query_row(
         &format!(
-            "WITH {}, {}, {} SELECT {} AS files",
+            "WITH {}, {}, {}, choices AS MATERIALIZED (SELECT * FROM {choices}) SELECT {} AS files",
             super::release_tracks::track_places_ctes(
                 super::MediumsSource::Release,
-                &format!("m.release_id = {release}")
+                "m.release_id = :release"
             ),
-            super::sheet_files::sheet_files_ctes(release, edits),
-            super::sheet_files::sheet_audio_options_ctes(release),
+            super::sheet_files::sheet_files_ctes(":release", ":edits"),
+            super::sheet_files::sheet_audio_options_ctes(":release"),
             release_files_json_sql(
-                release,
+                ":release",
                 "laid_files",
                 "laid_segments",
                 "(SELECT * FROM carved_tracks \
@@ -303,7 +300,10 @@ pub fn release_files_on(
                 &super::sheet_files::sheet_without_tracks_json_sql("f.id"),
             )
         ),
-        params,
+        rusqlite::named_params! {
+            ":release": layout.release_id, ":edits": layout.edits,
+            ":applied": layout.applied, ":mediums": layout.mediums,
+        },
         |row| release_files_column(row, "files"),
     )?)
 }

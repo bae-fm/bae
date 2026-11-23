@@ -93,6 +93,7 @@ pub struct DbReleaseEditSheet {
     pub file_id: String,
     pub name: String,
     pub place: DbSheetSideChoice,
+    pub side_choices: Vec<DbSheetSideChoice>,
     pub line_count: u32,
     /// The sheet's `FILE` lines that play no audio once the form's edits are
     /// written, in the order the sheet's tracks reach them.

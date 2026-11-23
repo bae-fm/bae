@@ -12,9 +12,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use bae_records::records::sheet_files::{
-    DbReleaseAudio, NewTrack, ReboundAudio, SheetEdits, SheetFilePick,
-};
+use bae_records::records::sheet_files::{DbReleaseAudio, NewTrack, ReboundAudio, SheetFilePick};
 use bae_records::{DbAudioSegmentRole, DbFile};
 
 use crate::extraction::release::{library_file, scanned_audio};
@@ -195,7 +193,8 @@ pub async fn rebound_sheet_audio(
     let new_segments: HashSet<String> =
         built.audio_segments.iter().map(|segment| segment.id.clone()).collect();
     Ok(Some(ReboundAudio {
-        edits: SheetEdits { picks: changes.bindings, ..edits },
+        edits,
+        bindings: changes.bindings,
         dropped: changes.dropped,
         track_lengths: to_build[..moved_count]
             .iter()

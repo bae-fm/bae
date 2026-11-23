@@ -76,8 +76,8 @@ const CHANGING: &str = "EXISTS (SELECT 1 FROM dropped_tracks)";
 
 /// The common table expressions that lay a release out, for statements
 /// binding [`LayoutParams::named`]: `laid_mediums` (`position`, `carrier`,
-/// `sides`), `laid_places` (`track_id`, `medium`, `side`, `number`,
-/// `stated_length_ms`, `position`), `laid_sheets` (each CUE sheet's
+/// `sides`, `base_medium`), `laid_places` (`track_id`, `medium`, `side`,
+/// `number`, `stated_length_ms`, `position`, `base_medium`), `laid_sheets` (each CUE sheet's
 /// `sheet_file_id` with the `medium` and `side` its first track sits on) and
 /// `honored` (the sheets whose picked side the layout gave them).
 ///
@@ -100,16 +100,17 @@ const CHANGING: &str = "EXISTS (SELECT 1 FROM dropped_tracks)";
 /// add are those of [`sheet_changes_ctes`], which come first.
 pub fn layout_ctes() -> String {
     let changes = super::sheet_files::sheet_changes_ctes(":release", ":edits");
-    format!("{changes}, {LAYOUT}").replace("{changing}", CHANGING)
+    format!("{changes}, {BASE_MEDIUMS}, {LAYOUT}").replace("{changing}", CHANGING)
 }
 
-const LAYOUT: &str = "base_mediums (position, carrier, sides) AS ( \
+const BASE_MEDIUMS: &str = "base_mediums (position, carrier, sides) AS ( \
          SELECT j.value ->> 'position', j.value ->> 'carrier', j.value ->> 'sides' \
          FROM json_each(:mediums) AS j WHERE :applied \
          UNION ALL \
          SELECT position, medium, side_count FROM release_mediums \
-         WHERE release_id = :release AND NOT :applied), \
-     base_places (track_id, medium, side, number, stated_length_ms, position) AS ( \
+         WHERE release_id = :release AND NOT :applied)";
+
+const LAYOUT: &str = "base_places (track_id, medium, side, number, stated_length_ms, position) AS ( \
          SELECT j.value ->> 'track_id', j.value ->> 'medium', j.value ->> 'side', \
                 j.value ->> 'number', j.value ->> 'stated_length_ms', j.value ->> 'position' \
          FROM json_each(:places) AS j WHERE :applied \
@@ -138,21 +139,19 @@ const LAYOUT: &str = "base_mediums (position, carrier, sides) AS ( \
                        JOIN base_places place ON place.track_id = other.track_id \
                        WHERE other.sheet_file_id = pick.sheet_file_id \
                          AND (place.medium <> pick.medium OR place.side <> pick.side))), \
-     moved (track_id, medium, side, number) AS ( \
-         SELECT mv.track_id, mv.medium, mv.side, \
-                COALESCE((SELECT MAX(place.number) FROM base_places place \
-                          WHERE place.medium = mv.medium AND place.side = mv.side \
-                            AND place.track_id NOT IN (SELECT track_id FROM moves)), 0) \
-                + ROW_NUMBER() OVER (PARTITION BY mv.medium, mv.side \
-                                     ORDER BY mv.first_position, mv.position) \
-         FROM moves mv), \
+     targets (track_id, medium, side, number, stated_length_ms, position, moved, first_position) AS ( \
+         SELECT p.track_id, COALESCE(mv.medium, p.medium), COALESCE(mv.side, p.side), \
+                p.number, p.stated_length_ms, p.position, mv.track_id IS NOT NULL, mv.first_position \
+         FROM base_places p LEFT JOIN moves mv ON p.track_id = mv.track_id), \
      kept (track_id, medium, side, number, stated_length_ms, position) AS ( \
-         SELECT track_id, medium, side, number, stated_length_ms, position FROM base_places \
-         WHERE track_id NOT IN (SELECT track_id FROM moves) \
-         UNION ALL \
-         SELECT mv.track_id, mv.medium, mv.side, mv.number, place.stated_length_ms, \
-                place.position \
-         FROM moved mv JOIN base_places place ON place.track_id = mv.track_id), \
+         SELECT track_id, medium, side, \
+                CASE WHEN moved \
+                     THEN COALESCE(MAX(number) FILTER (WHERE NOT moved) OVER side, 0) \
+                          + ROW_NUMBER() OVER (PARTITION BY medium, side, moved \
+                                               ORDER BY first_position, position) \
+                     ELSE number END, \
+                stated_length_ms, position \
+         FROM targets WINDOW side AS (PARTITION BY medium, side)), \
      numbered (track_id, medium, side, number, stated_length_ms, position) AS ( \
          SELECT CASE WHEN pass.fresh THEN a.file_id ELSE k.track_id END, k.medium, k.side, \
                 CASE WHEN {changing} \
@@ -174,16 +173,16 @@ const LAYOUT: &str = "base_mediums (position, carrier, sides) AS ( \
      used (medium, new_medium) AS ( \
          SELECT medium, DENSE_RANK() OVER (ORDER BY medium) \
          FROM (SELECT DISTINCT medium FROM numbered)), \
-     laid_places (track_id, medium, side, number, stated_length_ms, position) AS ( \
+     laid_places (track_id, medium, side, number, stated_length_ms, position, base_medium) AS ( \
          SELECT k.track_id, CASE WHEN moving.yes THEN k.new_medium ELSE k.medium END, \
                 k.side, k.number, k.stated_length_ms, \
                 CASE WHEN moving.yes \
                      THEN ROW_NUMBER() OVER (ORDER BY k.new_medium, k.side, k.number) - 1 \
-                     ELSE k.position END \
+                     ELSE k.position END, k.medium \
          FROM (SELECT n.*, DENSE_RANK() OVER (ORDER BY n.medium) AS new_medium \
                FROM numbered n) k, moving), \
-     laid_mediums (position, carrier, sides) AS ( \
-         SELECT CASE WHEN moving.yes THEN u.new_medium ELSE m.position END, m.carrier, m.sides \
+     laid_mediums (position, carrier, sides, base_medium) AS ( \
+         SELECT CASE WHEN moving.yes THEN u.new_medium ELSE m.position END, m.carrier, m.sides, m.position \
          FROM base_mediums m LEFT JOIN used u ON u.medium = m.position, moving \
          WHERE NOT moving.yes OR u.medium IS NOT NULL), \
      laid_sheets (sheet_file_id, medium, side) AS ( \
@@ -202,14 +201,19 @@ const LAYOUT: &str = "base_mediums (position, carrier, sides) AS ( \
 /// [`MediumsSource::Draft`] takes for `mediums`: one row per medium with the
 /// columns of `release_mediums` it reads.
 pub fn laid_mediums_source() -> String {
-    mediums_source("laid_mediums")
+    format!(
+        "(WITH {} SELECT base_medium AS id, :release AS release_id, position, \
+                 carrier AS medium, sides AS side_count FROM laid_mediums)",
+        layout_ctes()
+    )
 }
 
-fn mediums_source(mediums: &str) -> String {
+/// The side and disc numbers that placement commands address before the
+/// draft drops empty mediums.
+pub fn base_mediums_source() -> String {
     format!(
-        "(WITH {} SELECT position AS id, :release AS release_id, position, \
-                 carrier AS medium, sides AS side_count FROM {mediums})",
-        layout_ctes()
+        "(WITH {BASE_MEDIUMS} SELECT position AS id, :release AS release_id, position, \
+             carrier AS medium, sides AS side_count FROM base_mediums)"
     )
 }
 
@@ -217,7 +221,7 @@ fn mediums_source(mediums: &str) -> String {
 /// [`MediumsSource::Draft`] takes for `places`.
 pub fn laid_places_source() -> String {
     format!(
-        "(WITH {} SELECT track_id AS id, :release AS release_id, medium AS medium_id, side, \
+        "(WITH {} SELECT track_id AS id, :release AS release_id, base_medium AS medium_id, side, \
                  number AS track_number, stated_length_ms, position FROM laid_places)",
         layout_ctes()
     )
@@ -239,24 +243,6 @@ pub fn honored_picks_on(
             ))
         },
     )?)
-}
-
-/// The sides and discs of the layout a CUE sheet can be put on, by
-/// [`super::sheet_side_choices_on`].
-pub fn laid_sheet_side_choices_on(
-    sql: &impl coven::SqlRead,
-    layout: &LayoutParams<'_>,
-) -> Result<Vec<DbSheetSideChoice>, DbError> {
-    super::sheet_side_choices_on(sql, &laid_mediums_source(), layout.named().as_slice())
-}
-
-/// The sides a sheet can be restored to while editing, including a medium
-/// that would become empty if the editor saved the form.
-pub fn base_sheet_side_choices_on(
-    sql: &impl coven::SqlRead,
-    layout: &LayoutParams<'_>,
-) -> Result<Vec<DbSheetSideChoice>, DbError> {
-    super::sheet_side_choices_on(sql, &mediums_source("base_mediums"), layout.named().as_slice())
 }
 
 /// The layout the statements of [`layout_ctes`] give, as one value.

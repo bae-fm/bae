@@ -202,10 +202,6 @@ pub(crate) struct ReleaseEditDraftRows {
     album: DraftAlbum,
     cover_version: Option<String>,
     tracks: Vec<DraftRow>,
-    /// The sides and discs a CUE sheet can go on once the form's layout is
-    /// written.
-    side_choices: Vec<bae_records::DbSheetSideChoice>,
-    files_side_choices: Vec<bae_records::DbSheetSideChoice>,
     /// The names of the files a save reads first; `None` when it reads none.
     files_to_read: Option<Vec<String>>,
     has_tracks: bool,
@@ -291,14 +287,6 @@ pub(crate) fn release_edit_draft_rows_on(
             |row| row.get(0),
         )?,
         tracks: draft_tracks_on(sql, &params)?,
-        files_side_choices: bae_records::records::layout::base_sheet_side_choices_on(
-            sql,
-            &params.layout(),
-        )?,
-        side_choices: bae_records::records::layout::laid_sheet_side_choices_on(
-            sql,
-            &params.layout(),
-        )?,
         files_to_read: bae_records::records::sheet_files::sheet_files_to_read_on(
             sql,
             ":release",
@@ -310,12 +298,7 @@ pub(crate) fn release_edit_draft_rows_on(
             release,
             |row| row.get(0),
         )?,
-        files: bae_records::records::release_files_on(
-            sql,
-            ":release",
-            ":edits",
-            named_params! { ":release": params.release, ":edits": params.edits },
-        )?,
+        files: bae_records::records::release_files_on(sql, &params.layout())?,
         deletes_track_data: deletes_track_data_on(sql, &params)?,
         records: match &form.records {
             Some(records) => records.clone(),
@@ -461,8 +444,6 @@ impl ReleaseEditDraftRows {
             album,
             cover_version,
             tracks,
-            side_choices,
-            files_side_choices,
             files_to_read,
             has_tracks,
             files,
@@ -483,7 +464,7 @@ impl ReleaseEditDraftRows {
         Ok(ReleaseEditDraft {
             cover: bae_records::cover_ref(&release_id, cover_version),
             source_audio: files.source_audio.clone(),
-            sides: has_tracks.then(|| crate::types::lay_out_tracks(rows, &side_choices)),
+            sides: has_tracks.then(|| crate::types::lay_out_tracks(rows)),
             files: files.has_others.then(|| {
                 files
                     .carried
@@ -493,7 +474,7 @@ impl ReleaseEditDraftRows {
                             crate::MappingFileRow::File(crate::types::carried_file(&file))
                         }
                         bae_records::DbCarriedFile::Sheet(sheet) => crate::MappingFileRow::Sheet(
-                            crate::types::sheet_without_tracks_group(sheet, &files_side_choices),
+                            crate::types::sheet_without_tracks_group(sheet),
                         ),
                     })
                     .collect()

@@ -96,7 +96,7 @@ impl LibraryManager {
                 return Err(LibraryError::from(
                     bae_import::ImportError::of_reading_refusal(&self.records, &release, refusal)
                         .await,
-                ))
+                ));
             }
         };
         if values.tracks.is_empty() {
@@ -205,7 +205,7 @@ impl LibraryManager {
                 .then(|| bae_import::tables::release_edit_layout_on(sql, &layout_form))
                 .transpose()
         };
-        let bindings = rebound.as_ref().map_or_else(Vec::new, |audio| audio.edits.picks.clone());
+        let bindings = rebound.as_ref().map_or_else(Vec::new, |audio| audio.bindings.clone());
         let sheet_decisions = move |sql: &coven::CovenWrite<'_>| {
             bae_import::tables::store_release_edit_sheet_decisions_on(
                 sql,

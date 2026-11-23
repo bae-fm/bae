@@ -89,7 +89,7 @@ fn medium_cte(mediums: &str, release_filter: &str) -> String {
 /// mediums with whether it is played side by side, how many sided sides come
 /// before it on its release, and how many mediums its release holds. `place`
 /// is each track on them, with the columns `id`, `release_id`, `position`
-/// (its playing order), `side` (its side on its medium, counted from one),
+/// (its playing order), `medium_id`, `side` (its side on its medium, counted from one),
 /// `number` (its number on its side),
 /// `stated_length_ms`, `medium_position`, `carrier` (its medium's carrier
 /// key, where the source states one), `side_kind` (`sided`, `disc` or
@@ -100,7 +100,7 @@ pub fn track_places_ctes(source: MediumsSource<'_>, release_filter: &str) -> Str
     format!(
         "{medium}, \
          place AS ( \
-            SELECT p.id, p.release_id, p.position, p.side, p.track_number AS number, \
+            SELECT p.id, p.release_id, p.position, p.medium_id, p.side, p.track_number AS number, \
                    p.stated_length_ms, m.position AS medium_position, m.medium AS carrier, \
                    CASE WHEN m.sided THEN 'sided' \
                         WHEN m.medium_count > 1 THEN 'disc' \
@@ -211,10 +211,23 @@ impl crate::DbSheetSideColumns {
     pub fn decoded(self) -> Result<DbSheetSideChoice, String> {
         DbSheetSideChoice::of_columns(self.medium, self.side, &self.kind, self.ordinal)
     }
+
+    pub(crate) fn decoded_list(choices: Vec<Self>) -> Result<Vec<DbSheetSideChoice>, String> {
+        choices.into_iter().map(Self::decoded).collect()
+    }
+}
+
+/// The choices of a CUE caption, as the track and Files queries return them.
+#[cfg(desktop)]
+pub(super) fn sheet_side_choices_json_sql() -> &'static str {
+    "(SELECT json_group_array(json_object( \
+         'medium', medium, 'side', side, 'kind', kind, 'ordinal', ordinal) ORDER BY medium, side) \
+      FROM choices)"
 }
 
 /// The rows of [`sheet_side_choices_sql`] over `mediums`, bound to `params`.
-pub fn sheet_side_choices_on(
+#[cfg(test)]
+pub(super) fn sheet_side_choices_on(
     sql: &impl coven::SqlRead,
     mediums: &str,
     params: impl rusqlite::Params,

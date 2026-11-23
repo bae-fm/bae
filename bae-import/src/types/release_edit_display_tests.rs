@@ -21,6 +21,7 @@ fn context(side: TrackSide, id: &str, file: &str, sheet: Option<&str>) -> Releas
                 heading: TrackSide::Disc { disc: 1 },
             },
             line_count: 1,
+            side_choices: Vec::new(),
             unbound_lines: None,
             file_reference: format!("{file}.flac"),
             audio_options: Vec::new(),
@@ -58,15 +59,19 @@ fn lay_out_on_discs(
     tracks: Vec<ReleaseEditTrackRow>,
     disc_count: u32,
 ) -> Vec<crate::TrackTableSide> {
-    lay_out_tracks(
-        tracks,
-        &(1..=disc_count)
-            .map(|disc| bae_records::DbSheetSideChoice {
-                side: bae_types::mediums::MediumSide::first_of(disc),
-                heading: TrackSide::Disc { disc },
-            })
-            .collect::<Vec<_>>(),
-    )
+    let choices: Vec<_> = (1..=disc_count)
+        .map(|disc| bae_records::DbSheetSideChoice {
+            side: bae_types::mediums::MediumSide::first_of(disc),
+            heading: TrackSide::Disc { disc },
+        })
+        .collect();
+    let mut tracks = tracks;
+    for row in &mut tracks {
+        if let Some(sheet) = &mut row.context.sheet {
+            sheet.side_choices.clone_from(&choices);
+        }
+    }
+    lay_out_tracks(tracks)
 }
 
 /// Each run as the sheet a sheet run names, and the track ids it holds.
@@ -398,6 +403,7 @@ fn a_track_keeps_its_listed_length_and_its_sheet() {
             heading: TrackSide::Disc { disc: 2 },
         },
         line_count: 1,
+        side_choices: Vec::new(),
         unbound_lines: None,
         file_reference: "disc.flac".to_string(),
         audio_options: Vec::new(),

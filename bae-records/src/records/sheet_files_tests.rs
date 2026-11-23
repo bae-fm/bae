@@ -121,27 +121,7 @@ async fn release(media: u16, tracks: &[Track]) -> (Store, bae_util::test_files::
             ..DbTrack::new_test(RELEASE_A, &uuid(track.id), track.id, number)
         };
         records.insert_track(&row).await.unwrap();
-        let format = DbAudioFormat::new(
-            &uuid(track.id),
-            ContentType::Flac,
-            NonZeroU32::new(44_100).unwrap(),
-            NonZeroU32::new(16),
-            NonZeroU32::new(2).unwrap(),
-            uuid(&format!("format-{}", track.id)),
-            time::UtcDateTime::now(),
-        );
-        let segment = DbAudioSegment {
-            id: uuid(&format!("segment-{}", track.id)),
-            audio_format_id: format.id.clone(),
-            segment_index: 0,
-            role: DbAudioSegmentRole::Main,
-            file_id: uuid(track.file),
-            start_sample: track.start_s * 44_100,
-            end_sample: track.carved.map(|_| (track.start_s + 100) * 44_100),
-            start_byte: None,
-            end_byte: None,
-            created_at: time::UtcDateTime::now(),
-        };
+        let (format, segment) = audio_rows(track);
         records.insert_audio_format_with_segments_for_test(&format, &[segment]).await.unwrap();
         if let Some((sheet, line)) = track.carved {
             let (track_id, sheet_id) = (uuid(track.id), uuid(sheet));
@@ -153,6 +133,31 @@ async fn release(media: u16, tracks: &[Track]) -> (Store, bae_util::test_files::
         }
     }
     (db, folder)
+}
+
+fn audio_rows(track: &Track) -> (DbAudioFormat, DbAudioSegment) {
+    let format = DbAudioFormat::new(
+        &uuid(track.id),
+        ContentType::Flac,
+        NonZeroU32::new(44_100).unwrap(),
+        NonZeroU32::new(16),
+        NonZeroU32::new(2).unwrap(),
+        uuid(&format!("format-{}", track.id)),
+        time::UtcDateTime::now(),
+    );
+    let segment = DbAudioSegment {
+        id: uuid(&format!("segment-{}", track.id)),
+        audio_format_id: format.id.clone(),
+        segment_index: 0,
+        role: DbAudioSegmentRole::Main,
+        file_id: uuid(track.file),
+        start_sample: track.start_s * 44_100,
+        end_sample: track.carved.map(|_| (track.start_s + 100) * 44_100),
+        start_byte: None,
+        end_byte: None,
+        created_at: time::UtcDateTime::now(),
+    };
+    (format, segment)
 }
 
 /// The edits that bind each `FILE` line of `no_audio` (sheet label, line) to
@@ -409,20 +414,26 @@ async fn an_added_track_stays_on_the_disc_of_the_sheet() {
     );
 }
 
+async fn files_for_edits(db: &Store, edits: String) -> DbReleaseFiles {
+    db.read(move |sql| super::release_files_on(&sql, &stored_layout(&edits))).await.unwrap()
+}
+
+fn stored_layout(edits: &str) -> LayoutParams<'_> {
+    LayoutParams {
+        release_id: Some(RELEASE_A),
+        applied: false,
+        mediums: "[]",
+        places: "[]",
+        carving: "[]",
+        moves: "[]",
+        edits,
+    }
+}
+
 /// The names of the Files list's entries for `edits`, each a file by its name
 /// or a sheet with no tracks by its name and its lines' text.
 async fn carried(db: &Store, edits: String) -> (bool, Vec<String>) {
-    let files = db
-        .read(move |sql| {
-            super::release_files_on(
-                &sql,
-                ":release",
-                ":edits",
-                rusqlite::named_params! { ":release": RELEASE_A, ":edits": edits },
-            )
-        })
-        .await
-        .unwrap();
+    let files = files_for_edits(db, edits).await;
     let entries = files
         .carried
         .iter()
@@ -470,17 +481,7 @@ async fn a_sheet_with_no_tracks_takes_its_place_in_the_files_list() {
         Vec::<String>::new(),
         "a sheet with a line that plays audio stays a caption"
     );
-    let files = db
-        .read(move |sql| {
-            super::release_files_on(
-                &sql,
-                ":release",
-                ":edits",
-                rusqlite::named_params! { ":release": RELEASE_A, ":edits": edits(&two, &[]) },
-            )
-        })
-        .await
-        .unwrap();
+    let files = files_for_edits(&db, edits(&two, &[])).await;
     let Some(DbCarriedFile::Sheet(sheet)) = files.carried.first() else { panic!("a sheet") };
     assert_eq!(sheet.place.as_ref().unwrap().side, bae_types::mediums::MediumSide::first_of(1));
     assert_eq!(sheet.unbound.as_ref().unwrap().len(), 2);
@@ -545,22 +546,15 @@ async fn an_ignored_sheet_keeps_its_binding_choices_and_replaces_only_lost_audio
     assert_eq!(changes.dropped, ids(&["b1", "b2", "b3"]));
     assert!(changes.bindings.is_empty());
     assert_eq!(added_ids(&changes), ids(&["first", "second"]));
-    let files = db
-        .read(move |sql| {
-            super::release_files_on(
-                &sql,
-                ":release",
-                ":edits",
-                rusqlite::named_params! { ":release": RELEASE_A, ":edits": edits },
-            )
-        })
-        .await
-        .unwrap();
+    let files = files_for_edits(&db, edits).await;
     let [DbCarriedFile::Sheet(sheet)] = files.carried.as_slice() else { panic!("one sheet") };
     assert!(sheet.place.is_none());
     assert_eq!(sheet.bound_count, 2);
     let [second, shared] = sheet.bound.as_slice() else { panic!("two bound lines") };
-    assert_eq!((&second.file_id, &shared.file_id), (&uuid("second"), &uuid("shared")));
+    assert_eq!(
+        (&second.played.file_id, &shared.played.file_id),
+        (&uuid("second"), &uuid("shared"))
+    );
     let [first] = sheet.unbound.as_deref().unwrap() else { panic!("one unbound line") };
     assert_eq!(first.file_reference, "first.flac");
 }
@@ -570,31 +564,21 @@ async fn an_ignored_sheet_can_go_back_on_its_empty_disc() {
     let (db, _folder) = release(
         2,
         &[
-            carved("stays", 1, ("one", "shared.flac"), "shared", 0),
-            carved("drops", 2, ("two", "shared.flac"), "shared", 100),
+            carved("drops", 1, ("two", "shared.flac"), "shared", 0),
+            carved("stays", 2, ("one", "shared.flac"), "shared", 100),
         ],
     )
     .await;
     let edits = SheetEdits { ignored: ids(&["two"]), ..SheetEdits::default() }.json().unwrap();
-    let (draft, choices) = db
-        .read(move |sql| {
-            let layout = LayoutParams {
-                release_id: Some(RELEASE_A),
-                applied: false,
-                mediums: "[]",
-                places: "[]",
-                carving: "[]",
-                moves: "[]",
-                edits: &edits,
-            };
-            Ok((
-                laid_out_on(&sql, &layout)?,
-                super::layout::base_sheet_side_choices_on(&sql, &layout)?,
-            ))
-        })
-        .await
-        .unwrap();
-    assert_eq!(draft.mediums.len(), 1);
-    assert_eq!(draft.tracks[0].track_id, uuid("stays"));
-    assert_eq!(choices[1].side, bae_types::mediums::MediumSide::first_of(2));
+    let rows = rows(&db, edits.clone()).await;
+    let [DbReleaseEditRow::Stored(track)] = rows.as_slice() else { panic!("one track stays") };
+    assert_eq!(track.position.side(), bae_types::mediums::TrackSide::Flat);
+    let caption = track.sheet.as_ref().unwrap();
+    assert_eq!(caption.place.side, bae_types::mediums::MediumSide::first_of(2));
+    assert_eq!(caption.side_choices[1].side, bae_types::mediums::MediumSide::first_of(2));
+    let files = files_for_edits(&db, edits).await;
+    let [DbCarriedFile::Sheet(sheet)] = files.carried.as_slice() else {
+        panic!("one ignored sheet")
+    };
+    assert_eq!(sheet.side_choices, caption.side_choices);
 }

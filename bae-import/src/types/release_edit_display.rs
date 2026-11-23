@@ -68,14 +68,10 @@ impl ReleaseEditTrackRow {
 /// Lay out `rows`, in release order, as the import pane lays out a
 /// folder's tracks: a side per run of tracks on one side, and within it a
 /// run per CUE sheet that carves consecutive tracks there, under the
-/// sheet's caption, whose place pop-up offers the sides and discs
-/// `side_choices`; every other track is a run of its own.
+/// sheet's caption. Each other track is a run of its own.
 #[cfg(desktop)]
-pub(crate) fn lay_out_tracks(
-    rows: Vec<ReleaseEditTrackRow>,
-    side_choices: &[bae_records::DbSheetSideChoice],
-) -> Vec<crate::TrackTableSide> {
-    let captions = sheet_captions(&rows, side_choices);
+pub(crate) fn lay_out_tracks(rows: Vec<ReleaseEditTrackRow>) -> Vec<crate::TrackTableSide> {
+    let captions = sheet_captions(&rows);
     let mut sides: Vec<crate::TrackTableSide> = Vec::new();
     for row in rows {
         if sides.last().is_none_or(|last| last.side != row.context.side) {
@@ -158,7 +154,7 @@ fn bound_lines(
 }
 
 /// The caption of each CUE sheet that carves one of `rows`: the side its
-/// first track is on, the sides and discs `side_choices` its place pop-up
+/// first track is on, the sides and discs its place pop-up
 /// offers, and each of its `FILE` lines in the order the rows reach them,
 /// with the file the line plays from and the audio files it can play from.
 /// The sheet's count of lines, which its query counts, decides whether the
@@ -167,10 +163,7 @@ fn bound_lines(
 /// codec, and one shorter than the line's tracks is refused for its timing,
 /// as the import pane refuses them.
 #[cfg(desktop)]
-fn sheet_captions(
-    rows: &[ReleaseEditTrackRow],
-    side_choices: &[bae_records::DbSheetSideChoice],
-) -> Vec<crate::SheetGroup> {
+fn sheet_captions(rows: &[ReleaseEditTrackRow]) -> Vec<crate::SheetGroup> {
     use crate::folder_scanner::SheetReferenceOptions;
     /// A sheet and its `FILE` lines so far, each with the file it plays
     /// from.
@@ -210,7 +203,7 @@ fn sheet_captions(
                 bound_audio,
                 unbound_references: unbound_references(sheet.unbound_lines.as_deref()),
                 assigned: Some(sheet.place.clone()),
-                side_choices: side_choices.to_vec(),
+                side_choices: sheet.side_choices.clone(),
             }
         })
         .collect()
@@ -237,13 +230,13 @@ fn unbound_references(
 #[cfg(desktop)]
 pub(crate) fn sheet_without_tracks_group(
     sheet: bae_records::records::sheet_files::DbSheetWithoutTracks,
-    side_choices: &[bae_records::DbSheetSideChoice],
 ) -> crate::SheetGroup {
     let lines = sheet
         .bound
         .into_iter()
         .map(|line| {
-            let played = crate::MappingContainer { file_id: line.file_id, name: line.file_name };
+            let played =
+                crate::MappingContainer { file_id: line.played.file_id, name: line.played.name };
             let reference = reference_options(
                 line.line.file_reference,
                 Some(played.clone()),
@@ -260,7 +253,7 @@ pub(crate) fn sheet_without_tracks_group(
         bound_audio,
         unbound_references: unbound_references(sheet.unbound.as_deref()),
         assigned: sheet.place,
-        side_choices: side_choices.to_vec(),
+        side_choices: sheet.side_choices,
     }
 }
 
@@ -312,7 +305,7 @@ impl ReleaseEditTrackContext {
         let main = match (entry.main_segment_count, entry.main_segment) {
             (1, Some(main)) => main,
             (0, _) | (_, None) => {
-                return Err(ReleaseEditLoadError::MissingMainSegment { track_id })
+                return Err(ReleaseEditLoadError::MissingMainSegment { track_id });
             }
             _ => return Err(ReleaseEditLoadError::MultipleMainSegments { track_id }),
         };
@@ -344,7 +337,7 @@ impl ReleaseEditDisplayContext {
     /// audio each entry of `tracks` records, in release order.
     pub fn from_raw(
         files: &bae_records::DbReleaseFiles,
-        tracks: Vec<bae_records::DbReleaseEditTrack>,
+        tracks: impl IntoIterator<Item = bae_records::DbReleaseEditTrack>,
     ) -> Result<Self, ReleaseEditLoadError> {
         Ok(Self {
             source_audio: files.source_audio.clone(),

@@ -3,7 +3,6 @@
 
 use super::*;
 use crate::{DraftAlbum, RawReleaseEdit, RawTrackEdit, TrackArtistAssignments};
-use bae_types::mediums::MediumSide;
 
 /// A release as the editor reads it: its detail, its album's title, year and
 /// artists, and its tracks' audio in release order.
@@ -13,7 +12,6 @@ pub struct ReleaseEditContext {
     pub album_year: Option<i32>,
     pub album_artists: Vec<bae_records::credits::LibraryCredit>,
     pub tracks: Vec<bae_records::DbReleaseEditTrack>,
-    pub sheet_places: std::collections::BTreeMap<String, MediumSide>,
 }
 
 /// The rows that make up a release's edit seed, as `sql` holds them: its
@@ -40,15 +38,7 @@ pub(crate) fn release_edit_rows_on(
         bae_records::records::MediumsSource::Release,
         [release_id],
     )?;
-    let sheet_places = bae_records::records::sheet_files::opened_sheet_places_on(sql, release_id)?;
-    Ok(Some(ReleaseEditRows {
-        detail,
-        album_title,
-        album_year,
-        album_artists,
-        tracks,
-        sheet_places,
-    }))
+    Ok(Some(ReleaseEditRows { detail, album_title, album_year, album_artists, tracks }))
 }
 
 /// [`release_edit_rows_on`]'s rows.
@@ -58,20 +48,18 @@ pub(crate) struct ReleaseEditRows {
     album_year: Option<i32>,
     album_artists: Vec<bae_records::credits::LibraryCredit>,
     tracks: Vec<bae_records::DbReleaseEditTrack>,
-    sheet_places: std::collections::BTreeMap<String, MediumSide>,
 }
 
 impl ReleaseEditRows {
     /// The rows as the editor reads them.
     pub(crate) fn processed(self) -> ReleaseEditContext {
-        let Self { detail, album_title, album_year, album_artists, tracks, sheet_places } = self;
+        let Self { detail, album_title, album_year, album_artists, tracks } = self;
         ReleaseEditContext {
             detail: detail.process(),
             album_title,
             album_year,
             album_artists,
             tracks,
-            sheet_places,
         }
     }
 }
@@ -84,8 +72,13 @@ impl ReleaseEditRows {
 pub(crate) fn release_edit_seed(
     context: ReleaseEditContext,
 ) -> Result<ReleaseEditSeed, ReleaseEditLoadError> {
-    let ReleaseEditContext { detail, album_title, album_year, album_artists, tracks, sheet_places } =
-        context;
+    let ReleaseEditContext { detail, album_title, album_year, album_artists, tracks } = context;
+    let mut sheet_places = std::collections::BTreeMap::new();
+    let tracks = tracks.into_iter().inspect(|track| {
+        if let Some(sheet) = &track.sheet {
+            sheet_places.insert(sheet.file_id.clone(), sheet.place.side);
+        }
+    });
     let display = crate::ReleaseEditDisplayContext::from_raw(&detail.files, tracks)?;
     let release = detail.release;
     let artist_line = bae_records::credits::library_line(&album_artists);

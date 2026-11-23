@@ -109,8 +109,8 @@ mod release_locality;
 mod release_tracks;
 pub use release_deletion::{Deleted, DeletionError, DeletionRefusal, ReleaseDeletion};
 pub use release_tracks::{
-    sheet_side_choices_on, sheet_side_choices_sql, track_places_ctes, track_places_on,
-    track_position_of, track_side_of, MediumsSource,
+    sheet_side_choices_sql, track_places_ctes, track_places_on, track_position_of, track_side_of,
+    MediumsSource,
 };
 #[cfg(all(any(test, feature = "test-utils", debug_assertions), desktop))]
 mod seeded_albums;

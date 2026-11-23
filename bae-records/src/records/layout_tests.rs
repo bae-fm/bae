@@ -216,16 +216,11 @@ async fn a_sheet_can_go_on_each_side_of_a_record_and_on_each_disc() {
     .await;
     let choices = db
         .read(|sql| {
-            laid_sheet_side_choices_on(
+            super::super::release_tracks::sheet_side_choices_on(
                 &sql,
-                &LayoutParams {
-                    release_id: Some(RELEASE_A),
-                    applied: false,
-                    mediums: "[]",
-                    places: "[]",
-                    carving: "[]",
-                    moves: "[]",
-                    edits: "{}",
+                &base_mediums_source(),
+                rusqlite::named_params! {
+                    ":release": RELEASE_A, ":applied": false, ":mediums": "[]",
                 },
             )
         })

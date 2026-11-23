@@ -198,17 +198,10 @@ pub fn sheet_audio_options_ctes(release: &str) -> String {
              JOIN audio_format_segments s ON s.audio_format_id = af.id AND s.role = 'main' \
              WHERE t.release_id = {release} \
              GROUP BY c.sheet_file_id, c.file_reference), \
-         line_audio_options (sheet_file_id, file_reference, file_id, file_name, options, position) AS ( \
+         line_audio_options (sheet_file_id, file_reference, file_id, played, options, position) AS ( \
              SELECT line.sheet_file_id, line.file_reference, \
-                    line.file_id, MAX(CASE WHEN f.id = line.file_id THEN f.original_filename END), \
-                    json_group_array(json_object( \
-                        'file_id', f.id, 'name', f.original_filename, \
-                        'content_type', f.source_audio_content_type, \
-                        'bound', json(CASE WHEN f.id = line.file_id THEN 'true' ELSE 'false' END), \
-                        'fits', json(CASE WHEN ends.end_ms <= f.source_audio_duration_ms \
-                                          THEN 'true' \
-                                          WHEN ends.end_ms > f.source_audio_duration_ms \
-                                          THEN 'false' END)) \
+                    line.file_id, MAX(CASE WHEN f.id = line.file_id THEN {option} END), \
+                    json_group_array({option} \
                         ORDER BY f.original_filename COLLATE natural_order, f.id), ends.position \
              FROM laid_lines line \
              JOIN line_ends ends ON ends.sheet_file_id = line.sheet_file_id \
@@ -221,12 +214,18 @@ pub fn sheet_audio_options_ctes(release: &str) -> String {
          sheet_line_options (sheet_file_id, bound_count, bound, unbound) AS ( \
              SELECT o.sheet_file_id, COUNT(o.file_id), \
                     json_group_array(json_object( \
-                        'line', {line}, 'file_id', o.file_id, 'file_name', o.file_name) \
+                        'line', {line}, 'played', json(o.played)) \
                         ORDER BY o.position) FILTER (WHERE o.file_id IS NOT NULL), \
                     CASE WHEN COUNT(*) > COUNT(o.file_id) THEN \
                         json_group_array({line} ORDER BY o.position) \
                         FILTER (WHERE o.file_id IS NULL) END \
              FROM line_audio_options o GROUP BY o.sheet_file_id)",
+        option = "json_object( \
+                      'file_id', f.id, 'name', f.original_filename, \
+                      'content_type', f.source_audio_content_type, \
+                      'bound', json(CASE WHEN f.id = line.file_id THEN 'true' ELSE 'false' END), \
+                      'fits', json(CASE WHEN ends.end_ms <= f.source_audio_duration_ms THEN 'true' \
+                                        WHEN ends.end_ms > f.source_audio_duration_ms THEN 'false' END))",
         line = "json_object('file_reference', o.file_reference, 'options', json(o.options))",
     )
 }
@@ -341,34 +340,6 @@ impl Records {
     }
 }
 
-/// Each sheet's place when the editor opens.
-#[cfg(desktop)]
-pub fn opened_sheet_places_on(
-    sql: &impl coven::SqlRead,
-    release_id: &str,
-) -> Result<std::collections::BTreeMap<String, bae_types::mediums::MediumSide>, DbError> {
-    let places = super::release_tracks::track_places_ctes(
-        super::MediumsSource::Release,
-        "m.release_id = ?1",
-    );
-    let first = first_sheet_places_sql();
-    Ok(sql
-        .query(
-            &format!(
-                "WITH {places} SELECT sheet_file_id, medium_position, side FROM ({first}) WHERE n = 1"
-            ),
-            [release_id],
-            |row| {
-                Ok((
-                    row.get(0)?,
-                    bae_types::mediums::MediumSide { medium: row.get(1)?, side: row.get(2)? },
-                ))
-            },
-        )?
-        .into_iter()
-        .collect())
-}
-
 #[cfg(desktop)]
 fn first_sheet_places_sql() -> String {
     let sided = super::release::SIDED;
@@ -399,7 +370,8 @@ pub fn sheet_without_tracks_json_sql(file: &str) -> String {
                     'medium', first.medium_position, 'side', first.side, \
                     'kind', first.kind, 'ordinal', first.ordinal) END), \
                 'bound_count', options.bound_count, \
-                'bound', json(options.bound), 'unbound', json(options.unbound)) \
+                'bound', json(options.bound), 'unbound', json(options.unbound), \
+                'side_choices', json({choices})) \
          FROM release_files sheet \
          JOIN sheet_line_options options ON options.sheet_file_id = sheet.id \
          LEFT JOIN ignored_sheets ignored ON ignored.sheet_file_id = sheet.id \
@@ -408,7 +380,8 @@ pub fn sheet_without_tracks_json_sql(file: &str) -> String {
          WHERE sheet.id = {file} \
            AND NOT EXISTS (SELECT 1 FROM carved_tracks c \
                            WHERE c.sheet_file_id = sheet.id \
-                             AND c.track_id NOT IN (SELECT track_id FROM dropped_tracks)))"
+                             AND c.track_id NOT IN (SELECT track_id FROM dropped_tracks)))",
+        choices = super::release_tracks::sheet_side_choices_json_sql(),
     )
 }
 
@@ -419,6 +392,7 @@ pub struct DbSheetWithoutTracks {
     pub name: String,
     /// The original side for a sheet with unbound lines, or none when ignored.
     pub place: Option<DbSheetSideChoice>,
+    pub side_choices: Vec<DbSheetSideChoice>,
     pub bound_count: u32,
     pub bound: Vec<DbBoundLine>,
     pub unbound: Option<Vec<DbUnboundLine>>,
@@ -427,8 +401,7 @@ pub struct DbSheetWithoutTracks {
 #[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
 pub struct DbBoundLine {
     pub line: DbUnboundLine,
-    pub file_id: String,
-    pub file_name: String,
+    pub played: DbSheetAudioOption,
 }
 
 /// A [`DbSheetWithoutTracks`] with the columns of its side as
@@ -438,6 +411,7 @@ pub(super) struct SheetWithoutTracksColumns {
     file_id: String,
     name: String,
     place: Option<crate::DbSheetSideColumns>,
+    side_choices: Vec<crate::DbSheetSideColumns>,
     bound_count: u32,
     bound: Vec<DbBoundLine>,
     unbound: Option<Vec<DbUnboundLine>>,
@@ -448,6 +422,7 @@ impl SheetWithoutTracksColumns {
         let place = self.place.map(crate::DbSheetSideColumns::decoded).transpose()?;
         Ok(DbSheetWithoutTracks {
             place,
+            side_choices: crate::DbSheetSideColumns::decoded_list(self.side_choices)?,
             file_id: self.file_id,
             name: self.name,
             bound_count: self.bound_count,
@@ -541,6 +516,8 @@ pub struct NewTrack {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ReboundAudio {
     pub edits: SheetEdits,
+    /// The edited bindings the save writes for sheets that still have a place.
+    pub bindings: Vec<SheetFilePick>,
     pub dropped: Vec<String>,
     /// Each moved track's id and length.
     pub track_lengths: Vec<(String, u64)>,

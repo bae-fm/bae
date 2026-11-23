@@ -482,18 +482,27 @@ pub(super) const SIDED: &str = "place.side_kind = 'sided'";
 
 #[cfg(desktop)]
 pub fn release_edit_tracks_sql(release: &str, source: MediumsSource<'_>, edits: &str) -> String {
+    let (mediums, target) = match source {
+        MediumsSource::Release => (
+            format!("(SELECT * FROM release_mediums WHERE release_id = {release})"),
+            "place.medium_position",
+        ),
+        MediumsSource::Draft { .. } => (super::layout::base_mediums_source(), "place.medium_id"),
+    };
+    let choices = super::sheet_side_choices_sql(&mediums);
     format!(
-        "WITH {places}, \
+        "WITH {places}, choices AS MATERIALIZED (SELECT * FROM {choices}), \
          placed AS ( \
             SELECT place.id AS id, place.position AS position, place.number AS number, \
                    place.side_kind AS side_kind, place.side_ordinal AS side_ordinal, \
                    place.stated_length_ms AS place_stated_length_ms, \
-                   FIRST_VALUE(place.medium_position) OVER {first} AS sheet_medium, \
-                   FIRST_VALUE({side}) OVER {first} AS sheet_side, \
-                   FIRST_VALUE({kind}) OVER {first} AS sheet_kind, \
-                   FIRST_VALUE({ordinal}) OVER {first} AS sheet_ordinal \
+                   FIRST_VALUE(choice.medium) OVER {first} AS sheet_medium, \
+                   FIRST_VALUE(choice.side) OVER {first} AS sheet_side, \
+                   FIRST_VALUE(choice.kind) OVER {first} AS sheet_kind, \
+                   FIRST_VALUE(choice.ordinal) OVER {first} AS sheet_ordinal \
             FROM place \
             LEFT JOIN carved_tracks sheet_carved ON sheet_carved.track_id = place.id \
+            LEFT JOIN choices choice ON choice.medium = {target} AND choice.side = {side} \
             WHERE place.release_id = {release}), \
          {sheet_files}, {audio_options}, \
          main AS ( \
@@ -517,7 +526,7 @@ pub fn release_edit_tracks_sql(release: &str, source: MediumsSource<'_>, edits: 
                f.source_audio_duration_ms AS main_file_duration_ms, \
                carved.sheet_file_id, carved.file_reference AS sheet_file_reference, \
                sheet_file.original_filename AS sheet_name, p.sheet_medium, p.sheet_side, \
-               p.sheet_kind, p.sheet_ordinal, \
+               p.sheet_kind, p.sheet_ordinal, {side_choices} AS sheet_side_choices, \
                sheet_lines.bound_count AS sheet_line_count, \
                sheet_lines.unbound AS sheet_unbound_lines, \
                (SELECT line.value -> 'line' ->> 'options' FROM json_each(sheet_lines.bound) AS line \
@@ -544,12 +553,7 @@ pub fn release_edit_tracks_sql(release: &str, source: MediumsSource<'_>, edits: 
             super::release_tracks::track_places_ctes(source, &format!("m.release_id = {release}")),
         first = "(PARTITION BY sheet_carved.sheet_file_id ORDER BY place.position)",
         side = super::release_tracks::sheet_side_sql(SIDED, "place.side"),
-        kind = super::release_tracks::sheet_side_kind_sql(SIDED),
-        ordinal = super::release_tracks::sheet_side_ordinal_sql(
-            SIDED,
-            "place.side_ordinal",
-            "place.medium_position"
-        ),
+        side_choices = super::release_tracks::sheet_side_choices_json_sql(),
         sheet_files = super::sheet_files::sheet_files_ctes(release, edits),
         audio_options = super::sheet_files::sheet_audio_options_ctes(release),
     )
@@ -622,7 +626,7 @@ pub fn release_edit_track_of_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Db
                         row,
                         "main_file_name",
                         format!("release file {file_id} has no name"),
-                    ))
+                    ));
                 }
             };
             Ok(DbReleaseEditSegment { file_id, start_ms: row.get("main_start_ms")?, file })
@@ -646,20 +650,15 @@ pub fn release_edit_track_of_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Db
                         bae_store::read::column_conversion_error(row, "sheet_kind", reason)
                     })?
                 },
+                side_choices: crate::DbSheetSideColumns::decoded_list(
+                    bae_store::read::json_column(row, "sheet_side_choices")?,
+                )
+                .map_err(|reason| {
+                    bae_store::read::column_conversion_error(row, "sheet_side_choices", reason)
+                })?,
                 line_count: count_column(row, "sheet_line_count")?,
                 file_reference: row.get("sheet_file_reference")?,
-                unbound_lines: row
-                    .get::<_, Option<String>>("sheet_unbound_lines")?
-                    .map(|lines| {
-                        serde_json::from_str(&lines).map_err(|error| {
-                            bae_store::read::column_conversion_error(
-                                row,
-                                "sheet_unbound_lines",
-                                format!("{error}: {lines}"),
-                            )
-                        })
-                    })
-                    .transpose()?,
+                unbound_lines: bae_store::read::optional_json_column(row, "sheet_unbound_lines")?,
                 audio_options: {
                     let options: String = row.get("sheet_audio_options")?;
                     serde_json::from_str(&options).map_err(|error| {
