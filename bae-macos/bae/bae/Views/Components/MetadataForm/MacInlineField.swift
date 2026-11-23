@@ -25,21 +25,19 @@ struct MacInlineField: View {
     static let emptyWidth: CGFloat = 96
 
     var body: some View {
-        // The field pulls out by its padding so its words keep the column's
-        // edge: on the leading side for a field as wide as its value, and on
-        // both for one that fills its column, which the board draws as the
-        // column's width plus both paddings.
+        // The field pulls out by its leading padding so its words keep the
+        // column's edge, which leaves one that fills its column ending at the
+        // column's trailing edge, as the board's does.
         Group {
             if fitsValue {
                 field
                     .fixedSize(horizontal: true, vertical: false)
-                    .padding(.leading, -FieldChrome.inlineHorizontalPadding)
             }
             else {
                 field
-                    .padding(.horizontal, -FieldChrome.inlineHorizontalPadding)
             }
         }
+        .padding(.leading, -FieldChrome.inlineHorizontalPadding)
     }
 
     private var field: some View {
