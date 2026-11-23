@@ -385,18 +385,17 @@ extension LatestStream where Value == BridgeMoveToThisDeviceProgress {
             }
         }
     }
-}
 
-extension DownloadStore {
     /// Fill both streams from one read of moves to This Mac.
-    public nonisolated func feedMovesToThisDevice(
-        from appHandle: AppHandle
+    func feed(
+        from appHandle: AppHandle,
+        fileShares: LatestStream<Double>
     ) -> [LatestFeed] {
         switch appHandle.feedMoveToThisDeviceTransfers() {
         case .streams(let releases, let files):
             return [
-                moveToThisDeviceTransfers.fed { releases },
-                moveFileShares.fed { files },
+                fed { releases },
+                fileShares.fed { files },
             ]
         }
     }

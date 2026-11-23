@@ -199,11 +199,28 @@ pub struct BridgeDownloadTransferProgress {
 /// Mirrors `MoveToThisDeviceTransferProgress`.
 #[derive(Debug, Clone, Copy, PartialEq, uniffi::Record)]
 pub struct BridgeMoveToThisDeviceProgress {
-    pub file_bytes_done: u64,
-    pub file_bytes_total: u64,
+    pub file: Option<BridgeMoveToThisDeviceFileProgress>,
     pub bytes_done: u64,
     pub bytes_total: u64,
     pub fraction: f64,
+}
+
+/// Byte progress of the file coven is downloading into the chosen folder.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeMoveToThisDeviceFileProgress {
+    pub bytes_done: u64,
+    pub bytes_total: u64,
+}
+
+/// The release and file streams from one read of moves to this device.
+#[derive(uniffi::Enum)]
+pub enum BridgeMoveToThisDeviceFeeds {
+    Streams {
+        /// The progress of each release moving to this device, by release id.
+        releases: std::sync::Arc<crate::KeyedValueStream>,
+        /// The share of each file downloading into the chosen folder, by file id.
+        files: std::sync::Arc<crate::KeyedValueStream>,
+    },
 }
 
 /// What the library holds now for a queued release: what its queue row

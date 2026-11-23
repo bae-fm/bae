@@ -17,7 +17,7 @@ pub use download_entry::{
 pub use download_snapshot::{
     DownloadPhase, DownloadProgress, DownloadProgressError, DownloadRate, DownloadRequest,
     DownloadRow, DownloadSnapshot, DownloadTransfer, DownloadTransferProgress,
-    MoveToThisDeviceTransferProgress, QueuedDownload, QueuedPin,
+    MoveToThisDeviceTransferProgress, MoveToThisDeviceTransfers, QueuedDownload, QueuedPin,
 };
 pub use output_snapshot::{
     OutputEntry, OutputKind, OutputOp, OutputPhase, OutputPhaseRow, OutputPhaseSnapshot,

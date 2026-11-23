@@ -156,8 +156,10 @@ extension View {
                     moveToThisDeviceTransfers: .movesToThisDevice(
                         holding: [
                             releaseId: BridgeMoveToThisDeviceProgress(
-                                fileBytesDone: 10_000_000,
-                                fileBytesTotal: 34_000_000,
+                                file: BridgeMoveToThisDeviceFileProgress(
+                                    bytesDone: 10_000_000,
+                                    bytesTotal: 34_000_000
+                                ),
                                 bytesDone: bytes * 2 / 5,
                                 bytesTotal: bytes,
                                 fraction: 0.4

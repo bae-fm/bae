@@ -66,6 +66,16 @@ public class DownloadStore {
         moveToThisDeviceTransfers.source(for: releaseId)
     }
 
+    /// Start the streams for releases moving to This Mac and their current files.
+    public nonisolated func feedMovesToThisDevice(from appHandle: AppHandle)
+        -> [LatestFeed]
+    {
+        moveToThisDeviceTransfers.feed(
+            from: appHandle,
+            fileShares: moveFileShares
+        )
+    }
+
     /// The latest share a file being downloaded to keep whole has moved, for
     /// the native view that reads it each display frame.
     public nonisolated func fileShare(forFile fileId: String)

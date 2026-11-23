@@ -67,9 +67,10 @@ fn a_download_stream_holds_only_its_own_kind_of_download() {
     let (pin_values, local_values) = (StreamValues::new(), StreamValues::new());
     let (pins, locals) =
         (StreamWriter::new(pin_values.clone()), StreamWriter::new(local_values.clone()));
+    let files = StreamWriter::new(StreamValues::new());
     let write = |read: std::collections::BTreeMap<String, DownloadTransfer>| {
         pins.reset(release_transfers_held(read.clone(), pin_value));
-        locals.reset(release_transfers_held(read, move_to_this_device_value));
+        write_move_to_this_device_transfers(&locals, &files, read.into());
     };
 
     write(downloads(&[("pinning", &pin), ("local", &local)]));
@@ -77,7 +78,7 @@ fn a_download_stream_holds_only_its_own_kind_of_download() {
     assert_eq!(pin_values.latest(b"local"), None);
     assert!(matches!(
         local_values.latest(b"local"),
-        Some(BridgeFastValue::MoveToThisDevice { .. })
+        Some(BridgeFastValue::MoveToThisDevice { progress }) if progress.file.is_none()
     ));
     assert_eq!(local_values.latest(b"pinning"), None);
 
@@ -113,8 +114,11 @@ fn a_move_feed_holds_only_its_current_file_share() {
         write_move_to_this_device_transfers(
             &releases,
             &files,
-            [("release".to_string(), bae_transfers::DownloadTransfer::MoveToThisDevice(progress))]
-                .into(),
+            BTreeMap::from([(
+                "release".to_string(),
+                bae_transfers::DownloadTransfer::MoveToThisDevice(progress),
+            )])
+            .into(),
         );
     };
 
@@ -131,10 +135,10 @@ fn a_move_feed_holds_only_its_current_file_share() {
     );
     assert!(matches!(
         release_values.latest(b"release"),
-        Some(BridgeFastValue::MoveToThisDevice { progress }) if progress.bytes_done == 60
+        Some(BridgeFastValue::MoveToThisDevice { progress }) if progress.bytes_done == 60 && progress.file.is_some_and(|file| file.bytes_done == 20)
     ));
 
-    write_move_to_this_device_transfers(&releases, &files, Default::default());
+    write_move_to_this_device_transfers(&releases, &files, BTreeMap::new().into());
     assert_eq!(file_values.latest(second.to_string().as_bytes()), None);
     assert_eq!(release_values.latest(b"release"), None);
 }

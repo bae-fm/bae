@@ -89,8 +89,10 @@ extension ShotScene {
                         moveToThisDeviceTransfers: .movesToThisDevice(
                             holding: [
                                 chipMovingId: BridgeMoveToThisDeviceProgress(
-                                    fileBytesDone: 10_000_000,
-                                    fileBytesTotal: 34_000_000,
+                                    file: BridgeMoveToThisDeviceFileProgress(
+                                        bytesDone: 10_000_000,
+                                        bytesTotal: 34_000_000
+                                    ),
                                     bytesDone: 45_000_000,
                                     bytesTotal: 100_000_000,
                                     fraction: 0.45

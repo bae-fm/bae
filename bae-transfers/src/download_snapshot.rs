@@ -2,10 +2,13 @@
 //! table: the Downloads pane and a release's download status read it, and the
 //! bytes the active download moves travel apart, keyed by release.
 
+use std::collections::BTreeMap;
+
 use crate::release_queue::{
     ReleaseQueueEntry, ReleaseQueueOp, ReleaseQueueProgress, ReleaseQueueRow, ReleaseQueueSnapshot,
     ReleaseQueueState,
 };
+use crate::ReleaseTransfersWatch;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DownloadTransferProgress {
@@ -148,6 +151,36 @@ impl MoveToThisDeviceTransferProgress {
 pub enum DownloadTransfer {
     Pin(DownloadTransferProgress),
     MoveToThisDevice(MoveToThisDeviceTransferProgress),
+}
+
+/// One delivery of progress for releases moving to this device and the
+/// files they are downloading, each keyed by what the app draws.
+pub struct MoveToThisDeviceTransfers {
+    pub releases: BTreeMap<String, MoveToThisDeviceTransferProgress>,
+    pub files: BTreeMap<coven::FileId, f64>,
+}
+
+impl From<BTreeMap<String, DownloadTransfer>> for MoveToThisDeviceTransfers {
+    fn from(downloads: BTreeMap<String, DownloadTransfer>) -> Self {
+        let mut releases = BTreeMap::new();
+        let mut files = BTreeMap::new();
+        for (release_id, download) in downloads {
+            if let DownloadTransfer::MoveToThisDevice(progress) = download {
+                if let Some(file) = progress.file {
+                    files.insert(file.file, file.fraction());
+                }
+                releases.insert(release_id, progress);
+            }
+        }
+        Self { releases, files }
+    }
+}
+
+impl ReleaseTransfersWatch<DownloadTransfer> {
+    /// Follow the release and current-file progress of moves to this device.
+    pub async fn next_moves_to_this_device(&mut self) -> Option<MoveToThisDeviceTransfers> {
+        self.next().await.map(MoveToThisDeviceTransfers::from)
+    }
 }
 
 /// What a queued download does, and what it needs to.

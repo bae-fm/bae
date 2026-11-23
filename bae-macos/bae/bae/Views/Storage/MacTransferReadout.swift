@@ -43,9 +43,10 @@ final class TransferReadoutNSView: NSView {
         self?
             .show(
                 bytes: progress?.bytesText,
-                detail: progress.map {
-                    String(localized: "Current file: \($0.fileBytesText)")
-                },
+                detail: progress.flatMap(\.fileBytesText)
+                    .map {
+                        String(localized: "Current file: \($0)")
+                    },
                 fraction: progress?.fraction
             )
     }

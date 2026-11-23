@@ -7,10 +7,12 @@ extension BridgeMoveToThisDeviceProgress {
     }
 
     /// "3 MB of 10 MB" of the file being downloaded.
-    public var fileBytesText: String {
-        formattedDownloadBytesProgress(
-            done: fileBytesDone,
-            total: fileBytesTotal
-        )
+    public var fileBytesText: String? {
+        file.map {
+            formattedDownloadBytesProgress(
+                done: $0.bytesDone,
+                total: $0.bytesTotal
+            )
+        }
     }
 }

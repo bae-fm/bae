@@ -55,9 +55,7 @@ impl AppHandle {
     /// Write the bytes of each release moving to this device and of its
     /// current file, by release id, and the share of each file, by file id.
     /// Both streams follow the same read of the active download.
-    pub fn feed_move_to_this_device_transfers(
-        &self,
-    ) -> crate::keyed_values::BridgeMoveToThisDeviceFeeds {
+    pub fn feed_move_to_this_device_transfers(&self) -> crate::types::BridgeMoveToThisDeviceFeeds {
         crate::screens::move_to_this_device_transfers(self.runtime.clone(), self.run_feed())
     }
 }

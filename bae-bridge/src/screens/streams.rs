@@ -3,7 +3,7 @@
 //! only way such values reach an app. Each function here builds a stream and
 //! the feed that writes it; the handle runs the feed as the library's work.
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -11,11 +11,9 @@ use std::sync::Arc;
 use bae_app::AppServices;
 use bae_library::CancellationToken;
 
-use crate::keyed_values::{
-    BridgeMoveToThisDeviceFeeds, BridgeOutboxFeeds, KeyedValueStream, StreamValues, StreamWriter,
-};
+use crate::keyed_values::{BridgeOutboxFeeds, KeyedValueStream, StreamValues, StreamWriter};
 use crate::operation_runtime::OperationRuntime;
-use crate::types::{BridgeError, BridgeFastValue};
+use crate::types::{BridgeError, BridgeFastValue, BridgeMoveToThisDeviceFeeds};
 
 /// What a feed does to write its stream: from the library's services, lent
 /// for the call, the watch it follows, and the writing that follows it.
@@ -52,7 +50,7 @@ where
 /// stream holds it: under each release's id, the value `value` gives, and
 /// nothing for a release it gives none.
 fn release_transfers_held<Progress>(
-    transfers: std::collections::BTreeMap<String, Progress>,
+    transfers: BTreeMap<String, Progress>,
     value: impl Fn(Progress) -> Option<BridgeFastValue>,
 ) -> HashMap<Vec<u8>, BridgeFastValue> {
     transfers
@@ -69,6 +67,16 @@ fn upload_total(transfer: bae_library::UploadTransfer) -> Option<BridgeFastValue
     })
 }
 
+/// A delivery of file shares, keyed by the bytes of each file's id.
+fn file_shares_held(shares: BTreeMap<coven::FileId, f64>) -> HashMap<Vec<u8>, BridgeFastValue> {
+    shares
+        .into_iter()
+        .map(|(file, fraction)| {
+            (file.to_string().into_bytes(), BridgeFastValue::FileShare { fraction })
+        })
+        .collect()
+}
+
 /// Write each batch of a file transfer watch, keyed by file id.
 fn write_file_changes(writer: &StreamWriter, changes: Vec<bae_library::FileTransferChange>) {
     use bae_library::FileTransferChange;
@@ -79,12 +87,7 @@ fn write_file_changes(writer: &StreamWriter, changes: Vec<bae_library::FileTrans
                 writer.set(file.to_string(), share(fraction))
             }
             FileTransferChange::Removed { file } => writer.remove(file.to_string().as_bytes()),
-            FileTransferChange::Reset(files) => writer.reset(
-                files
-                    .into_iter()
-                    .map(|(file, fraction)| (file.to_string().into_bytes(), share(fraction)))
-                    .collect(),
-            ),
+            FileTransferChange::Reset(files) => writer.reset(file_shares_held(files)),
         }
     }
 }
@@ -255,19 +258,6 @@ fn pin_value(transfer: bae_transfers::DownloadTransfer) -> Option<BridgeFastValu
     }
 }
 
-/// A download as the moves-to-this-device stream holds it: its progress if
-/// it is a move to this device, else nothing.
-fn move_to_this_device_value(transfer: bae_transfers::DownloadTransfer) -> Option<BridgeFastValue> {
-    match transfer {
-        bae_transfers::DownloadTransfer::MoveToThisDevice(progress) => {
-            Some(BridgeFastValue::MoveToThisDevice {
-                progress: crate::types::BridgeMoveToThisDeviceProgress::from_core(progress),
-            })
-        }
-        bae_transfers::DownloadTransfer::Pin(_) => None,
-    }
-}
-
 /// The stream [`AppHandle::feed_download_transfers`](crate::AppHandle::feed_download_transfers) hands out.
 pub(crate) fn download_transfers(
     runtime: OperationRuntime,
@@ -287,25 +277,14 @@ pub(crate) fn download_transfers(
 fn write_move_to_this_device_transfers(
     releases: &StreamWriter,
     files: &StreamWriter,
-    transfers: std::collections::BTreeMap<String, bae_transfers::DownloadTransfer>,
+    transfers: bae_transfers::MoveToThisDeviceTransfers,
 ) {
-    files.reset(
-        transfers
-            .values()
-            .filter_map(|transfer| match transfer {
-                bae_transfers::DownloadTransfer::MoveToThisDevice(progress) => {
-                    progress.file.map(|file| {
-                        (
-                            file.file.to_string().into_bytes(),
-                            BridgeFastValue::FileShare { fraction: file.fraction() },
-                        )
-                    })
-                }
-                bae_transfers::DownloadTransfer::Pin(_) => None,
-            })
-            .collect(),
-    );
-    releases.reset(release_transfers_held(transfers, move_to_this_device_value));
+    files.reset(file_shares_held(transfers.files));
+    releases.reset(release_transfers_held(transfers.releases, |progress| {
+        Some(BridgeFastValue::MoveToThisDevice {
+            progress: crate::types::BridgeMoveToThisDeviceProgress::from_core(progress),
+        })
+    }));
 }
 
 /// The pair of streams [`AppHandle::feed_move_to_this_device_transfers`](crate::AppHandle::feed_move_to_this_device_transfers) hands out.
@@ -316,8 +295,8 @@ pub(crate) fn move_to_this_device_transfers(
     let (releases, files) = feed_pair(runtime, run, move |services, releases, files| {
         let mut transfers = services.watch_download_transfers();
         async move {
-            while let Some(downloads) = transfers.next().await {
-                write_move_to_this_device_transfers(&releases, &files, downloads);
+            while let Some(moves) = transfers.next_moves_to_this_device().await {
+                write_move_to_this_device_transfers(&releases, &files, moves);
             }
         }
     });
