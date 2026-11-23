@@ -43,8 +43,8 @@
 .bae-m-idraft-reading { display: flex; align-items: center; gap: var(--space-related); margin-right: var(--space-inline); }
 .bae-m-idraft-head { display: flex; gap: var(--space-group); }
 .bae-m-idraft-id { display: flex; flex-direction: column; gap: 0; min-width: 0; }
-.bae-m-idraft-grid { display: grid; grid-template-columns: 64px 1fr; align-items: start; gap: var(--space-compact) var(--space-group); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
-/* A label sits level with its value's first line, so a list fact's name heads its first row. */
+.bae-m-idraft-grid { display: grid; grid-template-columns: 64px 1fr; align-items: baseline; gap: var(--space-compact) var(--space-group); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
+/* A label sits on its value's first text baseline, so a list fact's name heads its first row. */
 .bae-m-idraft-grid > .bae-muted { text-align: right; font-size: var(--type-detail-size); font-weight: var(--type-detail-weight); line-height: var(--type-detail-line-height); }
 .bae-m-relfields { display: flex; flex-direction: column; gap: var(--space-group); }
 .bae-m-idraft-records { display: flex; gap: calc(var(--space-related) + var(--space-line)); align-items: center; padding-top: var(--space-related); border-top: 1px solid var(--hairline); }
