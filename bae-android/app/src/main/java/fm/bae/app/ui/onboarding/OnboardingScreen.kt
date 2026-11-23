@@ -374,10 +374,13 @@ internal fun RunningLines(
         modifier = Modifier.widthIn(max = STEP_LINE_MAX_WIDTH),
         onStepping = { stepping = it },
     ) {
-        if (!counting) AndroidSpinner()
+        if (!counting) {
+            AndroidSpinner()
+            Spacer(modifier = Modifier.height(ThemeSpace.section))
+        }
     }
-    if (stepping || !counting) Spacer(modifier = Modifier.height(ThemeSpace.section))
     title?.let {
+        if (stepping) Spacer(modifier = Modifier.height(ThemeSpace.section))
         Text(text = it, style = ThemeText.heading.style, textAlign = TextAlign.Center)
         Spacer(modifier = Modifier.height(ThemeSpace.related))
     }
