@@ -1,13 +1,5 @@
   // ==== part: import ====
   SYM.stop = 'M7 7h10v10H7z';
-  // The bulk actions' symbols, as the app's BridgeCandidateAction.symbol names them: magnifyingglass, doc.text, eraser, square.stack.3d.up, square.split.1x2, minus.circle, arrow.uturn.backward.
-  SYM.magnifier = 'M10.5 4a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM15.5 15.5L20 20';
-  SYM.docText = 'M6 3h8l4 4v14H6zM14 3v4h4M9 12h6M9 16h6';
-  SYM.eraser = 'M9 20l-5-5 10-10 6 6-9 9zM9 10l5 5M9 20h11';
-  SYM.stack = 'M12 3l9 5-9 5-9-5zM3 12l9 5 9-5M3 16l9 5 9-5';
-  SYM.split = 'M4 4h16v16H4zM4 12h16';
-  SYM.minuscircle = 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM8 12h8';
-  SYM.uturnBack = 'M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3';
   // ---- Import (macOS) ----
   // A search or filter field: the magnifier, then the text. `kind`: `search` (the default), the title bar's rounded field, 300pt wide; `filter`, a toolbar's 160pt field; `inline`, a field with no box that fills the rest of its row. `label` names it and shows while it is empty (Search unless given); `value` is the text typed. `focused` rings the search field in the accent; `off` dims a field that has nothing to filter and takes no typing.
   function MacSearchField(props) {
@@ -372,28 +364,27 @@
       props.sources ? h('span', { className: 'bae-m-tertiary', style: { fontSize: 'var(--type-detail-size)' } }, props.sources) : null,
       h(Sym, { name: 'right', size: 11, className: props.selected ? 'bae-accent' : 'bae-m-tertiary' }));
   }
-  // One bulk action: its glyph, its name, then how many of the selected folders it applies to (`count`), dimmed when none. `strong` sets the action in the accent, for Import and Combine. `to`: where the import goes, Import's destination pop-up, before the count; the row's button then holds only the glyph and the name, so the pop-up is a control of its own.
+  // One bulk action: its name, then how many of the selected folders it applies to (`count`), dimmed when none. `strong` sets the name in the strong type and the count in the accent, for Import and Combine. `to`: where the import goes, Import's destination pop-up, before the count; the row's button then holds only the name, so the pop-up is a control of its own.
   function MacBulkActionRow(props) {
-    var n = props.count, off = !n;
-    var glyph = h(Sym, { name: props.icon, style: iconBox('medium'), className: props.strong ? 'bae-accent' : 'bae-muted' });
+    var n = props.count, off = !n, row = cx('bae-m-bulkrow', off && 'bae-m-bulkrow-off'), type = props.strong ? 'bae-strong' : 'bae-muted';
     var chip = h(StatusChip, { tone: props.strong ? 'accent' : 'neutral' }, String(n || 0));
-    if (props.to == null) return h('button', { type: 'button', disabled: off || null, className: cx('bae-m-bulkrow', off && 'bae-m-bulkrow-off') }, glyph, h('span', { className: props.strong ? 'bae-strong' : 'bae-muted', style: { flex: 1 } }, props.label), chip);
-    return h('div', { className: cx('bae-m-bulkrow', off && 'bae-m-bulkrow-off') },
-      h('button', { type: 'button', disabled: off || null, className: 'bae-plainbtn bae-m-bulkrow-action', 'aria-label': props.label + ' ' + props.to + ' ' + (n || 0) }, glyph, h('span', { className: props.strong ? 'bae-strong' : 'bae-muted' }, props.label)),
+    if (props.to == null) return h('button', { type: 'button', disabled: off || null, className: row }, h('span', { className: type, style: { flex: 1 } }, props.label), chip);
+    return h('div', { className: row },
+      h('button', { type: 'button', disabled: off || null, className: 'bae-plainbtn ' + type, 'aria-label': props.label + ' ' + props.to + ' ' + (n || 0) }, props.label),
       h('span', { style: { flex: 1 } }), h(MacImportDestination, { to: props.to, off: off }), chip);
   }
   // Several rows selected: the count, then the actions in groups, each with how many it applies to.
   function MacImportBulk(props) {
     // `to` puts Import's destination on Import's own line, before its count.
-    var row = function (icon, label, n, strong, to) { return h(MacBulkActionRow, { key: label, icon: icon, label: label, count: n, strong: strong, to: to }); };
+    var row = function (label, n, strong, to) { return h(MacBulkActionRow, { key: label, label: label, count: n, strong: strong, to: to }); };
     var grp = function (eyebrow, rows) { return h('div', { className: 'bae-m-bulkgrp' }, eyebrow ? h('div', { className: 'bae-m-eyebrowtxt', style: { padding: 'var(--space-related) var(--space-group) var(--space-line)' } }, eyebrow) : null, rows); };
     var n = Number(props.count || 5);
     return h('div', { className: 'bae-m-bulk' }, h('div', { className: 'bae-m-card', style: { width: 440, boxSizing: 'border-box', padding: 'var(--space-section)', display: 'flex', flexDirection: 'column', gap: 'var(--space-group)' } },
       h('div', { style: { font: 'var(--type-title-weight) var(--type-title-size) var(--font-sans)' } }, n + ' selected'), h('div', { className: 'bae-muted' }, 'Each action applies only to eligible selected folders.'),
       h('div', { className: 'bae-m-bulklist' },
-        grp('Import', [row('saveAs', 'Import', props.ready || 3, true, props.cloud ? props.to : null), row('xcircle', 'Cancel import of selected', 0), row('stack', 'Combine as one release', 0, true), row('split', 'Keep as separate releases', 0)]),
-        grp('Metadata', [row('magnifier', 'Identify selected', n), row('xcircle', 'Stop identifying selected', 0), row('refresh', 'Retry failed identification', 1), row('docText', 'Reset to file metadata', n), row('eraser', 'Clear metadata', n)]),
-        grp(null, [row('minuscircle', 'Skip selected', n), row('uturnBack', 'Restore to pending', 0)]),
-        grp(null, [row('folder', 'Reveal in Finder', n)]))),
+        grp('Import', [row('Import', props.ready || 3, true, props.cloud ? props.to : null), row('Cancel import of selected', 0), row('Combine as one release', 0, true), row('Keep as separate releases', 0)]),
+        grp('Metadata', [row('Identify selected', n), row('Stop identifying selected', 0), row('Retry failed identification', 1), row('Reset to file metadata', n), row('Clear metadata', n)]),
+        grp(null, [row('Skip selected', n), row('Restore to pending', 0)]),
+        grp(null, [row('Reveal in Finder', n)]))),
       props.running ? h('div', { style: { width: 440, display: 'flex', gap: 'var(--space-group)', alignItems: 'flex-end' } }, h('div', { style: { flex: 1 } }, h(MacProgress, { label: props.running, value: 0.4 })), h(MacButton, null, 'Cancel')) : null);
   }
