@@ -329,8 +329,7 @@ private fun AlbumPageWithMenu(
         )
     ScreenScene {
         Box {
-            val playback = AlbumPlaybackState(playingLowTideHours.track.trackId, isPlaying = true)
-            AlbumPageContent(detail, playingLowTideHours, { it.name }, playback) { AlbumOptionsMenu(menu) }
+            AlbumPageContent(detail, playingLowTideHours, { it.name }) { AlbumOptionsMenu(menu) }
             OpenMenu(top = ALBUM_MENU_TOP, end = ThemeSpace.related) { AndroidMenuItemStyle { AlbumMenuItems(menu, close = {}) } }
         }
     }
