@@ -11,6 +11,7 @@ import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.width
 import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.ui.TestTheme
 import org.junit.Assert.assertTrue
