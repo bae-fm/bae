@@ -167,6 +167,12 @@ internal fun HuggingContent(content: @Composable () -> Unit) {
     Box(modifier = Modifier.width(IntrinsicSize.Max)) { content() }
 }
 
+/** [content] inside the 16dp of side padding a screen gives its sections and cards. */
+@Composable
+internal fun InsideScreenEdges(content: @Composable () -> Unit) {
+    Box(modifier = Modifier.padding(horizontal = ThemeSpace.edge)) { content() }
+}
+
 /** A screen of its own, on the screen's background, in the look [appearance] gives (the boards' by default). */
 @Composable
 internal fun ScreenScene(

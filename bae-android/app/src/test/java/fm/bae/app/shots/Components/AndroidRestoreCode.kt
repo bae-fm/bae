@@ -26,4 +26,4 @@ class AndroidRestoreCodeShots : BoardShot() {
 private fun RestoreCode(
     state: RestoreCodeState,
     s3: Boolean,
-) = AndroidRestoreCode(needsS3Key = s3, state = state, onShow = {}, onHide = {}, onPrint = {})
+) = InsideScreenEdges { AndroidRestoreCode(needsS3Key = s3, state = state, onShow = {}, onHide = {}, onPrint = {}) }
