@@ -36,16 +36,19 @@ struct WindowScrimTests {
 
     @Test("an alert dims the window it sits over until it closes")
     func anAlertDimsItsWindow() async throws {
-        let uiStore = UiStore()
         try await SnapshotTestSupport.withHostedWindow(
-            Color.clear.errorAlert(uiStore),
+            Color.clear,
             size: NSSize(width: 600, height: 400)
-        ) { window, _ in
+        ) { window, host in
             #expect(scrims(over: window).isEmpty)
 
-            uiStore.showError(
-                DisplayError(line: "Could not reach the cloud.", detail: nil)
-            )
+            // A view that asks for its alert as it is first built raises it.
+            host.rootView = Color.clear.macAlert(isPresented: .constant(true)) {
+                (
+                    MacAlertWords(Text(verbatim: "Title")),
+                    [MacAlertButton(Text(verbatim: "OK"))]
+                )
+            }
             #expect(
                 await holds { scrims(over: window).count == 1 },
                 "the alert dims the window"
@@ -53,7 +56,7 @@ struct WindowScrimTests {
             let scrim = try #require(scrims(over: window).first)
             #expect(scrim.frame == window.frame)
 
-            uiStore.clearError()
+            host.rootView = Color.clear
             #expect(
                 await holds { scrims(over: window).isEmpty },
                 "the scrim goes with the alert"
@@ -93,9 +96,15 @@ struct WindowScrimTests {
             // The sheet stays in front of the scrim.
             let scrim = try #require(scrims(over: window).first)
             #expect(scrim.frame == window.frame)
-            let order = autoreleasepool { NSApp.orderedWindows }
-            let sheetIndex = try #require(order.firstIndex(of: sheet))
-            let scrimIndex = try #require(order.firstIndex(of: scrim))
+            let order = autoreleasepool {
+                NSWindow.windowNumbers(options: []) ?? []
+            }
+            let sheetIndex = try #require(
+                order.firstIndex(of: NSNumber(value: sheet.windowNumber))
+            )
+            let scrimIndex = try #require(
+                order.firstIndex(of: NSNumber(value: scrim.windowNumber))
+            )
             #expect(
                 sheetIndex < scrimIndex,
                 "the sheet is in front of the scrim"
