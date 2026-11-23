@@ -293,7 +293,7 @@ class ElementListTest : BoardShot() {
 
     @Test
     fun recordsTheFullHeightOfAPinFieldWithoutAnOutlineLabel() {
-        compose.setContent { AndroidPinField(digits = 4, value = "0482", onValueChange = {}) }
+        compose.settle { AndroidPinField(digits = 4, value = "0482", onValueChange = {}) }
         val root = compose.onRoot().fetchSemanticsNode()
         val unmerged = compose.onRoot(useUnmergedTree = true).fetchSemanticsNode()
         val elements = ElementList.of("android.test.pin", root, unmerged = unmerged).getJSONArray("elements").objects()
