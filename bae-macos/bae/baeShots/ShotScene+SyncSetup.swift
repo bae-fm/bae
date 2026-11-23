@@ -439,7 +439,7 @@ extension ShotScene {
         folderId: "folder-1",
         accountLabel: "name@example.com",
         folderLabel: BridgeFolderLabel(
-            name: "Music",
+            name: "Albums",
             webUrl: "https://onedrive.live.com/?id=folder-1"
         )
     )
