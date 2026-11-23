@@ -251,7 +251,7 @@
       var title = h(React.Fragment, null,
         h('div', { className: 'bae-notice-centered-title' }, noticeGlyph(tone, props.icon, { centered: true }), h('div', { className: cx('bae-notice-title', props.subtitle && 'bae-notice-title-strong') }, props.title), props.children),
         props.subtitle ? h('div', { className: 'bae-notice-centered-sub' }, props.subtitle) : null);
-      return NoticeBox(tone, props.icon, h('div', { className: 'bae-m-notice' }, title, primary || secondary || leave ? h('div', { className: 'bae-notice-centered-row' }, leave, secondary, primary) : null), { platform: 'bae-m-notice-box', quiet: props.quiet, flush: props.flush, centered: true, stage: props.stage });
+      return NoticeBox(tone, props.icon, h('div', { className: 'bae-m-notice' }, title, primary || secondary || leave ? h('div', { className: 'bae-notice-centered-row' }, leave, secondary, primary) : null), { platform: 'bae-m-notice-box', quiet: props.quiet, centered: true, stage: props.stage });
     }
     // The buttons sit on the text's line at the right, secondary first; `buttons: 'below'` puts them on a line of their own under the text.
     var below = props.buttons === 'below';
@@ -262,7 +262,7 @@
     var body = h('div', { className: 'bae-m-notice' }, top, below ? buttons : null);
     // The glyph sits in the row piece's leading column, so a notice among rows shares their text edge.
     var glyph = noticeGlyph(tone, props.icon, { quiet: props.quiet });
-    return NoticeBox(tone, false, glyph ? h(MacItem, { lead: glyph }, body) : body, { platform: 'bae-m-notice-box', quiet: props.quiet, flush: props.flush, centered: false, stage: props.stage });
+    return NoticeBox(tone, false, glyph ? h(MacItem, { lead: glyph }, body) : body, { platform: 'bae-m-notice-box', quiet: props.quiet, centered: false, stage: props.stage });
   }
 
   // A popover hanging off the control that opened it. Placed with `top`, it hangs below the control, its arrow on its upper edge pointing up; placed with `bottom`, it opens above, its arrow on its lower edge pointing down. `arrow`: the arrow's middle from the right edge (40). `flush`: no padding, for content that pads itself.
@@ -325,7 +325,7 @@
       var title = h(React.Fragment, null,
         h('div', { className: 'bae-notice-centered-title' }, noticeGlyph(tone, props.icon, { centered: true }), h('div', { className: cx('bae-notice-title', props.subtitle && 'bae-notice-title-strong') }, props.title), props.children),
         props.subtitle ? h('div', { className: 'bae-notice-centered-sub' }, props.subtitle) : null);
-      return NoticeBox(tone, props.icon, h('div', { className: 'bae-a-notice' }, title, primary || secondary ? h('div', { className: 'bae-notice-centered-row' }, secondary, primary) : null), { platform: 'bae-a-notice-box', quiet: props.quiet, flush: props.flush, centered: true, stage: props.stage });
+      return NoticeBox(tone, props.icon, h('div', { className: 'bae-a-notice' }, title, primary || secondary ? h('div', { className: 'bae-notice-centered-row' }, secondary, primary) : null), { platform: 'bae-a-notice-box', quiet: props.quiet, centered: true, stage: props.stage });
     }
     // As on Mac: the buttons sit on the text's line at the right; `buttons: 'below'` puts them under the text.
     var below = props.buttons === 'below';
@@ -334,7 +334,7 @@
     // One top row, aligned to the title's line: the words, inline buttons, the ×; `below` buttons are a second row.
     var top = h('div', { className: 'bae-a-notice-top' }, words, below ? null : buttons, dismiss);
     var body = h('div', { className: 'bae-a-notice' }, top, below ? buttons : null);
-    return NoticeBox(tone, props.icon, body, { platform: 'bae-a-notice-box', quiet: props.quiet, flush: props.flush, centered: false, stage: props.stage });
+    return NoticeBox(tone, props.icon, body, { platform: 'bae-a-notice-box', quiet: props.quiet, centered: false, stage: props.stage });
   }
 
   // A transfer in the Activity sheet, as MacTransferLine on Mac: `label`, `count`, a bar filled to `progress` (none: a moving bar). `pausable` ends the line in a tonal Pause, or Resume while `paused`; a phone never uploads release files, so Uploading has none. `opens`: the line opens a screen when tapped (Pinning opens the Pinning screen).

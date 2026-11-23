@@ -42,8 +42,6 @@
 /* The box takes the words' 14px, so the inline status glyph (1.19em) sizes from the words beside it. */
 .bae-a-notice-box { font-size: var(--type-android-body-size); font-weight: var(--type-android-body-weight); line-height: var(--type-android-body-line-height); }
 .bae-a-notice-box.bae-notice-quiet { padding: calc(var(--space-related) + var(--space-line)) 0; }
-/* flush: a quiet notice placed by its container, which spaces it (a warning in an alert or dialog), so it adds no padding of its own. */
-.bae-notice.bae-notice-flush { padding: 0; }
 /* On a tint, greys and grey fills are the primary text made see-through, so they take the tint's colour. */
 .bae-notice:not(.bae-notice-quiet) { --text-secondary: color-mix(in srgb, var(--text-primary) 72%, transparent); }
 .bae-notice-title-strong { font-weight: var(--type-strong-weight); }
