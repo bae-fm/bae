@@ -33,7 +33,7 @@ struct QueuePauseButton: View {
             symbol: paused ? "play.fill" : "pause.fill",
             label: pauseLabel,
             iconSize: placement == .activity ? .medium : .chip,
-            look: placement == .activity ? .boxed : .borderless,
+            look: placement == .activity ? .boxed(small: true) : .borderless,
             action: setPaused
         )
     }

@@ -5,7 +5,7 @@ import SwiftUI
 struct MacIconButton: View {
     enum Look {
         case hover(active: Bool, faint: Bool, hitSize: CGFloat)
-        case boxed
+        case boxed(small: Bool)
         case borderless
     }
 
@@ -43,7 +43,7 @@ struct MacIconButton: View {
         symbol: String,
         label: LocalizedStringKey,
         help: LocalizedStringKey? = nil,
-        iconSize: ThemeIcon = .large,
+        iconSize: ThemeIcon,
         look: Look,
         role: ButtonRole? = nil,
         action: @escaping () -> Void
@@ -83,10 +83,15 @@ struct MacIconButton: View {
                     IconHoverButtonStyle(isOn: active, faint: faint)
                         .accentFocus()
                 )
-            case .boxed:
-                button.buttonStyle(BoxedIconButtonStyle(size: .small).focused)
+            case .boxed(let small):
+                button.buttonStyle(
+                    BoxedIconButtonStyle(size: small ? .small : .control)
+                        .focused
+                )
             case .borderless:
-                button.buttonStyle(.accentBorderless)
+                button
+                    .foregroundStyle(Theme.macTextSecondary)
+                    .buttonStyle(.accentBorderless)
             }
         }
         .help(help ?? label)

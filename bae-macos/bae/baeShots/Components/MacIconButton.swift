@@ -27,8 +27,8 @@ extension ShotScene {
             MacIconButton(
                 symbol: "shuffle",
                 label: "Shuffle",
-                iconSize: .medium,
-                look: .boxed
+                iconSize: .large,
+                look: .boxed(small: false)
             ) {}
         },
         component("mac.component.icon-button.overlay", height: 60) {
