@@ -1,6 +1,9 @@
 package fm.bae.app.shots
 
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import fm.bae.app.ui.components.AndroidStorageUsage
 import fm.bae.app.ui.components.StorageUsageSegment
 import org.junit.Test
@@ -46,7 +49,13 @@ class AndroidStorageUsageShots : BoardShot() {
 private fun Usage(
     total: String,
     vararg segments: StorageUsageSegment,
-) = AndroidStorageUsage(total = total, of = "on this phone", segments = segments.toList())
+) = AndroidStorageUsage(
+    total = total,
+    of = "on this phone",
+    segments = segments.toList(),
+    // The settings page scrolls. Give the legend the same height constraints inside the preview cell.
+    modifier = Modifier.wrapContentHeight(align = Alignment.Top, unbounded = true),
+)
 
 private fun segment(
     kind: BridgeStorageKind,
