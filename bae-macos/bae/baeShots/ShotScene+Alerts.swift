@@ -247,7 +247,6 @@ extension ShotScene {
                     over: ShotScenes.libraryWindow(
                         uiStore: uiStore,
                         backing: backing,
-                        needsAttention: false,
                         playbackStore: boardPlayback(),
                         size: CGSize(width: 1200, height: 760)
                     )
@@ -266,7 +265,6 @@ extension ShotScene {
                 ShotScenes.libraryWindow(
                     uiStore: uiStore,
                     backing: backing,
-                    needsAttention: false,
                     size: CGSize(width: 1200, height: 760)
                 )
             ) {
@@ -279,13 +277,13 @@ extension ShotScene {
             frame: .window(title: "bae", titleBar: .hidden)
         ) {
             let uiStore = UiStore()
-            let problem = LaunchProblems(
+            let launchProblems = LaunchProblems(
                 signInSettings: DisplayError(
                     line: "The sign-in settings file is missing.",
                     detail: "OAuthConfig: missing client id"
                 )
             )
-            .problems[0]
+            let problem = launchProblems.problems[0]
             let backing = boardLibraryBacking(uiStore: uiStore)
             return ShotStage(
                 OverWindow.alert(
@@ -295,12 +293,14 @@ extension ShotScene {
                         error: problem.error
                     )
                     .alert,
-                    over: ShotScenes.libraryWindow(
-                        uiStore: uiStore,
-                        backing: backing,
-                        playbackStore: boardPlayback(),
-                        size: CGSize(width: 1200, height: 760)
-                    )
+                    over:
+                        ShotScenes.libraryWindow(
+                            uiStore: uiStore,
+                            backing: backing,
+                            playbackStore: boardPlayback(),
+                            size: CGSize(width: 1200, height: 760)
+                        )
+                        .environment(\.launchProblems, launchProblems)
                 )
             ) {
                 (backing.session.albums.list?.positionCount ?? 0) > 0
@@ -326,7 +326,6 @@ extension ShotScene {
                 over: ShotScenes.libraryWindow(
                     uiStore: uiStore,
                     backing: backing,
-                    syncActivity: SyncActivityStore(),
                     playbackStore: boardPlayback(),
                     size: CGSize(width: 1_200, height: height)
                 )

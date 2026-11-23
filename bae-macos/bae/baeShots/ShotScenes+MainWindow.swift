@@ -5,11 +5,8 @@ import SwiftUI
 
 extension ShotScenes {
     /// Builds the full main window against stub services over `backing`'s
-    /// library. The Activity button shows `syncActivity` when the caller
-    /// passes one (an idle one shows no button), and `needsAttention`
-    /// otherwise. The
-    /// point of top padding keeps `ignoresSafeArea` from sliding the bar
-    /// under the canvas's fake chrome.
+    /// library with idle sync queues. The point of top padding keeps
+    /// `ignoresSafeArea` from sliding the bar under the canvas's fake chrome.
     ///
     /// The Import section reads `importScene`'s store and lists, with
     /// `importSelection` as the selected rows (unless `importListSlot`
@@ -21,8 +18,6 @@ extension ShotScenes {
     static func libraryWindow(
         uiStore: UiStore,
         backing: (library: Library, session: LibraryBrowseSession),
-        needsAttention: Bool = true,
-        syncActivity: SyncActivityStore? = nil,
         playbackStore: PlaybackStore = PlaybackStore(),
         castStore: CastStore = CastStore(),
         importListSlot: ImportListSlot? = nil,
@@ -64,10 +59,7 @@ extension ShotScenes {
             .environment(Cast.stub())
             .environment(CastStart.stub())
             .environment(castStore)
-            .environment(
-                syncActivity
-                    ?? SyncActivityStore.preview(needsAttention: needsAttention)
-            )
+            .environment(SyncActivityStore())
             .environment(SubsonicStore())
             .environment(\.libraryLoadError, nil)
             .environment(playbackStore)

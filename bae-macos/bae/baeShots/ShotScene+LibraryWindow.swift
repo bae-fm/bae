@@ -59,7 +59,6 @@ extension ShotScene {
         let window = ShotScenes.libraryWindow(
             uiStore: uiStore,
             backing: (library, session),
-            needsAttention: false,
             playbackStore: boardPlayback(covered: true),
             images: images,
             size: CGSize(width: 1200, height: 760)

@@ -93,8 +93,6 @@ extension ShotScene {
             ShotScenes.libraryWindow(
                 uiStore: uiStore,
                 backing: backing,
-                needsAttention: false,
-                syncActivity: SyncActivityStore(),
                 playbackStore: playing
                     ? boardPlayback() : PlaybackStore(),
                 size: CGSize(width: 1100, height: 520),

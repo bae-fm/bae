@@ -34,7 +34,6 @@ extension ShotScene {
                 ShotScenes.libraryWindow(
                     uiStore: uiStore,
                     backing: backing,
-                    needsAttention: false,
                     playbackStore: boardPlayback(),
                     importListSlot: slot,
                     size: CGSize(width: 1_200, height: 760)

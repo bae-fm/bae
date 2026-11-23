@@ -149,8 +149,14 @@ struct ActivityProblemsTests {
     }
 
     private func activity(failure: BridgeError?) -> BridgeSyncActivity {
-        var activity = BridgeSyncActivity.preview(needsAttention: false)
-        activity.failure = failure
-        return activity
+        BridgeSyncActivity(
+            moving: false,
+            held: false,
+            failure: failure,
+            syncing: false,
+            uploads: nil,
+            pins: nil,
+            movingToThisDevice: nil
+        )
     }
 }
