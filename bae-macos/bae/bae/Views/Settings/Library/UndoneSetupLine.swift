@@ -24,10 +24,12 @@ struct UndoneSetupLine: View {
         {
             MacNotice(
                 error: error,
+                tone: .warning,
                 action: ErrorAction("Dismiss", isDisabled: dismissTask != nil) {
                     dismiss(undone.operation)
                 }
             )
+            .aboveBox()
         }
     }
 

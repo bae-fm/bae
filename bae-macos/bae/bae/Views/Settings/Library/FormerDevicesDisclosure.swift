@@ -28,8 +28,6 @@ struct FormerDevicesDisclosure: View {
             // An Int makes the key "Removed devices (%lld)", as the string
             // catalog has it.
             Text("Removed devices (\(Int(count)))")
-                .themeText(.detail)
-                .foregroundStyle(Theme.textSecondary)
         }
     }
 }

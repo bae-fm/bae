@@ -108,7 +108,8 @@ struct MacFileNameField<Piece: SaveNamePiece>: View {
                 Text(
                     "Preview: \(Text(Piece.previewName(pieces: pieces) + previewSuffix).monospaced())"
                 )
-                .fieldNote()
+                .themeText(.detail)
+                .foregroundStyle(Theme.textSecondary)
             }
             if !availableValues.isEmpty {
                 addRow

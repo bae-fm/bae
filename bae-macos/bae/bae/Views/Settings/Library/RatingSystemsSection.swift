@@ -24,7 +24,7 @@ struct RatingSystemsSection: View {
             } header: {
                 Text("Ratings")
             } footer: {
-                MacNote("Applies to everyone in this library")
+                Text("Applies to everyone in this library")
             }
         }
     }

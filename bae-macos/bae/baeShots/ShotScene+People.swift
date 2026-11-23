@@ -310,8 +310,8 @@ extension ShotScene {
                             highlighted: 1,
                             isPopUp: true
                         )
-                        .padding(.leading, 548)
-                        .padding(.top, 128)
+                        .padding(.leading, 555)
+                        .padding(.top, 195)
                     )
                 }
             )

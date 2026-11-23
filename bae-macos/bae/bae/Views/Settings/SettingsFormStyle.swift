@@ -83,7 +83,13 @@ private struct SettingsFormSection: View {
                 section.header.settingsSectionTitle()
                     .accessibilityRemoveTraits(.isHeader)
             }
-            MacBoxRows(rows: section.content)
+            let rows = Array(section.content)
+            let above = rows.filter(\.containerValues.isAboveBox)
+            ForEach(above) { $0 }
+            let boxed = rows.filter { !$0.containerValues.isAboveBox }
+            if !boxed.isEmpty || above.isEmpty {
+                MacBoxRows(rows: boxed)
+            }
             ForEach(section.footer) { footer in
                 if footer.containerValues.isSectionButtons {
                     // The section's space between its parts; the buttons

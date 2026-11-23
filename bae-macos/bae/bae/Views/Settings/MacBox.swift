@@ -33,6 +33,11 @@ extension ContainerValues {
     /// and not a note: set by `MacSheetFooter`.
     @Entry
     var isSectionButtons = false
+
+    /// Whether the view sits over its section's box, as the boards draw a
+    /// notice about the section: set by `aboveBox`.
+    @Entry
+    var isAboveBox = false
 }
 
 extension View {
@@ -47,6 +52,14 @@ extension View {
     /// a field.
     func settingsRowInset(_ inset: CGFloat) -> some View {
         containerValue(\.rowVerticalInset, inset)
+    }
+}
+
+extension View {
+    /// Draws this view over its section's box, not as a row in it, with no
+    /// space between: a notice about what the box holds.
+    func aboveBox() -> some View {
+        containerValue(\.isAboveBox, true)
     }
 }
 
@@ -86,7 +99,7 @@ struct MacBox<Content: View>: View {
                     .card()
             }
             else {
-                MacBoxRows(rows: rows)
+                MacBoxRows(rows: Array(rows))
             }
         }
         .settingsRowControls()
@@ -126,7 +139,7 @@ struct SettingsTitledBox<Content: View>: View {
 /// Rows on the surface, a line between each and the next unless
 /// the next belongs to it.
 struct MacBoxRows: View {
-    let rows: SubviewsCollection
+    let rows: [Subview]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
