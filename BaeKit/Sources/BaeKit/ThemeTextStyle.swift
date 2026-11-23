@@ -19,12 +19,12 @@ private struct ThemeTextLine: ViewModifier {
     func body(content: Content) -> some View {
         #if os(macOS)
             if let line = text.macOSLine {
-                // SwiftUI lays a line out at its font's natural height
-                // rounded up, so the spacing added to it makes up the rest.
+                // SwiftUI puts the spacing between lines only, so the last
+                // line gets it below, and n lines are n times the line high.
+                let spacing = max(0, line - text.swiftUILineHeight)
                 content
-                    .lineSpacing(
-                        max(0, line - ceil(text.nsFont.naturalLineHeight))
-                    )
+                    .lineSpacing(spacing)
+                    .padding(.bottom, spacing)
                     .frame(minHeight: line)
             }
             else {
@@ -64,6 +64,27 @@ extension View {
             default: .regular
             }
         }
+    }
+
+    extension ThemeText {
+        /// The height SwiftUI lays out for one line of the role's font with
+        /// no line height set. It is taller than `NSLayoutManager`'s: at 11
+        /// and 11.5 points SwiftUI's line is 14 and AppKit's is 13.
+        @MainActor
+        var swiftUILineHeight: CGFloat {
+            if let known = LineHeights.measured[font] { return known }
+            let height = NSHostingView(
+                rootView: Text(verbatim: "Ag").font(font)
+            )
+            .fittingSize.height
+            LineHeights.measured[font] = height
+            return height
+        }
+    }
+
+    @MainActor
+    private enum LineHeights {
+        static var measured: [Font: CGFloat] = [:]
     }
 
     extension NSFont {
