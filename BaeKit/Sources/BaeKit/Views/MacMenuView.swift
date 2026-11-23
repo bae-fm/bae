@@ -132,11 +132,7 @@
                     .foregroundStyle(accessoryColor(accessory, highlighted))
                     .accessibilityHidden(true)
             case .spinner:
-                // The system's small spinner is 16 points; the board's is
-                // the 11 points of the glyph it stands in for.
-                MacSpinner()
-                    .scaleEffect(11 / 16)
-                    .frame(width: 11, height: 11)
+                MacSpinner.glyph
             }
         }
 

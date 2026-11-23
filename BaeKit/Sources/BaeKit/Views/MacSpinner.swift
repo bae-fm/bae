@@ -6,25 +6,54 @@ import SwiftUI
 /// a flow, draws a bar instead.
 public struct MacSpinner: View {
     private let words: Text?
+    private let isGlyphSize: Bool
 
     /// The spinner alone, where what it waits on is said elsewhere.
     public init() {
         words = nil
+        isGlyphSize = false
+    }
+
+    /// The spinner alone, 11 points across as a glyph at the end of a menu
+    /// line is.
+    public static var glyph: MacSpinner {
+        MacSpinner(isGlyphSize: true)
+    }
+
+    private init(isGlyphSize: Bool) {
+        words = nil
+        self.isGlyphSize = isGlyphSize
     }
 
     /// The spinner, with `words` beside it.
     public init(_ words: Text) {
         self.words = words
+        isGlyphSize = false
     }
 
     /// The spinner, with the words `key` names beside it.
     public init(_ key: LocalizedStringKey) {
         words = Text(key)
+        isGlyphSize = false
+    }
+
+    /// The system's small spinner is 16 points across; a glyph-sized one
+    /// draws it scaled into 11.
+    @ViewBuilder
+    private var sized: some View {
+        if isGlyphSize {
+            SystemSpinner()
+                .scaleEffect(11 / 16)
+                .frame(width: 11, height: 11)
+        }
+        else {
+            SystemSpinner()
+        }
     }
 
     /// The spinner, named by the words beside it when it has them.
     private var spinner: some View {
-        SystemSpinner()
+        sized
             .accessibilityLabel(
                 words ?? Text("Loading", tableName: "Controls", bundle: .module)
             )
