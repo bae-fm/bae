@@ -30,12 +30,12 @@ private fun Entry(
     who: AvatarFace? = null,
     menu: Boolean = false,
     dragging: Boolean = false,
-) = Images {
+) = Covers {
     AndroidListRow(
         title = "Harbor Lights",
         subtitle = "Mara Quill · Low Tide Hours",
         trailing = "4:32",
-        art = PreviewData.imageRef(),
+        art = PreviewData.imageRef("Low Tide Hours"),
         onClick = {},
         who = who,
         dragging = dragging,
