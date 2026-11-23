@@ -5,7 +5,7 @@
   function MacSearchField(props) {
     var kind = props.kind || 'search', label = props.label || 'Search';
     return h('span', { className: cx('bae-m-sfield', 'bae-m-sfield-' + kind, props.focused && 'bae-m-sfield-focused', props.off && 'bae-off') },
-      h(Glyph, { set: 'mac', name: 'search', size: kind === 'search' ? 'medium' : 'small', className: kind === 'inline' ? 'bae-m-tertiary' : null }),
+      h(Glyph, { set: 'mac', name: 'search', size: kind === 'search' ? 'medium' : 'small', className: kind === 'filter' ? null : 'bae-m-tertiary' }),
       h('input', { type: 'text', className: 'bae-m-bareinput', defaultValue: props.value || '', placeholder: label, 'aria-label': label, spellCheck: false, disabled: props.off ? true : null }));
   }
   // A file's transfer ring in the Storage Manager's inspector, filling clockwise from the top in the accent over a hairline: `value` from 0 to 1, for a file moving to or from storage or one bae is pinning. `label` names the ring for VoiceOver; without one, the row around it names it.

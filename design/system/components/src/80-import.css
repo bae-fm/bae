@@ -125,7 +125,7 @@
 .bae-m-ifile-play + .bae-m-ifile-size { margin-left: 0; }
 /* The search field's three sizes: the title bar's rounded field, a toolbar's filter, and a field with no box that fills the rest of its row. */
 .bae-m-sfield { display: flex; align-items: center; }
-.bae-m-sfield-search { width: 300px; height: 28px; box-sizing: border-box; gap: var(--space-related); padding: 0 var(--space-group); border-radius: 999px; background: var(--well); color: var(--text-primary); fill: var(--text-tertiary); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
+.bae-m-sfield-search { width: 300px; height: 28px; box-sizing: border-box; gap: var(--space-related); padding: 0 var(--space-group); border-radius: 999px; background: var(--well); color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
 .bae-m-sfield-focused { box-shadow: inset 0 0 0 1px var(--accent); }
 .bae-m-sfield-filter { display: inline-flex; gap: var(--space-compact); width: 160px; height: 24px; box-sizing: border-box; padding: 0 var(--space-related); border-radius: var(--radius-artwork); background: var(--field); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); color: var(--text-secondary); }
 .bae-m-sfield-inline { flex: 1; min-width: 0; gap: var(--space-related); }
