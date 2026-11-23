@@ -144,7 +144,7 @@ internal fun renameProfileParts(
     DialogParts(
         title = stringResource(R.string.onboarding_person_name),
         content = {
-            Column {
+            Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.edge)) {
                 AndroidTextField(
                     value = draft,
                     onValueChange = onDraftChange,
