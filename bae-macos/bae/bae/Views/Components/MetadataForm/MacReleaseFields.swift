@@ -100,8 +100,7 @@ struct MacReleaseFields: View {
                 HStack(spacing: ThemeSpace.compact) {
                     valueText(
                         row.label.name,
-                        name: String(localized: "Label"),
-                        monospaced: false
+                        name: String(localized: "Label")
                     ) { name in
                         var next = rows.map(\.label)
                         next[index].name = name
@@ -109,8 +108,7 @@ struct MacReleaseFields: View {
                     }
                     valueText(
                         row.label.catalogNumber,
-                        name: String(localized: "Catalog number"),
-                        monospaced: true
+                        name: String(localized: "Catalog number")
                     ) { number in
                         var next = rows.map(\.label)
                         next[index].catalogNumber = number
@@ -164,8 +162,7 @@ struct MacReleaseFields: View {
                 HStack(spacing: ThemeSpace.compact) {
                     valueText(
                         row.barcode,
-                        name: String(localized: "Barcode"),
-                        monospaced: true
+                        name: String(localized: "Barcode")
                     ) { barcode in
                         var next = rows.map(\.barcode)
                         next[index] = barcode
@@ -202,14 +199,12 @@ struct MacReleaseFields: View {
     private func valueText(
         _ text: String,
         name: String,
-        monospaced: Bool,
         onCommit: @escaping @MainActor (String) async -> Void
     ) -> some View {
         MacInlineField(
             placeholder: FactMenuLabel.emptyMark,
             value: text,
             name: name,
-            monospaced: monospaced,
             fitsValue: true,
             font: ThemeText.body.nsFont,
             placeholderRole: .emptyMark,
@@ -233,14 +228,12 @@ struct MacReleaseFields: View {
     private func field(
         _ field: BridgeCandidateEditField,
         label: String,
-        text: String,
-        monospaced: Bool = false
+        text: String
     ) -> some View {
         rowLabel(label)
         valueText(
             text,
-            name: label,
-            monospaced: monospaced
+            name: label
         ) { await writer.setField(field, $0) }
     }
 }
