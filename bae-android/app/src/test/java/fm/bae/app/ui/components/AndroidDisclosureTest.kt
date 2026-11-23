@@ -31,7 +31,8 @@ class AndroidDisclosureTest {
                 }
             }
         }
-        val width = compose.onRoot().getUnclippedBoundsInRoot().width
+        val bounds = compose.onRoot().getUnclippedBoundsInRoot()
+        val width = bounds.right - bounds.left
         compose.onNodeWithText("Removed devices (2)").assertWidthIsEqualTo(width)
     }
 }
