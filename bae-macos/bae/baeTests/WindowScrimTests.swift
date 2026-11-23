@@ -37,18 +37,20 @@ struct WindowScrimTests {
     @Test("an alert dims the window it sits over until it closes")
     func anAlertDimsItsWindow() async throws {
         try await SnapshotTestSupport.withHostedWindow(
-            Color.clear,
+            AnyView(Color.clear),
             size: NSSize(width: 600, height: 400)
         ) { window, host in
             #expect(scrims(over: window).isEmpty)
 
             // A view that asks for its alert as it is first built raises it.
-            host.rootView = Color.clear.macAlert(isPresented: .constant(true)) {
-                (
-                    MacAlertWords(Text(verbatim: "Title")),
-                    [MacAlertButton(Text(verbatim: "OK"))]
-                )
-            }
+            host.rootView = AnyView(
+                Color.clear.macAlert(isPresented: .constant(true)) {
+                    (
+                        MacAlertWords(Text(verbatim: "Title")),
+                        [MacAlertButton(Text(verbatim: "OK"))]
+                    )
+                }
+            )
             #expect(
                 await holds { scrims(over: window).count == 1 },
                 "the alert dims the window"
@@ -56,7 +58,7 @@ struct WindowScrimTests {
             let scrim = try #require(scrims(over: window).first)
             #expect(scrim.frame == window.frame)
 
-            host.rootView = Color.clear
+            host.rootView = AnyView(Color.clear)
             #expect(
                 await holds { scrims(over: window).isEmpty },
                 "the scrim goes with the alert"
