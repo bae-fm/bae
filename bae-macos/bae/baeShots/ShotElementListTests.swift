@@ -301,3 +301,18 @@ struct ShotElementListTests {
         )
     }
 }
+
+extension ShotElementListTests {
+    @Test
+    func s3RegionFieldListsItsLabelAndErrorTogether() async throws {
+        let elements = try await list("mac.component.s3-form.region").elements
+        let field = try #require(
+            elements.first { $0.role == "field" && $0.label == "Region" }
+        )
+        let row = try #require(field.parent)
+        let parts = elements.filter { $0.parent == row }
+
+        #expect(parts.map(\.role) == ["text", "field", "text"])
+        #expect(parts.first?.label == "Region")
+    }
+}
