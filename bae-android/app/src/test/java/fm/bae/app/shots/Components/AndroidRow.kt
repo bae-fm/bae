@@ -1,8 +1,12 @@
 package fm.bae.app.shots
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidCard
@@ -117,10 +121,16 @@ class AndroidRowShots : BoardShot() {
     fun androidComponentRowOff() = component("android.component.row.off") { RowInCard { AndroidRow(title = "Sync", enabled = false) } }
 
     @Test
-    fun androidComponentRowPlaceMiddle() = component("android.component.row.place-middle") { RowInCard { AndroidRow(title = "Sync") } }
+    fun androidComponentRowPlaceMiddle() =
+        component("android.component.row.place-middle") {
+            AndroidRow(
+                title = "Sync",
+                modifier = Modifier.background(MaterialTheme.colorScheme.surfaceContainer, RoundedCornerShape(4.dp)),
+            )
+        }
 
     @Test
-    fun androidComponentRowNoPlace() = component("android.component.row.no-place") { RowInCard { AndroidRow(title = "Sync") } }
+    fun androidComponentRowNoPlace() = component("android.component.row.no-place") { AndroidRow(title = "Sync") }
 }
 
 /** A row in the card every row of a list is in, set in from the preview's edges as the design system's card is. */
