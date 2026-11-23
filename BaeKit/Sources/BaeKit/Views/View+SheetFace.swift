@@ -7,6 +7,6 @@ extension View {
     public func sheetFace() -> some View {
         background(Theme.surfaceElevated)
             .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.panel))
-            .shadow(color: Theme.shadow, radius: 15, y: 5)
+            .shadow(color: Theme.shadow, radius: 15, y: 10)
     }
 }

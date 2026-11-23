@@ -14,7 +14,7 @@ struct ReleaseEditorSheet: View {
     @Environment(Playback.self)
     private var playback
     @Environment(\.modalHost)
-    private var modalHost
+    private var modalHost: CGSize?
 
     init(
         releaseId: String,
@@ -50,8 +50,17 @@ struct ReleaseEditorSheet: View {
         _session = State(initialValue: session)
     }
 
+    private var host: CGSize {
+        guard let modalHost else {
+            preconditionFailure(
+                "ReleaseEditorSheet is shown outside a MacModal"
+            )
+        }
+        return modalHost
+    }
+
     var body: some View {
-        let size = Self.modalSize(in: modalHost)
+        let size = Self.modalSize(in: host)
         VStack(spacing: 0) {
             header
             Divider()

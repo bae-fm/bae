@@ -3,9 +3,9 @@ import SwiftUI
 
 extension EnvironmentValues {
     /// The size of the window a modal opens over, for the sheets that size
-    /// themselves to it.
+    /// themselves to it; nil outside a `MacModal`.
     @Entry
-    var modalHost = CGSize.zero
+    var modalHost: CGSize?
 }
 
 /// A scrim over the window with the content in the sheet face.

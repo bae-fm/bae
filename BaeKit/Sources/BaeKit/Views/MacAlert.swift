@@ -322,7 +322,7 @@
         var body: some View {
             if let built = build() {
                 MacAlert(built.0, buttons: built.1, finish: finish)
-                    .elevatedFace()
+                    .sheetFace()
                     .padding(.top, Self.hangs)
                     .padding([.horizontal, .bottom], Self.shadowRoom)
                     .hostedAppearance(look.appearance)
@@ -686,13 +686,6 @@
             else {
                 anchor.arrived = show
             }
-        }
-    }
-
-    extension MacAlert {
-        /// The alert's face: elevated, 20 points rounded, with a shadow.
-        public func elevatedFace() -> some View {
-            sheetFace()
         }
     }
 

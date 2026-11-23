@@ -75,7 +75,7 @@ extension ShotScene {
         ZStack(alignment: .top) {
             Rectangle().fill(Theme.background)
             MacAlert(words, buttons: buttons)
-                .elevatedFace()
+                .sheetFace()
                 .padding(.top, OverWindow.hangs)
         }
         .frame(height: height)

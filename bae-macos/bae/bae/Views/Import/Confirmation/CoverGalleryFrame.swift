@@ -7,15 +7,22 @@ struct CoverGalleryFrame<Content: View>: View {
     private let margins = 2 * ThemeSpace.section
 
     @Environment(\.modalHost)
-    private var modalHost
+    private var modalHost: CGSize?
     @ViewBuilder
     let content: () -> Content
+
+    private var host: CGSize {
+        guard let modalHost else {
+            preconditionFailure("CoverGalleryFrame is shown outside a MacModal")
+        }
+        return modalHost
+    }
 
     var body: some View {
         content()
             .frame(
-                width: min(1_100, max(0, modalHost.width - margins)),
-                height: min(820, max(0, modalHost.height - margins))
+                width: min(1_100, max(0, host.width - margins)),
+                height: min(820, max(0, host.height - margins))
             )
     }
 }
