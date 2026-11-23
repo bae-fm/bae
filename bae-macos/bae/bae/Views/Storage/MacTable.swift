@@ -449,7 +449,11 @@ extension MacTable.Coordinator {
             )
             return nil
         }
-        let cell = dequeueCell(tableView, column: column)
+        let cell = HostingTableCell.dequeue(
+            from: tableView,
+            identifier: tableColumn.identifier,
+            owner: self
+        )
         cell.host(content(forRow: row, column: column))
         return cell
     }
@@ -459,22 +463,6 @@ extension MacTable.Coordinator {
             accent: appearance.accent,
             alternate: row % 2 == 1
         )
-    }
-
-    private func dequeueCell(
-        _ tableView: NSTableView,
-        column: StorageTableColumn
-    ) -> HostingTableCell {
-        let identifier = NSUserInterfaceItemIdentifier(column.rawValue)
-        if let reused = tableView.makeView(
-            withIdentifier: identifier,
-            owner: self
-        ) as? HostingTableCell {
-            return reused
-        }
-        let cell = HostingTableCell()
-        cell.identifier = identifier
-        return cell
     }
 
     /// SwiftUI content for a cell, wrapped with the environment values the
