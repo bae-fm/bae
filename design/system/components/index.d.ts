@@ -21,7 +21,7 @@ export interface MacAlertProps { title: string; warning?: string; message?: stri
 export declare function MacAlert(props: MacAlertProps): React.ReactElement;
 
 /** A segmented control; options is comma-separated, selected names the chosen one. */
-export interface MacSegmentedControlProps { options: string; selected?: string; off?: boolean }
+export interface MacSegmentedControlProps { options: string; selected?: string; off?: boolean; /** Names the group, as VoiceOver reads it. */ label?: string }
 export declare function MacSegmentedControl(props: MacSegmentedControlProps): React.ReactElement;
 
 /** A heading over what follows it, usually one MacBox. */

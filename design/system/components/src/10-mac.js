@@ -272,7 +272,8 @@
   function MacSegmentedControl(props) {
     var options = String(props.options || '').split(',').map(function (o) { return o.trim(); }).filter(Boolean);
     // `off` dims the whole control while none of its options can be chosen.
-    return h('span', { className: cx('bae-m-segmented', props.off && 'bae-off'), role: 'radiogroup', 'aria-disabled': props.off ? true : null },
+    // `label` names the group, as VoiceOver reads it.
+    return h('span', { className: cx('bae-m-segmented', props.off && 'bae-off'), role: 'radiogroup', 'aria-label': props.label || null, 'aria-disabled': props.off ? true : null },
       options.map(function (o) {
         return h('span', { key: o, role: 'radio', 'aria-checked': o === props.selected, className: cx('bae-m-segment', o === props.selected && 'bae-m-segment-on') }, o);
       }));
@@ -345,8 +346,10 @@
   var AndroidProgress = Progress('bae-a');
 
   // A labelled control in a sheet's form: the label above the control and its note under it, all on the form's one left edge (`label`, `note`; the control is the child).
+  // The control takes the field's label as its name, as VoiceOver reads it, and draws no label of its own: a text field's label is hidden, a segmented control names its group.
   function MacFormField(props) {
-    return h('div', { className: 'bae-m-formfield' }, h('span', { className: 'bae-m-formfield-label' }, props.label), props.children, props.note ? h('div', { className: 'bae-m-formfield-note' }, props.note) : null);
+    var named = kids(props.children).map(function (c) { var p = inner(c); return p && typeof p.type === 'function' ? rewrap(c, React.cloneElement(p, { label: props.label, labelHidden: true })) : c; });
+    return h('div', { className: 'bae-m-formfield' }, h('span', { className: 'bae-m-formfield-label' }, props.label), named, props.note ? h('div', { className: 'bae-m-formfield-note' }, props.note) : null);
   }
 
   function MacNote(props) {

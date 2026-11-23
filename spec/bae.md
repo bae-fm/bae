@@ -3335,7 +3335,10 @@ A playlist is made with a name and who sees it, *Only me* or *Everyone*,
 starting on *Only me*; a blank name cannot be made, by the rule that refuses a
 blank library or profile name. On macOS the Playlists pane shows each
 playlist's picture, name, track count and who sees it. Its *New playlist…*
-control opens the sheet for a new one. Choosing or creating a playlist opens
+control opens the sheet for a new one. The sheet asks for *Name* and *Who sees
+it*, and VoiceOver reads each control by its label. VoiceOver reads each
+playlist in the pane as one button, by its name, track count and who sees it.
+Choosing or creating a playlist opens
 its page inside the pane and leaves the library view open. While a playlist
 is open, *Back to Playlists* replaces *New playlist…* and returns to the list.
 The page shows the playlist's picture and name, its owner, its count and
