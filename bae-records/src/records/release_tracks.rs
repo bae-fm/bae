@@ -225,20 +225,6 @@ pub(super) fn sheet_side_choices_json_sql() -> &'static str {
       FROM choices)"
 }
 
-/// The rows of [`sheet_side_choices_sql`] over `mediums`, bound to `params`.
-#[cfg(test)]
-pub(super) fn sheet_side_choices_on(
-    sql: &impl coven::SqlRead,
-    mediums: &str,
-    params: impl rusqlite::Params,
-) -> Result<Vec<DbSheetSideChoice>, DbError> {
-    Ok(sql.query(&format!("SELECT * FROM {}", sheet_side_choices_sql(mediums)), params, |row| {
-        let kind: String = row.get(2)?;
-        DbSheetSideChoice::of_columns(row.get(0)?, row.get(1)?, &kind, row.get(3)?)
-            .map_err(|reason| bae_store::read::column_conversion_error(row, 2, reason))
-    })?)
-}
-
 /// The place a `place` row's columns name: the track's side or disc and its
 /// number there.
 pub fn track_position_of(kind: &str, ordinal: u32, number: u32) -> Result<TrackPosition, String> {

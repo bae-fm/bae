@@ -216,13 +216,17 @@ async fn a_sheet_can_go_on_each_side_of_a_record_and_on_each_disc() {
     .await;
     let choices = db
         .read(|sql| {
-            super::super::release_tracks::sheet_side_choices_on(
-                &sql,
-                &base_mediums_source(),
+            Ok(sql.query(
+                &format!("SELECT * FROM {}", super::sheet_side_choices_sql(&base_mediums_source())),
                 rusqlite::named_params! {
                     ":release": RELEASE_A, ":applied": false, ":mediums": "[]",
                 },
-            )
+                |row| {
+                    let kind: String = row.get(2)?;
+                    Ok(DbSheetSideChoice::of_columns(row.get(0)?, row.get(1)?, &kind, row.get(3)?)
+                        .unwrap())
+                },
+            )?)
         })
         .await
         .unwrap();
