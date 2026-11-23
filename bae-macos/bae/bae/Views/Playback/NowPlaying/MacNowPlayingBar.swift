@@ -87,8 +87,12 @@ struct MacNowPlayingBar: View {
     @ViewBuilder
     private var trackInfo: some View {
         if let title = trackTitle {
+            // The button takes the whole left column, as the board's does,
+            // so the whole column opens the album.
             Button(action: onNavigateToAlbum) {
                 trackLabel(title: title)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.accentPlain)
             .accessibilityElement(children: .ignore)
