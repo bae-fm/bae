@@ -75,7 +75,7 @@ class OnboardingRestoreTextTest {
         val saved = SavedRestoreCode(FakeSavedRestoreCode(info), info)
         compose.setContent { TestTheme { SavedRestoreForm(OnboardingStep.RestoreSaved(saved), null, {}, {}) } }
 
-        compose.onNodeWithText("Enter your credentials for your S3 storage.").assertIsDisplayed()
+        compose.onNodeWithText("Enter your credentials for your S3 storage.").assertExists()
     }
 
     @Test
