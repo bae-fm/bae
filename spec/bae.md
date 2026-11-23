@@ -3372,6 +3372,8 @@ sees it, then Play. Its menu, *Playlist options* to screen readers, offers
 owner. The page shows its tracks in order with their credit lines and albums.
 Tapping a track plays from it. If someone deletes the playlist while it is
 open, the page says it is no longer in the library.
+bae opens the New playlist and Edit playlist dialogs with the keyboard closed.
+The person taps *Name* to open the keyboard.
 
 On macOS a track's menu offers *Add to playlist* when the person can make
 playlists: a submenu of their own playlists by name, which adds the track to the

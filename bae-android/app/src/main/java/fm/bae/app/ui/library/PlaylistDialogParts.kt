@@ -3,7 +3,6 @@ package fm.bae.app.ui.library
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.DisplayError
 import fm.bae.app.R
@@ -15,7 +14,6 @@ import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.DialogParts
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.WIDE_DIALOG_WIDTH
-import fm.bae.app.ui.components.focusOnShow
 import uniffi.bae_bridge.BridgeSharing
 
 /** The choices of who sees a playlist, in the order the dialog shows them; a new playlist starts on the first. */
@@ -42,12 +40,11 @@ internal fun playlistDialogParts(
         width = WIDE_DIALOG_WIDTH,
         title = title,
         content = {
-            Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.group)) {
+            Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.page)) {
                 AndroidTextField(
                     value = name,
                     onValueChange = onNameChange,
                     label = stringResource(R.string.playlist_name),
-                    modifier = Modifier.focusOnShow(),
                 )
                 AndroidSegmentedControl(
                     options = SHARING_CHOICES.map { stringResource(it.labelRes()) },
