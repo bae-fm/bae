@@ -9,7 +9,7 @@
 .bae-m-iconbtn-on { color: var(--accent); }
 
 /* Storage Manager */
-.bae-m-storewin { --text-secondary: var(--mac-text-secondary); position: relative; display: flex; flex-direction: column; overflow: hidden; border-radius: 16px; background: var(--background); color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); box-shadow: inset 0 0 0 1px var(--hairline); }
+.bae-m-storewin { position: relative; display: flex; flex-direction: column; overflow: hidden; border-radius: 16px; background: var(--background); color: var(--text-primary); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); box-shadow: inset 0 0 0 1px var(--hairline); }
 .bae-m-storewin-bar { flex: none; height: 52px; display: flex; align-items: center; gap: calc(var(--space-related) + var(--space-line)); padding: 0 14px 0 86px; border-bottom: 1px solid var(--hairline); }
 .bae-m-storewin-title { font: var(--type-strong-weight) var(--type-strong-size) var(--font-sans); }
 .bae-m-storewin-body { flex: 1; min-height: 0; display: flex; }

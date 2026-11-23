@@ -124,10 +124,9 @@
     },
     {
       "name": "Text",
-      "about": "Words on a surface, by how much they matter. Mac windows draw secondary text in mac-text-secondary, macOS's own color.",
+      "about": "Words on a surface, by how much they matter.",
       "clusters": [
         { "colors": ["text-primary", "text-secondary", "text-tertiary"], "text": true },
-        { "colors": ["mac-text-secondary"], "text": true },
         { "colors": ["logo-word"], "text": true }
       ],
       "scene": "text"

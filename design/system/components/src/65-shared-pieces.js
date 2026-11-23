@@ -2,7 +2,7 @@
 
   // The welcome window's first choices when this Mac has no library: create one, or add one from a code another device shows.
   function MacWelcomeActions() {
-    return h('div', { className: 'bae-mac bae-m-welcome-actions' },
+    return h('div', { className: 'bae-m-welcome-actions' },
       h('div', { className: 'bae-m-welcome-actions-stack' },
         h(MacButton, { kind: 'primary', size: 'large' }, 'Create new library…'),
         h('div', { className: 'bae-m-welcome-actions-pair' },
@@ -21,7 +21,7 @@
   function MacWelcomeLibraries(props) {
     var s = props.state || '';
     var removing = s === 'removing';
-    return h('div', { className: 'bae-mac bae-m-welcome-libraries' },
+    return h('div', { className: 'bae-m-welcome-libraries' },
       h(MacSection, { title: 'Your libraries' },
         h(MacBox, null,
           removing ? null : h(MacRow, { label: 'Home music', strong: true, button: true }, h(MacMoreMenu)),
@@ -143,7 +143,7 @@
     if (props.bare) return h(React.Fragment, null, divided(rows));
     if (provider === 's3') rows.push(h(MacRow, { key: 'k', label: 'Access key ID', value: props.keyId || 'AKIA4EXAMPLEOLD' }, h(MacButton, null, 'Replace key…')));
     if ((provider === 'dropbox' || provider === 'onedrive') && props.folder) rows.push(h(MacRow, { key: 'o', label: '' }, h(MacButton, null, 'Open in browser')));
-    return h('div', { className: 'bae-mac bae-m-cloudhome' },
+    return h('div', { className: 'bae-m-cloudhome' },
       h(MacSection, { title: 'Cloud home' },
         h(MacBox, null, rows),
         provider === 's3' && props.oldKey ? h(MacNotice, { tone: 'info', dismiss: true, title: 'Saved the new S3 key.', subtitle: deleteOldKey(props.oldKey) }) : null));
@@ -165,7 +165,7 @@
   // The two fields of an S3 access key, as Replace key and joining an S3 library ask for them. `focus`: 'id' or 'secret' (the default), the field that has focus; `refused`: S3 storage turned the key down, said above the fields.
   function MacS3KeyFields(props) {
     var focus = props.focus || 'secret';
-    return h('div', { className: 'bae-mac bae-m-s3key' },
+    return h('div', { className: 'bae-m-s3key' },
       flag(props.refused) ? h(MacNotice, { quiet: true, tone: 'danger', title: 'Could not use this key', subtitle: 'S3 storage does not accept this access key.' }) : null,
       h(MacTextField, { label: 'Access key ID', labelWidth: 120, value: props.keyId || '', state: focus === 'id' ? 'focused' : 'normal' }),
       h(MacTextField, { label: 'Secret access key', labelWidth: 120, value: props.secret || '', secret: true, state: focus === 'secret' ? 'focused' : 'normal' }));
@@ -228,7 +228,7 @@
     var s3 = storage === 's3';
     var mine = s3 && (props.keyOwner || 'theirs') === 'mine';
     var lw = s3 ? 120 : 150;
-    return h('div', { className: 'bae-mac bae-m-invitefields' },
+    return h('div', { className: 'bae-m-invitefields' },
       INVITE_EMAIL[storage] ? h(MacBox, null, h(MacFieldRow, { label: INVITE_EMAIL[storage], labelWidth: lw }, h(MacTextField, { label: INVITE_EMAIL[storage], labelHidden: true, value: 'dan@example.com', state: 'focused', note: inviteWhy(storage) }))) : null,
       s3 && !mine ? h(MacBox, null,
         h(MacFieldRow, { label: 'Access key ID', labelWidth: lw }, h(MacTextField, { label: 'Access key ID', labelHidden: true, value: 'AKIAEXAMPLEKEY', state: 'focused' })),
@@ -264,13 +264,12 @@
         h('span', { className: 'bae-m-syncstatus-label' }, h('span', { className: 'bae-m-syncstatus-title' }, h('span', null, 'Status'))),
         props.status ? h('span', { className: cx('bae-m-syncstatus-value', tone && 'bae-tone-' + tone) }, tone ? h('span', { className: 'bae-dot', 'aria-hidden': true }) : null, props.status) : null)
       : h(MacRow, { label: 'Status', value: props.status, tone: tone });
-    return h('div', { className: 'bae-mac' },
-      h(MacBox, null,
-        h('div', null,
-          head,
-          props.cause ? h('div', { className: 'bae-m-syncstatus-cause' }, props.cause, props.countdown ? h('div', { className: 'bae-m-syncstatus-countdown bae-num' }, props.countdown) : null) : null,
-          props.fix ? h('div', { className: 'bae-m-syncstatus-fix' }, h(MacButton, { kind: 'primary' }, props.fix)) : null),
-        props.lastSynced ? h(MacRow, { label: 'Last synced', value: props.lastSynced }) : null));
+    return h(MacBox, null,
+      h('div', null,
+        head,
+        props.cause ? h('div', { className: 'bae-m-syncstatus-cause' }, props.cause, props.countdown ? h('div', { className: 'bae-m-syncstatus-countdown bae-num' }, props.countdown) : null) : null,
+        props.fix ? h('div', { className: 'bae-m-syncstatus-fix' }, h(MacButton, { kind: 'primary' }, props.fix)) : null),
+      props.lastSynced ? h(MacRow, { label: 'Last synced', value: props.lastSynced }) : null);
   }
 
   // As MacSyncStatus', on Android: when this device last synced is a line in the same tile, under the rest.
