@@ -64,7 +64,6 @@ class PlaylistBoardShots : BoardShot() {
                 onBack = {},
                 backLabel = stringResource(R.string.back_to_library),
                 nowPlayingBar = { Bar(playingLowTideHours) },
-                flush = true,
                 actions = { PlaylistOptionsMenu(onShuffle = {}, owner = PlaylistOwnerActions(onEdit = {}, onDelete = {})) },
             ) {
                 Box(modifier = Modifier.weight(1f).fillMaxWidth()) { PlaylistContent(detail = detail, actions = actions) }

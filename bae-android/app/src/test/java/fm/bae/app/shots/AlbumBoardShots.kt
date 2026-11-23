@@ -355,7 +355,6 @@ private fun AlbumPageContent(
             onBack = {},
             backLabel = stringResource(R.string.back_to_library),
             nowPlayingBar = { Bar(bar) },
-            flush = true,
             actions = actions,
         ) {
             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {

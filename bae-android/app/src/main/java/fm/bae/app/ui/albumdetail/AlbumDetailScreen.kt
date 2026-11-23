@@ -132,7 +132,6 @@ fun AlbumDetailScreen(
         onBack = onBack,
         backLabel = backLabel,
         nowPlayingBar = { AndroidNowPlayingBarContainer(session = session) },
-        flush = true,
         actions = {
             if (loaded != null) {
                 AlbumBarActions(

@@ -65,7 +65,6 @@ internal fun ComposerDetailScreen(
         onBack = onBack,
         backLabel = backLabel,
         nowPlayingBar = { AndroidNowPlayingBarContainer(session = session) },
-        flush = true,
     ) {
         DetailAnswer(
             query = query,
@@ -251,7 +250,6 @@ internal fun WorkDetailScreen(
         onBack = onBack,
         backLabel = backLabel,
         nowPlayingBar = { AndroidNowPlayingBarContainer(session = session) },
-        flush = true,
     ) {
         DetailAnswer(
             query = query,

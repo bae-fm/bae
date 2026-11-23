@@ -118,7 +118,7 @@ private fun LibraryScreenPreview(
 
 /** The preview's label inside its dashed border. */
 @Composable
-private fun PreviewSlot(label: String) {
+internal fun PreviewSlot(label: String) {
     val outline = BaeTheme.colors.hairlineStrong
     Text(
         text = label,
