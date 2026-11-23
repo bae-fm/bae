@@ -24,13 +24,15 @@ internal fun <Key, Value> Shown<Key, Value>?.at(key: Key): Value? = this?.takeIf
  * One live read that a screen asks for by a key, such as a member id or a place, while the screen shows it. Asking
  * for another key replaces the read, and [shown] keeps the last value until the new read returns its first, so the
  * screen compares the key when it must not draw another key's value. [subscribe] starts the read of a key; a read
- * that can't start or that fails goes to [onError], and [what] names the read in the log.
+ * that can't start or that fails goes to [onError], and [what] names the read in the log. [onValue] runs when the
+ * current read delivers a value.
  */
 internal class KeyedRead<Key, Value>(
     private val scope: CoroutineScope,
     private val what: String,
     private val subscribe: (Key) -> PulledSubscription<Value>,
     private val onError: (BridgeException) -> Unit,
+    private val onValue: () -> Unit = {},
 ) {
     /**
      * The value the read returned last, with the key it asked for; null before the first read returns, and after
@@ -64,7 +66,12 @@ internal class KeyedRead<Key, Value>(
             ScreenSubscription(
                 read,
                 scope,
-                onValue = { value -> if (generation == this.generation) shown = Shown(key, value) },
+                onValue = { value ->
+                    if (generation == this.generation) {
+                        shown = Shown(key, value)
+                        onValue()
+                    }
+                },
                 onError = { error ->
                     logger.error("reading $what failed", error)
                     if (generation == this.generation) onError(error)

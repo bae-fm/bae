@@ -4,6 +4,7 @@ import android.os.Looper
 import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.DisplayError
 import fm.bae.app.ErrorDisplays
+import fm.bae.app.data.LiveValue
 import fm.bae.app.playback.FakeAppHandle
 import fm.bae.app.playback.FakeLibraryNameSubscription
 import fm.bae.screensubscription.pulled
@@ -55,7 +56,7 @@ class SettingsReadTest {
             .pulls
             .fail(offline())
         shadowOf(Looper.getMainLooper()).idle()
-        assertEquals(SettingsReadState.Failed(DisplayError("couldn't reach the cloud")), read.state)
+        assertEquals(LiveValue.Failed(DisplayError("couldn't reach the cloud")), read.state)
 
         read.watch()
         handle.names
@@ -63,7 +64,7 @@ class SettingsReadTest {
             .pulls
             .deliver("Household")
         shadowOf(Looper.getMainLooper()).idle()
-        assertEquals(SettingsReadState.Loaded("Household"), read.state)
+        assertEquals(LiveValue.Current("Household"), read.state)
         assertEquals(2, handle.names.size)
     }
 
@@ -78,7 +79,7 @@ class SettingsReadTest {
         replaced.fail(offline())
         shadowOf(Looper.getMainLooper()).idle()
 
-        assertEquals(SettingsReadState.Loading, read.state)
+        assertEquals(null, read.state)
     }
 
     @Test
@@ -98,7 +99,7 @@ class SettingsReadTest {
             .fail(BridgeException.Cancelled())
         shadowOf(Looper.getMainLooper()).idle()
 
-        assertEquals(SettingsReadState.Loaded("Household"), read.state)
+        assertEquals(LiveValue.Current("Household"), read.state)
     }
 
     private fun libraryNameRead(handle: SettingsHandle) =

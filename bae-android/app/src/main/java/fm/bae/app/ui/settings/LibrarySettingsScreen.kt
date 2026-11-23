@@ -24,6 +24,7 @@ import fm.bae.app.LocalBugReports
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.LibraryWithoutStorage
+import fm.bae.app.data.LiveValue
 import fm.bae.app.data.SyncLine
 import fm.bae.app.factSeparator
 import fm.bae.app.ui.appearance.ThemeSpace
@@ -166,10 +167,10 @@ private fun LibraryReadFailures(
     ratingSystems: SettingsRead<BridgeRatingSystems>,
     members: MembersModel,
 ) {
-    (libraryName.state as? SettingsReadState.Failed)?.let {
+    (libraryName.state as? LiveValue.Failed)?.let {
         ReadFailure(error = it.error, onRetry = libraryName::watch)
     }
-    (ratingSystems.state as? SettingsReadState.Failed)?.let {
+    (ratingSystems.state as? LiveValue.Failed)?.let {
         ReadFailure(error = it.error, onRetry = ratingSystems::watch)
     }
     (members.people as? PeopleRead.Failed)?.let { ReadFailure(error = it.error, onRetry = members::retry) }
