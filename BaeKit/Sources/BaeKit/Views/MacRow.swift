@@ -182,7 +182,11 @@ public struct MacRow<Lead: View, Label: View, Content: View, Info: View>: View {
         chevron: Bool,
         labelAction: (() -> Void)? = nil
     ) -> some View {
-        let content = row(chevron: chevron, labelAction: labelAction)
+        placed(row(chevron: chevron, labelAction: labelAction))
+    }
+
+    @ViewBuilder
+    private func placed(_ content: some View) -> some View {
         if let placement = currentPlacement {
             content.placedInRow(placement)
                 .contentShape(Rectangle())
@@ -203,10 +207,15 @@ public struct MacRow<Lead: View, Label: View, Content: View, Info: View>: View {
     ) -> some View {
         if let selection = options.selection {
             // The fill goes inside the placement's space, so it reaches the
-            // row's edges and the box adds no space of its own.
-            rowWithPlacement(chevron: chevron, labelAction: labelAction)
-                .macSelection(selection, in: Rectangle())
-                .placesItselfInRow()
+            // row's edges and the box adds no space of its own. The
+            // container is inside the placement too, so the name's element
+            // is the name's own frame and not the padded row.
+            placed(
+                row(chevron: chevron, labelAction: labelAction)
+                    .accessibilityElement(children: .contain)
+            )
+            .macSelection(selection, in: Rectangle())
+            .placesItselfInRow()
         }
         else {
             // VoiceOver reads the name and note before the controls at the
