@@ -210,7 +210,12 @@ private fun CenteredNotice(
             StatusGlyph(tone, size = ThemeIcon.medium, muted = true, set = StatusGlyphSet.RING)
             Text(
                 text = title,
-                style = ThemeText.androidBodyLarge.style,
+                style =
+                    if (advice == null) {
+                        ThemeText.androidBodyLarge.style
+                    } else {
+                        ThemeText.androidBodyLarge.style.copy(fontWeight = ThemeText.strong.style.fontWeight)
+                    },
                 color = with(MaterialTheme.colorScheme) { if (advice != null) onSurface else onSurfaceVariant },
                 textAlign = TextAlign.Center,
             )
