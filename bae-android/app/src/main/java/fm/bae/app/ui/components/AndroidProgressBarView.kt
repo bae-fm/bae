@@ -61,6 +61,7 @@ internal class AndroidProgressBarView(
         }
     private var progress: Progress? = null
         set(value) {
+            (field as? Progress.Moving)?.stop()
             field = value
             importantForAccessibility =
                 if (value == null) IMPORTANT_FOR_ACCESSIBILITY_NO else IMPORTANT_FOR_ACCESSIBILITY_YES
@@ -72,24 +73,41 @@ internal class AndroidProgressBarView(
             val fraction: Float,
         ) : Progress
 
-        class Moving : Progress {
+        class Moving(
+            private val onFrame: () -> Unit,
+        ) : Progress {
             var phase = MOVING_REST_PHASE
+                private set
             var stopObservingScale: (() -> Unit)? = null
-        }
-    }
 
-    private val crossing =
-        ValueAnimator.ofFloat(MOVING_REST_PHASE, MOVING_REST_PHASE + 1f).apply {
-            duration = MOVING_MILLIS
-            repeatCount = ValueAnimator.INFINITE
-            interpolator = LinearInterpolator()
-            addUpdateListener {
-                (progress as? Progress.Moving)?.let { moving ->
-                    moving.phase = (it.animatedValue as Float) % 1f
-                    invalidate()
+            private val crossing =
+                ValueAnimator.ofFloat(MOVING_REST_PHASE, MOVING_REST_PHASE + 1f).apply {
+                    duration = MOVING_MILLIS
+                    repeatCount = ValueAnimator.INFINITE
+                    interpolator = LinearInterpolator()
+                    addUpdateListener {
+                        phase = (it.animatedValue as Float) % 1f
+                        onFrame()
+                    }
+                }
+
+            fun updateAnimation() {
+                if (ValueAnimator.areAnimatorsEnabled()) {
+                    if (!crossing.isStarted) crossing.start()
+                } else {
+                    crossing.cancel()
+                    phase = MOVING_REST_PHASE
+                    onFrame()
                 }
             }
+
+            fun stop() {
+                stopObservingScale?.invoke()
+                stopObservingScale = null
+                crossing.cancel()
+            }
         }
+    }
 
     init {
         importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
@@ -127,20 +145,18 @@ internal class AndroidProgressBarView(
     /** Shows [share] of the track filled. */
     fun showFraction(share: Float) {
         if ((progress as? Progress.Counted)?.fraction == share) return
-        stopCrossing()
         progress = Progress.Counted(share)
     }
 
     /** Hides the bar while the byte measurement it needs is absent. */
     fun clearProgress() {
-        stopCrossing()
         progress = null
     }
 
     /** Shows a piece crossing the track, while a step counts nothing. */
     fun showMoving() {
         if (progress is Progress.Moving) return
-        val moving = Progress.Moving()
+        val moving = Progress.Moving(::invalidate)
         progress = moving
         if (isAttachedToWindow) observeCrossing(moving)
     }
@@ -151,31 +167,16 @@ internal class AndroidProgressBarView(
     }
 
     override fun onDetachedFromWindow() {
-        stopCrossing()
+        (progress as? Progress.Moving)?.stop()
         super.onDetachedFromWindow()
     }
 
     private fun observeCrossing(moving: Progress.Moving) {
-        moving.stopObservingScale = observeAnimatorScale { updateCrossing(moving) }
-        updateCrossing(moving)
-    }
-
-    private fun stopCrossing() {
-        val moving = progress as? Progress.Moving ?: return
-        moving.stopObservingScale?.invoke()
-        moving.stopObservingScale = null
-        crossing.cancel()
-    }
-
-    private fun updateCrossing(moving: Progress.Moving) {
-        if (progress !== moving || !isAttachedToWindow) return
-        if (ValueAnimator.areAnimatorsEnabled()) {
-            if (!crossing.isStarted) crossing.start()
-        } else {
-            crossing.cancel()
-            moving.phase = MOVING_REST_PHASE
-            invalidate()
-        }
+        moving.stopObservingScale =
+            observeAnimatorScale {
+                if (progress === moving && isAttachedToWindow) moving.updateAnimation()
+            }
+        moving.updateAnimation()
     }
 
     private fun observeAnimatorScale(onScaleChange: () -> Unit): () -> Unit {
