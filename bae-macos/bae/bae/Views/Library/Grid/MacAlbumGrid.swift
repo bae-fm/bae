@@ -636,7 +636,6 @@ extension MacAlbumGrid {
         in sectionId: String?
     ) {
         viewport.release()
-        openedCard = OpenedCard(albumId: albumId, sectionId: sectionId)
         let card = AlbumGridCell.Identity.album(albumId, sectionId: sectionId)
         if viewport.revealScrolls(to: card) {
             revealArrived()

@@ -34,6 +34,7 @@ struct HostedAlbumGrid {
         openAlbumId: String? = nil,
         sections: [BridgeLibraryBrowseSection] = [],
         rows fixtureRows: [BridgeAlbumAppearance]? = nil,
+        onPlaceRead: @escaping @Sendable (String?) -> Void = { _ in },
         grid: (AlbumList) -> some View
     ) async throws -> HostedAlbumGrid {
         let uiStore = UiStore()
@@ -60,8 +61,9 @@ struct HostedAlbumGrid {
         uiStore.selectAlbum(openAlbumId)
         let place = Self.place(in: rows.map(\.album), sections: sections)
         let library = Library(
-            albumPlaceReads: { _, albumId, groupByArtist, _ in
-                .fixed(place(albumId, groupByArtist))
+            albumPlaceReads: { _, albumId, groupByArtist, sectionId in
+                onPlaceRead(sectionId)
+                return .fixed(place(albumId, groupByArtist))
             }
         )
         let view = AnyView(

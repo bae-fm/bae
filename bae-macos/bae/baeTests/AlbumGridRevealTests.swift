@@ -3,6 +3,7 @@ import BaeKit
 import Combine
 import Observation
 import SwiftUI
+import Synchronization
 import Testing
 
 @testable import bae
@@ -161,6 +162,10 @@ struct AlbumGridRevealTests {
     @Test("a track in another artist's grid is revealed beneath its album row")
     func groupedTrackScrolledIntoView() async throws {
         let stage = Stage()
+        let requestedSections = Mutex<[String?]>([])
+        let recordSection: @Sendable (String?) -> Void = { sectionId in
+            requestedSections.withLock { $0.append(sectionId) }
+        }
         let sections = [
             BridgeLibraryBrowseSection(
                 id: "artist-a",
@@ -186,7 +191,8 @@ struct AlbumGridRevealTests {
         ]
         let hosted = try await HostedAlbumGrid.host(
             preloaded: false,
-            sections: sections
+            sections: sections,
+            onPlaceRead: recordSection
         ) { list in
             Harness(stage: stage, list: list, groupByArtist: true)
         }
@@ -195,6 +201,7 @@ struct AlbumGridRevealTests {
         try await revealed("grid-404-t28", in: hosted, stage)
         #expect(stage.flashCount == 1)
         #expect(try inView(stage.rowFrames["grid-404-t28"], of: hosted))
+        #expect(requestedSections.withLock { $0 } == [nil])
     }
 
     @Test("a track far down the grid is scrolled into view, then flashed")
