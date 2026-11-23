@@ -19,10 +19,8 @@ struct MacLibraryHeading<Trailing: View>: View {
                 trailing
             }
             .alignmentGuide(.firstTextBaseline) { dimensions in
-                // The Albums board aligns the heading's baseline with the
-                // bottom of the 14-point checkbox. Keep the row anchored
-                // there as its controls change.
-                dimensions[VerticalAlignment.center] + 7
+                dimensions[explicit: AccentCheckboxStyle.boxBottomAlignment]
+                    ?? dimensions[.firstTextBaseline]
             }
         }
         // Lines up with the album art: container padding plus the card's inset.

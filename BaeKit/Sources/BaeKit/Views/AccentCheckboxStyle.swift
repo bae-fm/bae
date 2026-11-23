@@ -7,6 +7,15 @@
     /// Mac's accent, which bae never shows. It stays a checkbox to the
     /// keyboard (Space toggles it when it has the focus) and to VoiceOver.
     public struct AccentCheckboxStyle: ToggleStyle {
+        /// The bottom of the checkbox's box, for rows that align to it.
+        public static let boxBottomAlignment = VerticalAlignment(BoxBottom.self)
+
+        private enum BoxBottom: AlignmentID {
+            static func defaultValue(in context: ViewDimensions) -> CGFloat {
+                context[.bottom]
+            }
+        }
+
         @Environment(\.accentChoice)
         private var accent
 
@@ -79,6 +88,9 @@
                     }
                     .frame(width: Self.side, height: Self.side)
                     .accentFocusRing(focused, cornerRadius: Self.radius)
+                    .alignmentGuide(AccentCheckboxStyle.boxBottomAlignment) {
+                        $0[.bottom]
+                    }
             }
         }
     }
