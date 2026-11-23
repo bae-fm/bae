@@ -1193,13 +1193,13 @@ shows the library release imported from the folder's files as the library
 holds it now. The row shows the album's title and credits as the library
 prints them, the cover, and whether a catalog record describes the release.
 Retitling the album, editing its credits or merging an artist they name
-changes the row at once. The row shows only the release's upload status.
+changes the row at once. The tab indicates that the import is complete.
+The only status the row reports is the release's upload status.
 The folder has no draft once imported. Its pane shows the release editor
 (§3.8) with *Cancel*, *Save* and the folder's images as the scan read them.
-While files of the release wait in this device's
-upload queue, the row says *Uploading* while any file is moving and shows
-how many bytes of the release bae has stored or sent. While its files only
-wait, the row says *Queued to upload* and shows no progress count. The row
+While any of the release's files are moving, the row says *Uploading* and
+indicates what share of the release's total bytes bae has stored or sent.
+While its files only wait, the row says *Queued to upload* without progress. The row
 updates as files start or finish uploading and as bae sends bytes. The row
 names the one release imported from those
 files, which Show in library and a double-click on the row open.
