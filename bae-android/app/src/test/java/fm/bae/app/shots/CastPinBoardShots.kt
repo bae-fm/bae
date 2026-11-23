@@ -9,6 +9,7 @@ import fm.bae.app.coreString
 import fm.bae.app.data.CastStart
 import fm.bae.app.ui.components.AndroidSheetHeading
 import fm.bae.app.ui.components.DialogParts
+import fm.bae.app.ui.playback.CastBarButton
 import fm.bae.app.ui.playback.CastReceiverPlace
 import fm.bae.app.ui.playback.CastReceiverRows
 import fm.bae.app.ui.playback.PickerFailures
@@ -28,19 +29,18 @@ import uniffi.bae_bridge.BridgeRendererKind
  * holds the cast for its owner.
  */
 class CastPinBoardShots : BoardShot() {
+    private val livingRoom = receiver("Living Room", BridgeRendererKind.CAST)
     private val kitchen = receiver("Kitchen", BridgeRendererKind.AIR_PLAY)
+    private val den = receiver("Den receiver", BridgeRendererKind.DLNA)
 
     private val receivers =
         BridgeCastReceiverList(
             casting = null,
-            found =
-                listOf(
-                    receiver("Living Room", BridgeRendererKind.CAST),
-                    kitchen,
-                    receiver("Den receiver", BridgeRendererKind.DLNA),
-                ),
+            found = listOf(livingRoom, kitchen, den),
             isEmpty = false,
         )
+
+    private val playingReceivers = receivers.copy(casting = livingRoom, found = listOf(kitchen, den))
 
     private val pin =
         BridgeAirPlayCodeRequest(
@@ -49,17 +49,19 @@ class CastPinBoardShots : BoardShot() {
             lastTry = null,
         )
 
+    /** The Play on picker with Living Room playing and the other receivers available. */
+    @Test
+    fun androidPlaybackCastPicker() =
+        shot("android.playback.cast-picker") {
+            Picker(receivers = playingReceivers, connecting = null)
+        }
+
     /** Kitchen has held bae's request for five seconds while its owner decides, with Living Room playing. */
     @Test
     fun androidPlaybackCastPickerOwnerDeciding() =
         shot("android.playback.cast-picker.owner-deciding") {
             Picker(
-                receivers =
-                    BridgeCastReceiverList(
-                        casting = receiver("Living Room", BridgeRendererKind.CAST),
-                        found = listOf(kitchen, receiver("Den receiver", BridgeRendererKind.DLNA)),
-                        isEmpty = false,
-                    ),
+                receivers = playingReceivers,
                 connecting = CastStart.Connecting(kitchen, ownerDeciding = true),
             )
         }
@@ -141,7 +143,16 @@ class CastPinBoardShots : BoardShot() {
         connecting: CastStart.Connecting? = CastStart.Connecting(kitchen, ownerDeciding = false),
         failure: CastStart.Failure? = null,
     ) {
-        SheetScene(heading = AndroidSheetHeading(stringResource(R.string.cast_picker_title)), behind = { PlayingLibraryScreen() }) {
+        SheetScene(
+            heading = AndroidSheetHeading(stringResource(R.string.cast_picker_title)),
+            behind = {
+                PlayingLibraryScreen(
+                    nowPlayingBar = {
+                        Bar(playing, castButton = { CastBarButton(casting = receivers.casting != null, onClick = {}) })
+                    },
+                )
+            },
+        ) {
             PickerFailures(endedFailure = null, castFailure = failure)
             CastReceiverRows(
                 place = CastReceiverPlace.PICKER,
