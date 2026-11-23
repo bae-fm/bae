@@ -4,6 +4,8 @@ import android.app.Application
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onRoot
@@ -111,7 +113,8 @@ internal fun isSelected(
 ): Boolean = select.isNullOrEmpty() || select.split(',').any { board.startsWith(it) }
 
 /**
- * Draws [content] and stops at the same frame every run: the clock advances only by [SETTLE_MILLIS],
+ * Draws [content] and stops at the same frame every run: the clock advances only by [SETTLE_MILLIS] (and by
+ * [FOCUS_SETTLE_MILLIS] more while a field has focus),
  * so a spinner, the welcome logo's bob and glow, or a progress bar is caught at one moment, and an
  * animation that never ends can't keep the test waiting for idle. The content stages its own look
  * through the appearance store it gives [fm.bae.app.ui.BaeTheme], as [ShotTheme] does.
@@ -126,6 +129,10 @@ internal fun ComposeContentTestRule.settle(content: @Composable () -> Unit) {
         )
     }
     mainClock.advanceTimeBy(SETTLE_MILLIS)
+    // A field that took focus raises its label over 150 ms, which the first step stops partway through.
+    if (onAllNodes(hasSetTextAction() and isFocused()).fetchSemanticsNodes().isNotEmpty()) {
+        mainClock.advanceTimeBy(FOCUS_SETTLE_MILLIS)
+    }
 }
 
 /** 412 by 916 dp at 420 dpi (2.625 pixels to the dp), dark. */
@@ -133,6 +140,7 @@ private val PHONE_WIDTH = 412.dp
 
 internal const val PHONE_QUALIFIERS = "w412dp-h916dp-night-420dpi"
 private const val SETTLE_MILLIS = 100L
+private const val FOCUS_SETTLE_MILLIS = 200L
 private const val JSON_INDENT = 2
 
 /** The size of each component board in dp, from the JSON file `bae.shotsBoardSizes` names: `{"<board>": {"width", "height"}}`. */
