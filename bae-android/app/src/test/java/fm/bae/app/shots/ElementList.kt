@@ -1,6 +1,7 @@
 package fm.bae.app.shots
 
 import android.graphics.Paint
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.graphics.toArgb
@@ -45,6 +46,7 @@ internal object ElementList {
     ): JSONObject {
         val density = root.layoutInfo.density.density
         val listed = mutableListOf<Listed>()
+        val frame = Rect(Offset.Zero, root.size.toSize())
 
         // Compose gives a node with no traversal index the index 0.
         fun inTraversalOrder(nodes: List<SemanticsNode>) = nodes.sortedBy { it.config.getOrNull(SemanticsProperties.TraversalIndex) ?: 0f }
@@ -53,9 +55,17 @@ internal object ElementList {
             node: SemanticsNode,
             parent: Listed?,
         ) {
-            val here = Listed(element(node, density, unmerged), parent)
-            listed.add(here)
-            mergedTexts(node, unmerged).forEach { listed.add(Listed(element(it, density, unmerged), here)) }
+            // A node with no visible part (below the screen's edge, past a scrolling area's edge or under the
+            // drawn keyboard) is not listed, as the board reader leaves out such a node of a board. Its children
+            // are visited: they hang from the nearest listed node above.
+            val here = if (hidden(node, frame)) parent else Listed(element(node, density, unmerged), parent)
+            if (here !== parent) {
+                listed.add(here!!)
+                mergedTexts(
+                    node,
+                    unmerged,
+                ).filterNot { hidden(it, frame) }.forEach { listed.add(Listed(element(it, density, unmerged), here)) }
+            }
             // The list visits a node's children in traversal order, the order TalkBack reads them in, not the order
             // Compose draws them in.
             inTraversalOrder(node.children).forEach { visit(it, here) }
@@ -97,6 +107,18 @@ internal object ElementList {
                     .put("height", dp(root.size.height, density)),
             ).put("scale", density.toDouble())
             .put("elements", elements)
+    }
+
+    /**
+     * Whether a node that takes up room has no part of it inside the shot's [frame] and its ancestors' clips.
+     * [SemanticsNode.boundsInRoot] is the box with those clips applied, so a node cut away entirely has an empty one.
+     */
+    private fun hidden(
+        node: SemanticsNode,
+        frame: Rect,
+    ): Boolean {
+        val box = node.wholeBox()
+        return !box.isEmpty && (node.boundsInRoot.isEmpty || !box.overlaps(frame))
     }
 
     /** An element of the tree and the one that holds it. */

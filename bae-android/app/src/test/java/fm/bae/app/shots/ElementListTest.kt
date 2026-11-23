@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Switch
@@ -244,6 +246,30 @@ class ElementListTest : BoardShot() {
         val slider = named.single { it.getString("label") == "Position" }
         assertTrue(slider.isNull("parent"))
         assertEquals("35", slider.getString("value"))
+    }
+
+    @Test
+    fun aNodeWithNoVisiblePartIsLeftOut() {
+        compose.setContent {
+            Column(modifier = Modifier.fillMaxSize()) {
+                // A scrolling area 100 dp high: the rows past its edge have no visible part, and nor does a row
+                // past the screen's edge.
+                Column(modifier = Modifier.height(100.dp).verticalScroll(rememberScrollState())) {
+                    repeat(6) { Text("Row $it", modifier = Modifier.height(40.dp)) }
+                }
+                Text("Below the screen", modifier = Modifier.offset(0.dp, 2000.dp))
+            }
+        }
+        val labels =
+            ElementList
+                .of("android.test.offscreen", compose.onRoot().fetchSemanticsNode())
+                .getJSONArray("elements")
+                .objects()
+                .map { it.optString("label") }
+
+        // Row 2 starts at 80 dp, so 20 dp of it shows; row 3 starts at 120 dp.
+        assertEquals(listOf("Row 0", "Row 1", "Row 2"), labels.filter { it.startsWith("Row") })
+        assertFalse(labels.contains("Below the screen"))
     }
 
     private fun JSONArray.objects(): List<JSONObject> = (0 until length()).map { getJSONObject(it) }
