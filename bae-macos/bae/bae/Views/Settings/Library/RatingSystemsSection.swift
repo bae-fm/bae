@@ -14,18 +14,16 @@ struct RatingSystemsSection: View {
     private var store
 
     var body: some View {
-        if let systems = store.systems {
+        if store.systems != nil {
             MacSection {
                 RatingSystemRow(
                     title: "Albums",
                     items: .albums,
-                    current: systems.albums,
                     canChange: canChange
                 )
                 RatingSystemRow(
                     title: "Tracks",
                     items: .tracks,
-                    current: systems.tracks,
                     canChange: canChange
                 )
             } header: {
@@ -44,14 +42,19 @@ struct RatingSystemsSection: View {
 private struct RatingSystemRow: View {
     let title: LocalizedStringKey
     let items: BridgeRatedItems
-    /// The system the library shows now.
-    let current: BridgeRatingSystem
     let canChange: Bool
 
     @Environment(RatingSystemsStore.self)
     private var store
 
     var body: some View {
+        if let systems = store.systems {
+            row(current: items == .albums ? systems.albums : systems.tracks)
+        }
+    }
+
+    @ViewBuilder
+    private func row(current: BridgeRatingSystem) -> some View {
         if canChange {
             MacRow(title) {
                 MacPopUpButton(
