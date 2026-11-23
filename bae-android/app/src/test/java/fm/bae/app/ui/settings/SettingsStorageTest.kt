@@ -93,7 +93,7 @@ class SettingsStorageTest {
         }
 
         compose.onNodeWithText("3.9 GB on this phone").assertExists()
-        compose.onNodeWithText("Storage").performClick()
+        compose.onNodeWithText("Storage").performScrollTo().performClick()
 
         assertEquals(listOf<LibraryDestination>(LibraryDestination.Storage), pushed)
     }
