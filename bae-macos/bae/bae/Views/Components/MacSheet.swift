@@ -1,6 +1,23 @@
 import BaeKit
 import SwiftUI
 
+/// The board's sheet is a dialog named by its title. A sheet with no title
+/// draws its fields, which name the task.
+private struct SheetName: ViewModifier {
+    let title: Text?
+
+    func body(content: Content) -> some View {
+        if let title {
+            content
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel(title)
+        }
+        else {
+            content
+        }
+    }
+}
+
 /// A sheet's face: its title in bold at the top, the line under it in
 /// secondary text, then its content and its footer. The line is what the
 /// sheet asks for or reports, as an alert's message is.
@@ -122,6 +139,7 @@ struct MacSheet<Content: View, Footer: View>: View {
             header == nil ? ThemeSpace.group : ThemeSpace.edge + ThemeSpace.line
         )
         .frame(width: width, alignment: .leading)
+        .modifier(SheetName(title: header?.title))
         .background(Theme.surfaceElevated)
         // The sheet is a window of its own, so the scrim over the window it
         // hangs from is drawn from here.

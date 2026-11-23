@@ -38,7 +38,7 @@ extension ShotScene {
         },
         component("mac.component.sheet.without-scrim", width: 600, height: 240)
         {
-            MacSheet("Set up sync", width: 460) {
+            MacSheet("Set up a cloud home", width: 460) {
                 Text(verbatim: "Content")
                     .foregroundStyle(Theme.textSecondary)
                     .padding(ThemeSpace.group)
