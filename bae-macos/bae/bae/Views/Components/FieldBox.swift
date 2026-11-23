@@ -45,7 +45,7 @@ struct FieldBoxRow<Field: View>: View {
     }
 
     var body: some View {
-        HStack(alignment: .top, spacing: ThemeSpace.related) {
+        HStack(alignment: .top, spacing: ThemeSpace.group) {
             Text(label)
                 .frame(width: labelWidth, alignment: .leading)
                 .padding(.top, ThemeSpace.related)

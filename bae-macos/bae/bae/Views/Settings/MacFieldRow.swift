@@ -38,7 +38,10 @@ struct MacFieldRow<Content: View>: View {
                 .padding(.leading, -ThemeSpace.fieldInset)
                 .settingsRowInset(ThemeSpace.compact)
         case .visible(let title, let width):
-            HStack(alignment: .center) {
+            HStack(
+                alignment: .center,
+                spacing: width == nil ? nil : ThemeSpace.group
+            ) {
                 if let width {
                     Text(title)
                         .frame(width: width, alignment: .leading)

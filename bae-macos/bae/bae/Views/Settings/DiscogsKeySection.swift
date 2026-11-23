@@ -226,14 +226,13 @@ struct DiscogsSettingsContent: View {
     /// Key field and Save. The field takes the keyboard as it shows, and as
     /// the switch turns it on.
     private var keyInput: some View {
-        HStack(spacing: ThemeSpace.compact) {
+        HStack(spacing: ThemeSpace.related) {
             KeyField(
                 text: $draft,
                 label: String(localized: "API key"),
                 prompt: String(localized: "Your free Discogs key")
             )
-            MacButton("Save", action: onSave)
-                .controlSize(.large)
+            MacButton("Save", kind: .fieldAction, action: onSave)
                 .disabled(draft.isEmpty || isValidating)
         }
         .disabled(!isEnabled)

@@ -10,15 +10,13 @@ struct MacRadio: View {
     let checked: Bool
 
     var body: some View {
-        HStack(alignment: .top, spacing: ThemeSpace.group) {
-            Image(systemName: checked ? "largecircle.fill.circle" : "circle")
-                .foregroundStyle(
-                    checked ? Color.accentColor : Theme.textSecondary
-                )
+        HStack(alignment: .top, spacing: ThemeSpace.related + ThemeSpace.line) {
+            MacRadioMark(checked: checked)
+                .padding(.top, ThemeSpace.hairline)
 
-            VStack(alignment: .leading, spacing: ThemeSpace.line) {
+            VStack(alignment: .leading, spacing: ThemeSpace.inline) {
                 title
-                    .themeText(.rowTitle)
+                    .themeText(.body)
                 if let note {
                     note
                         .themeText(.detail)

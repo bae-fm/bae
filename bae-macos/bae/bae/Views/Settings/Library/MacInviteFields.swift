@@ -146,7 +146,8 @@ struct MacInviteFields: View {
                             label: String(localized: "Admin"),
                             systemImage: nil
                         ),
-                    ]
+                    ],
+                    fillsWidth: true
                 )
             }
             FieldBoxDivider()
@@ -165,7 +166,8 @@ struct MacInviteFields: View {
                             label: String(localized: "30 days"),
                             systemImage: nil
                         ),
-                    ]
+                    ],
+                    fillsWidth: true
                 )
             }
         }

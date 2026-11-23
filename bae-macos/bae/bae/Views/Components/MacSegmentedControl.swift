@@ -15,6 +15,9 @@ struct MacSegmentedControl: View {
     var selectedIndex: Int
     let segments: [Segment]
     var off = false
+    /// The track fills the width it is given, as the field beside a label
+    /// does, with the options at its start.
+    var fillsWidth = false
 
     /// Where each segment is, in the control's own space, for the radio
     /// buttons that assistive technology reads.
@@ -71,9 +74,13 @@ struct MacSegmentedControl: View {
             )
         }
         .padding(3)
+        .frame(
+            maxWidth: fillsWidth ? .infinity : nil,
+            alignment: .leading
+        )
         .frame(height: ThemeSize.hitTarget)
         .background(Theme.tile, in: Capsule())
-        .fixedSize()
+        .fixedSize(horizontal: !fillsWidth, vertical: true)
         .allowsHitTesting(!off)
         .opacity(off ? ThemeOpacity.off : 1)
     }
