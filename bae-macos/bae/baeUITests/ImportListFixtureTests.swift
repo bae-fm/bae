@@ -85,9 +85,22 @@ final class ImportListFixtureTests: XCTestCase {
         ]
         for (entry, shown) in entries {
             menu.click()
-            app.menuItems[entry].click()
+            chooseByItsWords(app.menuItems[entry])
             assertListsExactly(shown, in: list, after: entry)
         }
+    }
+
+    @MainActor
+    private func chooseByItsWords(_ item: XCUIElement) {
+        // Aim inside the words, past the row's padding and checkmark.
+        let words =
+            item.coordinate(
+                withNormalizedOffset: CGVector(dx: 0, dy: 0.5)
+            )
+            .withOffset(CGVector(dx: 26, dy: 0))
+        words.hover()
+        XCTAssertTrue(waitUntil { item.isSelected }, item.label)
+        words.click()
     }
 
     /// The list shows the folder of each state in `shown`, and of no other.

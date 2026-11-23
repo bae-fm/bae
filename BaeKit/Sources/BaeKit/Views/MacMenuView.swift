@@ -228,6 +228,7 @@
                     ? Theme.textTertiary
                     : highlighted ? Theme.onFill : Theme.textPrimary
             )
+            .allowsHitTesting(false)
             // The highlight, hover and tap sit in a layer accessibility
             // skips: on the words themselves they would make the whole line
             // one element, as tall as the line, where the board's menu item
