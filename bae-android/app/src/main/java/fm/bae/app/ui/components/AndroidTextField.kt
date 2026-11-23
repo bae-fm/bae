@@ -56,8 +56,9 @@ internal fun AndroidTextField(
     keyboardActions: KeyboardActions = KeyboardActions.Default,
 ) {
     val code = kind == TextFieldKind.CODE
-    // Material's field is as tall as its outline plus the 8 dp its label rises above it, and the board's field box is
-    // those same two together. The helper is a text of its own under it, so TalkBack gets it through the field.
+    // Material's field is as tall as its outline plus the 8 dp its label rises above it; the board's field box is the
+    // outline alone, which the shots' element list reads. The helper is a text of its own under it, so TalkBack gets it
+    // through the field.
     Column {
         OutlinedTextField(
             value = value,

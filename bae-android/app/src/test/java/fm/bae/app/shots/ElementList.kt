@@ -31,6 +31,7 @@ internal object ElementList {
     private const val SLACK = 0.6
     private const val HEX_RADIX = 16
     private const val RGB_DIGITS = 8
+    private const val FIELD_LABEL_RISE_DP = 8f
 
     /**
      * The list for the tree under [root] (the root has no semantics of its own and is not listed), with the
@@ -60,7 +61,11 @@ internal object ElementList {
             // are visited: they hang from the nearest listed node above.
             val here = if (hidden(node, frame)) parent else Listed(element(node, density, unmerged), parent)
             if (here !== parent) {
-                listed.add(here!!)
+                // A board draws a field's label as a text of its own before the field; Compose's field holds it inside.
+                fieldLabel(node, here!!.json, unmerged)
+                    ?.takeUnless { hidden(it, frame) }
+                    ?.let { listed.add(Listed(element(it, density, unmerged), parent)) }
+                listed.add(here)
                 mergedTexts(
                     node,
                     unmerged,
@@ -177,7 +182,15 @@ internal object ElementList {
         // The box the node draws, not the 48 dp touch target Compose grows around a smaller one: a board draws the
         // box, and TouchTargetTest checks the touch target. It is the whole box, also where it reaches past the
         // shot's frame, as a board's box does.
-        val bounds = if (kind == "text") textBox(drawn) else node.wholeBox()
+        val bounds =
+            when (kind) {
+                "text" -> textBox(drawn)
+
+                // Material's field node reaches 8 dp above its outline, where the label rises; the board's field box is the outline.
+                "field" -> node.wholeBox().let { Rect(it.left, it.top + FIELD_LABEL_RISE_DP * density, it.right, it.bottom) }
+
+                else -> node.wholeBox()
+            }
         val out =
             JSONObject()
                 .put("role", kind)
@@ -201,6 +214,24 @@ internal object ElementList {
         config.getOrNull(SemanticsProperties.Focused)?.let { out.put("focused", it) }
         if (kind == "text") textStyle(drawn.config)?.let { out.put("text", it) }
         return out
+    }
+
+    /**
+     * The node of the text that names [field], when the unmerged tree holds one under it: Material's label, which is
+     * inside the field's node. Null for a field with no label text.
+     */
+    private fun fieldLabel(
+        node: SemanticsNode,
+        field: JSONObject,
+        unmerged: SemanticsNode,
+    ): SemanticsNode? {
+        if (field.getString("role") != "field") return null
+        val words = field.optString("label").takeIf { it.isNotEmpty() && !field.isNull("label") } ?: return null
+        val inside = find(unmerged, node.id) ?: return null
+        return inside.children
+            .flatMap(::textsUnder)
+            .firstOrNull { it.first == words }
+            ?.second
     }
 
     /**
