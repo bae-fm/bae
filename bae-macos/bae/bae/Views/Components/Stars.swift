@@ -91,7 +91,7 @@ struct Stars: View {
                     )
             }
             .frame(width: size, height: size)
-            // The star's whole frame is clickable.
+            // A star button takes clicks over this whole frame.
             .contentShape(Rectangle())
     }
 }
