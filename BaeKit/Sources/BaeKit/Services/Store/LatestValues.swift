@@ -109,7 +109,7 @@ public final class LatestStream<Value: Sendable & Equatable>: Sendable {
     /// cancelled or dropped, pulling which keys started or stopped holding a
     /// value for the views watching them. A feed with failed reads hands each
     /// to `onFailedRead`; a pulled failure of any other feed is a bug.
-    fileprivate func fed(
+    func fed(
         onFailedRead: (@MainActor @Sendable (any Error) -> Void)? = nil,
         _ open: () -> KeyedValueStream
     ) -> LatestFeed {
@@ -385,19 +385,15 @@ extension LatestStream where Value == BridgeMoveToThisDeviceProgress {
             }
         }
     }
+}
 
-    /// Fill both streams from one read of moves to This Mac.
-    func feed(
-        from appHandle: AppHandle,
-        fileShares: LatestStream<Double>
-    ) -> [LatestFeed] {
-        switch appHandle.feedMoveToThisDeviceTransfers() {
-        case .streams(let releases, let files):
-            return [
-                fed { releases },
-                fileShares.fed { files },
-            ]
-        }
+/// Open the release and file feeds from one bridge call.
+func moveToThisDeviceFeedOpeners(
+    from appHandle: AppHandle
+) -> (releases: () -> KeyedValueStream, files: () -> KeyedValueStream) {
+    switch appHandle.feedMoveToThisDeviceTransfers() {
+    case .streams(let releases, let files):
+        return ({ releases }, { files })
     }
 }
 

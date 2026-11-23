@@ -70,10 +70,11 @@ public class DownloadStore {
     public nonisolated func feedMovesToThisDevice(from appHandle: AppHandle)
         -> [LatestFeed]
     {
-        moveToThisDeviceTransfers.feed(
-            from: appHandle,
-            fileShares: moveFileShares
-        )
+        let open = moveToThisDeviceFeedOpeners(from: appHandle)
+        return [
+            moveToThisDeviceTransfers.fed(open.releases),
+            moveFileShares.fed(open.files),
+        ]
     }
 
     /// The latest share a file being downloaded to keep whole has moved, for
