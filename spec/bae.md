@@ -1711,8 +1711,9 @@ The pane lists every ISRC from the files' tags, separated by " · ", and
 screen readers read them all. The pane lists every catalog number the
 folder's text offers that no release confirms. Each number is a button
 that puts the number into the run, and the pane hides none behind a count.
-The pane lists each number once, and a copyright line such as `P 2007` is no
-catalog number.
+The pane lists each number once, however many sources or spellings of it the
+folder holds (`WPCR-80001` and `WPCR 80001` are one number), and a copyright
+line such as `P 2007` is no catalog number.
 Each Disc ID a catalog can answer and each barcode is a button that leaves
 it out of the run, or asks about it again once left out. Each catalog number
 in the run is a button that strikes it out, or puts a struck one back.

@@ -201,10 +201,14 @@ pub(super) fn catalog_step(
             });
         }
     }
+    // One candidate per number: a catalog is searched by the number's squashed
+    // form, so a number written two ways is offered as first written.
+    let mut offered: HashSet<String> = HashSet::new();
     let candidates: Vec<CatalogCandidateView> = catalog
         .numbers
         .iter()
         .filter(|value| !catalog.holds(value) && !catalog.is_struck_out(value))
+        .filter(|value| offered.insert(bae_types::text_match::squash(value)))
         .map(|value| CatalogCandidateView { value: value.clone() })
         .collect();
     if rows.is_empty() && candidates.is_empty() && !scanning {
