@@ -1,17 +1,27 @@
 package fm.bae.app.shots
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.DisplayError
 import fm.bae.app.R
+import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.library.AlbumGridLayout
 import fm.bae.app.ui.library.AndroidAlbumGrid
 import fm.bae.app.ui.library.AndroidLibraryScreen
@@ -101,13 +111,38 @@ private fun LibraryScreenPreview(
         nowPlayingBar = nowPlayingBar,
     ) { modifier ->
         Box(modifier) {
-            Text(
-                text = if (state.searchOpen) "Results" else stringResource(R.string.library_mode_albums),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(ThemeSpace.group),
-            )
+            PreviewSlot(if (state.searchOpen) "Results" else stringResource(R.string.library_mode_albums))
         }
     }
+}
+
+/** The preview's label inside its dashed border. */
+@Composable
+private fun PreviewSlot(label: String) {
+    val outline = BaeTheme.colors.hairlineStrong
+    Text(
+        text = label,
+        style = ThemeText.body.style,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .drawWithCache {
+                    val width = ThemeSpace.hairline.toPx()
+                    val inset = width / 2
+                    val radius = CornerRadius(ThemeRadius.card.toPx() - inset)
+                    val stroke = Stroke(width, pathEffect = PathEffect.dashPathEffect(floatArrayOf(3 * width, 2 * width)))
+                    onDrawBehind {
+                        drawRoundRect(
+                            color = outline,
+                            topLeft = Offset(inset, inset),
+                            size = Size(size.width - width, size.height - width),
+                            cornerRadius = radius,
+                            style = stroke,
+                        )
+                    }
+                }.padding(ThemeSpace.group + ThemeSpace.hairline),
+    )
 }
 
 /**
