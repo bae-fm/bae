@@ -44,7 +44,6 @@ import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidRadio
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.DialogAction
-import fm.bae.app.ui.components.joinsTileAbove
 import fm.bae.app.ui.rememberScreenScope
 import kotlinx.coroutines.launch
 import java.io.IOException
@@ -88,18 +87,21 @@ internal fun AppearanceSection() {
                 label = { it.label },
                 onSelect = { save { store.setTone(it) } },
             )
-            AndroidRow(
-                title = stringResource(R.string.appearance_accent),
-                subtitle = stringResource(preferences.accent.label),
-            )
-            Box(
-                modifier =
-                    Modifier
-                        .joinsTileAbove()
-                        .padding(horizontal = ThemeSpace.edge)
-                        .padding(bottom = ThemeSpace.group),
-            ) {
-                AndroidAccentPicker(preferences.accent) { accent -> save { store.setAccent(accent) } }
+            // The row and its swatches are one tile, so the chosen swatch's ring, which reaches past the swatch,
+            // is drawn over the row's bottom edge instead of being cut off at the swatches' top.
+            Column {
+                AndroidRow(
+                    title = stringResource(R.string.appearance_accent),
+                    subtitle = stringResource(preferences.accent.label),
+                )
+                Box(
+                    modifier =
+                        Modifier
+                            .padding(horizontal = ThemeSpace.edge)
+                            .padding(bottom = ThemeSpace.group + RING_OUTSET),
+                ) {
+                    AndroidAccentPicker(preferences.accent) { accent -> save { store.setAccent(accent) } }
+                }
             }
         }
         error?.let { AndroidNotice(it) }
@@ -148,6 +150,9 @@ private fun DrawScope.drawSelectionRing(
 /** The design's swatch: a 36dp disc, with 3dp of card colour and a 2dp ring around the chosen one. */
 private val SWATCH_SIZE = 36.dp
 private val RING_GAP = 3.dp
+
+/** How far the chosen swatch's ring reaches past its disc. */
+private val RING_OUTSET = 5.dp
 private val RING_WIDTH = 2.dp
 
 /** A row naming the choice made, which opens a dialog of the choices. */
