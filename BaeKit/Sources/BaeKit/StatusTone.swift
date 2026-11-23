@@ -14,7 +14,7 @@ public enum StatusTone: Sendable, Equatable {
     /// The text, glyph and outline colour.
     public var color: Color {
         switch self {
-        case .neutral: .secondary
+        case .neutral: Theme.textSecondary
         case .accent: Theme.accent
         case .info: Theme.accent
         case .success: Theme.success
