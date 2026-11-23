@@ -132,13 +132,17 @@ struct InviteCodeSheetContent: View {
                 : nil,
             width: 440
         ) {
-            VStack(alignment: .leading, spacing: ThemeSpace.group) {
-                switch invite.shown {
-                case .granting: granting
-                case .code(let code, _): shown(code)
-                }
-                if let error {
-                    MacNotice(error: error)
+            // The sheet's own line says what it waits on, so nothing sits
+            // between that line and the buttons.
+            if !waitingOffline || error != nil {
+                VStack(alignment: .leading, spacing: ThemeSpace.group) {
+                    switch invite.shown {
+                    case .granting: granting
+                    case .code(let code, _): shown(code)
+                    }
+                    if let error {
+                        MacNotice(error: error)
+                    }
                 }
             }
         } footer: {
