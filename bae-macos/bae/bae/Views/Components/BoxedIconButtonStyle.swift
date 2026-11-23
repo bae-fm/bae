@@ -35,6 +35,10 @@ struct BoxedIconButtonStyle: ButtonStyle {
 
     let size: Size
 
+    var focused: AccentFocusButtonStyle<Self> {
+        accentFocus(cornerRadius: size.cornerRadius)
+    }
+
     func makeBody(configuration: Configuration) -> some View {
         BoxedIconFace(size: size, isPressed: configuration.isPressed) {
             configuration.label

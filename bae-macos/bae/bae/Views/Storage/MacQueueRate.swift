@@ -26,8 +26,7 @@ struct MacQueueRate<Progress: View>: View {
                         .monospacedDigit()
                 }
             }
-            QueuePauseButton(queue: queue, paused: paused)
-                .buttonStyle(.accentBorderless)
+            QueuePauseButton(queue: queue, paused: paused, placement: .footer)
         }
         .lineLimit(1)
         .foregroundStyle(Theme.macTextSecondary)

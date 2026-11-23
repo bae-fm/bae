@@ -12,12 +12,7 @@ struct MacBackButton: View {
             Image(systemName: "chevron.backward")
                 .themeIcon(.small)
         }
-        .buttonStyle(
-            BoxedIconButtonStyle(size: .back)
-                .accentFocus(
-                    cornerRadius: BoxedIconButtonStyle.Size.back.cornerRadius
-                )
-        )
+        .buttonStyle(BoxedIconButtonStyle(size: .back).focused)
         .accessibilityLabel(Text("Back to \(backTitle)"))
     }
 }

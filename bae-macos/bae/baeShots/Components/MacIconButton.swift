@@ -24,8 +24,12 @@ extension ShotScene {
             ) {}
         },
         component("mac.component.icon-button.boxed", height: 60) {
-            MacIconButton(symbol: "shuffle", label: "Shuffle", boxed: .control)
-            {}
+            MacIconButton(
+                symbol: "shuffle",
+                label: "Shuffle",
+                iconSize: .medium,
+                look: .boxed
+            ) {}
         },
         component("mac.component.icon-button.overlay", height: 60) {
             MacIconButton(symbol: "shuffle", label: "Shuffle") {}

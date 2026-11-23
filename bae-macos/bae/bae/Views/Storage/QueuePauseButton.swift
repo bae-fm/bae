@@ -12,14 +12,13 @@ enum StorageQueueKind {
 /// The button that pauses a transfer queue whole, or resumes it while it is
 /// paused, surfacing a failure in the window it sits in.
 struct QueuePauseButton: View {
+    enum Placement {
+        case activity, footer
+    }
+
     let queue: StorageQueueKind
     let paused: Bool
-    /// The glyph's size.
-    var glyph: ThemeIcon = .chip
-    /// Whether the line the button ends already names its queue, so the
-    /// button is only Pause or Resume.
-    var queueNamed = false
-    var boxed = false
+    let placement: Placement
     @Environment(Sync.self)
     private var sync
     @Environment(Downloads.self)
@@ -30,27 +29,17 @@ struct QueuePauseButton: View {
     private var uiStore
 
     var body: some View {
-        let symbol = paused ? "play.fill" : "pause.fill"
-        if boxed {
-            MacIconButton(
-                symbol: symbol,
-                label: pauseLabel,
-                iconSize: glyph,
-                boxed: .small,
-                action: setPaused
-            )
-        }
-        else {
-            Button(action: setPaused) {
-                Image(systemName: symbol).themeIcon(glyph)
-            }
-            .accessibilityLabel(pauseLabel)
-            .help(pauseLabel)
-        }
+        MacIconButton(
+            symbol: paused ? "play.fill" : "pause.fill",
+            label: pauseLabel,
+            iconSize: placement == .activity ? .medium : .chip,
+            look: placement == .activity ? .boxed : .borderless,
+            action: setPaused
+        )
     }
 
     private var pauseLabel: LocalizedStringKey {
-        if queueNamed {
+        if placement == .activity {
             return paused ? "Resume" : "Pause"
         }
         return switch (queue, paused) {

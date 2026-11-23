@@ -1,23 +1,61 @@
 import BaeKit
 import SwiftUI
 
-/// A glyph button of the hit-target size: secondary at rest, a hover fill, and
-/// the accent on a tint while `active` (shuffle on, the queue shown, casting).
-/// `iconSize` and `hitSize` set the glyph and the button, and `faint` draws
-/// the glyph in tertiary text, for a button that should sit back. `boxed`
-/// draws the glyph on the push button's fill. `label`
-/// names it to VoiceOver and, with no `help`, to the pointer.
+/// A glyph button with its label for VoiceOver and its help for the pointer.
 struct MacIconButton: View {
+    enum Look {
+        case hover(active: Bool, faint: Bool, hitSize: CGFloat)
+        case boxed
+        case borderless
+    }
+
     let symbol: String
     let label: LocalizedStringKey
-    var help: LocalizedStringKey?
-    var active = false
-    var faint = false
-    var iconSize: ThemeIcon = .large
-    var hitSize = ThemeSize.hitTarget
-    var boxed: BoxedIconButtonStyle.Size?
-    var role: ButtonRole?
+    let help: LocalizedStringKey?
+    let iconSize: ThemeIcon
+    let look: Look
+    let role: ButtonRole?
     let action: () -> Void
+
+    init(
+        symbol: String,
+        label: LocalizedStringKey,
+        help: LocalizedStringKey? = nil,
+        active: Bool = false,
+        faint: Bool = false,
+        iconSize: ThemeIcon = .large,
+        hitSize: CGFloat = ThemeSize.hitTarget,
+        role: ButtonRole? = nil,
+        action: @escaping () -> Void
+    ) {
+        self.init(
+            symbol: symbol,
+            label: label,
+            help: help,
+            iconSize: iconSize,
+            look: .hover(active: active, faint: faint, hitSize: hitSize),
+            role: role,
+            action: action
+        )
+    }
+
+    init(
+        symbol: String,
+        label: LocalizedStringKey,
+        help: LocalizedStringKey? = nil,
+        iconSize: ThemeIcon = .large,
+        look: Look,
+        role: ButtonRole? = nil,
+        action: @escaping () -> Void
+    ) {
+        self.symbol = symbol
+        self.label = label
+        self.help = help
+        self.iconSize = iconSize
+        self.look = look
+        self.role = role
+        self.action = action
+    }
 
     static func remove(_ name: String, action: @escaping () -> Void) -> Self {
         Self(
@@ -35,27 +73,32 @@ struct MacIconButton: View {
         let button = Button(role: role, action: action) {
             Image(systemName: symbol)
                 .themeIcon(iconSize)
-                .frame(
-                    width: boxed == nil ? hitSize : nil,
-                    height: boxed == nil ? hitSize : nil
-                )
+                .frame(width: hitSize, height: hitSize)
                 .contentShape(Rectangle())
         }
         Group {
-            if let boxed {
-                button.buttonStyle(
-                    BoxedIconButtonStyle(size: boxed)
-                        .accentFocus(cornerRadius: boxed.cornerRadius)
-                )
-            }
-            else {
+            switch look {
+            case .hover(let active, let faint, _):
                 button.buttonStyle(
                     IconHoverButtonStyle(isOn: active, faint: faint)
                         .accentFocus()
                 )
+            case .boxed:
+                button.buttonStyle(BoxedIconButtonStyle(size: .small).focused)
+            case .borderless:
+                button.buttonStyle(.accentBorderless)
             }
         }
         .help(help ?? label)
         .accessibilityLabel(label)
+    }
+
+    private var hitSize: CGFloat? {
+        if case .hover(_, _, let hitSize) = look {
+            hitSize
+        }
+        else {
+            nil
+        }
     }
 }

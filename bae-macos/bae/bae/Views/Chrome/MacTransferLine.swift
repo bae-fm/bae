@@ -37,9 +37,7 @@ struct MacTransferLine: View {
                         QueuePauseButton(
                             queue: queue.kind,
                             paused: queue.paused,
-                            glyph: .medium,
-                            queueNamed: true,
-                            boxed: true
+                            placement: .activity
                         )
                     }
                 }
