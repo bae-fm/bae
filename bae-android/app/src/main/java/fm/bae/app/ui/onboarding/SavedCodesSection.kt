@@ -91,7 +91,7 @@ internal fun SavedCodesContent(
         Modifier
             .widthIn(max = savedCodesWidth)
             .fillMaxWidth()
-            .padding(top = ThemeSpace.related, bottom = ThemeSpace.section)
+            .padding(top = ThemeSpace.related)
     when (list) {
         SavedCodesList.Loading -> {}
 
