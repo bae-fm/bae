@@ -6,15 +6,27 @@ import SwiftUI
 private let logger = Logger.bae("Artwork")
 
 struct Artwork: View {
-    enum Appearance {
-        case plain
-        case albumTile(open: Bool, dimmed: Bool)
+    enum Shadow {
+        case none
+        case tile
+        case bar
+
+        var metrics: (radius: CGFloat, y: CGFloat) {
+            switch self {
+            case .none: (0, 0)
+            case .tile: (14, 9)
+            case .bar: (8, 4)
+            }
+        }
     }
 
     let content: ImageContent?
     var contentMode: ContentMode = .fill
     let pointSize: CGFloat
-    let appearance: Appearance
+    let cornerRadius: CGFloat?
+    let ring: Bool
+    let shadow: Shadow
+    let dimmed: Bool
 
     @Environment(ImageStore.self)
     private var imageStore
@@ -33,12 +45,18 @@ struct Artwork: View {
         content: ImageContent?,
         contentMode: ContentMode = .fill,
         pointSize: CGFloat,
-        appearance: Appearance = .plain
+        cornerRadius: CGFloat? = nil,
+        ring: Bool = false,
+        shadow: Shadow = .none,
+        dimmed: Bool = false
     ) {
         self.content = content
         self.contentMode = contentMode
         self.pointSize = pointSize
-        self.appearance = appearance
+        self.cornerRadius = cornerRadius
+        self.ring = ring
+        self.shadow = shadow
+        self.dimmed = dimmed
         _lastLoad = State(
             initialValue: SlotLoad(content: content, state: .pending(.empty))
         )
@@ -57,32 +75,40 @@ struct Artwork: View {
     }
 
     @ViewBuilder
-    private var artwork: some View {
-        switch appearance {
-        case .plain:
-            contentView
-        case .albumTile(let open, let dimmed):
-            albumTile(open: open, dimmed: dimmed)
+    private var shapedContent: some View {
+        let content = contentView.overlay {
+            Rectangle()
+                .fill(Theme.background)
+                .opacity(dimmed ? 1 - ThemeOpacity.dimmed : 0)
+                .allowsHitTesting(false)
+        }
+        if let cornerRadius {
+            content
+                .frame(width: pointSize, height: pointSize)
+                .clipShape(
+                    RoundedRectangle(
+                        cornerRadius: cornerRadius,
+                        style: .circular
+                    )
+                )
+        }
+        else {
+            content
         }
     }
 
-    /// The cover, shadow and open ring that the album grid draws together.
-    private func albumTile(open: Bool, dimmed: Bool) -> some View {
-        let radius = ThemeRadius.cover
+    private var artwork: some View {
+        let radius = cornerRadius ?? 0
         let ringGap: CGFloat = 4.5
         let ringWidth: CGFloat = 3
         let outset = ringGap + ringWidth / 2
         return
-            contentView
-            .frame(width: pointSize, height: pointSize)
-            .overlay {
-                Rectangle()
-                    .fill(Theme.background)
-                    .opacity(dimmed ? 1 - ThemeOpacity.dimmed : 0)
-                    .allowsHitTesting(false)
-            }
-            .clipShape(RoundedRectangle(cornerRadius: radius, style: .circular))
-            .shadow(color: open ? .clear : Theme.shadow, radius: 14, y: 9)
+            shapedContent
+            .shadow(
+                color: ring || shadow == .none ? .clear : Theme.shadow,
+                radius: shadow.metrics.radius,
+                y: shadow.metrics.y
+            )
             .background {
                 RoundedRectangle(
                     cornerRadius: radius + ringGap,
@@ -90,7 +116,7 @@ struct Artwork: View {
                 )
                 .inset(by: -ringGap)
                 .fill(Theme.background)
-                .opacity(open ? 1 : 0)
+                .opacity(ring ? 1 : 0)
             }
             .overlay {
                 RoundedRectangle(
@@ -99,7 +125,7 @@ struct Artwork: View {
                 )
                 .inset(by: -outset)
                 .stroke(Theme.accent, lineWidth: ringWidth)
-                .opacity(open ? 1 : 0)
+                .opacity(ring ? 1 : 0)
                 .allowsHitTesting(false)
             }
     }
@@ -258,13 +284,19 @@ extension Artwork {
         imageRef: BridgeImageRef?,
         contentMode: ContentMode = .fill,
         pointSize: CGFloat,
-        appearance: Appearance = .plain
+        cornerRadius: CGFloat? = nil,
+        ring: Bool = false,
+        shadow: Shadow = .none,
+        dimmed: Bool = false
     ) {
         self.init(
             content: imageRef.map { .libraryImage($0) },
             contentMode: contentMode,
             pointSize: pointSize,
-            appearance: appearance
+            cornerRadius: cornerRadius,
+            ring: ring,
+            shadow: shadow,
+            dimmed: dimmed
         )
     }
 }

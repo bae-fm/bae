@@ -38,7 +38,10 @@ struct MacAlbumTile: View {
             Artwork(
                 imageRef: cover,
                 pointSize: side,
-                appearance: .albumTile(open: isExpanded, dimmed: isUnplayable)
+                cornerRadius: ThemeRadius.cover,
+                ring: isExpanded,
+                shadow: .tile,
+                dimmed: isUnplayable
             )
             .overlay(alignment: .topTrailing) {
                 MacMoreMenu(

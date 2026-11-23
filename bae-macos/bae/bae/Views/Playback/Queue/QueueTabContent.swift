@@ -241,14 +241,13 @@ struct QueueTabContent: View {
     /// elevated surface.
     private func nowPlayingCard(_ nowPlaying: QueueNowPlaying) -> some View {
         HStack(alignment: .top, spacing: ThemeSpace.group) {
-            Artwork(content: nowPlaying.cover, pointSize: ThemeSize.barArtwork)
-                .frame(
-                    width: ThemeSize.barArtwork,
-                    height: ThemeSize.barArtwork
-                )
-                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
-                .shadow(color: Theme.shadow, radius: 8, y: 4)
-                .allowsHitTesting(false)
+            Artwork(
+                content: nowPlaying.cover,
+                pointSize: ThemeSize.barArtwork,
+                cornerRadius: ThemeRadius.artwork,
+                shadow: .bar
+            )
+            .allowsHitTesting(false)
 
             nowPlayingText(nowPlaying)
                 .allowsHitTesting(false)

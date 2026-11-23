@@ -39,33 +39,36 @@ extension ShotScene {
             height: 136,
             images: coverStore()
         ) {
-            Artwork(imageRef: cover("Low Tide Hours"), pointSize: 120)
-                .frame(width: 120, height: 120)
-                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.cover))
-                .overlay(
-                    RoundedRectangle(cornerRadius: ThemeRadius.cover)
-                        .strokeBorder(Theme.accent, lineWidth: 2)
-                )
+            Artwork(
+                imageRef: cover("Low Tide Hours"),
+                pointSize: 120,
+                cornerRadius: ThemeRadius.cover,
+                ring: true
+            )
         },
         component(
             "mac.component.artwork.shadow-tile",
             height: 136,
             images: coverStore()
         ) {
-            Artwork(imageRef: cover("Low Tide Hours"), pointSize: 120)
-                .frame(width: 120, height: 120)
-                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.cover))
-                .shadow(radius: 6)
+            Artwork(
+                imageRef: cover("Low Tide Hours"),
+                pointSize: 120,
+                cornerRadius: ThemeRadius.cover,
+                shadow: .tile
+            )
         },
         component(
             "mac.component.artwork.shadow-bar",
             height: 136,
             images: coverStore()
         ) {
-            Artwork(imageRef: cover("Low Tide Hours"), pointSize: 120)
-                .frame(width: 120, height: 120)
-                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.cover))
-                .shadow(radius: 3)
+            Artwork(
+                imageRef: cover("Low Tide Hours"),
+                pointSize: 120,
+                cornerRadius: ThemeRadius.cover,
+                shadow: .bar
+            )
         },
     ]
 }
