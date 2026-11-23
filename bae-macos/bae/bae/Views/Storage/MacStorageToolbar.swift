@@ -44,26 +44,17 @@ struct MacStorageToolbar: ViewModifier {
                         .disabled(off)
                 }
                 ToolbarItem(placement: .primaryAction) {
-                    Button {
+                    MacIconButton(
+                        symbol: "sidebar.trailing",
+                        label: "Inspector",
+                        active: inspectorPresented.wrappedValue,
+                        iconSize: .medium
+                    ) {
                         inspectorPresented.wrappedValue.toggle()
-                    } label: {
-                        Image(systemName: "sidebar.trailing")
-                            .themeIcon(.small)
-                            .frame(
-                                width: ThemeSize.hitTarget,
-                                height: ThemeSize.hitTarget
-                            )
                     }
-                    .buttonStyle(
-                        IconHoverButtonStyle(
-                            isOn: inspectorPresented.wrappedValue
-                        )
-                    )
-                    .accentFocusRing(cornerRadius: ThemeRadius.control)
-                    .help("Inspector")
-                    .accessibilityLabel(Text("Inspector"))
                     .disabled(off)
                 }
+                .unboxed()
             }
     }
 }
@@ -104,6 +95,21 @@ extension BridgeStorageFilter {
         case 1: self = .local
         case 2: self = .remote
         default: preconditionFailure("the control has three segments")
+        }
+    }
+}
+
+extension ToolbarContent {
+    /// Draws the item with no glass capsule behind it, as the design draws a
+    /// toolbar's icon button: the glyph's own 28 point button. macOS before 26
+    /// draws no capsule.
+    @ToolbarContentBuilder
+    fileprivate func unboxed() -> some ToolbarContent {
+        if #available(macOS 26, *) {
+            self.sharedBackgroundVisibility(.hidden)
+        }
+        else {
+            self
         }
     }
 }

@@ -46,6 +46,13 @@ extension ShotScene {
                 menu: { MacMenuItem("Shuffle") {} }
             ) {
                 Image(systemName: "shuffle")
+                    .themeIcon(.large)
+                    .foregroundStyle(Theme.macTextSecondary)
+                    .frame(
+                        width: ThemeSize.hitTarget,
+                        height: ThemeSize.hitTarget
+                    )
+                    .contentShape(Rectangle())
             }
             .accessibilityLabel("Shuffle")
         },
