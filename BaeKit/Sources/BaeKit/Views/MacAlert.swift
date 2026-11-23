@@ -334,7 +334,8 @@
     /// Shows alerts. An alert is a clear panel holding bae's face, a child of
     /// the window of the view that raised it, or of the alert or sheet that is
     /// over that window. AlertWindows places the panel at the top centre of
-    /// its parent. A shield window between them takes the pointer,
+    /// its parent and dims the whole parent, title bar included, with
+    /// `WindowScrim`. A shield window between them takes the pointer,
     /// AlertWindows makes the panel key again whenever something makes its
     /// parent key, and the panel is the only modal element of the
     /// accessibility tree, so the person cannot reach the window below with
@@ -347,6 +348,8 @@
             let id: UUID
             let panel: NSPanel
             let shield: NSWindow
+            /// The scrim across `parent`, which dims it, title bar included.
+            let scrim: NSView?
             let parent: NSWindow
             let observers: [NSObjectProtocol]
         }
@@ -474,6 +477,7 @@
                     id: id,
                     panel: panel,
                     shield: shield,
+                    scrim: WindowScrim.show(over: parent),
                     parent: parent,
                     observers: observers
                 )
@@ -502,6 +506,7 @@
             let hadKey = alert.panel.isKeyWindow
             alert.parent.removeChildWindow(alert.panel)
             alert.parent.removeChildWindow(alert.shield)
+            alert.scrim?.removeFromSuperview()
             alert.panel.orderOut(nil)
             alert.shield.orderOut(nil)
             // Let go of the face, whose closures hold what presented it.
