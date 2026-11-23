@@ -41,7 +41,7 @@ extension ShotScene {
                 .disabled(true)
         },
         component("mac.component.icon-button.menu", height: 60) {
-            MacIconButton(symbol: "shuffle", label: "Shuffle") {
+            MacIconButton.menu(symbol: "shuffle", label: "Shuffle") {
                 MacMenuItem("Shuffle") {}
             }
         },

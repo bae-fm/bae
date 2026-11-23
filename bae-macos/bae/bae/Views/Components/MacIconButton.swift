@@ -54,33 +54,53 @@ struct MacIconButton: View {
         role: ButtonRole? = nil,
         action: @escaping () -> Void
     ) {
-        self.symbol = symbol
-        self.label = label
-        self.help = help
-        self.iconSize = iconSize
-        self.look = look
-        self.press = .action(role: role, action)
+        self.init(
+            symbol: symbol,
+            label: label,
+            help: help,
+            iconSize: iconSize,
+            look: look,
+            press: .action(role: role, action)
+        )
     }
 
-    /// A button that opens a menu: the glyph in secondary text, as the
-    /// resting icon button draws it.
-    init(
+    private init(
         symbol: String,
         label: LocalizedStringKey,
-        help: LocalizedStringKey? = nil,
-        iconSize: ThemeIcon = .large,
-        @MacMenuBuilder menu: @escaping () -> [MacMenuEntry]
+        help: LocalizedStringKey?,
+        iconSize: ThemeIcon,
+        look: Look,
+        press: Press
     ) {
         self.symbol = symbol
         self.label = label
         self.help = help
         self.iconSize = iconSize
-        self.look = .hover(
-            active: false,
-            faint: false,
-            hitSize: ThemeSize.hitTarget
+        self.look = look
+        self.press = press
+    }
+
+    /// A button that opens a menu: the glyph in secondary text, as the
+    /// resting icon button draws it.
+    static func menu(
+        symbol: String,
+        label: LocalizedStringKey,
+        help: LocalizedStringKey? = nil,
+        iconSize: ThemeIcon = .large,
+        @MacMenuBuilder items: @escaping () -> [MacMenuEntry]
+    ) -> Self {
+        Self(
+            symbol: symbol,
+            label: label,
+            help: help,
+            iconSize: iconSize,
+            look: .hover(
+                active: false,
+                faint: false,
+                hitSize: ThemeSize.hitTarget
+            ),
+            press: .menu(items)
         )
-        self.press = .menu(menu)
     }
 
     static func remove(_ name: String, action: @escaping () -> Void) -> Self {
