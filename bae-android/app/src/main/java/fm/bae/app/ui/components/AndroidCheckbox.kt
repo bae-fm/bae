@@ -3,6 +3,7 @@ package fm.bae.app.ui.components
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.Checkbox
@@ -11,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.dp
 import fm.bae.app.ui.appearance.ThemeSpace
 
 /** A checkbox row with its [label]; the whole row toggles. */
@@ -24,6 +26,7 @@ fun AndroidCheckbox(
         modifier =
             Modifier
                 .fillMaxWidth()
+                .height(ROW_HEIGHT)
                 .toggleable(
                     value = checked,
                     role = Role.Checkbox,
@@ -36,3 +39,6 @@ fun AndroidCheckbox(
         Text(label)
     }
 }
+
+/** The row's height: the 18dp box with the 11dp of room the board gives it on each side. */
+private val ROW_HEIGHT = 40.dp
