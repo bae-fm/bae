@@ -34,12 +34,15 @@
     return h('div', { className: 'bae-scan-qr' },
       h('svg', { width: size, height: size, viewBox: '0 0 ' + QR_N + ' ' + QR_N, role: 'img', 'aria-label': 'QR code', shapeRendering: 'crispEdges' }, cells));
   }
-  // `size` sets the picture's side on a printed page. Without it, a Mac code is as wide as its modules need, as the app draws it.
+  // Without `size`, a code is as wide as its modules need, as the apps draw it. On Android, `size` is the side of the whole code, quiet zone included, as QRCodeImage draws it; on the Mac, it sets the picture's side on a printed page.
   function ScanCode(prefix) {
     return function (props) {
+      var qr = props.size == null ? { module: MAC_QR_MODULE }
+        : prefix === 'bae-a' ? { module: Number(props.size) / (QR_N + 2 * QR_QUIET) }
+        : { size: props.size };
       return h('div', { className: 'bae-scan ' + prefix + '-scan' },
         props.instruction ? h('div', { className: 'bae-scan-text' }, props.instruction) : null,
-        h(QrPicture, prefix === 'bae-m' && props.size == null ? { module: MAC_QR_MODULE } : { size: props.size }),
+        h(QrPicture, qr),
         h('div', { className: 'bae-scan-buttons' }, kids(props.children)));
     };
   }
