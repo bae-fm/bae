@@ -76,7 +76,10 @@ extension ShotScene {
         ),
     ]
 
-    /// One state of `MacLibraryRow`, in the preview's 380pt column.
+    /// One state of `MacLibraryRow`, in the preview's 380pt column. A row
+    /// that opens something sits in the button `MacLibraryRowButton` puts it
+    /// in, with `hover` given rather than read from the pointer; a credit
+    /// opens nothing and stands alone.
     private static func libraryRow(
         _ id: String,
         title: String? = nil,
@@ -91,7 +94,7 @@ extension ShotScene {
         part: Bool = false
     ) -> ShotScene {
         component(id, height: 76, images: coverStore()) {
-            MacLibraryRow(
+            let row = MacLibraryRow(
                 picture: art.map {
                     BridgeImageRef(id: $0, version: "1", imageType: .cover)
                 },
@@ -105,6 +108,19 @@ extension ShotScene {
                 credit: credit,
                 part: part
             )
+            Group {
+                if credit {
+                    row
+                }
+                else {
+                    Button {
+                    } label: {
+                        row
+                    }
+                    .buttonStyle(.accentPlain)
+                    .disabled(loading)
+                }
+            }
             .frame(width: 380, alignment: .leading)
         }
     }
