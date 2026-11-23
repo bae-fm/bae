@@ -82,6 +82,8 @@
   var RESTORE_NOTE = 'Print this code or save it in a password manager. It gets you back into your library if you lose all your devices.';
   var RESTORE_S3_NOTE = 'You will also need your S3 access key and secret.';
   function flag(v) { return v === true || v === 'true'; }
+  // The code in groups of four, its prefix the first, as Show reveals it.
+  function restoreGroups() { return ['CVR1'].concat(RESTORE_CODE.slice(5).match(/.{1,4}/g)); }
 
   // The library's restore code in Settings: hidden but for its ends until the person shows it, with Print… and Copy beside it, and what the code is for under it. `shown` draws it shown; `s3` adds that an S3 library also needs its key.
   function MacRestoreCode(props) {
@@ -89,12 +91,15 @@
     var shown = shownState[0] != null ? shownState[0] : flag(props.shown);
     var copied = copiedState[0];
     var code = RESTORE_CODE;
+    var groups = restoreGroups();
+    // Masked: the first two groups, each group between as four dots, then the last group, which stays whole when the row cuts the rest short.
+    var masked = groups.map(function (g, i) { return i < 2 || i === groups.length - 1 ? g : '••••'; });
     return h('div', { className: 'bae-m-restore' },
       h('div', { className: 'bae-m-restore-code' },
-        shown ? h('span', { 'aria-label': 'Restore code', className: 'bae-m-restore-text' }, 'CVR1 ' + code.slice(5).match(/.{1,4}/g).join(' '))
+        shown ? h('span', { 'aria-label': 'Restore code', className: 'bae-m-restore-text' }, groups.join(' '))
           : h('span', { role: 'img', 'aria-label': 'Restore code, partly hidden', className: 'bae-m-restore-masked' },
-            h('span', { 'aria-hidden': true, className: 'bae-m-restore-masked-head' }, code.slice(0, 9) + '•'.repeat(code.length - 13)),
-            h('span', { 'aria-hidden': true, className: 'bae-m-restore-masked-tail' }, code.slice(-4))),
+            h('span', { 'aria-hidden': true, className: 'bae-m-restore-masked-head' }, masked.slice(0, -1).join(' ')),
+            h('span', { 'aria-hidden': true, className: 'bae-m-restore-masked-tail' }, masked[masked.length - 1])),
         h(MacButton, { onClick: function () { shownState[1](!shown); } }, shown ? 'Hide' : 'Show'),
         h(MacButton, null, 'Print…'),
         h(MacButton, { kind: 'icon', icon: copied ? 'check' : 'copy', label: copied ? 'Copied' : 'Copy', onClick: function () {

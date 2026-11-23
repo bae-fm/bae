@@ -1,6 +1,6 @@
 # MacRestoreCode
 
-The library's restore code in Settings, in a box of its own: hidden but for its first and last characters until the person clicks Show, then in groups of four. Print… and a Copy button sit beside it, and a note under it says what the code is for.
+The library's restore code in Settings, in a box of its own: masked until the person clicks Show: its first two groups, each group between as four dots, and its last group, which stays whole when the row cuts the rest short. Show reveals it in groups of four. Print… and a Copy button sit beside it, and a note under it says what the code is for.
 
 | Prop | |
 | --- | --- |
