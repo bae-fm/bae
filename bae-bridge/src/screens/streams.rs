@@ -67,26 +67,31 @@ fn upload_total(transfer: bae_library::UploadTransfer) -> Option<BridgeFastValue
     })
 }
 
-/// A delivery of file shares, keyed by the bytes of each file's id.
+/// The key a file uses in a stream of file shares.
+fn file_share_key(file: coven::FileId) -> Vec<u8> {
+    file.to_string().into_bytes()
+}
+
+/// One file's share, under the same key for a batch and a single update.
+fn file_share_entry(file: coven::FileId, fraction: f64) -> (Vec<u8>, BridgeFastValue) {
+    (file_share_key(file), BridgeFastValue::FileShare { fraction })
+}
+
+/// A delivery of every file's share.
 fn file_shares_held(shares: BTreeMap<coven::FileId, f64>) -> HashMap<Vec<u8>, BridgeFastValue> {
-    shares
-        .into_iter()
-        .map(|(file, fraction)| {
-            (file.to_string().into_bytes(), BridgeFastValue::FileShare { fraction })
-        })
-        .collect()
+    shares.into_iter().map(|(file, fraction)| file_share_entry(file, fraction)).collect()
 }
 
 /// Write each batch of a file transfer watch, keyed by file id.
 fn write_file_changes(writer: &StreamWriter, changes: Vec<bae_library::FileTransferChange>) {
     use bae_library::FileTransferChange;
-    let share = |fraction| BridgeFastValue::FileShare { fraction };
     for change in changes {
         match change {
             FileTransferChange::Updated { file, fraction } => {
-                writer.set(file.to_string(), share(fraction))
+                let (key, value) = file_share_entry(file, fraction);
+                writer.set(key, value);
             }
-            FileTransferChange::Removed { file } => writer.remove(file.to_string().as_bytes()),
+            FileTransferChange::Removed { file } => writer.remove(&file_share_key(file)),
             FileTransferChange::Reset(files) => writer.reset(file_shares_held(files)),
         }
     }
