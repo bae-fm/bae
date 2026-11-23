@@ -15,6 +15,8 @@ struct Logo: View {
 
     @Environment(\.accessibilityReduceMotion)
     private var reduceMotion
+    @Environment(\.clockNow)
+    private var fixedNow
 
     private enum Proportion {
         static let sheepHeight = 545.0 / 584.0
@@ -50,7 +52,8 @@ struct Logo: View {
     }
 
     private var mark: some View {
-        TimelineView(.animation(paused: reduceMotion || !bob)) { timeline in
+        let still = reduceMotion || !bob || fixedNow != nil
+        return TimelineView(.animation(paused: still)) { timeline in
             let t = timeline.date.timeIntervalSinceReferenceDate
             VStack(spacing: size * Proportion.gap) {
                 // The sheep's slot is the glow's anchor, so the glow stays
@@ -70,7 +73,7 @@ struct Logo: View {
                             .accessibilityHidden(true)
                             .modifier(
                                 Bob(
-                                    reduced: reduceMotion || !bob,
+                                    reduced: still,
                                     time: t,
                                     rise: Proportion.sheepRise * sheepHeight
                                 )
@@ -84,7 +87,7 @@ struct Logo: View {
                     .frame(width: wordWidth, height: wordHeight)
                     .modifier(
                         Bob(
-                            reduced: reduceMotion || !bob,
+                            reduced: still,
                             time: t - Motion.wordDelay,
                             rise: Proportion.wordRise * wordHeight
                         )
