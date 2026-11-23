@@ -306,7 +306,7 @@ extension ReleaseEditorTests {
 
 extension ReleaseEditorTests {
     @MainActor
-    @Test("the Ignored choice reaches the form and shows its draft")
+    @Test("the Ignored choice and putting the sheet back both update the draft")
     func ignoringASheetShowsInTheDraft() async throws {
         let release = twoTrackRelease(shared: true)
         let session = PreviewData.releaseEditSession(
@@ -322,6 +322,18 @@ extension ReleaseEditorTests {
             return sheet.sheetId == "disc.cue" && sheet.assigned == nil
         }
         #expect(session.draft?.deletesTrackData == true)
+
+        let original = BridgeMediumSide.firstOf(1)
+        session.pickSheetPlace("disc.cue", place: .on(side: original))
+        try await Wait.until {
+            guard
+                case .sheet(let sheet, _)? = session.draft?.sides?.first?
+                    .runs.first
+            else { return false }
+            return sheet.sheetId == "disc.cue"
+                && sheet.assigned?.side == original
+        }
+        #expect(session.draft?.deletesTrackData == false)
     }
 }
 

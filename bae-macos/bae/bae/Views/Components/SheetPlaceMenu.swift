@@ -25,7 +25,9 @@ struct SheetPlaceMenu: View {
                         checked: assigned?.side == choice.side
                     ) { onAssign(.on(side: choice.side)) }
                 }
-                MacMenuItem.divider
+                if !choices.isEmpty {
+                    MacMenuItem.divider
+                }
                 MacMenuItem(
                     verbatim: localizedCoreString("ui.import.sheet.ignored"),
                     checked: assigned == nil

@@ -463,6 +463,17 @@ extension PreviewReleaseLibrary {
         in session: PreviewReleaseEditSession
     ) async {
         _ = await session.change { release in
+            let ignored = release.draft.files?
+                .contains { entry in
+                    guard case .sheet(let sheet) = entry else { return false }
+                    return sheet.sheetId == sheetFileId && sheet.assigned == nil
+                }
+            if ignored == true {
+                let opening = session.opening.draft
+                release.draft.sides = opening.sides
+                release.draft.files = opening.files
+                release.draft.deletesTrackData = opening.deletesTrackData
+            }
             release.draft.sides = release.draft.sides?
                 .map { side in
                     var side = side
