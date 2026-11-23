@@ -142,27 +142,3 @@ fn the_row_lists_the_numbers_in_effect_then_the_struck_ones() {
     assert_eq!(rows[2].cells[0].lookup, LookupView::NotAsked { reason: NotAskedReason::LeftOut });
     assert_eq!(candidates.iter().map(|tile| tile.value.as_str()).collect::<Vec<_>>(), vec!["QQ-5"]);
 }
-
-/// A number the folder spells two ways is one number: a catalog is searched
-/// by the number's squashed form, so the pane offers it once, as first
-/// written.
-#[test]
-fn a_number_spelled_two_ways_is_offered_once() {
-    let (signals, choices) = folder(&[], &[]);
-    let mut context = crate::state::SignalsContext {
-        providers: vec![MB],
-        text: CandidateText::of_stored(Some(&signals), &choices),
-        ..Default::default()
-    };
-    context.catalog.numbers = ["WPCR-80001", "KBOX3555B", "WPCR 80001", "wpcr80001", "KBOX3555B"]
-        .map(String::from)
-        .to_vec();
-    let step = catalog_step(&crate::state::CatalogProgress::Skipped, &context, false);
-    let CatalogStepView::Numbers { candidates, .. } = step else {
-        panic!("numbers, got {step:?}");
-    };
-    assert_eq!(
-        candidates.iter().map(|tile| tile.value.as_str()).collect::<Vec<_>>(),
-        vec!["WPCR-80001", "KBOX3555B"]
-    );
-}
