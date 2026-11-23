@@ -58,7 +58,9 @@
       h(MacSegmentedControl, { options: 'All, Local, Cloud', selected: props.filter || 'All', off: props.disabled }),
       h('span', { style: { flex: 1 } }),
       h(MacSearchField, { kind: 'filter', label: 'Filter', value: props.search, off: props.disabled }),
-      h(MacIconButton, { icon: 'sidebar', size: 'medium', label: 'Inspector', active: props.inspector, off: props.disabled }));
+      // The Inspector toggle is a native toolbar item: macOS gives it a box 36pt wide and as tall as the bar, 4pt from the window's edge, and VoiceOver reads that box as the button; the 28pt icon button sits at its centre.
+      h('span', { className: 'bae-m-storewin-item', role: 'button', 'aria-label': 'Inspector', 'aria-disabled': props.disabled ? true : null },
+        h('span', { 'aria-hidden': true }, h(MacIconButton, { icon: 'sidebar', size: 'medium', label: 'Inspector', active: props.inspector, off: props.disabled }))));
   }
   // The Storage Manager's window, its own frame as in the app: the toolbar, then the release list and, while `inspector` is on, the inspector. The list is the MacTable with the MacStorageFooter under it (or, with no library open, the first child alone); the other children are the inspector's. `empty`: the filter matches nothing, and the window says No matches over the table.
   function MacStorageWindow(props) {
