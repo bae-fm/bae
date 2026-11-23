@@ -124,13 +124,20 @@
         ) throws {
             let point = window.convertPoint(toScreen: node.center(in: window))
             let element = try #require(
-                window.accessibilityHitTest(point) as? NSAccessibilityProtocol
+                window.accessibilityHitTest(point) as? NSObject
+            )
+            // The hit test gives a SwiftUI element without declared
+            // conformance to NSAccessibilityProtocol.
+            let selector = #selector(
+                NSAccessibilityProtocol.accessibilityCustomActions
+            )
+            try #require(element.responds(to: selector))
+            let actions = try #require(
+                element.perform(selector)?.takeUnretainedValue()
+                    as? [NSAccessibilityCustomAction]
             )
             let action = try #require(
-                element.accessibilityCustomActions()?
-                    .first {
-                        $0.name == String(localized: "Open folder")
-                    }
+                actions.first { $0.name == String(localized: "Open folder") }
             )
             let perform = try #require(action.handler)
             #expect(perform())
