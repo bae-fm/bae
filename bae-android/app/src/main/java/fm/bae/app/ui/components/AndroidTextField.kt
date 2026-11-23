@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -71,7 +70,7 @@ internal fun AndroidTextField(
             modifier =
                 (if (code) modifier.fillMaxWidth().heightIn(min = CODE_FIELD_MIN_HEIGHT) else modifier.fillMaxWidth())
                     .semantics { helperSemantics(helper, error) },
-            textStyle = if (code) ThemeText.mono.style else LocalTextStyle.current,
+            textStyle = if (code) ThemeText.mono.style else MaterialTheme.typography.bodyLarge,
             visualTransformation =
                 when (kind) {
                     TextFieldKind.PLAIN -> VisualTransformation.None
