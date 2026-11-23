@@ -6,7 +6,6 @@ extension FormStyle where Self == SettingsFormStyle {
     /// surface colour under its heading, with its footer below.
     static var settings: SettingsFormStyle { SettingsFormStyle() }
 
-    // periphery:ignore - called by baeShots
     /// The settings form without the page margin a pane puts at its sides,
     /// for a form that a component's frame holds.
     static var settingsWithoutMargin: SettingsFormStyle {
