@@ -49,9 +49,7 @@ final class MainWindowController: HostingWindowController, NSMenuItemValidation
         }
         // The content reaches under the title bar, which shows only the
         // window buttons.
-        window.styleMask.insert(.fullSizeContentView)
-        window.titlebarAppearsTransparent = true
-        window.titleVisibility = .hidden
+        window.showOnlyWindowButtons()
         // The window has no title; AppKit's default is "Untitled".
         window.title = ""
     }

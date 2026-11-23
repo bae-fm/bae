@@ -38,14 +38,13 @@ extension AppDelegate {
                 bridging: [],
                 frameAutosave: .init(
                     name: "Settings",
-                    firstScreen: mainWindow?.window?.screen
+                    firstScreen: mainWindow?.window?.screen,
+                    defaults: .standard
                 ),
                 configureWindow: { window in
                     // The title bar shows only the window buttons, over the
                     // sidebar. The title is for the Window menu and VoiceOver.
-                    window.styleMask.insert(.fullSizeContentView)
-                    window.titlebarAppearsTransparent = true
-                    window.titleVisibility = .hidden
+                    window.showOnlyWindowButtons()
                     window.title = String(localized: "Settings")
                 },
                 onClose: { [weak self] in self?.settingsWindow = nil }
@@ -67,7 +66,8 @@ extension AppDelegate {
                 bridging: .toolbars,
                 frameAutosave: .init(
                     name: "Storage Manager",
-                    firstScreen: mainWindow?.window?.screen
+                    firstScreen: mainWindow?.window?.screen,
+                    defaults: .standard
                 ),
                 configureWindow: {
                     $0.title = String(localized: "Storage manager")

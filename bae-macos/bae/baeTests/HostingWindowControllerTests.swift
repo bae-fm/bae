@@ -35,36 +35,49 @@ struct HostingWindowControllerTests {
     }
 
     @Test(
-        "a content-sized window centers on first open and restores after a move"
+        "a content-sized window centers on first open and restores after a move",
+        arguments: [false, true]
     )
-    func restoresMovedWindow() throws {
+    func restoresMovedWindow(contentChangesSize: Bool) throws {
         let firstScreen = try #require(NSScreen.screens.first)
         let movedScreen = try #require(NSScreen.screens.last)
         let name = "HostingWindowControllerTests.\(UUID())"
-        defer { NSWindow.removeFrame(usingName: name) }
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer {
+            NSWindow.removeFrame(usingName: name)
+            defaults.removePersistentDomain(forName: name)
+        }
+        let initialSize = CGSize(width: 500, height: 320)
 
-        func makeController() -> HostingWindowController {
+        func makeController(size: CGSize) -> HostingWindowController {
             HostingWindowController(
-                content: Color.clear.frame(width: 500, height: 320),
+                content: Color.clear.frame(
+                    width: size.width,
+                    height: size.height
+                ),
                 contentSize: nil,
                 sizing: [.minSize, .maxSize],
                 bridging: [],
-                frameAutosave: .init(name: name, firstScreen: firstScreen),
-                configureWindow: { $0.animationBehavior = .none },
+                frameAutosave: .init(
+                    name: name,
+                    firstScreen: firstScreen,
+                    defaults: defaults
+                ),
+                configureWindow: { window in
+                    window.showOnlyWindowButtons()
+                    window.animationBehavior = .none
+                },
                 onClose: {}
             )
         }
 
         let moved = try autoreleasepool {
-            let controller = makeController()
+            let controller = makeController(size: initialSize)
             let window = try #require(controller.window)
             defer { window.close() }
             controller.showWindow(nil)
 
-            #expect(
-                window.contentView?.frame.size
-                    == CGSize(width: 500, height: 320)
-            )
+            #expect(window.frame.size == initialSize)
             let room = firstScreen.visibleFrame
             #expect(room.contains(window.frame))
             #expect(abs(window.frame.midX - room.midX) <= 1)
@@ -73,17 +86,23 @@ struct HostingWindowControllerTests {
             window.setFrameOrigin(
                 CGPoint(
                     x: movedScreen.visibleFrame.minX + 40,
-                    y: movedScreen.visibleFrame.minY + 60
+                    y: movedScreen.visibleFrame.minY + 110
                 )
             )
             return window.frame
         }
 
-        let reopened = makeController()
+        let reopenedSize =
+            contentChangesSize
+            ? CGSize(width: 570, height: 380)
+            : initialSize
+        let reopened = makeController(size: reopenedSize)
         let window = try #require(reopened.window)
         defer { window.close() }
         reopened.showWindow(nil)
-        #expect(window.frame == moved)
+        #expect(window.frame.size == reopenedSize)
+        #expect(window.frame.minX == moved.minX)
+        #expect(window.frame.maxY == moved.maxY)
         #expect(window.screen == movedScreen)
     }
 }

@@ -5940,7 +5940,9 @@ restart. Appendix C lists the settings.
 
 On a Mac, Settings and Storage Manager each reopen where the person left
 them. On first open, bae centers each window within the usable area of the
-display that shows its main window.
+display that shows its main window. When the main window is closed, bae
+centers each window on the primary display on first open. If the previous
+display is disconnected, macOS fits the saved window to an available display.
 
 On a Mac, Library settings first shows **Name**, with the library's name
 and *Rename…* for an admin or for anyone when the library isn't synced,
