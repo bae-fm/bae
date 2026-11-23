@@ -59,7 +59,7 @@ private fun Detail(
         onBack = {},
         backLabel = stringResource(R.string.back_to_library),
         nowPlayingBar = { Bar(playing) },
-        modifier = Modifier.height(480.dp),
+        modifier = Modifier.height(520.dp),
         actions = actions,
     ) {
         Box(Modifier.then(if (padded) Modifier.padding(ThemeSpace.edge) else Modifier).weight(1f)) {
