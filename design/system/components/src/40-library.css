@@ -207,7 +207,8 @@
 .bae-m-atile-year { font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-secondary); }
 .bae-m-sortrow { display: flex; align-items: center; gap: var(--space-related); }
 .bae-m-sortpill { display: inline-flex; align-items: center; gap: var(--space-compact); padding: var(--space-compact) var(--space-group); border-radius: var(--radius-control); background: var(--control); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); }
-.bae-m-sortpill-field { display: inline-flex; align-items: center; gap: var(--space-inline); font-size: var(--type-strong-size); font-weight: var(--type-strong-weight); line-height: normal; }
+/* The app's field menu ends 2pt after its chevron, the room the chevron has in its line of text. */
+.bae-m-sortpill-field { display: inline-flex; align-items: center; gap: var(--space-inline); padding-right: var(--space-line); font-size: var(--type-strong-size); font-weight: var(--type-strong-weight); line-height: normal; }
 .bae-m-sortpill .bae-muted { display: inline-flex; fill: currentColor; }
 .bae-m-sortadd { width: var(--size-hit-target); height: var(--size-hit-target); display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-control); background: var(--control); color: var(--text-secondary); fill: currentColor; }
 .bae-m-checkbox { display: inline-flex; align-items: center; gap: var(--space-compact); font: var(--type-body-weight) var(--type-body-size) var(--font-sans); white-space: nowrap; }
