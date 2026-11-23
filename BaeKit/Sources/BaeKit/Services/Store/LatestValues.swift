@@ -387,16 +387,6 @@ extension LatestStream where Value == BridgeMoveToThisDeviceProgress {
     }
 }
 
-/// Open the release and file feeds from one bridge call.
-func moveToThisDeviceFeedOpeners(
-    from appHandle: AppHandle
-) -> (releases: () -> KeyedValueStream, files: () -> KeyedValueStream) {
-    switch appHandle.feedMoveToThisDeviceTransfers() {
-    case .streams(let releases, let files):
-        return ({ releases }, { files })
-    }
-}
-
 extension LatestStream where Value == UInt8 {
     /// Each exporting release's percent, by release id; a shot's holds
     /// `values` and nothing feeds it.
