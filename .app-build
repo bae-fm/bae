@@ -28,7 +28,7 @@ on bae-bridge/ macos-tests android-bridge android
 # `test mac:shots` line for a --test run of a scenes' class.
 on bae-macos/bae/baeShots/ macos-shots-tests
 # Both capture lanes read the same sample covers.
-on design/system/assets/Artwork/ macos-shots-tests android
+on design/system/assets/Artwork/ macos-shots-tests android-bridge android
 # What a --test or --shots run needs built when the branch changes nothing its
 # lane builds.
 needs mac macos-tests
