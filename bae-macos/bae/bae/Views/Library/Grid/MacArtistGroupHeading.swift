@@ -26,6 +26,7 @@ struct MacArtistGroupHeading: View {
                 Text(verbatim: name)
                     .themeText(.rowTitle)
                     .lineLimit(1)
+                    .accessibilityAddTraits(.isHeader)
                 Text(verbatim: countLabel.localizedLine)
                     .themeText(.detail)
                     .foregroundStyle(Theme.textSecondary)
@@ -33,7 +34,7 @@ struct MacArtistGroupHeading: View {
             }
         }
         .padding(.horizontal, ThemeSpace.compact)
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isHeader)
+        // The covers start `ThemeSpace.edge` closer than the grid's row gap.
+        .padding(.bottom, -ThemeSpace.edge)
     }
 }
