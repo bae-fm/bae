@@ -10,7 +10,10 @@ import android.view.View
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.animation.LinearInterpolator
 import android.widget.ProgressBar
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.core.graphics.withClip
+import fm.bae.app.ui.appearance.ThemeOpacity
 import fm.bae.fastvalues.FrameFollowing
 import fm.bae.fastvalues.LatestSource
 
@@ -85,13 +88,12 @@ internal class AndroidProgressBarView(
         }
     }
 
-    fun applyColors(
-        accent: Int,
-        track: Int,
-    ) {
-        if (fill.color == accent && this.track.color == track) return
-        fill.color = accent
-        this.track.color = track
+    fun applyAccent(accent: Color) {
+        val fillColor = accent.toArgb()
+        val trackColor = accent.copy(alpha = ThemeOpacity.tintStrong).toArgb()
+        if (fill.color == fillColor && track.color == trackColor) return
+        fill.color = fillColor
+        track.color = trackColor
         invalidate()
     }
 

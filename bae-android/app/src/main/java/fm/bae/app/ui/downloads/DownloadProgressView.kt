@@ -8,6 +8,7 @@ import android.widget.TextView
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
@@ -17,7 +18,6 @@ import fm.bae.app.coreString
 import fm.bae.app.factsLine
 import fm.bae.app.formatFileSize
 import fm.bae.app.requireDisplayableByteCount
-import fm.bae.app.ui.appearance.ThemeOpacity
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidProgressBarView
 import fm.bae.fastvalues.FrameFollowing
@@ -40,7 +40,6 @@ internal fun DownloadProgress(
     modifier: Modifier = Modifier,
 ) {
     val accent = MaterialTheme.colorScheme.primary
-    val track = accent.copy(alpha = ThemeOpacity.tintStrong)
     val text = MaterialTheme.colorScheme.onSurfaceVariant.toArgb()
     val size = ThemeText.fine.style.fontSize.value
     val name = stringResource(R.string.pinning)
@@ -48,7 +47,7 @@ internal fun DownloadProgress(
         modifier = modifier,
         factory = { context -> DownloadProgressView(context) },
         update = { view ->
-            view.applyStyle(accent = accent.toArgb(), track = track.toArgb(), text = text, textSizeSp = size)
+            view.applyStyle(accent = accent, text = text, textSizeSp = size)
             view.name = name
             view.gap = gap
             view.label = label
@@ -91,12 +90,11 @@ internal class DownloadProgressView(
     }
 
     fun applyStyle(
-        accent: Int,
-        track: Int,
+        accent: Color,
         text: Int,
         textSizeSp: Float,
     ) {
-        bar.applyColors(accent, track)
+        bar.applyAccent(accent)
         bytes.setTextColor(text)
         bytes.setTextSize(TypedValue.COMPLEX_UNIT_SP, textSizeSp)
     }

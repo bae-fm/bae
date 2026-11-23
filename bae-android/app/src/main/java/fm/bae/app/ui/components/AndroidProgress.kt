@@ -26,10 +26,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import fm.bae.app.coreString
-import fm.bae.app.ui.appearance.ThemeOpacity
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.sync.MovingBar
 import fm.bae.fastvalues.FrameFollowing
 import fm.bae.fastvalues.LatestSource
 import uniffi.bae_bridge.BridgeOpenProgress
@@ -61,11 +59,7 @@ internal fun <Step : Any> AndroidProgress(
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         if (!stepping || steps == null) idle()
         if (steps != null) {
-            val accent = MaterialTheme.colorScheme.primary.toArgb()
-            val track =
-                MaterialTheme.colorScheme.primary
-                    .copy(alpha = ThemeOpacity.tintStrong)
-                    .toArgb()
+            val accent = MaterialTheme.colorScheme.primary
             val text = textColor.toArgb()
             val style = ThemeText.body.style
             AndroidView(
@@ -74,7 +68,6 @@ internal fun <Step : Any> AndroidProgress(
                 update = { view ->
                     view.applyStyle(
                         accent = accent,
-                        track = track,
                         text = text,
                         textSizeSp = style.fontSize.value,
                         lineHeightSp = style.lineHeight.value,
@@ -131,6 +124,27 @@ internal fun AndroidProgress(
     }
 }
 
+/**
+ * A bar that moves with no share to show, as the line for syncing has none: the accent over a
+ * track of the accent's tint, drawn as [AndroidProgressBarView] draws a step that counts nothing. Screen
+ * readers name it [description], the line's words.
+ */
+@Composable
+internal fun MovingBar(
+    description: String,
+    modifier: Modifier = Modifier,
+) {
+    val accent = MaterialTheme.colorScheme.primary
+    AndroidView(
+        modifier = modifier.fillMaxWidth(),
+        factory = { context -> AndroidProgressBarView(context).apply { showMoving() } },
+        update = { view ->
+            view.contentDescription = description
+            view.applyAccent(accent)
+        },
+    )
+}
+
 /** A call's step over its bar, gone between steps. */
 internal class StepProgressView<Step : Any>(
     context: Context,
@@ -181,13 +195,12 @@ internal class StepProgressView<Step : Any>(
     }
 
     fun applyStyle(
-        accent: Int,
-        track: Int,
+        accent: Color,
         text: Int,
         textSizeSp: Float,
         lineHeightSp: Float,
     ) {
-        bar.applyColors(accent = accent, track = track)
+        bar.applyAccent(accent)
         label.setTextColor(text)
         label.setTextSize(TypedValue.COMPLEX_UNIT_SP, textSizeSp)
         // The words sit centred in a line box of the style's line height, as Text draws them, and the box is what
