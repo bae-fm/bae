@@ -41,6 +41,9 @@
 .bae-m-scan .bae-scan-text { font: var(--type-body-weight) var(--type-body-size) var(--font-sans); color: var(--text-primary); }
 .bae-a-scan .bae-scan-text { font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); color: var(--text-secondary); }
 .bae-a-scan .bae-scan-text { color: var(--text-primary); }
+/* Android draws its QR code black on white in every theme, as QRCodeImage draws the standard's colours and no theme colour. */
+.bae-a-scan .bae-scan-qr { background: #FFFFFF; }
+.bae-a-scan .bae-scan-qr svg { fill: #000000; }
 
 /* A nested row depends on the row above (a switch it only matters under): it joins that row with no gap and no divider, on the same left edge, and dims while the switch is off. */
 .bae-m-row-nested { padding-top: 0; min-height: 0; }
