@@ -145,6 +145,8 @@
 .bae-usage-key-a { font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); }
 .bae-usage-dot { width: 8px; height: 8px; border-radius: 999px; flex: none; }
 .bae-usage-size { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+/* AndroidStorageUsage.kt draws each size in body type, with Roboto's own digit widths. */
+.bae-usage-key-a .bae-usage-size { font-variant-numeric: normal; }
 .bae-usage-m { font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); }
 .bae-usage-m .bae-usage-num { font-size: var(--type-figure-size); font-weight: var(--type-figure-weight); line-height: normal; }
 .bae-usage-a { font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); padding: var(--space-edge) var(--space-edge) var(--space-group); }
