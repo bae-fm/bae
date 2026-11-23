@@ -81,8 +81,8 @@ internal fun AndroidQueueRow(
                     text = duration,
                     style = ThemeText.detail.style,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    // The board's 16dp between a row's pieces, and the 4dp its Remove button takes of it.
-                    modifier = Modifier.padding(end = ThemeSpace.group + ThemeSpace.inline),
+                    // The board puts a group's space between a row's pieces and a second one beside the Remove button.
+                    modifier = Modifier.padding(end = ThemeSpace.group * 2),
                 )
             }
             AndroidIconButton(
@@ -91,7 +91,7 @@ internal fun AndroidQueueRow(
                 onClick = onRemove,
                 tone = IconTone.MUTED,
             )
-            Spacer(modifier = Modifier.width(ThemeSpace.related))
+            Spacer(modifier = Modifier.width(ThemeSpace.group))
             Icon(
                 imageVector = SymbolIcons.DragHandle,
                 contentDescription = stringResource(R.string.queue_drag_to_reorder),
