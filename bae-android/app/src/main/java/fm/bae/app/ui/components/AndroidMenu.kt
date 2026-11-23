@@ -1,14 +1,23 @@
 package fm.bae.app.ui.components
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -16,8 +25,9 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 
 /**
- * A dropdown menu as the design draws it: as wide as its widest item, 4dp
- * corners on the elevated colour, its items' words medium 14 over a 20 line, where Material's are regular 16.
+ * A dropdown menu as the design draws it: as wide as its widest item (its rows are [AndroidMenuEntry]s, which
+ * have no least width), 4dp corners on the elevated colour, its items' words medium 14 over a 20 line, where
+ * Material's are regular 16.
  */
 @Composable
 fun AndroidMenu(
@@ -54,7 +64,7 @@ internal fun AndroidMenuAction(
     close: () -> Unit,
     onClick: () -> Unit,
 ) {
-    DropdownMenuItem(
+    AndroidMenuEntry(
         text = { Text(label) },
         onClick = {
             close()
@@ -62,6 +72,46 @@ internal fun AndroidMenuAction(
         },
     )
 }
+
+/**
+ * One row of a menu, as wide as its words need: a menu is as wide as its longest item, so unlike Material's
+ * `DropdownMenuItem`, whose rows are at least 112 dp wide, a short menu has no empty space after its items. The
+ * words are in the menu's item style, [trailingIcon] ends the row, and a disabled row is dimmed.
+ */
+@Composable
+internal fun AndroidMenuEntry(
+    text: @Composable () -> Unit,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    trailingIcon: (@Composable () -> Unit)? = null,
+) {
+    Row(
+        modifier =
+            modifier
+                .clickable(enabled = enabled, onClick = onClick)
+                .fillMaxWidth()
+                .heightIn(min = MENU_ITEM_MIN_HEIGHT)
+                .padding(horizontal = MENU_ITEM_EDGE)
+                .alpha(if (enabled) 1f else DISABLED_ALPHA),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+            ProvideTextStyle(MaterialTheme.typography.bodyLarge) {
+                Box(modifier = Modifier.weight(1f, fill = false)) { text() }
+            }
+        }
+        trailingIcon?.let { icon ->
+            CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurfaceVariant) {
+                Box(modifier = Modifier.padding(start = MENU_ITEM_EDGE)) { icon() }
+            }
+        }
+    }
+}
+
+private val MENU_ITEM_MIN_HEIGHT = 48.dp
+private val MENU_ITEM_EDGE = 12.dp
+private const val DISABLED_ALPHA = 0.38f
 
 /** A group's name over its items, in the secondary colour; a screen reader announces it as a heading. */
 @Composable

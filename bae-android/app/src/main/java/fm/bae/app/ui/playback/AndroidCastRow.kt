@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -28,6 +27,7 @@ import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
+import fm.bae.app.ui.components.AndroidMenuEntry
 import fm.bae.app.ui.components.AndroidMoreMenu
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidSheet
@@ -202,7 +202,7 @@ internal fun CastReceiverMenuItems(
     onDetails: () -> Unit,
     close: () -> Unit,
 ) {
-    DropdownMenuItem(
+    AndroidMenuEntry(
         text = { Text(stringResource(R.string.details_menu)) },
         onClick = {
             close()
@@ -210,7 +210,7 @@ internal fun CastReceiverMenuItems(
         },
     )
     if (role is CastReceiverRole.Casting) {
-        DropdownMenuItem(
+        AndroidMenuEntry(
             text = { Text(stringResource(R.string.cast_disconnect)) },
             onClick = {
                 close()

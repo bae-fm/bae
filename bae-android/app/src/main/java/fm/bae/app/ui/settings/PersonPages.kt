@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -19,6 +18,7 @@ import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidCard
+import fm.bae.app.ui.components.AndroidMenuEntry
 import fm.bae.app.ui.components.AndroidMoreMenu
 import fm.bae.app.ui.components.AndroidNote
 import fm.bae.app.ui.components.AndroidRow
@@ -187,7 +187,7 @@ private fun RemoveDeviceButton(
     callbacks: MemberCallbacks,
 ) {
     AndroidMoreMenu { close ->
-        DropdownMenuItem(
+        AndroidMenuEntry(
             text = { Text(stringResource(R.string.members_remove_menu)) },
             onClick = {
                 close()

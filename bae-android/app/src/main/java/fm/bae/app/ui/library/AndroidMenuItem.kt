@@ -1,7 +1,6 @@
 package fm.bae.app.ui.library
 
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -16,6 +15,7 @@ import fm.bae.app.R
 import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.AndroidMenuEntry
 
 /**
  * One of a menu's choices, the chosen one in the accent color. A [check] ends the row with the accent check that
@@ -33,7 +33,7 @@ internal fun AndroidMenuItem(
 ) {
     // TalkBack reads Selected as the chosen item's state, because the design draws no selected state for a menu item.
     val chosen = stringResource(R.string.menu_item_chosen)
-    DropdownMenuItem(
+    AndroidMenuEntry(
         text = {
             if (content != null) {
                 content()

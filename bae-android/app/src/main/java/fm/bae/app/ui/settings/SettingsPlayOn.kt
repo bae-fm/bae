@@ -1,7 +1,6 @@
 package fm.bae.app.ui.settings
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -16,6 +15,7 @@ import fm.bae.app.data.CastStart
 import fm.bae.app.ui.components.AndroidCard
 import fm.bae.app.ui.components.AndroidDialog
 import fm.bae.app.ui.components.AndroidMenu
+import fm.bae.app.ui.components.AndroidMenuEntry
 import fm.bae.app.ui.components.AndroidNote
 import fm.bae.app.ui.components.AndroidRow
 import fm.bae.app.ui.components.AndroidSection
@@ -125,7 +125,7 @@ private fun CastTranscodeFormatPicker(
         )
         AndroidMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             BridgeCastTranscodeFormat.entries.forEach { choice ->
-                DropdownMenuItem(
+                AndroidMenuEntry(
                     text = { Text(castTranscodeFormatLabel(choice)) },
                     onClick = {
                         expanded = false

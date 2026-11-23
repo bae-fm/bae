@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,6 +24,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidButton
 import fm.bae.app.ui.components.AndroidCard
+import fm.bae.app.ui.components.AndroidMenuEntry
 import fm.bae.app.ui.components.AndroidMoreMenu
 import fm.bae.app.ui.components.AndroidNotice
 import fm.bae.app.ui.components.AndroidProgress
@@ -227,7 +227,7 @@ private fun LibraryMenu(
 ) {
     AndroidMoreMenu(enabled = !busy) { close ->
         if (library.state is BridgeLibraryState.Openable) {
-            DropdownMenuItem(
+            AndroidMenuEntry(
                 text = { Text(stringResource(R.string.details_menu)) },
                 onClick = {
                     close()
@@ -235,7 +235,7 @@ private fun LibraryMenu(
                 },
             )
         }
-        DropdownMenuItem(
+        AndroidMenuEntry(
             text = {
                 Text(stringResource(R.string.library_remove_menu))
             },

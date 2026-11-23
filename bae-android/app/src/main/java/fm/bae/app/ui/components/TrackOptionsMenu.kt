@@ -1,7 +1,6 @@
 package fm.bae.app.ui.components
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -47,7 +46,7 @@ private fun TrackOption(
     onClick: () -> Unit,
     close: () -> Unit,
 ) {
-    DropdownMenuItem(
+    AndroidMenuEntry(
         text = { Text(stringResource(label)) },
         onClick = {
             close()

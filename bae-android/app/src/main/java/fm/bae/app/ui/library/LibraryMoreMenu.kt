@@ -2,7 +2,6 @@ package fm.bae.app.ui.library
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Box
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -17,6 +16,7 @@ import fm.bae.app.ui.appearance.SymbolIcons
 import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.AndroidMenu
 import fm.bae.app.ui.components.AndroidMenuDivider
+import fm.bae.app.ui.components.AndroidMenuEntry
 import fm.bae.app.ui.components.AndroidMenuHeading
 import uniffi.bae_bridge.BridgeArtistSortCriterion
 import uniffi.bae_bridge.BridgeArtistSortField
@@ -113,7 +113,7 @@ internal fun LibraryMoreMenuItems(
     AndroidMenuHeading(stringResource(R.string.sort_by))
     ViewSortItems(state = state, close = close)
     AndroidMenuDivider()
-    DropdownMenuItem(
+    AndroidMenuEntry(
         text = { Text(stringResource(R.string.shuffle_library)) },
         onClick = {
             close()
@@ -201,7 +201,7 @@ private fun <F> SortItems(
             BridgeSortDirection.ASCENDING -> R.string.sort_ascending
             BridgeSortDirection.DESCENDING -> R.string.sort_descending
         }
-    DropdownMenuItem(
+    AndroidMenuEntry(
         text = { Text(stringResource(directionLabel)) },
         onClick = { onChange(field, direction.reversed()) },
     )
@@ -215,7 +215,7 @@ internal fun GroupByArtistItem(
 ) {
     // The design draws the item with no toggle state; the item says on or off in words.
     val state = stringResource(if (grouped) R.string.settings_summary_on else R.string.settings_summary_off)
-    DropdownMenuItem(
+    AndroidMenuEntry(
         text = { Text(stringResource(R.string.group_by_artist)) },
         onClick = { onChange(!grouped) },
         modifier = Modifier.semantics { stateDescription = state },

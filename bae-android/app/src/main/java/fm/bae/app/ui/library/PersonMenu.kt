@@ -1,7 +1,6 @@
 package fm.bae.app.ui.library
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -14,6 +13,7 @@ import fm.bae.app.data.PersonStore
 import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.AndroidMenu
 import fm.bae.app.ui.components.AndroidMenuDivider
+import fm.bae.app.ui.components.AndroidMenuEntry
 import fm.bae.app.ui.components.Avatar
 import fm.bae.app.ui.components.AvatarFace
 import fm.bae.app.ui.components.faceOrTile
@@ -107,13 +107,13 @@ internal fun PersonMenuItems(
     onHistory: () -> Unit,
     onSettings: () -> Unit,
 ) {
-    DropdownMenuItem(text = { Text(stringResource(R.string.members_add_device)) }, onClick = onAddDevice)
+    AndroidMenuEntry(text = { Text(stringResource(R.string.members_add_device)) }, onClick = onAddDevice)
     if (isAdmin) {
-        DropdownMenuItem(text = { Text(stringResource(R.string.person_menu_invite)) }, onClick = onInvite)
+        AndroidMenuEntry(text = { Text(stringResource(R.string.person_menu_invite)) }, onClick = onInvite)
     }
     AndroidMenuDivider()
-    DropdownMenuItem(text = { Text(stringResource(R.string.library_mode_playlists)) }, onClick = onPlaylists)
-    DropdownMenuItem(text = { Text(stringResource(R.string.history)) }, onClick = onHistory)
+    AndroidMenuEntry(text = { Text(stringResource(R.string.library_mode_playlists)) }, onClick = onPlaylists)
+    AndroidMenuEntry(text = { Text(stringResource(R.string.history)) }, onClick = onHistory)
     AndroidMenuDivider()
-    DropdownMenuItem(text = { Text(stringResource(R.string.settings)) }, onClick = onSettings)
+    AndroidMenuEntry(text = { Text(stringResource(R.string.settings)) }, onClick = onSettings)
 }

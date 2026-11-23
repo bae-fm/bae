@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -21,6 +20,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.AndroidCard
 import fm.bae.app.ui.components.AndroidDialog
+import fm.bae.app.ui.components.AndroidMenuEntry
 import fm.bae.app.ui.components.AndroidMoreMenu
 import fm.bae.app.ui.components.AndroidNote
 import fm.bae.app.ui.components.AndroidNotice
@@ -164,7 +164,7 @@ private fun SavedCodeRow(
         onClickLabel = stringResource(R.string.onboarding_restore_action),
     ) {
         AndroidMoreMenu(enabled = enabled) { close ->
-            DropdownMenuItem(
+            AndroidMenuEntry(
                 text = { Text(stringResource(R.string.onboarding_saved_code_delete_menu)) },
                 onClick = {
                     close()
