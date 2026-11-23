@@ -582,3 +582,58 @@ async fn an_ignored_sheet_can_go_back_on_its_empty_disc() {
     };
     assert_eq!(sheet.side_choices, caption.side_choices);
 }
+
+#[tokio::test]
+async fn the_layout_writes_positions_after_a_save_leaves_gaps() {
+    let (db, _folder) = release(
+        1,
+        &[
+            loose("before", 1, "before-file"),
+            carved("drop-one", 1, ("sheet", "image.flac"), "image", 0),
+            carved("drop-two", 1, ("sheet", "image.flac"), "image", 100),
+            loose("after", 1, "after-file"),
+        ],
+    )
+    .await;
+    db.call_sql(|sql| {
+        let edits = SheetEdits { ignored: ids(&["sheet"]), ..SheetEdits::default() };
+        let layout = laid_out_on(&sql, &stored_layout(&edits.json()?))?;
+        let (format, segment) = audio_rows(&loose("image", 1, "image"));
+        write_rebound_audio_on(
+            &sql,
+            RELEASE_A,
+            &ReboundAudio {
+                edits,
+                bindings: Vec::new(),
+                dropped: ids(&["drop-one", "drop-two"]),
+                track_lengths: Vec::new(),
+                added: vec![NewTrack {
+                    file_id: uuid("image"),
+                    track: DbTrack {
+                        medium_id: uuid("medium-1"),
+                        ..DbTrack::new_test(RELEASE_A, &uuid("image"), "Whole image", 1)
+                    },
+                }],
+                formats: vec![format],
+                segments: vec![segment],
+                scrub_points: Vec::new(),
+                album_loudness_lufs: None,
+                album_peak_linear: None,
+            },
+        )?;
+        super::layout::write_layout_on(
+            &sql,
+            RELEASE_A,
+            &layout,
+            &coven::UuidIds,
+            "2000-01-01T00:00:00Z",
+        )
+    })
+    .await
+    .unwrap();
+    let stored = db.read(|sql| laid_out_on(&sql, &stored_layout(NO_SHEET_EDITS))).await.unwrap();
+    assert_eq!(
+        stored.tracks.into_iter().map(|track| track.track_id).collect::<Vec<_>>(),
+        ids(&["before", "image", "after"]),
+    );
+}

@@ -331,8 +331,10 @@ pub(super) fn write_layout_on(
     // Playing positions are unique in a release, so every track first moves
     // past the end, and then each takes its place.
     tx.execute(
-        "UPDATE tracks SET position = position + ? WHERE release_id = ?",
-        params![layout.tracks.len(), release_id],
+        "WITH past_end(value) AS MATERIALIZED ( \
+             SELECT MAX(position) + 1 FROM tracks WHERE release_id = ?1) \
+         UPDATE tracks SET position = position + (SELECT value FROM past_end) WHERE release_id = ?1",
+        [release_id],
     )?;
     for (position, track) in layout.tracks.iter().enumerate() {
         tx.execute(
