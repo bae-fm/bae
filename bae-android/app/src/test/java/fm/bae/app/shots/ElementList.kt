@@ -20,8 +20,9 @@ import kotlin.math.roundToInt
  * The element list a shot writes beside its PNG as `<board>@android.json`: what Compose's merged
  * semantics tree holds, in the tree's order, in dp from the shot's top-left. This is the only
  * writer; every shot goes through [of]. A merged node of several texts (a clickable row of a title, a credit and a
- * duration) is listed as the one node TalkBack reads and taps, labelled with its texts, and holds one text element
- * for each visible text the unmerged tree holds, since the merged node keeps only the first text's layout.
+ * duration) is listed as the one node TalkBack reads and taps, with no label of its own, and holds one text element
+ * for each visible text the unmerged tree holds, since the merged node keeps only the first text's layout. A merged
+ * node of one text (a clickable menu row) is that text, drawn where the unmerged tree's text node draws it.
  */
 internal object ElementList {
     private const val PLATFORM = "android"
@@ -145,18 +146,23 @@ internal object ElementList {
         val editable = config.getOrNull(SemanticsProperties.EditableText)
         val texts = config.getOrNull(SemanticsProperties.Text)
         val description = config.getOrNull(SemanticsProperties.ContentDescription)
-        val ownText = texts != null && mergedTexts(node, unmerged).isEmpty()
+        val merged = mergedTexts(node, unmerged)
+        val ownText = texts != null && merged.isEmpty()
         val kind = kind(config, role, editable != null, ownText, description != null && node.children.isEmpty())
+        val named = merged.isEmpty() || kind != "other"
+        val drawn = if (kind == "text") drawnText(node, unmerged) else node
         // The box the node draws, not the 48 dp touch target Compose grows around a smaller one: a board draws the
         // box, and TouchTargetTest checks the touch target. It is the whole box, also where it reaches past the
         // shot's frame, as a board's box does.
-        val bounds = if (kind == "text") textBox(node) else node.wholeBox()
+        val bounds = if (kind == "text") textBox(drawn) else node.wholeBox()
         val out =
             JSONObject()
                 .put("role", kind)
                 .put("native", role?.toString() ?: native(editable != null, ownText, config))
-                // TalkBack names a node by its content description when it has one, over the text it holds.
-                .put("label", orNull(description?.joinToString(" ") ?: texts?.joinToString(" ") { it.text }))
+                // TalkBack names a node by its content description when it has one, over the text it holds. A bare
+                // node of several texts has the words of its children, which the board lists one by one with no
+                // element around them.
+                .put("label", orNull(description?.joinToString(" ") ?: texts?.takeIf { named }?.joinToString(" ") { it.text }))
                 .put("value", orNull(value(config, editable?.text)))
                 .put(
                     "bounds",
@@ -168,7 +174,7 @@ internal object ElementList {
                 ).put("enabled", !config.contains(SemanticsProperties.Disabled))
                 .put("selected", orNull(config.getOrNull(SemanticsProperties.Selected)))
         config.getOrNull(SemanticsProperties.Focused)?.let { out.put("focused", it) }
-        if (kind == "text") textStyle(config)?.let { out.put("text", it) }
+        if (kind == "text") textStyle(drawn.config)?.let { out.put("text", it) }
         return out
     }
 
@@ -183,6 +189,19 @@ internal object ElementList {
         val words = node.config.getOrNull(SemanticsProperties.Text)?.joinToString(" ") { it.text } ?: return emptyList()
         val parts = textsUnder(find(unmerged, node.id) ?: node)
         return if (parts.size > 1 && parts.joinToString(" ") { it.first } == words) parts.map { it.second } else emptyList()
+    }
+
+    /**
+     * The node that draws the text [node] reads: [node] itself, or for a merged node of one text (a clickable row
+     * of a label) the unmerged tree's text node, whose box and layout are the text's, not the row's.
+     */
+    private fun drawnText(
+        node: SemanticsNode,
+        unmerged: SemanticsNode,
+    ): SemanticsNode {
+        val words = node.config.getOrNull(SemanticsProperties.Text)?.joinToString(" ") { it.text } ?: return node
+        val parts = textsUnder(find(unmerged, node.id) ?: node)
+        return if (parts.size == 1 && parts.single().first == words) parts.single().second else node
     }
 
     /**

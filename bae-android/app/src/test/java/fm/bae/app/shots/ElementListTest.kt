@@ -13,6 +13,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
@@ -20,6 +21,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -140,14 +142,15 @@ class ElementListTest : BoardShot() {
                 .of("android.test.merged", root, unmerged = compose.onRoot(useUnmergedTree = true).fetchSemanticsNode())
                 .getJSONArray("elements")
                 .objects()
-        val merged = elements.single { it.optString("label") == "Name Kind" }
-        // The merged node is what TalkBack reads and taps: one node of both texts that is no visible text itself.
-        assertEquals("other", merged.getString("role"))
-        assertFalse(merged.has("text"))
-        val mergedIndex = elements.indexOf(merged)
-
+        // The merged node is what TalkBack reads and taps: one node of both texts that is no visible text itself,
+        // and no words of its own, since the board lists the two texts and no element around them.
         val name = elements.single { it.optString("label") == "Name" }
         val kind = elements.single { it.optString("label") == "Kind" }
+        val mergedIndex = name.getInt("parent")
+        val merged = elements[mergedIndex]
+        assertEquals("other", merged.getString("role"))
+        assertTrue(merged.isNull("label"))
+        assertFalse(merged.has("text"))
         assertEquals("text", name.getString("role"))
         assertEquals("text", kind.getString("role"))
         assertEquals(mergedIndex, name.getInt("parent"))
@@ -160,6 +163,32 @@ class ElementListTest : BoardShot() {
         val box = merged.getJSONObject("bounds")
         assertTrue(name.getJSONObject("bounds").getDouble("height") < box.getDouble("height"))
         assertTrue(kind.getJSONObject("bounds").getDouble("y") > name.getJSONObject("bounds").getDouble("y"))
+    }
+
+    @Test
+    fun aMergedNodeOfOneTextIsThatTextDrawnWhereItsTextNodeDrawsIt() {
+        compose.settle {
+            Column(modifier = Modifier.fillMaxSize()) {
+                Box(modifier = Modifier.height(48.dp).clickable {}) {
+                    Text("Group by artist", fontSize = 14.sp, modifier = Modifier.align(Alignment.Center))
+                }
+            }
+        }
+        val elements =
+            ElementList
+                .of(
+                    "android.test.one-text",
+                    compose.onRoot().fetchSemanticsNode(),
+                    unmerged = compose.onRoot(useUnmergedTree = true).fetchSemanticsNode(),
+                ).getJSONArray("elements")
+                .objects()
+        val text = elements.single { it.optString("label") == "Group by artist" }
+        assertEquals("text", text.getString("role"))
+        val box = text.getJSONObject("bounds")
+        // The glyphs sit in the middle of the 48 dp row, not at its top, and the box is the text's, not the row's.
+        assertTrue(box.getDouble("height") < 24.0)
+        assertTrue(box.getDouble("y") > 8.0)
+        assertEquals(14.0, text.getJSONObject("text").getDouble("size"), 0.0)
     }
 
     @Test
