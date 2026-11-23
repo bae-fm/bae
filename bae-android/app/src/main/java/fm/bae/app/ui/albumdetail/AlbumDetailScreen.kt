@@ -6,12 +6,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.MaterialTheme
@@ -185,7 +182,7 @@ private fun AlbumLoaded(
 ) {
     val nowPlaying by session.playback.nowPlaying.collectAsState()
     val isPlaying by session.playback.isPlaying.collectAsState()
-    AndroidAlbumDetailContent(
+    AlbumDetailPage(
         detail = loaded.detail,
         cover = loaded.detail.shownRelease.cover,
         playback = AlbumPlaybackState(nowPlaying?.trackId, isPlaying),
@@ -299,8 +296,9 @@ private fun buildAlbumDetailCallbacks(
     )
 }
 
+/** The album page below its bar: [detail]'s blocks in the page's padded column. */
 @Composable
-internal fun AndroidAlbumDetailContent(
+internal fun AlbumDetailPage(
     detail: BridgeAlbumDetail,
     cover: BridgeImageRef?,
     playback: AlbumPlaybackState,
@@ -334,9 +332,7 @@ internal fun AndroidAlbumDetailContent(
     val positionColumnWidth =
         rememberPositionColumnWidth(shown.tracks.map { it.positionText })
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(ThemeSpace.edge),
-    ) {
+    AndroidAlbumDetailContent {
         block {
             AndroidAlbumHeader(
                 detail = detail,
@@ -372,11 +368,6 @@ internal fun AndroidAlbumDetailContent(
             item { AndroidAlbumAudio(it) }
         }
     }
-}
-
-/** One block of the page: the board spaces them 8 dp apart, while the track rows below touch. */
-private fun LazyListScope.block(content: @Composable () -> Unit) {
-    item { Box(modifier = Modifier.padding(bottom = ThemeSpace.related)) { content() } }
 }
 
 /** The album's releases as chips, the shown one on the accent's tint; a tap shows that release. */

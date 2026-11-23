@@ -4,13 +4,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import fm.bae.app.ui.components.AndroidTopBar
 
 /**
  * An album's, artist's or composer's page: the back arrow in its bar, named [backLabel], with the page's own
- * [actions] at the end, over [content], which carries its own padding, then the [nowPlayingBar].
+ * [actions] at the end, over [content], which fills the height between them and carries its own padding, then
+ * the [nowPlayingBar].
  */
 @Composable
 internal fun AndroidDetailScreen(
@@ -23,7 +25,7 @@ internal fun AndroidDetailScreen(
 ) {
     Column(modifier = modifier) {
         AndroidTopBar(onBack = onBack, backLabel = backLabel, actions = actions)
-        content()
+        Column(modifier = Modifier.weight(1f).fillMaxWidth(), content = content)
         nowPlayingBar()
     }
 }
