@@ -33,7 +33,6 @@ struct ReleaseMetadataTrackRow: View {
                 placeholder: localizedCoreString("ui.import.slots.untitled"),
                 value: track.title,
                 name: localizedCoreString("ui.import.mapping.column.title"),
-                fillsWidth: true,
                 editingCommands: editingCommands,
                 onCommit: { value in
                     var edited = track

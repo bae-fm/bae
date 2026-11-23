@@ -87,7 +87,6 @@ extension ShotScene {
                 value: value,
                 name: placeholder == "—" ? "Label" : placeholder,
                 monospaced: mono,
-                fillsWidth: !fits,
                 fitsValue: fits,
                 font: large ? ThemeText.title.nsFont : ThemeText.body.nsFont,
                 textColor: quiet

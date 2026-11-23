@@ -11,9 +11,9 @@ struct MacInlineField: View {
     /// What assistive technology calls the field.
     var name: String?
     var monospaced = false
-    var fillsWidth = false
     /// The field is as wide as its value, and `emptyWidth` while it is empty,
-    /// so there is something to click into: for a field in a list row.
+    /// so there is something to click into: for a field in a list row. Any
+    /// other field fills the width its column gives it, as the board's does.
     var fitsValue = false
     var font: NSFont = ThemeText.body.nsFont
     var textColor = NSColor(Theme.textPrimary)
@@ -25,16 +25,21 @@ struct MacInlineField: View {
     static let emptyWidth: CGFloat = 96
 
     var body: some View {
+        // The field pulls out by its padding so its words keep the column's
+        // edge: on the leading side for a field as wide as its value, and on
+        // both for one that fills its column, which the board draws as the
+        // column's width plus both paddings.
         Group {
             if fitsValue {
                 field
                     .fixedSize(horizontal: true, vertical: false)
+                    .padding(.leading, -FieldChrome.inlineHorizontalPadding)
             }
             else {
                 field
+                    .padding(.horizontal, -FieldChrome.inlineHorizontalPadding)
             }
         }
-        .padding(.leading, -FieldChrome.inlineHorizontalPadding)
     }
 
     private var field: some View {
@@ -44,7 +49,7 @@ struct MacInlineField: View {
             name: name,
             monospaced: monospaced,
             chrome: .inline,
-            fillsWidth: fillsWidth,
+            fillsWidth: !fitsValue,
             emptyMinWidth: fitsValue ? Self.emptyWidth : nil,
             font: font,
             textColor: textColor,
