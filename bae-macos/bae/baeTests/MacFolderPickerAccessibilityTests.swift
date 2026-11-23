@@ -41,12 +41,7 @@
                     of: window,
                     subject: "the Dropbox folder picker"
                 )
-                let words = tree.nodes.compactMap { node -> String? in
-                    guard node.role == kAXStaticTextRole,
-                        case .text(let words)? = node.value
-                    else { return nil }
-                    return words
-                }
+                let words = tree.nodes.compactMap(\.staticText)
                 #expect(
                     words == [
                         String(localized: browser.provider.words.heading),

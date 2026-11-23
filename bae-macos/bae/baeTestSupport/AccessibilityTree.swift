@@ -240,7 +240,7 @@ struct AccessibilityTree: Sendable {
             value: Value?,
             role: String
         ) -> TextStyle? {
-            guard role == kAXStaticTextRole, case .text(let words)? = value
+            guard let words = Node.staticText(role: role, value: value)
             else { return nil }
             var range = CFRange(location: 0, length: words.utf16.count)
             var attributed: CFTypeRef?
@@ -486,6 +486,17 @@ extension AccessibilityTree {
 
 extension AccessibilityTree.Node {
     var controlName: String? { title ?? description }
+
+    var staticText: String? { Self.staticText(role: role, value: value) }
+
+    fileprivate static func staticText(
+        role: String,
+        value: AccessibilityTree.Value?
+    ) -> String? {
+        guard role == kAXStaticTextRole, case .text(let words)? = value
+        else { return nil }
+        return words
+    }
 
     /// The centre of the element's frame in the window's coordinates.
     @MainActor

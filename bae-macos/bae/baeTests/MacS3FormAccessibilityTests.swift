@@ -57,12 +57,7 @@ struct MacS3FormAccessibilityTests {
                 ? [kAXStaticTextRole, kAXTextFieldRole, kAXStaticTextRole]
                 : [kAXStaticTextRole, kAXTextFieldRole]
             #expect(parts.map(\.role) == expectedRoles)
-            if case .text(let label)? = parts.first?.value {
-                #expect(label == "Region")
-            }
-            else {
-                Issue.record("The region row has no text label.")
-            }
+            #expect(parts.first?.staticText == "Region")
         }
     }
 }
