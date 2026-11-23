@@ -47,6 +47,7 @@ import fm.bae.app.ui.components.AndroidSheetBody
 import fm.bae.app.ui.components.AndroidSheetHeading
 import fm.bae.app.ui.components.DialogHead
 import fm.bae.app.ui.components.DialogParts
+import fm.bae.app.ui.components.dialogPane
 import kotlinx.coroutines.Dispatchers
 import uniffi.bae_bridge.BridgeDropboxLocation
 import uniffi.bae_bridge.BridgeFolderLabel
@@ -210,7 +211,7 @@ internal fun InPlaceDialogScene(
  */
 @Composable
 internal fun InPlaceDialog(parts: DialogParts) {
-    DialogSurface(modifier = Modifier.width(parts.width)) {
+    DialogSurface(modifier = Modifier.width(parts.width).dialogPane(parts.title)) {
         // Material's dialog sets its content's text in bodyMedium, so unstyled text in [parts] draws as it does there.
         ProvideTextStyle(MaterialTheme.typography.bodyMedium) {
             Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(ThemeSpace.edge)) {

@@ -146,6 +146,7 @@ internal object ElementList {
         val editable = config.getOrNull(SemanticsProperties.EditableText)
         val texts = config.getOrNull(SemanticsProperties.Text)
         val description = config.getOrNull(SemanticsProperties.ContentDescription)
+        val pane = config.getOrNull(SemanticsProperties.PaneTitle)
         val merged = mergedTexts(node, unmerged)
         val ownText = texts != null && merged.isEmpty()
         val kind = kind(config, role, editable != null, ownText, description != null && node.children.isEmpty())
@@ -159,11 +160,13 @@ internal object ElementList {
             JSONObject()
                 .put("role", kind)
                 .put("native", role?.toString() ?: native(editable != null, ownText, config))
-                // TalkBack names a node by its content description when it has one, over the text it holds. A bare
+                // TalkBack names a node by its content description when it has one, then by its pane title, over the text it holds. A bare
                 // node of several texts has the words of its children, which the board lists one by one with no
                 // element around them.
-                .put("label", orNull(description?.joinToString(" ") ?: texts?.takeIf { named }?.joinToString(" ") { it.text }))
-                .put("value", orNull(value(config, editable?.text)))
+                .put(
+                    "label",
+                    orNull(description?.joinToString(" ") ?: pane ?: texts?.takeIf { named }?.joinToString(" ") { it.text }),
+                ).put("value", orNull(value(config, editable?.text)))
                 .put(
                     "bounds",
                     JSONObject()

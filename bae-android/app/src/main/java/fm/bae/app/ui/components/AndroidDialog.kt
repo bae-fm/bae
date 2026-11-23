@@ -14,6 +14,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.semantics.paneTitle
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindowProvider
@@ -44,6 +46,12 @@ fun DialogHead(
         }
     }
 }
+
+/**
+ * Names a dialog's pane by its [title], as the board labels its dialog: TalkBack announces the title when the dialog
+ * opens. A dialog with no title has no name.
+ */
+internal fun Modifier.dialogPane(title: String?): Modifier = title?.let { semantics { paneTitle = it } } ?: this
 
 /** The width, padding included, that the design system gives a dialog whose board states none. */
 private val DIALOG_WIDTH = 312.dp
@@ -141,7 +149,7 @@ internal fun AndroidDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismissRequest,
-        modifier = Modifier.width(parts.width),
+        modifier = Modifier.width(parts.width).dialogPane(parts.title),
         title =
             if (parts.title != null || parts.message != null) ({ DialogHead(parts.title, parts.message) }) else null,
         text = parts.content,
