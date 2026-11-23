@@ -9,6 +9,6 @@ struct MacNested<Content: View>: View {
     let content: Content
 
     var body: some View {
-        content.containerValue(\.joinsRowAbove, true)
+        content.joiningRowAbove()
     }
 }

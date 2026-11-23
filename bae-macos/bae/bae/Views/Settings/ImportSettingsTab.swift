@@ -53,14 +53,12 @@ struct ImportSettingsTab: View {
                         isOn: importWhenIdentified
                     )
                     if configStore.syncs {
-                        // Where an import goes belongs to the switch above it.
-                        MacNested {
-                            MacRow("Import to") {
-                                MacImportDestination(
-                                    destination: importDestination
-                                )
-                            }
+                        MacRow("Import to") {
+                            MacImportDestination(
+                                destination: importDestination
+                            )
                         }
+                        .nested()
                         .disabled(!configStore.config.importWhenIdentified)
                     }
                 }

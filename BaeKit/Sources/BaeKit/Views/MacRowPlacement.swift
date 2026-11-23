@@ -38,7 +38,7 @@ extension ContainerValues {
 extension View {
     /// Joins this row to the one above it in a settings box.
     @ViewBuilder
-    func joiningRowAbove() -> some View {
+    public func joiningRowAbove() -> some View {
         if #available(macOS 15, iOS 18, *) {
             containerValue(\.joinsRowAbove, true)
         }
