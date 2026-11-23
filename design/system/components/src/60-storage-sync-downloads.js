@@ -368,7 +368,8 @@
   }
   function AndroidSegmentedControl(props) {
     var o = list(props.options);
-    var seg = h('div', { className: 'bae-a-seg', role: 'radiogroup', 'aria-label': props.label || null }, o.map(function (x) { var on = x === String(props.selected); return h('span', { key: x, role: 'radio', 'aria-checked': on, className: cx('bae-a-seg-btn', on && 'bae-a-seg-on') }, on ? h(Glyph, { name: 'check', size: 'medium' }) : null, x); }));
+    // TalkBack reads only the buttons: the group is unnamed, as Compose's segmented row is, and the label over it is hidden from TalkBack.
+    var seg = h('div', { className: 'bae-a-seg', role: 'radiogroup' }, o.map(function (x) { var on = x === String(props.selected); return h('span', { key: x, role: 'radio', 'aria-checked': on, className: cx('bae-a-seg-btn', on && 'bae-a-seg-on') }, on ? h(Glyph, { name: 'check', size: 'medium' }) : null, x); }));
     // `label`: what the choice is, in the secondary text over the buttons, as a form names it. `helper`: what the chosen option means, in smaller secondary text under them.
     if (!props.label && !props.helper) return seg;
     return h('div', { className: 'bae-a-seg-field' },

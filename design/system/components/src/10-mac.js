@@ -382,18 +382,19 @@
   // The accents in the order the appearance settings offer them.
   var ACCENTS = ['blue', 'orchid', 'pink', 'lime', 'mint', 'sky'];
 
-  function accentPicker(className) {
+  // `named`: the group carries its name for a screen reader, as the Mac's does; Android's group is unnamed, as Compose's selectable group is, and the Accent row over it names it.
+  function accentPicker(className, named) {
     return function (props) {
       var s = React.useState(props.selected || 'pink');
       var chosen = s[0];
-      return h('div', { className: className, role: 'radiogroup', 'aria-label': props.label || 'Accent' }, ACCENTS.map(function (a) {
+      return h('div', { className: className, role: 'radiogroup', 'aria-label': named ? props.label || 'Accent' : null }, ACCENTS.map(function (a) {
         return h('button', { key: a, type: 'button', role: 'radio', 'aria-checked': a === chosen, 'aria-label': a.charAt(0).toUpperCase() + a.slice(1),
           className: cx('bae-swatch', a === chosen && 'bae-swatch-on'), style: { background: 'var(--accent-' + a + '-fill)' }, onClick: function () { s[1](a); } });
       }));
     };
   }
-  var MacAccentPicker = accentPicker('bae-m-accents');
-  var AndroidAccentPicker = accentPicker('bae-a-accents');
+  var MacAccentPicker = accentPicker('bae-m-accents', true);
+  var AndroidAccentPicker = accentPicker('bae-a-accents', false);
 
   // `more`: the menu runs past the screen's bottom edge, and NSMenu's scroll arrow ends it.
   function MacMenu(props) {
