@@ -219,7 +219,7 @@
 .bae-m-groupheading-count { font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-secondary); }
 .bae-a-menu { z-index: 5; width: max-content; padding: var(--space-related) 0; border-radius: var(--radius-android-extra-small); background: var(--elevated); box-shadow: 0 2px 6px var(--shadow), 0 1px 2px var(--shadow); font-family: var(--font-android); }
 .bae-a-menu-item { height: 48px; display: flex; align-items: center; gap: var(--space-group); padding: 0 var(--space-group); font: var(--type-android-label-weight) var(--type-android-label-size)/var(--type-android-label-line-height) var(--font-android); color: var(--text-primary); }
-.bae-a-menu-item > span:first-child { flex: 1; }
+.bae-a-menu-item > span:first-child { flex: 1; display: flex; align-items: center; }
 .bae-a-menu-item-on { color: var(--accent); font-size: var(--type-android-strong-size); font-weight: var(--type-android-strong-weight); line-height: var(--type-android-strong-line-height); }
 .bae-a-menu-item-pressed { background: var(--pressed); }
 .bae-a-menu-check { display: inline-flex; fill: var(--accent); }
