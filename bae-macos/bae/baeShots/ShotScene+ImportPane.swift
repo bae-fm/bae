@@ -47,11 +47,11 @@ extension ShotScene {
         ),
         ShotScene(
             id: "mac.import.folder.imported",
-            size: CGSize(width: 1_400, height: 1_300)
+            size: CGSize(width: 1_200, height: 1_300)
         ) {
             try importPaneStage(
                 .imported,
-                size: CGSize(width: 1_400, height: 1_300),
+                size: CGSize(width: 1_200, height: 1_300),
                 releaseEditor: PreviewData.releaseEditor(
                     holding: PreviewData.northboundRelease()
                 ),
@@ -87,11 +87,11 @@ extension ShotScene {
         ),
         ShotScene(
             id: "mac.import.identify.no-discogs-key",
-            size: CGSize(width: 1_400, height: 900)
+            size: CGSize(width: 1_200, height: 900)
         ) {
             try importPaneStage(
                 .found(northbound: .importing, opening: .winterKitchen),
-                size: CGSize(width: 1_400, height: 900),
+                size: CGSize(width: 1_200, height: 900),
                 discogsUsable: false
             )
         },
@@ -100,7 +100,7 @@ extension ShotScene {
     /// A board shot of `board` with nothing else to state.
     private static func importPaneScene(
         _ id: String,
-        width: CGFloat = 1_400,
+        width: CGFloat = 1_200,
         height: CGFloat,
         _ board: PreviewData.ImportBoard
     ) -> ShotScene {
