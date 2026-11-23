@@ -33,16 +33,16 @@ struct MacContentUnavailable<Actions: View>: View {
     var body: some View {
         if let description {
             ContentUnavailableView {
-                title
+                title.themeText(.contentTitle)
             } description: {
-                description
+                description.themeText(.body)
             } actions: {
                 actions()
             }
         }
         else {
             ContentUnavailableView {
-                title
+                title.themeText(.contentTitle)
             } actions: {
                 actions()
             }
