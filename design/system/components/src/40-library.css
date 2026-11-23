@@ -250,7 +250,8 @@
 .bae-m-queue-body { flex: 1; min-height: 0; overflow: hidden; padding: 0 var(--space-related); display: flex; flex-direction: column; gap: var(--space-hairline); }
 .bae-m-cu-title { font: var(--type-content-title-weight) var(--type-content-title-size) var(--font-sans); color: var(--text-primary); }
 .bae-m-cu-desc { font: var(--type-body-weight) var(--type-body-size) var(--font-sans); color: var(--text-secondary); }
-.bae-m-cu-actions { display: flex; gap: var(--space-related); margin-top: calc(var(--space-related) + var(--space-line)); }
+/* The actions sit the same gap under the text as the line does, as in SwiftUI's ContentUnavailableView. */
+.bae-m-cu-actions { display: flex; gap: var(--space-related); }
 .bae-m-queue-section { display: flex; align-items: center; gap: var(--space-compact); padding: var(--space-group) var(--space-related) var(--space-inline); }
 .bae-m-queue-section-title { flex: 1; min-width: 0; font: var(--type-eyebrow-weight) var(--type-eyebrow-size)/var(--type-eyebrow-line-height) var(--font-sans); color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bae-m-queue-clear { font: var(--type-eyebrow-weight) var(--type-eyebrow-size)/var(--type-eyebrow-line-height) var(--font-sans); color: var(--text-secondary); }
