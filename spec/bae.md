@@ -3569,7 +3569,7 @@ names the step for Dropbox, OneDrive and iCloud, and on S3 there is none).
 
 **Cutting off a lost device.** When the step is for one of the person's own
 devices and their account holds the library's storage, the same message offers
-**I cut off this device** beside **Not yet**: the person does the step at the
+**I cut off this device** and **Not yet**: the person does the step at the
 provider and presses it, which tells coven that nothing more of that device
 can land, so this device takes back every account the lost device's shares
 named that no member or open invite uses
