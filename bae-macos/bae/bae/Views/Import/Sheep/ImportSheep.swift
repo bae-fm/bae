@@ -23,13 +23,14 @@ struct ImportSheep: View {
     private var started = Date()
 
     var body: some View {
-        let holdsStill = still || reduceMotion
-        TimelineView(.animation(paused: holdsStill || fixedNow != nil)) {
-            timeline in
-            let painter = Self.painter(
-                elapsed: timeline.date.timeIntervalSince(started),
-                still: holdsStill,
-                fixedNow: fixedNow
+        let motion = Motion(
+            still: still,
+            reduceMotion: reduceMotion,
+            fixedNow: fixedNow
+        )
+        TimelineView(.animation(paused: motion.isPaused)) { timeline in
+            let painter = motion.painter(
+                elapsed: timeline.date.timeIntervalSince(started)
             )
             Canvas { context, canvasSize in
                 var context = context
@@ -46,16 +47,35 @@ struct ImportSheep: View {
         .accessibilityHidden(true)
     }
 
-    static func painter(
-        elapsed: TimeInterval,
-        still: Bool,
-        fixedNow: Date?
-    ) -> ImportSheepPainter {
-        if still {
-            return ImportSheepPainter(moment: SheepSequence.still, time: 0)
+    enum Motion {
+        case playing
+        case firstFrame
+        case still
+
+        init(still: Bool, reduceMotion: Bool, fixedNow: Date?) {
+            if still || reduceMotion {
+                self = .still
+            }
+            else if fixedNow != nil {
+                self = .firstFrame
+            }
+            else {
+                self = .playing
+            }
         }
-        // A fixed clock holds the animation at its first frame, as the board does.
-        let playing = SheepSequence.moment(at: fixedNow == nil ? elapsed : 0)
-        return ImportSheepPainter(moment: playing.moment, time: playing.time)
+
+        var isPaused: Bool { self != .playing }
+
+        func painter(elapsed: TimeInterval) -> ImportSheepPainter {
+            if self == .still {
+                return ImportSheepPainter(moment: SheepSequence.still, time: 0)
+            }
+            // The board with animation stopped shows the loop's first frame.
+            let playing = SheepSequence.moment(at: isPaused ? 0 : elapsed)
+            return ImportSheepPainter(
+                moment: playing.moment,
+                time: playing.time
+            )
+        }
     }
 }

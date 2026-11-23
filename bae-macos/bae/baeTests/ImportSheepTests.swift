@@ -42,33 +42,37 @@ struct ImportSheepTests {
 
     @Test("A fixed clock holds the sheep at the start of its loop")
     func fixedClock() {
-        let fixedNow = Date(timeIntervalSinceReferenceDate: 0)
+        let motion = ImportSheep.Motion(
+            still: false,
+            reduceMotion: false,
+            fixedNow: Date(timeIntervalSinceReferenceDate: 0)
+        )
+        #expect(motion.isPaused)
         for elapsed in [2.0, 17.0] {
-            let frame = ImportSheep.painter(
-                elapsed: elapsed,
-                still: false,
-                fixedNow: fixedNow
-            )
+            let frame = motion.painter(elapsed: elapsed)
             #expect(frame.time == 0)
             #expect(
                 frame.moment.pose(of: .release(0), at: frame.time).opacity == 0
             )
         }
-        let liveFrame = ImportSheep.painter(
-            elapsed: 2,
+        let liveMotion = ImportSheep.Motion(
             still: false,
+            reduceMotion: false,
             fixedNow: nil
         )
-        #expect(liveFrame.time == 2)
+        #expect(!liveMotion.isPaused)
+        #expect(liveMotion.painter(elapsed: 2).time == 2)
     }
 
     @Test("The sheep shows a cover beside it in the still pose")
     func stillWithFixedClock() {
-        let frame = ImportSheep.painter(
-            elapsed: 2,
+        let motion = ImportSheep.Motion(
             still: true,
+            reduceMotion: false,
             fixedNow: Date(timeIntervalSinceReferenceDate: 0)
         )
+        #expect(motion.isPaused)
+        let frame = motion.painter(elapsed: 2)
         #expect(frame.moment.pose(of: .release(0), at: frame.time).opacity == 1)
     }
 
