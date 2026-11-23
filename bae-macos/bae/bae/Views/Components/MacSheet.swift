@@ -22,13 +22,15 @@ struct MacSheet<Content: View, Footer: View>: View {
         @ViewBuilder content: () -> Content,
         @ViewBuilder footer: () -> Footer
     ) {
-        self.header = Header(
-            title: Text(title),
-            message: message.map { Text($0) }
+        self.init(
+            header: Header(
+                title: Text(title),
+                message: message.map { Text($0) }
+            ),
+            width: width,
+            content: content(),
+            footer: footer()
         )
-        self.width = width
-        self.content = content()
-        self.footer = footer()
     }
 
     /// A sheet titled with text that is not a localized key, such as a
@@ -40,13 +42,15 @@ struct MacSheet<Content: View, Footer: View>: View {
         @ViewBuilder content: () -> Content,
         @ViewBuilder footer: () -> Footer
     ) {
-        self.header = Header(
-            title: Text(verbatim: title),
-            message: message.map { Text($0) }
+        self.init(
+            header: Header(
+                title: Text(verbatim: title),
+                message: message.map { Text($0) }
+            ),
+            width: width,
+            content: content(),
+            footer: footer()
         )
-        self.width = width
-        self.content = content()
-        self.footer = footer()
     }
 
     /// A sheet whose title and line the caller words, such as a title that
@@ -58,10 +62,12 @@ struct MacSheet<Content: View, Footer: View>: View {
         @ViewBuilder content: () -> Content,
         @ViewBuilder footer: () -> Footer
     ) {
-        self.header = Header(title: title, message: message)
-        self.width = width
-        self.content = content()
-        self.footer = footer()
+        self.init(
+            header: Header(title: title, message: message),
+            width: width,
+            content: content(),
+            footer: footer()
+        )
     }
 
     /// A sheet whose fields name the task, such as the save format editor.
@@ -70,10 +76,24 @@ struct MacSheet<Content: View, Footer: View>: View {
         @ViewBuilder content: () -> Content,
         @ViewBuilder footer: () -> Footer
     ) {
-        self.header = nil
+        self.init(
+            header: nil,
+            width: width,
+            content: content(),
+            footer: footer()
+        )
+    }
+
+    private init(
+        header: Header?,
+        width: CGFloat,
+        content: Content,
+        footer: Footer
+    ) {
+        self.header = header
         self.width = width
-        self.content = content()
-        self.footer = footer()
+        self.content = content
+        self.footer = footer
     }
 
     var body: some View {
