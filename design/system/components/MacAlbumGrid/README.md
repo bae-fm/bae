@@ -1,5 +1,5 @@
 # MacAlbumGrid
 
-Columns of `MacAlbumTile`s, 32pt apart. The app fits as many 200pt tiles as the width allows (up to 1240pt); boards set `columns`.
+Columns of `MacAlbumTile`s, 32pt apart. The grid fits as many columns as its width holds tiles of 200pt or more, and the tiles share the rest of the width, as the app fits them. The app caps the library's content at 1240pt.
 
 **In the code:** macOS: `MacAlbumGrid` (`Views/Library/Grid/MacAlbumGrid.swift`).

@@ -233,7 +233,7 @@ export interface MacIconButtonProps { icon: string; label?: string; active?: boo
 export declare function MacIconButton(props: MacIconButtonProps): React.ReactElement;
 export interface MacLibraryHeadingProps { view?: 'Albums' | 'Artists' | 'Composers'; collapsed?: boolean; children?: React.ReactNode }
 export declare function MacLibraryHeading(props: MacLibraryHeadingProps): React.ReactElement;
-export interface MacAlbumGridProps { columns?: number; children?: React.ReactNode }
+export interface MacAlbumGridProps { children?: React.ReactNode }
 export declare function MacAlbumGrid(props: MacAlbumGridProps): React.ReactElement;
 export interface MacAlbumTileProps { /** Only another device holds the album's files: its cover and words show dimmed, and the tile still opens it. */ unplayable?: boolean; title: string; /** The credit line; with none, the tile draws no credit line. */ artist?: string; year?: string; noCover?: boolean; hover?: boolean; open?: boolean; selected?: boolean }
 export declare function MacAlbumTile(props: MacAlbumTileProps): React.ReactElement;
