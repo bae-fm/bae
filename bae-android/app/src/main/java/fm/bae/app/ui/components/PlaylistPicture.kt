@@ -1,6 +1,5 @@
 package fm.bae.app.ui.components
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -14,9 +13,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import fm.bae.app.ui.appearance.ThemeSpace
 import uniffi.bae_bridge.BridgePlaylistCover
-
-/** The gap between the four covers of a grid. */
-private val GRID_GAP = 1.dp
 
 /**
  * A playlist's picture, sized by [modifier]: one cover filling the square, or four covers as a 2×2
@@ -39,10 +35,7 @@ fun PlaylistPicture(
         }
 
         is BridgePlaylistCover.Grid -> {
-            Column(
-                modifier = modifier.clip(RoundedCornerShape(cornerRadius)),
-                verticalArrangement = Arrangement.spacedBy(GRID_GAP),
-            ) {
+            Column(modifier = modifier.clip(RoundedCornerShape(cornerRadius))) {
                 GridRow(cover, from = 0)
                 GridRow(cover, from = 2)
             }
@@ -55,10 +48,7 @@ private fun ColumnScope.GridRow(
     cover: BridgePlaylistCover.Grid,
     from: Int,
 ) {
-    Row(
-        modifier = Modifier.weight(1f).fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(GRID_GAP),
-    ) {
+    Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
         for (index in from until from + 2) {
             Artwork(
                 cover = cover.covers.getOrNull(index),
