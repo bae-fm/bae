@@ -83,6 +83,7 @@
 .bae-m-bulkgrp + .bae-m-bulkgrp { border-top: 1px solid var(--hairline); }
 .bae-m-bulkrow { display: flex; width: 100%; align-items: center; gap: var(--space-group); padding: var(--space-related) var(--space-group); border: 0; background: none; color: inherit; font: inherit; text-align: left; }
 .bae-m-bulkrow-off { opacity: 0.4; }
+.bae-m-bulkrow-action { display: flex; align-items: center; gap: var(--space-group); }
 .bae-m-prow-catalog { font-size: var(--type-cell-size); font-weight: var(--type-cell-weight); line-height: var(--type-cell-line-height); }
 .bae-m-idraft-album { display: flex; align-items: center; gap: var(--space-related); margin-top: var(--space-compact); }
 /* The import pane's own buttons, drawn with bae-plainbtn: each takes the box its words and glyphs need. */

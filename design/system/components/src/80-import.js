@@ -372,21 +372,26 @@
       props.sources ? h('span', { className: 'bae-m-tertiary', style: { fontSize: 'var(--type-detail-size)' } }, props.sources) : null,
       h(Sym, { name: 'right', size: 11, className: props.selected ? 'bae-accent' : 'bae-m-tertiary' }));
   }
-  // One bulk action: its glyph, its name, then how many of the selected folders it applies to (`count`), dimmed when none. `strong` sets the action in the accent, for Import and Combine. A child sits before the count: Import's destination, on Import's own line.
+  // One bulk action: its glyph, its name, then how many of the selected folders it applies to (`count`), dimmed when none. `strong` sets the action in the accent, for Import and Combine. `to`: where the import goes, Import's destination pop-up, before the count; the row's button then holds only the glyph and the name, so the pop-up is a control of its own.
   function MacBulkActionRow(props) {
-    var n = props.count;
-    return h('button', { type: 'button', disabled: !n || null, className: cx('bae-m-bulkrow', !n && 'bae-m-bulkrow-off') }, h(Sym, { name: props.icon, style: iconBox('medium'), className: props.strong ? 'bae-accent' : 'bae-muted' }), h('span', { className: props.strong ? 'bae-strong' : 'bae-muted', style: { flex: 1 } }, props.label), props.children || null, h(StatusChip, { tone: props.strong ? 'accent' : 'neutral' }, String(n || 0)));
+    var n = props.count, off = !n;
+    var glyph = h(Sym, { name: props.icon, style: iconBox('medium'), className: props.strong ? 'bae-accent' : 'bae-muted' });
+    var chip = h(StatusChip, { tone: props.strong ? 'accent' : 'neutral' }, String(n || 0));
+    if (props.to == null) return h('button', { type: 'button', disabled: off || null, className: cx('bae-m-bulkrow', off && 'bae-m-bulkrow-off') }, glyph, h('span', { className: props.strong ? 'bae-strong' : 'bae-muted', style: { flex: 1 } }, props.label), chip);
+    return h('div', { className: cx('bae-m-bulkrow', off && 'bae-m-bulkrow-off') },
+      h('button', { type: 'button', disabled: off || null, className: 'bae-plainbtn bae-m-bulkrow-action', 'aria-label': props.label + ' ' + props.to + ' ' + (n || 0) }, glyph, h('span', { className: props.strong ? 'bae-strong' : 'bae-muted' }, props.label)),
+      h('span', { style: { flex: 1 } }), h(MacImportDestination, { to: props.to, off: off }), chip);
   }
   // Several rows selected: the count, then the actions in groups, each with how many it applies to.
   function MacImportBulk(props) {
-    // `extra` sits on the row before its count: Import's destination, on Import's own line.
-    var row = function (icon, label, n, strong, extra) { return h(MacBulkActionRow, { key: label, icon: icon, label: label, count: n, strong: strong }, extra); };
+    // `to` puts Import's destination on Import's own line, before its count.
+    var row = function (icon, label, n, strong, to) { return h(MacBulkActionRow, { key: label, icon: icon, label: label, count: n, strong: strong, to: to }); };
     var grp = function (eyebrow, rows) { return h('div', { className: 'bae-m-bulkgrp' }, eyebrow ? h('div', { className: 'bae-m-eyebrowtxt', style: { padding: 'var(--space-related) var(--space-group) var(--space-line)' } }, eyebrow) : null, rows); };
     var n = Number(props.count || 5);
     return h('div', { className: 'bae-m-bulk' }, h('div', { className: 'bae-m-card', style: { width: 440, boxSizing: 'border-box', padding: 'var(--space-section)', display: 'flex', flexDirection: 'column', gap: 'var(--space-group)' } },
       h('div', { style: { font: 'var(--type-title-weight) var(--type-title-size) var(--font-sans)' } }, n + ' selected'), h('div', { className: 'bae-muted' }, 'Each action applies only to eligible selected folders.'),
       h('div', { className: 'bae-m-bulklist' },
-        grp('Import', [row('saveAs', 'Import', props.ready || 3, true, props.cloud ? h(MacImportDestination, { to: props.to, off: !!props.reading }) : null), row('xcircle', 'Cancel import of selected', 0), row('stack', 'Combine as one release', 0, true), row('split', 'Keep as separate releases', 0)]),
+        grp('Import', [row('saveAs', 'Import', props.ready || 3, true, props.cloud ? props.to : null), row('xcircle', 'Cancel import of selected', 0), row('stack', 'Combine as one release', 0, true), row('split', 'Keep as separate releases', 0)]),
         grp('Metadata', [row('magnifier', 'Identify selected', n), row('xcircle', 'Stop identifying selected', 0), row('refresh', 'Retry failed identification', 1), row('docText', 'Reset to file metadata', n), row('eraser', 'Clear metadata', n)]),
         grp(null, [row('minuscircle', 'Skip selected', n), row('uturnBack', 'Restore to pending', 0)]),
         grp(null, [row('folder', 'Reveal in Finder', n)]))),
