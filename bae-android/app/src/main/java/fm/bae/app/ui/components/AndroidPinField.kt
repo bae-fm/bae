@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -68,7 +67,6 @@ internal fun AndroidPinField(
             onValueChange = { typed -> onValueChange(typed.filter { it in '0'..'9' }.take(digits)) },
             modifier =
                 Modifier
-                    .fillMaxWidth()
                     .onFocusChanged { focused = it.isFocused }
                     .semantics { contentDescription = label },
             singleLine = true,
