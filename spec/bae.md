@@ -1718,6 +1718,9 @@ it out of the run, or asks about it again once left out. Each catalog number
 in the run is a button that strikes it out, or puts a struck one back.
 On the Mac, VoiceOver reads each of these buttons by its parts: the identifier's
 name, its value and each catalog's name and answer.
+The pane shows the title search only for a run that searches by title, or that
+waits on its identifiers to decide; it shows none for a run whose identifiers
+answered or whose draft has no title.
 The title search shows the artist and title it searches by as a button.
 Pressing it opens a field for each, and leaving a changed field searches
 again by the new words.
