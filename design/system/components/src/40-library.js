@@ -564,7 +564,7 @@
   function AndroidEyebrow(props) { return h('div', { className: 'bae-a-eyebrow' }, props.children); }
 
   function AndroidAlbumHeader(props) {
-    var mark = albumMark(props.rating, props.ratingSystem, 12);
+    var mark = albumMark(props.rating, props.ratingSystem, 12, 'bae-a-albumhead-mark');
     return h('div', { className: 'bae-a-albumhead' }, h(Artwork, { title: props.title, size: 150, radius: 'radius-cover', missing: props.noCover }),
       h('div', { className: 'bae-a-albumhead-text' }, h('div', { className: 'bae-a-albumhead-title' }, props.title), h('div', { className: 'bae-a-albumhead-artist' }, props.artist), props.year || mark ? h('div', { className: 'bae-a-albumhead-fact' }, props.year, props.year && mark ? ' · ' : null, mark) : null,
         props.edition ? h('div', { className: 'bae-a-albumhead-fact bae-a-albumhead-release bae-a-albumhead-gap' }, props.edition) : null, props.copy ? h('div', { className: 'bae-a-albumhead-fact bae-a-albumhead-release' }, props.copy) : null,

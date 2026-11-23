@@ -171,6 +171,8 @@
 .bae-a-albumhead-artist { font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); color: var(--text-secondary); }
 .bae-a-albumhead-fact { font: var(--type-android-detail-weight) var(--type-android-detail-size)/var(--type-android-detail-line-height) var(--font-android); color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bae-a-albumhead-gap { margin-top: var(--space-line); }
+/* The rating sits centred on the year's line, as AndroidAlbumHeader.kt's Row centres it. */
+.bae-a-albumhead-mark { display: inline-flex; vertical-align: middle; }
 .bae-a-albumhead-release { color: var(--text-tertiary); }
 .bae-a-dl { display: flex; flex-direction: column; gap: var(--space-compact); }
 .bae-a-dlrow { display: flex; align-items: center; gap: var(--space-related); flex-wrap: wrap; }
