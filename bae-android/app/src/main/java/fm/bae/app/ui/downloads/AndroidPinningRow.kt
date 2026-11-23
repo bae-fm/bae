@@ -95,6 +95,7 @@ private fun DownloadRowState(
                 label = null,
                 gap = ThemeSpace.line,
                 modifier = Modifier.padding(top = ThemeSpace.inline),
+                stopDot = true,
             )
         }
 

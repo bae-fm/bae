@@ -155,7 +155,7 @@ internal class DownloadProgressView(
     context: Context,
 ) : LinearLayout(context) {
     private val bar = PinBarView(context)
-    private val bytes = TextView(context)
+    private val bytes = TextView(context).apply { includeFontPadding = false }
     private val following = FrameFollowing<BridgeDownloadTransferProgress>(this, ::show)
 
     /** The words that lead the byte line, or null for the bytes alone. */
