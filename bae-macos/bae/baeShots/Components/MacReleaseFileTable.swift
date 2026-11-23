@@ -58,7 +58,8 @@ extension ShotScene {
         ) {
             MacReleaseFileTable(
                 files: files,
-                order: .constant(order)
+                order: .constant(order),
+                presentationError: .constant(nil)
             )
             .frame(width: 544, alignment: .leading)
         }

@@ -11,6 +11,8 @@ struct MacReleaseFileTable: NSViewRepresentable {
     let files: [BridgeFile]
     @Binding
     var order: BridgeReleaseFileOrder
+    @Binding
+    var presentationError: DisplayError?
 
     @Environment(\.surfaceTone)
     private var tone
@@ -22,7 +24,11 @@ struct MacReleaseFileTable: NSViewRepresentable {
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator($order, appearance: appearance)
+        Coordinator(
+            order: $order,
+            presentationError: $presentationError,
+            appearance: appearance
+        )
     }
 
     func makeNSView(context: Context) -> NSScrollView {
@@ -47,6 +53,7 @@ struct MacReleaseFileTable: NSViewRepresentable {
         context.coordinator.update(
             files: files,
             order: $order,
+            presentationError: $presentationError,
             appearance: appearance
         )
     }
@@ -146,23 +153,28 @@ struct MacReleaseFileTable: NSViewRepresentable {
     {
         let table = NSTableView()
         private var order: Binding<BridgeReleaseFileOrder>
+        private var presentationError: Binding<DisplayError?>
         private var appearance: HostedAppearance
         private var files: [BridgeFile] = []
 
         init(
-            _ order: Binding<BridgeReleaseFileOrder>,
+            order: Binding<BridgeReleaseFileOrder>,
+            presentationError: Binding<DisplayError?>,
             appearance: HostedAppearance
         ) {
             self.order = order
+            self.presentationError = presentationError
             self.appearance = appearance
         }
 
         func update(
             files: [BridgeFile],
             order: Binding<BridgeReleaseFileOrder>,
+            presentationError: Binding<DisplayError?>,
             appearance: HostedAppearance
         ) {
             self.order = order
+            self.presentationError = presentationError
             let shown = order.wrappedValue
             table.showSortIndicator(
                 key: Column.sortable(shown.column).key,
@@ -245,6 +257,16 @@ struct MacReleaseFileTable: NSViewRepresentable {
         private func reportBug(operation: String, detail: String) {
             logger.error("\(operation) failed: \(detail)")
             CoreBugReporter().report(operation: operation, detail: detail)
+            let error = DisplayError(
+                BridgeError.Diagnostic(
+                    category: .internal,
+                    detail: "\(operation): \(detail)"
+                )
+            )
+            // AppKit can call this during the representable's update.
+            Task { @MainActor [presentationError] in
+                presentationError.wrappedValue = error
+            }
         }
     }
 }

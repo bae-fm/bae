@@ -51,6 +51,8 @@ struct ReleaseStorageSheet: View {
     private var files: [BridgeFile] = []
     @State
     private var error: DisplayError?
+    @State
+    private var tableError: DisplayError?
     /// The release Unpin's alert is asking about, while it shows.
     @State
     private var pendingUnpin: PendingUnpin?
@@ -161,7 +163,7 @@ struct ReleaseStorageSheet: View {
             .padding(.top, ThemeSpace.related)
             .padding(.bottom, ThemeSpace.inline)
 
-            if let error {
+            if let error = tableError ?? error {
                 MacNotice(
                     error: error,
                     look: .centered,
@@ -172,7 +174,11 @@ struct ReleaseStorageSheet: View {
                 )
             }
             else {
-                MacReleaseFileTable(files: files, order: $fileOrder)
+                MacReleaseFileTable(
+                    files: files,
+                    order: $fileOrder,
+                    presentationError: $tableError
+                )
             }
         }
         .onAppear { showFiles() }
