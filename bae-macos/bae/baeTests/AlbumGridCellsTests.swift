@@ -16,30 +16,10 @@ struct AlbumGridCellsTests {
             firstPosition: 0,
             albumCount: 2
         )
-        let rows = [
-            BridgeAlbumAppearance(
-                album: makeBridgeAlbum(
-                    id: "duet",
-                    title: "Duet Album",
-                    artistNames: "Artist A and Artist B"
-                ),
-                primaryReleaseUnplayable: false,
-                displayArtistLine: .named("Artist B")
-            ),
-            BridgeAlbumAppearance(
-                album: makeBridgeAlbum(
-                    id: "solo",
-                    title: "Solo Album",
-                    artistNames: "Artist A"
-                ),
-                primaryReleaseUnplayable: false,
-                displayArtistLine: nil
-            ),
-        ]
         let hosted = try await HostedAlbumGrid.host(
             preloaded: true,
             sections: [section],
-            rows: rows
+            rows: groupedCreditRows
         ) { list in
             MacAlbumGrid(
                 list: list,
@@ -60,15 +40,43 @@ struct AlbumGridCellsTests {
             of: hosted.window,
             subject: "album credits in a grouped grid"
         )
-        let texts = tree.nodes.compactMap { node -> String? in
+        let texts = tree.nodes.compactMap {
+            node -> (String, AccessibilityTree.Node)? in
             guard case .text(let text) = node.value else { return nil }
-            return text
+            return (text, node)
         }
-        #expect(texts.contains("Duet Album"))
-        #expect(texts.contains("Solo Album"))
-        #expect(texts.contains("Artist B"))
-        #expect(!texts.contains("Artist A and Artist B"))
-        #expect(!texts.contains("Artist A"))
+        let duet = try #require(texts.first { $0.0 == "Duet Album" }?.1)
+        let solo = try #require(texts.first { $0.0 == "Solo Album" }?.1)
+        let credits = texts.filter { $0.0 == "Artist B" }
+        #expect(credits.count == 1)
+        let credit = try #require(credits.first?.1)
+        #expect(credit.x >= duet.x && credit.x < solo.x)
+        #expect(credit.y > duet.y)
+        #expect(!texts.contains { $0.0 == "Artist A and Artist B" })
+        #expect(!texts.contains { $0.0 == "Artist A" })
+    }
+
+    private var groupedCreditRows: [BridgeAlbumAppearance] {
+        [
+            BridgeAlbumAppearance(
+                album: makeBridgeAlbum(
+                    id: "duet",
+                    title: "Duet Album",
+                    artistNames: "Artist A and Artist B"
+                ),
+                primaryReleaseUnplayable: false,
+                displayArtistLine: .named("Artist B")
+            ),
+            BridgeAlbumAppearance(
+                album: makeBridgeAlbum(
+                    id: "solo",
+                    title: "Solo Album",
+                    artistNames: "Artist A"
+                ),
+                primaryReleaseUnplayable: false,
+                displayArtistLine: nil
+            ),
+        ]
     }
 
     @Test("artist headings and albums start full rows with one open appearance")

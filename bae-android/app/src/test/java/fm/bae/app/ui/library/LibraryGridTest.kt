@@ -51,8 +51,11 @@ class LibraryGridTest {
             ),
         )
 
+    private val flatRows = rows.map { it.copy(displayArtistLine = it.album.artistLine) }
+
     private fun showGrid(
         layout: AlbumGridLayout,
+        rows: List<BridgeAlbumAppearance>,
         onSelectArtist: (String) -> Unit = {},
         onSelectAlbum: (String) -> Unit = {},
     ) {
@@ -77,6 +80,7 @@ class LibraryGridTest {
         var opened: String? = null
         showGrid(
             layout = AlbumGridLayout.Grouped(listOf(BridgeLibraryBrowseSection("artist-a", "Group Artist", null, 0uL, 3uL))),
+            rows = rows,
             onSelectArtist = { opened = it },
         )
 
@@ -90,7 +94,7 @@ class LibraryGridTest {
 
     @Test
     fun theFlatGridGivesEachAlbumsArtists() {
-        showGrid(AlbumGridLayout.Flat)
+        showGrid(AlbumGridLayout.Flat, flatRows)
 
         compose.onAllNodesWithText("Artist Name").assertCountEquals(rows.size)
         compose.onNodeWithText("1974 · with Other Artist").assertDoesNotExist()
@@ -99,7 +103,7 @@ class LibraryGridTest {
     @Test
     fun anUnplayableAlbumNamesItsStateAndStillOpensItsPage() {
         var opened: String? = null
-        showGrid(AlbumGridLayout.Flat, onSelectAlbum = { opened = it })
+        showGrid(AlbumGridLayout.Flat, flatRows, onSelectAlbum = { opened = it })
 
         val unplayable = compose.onNodeWithText("Solo Album")
         val playable = compose.onNodeWithText("Shared Album")
