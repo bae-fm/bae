@@ -42,7 +42,7 @@ private const val PERCENT = 100f
  * from [progress]'s latest value each display frame while the release
  * downloads: arriving bytes recompose nothing. Screen readers name the bar
  * Pinning, and read it as a progress bar of a percent. [gap] spaces the bar from the line
- * under it. With [stopDot] the bar ends in a dot, as the album page's bar does.
+ * under it. The bar ends in an accent dot.
  */
 @Composable
 internal fun DownloadProgress(
@@ -50,7 +50,6 @@ internal fun DownloadProgress(
     label: String?,
     gap: Dp,
     modifier: Modifier = Modifier,
-    stopDot: Boolean = false,
 ) {
     val accent = MaterialTheme.colorScheme.primary.toArgb()
     val text = MaterialTheme.colorScheme.onSurfaceVariant.toArgb()
@@ -60,7 +59,7 @@ internal fun DownloadProgress(
         modifier = modifier,
         factory = { context -> DownloadProgressView(context) },
         update = { view ->
-            view.applyStyle(accent = accent, text = text, textSizeSp = size, stopDot = stopDot)
+            view.applyStyle(accent = accent, text = text, textSizeSp = size)
             view.name = name
             view.gap = gap
             view.label = label
@@ -72,8 +71,7 @@ internal fun DownloadProgress(
 
 /**
  * A bar 4dp high with round ends: the fill in the accent, a 4dp gap, then the
- * rest of the track in the accent's strong tint, and with [stopDot] a 4dp dot at
- * its far end.
+ * rest of the track in the accent's strong tint, and a 4dp dot at its far end.
  */
 internal class PinBarView(
     context: Context,
@@ -82,7 +80,6 @@ internal class PinBarView(
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val rect = RectF()
     private var accent = 0
-    private var stopDot = false
 
     init {
         importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_YES
@@ -109,13 +106,9 @@ internal class PinBarView(
             invalidate()
         }
 
-    fun applyStyle(
-        accent: Int,
-        stopDot: Boolean,
-    ) {
-        if (this.accent == accent && this.stopDot == stopDot) return
+    fun applyColor(accent: Int) {
+        if (this.accent == accent) return
         this.accent = accent
-        this.stopDot = stopDot
         invalidate()
     }
 
@@ -144,10 +137,8 @@ internal class PinBarView(
             rect.set(0f, 0f, fillEnd, height)
             canvas.drawRoundRect(rect, radius, radius, paint)
         }
-        if (stopDot) {
-            rect.set(width - height, 0f, width, height)
-            canvas.drawRoundRect(rect, radius, radius, paint)
-        }
+        rect.set(width - height, 0f, width, height)
+        canvas.drawRoundRect(rect, radius, radius, paint)
     }
 }
 
@@ -187,9 +178,8 @@ internal class DownloadProgressView(
         accent: Int,
         text: Int,
         textSizeSp: Float,
-        stopDot: Boolean,
     ) {
-        bar.applyStyle(accent, stopDot)
+        bar.applyColor(accent)
         bytes.setTextColor(text)
         bytes.setTextSize(TypedValue.COMPLEX_UNIT_SP, textSizeSp)
     }

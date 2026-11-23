@@ -87,7 +87,6 @@ internal fun AndroidPinControl(
                     label = stringResource(R.string.pinning),
                     gap = ThemeSpace.compact,
                     modifier = Modifier.fillMaxWidth(),
-                    stopDot = true,
                 )
                 CancelPinButton(stringResource(R.string.pin_cancel), onCancel)
             }
