@@ -106,7 +106,8 @@
     var glyph = { cast: 'cast', airplay: 'airplay', upnp: 'tv' }[props.kind || 'cast'];
     // A receiver the person clicks to play on is one button, named as macOS names it: its name and its second line (its kind, or the wait) joined with a comma.
     var tap = !props.active && !props.menu;
-    var spinner = props.waiting ? h(MacSpinner, { key: 's', size: 14 }) : null;
+    // In a row that is one button, the button's name already says the wait, so VoiceOver reads no spinner of its own, as in the app.
+    var spinner = props.waiting ? (tap ? h('span', { key: 's', 'aria-hidden': true, className: 'bae-m-castrow-spin' }, h(MacSpinner, { size: 14 })) : h(MacSpinner, { key: 's', size: 14 })) : null;
     var control = props.menu ? h(MacMoreMenu, { key: 'm' }) : props.active ? h(MacButton, { key: 'd', kind: 'borderless', size: 'small' }, 'Disconnect') : null;
     return h('div', Object.assign({ className: 'bae-m-castrow' }, tap ? { role: 'button', 'aria-label': props.name + ', ' + (props.waiting || CAST_KIND[props.kind || 'cast']) } : null), h(MacItem, { wide: true, centerLead: true, centerTrail: true, lead: h(Glyph, { set: 'mac', name: glyph, size: 'medium', className: props.active ? 'bae-accent' : 'bae-muted' }), trail: [spinner, control] },
       h('span', { className: 'bae-m-castpop-text' }, h('span', { className: 'bae-m-castpop-name' }, props.name), props.waiting ? h('span', { className: 'bae-m-castpop-kind bae-m-castpop-waiting' }, props.waiting) : h('span', { className: props.active ? 'bae-m-castpop-state' : 'bae-m-castpop-kind' }, props.active ? 'Playing' : CAST_KIND[props.kind || 'cast']))));
