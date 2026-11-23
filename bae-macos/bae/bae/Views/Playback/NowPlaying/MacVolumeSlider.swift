@@ -153,9 +153,12 @@ private struct VolumeSliderTrack: View {
         .frame(height: 20)
         .accessibilityRepresentation {
             Slider(
-                value: Binding(get: { clamped }, set: set),
-                in: 0...1,
-                step: 0.05
+                value: Binding(
+                    get: { (clamped * 100).rounded() },
+                    set: { set($0 / 100) }
+                ),
+                in: 0...100,
+                step: 5
             ) {
                 Text("Volume")
             }
