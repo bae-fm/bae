@@ -72,12 +72,12 @@ struct MacSettingsSidebar: View {
         .focusEffectDisabled()
         .onKeyPress(.upArrow) { step(by: -1) }
         .onKeyPress(.downArrow) { step(by: 1) }
-        // The board's nav is named "Settings panes".
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Settings panes")
         // Room for the window's buttons, which sit in the sidebar's top.
         .padding(.top, MacSettingsSidebar.buttonsRoom)
         .frame(width: MacSettingsSidebar.width)
+        // The board's nav is named "Settings panes" and covers the room for
+        // the window's buttons.
+        .accessibilityPanel(Text("Settings panes"))
         .background(
             Theme.surface,
             in: RoundedRectangle(cornerRadius: MacSettingsSidebar.cornerRadius)
