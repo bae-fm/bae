@@ -203,7 +203,6 @@
                         .accessibilityHidden(true)
                 }
             }
-            .accessibilityElement(children: .combine)
             .themeText(.body)
             .padding(.leading, ThemeSpace.related)
             .padding(.trailing, isPopUp ? ThemeSpace.edge : ThemeSpace.related)
@@ -225,6 +224,9 @@
                 )
             )
             .contentShape(Rectangle())
+            // The line is one element holding its words, as the board's
+            // menu item holds its text.
+            .accessibilityElement(children: .contain)
             .help(accessory?.help ?? "")
             .onHover { hover(index, $0) }
             .onTapGesture { if !disabled { pick(index) } }
