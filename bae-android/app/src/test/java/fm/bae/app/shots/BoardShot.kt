@@ -16,6 +16,7 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.BugReports
 import fm.bae.app.LocalBugReports
+import fm.bae.app.setTestAnimatorScale
 import fm.bae.app.ui.LocalNowMs
 import org.json.JSONObject
 import org.junit.Assume.assumeNotNull
@@ -121,7 +122,7 @@ internal fun isSelected(
  */
 internal fun ComposeContentTestRule.settle(content: @Composable () -> Unit) {
     mainClock.autoAdvance = false
-    ShotAnimations.disable()
+    setTestAnimatorScale(0f)
     setContent {
         CompositionLocalProvider(
             LocalNowMs provides ShotClock::nowMs,

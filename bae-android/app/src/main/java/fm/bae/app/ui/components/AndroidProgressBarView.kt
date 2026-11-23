@@ -179,14 +179,15 @@ internal class AndroidProgressBarView(
     }
 
     private fun observeAnimatorScale(onScaleChange: () -> Unit): () -> Unit {
+        val main = Handler(Looper.getMainLooper())
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val listener = ValueAnimator.DurationScaleChangeListener { onScaleChange() }
+            val listener = ValueAnimator.DurationScaleChangeListener { main.post { onScaleChange() } }
             ValueAnimator.registerDurationScaleChangeListener(listener)
             return { ValueAnimator.unregisterDurationScaleChangeListener(listener) }
         }
         val resolver = context.contentResolver
         val observer =
-            object : ContentObserver(Handler(Looper.getMainLooper())) {
+            object : ContentObserver(main) {
                 override fun onChange(selfChange: Boolean) = onScaleChange()
             }
         val scaleUri = Settings.Global.getUriFor(Settings.Global.ANIMATOR_DURATION_SCALE)
