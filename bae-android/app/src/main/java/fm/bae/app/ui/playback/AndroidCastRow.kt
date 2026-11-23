@@ -1,12 +1,11 @@
 package fm.bae.app.ui.playback
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -95,6 +94,7 @@ internal fun AndroidCastRow(
                     },
                 ).padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.group),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(ThemeSpace.group),
     ) {
         Icon(
             imageVector = deviceIcon(receiver.kind),
@@ -106,7 +106,6 @@ internal fun AndroidCastRow(
                     MaterialTheme.colorScheme.onSurfaceVariant
                 },
         )
-        Spacer(modifier = Modifier.width(ThemeSpace.group))
         CastReceiverLabel(receiver = receiver, casting = casting, wait = wait, modifier = Modifier.weight(1f))
         if (wait != null) {
             AndroidSpinner(size = ThemeIcon.medium)
