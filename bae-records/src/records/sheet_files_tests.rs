@@ -1,7 +1,7 @@
 //! What a release editor's edits do to a release's tracks, as the statements
 //! of `sheet_changes_ctes` work it out.
 
-use super::layout::{laid_mediums_source, laid_out_on, laid_places_source, LayoutParams};
+use super::layout::{base_mediums_source, laid_out_on, laid_places_source, LayoutParams};
 use super::*;
 use crate::test_fixtures::{ALBUM_A, RELEASE_A};
 use crate::ReleaseFileRole;
@@ -285,7 +285,7 @@ async fn rows(db: &Store, edits: String) -> Vec<DbReleaseEditRow> {
             moves: "[]",
             edits: &edits,
         };
-        let mediums = laid_mediums_source();
+        let mediums = base_mediums_source();
         let places = laid_places_source();
         Ok(sql.query(
             &release_edit_tracks_sql(
@@ -308,6 +308,7 @@ fn kinds(rows: &[DbReleaseEditRow]) -> Vec<String> {
         .map(|row| match row {
             DbReleaseEditRow::Stored(track) => track.track.id.clone(),
             DbReleaseEditRow::Added(added) => format!("added {}", added.file.file_id),
+            DbReleaseEditRow::EmptySide(side) => format!("empty {side:?}"),
         })
         .collect()
 }
@@ -575,8 +576,12 @@ async fn an_ignored_sheet_can_go_back_on_its_empty_disc() {
     .await;
     let edits = SheetEdits { ignored: ids(&["two"]), ..SheetEdits::default() }.json().unwrap();
     let rows = rows(&db, edits.clone()).await;
-    let [DbReleaseEditRow::Stored(track)] = rows.as_slice() else { panic!("one track stays") };
-    assert_eq!(track.position.side(), bae_types::mediums::TrackSide::Flat);
+    let [DbReleaseEditRow::EmptySide(emptied), DbReleaseEditRow::Stored(track)] = rows.as_slice()
+    else {
+        panic!("the emptied disc keeps its heading above the one track that stays: {rows:?}")
+    };
+    assert_eq!(*emptied, bae_types::mediums::TrackSide::Disc { disc: 1 });
+    assert_eq!(track.position.side(), bae_types::mediums::TrackSide::Disc { disc: 2 });
     let caption = track.sheet.as_ref().unwrap();
     assert_eq!(caption.place.side, bae_types::mediums::MediumSide::first_of(2));
     assert_eq!(caption.side_choices[1].side, bae_types::mediums::MediumSide::first_of(2));

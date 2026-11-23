@@ -79,7 +79,9 @@ const CHANGING: &str = "EXISTS (SELECT 1 FROM dropped_tracks)";
 /// `sides`, `base_medium`), `laid_places` (`track_id`, `medium`, `side`,
 /// `number`, `stated_length_ms`, `position`, `base_medium`), `laid_sheets` (each CUE sheet's
 /// `sheet_file_id` with the `medium` and `side` its first track sits on) and
-/// `honored` (the sheets whose picked side the layout gave them).
+/// `honored` (the sheets whose picked side the layout gave them). A sheet's
+/// `laid_sheets` row and `honored` row name its medium as `base_mediums` does,
+/// as the picks do.
 ///
 /// The layout starts from the given places, else the library's.
 /// A sheet picked onto a side the layout holds, with a track not on it,
@@ -187,7 +189,7 @@ const LAYOUT: &str = "base_places (track_id, medium, side, number, stated_length
          WHERE NOT moving.yes OR u.medium IS NOT NULL), \
      laid_sheets (sheet_file_id, medium, side) AS ( \
          SELECT sheet_file_id, medium, side FROM ( \
-             SELECT st.sheet_file_id, place.medium, place.side, \
+             SELECT st.sheet_file_id, place.base_medium AS medium, place.side, \
                     ROW_NUMBER() OVER (PARTITION BY st.sheet_file_id \
                                        ORDER BY place.position) AS n \
              FROM sheet_tracks st JOIN laid_places place ON place.track_id = st.track_id) \
@@ -197,19 +199,11 @@ const LAYOUT: &str = "base_places (track_id, medium, side, number, stated_length
          JOIN laid_sheets sheet ON sheet.sheet_file_id = pick.sheet_file_id \
          WHERE sheet.medium = pick.medium AND sheet.side = pick.side)";
 
-/// A statement's table of the laid-out mediums in the shape
-/// [`MediumsSource::Draft`] takes for `mediums`: one row per medium with the
-/// columns of `release_mediums` it reads.
-pub fn laid_mediums_source() -> String {
-    format!(
-        "(WITH {} SELECT base_medium AS id, :release AS release_id, position, \
-                 carrier AS medium, sides AS side_count FROM laid_mediums)",
-        layout_ctes()
-    )
-}
-
-/// The side and disc numbers that placement commands address before the
-/// draft drops empty mediums.
+/// A statement's table of the release's mediums as the form opens them,
+/// before a save drops the mediums no track sits on, in the shape
+/// [`MediumsSource::Draft`] takes for `mediums`. The track table's headings
+/// and the place pop-ups of its CUE sheets number the mediums this way, so
+/// each names the same disc or side until Save.
 pub fn base_mediums_source() -> String {
     format!(
         "(WITH {BASE_MEDIUMS} SELECT position AS id, :release AS release_id, position, \

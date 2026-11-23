@@ -214,11 +214,13 @@ pub(crate) struct ReleaseEditDraftRows {
 }
 
 /// One row of a form's draft tracks as its statement returns it: a track
-/// the library holds, or a track the form's save adds.
+/// the library holds, a track the form's save adds, or a side no track sits
+/// on.
 #[derive(Debug, Clone, PartialEq)]
 enum DraftRow {
     Stored(DraftTrackRow),
     Added(bae_records::DbReleaseEditAdded),
+    EmptySide(bae_types::mediums::TrackSide),
 }
 
 /// One track the library holds, as a form's draft statement returns it:
@@ -339,7 +341,7 @@ fn deletes_track_data_on(sql: &impl coven::SqlRead, form: &FormParams) -> Result
 /// library holds with the form row that edits it and that row's own artists
 /// with how each stands to the library.
 fn draft_tracks_on(sql: &impl coven::SqlRead, form: &FormParams) -> Result<Vec<DraftRow>, DbError> {
-    let mediums = bae_records::records::layout::laid_mediums_source();
+    let mediums = bae_records::records::layout::base_mediums_source();
     let places = bae_records::records::layout::laid_places_source();
     let layout = form.layout();
     let credits = form.credits();
@@ -352,7 +354,7 @@ fn draft_tracks_on(sql: &impl coven::SqlRead, form: &FormParams) -> Result<Vec<D
              SELECT library.*, \
                     (SELECT {track} FROM {FORM_TRACKS} AS f WHERE f.id = library.row_id) AS form, \
                     {artists} AS artists \
-             FROM ({tracks}) AS library ORDER BY library.placed_position",
+             FROM ({tracks}) AS library ORDER BY library.placed_medium, library.placed_position",
             standing_clauses = artist_field_clauses(credits),
             track = form_track_json_sql(),
             artists = track_artist_field_sql("library.row_id"),
@@ -371,6 +373,7 @@ fn draft_tracks_on(sql: &impl coven::SqlRead, form: &FormParams) -> Result<Vec<D
                     artists: row.get("artists")?,
                 }),
                 bae_records::DbReleaseEditRow::Added(added) => DraftRow::Added(added),
+                bae_records::DbReleaseEditRow::EmptySide(side) => DraftRow::EmptySide(side),
             })
         },
     )?)
@@ -398,17 +401,20 @@ impl DraftTrackRow {
 }
 
 impl DraftRow {
-    /// The row of the editor's track table this row is.
+    /// The entry of the editor's track table this row is.
     fn table_row(
         self,
         unreadable: &impl Fn(crate::ReleaseEditLoadError) -> DbError,
-    ) -> Result<crate::types::ReleaseEditTrackRow, DbError> {
+    ) -> Result<crate::types::ReleaseEditTableRow, DbError> {
         let added = match self {
-            Self::Stored(track) => return track.table_row(unreadable),
+            Self::Stored(track) => {
+                return track.table_row(unreadable).map(crate::types::ReleaseEditTableRow::Track)
+            }
             Self::Added(added) => added,
+            Self::EmptySide(side) => return Ok(crate::types::ReleaseEditTableRow::EmptySide(side)),
         };
         let title = crate::service::added_track_title(&added.file);
-        Ok(crate::types::ReleaseEditTrackRow {
+        Ok(crate::types::ReleaseEditTableRow::Track(crate::types::ReleaseEditTrackRow {
             edit: RawTrackEdit {
                 id: added.file.file_id.clone(),
                 title,
@@ -429,7 +435,7 @@ impl DraftRow {
             },
             audition: crate::TrackAudition::Unsaved,
             artists: None,
-        })
+        }))
     }
 }
 

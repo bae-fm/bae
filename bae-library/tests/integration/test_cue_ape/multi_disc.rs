@@ -329,8 +329,10 @@ async fn test_editor_moves_a_sheet_to_a_disc_that_holds_other_tracks() {
     drafts.set(Some(moved.clone())).expect("the draft takes the form");
     let draft = drafts.next().await.expect("read the draft").expect("the library holds it");
     let sides = draft.sides.as_deref().expect("the release has tracks");
-    let [side] = sides else { panic!("one disc holds every track: {sides:?}") };
-    assert_eq!(side.side, bae_types::mediums::TrackSide::Flat);
+    let [emptied, side] = sides else { panic!("two headings: {sides:?}") };
+    assert_eq!(emptied.side, bae_types::mediums::TrackSide::Disc { disc: 1 });
+    assert!(emptied.runs.is_empty(), "the disc the sheet left keeps its heading until Save");
+    assert_eq!(side.side, bae_types::mediums::TrackSide::Disc { disc: 2 });
     let runs: Vec<_> = side
         .runs
         .iter()

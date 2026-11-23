@@ -71,7 +71,19 @@ fn lay_out_on_discs(
             sheet.side_choices.clone_from(&choices);
         }
     }
-    lay_out_tracks(tracks)
+    lay_out_tracks(tracks.into_iter().map(ReleaseEditTableRow::Track).collect())
+}
+
+#[test]
+fn a_side_no_track_sits_on_keeps_its_heading_with_no_run() {
+    let sides = lay_out_tracks(vec![
+        ReleaseEditTableRow::EmptySide(TrackSide::Disc { disc: 1 }),
+        ReleaseEditTableRow::Track(context(TrackSide::Disc { disc: 2 }, "t", "f", None)),
+    ]);
+    assert_eq!(
+        sides.iter().map(|side| (side.side.clone(), side.runs.len())).collect::<Vec<_>>(),
+        [(TrackSide::Disc { disc: 1 }, 0), (TrackSide::Disc { disc: 2 }, 1)]
+    );
 }
 
 /// Each run as the sheet a sheet run names, and the track ids it holds.

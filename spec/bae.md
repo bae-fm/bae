@@ -1845,9 +1845,11 @@ out, adding a medium of unstated carrier where the draft holds fewer; a medium
 no track sits on any more is dropped. A CUE sheet's place pop-up in the
 release editor (§3.8) moves the sheet's tracks onto a side or disc: they
 go after the tracks already on that side, each numbered one more than the
-highest number on that side, so no two tracks of a side share a number; the
-medium the sheet left is dropped if no track sits on it any more, and the
-mediums after it move up. In the pane, a sheet moved onto a disc the draft
+highest number on that side, so no two tracks of a side share a number. A
+medium no track sits on any more is dropped, and the mediums after it move up:
+in the pane at once, and in the editor when it saves, since until then the
+editor's table and every place pop-up keep the headings the editor opened
+with (§3.8). In the pane, a sheet moved onto a disc the draft
 lacks is laid out as the folder lays it out, on a medium of unstated carrier
 added for it. A file decision is kept under the files' hash, so it settles every
 folder holding the same files in one write, each found by that hash.
@@ -2328,6 +2330,13 @@ offered. In a library release's editor, a catalog applied after a side pick
 lays the tracks out at its own places and clears the picks, so the pop-up then
 shows the catalog's side or disc; a pick made after it moves the sheet again,
 and a file pick stays.
+
+While a library release's editor is open, its table and the place pop-ups of
+its sheets keep the discs and sides the editor opened with. A disc that
+moving or ignoring a sheet leaves with no track keeps its heading with no
+tracks under it, and the discs after it keep their numbers, so picking the
+heading a sheet had puts the sheet back. A save drops the disc with no track,
+and the discs after it move up.
 
 A library release's save that ignores a sheet, or leaves a line playing no
 audio, deletes the tracks the sheet carved there, and bae matches none of them

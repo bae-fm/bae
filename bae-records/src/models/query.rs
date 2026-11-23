@@ -75,11 +75,13 @@ pub struct DbReleaseEditAdded {
 }
 
 /// One row of the release editor's tracks statement: a track the library
-/// holds, or a track the form's save adds.
+/// holds, a track the form's save adds, or a side or disc that the draft
+/// keeps the heading of, with no track on it.
 #[derive(Debug, Clone, PartialEq)]
 pub enum DbReleaseEditRow {
     Stored(Box<DbReleaseEditTrack>),
     Added(DbReleaseEditAdded),
+    EmptySide(bae_types::mediums::TrackSide),
 }
 
 /// A CUE sheet that carves a track out of an image, as the release editor

@@ -29,7 +29,8 @@ pub use raw_release_edit::{
 pub use release_edit_display::ReleaseEditDisplayContext;
 #[cfg(desktop)]
 pub(crate) use release_edit_display::{
-    carried_file, lay_out_tracks, sheet_without_tracks_group, ReleaseEditTrackRow,
+    carried_file, lay_out_tracks, sheet_without_tracks_group, ReleaseEditTableRow,
+    ReleaseEditTrackRow,
 };
 pub use release_edit_display::{ReleaseEditLoadError, ReleaseEditTrackContext};
 #[cfg(desktop)]

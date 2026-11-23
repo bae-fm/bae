@@ -482,28 +482,36 @@ pub(super) const SIDED: &str = "place.side_kind = 'sided'";
 
 #[cfg(desktop)]
 pub fn release_edit_tracks_sql(release: &str, source: MediumsSource<'_>, edits: &str) -> String {
-    let (mediums, target) = match source {
-        MediumsSource::Release => (
-            format!("(SELECT * FROM release_mediums WHERE release_id = {release})"),
-            "place.medium_position",
-        ),
-        MediumsSource::Draft { .. } => (super::layout::base_mediums_source(), "place.medium_id"),
+    let (mediums, keeps_empty_sides) = match source {
+        MediumsSource::Release => {
+            (format!("(SELECT * FROM release_mediums WHERE release_id = {release})"), 0)
+        }
+        MediumsSource::Draft { mediums, .. } => (mediums.to_string(), 1),
     };
     let choices = super::sheet_side_choices_sql(&mediums);
     format!(
         "WITH {places}, choices AS MATERIALIZED (SELECT * FROM {choices}), \
-         placed AS ( \
-            SELECT place.id AS id, place.position AS position, place.number AS number, \
-                   place.side_kind AS side_kind, place.side_ordinal AS side_ordinal, \
+         placed_sides AS ( \
+            SELECT COALESCE(place.id, 'empty:' || choice.medium || ':' || choice.side) AS id, \
+                   place.id IS NOT NULL AS has_track, \
+                   COALESCE(place.medium_position, choice.medium) AS medium_position, \
+                   COALESCE(place.position, choice.side) AS position, \
+                   COALESCE(place.number, 0) AS number, \
+                   COALESCE(place.side_kind, choice.kind) AS side_kind, \
+                   COALESCE(place.side_ordinal, choice.ordinal) AS side_ordinal, \
                    place.stated_length_ms AS place_stated_length_ms, \
                    FIRST_VALUE(choice.medium) OVER {first} AS sheet_medium, \
                    FIRST_VALUE(choice.side) OVER {first} AS sheet_side, \
                    FIRST_VALUE(choice.kind) OVER {first} AS sheet_kind, \
-                   FIRST_VALUE(choice.ordinal) OVER {first} AS sheet_ordinal \
-            FROM place \
-            LEFT JOIN carved_tracks sheet_carved ON sheet_carved.track_id = place.id \
-            LEFT JOIN choices choice ON choice.medium = {target} AND choice.side = {side} \
-            WHERE place.release_id = {release}), \
+                   FIRST_VALUE(choice.ordinal) OVER {first} AS sheet_ordinal, \
+                   COUNT(place.id) OVER (PARTITION BY choice.medium) AS tracks_on_medium \
+            FROM choices choice \
+            FULL OUTER JOIN place ON choice.medium = place.medium_position \
+                                 AND choice.side = {side} \
+            LEFT JOIN carved_tracks sheet_carved ON sheet_carved.track_id = place.id), \
+         placed AS ( \
+            SELECT *, NOT has_track AS empty_side FROM placed_sides \
+            WHERE has_track OR ({keeps_empty_sides} AND tracks_on_medium = 0)), \
          {sheet_files}, {audio_options}, \
          main AS ( \
             SELECT s.track_id, s.file_id, s.start_sample * 1000 / s.sample_rate AS start_ms, \
@@ -512,7 +520,8 @@ pub fn release_edit_tracks_sql(release: &str, source: MediumsSource<'_>, edits: 
                    COUNT(*) OVER (PARTITION BY s.track_id) AS main_count \
             FROM laid_segments s WHERE s.role = 'main'), \
          laid AS ( \
-            SELECT t.*, p.id AS row_id, p.position AS placed_position, p.side_kind, \
+            SELECT t.*, p.id AS row_id, p.medium_position AS placed_medium, p.position AS placed_position, \
+               p.empty_side, p.side_kind, \
                p.side_ordinal, p.number AS place_number, p.place_stated_length_ms, \
                CASE WHEN main.to_new_end \
                     THEN f.source_audio_duration_ms - main.start_ms \
@@ -548,7 +557,7 @@ pub fn release_edit_tracks_sql(release: &str, source: MediumsSource<'_>, edits: 
         CASE WHEN laid.place_stated_length_ms IS NOT NULL \
                   AND bae_lengths_disagree(laid.laid_duration_ms, laid.place_stated_length_ms) \
              THEN laid.place_stated_length_ms END AS listed_length_ms \
-     FROM laid ORDER BY laid.placed_position",
+     FROM laid ORDER BY laid.placed_medium, laid.placed_position",
         places =
             super::release_tracks::track_places_ctes(source, &format!("m.release_id = {release}")),
         first = "(PARTITION BY sheet_carved.sheet_file_id ORDER BY place.position)",
@@ -578,9 +587,18 @@ pub fn release_edit_tracks_on(
 }
 
 /// One row of [`release_edit_tracks_sql`] as the editor's draft reads it: a
-/// track the library holds, or the track a save adds for an audio file.
+/// track the library holds, the track a save adds for an audio file, or a
+/// side no track sits on.
 #[cfg(desktop)]
 pub fn release_edit_row_of_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<DbReleaseEditRow> {
+    if row.get::<_, bool>("empty_side")? {
+        return super::release_tracks::track_side_of(
+            &row.get::<_, String>("side_kind")?,
+            row.get("side_ordinal")?,
+        )
+        .map(DbReleaseEditRow::EmptySide)
+        .map_err(|reason| bae_store::read::column_conversion_error(row, "side_kind", reason));
+    }
     if !row.get::<_, bool>("is_added")? {
         return release_edit_track_of_row(row).map(Box::new).map(DbReleaseEditRow::Stored);
     }

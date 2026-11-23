@@ -65,15 +65,39 @@ impl ReleaseEditTrackRow {
     }
 }
 
-/// Lay out `rows`, in release order, as the import pane lays out a
+/// One entry of the editor's track table in release order: a track, or a
+/// side or disc no track sits on, which keeps its heading until Save.
+#[cfg(desktop)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum ReleaseEditTableRow {
+    Track(ReleaseEditTrackRow),
+    EmptySide(bae_types::mediums::TrackSide),
+}
+
+/// Lay out `entries`, in release order, as the import pane lays out a
 /// folder's tracks: a side per run of tracks on one side, and within it a
 /// run per CUE sheet that carves consecutive tracks there, under the
-/// sheet's caption. Each other track is a run of its own.
+/// sheet's caption. Each other track is a run of its own. A side no track
+/// sits on has no run.
 #[cfg(desktop)]
-pub(crate) fn lay_out_tracks(rows: Vec<ReleaseEditTrackRow>) -> Vec<crate::TrackTableSide> {
+pub(crate) fn lay_out_tracks(entries: Vec<ReleaseEditTableRow>) -> Vec<crate::TrackTableSide> {
+    let rows: Vec<&ReleaseEditTrackRow> = entries
+        .iter()
+        .filter_map(|entry| match entry {
+            ReleaseEditTableRow::Track(row) => Some(row),
+            ReleaseEditTableRow::EmptySide(_) => None,
+        })
+        .collect();
     let captions = sheet_captions(&rows);
     let mut sides: Vec<crate::TrackTableSide> = Vec::new();
-    for row in rows {
+    for entry in entries {
+        let row = match entry {
+            ReleaseEditTableRow::Track(row) => row,
+            ReleaseEditTableRow::EmptySide(side) => {
+                sides.push(crate::TrackTableSide { side, runs: Vec::new() });
+                continue;
+            }
+        };
         if sides.last().is_none_or(|last| last.side != row.context.side) {
             sides.push(crate::TrackTableSide { side: row.context.side.clone(), runs: Vec::new() });
         }
@@ -163,7 +187,7 @@ fn bound_lines(
 /// codec, and one shorter than the line's tracks is refused for its timing,
 /// as the import pane refuses them.
 #[cfg(desktop)]
-fn sheet_captions(rows: &[ReleaseEditTrackRow]) -> Vec<crate::SheetGroup> {
+fn sheet_captions(rows: &[&ReleaseEditTrackRow]) -> Vec<crate::SheetGroup> {
     use crate::folder_scanner::SheetReferenceOptions;
     /// A sheet and its `FILE` lines so far, each with the file it plays
     /// from.

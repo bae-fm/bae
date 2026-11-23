@@ -256,3 +256,37 @@ async fn two_sheets_on_one_disc_keep_their_order() {
     assert_eq!(places, [place("c", 1, 1, 1), place("a", 1, 1, 2), place("b", 1, 1, 3)]);
     assert_eq!(mediums, 1);
 }
+
+/// A pick names its disc as the editor opened the release, so a sheet moved
+/// onto a disc is still honored when the move empties a disc before it.
+#[tokio::test]
+async fn a_pick_is_honored_when_the_move_empties_an_earlier_disc() {
+    let (db, _folder) = release(
+        &plain(&[1, 1, 1]),
+        &[("a", 1, 1, 1), ("b", 2, 1, 1), ("c", 3, 1, 1)],
+        &[("sheet-b", "b")],
+    )
+    .await;
+    let moves = serde_json::to_string(&[serde_json::json!({
+        "sheet_file_id": uuid("sheet-b"), "medium": 3, "side": 1,
+    })])
+    .unwrap();
+    let honored = db
+        .read(move |sql| {
+            honored_picks_on(
+                &sql,
+                &LayoutParams {
+                    release_id: Some(RELEASE_A),
+                    applied: false,
+                    mediums: "[]",
+                    places: "[]",
+                    carving: "[]",
+                    moves: &moves,
+                    edits: "{}",
+                },
+            )
+        })
+        .await
+        .unwrap();
+    assert_eq!(honored, [(uuid("sheet-b"), bae_types::mediums::MediumSide { medium: 3, side: 1 })]);
+}
