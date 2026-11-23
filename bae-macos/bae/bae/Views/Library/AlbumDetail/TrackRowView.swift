@@ -39,7 +39,7 @@ struct TrackRowView: View {
     private var highlightOpacity: Double = 0
     /// The heart the person chose for the track, until its write returns.
     @State
-    private var pendingHeart: Bool?
+    private var pendingHeart = PendingHeart()
 
     var body: some View {
         // The body reads the pick once, and the tap handler gets the value
@@ -98,20 +98,11 @@ struct TrackRowView: View {
     /// The track's rating, with the heart the person just chose in place of
     /// the one the read holds until the write returns.
     private var shownRating: BridgeTrackRating {
-        guard let pendingHeart, case .heart = track.rating else {
+        guard let choice = pendingHeart.choice, case .heart = track.rating
+        else {
             return track.rating
         }
-        return .heart(hearted: pendingHeart)
-    }
-
-    /// Choose the heart, unless an earlier choice is still being written.
-    private func setHearted(_ hearted: Bool) {
-        guard pendingHeart == nil else { return }
-        pendingHeart = hearted
-        Task {
-            await onSetHearted(hearted)
-            pendingHeart = nil
-        }
+        return .heart(hearted: choice)
     }
 
     private var isPicked: Bool {
@@ -150,7 +141,7 @@ struct TrackRowView: View {
             onExportTrack: onExportTrack,
             rating: shownRating,
             onRate: onRate,
-            onSetHearted: setHearted,
+            onSetHearted: { pendingHeart.choose($0, write: onSetHearted) },
             playlists: playlists
         )
     }

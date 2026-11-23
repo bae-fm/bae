@@ -52,7 +52,7 @@ struct MacAlbumPanel: View {
 
     /// The heart the person chose for the album, until its write returns.
     @State
-    private var pendingHeart: Bool?
+    private var pendingHeart = PendingHeart()
 
     /// The album cover's side.
     private static let coverSize: CGFloat = 340
@@ -133,7 +133,7 @@ struct MacAlbumPanel: View {
         AlbumMenu(
             offersSetAsPrimary: detail.shownReleaseCanBecomePrimary,
             rating: shownRating,
-            onSetHearted: setHearted,
+            onSetHearted: { pendingHeart.choose($0, write: onSetAlbumHearted) },
             onPlay: onPlay,
             onShuffle: onShuffle,
             onAddNext: onAddNextAlbum,
@@ -151,19 +151,10 @@ struct MacAlbumPanel: View {
     /// The album's rating, with the heart the person just chose in place of
     /// the one the read holds until the write returns.
     private var shownRating: BridgeAlbumRating {
-        guard let pendingHeart, case .heart(_, let hearters) = detail.rating
+        guard let choice = pendingHeart.choice,
+            case .heart(_, let hearters) = detail.rating
         else { return detail.rating }
-        return .heart(hearted: pendingHeart, hearters: hearters)
-    }
-
-    /// Choose the heart, unless an earlier choice is still being written.
-    private func setHearted(_ hearted: Bool) {
-        guard pendingHeart == nil else { return }
-        pendingHeart = hearted
-        Task {
-            await onSetAlbumHearted(hearted)
-            pendingHeart = nil
-        }
+        return .heart(hearted: choice, hearters: hearters)
     }
 
     private var albumArt: some View {
