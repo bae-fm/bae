@@ -85,17 +85,17 @@ fn a_removed_person_s_rating_still_names_them() {
                 album.clone(),
             )));
         let both = detail_matching(&mut robins, |detail| {
-            matches!(&detail.rating, AlbumRating::Stars { raters, .. } if raters.len() == 2)
+            matches!(&detail.rating, AlbumRating::Stars { raters: Some(raters), .. } if raters.len() == 2)
         })
         .await;
         assert_eq!(
             both.rating,
             AlbumRating::Stars {
                 mine: Some(Stars::Four),
-                raters: vec![
+                raters: Some(vec![
                     Rater::You,
                     Rater::Person { name: "Rowan".to_string(), stars: Stars::Two }
-                ],
+                ]),
             }
         );
 
@@ -115,10 +115,10 @@ fn a_removed_person_s_rating_still_names_them() {
         owner.people().set_rating_system(RatedItems::Albums, RatingSystem::Stars).await.unwrap();
         let rowans_stars = AlbumRating::Stars {
             mine: Some(Stars::Two),
-            raters: vec![
+            raters: Some(vec![
                 Rater::You,
                 Rater::Person { name: "Robin".to_string(), stars: Stars::Four },
-            ],
+            ]),
         };
         detail_matching(&mut rowans, |detail| detail.rating == rowans_stars).await;
 
@@ -145,10 +145,10 @@ fn a_removed_person_s_rating_still_names_them() {
             after.rating,
             AlbumRating::Stars {
                 mine: Some(Stars::Four),
-                raters: vec![
+                raters: Some(vec![
                     Rater::You,
                     Rater::Person { name: "Rowan".to_string(), stars: Stars::Two }
-                ],
+                ]),
             }
         );
 

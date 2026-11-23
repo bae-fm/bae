@@ -12,12 +12,6 @@ struct AlbumRatingTextTests {
         #expect(raters.text == "You · Ana rated it 5")
     }
 
-    @Test("an album nobody rated has no line")
-    func noRaters() {
-        let raters: [BridgeRater] = []
-        #expect(raters.text.isEmpty)
-    }
-
     @Test("the heart line names this person first, then each other by name")
     func heartersLine() {
         let hearters: [BridgeHearter] = [.you, .person(name: "Ana")]

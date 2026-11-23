@@ -128,7 +128,7 @@ func makeBridgeAlbumDetail(
         shownReleaseIndex: UInt32(shownReleaseIndex),
         shownReleaseCanBecomePrimary: shownReleaseIndex > 0,
         showsReleaseChoices: releases.count > 1,
-        rating: .stars(mine: nil, raters: []),
+        rating: .stars(mine: nil, raters: nil),
     )
 }
 

@@ -72,8 +72,9 @@ pub enum AlbumRating {
         /// The stars this person gave the album.
         mine: Option<Stars>,
         /// Who rated the album: this person first, when they did, then each
-        /// other person who did, by name then id.
-        raters: Vec<Rater>,
+        /// other person who did, by name then id. None when nobody rated the
+        /// album.
+        raters: Option<Vec<Rater>>,
     },
     /// *Heart*: whether this person hearted the album, and who did.
     Heart {
@@ -113,16 +114,17 @@ impl AlbumRating {
         match system {
             RatingSystem::Hidden => Self::Hidden,
             RatingSystem::Stars => {
-                let raters = raw
-                    .mine
-                    .map(|_| Rater::You)
-                    .into_iter()
-                    .chain(
-                        raw.others
+                let raters =
+                    raw.has_raters.then(|| {
+                        raw.mine
+                            .map(|_| Rater::You)
                             .into_iter()
-                            .map(|other| Rater::Person { name: other.name, stars: other.stars }),
-                    )
-                    .collect();
+                            .chain(raw.others.into_iter().map(|other| Rater::Person {
+                                name: other.name,
+                                stars: other.stars,
+                            }))
+                            .collect()
+                    });
                 Self::Stars { mine: raw.mine, raters }
             }
             RatingSystem::Heart => {

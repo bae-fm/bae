@@ -692,16 +692,16 @@ async fn rating_delivers_a_new_album_detail() {
         Some(bae_views::album_detail::AlbumDetailRequest::album(album.clone())),
     );
     let first = next_detail(&mut values).await;
-    assert_eq!(first.rating, AlbumRating::Stars { mine: None, raters: vec![] });
+    assert_eq!(first.rating, AlbumRating::Stars { mine: None, raters: None });
 
     people.set_rating(RatingTarget::Album(album.clone()), Some(Stars::Four)).await.unwrap();
     let rated = next_detail_matching(&mut values, |detail| {
-        detail.rating != AlbumRating::Stars { mine: None, raters: vec![] }
+        detail.rating != AlbumRating::Stars { mine: None, raters: None }
     })
     .await;
     assert_eq!(
         rated.rating,
-        AlbumRating::Stars { mine: Some(Stars::Four), raters: vec![Rater::You] }
+        AlbumRating::Stars { mine: Some(Stars::Four), raters: Some(vec![Rater::You]) }
     );
 
     people.set_rating(RatingTarget::Track(track.clone()), Some(Stars::Two)).await.unwrap();
@@ -764,14 +764,15 @@ async fn the_rating_systems_shape_the_album_detail_s_ratings() {
     // The heart is five stars under *Stars*.
     people.set_rating_system(RatedItems::Albums, RatingSystem::Stars).await.unwrap();
     next_detail_matching(&mut values, |detail| {
-        detail.rating == AlbumRating::Stars { mine: Some(Stars::Five), raters: vec![Rater::You] }
+        detail.rating
+            == AlbumRating::Stars { mine: Some(Stars::Five), raters: Some(vec![Rater::You]) }
     })
     .await;
 
     // Taking the heart off clears the rating.
     people.set_hearted(RatingTarget::Album(album.clone()), false).await.unwrap();
     next_detail_matching(&mut values, |detail| {
-        detail.rating == AlbumRating::Stars { mine: None, raters: vec![] }
+        detail.rating == AlbumRating::Stars { mine: None, raters: None }
     })
     .await;
 

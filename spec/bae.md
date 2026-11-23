@@ -3186,9 +3186,10 @@ puts the hearted first and orders nothing by the stars it hides.
 
 On macOS an album's options menu, beside Play, offers *Shuffle*, *Play next*
 and *Add to queue*, then *Rate*, then the release's own items, and last
-*Delete release* and *Delete album…*. The *Rate* submenu starts with a
-disabled item that names who rated the album, then offers five stars down
-to one with the person's own marked as selected, then *Clear rating*.
+*Delete release* and *Delete album…*. When anybody rated the album, the
+*Rate* submenu starts with a disabled item that names who did. The submenu
+offers five stars down to one with the person's own marked as selected,
+then *Clear rating*.
 A click rates the album with that many stars. A rated album shows its
 read-only rating as a number and one star, "4 ★". An unrated album shows
 no rating.
@@ -3198,9 +3199,9 @@ offers five stars down to one, marks the person's own as selected, and ends
 with *Clear rating*.
 
 On Android the album's options menu offers *Rate*, which opens a sheet titled
-*Rate*. It lists who rated the album (*You*, then each other person who did,
-with their stars), then five stars down to one, with the person's own marked
-as selected, then *Clear rating*. A tap rates the album with that many stars.
+*Rate*. When anybody rated the album, it lists who did (*You*, then each
+other person who did, with their stars). The sheet offers five stars down to
+one, with the person's own marked as selected, then *Clear rating*. A tap rates the album with that many stars.
 For a rated album, the page shows a read-only rating as its number and one
 star. An unrated album shows no rating.
 

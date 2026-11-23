@@ -10,8 +10,8 @@ import uniffi.bae_bridge.BridgeStars
  * Who rated the album: "You" for this person, then "Ana rated it 5" for each other, in the order core
  * read them, joined by the fact separator.
  */
-fun Context.ratersText(rating: BridgeAlbumRating.Stars): String =
-    rating.raters.joinToString(factSeparator()) { rater ->
+fun Context.ratersText(raters: List<BridgeRater>): String =
+    raters.joinToString(factSeparator()) { rater ->
         when (rater) {
             BridgeRater.You -> getString(R.string.members_you)
             is BridgeRater.Person -> getString(R.string.album_rated_by, rater.name, rater.stars.number)

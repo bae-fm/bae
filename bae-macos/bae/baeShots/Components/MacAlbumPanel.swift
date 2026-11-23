@@ -102,7 +102,7 @@ extension ShotScene {
     static func panelDetail(
         releases names: [String] = ["CD"],
         shown: Int = 0,
-        rating: BridgeAlbumRating = .stars(mine: nil, raters: []),
+        rating: BridgeAlbumRating = .stars(mine: nil, raters: nil),
         playability: BridgeReleasePlayability = .playable,
         year: Int32? = 1992,
         covered: Bool = true,

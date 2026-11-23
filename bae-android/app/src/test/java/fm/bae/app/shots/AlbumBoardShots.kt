@@ -207,7 +207,7 @@ internal fun boardFile(
  * with [rating] as its rating.
  */
 internal fun boardAlbum(
-    rating: BridgeAlbumRating = BridgeAlbumRating.Stars(mine = null, raters = emptyList()),
+    rating: BridgeAlbumRating = BridgeAlbumRating.Stars(mine = null, raters = null),
     trackCount: Int = 10,
 ): BridgeAlbumDetail {
     val tracks =

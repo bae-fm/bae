@@ -191,8 +191,8 @@ pub enum BridgeAlbumRating {
         /// The stars this person gave the album.
         mine: Option<BridgeStars>,
         /// Who rated the album: this person first, when they did, then each
-        /// other person who did, by name.
-        raters: Vec<BridgeRater>,
+        /// other person who did, by name. None when nobody rated the album.
+        raters: Option<Vec<BridgeRater>>,
     },
     /// *Heart*: whether this person hearted the album, and who did.
     Heart {
@@ -227,15 +227,17 @@ impl BridgeAlbumRating {
             AlbumRating::Hidden => Self::Hidden,
             AlbumRating::Stars { mine, raters } => Self::Stars {
                 mine: mine.map(BridgeStars::from_core),
-                raters: raters
-                    .into_iter()
-                    .map(|rater| match rater {
-                        Rater::You => BridgeRater::You,
-                        Rater::Person { name, stars } => {
-                            BridgeRater::Person { name, stars: BridgeStars::from_core(stars) }
-                        }
-                    })
-                    .collect(),
+                raters: raters.map(|raters| {
+                    raters
+                        .into_iter()
+                        .map(|rater| match rater {
+                            Rater::You => BridgeRater::You,
+                            Rater::Person { name, stars } => {
+                                BridgeRater::Person { name, stars: BridgeStars::from_core(stars) }
+                            }
+                        })
+                        .collect()
+                }),
             },
             AlbumRating::Heart { hearted, hearters } => Self::Heart {
                 hearted,

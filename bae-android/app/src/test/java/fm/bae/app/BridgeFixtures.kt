@@ -149,7 +149,7 @@ object BridgeFixtures {
             shownReleaseIndex = 0u,
             shownReleaseCanBecomePrimary = false,
             showsReleaseChoices = releases.size > 1,
-            rating = BridgeAlbumRating.Stars(mine = null, raters = emptyList()),
+            rating = BridgeAlbumRating.Stars(mine = null, raters = null),
         )
 
     fun albumSearchResult(

@@ -253,7 +253,7 @@
                 shownReleaseIndex: 0,
                 shownReleaseCanBecomePrimary: false,
                 showsReleaseChoices: releases.count > 1,
-                rating: .stars(mine: nil, raters: []),
+                rating: .stars(mine: nil, raters: nil),
             )
         }
 

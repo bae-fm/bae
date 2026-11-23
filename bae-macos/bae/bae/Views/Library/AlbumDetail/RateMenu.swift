@@ -9,14 +9,14 @@ struct RateMenu: MacMenuPart {
     /// The stars the person gave the track or album, if they did.
     let stars: BridgeStars?
     /// Who rated the album, named on the line at the top of the submenu;
-    /// empty for a track and for an album nobody rated.
-    var raters: [BridgeRater] = []
+    /// `nil` for a track and for an album nobody rated.
+    var raters: [BridgeRater]?
     /// Rate with these stars, or clear the rating with none.
     let onRate: (BridgeStars?) -> Void
 
     var entries: [MacMenuEntry] {
         var items: [MacMenuEntry] = []
-        if !raters.isEmpty {
+        if let raters {
             items.append(
                 .item(MacMenuItem(verbatim: raters.text, disabled: true) {})
             )

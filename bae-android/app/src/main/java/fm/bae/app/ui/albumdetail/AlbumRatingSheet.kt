@@ -35,10 +35,13 @@ internal fun AlbumRatingSheet(
     }
 }
 
-/** The rating sheet's title, with who rated the album as its note. */
+/** The rating sheet's title, with who rated the album as its note when anybody did. */
 @Composable
 internal fun albumRatingHeading(rating: BridgeAlbumRating.Stars): AndroidSheetHeading =
-    AndroidSheetHeading(title = stringResource(R.string.rate), note = LocalContext.current.ratersText(rating))
+    AndroidSheetHeading(
+        title = stringResource(R.string.rate),
+        note = rating.raters?.let { LocalContext.current.ratersText(it) },
+    )
 
 /**
  * What the rating sheet holds under its heading: five stars down to one with the person's own checked, then
