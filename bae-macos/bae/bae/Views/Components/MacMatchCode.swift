@@ -15,10 +15,12 @@ struct MacMatchCode: View {
     var body: some View {
         VStack(spacing: ThemeSpace.edge) {
             Text(verbatim: code)
+                .selectableCode(code)
+                // After `selectableCode`, so the text VoiceOver reads and the
+                // shots measure takes the digits' font and colour too.
                 .themeText(.figure)
                 .tracking(3)
                 .foregroundStyle(Theme.textPrimary)
-                .selectableCode(code)
             if let waiting {
                 MacSpinner(Text(verbatim: waiting))
             }
