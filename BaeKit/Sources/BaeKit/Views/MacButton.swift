@@ -95,8 +95,21 @@ public struct MacButton<Label: View>: View {
     }
 
     public var body: some View {
-        drawn
+        sized
             .modifier(MacButtonSize(size: controlSize))
+    }
+
+    /// A button with words keeps them whole on one line at their own width,
+    /// as the board's does, so a row beside it wraps instead of squeezing the
+    /// button.
+    @ViewBuilder
+    private var sized: some View {
+        switch kind {
+        case .primary, .secondary, .fieldAction, .borderless:
+            drawn.lineLimit(1).fixedSize(horizontal: true, vertical: false)
+        case .plain, .icon:
+            drawn
+        }
     }
 
     /// The label in the colour the tone sets. The colour goes on the label,
