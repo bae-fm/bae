@@ -20,17 +20,26 @@
     if ((x === 7 && (y < 8 || y > QR_N - 9)) || (y === 7 && (x < 8 || x > QR_N - 9)) || (x === QR_N - 8 && y < 8) || (y === QR_N - 8 && x < 8)) return false;
     return QR_FILL[y * QR_N + x];
   }
+  // The Mac draws each module 360/105 pt, the side a phone's camera was measured to need, inside the standard's quiet zone of four modules, and reads the whole square, quiet zone and all, as the QR code.
+  var MAC_QR_MODULE = 360 / 105, QR_QUIET = 4;
   function QrPicture(props) {
-    var size = Number(props.size || 200), cells = [];
+    var cells = [];
     for (var y = 0; y < QR_N; y++) for (var x = 0; x < QR_N; x++) if (qrModule(x, y)) cells.push(h('rect', { key: x + '-' + y, x: x, y: y, width: 1.02, height: 1.02 }));
+    if (props.module) {
+      var m = props.module;
+      return h('div', { className: 'bae-scan-qr bae-scan-qr-modules', role: 'img', 'aria-label': 'QR code', style: { padding: QR_QUIET * m } },
+        h('svg', { width: QR_N * m, height: QR_N * m, viewBox: '0 0 ' + QR_N + ' ' + QR_N, 'aria-hidden': true, shapeRendering: 'crispEdges' }, cells));
+    }
+    var size = Number(props.size || 200);
     return h('div', { className: 'bae-scan-qr' },
       h('svg', { width: size, height: size, viewBox: '0 0 ' + QR_N + ' ' + QR_N, role: 'img', 'aria-label': 'QR code', shapeRendering: 'crispEdges' }, cells));
   }
+  // `size` sets the picture's side on a printed page. Without it, a Mac code is as wide as its modules need, as the app draws it.
   function ScanCode(prefix) {
     return function (props) {
       return h('div', { className: 'bae-scan ' + prefix + '-scan' },
         props.instruction ? h('div', { className: 'bae-scan-text' }, props.instruction) : null,
-        h(QrPicture, { size: props.size }),
+        h(QrPicture, prefix === 'bae-m' && props.size == null ? { module: MAC_QR_MODULE } : { size: props.size }),
         h('div', { className: 'bae-scan-buttons' }, kids(props.children)));
     };
   }

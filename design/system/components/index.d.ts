@@ -203,7 +203,7 @@ export interface StatusChipProps { tone?: StatusTone; children?: React.ReactNode
 export declare function StatusChip(props: StatusChipProps): React.ReactElement;
 
 /** A code to scan, centered: what to do, the QR code, the buttons that hand over the code (children), then when it ends. size is the QR code's width in points. */
-export interface MacScanCodeProps { instruction?: string; size?: number; children?: React.ReactNode }
+export interface MacScanCodeProps { instruction?: string; /** The picture's side on a printed page; without it the code is as wide as its squares need. */ size?: number; children?: React.ReactNode }
 export declare function MacScanCode(props: MacScanCodeProps): React.ReactElement;
 export interface AndroidScanCodeProps { instruction?: string; size?: number; children?: React.ReactNode }
 export declare function AndroidScanCode(props: AndroidScanCodeProps): React.ReactElement;

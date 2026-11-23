@@ -433,7 +433,12 @@ extension ShotScene {
         label: "dan@example.com",
         labelInitials: "D",
         access: .providerAccount(email: "dan@example.com"),
-        shown: .code(code: "invite-code", progress: .waiting),
+        // Shaped as the Add device scene's code, so both QR codes hold 25
+        // modules, as the boards draw them.
+        shown: .code(
+            code: "CVI1-ABCDEFGHIJKLMNOPQRSTUVWXYZ234567",
+            progress: .waiting
+        ),
         held: nil
     )
 

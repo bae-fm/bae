@@ -36,6 +36,7 @@
 .bae-scan-text { margin-bottom: var(--space-related); }
 .bae-scan-qr { padding: calc(var(--space-related) + var(--space-line)); border-radius: var(--radius-field); background: var(--text-primary); line-height: 0; }
 .bae-scan-qr svg { fill: var(--background); display: block; }
+.bae-scan-qr-modules { border-radius: 0; }
 .bae-scan-buttons { display: flex; justify-content: center; gap: var(--space-related); margin-top: calc(-1 * var(--space-inline)); }
 .bae-m-scan .bae-scan-text { font: var(--type-body-weight) var(--type-body-size) var(--font-sans); color: var(--text-primary); }
 .bae-a-scan .bae-scan-text { font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); color: var(--text-secondary); }
