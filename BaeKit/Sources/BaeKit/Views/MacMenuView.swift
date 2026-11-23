@@ -217,19 +217,21 @@
                     ? Theme.textTertiary
                     : highlighted ? Theme.onFill : Theme.textPrimary
             )
-            .background(
-                highlighted ? accent.buttonColor : Color.clear,
-                in: RoundedRectangle(
+            // The highlight, hover and tap sit in a layer accessibility
+            // skips: on the words themselves they would make the whole line
+            // one element, as tall as the line, where the board's menu item
+            // holds its text as an element of its own.
+            .background {
+                RoundedRectangle(
                     cornerRadius: MacMenuMetrics.itemCornerRadius
                 )
-            )
-            .contentShape(Rectangle())
-            // The line is one element holding its words, as the board's
-            // menu item holds its text.
-            .accessibilityElement(children: .contain)
-            .help(accessory?.help ?? "")
-            .onHover { hover(index, $0) }
-            .onTapGesture { if !disabled { pick(index) } }
+                .fill(highlighted ? accent.buttonColor : Color.clear)
+                .contentShape(Rectangle())
+                .help(accessory?.help ?? "")
+                .onHover { hover(index, $0) }
+                .onTapGesture { if !disabled { pick(index) } }
+                .accessibilityHidden(true)
+            }
         }
     }
 
