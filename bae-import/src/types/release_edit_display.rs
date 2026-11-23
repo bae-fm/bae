@@ -56,20 +56,16 @@ impl ReleaseEditTrackRow {
         self,
         source: crate::TrackSource,
         has_album_artists: bool,
-    ) -> crate::TrackTableRow {
-        crate::TrackTableRow {
-            artist: crate::TrackArtistDisplay::of(
-                &self.edit.artist_assignments,
-                self.artists,
-                has_album_artists,
-            ),
+    ) -> Result<crate::TrackTableRow, bae_store::DbError> {
+        Ok(crate::TrackTableRow {
+            artist: crate::TrackArtistDisplay::of(&self.edit, self.artists, has_album_artists)?,
             track: self.edit,
             source,
             audition: self.audition,
             position: self.context.position_text,
             length_ms: self.context.duration_ms,
             listed_length_ms: self.context.listed_length_ms,
-        }
+        })
     }
 }
 
@@ -91,7 +87,7 @@ pub(crate) enum ReleaseEditTableRow {
 pub(crate) fn lay_out_tracks(
     entries: Vec<ReleaseEditTableRow>,
     has_album_artists: bool,
-) -> Vec<crate::TrackTableSide> {
+) -> Result<Vec<crate::TrackTableSide>, bae_store::DbError> {
     let rows: Vec<&ReleaseEditTrackRow> = entries
         .iter()
         .filter_map(|entry| match entry {
@@ -116,12 +112,12 @@ pub(crate) fn lay_out_tracks(
         let Some(sheet_id) = row.context.sheet.as_ref().map(|sheet| sheet.file_id.clone()) else {
             let name = row.context.source.name.clone();
             side.runs.push(crate::TrackTableRun::Track(
-                row.table_row(crate::TrackSource::File { name }, has_album_artists),
+                row.table_row(crate::TrackSource::File { name }, has_album_artists)?,
             ));
             continue;
         };
         let start_ms = row.context.start_ms;
-        let row = row.table_row(crate::TrackSource::SheetSlice { start_ms }, has_album_artists);
+        let row = row.table_row(crate::TrackSource::SheetSlice { start_ms }, has_album_artists)?;
         match side.runs.last_mut() {
             Some(crate::TrackTableRun::Sheet { sheet, rows }) if sheet.sheet_id == sheet_id => {
                 rows.push(row)
@@ -136,7 +132,7 @@ pub(crate) fn lay_out_tracks(
             }),
         }
     }
-    sides
+    Ok(sides)
 }
 
 /// The audio files a `FILE` line can play from, as the caption's Audio file

@@ -470,7 +470,9 @@ impl ReleaseEditDraftRows {
         Ok(ReleaseEditDraft {
             cover: bae_records::cover_ref(&release_id, cover_version),
             source_audio: files.source_audio.clone(),
-            sides: has_tracks.then(|| crate::types::lay_out_tracks(rows, album_artists.is_some())),
+            sides: has_tracks
+                .then(|| crate::types::lay_out_tracks(rows, album_artists.is_some()))
+                .transpose()?,
             files: files
                 .has_others
                 .then(|| {

@@ -703,10 +703,11 @@ fn table_row(
     let track = track.edit.as_edit();
     Ok(TrackTableRow {
         artist: crate::TrackArtistDisplay::of(
-            &track.artist_assignments,
+            &track,
             row.artists.map(super::ArtistFieldJson::field).transpose()?,
             has_album_artists,
-        ),
+        )
+        .map_err(ImportError::Database)?,
         track,
         source,
         audition: TrackAudition::Preview(audition),

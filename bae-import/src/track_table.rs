@@ -77,18 +77,21 @@ pub enum TrackArtistDisplay {
 
 impl TrackArtistDisplay {
     pub(crate) fn of(
-        assignments: &crate::TrackArtistAssignments,
+        track: &crate::RawTrackEdit,
         own: Option<crate::ArtistField>,
         has_album_artists: bool,
-    ) -> Self {
-        match own {
-            Some(field) => Self::Own(field),
-            None if has_album_artists
-                && matches!(assignments, crate::TrackArtistAssignments::AlbumArtists) =>
-            {
-                Self::AlbumArtist
-            }
-            None => Self::Empty,
+    ) -> Result<Self, bae_store::DbError> {
+        use crate::TrackArtistAssignments::{AlbumArtists, Explicit};
+        match &track.artist_assignments {
+            AlbumArtists if has_album_artists => Ok(Self::AlbumArtist),
+            AlbumArtists => Ok(Self::Empty),
+            Explicit(credits) if credits.is_empty() => Ok(Self::Empty),
+            Explicit(_) => own.map(Self::Own).ok_or_else(|| {
+                bae_store::DbError::unreadable(
+                    format!("the artists of track {}", track.id),
+                    "the track names artists but the read returned no artist field",
+                )
+            }),
         }
     }
 }
