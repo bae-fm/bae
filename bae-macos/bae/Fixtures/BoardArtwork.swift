@@ -50,22 +50,6 @@ final class BoardArtwork {
         return gradient(named: name)
     }
 
-    /// A catalog cover's selection and image point to the same image set.
-    static func catalogCoverChoice(
-        _ image: BridgeRemoteImageSet,
-        source: BridgeCatalog
-    ) -> BridgeCoverChoice {
-        BridgeCoverChoice(
-            selection: .remoteCover(
-                selection: BridgeRemoteCoverSelection(
-                    image: image,
-                    source: source
-                )
-            ),
-            image: .remote(image: image)
-        )
-    }
-
     /// The folder scan's local image. A packaging failure fails the capture which asks for it.
     static func scannedFile(named name: String) throws -> BridgeFileVersion {
         try PreviewData.artVersion(at: fileURL(named: name))

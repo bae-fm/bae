@@ -169,7 +169,7 @@ extension LibraryArtworkBrowserTests {
             downscaled: []
         )
         return BridgeRemoteCover(
-            coverChoice: BoardArtwork.catalogCoverChoice(image, source: source),
+            coverChoice: PreviewData.catalogCoverChoice(image, source: source),
             sourceName: source == .discogs ? "Discogs" : "Cover Art Archive",
             label: .lead(releaseGroup: false)
         )

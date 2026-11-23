@@ -264,7 +264,7 @@ extension PreviewData {
             ]
         )
         return BridgeRemoteCover(
-            coverChoice: BoardArtwork.catalogCoverChoice(
+            coverChoice: PreviewData.catalogCoverChoice(
                 image,
                 source: .musicBrainz
             ),

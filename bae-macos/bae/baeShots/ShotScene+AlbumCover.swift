@@ -121,7 +121,7 @@ extension ShotScene {
             url: "https://images.example/\(cover.name).png",
             downscaled: []
         )
-        let choice = BoardArtwork.catalogCoverChoice(image, source: .discogs)
+        let choice = PreviewData.catalogCoverChoice(image, source: .discogs)
         return BridgeGalleryCover(
             key: .remote(url: image.url),
             image: choice.image,

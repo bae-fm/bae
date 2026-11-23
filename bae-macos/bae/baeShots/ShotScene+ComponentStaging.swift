@@ -500,7 +500,7 @@ extension ShotScene {
     static let lowTideHoursCover: BridgeRemoteCover = {
         let image = BridgeRemoteImageSet(url: "Low Tide Hours", downscaled: [])
         return BridgeRemoteCover(
-            coverChoice: BoardArtwork.catalogCoverChoice(
+            coverChoice: PreviewData.catalogCoverChoice(
                 image,
                 source: .musicBrainz
             ),

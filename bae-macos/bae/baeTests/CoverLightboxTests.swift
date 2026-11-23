@@ -270,7 +270,7 @@ extension CoverLightboxTests {
                 )
             ]
         )
-        let choice = BoardArtwork.catalogCoverChoice(image, source: .discogs)
+        let choice = PreviewData.catalogCoverChoice(image, source: .discogs)
         return CoverItem(
             gallery: BridgeGalleryCover(
                 key: .remote(url: image.url),

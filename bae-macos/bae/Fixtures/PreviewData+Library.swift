@@ -70,3 +70,21 @@ extension PreviewData {
         LibraryBrowseSession(library: .stub(), uiStore: uiStore)
     }
 }
+
+extension PreviewData {
+    /// A catalog cover's selection and image point to the same image set.
+    static func catalogCoverChoice(
+        _ image: BridgeRemoteImageSet,
+        source: BridgeCatalog
+    ) -> BridgeCoverChoice {
+        BridgeCoverChoice(
+            selection: .remoteCover(
+                selection: BridgeRemoteCoverSelection(
+                    image: image,
+                    source: source
+                )
+            ),
+            image: .remote(image: image)
+        )
+    }
+}
