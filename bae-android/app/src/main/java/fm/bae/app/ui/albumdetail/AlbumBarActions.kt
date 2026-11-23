@@ -21,27 +21,36 @@ import uniffi.bae_bridge.BridgeReleasePlayability
 import uniffi.bae_bridge.BridgeReleaseStorageAction
 
 /**
- * The heart the person chose for an album, which the page keeps showing until the write returns: [shown] is the
- * chosen heart while the write runs, and null otherwise. A choice made while a write runs is ignored.
+ * The heart the person chose for an album, which the page keeps showing until the write returns.
+ * A choice made while a write runs is ignored.
  */
 internal class AlbumHeartChoice(
     private val session: OpenLibrary,
     private val albumId: String,
     private val scope: CoroutineScope,
 ) {
-    var shown by mutableStateOf<Boolean?>(null)
-        private set
+    private var pending by mutableStateOf<Boolean?>(null)
+
+    fun shownDetail(detail: BridgeAlbumDetail): BridgeAlbumDetail {
+        val choice = pending
+        val rating = detail.rating
+        return if (choice != null && rating is BridgeAlbumRating.Heart) {
+            detail.copy(rating = rating.copy(hearted = choice))
+        } else {
+            detail
+        }
+    }
 
     fun choose(hearted: Boolean) {
-        if (shown != null) return
-        shown = hearted
+        if (pending != null) return
+        pending = hearted
         scope.launch {
             try {
                 session.messages.performAndWait("setHearted album $albumId") {
                     session.appHandle.setHearted(BridgeRatingTarget.Album(albumId), hearted)
                 }
             } finally {
-                shown = null
+                pending = null
             }
         }
     }
@@ -64,7 +73,7 @@ internal fun AlbumBarActions(
     callbacks: AlbumDetailCallbacks,
     deletion: PageDeletion<BridgeAlbum>,
     unpin: ReleaseUnpin,
-    heartChoice: AlbumHeartChoice,
+    onSetHearted: (Boolean) -> Unit,
     onRate: () -> Unit,
 ) {
     val shown = detail.shownRelease
@@ -114,7 +123,7 @@ internal fun AlbumBarActions(
                 } else {
                     null
                 },
-            rating = RatingAction(detail.rating, heartChoice, onRate),
+            rating = RatingAction(detail.rating, onSetHearted, onRate),
             pin = pin,
             onSetPrimaryRelease = setPrimary,
             onDelete = { deletion.ask(detail.album) },
@@ -125,7 +134,7 @@ internal fun AlbumBarActions(
 @Composable
 private fun RatingAction(
     rating: BridgeAlbumRating,
-    heartChoice: AlbumHeartChoice,
+    onSetHearted: (Boolean) -> Unit,
     onRate: () -> Unit,
 ): AlbumRatingAction? =
     when (rating) {
@@ -140,8 +149,8 @@ private fun RatingAction(
         is BridgeAlbumRating.Heart -> {
             AlbumRatingAction.Heart(
                 hearters = LocalContext.current.let { context -> rating.hearters?.let(context::heartersText) },
-                hearted = heartChoice.shown ?: rating.hearted,
-                onChoose = heartChoice::choose,
+                hearted = rating.hearted,
+                onChoose = onSetHearted,
             )
         }
     }

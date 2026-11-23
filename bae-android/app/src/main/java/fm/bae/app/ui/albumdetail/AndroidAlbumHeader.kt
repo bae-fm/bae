@@ -57,7 +57,6 @@ internal fun AndroidAlbumHeader(
     galleryItemCount: UInt,
     onShowGallery: () -> Unit,
     onShowWhere: () -> Unit,
-    heartShown: Boolean? = null,
     actions: @Composable () -> Unit = {},
 ) {
     val album = detail.album
@@ -80,7 +79,7 @@ internal fun AndroidAlbumHeader(
                 style = ThemeText.body.style,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            YearAndRating(album.year?.let(context::yearText), detail.rating, heartShown)
+            YearAndRating(album.year?.let(context::yearText), detail.rating)
             val release = detail.shownRelease
             release.editionLineText(context).takeIf { it.isNotEmpty() }?.let {
                 Spacer(modifier = Modifier.height(ThemeSpace.line))
@@ -116,19 +115,30 @@ private fun ReleaseLine(text: String) {
 private fun YearAndRating(
     year: String?,
     rating: BridgeAlbumRating,
-    heartShown: Boolean?,
 ) {
-    val stars = (rating as? BridgeAlbumRating.Stars)?.mine
-    val hearted = (rating as? BridgeAlbumRating.Heart)?.let { heartShown ?: it.hearted } == true
-    if (year == null && stars == null && !hearted) return
+    val mark: (@Composable () -> Unit)? =
+        when (rating) {
+            BridgeAlbumRating.Hidden -> {
+                null
+            }
+
+            is BridgeAlbumRating.Stars -> {
+                val stars = rating.mine
+                if (stars == null) null else ({ Stars(rating = stars, size = STAR_SIZE) })
+            }
+
+            is BridgeAlbumRating.Heart -> {
+                if (rating.hearted) ({ Heart(on = true, size = STAR_SIZE) }) else null
+            }
+        }
+    if (year == null && mark == null) return
     val color = MaterialTheme.colorScheme.onSurfaceVariant
     Row(verticalAlignment = Alignment.CenterVertically) {
         year?.let { Text(text = it, style = ThemeText.detail.style, color = color) }
-        if (year != null && (stars != null || hearted)) {
+        if (year != null && mark != null) {
             Text(text = LocalContext.current.factSeparator(), style = ThemeText.detail.style, color = color)
         }
-        stars?.let { Stars(rating = it, size = STAR_SIZE) }
-        if (hearted) Heart(on = true, size = STAR_SIZE)
+        mark?.invoke()
     }
 }
 

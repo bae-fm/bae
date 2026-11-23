@@ -108,9 +108,10 @@ fun AlbumDetailScreen(
 ) {
     val query by session.libraryQueries.album.state
         .collectAsState()
+    val heart = rememberAlbumHeart(session, albumId)
     // The album query is one shared slot that still holds the previous album
     // right after navigation, so ignore any value for another album.
-    val detail = query.answer?.takeIf { it.album.id == albumId }
+    val detail = query.answer?.takeIf { it.album.id == albumId }?.let(heart::shownDetail)
     val nowPlaying by session.playback.nowPlaying.collectAsState()
     val isPlaying by session.playback.isPlaying.collectAsState()
     var selectedReleaseId by remember(albumId, initialReleaseId) { mutableStateOf(initialReleaseId) }
@@ -120,7 +121,6 @@ fun AlbumDetailScreen(
         }
     val adding = rememberTrackPlaylistAdd(session)
     val unpin = rememberReleaseUnpin(session)
-    val heart = rememberAlbumHeart(session, albumId)
     val stars = detail?.rating as? BridgeAlbumRating.Stars
     var rating by remember(albumId, stars != null) { mutableStateOf(false) }
     val request = BridgeAlbumDetailRequest(albumId = albumId, chosenReleaseId = selectedReleaseId)
@@ -143,7 +143,7 @@ fun AlbumDetailScreen(
                     callbacks = callbacks,
                     deletion = deletion,
                     unpin = unpin,
-                    heartChoice = heart,
+                    onSetHearted = heart::choose,
                     onRate = { rating = true },
                 )
             }
@@ -161,7 +161,7 @@ fun AlbumDetailScreen(
                     onRetry = session.libraryQueries.album::retry,
                 )
             } else {
-                AlbumLoaded(session, loaded, callbacks, AlbumPlaybackState(nowPlaying?.trackId, isPlaying), heart)
+                AlbumLoaded(session, loaded, callbacks, AlbumPlaybackState(nowPlaying?.trackId, isPlaying))
             }
         }
     }
@@ -174,13 +174,11 @@ private fun AlbumLoaded(
     detail: BridgeAlbumDetail,
     callbacks: AlbumDetailCallbacks,
     playback: AlbumPlaybackState,
-    heart: AlbumHeartChoice,
 ) {
     AlbumDetailContent(
         detail = detail,
         cover = detail.shownRelease.cover,
         playback = playback,
-        heartShown = { heart.shown },
         callbacks = callbacks,
         releaseDownloadControl = { rel -> ReleaseTransferLines(session = session, release = rel) },
     )
@@ -349,7 +347,6 @@ internal fun AlbumDetailContent(
     releaseDownloadControl: @Composable (BridgeRelease) -> Unit,
     catalogName: (BridgeCatalog) -> String = ::bridgeCatalogName,
     audioChannelsKey: (Long) -> String? = ::bridgeAudioChannelsKey,
-    heartShown: () -> Boolean? = { null },
 ) {
     val context = LocalContext.current
     val shown = detail.shownRelease
@@ -385,7 +382,6 @@ internal fun AlbumDetailContent(
                 galleryItemCount = shown.galleryItemCount,
                 onShowGallery = { showGallery = true },
                 onShowWhere = { showWhere = true },
-                heartShown = heartShown(),
                 actions = {
                     AndroidButton(onClick = callbacks.onPlayRelease) { Text(stringResource(R.string.play)) }
                 },
