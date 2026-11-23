@@ -251,7 +251,7 @@ public struct MacRow<Lead: View, Label: View, Content: View, Info: View>: View {
                 }
             } label: {
                 rowLabel(action: labelAction)
-                    .accessibilitySortPriority(1)
+                    .accessibilitySortPriority(options.selection == nil ? 1 : 0)
             }
         }
         .contentShape(Rectangle())
