@@ -41,9 +41,10 @@ extension ShotScene {
     ) -> ShotScene {
         component(id, height: 70, images: coverStore()) {
             MacListRow(
-                lead: "21:04",
-                leadWidth: 56,
-                hanging: hanging,
+                leading: MacListRow.Leading(
+                    text: "21:04",
+                    hangs: hanging
+                ),
                 coverSize: coverSize,
                 cover: cover("Low Tide Hours"),
                 title: "Harbor Lights",
@@ -59,8 +60,7 @@ extension ShotScene {
                 wide: wide,
                 hover: hover,
                 lift: lift,
-                removal: removable
-                    ? MacListRow.Removal(label: "Remove from queue") {} : nil
+                removeFromQueue: removable ? {} : nil
             )
             .padding(
                 .leading,

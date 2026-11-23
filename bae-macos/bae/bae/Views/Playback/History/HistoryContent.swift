@@ -189,10 +189,12 @@ private struct HistoryPlays: View {
                     )
                 }
                 MacListRow(
-                    lead: HistoryWords.time(play.startedAt),
-                    leadWidth: Self.timeWidth,
-                    hanging: true,
-                    coverSize: 40,
+                    leading: MacListRow.Leading(
+                        text: HistoryWords.time(play.startedAt),
+                        width: Self.timeWidth,
+                        hangs: true
+                    ),
+                    coverSize: MacListRow.trackCoverSize,
                     cover: play.cover,
                     title: play.title,
                     subtitle: play.artistLine.text,

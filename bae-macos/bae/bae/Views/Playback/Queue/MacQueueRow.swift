@@ -9,7 +9,7 @@ struct MacQueueRow: View {
     let onSkipTo: (String) -> Void
     let onRemove: (String) -> Void
 
-    static let artworkSize: CGFloat = 40
+    static let artworkSize = MacListRow.trackCoverSize
     static let horizontalInset = MacListRow.horizontalInset
     static let verticalInset = MacListRow.verticalInset
 
@@ -21,9 +21,7 @@ struct MacQueueRow: View {
             subtitle: item.display.artistLine.text,
             duration: item.durationLabel,
             hover: isHovered(),
-            removal: MacListRow.Removal(label: "Remove from queue") {
-                onRemove(item.id)
-            }
+            removeFromQueue: { onRemove(item.id) }
         )
         .onHover(perform: onHoverChanged)
         .onTapGesture(count: 2) {

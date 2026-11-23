@@ -5,8 +5,8 @@ import SwiftUI
 /// play's time), a cover, a title over a second line, then whose it is and
 /// its length.
 ///
-/// With `hanging`, the leading column hangs in the margin left of the row,
-/// right-aligned and `leadWidth` wide, so the covers start at the list's
+/// When the leading column `hangs`, it hangs in the margin left of the row,
+/// right-aligned and as wide as the column, so the covers start at the list's
 /// edge, as a playlist's page and History in the side pane draw their rows. `wide`
 /// leaves more room at the end, for a row that ends in a person. While the
 /// owner drags a playlist's row, `lift` says whether the row is left faint in
@@ -21,14 +21,15 @@ struct MacListRow: View {
         case dragging
     }
 
-    struct Removal {
-        let label: LocalizedStringKey
-        let action: () -> Void
+    /// A column before the cover. Its `text` is nil for a row that has no
+    /// value in it, which still keeps the column's width.
+    struct Leading {
+        var text: String?
+        var width: CGFloat = 56
+        var hangs = false
     }
 
-    var lead: String?
-    var leadWidth: CGFloat = 56
-    var hanging = false
+    var leading: Leading?
     var coverSize: CGFloat = MacListRow.defaultCoverSize
     var cover: BridgeImageRef?
     let title: String
@@ -40,7 +41,8 @@ struct MacListRow: View {
     var wide = false
     var hover = false
     var lift = Lift.resting
-    var removal: Removal?
+    /// What the row's Remove from queue button does; nil draws no button.
+    var removeFromQueue: (() -> Void)?
 
     /// The space between the row's columns.
     static let gap = ThemeSpace.related + ThemeSpace.line
@@ -54,25 +56,27 @@ struct MacListRow: View {
 
     /// The cover's size unless a row asks for another.
     static let defaultCoverSize: CGFloat = 32
+    /// The cover's size in a list of tracks.
+    static let trackCoverSize: CGFloat = 40
     private static let durationWidth: CGFloat = 40
     private static let removeWidth: CGFloat = 20
 
     var body: some View {
         HStack(spacing: Self.gap) {
-            if let lead {
-                Text(lead)
+            if let leading, let text = leading.text {
+                Text(text)
                     .themeText(.detail)
                     .monospacedDigit()
                     .foregroundStyle(Theme.macTextSecondary)
                     .lineLimit(1)
                     .frame(
-                        width: leadWidth,
-                        alignment: hanging ? .trailing : .leading
+                        width: leading.width,
+                        alignment: leading.hangs ? .trailing : .leading
                     )
                     .accessibilitySortPriority(1)
             }
-            else if hanging {
-                Color.clear.frame(width: leadWidth, height: 0)
+            else if let leading {
+                Color.clear.frame(width: leading.width, height: 0)
             }
             Artwork(imageRef: cover, pointSize: coverSize, cornerRadius: nil)
                 .frame(width: coverSize, height: coverSize)
@@ -84,7 +88,8 @@ struct MacListRow: View {
                 )
             VStack(
                 alignment: .leading,
-                spacing: hanging ? ThemeSpace.line + ThemeSpace.hairline : 0
+                spacing: leading?.hangs == true
+                    ? ThemeSpace.line + ThemeSpace.hairline : 0
             ) {
                 Text(title)
                     .themeText(.rowTitle)
@@ -112,13 +117,14 @@ struct MacListRow: View {
         }
         .padding(.trailing, showsRemoval ? Self.removeWidth + Self.gap : 0)
         .overlay(alignment: .trailing) {
-            if let removal {
+            if let removeFromQueue {
                 MacIconButton(
                     symbol: "xmark",
-                    label: removal.label,
+                    label: "Remove from queue",
                     iconSize: .small,
                     hitSize: Self.removeWidth,
-                    action: removal.action
+                    role: .destructive,
+                    action: removeFromQueue
                 )
                 .opacity(showsRemoval ? 1 : 0)
                 .allowsHitTesting(showsRemoval)
@@ -129,7 +135,7 @@ struct MacListRow: View {
         .padding(.trailing, wide ? ThemeSpace.edge : Self.horizontalInset)
         .padding(
             .leading,
-            hanging ? 0 : Self.horizontalInset
+            leading?.hangs == true ? 0 : Self.horizontalInset
         )
         .padding(.vertical, Self.verticalInset)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -145,10 +151,13 @@ struct MacListRow: View {
             radius: ThemeSpace.group,
             y: ThemeSpace.related
         )
-        .padding(.leading, hanging ? -Self.hang(leadWidth: leadWidth) : 0)
+        .padding(
+            .leading,
+            leading.map { $0.hangs ? -Self.hang(leadWidth: $0.width) : 0 } ?? 0
+        )
     }
 
-    private var showsRemoval: Bool { removal != nil && hover }
+    private var showsRemoval: Bool { removeFromQueue != nil && hover }
 
     private var fill: AnyShapeStyle {
         if lift == .dragging {
