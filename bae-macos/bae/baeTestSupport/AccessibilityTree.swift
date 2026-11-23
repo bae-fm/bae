@@ -468,12 +468,7 @@ extension AccessibilityTree {
         // What a node shows through: the window's rect, cut down by the
         // scroll area that holds it.
         pruned(from: CGRect(origin: .zero, size: windowSize)) { node, area in
-            let box = CGRect(
-                x: node.x,
-                y: node.y,
-                width: node.width,
-                height: node.height
-            )
+            let box = node.frame
             let overlaps =
                 box.maxX > area.minX && box.minX < area.maxX
                 && box.maxY > area.minY && box.minY < area.maxY
@@ -485,6 +480,8 @@ extension AccessibilityTree {
 }
 
 extension AccessibilityTree.Node {
+    var frame: CGRect { CGRect(x: x, y: y, width: width, height: height) }
+
     var controlName: String? { title ?? description }
 
     var staticText: String? { Self.staticText(role: role, value: value) }

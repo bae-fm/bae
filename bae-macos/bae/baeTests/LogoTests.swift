@@ -38,12 +38,7 @@ struct LogoTests {
                         && ($0.description ?? $0.title) == "bae"
                 }
             )
-            return CGRect(
-                x: word.x,
-                y: word.y,
-                width: word.width,
-                height: word.height
-            )
+            return word.frame
         }
     }
 }
