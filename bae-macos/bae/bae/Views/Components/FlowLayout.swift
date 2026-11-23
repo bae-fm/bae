@@ -26,14 +26,13 @@ struct FlowLayout: Layout {
         cache: inout Void
     ) {
         let arrangement = arrange(subviews, in: bounds.width)
-        for (index, subview) in subviews.enumerated() {
-            let position = arrangement.positions[index]
+        for (subview, frame) in zip(subviews, arrangement.frames) {
             subview.place(
                 at: CGPoint(
-                    x: bounds.minX + position.x,
-                    y: bounds.minY + position.y
+                    x: bounds.minX + frame.minX,
+                    y: bounds.minY + frame.minY
                 ),
-                proposal: ProposedViewSize(arrangement.sizes[index])
+                proposal: ProposedViewSize(frame.size)
             )
         }
     }
@@ -46,8 +45,7 @@ struct FlowLayout: Layout {
         in width: CGFloat
     ) -> Arrangement {
         let rowSpacing = rowSpacing ?? spacing
-        var positions: [CGPoint] = []
-        var sizes: [CGSize] = []
+        var frames: [CGRect] = []
         var rowStart = 0
         var cursorX: CGFloat = 0
         var cursorY: CGFloat = 0
@@ -57,7 +55,7 @@ struct FlowLayout: Layout {
         func closeRow(endingBefore index: Int) {
             // Vertically center the row's items within the row height.
             for i in rowStart..<index {
-                positions[i].y += (rowHeight - sizes[i].height) / 2
+                frames[i].origin.y += (rowHeight - frames[i].height) / 2
             }
         }
 
@@ -68,7 +66,6 @@ struct FlowLayout: Layout {
                     height: nil
                 )
             )
-            sizes.append(size)
             if cursorX > 0, cursorX + size.width > width {
                 closeRow(endingBefore: index)
                 cursorX = 0
@@ -76,7 +73,9 @@ struct FlowLayout: Layout {
                 rowHeight = 0
                 rowStart = index
             }
-            positions.append(CGPoint(x: cursorX, y: cursorY))
+            frames.append(
+                CGRect(origin: CGPoint(x: cursorX, y: cursorY), size: size)
+            )
             cursorX += size.width + spacing
             rowHeight = max(rowHeight, size.height)
             maxX = max(maxX, cursorX - spacing)
@@ -85,16 +84,14 @@ struct FlowLayout: Layout {
 
         return Arrangement(
             size: CGSize(width: maxX, height: cursorY + rowHeight),
-            positions: positions,
-            sizes: sizes
+            frames: frames
         )
     }
 
-    /// Where each subview goes and how big it is there, and the size of all
-    /// of them together.
+    /// Where each subview goes and how big it is there, in the layout's own
+    /// coordinates, and the size of all of them together.
     private struct Arrangement {
         let size: CGSize
-        let positions: [CGPoint]
-        let sizes: [CGSize]
+        let frames: [CGRect]
     }
 }
