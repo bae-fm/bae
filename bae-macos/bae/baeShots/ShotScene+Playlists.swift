@@ -157,7 +157,6 @@ extension ShotScene {
         let backing = boardLibraryBacking(
             uiStore: uiStore,
             albumCount: 6,
-            covered: true,
             playlists: boardPlaylistListing,
             playlistDetails: boardPlaylistDetails
         )
@@ -165,7 +164,7 @@ extension ShotScene {
         let window = ShotScenes.libraryWindow(
             uiStore: uiStore,
             backing: (backing.library, backing.session),
-            playbackStore: boardPlayback(covered: true),
+            playbackStore: boardPlayback(),
             images: images,
             projections: projections,
             size: CGSize(width: 1200, height: 760)
