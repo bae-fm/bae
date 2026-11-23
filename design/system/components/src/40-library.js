@@ -418,7 +418,7 @@
   function MacArtistGroupHeading(props) {
     return h('div', { className: 'bae-m-groupheading' },
       h(Artwork, { title: props.name, size: 'size-row-artwork', radius: 'radius-artwork', missing: props.noImage }),
-      h('div', { className: 'bae-m-groupheading-text' }, h('div', { className: 'bae-m-groupheading-name' }, props.name), h('div', { className: 'bae-m-groupheading-count' }, props.count)));
+      h('div', { className: 'bae-m-groupheading-text' }, h('h2', { className: 'bae-m-groupheading-name' }, props.name), h('div', { className: 'bae-m-groupheading-count' }, props.count)));
   }
 
   // A Material menu: `AndroidMenuItem`s, a "Sort by" style label, dividers.

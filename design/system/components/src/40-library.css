@@ -213,7 +213,7 @@
 .bae-m-checkbox-on { background: var(--accent-fill); box-shadow: none; }
 .bae-m-groupheading { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--space-group); padding: 0 var(--space-compact); margin-bottom: calc(-1 * var(--space-edge)); }
 .bae-m-groupheading-text { min-width: 0; display: flex; flex-direction: column; gap: var(--space-line); }
-.bae-m-groupheading-name { font: var(--type-row-title-weight) var(--type-row-title-size) var(--font-sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bae-m-groupheading-name { margin: 0; font: var(--type-row-title-weight) var(--type-row-title-size) var(--font-sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bae-m-groupheading-count { font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-secondary); }
 .bae-a-menu { z-index: 5; width: max-content; padding: var(--space-related) 0; border-radius: var(--radius-android-extra-small); background: var(--elevated); box-shadow: 0 2px 6px var(--shadow), 0 1px 2px var(--shadow); font-family: var(--font-android); }
 .bae-a-menu-item { height: 48px; display: flex; align-items: center; gap: var(--space-group); padding: 0 var(--space-group); font: var(--type-android-label-weight) var(--type-android-label-size)/var(--type-android-label-line-height) var(--font-android); color: var(--text-primary); }
