@@ -421,7 +421,7 @@ actor PreviewReleaseLibrary {
                 await self.putAlbum(pick, in: session)
             },
             setSheetPlace: { sheetFileId, place in
-                await self.putSheet(sheetFileId, at: place, in: session)
+                try await self.putSheet(sheetFileId, at: place, in: session)
             },
             setSheetFile: { sheetFileId, fileReference, audioFileId in
                 await self.putSheet(
@@ -440,16 +440,24 @@ actor PreviewReleaseLibrary {
     }
 }
 
+/// What the preview library cannot draw: it edits the one draft it opened
+/// with and lays no release out again.
+enum PreviewReleaseError: Error {
+    /// A side pick for a sheet the draft's track table does not show, such
+    /// as an ignored one.
+    case noSheetOnTable(String)
+}
+
 extension PreviewReleaseLibrary {
     /// Update the CUE sheet fixture for the place command.
     nonisolated func putSheet(
         _ sheetFileId: String,
         at place: BridgeSheetPlace,
         in session: PreviewReleaseEditSession
-    ) async {
+    ) async throws {
         switch place {
         case .on(let side):
-            await putSheet(sheetFileId, onSide: side, in: session)
+            try await putSheet(sheetFileId, onSide: side, in: session)
         case .ignored:
             _ = await session.change {
                 Self.ignoreSheet(sheetFileId, in: &$0)
@@ -461,19 +469,18 @@ extension PreviewReleaseLibrary {
         _ sheetFileId: String,
         onSide picked: BridgeMediumSide,
         in session: PreviewReleaseEditSession
-    ) async {
-        _ = await session.change { release in
-            let ignored = release.draft.files?
-                .contains { entry in
-                    guard case .sheet(let sheet) = entry else { return false }
-                    return sheet.sheetId == sheetFileId && sheet.assigned == nil
+    ) async throws {
+        let onTable = await session.release.draft.sides?
+            .contains { side in
+                side.runs.contains { run in
+                    guard case .sheet(let sheet, _) = run else { return false }
+                    return sheet.sheetId == sheetFileId
                 }
-            if ignored == true {
-                let opening = session.opening.draft
-                release.draft.sides = opening.sides
-                release.draft.files = opening.files
-                release.draft.deletesTrackData = opening.deletesTrackData
             }
+        guard onTable == true else {
+            throw PreviewReleaseError.noSheetOnTable(sheetFileId)
+        }
+        _ = await session.change { release in
             release.draft.sides = release.draft.sides?
                 .map { side in
                     var side = side

@@ -305,35 +305,62 @@ extension ReleaseEditorTests {
 }
 
 extension ReleaseEditorTests {
+    /// The sheet places the form received, in order.
+    actor PlaceLog {
+        private(set) var places: [String] = []
+
+        func record(_ sheet: String, _ place: BridgeSheetPlace) {
+            switch place {
+            case .ignored: places.append("\(sheet) ignored")
+            case .on(let side):
+                places.append("\(sheet) \(side.medium).\(side.side)")
+            }
+        }
+    }
+
     @MainActor
-    @Test("the Ignored choice and putting the sheet back both update the draft")
-    func ignoringASheetShowsInTheDraft() async throws {
+    @Test("the Ignored choice and a side pick both reach the form in order")
+    func ignoredAndSidePicksReachTheForm() async throws {
         let release = twoTrackRelease(shared: true)
-        let session = PreviewData.releaseEditSession(
+        let library = PreviewReleaseLibrary(release: release)
+        let core = PreviewReleaseEditSession(release: release)
+        let preview = library.commands(of: core)
+        let log = PlaceLog()
+        let session = ReleaseMetadataEditSession(
             releaseId: "release-test",
-            release: release
+            opened: OpenedReleaseEdit(
+                values: release.values,
+                drafts: core.drafts(),
+                form: ReleaseEditFormCommands(
+                    setField: preview.setField,
+                    setLabels: preview.setLabels,
+                    setBarcodes: preview.setBarcodes,
+                    setPressingFact: preview.setPressingFact,
+                    setAlbumArtists: preview.setAlbumArtists,
+                    setTrack: preview.setTrack,
+                    apply: preview.apply,
+                    applyFileTags: preview.applyFileTags,
+                    clear: preview.clear,
+                    unlink: preview.unlink,
+                    setAlbum: preview.setAlbum,
+                    setSheetPlace: { sheet, place in
+                        await log.record(sheet, place)
+                    },
+                    setSheetFile: preview.setSheetFile,
+                    cancel: preview.cancel,
+                    save: preview.save
+                )
+            ),
+            commands: library.commands()
         )
         try await Wait.until { session.draft != nil }
 
         session.pickSheetPlace("disc.cue", place: .ignored)
-        try await Wait.until {
-            guard case .sheet(let sheet)? = session.draft?.files?.first
-            else { return false }
-            return sheet.sheetId == "disc.cue" && sheet.assigned == nil
-        }
-        #expect(session.draft?.deletesTrackData == true)
-
-        let original = BridgeMediumSide.firstOf(1)
-        session.pickSheetPlace("disc.cue", place: .on(side: original))
-        try await Wait.until {
-            guard
-                case .sheet(let sheet, _)? = session.draft?.sides?.first?
-                    .runs.first
-            else { return false }
-            return sheet.sheetId == "disc.cue"
-                && sheet.assigned?.side == original
-        }
-        #expect(session.draft?.deletesTrackData == false)
+        try await Wait.until { !session.isBusy }
+        #expect(await log.places == ["disc.cue ignored"])
+        session.pickSheetPlace("disc.cue", place: .on(side: .firstOf(1)))
+        try await Wait.until { !session.isBusy }
+        #expect(await log.places == ["disc.cue ignored", "disc.cue 1.1"])
     }
 }
 
