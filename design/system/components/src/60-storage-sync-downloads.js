@@ -359,8 +359,7 @@
       problems ? h('div', { className: 'bae-a-act-block' }, h(AndroidEyebrow, null, 'Needs attention'),
         h('div', { className: 'bae-a-actproblems' }, divided(kids(props.children).concat([
           props.error ? h(AndroidNotice, { key: 'e', quiet: true, dismiss: true, tone: 'danger', title: props.error }) : null,
-          props.attention ? h(AndroidNotice, { key: 'f', quiet: true, dismiss: true, tone: 'warning', title: props.attention, action: 'Open sync settings', buttons: 'below' }) : null,
-          props.attention && props.record ? h('div', { key: 'r' }, h('div', { className: 'bae-strong' }, props.record), h(AndroidNotice, { quiet: true, tone: 'neutral', title: props.reason })) : null].filter(Boolean))))) : null,
+          props.attention ? h(AndroidNotice, { key: 'f', quiet: true, dismiss: true, tone: 'warning', title: props.attention, action: 'Open sync settings', buttons: 'below' }) : null].filter(Boolean))))) : null,
       // As on Mac: Transfers is its own labelled group; each transfer is its words, how far it has got, and a bar; the pinning line opens the Pinning screen.
       props.syncing || props.uploads || props.pins ? h(AndroidEyebrow, null, 'Transfers') : null,
       props.syncing ? xfer('s', 'Syncing changes', null, null) : null,
