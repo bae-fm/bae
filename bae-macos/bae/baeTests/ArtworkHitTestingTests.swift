@@ -28,7 +28,7 @@ struct ArtworkHitTestingTests {
         let size = NSSize(width: side, height: side)
         try await SnapshotTestSupport.withHostedWindow(
             Button(action: { tapBox.tapped = true }) {
-                Artwork(imageRef: nil, pointSize: side)
+                Artwork(imageRef: nil, pointSize: side, cornerRadius: nil)
                     .frame(width: side, height: side)
             }
             .buttonStyle(.plain)
@@ -73,7 +73,7 @@ struct ArtworkRetryTests {
             )
         )
         try await SnapshotTestSupport.withHostedWindow(
-            Artwork(content: content, pointSize: side)
+            Artwork(content: content, pointSize: side, cornerRadius: nil)
                 .frame(width: side, height: side)
                 .environment(store),
             size: size

@@ -12,7 +12,8 @@ struct MacReleaseCell: View {
         HStack(spacing: ThemeSpace.related) {
             Artwork(
                 imageRef: release.cover,
-                pointSize: Self.coverSize
+                pointSize: Self.coverSize,
+                cornerRadius: nil
             )
             .frame(width: Self.coverSize, height: Self.coverSize)
             .clipShape(

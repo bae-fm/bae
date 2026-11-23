@@ -16,7 +16,8 @@ struct MacCoverTile: View {
                 Artwork(
                     content: item.image,
                     contentMode: .fit,
-                    pointSize: 180
+                    pointSize: 180,
+                    cornerRadius: nil
                 )
                 .padding(ThemeSpace.related + ThemeSpace.line)
                 .frame(height: 138)

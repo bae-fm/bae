@@ -121,7 +121,8 @@ struct MacLightbox<Item: LightboxImage>: View {
                     ) { item in
                         Artwork(
                             content: item.image,
-                            pointSize: MacThumbnailStripLayout.thumbnailSize
+                            pointSize: MacThumbnailStripLayout.thumbnailSize,
+                            cornerRadius: nil
                         )
                     }
                     .padding(.bottom, ThemeSpace.group)

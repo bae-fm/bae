@@ -336,7 +336,8 @@ struct LookupReleasesPopover: View {
                     HStack(spacing: ThemeSpace.compact) {
                         Artwork(
                             content: group.coverImageContent,
-                            pointSize: Self.thumbnailSize
+                            pointSize: Self.thumbnailSize,
+                            cornerRadius: nil
                         )
                         .frame(
                             width: Self.thumbnailSize,

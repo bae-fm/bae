@@ -21,7 +21,8 @@ struct MacCoverPreview: View {
                     Artwork(
                         content: cover.image,
                         contentMode: .fit,
-                        pointSize: 800
+                        pointSize: 800,
+                        cornerRadius: nil
                     )
                     .frame(width: 300, height: 300)
                     .clipShape(

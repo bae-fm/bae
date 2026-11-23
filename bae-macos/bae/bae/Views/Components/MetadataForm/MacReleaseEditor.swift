@@ -405,31 +405,35 @@ struct ReleaseCoverWell: View {
     private var dropTargeted = false
 
     var body: some View {
-        Artwork(content: coverContent, pointSize: Self.coverSize)
-            .frame(width: Self.coverSize, height: Self.coverSize)
-            .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
-            .contentShape(Rectangle())
-            .onTapGesture {
-                onEditCover?()
+        Artwork(
+            content: coverContent,
+            pointSize: Self.coverSize,
+            cornerRadius: nil
+        )
+        .frame(width: Self.coverSize, height: Self.coverSize)
+        .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onEditCover?()
+        }
+        .accessibilityAddTraits(onEditCover == nil ? [] : .isButton)
+        .accessibilityLabel(Text("Change cover"))
+        .accessibilityHidden(onEditCover == nil)
+        .overlay {
+            RoundedRectangle(cornerRadius: ThemeRadius.artwork)
+                .stroke(
+                    Theme.accent,
+                    lineWidth: dropTargeted ? 3 : 0
+                )
+        }
+        .dropDestination(for: String.self) { fileIds, _ in
+            guard let onDropImage, let fileId = fileIds.first else {
+                return false
             }
-            .accessibilityAddTraits(onEditCover == nil ? [] : .isButton)
-            .accessibilityLabel(Text("Change cover"))
-            .accessibilityHidden(onEditCover == nil)
-            .overlay {
-                RoundedRectangle(cornerRadius: ThemeRadius.artwork)
-                    .stroke(
-                        Theme.accent,
-                        lineWidth: dropTargeted ? 3 : 0
-                    )
-            }
-            .dropDestination(for: String.self) { fileIds, _ in
-                guard let onDropImage, let fileId = fileIds.first else {
-                    return false
-                }
-                onDropImage(fileId)
-                return true
-            } isTargeted: {
-                dropTargeted = $0
-            }
+            onDropImage(fileId)
+            return true
+        } isTargeted: {
+            dropTargeted = $0
+        }
     }
 }

@@ -74,7 +74,7 @@ struct MacListRow: View {
             else if hanging {
                 Color.clear.frame(width: leadWidth, height: 0)
             }
-            Artwork(imageRef: cover, pointSize: coverSize)
+            Artwork(imageRef: cover, pointSize: coverSize, cornerRadius: nil)
                 .frame(width: coverSize, height: coverSize)
                 .clipShape(
                     RoundedRectangle(

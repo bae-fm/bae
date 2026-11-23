@@ -25,7 +25,8 @@ struct Avatar: View {
                         person: picture.person,
                         version: picture.version
                     ),
-                    pointSize: size
+                    pointSize: size,
+                    cornerRadius: nil
                 )
             }
         }

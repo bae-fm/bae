@@ -9,9 +9,13 @@ struct MacDetailHeader<Summary: BrowseSummaryDisplay>: View {
 
     var body: some View {
         HStack(spacing: ThemeSpace.edge) {
-            Artwork(imageRef: summary.image, pointSize: Self.imageSize)
-                .frame(width: Self.imageSize, height: Self.imageSize)
-                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.cover))
+            Artwork(
+                imageRef: summary.image,
+                pointSize: Self.imageSize,
+                cornerRadius: nil
+            )
+            .frame(width: Self.imageSize, height: Self.imageSize)
+            .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.cover))
             VStack(alignment: .leading, spacing: ThemeSpace.inline) {
                 Text(summary.name)
                     .themeText(.title)

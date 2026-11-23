@@ -32,7 +32,8 @@ extension ShotScene {
             ) { item in
                 Artwork(
                     content: item.image,
-                    pointSize: MacThumbnailStripLayout.thumbnailSize
+                    pointSize: MacThumbnailStripLayout.thumbnailSize,
+                    cornerRadius: nil
                 )
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)

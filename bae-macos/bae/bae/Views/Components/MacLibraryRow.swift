@@ -81,12 +81,16 @@ struct MacLibraryRow: View {
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
         }
         else {
-            Artwork(imageRef: picture, pointSize: ThemeSize.rowArtwork)
-                .frame(
-                    width: ThemeSize.rowArtwork,
-                    height: ThemeSize.rowArtwork
-                )
-                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
+            Artwork(
+                imageRef: picture,
+                pointSize: ThemeSize.rowArtwork,
+                cornerRadius: nil
+            )
+            .frame(
+                width: ThemeSize.rowArtwork,
+                height: ThemeSize.rowArtwork
+            )
+            .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
         }
     }
 

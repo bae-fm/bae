@@ -23,6 +23,7 @@ struct Artwork: View {
     let content: ImageContent?
     var contentMode: ContentMode = .fill
     let pointSize: CGFloat
+    /// An enclosing view draws the crop when it passes nil.
     let cornerRadius: CGFloat?
     let ring: Bool
     let shadow: Shadow
@@ -45,7 +46,7 @@ struct Artwork: View {
         content: ImageContent?,
         contentMode: ContentMode = .fill,
         pointSize: CGFloat,
-        cornerRadius: CGFloat? = nil,
+        cornerRadius: CGFloat? = ThemeRadius.cover,
         ring: Bool = false,
         shadow: Shadow = .none,
         dimmed: Bool = false
@@ -284,7 +285,7 @@ extension Artwork {
         imageRef: BridgeImageRef?,
         contentMode: ContentMode = .fill,
         pointSize: CGFloat,
-        cornerRadius: CGFloat? = nil,
+        cornerRadius: CGFloat? = ThemeRadius.cover,
         ring: Bool = false,
         shadow: Shadow = .none,
         dimmed: Bool = false

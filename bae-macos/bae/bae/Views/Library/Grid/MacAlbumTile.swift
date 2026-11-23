@@ -38,7 +38,6 @@ struct MacAlbumTile: View {
             Artwork(
                 imageRef: cover,
                 pointSize: side,
-                cornerRadius: ThemeRadius.cover,
                 ring: isExpanded,
                 shadow: .tile,
                 dimmed: isUnplayable

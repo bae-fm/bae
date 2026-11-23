@@ -137,7 +137,11 @@ struct MacNowPlayingBar: View {
     }
 
     private var albumArt: some View {
-        Artwork(content: cover, pointSize: ThemeSize.barArtwork)
+        Artwork(
+            content: cover,
+            pointSize: ThemeSize.barArtwork,
+            cornerRadius: nil
+        )
     }
 
     // MARK: - Center: transport controls + progress

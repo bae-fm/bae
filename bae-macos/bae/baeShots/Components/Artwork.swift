@@ -13,8 +13,6 @@ extension ShotScene {
             images: coverStore()
         ) {
             Artwork(imageRef: cover("Low Tide Hours"), pointSize: 120)
-                .frame(width: 120, height: 120)
-                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.cover))
         },
         component(
             "mac.component.artwork.missing",
@@ -22,17 +20,19 @@ extension ShotScene {
             images: coverStore()
         ) {
             Artwork(imageRef: nil, pointSize: 120)
-                .frame(width: 120, height: 120)
-                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.cover))
         },
         component(
             "mac.component.artwork.round",
             height: 64,
             images: coverStore()
         ) {
-            Artwork(imageRef: cover("Mara Quill"), pointSize: 48)
-                .frame(width: 48, height: 48)
-                .clipShape(Circle())
+            Artwork(
+                imageRef: cover("Mara Quill"),
+                pointSize: 48,
+                cornerRadius: nil
+            )
+            .frame(width: 48, height: 48)
+            .clipShape(Circle())
         },
         component(
             "mac.component.artwork.ring",
@@ -42,7 +42,6 @@ extension ShotScene {
             Artwork(
                 imageRef: cover("Low Tide Hours"),
                 pointSize: 120,
-                cornerRadius: ThemeRadius.cover,
                 ring: true
             )
         },
@@ -54,7 +53,6 @@ extension ShotScene {
             Artwork(
                 imageRef: cover("Low Tide Hours"),
                 pointSize: 120,
-                cornerRadius: ThemeRadius.cover,
                 shadow: .tile
             )
         },
@@ -66,7 +64,6 @@ extension ShotScene {
             Artwork(
                 imageRef: cover("Low Tide Hours"),
                 pointSize: 120,
-                cornerRadius: ThemeRadius.cover,
                 shadow: .bar
             )
         },

@@ -152,11 +152,15 @@ struct ImportingCandidatePane: View {
                     ImportProgressContainer(key: candidate.key, step: step)
                 }
                 HStack(alignment: .top, spacing: ThemeSpace.edge) {
-                    Artwork(content: coverContent, pointSize: Self.coverSize)
-                        .frame(width: Self.coverSize, height: Self.coverSize)
-                        .clipShape(
-                            RoundedRectangle(cornerRadius: ThemeRadius.artwork)
-                        )
+                    Artwork(
+                        content: coverContent,
+                        pointSize: Self.coverSize,
+                        cornerRadius: nil
+                    )
+                    .frame(width: Self.coverSize, height: Self.coverSize)
+                    .clipShape(
+                        RoundedRectangle(cornerRadius: ThemeRadius.artwork)
+                    )
                     if let draft = candidate.draft {
                         MacImportReleaseSummary(
                             summary: ImportReleaseSummary(

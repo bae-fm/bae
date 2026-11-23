@@ -25,7 +25,8 @@ struct ImageTileLoadingTests {
                         downscaled: []
                     )
                 ),
-                pointSize: side
+                pointSize: side,
+                cornerRadius: nil
             )
             .frame(width: side, height: side)
             .environment(images),

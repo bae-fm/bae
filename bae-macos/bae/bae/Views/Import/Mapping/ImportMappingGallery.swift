@@ -49,7 +49,8 @@ struct ImportMappingGalleryTile: View {
         } label: {
             Artwork(
                 content: .localFile(image.file),
-                pointSize: tileSize
+                pointSize: tileSize,
+                cornerRadius: nil
             )
             .frame(width: tileSize, height: tileSize)
             .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))

@@ -137,7 +137,8 @@ struct MacAlbumPanel: View {
     private var albumArt: some View {
         Artwork(
             imageRef: selectedRelease.summary.cover,
-            pointSize: Self.coverSize
+            pointSize: Self.coverSize,
+            cornerRadius: nil
         )
     }
 }

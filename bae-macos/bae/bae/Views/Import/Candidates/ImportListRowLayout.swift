@@ -16,7 +16,8 @@ struct ImportListRowLayout<Meta: View, Trailing: View>: View {
         HStack(alignment: .center, spacing: ThemeSpace.related) {
             Artwork(
                 content: coverContent,
-                pointSize: MacImportRow.coverPointSize
+                pointSize: MacImportRow.coverPointSize,
+                cornerRadius: nil
             )
             .frame(
                 width: MacImportRow.coverPointSize,

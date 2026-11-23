@@ -9,11 +9,15 @@ struct MacArtistAlbumTile: View {
     var body: some View {
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: ThemeSpace.compact) {
-                Artwork(imageRef: album.cover, pointSize: 140)
-                    .aspectRatio(1, contentMode: .fit)
-                    .clipShape(
-                        RoundedRectangle(cornerRadius: ThemeRadius.artwork)
-                    )
+                Artwork(
+                    imageRef: album.cover,
+                    pointSize: 140,
+                    cornerRadius: nil
+                )
+                .aspectRatio(1, contentMode: .fit)
+                .clipShape(
+                    RoundedRectangle(cornerRadius: ThemeRadius.artwork)
+                )
                 Text(album.title)
                     .themeText(.rowTitle)
                     .foregroundStyle(.primary)

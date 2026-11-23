@@ -11,7 +11,8 @@ struct MacReleaseCard: View {
         HStack(spacing: ThemeSpace.group) {
             Artwork(
                 content: group.coverImageContent,
-                pointSize: ThemeSize.rowArtwork
+                pointSize: ThemeSize.rowArtwork,
+                cornerRadius: nil
             )
             .frame(width: ThemeSize.rowArtwork, height: ThemeSize.rowArtwork)
             .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
