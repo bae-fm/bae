@@ -69,10 +69,10 @@ class AndroidAlbumHeaderShots : BoardShot() {
 private fun Header(
     detail: BridgeAlbumDetail,
     actions: @Composable () -> Unit = {},
-) = Images {
+) = Covers {
     AndroidAlbumHeader(
         detail = detail,
-        cover = PreviewData.imageRef(),
+        cover = detail.shownRelease.cover,
         galleryItemCount = 0u,
         onShowGallery = {},
         onShowWhere = {},
@@ -87,6 +87,7 @@ private val cd = BridgeFactTerm.Worded(BridgeTermLabel.Verbatim("CD"))
 internal val harborRelease: BridgeRelease =
     PreviewData.release().let { release ->
         release.copy(
+            cover = PreviewData.imageRef("Low Tide Hours"),
             distinctYear = null,
             labels = listOf(BridgeLabelLine(names = listOf("Harbor Records"), catalogNumbers = listOf("HR-1042"))),
             facts = release.facts.copy(area = BridgeReleaseArea.Country("US"), media = listOf(BridgeMediaCount(BridgeMedium.CD, 1u))),

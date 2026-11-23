@@ -1,6 +1,7 @@
 package fm.bae.app.ui.albumdetail
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -131,7 +132,10 @@ private fun YearAndRating(
 /** The words for a release only another device holds, where Play would stand, and the button that says where it is. */
 @Composable
 private fun NotOnThisDevice(onShowWhere: () -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Text(
             text = stringResource(R.string.release_not_on_this_device),
             style = ThemeText.body.style,

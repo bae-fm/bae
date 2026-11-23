@@ -4,4 +4,4 @@ Tops the album page: the 150pt cover (opens the gallery when there is one), then
 
 `unplayable`: when only another device holds them, the words Not on this device stand in place of Play, with an info button (Show where it is) that opens a sheet naming the device.
 
-**In the code:** Android: `AndroidAlbumHeader` in `ui/albumdetail/AlbumDetailScreen.kt`. The header has no unplayable state yet.
+**In the code:** `AlbumDetailScreen` draws `AndroidAlbumHeader` from `ui/albumdetail/AndroidAlbumHeader.kt`.
