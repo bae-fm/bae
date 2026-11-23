@@ -35,19 +35,13 @@ extension ShotScenes {
             hasCloudHome: true
         ),
         size: CGSize = CGSize(width: 1280, height: 800),
-        pinnedHeaderProgress: Double? = nil,
-        window: AnyView? = nil
+        window: AnyView = AnyView(MacMainWindowContainer())
     ) -> some View {
         let slot =
             importListSlot
             ?? importScene.slot(uiStore: uiStore, selection: importSelection)
         return
-            (window
-            ?? AnyView(
-                MacMainWindowContainer(
-                    pinnedHeaderProgress: pinnedHeaderProgress
-                )
-            ))
+            window
             .environment(backing.library)
             .environment(backing.session)
             .environment(
