@@ -6,15 +6,18 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.BridgeFixtures
 import fm.bae.app.HANG_GUARD_MS
+import fm.bae.app.LocalBugReports
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.openTestLibrary
 import fm.bae.app.playback.FakeAppHandle
+import fm.bae.app.playback.FakeDetailRead
 import fm.bae.app.ui.TestTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -23,6 +26,10 @@ import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeEntryPlace
 import uniffi.bae_bridge.BridgePlayOutcome
+import uniffi.bae_bridge.BridgePlaylistDetail
+import uniffi.bae_bridge.BridgePlaylistDetailSnapshot
+import uniffi.bae_bridge.NoHandle
+import uniffi.bae_bridge.PlaylistDetailSubscription
 
 /** A playlist's page plays the playlist, or one of its entries, through the session. */
 @RunWith(BaeRobolectricTestRunner::class)
@@ -37,10 +44,26 @@ class PlaylistScreenTest {
         val shuffle: Boolean,
     )
 
-    private class PlayingHandle : FakeAppHandle() {
+    private class PlayingHandle(
+        private val detail: BridgePlaylistDetail,
+    ) : FakeAppHandle() {
         val played = mutableListOf<Played>()
         val removed = mutableListOf<String>()
         val moved = mutableListOf<Pair<String, BridgeEntryPlace>>()
+
+        override fun subscribePlaylistDetail(): PlaylistDetailSubscription {
+            val read = FakeDetailRead<String, BridgePlaylistDetail> { id -> detail.takeIf { it.summary.id == id } }
+            return object : PlaylistDetailSubscription(NoHandle) {
+                override fun setId(id: String) = read.setId(id)
+
+                override suspend fun next(): BridgePlaylistDetailSnapshot =
+                    read.next().let { (id, value) -> BridgePlaylistDetailSnapshot(id, value) }
+
+                override suspend fun cancel() = read.cancel()
+
+                override fun close() = read.cancel()
+            }
+        }
 
         override suspend fun movePlaylistEntry(
             playlist: String,
@@ -67,25 +90,31 @@ class PlaylistScreenTest {
         }
     }
 
-    private val handle = PlayingHandle()
+    private val detail =
+        BridgeFixtures.playlistDetail(
+            BridgeFixtures.playlistSummary(id = "playlist-1", name = "Late night"),
+            entries =
+                listOf(
+                    BridgeFixtures.playlistEntry("position-1", "Harbor Lights", canMoveDown = true),
+                    BridgeFixtures.playlistEntry("position-2", "Copper Sky", canMoveUp = true),
+                ),
+        )
+    private val handle = PlayingHandle(detail)
 
     private fun showPage() {
         val session = openTestLibrary(handle)
-        val detail =
-            BridgeFixtures.playlistDetail(
-                BridgeFixtures.playlistSummary(id = "playlist-1", name = "Late night"),
-                entries =
-                    listOf(
-                        BridgeFixtures.playlistEntry("position-1", "Harbor Lights", canMoveDown = true),
-                        BridgeFixtures.playlistEntry("position-2", "Copper Sky", canMoveUp = true),
-                    ),
-            )
         compose.setContent {
             TestTheme {
-                CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
-                    PlaylistPage(session = session, detail = detail)
+                CompositionLocalProvider(
+                    LocalImageStore provides ImageStore.unresolved(),
+                    LocalBugReports provides session.bugs,
+                ) {
+                    PlaylistScreen(session = session, playlistId = detail.summary.id, onBack = {}, backLabel = "Back to library")
                 }
             }
+        }
+        compose.waitUntil(HANG_GUARD_MS) {
+            compose.onAllNodesWithContentDescription("Playlist options").fetchSemanticsNodes().isNotEmpty()
         }
     }
 
@@ -101,6 +130,7 @@ class PlaylistScreenTest {
     @Test
     fun shuffleStartsTheListShuffled() {
         showPage()
+        compose.onNodeWithContentDescription("Playlist options").performClick()
         compose.onNodeWithText("Shuffle").performClick()
         compose.waitUntil(HANG_GUARD_MS) { handle.played.isNotEmpty() }
 
