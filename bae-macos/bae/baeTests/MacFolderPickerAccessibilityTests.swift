@@ -42,7 +42,7 @@
                     subject: subject
                 )
                 let names = tree.nodes.filter { $0.role == kAXButtonRole }
-                    .compactMap { $0.title ?? $0.description }
+                    .map { $0.title ?? $0.description }
                 #expect(names == ["Music"])
 
                 let buttons = try AccessibilityTree.elements(
