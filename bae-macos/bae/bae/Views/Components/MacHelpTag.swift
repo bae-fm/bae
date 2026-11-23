@@ -22,8 +22,8 @@ struct MacHelpTag<Content: View>: View {
             .overlay(alignment: .bottomLeading) {
                 if showing {
                     tag
-                        .alignmentGuide(.bottom) { $0[.top] - Self.gap }
                         .padding(.leading, Self.inset)
+                        .alignmentGuide(.bottom) { $0[.top] - Self.gap }
                 }
             }
     }
