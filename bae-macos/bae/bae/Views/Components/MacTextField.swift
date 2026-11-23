@@ -11,6 +11,8 @@ struct MacTextField<Field: View>: View {
     /// The field takes no typing, and its label dims with it.
     let off: Bool
     private let field: Field
+    @Environment(\.fieldLabelWidth)
+    private var labelWidth
 
     init(
         _ label: LocalizedStringKey,
@@ -29,6 +31,7 @@ struct MacTextField<Field: View>: View {
     var body: some View {
         GridRow(alignment: .fieldLine) {
             Text(label)
+                .frame(width: labelWidth, alignment: .trailing)
                 .opacity(off ? ThemeOpacity.off : 1)
                 .gridColumnAlignment(.trailing)
             VStack(alignment: .leading, spacing: ThemeSpace.inline) {
