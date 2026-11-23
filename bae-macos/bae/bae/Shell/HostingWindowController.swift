@@ -83,13 +83,16 @@ class HostingWindowController: NSWindowController, NSWindowDelegate {
     }
 
     func windowDidResize(_ notice: Notification) {
-        if let window = notice.object as? NSWindow, !window.inLiveResize {
-            frameAutosave?.save(window)
-        }
+        saveFrame(from: notice, skipLiveResize: true)
     }
 
-    private func saveFrame(from notice: Notification) {
-        if let frameAutosave, let window = notice.object as? NSWindow {
+    private func saveFrame(
+        from notice: Notification,
+        skipLiveResize: Bool = false
+    ) {
+        if let frameAutosave, let window = notice.object as? NSWindow,
+            !skipLiveResize || !window.inLiveResize
+        {
             frameAutosave.save(window)
         }
     }
