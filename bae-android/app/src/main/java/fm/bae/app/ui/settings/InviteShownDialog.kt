@@ -178,7 +178,6 @@ internal fun inviteCodeParts(
     onCancelInvite: () -> Unit,
     onDismiss: () -> Unit,
 ): DialogParts {
-    val context = LocalContext.current
     val title = stringResource(R.string.invite_title)
     // Offline with nothing held: the dialog says the code waits, in place of a bar.
     val waitingOffline = offline && invite.shown is BridgeInviteShown.Granting && invite.held == null
@@ -191,37 +190,52 @@ internal fun inviteCodeParts(
             } else {
                 null
             },
-        content = {
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
-            ) {
-                when (val shown = invite.shown) {
-                    is BridgeInviteShown.Granting -> {
-                        InviteGranting(invite, offline)
-                    }
-
-                    is BridgeInviteShown.Code -> {
-                        AndroidScanCode(
-                            instruction = stringResource(R.string.invite_scan_instruction),
-                            qr = shown.code,
-                            code = shown.code,
-                        )
-                    }
-                }
-                (invite.access as? BridgeMemberAccess.S3AccessKey)?.let { key ->
-                    SelectionContainer {
-                        InviteNote(context.coreString("core.access_key.id", mapOf("key" to key.accessKeyId)))
-                    }
-                    InviteNote(context.coreString("core.access_key.unused_invite", mapOf("key" to key.accessKeyId)))
-                }
-                error?.let { AndroidNotice(it, look = NoticeLook.QUIET) }
-            }
-        },
+        // A dialog with no content draws no content slot, whose padding the board's message-only dialog lacks.
+        content =
+            if (waitingOffline && invite.access !is BridgeMemberAccess.S3AccessKey && error == null) {
+                null
+            } else {
+                { InviteShownContent(invite, offline, error) }
+            },
         action = DialogAction(stringResource(R.string.done), onDismiss),
         dismiss = DialogAction(stringResource(R.string.invite_cancel), onCancelInvite, enabled = !busy),
     )
+}
+
+/** What the invite's dialog shows under its title: the code or what holds it, the S3 key's notes and any [error]. */
+@Composable
+private fun InviteShownContent(
+    invite: BridgeInvite,
+    offline: Boolean,
+    error: DisplayError?,
+) {
+    val context = LocalContext.current
+    Column(
+        modifier = Modifier.verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
+    ) {
+        when (val shown = invite.shown) {
+            is BridgeInviteShown.Granting -> {
+                InviteGranting(invite, offline)
+            }
+
+            is BridgeInviteShown.Code -> {
+                AndroidScanCode(
+                    instruction = stringResource(R.string.invite_scan_instruction),
+                    qr = shown.code,
+                    code = shown.code,
+                )
+            }
+        }
+        (invite.access as? BridgeMemberAccess.S3AccessKey)?.let { key ->
+            SelectionContainer {
+                InviteNote(context.coreString("core.access_key.id", mapOf("key" to key.accessKeyId)))
+            }
+            InviteNote(context.coreString("core.access_key.unused_invite", mapOf("key" to key.accessKeyId)))
+        }
+        error?.let { AndroidNotice(it, look = NoticeLook.QUIET) }
+    }
 }
 
 /**
