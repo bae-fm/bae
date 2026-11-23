@@ -27,7 +27,6 @@ fun PlaylistPicture(
     cover: BridgePlaylistCover,
     cornerRadius: Dp,
     modifier: Modifier = Modifier,
-    contentDescription: String? = null,
 ) {
     when (cover) {
         is BridgePlaylistCover.Single -> {
@@ -36,7 +35,6 @@ fun PlaylistPicture(
                 cornerRadius = cornerRadius,
                 iconPadding = ThemeSpace.group,
                 modifier = modifier,
-                contentDescription = contentDescription,
             )
         }
 

@@ -6546,7 +6546,8 @@ whose control or nearby words already name its meaning. When an icon
 alone conveys a state, VoiceOver reads the state, such as *Now playing*
 or *Failed*. VoiceOver names progress bars and spinners by their labels,
 such as *Pinning* and *Finding your libraries…*, and reads *Loading*
-for an unnamed spinner. On Android, TalkBack reads the labels and
+for an unnamed spinner. On Android, TalkBack reads the row title and skips
+the artwork beside it in library lists. TalkBack reads the labels and
 percentages of progress bars, including pin progress.
 
 Android Settings shows the current theme, tone and accent, the library

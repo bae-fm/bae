@@ -61,7 +61,7 @@ internal fun AndroidLibraryRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (!noArt) {
-            RowArt(art = art, playlistCover = playlistCover, missing = missing, description = title)
+            RowArt(art = art, playlistCover = playlistCover, missing = missing)
             Spacer(modifier = Modifier.width(ThemeSpace.group))
         }
         Column(
@@ -116,7 +116,6 @@ private fun RowArt(
     art: BridgeImageRef?,
     playlistCover: BridgePlaylistCover?,
     missing: Boolean,
-    description: String,
 ) {
     val tile = Modifier.size(ThemeSize.rowArtwork)
     if (playlistCover != null) {
@@ -124,7 +123,6 @@ private fun RowArt(
             cover = playlistCover,
             cornerRadius = ThemeRadius.artwork,
             modifier = tile,
-            contentDescription = description,
         )
     } else if (missing) {
         Box(tile.clip(RoundedCornerShape(ThemeRadius.artwork)).background(BaeTheme.surfaces.missingArt))
@@ -134,7 +132,6 @@ private fun RowArt(
             cornerRadius = ThemeRadius.artwork,
             iconPadding = ThemeSpace.group,
             modifier = tile,
-            contentDescription = description,
         )
     }
 }
