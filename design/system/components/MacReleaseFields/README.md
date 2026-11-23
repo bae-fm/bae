@@ -10,6 +10,6 @@ The release's fields under a Release heading, in a grid of labels and values, as
 - **Status** (`status`) and **Packaging** (`packaging`): each its value as plain text, which opens its menu.
 - **Details** (`details`, comma-separated, such as Remastered, Limited Edition): what Discogs says about the pressing that no other field holds, each with ⊗, then a menu that adds another: named Details and showing a dash while there are none, named Add detail and showing + Add after.
 
-An empty value shows the form's dash.
+An empty value shows the form's dash. `off` disables every field, stepper and button, as while the release editor reads a file.
 
 **In the code:** macOS: `MacReleaseFields` (`Views/Components/MetadataForm/MacReleaseFields.swift`), with `MediaCountsEditor` (`Views/Components/MetadataForm/MediaCountsEditor.swift`) and `DiscogsDetailsEditor` (`Views/Components/MetadataForm/DiscogsDetailsEditor.swift`).

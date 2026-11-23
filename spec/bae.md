@@ -2372,6 +2372,8 @@ file the sheet's lines then play from. During the read, the editor shows
 *Reading <file name>…* with progress and disables *Cancel* and *Save*.
 The cover, Unlink, the Metadata menu and the album
 pop-up stay disabled too, since a click on any of them would cancel the save.
+The album's title, artists and year, the pressing's fields, the track table
+and the *Files* list stay disabled during the read as well.
 
 **A library release's form.** A library release's editor opens with a *form*
 that holds the release's values as the library holds them, and the editor

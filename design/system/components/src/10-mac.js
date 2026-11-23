@@ -279,11 +279,12 @@
   }
 
   // The system stepper: a small rounded box of an up and a down arrow beside a count, named by what it counts (`label`).
-  // macOS reads it as one stepper with that label, its arrows part of the control as a scroll bar's buttons are, so the arrows stay out of the reading order.
+  // macOS reads it as one stepper with that label, its arrows part of the control as a scroll bar's buttons are, so the arrows stay out of the reading order. `off`: the stepper and its arrows are disabled.
   function MacStepper(props) {
-    return h('span', { className: 'bae-m-stepper', role: 'spinbutton', 'aria-label': props.label },
-      h('button', { type: 'button', className: 'bae-plainbtn', 'aria-hidden': true, tabIndex: -1 }, h(Glyph, { set: 'mac', name: 'down', size: 'small', className: 'bae-m-stepper-up' })),
-      h('button', { type: 'button', className: 'bae-plainbtn', 'aria-hidden': true, tabIndex: -1 }, h(Glyph, { set: 'mac', name: 'down', size: 'small' })));
+    var off = !!props.off;
+    return h('span', { className: cx('bae-m-stepper', off && 'bae-off'), role: 'spinbutton', 'aria-label': props.label, 'aria-disabled': off || null },
+      h('button', { type: 'button', className: 'bae-plainbtn', 'aria-hidden': true, tabIndex: -1, disabled: off }, h(Glyph, { set: 'mac', name: 'down', size: 'small', className: 'bae-m-stepper-up' })),
+      h('button', { type: 'button', className: 'bae-plainbtn', 'aria-hidden': true, tabIndex: -1, disabled: off }, h(Glyph, { set: 'mac', name: 'down', size: 'small' })));
   }
 
   // DisclosureGroup in a grouped form: its own box, the chevron leading inside the label row and turning down when open; the rows it shows are indented to the label.

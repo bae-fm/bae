@@ -178,7 +178,7 @@
       details.map(function (d) { return h('span', { key: d, className: 'bae-m-idraft-detail' }, d, removeEntry(d)); }),
       h('button', { type: 'button', className: cx('bae-plainbtn', 'bae-m-idraft-detail', !details.length && 'bae-m-tertiary'), 'aria-haspopup': 'menu', 'aria-label': details.length ? 'Add detail' : 'Details' }, details.length ? [h(Glyph, { key: 'p', set: 'mac', name: 'add', size: 'small' }), 'Add'] : '—'));
   }
-  // The release's fields under a Release heading: Year, Media, Label with its catalog number, Country, Barcode, Status, Packaging and Details, the typed ones as fields and the chosen ones as pop-ups, each showing — while empty.
+  // The release's fields under a Release heading: Year, Media, Label with its catalog number, Country, Barcode, Status, Packaging and Details, the typed ones as fields and the chosen ones as pop-ups, each showing — while empty. `off`: every field, stepper and button is disabled, as while a save reads a file.
   function MacReleaseFields(props) {
     // A fact chosen from a menu shows its value as plain text, or the form's dash.
     var face = function (label, value) { return h('button', { type: 'button', role: 'combobox', 'aria-expanded': false, 'aria-label': label, className: cx('bae-plainbtn', !value && 'bae-m-tertiary') }, value || '—'); };
@@ -192,7 +192,7 @@
     // `media`: each carrier with how many of it there are, as "2×CD", comma-separated; a carrier alone is one. Each is its name, ×count, a MacStepper and ⊗, on one line, then Add, a menu of the carriers not yet listed.
     var media = list(props.media).map(function (m) { var p = m.split('×'); return p.length > 1 ? { count: p[0], carrier: p[1] } : { count: '1', carrier: p[0] }; });
     var mediaLine = h('span', { className: 'bae-m-idraft-entry bae-m-idraft-media' },
-      media.map(function (m) { return h('span', { key: m.carrier, className: 'bae-m-idraft-entry' }, h('span', null, m.carrier), h('span', { className: 'bae-muted bae-num' }, '×' + m.count), h(MacStepper, { label: 'Number of ' + m.carrier }), removeEntry(m.carrier)); }),
+      media.map(function (m) { return h('span', { key: m.carrier, className: 'bae-m-idraft-entry' }, h('span', null, m.carrier), h('span', { className: 'bae-muted bae-num' }, '×' + m.count), h(MacStepper, { label: 'Number of ' + m.carrier, off: props.off }), removeEntry(m.carrier)); }),
       addEntry('Add medium', true));
     // `countryOpen`: the countries the Country menu lists, drawn open under its face, with the dash for none first and NSMenu's scroll arrow at its foot.
     var country = props.countryOpen
@@ -205,9 +205,11 @@
       // `barcodes`: comma-separated, each a row.
       .concat(rows('Barcode', list(props.barcodes), function (b) { return field('Barcode', b); }, function (b) { return b; }))
       .concat([['Status', face('Status', props.status)], ['Packaging', face('Packaging', props.packaging)], ['Details', discogsDetails(list(props.details))]]);
+    var cells = h('div', { className: 'bae-m-idraft-grid' }, grid.map(function (r, i) { return [h('span', { key: 'l' + i, className: 'bae-muted' }, r[0]), h('span', { key: 'v' + i, className: 'bae-m-idraft-cell' }, r[1])]; }));
     return h('div', { className: 'bae-m-relfields' },
       h(MacFormHeading, null, 'Release'),
-      h('div', { className: 'bae-m-idraft-grid' }, grid.map(function (r, i) { return [h('span', { key: 'l' + i, className: 'bae-muted' }, r[0]), h('span', { key: 'v' + i, className: 'bae-m-idraft-cell' }, r[1])]; })));
+      // A disabled fieldset disables every field and button in the grid; the steppers, which are no form controls, take `off` themselves.
+      props.off ? h('fieldset', { disabled: true, 'aria-disabled': true, style: { display: 'contents' } }, cells) : cells);
   }
   // The release's identity and its fields, as both cards draw them under their lead: the cover and identity with the audio line and the album picker, then the Release grid.
   function releaseHeader(props) {
@@ -215,9 +217,9 @@
       h(MacReleaseIdentity, { key: 'id', cover: props.cover, coverOff: !!props.reading, title: props.title, artist: props.artist, artistChip: props.artistChip, year: props.year },
         audioLine(props.audio),
         props.album ? h(MacAlbumPicker, { key: 'album', album: props.album, inLibrary: props.albumInLibrary, picked: props.albumPicked, open: props.albumOpen, off: !!props.reading }) : null),
-      h(MacReleaseFields, { key: 'fields', year: props.pressingYear, media: props.media, labels: props.labels, country: props.country, countryOpen: props.countryOpen, barcodes: props.barcodes, status: props.status, packaging: props.packaging, details: props.details })];
+      h(MacReleaseFields, { key: 'fields', year: props.pressingYear, media: props.media, labels: props.labels, country: props.country, countryOpen: props.countryOpen, barcodes: props.barcodes, status: props.status, packaging: props.packaging, details: props.details, off: !!props.reading })];
   }
-  // The release editor, one component in the import pane and in the album's Edit release sheet; its `actions` row is the only difference. `actions` `import`: where the import goes (`cloud`, `to`) and Import, or Retry import (`retry`), or neither while the folder has nothing to import (`blank`), with the folder's `check` and the audio a picked release leaves out (`leftOut`) in warning notices under that row. `actions` `save`: Cancel once something changed (`changed`), and Save. `reading`: the file a save or an import reads before it writes, while the cover, Unlink, the Metadata menu and the album pop-up are off, since a click on any of them would cancel the save. Then, in both: the release's identity and fields; the records under a rule, with Unlink; the folder's or release's images (`images`); the track table, the children (side headings, CUE captions and track rows); the Files list (`files`).
+  // The release editor, one component in the import pane and in the album's Edit release sheet; its `actions` row is the only difference. `actions` `import`: where the import goes (`cloud`, `to`) and Import, or Retry import (`retry`), or neither while the folder has nothing to import (`blank`), with the folder's `check` and the audio a picked release leaves out (`leftOut`) in warning notices under that row. `actions` `save`: Cancel once something changed (`changed`), and Save. `reading`: the file a save or an import reads before it writes, while the cover, Unlink, the Metadata menu and the album pop-up are off, since a click on any of them would cancel the save, and the identity, the fields, the track table and the Files list are off too. Then, in both: the release's identity and fields; the records under a rule, with Unlink; the folder's or release's images (`images`); the track table, the children (side headings, CUE captions and track rows); the Files list (`files`).
   function MacReleaseEditor(props) {
     var tracks = kids(props.children), leftOut = list(props.leftOut);
     function editable(children) {
