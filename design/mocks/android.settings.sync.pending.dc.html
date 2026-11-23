@@ -28,7 +28,7 @@ a{color:var(--accent)}a:hover{color:#F6BFD9}
 </style>
 </helmet>
 <x-import component-from-global-scope="Bae.AndroidScreen" title="Sync" back="{{yes}}">
-  <x-import component-from-global-scope="Bae.AndroidSyncStatus" status="Waiting to sync" tone="warning" cause="Dropbox asked bae to slow down." remedy="Resuming in 42 seconds." last-synced="2 hours ago"></x-import>
+  <x-import component-from-global-scope="Bae.AndroidSyncStatus" status="Waiting to sync" tone="warning" cause="Dropbox asked bae to slow down." countdown="Resuming in 42 seconds." last-synced="2 hours ago"></x-import>
   <x-import component-from-global-scope="Bae.AndroidSection" title="Cloud home"></x-import>
   <x-import component-from-global-scope="Bae.AndroidCard">
     <x-import component-from-global-scope="Bae.AndroidRow" title="Provider" subtitle="Dropbox"></x-import>

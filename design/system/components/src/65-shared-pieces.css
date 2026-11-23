@@ -70,7 +70,7 @@
 .bae-a-syncstatus-value { font-size: var(--type-android-body-size); font-weight: var(--type-android-body-weight); line-height: var(--type-android-body-line-height); color: var(--text-secondary); display: flex; align-items: baseline; gap: var(--space-compact); }
 .bae-a-syncstatus-value[class*="bae-tone-"] { color: var(--bae-tone); }
 .bae-a-syncstatus-cause { padding: var(--space-line) var(--space-edge) calc(var(--space-related) + var(--space-line)); font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); color: var(--text-primary); }
-.bae-a-syncstatus-remedy { margin-top: var(--space-inline); }
+.bae-a-syncstatus-countdown { margin-top: var(--space-inline); }
 .bae-a-syncstatus-fix { padding: var(--space-line) var(--space-edge) calc(var(--space-group) + var(--space-line)); }
 .bae-a-syncstatus-when { padding: 0 var(--space-edge) calc(var(--space-group) + var(--space-line)); font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); color: var(--text-secondary); }
 

@@ -63,7 +63,7 @@ class SyncShots : BoardShot() {
  * Dropbox asked bae to wait 42 more seconds: the cause core gives for coven's cooling-down wait on a Dropbox library.
  * The wait ends 42 seconds after the shots' clock, so every shot draws 42 seconds left.
  */
-private fun dropboxAskedToWait() =
+internal fun dropboxAskedToWait() =
     BridgeSyncCause.Message(
         message = BridgeMessage("core.sync.cause.provider_wait", listOf(BridgeMessageArg("provider", "Dropbox"))),
         countdown =

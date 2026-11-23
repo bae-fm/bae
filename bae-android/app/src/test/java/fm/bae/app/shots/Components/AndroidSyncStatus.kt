@@ -41,9 +41,22 @@ class AndroidSyncStatusShots : BoardShot() {
         component("android.component.sync-status.tone-success") { SignedOutOfS3(BridgeSyncTone.SUCCESS) }
 
     @Test
-    fun androidComponentSyncStatusRemedy() =
-        component("android.component.sync-status.remedy") {
-            SignedOutOfS3(BridgeSyncTone.WARNING, cause = BridgeSyncCause.ChangesStayOnDevice)
+    fun androidComponentSyncStatusCountdown() =
+        component("android.component.sync-status.countdown") {
+            InsideScreenEdges(top = ThemeSpace.related) {
+                AndroidSyncStatus(
+                    line =
+                        SyncLine.Read(
+                            syncShown(
+                                BridgeSyncStatusWord.WAITING_TO_SYNC,
+                                "core.sync.status.waiting_to_sync",
+                                BridgeSyncTone.WARNING,
+                                cause = dropboxAskedToWait(),
+                            ),
+                        ),
+                    onFix = {},
+                )
+            }
         }
 }
 

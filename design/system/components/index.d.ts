@@ -461,9 +461,9 @@ export declare function MacInviteFields(props: MacInviteFieldsProps): React.Reac
 export interface AndroidInviteFieldsProps { storage?: 'dropbox' | 'onedrive' | 's3'; keyOwner?: 'theirs' | 'mine' }
 export declare function AndroidInviteFields(props: AndroidInviteFieldsProps): React.ReactElement;
 
-/** How the library syncs: the status in its tone, what caused it and what to do (cause, remedy), a button that does it (fix), and when this device last synced. */
-export interface SyncStatusProps { status: string; tone?: '' | 'success' | 'warning' | 'danger'; cause?: string; remedy?: string; fix?: string; lastSynced?: string }
-export declare function MacSyncStatus(props: Omit<SyncStatusProps, 'remedy'> & { countdown?: string }): React.ReactElement;
+/** How the library syncs: the status in its tone, what caused it (cause) with the time left before sync tries again under it (countdown), a button that does it (fix), and when this device last synced. */
+export interface SyncStatusProps { status: string; tone?: '' | 'success' | 'warning' | 'danger'; cause?: string; countdown?: string; fix?: string; lastSynced?: string }
+export declare function MacSyncStatus(props: SyncStatusProps): React.ReactElement;
 export declare function AndroidSyncStatus(props: SyncStatusProps): React.ReactElement;
 
 /** The Save as panel's Format line: "Format:" and the format pop-up; value, open, items and chosen are MacPopUpButton's. */

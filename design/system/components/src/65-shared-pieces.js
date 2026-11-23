@@ -290,7 +290,7 @@
     return h(AndroidCard, null,
       h('div', { className: 'bae-a-syncstatus' },
         head,
-        props.cause ? h('div', { className: 'bae-a-syncstatus-cause' }, props.cause, props.remedy ? h('div', { className: 'bae-a-syncstatus-remedy' }, props.remedy) : null) : null,
+        props.cause ? h('div', { className: 'bae-a-syncstatus-cause' }, props.cause, props.countdown ? h('div', { className: 'bae-a-syncstatus-countdown' }, props.countdown) : null) : null,
         props.fix ? h('div', { className: 'bae-a-syncstatus-fix' }, h(AndroidButton, null, props.fix)) : null,
         props.lastSynced ? h('div', { className: 'bae-a-syncstatus-when' }, 'Last synced ' + props.lastSynced) : null));
   }
