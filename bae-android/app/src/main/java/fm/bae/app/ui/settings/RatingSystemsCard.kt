@@ -32,7 +32,6 @@ import uniffi.bae_bridge.BridgeRatingSystems
 @Composable
 internal fun RatingSystemsCard(
     systems: () -> BridgeRatingSystems?,
-    canChange: Boolean,
     onChange: suspend (BridgeRatedItems, BridgeRatingSystem) -> Unit,
 ) {
     val shown = systems() ?: return
@@ -41,13 +40,13 @@ internal fun RatingSystemsCard(
         RatingSystemRow(
             title = stringResource(R.string.search_section_albums),
             selected = shown.albums,
-            canChange = canChange,
+            canChange = shown.canChange,
             onChoose = { onChange(BridgeRatedItems.ALBUMS, it) },
         )
         RatingSystemRow(
             title = stringResource(R.string.search_section_tracks),
             selected = shown.tracks,
-            canChange = canChange,
+            canChange = shown.canChange,
             onChoose = { onChange(BridgeRatedItems.TRACKS, it) },
         )
     }
@@ -65,7 +64,7 @@ private fun RatingSystemRow(
     canChange: Boolean,
     onChoose: suspend (BridgeRatingSystem) -> Unit,
 ) {
-    var open by remember { mutableStateOf(false) }
+    var open by remember(canChange) { mutableStateOf(false) }
     var picked by remember { mutableStateOf<BridgeRatingSystem?>(null) }
     val scope = rememberScreenScope()
     val shown = picked ?: selected

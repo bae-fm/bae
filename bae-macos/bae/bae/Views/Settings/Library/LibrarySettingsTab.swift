@@ -48,7 +48,7 @@ struct LibrarySettingsTab: View {
             Form {
                 MacSection {
                     MacRow("Name") {
-                        if canChangeLibrary {
+                        if canRename {
                             MacButton("Rename…", action: onRenameLibrary)
                         }
                     }
@@ -76,7 +76,7 @@ struct LibrarySettingsTab: View {
                     }
                 }
 
-                RatingSystemsSection(canChange: canChangeLibrary)
+                RatingSystemsSection()
             }
             .formStyle(.settings)
             // The pane's title over the first page; the pages inside it have
@@ -138,9 +138,9 @@ struct LibrarySettingsTab: View {
         syncStatus.snapshot?.setupRunning == true
     }
 
-    /// An admin changes a synced library, its name and its rating systems; a
-    /// library only on this Mac is its person's to change.
-    private var canChangeLibrary: Bool {
+    /// An admin renames a synced library; a library only on this Mac is its
+    /// person's to rename.
+    private var canRename: Bool {
         !configStore.syncs || membership.selfIsAdmin
     }
 

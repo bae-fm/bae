@@ -9,7 +9,8 @@ import Testing
 struct RatingSystemsStoreTests {
     private let heartForTracks = BridgeRatingSystems(
         albums: .stars,
-        tracks: .heart
+        tracks: .heart,
+        canChange: true
     )
 
     private func store(

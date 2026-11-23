@@ -1,11 +1,11 @@
-use crate::people::{RatedItems, RatingSystem, RatingSystems};
+use crate::people::{RatedItems, RatingSystem, RatingSystems, RatingSystemsSettings};
 use crate::People;
 use bae_util::test_channels::HANG_GUARD;
 
 /// The next value `query` delivers; the test fails if none ever comes.
 async fn next_systems(
-    query: &mut coven::LiveQuery<RatingSystems, bae_store::DbError>,
-) -> RatingSystems {
+    query: &mut coven::LiveQuery<RatingSystemsSettings, bae_store::DbError>,
+) -> RatingSystemsSettings {
     tokio::time::timeout(HANG_GUARD, query.next_inline())
         .await
         .expect("the query delivers")
@@ -24,7 +24,10 @@ async fn a_new_library_rates_albums_and_tracks_with_stars() {
 
     assert_eq!(
         next_systems(&mut systems).await,
-        RatingSystems { albums: RatingSystem::Stars, tracks: RatingSystem::Stars }
+        RatingSystemsSettings {
+            systems: RatingSystems { albums: RatingSystem::Stars, tracks: RatingSystem::Stars },
+            can_change: true,
+        }
     );
 }
 
@@ -39,13 +42,13 @@ async fn an_admin_sets_each_rating_system_on_its_own() {
 
     people.set_rating_system(RatedItems::Albums, RatingSystem::Heart).await.unwrap();
     assert_eq!(
-        next_systems(&mut systems).await,
+        next_systems(&mut systems).await.systems,
         RatingSystems { albums: RatingSystem::Heart, tracks: RatingSystem::Stars }
     );
 
     people.set_rating_system(RatedItems::Tracks, RatingSystem::Hidden).await.unwrap();
     assert_eq!(
-        next_systems(&mut systems).await,
+        next_systems(&mut systems).await.systems,
         RatingSystems { albums: RatingSystem::Heart, tracks: RatingSystem::Hidden }
     );
 }

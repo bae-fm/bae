@@ -81,6 +81,7 @@ fn each_pull_answers_at_once_with_the_creator_s_profile() {
     let stars = BridgeRatingSystems {
         albums: BridgeRatingSystem::Stars,
         tracks: BridgeRatingSystem::Stars,
+        can_change: true,
     };
     assert_eq!(pull_until(&handle, || Box::pin(systems.clone().next()), |_| true), stars);
     handle

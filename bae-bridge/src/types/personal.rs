@@ -74,11 +74,18 @@ mirror_enum! { BridgeRatedItems = bae_people::people::RatedItems,
 pub struct BridgeRatingSystems {
     pub albums: BridgeRatingSystem,
     pub tracks: BridgeRatingSystem,
+    /// Whether the member using this device can change the systems.
+    pub can_change: bool,
 }
-mirror_struct! {
-    BridgeRatingSystems = bae_people::people::RatingSystems,
-    from_core: pub(crate) fn,
-    fields: { albums: (BridgeRatingSystem), tracks: (BridgeRatingSystem) },
+
+impl BridgeRatingSystems {
+    pub(crate) fn from_core(settings: bae_people::people::RatingSystemsSettings) -> Self {
+        Self {
+            albums: BridgeRatingSystem::from_core(settings.systems.albums),
+            tracks: BridgeRatingSystem::from_core(settings.systems.tracks),
+            can_change: settings.can_change,
+        }
+    }
 }
 
 /// A place in a playlist beside one of its entries, named by its position

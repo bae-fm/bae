@@ -41,7 +41,11 @@ extension ShotScene {
             storage: PreviewData.previewDropboxStorage,
             selfIsAdmin: admin,
             libraryName: "Home music",
-            ratingSystems: BridgeRatingSystems(albums: .stars, tracks: .heart)
+            ratingSystems: BridgeRatingSystems(
+                albums: .stars,
+                tracks: .heart,
+                canChange: admin
+            )
         )
     }
 }

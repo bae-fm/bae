@@ -7,9 +7,6 @@ import SwiftUI
 /// plain value. The tab follows the systems while it shows, and the section
 /// draws nothing until the first value arrives.
 struct RatingSystemsSection: View {
-    /// Whether this person can change the library's settings.
-    let canChange: Bool
-
     @Environment(RatingSystemsStore.self)
     private var store
 
@@ -18,13 +15,11 @@ struct RatingSystemsSection: View {
             MacSection {
                 RatingSystemRow(
                     title: "Albums",
-                    items: .albums,
-                    canChange: canChange
+                    items: .albums
                 )
                 RatingSystemRow(
                     title: "Tracks",
-                    items: .tracks,
-                    canChange: canChange
+                    items: .tracks
                 )
             } header: {
                 Text("Ratings")
@@ -42,19 +37,22 @@ struct RatingSystemsSection: View {
 private struct RatingSystemRow: View {
     let title: LocalizedStringKey
     let items: BridgeRatedItems
-    let canChange: Bool
 
     @Environment(RatingSystemsStore.self)
     private var store
 
     var body: some View {
         if let systems = store.systems {
-            row(current: items == .albums ? systems.albums : systems.tracks)
+            row(
+                current: items == .albums ? systems.albums : systems.tracks,
+                canChange: systems.canChange
+            )
         }
     }
 
     @ViewBuilder
-    private func row(current: BridgeRatingSystem) -> some View {
+    private func row(current: BridgeRatingSystem, canChange: Bool) -> some View
+    {
         if canChange {
             MacRow(title) {
                 MacPopUpButton(

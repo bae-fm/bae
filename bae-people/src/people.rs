@@ -19,6 +19,7 @@ pub(crate) use profiles::name_this_person_goes_by;
 mod rating_systems;
 pub use rating_systems::{
     is_heart, rating_systems_on, RatedItems, RatingSystem, RatingSystemError, RatingSystems,
+    RatingSystemsSettings,
 };
 
 /// The SQL functions the people's reads name: the key lists of names order by.

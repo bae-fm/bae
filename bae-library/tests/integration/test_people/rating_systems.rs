@@ -1,5 +1,7 @@
 use super::*;
-use bae_people::people::{RatedItems, RatingSystem, RatingSystemError, RatingSystems};
+use bae_people::people::{
+    RatedItems, RatingSystem, RatingSystemError, RatingSystems, RatingSystemsSettings,
+};
 
 /// Robin, the library's admin, shows albums with a heart, and Rowan's device
 /// shows the same once it syncs. Rowan is a member, not an admin: coven
@@ -30,7 +32,10 @@ fn only_an_admin_changes_the_library_s_rating_systems() {
         owner.people().set_rating_system(RatedItems::Albums, RatingSystem::Heart).await.unwrap();
         let hearts = RatingSystems { albums: RatingSystem::Heart, tracks: RatingSystem::Stars };
         let mut rowans = rowan_library.people().subscribe_rating_systems();
-        query_matching(&mut rowans, |systems| *systems == hearts).await;
+        assert_eq!(
+            query_matching(&mut rowans, |settings| settings.systems == hearts).await,
+            RatingSystemsSettings { systems: hearts, can_change: false }
+        );
 
         let refused = rowan_library
             .people()
@@ -38,7 +43,7 @@ fn only_an_admin_changes_the_library_s_rating_systems() {
             .await;
         assert!(matches!(refused, Err(RatingSystemError::NotAdmin)), "{refused:?}");
         let mut after = rowan_library.people().subscribe_rating_systems();
-        assert_eq!(query_matching(&mut after, |_| true).await, hearts);
+        assert_eq!(query_matching(&mut after, |_| true).await.systems, hearts);
 
         rowan_library.manager().close().await.unwrap();
         owner.manager().close().await.unwrap();

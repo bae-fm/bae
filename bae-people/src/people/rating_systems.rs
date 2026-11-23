@@ -56,6 +56,13 @@ pub struct RatingSystems {
     pub tracks: RatingSystem,
 }
 
+/// The rating systems as Library settings shows them to this member.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct RatingSystemsSettings {
+    pub systems: RatingSystems,
+    pub can_change: bool,
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum RatingSystemError {
     /// The person using this device is not an admin of the library, so coven
@@ -128,9 +135,23 @@ pub(super) fn rating_systems_row(row: &Row<'_>) -> rusqlite::Result<RatingSystem
 
 impl People {
     /// How the library shows ratings, live: the first value at once, then
-    /// one after each change, this device's or an admin's on another device.
-    pub fn subscribe_rating_systems(&self) -> coven::LiveQuery<RatingSystems, DbError> {
-        self.inner.store.subscribe(|sql| Ok(rating_systems_on(&sql)?))
+    /// one after each change, with the permission to change either system.
+    pub fn subscribe_rating_systems(&self) -> coven::LiveQuery<RatingSystemsSettings, DbError> {
+        self.inner.store.subscribe(|sql| {
+            Ok(sql.query_row(
+                &format!(
+                    "SELECT systems.*, {} AS can_change FROM ({RATING_SYSTEMS_SQL}) AS systems",
+                    crate::membership::self_is_admin!(),
+                ),
+                [],
+                |row| {
+                    Ok(RatingSystemsSettings {
+                        systems: rating_systems_row(row)?,
+                        can_change: row.get("can_change")?,
+                    })
+                },
+            )?)
+        })
     }
 
     /// Show the ratings of `items` with `system`, for everyone in the

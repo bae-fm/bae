@@ -21,7 +21,7 @@ impl AppServices {
     /// How the library shows ratings, now and after each change.
     pub fn subscribe_rating_systems(
         &self,
-    ) -> bae_store::live_query::LiveValues<bae_people::people::RatingSystems> {
+    ) -> bae_store::live_query::LiveValues<bae_people::people::RatingSystemsSettings> {
         self.inner.manager.values_until_closed(self.inner.people.subscribe_rating_systems())
     }
     delegate_async!(manager, create_playlist => create_playlist(name: &str, sharing: Sharing, tracks: bae_records::TrackList) -> Result<uuid::Uuid, CollectionError>);

@@ -52,13 +52,15 @@ private fun Library(
     sync: SyncRowSummary = SyncRowSummary("Synced", StatusTone.SUCCESS),
 ) = AndroidSettingsLibrary(
     name = name,
-    canChange = canChange,
+    canRename = canChange,
     sync = sync,
     peopleAndDevices = "2 people · 3 devices",
     hasStorage = true,
     adminChanges = null,
     onDismissChange = {},
-    ratingSystems = { BridgeRatingSystems(albums = BridgeRatingSystem.STARS, tracks = BridgeRatingSystem.HEART) },
+    ratingSystems = {
+        BridgeRatingSystems(albums = BridgeRatingSystem.STARS, tracks = BridgeRatingSystem.HEART, canChange = canChange)
+    },
     onChangeRatingSystem = { _, _ -> },
     onBack = {},
     onRename = {},

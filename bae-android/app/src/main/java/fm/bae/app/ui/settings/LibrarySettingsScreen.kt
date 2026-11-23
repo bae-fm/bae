@@ -70,7 +70,7 @@ internal fun LibrarySettingsScreen(
     val name = libraryName.value
     AndroidSettingsLibrary(
         name = name,
-        canChange = members.selfIsAdmin,
+        canRename = members.selfIsAdmin,
         sync = syncRowSummary(line),
         peopleAndDevices = if (hasStorage) peopleAndDevices(members.people) else null,
         hasStorage = hasStorage,
@@ -99,15 +99,13 @@ internal fun LibrarySettingsScreen(
 }
 
 /**
- * The Library page over what it shows: a [name] with an edit mark when [canChange], the one permission to rename the
- * library and to change its rating systems; null while the name is read, when no row shows. The Ratings card shows
- * [ratingSystems] once they are read, and opens its choices only when [canChange]. [aboveRows] holds the failures of
- * the reads behind it.
+ * The Library page shows [name] with an edit mark when [canRename], and shows [ratingSystems] as soon as the
+ * read returns. [aboveRows] holds the read failures.
  */
 @Composable
 internal fun AndroidSettingsLibrary(
     name: String?,
-    canChange: Boolean,
+    canRename: Boolean,
     sync: SyncRowSummary,
     peopleAndDevices: String?,
     hasStorage: Boolean,
@@ -136,9 +134,9 @@ internal fun AndroidSettingsLibrary(
                     AndroidRow(
                         title = stringResource(R.string.library_name_row),
                         subtitle = name,
-                        onClick = if (canChange) onRename else null,
+                        onClick = if (canRename) onRename else null,
                         onClickLabel = stringResource(R.string.settings_rename_library),
-                        icon = if (canChange) RowIcon.EDIT else null,
+                        icon = if (canRename) RowIcon.EDIT else null,
                     )
                 }
                 AndroidRow(
@@ -155,7 +153,7 @@ internal fun AndroidSettingsLibrary(
                     )
                 }
             }
-            RatingSystemsCard(ratingSystems, canChange = canChange, onChange = onChangeRatingSystem)
+            RatingSystemsCard(ratingSystems, onChange = onChangeRatingSystem)
             AdminChangesList(changes = adminChanges, onDismiss = onDismissChange)
         }
     }
