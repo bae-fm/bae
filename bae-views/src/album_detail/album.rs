@@ -5,7 +5,7 @@
 //! view resolves it (`crate`).
 
 use super::*;
-use crate::{DbAlbumAppearance, DbArtistAlbum};
+use crate::DbAlbumAppearance;
 use bae_records::{DbAlbum, DbAlbumSummary};
 
 /// What the album page reads: the album, and the release the person chose on
@@ -195,23 +195,6 @@ pub struct AlbumAppearance {
     pub display_artist_line: Option<bae_types::credits::CreditLine>,
     /// Another device alone holds audio from the album's default release.
     pub primary_release_unplayable: bool,
-}
-
-/// One album on an artist's page.
-#[derive(Debug, Clone, PartialEq)]
-pub struct ArtistAlbum {
-    pub album: AlbumSummary,
-    /// Another device alone holds audio from the album's default release.
-    pub primary_release_unplayable: bool,
-}
-
-impl ArtistAlbum {
-    pub(crate) fn from_raw(raw: DbArtistAlbum) -> ArtistAlbum {
-        ArtistAlbum {
-            album: AlbumSummary::from_raw(raw.album),
-            primary_release_unplayable: raw.primary_release_unplayable,
-        }
-    }
 }
 
 impl AlbumAppearance {

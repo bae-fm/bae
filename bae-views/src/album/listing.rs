@@ -69,6 +69,25 @@ fn album_order_tables(group_by_artist: bool) -> &'static str {
     }
 }
 
+/// The columns of an album card: the album's summary taken from its primary
+/// release's storage row (`primary_storage`, which [`primary_storage_join`]
+/// joins), and whether another device alone holds that release's audio.
+pub(crate) fn album_card_columns() -> String {
+    format!(
+        "{album}, primary_storage.audio_elsewhere_device IS NOT NULL AS primary_release_unplayable",
+        album = album_summary_columns_for_primary("primary_storage.release_id"),
+    )
+}
+
+/// The join of album `a` to its primary release's storage row, as
+/// `primary_storage`.
+pub(crate) fn primary_storage_join() -> String {
+    format!(
+        "LEFT JOIN release_storage primary_storage ON primary_storage.release_id = {primary}",
+        primary = album_primary_release_sql(),
+    )
+}
+
 /// The statement reading the album list's rows `seek` reads (grouped by
 /// artist or not) in `order`, at most `:limit`, each with the artist whose
 /// group lists it and its key.
@@ -87,9 +106,8 @@ pub(crate) fn album_window_statement(
     order: &ListOrder,
     seek: &Seek,
 ) -> String {
-    let primary = album_primary_release_sql();
-    let album = album_summary_columns_for_primary("primary_storage.release_id");
-    let availability = "primary_storage.audio_elsewhere_device IS NOT NULL";
+    let album = album_card_columns();
+    let primary_storage = primary_storage_join();
     if !seek.by_offset() {
         let listing = if group_by_artist {
             "CROSS JOIN album_listing listing ON listing.album_id = link.album_id"
@@ -97,10 +115,10 @@ pub(crate) fn album_window_statement(
             ""
         };
         return format!(
-            "SELECT {album}, {beside} AS credited_with, {availability} AS primary_release_unplayable, {keys} \
+            "SELECT {album}, {beside} AS credited_with, {keys} \
              {tables} {listing} \
              JOIN albums a ON a.id = listing.album_id \
-             LEFT JOIN release_storage primary_storage ON primary_storage.release_id = {primary} \
+             {primary_storage} \
              WHERE {condition} \
              ORDER BY {ordering} {limit}",
             beside = album_credits_beside_sql(group_by_artist),
@@ -125,12 +143,12 @@ pub(crate) fn album_window_statement(
         )
     };
     format!(
-        "SELECT {album}, {beside} AS credited_with, {availability} AS primary_release_unplayable, {keys} \
+        "SELECT {album}, {beside} AS credited_with, {keys} \
          FROM (SELECT {picked} {tables} WHERE {condition} \
                ORDER BY {ordering} {limit}) picked \
          {picked_ids} \
          JOIN albums a ON a.id = picked.picked_album_id \
-         LEFT JOIN release_storage primary_storage ON primary_storage.release_id = {primary} \
+         {primary_storage} \
          ORDER BY {ordering}",
         beside = album_credits_beside_sql(group_by_artist),
         tables = album_order_tables(group_by_artist),
@@ -153,14 +171,7 @@ pub(crate) fn album_rows_on(
     let statement = album_window_statement(group_by_artist, order, seek);
     Ok(seek.bound(limit, |params| {
         sql.query(&statement, params, |row| {
-            Ok((
-                AlbumAppearanceRow {
-                    row: AlbumSummaryRow::read(row)?,
-                    credited_with: optional_credit_line_column(row, "credited_with")?,
-                    primary_release_unplayable: row.get("primary_release_unplayable")?,
-                },
-                order.key_of(row)?,
-            ))
+            Ok((AlbumAppearanceRow::read(row)?, order.key_of(row)?))
         })
     })?)
 }
@@ -176,7 +187,17 @@ pub(crate) struct AlbumAppearanceRow {
 }
 
 impl AlbumAppearanceRow {
-    pub(super) fn process(self, group_by_artist: bool) -> Result<DbAlbumAppearance, DbError> {
+    /// The row of a statement selecting [`album_card_columns`] and
+    /// `credited_with`.
+    pub(crate) fn read(row: &rusqlite::Row<'_>) -> rusqlite::Result<Self> {
+        Ok(Self {
+            row: AlbumSummaryRow::read(row)?,
+            credited_with: optional_credit_line_column(row, "credited_with")?,
+            primary_release_unplayable: row.get("primary_release_unplayable")?,
+        })
+    }
+
+    pub(crate) fn process(self, group_by_artist: bool) -> Result<DbAlbumAppearance, DbError> {
         let album = self.row.process()?;
         let display_artist_line =
             if group_by_artist { self.credited_with } else { Some(album.artist_line.clone()) };

@@ -117,6 +117,21 @@ struct MacAlbumTileContainer: View {
     }
 }
 
+extension View {
+    /// Dims the words of an album card whose release this Mac can't play;
+    /// `names` also tells VoiceOver so, on the card's title.
+    func unplayableAlbumText(
+        _ isUnplayable: Bool,
+        names: Bool = false
+    ) -> some View {
+        opacity(isUnplayable ? ThemeOpacity.dimmed : 1)
+            .accessibilityHint(
+                "Not on this device",
+                isEnabled: isUnplayable && names
+            )
+    }
+}
+
 /// The space the grid reserves while an album's row loads.
 struct AlbumCardPlaceholder: View {
     let width: CGFloat
@@ -140,8 +155,6 @@ private struct AlbumCardStack<Art: View>: View {
     @ViewBuilder
     let art: (CGFloat) -> Art
 
-    private var textOpacity: Double { isUnplayable ? ThemeOpacity.dimmed : 1 }
-
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.line) {
             art(max(0, width - 2 * ThemeSpace.compact))
@@ -150,24 +163,20 @@ private struct AlbumCardStack<Art: View>: View {
                 .themeText(.rowTitle)
                 .foregroundStyle(Theme.textPrimary)
                 .lineLimit(1)
-                .opacity(textOpacity)
-                .accessibilityHint(
-                    "Not on this device",
-                    isEnabled: isUnplayable
-                )
+                .unplayableAlbumText(isUnplayable, names: true)
             if let artistNames {
                 Text(artistNames)
                     .themeText(.detail)
                     .foregroundStyle(Theme.textSecondary)
                     .lineLimit(1)
-                    .opacity(textOpacity)
+                    .unplayableAlbumText(isUnplayable)
             }
             StableOptionalText(
                 text: year.map(String.init),
                 role: .detail,
                 foreground: .tertiary
             )
-            .opacity(textOpacity)
+            .unplayableAlbumText(isUnplayable)
         }
         .padding(ThemeSpace.compact)
         .frame(width: width, alignment: .leading)

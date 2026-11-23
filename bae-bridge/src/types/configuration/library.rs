@@ -252,14 +252,6 @@ impl BridgeArtistSearchResult {
     }
 }
 
-/// One album on an artist's page.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeArtistAlbum {
-    pub album: BridgeAlbum,
-    /// Another device alone holds at least one audio file of the primary release.
-    pub primary_release_unplayable: bool,
-}
-
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeArtistDetail {
     pub artist: BridgeArtistSummary,
@@ -268,7 +260,7 @@ pub struct BridgeArtistDetail {
     pub credit_names: Vec<BridgeArtistCreditName>,
     /// The artist's albums in discography order: year ascending with unknown
     /// years last, then title.
-    pub albums: Vec<BridgeArtistAlbum>,
+    pub albums: Vec<BridgeAlbumAppearance>,
     /// How many other printed names the page lists; it shows them when
     /// there are any.
     pub credit_name_count: u64,

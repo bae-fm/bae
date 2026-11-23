@@ -432,15 +432,6 @@ mirror_struct! {
 }
 
 mirror_struct! {
-    crate::types::BridgeArtistAlbum = bae_views::album_detail::ArtistAlbum,
-    from_core: pub(crate) fn,
-    fields: {
-        album: (BridgeAlbum),
-        primary_release_unplayable,
-    },
-}
-
-mirror_struct! {
     crate::types::BridgeAlbumAppearance = bae_views::album_detail::AlbumAppearance,
     from_core: pub(crate) fn,
     fields: {
@@ -521,7 +512,10 @@ impl BridgeArtistDetail {
                 .into_iter()
                 .map(crate::types::BridgeArtistCreditName::from_core)
                 .collect(),
-            albums: albums.into_iter().map(crate::types::BridgeArtistAlbum::from_core).collect(),
+            albums: albums
+                .into_iter()
+                .map(crate::types::BridgeAlbumAppearance::from_core)
+                .collect(),
             credit_name_count,
         }
     }

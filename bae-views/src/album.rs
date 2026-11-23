@@ -7,7 +7,10 @@ use super::*;
 use listing::{
     album_appearance_count_on, album_count_on, album_sections_on, grouped_artist_direction,
 };
-pub(crate) use listing::{album_browse_order, album_rows_before_on, album_rows_on};
+pub(crate) use listing::{
+    album_browse_order, album_card_columns, album_rows_before_on, album_rows_on,
+    primary_storage_join, AlbumAppearanceRow,
+};
 
 mod listing;
 pub(super) use listing::SQL as LISTING_SQL;

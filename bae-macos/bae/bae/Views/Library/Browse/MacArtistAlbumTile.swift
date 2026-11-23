@@ -5,13 +5,10 @@ import SwiftUI
 /// When only another device holds the album's files, the cover and words
 /// show dimmed, and the card still opens the album.
 struct MacArtistAlbumTile: View {
-    let entry: BridgeArtistAlbum
+    let entry: BridgeAlbumAppearance
     let onTap: () -> Void
 
     private var album: BridgeAlbum { entry.album }
-    private var textOpacity: Double {
-        entry.primaryReleaseUnplayable ? ThemeOpacity.dimmed : 1
-    }
 
     var body: some View {
         Button(action: onTap) {
@@ -30,10 +27,9 @@ struct MacArtistAlbumTile: View {
                     .themeText(.rowTitle)
                     .foregroundStyle(.primary)
                     .lineLimit(1)
-                    .opacity(textOpacity)
-                    .accessibilityHint(
-                        "Not on this device",
-                        isEnabled: entry.primaryReleaseUnplayable
+                    .unplayableAlbumText(
+                        entry.primaryReleaseUnplayable,
+                        names: true
                     )
                 StableOptionalText(
                     text: album.year.map(String.init),
@@ -41,7 +37,7 @@ struct MacArtistAlbumTile: View {
                     foreground: .secondary,
                     lineLimit: 1
                 )
-                .opacity(textOpacity)
+                .unplayableAlbumText(entry.primaryReleaseUnplayable)
             }
         }
         .buttonStyle(.accentPlain)

@@ -28,10 +28,11 @@ extension ShotScene {
         _ title: String,
         _ year: Int32,
         unplayable: Bool = false
-    ) -> BridgeArtistAlbum {
-        BridgeArtistAlbum(
+    ) -> BridgeAlbumAppearance {
+        BridgeAlbumAppearance(
             album: gridAlbum(title, "Mara Quill", year),
-            primaryReleaseUnplayable: unplayable
+            primaryReleaseUnplayable: unplayable,
+            displayArtistLine: nil
         )
     }
 }

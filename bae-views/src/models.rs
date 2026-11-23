@@ -120,13 +120,6 @@ pub struct DbAlbumAppearance {
     pub primary_release_unplayable: bool,
 }
 
-/// One album on an artist's page.
-#[derive(Debug, Clone, PartialEq)]
-pub struct DbArtistAlbum {
-    pub album: DbAlbumSummary,
-    pub primary_release_unplayable: bool,
-}
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbComposerSummary {
     pub artist: DbArtist,
@@ -164,7 +157,7 @@ pub struct DbArtistDetail {
     pub artist: DbArtistSummary,
     /// The artist's other printed names, its merged artists' too.
     pub credit_names: Vec<bae_records::credits::ArtistCreditName>,
-    pub albums: Vec<DbArtistAlbum>,
+    pub albums: Vec<DbAlbumAppearance>,
     /// How many rows `credit_names` holds.
     pub credit_name_count: u64,
 }
