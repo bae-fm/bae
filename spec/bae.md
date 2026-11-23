@@ -6504,6 +6504,8 @@ phone" (§4.7).
 Mac Settings opens one window on Appearance, its first pane. From a
 page inside a pane, the back button returns to the previous page and
 has the accessibility name "Back to" followed by that page's name.
+VoiceOver names the list of panes down the window's side *Settings panes*.
+VoiceOver names each Mac sheet that has a title as a group, by that title.
 Settings shows the sync state for Library only for the waits and failures
 in §6.4, and says only *Signed out* for a sign-out. Subsonic says
 *Offline* when the setting is on and the server is not running. About
