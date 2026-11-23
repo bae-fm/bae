@@ -166,7 +166,7 @@ struct SyncSetupWizard: View {
                     }
                 }
             }
-            .formStyle(.grouped)
+            .formStyle(.settingsWithoutMargin)
             .fitsItsContent()
 
             MacSheetFooter {
@@ -288,7 +288,7 @@ private struct RestoreCodeStep: View {
             Form {
                 MacRestoreCode(reveal: reveal)
             }
-            .formStyle(.grouped)
+            .formStyle(.settingsWithoutMargin)
             .fitsItsContent()
 
             MacSheetFooter {
