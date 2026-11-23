@@ -432,10 +432,7 @@ extension MacNotice {
     @ViewBuilder
     private func detailsButton(_ details: ErrorDetails) -> some View {
         #if canImport(AppKit)
-            MacButton(
-                "Details",
-                kind: look == .centeredNoGlyph ? .secondary : .borderless
-            ) {
+            MacButton("Details", kind: .borderless) {
                 showErrorDetails(details)
             }
             .muted(
