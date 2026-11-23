@@ -45,13 +45,13 @@ internal fun Avatar(
             modifier
                 .size(size)
                 .clip(CircleShape)
-                .background(accent.copy(alpha = ThemeOpacity.tintStrong))
-                // The row beside it names the person; the initials would read into that name.
-                .clearAndSetSemantics {},
+                .background(accent.copy(alpha = ThemeOpacity.tintStrong)),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = face.initials,
+            // The row beside it names the person; the initials would read into that name.
+            modifier = Modifier.clearAndSetSemantics {},
             color = accent,
             fontSize = (size.value * INITIALS_SHARE).sp,
             fontWeight = FontWeight.SemiBold,
