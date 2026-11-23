@@ -112,6 +112,7 @@ struct MacS3Form: View {
                 }
             }
         }
+        .accessibilityElement(children: .contain)
         .settingsRowInset(ThemeSpace.compact)
     }
 }
