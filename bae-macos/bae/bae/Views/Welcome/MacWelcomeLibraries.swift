@@ -219,7 +219,7 @@ private struct LibraryRow: View {
     }
 
     /// The name and what's under it; the whole of it, empty space too, opens a
-    /// library that opens.
+    /// library that opens, unless its removal is running.
     @ViewBuilder
     private var label: some View {
         let content = HStack(spacing: ThemeSpace.group) {
@@ -251,7 +251,7 @@ private struct LibraryRow: View {
             Spacer(minLength: ThemeSpace.group)
         }
         .contentShape(Rectangle())
-        if library.isOpenable {
+        if library.isOpenable && removalSteps == nil {
             content
                 .onTapGesture { onOpen(library) }
                 .accessibilityAddTraits(.isButton)
