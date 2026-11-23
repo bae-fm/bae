@@ -61,14 +61,6 @@ struct PressingTextTests {
         )
     }
 
-    @Test("more than one of a medium carries its count")
-    func countedMedia() {
-        let text = PressingText.media(PreviewData.media(.cd, 2))
-        #expect(text.contains("2"))
-        #expect(text.contains("CD"))
-        #expect(PressingText.media([]).isEmpty)
-    }
-
     @Test("a region is named through the catalog")
     func regionName() {
         let facts = PreviewData.pressingFacts(region: .ukAndEurope)

@@ -5,13 +5,6 @@ import Foundation
 /// this words each part and joins them, so a MusicBrainz row and a Discogs
 /// row read the same shape: "Japan · 2×CD" over "Promo · Reissue".
 public enum PressingText {
-    /// Media the person is editing, each carrier with its count: "2×CD ·
-    /// DVD". A draft's values are the form's own, not a record core words,
-    /// so the terms are asked for here.
-    public static func media(_ media: [BridgeMediaCount]) -> String {
-        line(bridgeMediaTerms(media: media))
-    }
-
     /// The parts, worded and joined with the catalog's list separator.
     public static func line(_ terms: [BridgeFactTerm]) -> String {
         FactList.joined(terms.map(\.text))
