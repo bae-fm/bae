@@ -108,9 +108,11 @@
 .bae-m-icell:hover, .bae-m-icell:focus { background: var(--field); box-shadow: inset 0 0 0 1px var(--field-edge); }
 .bae-m-icell.bae-m-icell-large { height: 30px; font: var(--type-title-weight) var(--type-title-size) var(--font-sans); }
 .bae-m-icell.bae-m-icell-quiet { color: var(--text-tertiary); }
-/* A field in a list row is as wide as its value, and 96pt while empty, so there is somewhere to click. */
+/* A fitted field is as wide as its value, and 96pt while empty, so there is somewhere to click. */
 .bae-m-icell.bae-m-icell-fit { flex: none; width: auto; field-sizing: content; min-width: 2ch; }
 .bae-m-icell.bae-m-icell-fit:placeholder-shown { min-width: 96px; }
+/* In the identity's column a fitted field keeps its own width, up to the column's. */
+.bae-m-idraft-id > .bae-m-icell-fit { align-self: flex-start; max-width: calc(100% + var(--space-compact)); }
 .bae-m-icell.bae-m-icell-mono { font: var(--type-mono-weight) var(--type-mono-size)/var(--type-mono-line-height) var(--font-mono); }
 .bae-m-idraft-entry { display: flex; align-items: center; gap: var(--space-compact); min-width: 0; }
 .bae-m-idraft-media { gap: calc(var(--space-group) + var(--space-line)); }

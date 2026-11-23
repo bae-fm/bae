@@ -125,7 +125,7 @@
   // Where an import goes, one choice of two, as the person last chose it: This Mac or Cloud. One stored choice, shown wherever Import is (the draft card, the bulk pane's Import row) and in Settings → Import, so changing it in one place changes it in all.
   function MacImportDestination(props) { return h(MacPopUpButton, { label: 'Import to', value: props.to, off: props.off }); }
   // A field drawn as the value it holds until the pointer is over it or it has focus, for the draft's values and a track's cells: `label` names it, `placeholder` shows while it is empty. `large` sets it in the album title's size; `quiet` draws its value in the tertiary colour, as the album year.
-  // `fit`: as wide as its value, and 96pt while empty, for a field in a list row; `mono`: its value in the mono face, as a catalog number or a barcode.
+  // `fit`: as wide as its value, and 96pt while empty, for a field in a list row and the album title and year; `mono`: its value in the mono face, as a catalog number or a barcode.
   function MacInlineField(props) {
     return h('input', { type: 'text', className: cx('bae-m-icell', props.large && 'bae-m-icell-large', props.quiet && 'bae-m-icell-quiet', props.fit && 'bae-m-icell-fit', props.mono && 'bae-m-icell-mono'), defaultValue: props.value || '', placeholder: props.placeholder, 'aria-label': props.label, spellCheck: false });
   }
@@ -160,9 +160,9 @@
     return h('div', { className: 'bae-m-idraft-head' },
       props.cover ? h('button', { type: 'button', className: 'bae-plainbtn', 'aria-label': 'Change cover', disabled: !!props.coverOff }, h(Artwork, { title: props.cover, size: 132, radius: 'radius-artwork' })) : h(Artwork, { size: 132, radius: 'radius-artwork', missing: true }),
       h('div', { className: 'bae-m-idraft-id' },
-        h(MacInlineField, { label: 'Album title', value: props.title, placeholder: 'Album title', large: true }),
+        h(MacInlineField, { label: 'Album title', value: props.title, placeholder: 'Album title', large: true, fit: true }),
         h(MacAlbumArtistField, { artist: props.artist, chip: props.artistChip, secondary: true }),
-        h(MacInlineField, { label: 'Album year', value: props.year, placeholder: 'Album year', quiet: true }),
+        h(MacInlineField, { label: 'Album year', value: props.year, placeholder: 'Album year', quiet: true, fit: true }),
         kids(props.children)));
   }
   // The folder's audio as the scan read it (spec §3.6: codec, sample rate, bit depth or bitrate, channels), the identity's line under the year.
