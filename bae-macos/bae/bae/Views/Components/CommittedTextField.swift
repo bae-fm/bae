@@ -160,10 +160,6 @@ struct CommittedTextField: View {
             }
     }
 
-    /// The field cell's text inset on each side; measured at 3.5–3.8 points
-    /// across both sides for every font the fields use.
-    private static let cellInset: CGFloat = 2
-
     /// The frame of a hidden Text of the same font and content, which the
     /// chrome pads and the editor fills, since a `TextField` can take a
     /// neighbour's height and clip.
@@ -171,7 +167,6 @@ struct CommittedTextField: View {
         Text(verbatim: draft.isEmpty ? placeholder : draft)
             .font(Font(draft.isEmpty ? font : valueFont))
             .lineLimit(1)
-            .padding(.horizontal, Self.cellInset)
             .hidden()
             .frame(
                 minWidth: draft.isEmpty

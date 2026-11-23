@@ -8,8 +8,18 @@ protocol InsetCell: NSTextFieldCell {
 }
 
 extension InsetCell {
+    /// How far AppKit's own cell insets its text from the frame it draws in,
+    /// on each side; measured at 1.75–1.9 points for every font the fields
+    /// use.
+    static var appKitTextInset: CGFloat { 2 }
+
+    /// The frame to draw in so the text sits `insets` inside the field: the
+    /// cell adds its own inset to what this leaves.
     fileprivate func inset(_ rect: NSRect) -> NSRect {
-        rect.insetBy(dx: insets.width, dy: insets.height)
+        rect.insetBy(
+            dx: insets.width - Self.appKitTextInset,
+            dy: insets.height
+        )
     }
 }
 
