@@ -666,6 +666,7 @@ extension ShotScene {
             SyncSetupWizardStaging(
                 screen: .restoreCode(
                     provider,
+                    stored: connected,
                     RestoreCodeReveal(
                         previewState: .masked(PreviewData.restoreCodeShare)
                     )

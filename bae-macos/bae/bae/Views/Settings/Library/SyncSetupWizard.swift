@@ -9,7 +9,7 @@ enum WizardStep: Equatable {
     case selectProvider
     case configure(BridgeCloudProvider)
     /// The storage is connected: the last screen shows the restore code.
-    case restoreCode(BridgeCloudProvider)
+    case restoreCode(BridgeCloudProvider, stored: BridgeStorageLocation)
 }
 
 // MARK: - Providers
@@ -84,8 +84,12 @@ struct SyncSetupWizard: View {
                     providerList
                 case .configure(let provider):
                     configureStep(for: provider)
-                case .restoreCode:
-                    RestoreCodeStep(onDone: onDone, reveal: restoreCode)
+                case .restoreCode(_, let stored):
+                    RestoreCodeStep(
+                        onDone: onDone,
+                        reveal: restoreCode,
+                        stored: stored
+                    )
                 }
             }
         } footer: {
@@ -124,7 +128,7 @@ struct SyncSetupWizard: View {
         switch step {
         case .selectProvider:
             String(localized: "Set up a cloud home")
-        case .configure(let provider), .restoreCode(let provider):
+        case .configure(let provider), .restoreCode(let provider, _):
             String(
                 localized: "Set up a cloud home: \(provider.displayName)",
                 comment:
@@ -242,9 +246,9 @@ struct SyncSetupWizard: View {
 
     /// The storage is connected: show the restore code before the sheet
     /// closes, whether or not the Mac's keychain carries it anywhere else.
-    private func connected(_: BridgeStorageSetup) {
+    private func connected(_ setup: BridgeStorageSetup) {
         withAnimation(.easeInOut(duration: 0.15)) {
-            step = .restoreCode(choice)
+            step = .restoreCode(choice, stored: setup.location)
         }
     }
 }
@@ -277,20 +281,11 @@ struct SyncSetupWizard: View {
 private struct RestoreCodeStep: View {
     let onDone: () -> Void
     let reveal: RestoreCodeReveal
+    /// Where setup stored the library, which the printed page names.
+    let stored: BridgeStorageLocation
 
     @Environment(Sync.self)
     private var sync
-    @Environment(ConfigStore.self)
-    private var configStore
-
-    /// Where setup stored the library: setup ends here only once it has.
-    private var location: BridgeStorageLocation {
-        guard let storage = configStore.storage else {
-            preconditionFailure("setup shows the restore code once it stored")
-        }
-        return storage
-    }
-
     var body: some View {
         VStack(spacing: 0) {
             Form {
@@ -299,7 +294,7 @@ private struct RestoreCodeStep: View {
                     onPrint: { code in
                         RestoreCodePrinting.print(
                             code: code,
-                            location: location.accountLine
+                            location: stored.accountLine
                         )
                     }
                 )
@@ -495,7 +490,11 @@ struct SetupStep<Fields: View, Leading: View>: View {
             /// A provider's own screen.
             case provider(BridgeCloudProvider, Provider)
             /// The restore code's screen.
-            case restoreCode(BridgeCloudProvider, RestoreCodeReveal)
+            case restoreCode(
+                BridgeCloudProvider,
+                stored: BridgeStorageLocation,
+                RestoreCodeReveal
+            )
         }
 
         let screen: Screen
@@ -505,7 +504,8 @@ struct SetupStep<Fields: View, Leading: View>: View {
             switch screen {
             case .providers: .selectProvider
             case .provider(let provider, _): .configure(provider)
-            case .restoreCode(let provider, _): .restoreCode(provider)
+            case .restoreCode(let provider, let stored, _):
+                .restoreCode(provider, stored: stored)
             }
         }
 
@@ -513,7 +513,7 @@ struct SetupStep<Fields: View, Leading: View>: View {
         var choice: BridgeCloudProvider {
             switch screen {
             case .providers(let chosen): chosen
-            case .provider(let provider, _), .restoreCode(let provider, _):
+            case .provider(let provider, _), .restoreCode(let provider, _, _):
                 provider
             }
         }
@@ -530,7 +530,7 @@ struct SetupStep<Fields: View, Leading: View>: View {
 
         /// The restore code, when `screen` is its screen.
         var reveal: RestoreCodeReveal {
-            if case .restoreCode(_, let reveal) = screen {
+            if case .restoreCode(_, _, let reveal) = screen {
                 reveal
             }
             else {

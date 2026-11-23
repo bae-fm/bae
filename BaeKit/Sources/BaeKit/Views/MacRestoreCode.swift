@@ -1,8 +1,7 @@
 import SwiftUI
 
 /// The person's restore code, for when they lose every device: held masked
-/// while Settings is open, with Show and Hide, Copy, and Print… where the app
-/// can print. Adding a device while one is at hand goes through Add Device in
+/// while Settings is open, with Show and Hide, Copy, and Print…. Adding a device while one is at hand goes through Add Device in
 /// People instead.
 ///
 /// The screen holding the section owns `reveal`, opens it when the screen
@@ -10,8 +9,8 @@ import SwiftUI
 /// tell the screen closing from its own view leaving and returning.
 public struct MacRestoreCode: View {
     let reveal: RestoreCodeReveal
-    /// Prints the code, given in groups of four; nil where the app can't.
-    let onPrint: ((String) -> Void)?
+    /// Prints the code, given in groups of four.
+    let onPrint: (String) -> Void
 
     @Environment(ConfigStore.self)
     private var configStore
@@ -21,7 +20,7 @@ public struct MacRestoreCode: View {
 
     public init(
         reveal: RestoreCodeReveal,
-        onPrint: ((String) -> Void)? = nil
+        onPrint: @escaping (String) -> Void
     ) {
         self.reveal = reveal
         self.onPrint = onPrint
@@ -102,9 +101,7 @@ public struct MacRestoreCode: View {
                     reveal.show()
                 }
             }
-            if let onPrint {
-                MacButton("Print…") { onPrint(share.code) }
-            }
+            MacButton("Print…") { onPrint(share.code) }
             MacButton(kind: .icon) {
                 Pasteboard.copy(share.code)
                 copied = true
