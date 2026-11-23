@@ -43,8 +43,8 @@
 /* flush: a quiet notice placed by its container, which spaces it (a warning in an alert or dialog), so it adds no padding of its own. */
 .bae-notice.bae-notice-flush { padding: 0; }
 /* On a tint, greys and grey fills are the primary text made see-through, so they take the tint's colour. */
-/* macOS draws secondary text in the system's own colour (mac-text-secondary); every Mac window, and a Mac board or preview outside one (bae-mac), takes it in place of text-secondary. */
-.bae-m-window, .bae-mac { --text-secondary: var(--mac-text-secondary); }
+/* macOS draws secondary text in the system's own colour (mac-text-secondary) in every window it opens: a Mac window, and the sheets, alerts, popovers, menus and drag images that macOS opens over one in windows of their own. Each takes it in place of text-secondary, as does a Mac board or preview that draws a component outside all of them (bae-mac). */
+.bae-m-window, .bae-m-scrim, .bae-m-popover, .bae-m-menu, .bae-m-lrow-dragging, .bae-mac { --text-secondary: var(--mac-text-secondary); }
 .bae-notice:not(.bae-notice-quiet) { --text-secondary: color-mix(in srgb, var(--text-primary) 72%, transparent); }
 .bae-notice-title-strong { font-weight: var(--type-strong-weight); }
 .bae-notice-subtitle { color: var(--text-secondary); }
