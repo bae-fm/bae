@@ -139,21 +139,17 @@ public struct MacRow<Lead: View, Label: View, Content: View, Info: View>: View {
     @ViewBuilder
     public var body: some View {
         if options.isNested {
-            rowAppearance
+            rowControl
                 .opacity(isEnabled ? 1 : 0.45)
                 .joiningRowAbove()
         }
         else {
-            rowAppearance
+            rowControl
         }
     }
 
     private var textOpacity: Double {
         isEnabled || options.isNested ? 1 : ThemeOpacity.off
-    }
-
-    private var rowAppearance: some View {
-        rowControl
     }
 
     @ViewBuilder
