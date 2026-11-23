@@ -39,10 +39,12 @@ struct MacStorageToolbar: ViewModifier {
                         off: off
                     )
                 }
+                .unboxed()
                 ToolbarItem(placement: .primaryAction) {
                     StorageFilterField(text: search)
                         .disabled(off)
                 }
+                .unboxed()
                 ToolbarItem(placement: .primaryAction) {
                     MacIconButton(
                         symbol: "sidebar.trailing",
@@ -52,6 +54,8 @@ struct MacStorageToolbar: ViewModifier {
                     ) {
                         inspectorPresented.wrappedValue.toggle()
                     }
+                    .frame(width: 28, height: 28)
+                    .fixedSize()
                     .disabled(off)
                 }
                 .unboxed()
