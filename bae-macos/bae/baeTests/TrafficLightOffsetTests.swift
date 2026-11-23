@@ -56,6 +56,44 @@ struct TrafficLightOffsetTests {
         }
     }
 
+    @Test("buttons AppKit puts back are moved again, once")
+    func buttonsAreMovedAgainAfterAppKitPutsThemBack() async throws {
+        let usual = Self.window(hosting: Color.clear)
+        let offset = Self.window(
+            hosting: Color.clear.modifier(
+                TrafficLightOffset(xOffset: Self.xOffset, yOffset: Self.yOffset)
+            )
+        )
+        defer {
+            usual.close()
+            offset.close()
+        }
+        let expected = Self.movedOrigins(try Self.buttonOrigins(in: usual))
+        try await Wait.untilLaidOut(try #require(offset.contentView)) {
+            try Self.buttonOrigins(in: offset) == expected
+        }
+
+        // AppKit lays the title bar out again as the window becomes key or
+        // updates, which puts each button back at its usual place.
+        for type: NSWindow.ButtonType in [
+            .closeButton, .miniaturizeButton, .zoomButton,
+        ] {
+            let button = try #require(offset.standardWindowButton(type))
+            let usualOrigin = try #require(usual.standardWindowButton(type))
+                .frame.origin
+            button.setFrameOrigin(usualOrigin)
+        }
+        offset.update()
+        try await Wait.untilLaidOut(try #require(offset.contentView)) {
+            try Self.buttonOrigins(in: offset) == expected
+        }
+
+        // Nothing put them back, so another update leaves them where they are.
+        offset.update()
+        offset.update()
+        #expect(try Self.buttonOrigins(in: offset) == expected)
+    }
+
     private static let xOffset: CGFloat = 6
     private static let yOffset: CGFloat = 7
 
