@@ -255,12 +255,11 @@ struct MacReleaseFileTable: NSViewRepresentable {
         }
 
         private func reportBug(operation: String, detail: String) {
-            logger.error("\(operation) failed: \(detail)")
-            CoreBugReporter().report(operation: operation, detail: detail)
             let error = DisplayError(
-                BridgeError.Diagnostic(
-                    category: .internal,
-                    detail: "\(operation): \(detail)"
+                logger.reportBug(
+                    operation: operation,
+                    detail: detail,
+                    to: CoreBugReporter()
                 )
             )
             // AppKit can call this during the representable's update.
