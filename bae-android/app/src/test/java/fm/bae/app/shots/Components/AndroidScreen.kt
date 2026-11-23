@@ -23,7 +23,7 @@ class AndroidScreenShots : BoardShot() {
     @Test
     fun androidComponentScreenBack() =
         component("android.component.screen.back") {
-            AndroidScreen(title = "Library", onBack = {}, modifier = Modifier.height(360.dp)) {
+            AndroidScreen(title = "Storage", onBack = {}, modifier = Modifier.height(360.dp)) {
                 Text("The screen’s content", modifier = Modifier.padding(ThemeSpace.edge))
             }
         }
@@ -51,7 +51,7 @@ class AndroidScreenShots : BoardShot() {
 
     @Test
     fun androidComponentScreenDialog() =
-        shot("android.component.screen.dialog") {
+        component("android.component.screen.dialog") {
             InPlaceDialogScene(
                 behind = {
                     AndroidScreen(title = "Storage", onBack = {}) {
