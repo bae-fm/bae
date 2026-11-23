@@ -86,7 +86,12 @@ internal fun SavedCodesContent(
     deleteError: DisplayError?,
     callbacks: SavedCodesCallbacks,
 ) {
-    val column = Modifier.widthIn(max = savedCodesWidth).fillMaxWidth().padding(bottom = ThemeSpace.section)
+    // The heading's own top padding counts on a gap above it.
+    val column =
+        Modifier
+            .widthIn(max = savedCodesWidth)
+            .fillMaxWidth()
+            .padding(top = ThemeSpace.related, bottom = ThemeSpace.section)
     when (list) {
         SavedCodesList.Loading -> {}
 

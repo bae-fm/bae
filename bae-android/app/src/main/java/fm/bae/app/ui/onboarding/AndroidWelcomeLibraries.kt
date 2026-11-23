@@ -117,7 +117,7 @@ internal fun WelcomeLibrariesContent(
             .widthIn(max = librariesWidth)
             .fillMaxWidth()
             // The heading's own top padding counts on a gap above it.
-            .padding(top = ThemeSpace.related, bottom = ThemeSpace.section)
+            .padding(top = ThemeSpace.related)
     when (list) {
         WelcomeLibrariesList.Loading -> {}
 
