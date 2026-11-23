@@ -53,6 +53,17 @@ extension ShotScene {
                 capsule(.discogs, .lookingUp)
             }
         },
+        identifierChipScene("mac.component.identifier-chip.editable") {
+            MacIdentifierChip(label: "Barcode") {
+                Button {
+                } label: {
+                    Text(sampleBarcode)
+                        .themeText(.mono)
+                        .foregroundStyle(Theme.textPrimary)
+                }
+                .buttonStyle(.accentPlain)
+            }
+        },
     ]
 
     private static func capsule(
