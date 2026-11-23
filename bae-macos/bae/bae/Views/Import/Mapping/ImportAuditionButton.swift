@@ -5,6 +5,7 @@ import SwiftUI
 /// replaces it while the second player plays that source.
 struct MacAuditionButton: View {
     let isPlaying: Bool
+    var height: CGFloat?
     let action: () -> Void
 
     var body: some View {
@@ -14,7 +15,7 @@ struct MacAuditionButton: View {
         Button(action: action) {
             Image(systemName: isPlaying ? "stop.fill" : "play.fill")
                 .themeIcon(.small)
-                .frame(height: 16)
+                .frame(height: height)
                 .foregroundStyle(
                     isPlaying
                         ? AnyShapeStyle(Theme.accent)

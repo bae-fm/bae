@@ -11,6 +11,7 @@ struct TrackSourceCell: View {
     let trackId: String
     let previewingTarget: BridgePreviewTarget?
     let actions: TrackAuditionActions
+    private static let auditionLineHeight: CGFloat = 16
 
     private var isPreviewing: Bool {
         guard let target = audition.previewTarget else { return false }
@@ -39,12 +40,18 @@ struct TrackSourceCell: View {
     private var playButton: some View {
         switch audition {
         case .preview(let target):
-            MacAuditionButton(isPlaying: isPreviewing) {
+            MacAuditionButton(
+                isPlaying: isPreviewing,
+                height: Self.auditionLineHeight
+            ) {
                 isPreviewing ? actions.stopPreview() : actions.preview(target)
             }
         case .libraryTrack:
             if let playTrack = actions.playTrack {
-                MacAuditionButton(isPlaying: false) {
+                MacAuditionButton(
+                    isPlaying: false,
+                    height: Self.auditionLineHeight
+                ) {
                     playTrack(trackId)
                 }
             }
