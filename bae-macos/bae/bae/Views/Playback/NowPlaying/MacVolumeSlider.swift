@@ -1,3 +1,4 @@
+import AppKit
 import BaeKit
 import SwiftUI
 
@@ -88,6 +89,9 @@ private struct VolumeSliderTrack: View {
     /// The track's thickness.
     private static let trackHeight: CGFloat = 5
 
+    /// The height of the area that takes a click or drag.
+    private static let targetHeight: CGFloat = 20
+
     private static func level(at x: CGFloat, width: CGFloat) -> Float {
         Float(max(0, min(1, x / width)))
     }
@@ -112,20 +116,20 @@ private struct VolumeSliderTrack: View {
             ZStack(alignment: .leading) {
                 Capsule()
                     .fill(Theme.hairline)
-                    .frame(height: Self.trackHeight)
                 Capsule()
                     .fill(Theme.accent)
-                    .frame(
-                        width: CGFloat(clamped) * width,
-                        height: Self.trackHeight
-                    )
+                    .frame(width: CGFloat(clamped) * width)
             }
-            .frame(
-                maxWidth: .infinity,
-                maxHeight: .infinity,
-                alignment: .leading
+            .frame(width: width, height: Self.trackHeight)
+            .accessibilityHidden(true)
+            // The pointer's target is taller than the track and takes no
+            // layout room: the slider is as tall as its track.
+            .contentShape(
+                Rectangle()
+                    .inset(
+                        by: -(Self.targetHeight - Self.trackHeight) / 2
+                    )
             )
-            .contentShape(Rectangle())
             .gesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { drag in
@@ -150,23 +154,60 @@ private struct VolumeSliderTrack: View {
                     },
             )
         }
-        .frame(height: 20)
-        .accessibilityRepresentation {
-            Slider(
-                value: Binding(
-                    get: {
-                        AccessibilityPercentage.percent(for: Double(clamped))
-                    },
-                    set: {
-                        set(Float(AccessibilityPercentage.fraction(for: $0)))
-                    }
-                ),
-                in: AccessibilityPercentage.range,
-                step: 5
-            ) {
-                Text("Volume")
-            }
-            .accessibilityValue(Text(Double(clamped).formatted(.percent)))
+        .frame(height: Self.trackHeight)
+        .background {
+            VolumeAccessibilityElement(
+                percent: AccessibilityPercentage.percent(for: Double(clamped)),
+                set: { set(Float(AccessibilityPercentage.fraction(for: $0))) }
+            )
         }
+    }
+}
+
+/// The slider as assistive clients see it: a slider the height of the track,
+/// which says its level as a whole percent and steps by 5. SwiftUI's own
+/// `Slider` gives an element at least 20 pt tall.
+private struct VolumeAccessibilityElement: NSViewRepresentable {
+    let percent: Double
+    let set: (Double) -> Void
+
+    func makeNSView(context _: Context) -> View {
+        View()
+    }
+
+    func updateNSView(_ view: View, context _: Context) {
+        view.percent = percent
+        view.set = set
+    }
+
+    final class View: NSView {
+        var percent: Double = 0
+        var set: (Double) -> Void = { _ in }
+
+        private static let step = 5.0
+
+        override func isAccessibilityElement() -> Bool { true }
+        override func accessibilityRole() -> NSAccessibility.Role? { .slider }
+        override func accessibilityLabel() -> String? { "Volume" }
+        override func accessibilityValue() -> Any? { Int(percent) }
+        override func accessibilityMinValue() -> Any? {
+            AccessibilityPercentage.range.lowerBound
+        }
+        override func accessibilityMaxValue() -> Any? {
+            AccessibilityPercentage.range.upperBound
+        }
+        override func setAccessibilityValue(_ value: Any?) {
+            guard let value = (value as? NSNumber)?.doubleValue else { return }
+            set(value)
+        }
+        override func accessibilityPerformIncrement() -> Bool {
+            set(percent + Self.step)
+            return true
+        }
+        override func accessibilityPerformDecrement() -> Bool {
+            set(percent - Self.step)
+            return true
+        }
+        override func hitTest(_: NSPoint) -> NSView? { nil }
     }
 }
