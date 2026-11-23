@@ -40,6 +40,38 @@ struct ImportSheepTests {
         #expect(abs(time - 1) < 1e-9)
     }
 
+    @Test("A fixed clock holds the sheep at the start of its loop")
+    func fixedClock() {
+        let fixedNow = Date(timeIntervalSinceReferenceDate: 0)
+        for elapsed in [2.0, 17.0] {
+            let frame = ImportSheep.painter(
+                elapsed: elapsed,
+                still: false,
+                fixedNow: fixedNow
+            )
+            #expect(frame.time == 0)
+            #expect(
+                frame.moment.pose(of: .release(0), at: frame.time).opacity == 0
+            )
+        }
+        let liveFrame = ImportSheep.painter(
+            elapsed: 2,
+            still: false,
+            fixedNow: nil
+        )
+        #expect(liveFrame.time == 2)
+    }
+
+    @Test("The sheep shows a cover beside it in the still pose")
+    func stillWithFixedClock() {
+        let frame = ImportSheep.painter(
+            elapsed: 2,
+            still: true,
+            fixedNow: Date(timeIntervalSinceReferenceDate: 0)
+        )
+        #expect(frame.moment.pose(of: .release(0), at: frame.time).opacity == 1)
+    }
+
     @Test("Every part starts and ends each moment at rest, or unseen")
     func momentsJoin() {
         var parts: [SheepPart] = [

@@ -4,10 +4,47 @@ import SwiftUI
 @testable import bae
 
 extension ShotScene {
-    /// The import list's boards that need no folders behind them: the main
-    /// window on Import, the list that could not be read shown in place of
-    /// it, with a failure that can be tried again.
+    /// The import list before any folder is watched and when the list could
+    /// not be read.
     static let importListScenes: [ShotScene] = [
+        ShotScene(
+            id: "mac.import.list.empty",
+            size: CGSize(width: 1_200, height: 760),
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            let uiStore = UiStore()
+            uiStore.activeSection = .importing
+            let store = ImportStore()
+            store.applySummary(
+                PreviewData.importQueueSummary(hasWatchedFolders: false)
+            )
+            let fixture = ImportPreviewFixture(
+                store: store,
+                itemsByTab: [:],
+                tabCounts: BridgeTriageTabCounts(
+                    pending: 0,
+                    done: 0,
+                    skipped: 0
+                )
+            )
+            let images = coverStore()
+            return ShotStage(
+                ShotScenes.libraryWindow(
+                    uiStore: uiStore,
+                    backing: boardLibraryBacking(uiStore: uiStore),
+                    playbackStore: boardPlayback(),
+                    importScene: fixture,
+                    images: images,
+                    configStore: PreviewData.makeConfigStore(
+                        libraryFullWidth: false,
+                        castEnabled: true,
+                        discogsUsable: false
+                    ),
+                    size: CGSize(width: 1_200, height: 760)
+                ),
+                images: images
+            )
+        },
         ShotScene(
             id: "mac.import.list.failed",
             size: CGSize(width: 1_200, height: 760)
@@ -41,6 +78,6 @@ extension ShotScene {
             ) {
                 slot.loadFailure != nil
             }
-        }
+        },
     ]
 }

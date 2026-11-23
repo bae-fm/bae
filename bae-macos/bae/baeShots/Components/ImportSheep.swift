@@ -11,7 +11,7 @@ extension ShotScene {
             ImportSheep(size: 140)
         },
         component("mac.component.import-sheep.still", height: 180) {
-            ImportSheep(size: 140)
+            ImportSheep(size: 140, still: true)
         },
     ]
 }
