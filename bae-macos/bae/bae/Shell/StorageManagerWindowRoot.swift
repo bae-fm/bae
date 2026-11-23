@@ -1,3 +1,4 @@
+import BaeKit
 import SwiftUI
 
 /// The Storage Manager window's content. A `View` so Observation tracks its
@@ -35,6 +36,7 @@ struct StorageManagerNoLibrary: View {
             minHeight: MacStorageWindow.minimumHeight,
             maxHeight: .infinity
         )
+        .windowBackground()
         .modifier(
             MacStorageToolbar(
                 filter: .constant(.all),

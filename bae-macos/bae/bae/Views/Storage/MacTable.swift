@@ -89,6 +89,7 @@ struct MacTable: NSViewRepresentable {
             height: tableView.intercellSpacing.height
         )
         tableView.style = .inset
+        tableView.backgroundColor = .clear
 
         for column in StorageTableColumn.allCases {
             let tableColumn = NSTableColumn(

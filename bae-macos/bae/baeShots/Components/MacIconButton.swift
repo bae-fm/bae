@@ -24,12 +24,12 @@ extension ShotScene {
             ) {}
         },
         component("mac.component.icon-button.boxed", height: 60) {
-            MacIconButton(symbol: "shuffle", label: "Shuffle") {}
-                .padding(ThemeSpace.related)
-                .overlay(
-                    RoundedRectangle(cornerRadius: ThemeRadius.bar)
-                        .stroke(Theme.hairline)
-                )
+            Button {
+            } label: {
+                Image(systemName: "shuffle").themeIcon(.large)
+            }
+            .buttonStyle(BoxedIconButtonStyle(size: .control).accentFocus())
+            .accessibilityLabel("Shuffle")
         },
         component("mac.component.icon-button.overlay", height: 60) {
             MacIconButton(symbol: "shuffle", label: "Shuffle") {}

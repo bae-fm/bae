@@ -40,5 +40,6 @@ struct MacReleaseFileTable: View {
             }
             .width(min: 90, ideal: 130)
         }
+        .scrollContentBackground(.hidden)
     }
 }

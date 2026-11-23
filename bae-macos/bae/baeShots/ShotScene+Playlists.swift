@@ -72,7 +72,8 @@ extension ShotScene {
         },
         ShotScene(
             id: "mac.playlists.delete",
-            size: CGSize(width: 1200, height: 760)
+            size: CGSize(width: 1200, height: 760),
+            frame: .window(title: "bae", titleBar: .hidden)
         ) {
             playlistsWindow { window in
                 AnyView(

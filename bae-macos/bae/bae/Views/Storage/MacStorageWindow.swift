@@ -81,6 +81,7 @@ struct MacStorageWindow: View {
             minWidth: Self.minimumWidth,
             minHeight: Self.minimumHeight
         )
+        .windowBackground()
         .modifier(
             MacStorageToolbar(
                 filter: $filter,

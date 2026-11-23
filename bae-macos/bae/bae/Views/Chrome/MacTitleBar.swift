@@ -70,14 +70,7 @@ struct MacTitleBar: View {
         .padding(.trailing, titleBarTrailingPadding)
         .frame(height: Self.height)
         .background { WindowDragArea() }
-        // The window's own background with a hairline under it, not a raised
-        // band.
-        .background {
-            Rectangle().fill(Theme.background)
-                .overlay(alignment: .bottom) {
-                    MacHairline()
-                }
-        }
+        .background(alignment: .bottom) { MacHairline() }
         .onChange(of: searchText, initial: true) { _, newValue in
             libraryProjections.activateSearch(newValue)
             if searchText.isEmpty {
