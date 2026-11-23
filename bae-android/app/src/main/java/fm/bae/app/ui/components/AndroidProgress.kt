@@ -30,7 +30,6 @@ import fm.bae.app.ui.appearance.ThemeOpacity
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.sync.MovingBar
-import fm.bae.app.ui.sync.ShareBarView
 import fm.bae.fastvalues.FrameFollowing
 import fm.bae.fastvalues.LatestSource
 import uniffi.bae_bridge.BridgeOpenProgress
@@ -138,7 +137,7 @@ internal class StepProgressView<Step : Any>(
 ) : LinearLayout(context) {
     private val label = TextView(context).apply { includeFontPadding = false }
     private val line = FrameLayout(context)
-    private val bar = ShareBarView(context)
+    private val bar = AndroidProgressBarView(context)
     private val following = FrameFollowing<Step>(this, ::show)
     private lateinit var title: (Step) -> String
     private lateinit var fraction: (Step) -> Double?

@@ -1,20 +1,13 @@
 package fm.bae.app.ui.downloads
 
 import android.content.Context
-import android.graphics.Canvas
-import android.graphics.Paint
-import android.graphics.RectF
 import android.util.TypedValue
-import android.view.View
 import android.view.ViewGroup
-import android.view.accessibility.AccessibilityNodeInfo
 import android.widget.LinearLayout
-import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
@@ -26,15 +19,10 @@ import fm.bae.app.formatFileSize
 import fm.bae.app.requireDisplayableByteCount
 import fm.bae.app.ui.appearance.ThemeOpacity
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.AndroidProgressBarView
 import fm.bae.fastvalues.FrameFollowing
 import fm.bae.fastvalues.LatestSource
 import uniffi.bae_bridge.BridgeDownloadTransferProgress
-
-private const val BAR_HEIGHT_DP = 4f
-private const val BAR_GAP_DP = 4f
-
-/** The range that the bar reports to a screen reader. */
-private const val PERCENT = 100f
 
 /**
  * A download's progress bar over its "{done} of {total}" byte line, led by
@@ -51,7 +39,8 @@ internal fun DownloadProgress(
     gap: Dp,
     modifier: Modifier = Modifier,
 ) {
-    val accent = MaterialTheme.colorScheme.primary.toArgb()
+    val accent = MaterialTheme.colorScheme.primary
+    val track = accent.copy(alpha = ThemeOpacity.tintStrong)
     val text = MaterialTheme.colorScheme.onSurfaceVariant.toArgb()
     val size = ThemeText.fine.style.fontSize.value
     val name = stringResource(R.string.pinning)
@@ -59,7 +48,7 @@ internal fun DownloadProgress(
         modifier = modifier,
         factory = { context -> DownloadProgressView(context) },
         update = { view ->
-            view.applyStyle(accent = accent, text = text, textSizeSp = size)
+            view.applyStyle(accent = accent.toArgb(), track = track.toArgb(), text = text, textSizeSp = size)
             view.name = name
             view.gap = gap
             view.label = label
@@ -69,83 +58,10 @@ internal fun DownloadProgress(
     )
 }
 
-/**
- * A bar 4dp high with round ends: the fill in the accent, a 4dp gap, then the
- * rest of the track in the accent's strong tint, and a 4dp dot at its far end.
- */
-internal class PinBarView(
-    context: Context,
-) : View(context) {
-    private val density = resources.displayMetrics.density
-    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val rect = RectF()
-    private var accent = 0
-
-    init {
-        importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_YES
-    }
-
-    /** Reports the bar to a screen reader as a progress bar of a percent. */
-    override fun onInitializeAccessibilityNodeInfo(info: AccessibilityNodeInfo) {
-        super.onInitializeAccessibilityNodeInfo(info)
-        info.className = ProgressBar::class.java.name
-        info.rangeInfo =
-            AccessibilityNodeInfo.RangeInfo.obtain(
-                AccessibilityNodeInfo.RangeInfo.RANGE_TYPE_PERCENT,
-                0f,
-                PERCENT,
-                fraction * PERCENT,
-            )
-    }
-
-    /** How much of the bar is filled, 0 to 1. */
-    var fraction: Float = 0f
-        set(value) {
-            if (field == value) return
-            field = value
-            invalidate()
-        }
-
-    fun applyColor(accent: Int) {
-        if (this.accent == accent) return
-        this.accent = accent
-        invalidate()
-    }
-
-    override fun onMeasure(
-        widthMeasureSpec: Int,
-        heightMeasureSpec: Int,
-    ) = setMeasuredDimension(
-        getDefaultSize(suggestedMinimumWidth, widthMeasureSpec),
-        (BAR_HEIGHT_DP * density).toInt(),
-    )
-
-    override fun onDraw(canvas: Canvas) {
-        val height = BAR_HEIGHT_DP * density
-        val gap = BAR_GAP_DP * density
-        val radius = height / 2
-        val width = this.width.toFloat()
-        val fillEnd = (width * fraction).coerceIn(0f, width)
-        val trackStart = if (fillEnd > 0f) minOf(fillEnd + gap, width) else 0f
-        paint.color = Color(accent).copy(alpha = ThemeOpacity.tintStrong).toArgb()
-        if (trackStart < width) {
-            rect.set(trackStart, 0f, width, height)
-            canvas.drawRoundRect(rect, radius, radius, paint)
-        }
-        paint.color = accent
-        if (fillEnd > 0f) {
-            rect.set(0f, 0f, fillEnd, height)
-            canvas.drawRoundRect(rect, radius, radius, paint)
-        }
-        rect.set(width - height, 0f, width, height)
-        canvas.drawRoundRect(rect, radius, radius, paint)
-    }
-}
-
 internal class DownloadProgressView(
     context: Context,
 ) : LinearLayout(context) {
-    private val bar = PinBarView(context)
+    private val bar = AndroidProgressBarView(context)
     private val bytes = TextView(context).apply { includeFontPadding = false }
     private val following = FrameFollowing<BridgeDownloadTransferProgress>(this, ::show)
 
@@ -176,10 +92,11 @@ internal class DownloadProgressView(
 
     fun applyStyle(
         accent: Int,
+        track: Int,
         text: Int,
         textSizeSp: Float,
     ) {
-        bar.applyColor(accent)
+        bar.applyColors(accent, track)
         bytes.setTextColor(text)
         bytes.setTextSize(TypedValue.COMPLEX_UNIT_SP, textSizeSp)
     }
@@ -189,7 +106,7 @@ internal class DownloadProgressView(
     fun stopFollowing() = following.stop()
 
     private fun show(progress: BridgeDownloadTransferProgress?) {
-        bar.fraction = (progress?.fraction ?: 0.0).toFloat()
+        bar.showFraction((progress?.fraction ?: 0.0).toFloat())
         val text =
             progress
                 ?.let {
