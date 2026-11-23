@@ -38,12 +38,10 @@ struct ReleaseStorageSheet: View {
     /// reads the files in; the Audio column has none, as its value is
     /// optional.
     @State
-    private var sortOrder: [KeyPathComparator<BridgeFile>] = [
-        KeyPathComparator(
-            \BridgeFile.originalFilename,
-            comparator: .localizedStandard
-        )
-    ]
+    private var fileOrder = BridgeReleaseFileOrder(
+        column: .name,
+        descending: false
+    )
     /// The sheet's one read of the release's files, moved as the sort
     /// changes.
     @State
@@ -174,35 +172,12 @@ struct ReleaseStorageSheet: View {
                 )
             }
             else {
-                MacReleaseFileTable(files: files, sortOrder: $sortOrder)
+                MacReleaseFileTable(files: files, order: $fileOrder)
             }
         }
         .onAppear { showFiles() }
-        .onChange(of: sortOrder) { showFiles() }
+        .onChange(of: fileOrder) { showFiles() }
         .onDisappear { reader?.close() }
-    }
-
-    /// The order core reads the files in for the table's sort: its first
-    /// column, and that column's direction.
-    private var fileOrder: BridgeReleaseFileOrder {
-        let column = sortOrder.first
-        let keyPath: AnyKeyPath? = column?.keyPath
-        let size: AnyKeyPath = \BridgeFile.fileSize
-        let kind: AnyKeyPath = \BridgeFile.contentType
-        let by: BridgeReleaseFileColumn =
-            if keyPath == size {
-                .size
-            }
-            else if keyPath == kind {
-                .kind
-            }
-            else {
-                .name
-            }
-        return BridgeReleaseFileOrder(
-            column: by,
-            descending: column?.order == .reverse
-        )
     }
 
     private func showFiles() {

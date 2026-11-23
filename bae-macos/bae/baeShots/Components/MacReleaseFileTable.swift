@@ -6,9 +6,7 @@ import SwiftUI
 extension ShotScene {
     /// `MacReleaseFileTable`, a release's files as a table of name, audio
     /// format, size and kind, sorted by name and by size, largest first. The
-    /// component draws a Files heading over an AppKit table; the app draws
-    /// the heading in the Storage sheet, over a SwiftUI table, whose sortable
-    /// columns the component's table does not have.
+    /// Storage sheet draws the Files heading over the table.
     static let macReleaseFileTableScenes: [ShotScene] = [
         releaseFileTable(
             "mac.component.release-file-table.files",
@@ -18,7 +16,7 @@ extension ShotScene {
         releaseFileTable(
             "mac.component.release-file-table.sorted-by-size",
             [longWayHomeFile, harborLightsFile, coverFile, logFile, cueFile],
-            sort: KeyPathComparator(\BridgeFile.fileSize, order: .reverse),
+            order: BridgeReleaseFileOrder(column: .size, descending: true),
             height: 190
         ),
         releaseFileTable(
@@ -41,16 +39,16 @@ extension ShotScene {
         ),
     ]
 
-    private static let byName = KeyPathComparator(
-        \BridgeFile.originalFilename,
-        comparator: .localizedStandard
+    private static let byName = BridgeReleaseFileOrder(
+        column: .name,
+        descending: false
     )
 
-    /// `files` in the order core returns them for `sort`.
+    /// `files` in the order core returns them for `order`.
     private static func releaseFileTable(
         _ id: String,
         _ files: [BridgeFile],
-        sort: KeyPathComparator<BridgeFile> = byName,
+        order: BridgeReleaseFileOrder = byName,
         height: CGFloat
     ) -> ShotScene {
         component(
@@ -60,7 +58,7 @@ extension ShotScene {
         ) {
             MacReleaseFileTable(
                 files: files,
-                sortOrder: .constant([sort])
+                order: .constant(order)
             )
             .frame(width: 544, alignment: .leading)
         }

@@ -1,13 +1,16 @@
 import AppKit
 import BaeKit
+import OSLog
 import SwiftUI
+
+private let logger = Logger.bae("ReleaseFileTable")
 
 /// A release's files in its Storage sheet. The table draws the files in the
 /// order core returns them and sends column sorts back to the sheet.
 struct MacReleaseFileTable: NSViewRepresentable {
     let files: [BridgeFile]
     @Binding
-    var sortOrder: [KeyPathComparator<BridgeFile>]
+    var order: BridgeReleaseFileOrder
 
     @Environment(\.surfaceTone)
     private var tone
@@ -19,7 +22,7 @@ struct MacReleaseFileTable: NSViewRepresentable {
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator($sortOrder, appearance: appearance)
+        Coordinator($order, appearance: appearance)
     }
 
     func makeNSView(context: Context) -> NSScrollView {
@@ -27,9 +30,9 @@ struct MacReleaseFileTable: NSViewRepresentable {
         table.style = .inset
         // The sheet supplies the surface behind the rows and their stripes.
         table.backgroundColor = .clear
-        table.rowHeight = 24
-        table.intercellSpacing = NSSize(width: 17, height: 0)
-        table.columnAutoresizingStyle = .uniformColumnAutoresizingStyle
+        table.rowHeight = 28
+        table.intercellSpacing = .zero
+        table.columnAutoresizingStyle = .firstColumnOnlyAutoresizingStyle
         table.allowsColumnResizing = true
         table.allowsColumnReordering = false
         table.dataSource = context.coordinator
@@ -37,19 +40,13 @@ struct MacReleaseFileTable: NSViewRepresentable {
         for column in Column.allCases {
             table.addTableColumn(column.makeTableColumn())
         }
-        let scrollView = NSScrollView()
-        scrollView.documentView = table
-        scrollView.drawsBackground = false
-        scrollView.hasVerticalScroller = true
-        scrollView.hasHorizontalScroller = true
-        scrollView.autohidesScrollers = true
-        return scrollView
+        return table.themedScrollView()
     }
 
     func updateNSView(_: NSScrollView, context: Context) {
         context.coordinator.update(
             files: files,
-            sortOrder: $sortOrder,
+            order: $order,
             appearance: appearance
         )
     }
@@ -70,34 +67,46 @@ struct MacReleaseFileTable: NSViewRepresentable {
             }
         }
 
-        var comparator: KeyPathComparator<BridgeFile>? {
+        var sortColumn: BridgeReleaseFileColumn? {
             switch self {
-            case .name:
-                KeyPathComparator(
-                    \.originalFilename,
-                    comparator: .localizedStandard
-                )
+            case .name: .name
             case .audio: nil
-            case .size: KeyPathComparator(\.fileSize)
-            case .kind: KeyPathComparator(\.contentType)
+            case .size: .size
+            case .kind: .kind
+            }
+        }
+
+        init(sortColumn: BridgeReleaseFileColumn) {
+            switch sortColumn {
+            case .name: self = .name
+            case .size: self = .size
+            case .kind: self = .kind
+            }
+        }
+
+        var width: CGFloat {
+            switch self {
+            case .name: 200
+            case .audio: 120
+            case .size: 80
+            case .kind: 130
             }
         }
 
         @MainActor
         func makeTableColumn() -> NSTableColumn {
             let column = NSTableColumn(identifier: identifier)
-            column.title = title
+            column.headerCell.attributedStringValue = NSAttributedString(
+                string: title,
+                attributes: [
+                    .font: ThemeText.detail.nsFont,
+                    .foregroundColor: NSColor(Theme.macTextSecondary),
+                ]
+            )
             column.isEditable = false
-            switch self {
-            case .name, .audio: break
-            case .size:
-                column.minWidth = 70
-                column.width = 80
-            case .kind:
-                column.minWidth = 90
-                column.width = 130
-            }
-            if comparator != nil {
+            column.minWidth = width
+            column.width = width
+            if sortColumn != nil {
                 column.sortDescriptorPrototype = NSSortDescriptor(
                     key: rawValue,
                     ascending: true
@@ -137,35 +146,31 @@ struct MacReleaseFileTable: NSViewRepresentable {
         NSTableViewDelegate
     {
         let table = NSTableView()
-        private var sortOrder: Binding<[KeyPathComparator<BridgeFile>]>
+        private var order: Binding<BridgeReleaseFileOrder>
         private var appearance: HostedAppearance
         private var files: [BridgeFile] = []
 
         init(
-            _ sortOrder: Binding<[KeyPathComparator<BridgeFile>]>,
+            _ order: Binding<BridgeReleaseFileOrder>,
             appearance: HostedAppearance
         ) {
-            self.sortOrder = sortOrder
+            self.order = order
             self.appearance = appearance
         }
 
         func update(
             files: [BridgeFile],
-            sortOrder: Binding<[KeyPathComparator<BridgeFile>]>,
+            order: Binding<BridgeReleaseFileOrder>,
             appearance: HostedAppearance
         ) {
-            self.sortOrder = sortOrder
-            let descriptors = sortOrder.wrappedValue.compactMap { sort in
-                Column.allCases.first { $0.comparator?.keyPath == sort.keyPath }
-                    .map {
-                        NSSortDescriptor(
-                            key: $0.rawValue,
-                            ascending: sort.order == .forward
-                        )
-                    }
-            }
-            if table.sortDescriptors != descriptors {
-                table.sortDescriptors = descriptors
+            self.order = order
+            let shown = order.wrappedValue
+            let descriptor = NSSortDescriptor(
+                key: Column(sortColumn: shown.column).rawValue,
+                ascending: !shown.descending
+            )
+            if table.sortDescriptors.first != descriptor {
+                table.sortDescriptors = [descriptor]
             }
             if files != self.files || appearance != self.appearance {
                 self.files = files
@@ -185,7 +190,7 @@ struct MacReleaseFileTable: NSViewRepresentable {
         {
             BrowsedTableRowView(
                 accent: appearance.accent,
-                alternate: row % 2 == 1
+                stripedRow: row
             )
         }
 
@@ -197,9 +202,10 @@ struct MacReleaseFileTable: NSViewRepresentable {
             guard let identifier = tableColumn?.identifier,
                 let column = Column(rawValue: identifier.rawValue)
             else {
-                preconditionFailure(
-                    "The release file table has an unknown column"
+                logger.error(
+                    "Unknown release file column: \(tableColumn?.identifier.rawValue ?? "nil")"
                 )
+                return nil
             }
             let cell = HostingTableCell.dequeue(
                 from: table,
@@ -218,16 +224,19 @@ struct MacReleaseFileTable: NSViewRepresentable {
             _ table: NSTableView,
             sortDescriptorsDidChange _: [NSSortDescriptor]
         ) {
-            let order = table.sortDescriptors.compactMap {
-                descriptor -> KeyPathComparator<BridgeFile>? in
-                guard let key = descriptor.key,
-                    var comparator = Column(rawValue: key)?.comparator
-                else { return nil }
-                comparator.order = descriptor.ascending ? .forward : .reverse
-                return comparator
+            guard let sort = table.sortDescriptors.first,
+                let key = sort.key,
+                let column = Column(rawValue: key)?.sortColumn
+            else {
+                logger.error("Unknown release file table sort")
+                return
             }
-            if sortOrder.wrappedValue != order {
-                sortOrder.wrappedValue = order
+            let selected = BridgeReleaseFileOrder(
+                column: column,
+                descending: !sort.ascending
+            )
+            if order.wrappedValue != selected {
+                order.wrappedValue = selected
             }
         }
     }

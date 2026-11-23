@@ -11,10 +11,10 @@ final class BrowsedTableRowView: NSTableRowView {
     private let tint: NSColor
     private let alternate: Bool
 
-    /// A row whose selection is `accent`'s tint; an `alternate` row sits on
-    /// the hover tint, which stripes a table without the system's colours.
-    init(accent: AccentChoice, alternate: Bool = false) {
-        self.alternate = alternate
+    /// A row whose selection is `accent`'s tint. Odd `stripedRow` indexes
+    /// use the hover tint.
+    init(accent: AccentChoice, stripedRow: Int? = nil) {
+        alternate = stripedRow.map { $0 % 2 == 1 } == true
         tint = accent.appKitColor.withAlphaComponent(ThemeOpacity.tint)
         super.init(frame: .zero)
     }
@@ -27,7 +27,12 @@ final class BrowsedTableRowView: NSTableRowView {
     override func drawBackground(in dirtyRect: NSRect) {
         guard alternate else { return }
         NSColor(Theme.hover).setFill()
-        bounds.fill()
+        NSBezierPath(
+            roundedRect: bounds,
+            xRadius: ThemeRadius.chip,
+            yRadius: ThemeRadius.chip
+        )
+        .fill()
     }
 
     /// AppKit's own selection, its shape kept and its colour replaced by

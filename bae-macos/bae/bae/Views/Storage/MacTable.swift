@@ -110,14 +110,9 @@ struct MacTable: NSViewRepresentable {
         tableView.headerView = header
         coordinator.applySortIndicator(to: tableView, sort: sort)
 
-        let scrollView = NSScrollView()
-        scrollView.documentView = tableView
+        let scrollView = tableView.themedScrollView()
         // Applied in the scroll view, whose width the first column fits.
         coordinator.applyLayout(layout)
-        scrollView.hasVerticalScroller = true
-        scrollView.hasHorizontalScroller = true
-        scrollView.autohidesScrollers = true
-        scrollView.drawsBackground = false
         coordinator.observeScrolling(of: scrollView)
         return scrollView
     }
@@ -461,7 +456,7 @@ extension MacTable.Coordinator {
     func tableView(_: NSTableView, rowViewForRow row: Int) -> NSTableRowView? {
         BrowsedTableRowView(
             accent: appearance.accent,
-            alternate: row % 2 == 1
+            stripedRow: row
         )
     }
 
