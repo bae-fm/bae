@@ -112,6 +112,7 @@ public struct MacButton<Label: View>: View {
                 .foregroundStyle(Theme.macTextSecondary)
                 .frame(width: 24, height: 24)
                 .contentShape(Rectangle())
+                .accessibilityRemoveTraits(.isSelected)
         }
         else {
             label
