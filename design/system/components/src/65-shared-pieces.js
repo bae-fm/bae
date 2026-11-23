@@ -43,7 +43,7 @@
         removing ? null : h(AndroidRow, { title: 'Home music', button: true }, h(AndroidMoreMenu)),
         removing ? h(AndroidRow, { title: 'Home music', subtitle: 'Leaving the library…' }, h('div', { className: 'bae-a-welcome-libraries-wait' }, h(AndroidSpinner))) : null,
         h(AndroidRow, { title: 'Odile’s records', button: true, off: removing }, h(AndroidMoreMenu, { off: removing })),
-        s === 'damaged-join' ? h(AndroidRow, { title: 'Unfinished join that cannot be read', subtitle: '3b9e07d4-51a2…0f2d9a7c4e81' }, h(AndroidButton, { kind: 'text' }, 'Discard…')) : null,
+        s === 'damaged-join' ? h(AndroidRow, { title: 'Unfinished join that cannot be read', subtitle: '3b9e07d4-51a2-4c8f-b6e3-0f2d9a7c4e81' }, h(AndroidButton, { kind: 'text' }, 'Discard…')) : null,
         s === 'unreadable' ? h(AndroidRow, { title: 'Library that cannot be read', subtitle: '6f1c2a9e-4b7d…3d5e8b2f7c14' }, h(AndroidButton, { kind: 'text' }, 'Remove…')) : null,
         h(AndroidRow, { title: 'Add library', action: true, leadingIcon: 'add', off: removing })));
   }
