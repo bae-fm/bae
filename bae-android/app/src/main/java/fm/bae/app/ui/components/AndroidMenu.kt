@@ -77,6 +77,10 @@ internal fun AndroidMenuHeading(text: String) {
     )
 }
 
+/** The line between a menu's groups, with the menu spacing above and below it. */
+@Composable
+internal fun AndroidMenuDivider() = AndroidDivider(modifier = Modifier.padding(vertical = ThemeSpace.related))
+
 /** The menu's corners. */
 internal val AndroidMenuShape = RoundedCornerShape(4.dp)
 

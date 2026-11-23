@@ -1,22 +1,19 @@
 package fm.bae.app.ui.albumdetail
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import fm.bae.app.R
 import fm.bae.app.ui.appearance.SymbolIcons
-import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.AndroidDialog
-import fm.bae.app.ui.components.AndroidDivider
 import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.AndroidMenu
 import fm.bae.app.ui.components.AndroidMenuAction
+import fm.bae.app.ui.components.AndroidMenuDivider
 import fm.bae.app.ui.components.AndroidMenuHeading
 import fm.bae.app.ui.components.DialogAction
 import fm.bae.app.ui.components.WIDE_DIALOG_WIDTH
@@ -89,7 +86,7 @@ internal fun AlbumMenuItems(
     }
     val rating = actions.rating()
     val hasMiddleGroup = rating != null || actions.pin != null || actions.onSetPrimaryRelease != null
-    if (actions.play != null && hasMiddleGroup) GroupDivider()
+    if (actions.play != null && hasMiddleGroup) AndroidMenuDivider()
     RatingMenuItems(rating, close)
     actions.pin?.let {
         AndroidMenuAction(stringResource(if (it.pinned) R.string.unpin else R.string.pin), close, it.onClick)
@@ -97,13 +94,9 @@ internal fun AlbumMenuItems(
     actions.onSetPrimaryRelease?.let {
         AndroidMenuAction(stringResource(R.string.set_primary_release), close, it)
     }
-    if (actions.play != null || hasMiddleGroup) GroupDivider()
+    if (actions.play != null || hasMiddleGroup) AndroidMenuDivider()
     AndroidMenuAction(stringResource(R.string.delete_album), close, actions.onDelete)
 }
-
-/** The line between the menu's groups, with the menu spacing around it. */
-@Composable
-private fun GroupDivider() = AndroidDivider(modifier = Modifier.padding(vertical = ThemeSpace.related))
 
 @Composable
 private fun RatingMenuItems(

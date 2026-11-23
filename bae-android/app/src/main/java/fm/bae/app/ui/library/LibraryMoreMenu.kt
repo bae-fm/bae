@@ -2,7 +2,6 @@ package fm.bae.app.ui.library
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -15,10 +14,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import fm.bae.app.R
 import fm.bae.app.ui.appearance.SymbolIcons
-import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.components.AndroidDivider
 import fm.bae.app.ui.components.AndroidIconButton
 import fm.bae.app.ui.components.AndroidMenu
+import fm.bae.app.ui.components.AndroidMenuDivider
 import fm.bae.app.ui.components.AndroidMenuHeading
 import uniffi.bae_bridge.BridgeArtistSortCriterion
 import uniffi.bae_bridge.BridgeArtistSortField
@@ -114,7 +112,7 @@ internal fun LibraryMoreMenuItems(
     val close = { state.openMenu = null }
     AndroidMenuHeading(stringResource(R.string.sort_by))
     ViewSortItems(state = state, close = close)
-    AndroidDivider(modifier = Modifier.padding(vertical = ThemeSpace.related))
+    AndroidMenuDivider()
     DropdownMenuItem(
         text = { Text(stringResource(R.string.shuffle_library)) },
         onClick = {

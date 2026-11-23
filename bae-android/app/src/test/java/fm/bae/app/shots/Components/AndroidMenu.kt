@@ -11,7 +11,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
 import fm.bae.app.ui.appearance.ThemeSpace
-import fm.bae.app.ui.components.AndroidDivider
+import fm.bae.app.ui.components.AndroidMenuDivider
 import fm.bae.app.ui.components.AndroidMenuHeading
 import fm.bae.app.ui.components.AndroidMenuItemStyle
 import fm.bae.app.ui.components.AndroidMenuShape
@@ -42,7 +42,7 @@ class AndroidMenuShots : BoardShot() {
                             AndroidMenuItem(label = "Date added", selected = true, onClick = {})
                             DropdownMenuItem(text = { Text("Descending") }, onClick = {})
                             GroupByArtistItem(grouped = true, onChange = {})
-                            AndroidDivider(modifier = Modifier.padding(vertical = ThemeSpace.related))
+                            AndroidMenuDivider()
                             DropdownMenuItem(text = { Text("Settings") }, onClick = {})
                         }
                     }
