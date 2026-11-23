@@ -10,6 +10,14 @@ public struct MacRowPlacement: Equatable, Sendable {
         self.insets = insets
         self.minHeight = minHeight
     }
+
+    /// The placement when this row belongs to the one above it.
+    public func joiningRowAbove() -> Self {
+        var placement = self
+        placement.insets.top = 0
+        placement.minHeight = 0
+        return placement
+    }
 }
 
 extension EnvironmentValues {

@@ -144,16 +144,17 @@ struct MacBoxRows: View {
                 }
                 else {
                     let inset = row.containerValues.rowVerticalInset
+                    let placement = MacRowPlacement(
+                        insets: EdgeInsets(
+                            top: inset,
+                            leading: RowMetrics.inset,
+                            bottom: inset,
+                            trailing: RowMetrics.inset
+                        ),
+                        minHeight: RowMetrics.height
+                    )
                     row.placedInRow(
-                        MacRowPlacement(
-                            insets: EdgeInsets(
-                                top: joins ? 0 : inset,
-                                leading: RowMetrics.inset,
-                                bottom: inset,
-                                trailing: RowMetrics.inset
-                            ),
-                            minHeight: joins ? 0 : RowMetrics.height
-                        )
+                        joins ? placement.joiningRowAbove() : placement
                     )
                 }
             }

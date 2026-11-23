@@ -199,12 +199,7 @@ public struct MacRow<Lead: View, Label: View, Content: View, Info: View>: View {
     }
 
     private var currentPlacement: MacRowPlacement? {
-        guard var placement else { return nil }
-        if options.isNested {
-            placement.insets.top = 0
-            placement.minHeight = 0
-        }
-        return placement
+        placement.map { options.isNested ? $0.joiningRowAbove() : $0 }
     }
 
     @ViewBuilder
