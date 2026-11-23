@@ -3,14 +3,18 @@ package fm.bae.app.ui.onboarding
 import android.app.Application
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import fm.bae.app.BaeRobolectricTestRunner
+import fm.bae.app.shots.settle
 import fm.bae.app.ui.TestTheme
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.shownTexts
 import fm.bae.app.ui.tellStep
 import fm.bae.fastvalues.LatestStream
 import fm.bae.fastvalues.only
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -95,15 +99,19 @@ class OnboardingProgressTest {
                 BridgeBootstrapState(BridgeBootstrapStatus.Connecting, cancellable = true),
                 LatestStream.bootstrapSteps().only,
             )
-        compose.mainClock.autoAdvance = false
-        compose.setContent {
+        compose.settle {
             TestTheme { OnboardingProgress(connecting, onCancel = {}, onBack = {}) }
         }
 
+        val status = compose.onNodeWithText("Connecting…")
+        val cancel = compose.onNodeWithText("Cancel")
         compose.onNodeWithText("Household").assertIsDisplayed()
-        compose.onNodeWithText("Connecting…").assertIsDisplayed()
-        compose.onNodeWithText("Cancel").assertIsDisplayed()
+        status.assertIsDisplayed()
+        cancel.assertIsDisplayed()
         compose.onNodeWithText("Tell Ana this code").assertDoesNotExist()
+
+        val gap = cancel.getUnclippedBoundsInRoot().top - status.getUnclippedBoundsInRoot().bottom
+        assertEquals(ThemeSpace.section.value, gap.value, 1f)
     }
 
     /** Registering this device after loading names the step, uncounted. */
