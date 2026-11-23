@@ -20,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
@@ -40,7 +41,7 @@ import uniffi.bae_bridge.BridgeOpenProgress
  * [steps]'s latest value each display frame. Only a step starting or ending
  * recomposes, and tells [onStepping]. With no call to follow, [idle] alone.
  * With [bar] false the step shows as its title alone, for a place where a
- * spinner beside it already says it runs.
+ * spinner beside it already says it runs. The step's words take [textColor].
  */
 @Composable
 internal fun <Step : Any> AndroidProgress(
@@ -49,6 +50,7 @@ internal fun <Step : Any> AndroidProgress(
     fraction: (Step) -> Double?,
     modifier: Modifier = Modifier,
     bar: Boolean = true,
+    textColor: Color = MaterialTheme.colorScheme.onSurface,
     onStepping: (Boolean) -> Unit = {},
     idle: @Composable () -> Unit,
 ) {
@@ -61,7 +63,7 @@ internal fun <Step : Any> AndroidProgress(
                 MaterialTheme.colorScheme.primary
                     .copy(alpha = ThemeOpacity.tintStrong)
                     .toArgb()
-            val text = MaterialTheme.colorScheme.onSurface.toArgb()
+            val text = textColor.toArgb()
             val style = ThemeText.body.style
             AndroidView(
                 modifier = Modifier.fillMaxWidth(),
@@ -94,6 +96,7 @@ internal fun AndroidProgress(
     steps: LatestSource<BridgeOpenProgress>?,
     modifier: Modifier = Modifier,
     bar: Boolean = true,
+    textColor: Color = MaterialTheme.colorScheme.onSurface,
     onStepping: (Boolean) -> Unit = {},
     idle: @Composable () -> Unit,
 ) {
@@ -104,6 +107,7 @@ internal fun AndroidProgress(
         fraction = { it.fraction },
         modifier = modifier,
         bar = bar,
+        textColor = textColor,
         onStepping = onStepping,
         idle = idle,
     )

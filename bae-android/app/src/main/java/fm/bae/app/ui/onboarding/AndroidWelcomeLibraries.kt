@@ -267,11 +267,13 @@ private fun RunningLibraryRow(
                 fraction = { null },
                 modifier = Modifier.fillMaxWidth(),
                 bar = false,
+                textColor = MaterialTheme.colorScheme.onSurfaceVariant,
             ) {
                 AndroidProgress(
                     steps = running.opening,
                     modifier = Modifier.fillMaxWidth(),
                     bar = false,
+                    textColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 ) {
                     if (!running.removing) {
                         Text(
