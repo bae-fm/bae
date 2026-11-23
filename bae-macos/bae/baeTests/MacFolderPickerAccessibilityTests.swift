@@ -10,6 +10,52 @@
     @MainActor
     @Suite("Folder picker accessibility")
     struct MacFolderPickerAccessibilityTests {
+        @Test(
+            "VoiceOver reads the Dropbox folder picker heading before the rows"
+        )
+        func readsHeadingBeforeFolderRows() async throws {
+            let music = BridgeStorageFolder(
+                name: "Music",
+                location: .dropbox(
+                    location: .sharedFolder(namespaceId: "music"),
+                    accountLabel: nil,
+                    folderLabel: nil
+                )
+            )
+            let listing = StorageFolderBrowser.Listing(
+                path: [],
+                folders: [music]
+            )
+            let browser = StorageFolderBrowser(
+                staged: .dropbox,
+                listing: listing,
+                nests: false,
+                selected: music
+            )
+            try await SnapshotTestSupport.withHostedWindow(
+                MacFolderPicker(browser: browser, listing: listing),
+                size: NSSize(width: 460, height: 180)
+            ) { window, host in
+                try await SnapshotTestSupport.settle(host)
+                let tree = try AccessibilityTree.read(
+                    of: window,
+                    subject: "the Dropbox folder picker"
+                )
+                let words = tree.nodes.compactMap { node -> String? in
+                    guard node.role == kAXStaticTextRole,
+                        case .text(let words)? = node.value
+                    else { return nil }
+                    return words
+                }
+                #expect(
+                    words == [
+                        String(localized: browser.provider.words.heading),
+                        music.name,
+                    ]
+                )
+            }
+        }
+
         @Test("one named OneDrive folder button chooses and opens the folder")
         func choosingAndOpeningTheFolder() async throws {
             let music = BridgeStorageFolder(
