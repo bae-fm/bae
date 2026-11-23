@@ -84,6 +84,7 @@ private struct ShotSearchField: View {
     let kind: MacSearchFieldKind
     let prompt: LocalizedStringKey
     let focusing: Bool
+    let initialText: String
     @State
     private var text: String
     @FocusState
@@ -98,6 +99,7 @@ private struct ShotSearchField: View {
         self.kind = kind
         self.prompt = prompt
         self.focusing = focusing
+        initialText = text
         _text = State(initialValue: text)
     }
 
@@ -108,6 +110,15 @@ private struct ShotSearchField: View {
             prompt: prompt,
             focused: $focused
         )
-        .onAppear { focused = focusing }
+        .onAppear {
+            focused = focusing
+            // Focusing a field selects the text it holds; the board draws
+            // the caret after it. Typing the text once the field has focus
+            // leaves it unselected.
+            if focusing {
+                text = ""
+                DispatchQueue.main.async { text = initialText }
+            }
+        }
     }
 }

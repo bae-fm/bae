@@ -43,6 +43,7 @@ struct MacSearchField: View {
                 }
                 .textFieldStyle(.plain)
                 .themeText(.body)
+                .foregroundStyle(textColor)
                 .focused(focused)
                 .accessibilityLabel(prompt)
                 .accessibilityAddTraits(.isSearchField)
@@ -55,29 +56,32 @@ struct MacSearchField: View {
         .opacity(isEnabled ? 1 : ThemeOpacity.off)
     }
 
+    /// The magnifier, drawn in the box of its kind's icon role: a search
+    /// field's is `medium` and a primary colour, a filter's and an inline
+    /// field's are `small`.
     @ViewBuilder
     private var glyph: some View {
-        switch kind {
-        case .search:
-            Image(systemName: "magnifyingglass")
-                .foregroundStyle(Theme.textTertiary)
-                .accessibilityHidden(true)
-                .themeIcon(.medium)
-        case .filter:
-            Image(systemName: "magnifyingglass")
-                .themeIcon(.small)
-                .foregroundStyle(Theme.macTextSecondary)
-                .frame(width: 12, height: 12)
-                .accessibilityHidden(true)
-        case .inline:
+        let icon: ThemeIcon = kind == .search ? .medium : .small
+        Image(systemName: "magnifyingglass")
+            .themeIcon(icon)
+            .foregroundStyle(glyphColor)
+            .frame(width: icon.size, height: icon.size)
             // The field's name says what it does, so the glyph says
             // nothing more to assistive technology.
-            Image(systemName: "magnifyingglass")
-                .themeIcon(.medium)
-                .foregroundStyle(Theme.textTertiary)
-                .frame(width: 12, height: 12)
-                .accessibilityHidden(true)
+            .accessibilityHidden(true)
+    }
+
+    private var glyphColor: Color {
+        switch kind {
+        case .search: Theme.textPrimary
+        case .filter: Theme.macTextSecondary
+        case .inline: Theme.textTertiary
         }
+    }
+
+    /// The colour of the text typed: a filter's is secondary.
+    private var textColor: Color {
+        kind == .filter ? Theme.macTextSecondary : Theme.textPrimary
     }
 }
 
