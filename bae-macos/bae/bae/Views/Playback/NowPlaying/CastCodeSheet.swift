@@ -80,7 +80,9 @@ struct CastCodeSheet: View {
                     VStack(alignment: .leading, spacing: ThemeSpace.inline) {
                         BoxedField(
                             text: $code,
-                            secret: true
+                            secret: true,
+                            invalid: fieldLine != nil,
+                            focusesOnAppear: true
                         )
                         if let fieldLine {
                             Text(verbatim: fieldLine)

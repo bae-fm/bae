@@ -9,9 +9,6 @@ struct CreateNameView: View {
     private var form: CreateLibraryForm
     let onCancel: () -> Void
 
-    @FocusState
-    private var focused: Bool
-
     /// The step keeps the first form it is handed for as long as it shows.
     init(form: CreateLibraryForm, onCancel: @escaping () -> Void) {
         _form = State(initialValue: form)
@@ -23,16 +20,12 @@ struct CreateNameView: View {
             VStack(spacing: ThemeSpace.group) {
                 FieldColumn {
                     MacTextField("Your name") {
-                        TextField(
-                            "Your name",
+                        BoxedField(
+                            placeholder:
+                                "Appears on your profile, ratings and playlists",
                             text: $form.name,
-                            prompt: Text(
-                                "Appears on your profile, ratings and playlists"
-                            )
+                            focusesOnAppear: true
                         )
-                        .labelsHidden()
-                        .accessibilityLabel(Text("Your name"))
-                        .focused($focused)
                         .disabled(form.isRunning)
                         .onSubmit { form.create() }
                     }
@@ -59,7 +52,6 @@ struct CreateNameView: View {
                 }
             }
         }
-        .onAppear { focused = true }
         .onDisappear { form.cancel() }
     }
 }

@@ -13,24 +13,17 @@ struct JoinNameView: View {
     let onJoin: () -> Void
     let onCancel: () -> Void
 
-    @FocusState
-    private var focused: Bool
-
     var body: some View {
         MacStep(String(localized: "You are invited to \(libraryName)")) {
             VStack(spacing: ThemeSpace.group) {
                 FieldColumn {
                     MacTextField("Your name") {
-                        TextField(
-                            "Your name",
+                        BoxedField(
+                            placeholder:
+                                "Appears on your profile, ratings and playlists",
                             text: $name,
-                            prompt: Text(
-                                "Appears on your profile, ratings and playlists"
-                            )
+                            focusesOnAppear: true
                         )
-                        .labelsHidden()
-                        .accessibilityLabel(Text("Your name"))
-                        .focused($focused)
                         .onSubmit { if canJoin { onJoin() } }
                     }
                 }
@@ -49,6 +42,5 @@ struct JoinNameView: View {
                 }
             }
         }
-        .onAppear { focused = true }
     }
 }
