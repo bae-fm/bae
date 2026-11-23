@@ -28,8 +28,10 @@ if not sources:
 body = "".join(path.read_text() for path in sources)
 logos = components.parent / "assets" / "Logos"
 artwork = components.parent / "assets" / "Artwork"
-pictures = {p.stem: "data:image/png;base64," + base64.b64encode(p.read_bytes()).decode()
-            for p in sorted(artwork.glob("*.png"))}
+pictures = {}
+for title in json.loads((artwork / "titles.json").read_text()):
+    png = (artwork / (title + ".png")).read_bytes()
+    pictures[title] = "data:image/png;base64," + base64.b64encode(png).decode()
 body = body.replace("/* board artwork */ {}", json.dumps(pictures))
 body = re.sub(r"@@([\w.-]+)@@", lambda m: base64.b64encode((logos / m.group(1)).read_bytes()).decode(), body)
 exports = body[body.rindex("window.Bae = Object.assign(window.Bae || {}, {"):]
