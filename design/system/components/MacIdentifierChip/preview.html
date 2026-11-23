@@ -11,12 +11,12 @@
   function box(w, c) { return h('div', { style: { width: w, flex: 'none' } }, c); }
 
   ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null,
-    N('Filled', h(B.MacIdentifierChip, { label: 'Barcode', value: '0 41234 56789 2' })),
-    N('Outlined', h(B.MacIdentifierChip, { label: 'Barcode', value: '0 41234 56789 2', state: 'outlined' })),
-    N('Struck', h(B.MacIdentifierChip, { label: 'Barcode', value: '0 41234 56789 2', state: 'struck' })),
+    N('Filled', h(B.MacIdentifierChip, { label: 'Barcode', value: '0 41234 56789 2', toggles: true })),
+    N('Outlined', h(B.MacIdentifierChip, { label: 'Barcode', value: '0 41234 56789 2', toggles: true, state: 'outlined' })),
+    N('Struck', h(B.MacIdentifierChip, { label: 'Barcode', value: '0 41234 56789 2', toggles: true, state: 'struck' })),
     N('Dash', h(B.MacIdentifierChip, { label: 'Barcode', state: 'dash' })),
-    N('Found', h(B.MacIdentifierChip, { label: 'Barcode', value: '0 41234 56789 2', sources: 'MusicBrainz=2,Discogs=0' })),
-    N('Searching', h(B.MacIdentifierChip, { label: 'Barcode', value: '0 41234 56789 2', sources: 'MusicBrainz=2,Discogs=…' }))));
+    N('Found', h(B.MacIdentifierChip, { label: 'Barcode', value: '0 41234 56789 2', toggles: true, sources: 'MusicBrainz=2,Discogs=0' })),
+    N('Searching', h(B.MacIdentifierChip, { label: 'Barcode', value: '0 41234 56789 2', toggles: true, sources: 'MusicBrainz=2,Discogs=…' }))));
 </script>
 </body>
 </html>

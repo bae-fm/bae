@@ -306,17 +306,18 @@
       head('Search', null),
       open === 'Search' ? h('div', { className: 'bae-m-fo-body' }, k) : null);
   }
-  // One identifier the folder's files state: its label, then its value in mono, or a dash for one they leave out. `state`: `filled` (the default), `outlined`, `struck` through, or `dash`. `sources`: the catalogs searched for it, each with how many releases it found ("MusicBrainz=2,Discogs=0", comma-separated; a count of … is a search still running).
+  // One identifier the folder's files state: its label, then its value in mono, or a dash for one they leave out. `state`: `filled` (the default), `outlined`, `struck` through, or `dash`. `sources`: the catalogs searched for it, each with how many releases it found ("MusicBrainz=2,Discogs=0", comma-separated; a count of … is a search still running). `toggles`: the chip is a button that leaves its identifier out of the run or puts it back.
   function MacIdentifierChip(props) {
     var st = props.state || 'filled';
-    return h('span', { className: cx('bae-m-idchip', 'bae-m-idchip-' + st) }, h('span', { className: 'bae-m-tertiary', style: { fontSize: 'var(--type-chip-size)', fontWeight: 'var(--type-chip-weight)' } }, props.label), st === 'dash' ? h('span', { className: 'bae-m-idchip-dashmark' }) : h('span', { className: 'bae-mono' }, props.value || ''),
+    return h(props.toggles ? 'button' : 'span', { type: props.toggles ? 'button' : null, className: cx(props.toggles && 'bae-plainbtn', 'bae-m-idchip', 'bae-m-idchip-' + st) }, h('span', { className: 'bae-m-tertiary', style: { fontSize: 'var(--type-chip-size)', fontWeight: 'var(--type-chip-weight)' } }, props.label), st === 'dash' ? h('span', { className: 'bae-m-idchip-dashmark' }) : h('span', { className: 'bae-mono' }, props.value || ''),
       props.sources ? list(props.sources).map(function (cc, j) { var q = cc.split('='); return h('span', { key: j, className: 'bae-m-capsule' }, q[0], q[1] === '…' ? h('span', { className: 'bae-m-tertiary' }, 'Searching…') : h(StatusChip, { tone: Number(q[1]) > 0 ? 'success' : 'neutral' }, q[1])); }) : null);
   }
-  // The identifier chips: "Label|value[|state[|Source=count+Source=count]]", comma-separated.
+  // The identifier chips: "Label|value[|state[|Source=count+Source=count]]", comma-separated. A Disc ID, Barcode or Catalog # chip that holds a value toggles.
+  var TOGGLED_IDENTIFIERS = ['Disc ID', 'Barcode', 'Catalog #'];
   function MacIdentifierBand(props) {
     return h('div', { className: 'bae-m-band' }, list(props.chips).map(function (c, i) {
       var p = c.split('|');
-      return h(MacIdentifierChip, { key: i, label: p[0], value: p[1], state: p[2], sources: p[3] ? p[3].split('+').join(',') : null });
+      return h(MacIdentifierChip, { key: i, label: p[0], value: p[1], state: p[2], sources: p[3] ? p[3].split('+').join(',') : null, toggles: TOGGLED_IDENTIFIERS.indexOf(p[0]) >= 0 && !!p[1] && p[2] !== 'dash' });
     }));
   }
   // Every catalog that describes a release, as a wrapped row of links to each catalog's page, in the order core lists them (`records`: catalog names, comma-separated).
