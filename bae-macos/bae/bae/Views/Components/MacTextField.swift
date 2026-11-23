@@ -10,6 +10,10 @@ struct MacTextField<Field: View>: View {
     let error: LocalizedStringKey?
     /// The field takes no typing, and its label dims with it.
     let off: Bool
+    /// The label only names the field to assistive technology, and the field
+    /// takes the label's column too, as the board draws a field whose label
+    /// is its placeholder.
+    let labelHidden: Bool
     private let field: Field
     @Environment(\.fieldLabelWidth)
     private var labelWidth
@@ -19,21 +23,25 @@ struct MacTextField<Field: View>: View {
         note: LocalizedStringKey? = nil,
         error: LocalizedStringKey? = nil,
         off: Bool = false,
+        labelHidden: Bool = false,
         @ViewBuilder field: () -> Field
     ) {
         self.label = label
         self.note = note
         self.error = error
         self.off = off
+        self.labelHidden = labelHidden
         self.field = field()
     }
 
     var body: some View {
         GridRow(alignment: .fieldLine) {
-            Text(label)
-                .frame(width: labelWidth, alignment: .trailing)
-                .opacity(off ? ThemeOpacity.off : 1)
-                .gridColumnAlignment(.trailing)
+            if !labelHidden {
+                Text(label)
+                    .frame(width: labelWidth, alignment: .trailing)
+                    .opacity(off ? ThemeOpacity.off : 1)
+                    .gridColumnAlignment(.trailing)
+            }
             VStack(alignment: .leading, spacing: ThemeSpace.inline) {
                 field
                     .accessibilityLabel(Text(label))
@@ -51,6 +59,7 @@ struct MacTextField<Field: View>: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .gridCellColumns(labelHidden ? 2 : 1)
         }
     }
 }

@@ -27,9 +27,8 @@ extension ShotScene {
             height: 90
         ) {
             FieldColumn {
-                GridRow {
+                MacTextField("Name", labelHidden: true) {
                     BoxedField(placeholder: "Name", text: .constant(""))
-                        .gridCellColumns(2)
                 }
             }
             .frame(width: previewWidth, alignment: .leading)

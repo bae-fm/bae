@@ -25,23 +25,40 @@ struct AutocompleteTextField: View {
 
     @State
     private var focus = FieldFocus()
+    /// Whether the field's editor has the keyboard, which the box shows.
+    @State
+    private var focused = false
 
     var body: some View {
-        InlineCompletionTextFieldNS(
-            text: $text,
-            placeholder: placeholder,
-            suggestions: suggestions,
-            focus: focus,
-            onSubmit: onSubmit,
-            onEditingEnded: onEditingEnded,
-        )
-        // Served from here rather than from the update pass: taking the
-        // keyboard ends another field's editing, whose handler writes state.
-        .onChange(of: focusRequest, initial: true) { _, request in
-            if request != 0 {
-                focus.request()
+        // A hidden Text of the placeholder's font gives the box its height
+        // and the field the whole width it is offered; the editor fills the
+        // box, so its text sits inside the chrome's padding, as in every
+        // boxed field.
+        Text(verbatim: " ")
+            .font(Font(ThemeText.body.nsFont))
+            .lineLimit(1)
+            .hidden()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .modifier(FieldChrome(focused: focused, style: .boxed))
+            .overlay {
+                InlineCompletionTextFieldNS(
+                    text: $text,
+                    placeholder: placeholder,
+                    suggestions: suggestions,
+                    focus: focus,
+                    focused: $focused,
+                    onSubmit: onSubmit,
+                    onEditingEnded: onEditingEnded,
+                )
             }
-        }
+            // Served from here rather than from the update pass: taking the
+            // keyboard ends another field's editing, whose handler writes
+            // state.
+            .onChange(of: focusRequest, initial: true) { _, request in
+                if request != 0 {
+                    focus.request()
+                }
+            }
     }
 
     nonisolated static func completionSelectionRange(
@@ -57,81 +74,56 @@ struct AutocompleteTextField: View {
     }
 }
 
-/// A bezeled text field that wears the board's focus ring in the accent the
-/// person chose while it is being edited: AppKit's own ring is drawn in the
-/// Mac's accent.
-private final class RingedTextField: EditingTextField {
-    var ringColor: NSColor {
-        get { ring.color }
-        set {
-            ring.color = newValue
-            ring.update(in: self)
-        }
-    }
-
-    private let ring = AccentFocusRingLayer(cornerRadius: ThemeRadius.chip)
-
-    override init(frame: NSRect) {
-        super.init(frame: frame)
-        onEditingChange = { [weak self] editing in
-            guard let self else { return }
-            ring.shown = editing
-            ring.update(in: self)
-        }
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError("not from a nib") }
-
-    override func layout() {
-        super.layout()
-        ring.update(in: self)
-    }
-
-    override func viewDidChangeEffectiveAppearance() {
-        super.viewDidChangeEffectiveAppearance()
-        ring.update(in: self)
-    }
-}
-
 private struct InlineCompletionTextFieldNS: NSViewRepresentable {
     @Binding
     var text: String
     let placeholder: String
     let suggestions: [String]
     let focus: FieldFocus
+    @Binding
+    var focused: Bool
     var onSubmit: (() -> Void)?
     var onEditingEnded: (() -> Void)?
 
-    @Environment(\.accentChoice)
-    private var accent
-
     func makeNSView(context: Context) -> NSTextField {
-        let field = RingedTextField()
-        field.ringColor = accent.appKitColor
+        let field = EditingTextField()
+        field.onEditingChange = { [coordinator = context.coordinator] editing in
+            if coordinator.parent.focused != editing {
+                coordinator.parent.focused = editing
+            }
+        }
         field.focus = focus
-        field.placeholderString = placeholder
-        field.bezelStyle = .roundedBezel
-        field.isBordered = true
-        field.isBezeled = true
-        field.drawsBackground = false
-        field.focusRingType = .none
+        field.useAsBoxedEditor(cell: InsetTextFieldCell(textCell: ""))
+        field.font = ThemeText.body.nsFont
+        field.textColor = NSColor(Theme.textPrimary)
         field.delegate = context.coordinator
         field.target = context.coordinator
         field.action = #selector(Coordinator.submit(_:))
         field.cell?.usesSingleLineMode = true
-        field.cell?.wraps = false
-        field.cell?.isScrollable = true
         return field
     }
 
     func updateNSView(_ field: NSTextField, context: Context) {
         context.coordinator.parent = self
-        (field as? RingedTextField)?.ringColor = accent.appKitColor
+        guard let cell = field.cell as? InsetTextFieldCell else {
+            preconditionFailure("makeNSView installs an inset cell")
+        }
+        cell.insets = FieldChrome.padding(of: .boxed)
+        field.setBoxedPlaceholder(placeholder, font: ThemeText.body.nsFont)
+        field.setAccessibilityLabel(placeholder)
         if field.stringValue != text {
             field.stringValue = text
             context.coordinator.userTypedPrefix = text
         }
+    }
+
+    /// Exactly the proposed size: the box the chrome drew.
+    func sizeThatFits(
+        _ proposal: ProposedViewSize,
+        nsView: NSTextField,
+        context: Context
+    ) -> CGSize? {
+        proposal.replacingUnspecifiedDimensions(by: .zero)
     }
 
     func makeCoordinator() -> Coordinator {

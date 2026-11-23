@@ -242,16 +242,7 @@ private struct CommittedTextEditor: NSViewRepresentable {
             secret
             ? InsetSecureTextFieldCell(textCell: "")
             : InsetTextFieldCell(textCell: "")
-        cell.isEditable = true
-        cell.isSelectable = true
-        field.cell = cell
-        field.isBordered = false
-        field.isBezeled = false
-        field.drawsBackground = false
-        field.focusRingType = .none
-        field.lineBreakMode = .byClipping
-        field.cell?.isScrollable = true
-        field.cell?.wraps = false
+        field.useAsBoxedEditor(cell: cell)
         field.delegate = context.coordinator
         return field
     }
@@ -281,16 +272,12 @@ private struct CommittedTextEditor: NSViewRepresentable {
         // empty mark is gone while editing, so the caret sits alone at the
         // leading edge.
         let showsPlaceholder = placeholderRole == .hint || !focused
-        field.placeholderAttributedString =
-            showsPlaceholder
-            ? NSAttributedString(
-                string: placeholder,
-                attributes: [
-                    .font: placeholderFont,
-                    .foregroundColor: NSColor(Theme.textTertiary),
-                ]
-            )
-            : nil
+        if showsPlaceholder {
+            field.setBoxedPlaceholder(placeholder, font: placeholderFont)
+        }
+        else {
+            field.placeholderAttributedString = nil
+        }
         if !focused, (field as? any EditingField)?.isEditing == true {
             field.window?.makeFirstResponder(nil)
         }

@@ -1,4 +1,5 @@
 import AppKit
+import BaeKit
 
 /// A text field cell whose text sits inside the field's bounds by `insets`,
 /// so the field itself spans its whole chrome: its accessibility frame, its
@@ -115,5 +116,34 @@ final class InsetSecureTextFieldCell: NSSecureTextFieldCell, InsetCell {
                 start: selStart,
                 length: selLength
             )
+    }
+}
+
+extension NSTextField {
+    /// Makes the field the editor of a boxed field: no bezel, background or
+    /// ring of its own, one clipped line, its text inset by the cell, which
+    /// the chrome around it pads.
+    func useAsBoxedEditor(cell: NSTextFieldCell) {
+        cell.isEditable = true
+        cell.isSelectable = true
+        self.cell = cell
+        isBordered = false
+        isBezeled = false
+        drawsBackground = false
+        focusRingType = .none
+        lineBreakMode = .byClipping
+        cell.isScrollable = true
+        cell.wraps = false
+    }
+
+    /// The placeholder in the tertiary colour, in `font`.
+    func setBoxedPlaceholder(_ placeholder: String, font: NSFont) {
+        placeholderAttributedString = NSAttributedString(
+            string: placeholder,
+            attributes: [
+                .font: font,
+                .foregroundColor: NSColor(Theme.textTertiary),
+            ]
+        )
     }
 }

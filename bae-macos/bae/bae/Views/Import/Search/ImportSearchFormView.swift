@@ -179,48 +179,59 @@ struct ImportSearchFormView: View {
     private var fields: some View {
         switch activeTab {
         case .general:
-            AutocompleteTextField(
-                text: editing(\.searchArtist),
-                placeholder: String(localized: "Artist"),
-                suggestions: generalSuggestions,
-                focusRequest: focusRequest,
-                onSubmit: submitSearch,
-                onEditingEnded: editingEnded,
-            )
-            AutocompleteTextField(
-                text: editing(\.searchAlbum),
-                placeholder: String(localized: "Album"),
-                suggestions: generalSuggestions,
-                onSubmit: submitSearch,
-                onEditingEnded: editingEnded,
-            )
+            FieldColumn {
+                MacTextField("Artist", labelHidden: true) {
+                    AutocompleteTextField(
+                        text: editing(\.searchArtist),
+                        placeholder: String(localized: "Artist"),
+                        suggestions: generalSuggestions,
+                        focusRequest: focusRequest,
+                        onSubmit: submitSearch,
+                        onEditingEnded: editingEnded,
+                    )
+                }
+                MacTextField("Album", labelHidden: true) {
+                    AutocompleteTextField(
+                        text: editing(\.searchAlbum),
+                        placeholder: String(localized: "Album"),
+                        suggestions: generalSuggestions,
+                        onSubmit: submitSearch,
+                        onEditingEnded: editingEnded,
+                    )
+                }
+            }
         case .catalogNumber:
-            AutocompleteTextField(
-                text: editing(\.searchCatalog),
-                placeholder: String(localized: "e.g. WPCR-80001"),
-                suggestions: catalogSuggestions,
-                focusRequest: focusRequest,
-                onSubmit: submitSearch,
-                onEditingEnded: editingEnded,
-            )
+            FieldColumn {
+                MacTextField("Catalog #", labelHidden: true) {
+                    AutocompleteTextField(
+                        text: editing(\.searchCatalog),
+                        placeholder: String(localized: "e.g. WPCR-80001"),
+                        suggestions: catalogSuggestions,
+                        focusRequest: focusRequest,
+                        onSubmit: submitSearch,
+                        onEditingEnded: editingEnded,
+                    )
+                }
+            }
         case .barcode:
-            TextField("e.g. 4943674251780", text: text(\.searchBarcode))
-                .textFieldStyle(.roundedBorder)
-                .controlSize(.small)
-                .focused($barcodeHasFocus)
-                .focusEffectDisabled()
-                .accentFocusRing(
-                    barcodeHasFocus,
-                    cornerRadius: ThemeRadius.chip
-                )
-                .onSubmit(submitSearch)
-                // Like the autocomplete fields: serve a pending request when
-                // the field shows, and each new one as it arrives.
-                .onChange(of: focusRequest, initial: true) { _, request in
-                    if request != 0 {
-                        barcodeHasFocus = true
+            FieldColumn {
+                MacTextField("Barcode", labelHidden: true) {
+                    BoxedField(
+                        placeholder: "e.g. 4943674251780",
+                        text: text(\.searchBarcode),
+                        focus: $barcodeHasFocus,
+                        equals: true
+                    )
+                    .onSubmit(submitSearch)
+                    // Like the autocomplete fields: serve a pending request
+                    // when the field shows, and each new one as it arrives.
+                    .onChange(of: focusRequest, initial: true) { _, request in
+                        if request != 0 {
+                            barcodeHasFocus = true
+                        }
                     }
                 }
+            }
         }
     }
 }
