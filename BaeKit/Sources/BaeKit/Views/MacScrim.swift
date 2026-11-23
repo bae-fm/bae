@@ -4,7 +4,7 @@ import SwiftUI
 /// the whole window, title bar included. Every presentation draws this one
 /// scrim: a view inside the window (`MacModal`, `MacSidePause`) draws it as
 /// this view, and a window that sits over another one (`MacAlert`'s panel,
-/// `MacSheet`'s system sheet) draws it through `WindowScrim`.
+/// `MacSheet`'s system sheet) draws it through `ScrimWindow`.
 public struct MacScrim: View {
     public init() {}
 
@@ -29,7 +29,7 @@ public struct MacScrim: View {
     }
 
     private final class SheetScrimAnchor: NSView {
-        private var scrim: NSView?
+        private var scrim: ScrimWindow?
         private var keyObserver: NSObjectProtocol?
 
         override func viewDidMoveToWindow() {
@@ -49,19 +49,27 @@ public struct MacScrim: View {
             sync()
         }
 
+        private func clear() {
+            scrim?.hide()
+            scrim = nil
+        }
+
         private func sync() {
-            guard let parent = window?.sheetParent else {
-                scrim?.removeFromSuperview()
-                scrim = nil
+            guard let sheet = window, let parent = sheet.sheetParent else {
+                clear()
                 return
             }
-            if scrim == nil { scrim = WindowScrim.show(over: parent) }
+            guard scrim == nil else { return }
+            let scrim = ScrimWindow(over: parent)
+            scrim.show()
+            // The sheet stays in front of the scrim that dims its window.
+            scrim.order(.below, relativeTo: sheet.windowNumber)
+            self.scrim = scrim
         }
 
         override func viewWillMove(toWindow newWindow: NSWindow?) {
             if newWindow == nil {
-                scrim?.removeFromSuperview()
-                scrim = nil
+                clear()
                 keyObserver.map(NotificationCenter.default.removeObserver)
                 keyObserver = nil
             }

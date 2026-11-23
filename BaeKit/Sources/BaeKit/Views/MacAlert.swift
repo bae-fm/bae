@@ -265,34 +265,6 @@
         override var canBecomeKey: Bool { true }
     }
 
-    /// A clear window over all of the window an alert sits on, which takes
-    /// every click aimed at it and does nothing with them. bae fills the
-    /// window with 1% black, because the window server passes clicks through
-    /// a window that is fully clear.
-    private final class AlertShield: NSWindow {
-        override var canBecomeKey: Bool { false }
-        override var canBecomeMain: Bool { false }
-
-        init(over parent: NSWindow) {
-            super
-                .init(
-                    contentRect: parent.frame,
-                    styleMask: [.borderless],
-                    backing: .buffered,
-                    defer: false
-                )
-            isReleasedWhenClosed = false
-            isOpaque = false
-            backgroundColor = NSColor.black.withAlphaComponent(0.01)
-            hasShadow = false
-            animationBehavior = .none
-            ignoresMouseEvents = false
-            setAccessibilityElement(false)
-        }
-
-        override func sendEvent(_ event: NSEvent) {}
-    }
-
     /// The tone, accent and light or dark scheme of the window an alert sits
     /// on. The panel is a separate window and inherits nothing from its
     /// parent, so the presenting view passes it the parent's look, and
@@ -334,8 +306,8 @@
     /// Shows alerts. An alert is a clear panel holding bae's face, a child of
     /// the window of the view that raised it, or of the alert or sheet that is
     /// over that window. AlertWindows places the panel at the top centre of
-    /// its parent and dims the whole parent, title bar included, with
-    /// `WindowScrim`. A shield window between them takes the pointer,
+    /// its parent. A scrim window between them dims the whole parent, title
+    /// bar included, and takes the pointer,
     /// AlertWindows makes the panel key again whenever something makes its
     /// parent key, and the panel is the only modal element of the
     /// accessibility tree, so the person cannot reach the window below with
@@ -347,9 +319,7 @@
         private struct Shown {
             let id: UUID
             let panel: NSPanel
-            let shield: NSWindow
-            /// The scrim across `parent`, which dims it, title bar included.
-            let scrim: NSView?
+            let shield: ScrimWindow
             let parent: NSWindow
             let observers: [NSObjectProtocol]
         }
@@ -383,21 +353,18 @@
             target(over: window) != nil
         }
 
-        /// Places `panel` at the top centre of `parent` and `shield` over it,
-        /// and keeps them there as `parent` moves or resizes. When something
+        /// Places `panel` at the top centre of `parent`
+        /// and keeps it there as `parent` moves or resizes. When something
         /// makes the parent key, the panel makes itself key again. Returns the
-        /// closure that positions the panel and the shield, and the
-        /// observers.
+        /// closure that positions the panel, and the observers.
         private static func keepWith(
             parent: NSWindow,
-            panel: NSPanel,
-            shield: NSWindow
+            panel: NSPanel
         ) -> (@MainActor () -> Void, [NSObjectProtocol]) {
             let center = NotificationCenter.default
             let place: @MainActor () -> Void = {
-                [weak panel, weak shield, weak parent] in
-                guard let panel, let shield, let parent else { return }
-                shield.setFrame(parent.frame, display: false)
+                [weak panel, weak parent] in
+                guard let panel, let parent else { return }
                 panel.setFrameOrigin(
                     NSPoint(
                         x: parent.frame.midX - panel.frame.width / 2,
@@ -464,12 +431,11 @@
             panel.contentView = host
             panel.setAccessibilityModal(true)
             host.setAccessibilityModal(true)
-            let shield = AlertShield(over: parent)
+            let shield = ScrimWindow(over: parent)
 
             let (place, observers) = Self.keepWith(
                 parent: parent,
-                panel: panel,
-                shield: shield
+                panel: panel
             )
 
             shown.append(
@@ -477,12 +443,11 @@
                     id: id,
                     panel: panel,
                     shield: shield,
-                    scrim: WindowScrim.show(over: parent),
                     parent: parent,
                     observers: observers
                 )
             )
-            parent.addChildWindow(shield, ordered: .above)
+            shield.show()
             parent.addChildWindow(panel, ordered: .above)
             place()
             panel.makeKeyAndOrderFront(nil)
@@ -505,10 +470,8 @@
             alert.observers.forEach(NotificationCenter.default.removeObserver)
             let hadKey = alert.panel.isKeyWindow
             alert.parent.removeChildWindow(alert.panel)
-            alert.parent.removeChildWindow(alert.shield)
-            alert.scrim?.removeFromSuperview()
+            alert.shield.hide()
             alert.panel.orderOut(nil)
-            alert.shield.orderOut(nil)
             // Let go of the face, whose closures hold what presented it.
             alert.panel.contentView = nil
             // The keyboard goes back to the window the alert was over.

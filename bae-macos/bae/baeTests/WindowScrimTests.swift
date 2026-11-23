@@ -6,18 +6,17 @@ import Testing
 @testable import bae
 
 /// A sheet or an alert dims the whole window behind it, title bar included:
-/// one scrim across the window's frame view for as long as it shows.
+/// one scrim window across it for as long as it shows.
 @MainActor
 @Suite("Window scrim")
 struct WindowScrimTests {
-    /// The scrims across `window`'s frame view, which holds the title bar and
-    /// the content.
-    private func scrims(over window: NSWindow) -> [NSView] {
+    /// The scrim windows over `window`.
+    private func scrims(over window: NSWindow) -> [NSWindow] {
         autoreleasepool {
-            (window.contentView?.superview?.subviews ?? [])
+            (window.childWindows ?? [])
                 .filter {
                     $0.accessibilityIdentifier()
-                        == WindowScrim.accessibilityIdentifier
+                        == ScrimWindow.accessibilityIdentifier
                 }
         }
     }
@@ -55,8 +54,7 @@ struct WindowScrimTests {
                 "the alert dims the window"
             )
             let scrim = try #require(scrims(over: window).first)
-            let frameView = try #require(window.contentView?.superview)
-            #expect(scrim.frame == frameView.bounds)
+            #expect(scrim.frame == window.frame)
 
             uiStore.clearError()
             #expect(
@@ -94,6 +92,16 @@ struct WindowScrimTests {
             #expect(
                 await holds { scrims(over: window).count == 1 },
                 "the sheet dims the window"
+            )
+            // The sheet stays in front of the scrim.
+            let scrim = try #require(scrims(over: window).first)
+            #expect(scrim.frame == window.frame)
+            let order = autoreleasepool { NSApp.orderedWindows }
+            let sheetIndex = try #require(order.firstIndex(of: sheet))
+            let scrimIndex = try #require(order.firstIndex(of: scrim))
+            #expect(
+                sheetIndex < scrimIndex,
+                "the sheet is in front of the scrim"
             )
 
             autoreleasepool {

@@ -3,24 +3,76 @@ import SwiftUI
 #if canImport(AppKit)
     import AppKit
 
-    /// Dims all of `window`, its title bar included, with `Theme.scrim`, for
-    /// a presentation that is a window of its own over it. The scrim is a
-    /// view across the window's frame view, above the content and the title
-    /// bar, so it takes the window's rounded shape.
+    /// The corner radius of a Mac window, as the boards draw it.
+    private let windowRadius: CGFloat = 17
+
+    /// A window over all of another window, title bar included, that dims it
+    /// with `Theme.scrim` and takes every click aimed at it, for a
+    /// presentation that is a window of its own (`MacAlert`, a `MacSheet`'s
+    /// system sheet). It is a child of the window it covers and follows its
+    /// frame. The window server passes clicks through the clear parts of a
+    /// window, so the scrim's colour is what takes them.
     @MainActor
-    public enum WindowScrim {
+    public final class ScrimWindow: NSWindow {
         public static let accessibilityIdentifier = "window-scrim"
 
-        /// Dims `window`. Remove the returned view when the presentation
-        /// ends.
-        public static func show(over window: NSWindow) -> NSView? {
-            guard let frameView = window.contentView?.superview else {
-                return nil
+        private let parent: NSWindow
+        private var observers: [NSObjectProtocol] = []
+
+        override public var canBecomeKey: Bool { false }
+        override public var canBecomeMain: Bool { false }
+
+        public init(over parent: NSWindow) {
+            self.parent = parent
+            super
+                .init(
+                    contentRect: parent.frame,
+                    styleMask: [.borderless],
+                    backing: .buffered,
+                    defer: false
+                )
+            isReleasedWhenClosed = false
+            isOpaque = false
+            backgroundColor = .clear
+            hasShadow = false
+            animationBehavior = .none
+            ignoresMouseEvents = false
+            contentView = ScrimView()
+            setAccessibilityElement(false)
+            setAccessibilityIdentifier(Self.accessibilityIdentifier)
+            for name in [
+                NSWindow.didResizeNotification, NSWindow.didMoveNotification,
+            ] {
+                observers.append(
+                    NotificationCenter.default.addObserver(
+                        forName: name,
+                        object: parent,
+                        queue: .main
+                    ) { [weak self] _ in
+                        MainActor.assumeIsolated { self?.follow() }
+                    }
+                )
             }
-            let scrim = ScrimView(frame: frameView.bounds)
-            scrim.autoresizingMask = [.width, .height]
-            frameView.addSubview(scrim, positioned: .above, relativeTo: nil)
-            return scrim
+        }
+
+        private func follow() {
+            setFrame(parent.frame, display: false)
+        }
+
+        override public func sendEvent(_ event: NSEvent) {}
+
+        /// Puts the scrim over its parent.
+        public func show() {
+            follow()
+            parent.addChildWindow(self, ordered: .above)
+        }
+
+        /// Takes the scrim off its parent.
+        public func hide() {
+            observers.forEach(NotificationCenter.default.removeObserver)
+            observers = []
+            parent.removeChildWindow(self)
+            orderOut(nil)
         }
     }
 
@@ -28,8 +80,8 @@ import SwiftUI
         override init(frame: NSRect) {
             super.init(frame: frame)
             wantsLayer = true
-            setAccessibilityElement(false)
-            setAccessibilityIdentifier(WindowScrim.accessibilityIdentifier)
+            layer?.cornerRadius = windowRadius
+            layer?.cornerCurve = .continuous
         }
 
         @available(*, unavailable)
@@ -43,11 +95,6 @@ import SwiftUI
             effectiveAppearance.performAsCurrentDrawingAppearance {
                 layer?.backgroundColor = NSColor(Theme.scrim).cgColor
             }
-        }
-
-        /// The scrim takes every click aimed at the window below it.
-        override func hitTest(_ point: NSPoint) -> NSView? {
-            frame.contains(point) ? self : nil
         }
     }
 #endif
