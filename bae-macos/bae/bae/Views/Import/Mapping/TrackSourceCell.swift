@@ -5,8 +5,6 @@ import SwiftUI
 /// what the track plays from, a file whole or where its CUE sheet's slice
 /// starts in the file the sheet's caption names.
 struct TrackSourceCell: View {
-    static let auditionTargetSize = ThemeSize.hitTarget
-
     let source: BridgeTrackSource
     let audition: BridgeTrackAudition
     /// The track the row edits, which a library release's row plays from.
@@ -20,7 +18,7 @@ struct TrackSourceCell: View {
     }
 
     var body: some View {
-        HStack(spacing: ThemeSpace.compact) {
+        HStack(spacing: ThemeSpace.related) {
             playButton
             switch source {
             case .file(let name):
@@ -35,25 +33,18 @@ struct TrackSourceCell: View {
             }
             Spacer(minLength: 0)
         }
-        .frame(minHeight: Self.auditionTargetSize)
     }
 
     @ViewBuilder
     private var playButton: some View {
         switch audition {
         case .preview(let target):
-            MacAuditionButton(
-                isPlaying: isPreviewing,
-                hitSize: Self.auditionTargetSize
-            ) {
+            MacAuditionButton(isPlaying: isPreviewing) {
                 isPreviewing ? actions.stopPreview() : actions.preview(target)
             }
         case .libraryTrack:
             if let playTrack = actions.playTrack {
-                MacAuditionButton(
-                    isPlaying: false,
-                    hitSize: Self.auditionTargetSize
-                ) {
+                MacAuditionButton(isPlaying: false) {
                     playTrack(trackId)
                 }
             }

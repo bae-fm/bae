@@ -2,11 +2,10 @@ import BaeKit
 import SwiftUI
 
 /// The Play button of a source in the import, and the Stop button that
-/// replaces it while the second player plays that source. With `hitSize`, the
-/// button is a square of that size.
+/// replaces it while the second player plays that source. The button is as
+/// big as its glyph, as the board draws it.
 struct MacAuditionButton: View {
     let isPlaying: Bool
-    var hitSize: CGFloat?
     let action: () -> Void
 
     var body: some View {
@@ -21,7 +20,6 @@ struct MacAuditionButton: View {
                         ? AnyShapeStyle(Theme.accent)
                         : AnyShapeStyle(Theme.textSecondary)
                 )
-                .frame(width: hitSize, height: hitSize)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.accentPlain)

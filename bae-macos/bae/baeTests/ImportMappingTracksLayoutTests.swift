@@ -152,7 +152,6 @@ struct ImportMappingTracksLayoutTests {
         )
 
         #expect(stopped == playing)
-        #expect(playing >= TrackSourceCell.auditionTargetSize)
     }
 
     @MainActor
