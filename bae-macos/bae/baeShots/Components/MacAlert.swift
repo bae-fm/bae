@@ -9,7 +9,7 @@ extension ShotScene {
         component(
             "mac.component.alert.default",
             width: 600,
-            height: 1016
+            height: 764
         ) {
             VStack(spacing: ThemeSpace.group) {
                 alertOver(
@@ -61,26 +61,33 @@ extension ShotScene {
                         MacAlertButton(Text(verbatim: "Cancel"), role: .cancel),
                     ]
                 )
-                // A label wider than half the row stacks the two buttons.
-                alertOver(
-                    height: 240,
-                    MacAlertWords(
-                        Text(verbatim: "bae will remove the device"),
-                        message: Text(
-                            verbatim:
-                                "Dropbox: Remove bae’s access in the provider’s account settings."
-                        )
-                    ),
-                    [
-                        MacAlertButton(Text(verbatim: "I cut off this device")),
-                        MacAlertButton(
-                            Text(verbatim: "Not yet"),
-                            role: .cancel
-                        ),
-                    ]
-                )
             }
-        }
+        },
+        // A label wider than half the row stacks the two buttons, the
+        // default on top.
+        component(
+            "mac.component.alert.label-too-wide",
+            width: 600,
+            height: 240
+        ) {
+            alertOver(
+                height: 240,
+                MacAlertWords(
+                    Text(verbatim: "Remove library from this Mac?"),
+                    message: Text(
+                        verbatim:
+                            "The library will remain in the cloud and on your other devices."
+                    )
+                ),
+                [
+                    MacAlertButton(
+                        Text(verbatim: "Remove from this Mac only"),
+                        role: .destructive
+                    ),
+                    MacAlertButton(Text(verbatim: "Cancel"), role: .cancel),
+                ]
+            )
+        },
     ]
 
     /// An alert hung where `OverWindow` hangs one, under the top of a window
