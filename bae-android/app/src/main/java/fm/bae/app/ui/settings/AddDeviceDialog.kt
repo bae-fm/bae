@@ -1,5 +1,6 @@
 package fm.bae.app.ui.settings
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -282,7 +283,7 @@ private fun AddDeviceBody(
 ) {
     Column(
         modifier = Modifier.verticalScroll(rememberScrollState()),
-        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(ThemeSpace.edge),
     ) {
         when {
             face is AddDeviceFace.Added -> {
