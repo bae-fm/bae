@@ -237,7 +237,7 @@ internal fun AndroidPlaylistHeader(
                             summary.headerSharing?.let { stringResource(it.labelRes()) },
                         ),
                     ),
-                style = ThemeText.detail.style,
+                style = ThemeText.fine.style,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(modifier = Modifier.height(ThemeSpace.group))
