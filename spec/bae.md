@@ -3647,7 +3647,9 @@ code. Creating a library first asks for the person's name on its own step,
 the name is blank). The File menu offers **Scan Code…** and **Enter Code…**
 too. The code decides what happens in either case.
 Once the app lists libraries, **Add library…** follows the list and offers
-the three actions. On a Mac, **Enter Code…** opens a sheet over the first screen, titled
+the three actions. The Mac centers the welcome content when it fits and lets
+the person scroll when it exceeds the window's height.
+On a Mac, **Enter Code…** opens a sheet over the first screen, titled
 **Enter code**, with one field for a restore code or an invite, **Cancel**, and
 **Continue**, off until the field holds something; **Scan Code…** opens the
 scanner. On both platforms the field shows a typed or pasted code in groups

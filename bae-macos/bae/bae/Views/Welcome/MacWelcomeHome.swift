@@ -164,7 +164,6 @@ struct MacWelcomeHome: View {
 
     private var content: some View {
         VStack(spacing: Self.belowLogo) {
-            Spacer()
             VStack(
                 spacing: showsFirstRunActions
                     ? ThemeSpace.group : ThemeSpace.related + ThemeSpace.line
@@ -277,7 +276,6 @@ struct MacWelcomeHome: View {
                     onEnterCode: onEnterCode
                 )
             }
-            Spacer()
         }
         .padding(.horizontal)
         .padding(.top, showsFirstRunActions ? 0 : topPadding)
