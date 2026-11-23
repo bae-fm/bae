@@ -39,7 +39,8 @@ internal fun AndroidAlbumCredits(credits: List<BridgeCreditRow>) {
         AndroidEyebrow(
             text = stringResource(R.string.search_section_credits),
             modifier = Modifier.padding(bottom = ThemeSpace.inline),
-            spaceAbove = ThemeSpace.inline,
+            // The board spaces a block 8dp from the one above, and its own heading pads 4dp over the eyebrow.
+            spaceAbove = ThemeSpace.inline + ThemeSpace.related,
         )
         credits.forEach { row ->
             Row(

@@ -30,7 +30,8 @@ internal fun AndroidReleaseFiles(files: List<BridgeFile>) {
         AndroidEyebrow(
             text = stringResource(R.string.album_files),
             modifier = Modifier.padding(bottom = ThemeSpace.inline),
-            spaceAbove = ThemeSpace.inline,
+            // The board spaces a block 8dp from the one above, and its own heading pads 4dp over the eyebrow.
+            spaceAbove = ThemeSpace.inline + ThemeSpace.related,
         )
         files.forEach { file ->
             AndroidDivider()
