@@ -323,19 +323,18 @@ extension ImportCandidateTableCoordinator {
         list.row(at: row)
     }
 
-    /// A header is its own, shorter height; every other row is one height,
-    /// where the table would give a group row the shorter height itself.
     func tableView(_: NSTableView, heightOfRow row: Int) -> CGFloat {
         height(ofRow: row)
     }
 
-    /// The height the row at `row` needs: a header's, once its page has
-    /// landed, else a release's.
+    /// The height of the delivered row or the placeholder that stands for it.
     private func height(ofRow row: Int) -> CGFloat {
-        if case .groupHeader = item(at: row) {
-            return ImportCandidateTableLayout.headerRowHeight
+        switch item(at: row) {
+        case .groupHeader: ImportCandidateTableLayout.headerRowHeight
+        case .candidate(_, let candidate, _):
+            MacImportRow.height(for: candidate)
+        case .invalid, nil: ImportCandidateTableLayout.rowHeight
         }
-        return ImportCandidateTableLayout.rowHeight
     }
 
     /// A header's row is drawn as a group row. The table does not float it:

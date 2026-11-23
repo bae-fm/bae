@@ -11,6 +11,17 @@ struct MacImportRow: View {
     /// The cover's edge in points; the sidebar preloads Pending's covers at
     /// this size, so it must match for the cached image to be used.
     static let coverPointSize = ThemeSize.rowArtwork
+    /// A row with a title, an artist and progress needs the full text stack.
+    static func height(for row: BridgeTriageRow) -> CGFloat {
+        let showsArtist =
+            row.metadataSummary?.albumArtists.names.isEmpty == false
+        let showsProgress =
+            row.runningImportStep != nil || row.upload?.activity == .uploading
+        let contentHeight: CGFloat =
+            showsArtist && showsProgress
+            ? 50 : coverPointSize
+        return contentHeight + 2 * ThemeSpace.compact
+    }
 
     let row: BridgeTriageRow
     let coverContent: ImageContent?
@@ -48,6 +59,7 @@ struct MacImportRow: View {
 
     var body: some View {
         rowContent
+            .frame(minHeight: Self.height(for: row))
             .groupMemberRail(isGroupMember)
             .contentShape(Rectangle())
             .macContextMenu {
@@ -76,7 +88,7 @@ struct MacImportRow: View {
 
     @ViewBuilder
     private var meta: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: ThemeSpace.line) {
             switch row.reading {
             case .unidentified:
                 folderLine
@@ -106,15 +118,13 @@ struct MacImportRow: View {
 
     @ViewBuilder
     private var stateLine: some View {
-        switch live.import {
-        case .preparing(step: .queued)?:
-            EmptyView()
-        case let step?:
+        if let step = row.runningImportStep {
             // A running import's bar moves by the second, so only this leaf
             // reads its percent.
             ImportProgressLineContainer(key: row.candidateKey, step: step)
                 .themeText(.detail)
-        case nil:
+        }
+        else if live.import == nil {
             if let release = row.importedRelease, let upload = row.upload {
                 // The bar moves each display frame, so only this leaf reads
                 // the release's upload stream.
@@ -167,6 +177,14 @@ private struct DoneRowUploadLineContainer: View {
 }
 
 extension BridgeTriageRow {
+    /// The import step shown with progress. A queued import has a wait mark.
+    fileprivate var runningImportStep: BridgeImportStep? {
+        switch live.import {
+        case .preparing(step: .queued), nil: nil
+        case let step?: step
+        }
+    }
+
     /// The release this device imported from a Done row's files.
     var importedRelease: BridgeImportedRelease? {
         if case .complete(let release) = importStatus {

@@ -5,8 +5,8 @@ import SwiftUI
 /// The import list's geometry in its table.
 @MainActor
 enum ImportCandidateTableLayout {
-    /// Every row's height, headers and rows still loading included: a row's
-    /// cover and the padding around it.
+    /// The height of a row without a full text stack, including a row
+    /// whose page is still loading.
     static let rowHeight =
         MacImportRow.coverPointSize + 2 * ThemeSpace.compact
     /// A folder group's header row: the gap above its group, the 13 pt name's
