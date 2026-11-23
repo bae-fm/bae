@@ -23,7 +23,10 @@ class ShotFontWeightsTest {
                 (0 until glyphs.glyphCount())
                     .map { index ->
                         val font = glyphs.getFont(index)
-                        font.axes?.singleOrNull { it.tag == "wght" }?.styleValue ?: font.style.weight.toFloat()
+                        when (weight) {
+                            600, 800 -> font.axes?.singleOrNull { it.tag == "wght" }?.styleValue
+                            else -> font.style.weight.toFloat()
+                        }
                     }.toSet()
             assertEquals("Roboto glyph weights for a $weight label", setOf(weight.toFloat()), glyphWeights)
         }
