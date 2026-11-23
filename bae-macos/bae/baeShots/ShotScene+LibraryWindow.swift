@@ -253,7 +253,7 @@ extension ShotScene {
     @MainActor
     /// The id of "Low Tide Hours" in `PreviewData.boardAlbumDetail`'s track
     /// list, so the open album marks it as the track that plays.
-    nonisolated static let boardTrackId = "t-d1-4"
+    static let boardTrackId = "t-d1-4"
 
     /// The bar with nothing playing, at the volume the boards' bar draws.
     static func idlePlayback() -> PlaybackStore {
