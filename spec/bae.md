@@ -317,7 +317,8 @@ views. On macOS the artists and composers views list their rows
 beside the open one's page. At the
 top of the list the heading is full size; as the list scrolls it shrinks into a
 slim bar pinned above it, and a scroll that stops part way leaves it at the
-nearer size. On Android, the heading's end holds Search, the Activity
+nearer size. On macOS, VoiceOver reads the view menu by the view's name alone.
+On Android, the heading's end holds Search, the Activity
 button (§6.4), ⋮, whose menu gives the view's sort under *Sort by* (the
 fields, the direction, and for albums *Group by artist*), then *Shuffle
 library*, and last the person's menu (below); screen readers name that ⋮ *More

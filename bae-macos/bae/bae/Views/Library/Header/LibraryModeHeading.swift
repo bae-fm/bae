@@ -41,6 +41,7 @@ struct LibraryModeHeading: View {
                 .contentTransition(.interpolate)
         }
         .fixedSize()
+        .accessibilityLabel(uiStore.libraryBrowserMode.displayName)
     }
 
     private var chevronSize: CGFloat {
