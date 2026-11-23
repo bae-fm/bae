@@ -52,8 +52,10 @@
           h('div', { className: 'bae-m-np-text' },
             h('div', { className: 'bae-m-nptrack-eyebrow' }, 'Now playing'),
             h('div', { className: 'bae-m-np-title' }, props.title), h('div', { className: 'bae-m-np-sub' }, props.artist),
-            h('div', { className: 'bae-m-queue-strip' }, h('div', { className: 'bae-m-queue-strip-bar' }, h('div', { style: { width: (Number(props.position || 0) * 100) + '%' } })), h('span', null, props.elapsed || '')))),
-        h('span', { className: 'bae-m-queue-np-play' }, h(Glyph, { set: 'mac', name: props.playing ? 'pause' : 'play', size: 'medium' }))) : null,
+            h('div', { className: 'bae-m-queue-strip' }, h('div', { className: 'bae-m-queue-strip-bar', role: 'progressbar', 'aria-label': 'Playback position', 'aria-valuenow': Math.round(Number(props.position || 0) * 100) }, h('div', { style: { width: (Number(props.position || 0) * 100) + '%' } })), h('span', null, props.elapsed || '')))),
+        h('button', { type: 'button', className: 'bae-plainbtn bae-m-queue-np-play', 'aria-label': props.playing ? 'Pause' : 'Play' }, h(Glyph, { set: 'mac', name: props.playing ? 'pause' : 'play', size: 'medium' })),
+        // A click anywhere else on the card goes to what is playing: a button under the card's content, as wide and tall as the card.
+        h('button', { type: 'button', className: 'bae-plainbtn bae-m-queue-np-go', 'aria-label': 'Go to now playing' })) : null,
       props.empty ? h(MacContentUnavailable, { title: 'Queue is empty', description: 'Drag tracks here or play an album' })
         : h('div', { className: 'bae-m-queue-body' }, props.children));
   }

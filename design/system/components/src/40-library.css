@@ -235,13 +235,14 @@
 .bae-m-queue { width: 420px; flex: none; display: flex; flex-direction: column; background: var(--surface); box-shadow: inset 1px 0 0 var(--hairline); overflow: hidden; }
 .bae-m-queue-head { display: flex; align-items: flex-start; padding: var(--space-edge) var(--space-edge) var(--space-group); }
 .bae-m-queue-head h2 { flex: 1; margin: 0; font: var(--type-title-weight) var(--type-title-size) var(--font-sans); letter-spacing: -0.3px; }
-.bae-m-queue-np { margin: 0 var(--space-group) var(--space-compact); display: flex; align-items: flex-start; gap: var(--space-group); padding: var(--space-group); border-radius: var(--radius-card); background: var(--elevated); box-shadow: inset 0 0 0 1px var(--hairline), 0 6px 12px var(--shadow); }
+.bae-m-queue-np { position: relative; isolation: isolate; margin: 0 var(--space-group) var(--space-compact); display: flex; align-items: flex-start; gap: var(--space-group); padding: var(--space-group); border-radius: var(--radius-card); background: var(--elevated); box-shadow: inset 0 0 0 1px var(--hairline), 0 6px 12px var(--shadow); }
 .bae-m-queue-np-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-line); }
 .bae-m-queue-strip { display: flex; align-items: center; gap: var(--space-related); padding-top: var(--space-compact); height: 10px; }
 .bae-m-queue-strip-bar { flex: 1; height: 4px; border-radius: 999px; background: var(--hairline); overflow: hidden; }
 .bae-m-queue-strip-bar > div { height: 100%; background: var(--accent); }
 .bae-m-queue-strip > span { width: 34px; text-align: right; font: var(--type-fine-weight) var(--type-fine-size) var(--font-sans); font-variant-numeric: tabular-nums; color: var(--text-secondary); }
 .bae-m-queue-np-play { width: var(--size-hit-target); height: var(--size-hit-target); flex: none; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-control); background: var(--hover); color: var(--text-secondary); fill: currentColor; }
+.bae-m-queue-np-go { position: absolute; inset: 0; z-index: -1; border-radius: inherit; }
 .bae-m-queue-body { flex: 1; min-height: 0; overflow: hidden; padding: 0 var(--space-related); display: flex; flex-direction: column; gap: var(--space-hairline); }
 .bae-m-cu-title { font: var(--type-content-title-weight) var(--type-content-title-size) var(--font-sans); color: var(--text-primary); }
 .bae-m-cu-desc { font: var(--type-body-weight) var(--type-body-size) var(--font-sans); color: var(--text-secondary); }
