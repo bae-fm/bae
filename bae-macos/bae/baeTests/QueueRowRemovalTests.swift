@@ -27,6 +27,7 @@ struct QueueRowRemovalTests {
                 holdRow: nil,
                 acceptsExternalDrops: false,
                 laneId: .manual,
+                rowHover: QueueRowHover(),
                 coordinator: QueueDragCoordinator(),
                 onClear: {},
                 onSkipTo: { _ in },

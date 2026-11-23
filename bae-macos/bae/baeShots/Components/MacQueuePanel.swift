@@ -134,6 +134,7 @@ extension ShotScene {
         ) {
             MacQueuePanel(tab: .queue, onSelectTab: { _ in }, onClose: {}) {
                 QueueTabContent(
+                    rowHover: QueueRowHover(),
                     manual: manual,
                     upNextCount: UInt32(manual.count),
                     isEmpty: !isActive,

@@ -54,6 +54,7 @@ struct QueueNowPlaying {
 /// coordinator, drawn from the values it is given. `MacQueuePanelContainer`
 /// reads the stores for it.
 struct QueueTabContent: View {
+    let rowHover: QueueRowHover
     /// The manual "Up next" lane, played first and always loaded in full.
     let manual: [BridgeQueueEntry]
     /// How many entries the "Up next" lane holds, as core counts them.
@@ -144,6 +145,7 @@ struct QueueTabContent: View {
                             holdRow: nil,
                             acceptsExternalDrops: true,
                             laneId: .manual,
+                            rowHover: rowHover,
                             coordinator: dragCoordinator,
                             onClear: onClearUpNext,
                             onSkipTo: onSkipTo,
@@ -168,6 +170,7 @@ struct QueueTabContent: View {
                                 holdRow: upcoming.holdRow,
                                 acceptsExternalDrops: false,
                                 laneId: .context,
+                                rowHover: rowHover,
                                 coordinator: dragCoordinator,
                                 onClear: onClearPlayingFrom,
                                 onSkipTo: onSkipTo,
@@ -206,6 +209,7 @@ struct QueueTabContent: View {
                 }
             }
         }
+        .onDisappear { rowHover.clear() }
         .task(
             id: UpcomingOpening(hasContext: context != nil, shuffled: shuffled)
         ) {

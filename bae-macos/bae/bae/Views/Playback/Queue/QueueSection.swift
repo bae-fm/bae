@@ -47,6 +47,8 @@ struct QueueSection: View {
     let acceptsExternalDrops: Bool
     /// This lane's key in the drag coordinator.
     let laneId: BridgeQueueLane
+    /// The row under the pointer in either lane, by entry id rather than slot.
+    let rowHover: QueueRowHover
     /// The shared drag state every row shift is derived from.
     let coordinator: QueueDragCoordinator
     /// Empties this lane; offered only while the lane has rows.
@@ -67,10 +69,6 @@ struct QueueSection: View {
     /// Sets this lane's shuffle; `nil` on the manual lane, which has none.
     let onSetShuffle: ((Bool) -> Void)?
 
-    /// The hovered row by entry id, not slot, so the hover stays on its row
-    /// when a removal above shifts the lane without new hover events.
-    @State
-    private var hoveredEntryId: String?
     @State
     private var dropInsertIndex: Int?
     /// Rows collapsed before core confirms the removal, so the click responds
@@ -323,7 +321,7 @@ extension QueueSection {
             // reorder, the old index belongs to another row.
             MacQueueRow(
                 item: floating.item,
-                isHovered: false,
+                isHovered: { false },
                 onHoverChanged: { _ in },
                 onSkipTo: { _ in },
                 onRemove: { _ in },
@@ -356,21 +354,11 @@ extension QueueSection {
                     item: item,
                     // No hover during a drag: rows sliding under the pointer
                     // fire hover events.
-                    isHovered: hoveredEntryId == item.id
-                        && !coordinator.isDragging,
+                    isHovered: {
+                        rowHover.entryId == item.id && !coordinator.isDragging
+                    },
                     onHoverChanged: { hovering in
-                        guard !coordinator.isDragging else {
-                            return
-                        }
-                        if hovering {
-                            hoveredEntryId = item.id
-                        }
-                        else if hoveredEntryId == item.id {
-                            // Only the owning row clears the hover: a
-                            // collapsing row's exit can arrive after the next
-                            // row claimed it.
-                            hoveredEntryId = nil
-                        }
+                        rowHover.set(hovering, entryId: item.id)
                     },
                     onSkipTo: onSkipTo,
                     onRemove: { id in

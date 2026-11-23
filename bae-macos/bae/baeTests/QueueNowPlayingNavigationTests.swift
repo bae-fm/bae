@@ -35,35 +35,18 @@ struct QueueNowPlayingNavigationTests {
         ui.navigateToImport()
         ui.setLibraryBrowserMode(.artists)
         ui.setSidePanePresented(true)
-        let store = PlaybackStore()
-        store.apply(
-            .playing(
-                track: BridgeNowPlayingTrack(
-                    track: BridgePlayingTrack(
-                        trackId: "playing-track",
-                        durationMs: 180_000
-                    ),
-                    display: .library(
-                        display: BridgeTrackDisplay(
-                            title: "Track Title",
-                            artistLine: .named("Track Artist"),
-                            albumId: "playing-album",
-                            releaseId: "playing-release",
-                            albumTitle: "Album Title",
-                            coverImage: nil
-                        )
-                    )
-                )
-            )
-        )
         try await SnapshotTestSupport.withHostedWindow(
-            MacQueuePanelContainer(onClose: {}, onInsertTracks: { _, _ in })
-                .environment(Playback.stub())
-                .environment(store)
-                .environment(Queue.stub())
-                .environment(ImageStore.stub())
-                .environment(LibraryProjectionStore(library: .stub()))
-                .environment(ui),
+            MacQueuePanelContainer(
+                rowHover: QueueRowHover(),
+                onClose: {},
+                onInsertTracks: { _, _ in }
+            )
+            .environment(Playback.stub())
+            .environment(playingStore())
+            .environment(Queue.stub())
+            .environment(ImageStore.stub())
+            .environment(LibraryProjectionStore(library: .stub()))
+            .environment(ui),
             size: NSSize(width: 420, height: 720)
         ) { window, host in
             try await SnapshotTestSupport.settle(host)
@@ -93,6 +76,31 @@ struct QueueNowPlayingNavigationTests {
             )
             #expect(ui.showSidePane)
         }
+    }
+
+    private func playingStore() -> PlaybackStore {
+        let store = PlaybackStore()
+        store.apply(
+            .playing(
+                track: BridgeNowPlayingTrack(
+                    track: BridgePlayingTrack(
+                        trackId: "playing-track",
+                        durationMs: 180_000
+                    ),
+                    display: .library(
+                        display: BridgeTrackDisplay(
+                            title: "Track Title",
+                            artistLine: .named("Track Artist"),
+                            albumId: "playing-album",
+                            releaseId: "playing-release",
+                            albumTitle: "Album Title",
+                            coverImage: nil
+                        )
+                    )
+                )
+            )
+        )
+        return store
     }
 
     /// Core's value that removes the playing track can arrive after the view

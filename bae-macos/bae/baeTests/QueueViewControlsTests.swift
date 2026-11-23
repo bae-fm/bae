@@ -74,6 +74,7 @@ struct QueueViewControlsTests {
                 onClose: { recorder.closeCount += 1 }
             ) {
                 QueueTabContent(
+                    rowHover: QueueRowHover(),
                     manual: store.manualQueue,
                     upNextCount: store.upNextCount,
                     isEmpty: store.queueIsEmpty,

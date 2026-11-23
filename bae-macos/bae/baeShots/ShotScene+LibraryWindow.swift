@@ -70,32 +70,35 @@ extension ShotScene {
     }
 
     /// The albums the boards' grid lists, in their order.
-    nonisolated private static let boardAlbums: [BridgeAlbumAppearance] = [
-        ("Low Tide Hours", "Mara Quill", 1992),
-        ("Paper Lanterns", "The Slow Orchards", 1971),
-        ("Glass Harbor", "Ines Varga Trio", 1959),
-        ("Copper Sky", "Odile Fen", 1972),
-        ("Salt and Cedar", "The Slow Orchards", 1976),
-        ("Field Recordings", "Mara Quill", 1979),
-        ("Winter Kitchen", "Odile Fen", 1971),
-        ("Small Hours", "Tomas Brell", 1965),
-    ]
-    .enumerated()
-    .map { index, album in
-        BridgeAlbumAppearance(
-            album: BridgeAlbum(
-                id: "board-\(index)",
-                title: album.0,
-                year: Int32(album.2),
-                isCompilation: false,
-                artistLine: .named(album.1),
-                releaseIds: ["rel-board-\(index)"],
-                primaryReleaseId: "rel-board-\(index)",
-                cover: nil
-            ),
-            primaryReleaseUnplayable: false,
-            displayArtistLine: .named(album.1)
-        )
+    private static func boardAlbums(covered: Bool) -> [BridgeAlbumAppearance] {
+        [
+            ("Low Tide Hours", "Mara Quill", 1992),
+            ("Paper Lanterns", "The Slow Orchards", 1971),
+            ("Glass Harbor", "Ines Varga Trio", 1959),
+            ("Copper Sky", "Odile Fen", 1972),
+            ("Salt and Cedar", "The Slow Orchards", 1976),
+            ("Field Recordings", "Mara Quill", 1979),
+            ("Winter Kitchen", "Odile Fen", 1971),
+            ("Small Hours", "Tomas Brell", 1965),
+        ]
+        .enumerated()
+        .map { index, album in
+            BridgeAlbumAppearance(
+                album: BridgeAlbum(
+                    id: "board-\(index)",
+                    title: album.0,
+                    year: Int32(album.2),
+                    isCompilation: false,
+                    artistLine: .named(album.1),
+                    releaseIds: ["rel-board-\(index)"],
+                    primaryReleaseId: "rel-board-\(index)",
+                    cover: covered ? cover(album.0) : nil
+                ),
+                primaryReleaseUnplayable: false,
+                displayArtistLine: .named(album.1)
+            )
+        }
+
     }
 
     /// Where core places `albumId`'s card in the flat grid of `albums`.
@@ -115,6 +118,7 @@ extension ShotScene {
     static func boardLibraryBacking(
         uiStore: UiStore,
         albumCount: Int? = nil,
+        covered: Bool = false,
         openAlbum: Bool = false,
         detailAnswered: AlbumDetailAnswered? = nil,
         detail: BridgeAlbumDetail = PreviewData.boardAlbumDetail(),
@@ -123,7 +127,8 @@ extension ShotScene {
         history: [BridgeHistoryPlay] = [],
         historyPeople: [(id: String, name: String)] = []
     ) -> (library: Library, session: LibraryBrowseSession) {
-        let albums = Array(boardAlbums.prefix(albumCount ?? boardAlbums.count))
+        let allAlbums = boardAlbums(covered: covered)
+        let albums = Array(allAlbums.prefix(albumCount ?? allAlbums.count))
         let library = Library(
             albumList: { _, _ in .fixed(albums, answers: UnansweredCount()) },
             albumPlaceReads: { _, albumId, _, _ in
@@ -237,7 +242,8 @@ extension ShotScene {
     @MainActor
     static func boardPlayback(
         removedFromLibrary: Bool = false,
-        progress: Double = 102.0 / 303.0
+        progress: Double = 102.0 / 303.0,
+        covered: Bool = false
     ) -> PlaybackStore {
         let store = PlaybackStore(
             trackPositions: .trackPositions(
@@ -281,7 +287,8 @@ extension ShotScene {
                                 albumId: "board-0",
                                 releaseId: "rel-board-0",
                                 albumTitle: "Low Tide Hours",
-                                coverImage: nil
+                                coverImage: covered
+                                    ? cover("Low Tide Hours") : nil
                             )
                         )
                 )

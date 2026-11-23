@@ -33,7 +33,7 @@ extension ShotScene {
                     ),
                     durationClock: BridgeDurationClock.length(ms: 272_000)
                 ),
-                isHovered: hover,
+                isHovered: { hover },
                 onHoverChanged: { _ in },
                 onSkipTo: { _ in },
                 onRemove: { _ in }

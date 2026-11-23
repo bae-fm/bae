@@ -4,7 +4,7 @@ import SwiftUI
 /// The list row for a queued track, with its playback and removal actions.
 struct MacQueueRow: View {
     let item: BridgeQueueEntry
-    let isHovered: Bool
+    let isHovered: () -> Bool
     let onHoverChanged: (Bool) -> Void
     let onSkipTo: (String) -> Void
     let onRemove: (String) -> Void
@@ -20,7 +20,7 @@ struct MacQueueRow: View {
             title: item.display.title,
             subtitle: item.display.artistLine.text,
             duration: item.durationLabel,
-            hover: isHovered,
+            hover: isHovered(),
             removal: MacListRow.Removal(label: "Remove from queue") {
                 onRemove(item.id)
             }

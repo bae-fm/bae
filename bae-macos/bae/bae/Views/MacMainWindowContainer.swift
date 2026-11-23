@@ -34,6 +34,8 @@ struct MacMainWindowContainer: View {
     var castStart
     @State
     private var searchText: String
+    @State
+    private var queueRowHover: QueueRowHover
     /// The lightbox's image as it loads.
     @State
     private var lightboxLoad = LightboxImageLoad()
@@ -49,8 +51,12 @@ struct MacMainWindowContainer: View {
     private var searchFieldFrame: CGRect?
 
     /// The window with `searchText` typed in the search field.
-    init(searchText: String = "") {
+    init(
+        searchText: String = "",
+        queueRowHover: QueueRowHover = QueueRowHover()
+    ) {
         _searchText = State(initialValue: searchText)
+        _queueRowHover = State(initialValue: queueRowHover)
     }
 
     private var queueActions: QueueActions {
@@ -75,6 +81,7 @@ struct MacMainWindowContainer: View {
                 }
             } queuePanel: {
                 MacQueuePanelContainer(
+                    rowHover: queueRowHover,
                     onClose: {
                         uiStore.setSidePanePresented(false)
                     },

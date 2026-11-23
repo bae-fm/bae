@@ -13,11 +13,16 @@ extension ShotScene {
         ) {
             let uiStore = UiStore()
             uiStore.setSidePanePresented(true)
-            let backing = boardLibraryBacking(uiStore: uiStore, albumCount: 6)
-            let playbackStore = boardPlayback()
+            let backing = boardLibraryBacking(
+                uiStore: uiStore,
+                albumCount: 6,
+                covered: true
+            )
+            let playbackStore = boardPlayback(covered: true)
+            let manual = manualQueue(covered: true)
             playbackStore.applyQueueSnapshot(
                 BridgeQueueSnapshot(
-                    manual: manualQueue,
+                    manual: manual,
                     context: BridgePlaybackContext(
                         kind: .release,
                         sourceTitle: "Low Tide Hours"
@@ -25,7 +30,7 @@ extension ShotScene {
                     shuffled: false,
                     hasNext: true,
                     hasPrevious: false,
-                    upNextCount: UInt32(manualQueue.count),
+                    upNextCount: UInt32(manual.count),
                     isEmpty: false
                 )
             )
@@ -35,6 +40,7 @@ extension ShotScene {
             let queue = Queue(upcomingQueries: { _ in
                 .fixed(upcoming, answers: answers)
             })
+            let rowHover = QueueRowHover(entryId: manual[1].id)
             let window = ShotScenes.libraryWindow(
                 uiStore: uiStore,
                 backing: backing,
@@ -42,7 +48,10 @@ extension ShotScene {
                 playbackStore: playbackStore,
                 images: images,
                 size: CGSize(width: 1200, height: 760),
-                window: AnyView(MacMainWindowContainer().environment(queue))
+                window: AnyView(
+                    MacMainWindowContainer(queueRowHover: rowHover)
+                        .environment(queue)
+                )
             )
             return ShotStage(window, images: images) {
                 backing.session.albums.list?.delivered != nil
@@ -62,14 +71,15 @@ extension ShotScene {
                 albumCount: 6
             )
             let playbackStore = boardPlayback(removedFromLibrary: true)
+            let manual = manualQueue(covered: false)
             playbackStore.applyQueueSnapshot(
                 BridgeQueueSnapshot(
-                    manual: manualQueue,
+                    manual: manual,
                     context: nil,
                     shuffled: false,
                     hasNext: true,
                     hasPrevious: false,
-                    upNextCount: UInt32(manualQueue.count),
+                    upNextCount: UInt32(manual.count),
                     isEmpty: false
                 )
             )
@@ -85,20 +95,22 @@ extension ShotScene {
         },
     ]
 
-    private static let manualQueue = [
-        queueEntry(
-            "Margins",
-            album: "Northbound",
-            duration: 295_000,
-            covered: false
-        ),
-        queueEntry(
-            "Night Ferry",
-            album: "Quiet Engines",
-            duration: 276_000,
-            covered: false
-        ),
-    ]
+    private static func manualQueue(covered: Bool) -> [BridgeQueueEntry] {
+        [
+            queueEntry(
+                "Margins",
+                album: "Northbound",
+                duration: 295_000,
+                covered: covered
+            ),
+            queueEntry(
+                "Night Ferry",
+                album: "Quiet Engines",
+                duration: 276_000,
+                covered: covered
+            ),
+        ]
+    }
 
     private static let boardUpcoming = [
         ("Tin Roof", UInt64(341_000)),
@@ -111,8 +123,7 @@ extension ShotScene {
         queueEntry(
             $0.0,
             album: "Low Tide Hours",
-            duration: $0.1,
-            covered: false
+            duration: $0.1
         )
     }
 }

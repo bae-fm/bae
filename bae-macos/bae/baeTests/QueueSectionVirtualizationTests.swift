@@ -29,6 +29,7 @@ struct QueueSectionVirtualizationTests {
                     },
                     acceptsExternalDrops: false,
                     laneId: .context,
+                    rowHover: QueueRowHover(),
                     coordinator: QueueDragCoordinator(),
                     onClear: {},
                     onSkipTo: { _ in },

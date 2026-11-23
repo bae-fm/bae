@@ -9,6 +9,7 @@ struct MacQueuePanelContainer: View {
     @Environment(LibraryProjectionStore.self)
     private var libraryProjections
 
+    let rowHover: QueueRowHover
     let onClose: () -> Void
     let onInsertTracks: ([String], Int) -> Void
 
@@ -21,7 +22,10 @@ struct MacQueuePanelContainer: View {
             content: {
                 switch uiStore.sidePaneTab {
                 case .queue:
-                    QueueTabContainer(onInsertTracks: onInsertTracks)
+                    QueueTabContainer(
+                        rowHover: rowHover,
+                        onInsertTracks: onInsertTracks
+                    )
                 case .playlists:
                     PlaylistsContent()
                 case .history:
@@ -62,6 +66,7 @@ private struct QueueTabContainer: View {
     @Environment(UiStore.self)
     private var uiStore
 
+    let rowHover: QueueRowHover
     let onInsertTracks: ([String], Int) -> Void
 
     var body: some View {
@@ -79,6 +84,7 @@ private struct QueueTabContainer: View {
                 .libraryImage($0)
             }
         QueueTabContent(
+            rowHover: rowHover,
             manual: playbackStore.manualQueue,
             upNextCount: playbackStore.upNextCount,
             isEmpty: playbackStore.queueIsEmpty,
