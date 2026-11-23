@@ -8,7 +8,7 @@ import os
 
 private let logger = Logger.bae("LatestValues")
 
-// The one place the app touches the bridge's `KeyedValueStream`: values core
+// The Swift attach API for the bridge's `KeyedValueStream`: values core
 // sends many times a second (transfer bytes and rates, file shares, export
 // percents, playback and preview positions, import percents, a library
 // open's steps) arrive in a stream the bridge holds and writes itself, and the
@@ -17,8 +17,8 @@ private let logger = Logger.bae("LatestValues")
 // sources around; it never holds a value, so nothing SwiftUI observes can
 // change with one. Which keys started or stopped holding a value is pulled
 // through `ScreenSubscription`, as every screen value is.
-// `scripts/keyed-value-stream-boundary.py` keeps every other file off the
-// bridge's stream.
+// `scripts/keyed-value-stream-boundary.py` keeps the bridge's stream
+// inside the attach API.
 
 // The bridge's stream is pulled like every other bridge pull object.
 extension KeyedValueStream: PulledSubscription {}

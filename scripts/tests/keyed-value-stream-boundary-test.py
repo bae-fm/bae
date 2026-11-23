@@ -24,6 +24,8 @@ sys.modules[SPEC.name] = BOUNDARY
 SPEC.loader.exec_module(BOUNDARY)
 
 SWIFT_ATTACH = "BaeKit/Sources/BaeKit/Services/Store/LatestValues.swift"
+SWIFT_DOWNLOAD_ATTACH = "BaeKit/Sources/BaeKit/Services/Store/DownloadStore+LatestFeed.swift"
+SWIFT_ATTACH_API = f"{SWIFT_ATTACH}, {SWIFT_DOWNLOAD_ATTACH}"
 KOTLIN_ATTACH = "bae-android/fastvalues/src/main/java/fm/bae/fastvalues/LatestValues.kt"
 SWIFT_VIEW = "bae-macos/bae/bae/Views/FixtureStream.swift"
 KOTLIN_VIEW = "bae-android/app/src/main/java/fm/bae/app/ui/FixtureStream.kt"
@@ -61,7 +63,7 @@ class KeyedValueStreamBoundaryTests(unittest.TestCase):
                 BOUNDARY.check(root),
                 [
                     f"{SWIFT_VIEW}:4: touches the bridge's KeyedValueStream, "
-                    f"which only {SWIFT_ATTACH} may"
+                    f"which only {SWIFT_ATTACH_API} may"
                 ],
             )
 
@@ -98,7 +100,20 @@ class KeyedValueStreamBoundaryTests(unittest.TestCase):
                 BOUNDARY.check(root),
                 [
                     f"{SWIFT_VIEW}:1: touches the bridge's BridgeFastValue, "
-                    f"which only {SWIFT_ATTACH} may"
+                    f"which only {SWIFT_ATTACH_API} may"
+                ],
+            )
+
+    def test_a_view_opening_a_pair_of_streams_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.copied_tree(root)
+            self.write(root, SWIFT_VIEW, "_ = appHandle.feedMoveToThisDeviceTransfers()\n")
+            self.assertEqual(
+                BOUNDARY.check(root),
+                [
+                    f"{SWIFT_VIEW}:1: touches the bridge call "
+                    f"feedMoveToThisDeviceTransfers, which only {SWIFT_ATTACH_API} may"
                 ],
             )
 
@@ -202,7 +217,7 @@ class KeyedValueStreamBoundaryTests(unittest.TestCase):
                 BOUNDARY.check(root),
                 [
                     f"{SWIFT_VIEW}:1: touches the bridge call feedMeterLevels, "
-                    f"which only {SWIFT_ATTACH} may"
+                    f"which only {SWIFT_ATTACH_API} may"
                 ],
             )
 
