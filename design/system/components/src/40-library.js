@@ -173,8 +173,9 @@
 
   // The title bar's Activity button, by what the sync queue does (`state`): moving spins, attention shows the warning mark, and paused (a queue held, Paused or Waiting for network, with nothing moving) shows a pause symbol so the hold can be seen. With nothing moving or held there is no button.
   function MacActivityButton(props) {
-    if (props.state === 'moving') return h('span', { className: 'bae-m-iconbtn', title: 'Activity' }, h(MacSpinner, { size: 14 }));
-    if (props.state === 'attention') return h('span', { className: 'bae-m-iconbtn bae-m-sync-warn', title: 'Activity' }, h(Glyph, { set: 'mac', name: 'warning', size: 'large' }));
+    // Every state is one button named Activity, as VoiceOver reads it in the app; what it shows inside is drawing only.
+    if (props.state === 'moving') return h('button', { type: 'button', className: 'bae-m-iconbtn', title: 'Activity', 'aria-label': 'Activity' }, h('span', { 'aria-hidden': true, style: { display: 'flex' } }, h(MacSpinner, { size: 14 })));
+    if (props.state === 'attention') return h('button', { type: 'button', className: 'bae-m-iconbtn bae-m-sync-warn', title: 'Activity', 'aria-label': 'Activity' }, h(Glyph, { set: 'mac', name: 'warning', size: 'large' }));
     if (props.state === 'paused') return h(MacIconButton, { icon: 'pause', label: 'Activity' });
     return null;
   }

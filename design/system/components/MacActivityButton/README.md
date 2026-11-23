@@ -6,6 +6,6 @@ The title bar's Activity button, which opens the Activity panel. `state` says wh
 - `attention`: the warning mark, while something needs the person.
 - `paused`: a pause symbol, while the queue is held (Paused, or Waiting for network) with nothing moving, so the person can see the hold.
 
-With nothing moving or held, the title bar has no Activity button.
+In every state it is one button, which VoiceOver reads as Activity. With nothing moving or held, the title bar has no Activity button.
 
 **In the code:** macOS: `MacActivityButton` (`Views/Chrome/MacActivityButton.swift`).
