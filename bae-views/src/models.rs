@@ -139,13 +139,17 @@ pub struct DbArtistSummary {
     pub album_count: i64,
 }
 
+/// The line under an artist's name in a list, a detail, a search result or the
+/// album grid's group heading: how many albums credit the artist.
+pub(crate) fn album_count_line(count: u64) -> bae_types::count_label::CountLabel {
+    bae_types::count_label::CountLabel { key: "core.library.album_count".to_string(), count }
+}
+
 impl DbArtistSummary {
     /// The line under the artist's name in its list, its detail and search:
     /// how many albums credit it.
     pub fn count_line(&self) -> bae_types::count_label::CountLabel {
-        bae_types::count_label::CountLabel::album_count(
-            u64::try_from(self.album_count).expect("an album count is never negative"),
-        )
+        album_count_line(u64::try_from(self.album_count).expect("an album count is never negative"))
     }
 }
 

@@ -17,10 +17,4 @@ impl CountLabel {
     pub fn nonzero(key: &str, count: u64) -> Option<Self> {
         (count > 0).then(|| Self { key: key.to_string(), count })
     }
-
-    /// The line under an artist's name in a list, a detail, a search result
-    /// or the album grid's group heading: how many albums credit the artist.
-    pub fn album_count(count: u64) -> Self {
-        Self { key: "core.library.album_count".to_string(), count }
-    }
 }
