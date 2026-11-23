@@ -59,6 +59,16 @@ struct MacWelcomeHome: View {
         }
     }
 
+    /// Whether the libraries, or the restore codes under them, or the notice
+    /// of a failed read of either, show: they are one column, a related gap
+    /// apart.
+    private var showsListings: Bool {
+        listings.localLibraries.failure != nil || !discoveredLibraries.isEmpty
+            || unreadableInstallation != nil
+            || listings.savedCodes.list.failure != nil
+            || listings.savedCodes.list.value?.isEmpty == false
+    }
+
     private var isBusy: Bool {
         removals.removing != nil || removals.isRetrying
     }
@@ -185,72 +195,79 @@ struct MacWelcomeHome: View {
                     removals: removals
                 )
             }
-            if let failure = listings.localLibraries.failure {
-                MacNotice(
-                    title: String(
-                        localized: "Could not list the libraries on this Mac"
-                    ),
-                    advice: nil,
-                    error: failure
-                )
-                .frame(maxWidth: WelcomeLayout.columnWidth)
-            }
-            else if !discoveredLibraries.isEmpty
-                || unreadableInstallation != nil
-            {
-                MacWelcomeLibraries(
-                    libraries: discoveredLibraries,
-                    disabled: isBusy,
-                    canDeleteActiveLibrary: canDeleteActiveLibrary,
-                    removing: removals.removing,
-                    opening: removals.opening,
-                    openFailure: openFailureInList,
-                    unreadableInstallation: unreadableInstallation,
-                    onDiscardInstallation: { libraryId in
-                        Task { await askToDiscard(libraryId) }
-                    },
-                    onResetFromCloud: { onResetFromCloud($0.id) },
-                    onOpen: { onOpenLibrary($0.id) },
-                    onFinish: { onFinishReplacement($0.id, $1) },
-                    onFinishRemoving: { library in
-                        Task { await finishRemoving(library) }
-                    },
-                    onRemove: { library in
-                        Task { await askToRemove(library) }
-                    },
-                    readStanding: setup.libraryStanding,
-                    onCreate: onCreate,
-                    onScanCode: onScanCode,
-                    onEnterCode: onEnterCode
-                )
-            }
-            if let failure = listings.savedCodes.list.failure {
-                MacNotice(
-                    title: String(
-                        localized:
-                            "Could not read restore codes from your keychain"
-                    ),
-                    advice: nil,
-                    error: failure
-                )
-                .frame(maxWidth: WelcomeLayout.columnWidth)
-            }
-            else if listings.savedCodes.list.value?.isEmpty == false {
-                if let deleteError = listings.savedCodes.deleteError {
-                    MacNotice(
-                        title: String(
-                            localized: "Could not delete the restore code"
-                        ),
-                        advice: nil,
-                        error: deleteError
-                    )
-                    .frame(maxWidth: WelcomeLayout.columnWidth)
+            if showsListings {
+                VStack(spacing: ThemeSpace.related) {
+                    if let failure = listings.localLibraries.failure {
+                        MacNotice(
+                            title: String(
+                                localized:
+                                    "Could not list the libraries on this Mac"
+                            ),
+                            advice: nil,
+                            error: failure
+                        )
+                        .frame(maxWidth: WelcomeLayout.columnWidth)
+                    }
+                    else if !discoveredLibraries.isEmpty
+                        || unreadableInstallation != nil
+                    {
+                        MacWelcomeLibraries(
+                            libraries: discoveredLibraries,
+                            disabled: isBusy,
+                            canDeleteActiveLibrary: canDeleteActiveLibrary,
+                            removing: removals.removing,
+                            opening: removals.opening,
+                            openFailure: openFailureInList,
+                            unreadableInstallation: unreadableInstallation,
+                            onDiscardInstallation: { libraryId in
+                                Task { await askToDiscard(libraryId) }
+                            },
+                            onResetFromCloud: { onResetFromCloud($0.id) },
+                            onOpen: { onOpenLibrary($0.id) },
+                            onFinish: { onFinishReplacement($0.id, $1) },
+                            onFinishRemoving: { library in
+                                Task { await finishRemoving(library) }
+                            },
+                            onRemove: { library in
+                                Task { await askToRemove(library) }
+                            },
+                            readStanding: setup.libraryStanding,
+                            onCreate: onCreate,
+                            onScanCode: onScanCode,
+                            onEnterCode: onEnterCode
+                        )
+                    }
+                    if let failure = listings.savedCodes.list.failure {
+                        MacNotice(
+                            title: String(
+                                localized:
+                                    "Could not read restore codes from your keychain"
+                            ),
+                            advice: nil,
+                            error: failure
+                        )
+                        .frame(maxWidth: WelcomeLayout.columnWidth)
+                    }
+                    else if listings.savedCodes.list.value?.isEmpty == false {
+                        if let deleteError = listings.savedCodes.deleteError {
+                            MacNotice(
+                                title: String(
+                                    localized:
+                                        "Could not delete the restore code"
+                                ),
+                                advice: nil,
+                                error: deleteError
+                            )
+                            .frame(maxWidth: WelcomeLayout.columnWidth)
+                        }
+                        KeychainRestoreContainer(
+                            codes: listings.savedCodes,
+                            disabled: isBusy,
+                            onRestore: { onRestoreSaved($0.code) }
+                        )
+                        .padding(.top, ThemeSpace.group + ThemeSpace.line)
+                    }
                 }
-                KeychainRestoreContainer(
-                    codes: listings.savedCodes,
-                    disabled: isBusy,
-                    onRestore: { onRestoreSaved($0.code) }
-                )
             }
             if showsFirstRunActions {
                 MacWelcomeActions(

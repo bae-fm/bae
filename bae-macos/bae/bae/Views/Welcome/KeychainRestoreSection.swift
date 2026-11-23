@@ -18,6 +18,7 @@ struct KeychainRestoreSection: View {
         VStack(alignment: .leading, spacing: ThemeSpace.compact) {
             Text("Saved in iCloud Keychain")
                 .themeText(.strong)
+                .foregroundStyle(Theme.textSecondary)
                 .padding(.horizontal, ThemeSpace.inline)
             VStack(spacing: 0) {
                 ForEach(
@@ -42,7 +43,8 @@ struct KeychainRestoreSection: View {
             )
             .themeText(.detail)
             .foregroundStyle(Theme.textSecondary)
-            .padding(.horizontal, ThemeSpace.inline)
+            .padding(.horizontal, ThemeSpace.group)
+            .padding(.top, ThemeSpace.line)
         }
         .frame(maxWidth: WelcomeLayout.columnWidth)
         .disabled(disabled)
