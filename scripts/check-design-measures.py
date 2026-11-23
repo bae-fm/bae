@@ -25,7 +25,9 @@ token's name or a value computed from another measure, and no literal number
 or literal length. A number stands for that many px, as React reads it.
 
 The few declarations that draw something other than bae's own text and
-layout keep their own measures, each named in ALLOWED with why.
+layout keep their own measures, each named in ALLOWED with why. An
+@font-face rule describes a font file, such as the weights it covers, and
+draws nothing, so the check reads none.
 
   python3 scripts/check-design-measures.py [<file>...]
 
@@ -141,7 +143,10 @@ def problems(path: str, text: str) -> list[str]:
     blank = COMMENT.sub(lambda m: re.sub(r"[^\n]", " ", m.group()), text)
     found = []
     for rule in RULE.finditer(blank):
-        selector = " ".join(rule.group(1).split())
+        # The text before a rule's brace holds any statements ahead of it, such as an @import.
+        selector = " ".join(rule.group(1).split(";")[-1].split())
+        if selector == "@font-face":
+            continue
         for declaration in DECLARATION.finditer(rule.group(2)):
             prop, value = declaration.group(1), declaration.group(2).strip()
             if (selector, prop) in ALLOWED:
