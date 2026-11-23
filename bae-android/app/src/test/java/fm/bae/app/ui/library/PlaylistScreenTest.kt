@@ -15,6 +15,7 @@ import fm.bae.app.HANG_GUARD_MS
 import fm.bae.app.LocalBugReports
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
+import fm.bae.app.data.answer
 import fm.bae.app.openTestLibrary
 import fm.bae.app.playback.FakeAppHandle
 import fm.bae.app.playback.FakeDetailRead
@@ -113,9 +114,8 @@ class PlaylistScreenTest {
                 }
             }
         }
-        compose.waitUntil(HANG_GUARD_MS) {
-            compose.onAllNodesWithContentDescription("Playlist options").fetchSemanticsNodes().isNotEmpty()
-        }
+        compose.waitForIdle()
+        assertEquals(detail, session.libraryQueries.playlist.state.value.answer)
     }
 
     @Test
