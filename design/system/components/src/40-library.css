@@ -297,6 +297,8 @@
 .bae-a-fp-volume { display: flex; align-items: center; margin-top: var(--space-related); }
 .bae-a-castrow-wait { padding: var(--space-edge); }
 .bae-a-castrow { display: flex; align-items: center; gap: var(--space-group); padding: var(--space-group) var(--space-edge); font-family: var(--font-android); }
+/* The receiver's words start space-edge after its icon, as Material's list items do: the row's gap and this margin add up to it. What ends the row keeps the row's gap. */
+.bae-a-castrow-icon { margin-right: calc(var(--space-edge) - var(--space-group)); }
 /* A long receiver name wraps to a second line, then ends in an ellipsis; the icon and the trailing control stay centred on the row. */
 .bae-a-castrow-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .bae-a-castrow-name { font: var(--type-android-row-title-weight) var(--type-android-row-title-size)/var(--type-android-row-title-line-height) var(--font-android); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }

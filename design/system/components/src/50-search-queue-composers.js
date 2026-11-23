@@ -171,7 +171,7 @@
     // A receiver, in the picker and in the Playback settings alike: under its name its kind, or Playing for the one playing, which ends in Disconnect. Tapping any other plays on it. No separate "Playing on" row, and no check: the row says it. `menu` (the Playback settings) ends every row in ⋮ in place of Disconnect: Details… and, on the one playing, Disconnect; `menuOpen` draws that menu open under it.
     // `waiting` on a receiver: the words of a wait on it (Connecting…, or Accept on <the receiver>) in place of its kind, with a spinner at the row's end, before the ⋮ in the Playback settings.
     var icon = { cast: 'cast', airplay: 'speakerbox', upnp: 'tv' }[props.kind || 'cast'];
-    return h('div', { className: 'bae-a-castrow' }, h(Glyph, { name: icon, size: 'large', className: props.active ? 'bae-accent' : 'bae-muted' }),
+    return h('div', { className: 'bae-a-castrow' }, h(Glyph, { name: icon, size: 'large', className: cx('bae-a-castrow-icon', props.active ? 'bae-accent' : 'bae-muted') }),
       h('span', { className: 'bae-a-castrow-text' }, h('span', { className: 'bae-a-castrow-name' }, props.name), props.waiting ? h('span', { className: 'bae-a-castrow-kind' }, props.waiting) : h('span', { className: props.active ? 'bae-a-castrow-state' : 'bae-a-castrow-kind' }, props.active ? 'Playing' : CAST_KIND[props.kind || 'cast'])),
       props.waiting ? h(AndroidSpinner, { size: 20 }) : null,
       props.menu ? h(AndroidMoreMenu, { open: props.menuOpen, items: props.active ? 'Details…,Disconnect' : 'Details…' }) : props.active ? h(AndroidButton, { kind: 'text' }, 'Disconnect') : null);
