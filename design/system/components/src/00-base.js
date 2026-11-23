@@ -98,7 +98,9 @@
   // `size` is an icon role: the svg and the font are both its Android size, so the glyph fills the svg.
   function MSymbol(props) {
     var s = iconSize(props.size, true), filled = props.filled != null ? props.filled : SYMBOL_FILLED[props.name];
-    return h('svg', { style: { width: s, height: s }, 'aria-hidden': true, className: props.className, fill: props.fill },
+    // `label`: the symbol's name for a screen reader, as an image; without one, a screen reader skips it.
+    var named = props.label ? { role: 'img', 'aria-label': props.label } : { 'aria-hidden': true };
+    return h('svg', Object.assign({ style: { width: s, height: s }, className: props.className, fill: props.fill }, named),
       h('text', { x: 0, y: '50%', dominantBaseline: 'central', className: 'bae-msym', style: filled ? { fontSize: s, fontVariationSettings: "'FILL' 1" } : { fontSize: s } }, SYMBOL[props.name] || props.name));
   }
   function Material(props) {

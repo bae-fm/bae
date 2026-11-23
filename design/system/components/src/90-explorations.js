@@ -1,11 +1,11 @@
   // ==== part: explore ====
   // ---- Explorations: parts for screens bae doesn't have yet ----
-  // 1–5 stars, filled up to value; empty draws all five faint. `number` is the read-only form: the number and one filled star ("4 ★"), nothing when value is 0.
+  // 1–5 stars, filled up to value; empty draws all five faint. `number` is the read-only form: the number and one filled star ("4 ★"), nothing when value is 0; a screen reader reads it as one picture, "4 of 5 stars", and skips the number.
   // `rate`: each star is a button that rates with that many stars, as an album's rating is; without it the stars are one picture of the rating.
   function Stars(props) {
     var v = Number(props.value || 0), s = Number(props.size || 14);
     var star = 'M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7L12 17.3 5.8 20.9l1.6-7L2 9.2l7.1-.6z';
-    if (props.number) return v ? h('span', { className: 'bae-stars bae-stars-number', role: 'img', 'aria-label': v + ' of 5 stars' }, v,
+    if (props.number) return v ? h('span', { className: 'bae-stars bae-stars-number', role: 'img', 'aria-label': v + ' of 5 stars' }, h('span', { 'aria-hidden': true }, v),
       h('svg', { width: s, height: s, viewBox: '0 0 24 24', 'aria-hidden': true }, h('path', { d: star, fill: 'var(--accent)', stroke: 'var(--accent)', strokeWidth: 1.5, strokeLinejoin: 'round' }))) : null;
     var draw = function (i) { return h('svg', { key: i, width: s, height: s, viewBox: '0 0 24 24', 'aria-hidden': true }, h('path', { d: star, fill: i <= v ? 'var(--accent)' : 'none', stroke: i <= v ? 'var(--accent)' : 'var(--hairline-strong)', strokeWidth: 1.5, strokeLinejoin: 'round' })); };
     var stars = [1, 2, 3, 4, 5].map(function (i) { return props.rate ? h('button', { key: i, type: 'button', className: 'bae-stars-btn', 'aria-label': 'Rate ' + i + ' of 5 stars' }, draw(i)) : draw(i); });
