@@ -5,42 +5,71 @@ import SwiftUI
 @testable import bae
 
 extension ShotScene {
-    /// The welcome boards (`mac.welcome.*`): the welcome window over this
-    /// Mac's libraries or none, a library's details, the alerts of removing
-    /// one, the screens a library opens or resets behind, and the code sheets.
-    /// Not shot: the library menu and the Add library menu (system menus),
-    /// the reset confirmation, the scanner
-    /// (the camera), and Add this device, which isn't built.
+    /// The welcome window over this Mac's libraries or none, and the
+    /// details, alerts, code sheets and steps that appear in it.
     static let welcomeScenes: [ShotScene] = [
-        welcomeWindow(
-            "mac.welcome.libraries",
-            libraries: PreviewData.boardLibraries
-        ),
-        welcomeWindow("mac.welcome.libraries.none", libraries: []),
-        welcomeWindow(
-            "mac.welcome.libraries.damaged-join",
-            libraries: PreviewData.boardLibraries,
-            unreadableInstallation: PreviewData.unreadableInstallationId
-        ),
-        welcomeWindow(
-            "mac.welcome.open-failed",
-            libraries: PreviewData.boardLibraries,
-            loadError: LoadError(
-                .libraryOpen(offersReset: true),
-                PreviewData.displayErrorWithDetail,
-                libraryId: PreviewData.homeMusic.id
+        ShotScene(
+            id: "mac.welcome.libraries",
+            size: WelcomeWindow.size,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            welcomeStage(libraries: PreviewData.boardLibraries)
+        },
+        ShotScene(
+            id: "mac.welcome.libraries.none",
+            size: WelcomeWindow.size,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            welcomeStage(libraries: [])
+        },
+        ShotScene(
+            id: "mac.welcome.libraries.damaged-join",
+            size: WelcomeWindow.size,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            welcomeStage(
+                libraries: PreviewData.boardLibraries,
+                unreadableInstallation: PreviewData.unreadableInstallationId
             )
-        ),
-        welcomeWindow(
-            "mac.welcome.libraries.saved-codes",
-            libraries: PreviewData.boardLibraries,
-            savedCodes: savedCodes
-        ),
-        detailsScene("mac.welcome.library-details", PreviewData.standingSynced),
-        detailsScene(
-            "mac.welcome.library-details.unsent-changes",
-            PreviewData.standingUnsent
-        ),
+        },
+        ShotScene(
+            id: "mac.welcome.open-failed",
+            size: WelcomeWindow.size,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            welcomeStage(
+                libraries: PreviewData.boardLibraries,
+                loadError: LoadError(
+                    .libraryOpen(offersReset: true),
+                    PreviewData.displayErrorWithDetail,
+                    libraryId: PreviewData.homeMusic.id
+                )
+            )
+        },
+        ShotScene(
+            id: "mac.welcome.libraries.saved-codes",
+            size: WelcomeWindow.size,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            welcomeStage(
+                libraries: PreviewData.boardLibraries,
+                savedCodes: savedCodes
+            )
+        },
+        ShotScene(
+            id: "mac.welcome.library-details",
+            size: detailsSize,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            detailsStage(PreviewData.standingSynced)
+        },
+        ShotScene(
+            id: "mac.welcome.library-details.unsent-changes",
+            size: detailsSize,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            detailsStage(PreviewData.standingUnsent)
+        },
         ShotScene(
             id: "mac.welcome.delete-never-synced",
             size: WelcomeWindow.size,
@@ -65,7 +94,11 @@ extension ShotScene {
                 losing: .counted(holdsUnsent: true)
             )
         },
-        ShotScene(id: "mac.welcome.remove.removing", size: WelcomeWindow.size) {
+        ShotScene(
+            id: "mac.welcome.remove.removing",
+            size: WelcomeWindow.size,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
             let reads = CountedReads(libraries: PreviewData.boardLibraries)
             let removals = PreviewData.welcomeRemovals(
                 stoppedAt: BridgeClosingProgress(
@@ -123,7 +156,8 @@ extension ShotScene {
         },
         ShotScene(
             id: "mac.welcome.opening.finding-libraries",
-            size: loadingSize
+            size: loadingSize,
+            frame: .window(title: "bae", titleBar: .hidden)
         ) {
             ShotStage(
                 MacWelcomeWindow(size: loadingSize) {
@@ -136,7 +170,11 @@ extension ShotScene {
                 }
             )
         },
-        ShotScene(id: "mac.welcome.opening.steps", size: loadingSize) {
+        ShotScene(
+            id: "mac.welcome.opening.steps",
+            size: loadingSize,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
             ShotStage(
                 MacWelcomeWindow(size: loadingSize) {
                     MacWelcomeOpening<BridgeOpenProgress>(
@@ -160,16 +198,25 @@ extension ShotScene {
         },
         ShotScene(
             id: "mac.welcome.opening.library-locked",
-            size: WelcomeWindow.size
+            size: WelcomeWindow.size,
+            frame: .window(title: "bae", titleBar: .hidden)
         ) {
             ShotStage(MacWelcomeWindow { KeychainLockedView(onRetry: {}) })
         },
-        ShotScene(id: "mac.welcome.reset.offered", size: WelcomeWindow.size) {
+        ShotScene(
+            id: "mac.welcome.reset.offered",
+            size: WelcomeWindow.size,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
             // The reset's own line: a device that must be reset has no error
             // from opening the library, as when Settings offers it.
             ShotStage(ShotScenes.deviceReset(error: nil))
         },
-        ShotScene(id: "mac.welcome.opening.resetting", size: loadingSize) {
+        ShotScene(
+            id: "mac.welcome.opening.resetting",
+            size: loadingSize,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
             let progress = BridgeLoadProgress(
                 step: .streamingLibrary,
                 key: "core.library.load_step.streaming_library",
@@ -195,7 +242,11 @@ extension ShotScene {
                 }
             )
         },
-        ShotScene(id: "mac.welcome.reset.failed", size: WelcomeWindow.size) {
+        ShotScene(
+            id: "mac.welcome.reset.failed",
+            size: WelcomeWindow.size,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
             ShotStage(
                 ShotScenes.deviceReset(
                     error: LoadError(
@@ -205,8 +256,11 @@ extension ShotScene {
                 )
             )
         },
-        ShotScene(id: "mac.welcome.reset.unfinished", size: WelcomeWindow.size)
-        {
+        ShotScene(
+            id: "mac.welcome.reset.unfinished",
+            size: WelcomeWindow.size,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
             ShotStage(
                 MacWelcomeWindow {
                     DeviceResetView(
@@ -218,7 +272,11 @@ extension ShotScene {
                 }
             )
         },
-        ShotScene(id: "mac.welcome.create.name", size: WelcomeWindow.size) {
+        ShotScene(
+            id: "mac.welcome.create.name",
+            size: WelcomeWindow.size,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
             ShotStage(
                 ShotScenes.welcome(
                     initialMode: .create,
@@ -226,7 +284,11 @@ extension ShotScene {
                 )
             )
         },
-        ShotScene(id: "mac.welcome.join.name", size: WelcomeWindow.size) {
+        ShotScene(
+            id: "mac.welcome.join.name",
+            size: WelcomeWindow.size,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
             ShotStage(
                 MacWelcomeWindow {
                     JoinNameView(
@@ -240,7 +302,11 @@ extension ShotScene {
                 }
             )
         },
-        ShotScene(id: "mac.welcome.join.waiting", size: WelcomeWindow.size) {
+        ShotScene(
+            id: "mac.welcome.join.waiting",
+            size: WelcomeWindow.size,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
             ShotStage(
                 MacWelcomeWindow {
                     JoinWaitingView(
@@ -272,7 +338,8 @@ extension ShotScene {
         },
         ShotScene(
             id: "mac.welcome.add-this-device.waiting",
-            size: WelcomeWindow.size
+            size: WelcomeWindow.size,
+            frame: .window(title: "bae", titleBar: .hidden)
         ) {
             ShotStage(
                 MacWelcomeWindow {
@@ -286,7 +353,8 @@ extension ShotScene {
         },
         ShotScene(
             id: "mac.welcome.add-this-device.ended",
-            size: WelcomeWindow.size
+            size: WelcomeWindow.size,
+            frame: .window(title: "bae", titleBar: .hidden)
         ) {
             ShotStage(
                 MacWelcomeWindow {
@@ -294,63 +362,89 @@ extension ShotScene {
                 }
             )
         },
-        ShotScene(id: "mac.welcome.join.ended", size: WelcomeWindow.size) {
+        ShotScene(
+            id: "mac.welcome.join.ended",
+            size: WelcomeWindow.size,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
             ShotStage(
                 MacWelcomeWindow {
                     JoinEndedView(inviter: "Ana", onOK: {})
                 }
             )
         },
-        overWelcome("mac.welcome.add-code.entering", libraries: []) {
-            _,
-            window in
-            OverWindow.sheet(
-                EnterCodeSheet(form: enterCodeForm(), onCancel: {})
-                    .frame(width: 400)
-                    .fixedSize(horizontal: false, vertical: true),
-                over: window
-            )
-        },
-        overWelcome("mac.welcome.add-code.scanning", libraries: []) {
-            _,
-            window in
-            OverWindow.sheet(
-                CodeScannerSheet(
-                    onScan: { _ in },
-                    onDismiss: {},
-                    showing: .requesting
+        ShotScene(
+            id: "mac.welcome.add-code.entering",
+            size: WelcomeWindow.size,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            overWelcomeStage(libraries: []) { _, window in
+                OverWindow.sheet(
+                    EnterCodeSheet(form: enterCodeForm(), onCancel: {})
+                        .frame(width: 400)
+                        .fixedSize(horizontal: false, vertical: true),
+                    over: window
                 )
-                .frame(width: 400)
-                .fixedSize(horizontal: false, vertical: true),
-                over: window
-            )
+            }
         },
-        overWelcome("mac.welcome.add-code.half-typed", libraries: []) {
-            _,
-            window in
-            let form = enterCodeForm()
-            form.edit(code: String(PreviewData.restoreCode.prefix(25)))
-            return OverWindow.sheet(
-                EnterCodeSheet(form: form, onCancel: {})
+        ShotScene(
+            id: "mac.welcome.add-code.scanning",
+            size: WelcomeWindow.size,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            overWelcomeStage(libraries: []) { _, window in
+                OverWindow.sheet(
+                    CodeScannerSheet(
+                        onScan: { _ in },
+                        onDismiss: {},
+                        showing: .requesting
+                    )
                     .frame(width: 400)
                     .fixedSize(horizontal: false, vertical: true),
-                over: window
-            )
+                    over: window
+                )
+            }
         },
-        overWelcome("mac.welcome.add-code.s3-key-needed", libraries: []) {
-            _,
-            window in
-            let form = enterCodeForm(reading: .restore(metadata: s3Metadata))
-            form.acceptCode(PreviewData.restoreCode)
-            form.accessKey = "AKIA4EXAMPLE"
-            return OverWindow.sheet(
-                RestoreS3KeySheet(form: form)
-                    .frame(width: 440)
-                    .fixedSize(horizontal: false, vertical: true),
-                over: window
-            )
+        ShotScene(
+            id: "mac.welcome.add-code.half-typed",
+            size: WelcomeWindow.size,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            overWelcomeStage(libraries: []) { _, window in
+                let form = enterCodeForm()
+                form.edit(code: String(PreviewData.restoreCode.prefix(25)))
+                return OverWindow.sheet(
+                    EnterCodeSheet(form: form, onCancel: {})
+                        .frame(width: 400)
+                        .fixedSize(horizontal: false, vertical: true),
+                    over: window
+                )
+            }
         },
-        ShotScene(id: "mac.welcome.add-code.adding", size: WelcomeWindow.size) {
+        ShotScene(
+            id: "mac.welcome.add-code.s3-key-needed",
+            size: WelcomeWindow.size,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
+            overWelcomeStage(libraries: []) { _, window in
+                let form = enterCodeForm(
+                    reading: .restore(metadata: s3Metadata)
+                )
+                form.acceptCode(PreviewData.restoreCode)
+                form.accessKey = "AKIA4EXAMPLE"
+                return OverWindow.sheet(
+                    RestoreS3KeySheet(form: form)
+                        .frame(width: 440)
+                        .fixedSize(horizontal: false, vertical: true),
+                    over: window
+                )
+            }
+        },
+        ShotScene(
+            id: "mac.welcome.add-code.adding",
+            size: WelcomeWindow.size,
+            frame: .window(title: "bae", titleBar: .hidden)
+        ) {
             ShotStage(
                 MacWelcomeWindow {
                     CodeRunningView(
@@ -377,31 +471,13 @@ extension ShotScene {
         },
     ]
 
-    /// The welcome window over `libraries`, on the first screen.
-    private static func welcomeWindow(
-        _ id: String,
-        libraries: [BridgeLibrary],
-        savedCodes: [BridgeSavedRestoreEntry] = [],
-        loadError: LoadError? = nil,
-        unreadableInstallation: String? = nil
-    ) -> ShotScene {
-        ShotScene(id: id, size: WelcomeWindow.size) {
-            welcomeStage(
-                libraries: libraries,
-                savedCodes: savedCodes,
-                loadError: loadError,
-                unreadableInstallation: unreadableInstallation
-            )
-        }
-    }
-
     /// The window a library loads in, at the size the boards draw it: the
     /// app opens it at the library window's size fitted to the screen, which
     /// is this or more.
     private static let loadingSize = MainWindow.minSize
 
-    /// What `welcomeWindow` shows, for a scene shown in its window, with
-    /// `removals` as the removals the window has under way.
+    /// The first screen over `libraries`, with `removals` as the work
+    /// under way.
     static func welcomeStage(
         libraries: [BridgeLibrary],
         savedCodes: [BridgeSavedRestoreEntry] = [],
@@ -425,42 +501,17 @@ extension ShotScene {
     }
 
     /// The welcome window over `libraries`, with the dialog `laid` over it.
-    /// `laid` is given the window's reads, to count the ones the dialog makes
-    /// itself, and the window; `extraReads` is how many of those it makes.
-    private static func overWelcome<Dialog: View>(
-        _ id: String,
-        size: CGSize = WelcomeWindow.size,
-        libraries: [BridgeLibrary] = PreviewData.boardLibraries,
-        savedCodes: [BridgeSavedRestoreEntry] = [],
-        unreadableInstallation: String? = nil,
-        extraReads: Int = 0,
-        laid dialog: @escaping @MainActor (CountedReads, AnyView) -> Dialog
-    ) -> ShotScene {
-        ShotScene(id: id, size: size) {
-            overWelcomeStage(
-                size: size,
-                libraries: libraries,
-                savedCodes: savedCodes,
-                unreadableInstallation: unreadableInstallation,
-                extraReads: extraReads,
-                laid: dialog
-            )
-        }
-    }
-
-    /// What `overWelcome` shows, for a scene shown in its window.
+    /// `extraReads` counts the reads the dialog makes itself.
     private static func overWelcomeStage<Dialog: View>(
         size: CGSize = WelcomeWindow.size,
         libraries: [BridgeLibrary] = PreviewData.boardLibraries,
         savedCodes: [BridgeSavedRestoreEntry] = [],
-        unreadableInstallation: String? = nil,
         extraReads: Int = 0,
         laid dialog: @escaping @MainActor (CountedReads, AnyView) -> Dialog
     ) -> ShotStage {
         let reads = CountedReads(
             libraries: libraries,
-            savedCodes: savedCodes,
-            unreadableInstallation: unreadableInstallation
+            savedCodes: savedCodes
         )
         // `ShotScenes.welcome` at `size`: a board may draw the window
         // taller than the app's, to fit a popover under its rows.
@@ -560,17 +611,20 @@ extension ShotScene {
         }
     }
 
+    private static let detailsSize = CGSize(
+        width: WelcomeWindow.size.width,
+        height: 680
+    )
+
     /// The details popover for Home music over the welcome window, once its
     /// status is in. The popover opens under Home music's row: the board
     /// puts its right edge 21 points past the list's, which is 420 wide and
     /// centred.
-    private static func detailsScene(
-        _ id: String,
+    private static func detailsStage(
         _ status: BridgeLibraryStanding
-    ) -> ShotScene {
-        overWelcome(
-            id,
-            size: CGSize(width: WelcomeWindow.size.width, height: 680),
+    ) -> ShotStage {
+        overWelcomeStage(
+            size: detailsSize,
             extraReads: 1
         ) { reads, window in
             OverWindow.popover(
