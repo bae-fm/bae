@@ -62,7 +62,7 @@ internal fun AndroidStep(
             text?.let {
                 Text(
                     text = it,
-                    style = ThemeText.body.style.copy(lineBreak = LineBreak.Paragraph),
+                    style = ThemeText.androidBodyLarge.style.copy(lineBreak = LineBreak.Paragraph),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = align,
                 )

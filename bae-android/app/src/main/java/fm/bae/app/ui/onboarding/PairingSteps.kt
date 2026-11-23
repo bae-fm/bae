@@ -1,6 +1,7 @@
 package fm.bae.app.ui.onboarding
 
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -53,7 +54,11 @@ internal fun PairingEndedStep(onBack: () -> Unit) {
             text = stringResource(R.string.pair_ended_text),
             top = true,
         ) {
-            AndroidButton(onClick = onBack, large = true) { Text(stringResource(R.string.onboarding_ok)) }
+            AndroidButton(
+                onClick = onBack,
+                large = true,
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text(stringResource(R.string.onboarding_ok)) }
         }
     }
 }
