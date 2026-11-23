@@ -58,8 +58,9 @@ internal class AlbumMenuActions(
 )
 
 /**
- * The album's options, the ⋮ at the end of the page's bar: Shuffle, Play next and Add to queue, then
- * Rate, Pin or Unpin and Set as primary release, then Delete album….
+ * The album's options, the ⋮ at the end of the page's bar. The middle group offers Rate under Stars,
+ * Add heart or Remove heart under Heart, and no rating action under None. It also holds the pin
+ * and primary release actions when they apply.
  */
 @Composable
 internal fun AlbumOptionsMenu(actions: AlbumMenuActions) {
