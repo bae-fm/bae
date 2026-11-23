@@ -212,7 +212,7 @@ internal fun InPlaceDialogScene(
                     Modifier
                         .fillMaxSize()
                         .background(BaeTheme.colors.scrim)
-                        .padding(ThemeSpace.page),
+                        .padding(horizontal = ThemeSpace.page),
                 contentAlignment = Alignment.Center,
             ) {
                 InPlaceDialog(dialog())
