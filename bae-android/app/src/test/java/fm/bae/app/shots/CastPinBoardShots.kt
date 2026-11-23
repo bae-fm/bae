@@ -2,18 +2,14 @@ package fm.bae.app.shots
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import fm.bae.app.DisplayError
-import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.data.CastStart
-import fm.bae.app.ui.components.AndroidSheetHeading
 import fm.bae.app.ui.components.DialogParts
 import fm.bae.app.ui.playback.CastBarButton
-import fm.bae.app.ui.playback.CastReceiverPlace
-import fm.bae.app.ui.playback.CastReceiverRows
-import fm.bae.app.ui.playback.PickerFailures
+import fm.bae.app.ui.playback.CastPickerContent
 import fm.bae.app.ui.playback.castCodeDialogParts
+import fm.bae.app.ui.playback.castPickerHeading
 import org.junit.Test
 import uniffi.bae_bridge.BridgeAirPlayCode
 import uniffi.bae_bridge.BridgeAirPlayCodeAsked
@@ -144,7 +140,7 @@ class CastPinBoardShots : BoardShot() {
         failure: CastStart.Failure? = null,
     ) {
         SheetScene(
-            heading = AndroidSheetHeading(stringResource(R.string.cast_picker_title)),
+            heading = castPickerHeading(),
             behind = {
                 PlayingLibraryScreen(
                     nowPlayingBar = {
@@ -153,14 +149,13 @@ class CastPinBoardShots : BoardShot() {
                 )
             },
         ) {
-            PickerFailures(endedFailure = null, castFailure = failure)
-            CastReceiverRows(
-                place = CastReceiverPlace.PICKER,
+            CastPickerContent(
                 receivers = receivers,
                 connecting = connecting,
+                endedFailure = null,
+                castFailure = failure,
                 onCast = {},
                 onDisconnect = {},
-                looking = stringResource(R.string.cast_looking_for_devices),
             )
         }
     }

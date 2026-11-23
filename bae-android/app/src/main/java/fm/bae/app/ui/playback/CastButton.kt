@@ -29,6 +29,8 @@ import fm.bae.app.ui.components.IconTone
 import fm.bae.app.ui.components.NoticeLook
 import fm.bae.app.ui.components.StatusTone
 import uniffi.bae_bridge.BridgeBrowsingFor
+import uniffi.bae_bridge.BridgeCastReceiver
+import uniffi.bae_bridge.BridgeCastReceiverList
 
 /** The now-playing bar's Play on control, absent when Play on other devices is turned off. */
 @Composable
@@ -96,20 +98,43 @@ private fun CastPickerSheet(
         if (session.castStart.didStart(asked)) onDismiss()
     }
 
-    AndroidSheet(heading = AndroidSheetHeading(stringResource(R.string.cast_picker_title)), onDismiss = onDismiss) {
-        PickerFailures(endedFailure = endedFailure, castFailure = castFailure)
-        CastReceiverRows(
-            place = CastReceiverPlace.PICKER,
+    AndroidSheet(heading = castPickerHeading(), onDismiss = onDismiss) {
+        CastPickerContent(
             receivers = receivers,
             connecting = connecting,
+            endedFailure = endedFailure,
+            castFailure = castFailure,
             onCast = { receiver -> asked = session.castStart.cast(receiver) },
             onDisconnect = {
                 session.cast.stopCasting()
                 onDismiss()
             },
-            looking = stringResource(R.string.cast_looking_for_devices),
         )
     }
+}
+
+@Composable
+internal fun castPickerHeading(): AndroidSheetHeading = AndroidSheetHeading(stringResource(R.string.cast_picker_title))
+
+/** The Play on picker's notices and receivers, using the current cast state. */
+@Composable
+internal fun CastPickerContent(
+    receivers: BridgeCastReceiverList,
+    connecting: CastStart.Connecting?,
+    endedFailure: DisplayError?,
+    castFailure: CastStart.Failure?,
+    onCast: (BridgeCastReceiver) -> Unit,
+    onDisconnect: () -> Unit,
+) {
+    PickerFailures(endedFailure = endedFailure, castFailure = castFailure)
+    CastReceiverRows(
+        place = CastReceiverPlace.PICKER,
+        receivers = receivers,
+        connecting = connecting,
+        onCast = onCast,
+        onDisconnect = onDisconnect,
+        looking = stringResource(R.string.cast_looking_for_devices),
+    )
 }
 
 /**
@@ -117,7 +142,7 @@ private fun CastPickerSheet(
  * receiver's refusal is titled with the receiver's name, over core's line.
  */
 @Composable
-internal fun PickerFailures(
+private fun PickerFailures(
     endedFailure: DisplayError?,
     castFailure: CastStart.Failure?,
 ) {
