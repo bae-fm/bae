@@ -12,7 +12,7 @@ extension ShotScene {
             width: 580,
             height: 110
         ) {
-            VStack(alignment: .leading, spacing: ThemeSpace.related) {
+            VStack(alignment: .leading, spacing: 0) {
                 ReleaseSheetCaption(
                     sheet: PreviewData.fieldRecordingsSheet(
                         1,

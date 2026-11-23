@@ -88,14 +88,7 @@ struct ReleaseSheetCaption: View {
     ) -> some View {
         MacButton(kind: .plain, menu: items) {
             boundText
-                .padding(.horizontal, ThemeSpace.compact)
-                .padding(.vertical, ThemeSpace.line)
-                .background(
-                    hoveringBound ? Theme.hover : Color.clear,
-                    in: RoundedRectangle(cornerRadius: ThemeRadius.control)
-                )
-                .frame(minWidth: ThemeSize.hitTarget)
-                .contentShape(Rectangle())
+                .hoverPlate(hoveringBound)
         }
         .onHover { hoveringBound = $0 }
         .accessibilityLabel(String(localized: "Audio file"))

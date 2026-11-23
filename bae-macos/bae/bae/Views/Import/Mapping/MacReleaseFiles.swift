@@ -29,11 +29,11 @@ struct MacReleaseFiles: View {
                     index,
                     row in
                     line(row)
-                        .padding(.horizontal, ThemeSpace.line)
-                        .padding(.vertical, ThemeSpace.related)
                         .overlay(alignment: .top) {
-                            MacHairline()
-                                .opacity(index > 0 ? 1 : 0)
+                            // A sheet's caption draws its own hairline.
+                            if index > 0, case .file = row {
+                                MacHairline()
+                            }
                         }
                 }
             }

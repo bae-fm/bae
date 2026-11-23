@@ -33,6 +33,8 @@ struct MacImportSheetCaption<Place: View, Audio: View>: View {
             audio
             Spacer(minLength: 0)
         }
+        .padding(.vertical, ThemeSpace.related)
+        .overlay(alignment: .top) { MacHairline() }
     }
 
     /// The sheet's name opens it in the viewer.

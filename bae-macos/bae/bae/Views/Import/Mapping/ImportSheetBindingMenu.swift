@@ -38,14 +38,7 @@ struct ImportSheetUnboundMenu: View {
                 .themeText(.mono)
                 .foregroundStyle(Theme.warning)
                 .cutLine(.prose)
-                .padding(.horizontal, ThemeSpace.compact)
-                .padding(.vertical, ThemeSpace.line)
-                .background(
-                    hovering ? Theme.hover : Color.clear,
-                    in: RoundedRectangle(cornerRadius: ThemeRadius.control)
-                )
-                .frame(minWidth: ThemeSize.hitTarget)
-                .contentShape(Rectangle())
+                .hoverPlate(hovering)
         }
         .onHover { hovering = $0 }
         .accessibilityLabel(String(localized: "Audio file"))
@@ -127,5 +120,18 @@ struct ImportSheetBindingItems: MacMenuPart {
             }
         }
         return entries
+    }
+}
+
+extension View {
+    /// The hover fill of a menu button that is only its words: it reaches past
+    /// the words without moving them, so the caption lays out as its words.
+    func hoverPlate(_ hovering: Bool) -> some View {
+        background {
+            RoundedRectangle(cornerRadius: ThemeRadius.control)
+                .fill(hovering ? Theme.hover : Color.clear)
+                .padding(.horizontal, -ThemeSpace.compact)
+                .padding(.vertical, -ThemeSpace.line)
+        }
     }
 }

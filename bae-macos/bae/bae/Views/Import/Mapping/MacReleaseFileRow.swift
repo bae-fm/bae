@@ -36,7 +36,7 @@ struct MacReleaseFileRow: View {
                 HStack(spacing: ThemeSpace.inline) {
                     StatusGlyph(.warning)
                     Text(damage)
-                        .themeText(.fine)
+                        .themeText(.detail)
                         .foregroundStyle(Theme.warning)
                 }
                 .fixedSize()
@@ -46,11 +46,13 @@ struct MacReleaseFileRow: View {
                 MacAuditionButton(isPlaying: isPlaying, action: onPlay)
             }
             Text(size)
-                .themeText(.fine)
+                .themeText(.cell)
                 .foregroundStyle(Theme.textTertiary)
                 // A squeezed row truncates the name, never wraps the size.
                 .fixedSize()
         }
+        .padding(.horizontal, ThemeSpace.line)
+        .padding(.vertical, ThemeSpace.related)
         .contentShape(Rectangle())
     }
 }

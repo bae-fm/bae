@@ -64,13 +64,8 @@ struct MacImportTable: View {
             .padding(.bottom, ThemeSpace.compact)
     }
 
-    /// The sheet's caption under a hairline.
     private func sheetCaption(_ sheet: BridgeSheetGroup) -> some View {
-        VStack(spacing: 0) {
-            MacHairline()
-            ReleaseSheetCaption(sheet: sheet, actions: actions.sheetCaption)
-                .padding(.vertical, ThemeSpace.related)
-        }
+        ReleaseSheetCaption(sheet: sheet, actions: actions.sheetCaption)
     }
 
     private func trackRow(_ row: BridgeTrackTableRow) -> some View {
