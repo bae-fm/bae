@@ -30,7 +30,7 @@ later. Their records:
 - **Ben's download.** The same album, bought as MP3s from a download store.
 - **Carol's box.** *Box Set Title*, two CDs, each ripped to one FLAC disc
   image with its CUE sheet, in folders `CD1/` and `CD2/`.
-- **Ben's vinyl rip.** A 2×LP vinyl rip of *Double Album Title*, at 96 kHz, one
+- **Ben's vinyl rip.** A 2×Vinyl rip of *Double Album Title*, at 96 kHz, one
   FLAC per track, sides A to D.
 
 Names of artists, albums and songs in this document are placeholders. The
@@ -137,7 +137,7 @@ This section describes the library's model; Appendix A lists its tables.
 ### 2.1 Albums and releases
 
 An *album* groups releases. A *release* is one pressing whose audio the library
-holds: a particular CD, LP or download, with its own year, labels, catalog
+holds: a particular CD, vinyl record or download, with its own year, labels, catalog
 numbers, barcodes, country, media, status and packaging. bae stores the
 country as its ISO 3166-1 code (Appendix H), and the apps show the country's
 name in the device's language wherever they print it. A pressing can be
@@ -181,7 +181,7 @@ release under its album:
   the person's language commonly uses where one exists (US, UK, EE. UU. in
   Spanish) and by its full name otherwise.
 - The copy line holds what the person has: the media and details, then the
-  length, such as `CD · 52 min` or `2×LP · Remastered · 52 min`.
+  length, such as `CD · 52 min` or `2×Vinyl · Remastered · 52 min`.
 - The audio line holds the files' audio as bae read it, such as
   `FLAC · 44.1 kHz · 16-bit · Stereo`. On an album's page it comes after the
   track list, last, after the credits and works.
@@ -389,7 +389,7 @@ Each track records:
   never edited (§3.6). Its label is a display of the place: a track on a
   record or cassette reads by its side's letter, the letters counting the
   sides of the release's records and cassettes in order (A … Z, then AA, AB,
-  …), so a 2×LP rip reads A1 … D5; a track on any other medium reads by its
+  …), so a 2×Vinyl rip reads A1 … D5; a track on any other medium reads by its
   number, under its disc when the release holds more than one medium (disc =
   the medium's position among the release's), so the box's CD rip reads
   "Disc 2 · 3". Playback pauses between sides and discs by it (§7.3);
@@ -5000,7 +5000,7 @@ output crosses to it within one buffer. This needs both tracks in one sample
 rate and channel count; otherwise the output is rebuilt between them, with a
 short silence.
 
-There is an optional pause between sides or discs. Ben plays his 2×LP rip.
+There is an optional pause between sides or discs. Ben plays his 2×Vinyl rip.
 When side A ends, playback pauses and shows "Side A ended"; he presses Play,
 or Next, to start side B. A CD box set pauses between discs the same way. On
 the Mac the now-playing bar keeps showing the artist while the prompt
