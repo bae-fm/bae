@@ -6,6 +6,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import fm.bae.app.BaeRobolectricTestRunner
 import fm.bae.app.BridgeFixtures
+import fm.bae.app.shots.Covers
 import fm.bae.app.shots.noAlbumCallbacks
 import fm.bae.app.ui.TestTheme
 import org.junit.Assert.assertNotNull
@@ -41,14 +42,16 @@ class AlbumTransferRowTest {
         val detail = BridgeFixtures.albumDetail(album, listOf(release))
         compose.setContent {
             TestTheme {
-                AlbumDetailPage(
-                    detail = detail,
-                    cover = null,
-                    playback = AlbumPlaybackState(currentTrackId = null, isPlaying = false),
-                    callbacks = noAlbumCallbacks,
-                    releaseDownloadControl = { Text("Transfer row") },
-                    shownRating = { detail.rating },
-                )
+                Covers {
+                    AlbumDetailPage(
+                        detail = detail,
+                        cover = null,
+                        playback = AlbumPlaybackState(currentTrackId = null, isPlaying = false),
+                        callbacks = noAlbumCallbacks,
+                        releaseDownloadControl = { Text("Transfer row") },
+                        shownRating = { detail.rating },
+                    )
+                }
             }
         }
     }
