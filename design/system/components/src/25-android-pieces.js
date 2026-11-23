@@ -98,5 +98,5 @@
   // Every catalog that describes a release, as a wrapped row of chips that each open the catalog's page, in the order core lists them (`records`: catalog names, comma separated).
   function AndroidRecordLinks(props) {
     // Each chip is a button that opens the catalog's page.
-    return h('div', { className: 'bae-a-reclinks' }, list(props.records).map(function (r) { return h('button', { key: r, type: 'button', className: 'bae-plainbtn bae-a-reclink' }, h(StatusChip, null, r + ' ↗')); }));
+    return h('div', { className: 'bae-a-reclinks' }, list(props.records).map(function (r) { return h('button', { key: r, type: 'button', className: 'bae-plainbtn bae-a-reclink' }, h(StatusChip, { android: true }, r + ' ↗')); }));
   }

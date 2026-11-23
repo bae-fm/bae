@@ -26,6 +26,8 @@
 .bae-tone-warning { --bae-tone: var(--warning); --bae-tone-tint: var(--warning-tint); --bae-tone-notice: var(--warning-notice); --bae-tone-icon: var(--warning-icon); }
 .bae-tone-danger { --bae-tone: var(--danger); --bae-tone-tint: var(--danger-tint); --bae-tone-notice: var(--danger-notice); --bae-tone-icon: var(--danger-icon); }
 .bae-chip { display: inline-flex; align-items: center; gap: var(--space-inline); padding: var(--space-line) var(--space-compact); border-radius: var(--radius-chip); font: var(--type-chip-weight) var(--type-chip-size) var(--font-sans); white-space: nowrap; color: var(--bae-tone); background: var(--bae-tone-tint); }
+/* `android`: Android's chip type, in Roboto, as Status.kt's StatusChip draws it. */
+.bae-a-chip { font: var(--type-android-chip-weight) var(--type-android-chip-size) var(--font-android); }
 .bae-notice { padding: var(--space-group); border-radius: var(--radius-control); color: var(--text-primary); background: var(--bae-tone-notice, var(--bae-tone-tint)); }
 .bae-notice-with-icon { display: flex; align-items: flex-start; gap: var(--space-related); }
 /* The icon is 1.19 times the text, centred on the first line. */

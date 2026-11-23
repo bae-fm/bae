@@ -77,7 +77,7 @@
     var tap = !!(props.onClick || props.icon || props.action || props.destructive || props.button);
     var press = tap ? { role: 'button', 'aria-disabled': props.off ? true : null, 'aria-expanded': props.expanded != null ? !!props.expanded : null } : {};
     var lines = h('div', Object.assign({ className: 'bae-a-row-lines', 'aria-hidden': switchRow || undefined }, trail.length && !switchRow ? press : null),
-      h('div', { className: cx('bae-a-row-title', props.action && 'bae-a-row-action', props.destructive && 'bae-a-row-destructive') }, props.title, props.tag ? h(StatusChip, null, props.tag) : null),
+      h('div', { className: cx('bae-a-row-title', props.action && 'bae-a-row-action', props.destructive && 'bae-a-row-destructive') }, props.title, props.tag ? h(StatusChip, { android: true }, props.tag) : null),
       props.subtitle ? h('div', { className: cx('bae-a-row-subtitle', props.tone && 'bae-tone-' + props.tone) },
         props.tone ? h('span', { className: 'bae-dot', 'aria-hidden': true }) : null, props.subtitle) : null);
     return h('div', { className: cx('bae-a-row', switchRow && 'bae-a-switch-row', props.place && 'bae-a-card-tile bae-a-card-tile-' + props.place, props.nested && 'bae-a-row-nested', !props.subtitle && 'bae-a-row-one', props.selected && 'bae-a-row-selected', props.off && 'bae-off'), role: trail.length ? null : press.role, 'aria-disabled': trail.length ? null : press['aria-disabled'], 'aria-expanded': trail.length ? null : press['aria-expanded'], onClick: props.onClick },

@@ -67,7 +67,7 @@
       h('div', { className: cx('bae-progress-fill', !known && 'bae-progress-moving'), style: known ? { width: (props.value * 100) + '%' } : null }));
   }
   function StatusChip(props) {
-    return h('span', { className: cx('bae-chip', 'bae-tone-' + (props.tone || 'neutral')) }, props.children);
+    return h('span', { className: cx('bae-chip', props.android && 'bae-a-chip', 'bae-tone-' + (props.tone || 'neutral')) }, props.children);
   }
 
   // The glyph each tone leads with, a ring with its mark inside, the one form every status glyph takes: BaeKit's `StatusTone.symbol` (SF Symbols) on macOS, Status.kt's `StatusTone.icon` on Android.

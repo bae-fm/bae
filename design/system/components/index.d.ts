@@ -199,7 +199,7 @@ export declare function AndroidSpinner(props: AndroidSpinnerProps): React.ReactE
 
 export type StatusTone = 'neutral' | 'accent' | 'info' | 'success' | 'warning' | 'danger';
 /** A short label on its tone's tint: a status, a count, a tag or a role. */
-export interface StatusChipProps { tone?: StatusTone; children?: React.ReactNode }
+export interface StatusChipProps { tone?: StatusTone; android?: boolean; children?: React.ReactNode }
 export declare function StatusChip(props: StatusChipProps): React.ReactElement;
 
 /** A code to scan, centered: what to do, the QR code, the buttons that hand over the code (children), then when it ends. size is the QR code's width in points. */

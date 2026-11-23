@@ -28,8 +28,6 @@
 .bae-a-item-trail { flex: none; height: 20px; display: flex; align-items: center; gap: var(--space-inline); }
 .bae-a-reclinks { display: flex; flex-wrap: wrap; gap: var(--space-related); }
 .bae-a-reclink { display: flex; }
-/* A status chip on Android takes Android's chip type, in Roboto, as Status.kt's StatusChip draws it. */
-.bae-a-reclink .bae-chip, .bae-a-row .bae-chip { font: var(--type-android-chip-weight) var(--type-android-chip-size) var(--font-android); }
 .bae-a-relfiles-head { padding: var(--space-inline) 0; }
 .bae-a-relfiles-row { display: flex; justify-content: space-between; gap: var(--space-group); padding: var(--space-related) 0; font: var(--type-android-body-weight) var(--type-android-body-size)/var(--type-android-body-line-height) var(--font-android); }
 .bae-a-qrscan { position: relative; background: var(--backdrop); }
