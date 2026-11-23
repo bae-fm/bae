@@ -55,6 +55,8 @@
 .bae-m-np-sub { font: var(--type-detail-weight) var(--type-detail-size)/var(--type-detail-line-height) var(--font-sans); color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bae-m-np-center { width: 460px; flex: none; display: flex; flex-direction: column; align-items: center; gap: var(--space-related); }
 .bae-m-transport { display: flex; align-items: center; gap: var(--space-section); }
+.bae-m-playpause-wait { position: relative; flex: none; display: inline-flex; }
+.bae-m-playpause-wait > .bae-waitarc { z-index: 1; pointer-events: none; }
 .bae-m-playpause { border: 0; padding: 0; font: inherit; position: relative; width: 48px; height: 48px; flex: none; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; background: var(--tile); color: var(--text-primary); fill: currentColor; }
 .bae-m-seek { height: 20px; font: var(--type-fine-weight) var(--type-fine-size) var(--font-sans); }
 .bae-m-seek .bae-seek-time:first-child { width: 48px; text-align: right; }

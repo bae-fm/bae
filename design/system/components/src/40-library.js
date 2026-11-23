@@ -119,10 +119,14 @@
   }
 
   function MacPlayPause(props) {
-    // A button named by what it does, as the app's. The arc around it while the track waits on storage is a progress indicator that VoiceOver reads as Downloading the track…, after the button.
-    return h('button', { type: 'button', className: 'bae-m-playpause', 'aria-label': props.playing ? 'Pause' : 'Play' },
-      h(Glyph, { set: 'mac', name: props.playing ? 'pause' : 'play', size: 'large' }),
-      props.waiting ? h('svg', { className: 'bae-waitarc', width: 48, height: 48, viewBox: '0 0 48 48', role: 'progressbar', 'aria-label': 'Downloading the track…' }, h('path', { d: 'M24 1.25A22.75 22.75 0 0 1 46.75 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2.5, strokeLinecap: 'round' })) : null);
+    // A button named by what it does, as the app's.
+    var button = h('button', { type: 'button', className: 'bae-m-playpause', 'aria-label': props.playing ? 'Pause' : 'Play' },
+      h(Glyph, { set: 'mac', name: props.playing ? 'pause' : 'play', size: 'large' }));
+    if (!props.waiting) return button;
+    // While the track waits on storage, the arc turns over the button: a progress indicator of its own beside it, which VoiceOver reads as Downloading the track… before the button, as the app's overlay.
+    return h('span', { className: 'bae-m-playpause-wait' },
+      h('svg', { className: 'bae-waitarc', width: 48, height: 48, viewBox: '0 0 48 48', role: 'progressbar', 'aria-label': 'Downloading the track…' }, h('path', { d: 'M24 1.25A22.75 22.75 0 0 1 46.75 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2.5, strokeLinecap: 'round' })),
+      button);
   }
 
   // Shuffle, previous, play and pause, next, repeat; `shuffle` and `repeat` light theirs while on, `waiting` draws the arc around play while the track waits on storage.
