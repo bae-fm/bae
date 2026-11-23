@@ -78,21 +78,22 @@ struct DeviceResetView: View {
     private var unfinished: some View {
         MacStep(
             String(localized: "Finish reset from cloud?"),
-            text:
-                BridgeErrorCategory.replacementUnfinished(by: .reset)
+            text: BridgeErrorCategory.replacementUnfinished(by: .reset)
                 .localizedLine
         ) {
-            VStack(spacing: ThemeSpace.section) {
-                if let error {
-                    MacNotice(error: error.error)
-                        .frame(maxWidth: WelcomeLayout.columnWidth)
-                }
-                MacStepActions {
-                    MacButton("Cancel", action: onCancel)
-                        .keyboardShortcut(.cancelAction)
-                    MacButton("Finish reset from cloud", action: onReset)
-                        .destructive()
-                }
+            if let error {
+                MacNotice(
+                    title: error.step.title,
+                    advice: error.step.advice,
+                    error: error.error
+                )
+                .frame(maxWidth: WelcomeLayout.columnWidth)
+            }
+            MacStepActions {
+                MacButton("Cancel", action: onCancel)
+                    .keyboardShortcut(.cancelAction)
+                MacButton("Finish reset from cloud", action: onReset)
+                    .destructive()
             }
         }
     }
